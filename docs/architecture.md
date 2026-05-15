@@ -80,7 +80,13 @@ This is the design choice that protects the blind-server property: a
 homeserver-side bridge would see plaintext before Matrix encryption and
 break the privacy story.
 
-See spec §10.
+Per-MXID portability is provided by a dedicated **encrypted client
+configuration room** (§3.8) that holds user preferences, per-persona
+private state including mute lists, and Heterodyne-specific key
+backups. A new device of the same MXID joins this room and re-syncs
+configuration immediately.
+
+See spec §10 (bridge model) and §3.8 (config room).
 
 ### 5. DMs: pure Matrix with optional Nostr wrap
 
@@ -161,28 +167,30 @@ overlap is in engineering pattern, not implementation.
 
 ## Open design questions
 
-These remain to be resolved as the remaining spec sections graduate
-from stubs:
+All v0.1 spec sections are drafted. The remaining open questions are
+follow-up work that does not block v0.1:
 
-- **§8 moderation**: integration of MSC2313 policy rooms with
-  per-community approval; conflict resolution between Matrix bans and
-  NIP-72-style approvals; schema for `m.heterodyne.moderators.v1`.
-- **§9 encryption**: timing of MLS migration; how identity-chain
-  rotations interact with MLS group changes mid-rotation; whether
-  Megolm sessions need invalidation when a delegation is revoked.
-- **§11 interop**: graceful behavior when a vanilla Matrix client tries
-  to *send* into a Heterodyne room (the message has no Nostr signature
-  and arrives as bare; what should public-room admission policy do?
-  Drop, render-with-warning, or accept-as-bare?).
-- **§12 versioning**: capability advertisement schema; downgrade rules
-  when a sender uses spec_version greater than the receiver
-  implements.
-
-Questions that emerged from the drafted sections and need follow-up
-work but are not blocking:
-
+- **Cross-MXID persona-private state synchronization.** A persona
+  with multiple delegated MXIDs has separate config rooms (§3.8) per
+  MXID; persona-scoped private state (mutes, prefs) does not auto-sync
+  across them in v0.1. A future spec version may define a
+  persona-private encrypted room joined by all the persona's MXIDs.
+  Defer until usage demand is clear.
+- **`matrix:` URI refactor of §7 outbox schemas.** New constructs in
+  v0.1 (§3.8 config-room pointer, §3.5 successor URI, §11.3 identity
+  pointer) use `matrix:` URIs. The §7 outbox schemas still use the
+  legacy `{room_id, via}` structured form for backward source
+  compatibility. A minor-version bump can migrate them; not urgent.
+- **MLS migration procedure.** §9.2 reserves
+  `m.heterodyne.encryption_version.v1` and the `algorithm` field, but
+  the actual migration procedure (re-key, member re-acknowledgement,
+  atomic flip) is deferred to a future spec version when upstream
+  `matrix-rust-sdk` MLS lands.
+- **Conformance reporting formalization.** §14.4 leaves the
+  conformance-claim mechanism informal. A future spec version may
+  define a conformance manifest format consumable by a registry.
 - **Canonical topic taxonomy.** The spec lets clients pick reverse-DNS
-  namespaces, but a recommended common set (under
+  namespaces (§5.1), but a recommended common set (under
   `org.heterodyne.topics`) would improve discoverability. Defer until
   there's actual usage to draw from.
 - **Transitive join-rule consistency.** §7.2 recommends `restricted`
@@ -196,3 +204,7 @@ work but are not blocking:
 - **Persona switching UX.** Multiple personas (§3.4) are a first-class
   feature, but the spec is silent on how clients SHOULD present
   switching. UX-only — defer to client implementation.
+- **Out-of-scope security threats.** Compromised user devices, traffic
+  analysis under Tor-routed Matrix federation, and post-quantum
+  adversaries are explicitly out of scope for v0.1 (see threat model).
+  Each is a future-spec-version question.
