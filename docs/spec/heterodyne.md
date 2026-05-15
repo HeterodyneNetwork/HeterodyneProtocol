@@ -1,10 +1,10 @@
 # Heterodyne Protocol Specification
 
 **Version:** 0.1 (DRAFT)
-**Status:** Working draft. §3 (identity), §4 (envelope), §5 (rooms),
-§6 (publishing), §7 (discovery), §10 (bridge) are drafted; §8, §9,
-§11, §12, §13, §14 remain as stubs. Not stable. Not yet suitable for
-independent re-implementation or interoperability claims.
+**Status:** Working draft, all sections drafted. Stable enough to start
+authoring test vectors against, not yet stable enough to be considered
+final. Independent re-implementations SHOULD coordinate via the
+`heterodyne-core` reference until v0.2 freeze.
 
 This document is the normative specification for the Heterodyne protocol: a
 decentralized social network built by publishing Nostr events into Matrix
@@ -24,13 +24,13 @@ described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
 5. [Room taxonomy](#5-room-taxonomy) — **drafted**
 6. [Publishing flow](#6-publishing-flow) — **drafted**
 7. [Discovery and subscription](#7-discovery-and-subscription) — **drafted**
-8. [Moderation](#8-moderation) — *stub*
-9. [Encryption guarantees](#9-encryption-guarantees) — *stub*
+8. [Moderation](#8-moderation) — **drafted**
+9. [Encryption guarantees](#9-encryption-guarantees) — **drafted**
 10. [Bridge and client model](#10-bridge-and-client-model) — **drafted**
-11. [Interoperability with vanilla Nostr and vanilla Matrix](#11-interoperability) — *stub*
-12. [Versioning and capability negotiation](#12-versioning-and-capability-negotiation) — *stub*
-13. [Security model](#13-security-model) — *stub (see also [`../security/threat-model.md`](../security/threat-model.md))*
-14. [Conformance and test vectors](#14-conformance-and-test-vectors) — *stub (see also [`vectors/`](vectors/))*
+11. [Interoperability with vanilla Nostr and vanilla Matrix](#11-interoperability) — **drafted**
+12. [Versioning and capability negotiation](#12-versioning-and-capability-negotiation) — **drafted**
+13. [Security model](#13-security-model) — **drafted** (companion analysis in [`../security/threat-model.md`](../security/threat-model.md))
+14. [Conformance and test vectors](#14-conformance-and-test-vectors) — **drafted** (vectors authored incrementally in [`vectors/`](vectors/))
 
 ## 1. Scope and non-goals
 
@@ -102,6 +102,16 @@ restated here.
 - **Identity chain** — the linked succession of npubs a persona has rotated
   through. Followers walk the chain to follow a persona across key
   rotations.
+- **`matrix:` URI** — the canonical reference format for Matrix rooms,
+  events, and users used in this spec, per MSC2312. Form:
+  `matrix:roomid/<id-without-bang>:<server>?via=<server>&via=<server>`
+  for room-by-id; `matrix:r/<alias-without-hash>:<server>` for
+  room-by-alias; `matrix:u/<user-without-at>:<server>` for user. New
+  constructs in this spec (e.g., the config-room pointer in §3.8)
+  reference rooms via `matrix:` URIs. Earlier sections (§7 outbox
+  schemas) use a structured `{room_id, via}` form which is equivalent
+  and remains valid; the URI form is REQUIRED only where explicitly
+  stated.
 
 ## 3. Identity model
 
@@ -367,6 +377,198 @@ advertises via `/sync`.
   chain preserves persona continuity. Issue a revocation per §3.5.1 to
   invalidate the attacker's window.
 
+### 3.8 Encrypted client configuration room (per MXID)
+
+In addition to per-persona identity rooms (§3.2), every Matrix account
+that participates in Heterodyne SHOULD have a single **encrypted
+client configuration room**: an E2EE Matrix room whose only members
+are the owning MXID's devices, used to store portable client
+configuration, per-persona private state, and Heterodyne-specific
+backups.
+
+The motivation is portability. A user adding a new device, or
+recovering after losing one, joins the config room with their MXID
+credentials and immediately re-syncs their preferences, mute lists,
+and key material without having to manually reconfigure each client
+surface.
+
+#### 3.8.1 Room shape
+
+REQUIRED:
+
+- `m.heterodyne.room_kind.v1.kind`: `config_room`.
+- `m.room.encryption.algorithm`: `m.megolm.v1.aes-sha2` (today); MLS
+  variant when ready.
+- All state events MUST be encrypted (MSC4362).
+- `m.room.join_rules`: `invite`. The owning MXID is the sole inviter
+  and the sole invitee.
+- `m.room.guest_access`: `forbidden`.
+- `m.room.history_visibility`: `shared` (so a new device of the same
+  MXID, joined later, can read prior state).
+- Members: only the owning MXID and their authorized devices. Any
+  other member is a misconfiguration and SHOULD be removed.
+
+The room is NOT discoverable by anyone except the owning MXID. Other
+users MUST NOT be invited.
+
+#### 3.8.2 Discovery and binding
+
+The owning MXID's Matrix profile SHOULD carry a custom field
+`m.heterodyne.config_room` whose value is a `matrix:` URI pointing at
+the room:
+
+```
+m.heterodyne.config_room: "matrix:roomid/abc123def:matrix.org?via=matrix.org"
+```
+
+A new device logging in with the same MXID resolves the URI, joins
+the room, and reads its encrypted state to bootstrap configuration.
+The first device for a fresh MXID creates the room and writes the
+profile field.
+
+#### 3.8.3 Stored state events
+
+The following Heterodyne state events have well-known schemas; a
+client MAY store additional vendor-prefixed state events for its own
+purposes.
+
+##### `m.heterodyne.user_prefs.v1`
+
+UI and client preferences scoped to this MXID. Schema is intentionally
+loose to permit rapid client iteration; clients MUST tolerate unknown
+fields.
+
+```json
+{
+  "type": "m.heterodyne.user_prefs.v1",
+  "state_key": "",
+  "content": {
+    "spec_version": "0.1",
+    "ui": {
+      "theme": "system | light | dark",
+      "feed_density": "comfortable | compact",
+      "hide_bare_events": "never | unsigned_only | per_room"
+    },
+    "notifications": {
+      "mentions": true,
+      "replies": true,
+      "follows": false
+    },
+    "language_preference": "en"
+  }
+}
+```
+
+The `hide_bare_events` knob implements the per-client
+bare-event-display policy from §11.1.
+
+##### `m.heterodyne.persona_config.v1`
+
+Per-persona private state, keyed by the persona's npub. Each persona
+this MXID is delegated for gets its own state event.
+
+```json
+{
+  "type": "m.heterodyne.persona_config.v1",
+  "state_key": "<persona npub hex>",
+  "content": {
+    "spec_version": "0.1",
+    "private_mutes": {
+      "pubkeys": ["<npub hex>", "<npub hex>"],
+      "topics": [{"namespace": "com.example.tags", "tag": "spoilers"}],
+      "string_filters": ["regex or literal substring"]
+    },
+    "feed_preferences": {
+      "subscribed_outboxes": ["<matrix: URI>", "<matrix: URI>"],
+      "default_post_audience": "<matrix: URI of preferred broadcast room>"
+    },
+    "identity_room_cache": {
+      "matrix_uri": "<matrix: URI of this persona's identity room>",
+      "last_synced_at": 0,
+      "etag": "<opaque cache validator>"
+    }
+  }
+}
+```
+
+##### `m.heterodyne.key_backup.v1`
+
+Encrypted backups of Heterodyne-specific keys. Matrix-native
+cross-signing and Megolm session backup are NOT covered here — those
+remain the Matrix layer's responsibility via standard Matrix recovery
+mechanisms. This event covers Nostr `nsec` backups and any
+Heterodyne-specific recovery codes.
+
+```json
+{
+  "type": "m.heterodyne.key_backup.v1",
+  "state_key": "<persona npub hex>",
+  "content": {
+    "spec_version": "0.1",
+    "encrypted_nsec": {
+      "algorithm": "<symmetric algorithm identifier, e.g. aes-256-gcm>",
+      "ciphertext": "<base64>",
+      "wrapping_key_derivation": "<KDF spec, e.g. argon2id with parameters>",
+      "wrapping_key_source": "user_passphrase | recovery_phrase | os_keystore"
+    }
+  }
+}
+```
+
+The wrapping key SHOULD be derived from a user-controlled secret
+(passphrase, recovery phrase, or OS keystore-protected material). The
+config room itself is E2EE so the ciphertext is doubly protected: the
+homeserver sees only Megolm ciphertext, and a compromised Megolm
+session still requires the wrapping secret to recover the nsec.
+
+##### `m.heterodyne.device_inventory.v1`
+
+Bookkeeping of devices that have synced this room.
+
+```json
+{
+  "type": "m.heterodyne.device_inventory.v1",
+  "state_key": "",
+  "content": {
+    "spec_version": "0.1",
+    "devices": [
+      {
+        "device_id": "<Matrix device id>",
+        "client_name": "heterodyne-web",
+        "client_version": "0.3.2",
+        "first_seen_at": 0,
+        "last_seen_at": 0
+      }
+    ]
+  }
+}
+```
+
+#### 3.8.4 Cross-MXID synchronization (out of scope for v0.1)
+
+A user with multiple delegated MXIDs for the same persona has multiple
+config rooms — one per MXID — and persona-scoped state (private mutes
+in particular) is NOT automatically synchronized across them. The user
+or their client is responsible for any sync.
+
+Future spec versions MAY define a persona-private encrypted room
+(joined by all MXIDs delegated to that persona) for true cross-MXID
+persona state. Tracked as an open question in
+[`../architecture.md`](../architecture.md).
+
+#### 3.8.5 Failure modes
+
+- **Config room unreachable**: client falls back to baseline defaults;
+  a banner SHOULD inform the user that their preferences are
+  unavailable until the homeserver hosting the config room recovers.
+- **Conflicting state from multiple devices**: standard Matrix state
+  resolution applies; the device with the latest write wins. Clients
+  SHOULD display a "device sync conflict" indicator if they detect
+  rapid concurrent writes.
+- **Encrypted nsec backup with lost wrapping secret**: persona is
+  unrecoverable from this MXID's backup; rotate via §3.5 from a
+  device that still holds the nsec.
+
 ## 4. Event envelope
 
 ### 4.1 Two envelope types
@@ -539,6 +741,8 @@ The `kind` field MUST be one of:
 
 - `identity_room` — see §3.2; the conventions in §5.2–§5.6 do not
   apply.
+- `config_room` — see §3.8; per-MXID encrypted self-state room; the
+  conventions in §5.2–§5.6 do not apply.
 - `public_broadcast` — unencrypted; admin broadcasts; everyone else
   reads.
 - `public_moderated` — unencrypted; multiple posters; moderator approval
@@ -1052,24 +1256,330 @@ Rules:
 
 ## 8. Moderation
 
-*Stub.* Two layers:
+Heterodyne moderation operates in two strictly independent layers:
 
-- **Matrix layer**: power levels, kicks/bans, `m.room.server_acl`,
-  subscribable policy rooms (MSC2313). Determines who is in the room.
-- **Heterodyne layer**: optional NIP-72-style approval signatures by
-  appointed moderators determine which posts surface in the feed view.
-  Matrix membership is the floor; Heterodyne approval is the editorial
-  ceiling.
+- **Matrix layer.** Standard Matrix room access control: power levels,
+  kicks, bans, `m.room.server_acl`, subscribable policy rooms
+  (MSC2313). Determines **who is in a room**.
+- **Heterodyne layer.** NIP-72-style approval signatures by appointed
+  moderators determine **whose posts surface in the moderated feed
+  view** for `public_moderated` rooms. Optional layered editorial
+  curation; orthogonal to membership.
 
-The two layers do not conflict; they answer different questions ("who is
-in the room" vs. "whose posts surface in the feed").
+The layers do not interact and conflicts are not possible: a banned
+user cannot post (Matrix layer settles it before Heterodyne sees the
+event), and an unapproved post is invisible in the curated feed but
+remains visible to anyone subscribed to the raw room (Matrix layer
+still permits it).
+
+### 8.1 Approval wire form (NIP-72 mirror)
+
+A moderator approval is a vanilla **Nostr `kind:4550` event** as
+defined by NIP-72, embedded in a standard `m.heterodyne.note.v1`
+envelope (§4.2). The Nostr event's `content` field stringifies the
+original post being approved per NIP-72 convention; the Nostr event's
+tags reference the approved post's id and author.
+
+Mirroring NIP-72 exactly preserves the protocol-composition principle:
+approvals are content (Nostr), Matrix is transport. An approval lifted
+to a vanilla Nostr relay is a 1:1 NIP-72 approval, indistinguishable
+from one produced by a vanilla NIP-72 client.
+
+A receiving Heterodyne client computing the moderated feed view for a
+`public_moderated` room MUST:
+
+1. Collect all `m.heterodyne.note.v1` events whose embedded
+   `nostr.kind == 1` (the candidate posts).
+2. Collect all `m.heterodyne.note.v1` events whose embedded
+   `nostr.kind == 4550` (the approvals).
+3. For each candidate post, count valid approvals: the approval's
+   embedded Nostr signature MUST validate, and the approving
+   `nostr.pubkey` MUST be a currently-active moderator npub per
+   `m.heterodyne.moderators.v1` (§8.2).
+4. Surface the post in the feed view only if the count meets or
+   exceeds `approvals_required` (§8.2).
+
+### 8.2 Moderator declaration
+
+A `public_moderated` room MUST contain exactly one
+`m.heterodyne.moderators.v1` state event with empty state key, listing
+the appointed moderators:
+
+```json
+{
+  "type": "m.heterodyne.moderators.v1",
+  "state_key": "",
+  "content": {
+    "spec_version": "0.1",
+    "approvals_required": 1,
+    "moderators": [
+      {
+        "mxid": "@alice:matrix.org",
+        "npub": "<32-byte hex of alice's npub>",
+        "powers": ["approve"],
+        "appointed_at": 0
+      },
+      {
+        "mxid": "@bob:tuwunel.example",
+        "npub": "<32-byte hex of bob's npub>",
+        "powers": ["approve"],
+        "appointed_at": 0
+      }
+    ]
+  }
+}
+```
+
+Field semantics:
+
+- `approvals_required`: integer, default 1. The minimum number of
+  distinct moderator approvals a post needs to surface in the
+  moderated feed view. Room admins MAY raise this for high-stakes
+  communities (e.g., 2-of-N).
+- `moderators[].mxid`: the moderator's Matrix MXID. Used by the Matrix
+  layer for power-level mapping (§5.3 recommends PL 50 for moderators).
+- `moderators[].npub`: the moderator's persona npub. Used by the
+  Heterodyne layer for signature verification of approvals.
+- `moderators[].powers`: string array of permitted moderator actions.
+  In v0.1 only `"approve"` is defined; reserved for future graduated
+  powers (e.g., per-topic approval, sub-moderator hierarchy).
+- `moderators[].appointed_at`: Unix seconds; informational.
+
+A moderator is **active** if and only if they appear in the current
+`m.heterodyne.moderators.v1` state event AND their identity chain
+(§3.5) does not contain a `m.heterodyne.revoke.v1` invalidating the
+listed npub at the time of the approval being verified.
+
+### 8.3 Moderator key rotation
+
+Moderators inherit the identity chain mechanism from §3.5. If a
+moderator rotates their npub, their old approvals remain valid as long
+as:
+
+1. The rotation's `effective_at` postdates the approval's
+   `nostr.created_at`, AND
+2. The identity chain validates (paired successor/predecessor events).
+
+A moderator who rotates does NOT need to be re-listed in
+`m.heterodyne.moderators.v1` if the old npub is still listed and the
+chain leads to the new one. Room admins MAY update the listing for
+clarity but it is not required for verification.
+
+When walking a moderator's identity chain, verifiers MUST use the
+**`matrix:` URI** form for cross-room references (§2). A moderator's
+chain may traverse multiple identity rooms across multiple
+homeservers; the URI form preserves the federation `via` hints
+necessary to reach each successor room.
+
+### 8.4 No explicit rejection
+
+Mirroring NIP-72: silence is rejection. There is NO
+`m.heterodyne.moderation.reject.v1` event. A post without enough valid
+approvals does not surface in the moderated feed view; that is the
+rejection.
+
+If a moderator wishes to remove an already-approved post (e.g.,
+discovered to be abusive after-the-fact), they MUST use the standard
+Matrix mechanism: `m.room.redaction` redacts the original event. The
+approval signature for the redacted post is then orphaned and SHOULD
+be ignored by feed-view computation; clients MAY also redact the
+approval for cleanliness.
+
+### 8.5 Personal mute lists
+
+#### Public mutes
+
+A persona's public mute list — npubs the persona has cut off and is
+willing to publicly identify as bots, spammers, or unwanted — lives
+as a state event in the persona's identity room:
+
+```json
+{
+  "type": "m.heterodyne.mutes.public.v1",
+  "state_key": "",
+  "content": {
+    "spec_version": "0.1",
+    "muted_pubkeys": [
+      {"npub": "<hex>", "reason": "spam", "muted_at": 0},
+      {"npub": "<hex>", "reason": "bot", "muted_at": 0}
+    ],
+    "muted_topics": [
+      {"namespace": "com.example.tags", "tag": "spoilers"}
+    ]
+  }
+}
+```
+
+Reason values are non-normative free-form strings; community
+conventions may emerge. Clients SHOULD display them as informational
+context.
+
+Public mutes are **subscribable** by other personas. A follower may
+inherit a trusted persona's public mutes via NIP-51-style mute set
+subscription, mediated entirely by the client (no protocol mechanism
+required). This implements the NIP-51 community-curated blocklist
+pattern.
+
+#### Private mutes
+
+A persona's private mute list — sensitive entries the persona does NOT
+want publicly visible — lives in the persona's
+`m.heterodyne.persona_config.v1` state event inside the relevant
+MXID's encrypted client config room (§3.8.3, `private_mutes` field).
+The config room is E2EE so the list is invisible to the homeserver
+and to non-owners.
+
+Cross-MXID synchronization of private mutes is a v0.1 limitation
+(§3.8.4): if a persona is delegated to multiple MXIDs, each MXID's
+config room holds an independent private mute list. The user (or
+client) is responsible for any sync.
+
+### 8.6 Subscribable community blocklists (MSC2313)
+
+Heterodyne uses Matrix's existing MSC2313 policy-rooms mechanism
+unmodified for community-level moderation. A `public_moderated` or
+`private_community` room MAY subscribe to one or more policy rooms
+via standard `m.policy.rule.user`, `m.policy.rule.server`, and
+`m.policy.rule.room` events.
+
+Subscription is the room admin's decision; the spec adds nothing new
+on top of MSC2313.
+
+### 8.7 Layer independence
+
+The two moderation layers are intentionally independent:
+
+- **Matrix-layer ban**: the user is removed from the room and cannot
+  post. Their existing posts in the room MAY be redacted by admins
+  but the ban itself does not redact.
+- **Heterodyne-layer no-approval**: the user remains in the room and
+  can post; their posts are visible in the raw room timeline but do
+  NOT surface in the moderated feed view. Effectively a "shadowban"
+  for the curated feed only — but transparent: the user can see their
+  own unapproved posts, marked as pending or unsurfaced.
+
+Clients SHOULD render unapproved posts to the posting user themselves
+(so they know what they sent) but SHOULD NOT render them in the
+moderated feed view to other users.
 
 ## 9. Encryption guarantees
 
-*Stub.* For private rooms: every Matrix event including state events MUST
-be end-to-end encrypted. This inherits the `mxdx` invariant; encrypted
-state events use MSC4362. Megolm is used today; MLS migration is tracked
-separately and will be reflected here when ready.
+### 9.1 Inherited normative invariants
+
+Heterodyne inherits the following invariants from sibling project
+`mxdx`. They are restated here as Heterodyne normative requirements:
+
+- Every event in a `private_community`, `dm`, or `config_room` MUST be
+  end-to-end encrypted, including state events (MSC4362). No
+  exceptions.
+- A persona's `nsec` MUST be stored encrypted at rest. OS keystore /
+  keychain integration SHOULD be used where available. Plaintext
+  export SHOULD require explicit user confirmation.
+- Bridging logic is purely client-side (§10.1). No homeserver-side
+  component is permitted to see plaintext for E2EE rooms.
+
+### 9.2 Megolm today, MLS tomorrow
+
+Heterodyne private rooms today use Megolm (`m.megolm.v1.aes-sha2`).
+The spec reserves an explicit migration mechanism to Messaging Layer
+Security (MLS) when the upstream `matrix-rust-sdk` MLS implementation
+stabilizes.
+
+A new state event `m.heterodyne.encryption_version.v1` declares the
+encryption algorithm in use:
+
+```json
+{
+  "type": "m.heterodyne.encryption_version.v1",
+  "state_key": "",
+  "content": {
+    "spec_version": "0.1",
+    "algorithm": "megolm",
+    "migrated_from": null,
+    "migrated_at": null
+  }
+}
+```
+
+In v0.1, every Heterodyne private room MUST have this state event with
+`algorithm: "megolm"`. The MLS migration procedure (re-key, member
+re-acknowledgement, atomic flip of `algorithm`, populating
+`migrated_from` and `migrated_at`) is deferred to a future spec
+version; v0.1 simply reserves the schema slot.
+
+### 9.3 Delegation revocation and Megolm session lifecycle
+
+When a delegation is revoked (§3.3) and the revoked MXID has Megolm
+session keys in active rooms:
+
+- Affected rooms SHOULD rotate Megolm keys to deny the revoked device
+  the ability to decrypt subsequent messages with extracted session
+  keys.
+- This is a SHOULD, not a MUST: forced rotation across many rooms is
+  expensive and clients MAY trade off against revocation risk per
+  room. A `private_community` with high security expectations SHOULD
+  rotate; a chat-room with low stakes MAY skip.
+
+Clients implementing the SHOULD path execute the rotation by sending
+a fresh Megolm session to remaining members, using standard
+`matrix-rust-sdk` mechanisms. No Heterodyne-specific protocol is
+required.
+
+### 9.4 Identity-chain rotation interaction
+
+Identity-chain rotations (§3.5) change the persona's npub but do NOT
+change the delegated MXIDs. Megolm sessions are per-Matrix-device,
+not per-npub. A persona rotating their npub is therefore invisible to
+Megolm: existing room sessions continue, no key rotation is required,
+and the new npub publishes a delegation for the same MXIDs.
+
+The cross-protocol effect: the persona's old npub stops signing new
+content (per §3.5 verification rules); the new npub signs new content
+delegated through the same MXIDs; receiving clients walk the identity
+chain to associate the new npub with the persona; Megolm provides the
+transport security for both, unchanged.
+
+### 9.5 Forward secrecy asymmetry
+
+Heterodyne combines two cryptographic systems with different forward
+secrecy properties. Implementers and users should understand the
+asymmetry:
+
+- **Megolm forward secrecy**: Past Megolm sessions cannot be
+  decrypted by an attacker who later compromises the current session
+  key. Each new session limits exposure of old plaintext.
+- **Nostr signature non-secrecy**: A compromised nsec lets an
+  attacker forge new events backdated to any timestamp. Old signed
+  events themselves remain verifiable (the signature is still valid),
+  but the forging asymmetry is real. Mitigation is identity-chain
+  rotation (§3.5) and revocation (§3.5.1) with monotonic clock-skew
+  tolerance enforcement.
+
+These guarantees do not replace each other. Megolm protects the
+*content* of past communications; Nostr signatures protect the
+*authorship* of future and past events from forgery in real time but
+not from forgery after key compromise. Heterodyne carries both because
+they cover different risks.
+
+### 9.6 Backup and recovery
+
+The encrypted client configuration room (§3.8) provides
+Heterodyne-specific key backup via
+`m.heterodyne.key_backup.v1`. Specifically:
+
+- The persona's `nsec` MAY be backed up wrapped under a
+  user-controlled secret (passphrase, recovery phrase, or OS
+  keystore-protected material).
+- The wrapping key derivation MUST use a memory-hard KDF (Argon2id or
+  equivalent) when the wrapping secret is a passphrase or recovery
+  phrase.
+- The config room itself is E2EE, so the wrapped backup is doubly
+  protected: a compromised Megolm session still requires the wrapping
+  secret to recover the nsec.
+
+Matrix-native key backup (cross-signing master key, recovery key,
+Megolm session backup) remains the Matrix layer's responsibility via
+standard Matrix recovery mechanisms. Heterodyne does not replace it.
 
 ## 10. Bridge and client model
 
@@ -1144,43 +1654,413 @@ signature.
 
 ## 11. Interoperability
 
-*Stub.* Graceful degradation paths for vanilla Matrix clients (render
-`fallback` for `m.heterodyne.note.v1`; render normally for bare
-`m.room.message`) and for vanilla Nostr clients (same Nostr event, no
-Matrix-specific behavior).
+Heterodyne intentionally composes Matrix and Nostr without modifying
+either. This section specifies graceful behavior in both directions:
+how Heterodyne rooms behave when vanilla Matrix clients participate,
+and how Heterodyne content appears to vanilla Nostr clients.
+
+### 11.1 Vanilla Matrix clients in Heterodyne rooms
+
+A vanilla Matrix client (one that does not understand `m.heterodyne.*`
+event types) may participate in a Heterodyne room — particularly
+`public_broadcast`, `public_moderated`, or `private_community` — and
+post `m.room.message` events. Without Heterodyne support they cannot
+produce wrapped events.
+
+The wrap-mode rules from §4.4 say wrapped is required for
+`public_broadcast` and `public_moderated`. The interop policy resolves
+the resulting tension at the **client** layer, not the protocol
+layer:
+
+- The room itself does not actively reject bare events from vanilla
+  Matrix clients. Matrix has no event-admission machinery suited to
+  this.
+- A Heterodyne client receiving such an event in a public room MUST
+  render it with an explicit "unauthenticated message" indicator.
+  This is the **accept-with-warning** default.
+- A Heterodyne client SHOULD offer the user a setting in
+  `m.heterodyne.user_prefs.v1` (`hide_bare_events`, §3.8.3) to:
+  - `never` — always render bare events with the warning indicator;
+  - `unsigned_only` — hide bare events that lack any
+    `heterodyne_nostr_sig` (§4.3) attachment;
+  - `per_room` — hide bare events room by room based on per-room user
+    preference.
+
+Strict rooms MAY operationally reject bare events by configuring a
+moderator to issue redactions (§8.4 mechanism) for any non-wrapped
+event. This is enforcement by editorial action, not by admission
+policy — consistent with §12.3's principle that moderation enforces
+contracts that the wire protocol cannot.
+
+### 11.2 Vanilla Nostr clients consuming Heterodyne content
+
+A wrapped Heterodyne event is, by construction (§4.2), a verbatim
+Nostr event. When a Heterodyne client fans out to vanilla Nostr relays
+per §10.5, vanilla Nostr clients see exactly what they expect:
+NIP-01-compliant signed events. No special Heterodyne support is
+needed to read.
+
+To encourage adoption, a Heterodyne client SHOULD publish a NIP-89
+`kind:31990` application-handler-information event to the persona's
+write relays, advertising the canonical Heterodyne client landing
+page:
+
+```
+# in the kind:31990 event content
+{
+  "name": "Heterodyne",
+  "description": "Decentralized social network running Nostr over Matrix.",
+  "url": "https://heterodyne.network/clients"
+}
+```
+
+Vanilla Nostr clients can surface this as "open in Heterodyne" or
+similar UX. The link MAY change as the project evolves; the
+canonical pointer is `https://heterodyne.network/clients` and clients
+SHOULD use that URL until a future spec version updates it.
+
+### 11.3 Cross-protocol identity verification: `kind:31005`
+
+A vanilla Nostr user who encounters a Heterodyne user's npub on a
+relay needs a way to discover the Matrix-side identity room (and
+therefore the delegations, identity chain, etc.) without being told
+out-of-band.
+
+Heterodyne reserves Nostr `kind:31005` (Heterodyne identity pointer):
+
+```json
+{
+  "id": "<32-byte hex>",
+  "pubkey": "<persona npub hex>",
+  "created_at": 0,
+  "kind": 31005,
+  "tags": [
+    ["heterodyne", "identity_pointer"],
+    ["matrix_identity_room", "matrix:roomid/<id>:<server>?via=<server>"],
+    ["spec_version", "0.1"]
+  ],
+  "content": "",
+  "sig": "<64-byte hex>"
+}
+```
+
+A persona SHOULD publish this event to the same Nostr write relays
+listed in their `m.heterodyne.outbox.public.v1` (§7.1) so vanilla
+clients fetching the persona's events can find it incidentally. The
+event is addressable per NIP-01 conventions for the 30000 range
+(replaceable by `(pubkey, kind, d)` triple — implementations SHOULD
+use a `["d", ""]` tag for the canonical version, and MAY publish
+additional pointer events with distinct `d` values for staging or
+versioned identity rooms).
+
+Vanilla Nostr clients without Heterodyne awareness ignore the unknown
+kind. Heterodyne-aware clients (or vanilla clients reachable through
+NIP-89 handler discovery, §11.2) follow the pointer for full
+verification.
+
+### 11.4 Following vanilla Nostr-only users
+
+A Heterodyne user MAY follow a vanilla Nostr-only user — one without
+a Matrix identity room or delegations. Such a follower relationship
+is supported as a first-class case:
+
+- The followed npub is treated as a persona with no identity room
+  and therefore no delegations.
+- Receiving clients verify only the Nostr signature; the §3.3
+  delegation check is N/A and is omitted.
+- Subscription is via the followed user's NIP-65 write relays.
+- DMs to vanilla-Nostr-only users use NIP-44 / NIP-17 over Nostr
+  (no Matrix DM room exists since the recipient has no MXID).
+
+This is a reduced-feature case — no E2EE Matrix transport, no
+identity-chain rotation support, no scoped outbox advertisement —
+but it preserves protocol participation for users who are only on
+the Nostr side. Heterodyne clients SHOULD render an "external
+identity" indicator so the user understands the reduced guarantees.
+
+### 11.5 `fallback` field for vanilla Matrix rendering
+
+§4.2 defines an OPTIONAL `fallback` field on `m.heterodyne.note.v1`
+permitting vanilla Matrix clients to render kind:1 microblog content
+as plain `m.text`. Normative guidance:
+
+- For Nostr `kind:1` events: clients SHOULD include `fallback` so
+  vanilla Matrix clients see legible text.
+- For Nostr `kind:30023` long-form: `fallback` MAY include a short
+  excerpt or summary; vanilla clients won't get the rich rendering
+  but will see something.
+- For Nostr `kind:7` reactions, `kind:9735` zap receipts, and other
+  non-text kinds: `fallback` is impractical and SHOULD be omitted.
+- A Heterodyne client publishing to a room that contains vanilla
+  Matrix members SHOULD warn the user before sending if the event
+  type they're sending would be invisible to vanilla clients.
 
 ## 12. Versioning and capability negotiation
 
-*Stub.* Every Heterodyne event content carries `spec_version` as
-semver-formatted string. Clients advertise the spec versions they
-implement via an `m.heterodyne.capabilities.v1` state event in their
-identity room. Receivers SHOULD downgrade gracefully when interacting
-with an older spec version; SHOULD warn (not silently ignore) on a newer
-version they don't understand.
+### 12.1 Strict semver
+
+Every Heterodyne event content field carries `spec_version` as a
+semver-formatted string (`MAJOR.MINOR.PATCH`). The contract is
+strict semver:
+
+- **PATCH bump.** Clarification only. No wire-format change.
+  Implementations of the prior version remain fully conformant.
+- **MINOR bump.** Additive. New OPTIONAL fields, new event types, or
+  loosened MUSTs (e.g., changing a MUST to a SHOULD) only. Receivers
+  on a prior MINOR version MUST tolerate unknown fields and unknown
+  event types per §12.3.
+- **MAJOR bump.** Breaking. Field removal, semantic change,
+  retirement of an event type, change to a kind number in the
+  Heterodyne-reserved 31000 range, or new MUSTs that would reject
+  prior-version events. Receivers MUST gate on MAJOR version.
+
+Implementations SHOULD bump MINOR when adding any optional field to
+preserve forward compatibility tracking.
+
+### 12.2 Capabilities advertisement
+
+A client advertises its supported spec versions and event types via
+`m.heterodyne.capabilities.v1` state events. **By default,
+capabilities are advertised in scoped contexts only** —
+friend-circle and community rooms (`private_community`) and DM rooms
+— **not** in the public identity room. Public capability publication
+is a fingerprinting vector; making it scoped-by-default protects
+users from passive surveillance correlating client versions to
+identities.
+
+The persona MAY opt in to publishing a copy in the public identity
+room for convenience; this is purely the user's choice.
+
+Schema:
+
+```json
+{
+  "type": "m.heterodyne.capabilities.v1",
+  "state_key": "@alice:matrix.org",
+  "content": {
+    "spec_version": "0.1",
+    "spec_versions_supported": ["0.1"],
+    "event_types": [
+      "m.heterodyne.note.v1",
+      "m.heterodyne.root.v1",
+      "m.heterodyne.delegation.v1",
+      "m.heterodyne.successor.v1",
+      "m.heterodyne.predecessor.v1",
+      "m.heterodyne.revoke.v1",
+      "m.heterodyne.outbox.public.v1",
+      "m.heterodyne.outbox.scoped.v1",
+      "m.heterodyne.related_persona.v1",
+      "m.heterodyne.room_kind.v1",
+      "m.heterodyne.moderators.v1",
+      "m.heterodyne.encryption_version.v1",
+      "m.heterodyne.user_prefs.v1",
+      "m.heterodyne.persona_config.v1",
+      "m.heterodyne.key_backup.v1",
+      "m.heterodyne.device_inventory.v1",
+      "m.heterodyne.mutes.public.v1"
+    ]
+  }
+}
+```
+
+`state_key` is the publishing MXID, so each device/account in a room
+advertises its own capabilities independently. A room with members on
+heterogeneous client versions can therefore enumerate the floor.
+
+### 12.3 Mismatch handling
+
+Version mismatches are handled at the **client** layer, not enforced
+by the room or the protocol:
+
+- **Receiver on an older spec version sees content from a newer
+  sender.** The receiver MUST attempt to render what it understands
+  and ignore unknown fields. For wholly unknown event types or
+  contents that fail to parse, the receiver SHOULD render a
+  placeholder ("event from a newer Heterodyne version — partial
+  display") rather than silently drop.
+- **Receiver on a newer spec version sees content from an older
+  sender.** The receiver applies legacy semantics for any minor or
+  patch versions it still supports. For very old versions (defined
+  by a future spec deprecation policy), the receiver SHOULD warn.
+- **Cross-MAJOR mismatch.** Receivers MUST NOT silently apply
+  newer-MAJOR semantics to older-MAJOR content; they SHOULD render a
+  "spec version mismatch" indicator and refer the user to upgrade
+  paths.
+
+Rooms MAY publish a recommended version (e.g., as a custom field on
+`m.heterodyne.room_kind.v1` or as a `topic`-style hint), but **rooms
+do NOT enforce version admission**. The wire protocol accepts what it
+accepts. Cross-version contracts are enforced editorially by
+moderators (§8): if a post is unparseable or undesirable due to
+version mismatch, moderators in `public_moderated` rooms simply do not
+approve it; in `private_community` rooms, social/admin pressure
+applies. The protocol does not gate on version; the people in the
+room do.
+
+This is consistent with §11.1's policy: enforce social and editorial
+contracts at the human layer, not the wire layer. The wire layer's
+job is to deliver bytes; the editorial layer's job is to decide which
+bytes count.
 
 ## 13. Security model
 
-*Stub.* The threat model lives in
-[`../security/threat-model.md`](../security/threat-model.md). Inherited
-invariants:
+This section is the spec-internal normative summary of Heterodyne's
+security guarantees. The detailed analysis — actors, threats,
+mitigations, open questions — lives in the companion document
+[`../security/threat-model.md`](../security/threat-model.md). The
+threat model is non-normative; this section is normative.
 
-- **Blind server**: a homeserver MUST NOT see plaintext for any E2EE room.
-- **Identity integrity**: the npub is the authoritative author; Matrix
-  MXIDs are merely delegated publishers and never the source of truth
-  for identity.
-- **No central directory**: discovery is relationship-mediated and
-  consent-driven.
+### 13.1 Trust assumptions
+
+A Heterodyne deployment is secure under the following assumptions:
+
+1. The persona's `nsec` is held only by the persona's authorized
+   devices. A compromised device implies a compromised persona until
+   §3.5.1 revocation completes.
+2. The Matrix client SDK on the user's device implements Megolm
+   (eventually MLS) correctly. Heterodyne does not re-implement
+   transport encryption.
+3. The user's choice of homeserver is not assumed honest;
+   homeservers are treated as hostile-but-curious (see §13.3).
+4. The user's choice of Nostr relay is not assumed honest; relays
+   may drop, delay, or refuse events but cannot forge signatures.
+5. The user's device is assumed to be free of OS-level malware that
+   could extract secrets directly from memory or storage. Defending
+   against compromised endpoints is out of scope for v0.1.
+
+### 13.2 Normative security invariants
+
+Heterodyne implementations MUST uphold:
+
+- **I1 — Blind server.** No homeserver MAY see plaintext for any
+  event in a `private_community`, `dm`, or `config_room`, including
+  state events (§9.1, MSC4362).
+- **I2 — Identity integrity.** The npub is the authoritative author
+  of every event. Matrix MXIDs are delegated publishers (§3.3) and
+  MUST NOT be treated as identities in their own right by any
+  Heterodyne client computing trust, attribution, or reputation.
+- **I3 — Double-signed delegations.** A delegation is active only
+  with both an npub-side Nostr signature AND an MXID-side Matrix
+  signature (§3.3). Single-signed delegations MUST be rejected.
+- **I4 — Verification before render.** A wrapped event MUST be
+  signature-verified and delegation-checked (§4.5) before rendering.
+  Failed verification MUST be surfaced to the user, not silently
+  passed.
+- **I5 — No central directory.** Discovery is consent-driven and
+  relationship-mediated (§7). No Heterodyne implementation MAY
+  operate or depend on a centralized user registry, persona
+  directory, or follow-graph oracle.
+- **I6 — At-rest encryption.** The persona's `nsec`, any cached
+  identity-room state containing personal information, and any
+  private mute lists MUST be stored encrypted at rest (§3.8.3,
+  §9.6). OS keystore SHOULD be used where available.
+- **I7 — Client-side bridging only.** The cross-protocol bridge runs
+  on the user's device or on hardware they control (§10.1, §10.3).
+  Server-side bridging components for E2EE rooms are forbidden.
+
+### 13.3 Threat → mitigation map
+
+The following threats from
+[`../security/threat-model.md`](../security/threat-model.md) are
+mitigated by the cited spec sections:
+
+| Threat | Mitigation section |
+|---|---|
+| Impersonation via friendly homeserver | §3.3 (delegation), §4.5 (verification), I2/I3/I4 |
+| Phantom delegation | §3.3 (double-signed), I3 |
+| Stale revocation | §3.5.1 (revocation), §3.6 (cache-then-revalidate) |
+| Cross-persona linking via metadata | §3.4 (personas not linked at protocol level), §12.2 (capabilities scoped) |
+| Bridge-side plaintext leak | §10.1 (no server-side bridge), I7 |
+| Replay across forked identity rooms | Matrix state resolution + §3.5 chain timestamps |
+| Backdating attacks by recently-revoked keys | §3.5.1 revoked_at + clock-skew tolerance |
+| Hostile relay refusing to deliver | §6.4 multi-destination fan-out |
+| Capabilities-fingerprinting surveillance | §12.2 default-scoped advertisement |
+
+For threats that are explicitly out of scope (compromised user
+devices, traffic analysis under Tor, post-quantum adversaries) see
+the threat model's "Out of scope" section. Future spec versions will
+revisit these.
 
 ## 14. Conformance and test vectors
 
-*Stub.* Conformance MUST be demonstrable against the test vectors in
-[`vectors/`](vectors/). Initial vectors will cover:
+A Heterodyne implementation is **conformant to this spec version**
+when it produces and accepts events bit-identically to the test
+vectors in [`vectors/`](vectors/). This section defines what
+"bit-identical" means and lists the canonical coverage map; vectors
+themselves are authored incrementally and live in
+[`vectors/`](vectors/) with the file format documented in
+[`vectors/README.md`](vectors/README.md).
 
-- A minimal `kind:1` wrapped event (`m.heterodyne.note.v1`).
-- A bare DM with `heterodyne_nostr_sig` (signed-attachment validation).
-- An identity-room state sequence: root → delegation → outbox
-  advertisement.
-- A successor chain across two identity rooms.
-- A revocation rejecting events post-`revoked_at`.
+### 14.1 Canonical serialization
 
-See [`vectors/README.md`](vectors/README.md) for the vector file format.
+Two distinct serializations apply at the two protocol layers:
+
+- **Nostr layer.** The Nostr event `id` is the SHA-256 of the
+  canonical Nostr serialization defined in NIP-01:
+  `[0, pubkey, created_at, kind, tags, content]` as a JSON array
+  with no whitespace, with strings JSON-escaped per RFC 8259, and
+  with the array UTF-8-encoded for hashing. Heterodyne does NOT
+  redefine this; implementations MUST use the NIP-01 serialization
+  byte-for-byte for any event that carries a Nostr signature.
+- **Matrix layer.** Matrix events use the Matrix Canonical JSON
+  encoding defined in the Matrix spec (sorted keys, no whitespace,
+  Unicode-escaped, etc.) for signing and federation. Heterodyne does
+  NOT redefine this either; the Matrix client SDK applies it
+  transparently.
+
+Implementations MUST NOT invent a third serialization. Heterodyne
+test vectors are computed against the union of these two existing
+canonicalizations and conformance means matching them exactly.
+
+### 14.2 Conformance verdicts
+
+For each test vector:
+
+- **`produce` vectors**: given the documented inputs, the
+  implementation MUST produce the documented `expected_output`
+  byte-identically (after the appropriate canonical serialization).
+- **`consume` vectors**: given the documented `input` (wire bytes),
+  the implementation MUST emit the documented verdict (`accept` or
+  `reject` plus reason). For `accept`, the implementation MUST
+  produce a normalized view matching `expected_output.normalized`.
+- **`round-trip` vectors**: an event lifted from Heterodyne to a
+  vanilla Nostr relay and re-ingested MUST be byte-identical at the
+  Nostr layer.
+
+No tolerance is permitted. "Close enough" semantic equivalence is not
+conformance.
+
+### 14.3 Coverage map
+
+Vectors are authored per spec section. The coverage targets:
+
+| Topic | Spec sections | Vector categories |
+|---|---|---|
+| `identity/` | §3 | Root attestation; delegation (active, expired, revoked); successor pair; revocation post-window; identity room with full state |
+| `config_room/` | §3.8 | Minimal config room; persona_config with private mutes; key_backup with various wrapping algorithms |
+| `envelope/` | §4 | Minimal kind:1 wrapped; bare DM with heterodyne_nostr_sig; fallback rendering verification; cross-kind wrapping (1, 7, 30023) |
+| `verification/` | §4.5 | Bad sig rejects; delegation mismatch rejects; revoked-key post-revoked_at rejects; backdated event in suspicion window |
+| `outbox/` | §7 | Full public outbox; scoped outbox; transitive discovery walk; cross-persona attestation (valid and invalid) |
+| `moderation/` | §8 | NIP-72 approval; multi-mod requirement; moderator rotation through identity chain; redaction-of-approved-post |
+| `encryption/` | §9 | encryption_version event; delegation-revocation triggering rotation (SHOULD path) |
+| `interop/` | §11 | Wrapped → vanilla Nostr roundtrip; bare event with hide-bare preference; vanilla-Nostr-only follow; kind:31005 identity pointer |
+| `versioning/` | §12 | Older receiver vs newer sender; capabilities event roundtrip; cross-MAJOR mismatch placeholder rendering |
+
+Vector counts will grow as the spec stabilizes. The reference
+`heterodyne-core` build MUST pass every vector in `vectors/` to claim
+conformance to this spec version; CI enforcement is part of the
+reference implementation's release pipeline.
+
+### 14.4 Conformance reporting
+
+An implementation claiming conformance to a Heterodyne spec version
+SHOULD publish:
+
+- The exact spec version (`MAJOR.MINOR.PATCH`) it conforms to.
+- The list of vector files it passes.
+- Any vectors it intentionally skips, with rationale (e.g.,
+  "encryption/01 requires MLS — not yet supported in this
+  implementation").
+
+A future spec version may formalize the conformance-reporting
+mechanism; v0.1 leaves it to implementations.
