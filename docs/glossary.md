@@ -4,6 +4,12 @@ Terms used in the Heterodyne specification, in alphabetical order. The
 canonical use of each term is in [`spec/heterodyne.md`](spec/heterodyne.md);
 this glossary exists so the spec body itself can stay tight.
 
+**Audience-stratified discovery.** Heterodyne's discovery model:
+public outbox advertisements live in the identity room (visible to
+everyone); scoped outbox advertisements live inside friend-circle and
+community rooms (visible only to members). Different audiences see
+different sets of feeds. See spec §7.
+
 **Bare event.** A Heterodyne event published as a plain `m.room.message`
 with no Nostr signature. Deniable inside an E2EE Matrix room. The default
 wrap mode for DMs. See spec §4.3.
@@ -15,6 +21,11 @@ model preserves this property for all private rooms.
 **Bridge.** Cross-protocol translation logic between Nostr and Matrix
 event formats. In Heterodyne the bridge is **client-side**
 (`heterodyne-core`), not a separate process or appservice.
+
+**Cross-persona attestation.** A double-signed declaration in a
+persona's identity room (public) or in a friend-circle / community
+room (scoped) that links this persona to another. Required signatures
+from both npubs; single-signed claims are rejected. See spec §7.5.
 
 **Delegation.** An attestation in an identity room authorizing a specific
 Matrix MXID to publish events on behalf of the persona's npub.
@@ -69,10 +80,31 @@ outbox rooms per persona enable distribution-list semantics.
 room, one set of delegations, one set of outbox rooms. A user MAY hold
 multiple personas; the protocol does not link them.
 
+**Public outbox.** A persona's publicly-advertised set of outbox
+rooms, communities, and Nostr relays, recorded as the
+`m.heterodyne.outbox.public.v1` state event in the identity room.
+Visible to anyone who can peek the identity room. See spec §7.1.
+
+**Reply inbox.** OPTIONAL hint in a persona's public outbox indicating
+where they prefer to observe replies and mentions. Repliers SHOULD
+include these destinations in fan-out. Analogous to NIP-65's `read`
+marker. See spec §7.1.
+
+**Scoped outbox.** A persona's audience-restricted set of additional
+outbox rooms, recorded as `m.heterodyne.outbox.scoped.v1` state events
+inside friend-circle or community rooms (NOT the identity room).
+Visible only to members of the advertising room. See spec §7.2.
+
 **Successor / predecessor.** Roles in the identity chain. The outgoing
 npub publishes a successor pointer in its identity room; the incoming
 npub publishes a predecessor pointer in its identity room. Both must
 match for the chain step to be valid.
+
+**Topic tag.** A namespaced label attached to a Heterodyne room's
+kind state event indicating subject area ("tech", "photos",
+"fediverse"). Namespaces SHOULD follow reverse-domain notation or
+recognized ISO classifications. Lets followers subscribe selectively
+by topic across a persona's broadcast rooms. See spec §5.1.
 
 **Wrap mode.** Whether an event carries the full signed Nostr payload
 (**wrapped**) or omits the Nostr signature (**bare**). Defaults vary by

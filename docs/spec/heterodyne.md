@@ -1,9 +1,10 @@
 # Heterodyne Protocol Specification
 
 **Version:** 0.1 (DRAFT)
-**Status:** Working draft. Load-bearing sections (identity, envelope, bridge
-model) are drafted; remaining sections are stubs. Not stable. Not yet
-suitable for independent re-implementation or interoperability claims.
+**Status:** Working draft. §3 (identity), §4 (envelope), §5 (rooms),
+§6 (publishing), §7 (discovery), §10 (bridge) are drafted; §8, §9,
+§11, §12, §13, §14 remain as stubs. Not stable. Not yet suitable for
+independent re-implementation or interoperability claims.
 
 This document is the normative specification for the Heterodyne protocol: a
 decentralized social network built by publishing Nostr events into Matrix
@@ -20,9 +21,9 @@ described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
 2. [Terminology](#2-terminology)
 3. [Identity model](#3-identity-model) — **drafted**
 4. [Event envelope](#4-event-envelope) — **drafted**
-5. [Room taxonomy](#5-room-taxonomy) — *stub*
-6. [Publishing flow](#6-publishing-flow) — *stub*
-7. [Discovery and subscription](#7-discovery-and-subscription) — *stub*
+5. [Room taxonomy](#5-room-taxonomy) — **drafted**
+6. [Publishing flow](#6-publishing-flow) — **drafted**
+7. [Discovery and subscription](#7-discovery-and-subscription) — **drafted**
 8. [Moderation](#8-moderation) — *stub*
 9. [Encryption guarantees](#9-encryption-guarantees) — *stub*
 10. [Bridge and client model](#10-bridge-and-client-model) — **drafted**
@@ -127,15 +128,17 @@ resilience.
 
 The room MUST contain:
 
+- An `m.heterodyne.room_kind.v1` state event with
+  `kind: "identity_room"` (§5.1).
 - An `m.heterodyne.root.v1` state event proving npub ownership of the
   room (§3.2.1).
 - Zero or more `m.heterodyne.delegation.v1` state events, one per active
   delegated Matrix account, keyed by MXID (§3.3).
-- At most one `m.heterodyne.outbox.v1` state event listing the persona's
-  outbox rooms and alternate addresses (full semantics in §7).
-- Zero or more `m.heterodyne.successor.v1`, `m.heterodyne.predecessor.v1`,
-  and `m.heterodyne.revoke.v1` state events forming the identity chain
-  (§3.5).
+- At most one `m.heterodyne.outbox.public.v1` state event listing the
+  persona's public-facing outbox (§7.1).
+- Zero or more `m.heterodyne.successor.v1`,
+  `m.heterodyne.predecessor.v1`, and `m.heterodyne.revoke.v1` state
+  events forming the identity chain (§3.5).
 
 The Matrix room ID of the identity room is the persona's canonical
 Heterodyne address. Resolving a persona means joining (or peeking) the
@@ -507,28 +510,545 @@ rendering any event:
 
 ## 5. Room taxonomy
 
-*Stub.* Four room kinds (public unencrypted, public moderated, private
-E2EE community, private E2EE DM), each with normative `m.room.create`
-content, encryption settings, and recommended power levels. See
-[`../architecture.md`](../architecture.md) for the working sketch that
-will graduate into this section.
+Heterodyne defines five conventional room kinds. Each is a normal Matrix
+room; the "kind" is a UX and conformance contract recorded explicitly as
+a state event so clients can present appropriate UI and so other
+Heterodyne clients know which behaviors apply.
+
+### 5.1 Kind state event
+
+Every Heterodyne-managed room MUST carry an `m.heterodyne.room_kind.v1`
+state event with empty state key:
+
+```json
+{
+  "type": "m.heterodyne.room_kind.v1",
+  "state_key": "",
+  "content": {
+    "spec_version": "0.1",
+    "kind": "identity_room | public_broadcast | public_moderated | private_community | dm",
+    "topics": [
+      {"namespace": "com.example.tags", "tag": "tech"},
+      {"namespace": "com.example.tags", "tag": "rust"}
+    ]
+  }
+}
+```
+
+The `kind` field MUST be one of:
+
+- `identity_room` — see §3.2; the conventions in §5.2–§5.6 do not
+  apply.
+- `public_broadcast` — unencrypted; admin broadcasts; everyone else
+  reads.
+- `public_moderated` — unencrypted; multiple posters; moderator approval
+  gates the feed view (§8).
+- `private_community` — E2EE; invitation-only; multiple posters by
+  default.
+- `dm` — E2EE; two participants or small group; one-to-one or
+  many-to-many conversation.
+
+The `topics` array is OPTIONAL but RECOMMENDED for `public_broadcast`,
+`public_moderated`, and `private_community` kinds. It tags the room with
+one or more topic identifiers; followers can subscribe selectively.
+Topic namespaces SHOULD follow reverse-domain notation
+(`com.example.tags`) or recognized ISO classifications, mirroring the
+NIP-32 labeling convention. Heterodyne reserves the namespace
+`org.heterodyne.topics` for future canonical tags.
+
+### 5.2 `public_broadcast`
+
+A room where a single persona (or a small set of co-administrators)
+broadcasts content to subscribers. Most Heterodyne users are expected
+to operate multiple `public_broadcast` rooms, each topic-tagged
+differently ("my-tech-feed", "my-photography-feed"). Followers
+subscribe per-topic by joining the rooms whose tags interest them.
+
+REQUIRED:
+
+- `m.room.create.room_version`: latest stable Matrix room version.
+- `m.room.encryption`: absent — the room is intentionally unencrypted.
+- `m.room.history_visibility`: `world_readable`.
+- `m.room.guest_access`: `can_join`.
+- Wrap mode: wrapped (`m.heterodyne.note.v1`). Bare events
+  (`m.room.message`) MUST be rejected by Heterodyne clients on read and
+  SHOULD be rejected by the persona's client on write per §4.4.
+
+RECOMMENDED `m.room.power_levels`:
+
+- `users_default`: 0.
+- `events_default`: 50 (only the persona and co-admins can post).
+- `state_default`: 100 (only the persona controls room state).
+- The persona's MXID (and any co-admin MXIDs): 100.
+
+### 5.3 `public_moderated`
+
+Like `public_broadcast` but with multiple posters whose messages
+surface in the moderated feed only after a moderator approval signature
+(§8). Conceptually equivalent to a subreddit or a moderated mailing
+list.
+
+REQUIRED `m.room.create`, `m.room.history_visibility`,
+`m.room.guest_access`, `m.room.encryption`: same as
+`public_broadcast`.
+
+REQUIRED wrap mode: wrapped.
+
+RECOMMENDED `m.room.power_levels`:
+
+- `users_default`: 0.
+- `events_default`: 0 (members can post).
+- `state_default`: 50 (only moderators control state).
+- Moderator MXIDs: 50.
+- Room owner MXID: 100.
+
+The set of approving moderators MUST be advertised via an
+`m.heterodyne.moderators.v1` state event (schema deferred to §8).
+
+### 5.4 `private_community`
+
+An E2EE room with invitation-controlled membership. Examples:
+friend-circle rooms, work groups, family chats, semi-private interest
+communities. Members typically all post; the configuration MAY also be
+tuned for broadcast-only by raising `events_default`.
+
+REQUIRED:
+
+- `m.room.create.room_version`: latest stable.
+- `m.room.encryption.algorithm`: `m.megolm.v1.aes-sha2` (today); the
+  MLS variant once stabilized.
+- Encrypted state events: MUST follow MSC4362. Any
+  `m.heterodyne.outbox.scoped.v1` (§7.2), moderation, or kind-state
+  events MUST be encrypted.
+- `m.room.history_visibility`: `shared` or `invited`.
+- `m.room.guest_access`: `forbidden`.
+- `m.room.join_rules`: `invite`, or `restricted` to a parent Space or
+  gating room.
+
+DEFAULT wrap mode: wrapped (`m.heterodyne.note.v1`). Sender MAY opt to
+send bare per-event for deniability within the room (§4.4).
+
+RECOMMENDED `m.room.power_levels`:
+
+- `users_default`: 0.
+- `events_default`: 0 for chat-style circles; 50 for broadcast-style
+  circles. The intended style SHOULD be reflected in the
+  `m.heterodyne.room_kind.v1.topics` array as a meta-tag (e.g.,
+  `org.heterodyne.style.chat` vs `org.heterodyne.style.broadcast`).
+- `state_default`: 50 or 100.
+- Owner MXID: 100.
+
+### 5.5 `dm`
+
+A standard Matrix DM room (two-participant or small-group) reused for
+Heterodyne direct messaging. Configuration is whatever the Matrix
+client SDK produces for a normal DM, with two soft constraints:
+
+- The room MUST be E2EE.
+- The `m.heterodyne.room_kind.v1` state event MUST declare
+  `kind: "dm"`.
+
+DEFAULT wrap mode: bare (`m.room.message`). Sender MAY include
+`heterodyne_nostr_sig` for opt-in authenticity per message (§4.3).
+
+### 5.6 Multi-room patterns
+
+A persona is expected to maintain multiple Heterodyne rooms
+simultaneously:
+
+- Exactly one **identity room** (§3.2).
+- Zero or more **`public_broadcast`** rooms, typically one per topic
+  the persona broadcasts about. A persona SHOULD prefer multiple
+  topic-tagged broadcast rooms over a single catchall room; this
+  enables topic-selective subscription.
+- Zero or more **`public_moderated`** communities the persona admins
+  or participates in.
+- Zero or more **`private_community`** rooms (friend circles,
+  work-project-X, family).
+- DM rooms as needed.
+
+A persona MAY aggregate its public broadcast rooms into a Matrix
+**Space** (MSC2946) advertised in the persona's public outbox (§7.1).
+This gives a "subscribe to all my topics" affordance for followers;
+the Space hierarchy lets followers descend to per-topic rooms.
+
+A `private_community` room MAY list further Heterodyne rooms in its
+own audience-scoped outbox advertisement (§7.2). This is how a "close
+friends" room can advertise "I also keep an encrypted photo room you
+can join" to its members without leaking that room's existence to
+non-friends.
 
 ## 6. Publishing flow
 
-*Stub.* A single user-level post is fanned out by the client to one or
-more outbox rooms, with wrap mode chosen per-room. Vanilla Nostr relays
-MAY also be targeted in the same fan-out, with idempotency via the Nostr
-event `id`. Detailed algorithm TBD; will cover deduplication, retry,
-partial-failure semantics, and reply-routing.
+Publishing is the act of taking one user-level intent (a post, a reply,
+a reaction, a long-form article) and emitting it to one or more rooms
+and zero or more vanilla Nostr relays. Heterodyne defines the structure
+of those emissions and a small set of normative idempotency rules; the
+spec deliberately leaves *how to schedule, batch, and retry* deliveries
+as a client implementation choice.
+
+### 6.1 One signed Nostr event per intent
+
+A single user-level intent MUST correspond to exactly one signed Nostr
+event, computed once from the user's nsec. That single event is then
+fanned out to multiple destinations. The Nostr event `id` (SHA-256 over
+the canonical Nostr serialization) is the idempotency token across the
+entire fan-out.
+
+Implementations MUST NOT re-sign the same intent multiple times.
+Re-signing would defeat authenticity: receivers would see distinct
+event `id`s for the same intent and could not deduplicate.
+
+### 6.2 Destination set
+
+For a single intent, the client computes a destination set:
+
+| Destination | Wire form |
+|---|---|
+| `public_broadcast` room | `m.heterodyne.note.v1` (wrapped) |
+| `public_moderated` room | `m.heterodyne.note.v1` (wrapped) |
+| `private_community` room | `m.heterodyne.note.v1` (wrapped) or `m.room.message` (bare), per per-event choice |
+| `dm` room | `m.room.message` (bare) or with `heterodyne_nostr_sig` |
+| Vanilla Nostr relay | the unwrapped Nostr event published per NIP-01 |
+
+The destination set is computed from:
+
+- The user's explicit selection ("post to my tech feed and my
+  close-friends room").
+- The default audiences for the post type (configurable per client).
+- The persona's outbox advertisements (§7), especially when replying
+  to a specific event or quoting another persona's content.
+
+### 6.3 Idempotency
+
+The Nostr event `id` is the canonical idempotency token.
+
+- Receivers SHOULD deduplicate by `id` when the same event arrives via
+  multiple paths (e.g., wrapped via Matrix and unwrapped via a Nostr
+  relay subscription).
+- For Matrix delivery, the client MAY use the Nostr event `id` (or a
+  derivative of it) as the `txn_id` for
+  `PUT /_matrix/client/v3/rooms/{room}/send/{type}/{txn_id}` to
+  leverage Matrix's per-transaction idempotency.
+- For vanilla Nostr delivery, NIP-01 deduplication by `id` is automatic
+  at relay level.
+
+### 6.4 Best-effort fan-out: recommended patterns
+
+The spec does NOT mandate a specific fan-out algorithm. Clients MAY
+implement any of the following patterns, alone or in combination:
+
+- **Optimistic concurrent.** Dispatch to all destinations in parallel;
+  treat each as independent. Surface aggregate success/failure in UI.
+  Suitable for low-stakes microblogging.
+- **Best-effort with retry queue.** Dispatch concurrently; for each
+  destination that fails, queue a retry with exponential backoff. The
+  user sees "sent" once the first destination accepts; failures are
+  surfaced as transient indicators that resolve as retries succeed.
+- **Robust batched delivery.** Withhold the user-visible "sent" state
+  until all destinations acknowledge. Suitable for DMs where delivery
+  confirmation matters, or for high-value publications where the user
+  wants explicit success across every audience.
+- **Tiered.** Dispatch to high-priority destinations first (e.g., the
+  user's own Matrix outbox rooms), then to secondary destinations
+  (vanilla Nostr relays) without blocking user feedback on the latter.
+
+Clients SHOULD surface partial-failure state in UI so the user can
+detect when a post failed to reach an audience they care about. Clients
+MAY require robust batched delivery for destinations the user
+configures as delivery-critical (e.g., DMs to specific recipients,
+posts to public broadcast rooms with subscriber counts the user wants
+to guarantee).
+
+### 6.5 Replies and threading
+
+A reply is structurally a normal Nostr event of the appropriate kind
+(typically `kind:1` for short-form, or NIP-23 `kind:30023` for long-form
+comments) with NIP-10 `e` and `p` tags identifying the parent event and
+its author. The wrap and fan-out rules above apply unchanged.
+
+A reply's destination set typically includes:
+
+- The room where the parent event was observed (so the conversation
+  remains visible to the same audience).
+- Optionally, additional rooms the replier wants to broadcast the reply
+  to (e.g., quoting a public post into the replier's own
+  `public_broadcast` feed).
+
+If the parent author's public outbox (§7.1) advertises a
+"reply inbox" hint (analogous to NIP-65's `read` marker), the replier's
+client SHOULD include the listed rooms or relays in the destination set
+so the parent author observes the reply on infrastructure they
+control.
+
+### 6.6 Mixing private Matrix and public Nostr in one fan-out
+
+When a client fans an intent both to a private E2EE Matrix room and to
+a public vanilla Nostr relay in the same operation, it publishes:
+
+- To Matrix: the wrapped (or bare) event, inside Megolm.
+- To the Nostr relay: the same unwrapped Nostr event, in the clear.
+
+The user is responsible for ensuring this is intended. Clients SHOULD
+warn before publishing to a public Nostr relay when the originating
+context is a `private_community` or `dm` room — the same user-level
+intent SHOULD NOT normally span both private-community Matrix rooms and
+public Nostr relays. The warning is a UX guard, not a normative
+restriction.
 
 ## 7. Discovery and subscription
 
-*Stub.* Each identity room contains an `m.heterodyne.outbox.v1` state
-event listing categorized outbox rooms plus vanilla Nostr relay URLs.
-Following an identity means subscribing to one or more of its outbox
-rooms per the user's chosen categories. Cross-references to other
-personas owned by the same user MAY appear, double-signed like
-delegations, but are OPT-IN.
+Discovery in Heterodyne is **consent-driven** and
+**audience-stratified**. A persona advertises different sets of feeds
+to different audiences: public advertisements live in the identity
+room where any peeker can read; audience-scoped advertisements live
+inside the friend-circle or community rooms they pertain to, visible
+only to members.
+
+This design lets a single persona maintain a public face (advertised
+to the world) and any number of private faces (advertised only to
+chosen audiences) without leaking the existence of the private faces
+to outsiders.
+
+### 7.1 Public outbox advertisement
+
+The persona's public-facing outbox lives in a single state event in
+the identity room:
+
+```json
+{
+  "type": "m.heterodyne.outbox.public.v1",
+  "state_key": "",
+  "content": {
+    "spec_version": "0.1",
+    "broadcasts": [
+      {
+        "room_id": "!techfeed:matrix.org",
+        "kind": "public_broadcast",
+        "topics": [{"namespace": "com.example.tags", "tag": "tech"}],
+        "via": ["matrix.org", "tuwunel.example"]
+      },
+      {
+        "room_id": "!photos:matrix.org",
+        "kind": "public_broadcast",
+        "topics": [{"namespace": "com.example.tags", "tag": "photos"}],
+        "via": ["matrix.org"]
+      }
+    ],
+    "communities": [
+      {
+        "room_id": "!fediverse-news:matrix.org",
+        "kind": "public_moderated",
+        "topics": [{"namespace": "com.example.tags", "tag": "fediverse"}],
+        "role": "poster",
+        "via": ["matrix.org"]
+      }
+    ],
+    "nostr_relays": [
+      {"url": "wss://relay.damus.io", "markers": ["write"]},
+      {"url": "wss://relay.example", "markers": ["read", "write"]}
+    ],
+    "space": "#alice-space:matrix.org",
+    "reply_inbox": {
+      "rooms": ["!my-mentions:matrix.org"],
+      "nostr_relays": [{"url": "wss://relay.example", "markers": ["read"]}]
+    }
+  }
+}
+```
+
+Field semantics:
+
+- `broadcasts`: `public_broadcast` rooms the persona admins. Each entry
+  includes the room ID, kind, topic tags, and `via` servers as Matrix
+  federation join hints.
+- `communities`: `public_moderated` rooms the persona participates in
+  as poster or moderator. The `role` field indicates relationship.
+- `nostr_relays`: NIP-65-compatible relay list with `read`/`write`
+  markers. Followers using vanilla Nostr clients consume this list
+  directly per NIP-65.
+- `space`: OPTIONAL pointer to a Matrix Space (MSC2946) aggregating
+  the persona's public broadcast rooms.
+- `reply_inbox`: OPTIONAL hint to repliers indicating where the
+  persona prefers to observe replies and mentions. Analogous to
+  NIP-65's `read` marker. Repliers' clients SHOULD include these
+  destinations in the fan-out per §6.5.
+
+This state event is NOT encrypted — its container (the identity room)
+is intentionally peekable, and public discovery requires that the
+event be readable by anyone.
+
+A persona MUST publish at most one `m.heterodyne.outbox.public.v1`
+state event per identity room. Updates replace the previous version
+via standard Matrix state semantics.
+
+### 7.2 Audience-scoped outbox advertisement
+
+Inside any `private_community` or community-like room, a persona MAY
+publish an `m.heterodyne.outbox.scoped.v1` state event listing
+additional feeds visible to members of that specific room:
+
+```json
+{
+  "type": "m.heterodyne.outbox.scoped.v1",
+  "state_key": "<persona npub hex>",
+  "content": {
+    "spec_version": "0.1",
+    "scope_note": "Close friends — these are the private feeds I share with you.",
+    "broadcasts": [
+      {
+        "room_id": "!private-photos:matrix.org",
+        "kind": "private_community",
+        "topics": [{"namespace": "com.example.tags", "tag": "photos"}],
+        "via": ["matrix.org"]
+      }
+    ],
+    "communities": [
+      {
+        "room_id": "!drafts-circle:matrix.org",
+        "kind": "private_community",
+        "topics": [{"namespace": "com.example.tags", "tag": "long-form"}],
+        "role": "owner",
+        "via": ["matrix.org"]
+      }
+    ],
+    "nostr_relays": []
+  }
+}
+```
+
+Rules:
+
+- The state event lives in the **advertising room** (a friend-circle
+  or community room), NOT in the identity room. Membership in the
+  advertising room is the access gate.
+- The advertising room MUST be E2EE; the state event MUST therefore be
+  encrypted per §9 and MSC4362.
+- `state_key` is the advertising persona's npub in hex. Different
+  personas / co-administrators in the same room each get their own
+  scoped advertisement, keyed by their own npub.
+- Each listed `broadcasts` / `communities` entry SHOULD be joinable by
+  the advertising room's current members. Heterodyne RECOMMENDS using
+  Matrix's `restricted` join rule (MSC3083) with the advertising room
+  (or a containing Space) as the gating room, which makes joinability
+  automatic. If the listed feed uses `invite`-only join rules, the
+  advertising persona accepts responsibility for issuing invites to
+  advertising-room members on request.
+- A persona SHOULD only advertise feeds whose topic tags are relevant
+  to the advertising room's audience (e.g., do not advertise unrelated
+  feeds just because the audience exists). This is a soft norm; the
+  spec provides the topic-tag mechanism and trusts clients to curate.
+- `nostr_relays` MAY list private or invite-only Nostr relay
+  endpoints visible only to the advertising room's members.
+
+### 7.3 Discovery flow
+
+A follower discovering a persona executes the following:
+
+1. **Resolve the persona's npub** from a Matrix MXID per §3.6, or from
+   a vanilla Nostr `npub1...` reference.
+2. **Find the identity room.** From the MXID's profile field
+   `m.heterodyne.identity_room`, or from a Heterodyne-aware vanilla
+   Nostr event tag (extraction tracked in
+   [`extensions/nips/`](extensions/nips/)).
+3. **Read the public outbox** (`m.heterodyne.outbox.public.v1`).
+   Choose which advertised feeds (by topic) to subscribe to.
+4. **Join chosen rooms.** For `public_broadcast` and
+   `public_moderated`, `world_readable` permits peek without joining;
+   full subscription is a join. For `private_community`, an invite is
+   required.
+5. **Once a member of a friend-circle or community room**, read any
+   `m.heterodyne.outbox.scoped.v1` state events inside that room to
+   discover further feeds gated behind this room's membership.
+6. **Repeat step 5 transitively.** Inner circles MAY advertise even
+   deeper circles; the discovery walk is finite (no cycles) because
+   joining each inner room requires prior membership in its
+   advertising room.
+
+A follower's client SHOULD cache discovered outbox state and
+revalidate on a TTL; it MUST revalidate on receipt of new outbox state
+events via Matrix `/sync`.
+
+### 7.4 Following semantics
+
+"Following" a persona in Heterodyne is not a single act; it is a
+collection of room subscriptions and (optionally) Nostr relay
+subscriptions:
+
+- Following a persona's public tech feed = joining their topic-tagged
+  `public_broadcast` room.
+- Following a persona across all public topics = joining their Space
+  (if advertised) or each topic-tagged room individually.
+- Following a persona privately = being invited to one of their
+  `private_community` rooms.
+- Following the persona via vanilla Nostr = subscribing to the
+  `write`-marked relays in their public outbox per NIP-65.
+
+A follower MAY express their following preferences in a private,
+local-only data structure; the spec does NOT require a NIP-02-style
+public follow list. Clients MAY OPTIONALLY emit a NIP-02 `kind:3`
+event to vanilla Nostr relays for interop with non-Heterodyne Nostr
+clients.
+
+### 7.5 Cross-persona advertisement
+
+A persona MAY advertise a relationship to another persona,
+double-signed by both npubs:
+
+```json
+{
+  "type": "m.heterodyne.related_persona.v1",
+  "state_key": "<other persona npub hex>",
+  "content": {
+    "spec_version": "0.1",
+    "relation": "same_holder",
+    "this_attestation": {
+      "id": "<32-byte hex>",
+      "pubkey": "<this npub hex>",
+      "created_at": 0,
+      "kind": 31004,
+      "tags": [
+        ["heterodyne", "related_persona"],
+        ["other_npub", "<other npub hex>"],
+        ["relation", "same_holder"]
+      ],
+      "content": "",
+      "sig": "<sig from this npub>"
+    },
+    "other_attestation": {
+      "id": "<32-byte hex>",
+      "pubkey": "<other npub hex>",
+      "created_at": 0,
+      "kind": 31004,
+      "tags": [
+        ["heterodyne", "related_persona"],
+        ["other_npub", "<this npub hex>"],
+        ["relation", "same_holder"]
+      ],
+      "content": "",
+      "sig": "<sig from other npub>"
+    }
+  }
+}
+```
+
+Rules:
+
+- `relation` is one of: `same_holder` (both personas are operated by
+  the same human), `endorses` (this persona vouches for the other),
+  `endorsed_by` (this persona is vouched for by the other), or
+  `linked` (some other declared relationship spelled out in
+  `scope_note`).
+- The attestation is valid only if BOTH `this_attestation` and
+  `other_attestation` validate against their respective npubs. A
+  single-signed cross-persona claim MUST be rejected.
+- Cross-persona advertisements MAY live in the public outbox
+  context (publicly linking the personas) OR in a scoped outbox
+  context (revealing the link only to a chosen audience). The
+  containing room's privacy determines the audience.
+- A client MUST NOT infer persona relationships from any signal other
+  than an explicit, valid, double-signed
+  `m.heterodyne.related_persona.v1`.
 
 ## 8. Moderation
 
