@@ -161,20 +161,38 @@ overlap is in engineering pattern, not implementation.
 
 ## Open design questions
 
-These remain to be resolved as the spec sections graduate from stubs:
+These remain to be resolved as the remaining spec sections graduate
+from stubs:
 
-- **§5 room taxonomy**: precise `m.room.create` content, power-level
-  defaults, and encryption settings per room kind.
-- **§6 publishing flow**: idempotency under partial-failure
-  fan-out; reply routing across multiple outbox rooms.
-- **§7 discovery**: the exact schema of `m.heterodyne.outbox.v1`; how
-  cross-persona links are presented (or refused) by the client.
 - **§8 moderation**: integration of MSC2313 policy rooms with
   per-community approval; conflict resolution between Matrix bans and
-  NIP-72 approvals.
+  NIP-72-style approvals; schema for `m.heterodyne.moderators.v1`.
 - **§9 encryption**: timing of MLS migration; how identity-chain
-  rotations interact with MLS group changes.
+  rotations interact with MLS group changes mid-rotation; whether
+  Megolm sessions need invalidation when a delegation is revoked.
 - **§11 interop**: graceful behavior when a vanilla Matrix client tries
   to *send* into a Heterodyne room (the message has no Nostr signature
-  and arrives as bare; what should public-room admission policy do?).
-- **§12 versioning**: capability advertisement schema; downgrade rules.
+  and arrives as bare; what should public-room admission policy do?
+  Drop, render-with-warning, or accept-as-bare?).
+- **§12 versioning**: capability advertisement schema; downgrade rules
+  when a sender uses spec_version greater than the receiver
+  implements.
+
+Questions that emerged from the drafted sections and need follow-up
+work but are not blocking:
+
+- **Canonical topic taxonomy.** The spec lets clients pick reverse-DNS
+  namespaces, but a recommended common set (under
+  `org.heterodyne.topics`) would improve discoverability. Defer until
+  there's actual usage to draw from.
+- **Transitive join-rule consistency.** §7.2 recommends `restricted`
+  join rules (MSC3083) for advertised inner rooms; should the spec
+  formalize a check that inner rooms are at least as restrictive as
+  their advertiser?
+- **Megolm session establishment under robust batched delivery.**
+  §6.4's "robust batched delivery" semantics interact with the latency
+  of Megolm session setup for fresh members. Worth a worked example
+  in the test vectors.
+- **Persona switching UX.** Multiple personas (§3.4) are a first-class
+  feature, but the spec is silent on how clients SHOULD present
+  switching. UX-only — defer to client implementation.
