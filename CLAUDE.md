@@ -40,17 +40,34 @@ members.
 
 ## Project status
 
-This repo currently contains background **research** only. No protocol spec or
-code yet — the next milestone is to draft the fundamental protocol document
-(event envelope, room conventions, identity binding, key portability, bridge
-behavior, moderation model).
+The v0.1 specification is **fully drafted with diagrams** at
+[`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) (~2,300 lines,
+14 sections, 6 Mermaid diagrams). All load-bearing protocol decisions
+(identity, envelope, rooms, publishing, discovery, moderation,
+encryption, bridge, interop, versioning, security, conformance) are
+written down. The spec is stable enough to author test vectors and a
+reference `heterodyne-core` implementation against; it is not yet
+considered final until v0.2 freeze.
+
+The next milestones are:
+
+1. Author test vectors in `docs/spec/vectors/` (one per spec section).
+2. Stand up the `heterodyne-core` Rust crate skeleton.
+3. Iterate the spec based on implementation feedback toward v0.2.
 
 ## How to navigate this repo
 
 | Path | What it is |
 |---|---|
+| `docs/spec/heterodyne.md` | The normative spec. Single living document, v0.1.1. |
+| `docs/architecture.md` | Non-normative architecture overview + design rationale for each load-bearing decision. |
+| `docs/glossary.md` | Term definitions referenced from the spec. |
+| `docs/security/threat-model.md` | Companion analysis to spec §13 (security model). |
+| `docs/spec/vectors/` | Test vectors (format defined; vectors authored incrementally). |
+| `docs/spec/extensions/nips/` | Forward-reference index for future NIP extractions. |
+| `docs/spec/extensions/mscs/` | Forward-reference index for future MSC extractions. |
 | `research/sources/` | Raw Gemini deep-research output, stored verbatim with citations. Do not edit. |
-| `research/INDEX.md` | Topic-keyed classification of the research. Use this to find which source and which line range covers a given topic. |
+| `research/INDEX.md` | Topic-keyed classification of the research. |
 | `CLAUDE.md` | This file. Project mission + repo map. |
 
 When you need to look something up, **start at `research/INDEX.md`** — it maps

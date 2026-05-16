@@ -66,7 +66,7 @@ control. The cost is that "follow" becomes "join the broadcaster's
 room," which is heavier than Nostr's pure follow-list approach but
 unlocks the moderation and encryption story.
 
-See spec §7 (stub).
+See spec §7.
 
 ### 4. Bridge: pure client-side, any homeserver works unmodified
 
@@ -113,35 +113,26 @@ banned from a room never publishes there. A user in the room whose posts
 aren't moderator-approved is invisible in the curated feed but still
 visible to anyone subscribed to the raw room.
 
-See spec §8 (stub).
+See spec §8.
 
 ## High-level diagram
 
-```
-                       ┌─────────────────────────────────┐
-                       │      Heterodyne client          │
-                       │  (browser, desktop, mobile)     │
-                       │                                 │
-                       │   ┌───────────────────────┐     │
-                       │   │   heterodyne-core     │     │
-                       │   │   (Rust → WASM/native)│     │
-                       │   └───┬────────────────┬──┘     │
-                       │       │                │        │
-                       │  Matrix SDK       Nostr SDK     │
-                       └───────┼────────────────┼────────┘
-                               │                │
-                               ▼                ▼
-                  ┌────────────────────┐   ┌───────────────────┐
-                  │   Matrix           │   │   Vanilla Nostr   │
-                  │   homeserver       │   │   relay           │
-                  │   (any vendor —    │   │   (optional       │
-                  │   blind to E2EE)   │   │   fan-out)        │
-                  └─────────┬──────────┘   └───────────────────┘
-                            │
-                            │  Matrix federation
-                            ▼
-                  Other Heterodyne clients on
-                  their own homeservers
+```mermaid
+flowchart LR
+    subgraph Device["User device"]
+        UI[Client UI<br/>browser/desktop/mobile]
+        Core[heterodyne-core<br/>Rust → WASM/native]
+        MSDK[Matrix SDK]
+        NSDK[Nostr SDK]
+        UI --> Core
+        Core --> MSDK
+        Core --> NSDK
+    end
+
+    MSDK -->|HTTPS<br/>Megolm E2EE| HS[Matrix homeserver<br/>any vendor — blind to E2EE]
+    NSDK -->|WebSocket| Relay[Vanilla Nostr relay<br/>optional fan-out]
+    HS <-->|federation| Peers[Other Heterodyne<br/>clients]
+    Relay <--> NPeers[Vanilla Nostr<br/>clients]
 ```
 
 The Matrix homeserver routes encrypted events between participants in
