@@ -56,5 +56,5 @@ Each JSON file has the following shape:
 | `interop/` | wrapped event round-tripped through a vanilla Nostr relay; bare DM rendered by vanilla Matrix client | not yet authored |
 
 Vectors will be added as each spec section graduates from stub to drafted
-state. The CI suite will run every conformance test from this directory
-against the reference `heterodyne-core` build.
+state. Any client implementation claiming conformance MUST run every
+test in this directory through its CI pipeline.

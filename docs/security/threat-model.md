@@ -33,7 +33,7 @@ Heterodyne inherits the following invariants from sibling project
 
 | Actor | Capability assumption |
 |---|---|
-| **Trusted client** | Runs `heterodyne-core` correctly; honest. Holds the user's nsec and Matrix device keys. |
+| **Trusted client** | A conformant Heterodyne client implementation; honest. Holds the user's nsec and Matrix device keys. |
 | **Hostile homeserver** | Can drop, delay, reorder events. Can lie about state to clients that don't verify. Cannot decrypt E2EE traffic. May correlate metadata (room IDs, timing, participant MXIDs). |
 | **Hostile relay** (vanilla Nostr) | Can drop, delay events. Cannot forge signatures. Can correlate by npub. |
 | **Passive network observer** | TLS-bounded. Sees connection metadata (peers, timing, volume); cannot read content. |
