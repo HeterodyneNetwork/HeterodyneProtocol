@@ -62,6 +62,15 @@ Heterodyne clients ignore it and render from the embedded Nostr event.
 RECOMMENDED for `kind:1` posts; OMITTED for non-text Nostr kinds. See
 spec §4.2, §11.5.
 
+**Feed status.** An encrypted Matrix state event
+(`m.heterodyne.feed_status.v1`) in a broadcast-style
+`private_community` room that lists the Nostr event IDs of a
+persona's posts in intended display order. Sits alongside the
+encrypted wrapped posts themselves, providing curated ordering, an
+integrity overlay against forged claims, and a manifest for offline
+catch-up — *not* a substitute for the content, which stays in the
+room as the wrapped events. See spec §6.7.
+
 **Friend circle.** Synonym for distribution list. Different UX surface
 ("here are my close friends"), same underlying construct (a Matrix
 room).
