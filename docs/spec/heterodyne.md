@@ -1,6 +1,6 @@
 # Heterodyne Protocol Specification
 
-**Version:** 0.1.1 (DRAFT — clarifications round)
+**Version:** 0.1.2 (DRAFT — clarifications round)
 **Status:** Working draft, all sections drafted with diagrams and
 ambiguity cleanup. Stable enough to start authoring test vectors and
 the `heterodyne-core` reference implementation against. Not yet
@@ -1230,6 +1230,13 @@ RECOMMENDED `m.room.power_levels`:
 - `state_default`: 50 or 100.
 - Owner MXID: 100.
 
+Broadcast-style `private_community` rooms SHOULD additionally
+maintain an encrypted feed status (§6.7) per persona, listing the
+Nostr event IDs of that persona's posts in display order. The feed
+status is an encrypted state event that coexists with the wrapped
+posts themselves; see §6.7 for the full schema and verification
+rules.
+
 ### 5.5 `dm`
 
 A standard Matrix DM room (two-participant or small-group) reused for
@@ -1393,6 +1400,115 @@ context is a `private_community` or `dm` room — the same user-level
 intent SHOULD NOT normally span both private-community Matrix rooms and
 public Nostr relays. The warning is a UX guard, not a normative
 restriction.
+
+### 6.7 Encrypted feed status for private rooms
+
+In encrypted private rooms (`private_community`) used as
+broadcast-style feeds, the persona SHOULD publish an encrypted
+**feed status** alongside the wrapped event posts themselves. The
+feed status is a state event that lists the Nostr event IDs of the
+persona's posts in the intended display order; the wrapped posts
+remain in the room as encrypted timeline events carrying the full
+content.
+
+**The contrast with an "index-only" design.** In Heterodyne, the
+room contains BOTH the encrypted Matrix posts (with the full Nostr
+events embedded inside Megolm ciphertext) AND the encrypted feed
+status (an ordering and integrity overlay). The feed status is
+*not* a substitute for the content; it is *not* a list of "links"
+to events stored elsewhere. The full content stays in the room
+because in E2EE rooms the full Nostr events MUST stay inside the
+encrypted Matrix room — publishing them to a public Nostr relay
+would leak the contents the room is designed to protect (see §6.6).
+
+#### 6.7.1 `m.heterodyne.feed_status.v1`
+
+The feed status is a Matrix state event encrypted per §9 and MSC4362:
+
+```json
+{
+  "type": "m.heterodyne.feed_status.v1",
+  "state_key": "<persona npub hex>",
+  "content": {
+    "spec_version": "0.1",
+    "feed_label": "Optional human-readable description (e.g., \"Alice's photo journal\")",
+    "entries": [
+      {
+        "nostr_event_id": "<32-byte hex>",
+        "matrix_event_id": "$matrix_event_id_in_this_room",
+        "nostr_created_at": 0,
+        "position": 0
+      },
+      {
+        "nostr_event_id": "<32-byte hex>",
+        "matrix_event_id": "$matrix_event_id_in_this_room",
+        "nostr_created_at": 0,
+        "position": 1
+      }
+    ],
+    "last_updated_at": 0
+  }
+}
+```
+
+Normative rules:
+
+- The state event MUST be encrypted (MSC4362). The homeserver sees
+  only Megolm ciphertext.
+- `state_key` is the publishing persona's npub in hex. Multiple
+  personas / co-administrators in the same room each maintain their
+  own feed status independently, keyed by their own npub.
+- The Matrix sender of the state event MUST be a currently-active
+  delegated MXID for the persona whose npub appears in `state_key`
+  (per §3.3). Receivers MUST reject the feed status if the
+  delegation check fails — otherwise a compromised co-member could
+  forge feed status events claiming to be from another persona.
+- Each entry MUST include `nostr_event_id` referencing the Nostr
+  event id of the corresponding wrapped post in the same room.
+  Each entry SHOULD include `matrix_event_id` for efficient local
+  lookup.
+- An entry whose referenced wrapped post has
+  `nostr.pubkey != state_key` MUST be ignored by receivers (the
+  entry is claiming a post that isn't actually by the persona).
+- `entries` is in intended display order. The `position` field is
+  informational and SHOULD match the array index.
+- The persona's client SHOULD update the feed status whenever it
+  publishes a new post to the room. Updates replace the previous
+  feed status via standard Matrix state semantics.
+
+#### 6.7.2 What the feed status enables
+
+Three distinct properties that an inline-only content stream does
+not provide:
+
+1. **Curated ordering.** A persona can present posts in
+   non-chronological order: pinned items, themed sequences,
+   intentional omissions. Matrix's chronological DAG ordering
+   doesn't capture editorial choice; the feed status does.
+2. **Integrity overlay.** A receiver can verify that every claimed
+   post by the persona actually appears in the feed status. Posts
+   in the timeline that are NOT listed are spurious or "off-feed"
+   (chat replies the persona doesn't want surfaced in their
+   broadcast view; rogue events from a compromised co-member's
+   device claiming to be them but failing the delegation check).
+   Receivers MAY display timeline-but-not-in-status posts with a
+   "not in main feed" indicator.
+3. **Pagination and catch-up.** A client coming online after a long
+   offline period reads the feed status first to learn which Nostr
+   event IDs are part of the feed, then selectively decrypts only
+   the corresponding Matrix events. Useful when the room has
+   accumulated many entries the user does not need to render all
+   at once.
+
+#### 6.7.3 Chat-style rooms
+
+For `private_community` rooms configured chat-style
+(`events_default = 0`, no single broadcaster, conversational
+ordering), the feed status is OPTIONAL and typically unused —
+chronological Matrix DAG order is the natural feed. A persona MAY
+still publish a feed status keyed by their own npub if they want a
+broadcast "wall" view alongside the chat, but it is not the
+default pattern.
 
 ## 7. Discovery and subscription
 
@@ -2365,6 +2481,7 @@ Schema:
       "m.heterodyne.room_kind.v1",
       "m.heterodyne.moderators.v1",
       "m.heterodyne.encryption_version.v1",
+      "m.heterodyne.feed_status.v1",
       "m.heterodyne.user_prefs.v1",
       "m.heterodyne.persona_config.v1",
       "m.heterodyne.key_backup.v1",
