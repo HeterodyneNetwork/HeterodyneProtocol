@@ -25,9 +25,17 @@ traffic but cannot read its plaintext. Heterodyne's client-side bridge
 model preserves this property for all private rooms (including the
 config room). Spec invariant I1.
 
+**Archive URL.** A HTTPS endpoint advertised in a `feed_status`
+entry's `retrieval_hints.archive_url` from which a receiver can
+fetch the underlying Nostr event JSON. The archive is operated by
+the publisher (or a service of their choosing); the spec does not
+host, specify, or guarantee any archive infrastructure. See spec
+§6.7.1, §6.9.1.
+
 **Bridge.** Cross-protocol translation logic between Nostr and Matrix
-event formats. In Heterodyne the bridge is **client-side**
-(`heterodyne-core`), not a separate process or appservice.
+event formats. In Heterodyne the bridge is **client-side** — part
+of the user's client implementation — not a separate process or
+appservice.
 
 **Capabilities advertisement.** A persona's declaration of which spec
 versions and event types its current client supports, recorded as
@@ -62,23 +70,32 @@ Heterodyne clients ignore it and render from the embedded Nostr event.
 RECOMMENDED for `kind:1` posts; OMITTED for non-text Nostr kinds. See
 spec §4.2, §11.5.
 
-**Feed status.** An encrypted Matrix state event
-(`m.heterodyne.feed_status.v1`) in a broadcast-style
-`private_community` room that lists the Nostr event IDs of a
-persona's posts in intended display order. Sits alongside the
-encrypted wrapped posts themselves, providing curated ordering, an
-integrity overlay against forged claims, and a manifest for offline
-catch-up — *not* a substitute for the content, which stays in the
-room as the wrapped events. See spec §6.7.
+**Feed status.** A Matrix state event
+(`m.heterodyne.feed_status.v1`) listing the Nostr event IDs of a
+persona's (or moderator's) indexed posts in intended display order,
+with per-entry retrieval hints. Plaintext in public rooms (where
+the underlying events live on Nostr relays) and encrypted in
+`private_community` rooms (where the events live in the same E2EE
+room). Provides curated ordering, an integrity overlay against
+forged claims, an offline-catch-up manifest, and a retrieval
+directory. See spec §6.7.
 
 **Friend circle.** Synonym for distribution list. Different UX surface
 ("here are my close friends"), same underlying construct (a Matrix
 room).
 
-**`heterodyne-core`.** The reference Rust crate implementing the
-protocol. Compiled to WASM for browser/mobile clients; used natively in
-desktop and headless deployments. Carries the security-critical logic
-so client surfaces don't have to re-implement it.
+**Heterodyne client library.** A conformant implementation of the
+protocol's security-critical logic (event composition, signing,
+delegation checking, feed-status maintenance, retrieval). The spec
+is implementation- and language-agnostic; conformance is determined
+by the test vectors (§14), not by language or packaging. See spec
+§10.2.
+
+**Indexed event.** An event that belongs in a persona's curated
+feed view and therefore appears as a `feed_status` entry. Default
+classification by kind is given in spec §6.8.1; a publisher MAY
+override per-event via the `["heterodyne_index", "true"|"false"]`
+tag. Contrast with non-indexed event.
 
 **`heterodyne_nostr_sig`.** Optional field on a bare `m.room.message`
 event carrying a Nostr-signed proof of the message content. Lets a
@@ -133,6 +150,12 @@ config room (§3.8) and stay invisible to the homeserver. See spec
 In Heterodyne, MXIDs are *delegated publishers* of an npub, not
 identities in their own right.
 
+**Non-indexed event.** An event that is ephemeral or decorative
+(reactions, zaps, follow-list updates, deletion requests, moderation
+reports) and is NOT referenced from a `feed_status` entry. Visible
+on Nostr relays (or in encrypted rooms) but rendered contextually
+rather than as a standalone feed item. See spec §6.8.
+
 **npub / nsec.** A Nostr public / secret key in bech32 form (`npub1...` /
 `nsec1...`), corresponding to a `secp256k1` keypair. The npub is the
 canonical Heterodyne identity for a persona.
@@ -154,6 +177,22 @@ Visible to anyone who can peek the identity room. See spec §7.1.
 where they prefer to observe replies and mentions. Repliers SHOULD
 include these destinations in fan-out. Analogous to NIP-65's `read`
 marker. See spec §7.1.
+
+**Retrieval hint.** Per-entry metadata in a `feed_status` entry
+(`retrieval_hints` object) telling receivers where to fetch the
+underlying Nostr event: an array of `nostr_relays` to query via
+NIP-01, and/or an `archive_url` for HTTPS fetch. Covers the common
+case so most receivers never need a retrieval request. See spec
+§6.7.1, §6.9.1.
+
+**Retrieval request / response / push.** Three Matrix event types
+(`m.heterodyne.retrieval_request.v1`,
+`m.heterodyne.retrieval_response.v1`,
+`m.heterodyne.retrieval_push.v1`) sent in DM rooms to fetch (or
+proactively share) Nostr events when feed-status retrieval hints
+don't suffice — typically for encrypted events whose Megolm
+sessions a receiver has lost. Receivers verify each returned event
+via its Nostr signature. See spec §6.9.2.
 
 **Scoped outbox.** A persona's audience-restricted set of additional
 outbox rooms, recorded as `m.heterodyne.outbox.scoped.v1` state events

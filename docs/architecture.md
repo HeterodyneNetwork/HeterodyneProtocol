@@ -16,25 +16,30 @@ rooms. The combination gives:
 | End-to-end group encryption (Megolm today, MLS in flight); stateful access control; federated transport; censorship resistance at the server layer; native moderation primitives | Matrix |
 | Multi-homing, persona-preserving key rotation, deniability-on-demand | Heterodyne's composition |
 
-## The six load-bearing decisions
+## The load-bearing decisions
 
-The design rests on six choices recorded with rationale so future
-contributors understand why we picked what we picked.
+The design rests on the choices below, each recorded with rationale
+so future contributors understand why we picked what we picked.
 
-### 1. Event envelope: verbatim Nostr inside Matrix; wrap optional in E2EE
+### 1. Event envelope: verbatim Nostr inside Matrix where Matrix carries the event
 
-Wrapped Heterodyne events carry the full signed Nostr event verbatim
-inside the Matrix event content. Matrix is "just transport." This gives:
+Where Heterodyne carries an event over Matrix, the wrapped form
+(`m.heterodyne.note.v1`) embeds the full signed Nostr event
+verbatim. Matrix is "just transport." This gives:
 
 - A wrapped event can be lifted into vanilla Nostr 1:1 with no
   transformation. Same `id`, same signature, same kind.
 - Authenticity survives transport: if the event leaks past the Matrix
   layer, the Nostr signature still proves origin.
 
-Wrap is **optional in E2EE rooms** — senders can choose deniability per
-event. In public rooms wrap is mandatory; authenticity is the whole point
-of broadcasting publicly. In private communities wrap is the sensible
-default but the sender can opt out for any individual message. In DMs the
+Where Heterodyne carries an event over Nostr (the default for
+public broadcast and moderated rooms — see Decision 4 below), the
+event is just a NIP-01-compliant Nostr event on a Nostr relay. The
+Matrix room references it by ID from `feed_status`.
+
+Wrap is **optional inside E2EE Matrix rooms** — senders can choose
+deniability per event. In `private_community` rooms wrap is the
+sensible default but the sender can opt out per message. In DMs the
 default flips: bare by default, with an opt-in
 `heterodyne_nostr_sig` field for explicit authenticity.
 
@@ -68,13 +73,50 @@ unlocks the moderation and encryption story.
 
 See spec §7.
 
-### 4. Bridge: pure client-side, any homeserver works unmodified
+### 4. Public content lives on Nostr; Matrix public rooms hold indexes
+
+Public Heterodyne content (posts in `public_broadcast` and
+`public_moderated` rooms) lives on Nostr relays. The corresponding
+Matrix rooms hold only **indexes** (`m.heterodyne.feed_status.v1`
+state events that reference Nostr event IDs in display order, with
+per-entry retrieval hints) and standard room state (kind, moderators,
+power levels). Vanilla Matrix clients peeking at a `public_broadcast`
+room see an effectively empty timeline; that's the design.
+
+Private E2EE content (`private_community`, DM) continues to ride
+*inside* the Matrix room — leaking encrypted-room content to public
+Nostr relays would defeat the encryption. The same `feed_status`
+mechanism still applies there, encrypted alongside the wrapped events.
+
+This split plays each protocol to its strengths:
+
+- Nostr relays are well-suited to high-volume public broadcast and
+  already provide the open ingress/egress model public content needs.
+- Matrix rooms are well-suited to membership-gated state — exactly
+  what a curated feed index, moderator list, and approval log are.
+
+Events are classified per kind as **indexed** (appear in feed_status:
+microblogs, long-form, classifieds) or **non-indexed** (reactions,
+zaps, follow lists, deletions — visible but rendered contextually).
+A publisher MAY override per-event via a `heterodyne_index` tag.
+See spec §6.8.
+
+**Retrieval.** Receivers fetch events referenced from a `feed_status`
+entry primarily via the entry's own `retrieval_hints` — Nostr relay
+URLs and/or an HTTPS archive URL the publisher operates. The spec
+does NOT host an archive service; archive infrastructure is each
+publisher's responsibility. As an encrypted-DM fallback for events
+that can't be retrieved (lost Megolm sessions, expired hints), spec
+§6.9 defines `retrieval_request`/`retrieval_response`/`retrieval_push`
+event types.
+
+### 4b. Bridge: pure client-side, any homeserver works unmodified
 
 There is no Heterodyne appservice and no homeserver modification. Every
-client is a full Matrix + Nostr client. The cross-protocol logic lives
-in a Rust crate, `heterodyne-core`, compiled to WASM for browser/mobile
-clients and usable natively for desktop and headless deployments. This
-mirrors the `mxdx` shared-core pattern.
+client is a full Matrix + Nostr client. The cross-protocol logic is
+part of the client implementation. The spec is language- and
+runtime-agnostic; conformance is determined by the test vectors (§14)
+rather than by language or packaging choice.
 
 This is the design choice that protects the blind-server property: a
 homeserver-side bridge would see plaintext before Matrix encryption and
@@ -121,40 +163,43 @@ See spec §8.
 flowchart LR
     subgraph Device["User device"]
         UI[Client UI<br/>browser/desktop/mobile]
-        Core[heterodyne-core<br/>Rust → WASM/native]
-        MSDK[Matrix SDK]
-        NSDK[Nostr SDK]
+        Core[Heterodyne client library<br/>protocol implementation]
+        MSDK[Matrix client]
+        NSDK[Nostr client]
         UI --> Core
         Core --> MSDK
         Core --> NSDK
     end
 
-    MSDK -->|HTTPS<br/>Megolm E2EE| HS[Matrix homeserver<br/>any vendor — blind to E2EE]
-    NSDK -->|WebSocket| Relay[Vanilla Nostr relay<br/>optional fan-out]
+    MSDK -->|HTTPS<br/>Megolm E2EE for private rooms| HS[Matrix homeserver<br/>any vendor — blind to E2EE]
+    NSDK -->|WebSocket NIP-01| Relay[Nostr relays<br/>public content + retrieval]
     HS <-->|federation| Peers[Other Heterodyne<br/>clients]
     Relay <--> NPeers[Vanilla Nostr<br/>clients]
 ```
 
-The Matrix homeserver routes encrypted events between participants in
-private rooms but cannot read their contents. The vanilla Nostr relay
-optionally receives identical, unwrapped Nostr events for redundant
-publication or vanilla-client interop.
+Public content flows over Nostr relays; Matrix carries indexes
+(`feed_status` state events) and standard room state for the public
+rooms that organize that content. Private rooms use Matrix end-to-end
+encrypted transport for both content and indexes — the homeserver
+routes ciphertext only. The user's client is the only place that
+sees Nostr signatures and Matrix plaintext together.
 
 ## Where `mxdx` fits
 
 Heterodyne and `mxdx` are sibling projects that share architectural DNA:
 
-- Rust core compiled to WASM for portable client surfaces.
 - Hard invariant that every Matrix event in a private context is E2EE,
   including state events (MSC4362).
 - OS keychain integration for sensitive material at rest.
-- Single implementation, multiple surfaces (CLI, browser, mobile,
-  headless).
+- Pure client-side bridge: no protocol-specific homeserver
+  modifications; vanilla homeservers handle Heterodyne traffic.
 
 Heterodyne is **not** a fork of `mxdx` and does not depend on its code.
 The protocols are different (one is fleet-management with PTYs and
-WebRTC; the other is social with Nostr events and pub/sub). The
-overlap is in engineering pattern, not implementation.
+WebRTC; the other is social with Nostr events and pub/sub). Beyond
+the shared invariants above, Heterodyne is implementation-agnostic:
+the spec does not prescribe a language, runtime, or shared core for
+clients.
 
 ## Open design questions
 
@@ -175,8 +220,8 @@ follow-up work that does not block v0.1:
 - **MLS migration procedure.** §9.2 reserves
   `m.heterodyne.encryption_version.v1` and the `algorithm` field, but
   the actual migration procedure (re-key, member re-acknowledgement,
-  atomic flip) is deferred to a future spec version when upstream
-  `matrix-rust-sdk` MLS lands.
+  atomic flip) is deferred to a future spec version when Matrix MLS
+  is stable enough across client libraries to depend on.
 - **Conformance reporting formalization.** §14.4 leaves the
   conformance-claim mechanism informal. A future spec version may
   define a conformance manifest format consumable by a registry.
