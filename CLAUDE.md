@@ -45,14 +45,19 @@ The v0.1 specification is **fully drafted with diagrams** at
 14 sections, 6 Mermaid diagrams). All load-bearing protocol decisions
 (identity, envelope, rooms, publishing, discovery, moderation,
 encryption, bridge, interop, versioning, security, conformance) are
-written down. The spec is stable enough to author test vectors and a
-reference `heterodyne-core` implementation against; it is not yet
-considered final until v0.2 freeze.
+written down. v0.1.3 introduced a substantive design pivot: public
+Matrix rooms hold only indexes and state; the actual Nostr events
+for public content live on Nostr relays. Private (E2EE) rooms still
+carry full content. The spec is now implementation-agnostic — no
+particular language or runtime is prescribed. Not yet final until
+v0.2 freeze.
 
 The next milestones are:
 
 1. Author test vectors in `docs/spec/vectors/` (one per spec section).
-2. Stand up the `heterodyne-core` Rust crate skeleton.
+2. Build a first-party client implementation (language and runtime
+   to be chosen separately; the spec is agnostic) to validate the
+   protocol end-to-end.
 3. Iterate the spec based on implementation feedback toward v0.2.
 
 ## How to navigate this repo
@@ -118,17 +123,17 @@ high-level groupings:
 
 ## Inspiration: `mxdx`
 
-The sibling project `mxdx` (Matrix-native fleet management) demonstrates the
-mechanical pattern we're building on: a Rust core (`matrix-rust-sdk`) shared
-between Node agents and browser clients via WASM, with two encrypted Matrix
-rooms per managed entity (`exec` + `logs`) and DM rooms for interactive
-sessions. The relevant security-first habits to inherit:
+The sibling project `mxdx` (Matrix-native fleet management) is the source
+of several security-first habits we inherit:
 
-- Every Matrix event must be end-to-end encrypted, including state events
-  (MSC4362 encrypted state).
-- All sensitive material is stored encrypted at rest; OS keystore integration
-  where available.
-- Reuse one Rust core across client surfaces (CLI, browser, agent) via WASM.
+- Every Matrix event in a private context is end-to-end encrypted,
+  including state events (MSC4362 encrypted state).
+- All sensitive material is stored encrypted at rest; OS keystore
+  integration where available.
+- Pure client-side bridge — vanilla homeservers handle Heterodyne
+  traffic without protocol-specific modifications.
 
-mxdx is **not** a dependency — we're drawing inspiration from its
-architecture, not building on its code.
+mxdx is **not** a dependency, and Heterodyne does not prescribe
+mxdx's specific implementation choices (language, runtime, packaging).
+The overlap is in security invariants and the client-side bridge
+model, not implementation.
