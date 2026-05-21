@@ -25,12 +25,12 @@ traffic but cannot read its plaintext. Heterodyne's client-side bridge
 model preserves this property for all private rooms (including the
 config room). Spec invariant I1.
 
-**Archive URL.** A HTTPS endpoint advertised in a `feed_status`
-entry's `retrieval_hints.archive_url` from which a receiver can
-fetch the underlying Nostr event JSON. The archive is operated by
-the publisher (or a service of their choosing); the spec does not
-host, specify, or guarantee any archive infrastructure. See spec
-§6.7.1, §6.9.1.
+**Archive URL.** A HTTPS endpoint advertised in
+`m.heterodyne.archive.v1` in a persona's identity room from which
+a receiver can fetch the underlying Nostr event JSON when Nostr
+relays do not have it. The archive is operated by the publisher
+(or a service of their choosing); the spec does not host,
+specify, or guarantee any archive infrastructure. See spec §6.9.2.
 
 **ATProto attached outbox.** An OPTIONAL publish target (a PDS
 operated by or on behalf of the persona) that mirrors a configured
@@ -95,15 +95,22 @@ Heterodyne clients ignore it and render from the embedded Nostr event.
 RECOMMENDED for `kind:1` posts; OMITTED for non-text Nostr kinds. See
 spec §4.2, §11.5.
 
-**Feed status.** A Matrix state event
-(`m.heterodyne.feed_status.v1`) listing the Nostr event IDs of a
-persona's (or moderator's) indexed posts in intended display order,
-with per-entry retrieval hints. Plaintext in public rooms (where
-the underlying events live on Nostr relays) and encrypted in
-`private_community` rooms (where the events live in the same E2EE
-room). Provides curated ordering, an integrity overlay against
-forged claims, an offline-catch-up manifest, and a retrieval
-directory. See spec §6.7.
+**Feed index (`kind:31007`).** A Nostr replaceable event listing
+the event ids of a persona's (or moderator's) curated posts in
+intended display order. Each Heterodyne-managed room a persona
+posts into is keyed by `<room_id>:<page_id>` in the event's `d`
+tag. The index is signed by the persona's epoch key directly,
+making it tamper-evident: no homeserver or third party can rewrite
+it. Plaintext on the persona's write relays for public rooms;
+NIP-44 gift-wrapped to room members for private rooms. Bounded at
+500 `e`-tag entries per event; longer feeds are paginated via
+`previous_index` tags. Replaces the v0.1.4 `m.heterodyne.feed_status.v1`
+Matrix state event. See spec §6.7.
+
+**Feed status.** Deprecated v0.1.4 term for what v0.1.5 calls the
+"feed index." The `m.heterodyne.feed_status.v1` Matrix state event
+is no longer produced by conformant v0.1.5 clients; verifiers MAY
+honor it for read-back compatibility with v0.1.4 publishers.
 
 **Friend circle.** Synonym for distribution list. Different UX surface
 ("here are my close friends"), same underlying construct (a Matrix
@@ -111,15 +118,15 @@ room).
 
 **Heterodyne client library.** A conformant implementation of the
 protocol's security-critical logic (event composition, signing,
-delegation checking, feed-status maintenance, retrieval). The spec
+delegation checking, feed-index maintenance, retrieval). The spec
 is implementation- and language-agnostic; conformance is determined
 by the test vectors (§14), not by language or packaging. See spec
 §10.2.
 
 **Indexed event.** An event that belongs in a persona's curated
-feed view and therefore appears as a `feed_status` entry. Default
-classification by kind is given in spec §6.8.1; a publisher MAY
-override per-event via the `["heterodyne_index", "true"|"false"]`
+feed view and therefore appears as a `kind:31007` `e`-tag entry.
+Default classification by kind is given in spec §6.8.1; a publisher
+MAY override per-event via the `["heterodyne_index", "true"|"false"]`
 tag. Contrast with non-indexed event.
 
 **KERI (Key Event Receipt Infrastructure).** A family of identity
@@ -144,23 +151,26 @@ rendering path. See spec §4.3.
 render with a warning indicator, or are hidden. Default:
 accept-with-warning. See spec §3.8.3, §11.1.
 
-**Identity chain.** The linked succession of npubs a persona has
-rotated through. Each rotation produces a paired
-`m.heterodyne.successor.v1` (in the outgoing identity room) and
-`m.heterodyne.predecessor.v1` (in the incoming identity room).
-Followers walk the chain to follow a persona across key rotations.
-See spec §3.5.
+**Identity chain.** Deprecated v0.1.4 term for the single-key
+successor / predecessor / revoke mechanism. Replaced in v0.1.5 by
+KERI inception and rotation events (§3.5).
 
-**Identity pointer (`kind:31005`).** OPTIONAL Nostr event published to
-a persona's vanilla Nostr write relays announcing the matrix-side
-identity room. Lets vanilla Nostr clients (or Heterodyne clients
-discovering a persona via Nostr) find the full identity context. See
-spec §11.3.
+**Identity pointer (`kind:31005`).** Authoritative Nostr
+replaceable event published to a persona's NIP-65 write relays
+naming the persona's currently active Matrix identity room. Lets
+vanilla Nostr clients (or Heterodyne clients discovering a persona
+via Nostr) find the identity context. Verifiers MUST prioritize the
+latest valid `kind:31005` over any locally cached room ID, which
+makes the identity room itself disposable. See spec §3.2, §11.3.
 
-**Identity room.** A Matrix room owned by a persona's identity holder
-whose state events bind the npub to its delegated Matrix accounts,
-declare its outbox addresses, and record the identity chain. The room
-ID is the persona's canonical Heterodyne address.
+**Identity room.** A Matrix room owned by a persona's identity
+holder whose state events bind the npub to its delegated Matrix
+accounts, declare its outbox addresses, and record the persona's
+KERI key event log. The identity room is a **disposable container**
+— if compromised at the Matrix layer, the persona publishes a fresh
+`kind:31005` identity pointer naming a new room, and followers
+follow the pointer without needing to abandon the npub. See spec
+§3.2.
 
 **`matrix:` URI.** Canonical Matrix reference format per MSC2312:
 `matrix:roomid/<id-without-bang>:<server>?via=<server>` for rooms by
@@ -188,9 +198,9 @@ identities in their own right.
 
 **Non-indexed event.** An event that is ephemeral or decorative
 (reactions, zaps, follow-list updates, deletion requests, moderation
-reports) and is NOT referenced from a `feed_status` entry. Visible
-on Nostr relays (or in encrypted rooms) but rendered contextually
-rather than as a standalone feed item. See spec §6.8.
+reports) and is NOT referenced from a `kind:31007` feed index.
+Visible on Nostr relays (or in encrypted rooms) but rendered
+contextually rather than as a standalone feed item. See spec §6.8.
 
 **npub / nsec.** A Nostr public / secret key in bech32 form (`npub1...` /
 `nsec1...`), corresponding to a `secp256k1` keypair. The npub is the
@@ -228,21 +238,18 @@ where they prefer to observe replies and mentions. Repliers SHOULD
 include these destinations in fan-out. Analogous to NIP-65's `read`
 marker. See spec §7.1.
 
-**Retrieval hint.** Per-entry metadata in a `feed_status` entry
-(`retrieval_hints` object) telling receivers where to fetch the
-underlying Nostr event: an array of `nostr_relays` to query via
-NIP-01, and/or an `archive_url` for HTTPS fetch. Covers the common
-case so most receivers never need a retrieval request. See spec
-§6.7.1, §6.9.1.
+**Retrieval hint.** Optional third element of a `kind:31007`
+`e`-tag carrying a relay URL where the referenced event can be
+fetched via standard NIP-01 REQ. Covers the common retrieval case;
+see spec §6.7.1, §6.9.1.
 
 **Retrieval request / response / push.** Three Matrix event types
-(`m.heterodyne.retrieval_request.v1`,
-`m.heterodyne.retrieval_response.v1`,
-`m.heterodyne.retrieval_push.v1`) sent in DM rooms to fetch (or
-proactively share) Nostr events when feed-status retrieval hints
-don't suffice — typically for encrypted events whose Megolm
-sessions a receiver has lost. Receivers verify each returned event
-via its Nostr signature. See spec §6.9.2.
+defined in v0.1.4 drafts for DM-based backfill of events that
+could not be retrieved via Nostr relays. **Removed in v0.1.5**
+because they constituted a Matrix-DM DoS / rate-limit vector;
+historical retrieval is now Nostr-relay-only (Channel 1) plus the
+publisher's optional user-hosted Web Archive (Channel 2). See
+spec §6.9.
 
 **Scoped outbox.** A persona's audience-restricted set of additional
 outbox rooms, recorded as `m.heterodyne.outbox.scoped.v1` state events
