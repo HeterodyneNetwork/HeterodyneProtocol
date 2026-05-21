@@ -107,9 +107,9 @@ NIP-44 gift-wrapped to room members for private rooms. Bounded at
 `previous_index` tags. Replaces the v0.1.4 `m.heterodyne.feed_status.v1`
 Matrix state event. See spec §6.7.
 
-**Feed status.** Deprecated v0.1.4 term for what v0.1.5 calls the
+**Feed status.** Deprecated v0.1.4 term for what v0.2.0 calls the
 "feed index." The `m.heterodyne.feed_status.v1` Matrix state event
-is no longer produced by conformant v0.1.5 clients; verifiers MAY
+is no longer produced by conformant v0.2.0 clients; verifiers MAY
 honor it for read-back compatibility with v0.1.4 publishers.
 
 **Friend circle.** Synonym for distribution list. Different UX surface
@@ -152,7 +152,7 @@ render with a warning indicator, or are hidden. Default:
 accept-with-warning. See spec §3.8.3, §11.1.
 
 **Identity chain.** Deprecated v0.1.4 term for the single-key
-successor / predecessor / revoke mechanism. Replaced in v0.1.5 by
+successor / predecessor / revoke mechanism. Replaced in v0.2.0 by
 KERI inception and rotation events (§3.5).
 
 **Identity pointer (`kind:31005`).** Authoritative Nostr
@@ -245,7 +245,7 @@ see spec §6.7.1, §6.9.1.
 
 **Retrieval request / response / push.** Three Matrix event types
 defined in v0.1.4 drafts for DM-based backfill of events that
-could not be retrieved via Nostr relays. **Removed in v0.1.5**
+could not be retrieved via Nostr relays. **Removed in v0.2.0**
 because they constituted a Matrix-DM DoS / rate-limit vector;
 historical retrieval is now Nostr-relay-only (Channel 1) plus the
 publisher's optional user-hosted Web Archive (Channel 2). See
