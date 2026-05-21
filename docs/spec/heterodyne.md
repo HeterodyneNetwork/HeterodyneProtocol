@@ -1,14 +1,21 @@
 # Heterodyne Protocol Specification
 
-**Version:** 0.1.3 (DRAFT — design pivot: public Matrix rooms as indexes; retrieval protocol)
-**Status:** Working draft. v0.1.3 introduces a substantive design
-change: public Matrix rooms hold only indexes and state, with the
-actual Nostr events on Nostr relays. Private (E2EE) rooms continue
-to carry full encrypted content. The spec also defines an
-indexed-vs-non-indexed event classification, a per-kind default
-indexing policy, and a retrieval/backfill mechanism. The spec is now
-implementation-agnostic — language and runtime choices are out of
-scope.
+**Version:** 0.1.4 (DRAFT — add ATProto attached outbox + social witnesses)
+**Status:** Working draft. v0.1.4 adds an OPTIONAL ATProto (at://)
+attached outbox: a non-load-bearing mirror that lets personas
+publish a public subset of their Heterodyne feed to ATProto for
+adoption reach, with cross-signed npub ↔ DID binding for
+identifiability. The ATProto-side signing key MAY also act as a
+KERI-style social witness on root inception and rotation events
+(see Cold Root + Epoch Keys design,
+`docs/superpowers/specs/2026-05-21-cold-root-epoch-keys-design.md`).
+v0.1.3 introduced the prior design pivot: public Matrix rooms hold
+only indexes and state, with the actual Nostr events on Nostr
+relays. Private (E2EE) rooms continue to carry full encrypted
+content. The spec also defines an indexed-vs-non-indexed event
+classification, a per-kind default indexing policy, and a
+retrieval/backfill mechanism. The spec is implementation-agnostic
+— language and runtime choices are out of scope.
 
 ## System overview
 
@@ -439,6 +446,17 @@ for the user's own UI convenience, but MUST NOT publish those
 correlations to any room or relay.
 
 ### 3.5 Identity chain: persona-preserving key rotation
+
+> **Forward note (v0.1.4).** The Cold Root + Epoch Keys design at
+> `docs/superpowers/specs/2026-05-21-cold-root-epoch-keys-design.md`
+> rewrites this section for v0.2: identity chain by single-key
+> succession is replaced by cold-root + epoch-key hierarchy with
+> KERI-style inception and rotation ceremonies co-signed by the
+> cold root and the Matrix MSK. Peer witness signatures (including
+> ATProto signatures per §11.6.7) MAY be attached to those
+> ceremonies as social-continuity attestations. The §3.5 text below
+> remains normative for v0.1; §11.6.7 references the future KERI
+> events by their working names.
 
 Heterodyne supports persona-preserving key rotation, which vanilla Nostr
 does not natively. A persona's npub MAY be rotated by issuing a paired
@@ -2785,6 +2803,338 @@ as plain `m.text`. Normative guidance:
   Matrix members SHOULD warn the user before sending if the event
   type they're sending would be invisible to vanilla clients.
 
+### 11.6 ATProto attached outbox and social witnesses
+
+This section is OPTIONAL for both publishers and consumers. A
+Heterodyne implementation that does not implement §11.6 remains
+fully conformant.
+
+ATProto (the at:// protocol underlying Bluesky and the broader
+ATProto ecosystem) is treated as a **decorative attached outbox** —
+analogous to a vanilla Nostr relay fan-out (§10.5), not a load-bearing
+identity or transport layer. The canonical persona identity remains
+the npub anchored in a Matrix identity room (§3); ATProto is a
+publish target a persona MAY opt in to for adoption reach and a
+co-signer a persona MAY enlist as a KERI-style social witness on
+root events.
+
+#### 11.6.1 Goals and non-goals
+
+Goals:
+
+1. Let a persona publish a subset of their public Heterodyne feed to
+   ATProto so Bluesky-native users can read, follow, and reply
+   without leaving their preferred client.
+2. Provide a cryptographically verifiable bidirectional binding
+   between the persona's npub and an ATProto DID, so each side can
+   surface "verified Bluesky: @alice.example" / "verified Heterodyne:
+   alice's identity room" as a trust signal.
+3. Permit the ATProto-side signing key to act as a peer witness on
+   `m.heterodyne.keri_inception.v1` and `m.heterodyne.keri_rotation.v1`
+   ceremonies (Cold Root + Epoch Keys design §6.6), giving an
+   additional social-continuity signal especially for `none`-strategy
+   recovery where no cryptographic chain to the prior cold root
+   exists.
+
+Non-goals:
+
+- ATProto is **not** the canonical identity. The DID is a peer
+  identifier, not a replacement for the npub.
+- Private (E2EE) content MUST NOT mirror to ATProto. The §6.6
+  invariant that protects encrypted content from leaking to public
+  Nostr applies identically here.
+- ATProto records do not feed into a persona's Heterodyne
+  `feed_status`. The Heterodyne feed remains Nostr-anchored; the
+  ATProto mirror is downstream.
+- No part of Heterodyne identity rotation or revocation depends on
+  ATProto liveness. If the persona's PDS goes down or their DID is
+  deplatformed, identity and feed continuity are unaffected.
+
+#### 11.6.2 DID resolution policy
+
+A persona's ATProto identifier is a DID. Heterodyne implementations
+SHOULD support:
+
+- `did:web:<host>` — fully decentralized, resolution via HTTPS GET
+  against the host's `/.well-known/did.json`. RECOMMENDED for
+  personas who own a domain.
+- `did:plc:<id>` — resolution via the PLC directory currently
+  operated by Bluesky PBC. Heterodyne implementations MAY support
+  `did:plc:` but MUST surface to the user that PLC is a centralized
+  directory whose operator can refuse updates.
+
+Other DID methods (e.g., `did:key`) are out of scope for v0.1.
+
+Heterodyne clients SHOULD cache resolved DID documents with a
+moderate TTL (e.g., 1 hour) and SHOULD invalidate the cache when an
+ATProto-signed event under that DID fails signature verification
+against the cached signing key.
+
+#### 11.6.3 Binding: `m.heterodyne.atproto_link.v1`
+
+The Heterodyne-side half of the npub ↔ DID binding is a state event
+in the persona's identity room:
+
+```json
+{
+  "type": "m.heterodyne.atproto_link.v1",
+  "state_key": "<DID, e.g. did:web:alice.example>",
+  "content": {
+    "spec_version": "0.1",
+    "did": "did:web:alice.example",
+    "did_signing_key_id": "<key id from the DID document, e.g. #atproto>",
+    "atproto_record_uri": "at://did:web:alice.example/social.heterodyne.identityLink/self",
+    "nostr_attestation": {
+      "pubkey": "<persona cold-root npub hex>",
+      "created_at": 0,
+      "kind": 31000,
+      "tags": [
+        ["heterodyne", "atproto_link"],
+        ["did", "did:web:alice.example"],
+        ["matrix_identity_room", "matrix:roomid/...:server"]
+      ],
+      "content": "",
+      "sig": "<64-byte hex>"
+    },
+    "atproto_attestation": {
+      "alg": "<DID-document-specified signature algorithm>",
+      "sig": "<base64url signature by the DID signing key over the canonical binding payload>",
+      "signed_payload_hash": "<32-byte hex SHA-256 of the canonical binding payload>"
+    },
+    "established_at": 0,
+    "revoked_at": null
+  }
+}
+```
+
+Normative rules:
+
+- `state_key` is the DID. Multiple DIDs MAY be linked to the same
+  persona by publishing multiple `m.heterodyne.atproto_link.v1`
+  state events with distinct state keys.
+- The Matrix sender of the state event MUST be a currently-active
+  delegated MXID for the persona's npub (§3.3).
+- `nostr_attestation.pubkey` MUST equal the persona's current cold-root
+  npub (per the Cold Root + Epoch Keys design, this is the cold root;
+  in spec versions predating that design's adoption, it is the
+  persona's npub per §3.2).
+- `nostr_attestation.tags` MUST contain `["did", "<DID>"]` matching
+  `state_key` and `["matrix_identity_room", "<matrix: URI>"]`
+  matching the identity room containing this event.
+- `atproto_attestation.sig` MUST verify under the DID-document signing
+  key identified by `did_signing_key_id` over the canonical binding
+  payload defined in §11.6.4.
+- Receivers MUST verify BOTH signatures before treating the binding
+  as authentic. A binding with only one valid signature MUST be
+  rejected.
+- `revoked_at`, when non-null, supersedes the binding from that
+  timestamp forward. Either side MAY revoke unilaterally by
+  publishing an updated state event with `revoked_at` set; receivers
+  SHOULD reflect revocation in their UI.
+
+The ATProto-side half of the binding is a record on the persona's
+PDS under a lexicon Heterodyne registers as `social.heterodyne.identityLink`
+(the lexicon definition lives outside this spec; the record content
+mirrors the binding payload below). Receivers walking from ATProto
+to Heterodyne fetch this record, verify its DID signature, follow
+its `matrix_identity_room` pointer, and confirm that the
+`m.heterodyne.atproto_link.v1` event in that room agrees.
+
+#### 11.6.4 Canonical binding payload
+
+Both signatures cover the same canonical payload to prevent
+half-binding forgery:
+
+```
+canonical_binding_payload = JSON-canonical-serialize({
+  "spec_version": "0.1",
+  "did": "<DID>",
+  "did_signing_key_id": "<key id>",
+  "matrix_identity_room": "<matrix: URI>",
+  "npub": "<persona cold-root npub hex>",
+  "established_at": <int>
+})
+```
+
+The Nostr signature is over the canonical Nostr event serialization
+per §3.0.1 (with `content` set to the canonical_binding_payload as
+a JSON string). The ATProto signature is over the SHA-256 of the
+canonical_binding_payload, per the DID document's signing-algorithm
+convention.
+
+#### 11.6.5 Mirror outbox: `m.heterodyne.outbox.atproto.v1`
+
+A persona advertising an ATProto mirror publishes the following
+state event in their identity room:
+
+```json
+{
+  "type": "m.heterodyne.outbox.atproto.v1",
+  "state_key": "<DID>",
+  "content": {
+    "spec_version": "0.1",
+    "did": "<DID>",
+    "pds_endpoint": "https://pds.alice.example",
+    "mirror_rooms": [
+      "matrix:roomid/<public_broadcast_room_id>:<server>",
+      "matrix:roomid/<public_moderated_room_id>:<server>"
+    ],
+    "mirror_kinds": [1, 30023],
+    "content_adaptation": "truncate_with_link",
+    "appended_at": 0
+  }
+}
+```
+
+Field semantics:
+
+- `state_key` MUST equal the DID and MUST correspond to a currently
+  active `m.heterodyne.atproto_link.v1` (non-revoked binding).
+- `mirror_rooms` MUST be a subset of the persona's
+  `public_broadcast` and `public_moderated` rooms. Rooms not listed
+  do not mirror.
+- `mirror_kinds` is an explicit Nostr-kind allow-list. Only events
+  whose Nostr kind is in this list mirror. Events not on the list
+  are not mirrored regardless of indexed-vs-non-indexed status (§6.8).
+- `content_adaptation` SHOULD be one of:
+  - `truncate_with_link` — publish a truncated ATProto record with
+    a link back to the canonical Heterodyne event (via either the
+    Matrix identity room or a Nostr relay URL from the persona's
+    outbox). Suitable for kind:1 microblogs longer than the ATProto
+    record limit, and for kind:30023 long-form.
+  - `full_or_skip` — publish full content only if it fits within
+    ATProto record limits; otherwise skip mirroring for that event.
+
+Default: mirroring is **off**. A persona must explicitly publish
+`m.heterodyne.outbox.atproto.v1` listing the rooms and kinds they
+want mirrored. Heterodyne clients implementing §11.6 SHOULD provide
+UI to compose this state event safely (with previews of what will
+mirror).
+
+#### 11.6.6 Mirror publication flow
+
+For each event the persona signs in a room listed in
+`mirror_rooms.mirror_kinds`:
+
+1. The client performs the standard Heterodyne publication: Nostr
+   relay fan-out (§10.5) plus a feed_status entry in the relevant
+   Matrix room (§6.7).
+2. The client constructs an ATProto record under the appropriate
+   lexicon (default mapping: Nostr kind:1 → `app.bsky.feed.post`;
+   kind:30023 → `app.bsky.feed.post` with a link to the canonical
+   Heterodyne event). The record SHOULD include a tag or facet
+   referencing the canonical Nostr event id so vanilla Bluesky
+   clients can deduplicate if they encounter the mirror twice via
+   different channels.
+3. The client publishes the record to the persona's PDS using
+   ATProto's standard publication mechanism.
+
+A mirror publication failure (PDS unreachable, record rejected)
+MUST NOT fail the parent Heterodyne publication. Mirror is a
+best-effort additional channel; the canonical publication remains
+the Nostr relay + Matrix feed_status pair.
+
+Heterodyne clients SHOULD NOT auto-retry mirror publications
+aggressively; the persona's content is already canonical on Nostr
+and Matrix.
+
+#### 11.6.7 Social witnessing on KERI ceremonies
+
+When a persona has an active `m.heterodyne.atproto_link.v1`, the
+DID's signing key MAY co-sign the persona's KERI inception and
+rotation events as a **peer witness** (Cold Root + Epoch Keys
+design §6.6).
+
+For `m.heterodyne.keri_inception.v1` and `m.heterodyne.keri_rotation.v1`:
+
+- The DID signing key is treated as one peer witness signature
+  among the optional witness set.
+- The witness signature is over the same canonical inception or
+  rotation payload that the cold root and Matrix MSK signatures
+  cover.
+- An ATProto witness signature is **additive only** — it does not
+  satisfy any MUST signature requirement. Inception still requires
+  cold root + Matrix MSK. `committed`-strategy rotation still
+  requires cold root + Matrix MSK plus the cryptographic chain to
+  the prior root. `none`-strategy rotation still requires Matrix
+  MSK; ATProto SHOULD be present as a witness because witness
+  signatures are the primary continuity signal in that case, but
+  the rotation does not become invalid if the persona chose other
+  witnesses instead.
+
+Why ATProto is a strong witness candidate:
+
+- The DID document's signing-key history is itself an auditable
+  chain (especially `did:web` resolved against HTTPS+DNS, and
+  `did:plc:` against the PLC operation log). A future follower
+  verifying a `none`-strategy rotation gains a second independent
+  cryptographic record of "the persona's owner controlled this DID
+  at this timestamp."
+- Bluesky-native followers who don't run Heterodyne clients can
+  still observe the witness signature on the ATProto side and form
+  social-trust judgments about whether to follow the rotation.
+- For users whose primary public visibility is on Bluesky, the
+  ATProto witness is the most natural social-attestation surface
+  available.
+
+A KERI rotation event listing an ATProto witness signature MAY
+also reference the ATProto-side record id where the persona has
+published a corresponding rotation announcement, so an external
+observer can verify the witness signature without trusting the
+Heterodyne client that produced the Matrix state event.
+
+#### 11.6.8 Verifier behavior
+
+A Heterodyne client encountering an `m.heterodyne.atproto_link.v1`
+MAY:
+
+- Display the linked DID (e.g., `did:web:alice.example`) as a
+  verified secondary identifier alongside the persona's primary
+  display name, but ONLY after verifying both halves of the
+  binding (§11.6.3).
+- Surface the link as clickable, opening the ATProto-side identity
+  in a Bluesky-compatible client.
+- For Bluesky handles backed by `did:web` whose hostname matches a
+  domain the persona controls (e.g., `did:web:alice.example` →
+  handle `alice.example`), display the handle with a "DNS-anchored"
+  badge.
+
+A Heterodyne client encountering an inbound event that *claims* an
+ATProto identity binding (e.g., via NIP-89 metadata or a Bluesky
+profile crawl) without a verified `m.heterodyne.atproto_link.v1`
+in the persona's identity room MUST treat the claim as unverified
+and SHOULD NOT display it as authoritative.
+
+For KERI rotation verification (§11.6.7), a Heterodyne client
+MAY but is not required to verify ATProto witness signatures.
+Clients that do not implement §11.6 ignore the witness signature
+and rely on the cold root + Matrix MSK + non-ATProto witnesses,
+which is sufficient per §6.6 of the Cold Root + Epoch Keys design.
+
+#### 11.6.9 Adoption-vector rationale
+
+ATProto's cultural visibility — particularly Bluesky's mainstream
+user base — exceeds Nostr's and Matrix's combined. Mirroring a
+public Heterodyne feed there creates a low-friction discovery
+funnel: a Bluesky follower sees the persona's posts in a client
+they already use; the verified `m.heterodyne.atproto_link.v1`
+binding surfaces a "find me on Heterodyne" affordance; curious
+followers can install a Heterodyne client to reach the canonical
+identity and private circles.
+
+This is the only motivation for §11.6's existence. The protocol
+does not depend on ATProto for any correctness property; the
+section exists because empirical adoption needs a funnel, and
+ATProto's reach is currently the most pragmatic source of one
+without compromising Heterodyne's Nostr-canonical identity model.
+
+If a different attached-outbox ecosystem becomes a stronger
+adoption vector in the future, §11.6 is the template for adding
+it: per-protocol binding state event, mirror outbox state event,
+optional KERI witness role. The current spec defines one such
+attached outbox (ATProto); future minor versions MAY define
+others.
+
 ## 12. Versioning and capability negotiation
 
 ### 12.1 Strict semver
@@ -2847,6 +3197,8 @@ Schema:
       "m.heterodyne.retrieval_request.v1",
       "m.heterodyne.retrieval_response.v1",
       "m.heterodyne.retrieval_push.v1",
+      "m.heterodyne.atproto_link.v1",
+      "m.heterodyne.outbox.atproto.v1",
       "m.heterodyne.user_prefs.v1",
       "m.heterodyne.persona_config.v1",
       "m.heterodyne.key_backup.v1",

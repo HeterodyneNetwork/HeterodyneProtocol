@@ -32,6 +32,25 @@ the publisher (or a service of their choosing); the spec does not
 host, specify, or guarantee any archive infrastructure. See spec
 §6.7.1, §6.9.1.
 
+**ATProto attached outbox.** An OPTIONAL publish target (a PDS
+operated by or on behalf of the persona) that mirrors a configured
+subset of the persona's public Heterodyne feed to ATProto / Bluesky
+for adoption reach. Non-load-bearing — the persona's canonical
+identity and feed remain Nostr-anchored. See spec §11.6.
+
+**ATProto link.** A double-signed cryptographic binding between a
+persona's npub and an ATProto DID, published as
+`m.heterodyne.atproto_link.v1` in the identity room and mirrored
+as a `social.heterodyne.identityLink` record on the persona's PDS.
+Receivers MUST verify both signatures before treating the link as
+authentic. See spec §11.6.3.
+
+**Attached outbox (general).** A non-load-bearing publish target
+in an ecosystem other than the canonical Nostr + Matrix pair (e.g.,
+a vanilla Nostr relay, an ATProto PDS). Provides reach without
+changing trust roots. Future spec versions MAY define attached
+outboxes for additional ecosystems.
+
 **Bridge.** Cross-protocol translation logic between Nostr and Matrix
 event formats. In Heterodyne the bridge is **client-side** — part
 of the user's client implementation — not a separate process or
@@ -59,6 +78,12 @@ from both npubs; single-signed claims are rejected. See spec §7.5.
 Matrix MXID to publish events on behalf of the persona's npub.
 Double-signed by both the npub (proving authorization) and the MXID
 (proving acknowledgement). See spec §3.3.
+
+**DID (Decentralized Identifier).** An ATProto-side identifier of
+the form `did:web:<host>` (DNS+HTTPS-resolved) or `did:plc:<id>`
+(resolved against the PLC directory). In Heterodyne, a DID is a
+peer identifier — never canonical — used in §11.6 for the attached
+ATProto outbox and as an optional KERI witness key. See spec §11.6.2.
 
 **Distribution list.** UX label for a categorized outbox room (e.g.,
 "close friends", "work"). Implementation is a normal Matrix room with
@@ -96,6 +121,17 @@ feed view and therefore appears as a `feed_status` entry. Default
 classification by kind is given in spec §6.8.1; a publisher MAY
 override per-event via the `["heterodyne_index", "true"|"false"]`
 tag. Contrast with non-indexed event.
+
+**KERI (Key Event Receipt Infrastructure).** A family of identity
+protocols characterized by inception and rotation events
+co-signable by the identity holder plus peer witnesses; witnesses
+provide social-continuity attestation without granting authority.
+In Heterodyne (Cold Root + Epoch Keys design, §3.5 in v0.2),
+inception and rotation events MUST be co-signed by the cold root
+and Matrix MSK; peer witnesses (including ATProto signatures per
+§11.6.7) MAY be added. Particularly load-bearing for `none`-strategy
+rotation where no cryptographic chain to the prior cold root
+exists.
 
 **`heterodyne_nostr_sig`.** Optional field on a bare `m.room.message`
 event carrying a Nostr-signed proof of the message content. Lets a
@@ -163,6 +199,20 @@ canonical Heterodyne identity for a persona.
 **Outbox room.** A Matrix room where a persona publishes content. The
 persona is the room admin. Followers subscribe by joining. Multiple
 outbox rooms per persona enable distribution-list semantics.
+
+**PDS (Personal Data Server).** ATProto term for the server hosting
+a user's signed records. In Heterodyne the PDS is the publish target
+for an attached ATProto outbox (§11.6); the spec is agnostic between
+hosted (Bluesky-operated) and self-hosted PDSes, though self-hosted
+is RECOMMENDED for resilience.
+
+**Peer witness.** A third-party signer on a KERI inception or
+rotation event whose signature provides a social-continuity
+attestation without granting authority. Witness signatures do NOT
+satisfy any MUST signature requirement. Particularly important for
+`none`-strategy rotation where they are the primary continuity
+signal. ATProto DIDs are one source of peer witness signatures
+(§11.6.7).
 
 **Persona.** A distinct Heterodyne identity: one npub, one identity
 room, one set of delegations, one set of outbox rooms. A user MAY hold
