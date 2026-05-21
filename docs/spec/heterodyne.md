@@ -1,7 +1,7 @@
 # Heterodyne Protocol Specification
 
-**Version:** 0.1.5 (DRAFT — Nostr-native feed index, KERI commit, explicit room taxonomy)
-**Status:** Working draft. v0.1.5 makes substantive structural
+**Version:** 0.2.0 (DRAFT — Nostr-native feed index, KERI commit, explicit room taxonomy)
+**Status:** Working draft. v0.2.0 makes substantive structural
 changes following external review: (a) the per-room feed index is
 no longer a Matrix state event — it is a Nostr replaceable event
 (`kind:31007`) published to relays (and, for private rooms,
@@ -524,7 +524,7 @@ Heterodyne uses **KERI** (Key Event Receipt Infrastructure) for all
 root inception, key rotation, and revocation ceremonies. The
 v0.1.4 single-key successor / predecessor / revoke chain
 (`m.heterodyne.successor.v1` / `m.heterodyne.predecessor.v1` /
-`m.heterodyne.revoke.v1`) is **deprecated and removed in v0.1.5**:
+`m.heterodyne.revoke.v1`) is **deprecated and removed in v0.2.0**:
 it was vulnerable to "fork-freezing" attacks where a holder of a
 prior epoch key could publish a forked chain that a subset of
 verifiers would race-accept, splitting the persona's followers
@@ -561,14 +561,14 @@ algorithms are normative in the Cold Root + Epoch Keys design
 document at
 [`docs/superpowers/specs/2026-05-21-cold-root-epoch-keys-design.md`](superpowers/specs/2026-05-21-cold-root-epoch-keys-design.md).
 That document is incorporated by reference into this section;
-implementations claiming Heterodyne v0.1.5 conformance MUST
+implementations claiming Heterodyne v0.2.0 conformance MUST
 implement it.
 
 #### 3.5.1 Migration from v0.1.4 single-key chains
 
 Personas that established their identity under v0.1.4's chain
 mechanism MUST migrate to a KERI inception before publishing any
-v0.1.5 content. The migration ceremony is:
+v0.2.0 content. The migration ceremony is:
 
 1. The persona publishes a fresh `m.heterodyne.keri_inception.v1`
    state event in their identity room, with sequence number `0`,
@@ -577,7 +577,7 @@ v0.1.5 content. The migration ceremony is:
 2. Any prior `m.heterodyne.successor.v1` / `m.heterodyne.predecessor.v1` /
    `m.heterodyne.revoke.v1` state events MAY remain in room state
    for archival readers but are no longer authoritative.
-3. Verifiers implementing v0.1.5 MUST ignore the deprecated state
+3. Verifiers implementing v0.2.0 MUST ignore the deprecated state
    event types when a valid KERI inception is present.
 
 A persona that has not migrated by the time a verifier last
@@ -1016,7 +1016,7 @@ default, so the wrap-mode column for public rooms is effectively
 N/A. The full Nostr events for public content live on Nostr relays
 (§10.5).
 
-The v0.1.5 room taxonomy encodes the wrap-mode default directly in
+The v0.2.0 room taxonomy encodes the wrap-mode default directly in
 the room kind: `*_verifiable` rooms default to wrapped (authentic),
 `*_deniable` rooms default to bare (Megolm-deniable). The choice
 is therefore visible to senders before they post and visible to
@@ -1156,7 +1156,7 @@ contract recorded explicitly as a state event so clients can
 present appropriate UI and so other Heterodyne clients know which
 behaviors apply.
 
-The v0.1.5 taxonomy makes the verifiable-vs-deniable axis
+The v0.2.0 taxonomy makes the verifiable-vs-deniable axis
 explicit. The two private group kinds (`private_verifiable`,
 `private_deniable`) and the two DM kinds (`dm_verifiable`,
 `dm_deniable`) replace v0.1.4's `private_community` and `dm`
@@ -1591,9 +1591,9 @@ feed index by publishing a replaceable Nostr event of
 index is signed by the persona's npub directly, so verifiers can
 check authenticity without trusting any intermediary.
 
-This is a substantive v0.1.5 change. The previous
+This is a substantive v0.2.0 change. The previous
 `m.heterodyne.feed_status.v1` Matrix state event from v0.1.4 is
-deprecated and MUST NOT be produced by v0.1.5 clients. Verifiers
+deprecated and MUST NOT be produced by v0.2.0 clients. Verifiers
 MAY continue to honor it for read-back compatibility with v0.1.4
 publishers, but MUST treat the Nostr `kind:31007` index as
 authoritative whenever one is present.
@@ -1822,7 +1822,7 @@ forbidden.** Earlier drafts defined a `m.heterodyne.retrieval_request.v1`
 / `m.heterodyne.retrieval_response.v1` / `m.heterodyne.retrieval_push.v1`
 trio of DM event types as an encrypted fallback channel for
 events that could not be retrieved via Nostr relays. The mechanism
-is removed in v0.1.5 because it created a Matrix-DM DoS / rate-limit
+is removed in v0.2.0 because it created a Matrix-DM DoS / rate-limit
 vector — any peer could ask any other peer for arbitrary historical
 events, and any publisher could spray unsolicited "pushes" through
 DM rooms. The performance / abuse tradeoff did not justify the

@@ -62,7 +62,7 @@ Vanilla Nostr's key-rotation pain (rotating means abandoning your
 followers) is solved by committing to **KERI** (Key Event Receipt
 Infrastructure) for root inception and rotation: explicit sequence
 numbering, threshold witnesses, deterministic fork resolution. The
-v0.1.4 single-key successor/predecessor chain was retired in v0.1.5
+v0.1.4 single-key successor/predecessor chain was retired in v0.2.0
 because it was vulnerable to "fork-freezing" attacks. The exact
 KERI payload schemas are in the Cold Root + Epoch Keys design at
 `docs/superpowers/specs/2026-05-21-cold-root-epoch-keys-design.md`.
@@ -100,7 +100,7 @@ archive pointer. Vanilla Matrix clients peeking at a
 `public_broadcast` room see an effectively empty timeline;
 that's the design.
 
-This is a v0.1.5 change from v0.1.4. v0.1.4 stored feed indexes
+This is a v0.2.0 change from v0.1.4. v0.1.4 stored feed indexes
 as Matrix state events (`m.heterodyne.feed_status.v1`), but that
 made the index mutable by anyone with state-write power in the
 room — a hostile homeserver admin could silently rewrite a
@@ -140,7 +140,7 @@ advertised as `m.heterodyne.archive.v1` in the identity room
 (Channel 2). The spec does NOT host an archive service; archive
 infrastructure is each publisher's responsibility. Matrix-DM
 backfill requests / responses / pushes are **forbidden** in
-v0.1.5 (DoS / rate-limit vector); events not retrievable via the
+v0.2.0 (DoS / rate-limit vector); events not retrievable via the
 two channels are considered permanently lost.
 
 ### 4b. Bridge: pure client-side, any homeserver works unmodified

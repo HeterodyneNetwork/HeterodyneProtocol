@@ -29,7 +29,7 @@ Nostr DMs/groups: Megolm and MLS create a shared session for the room, so the
 bridge encrypts once and Matrix handles key distribution to authorized
 members.
 
-## Room taxonomy (v0.1.5)
+## Room taxonomy (v0.2.0)
 
 | Room kind | Purpose | Encryption | Default wrap mode | Moderation |
 |---|---|---|---|---|
@@ -46,7 +46,7 @@ The v0.1 specification is **fully drafted with diagrams** at
 [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md). All
 load-bearing protocol decisions (identity, envelope, rooms,
 publishing, discovery, moderation, encryption, bridge, interop,
-versioning, security, conformance) are written down. v0.1.5
+versioning, security, conformance) are written down. v0.2.0
 makes substantive structural changes after external review:
 (a) feed indexes are migrated off Matrix state events to
 Nostr-native `kind:31007` replaceable events, npub-signed and
@@ -71,7 +71,7 @@ attacks. v0.1.4 added the OPTIONAL ATProto attached outbox
 Nostr-relays-for-public-content pivot. The Cold Root + Epoch
 Keys design at
 `docs/superpowers/specs/2026-05-21-cold-root-epoch-keys-design.md`
-specifies the v0.2 identity rewrite that v0.1.5's KERI commitment
+specifies the v0.2 identity rewrite that v0.2.0's KERI commitment
 anticipates. The spec is implementation-agnostic — no particular
 language or runtime is prescribed. Not yet final until v0.2 freeze.
 
