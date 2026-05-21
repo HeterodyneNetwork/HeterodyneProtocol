@@ -48,9 +48,15 @@ encryption, bridge, interop, versioning, security, conformance) are
 written down. v0.1.3 introduced a substantive design pivot: public
 Matrix rooms hold only indexes and state; the actual Nostr events
 for public content live on Nostr relays. Private (E2EE) rooms still
-carry full content. The spec is now implementation-agnostic — no
-particular language or runtime is prescribed. Not yet final until
-v0.2 freeze.
+carry full content. v0.1.4 adds an OPTIONAL ATProto (at://) attached
+outbox (§11.6): a non-load-bearing public mirror with double-signed
+npub ↔ DID binding for identifiability, plus the option of using
+the ATProto signing key as a KERI-style peer witness on root
+inception and rotation ceremonies. The Cold Root + Epoch Keys
+design at `docs/superpowers/specs/2026-05-21-cold-root-epoch-keys-design.md`
+specifies the v0.2 identity rewrite that the KERI hooks anticipate.
+The spec is implementation-agnostic — no particular language or
+runtime is prescribed. Not yet final until v0.2 freeze.
 
 The next milestones are:
 

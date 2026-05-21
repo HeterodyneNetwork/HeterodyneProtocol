@@ -157,6 +157,36 @@ visible to anyone subscribed to the raw room.
 
 See spec §8.
 
+### 7. ATProto as a decorative attached outbox (and KERI witness)
+
+ATProto is **not** a Heterodyne identity layer. It is treated the
+same way vanilla Nostr relays are: a publish target a persona MAY
+opt in to mirroring a subset of their public feed to. The motivation
+is purely adoption — Bluesky has cultural visibility Nostr and Matrix
+don't, and mirroring a feed there is a low-friction discovery funnel.
+
+The persona's canonical identity remains the npub anchored in the
+Matrix identity room. A cryptographically verifiable npub ↔ DID
+binding (double-signed: npub signs DID, DID signs npub) lets each
+side surface "verified counterpart" trust signals without elevating
+ATProto to a trust root. Private E2EE content never mirrors.
+
+Independently of mirroring, the ATProto signing key MAY co-sign a
+persona's KERI inception and rotation events (see the Cold Root +
+Epoch Keys design) as a peer witness. ATProto's auditable
+DID-document key history makes it a strong continuity witness for
+the `none`-strategy rotation case, where no cryptographic chain to
+the prior cold root exists. The witness signature is additive — it
+does not satisfy any MUST signature requirement.
+
+This is the v0.1.4 addition. Its scope is bounded: opt-in per room
+and per kind, off by default, and reversible (removing ATProto
+support is a local change). The template — per-protocol binding,
+mirror outbox, optional KERI witness role — is reusable for future
+ecosystems should one emerge with stronger adoption signal.
+
+See spec §11.6.
+
 ## High-level diagram
 
 ```mermaid
