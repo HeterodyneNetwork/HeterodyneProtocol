@@ -208,9 +208,11 @@ sig: <signed by cold_root>
 
 ### 5.2 Kind 1044 — Lineage attestation (append-only)
 
-One event per change. Tagged by `op`. NIP-03 OpenTimestamps anchoring is
-**REQUIRED** for `genesis_commitment` and `root_rotation`; **RECOMMENDED**
-for all other ops.
+One event per change. Tagged by `op`. NIP-03 OpenTimestamps anchoring
+is **REQUIRED** for `genesis_commitment`, `root_rotation`,
+`device_revoke`, `epoch_revoke`, and `root_revoke`. RECOMMENDED for all
+other ops. The `nip03` tag references a kind:1040 event (per NIP-03)
+that carries the OTS proof; it does not embed the proof inline.
 
 ```
 kind: 1044
@@ -223,17 +225,19 @@ content: ""
 sig: <signed by cold_root or new_cold_root per op>
 ```
 
-Op-specific tags:
+Op-specific tags. The `["nip03", "<kind_1040_event_id>"]` tag is a
+reference to a NIP-03 event carrying the OTS proof, not an embedded
+proof.
 
 | op | Required tags |
 |---|---|
-| `genesis_commitment` | `["commit_pubkey", "<R2_pubkey>"]`, `["commit_path", "m/44'/1237'/<persona+1>'/0'/0'"]`, `["nip03", "<anchor_data>"]` |
+| `genesis_commitment` | `["commit_pubkey", "<R2_pubkey>"]`, `["commit_path", "m/44'/1237'/<persona+1>'/0'/0'"]`, `["nip03", "<kind_1040_event_id>"]` |
 | `epoch_advance` | `["epoch", "<n>"]`, `["prev_epoch", "<n-1>"]`, `["effective_at", "<ts>"]` |
 | `device_add` | `["epoch", "<n>"]`, `["device", "<d>"]`, `["pubkey", "<hex>"]`, `["effective_at", "<ts>"]`, optional `["label", "<str>"]` |
-| `device_revoke` | `["pubkey", "<hex>"]`, `["revoked_at", "<ts>"]`, `["reason", "<str>"]` |
-| `epoch_revoke` | `["epoch", "<n>"]`, `["revoked_at", "<ts>"]`, `["reason", "<str>"]` |
-| `root_revoke` | `["revoked_at", "<ts>"]`, `["reason", "<str>"]` — self-burn for `none` |
-| `root_rotation` | **Valid only for `committed` strategy.** Signed by **NEW** root R2; `["prior_root", "<R1_pubkey>"]`, `["nip03", "<anchor_data>"]`. For `none`-strategy roots, no NIP-level rotation event exists; Heterodyne uses its KERI ceremony (§6.6) instead. |
+| `device_revoke` | `["pubkey", "<hex>"]`, `["revoked_at", "<ts>"]`, `["reason", "<str>"]`, `["nip03", "<kind_1040_event_id>"]` |
+| `epoch_revoke` | `["epoch", "<n>"]`, `["revoked_at", "<ts>"]`, `["reason", "<str>"]`, `["nip03", "<kind_1040_event_id>"]` |
+| `root_revoke` | `["revoked_at", "<ts>"]`, `["reason", "<str>"]`, `["nip03", "<kind_1040_event_id>"]` — self-burn for `none` |
+| `root_rotation` | **Valid only for `committed` strategy.** Signed by **NEW** root R2; `["prior_root", "<R1_pubkey>"]`, `["nip03", "<kind_1040_event_id>"]`. For `none`-strategy roots, no NIP-level rotation event exists; Heterodyne uses its KERI ceremony (§6.6) instead. |
 
 External-commitment variants of `genesis_commitment` use additional
 tags: `["commit_hash", "<hex>"]` carries the argon2id digest for #2237
@@ -259,25 +263,48 @@ attribute events to the correct cold root without a per-event lookup.
 
 ### 5.4 Backdated `revoked_at`
 
-Any revocation MAY set `revoked_at` earlier than the event's
-`created_at` (handles "I just realized last Tuesday's leak"). Verifiers
-MUST honor `revoked_at` as authoritative for the start of invalidity,
-**bounded below** by the earliest NIP-03 anchor proving the cold root
-was operating normally at that time. This prevents an attacker holding
-a stolen root from backdating a revocation to retroactively invalidate
-legitimate history.
+All revocation events (`device_revoke`, `epoch_revoke`, `root_revoke`)
+MUST carry a NIP-03 anchor (per §5.2). The anchor proves *when the
+revocation event itself was published*, independent of any `revoked_at`
+the event declares.
+
+A revocation MAY set `revoked_at` earlier than the event's `created_at`
+(handles "I just realized last Tuesday's leak"). Verifiers MUST honor
+`revoked_at` as authoritative for the start of invalidity, **bounded
+below** by the earliest NIP-03 anchor proving the cold root was
+operating normally at that time. Concretely: a backdated `revoked_at`
+MUST NOT precede the NIP-03 anchor of any prior `epoch_advance`,
+`device_add`, or other non-revocation lineage event that proves the
+cold root was the legitimate signer during the disputed window. This
+prevents an attacker holding a stolen root from backdating a revocation
+to retroactively invalidate legitimate history.
+
+### 5.4.1 NIP-03 anchor format
+
+Per NIP-03, OTS proofs live in separate kind:1040 events. The
+referenced kind:1040 event MUST carry an `["e", "<lineage_event_id>"]`
+tag pointing back at the lineage event, and its `content` MUST be the
+base64-encoded `.ots` file with at least one Bitcoin attestation (no
+pending-only attestations). Clients fetch the kind:1040 event via
+standard relay queries; verification is per NIP-03's flow.
 
 ---
 
 ## 6. Heterodyne integration
 
-### 6.1 Removals
+### 6.1 Removals and reuses
 
 - §3.5 (identity chain) and §3.5.0 (chain edge cases): removed
   entirely. The diagram, doubly-linked successor/predecessor pair, and
   forked-chain rules go away.
 - §3.5.1 revocation: removed in current form, rewritten below.
-- Kind 31002 (`m.heterodyne.successor.v1`): freed.
+- Kind 31002 (`m.heterodyne.successor.v1`): freed, **reused** as
+  `m.heterodyne.keri_inception.v1` (§6.10).
+- Kind 31003 (`m.heterodyne.revoke.v1`): freed, **reused** as
+  `m.heterodyne.keri_rotation.v1` (§6.10). Revocation semantics move
+  to the NIP's kind 1044 ops, wrapped in
+  `m.heterodyne.epoch_attestation.v1` (which embeds NIP kind 1044
+  directly without a new Heterodyne kind).
 
 ### 6.2 §3 identity model — cold-root MUST
 
@@ -327,24 +354,53 @@ Alternatives offered to users (informational):
   subkey on the YubiKey); NIP-46 bunker on a dedicated device;
   NIP-55 Android signer.
 - Airgap paper / steel / offline disk holding the BIP39 mnemonic.
-- Encrypted-in-identity-room: cold root nsec wrapped under NIP-49 or a
-  Matrix-recovery-key-derived KDF, stored as encrypted state event.
+- Encrypted-in-identity-room (normative, MAY): see §6.5.1 below.
 
 Threat models for each option documented inline.
+
+#### 6.5.1 Encrypted-in-identity-room backup (normative format)
+
+If a user opts to store the cold-root backup in the identity room, the
+Heterodyne client MUST use the following format:
+
+- Matrix state event type: `m.heterodyne.cold_root_backup.v1`
+- Inner Nostr kind: **31006** (Heterodyne-reserved)
+- `state_key`: `""` (one backup per persona)
+- Content: a NIP-49 password-encrypted blob containing the cold root
+  nsec (or the BIP39 mnemonic, at the user's choice). The password is
+  user-held, not stored on the homeserver. Heterodyne clients MUST
+  prompt for the password at decryption time and MUST NOT cache it
+  beyond the user-configured TTL.
+- The state event is itself encrypted at rest via MSC4362 encrypted
+  state.
+
+Threat profile: defeated only by simultaneous compromise of (a) the
+Matrix account credentials sufficient to read the identity room's
+encrypted state, AND (b) the user-held backup password.
+
+Clients SHOULD warn users that encrypted-in-identity-room backup is
+the *highest-attack-surface* option among the alternatives in §6.5
+and SHOULD nudge toward USB or hardware backup unless the user
+explicitly opts in.
 
 ### 6.6 New §3.5.3 — Root creation and recovery (KERI ceremony)
 
 Two ceremonies, same KERI event shape:
 
 - **Inception** at first root creation. State event
-  `m.heterodyne.keri_inception.v1`. Co-signed by new cold root + Matrix
-  MSK. Optional witness signatures from peer Heterodyne identities.
+  `m.heterodyne.keri_inception.v1` (kind **31002**). Co-signed by new
+  cold root + Matrix MSK — both signatures MUST be present. Peer
+  witness signatures MAY be added but are not required at inception
+  (no prior identity to vouch for; chicken-and-egg for first users).
   Establishes the binding `(cold_root, Matrix_MSK)` for the user's
   followers.
 - **Rotation** at either post-loss recovery (`none` strategy) or at
   committed-successor reveal (`committed` strategy). State event
-  `m.heterodyne.keri_rotation.v1`. Co-signed by new cold root + Matrix
-  MSK + optional witnesses. References prior AID.
+  `m.heterodyne.keri_rotation.v1` (kind **31003**). Co-signed by new
+  cold root + Matrix MSK — both MUST sign. Peer witness signatures
+  SHOULD be included, particularly for `none`-strategy rotation where
+  no cryptographic chain to the prior root exists; the witness set is
+  the primary continuity signal in that case. References prior AID.
 
 Continuity verification logic for followers:
 
@@ -394,14 +450,26 @@ clock-skew tolerance, recommended ±5 min) are rejected client-side.
 
 ### 6.10 §3.0 — kind allocations
 
-The kind table updates:
+Final kind table after this design's changes:
 
-- Free kind 31002 (was `m.heterodyne.successor.v1`).
-- Free kind 31003 (was `m.heterodyne.revoke.v1` — superseded by NIP
-  revocation ops).
-- Add Heterodyne wrapper kinds: epoch_summary, epoch_attestation,
-  keri_inception, keri_rotation, cold_root_backup (the last one being
-  the optional encrypted-in-identity-room backup format).
+| Kind | Use | Status |
+|---|---|---|
+| 31000 | Heterodyne: root attestation | unchanged |
+| 31001 | Heterodyne: delegation attestation | unchanged |
+| **31002** | `m.heterodyne.keri_inception.v1` | **reused** (was successor) |
+| **31003** | `m.heterodyne.keri_rotation.v1` | **reused** (was revoke) |
+| 31004 | Heterodyne: related-persona attestation | unchanged |
+| 31005 | Heterodyne: identity pointer (cross-protocol) | unchanged |
+| **31006** | `m.heterodyne.cold_root_backup.v1` (optional) | **new** |
+| 31007-31099 | RESERVED for future Heterodyne use | — |
+| **10044** | NIP: epoch lineage summary (replaceable) | new — NIP kind |
+| **1044** | NIP: epoch lineage attestation (append-only) | new — NIP kind |
+
+The Matrix wrapper events `m.heterodyne.epoch_summary.v1` and
+`m.heterodyne.epoch_attestation.v1` do NOT consume Heterodyne-reserved
+kinds; they embed the NIP kinds 10044 and 1044 directly via the
+existing `nostr_attestation` envelope. This keeps the Heterodyne kind
+table and the NIP kind allocations aligned.
 
 ---
 
@@ -500,22 +568,27 @@ Brief sketches; full sequence diagrams come with the spec writing.
 
 ---
 
-## 10. Open questions for spec writing
+## 10. Resolved design decisions
 
-These are not blocking the design but need to be settled in the spec
-writing phase:
+The following decisions were originally open and have been resolved
+inline in §§5–6:
 
-1. Final kind numbers for Heterodyne wrapper events (currently
-   placeholders).
-2. Whether to require both peer-witness *and* MSK signatures on KERI
-   inception, or allow MSK-only as a baseline.
-3. Exact format of the `nip03` tag payload — embed the OTS proof, or
-   reference an external proof artifact?
-4. Whether `device_revoke` events themselves carry NIP-03 anchors
-   by default (RECOMMENDED vs MUST).
-5. Whether the cold-root-backup encrypted-in-identity-room option is a
-   normative state event kind in the spec or just documented as a
-   client convention.
+1. **Kind numbers** (§6.10). Final allocations:
+   `m.heterodyne.keri_inception.v1` = 31002 (reused);
+   `m.heterodyne.keri_rotation.v1` = 31003 (reused);
+   `m.heterodyne.cold_root_backup.v1` = 31006 (new). Epoch summary and
+   epoch attestation embed NIP kinds 10044 and 1044 directly.
+2. **KERI signature requirements** (§6.6). Inception: MSK + new root
+   MUST sign; witnesses MAY. Rotation: MSK + new root MUST sign;
+   witnesses SHOULD (especially for `none`-strategy).
+3. **`nip03` tag format** (§5.2, §5.4.1). Reference, not embed —
+   the tag carries a kind:1040 event id per NIP-03.
+4. **Revocation NIP-03 requirement** (§5.2, §5.4). All revocation
+   events (`device_revoke`, `epoch_revoke`, `root_revoke`) MUST carry
+   a NIP-03 anchor.
+5. **Cold-root backup in identity room** (§6.5.1). Normative format
+   specified: kind 31006, NIP-49-encrypted, state_key=`""`. MAY be
+   used; clients SHOULD warn it's the highest-attack-surface option.
 
 ---
 
