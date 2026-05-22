@@ -36,17 +36,22 @@ members.
 | `public_broadcast` | Open broadcast (Twitter-style public feed). Content + index on Nostr. | None | N/A — no timeline | Server ACLs + community lists |
 | `public_moderated` | Communities, topic rooms, forums. Content + approvals on Nostr. | None | N/A — no timeline | NIP-72 moderator approvals + policy rooms |
 | `private_verifiable` | Group rooms where authorship is part of the contract (work, records) | Megolm/MLS | wrapped (Nostr-signed) | Single or small admin set |
-| `private_deniable` | Friend circles, casual planning, day-to-day groups | Megolm/MLS | bare (Megolm-deniable) | Single or small admin set |
+| `private_deniable` | Friend circles, casual planning, day-to-day groups | Megolm/MLS | bare (deniable against non-members; defeated by colluding members per ADR-004) | Single or small admin set |
 | `dm_verifiable` | Notarized two-party DMs (agreements, tickets) | Megolm/MLS | wrapped | Participants only |
-| `dm_deniable` | Standard two-party DM | Megolm/MLS | bare | Participants only |
+| `dm_deniable` | Standard two-party DM | Megolm/MLS | bare (deniable against non-members; defeated by counterparty session-key sharing per ADR-004) | Participants only |
 
 ## Project status
 
-The v0.1 specification is **fully drafted with diagrams** at
+The v0.2 specification is **fully drafted with diagrams** at
 [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md). All
 load-bearing protocol decisions (identity, envelope, rooms,
 publishing, discovery, moderation, encryption, bridge, interop,
-versioning, security, conformance) are written down. v0.2.0
+versioning, security, conformance) are written down. Following
+a 2026-05-21 external critique, seven themed ADRs in
+[`docs/adr/`](docs/adr/) record the substantive decisions that
+shaped v0.2.0's current text. Per project convention v0.2.0 is
+revised in place until first-party-client validation closes the
+freeze (no version bump for in-flight design work). v0.2.0
 makes substantive structural changes after external review:
 (a) feed indexes are migrated off Matrix state events to
 Nostr-native `kind:31007` replaceable events, npub-signed and
