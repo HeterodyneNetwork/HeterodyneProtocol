@@ -552,8 +552,11 @@ A delegation is **active** if and only if:
    against confusing the delegation target.)
 4. `nostr_attestation.tags` includes a `["valid_until", "<unix-seconds>"]`
    tag that is either empty (no expiry) or strictly greater than the
-   verifier's current time, within the strict ±5 minute clock-skew
-   bound of §3.2.1.
+   verifier's current wall-clock time. Verifiers MAY apply a small
+   local clock-skew tolerance (RECOMMENDED: 5 minutes) as a clock-drift
+   accommodation. This tolerance is operationally distinct from the
+   §3.2.1 ±5-minute freshness rule, which applies only to
+   `m.heterodyne.root.v1` root attestation events per ADR-004.
 5. No later KERI rotation in this identity room (§3.5) supersedes
    the persona's epoch in a way that revokes this delegation.
 
@@ -1116,6 +1119,343 @@ persona state. Tracked as an open question in
 - **Encrypted nsec backup with lost wrapping secret**: persona is
   unrecoverable from this MXID's backup; rotate via §3.5 from a
   device that still holds the nsec.
+
+### 3.9 Multi-homing coordination (per ADR-009)
+
+The Heterodyne design intuition is one npub on multiple delegated
+MXIDs across multiple homeservers. Three coordination problems arise
+once a persona has more than one delegated MXID: (a) preventing two
+devices from independently signing the same publishable intent; (b)
+deterministic resolution of concurrent `kind:31005` identity-pointer
+updates; (c) revoking one MXID's delegation without rotating the
+persona's npub root.
+
+This subsection specifies the substrate (mutual config-room
+membership), the active-leader election protocol, the publish-lease
+state event, the kind:31005 race tiebreaker, the single-MXID
+revocation procedure, and partition-window recovery semantics.
+
+The design principle is **no unnecessary broadcast**: coordination
+state lives in the per-MXID encrypted config rooms (§3.8), which only
+the persona's own devices can read. The identity room — observed by
+every follower and every federation peer — carries no coordination
+state.
+
+#### 3.9.1 Mutual config-room membership
+
+The §3.8 per-MXID config room model is preserved. Each delegated
+MXID MUST create its own config room on first publish.
+
+Newly-delegated MXIDs MUST invite every currently-delegated MXID of
+the same npub to their new config room and share Megolm history.
+Existing delegated MXIDs MUST invite a newly-observed delegated MXID
+to their config rooms within 60 seconds of observing the new
+delegation attestation in the identity room.
+
+A persona with N delegated MXIDs SHOULD reach a steady state of N
+config rooms with N members each. Transient asymmetric membership
+during invite propagation MUST NOT cause coordination failure (see
+partition-window rules in §3.9.6).
+
+#### 3.9.2 Active-room election
+
+A new state event type `m.heterodyne.active_config_room.v1`
+identifies the currently-active config room. State key MUST be empty
+string. Shape:
+
+```json
+{
+  "active_room_id": "!opaque:server",
+  "active_room_homeserver": "server",
+  "elected_at": <unix-seconds>,
+  "election_id": "<uuid-v4>"
+}
+```
+
+This state event MUST be replicated into EVERY config room of the
+persona by the electing device. Receivers reconcile multiple seen
+active-room pointers by: max `elected_at`, ties broken by **lex-min
+`election_id`**. (This tiebreak rule MUST be applied uniformly across
+all instances and uses below — failover, rollback recovery, and
+parallel elections.)
+
+**Bootstrap.** The first config room created for the persona (lowest
+`m.room.create.origin_server_ts` observed across the persona's
+delegations) is the initial active room. On persona creation, the
+founding MXID MUST publish the initial
+`m.heterodyne.active_config_room.v1` state event in its own config
+room.
+
+**Cold-start with a single MXID.** A persona with exactly one
+delegated MXID has exactly one config room, which is bootstrap-active
+by definition. The active-room pointer MUST still be published
+(forward-compatibility for when peer MXIDs join).
+
+#### 3.9.3 Failover
+
+Any non-active-MXID device MAY initiate failover by publishing a new
+`m.heterodyne.active_config_room.v1` electing a different config
+room when ANY of these triggers fires:
+
+- (a) The MXID hosting the active room has its delegation revoked
+  per §3.9.7.
+- (b) The active room's homeserver returns 5xx or is network-
+  unreachable for >30 seconds on sync attempts.
+- (c) The active room receives `m.room.tombstone` (e.g., room
+  upgrade or homeserver-initiated retirement).
+
+Tiebreaking between concurrent failover elections uses §3.9.2:
+highest `elected_at`, then lex-min `election_id`.
+
+After a successful failover, the new active room MUST contain a
+fresh `m.heterodyne.publish_lease.v1` issued by the failover
+initiator (resetting the lease on transition).
+
+#### 3.9.4 Tombstone-and-retry for accessible-but-unpublishable rooms
+
+When a config room is reachable for read (sync succeeds) but write
+attempts return errors for >5 minutes cumulative across 3 retry
+windows, any observing device MUST publish
+`m.heterodyne.config_room_tombstone.v1` in the currently-active
+config room with shape:
+
+```json
+{
+  "tombstoned_room_id": "!opaque:server",
+  "expires_at": <unix-seconds>,
+  "reason": "<short string, e.g. 'write_5xx_timeout'>"
+}
+```
+
+Default `expires_at`: now + 1 hour. Tombstoned rooms MUST NOT be
+elected as active during the tombstone window. After expiry, they
+MAY be re-elected only if all other rooms are also tombstoned or
+unavailable.
+
+#### 3.9.5 Publish lease
+
+A new state event type `m.heterodyne.publish_lease.v1` lives ONLY
+in the currently-active config room. State key MUST be empty string.
+Shape:
+
+```json
+{
+  "holder_mxid": "@alice:h1",
+  "expires_at": <unix-seconds>,
+  "lease_id": "<uuid-v4>"
+}
+```
+
+Devices MUST acquire the lease before signing a publishable event.
+On lease expiry without renewal, any device MAY acquire by writing a
+new state event with a fresh `lease_id`. Concurrent lease writes
+resolve by Matrix state-event ordering (last-writer-wins via
+origin_server_ts → event id, per Matrix v11 state resolution).
+
+Lease TTL is 60 seconds. The holder SHOULD renew at 30-second
+intervals while actively publishing.
+
+#### 3.9.6 Partition-window correctness
+
+During a Matrix federation partition, two devices on different
+homeservers MAY each elect different active rooms and each issue a
+publish lease in their believed-active room. When the partition
+heals and Matrix state resolution converges on a single active room
+(per §3.9.2), publish leases issued in rooms that LOST the converged
+election MUST be considered void.
+
+Events published under a void lease MUST be re-queued and
+re-published using the canonical lease, with the original Nostr
+event id reused as the Matrix txn_id (idempotent per §6.3).
+Followers seeing both publications via raw relay reads MUST dedupe
+by Nostr event id.
+
+#### 3.9.7 Single-MXID revocation
+
+To revoke a single delegation without rotating the npub root, the
+persona MUST publish:
+
+- A `kind:5` deletion event (per NIP-09) targeting the delegation
+  attestation (`kind:31001`) event id.
+- An `m.heterodyne.delegation_revoked.v1` state event in the
+  identity room. The state event's `content` MUST embed a
+  Nostr-signed revocation attestation by the persona's current
+  epoch key (mirroring the dual-authentication model of §3.3 / I3
+  for delegations themselves). Shape:
+  ```json
+  {
+    "revoked_mxid": "@alice:h1",
+    "effective_at": <unix-seconds>,
+    "reason": "<optional short string>",
+    "nostr_attestation": {
+      "id": "...",
+      "pubkey": "<current epoch key hex>",
+      "created_at": <unix-seconds>,
+      "kind": 5,
+      "tags": [
+        ["e", "<deleted kind:31001 event id>"],
+        ["heterodyne_revoke_mxid", "@alice:h1"],
+        ["effective_at", "<unix-seconds>"]
+      ],
+      "content": "<optional reason>",
+      "sig": "<64-byte hex BIP-340 sig by current epoch key>"
+    }
+  }
+  ```
+
+The `effective_at` value MUST be greater than or equal to the
+`nostr_attestation.created_at`. Verifiers MUST reject unsigned
+revocations and MUST clamp the effective revocation time to
+`max(effective_at, deletion-observed-at + local clock-skew
+tolerance)` to defend against backdated `effective_at` published by
+the revoked MXID immediately before being kicked.
+
+Events signed by the revoked MXID with `created_at >= effective_at`
+MUST be marked untrusted by verifiers.
+
+Other delegated MXIDs of the same npub MUST kick the revoked MXID
+from all of their config rooms within 60 seconds of observing the
+revocation state event.
+
+If the revoked MXID was holding the publish lease at the moment of
+revocation, any non-revoked MXID device MUST trigger failover per
+§3.9.3 trigger (a).
+
+#### 3.9.8 kind:31005 race tiebreaker
+
+When verifiers see multiple `kind:31005` events for the same npub,
+the tiebreaker rule MUST be:
+
+- (a) Highest `created_at`.
+- (b) On tie: prefer the event whose `matrix_identity_room` value
+  is corroborated by an `m.heterodyne.root.v1` published in that
+  room AND has the highest KERI witness count for the persona's
+  current epoch (per §3.5.3 first-seen ordering).
+- (c) On further tie: lex-min event id.
+
+#### 3.9.9 Interaction with KERI rotation
+
+A KERI rotation event (per §3.5 `kind:31003`) implicitly revokes
+ALL delegations whose `nostr_attestation` was signed under the
+rotated epoch. The single-MXID revocation procedure in §3.9.7 is
+for SELECTIVE revocation without full epoch rotation.
+
+### 3.10 Voluntary homeserver-exit procedure (per ADR-015)
+
+Homeserver-exit is the **voluntary** migration of a persona's
+identity room (and optionally config rooms) from a source homeserver
+H1 to a target homeserver H2. The persona retains the same npub root
+and KERI key event log throughout. This subsection specifies voluntary
+exit only; compromise-driven abandonment (cold-root loss, identity-room
+takeover) is covered by §3.7 and is NOT modified here.
+
+#### 3.10.1 Identity-room migration steps
+
+The persona MUST perform the migration steps in this order:
+
+1. **Create the new identity room on H2** with the pinned Matrix room
+   version per ADR-002 (v11 as of that ADR).
+2. **Re-publish all v0.2 identity-room state events** to the new
+   room: root attestation (`m.heterodyne.root.v1`), all
+   currently-active delegation attestations
+   (`m.heterodyne.delegation.v1`), the full KERI key event log mirror
+   (`m.heterodyne.keri_inception.v1` and all
+   `m.heterodyne.keri_rotation.v1` events), the outbox advertisements
+   (`m.heterodyne.outbox.*.v1`). The npub root signs the root
+   attestation; the current epoch key signs the delegations and
+   outbox per existing §3 conventions. Re-publication does NOT count
+   as a new attestation for KERI sequence-number purposes; the KEL
+   is the persona's history, not the room's history.
+
+   **WARNING — cold root unsealing.** Re-signing the root attestation
+   for the new room is one of the rare operations in v0.2 that
+   requires unsealing the cold root (along with KERI inception
+   per §3.5 and `committed`-strategy rotations). Clients
+   implementing the homeserver-exit UX SHOULD warn the user that
+   voluntary migration requires bringing the cold root online for a
+   single signing operation, and SHOULD recommend that the user
+   re-secure the cold root immediately afterward.
+3. **Publish a new `kind:31005`** (identity pointer) event with
+   `matrix_identity_room` pointing to the new room on H2. Per NIP-01
+   replaceable-event semantics, this supersedes the prior `kind:31005`.
+4. **Publish `m.heterodyne.identity_room_migrated.v1`** as a state
+   event in the **OLD** room with state key empty string and shape:
+   ```json
+   {
+     "new_room_id": "!opaque:h2",
+     "new_homeserver": "h2",
+     "migrated_at": <unix-seconds>,
+     "old_room_retire_at": <unix-seconds + 7 * 86400>
+   }
+   ```
+5. **Wait one follower-cache-expiry period** (RECOMMENDED 7 days,
+   matching `old_room_retire_at`) before ceasing to publish to the
+   old room or leaving the old room's homeserver.
+
+During the 7-day overlap window, the persona's clients MUST publish
+all new state events to BOTH the old and new identity rooms.
+Followers may be reading either room depending on cache freshness.
+
+#### 3.10.2 Follower discovery and migration
+
+Followers' clients observing `m.heterodyne.identity_room_migrated.v1`
+in a persona's identity room MUST:
+
+- Surface a one-time notification: "Persona <npub> has moved to
+  <new_homeserver>." (UX-grade; the protocol-level requirement is to
+  switch lookup.)
+- Update their cached identity-room reference to the new room ID for
+  any lookup occurring after `migrated_at`.
+- Verify the new `kind:31005` pointer corroborates the migration:
+  the kind:31005 `matrix_identity_room` MUST equal the `new_room_id`
+  from the migration event. If they disagree, the kind:31005 wins
+  per existing §3.2 authoritative-pointer rule, BUT the client MUST
+  log the disagreement for security review (consistent with
+  state-downgrade logging per ADR-001 / ADR-007).
+
+#### 3.10.3 Interaction with kind:31005 race tiebreaker
+
+A `m.heterodyne.identity_room_migrated.v1` state event in the OLD room
+takes precedence over later `kind:31005` events with lower `created_at`
+than `migrated_at` — the migration is the authoritative signal
+regardless of stale pointer publication. Between `migrated_at` and
+`old_room_retire_at`, the migration pointer is authoritative.
+
+#### 3.10.4 Config-room handling
+
+The persona's existing delegated MXIDs MAY remain unchanged during a
+homeserver exit; the exit is about the identity room, not necessarily
+the MXIDs. If the persona is also moving an MXID to H2 (e.g., creating
+a new MXID `@persona:h2` with a fresh delegation), the §3.9
+mutual-membership and failover machinery (per ADR-009) handles
+config-room election: the new MXID's config room is created on H2,
+peer MXIDs invite it, and active-room failover proceeds normally.
+
+If the persona is RETIRING an MXID on H1 as part of the exit, the
+single-MXID revocation procedure of §3.9 applies. The MXID's config
+room SHOULD be tombstoned (§3.9) before revocation to ease cleanup.
+
+#### 3.10.5 Private rooms — explicit non-goal for v0.2
+
+Private rooms (`private_verifiable`, `private_deniable`,
+`dm_verifiable`, `dm_deniable`) remain bound to the homeserver they
+were created on. v0.2 does NOT define an export/import mechanism for
+private-room history or Megolm session keys across homeservers.
+
+Users wishing to migrate private-room content to a new homeserver
+MUST recreate the room on H2, manually re-invite members, and re-share
+content out-of-band. A future spec version MAY define a private-room
+migration protocol.
+
+Clients SHOULD warn the user during the homeserver-exit flow that
+private-room history will not be migrated automatically.
+
+#### 3.10.6 Conflict with KERI rotation
+
+A homeserver-exit MAY be combined with a KERI rotation (per §3.5
+`kind:31003`) — for example, the user takes the opportunity to rotate
+epoch keys when moving servers. The rotation event MUST be published
+to BOTH the old and new identity rooms during the overlap window.
 
 ## 4. Event envelope
 
@@ -1797,6 +2137,102 @@ MAY require robust batched delivery for destinations the user
 configures as delivery-critical (e.g., DMs to specific recipients,
 posts to public broadcast rooms with subscriber counts the user wants
 to guarantee).
+
+#### 6.4.1 Asymmetric delivery failure contract (per ADR-010)
+
+Matrix and Nostr fail independently. The §6.4 patterns above describe
+what to attempt; this subsection defines the normative contract for
+what counts as "permanently failed" on each transport, how each
+asymmetric outcome affects the kind:31007 feed index, and what UX the
+client MUST surface.
+
+**Permanent failure predicates.**
+
+A **Nostr relay write** is **permanently failed** if any of:
+
+- (a) The relay returns a NIP-01 `["OK", <id>, false, <reason>]` with
+  `reason` starting `"invalid:"`, `"blocked:"`, `"restricted:"`, or
+  `"rate-limited:"` where the rate-limit retry-after window exceeds
+  1 hour.
+- (b) Three consecutive ADR-006 retry windows fail for the same event
+  id (no successful write to that relay).
+- (c) The relay closes the websocket with an application-level close
+  code in the 4000–4999 range.
+
+Anything else MUST be classified as transient (retryable).
+
+A **Matrix room write** is **permanently failed** if any of:
+
+- (a) The homeserver returns HTTP 403 or 404 after three retries with
+  2/8/30-second exponential backoff (total elapsed >=40 seconds).
+- (b) The client is no longer a member of the room (`m.room.member`
+  state shows leave/ban/kick).
+- (c) The room has been tombstoned and no successor room is
+  reachable.
+
+Anything else (5xx, 429, network errors) MUST be classified as
+transient.
+
+**Asymmetric outcomes — Nostr-failed + Matrix-success.**
+
+When all configured write relays (per the persona's NIP-65 outbox for
+the publishing epoch key) return permanent failure for an event id,
+the event enters **Nostr-failed** state. The corresponding Matrix room
+event remains in the room (it was already accepted; un-publishing from
+Matrix is not possible). The kind:31007 feed index MUST NOT be updated
+to include a Nostr-failed event id. Followers reading the index do not
+see the event; followers reading the Matrix room directly do see it
+(with no signed Nostr-side counterpart). The publishing client MUST
+surface a "not on Nostr — some followers cannot see this" warning to
+the user.
+
+**Asymmetric outcomes — Matrix-failed + Nostr-success.**
+
+When the Matrix room write permanently fails (per the predicates
+above) but at least one Nostr relay accepted the event, the event
+remains in the kind:31007 feed index. The event IS published as far
+as Nostr-side discovery is concerned. The publishing client MUST
+surface a "Matrix-out-of-sync — re-publish required" warning to the
+user. The client MUST queue the event for re-publication once Matrix
+connectivity is restored, using the original Nostr event id as the
+Matrix txn_id (idempotent per §6.3).
+
+**Destination-level UX granularity (MUST).**
+
+Partial-delivery state MUST be surfaced to the user with
+destination-level granularity. Permitted UX shapes include:
+
+- "Posted to 5/7 relays (rejected by [list with reasons]); pending
+  Matrix room delivery."
+- "Posted to all relays; Matrix room delivery failed (HTTP 403)."
+- "Permanent failure on relay X (blocked: spam policy)."
+
+Generic "partial failure" messages without destination-level breakdown
+MUST NOT be used.
+
+**Idempotency and re-publication.**
+
+- Re-publication of a Nostr-failed event MUST NOT happen
+  automatically (the failure is permanent by definition). The client
+  MUST require user action to re-publish, with the option to add or
+  switch write relays.
+- Re-publication of a Matrix-failed event MAY happen automatically up
+  to three attempts with 2/8/30-second exponential backoff. After
+  exhaustion, the event MUST be queued for manual re-publication.
+- All re-publication MUST reuse the original Nostr event id as the
+  Matrix txn_id, ensuring at-most-once Matrix delivery per Nostr
+  event id (per §6.3).
+
+**Cross-references.**
+
+- Anti-abuse-driven rejections (per ADR-013 / §10.5.1) follow this
+  contract: first rejection due to AUTH-required is TRANSIENT (client
+  retries after authenticating); post-authentication rejection is
+  PERMANENT per predicate (a) above. NIP-13 PoW insufficient where
+  the client cannot meet the target is PERMANENT.
+- Partition-window publish-lease void events (per ADR-009 §3.9)
+  trigger the re-publication path; the original event id is reused
+  so dedup is automatic on the receiver side.
 
 ### 6.5 Replies and threading
 
@@ -2608,6 +3044,26 @@ Rules:
   than an explicit, valid, double-signed
   `m.heterodyne.related_persona.v1`.
 
+### 7.6 Discovery extensions (per ADR-016)
+
+Heterodyne specifies the in-scope status of three Nostr-side discovery
+mechanisms that the v0.2 baseline acknowledges explicitly:
+
+- **NIP-50 (relay-side search) — OPTIONAL.** Clients MAY support NIP-50
+  search queries against subscribed relays. Search results referencing
+  npubs MUST be resolved via the standard discovery walk (§7.3) before
+  being trusted; relay-returned npub lists are NOT authoritative for
+  identity resolution.
+- **`kind:39089` (starter packs) — RECOMMENDED.** Clients SHOULD
+  recognize `kind:39089` events as a discovery mechanism for new persona
+  follows. Each npub in a starter pack MUST be resolved via the standard
+  discovery walk before being added to the user's follow set.
+- **NIP-90 (Data Vending Machines for algorithmic feeds, AI
+  moderation) — explicit non-goal for v0.2.** Heterodyne v0.2 makes no
+  statement about DVM use; clients neither REQUIRE nor are PROHIBITED
+  from supporting them, but baseline conformance does not depend on DVM
+  behavior. A future spec version may define DVM integration semantics.
+
 ## 8. Moderation
 
 Heterodyne moderation operates in two strictly independent layers:
@@ -2658,6 +3114,72 @@ sequenceDiagram
 
     Note over A,F: If author wants their own post visible:<br/>client renders unapproved posts to the author themselves<br/>marked "pending mod approval"
 ```
+
+### 8.0 Contributor submission flow (per ADR-014)
+
+This subsection specifies the SENDER side of the NIP-72 flow — what a
+contributor (a persona authoring content for a `public_moderated`
+community) does. §8.1 onward specifies the moderator side. §8.4
+specifies the follower side.
+
+**Community address tagging (MUST).** Contributors MUST tag candidate
+posts with the NIP-72 community address tag:
+
+```
+["a", "34550:<community-pubkey-hex>:<community-d-tag>"]
+```
+
+where `<community-pubkey-hex>` is the npub that originated the
+community (per NIP-72 `kind:34550`) and `<community-d-tag>` is the
+community's `d` tag value. The tag MUST be present in the candidate
+post's NIP-01 `tags` array BEFORE the contributor signs the event;
+adding it post-signature invalidates the BIP-340 signature.
+
+**Moderator-relay publishing (SHOULD).** Contributors SHOULD publish
+candidate posts to the moderators' NIP-65 write relays. The moderator
+set is discovered from the `m.heterodyne.moderators.v1` state event of
+the `public_moderated` room: the listed moderator npubs are resolved
+via the standard discovery walk (§7.3) to their `kind:10002` outbox
+lists; the union of their write relays forms the recommended publish
+set. Contributors MUST also publish to their own NIP-65 write relays.
+The two relay sets MAY overlap; the union is used.
+
+**Client identification tag (OPTIONAL).** Contributors MAY add a
+`["client", "heterodyne"]` tag for moderator UI filtering. This tag is
+informational; moderators MAY use it to prioritize Heterodyne-originated
+submissions but MUST NOT use it as a filter that excludes
+non-Heterodyne submissions.
+
+**Pending-approval detection (SHOULD).** After submission, contributors
+SHOULD poll each moderator's `kind:31007` feed index every 5 minutes
+for the candidate post id appearing in a `kind:4550` approval. Clients
+MAY use exponential backoff after the first 30 minutes (5min → 10min
+→ 30min → 1hr) to reduce relay load. Polling MUST stop when an
+approval is detected or the implicit-rejection window expires.
+Clients MAY substitute a real-time NIP-01 REQ subscription to
+moderator indexes for polling.
+
+**Implicit rejection (MUST).** If no `kind:4550` approval appears
+within 7 days of the candidate post's `created_at`, the post MUST be
+treated as rejected by all conformant clients. The contributor's
+client MUST surface "post not approved within 7-day window" to the
+user with the option to: republish unchanged (rare — useful if the
+contributor believes the moderator queue was overwhelmed), republish
+with edits (new post, new id), or abandon. v0.2 does NOT define an
+explicit moderator-rejection event; the §8.4 "silence is rejection"
+model is preserved.
+
+**Backoff after multiple rejections (SHOULD).** Contributors that have
+had three consecutive posts implicitly rejected from a single
+`public_moderated` community SHOULD surface a warning to the user that
+"the community may not be accepting your submissions." This is a UX
+hint, not a protocol-level enforcement.
+
+**Interaction with anti-abuse contract.** Candidate posts are subject
+to the same NIP-42 AUTH / NIP-13 PoW requirements as any other public
+Nostr write per §10.5.1 / ADR-013. Relay rejection of a candidate post
+follows ADR-010 transient/permanent semantics independent of the
+community moderation flow.
 
 ### 8.1 Approval wire form (NIP-72 mirror)
 
@@ -3033,10 +3555,166 @@ implementations. This makes adoption non-disruptive: existing E2EE
 Matrix rooms can be retrofitted into Heterodyne use without
 re-creation.
 
-The MLS migration procedure (re-key, member re-acknowledgement,
-atomic flip of `algorithm`, populating `migrated_from` and
-`migrated_at`) is deferred to a future spec version; v0.1 simply
-reserves the schema slot.
+#### 9.2.1 Megolm→MLS migration protocol (per ADR-012)
+
+v0.2 specifies the full Megolm→MLS migration protocol as a
+moderator-initiated, all-member-ACK'd, receiver-verifiable flip with
+a defined drain window, key-continuity recommendation, and explicit
+fallback for non-MLS clients. Capability advertisement (§12.2) gates
+eligibility. The "atomic flip" framing of earlier drafts is replaced
+with **receiver-verifiable flip** because Matrix state propagation is
+eventually consistent across federation.
+
+**Capability advertisement.** The `m.heterodyne.capabilities.v1`
+schema (§12.2) includes an `encryption_algorithms_supported` field:
+
+```json
+{ "encryption_algorithms_supported": ["megolm"] }
+{ "encryption_algorithms_supported": ["megolm", "mls"] }
+```
+
+Clients MUST advertise their supported algorithms. Baseline
+conformance MUST include `"megolm"`. Clients claiming MLS support MUST
+include `"mls"`.
+
+**Migration eligibility.** A room MUST NOT initiate Megolm→MLS
+migration unless every current member's most-recent
+`m.heterodyne.capabilities.v1` advertisement (within the last 30 days)
+includes `"mls"`. The initiator MUST verify this gate before
+publishing the migration intent.
+
+**Initiator selection.** The migration initiator is the room moderator
+(highest Matrix power level whose MXID is currently delegated under
+any persona). If multiple members share the highest power level, the
+persona npub with lex-min hex value initiates. The initiator's MXID
+and persona npub MUST be recorded in the migration intent event.
+
+**Pre-flip intent.** The initiator publishes
+`m.heterodyne.migration_intent.v1` as a state event in the room
+(encrypted under the current Megolm session per ADR-001) with state
+key the `intent_id` and shape:
+
+```json
+{
+  "target_algorithm": "mls",
+  "drain_window_seconds": 60,
+  "intent_id": "<uuid-v4>",
+  "initiator_mxid": "@alice:h1",
+  "initiator_npub": "<hex>"
+}
+```
+
+**Member ACK.** Every current room member MUST respond within the
+drain window with `m.heterodyne.migration_ack.v1` (encrypted under
+current Megolm), shape:
+
+```json
+{ "intent_id": "<uuid-v4>", "member_npub": "<hex>" }
+```
+
+Missing ACKs at drain expiry MUST cause migration abort: the
+initiator publishes `m.heterodyne.migration_abort.v1` referencing the
+`intent_id` with `reason: "missing_acks"` and a list of non-acking
+npubs. A new `migration_intent` event MUST NOT be issued within 24
+hours of an abort.
+
+**Drain window.** During the 60-second drain window, members SHOULD
+NOT publish new timeline events. In-flight Megolm events signed
+before the drain window opened MAY complete delivery normally.
+
+**Receiver-verifiable flip.** At drain expiry with all ACKs
+received, the initiator MUST publish `m.heterodyne.encryption_version.v1`
+(state key empty string) with:
+
+```json
+{
+  "spec_version": "0.2.0",
+  "algorithm": "mls",
+  "migrated_from": "megolm",
+  "migrated_at": <unix-seconds>,
+  "intent_id": "<uuid-v4>"
+}
+```
+
+This state event MUST itself be encrypted under the LAST Megolm
+session key so all current members can read it. The flip is
+**receiver-verifiable, not atomic**: each receiver, on processing the
+flip event in its local view of room state, treats all timeline
+events with `origin_server_ts` > flip event's `origin_server_ts` as
+MLS-encrypted and all earlier events as Megolm-encrypted.
+
+**Offline-member reconnect handling.** A member that comes online
+after the flip with queued local Megolm events MUST check the room's
+current `m.heterodyne.encryption_version.v1` state BEFORE publishing:
+
+- If `algorithm != "megolm"` and the member supports the new
+  algorithm, queued events MUST be re-encrypted under the new
+  algorithm using fresh MLS state (NOT the queued Megolm
+  ciphertext) before publish. The original Nostr event id is reused
+  as the Matrix txn_id (idempotency per §6.3).
+- If the queued events were already published via Nostr relays
+  (asymmetric delivery per §6.4.1 / ADR-010) before going offline,
+  the Matrix-side re-encryption proceeds normally; ADR-010's
+  reverse-asymmetry rules apply.
+- If the member does NOT support the new algorithm, queued events
+  MUST be marked as locally failed; the user MUST be notified per
+  §6.4.1.
+
+**Federation-lag tail period.** Between the initiator's flip event
+being committed at the initiator's homeserver and full Matrix
+federation propagation (typically <30 seconds), federated members who
+have not yet seen the flip MAY publish Megolm-encrypted events.
+Receivers that HAVE seen the flip MUST accept such Megolm events as
+valid for the room's history ONLY IF ALL of:
+
+- (a) The event's `origin_server_ts` is within a 60-second
+  tail-period after the flip's `origin_server_ts`;
+- (b) The event references Megolm session keys received before the
+  flip;
+- (c) The event's `sender` MXID was a member of the room at the
+  moment of the flip's `origin_server_ts` (per the room's
+  pre-flip `m.room.member` state).
+
+Events outside this window, referencing session keys not received
+before the flip, or sent from MXIDs not in the room at flip time
+MUST be rejected as unauthenticated. The third condition (sender
+membership at flip time) defends against an outsider who obtained
+a leaked pre-flip Megolm session key during the tail window.
+
+After the 60-second tail expires, any Megolm event MUST be rejected
+regardless of session key provenance.
+
+**Key continuity.** RECOMMENDED: the initiator includes the Megolm
+session export (per Matrix spec, encrypted as opaque blob) as
+`app_data.megolm_session_export` in the first MLS commit after the
+flip. Clients with the export can decrypt pre-flip historical
+timeline content. Key continuity is OPTIONAL because the privacy
+benefit (decrypting old Megolm content under MLS-derived keys) is
+small and the operational cost (key-handling complexity) is
+non-trivial.
+
+**Receiver fallback (non-MLS clients).** A client whose
+`encryption_algorithms_supported` does NOT include `"mls"` that
+encounters a room with `algorithm: "mls"` MUST:
+
+- Mark the room "unsupported encryption — MLS upgrade required."
+- Stop accepting new timeline events for moderation/storage
+  processing.
+- Retain read access to pre-migration history via Megolm (the
+  session keys it already holds remain valid for pre-flip events
+  and tail-period events).
+- Surface a one-time warning to the user with upgrade guidance.
+
+**Rollback FORBIDDEN.** MLS→Megolm rollback is FORBIDDEN in v0.2.
+Once a room is flipped to MLS, it remains on MLS for this spec's
+lifetime. Future spec versions may revisit.
+
+**Re-attempt after abort.** If a `migration_intent` event is
+followed by `migration_abort` or expires without quorum ACK, the
+room remains on Megolm. A new `migration_intent` MAY be issued no
+sooner than 24 hours after the abort. Repeated aborts SHOULD be
+surfaced to the room's moderators as a "members not upgrading"
+signal.
 
 ### 9.3 Delegation revocation and Megolm session lifecycle
 
@@ -3144,9 +3822,10 @@ following capabilities:
   delegations, KERI key event log (§3.5), revocation, outbox advertisements.
 - Per-MXID encrypted configuration room management (§3.8).
 - Feed-status publication and retrieval-hint construction (§6.7).
-- Event retrieval against the three channels (§6.9): NIP-01 REQ to
-  Nostr relays, HTTPS GET against archive URLs, optional DM-based
-  retrieval request/response/push.
+- Event retrieval via two channels (§6.9): NIP-01 REQ to Nostr relays
+  (with complete-fetch-attempt semantics per §6.9.1, see ADR-006) and
+  HTTPS GET against user-hosted archive URLs (§6.9.2). DM-based
+  retrieval is explicitly forbidden (§6.9.3).
 - Fan-out to vanilla Nostr relays for public content (§10.5).
 
 The spec is **language- and runtime-agnostic**. Clients MAY be
@@ -3223,6 +3902,77 @@ are presented in the UI exactly as wrapped events from Matrix, with
 the same signature check. The delegation check from §3.3 is N/A in
 this case (there is no Matrix MXID to bind to); the npub identity
 stands on its own Nostr signature.
+
+#### 10.5.1 Anti-abuse contract (per ADR-013)
+
+Nostr relays widely apply anti-abuse mechanisms — challenge/response
+authentication, proof-of-work targets, per-pubkey rate limits, and
+content policy filtering. Heterodyne clients writing to such relays
+MUST implement the following baseline. NIP-42 AUTH is MUST because
+auth-required relays form a substantial fraction of the public Nostr
+graph; without AUTH support, the client silently cannot publish to
+them.
+
+**NIP-42 AUTH (MUST).** Clients MUST implement NIP-42 (`AUTH`)
+challenge/response. On receipt of an `["AUTH", <challenge>]` frame
+from a relay during a write session, the client MUST respond with a
+signed `kind:22242` authentication event per NIP-42.
+
+- The `kind:22242` event's `pubkey` field MUST be the persona's
+  **current epoch key** (per §3.5). The corresponding BIP-340
+  signature is produced by the current epoch private key.
+- The cold root MUST NOT be used to sign AUTH events. The cold root
+  is reserved for KERI inception and `committed`-strategy rotations
+  per §3.5 and MUST remain offline outside those ceremonies.
+- Clients SHOULD complete AUTH within 10 seconds of the challenge.
+  On AUTH failure, clients MUST surface the failure to the user with
+  the relay URL and rejection reason.
+
+**NIP-13 PoW (SHOULD).** Clients SHOULD implement NIP-13
+(Proof-of-Work) computation for events destined for relays that
+advertise a non-zero `limitation.min_pow_difficulty` in their NIP-11
+relay-info document.
+
+- The target difficulty MUST be read from NIP-11
+  `limitation.min_pow_difficulty`. If absent or zero, no PoW is
+  required for that relay.
+- Clients that cannot meet a relay's PoW requirement (CPU budget
+  exceeded or computation cancelled) MUST surface the constraint to
+  the user with the relay URL and required difficulty.
+
+**Relay-rejection surfacing (MUST).** Clients MUST surface relay
+NOTICE messages (per NIP-01) to the user with the relay URL and
+rejection reason. No silent drops. Per ADR-010 req 1, certain
+NOTICE-prefixed rejection reasons (`invalid:`, `blocked:`,
+`restricted:`, `rate-limited:` with retry-after >1 hour) classify the
+write as permanently failed and feed the asymmetric-delivery contract
+(§6.4 / ADR-010).
+
+**Explicit non-goals for v0.2.** NIP-57 (zap-gating) is an explicit
+non-goal for v0.2; clients MAY opt into zap support but MUST NOT
+advertise zap-gating via §12 capability negotiation until a future
+spec version defines the wire semantics. NIP-86 (relay admin
+operations) is an explicit non-goal; clients MAY ignore NIP-86 frames.
+
+**KERI-rotation resets relay-side reputation (acknowledged
+limitation).** Vanilla Nostr relays applying per-pubkey reputation,
+rate limits, or per-pubkey allowlists/denylists treat the persona's
+current epoch key as the identity. When the persona executes a KERI
+rotation per §3.5, the relay sees a "new" pubkey and per-persona
+reputation does NOT carry forward on that relay. This is an
+unavoidable consequence of the vanilla-relay invariant: relays do
+not understand the Heterodyne KEL. Mitigations available to
+deployers: (a) operate a Heterodyne-aware relay that understands the
+KEL (out of scope for v0.2 baseline); (b) treat KERI rotations as
+significant events (they already are per ADR-003) and accept that
+relay reputation rebuilds after each rotation. See §13 for the
+threat-model framing of this limitation.
+
+**Cross-references.** A first rejection on a write attempt due to
+NIP-42 AUTH-required is TRANSIENT (the client retries after
+authenticating). A subsequent post-authentication rejection is
+PERMANENT per ADR-010 req 1(a). NIP-13 PoW insufficient where the
+client cannot meet the target is PERMANENT per ADR-010 req 1(a).
 
 ## 11. Interoperability
 
@@ -3841,6 +4591,16 @@ strict semver:
   Heterodyne-reserved 31000 range, or new MUSTs that would reject
   prior-version events. Receivers MUST gate on MAJOR version.
 
+Two specific extension patterns are classified explicitly (per ADR-016):
+
+- **New room kind in §5.1 enumeration.** Adding a new room kind is a
+  MINOR bump. Receivers MUST tolerate unknown room-kind values per
+  §12.3 (render placeholder, do not reject the room).
+- **New Nostr kind in §6.8.1 default-indexing-classification table**
+  where the kind previously fell under the catch-all rule. This is a
+  PATCH bump; the behavior change is additive clarification of existing
+  classification rules, not a wire-format change.
+
 Implementations SHOULD bump MINOR when adding any optional field to
 preserve forward compatibility tracking.
 
@@ -3886,10 +4646,19 @@ Schema:
       "m.heterodyne.persona_config.v1",
       "m.heterodyne.key_backup.v1",
       "m.heterodyne.device_inventory.v1",
-      "m.heterodyne.mutes.public.v1"
+      "m.heterodyne.mutes.public.v1",
+      "m.heterodyne.active_config_room.v1",
+      "m.heterodyne.publish_lease.v1",
+      "m.heterodyne.config_room_tombstone.v1",
+      "m.heterodyne.delegation_revoked.v1",
+      "m.heterodyne.migration_intent.v1",
+      "m.heterodyne.migration_ack.v1",
+      "m.heterodyne.migration_abort.v1",
+      "m.heterodyne.identity_room_migrated.v1"
     ],
     "nostr_kinds": [31000, 31001, 31002, 31003, 31004, 31005, 31006, 31007],
-    "profiles": []
+    "profiles": [],
+    "encryption_algorithms_supported": ["megolm"]
   }
 }
 ```
@@ -3900,6 +4669,14 @@ profile is `"heterodyne-strict-mode.v1"` (§11.7, ADR-007).
 Implementations that do not implement strict mode omit the
 profile from the array (an empty array MUST be treated
 equivalently to "no profiles claimed").
+
+The `encryption_algorithms_supported` field (per ADR-012) advertises
+the encryption algorithms the implementation can handle for private
+rooms. Baseline conformance MUST include `"megolm"`. Clients that
+support MLS-encrypted private rooms (per §9.2.1) MUST include
+`"mls"`. Receivers MUST tolerate unknown algorithm strings (forward
+compatibility). This field gates Megolm→MLS migration eligibility
+per §9.2.1.
 
 `state_key` is the publishing MXID, so each device/account in a room
 advertises its own capabilities independently. A room with members on
@@ -4047,8 +4824,32 @@ can do; the spec's invariants state what they cannot.
   in a Heterodyne private room that publishes unencrypted
   Heterodyne state events, exploiting the client-side nature
   of MSC4362-compatible encryption (ADR-001). Mitigated by
-  §9.1.1 baseline validity rules; strict-mode clients (§11.5,
+  §9.1.1 baseline validity rules; strict-mode clients (§11.7,
   ADR-007) add UX-layer rejection and warnings.
+- **Federation peer (per ADR-016).** A Matrix homeserver
+  participating in a room's server-server federation that is
+  neither the persona's own homeserver nor the persona's
+  adversary. Distinct from "curious homeserver" (the persona's
+  own homeserver). A federation peer can observe: all
+  unencrypted state events in public rooms (room kind, outbox
+  advertisements, moderator list, member power levels); all
+  Megolm-encrypted timeline events as opaque ciphertext
+  (envelope metadata visible); all `m.room.member` events (full
+  membership list); sender MXIDs and `origin_server_ts` on every
+  event; the federation join event graph (which servers
+  federated with the room and when). A federation peer CANNOT
+  observe: Megolm-encrypted timeline or state content in
+  private rooms (content protected by Megolm); identity-room
+  content for personas hosted on homeservers it is not
+  federated with; encrypted config-room contents (ADR-009).
+  Invariant I1 covers private-room content confidentiality and
+  is unaffected by federation-peer presence. Public-room
+  membership-graph leakage is an acknowledged Matrix-layer
+  limitation; personas concerned about membership-graph
+  exposure SHOULD host their identity room on a homeserver
+  whose federation peer set they trust. Heterodyne's wire-level
+  invariants do not change because of federation peers; this
+  class is enumerated for threat-model completeness.
 
 This enumeration is not exhaustive; the companion threat-model
 document at `docs/security/threat-model.md` covers additional
@@ -4115,13 +4916,37 @@ mitigated by the cited spec sections:
 | Bridge-side plaintext leak | §10.1 (no server-side bridge), I7 |
 | Replay across forked identity rooms | Matrix state resolution + §3.5 chain timestamps |
 | Backdating attacks by recently-revoked keys | §3.5.1 revoked_at + clock-skew tolerance |
-| Hostile relay refusing to deliver | §6.4 multi-destination fan-out |
+| Hostile relay refusing to deliver | §6.4 multi-destination fan-out; ADR-010 asymmetric-delivery contract |
 | Capabilities-fingerprinting surveillance | §12.2 default-scoped advertisement |
+| Federation-peer metadata observation | §13.1.1 attacker class (ADR-016); choose homeserver with trusted federation peer set |
 
 For threats that are explicitly out of scope (compromised user
 devices, traffic analysis under Tor, post-quantum adversaries) see
 the threat model's "Out of scope" section. Future spec versions will
 revisit these.
+
+### 13.4 Acknowledged vanilla-relay reputation limitation (per ADR-013)
+
+A persona's NIP-42 AUTH events are signed by the current epoch key
+(§3.5), not by the cold root. Vanilla Nostr relays apply per-pubkey
+reputation, rate limits, and allowlist/denylist policies indexed by
+the `pubkey` field on AUTH events. When the persona executes a KERI
+rotation, the relay sees a "new" pubkey for AUTH purposes; per-persona
+reputation does NOT carry forward on that relay.
+
+This is unavoidable without relay-side KERI awareness (which would
+violate the vanilla-relay invariant of §10.5). Documenting the
+limitation explicitly is the honest move:
+
+- **Severity:** soft. Reputation rebuilds over time; rotations are
+  intentionally rare per §3.5.
+- **User impact:** post-rotation, the persona may temporarily face
+  PoW-target or rate-limit defaults on relays where they previously
+  had elevated trust.
+- **Mitigation paths:** (a) operate a Heterodyne-aware relay that
+  understands the KEL (out of scope for v0.2 baseline); (b) accept
+  rotation as a known event that triggers a reputation reset on
+  every relay the persona writes to.
 
 ## 14. Conformance and test vectors
 
@@ -4178,20 +5003,46 @@ Vectors are authored per spec section. The coverage targets:
 
 | Topic | Spec sections | Vector categories |
 |---|---|---|
-| `identity/` | §3 | Root attestation; delegation (active, expired, revoked); successor pair; revocation post-window; identity room with full state |
+| `identity/` | §3 | Root attestation; delegation (active, expired, revoked); revocation post-window; identity room with full state |
+| `keri/` (per ADR-003) | §3.5 | Inception event; rotation event (committed strategy); rotation event (none strategy with witness threshold); first-seen ordering verifier; fork-resolution with conflicting rotations |
 | `config_room/` | §3.8 | Minimal config room; persona_config with private mutes; key_backup with various wrapping algorithms |
+| `multi-homing/` (per ADR-009) | §3.9 | Active-room election; publish-lease acquisition and renewal; single-MXID revocation procedure; `kind:31005` race tiebreaker with KERI witness counts; partition-window void-and-requeue |
 | `envelope/` | §4 | Minimal kind:1 wrapped; bare DM with heterodyne_nostr_sig; fallback rendering verification; cross-kind wrapping (1, 7, 30023) |
 | `verification/` | §4.5 | Bad sig rejects; delegation mismatch rejects; revoked-key post-revoked_at rejects; backdated event in suspicion window |
+| `bridge/` (per ADR-010) | §6.4 | Asymmetric delivery — Nostr permanent failure (kind:31007 index not updated); Matrix permanent failure (kind:31007 index updated; Matrix-out-of-sync warning); idempotent re-publication via Nostr event id reuse |
+| `index/` (per ADR-005, ADR-006) | §6.7 | Room-key wrap derivation; room-key wrap encryption (NIP-44 v2); `prev_page_hash` page-chain integrity; complete-fetch-attempt across relay set |
 | `outbox/` | §7 | Full public outbox; scoped outbox; transitive discovery walk; cross-persona attestation (valid and invalid) |
-| `moderation/` | §8 | NIP-72 approval; multi-mod requirement; moderator rotation through KERI key event log; redaction-of-approved-post |
-| `encryption/` | §9 | encryption_version event; delegation-revocation triggering rotation (SHOULD path) |
+| `moderation/` | §8 | NIP-72 approval; multi-mod requirement; moderator rotation through KERI key event log; redaction-of-approved-post; contributor submission with community-address tag and implicit-rejection window (per ADR-014) |
+| `moderation/strict-mode/` (per ADR-007) | §11.7 | Strict-mode bare-event filtering; `kind:5` deletion observed within 30s; state-downgrade warning rendering |
+| `encryption/` | §9 | `encryption_version` event; delegation-revocation triggering rotation (SHOULD path) |
+| `encryption/mls-migration/` (per ADR-012, OPTIONAL) | §9.2 | Eligibility check (capability gating); intent and ACK; abort on missing ACKs; receiver-verifiable flip with last-Megolm-key encryption of the flip event; 60-second tail-period acceptance of pre-flip-keyed Megolm events; offline-reconnect re-encryption with Nostr event id reuse; non-MLS receiver fallback |
+| `relay-interop/` (per ADR-013) | §10.5 | NIP-42 AUTH challenge and response signed by current epoch key (not cold root); AUTH rejection classified as permanent per ADR-010; KERI rotation produces AUTH events under the new epoch key |
+| `homeserver-exit/` (per ADR-015, SKIPPABLE for read-only clients) | §3.10 | Identity-room migration with `m.heterodyne.identity_room_migrated.v1`; migration-pointer precedence over stale `kind:31005`; KERI rotation during exit window dual-publishes to both rooms |
 | `interop/` | §11 | Wrapped → vanilla Nostr roundtrip; bare event with hide-bare preference; vanilla-Nostr-only follow; kind:31005 identity pointer |
-| `versioning/` | §12 | Older receiver vs newer sender; capabilities event roundtrip; cross-MAJOR mismatch placeholder rendering |
+| `versioning/` | §12 | Older receiver vs newer sender; capabilities event roundtrip; cross-MAJOR mismatch placeholder rendering; unknown room-kind tolerance per ADR-016 |
+
+**Baseline conformance minimum vector set (per ADR-011).** An
+implementation claiming baseline Heterodyne v0.2 conformance MUST pass
+every vector in: `identity/`, `keri/`, `envelope/`, `verification/`,
+`bridge/`, `index/`, `outbox/`, `multi-homing/`, `relay-interop/`,
+`moderation/` (excluding the `strict-mode/` subdirectory),
+`encryption/` (excluding the `mls-migration/` subdirectory),
+`interop/`, `versioning/`, and `config_room/`. Implementations MAY
+skip `encryption/mls-migration/*` vectors with documented rationale
+(MLS support is OPTIONAL in v0.2 per ADR-012). Implementations MAY
+skip `homeserver-exit/*` vectors only if the implementation is
+read-only and never publishes; publishing clients MUST pass them.
+
+**Strict-mode conformance delta (per ADR-007 / ADR-011).** Claiming
+the strict-mode profile additionally requires passing every vector in
+`moderation/strict-mode/`. An implementation MAY claim baseline
+conformance without strict-mode; it MUST NOT claim strict-mode without
+first passing all baseline-minimum vectors.
 
 Vector counts will grow as the spec stabilizes. Any client
 implementation claiming conformance to this spec version MUST pass
-every vector in `vectors/`. CI enforcement is each implementation's
-responsibility.
+every vector in the baseline minimum set defined in this section. CI
+enforcement is each implementation's responsibility.
 
 ### 14.4 Conformance reporting
 
@@ -4199,10 +5050,18 @@ An implementation claiming conformance to a Heterodyne spec version
 SHOULD publish:
 
 - The exact spec version (`MAJOR.MINOR.PATCH`) it conforms to.
+- The conformance level claimed: baseline OR strict-mode (per §14.3 /
+  ADR-011).
 - The list of vector files it passes.
 - Any vectors it intentionally skips, with rationale (e.g.,
-  "encryption/01 requires MLS — not yet supported in this
-  implementation").
+  "encryption/mls-migration/* requires MLS — not yet supported in this
+  implementation per ADR-012 OPTIONAL stance").
+
+**Anti-skip floor (per ADR-011).** Implementations that skip MANDATORY
+vectors from the baseline minimum set defined in §14.3 MUST NOT claim
+baseline conformance. They MAY claim partial or experimental
+conformance with a documented gap list naming each skipped vector
+category and the reason.
 
 A future spec version may formalize the conformance-reporting
-mechanism; v0.1 leaves it to implementations.
+mechanism; v0.2 leaves it to implementations.
