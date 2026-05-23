@@ -29,34 +29,56 @@ Nostr DMs/groups: Megolm and MLS create a shared session for the room, so the
 bridge encrypts once and Matrix handles key distribution to authorized
 members.
 
-## Room taxonomy (working sketch)
+## Room taxonomy (v0.2.0)
 
-| Room kind | Purpose | Encryption | Moderation |
-|---|---|---|---|
-| Public unencrypted | Open broadcast (Twitter-style public feed) | None | Server ACLs + community lists (Mjolnir-style) |
-| Public moderated | Communities, topic rooms, forums | None or opt-in E2EE | Community-moderated + server-side policy rooms |
-| Private E2EE community | Friends, circles, semi-private groups | Megolm/MLS | Single or small admin set |
-| Private E2EE 1:1 / DM | Direct messages, many-to-many private chats | Megolm/MLS | Participants only |
+| Room kind | Purpose | Encryption | Default wrap mode | Moderation |
+|---|---|---|---|---|
+| `public_broadcast` | Open broadcast (Twitter-style public feed). Content + index on Nostr. | None | N/A — no timeline | Server ACLs + community lists |
+| `public_moderated` | Communities, topic rooms, forums. Content + approvals on Nostr. | None | N/A — no timeline | NIP-72 moderator approvals + policy rooms |
+| `private_verifiable` | Group rooms where authorship is part of the contract (work, records) | Megolm/MLS | wrapped (Nostr-signed) | Single or small admin set |
+| `private_deniable` | Friend circles, casual planning, day-to-day groups | Megolm/MLS | bare (deniable against non-members; defeated by colluding members per ADR-004) | Single or small admin set |
+| `dm_verifiable` | Notarized two-party DMs (agreements, tickets) | Megolm/MLS | wrapped | Participants only |
+| `dm_deniable` | Standard two-party DM | Megolm/MLS | bare (deniable against non-members; defeated by counterparty session-key sharing per ADR-004) | Participants only |
 
 ## Project status
 
-The v0.1 specification is **fully drafted with diagrams** at
-[`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) (~2,300 lines,
-14 sections, 6 Mermaid diagrams). All load-bearing protocol decisions
-(identity, envelope, rooms, publishing, discovery, moderation,
-encryption, bridge, interop, versioning, security, conformance) are
-written down. v0.1.3 introduced a substantive design pivot: public
-Matrix rooms hold only indexes and state; the actual Nostr events
-for public content live on Nostr relays. Private (E2EE) rooms still
-carry full content. v0.1.4 adds an OPTIONAL ATProto (at://) attached
-outbox (§11.6): a non-load-bearing public mirror with double-signed
-npub ↔ DID binding for identifiability, plus the option of using
-the ATProto signing key as a KERI-style peer witness on root
-inception and rotation ceremonies. The Cold Root + Epoch Keys
-design at `docs/superpowers/specs/2026-05-21-cold-root-epoch-keys-design.md`
-specifies the v0.2 identity rewrite that the KERI hooks anticipate.
-The spec is implementation-agnostic — no particular language or
-runtime is prescribed. Not yet final until v0.2 freeze.
+The v0.2 specification is **fully drafted with diagrams** at
+[`docs/spec/heterodyne.md`](docs/spec/heterodyne.md). All
+load-bearing protocol decisions (identity, envelope, rooms,
+publishing, discovery, moderation, encryption, bridge, interop,
+versioning, security, conformance) are written down. Following
+a 2026-05-21 external critique, seven themed ADRs in
+[`docs/adr/`](docs/adr/) record the substantive decisions that
+shaped v0.2.0's current text. Per project convention v0.2.0 is
+revised in place until first-party-client validation closes the
+freeze (no version bump for in-flight design work). v0.2.0
+makes substantive structural changes after external review:
+(a) feed indexes are migrated off Matrix state events to
+Nostr-native `kind:31007` replaceable events, npub-signed and
+gift-wrapped for private rooms; (b) the identity room is reframed
+as a disposable Matrix container with the `kind:31005` identity
+pointer as the authoritative npub→room mapping; (c) delegation
+acknowledgement no longer requires a Matrix MSK signature;
+(d) Heterodyne commits unconditionally to **KERI** for root
+inception and rotation, retiring the v0.1.4 single-key chain;
+(e) the room taxonomy now has six explicit kinds —
+`public_broadcast`, `public_moderated`, `private_verifiable`,
+`private_deniable`, `dm_verifiable`, `dm_deniable` — with the
+default wrap mode encoded in the kind name; (f) Matrix-DM
+retrieval backfill is forbidden (Nostr relays + user-hosted
+archives only); (g) moderator post-hoc removal uses Nostr
+`kind:5` deletions rather than Matrix redactions; (h) hardening
+— strict ±5 minute clock skew, mandatory SSRF prevention on
+ATProto DID resolution, mandatory `nip01_raw` canonical
+serialization on every signed event to prevent parser-reordering
+attacks. v0.1.4 added the OPTIONAL ATProto attached outbox
+(§11.6) and KERI social witnesses; v0.1.3 introduced the
+Nostr-relays-for-public-content pivot. The Cold Root + Epoch
+Keys design at
+`docs/superpowers/specs/2026-05-21-cold-root-epoch-keys-design.md`
+specifies the v0.2 identity rewrite that v0.2.0's KERI commitment
+anticipates. The spec is implementation-agnostic — no particular
+language or runtime is prescribed. Not yet final until v0.2 freeze.
 
 The next milestones are:
 

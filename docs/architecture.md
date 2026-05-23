@@ -48,12 +48,28 @@ See spec §4.
 ### 2. Identity: npub canonical, Matrix accounts are delegated publishers
 
 The npub is the authoritative identity. Matrix accounts are
-*delegated publishers* bound by double-signed attestations in a
-per-persona **identity room**. Multiple personas are first-class. Vanilla
-Nostr's key-rotation pain (rotating means abandoning your followers) is
-solved by an explicit identity-chain mechanism: an outgoing npub points
-to its successor; the successor points back; followers walk the chain
-transparently.
+*delegated publishers* bound by npub-signed attestations in a
+per-persona **identity room**. Multiple personas are first-class.
+
+The identity room is a **disposable container** — if it is
+compromised at the Matrix layer (homeserver power-level takeover),
+the persona publishes a fresh NIP-01 `kind:31005` identity pointer
+naming a new room, and followers' clients prioritize the latest
+pointer over locally cached room IDs. The npub does not change;
+only the Matrix container moves.
+
+Vanilla Nostr's key-rotation pain (rotating means abandoning your
+followers) is solved by committing to **KERI** (Key Event Receipt
+Infrastructure) for root inception and rotation: explicit sequence
+numbering, threshold witnesses, deterministic fork resolution. The
+v0.1.4 single-key successor/predecessor chain was retired in v0.2.0
+because it was vulnerable to "fork-freezing" attacks. The exact
+KERI payload schemas are in the Cold Root + Epoch Keys design at
+`docs/superpowers/specs/2026-05-21-cold-root-epoch-keys-design.md`.
+
+Delegation acknowledgement no longer requires a Matrix MSK
+signature; the homeserver's normal `/send/state` authorization on
+the npub-signed delegation event is sufficient.
 
 See spec §3.
 
@@ -73,42 +89,59 @@ unlocks the moderation and encryption story.
 
 See spec §7.
 
-### 4. Public content lives on Nostr; Matrix public rooms hold indexes
+### 4. Public content lives on Nostr; feed indexes are Nostr-native too
 
 Public Heterodyne content (posts in `public_broadcast` and
-`public_moderated` rooms) lives on Nostr relays. The corresponding
-Matrix rooms hold only **indexes** (`m.heterodyne.feed_status.v1`
-state events that reference Nostr event IDs in display order, with
-per-entry retrieval hints) and standard room state (kind, moderators,
-power levels). Vanilla Matrix clients peeking at a `public_broadcast`
-room see an effectively empty timeline; that's the design.
+`public_moderated` rooms) lives on Nostr relays, as do the
+per-room **feed indexes** (`kind:31007`) that record each
+persona's curated post order. Public Matrix rooms hold only
+standard room state — kind, moderators, power levels, optional
+archive pointer. Vanilla Matrix clients peeking at a
+`public_broadcast` room see an effectively empty timeline;
+that's the design.
 
-Private E2EE content (`private_community`, DM) continues to ride
-*inside* the Matrix room — leaking encrypted-room content to public
-Nostr relays would defeat the encryption. The same `feed_status`
-mechanism still applies there, encrypted alongside the wrapped events.
+This is a v0.2.0 change from v0.1.4. v0.1.4 stored feed indexes
+as Matrix state events (`m.heterodyne.feed_status.v1`), but that
+made the index mutable by anyone with state-write power in the
+room — a hostile homeserver admin could silently rewrite a
+persona's curated feed without breaking any cryptographic
+invariant. Moving the index onto Nostr makes it npub-signed and
+tamper-evident: only the persona's epoch key can produce a
+`kind:31007` for that persona.
+
+Private E2EE content (`private_verifiable`, `private_deniable`,
+`dm_*`) continues to ride *inside* the Matrix room — leaking
+encrypted-room content to public Nostr relays would defeat the
+encryption. For private rooms that maintain a feed index, the
+`kind:31007` is NIP-44 gift-wrapped to room members so the
+existence-of-posts metadata is restricted to those who can already
+read the room. Indexes are bounded at 500 entries per event;
+clients page by chaining `kind:31007` events with a
+`previous_index` tag.
 
 This split plays each protocol to its strengths:
 
 - Nostr relays are well-suited to high-volume public broadcast and
-  already provide the open ingress/egress model public content needs.
-- Matrix rooms are well-suited to membership-gated state — exactly
-  what a curated feed index, moderator list, and approval log are.
+  to npub-anchored replaceable indexes.
+- Matrix rooms are well-suited to membership-gated state — what
+  remains in the room is the moderator list, encryption posture,
+  and room kind / configuration.
 
-Events are classified per kind as **indexed** (appear in feed_status:
-microblogs, long-form, classifieds) or **non-indexed** (reactions,
-zaps, follow lists, deletions — visible but rendered contextually).
-A publisher MAY override per-event via a `heterodyne_index` tag.
-See spec §6.8.
+Events are classified per kind as **indexed** (appear in
+`kind:31007`: microblogs, long-form, classifieds) or
+**non-indexed** (reactions, zaps, follow lists, deletions —
+visible but rendered contextually). A publisher MAY override
+per-event via a `heterodyne_index` tag. See spec §6.8.
 
-**Retrieval.** Receivers fetch events referenced from a `feed_status`
-entry primarily via the entry's own `retrieval_hints` — Nostr relay
-URLs and/or an HTTPS archive URL the publisher operates. The spec
-does NOT host an archive service; archive infrastructure is each
-publisher's responsibility. As an encrypted-DM fallback for events
-that can't be retrieved (lost Megolm sessions, expired hints), spec
-§6.9 defines `retrieval_request`/`retrieval_response`/`retrieval_push`
-event types.
+**Retrieval.** Receivers fetch events referenced from a
+`kind:31007` `e` tag via Nostr relays (Channel 1) or, as a
+fallback, via the publisher's optional user-hosted HTTPS archive
+advertised as `m.heterodyne.archive.v1` in the identity room
+(Channel 2). The spec does NOT host an archive service; archive
+infrastructure is each publisher's responsibility. Matrix-DM
+backfill requests / responses / pushes are **forbidden** in
+v0.2.0 (DoS / rate-limit vector); events not retrievable via the
+two channels are considered permanently lost.
 
 ### 4b. Bridge: pure client-side, any homeserver works unmodified
 
