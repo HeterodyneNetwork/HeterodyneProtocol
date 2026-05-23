@@ -21,11 +21,15 @@ normal `/send/state` authorization on the npub-signed payload;
 (d) the §3.5 single-key successor chain is deleted, and
 Heterodyne commits unconditionally to KERI for root inception
 and rotation; the Heterodyne KERI profile is inlined in §3.5
-(ADR-003); (e) the room taxonomy is split into six explicit
-kinds (`public_broadcast`, `public_moderated`,
-`private_verifiable`, `private_deniable`, `dm_verifiable`,
-`dm_deniable`) so wrap-mode defaults are encoded in the kind
-itself; (f) Matrix-DM retrieval backfill is forbidden (Nostr
+(ADR-003); (e) the room taxonomy (ADR-017) is organized on a
+broadcast-vs-discussion × public-vs-private axis into four social
+kinds (`public_broadcast`, `private_broadcast`,
+`public_discussion`, `private_discussion`) plus the `identity_room`
+and `config_room` infrastructure kinds — broadcast posts are always
+Nostr-signed (room-key-wrapped on relays when private, §6.10),
+discussion is bare Matrix by default with an opt-in per-message
+signature badge, and no kind claims deniability; (f) Matrix-DM
+retrieval backfill is forbidden (Nostr
 relays + user-hosted archives only); (g) moderator post-hoc
 removal uses Nostr `kind:5` deletion plus an updated
 `kind:31007` feed index, not Matrix redaction; (h) security
@@ -73,13 +77,19 @@ flowchart LR
 
 Heterodyne is a decentralized social network protocol that composes
 Nostr identity with Matrix transport. A persona's identity is a Nostr
-`secp256k1` keypair (npub/nsec). Public content rides over Nostr
-relays (high-volume broadcast); private E2EE content rides over
-Matrix rooms (group encryption, stateful access control). A
-persona's curated **feed indexes** are themselves Nostr
-replaceable events (`kind:31007`) on the persona's write relays
-— encrypted under a Heterodyne room-key for private rooms (§6.7.4) — so the
-canonical feed cannot be silently rewritten by any third party.
+`secp256k1` keypair (npub/nsec). The split is by **broadcast vs
+discussion**, not simply public vs private: **broadcast** content
+(a persona publishing as a persona) rides over Nostr relays and is
+always Nostr-signed — in the clear for public broadcasts, and
+room-key-wrapped (§6.10) for private broadcasts to a closed
+follower set; **discussion** content (many-party conversation, and
+reactions/replies) rides over Matrix rooms as bare, attributable
+events (group encryption and stateful access control for private
+discussion). A persona's curated **feed indexes** are themselves
+Nostr replaceable events (`kind:31007`) on the persona's write
+relays — encrypted under a Heterodyne room-key for private rooms
+(§6.7.4) — so the canonical feed cannot be silently rewritten by any
+third party.
 The cross-protocol bridge is purely client-side: no homeserver or
 relay modification is required, and no specific language or
 runtime is prescribed.
@@ -119,12 +129,13 @@ Heterodyne defines:
 - An **identity model** binding a Nostr `secp256k1` keypair (the canonical
   identity) to one or more Matrix accounts that act as delegated publishers.
 - An **event envelope** for carrying signed Nostr events inside Matrix
-  events, with an explicit deniability mode where the Nostr signature is
-  omitted.
-- A **room taxonomy** distinguishing public broadcast, public moderated,
-  private verifiable / deniable group, and verifiable / deniable DM
-  rooms, each with conventional
-  Matrix configurations.
+  events, with a bare default (no Nostr signature) and an OPTIONAL
+  per-message signature that adds a transferable authenticity proof.
+- A **room taxonomy** on a broadcast-vs-discussion × public-vs-private
+  axis — `public_broadcast`, `private_broadcast`, `public_discussion`,
+  `private_discussion` (plus the `identity_room` and `config_room`
+  infrastructure kinds) — each with conventional Matrix
+  configurations.
 - A **publishing flow** describing how a client fans out a single
   user-level post to one or more rooms and optionally to vanilla Nostr
   relays.
@@ -169,15 +180,26 @@ restated here.
 - **Delegation** — a state event in an identity room authorizing a specific
   Matrix MXID to publish events on behalf of the persona's npub.
   Double-signed by both the npub and the MXID.
-- **Outbox room** — a Matrix room where a persona broadcasts content. The
-  persona is the room admin. Per-category (public, close-friends, work,
-  custom labels).
+- **Outbox room** — a broadcast room (`public_broadcast` or
+  `private_broadcast`, §5.2–§5.3) where a persona broadcasts content.
+  The persona is the room admin. Per-category (public, followers-only,
+  topic-tagged).
 - **Friend circle** / **distribution list** — UX terms for a categorized
-  outbox room. Implementation is just a Matrix room with appropriate power
-  levels.
-- **Wrap mode** — whether a published event carries the full signed Nostr
-  payload (**wrapped**, authentic, forwardable to vanilla Nostr) or only
-  Matrix-layer content (**bare**, deniable inside an E2EE room).
+  private room (`private_discussion` or `private_broadcast`).
+  Implementation is just a Matrix room with appropriate power levels.
+- **Broadcast vs discussion** — the primary room axis (§5). A
+  **broadcast** room is where a persona publishes *as* a persona:
+  posts are always Nostr-signed and live on Nostr relays
+  (room-key-wrapped when private, §6.10). A **discussion** room is a
+  many-party (or two-party DM) conversation carried as bare Matrix by
+  default.
+- **Wrap mode** — whether an in-room message carries a Nostr signature
+  (**wrapped** `m.heterodyne.note.v1` or a `heterodyne_nostr_sig`,
+  authentic and forwardable to vanilla Nostr, giving a transferable
+  proof of authorship) or only Matrix-layer content (**bare**). Bare
+  is the default for discussion traffic and reactions; it is NOT
+  deniable — the author's npub is still attributable via §3.3 (§13.1.2)
+  — but it leaves no transferable third-party proof.
 - **KERI key event log** — the persona's authoritative key-rotation history
   per §3.5: a sequence of `kind:31002` inception and `kind:31003` rotation
   events committing to successive epoch public keys under a single cold
@@ -1437,8 +1459,8 @@ room SHOULD be tombstoned (§3.9) before revocation to ease cleanup.
 
 #### 3.10.5 Private rooms — explicit non-goal for v0.2
 
-Private rooms (`private_verifiable`, `private_deniable`,
-`dm_verifiable`, `dm_deniable`) remain bound to the homeserver they
+Private rooms (`private_broadcast`, `private_discussion`,
+including two-party DMs) remain bound to the homeserver they
 were created on. v0.2 does NOT define an export/import mechanism for
 private-room history or Megolm session keys across homeservers.
 
@@ -1466,11 +1488,18 @@ Heterodyne supports two envelope types, distinguished by Matrix event
 
 | Event type | Wrap mode | Forwardable to vanilla Nostr | Vanilla Matrix renders | Use |
 |---|---|---|---|---|
-| `m.heterodyne.note.v1` | wrapped (Nostr-signed) | yes (1:1 unwrap) | partial (via `fallback`) | authenticity required |
-| `m.room.message` (with optional `heterodyne_nostr_sig`) | bare or opt-in wrap | only if `heterodyne_nostr_sig` present | yes (natively) | deniability or vanilla compatibility |
+| `m.heterodyne.note.v1` | wrapped (Nostr-signed) | yes (1:1 unwrap) | partial (via `fallback`) | authenticity / notarization badge |
+| `m.room.message` (with optional `heterodyne_nostr_sig`) | bare or opt-in wrap | only if `heterodyne_nostr_sig` present | yes (natively) | discussion default; opt-in signature for a transferable proof |
 
-Senders choose the mode per-event based on the room-kind defaults (§4.4)
-and explicit user override.
+Broadcast posts (`public_broadcast`, `private_broadcast`) are always
+Nostr-signed and live on Nostr relays, not as Matrix timeline events
+(§5.2, §5.3, §6.10). The two envelope types above govern **timeline
+traffic in discussion rooms** and **reactions/replies in broadcast
+rooms**: a bare `m.room.message` is the default, and a wrapped event
+or `heterodyne_nostr_sig` is an OPTIONAL per-message authenticity
+badge (§4.4). A bare message is not "anonymous" — it is attributable
+to its author's npub via the §3.3 delegation — but it carries no
+transferable third-party proof of authorship.
 
 ### 4.2 Wrapped event (`m.heterodyne.note.v1`)
 
@@ -1529,14 +1558,20 @@ Normative rules:
 
 A **bare event** is a normal Matrix message — `m.room.message` with the
 usual `msgtype` semantics — that carries no Nostr signature and therefore
-no cross-protocol authenticity guarantee. Inside an E2EE room a bare event
-is deniable in the same way any encrypted Matrix message is: only
-recipients know the sender, and the sender can claim the homeserver
-forged it.
+no *transferable* cross-protocol authenticity proof. It is the default
+for discussion-room traffic (§5.4, §5.5) and for reactions/replies in
+broadcast rooms (§5.2, §5.3). A bare event is still attributable to its
+author's npub: the sending Matrix device is bound to that npub by the
+§3.3 delegation, so any room member (and, for unencrypted rooms, any
+observer) can resolve the author. Heterodyne therefore does NOT treat
+bare events as deniable (§13.1.1); the absence of a Nostr signature
+means only that no member can hand a third party a self-verifying proof
+of authorship, not that authorship is hidden inside the room.
 
 A bare event MAY include an OPTIONAL `heterodyne_nostr_sig` field carrying
-a Nostr-signed proof of the same content, for senders who want
-authenticity without giving up the `m.room.message` rendering path:
+a Nostr-signed proof of the same content, for senders who want a
+transferable authenticity proof (a notarization "badge") without giving
+up the `m.room.message` rendering path:
 
 ```json
 {
@@ -1572,38 +1607,40 @@ Normative rules for bare events:
 
 ### 4.4 Wrap mode defaults per room kind
 
-The wrap-mode table applies to **events posted as Matrix timeline
-messages** inside a room. Public Matrix rooms hold only indexes
-and state (§5.2, §5.3) — there are no timeline messages by
-default, so the wrap-mode column for public rooms is effectively
-N/A. The full Nostr events for public content live on Nostr relays
-(§10.5).
+Wrap mode is governed by the **broadcast vs discussion** axis
+(§5), not by a per-room verifiable/deniable label. The two rules:
 
-The v0.2.0 room taxonomy encodes the wrap-mode default directly in
-the room kind: `*_verifiable` rooms default to wrapped (authentic),
-`*_deniable` rooms default to bare (Megolm-deniable). The choice
-is therefore visible to senders before they post and visible to
-verifiers when they decide how to render a room's timeline.
+- **Broadcast posts are always Nostr-signed.** In `public_broadcast`
+  and `private_broadcast` rooms the persona's posts live on Nostr
+  relays (§6.10, §10.5), not in the Matrix timeline, and are signed
+  by an epoch key authorized under §3.5. Authenticity is intrinsic
+  to broadcasting as a persona; there is no "bare" broadcast post.
+  (`public_broadcast` posts are plaintext on relays;
+  `private_broadcast` posts are room-key-wrapped, §6.10.)
+- **Discussion messages, and reactions/replies in broadcast rooms,
+  default to bare.** They are `m.room.message` / `m.reaction`
+  Matrix events, attributed to the author's npub via §3.3, with no
+  required Nostr signature. A sender MAY attach an OPTIONAL Nostr
+  signature (a wrapped `m.heterodyne.note.v1` or a
+  `heterodyne_nostr_sig` on a bare event) as a per-message
+  authenticity badge.
 
-| Room kind | Timeline event wrap mode | Override |
+| Room kind | Persona's own posts | Members' reactions / replies & discussion timeline |
 |---|---|---|
-| `public_broadcast` | N/A — full events on Nostr relays. See §5.2. | If a publisher does send a timeline event into a public room, it MUST be wrapped. |
-| `public_moderated` | N/A — full events AND per-moderator feed indexes on Nostr relays (§5.3, §6.7). | Same as above. |
-| `private_verifiable` | wrapped (`m.heterodyne.note.v1`) | Sender MAY send bare per-event for ad hoc deniability, but the room's default contract is authenticity. |
-| `private_deniable` | bare (`m.room.message`) | Sender MAY add `heterodyne_nostr_sig` per-event for opt-in authenticity. |
-| `dm_verifiable` | wrapped | Sender MAY send bare per-event. |
-| `dm_deniable` | bare | Sender MAY add `heterodyne_nostr_sig` per-event. |
+| `public_broadcast` | Nostr-signed, plaintext on relays (§6.10). Not in timeline. | bare (`m.room.message` / `m.reaction`); OPTIONAL `heterodyne_nostr_sig` badge. |
+| `private_broadcast` | Nostr-signed, room-key-wrapped on relays (§6.10). Not in timeline. | bare, inside the encrypted room; OPTIONAL `heterodyne_nostr_sig` badge. |
+| `public_discussion` | N/A — no single "persona" broadcaster. | bare default; OPTIONAL per-message Nostr signature badge. |
+| `private_discussion` | N/A. | bare default; OPTIONAL `heterodyne_nostr_sig` badge (in-room notarization). |
 
-Rationale: deniability and authenticity are room-level
-expectations, not per-event surprises. By making the choice
-explicit in the room kind, members can join a room knowing the
-default cryptographic posture of every message they will see, and
-clients can present an appropriate UI (e.g., a small "authentic"
-badge for `*_verifiable` rooms, a "deniable" indicator for
-`*_deniable` rooms). Public content lives primarily on Nostr
-relays where authenticity is intrinsic to the Nostr event itself;
-the Matrix room state references those events by ID via the feed
-index (§6.7).
+Rationale: authenticity follows intent. Broadcasting is the act of
+publishing *as* a persona, so it is always signed; discussion is
+many-party conversation where a full Nostr signature per message is
+unnecessary overhead, because the §3.3 delegation already binds
+every message to its author's npub. The OPTIONAL per-message
+signature exists for the narrower case where a participant wants a
+*transferable* proof a third party can verify. Clients present a
+small "signed" badge on signed messages and otherwise render
+discussion traffic plainly.
 See [`../architecture.md`](../architecture.md) for the full design
 rationale.
 
@@ -1712,19 +1749,46 @@ verification, click for details"). Silent drops mask attacks.
 
 ## 5. Room taxonomy
 
-Heterodyne defines six conventional social-room kinds (plus the
+Heterodyne defines four conventional social-room kinds (plus the
 two infrastructure kinds `identity_room` and `config_room`). Each
 is a normal Matrix room; the "kind" is a UX and conformance
 contract recorded explicitly as a state event so clients can
 present appropriate UI and so other Heterodyne clients know which
 behaviors apply.
 
-The v0.2.0 taxonomy makes the verifiable-vs-deniable axis
-explicit. The two private group kinds (`private_verifiable`,
-`private_deniable`) and the two DM kinds (`dm_verifiable`,
-`dm_deniable`) replace v0.1.4's `private_community` and `dm`
-respectively. The room's default wrap mode (§4.4) is encoded in
-its kind name.
+The taxonomy is organized on two orthogonal axes: **broadcast vs
+discussion** and **public vs private**.
+
+- **Broadcast** rooms are where a persona intentionally publishes
+  *as that persona*. Content is authored by the room's persona (or
+  a small co-admin set), is always Nostr-signed (authenticity is
+  intrinsic to broadcasting), and lives on **Nostr relays**, not
+  in the Matrix timeline. The Matrix room is a pointer/state
+  container: it advertises the relays content is published to,
+  hosts the encryption keys for private broadcasts, and carries
+  status changes (key rotations, relay/room additions) plus
+  members' reactions and replies. A broadcast room is *not* a
+  venue for general Matrix traffic.
+- **Discussion** rooms are where many participants converse — a
+  community, a topic, an event, or a group chat. Messages default
+  to **bare Matrix** (`m.room.message` / `m.reaction`); no
+  per-message Nostr signature is required, because every message
+  is already attributable to its author's npub via the §3.3
+  delegation that binds the sending Matrix device to that npub.
+  Nostr is OPTIONAL in discussion rooms (§4.4).
+
+This replaces v0.2.0's earlier six-kind, verifiable-vs-deniable
+taxonomy (per ADR-017). Authenticity now tracks the
+broadcast/discussion axis rather than a separate room label:
+broadcasts are signed, discussion is bare-by-default with an
+opt-in per-message signature badge. The retired
+`public_moderated` kind folds into `public_discussion` (a
+moderated community is a discussion room that declares
+moderators, §8.2); the retired `private_verifiable`,
+`private_deniable`, `dm_verifiable`, and `dm_deniable` kinds fold
+into `private_discussion` (two-party DMs are simply two-member
+`private_discussion` rooms). Heterodyne does NOT describe any room
+kind as offering deniability (§13.1.1).
 
 ### 5.1 Kind state event
 
@@ -1737,7 +1801,7 @@ state event with empty state key:
   "state_key": "",
   "content": {
     "spec_version": "0.2.0",
-    "kind": "identity_room | config_room | public_broadcast | public_moderated | private_verifiable | private_deniable | dm_verifiable | dm_deniable",
+    "kind": "identity_room | config_room | public_broadcast | private_broadcast | public_discussion | private_discussion",
     "topics": [
       {"namespace": "com.example.tags", "tag": "tech"},
       {"namespace": "com.example.tags", "tag": "rust"}
@@ -1748,51 +1812,47 @@ state event with empty state key:
 
 The `kind` field MUST be one of:
 
-- `identity_room` — see §3.2; the conventions in §5.2–§5.7 do not
+- `identity_room` — see §3.2; the conventions in §5.2–§5.5 do not
   apply.
 - `config_room` — see §3.8; per-MXID encrypted self-state room; the
-  conventions in §5.2–§5.7 do not apply.
-- `public_broadcast` — unencrypted; full events AND feed index
-  (`kind:31007`) on Nostr relays; the Matrix room holds standard
-  room state only and acts as a discovery/metadata container
-  (§5.2, §6.7).
-- `public_moderated` — unencrypted; multi-author; moderator
-  approvals on Nostr relays; per-moderator feed indexes on Nostr
-  (§5.3).
-- `private_verifiable` — E2EE; invite-only; multi-author; default
-  wrap mode `wrapped` (`m.heterodyne.note.v1`). Authenticity is
-  the room's default contract; no cryptographic deniability for
-  verifiable events (a participant can prove who said what via
-  the Nostr signature). (§5.4)
-- `private_deniable` — E2EE; invite-only; multi-author; default
-  wrap mode `bare` (`m.room.message`). No per-message Nostr
-  signature is produced; messages are not transferable
-  cryptographic authorship proofs. Deniable AGAINST non-members
-  (the Megolm/MLS ratchet is the only confidentiality
-  boundary). Members WITH access to the Megolm session keys can
-  decrypt and attribute messages, so colluding members can
-  always defeat deniability. (§5.5, ADR-004.)
-- `dm_verifiable` — E2EE; two-party; default wrap mode `wrapped`.
-  Useful when a DM needs cryptographic proof of authorship
-  (notarized agreements, support tickets). (§5.6)
-- `dm_deniable` — E2EE; two-party; default wrap mode `bare`. The
-  standard Matrix DM contract: deniable end-to-end. (§5.7)
+  conventions in §5.2–§5.5 do not apply.
+- `public_broadcast` — unencrypted broadcast; full (Nostr-signed)
+  events AND feed index (`kind:31007`) on Nostr relays; the Matrix
+  room holds standard room state and acts as a discovery/metadata
+  container that also carries members' reactions/replies (§5.2,
+  §6.7).
+- `private_broadcast` — E2EE broadcast to a closed follower set;
+  Nostr-signed posts are published **room-key-wrapped** (NIP-44 v2
+  under the Megolm-derived key, §6.7.4 / §6.10) to the relays
+  advertised in the room; the encrypted Matrix room's
+  membership/Megolm session is the follower keyring and carries
+  members' reactions/replies and status events (§5.3, §6.10).
+- `public_discussion` — unencrypted many-party discussion (a
+  community, topic room, forum, or open group chat). Messages
+  default to bare Matrix; Nostr is OPTIONAL. A moderated community
+  (NIP-72) is a `public_discussion` room that additionally declares
+  an `m.heterodyne.moderators.v1` state event (§5.4, §8).
+- `private_discussion` — E2EE many-party (or two-party DM)
+  discussion. Messages default to bare Matrix; Nostr is OPTIONAL
+  (§5.5).
 
-A persona choosing a private group kind SHOULD prefer
-`private_deniable` for casual social contexts (chat, planning,
-day-to-day conversation) and SHOULD prefer `private_verifiable`
-for contexts where authorship is part of the contract (work
-records, decision logs, moderated subgroups). The same guidance
-applies to DM rooms.
+Read-back compatibility: clients MAY accept rooms whose kind state
+asserts a retired v0.1.x/early-v0.2.0 kind
+(`public_moderated`, `private_verifiable`, `private_deniable`,
+`dm_verifiable`, `dm_deniable`). When they do, they SHOULD map the
+kind to the nearest current kind (`public_moderated` →
+`public_discussion`; `private_verifiable`/`private_deniable` →
+`private_discussion`; `dm_*` → two-party `private_discussion`) and
+surface a "legacy room kind" indicator. New rooms MUST use a
+current kind.
 
-The `topics` array is OPTIONAL but RECOMMENDED for
-`public_broadcast`, `public_moderated`, `private_verifiable`, and
-`private_deniable` kinds. It tags the room with one or more topic
-identifiers; followers can subscribe selectively. Topic namespaces
-SHOULD follow reverse-domain notation (`com.example.tags`) or
-recognized ISO classifications, mirroring the NIP-32 labeling
-convention. Heterodyne reserves the namespace
-`org.heterodyne.topics` for future canonical tags.
+The `topics` array is OPTIONAL but RECOMMENDED for all four social
+kinds. It tags the room with one or more topic identifiers;
+followers can subscribe selectively. Topic namespaces SHOULD follow
+reverse-domain notation (`com.example.tags`) or recognized ISO
+classifications, mirroring the NIP-32 labeling convention.
+Heterodyne reserves the namespace `org.heterodyne.topics` for
+future canonical tags.
 
 ### 5.2 `public_broadcast`
 
@@ -1802,31 +1862,43 @@ to operate multiple `public_broadcast` rooms, each topic-tagged
 differently ("my-tech-feed", "my-photography-feed"). Followers
 subscribe per-topic by joining the rooms whose tags interest them.
 
-**Content lives on Nostr relays; the Matrix room holds only state
-events.** Clients MUST NOT publish full Nostr events as Matrix
-timeline messages in `public_broadcast` rooms — Nostr relays are
-better suited to the volume of events that public broadcasting
-produces, and the feed index has been migrated to Nostr as well
-(§6.7).
+**Posts live on Nostr relays; the Matrix room is a pointer/state
+container.** Clients MUST NOT publish broadcast post content as
+Matrix timeline messages in `public_broadcast` rooms — Nostr relays
+are better suited to the volume of events that broadcasting
+produces, and the feed index lives on Nostr as well (§6.7). Every
+broadcast post MUST be a Nostr event signed by an epoch key
+authorized under §3.5 (authenticity is intrinsic to broadcasting
+as a persona).
 
 The Matrix room holds:
 
 - Room state events (kind state, moderators, etc.).
 - Optional auxiliary state events (room descriptions, banners,
   etc.).
+- Status changes — relay-set updates, additional broadcast-room
+  pointers, key-rotation notices — published as state events.
 - An OPTIONAL `m.heterodyne.archive.v1` state event advertising
   the persona's user-hosted Web Archive (§6.9.2).
+- Members' **reactions and replies** to the persona's posts.
+  Followers who have joined the Matrix room MAY react/reply with
+  bare Matrix events (`m.reaction`, `m.room.message`); these are
+  attributed to the reacting persona's npub via §3.3 and are NOT
+  indexed (§6.8). Followers who consume via Nostr instead MAY
+  react with Nostr `kind:7` events on the relays. Reactions and
+  replies are the only regular timeline traffic in a broadcast
+  room.
 
 The persona's curated feed for the room is the persona's
 `kind:31007` index keyed by `<room_id>:<page_id>` on the persona's
 Nostr write relays (§6.7). The Matrix room does **not** carry the
-index.
+index or the posts.
 
 Vanilla Matrix clients peeking into a `public_broadcast` room will
-see an effectively empty timeline. This is intentional. Followers
-who want the actual content subscribe to the persona's Nostr write
-relays per their public outbox (§7.1) and fetch their feed index
-from those same relays.
+see only reactions/replies, not the persona's posts. This is
+intentional. Followers who want the actual content subscribe to the
+persona's Nostr write relays per their public outbox (§7.1) and
+fetch their feed index from those same relays.
 
 REQUIRED:
 
@@ -1838,71 +1910,48 @@ REQUIRED:
 RECOMMENDED `m.room.power_levels`:
 
 - `users_default`: 0.
-- `events_default`: 50 (only the persona and co-admins can post —
-  in practice they post nothing into the timeline; this guard
-  prevents non-administrators from injecting timeline noise).
+- `events_default`: 0 (members MAY post reactions/replies; the
+  persona's own posts go to Nostr relays, not the timeline). A
+  persona that wants a reaction-free broadcast MAY raise this to 50.
 - `state_default`: 100 (only the persona controls room state).
 - The persona's MXID (and any co-admin MXIDs): 100.
 
-### 5.3 `public_moderated`
+### 5.3 `private_broadcast`
 
-Like `public_broadcast` but with multiple contributors whose posts
-surface in the moderated feed view only after a moderator approval
-signature (§8). Conceptually equivalent to a subreddit or a
-moderated mailing list.
+An E2EE room where a persona broadcasts to a **closed follower
+set**. The encrypted Matrix room's membership — and the Megolm
+(eventually MLS) session shared across that membership — is the
+follower keyring: whoever holds the room's outbound session can
+read the persona's posts, and only them. Suitable for
+followers-only feeds, paid or invite-gated broadcasts, family or
+team announcement channels.
 
-**Content and indexes live on Nostr relays; the Matrix room holds
-only state.** Both candidate posts and moderator approval events
-(NIP-72 `kind:4550`) live on Nostr relays. The Matrix room state
-contains:
+**Posts are room-key-wrapped on Nostr relays; the Matrix room
+hosts the keys, status, and member interactions.** The persona's
+posts are Nostr events whose `content` is NIP-44 v2 encrypted
+under the **Heterodyne room key** derived from the room's Megolm
+outbound session (§6.7.4 derivation; full post wire form in §6.10),
+published to the relays advertised in the room. This is
+encrypt-once-for-the-room: the persona encrypts a post a single
+time and every authorized follower decrypts it with the room key
+they already hold, with no per-recipient NIP-59 gift-wrap. The
+Matrix room holds:
 
-- The `m.heterodyne.moderators.v1` state event listing approving
-  moderators (§8.2).
-- Standard room state (room kind, power levels, etc.).
-- An OPTIONAL `m.heterodyne.archive.v1` state event (§6.9.2).
+- `m.room.encryption` (the Megolm session that derives the room
+  key) and standard room state.
+- An `m.heterodyne.outbox.scoped.v1` (§7.2) and/or relay-pointer
+  state declaring which relays the room-key-wrapped posts and
+  index are published to.
+- Status changes (key rotations, relay/room-set updates) as
+  encrypted state events.
+- Members' **reactions and replies** to the persona's posts, as
+  bare Matrix events inside the encrypted room (so they are
+  Megolm-protected and attributable to the reacting persona's npub
+  via §3.3, but not indexed, §6.8).
 
-Each approving moderator publishes their own `kind:31007` feed
-index on Nostr relays, listing the `kind:4550` approval events
-they have issued for the room in display order (§6.7). For
-multi-moderator rooms, receivers fetch each moderator's `kind:31007`
-and combine them according to user-chosen moderator preference.
-
-Followers subscribe to the Nostr relays where contributors and
-moderators publish, fetch each authorized moderator's
-`kind:31007` index keyed by `<room_id>:<page_id>`, and use those
-indexes to determine which post + approval combinations to
-surface.
-
-REQUIRED `m.room.create`, `m.room.history_visibility`,
-`m.room.guest_access`, `m.room.encryption`: same as
-`public_broadcast`.
-
-RECOMMENDED `m.room.power_levels`:
-
-- `users_default`: 0.
-- `events_default`: 50 (the room timeline is not used for content;
-  prevents non-admin timeline injection).
-- `state_default`: 50 (only moderators control state).
-- Moderator MXIDs: 50.
-- Room owner MXID: 100.
-
-The set of approving moderators MUST be advertised via an
-`m.heterodyne.moderators.v1` state event (§8.2).
-
-### 5.4 `private_verifiable`
-
-An E2EE room with invitation-controlled membership where every
-message is by default a wrapped `m.heterodyne.note.v1` carrying a
-verifiable Nostr signature. Suitable for work groups, decision
-logs, moderated subgroups, family records — contexts where
-authorship is part of the contract.
-
-DEFAULT wrap mode: **wrapped**. The Nostr signature on every
-post lets any participant (or a future verifier with whom the
-participant shares the wrapped event) prove who said what.
-`private_verifiable` rooms do NOT offer cryptographic deniability:
-participants who store wrapped events retain signed evidence of
-authorship.
+The persona's feed index for the room is a room-key-wrapped
+`kind:31007` (§6.7.4) referencing the room-key-wrapped post event
+ids.
 
 REQUIRED:
 
@@ -1913,10 +1962,109 @@ REQUIRED:
   client-side encryption (ADR-001) — clients encrypt state
   event content client-side; the homeserver stores ciphertext
   as opaque content. Any `m.heterodyne.outbox.scoped.v1` (§7.2),
-  moderation, or kind-state events MUST be encrypted this way.
-  Receivers MUST treat any unencrypted Heterodyne state event
-  in this room as INVALID per §9.1.1 (state-downgrade
-  resistance).
+  relay-pointer, moderation, or kind-state events MUST be
+  encrypted this way. Receivers MUST treat any unencrypted
+  Heterodyne state event in this room as INVALID per §9.1.1
+  (state-downgrade resistance).
+- `m.room.history_visibility`: `shared` or `invited`.
+- `m.room.guest_access`: `forbidden`.
+- `m.room.join_rules`: `invite`, or `restricted` to a parent Space or
+  gating room.
+- Room-key rotation on membership change MUST follow the §6.7.4
+  rotation policy (forced Megolm rotation when a member is
+  removed/kicked/leaves; republish the latest index — and resume
+  posting — under the new room key so excluded members cannot read
+  subsequent posts).
+
+RECOMMENDED `m.room.power_levels`:
+
+- `users_default`: 0.
+- `events_default`: 0 (members MAY post reactions/replies). A
+  persona that wants a reaction-free broadcast MAY raise this to 50.
+- `state_default`: 100 (only the persona controls relay pointers and
+  keys).
+- The persona's MXID (and any co-admin MXIDs): 100.
+
+**Intended audience (ADR-002).** `private_broadcast` rooms are
+intended for Heterodyne-aware client populations only — a
+non-Heterodyne client cannot derive the room key or interpret the
+room-key-wrapped relay posts. Heterodyne clients SHOULD warn before
+inviting an MXID whose homeserver has not been observed to carry
+Heterodyne activity; the warning is a UX guard, not a hard
+rejection.
+
+### 5.4 `public_discussion`
+
+An unencrypted many-party room: a community, a topic room, a forum,
+an event channel, or an open group chat. This is the venue for
+ongoing conversation among many participants, as distinct from a
+broadcast room where one persona publishes.
+
+DEFAULT message form: **bare Matrix** (`m.room.message`,
+`m.reaction`, rich replies per §6.5). No per-message Nostr signature
+is required: each message is already attributable to its author's
+npub via the §3.3 delegation binding the sending Matrix device to
+that npub. A client MAY attach an OPTIONAL Nostr signature to a
+message it sends (earning a "signed" authenticity badge, §4.3); such
+a signature stays local to the room and is NOT rebroadcast to relays
+or added to any feed index unless the user takes an explicit
+"publish to my feed" action.
+
+**Moderated communities (NIP-72).** A `public_discussion` room
+becomes a moderated community when it carries an
+`m.heterodyne.moderators.v1` state event (§8.2). Moderators publish
+NIP-72 `kind:4550` approval events and per-moderator `kind:31007`
+approval indexes on Nostr relays (§8, §6.7); clients render the
+moderated/approved view by combining authorized moderators'
+indexes, while the unmoderated room timeline remains the live
+discussion. This replaces the retired `public_moderated` kind.
+
+REQUIRED:
+
+- `m.room.create.room_version`: `"11"` (pinned per ADR-002). Bumping this requires a new ADR.
+- `m.room.encryption`: absent — the room is intentionally unencrypted.
+- `m.room.history_visibility`: `world_readable` or `shared`.
+- `m.room.guest_access`: `can_join` (open) or `forbidden` (gated).
+
+RECOMMENDED `m.room.power_levels`:
+
+- `users_default`: 0.
+- `events_default`: 0 (participants converse freely). Moderated
+  communities MAY gate posting via power levels in addition to
+  NIP-72 approvals.
+- `state_default`: 50 (moderators/owner control state) or 100.
+- Moderator MXIDs: 50; room owner MXID: 100.
+
+### 5.5 `private_discussion`
+
+An E2EE many-party room with invitation-controlled membership —
+friend circles, work groups, family records, casual planning,
+day-to-day group chat — and, in the two-member case, the standard
+Heterodyne direct-message room. This single kind replaces the
+retired `private_verifiable`, `private_deniable`, `dm_verifiable`,
+and `dm_deniable` kinds; two-party DMs are simply two-member
+`private_discussion` rooms.
+
+DEFAULT message form: **bare Matrix** (`m.room.message`,
+`m.reaction`). The room's confidentiality boundary is the
+Megolm/MLS session: non-members cannot decrypt the content. Every
+message remains attributable to its author's npub via the §3.3
+delegation; Heterodyne does NOT claim deniability for these rooms
+(§13.1.1). A sender MAY attach an OPTIONAL `heterodyne_nostr_sig`
+(§4.3) per message to produce a transferable authenticity proof
+(useful for in-room notarization — agreements, decisions, support
+tickets); like all opt-in signatures it stays local unless the user
+explicitly publishes it.
+
+REQUIRED:
+
+- `m.room.create.room_version`: `"11"` (pinned per ADR-002). Bumping this requires a new ADR.
+- `m.room.encryption.algorithm`: `m.megolm.v1.aes-sha2` (today); the
+  MLS variant once stabilized.
+- Encrypted state events: MUST follow MSC4362-compatible
+  client-side encryption (ADR-001), as in §5.3. Receivers MUST
+  treat any unencrypted Heterodyne state event in this room as
+  INVALID per §9.1.1.
 - `m.room.history_visibility`: `shared` or `invited`.
 - `m.room.guest_access`: `forbidden`.
 - `m.room.join_rules`: `invite`, or `restricted` to a parent Space or
@@ -1925,95 +2073,25 @@ REQUIRED:
 RECOMMENDED `m.room.power_levels`:
 
 - `users_default`: 0.
-- `events_default`: 0 for full-participation circles; 50 for
-  broadcast-style verifiable circles.
+- `events_default`: 0 for full-participation circles.
 - `state_default`: 50 or 100.
 - Owner MXID: 100.
 
-Broadcast-style `private_verifiable` rooms SHOULD maintain an
-encrypted feed index per persona, encrypted under the Heterodyne
-room-key wrap defined in §6.7.4. The index lets a member view
-the persona's curated feed in chronological / pinned order
-without scanning the whole Matrix timeline.
+For two-party DMs, the room MUST be E2EE and the
+`m.heterodyne.room_kind.v1` state event MUST declare
+`kind: "private_discussion"`; other configuration is whatever the
+Matrix client SDK produces for a normal DM.
 
-**Intended audience (ADR-002).** `private_verifiable` rooms are
+**Intended audience (ADR-002).** `private_discussion` rooms are
 intended for Heterodyne-aware client populations only. A
 non-Heterodyne Matrix client invited to such a room can read the
 Megolm-encrypted timeline normally (if it possesses the session
-keys), but cannot interpret encrypted state events, Heterodyne
-kind labels, or the `kind:31007` index references. Heterodyne
-clients SHOULD warn the user before inviting an MXID whose
-homeserver has not been observed to carry Heterodyne-published
-events; the warning is a UX guard, not a hard rejection. The
-underlying room remains a normal Matrix room and functions for
-non-Heterodyne clients with degraded UX.
+keys) but cannot interpret encrypted Heterodyne state events or
+optional signatures. Heterodyne clients SHOULD warn before inviting
+an MXID whose homeserver has not been observed to carry Heterodyne
+activity; the warning is a UX guard, not a hard rejection.
 
-### 5.5 `private_deniable`
-
-An E2EE room with invitation-controlled membership where every
-message is by default a bare `m.room.message`. No per-message
-Nostr signature is produced; messages are not transferable
-cryptographic authorship proofs. The room's confidentiality
-boundary is the Megolm/MLS session: non-members cannot decrypt
-or attribute messages. Members WITH the session keys can
-decrypt and attribute every message, so colluding members can
-always defeat deniability (this is a fundamental property of
-shared-session ratchets, not a Heterodyne-specific limitation).
-Suitable for friend circles, casual planning, day-to-day
-conversation, anywhere that participants want the social-graph
-and content secrecy of a private group chat without committing
-to authorship across the membership boundary.
-
-DEFAULT wrap mode: **bare**. A sender MAY include
-`heterodyne_nostr_sig` (§4.3) per-event to opt into authenticity
-for a specific message; the deniability default applies to the
-room overall.
-
-REQUIRED: identical to §5.4 (same encryption invariants,
-membership controls, and history-visibility / guest-access /
-join-rules settings).
-
-RECOMMENDED `m.room.power_levels`: identical to §5.4.
-
-`private_deniable` rooms MAY publish an encrypted feed index
-(§6.7.4 room-key wrap) per persona but, because most events in
-these rooms are bare and not separately addressable on Nostr,
-the index typically covers only the subset of events the sender
-explicitly opted to sign.
-
-**Intended audience (ADR-002).** Same as §5.4: `private_deniable`
-rooms are intended for Heterodyne-aware client populations only.
-Same UX warning recommendation applies before inviting MXIDs
-without observed Heterodyne activity.
-
-### 5.6 `dm_verifiable`
-
-A two-party E2EE room used for direct messaging where every
-message is by default a wrapped `m.heterodyne.note.v1`. Useful for
-DMs whose content is intended to be presentable as evidence —
-notarized agreements, support tickets, structured request /
-response exchanges.
-
-DEFAULT wrap mode: **wrapped**. Sender MAY send bare per-event.
-
-The room MUST be E2EE and the `m.heterodyne.room_kind.v1` state
-event MUST declare `kind: "dm_verifiable"`. Other configuration
-is whatever the Matrix client SDK produces for a normal DM.
-
-### 5.7 `dm_deniable`
-
-A standard two-party Matrix DM room reused for Heterodyne direct
-messaging with deniability by default. This is the default DM
-kind for casual private exchange.
-
-DEFAULT wrap mode: **bare** (`m.room.message`). Sender MAY include
-`heterodyne_nostr_sig` for opt-in authenticity per message (§4.3).
-
-The room MUST be E2EE and the `m.heterodyne.room_kind.v1` state
-event MUST declare `kind: "dm_deniable"`. Other configuration is
-whatever the Matrix client SDK produces for a normal DM.
-
-### 5.8 Multi-room patterns
+### 5.6 Multi-room patterns
 
 A persona is expected to maintain multiple Heterodyne rooms
 simultaneously:
@@ -2024,24 +2102,24 @@ simultaneously:
   topic the persona broadcasts about. A persona SHOULD prefer
   multiple topic-tagged broadcast rooms over a single catchall
   room; this enables topic-selective subscription.
-- Zero or more **`public_moderated`** communities the persona
-  admins or participates in.
-- Zero or more **`private_verifiable`** rooms (work groups,
-  decision logs, family records).
-- Zero or more **`private_deniable`** rooms (friend circles,
-  social conversation, day-to-day group chat).
-- DM rooms (`dm_verifiable` or `dm_deniable`) as needed.
+- Zero or more **`private_broadcast`** rooms (followers-only feeds,
+  gated or team announcement channels).
+- Zero or more **`public_discussion`** communities the persona
+  admins or participates in (including moderated NIP-72
+  communities).
+- Zero or more **`private_discussion`** rooms (friend circles, work
+  groups, family records, group chats, and two-party DMs).
 
-A persona MAY aggregate its public broadcast rooms into a Matrix
-**Space** (MSC2946) advertised in the persona's public outbox (§7.1).
-This gives a "subscribe to all my topics" affordance for followers;
-the Space hierarchy lets followers descend to per-topic rooms.
+A persona MAY aggregate its broadcast rooms into a Matrix **Space**
+(MSC2946) advertised in the persona's public outbox (§7.1). This
+gives a "subscribe to all my topics" affordance for followers; the
+Space hierarchy lets followers descend to per-topic rooms.
 
 A private room MAY list further Heterodyne rooms in its own
 audience-scoped outbox advertisement (§7.2). This is how a "close
-friends" `private_deniable` room can advertise "I also keep an
-encrypted photo `private_verifiable` room you can join" to its
-members without leaking that room's existence to non-friends.
+friends" `private_discussion` room can advertise "I also keep a
+followers-only `private_broadcast` feed you can join" to its members
+without leaking that room's existence to non-friends.
 
 ## 6. Publishing flow
 
@@ -2054,11 +2132,20 @@ as a client implementation choice.
 
 ### 6.1 One signed Nostr event per intent
 
-A single user-level intent MUST correspond to exactly one signed Nostr
-event, computed once from the user's nsec. That single event is then
-fanned out to multiple destinations. The Nostr event `id` (SHA-256 over
-the canonical Nostr serialization) is the idempotency token across the
-entire fan-out.
+This rule applies to any intent that **is** published as a Nostr event
+— every broadcast post (§5.2, §5.3, §6.10) and any discussion message
+the sender opts to sign (§4.3). Bare discussion traffic and bare
+reactions/replies are plain Matrix events with no Nostr event and are
+out of scope for this rule.
+
+A single such intent MUST correspond to exactly one signed Nostr event,
+computed once from the user's nsec. That single event is then fanned
+out to multiple destinations. The Nostr event `id` (SHA-256 over the
+canonical Nostr serialization) is the idempotency token across the
+entire fan-out. For a `private_broadcast` post, the room-key wrapping
+(§6.10) is applied to the event `content` *before* signing, so the
+signed event id is stable across delivery; re-wrapping under a rotated
+room key is a new intent with a new id (§6.10).
 
 Implementations MUST NOT re-sign the same intent multiple times.
 Re-signing would defeat authenticity: receivers would see distinct
@@ -2073,13 +2160,11 @@ whether the event is referenced from the persona's feed index
 
 | Destination | Wire form for the event | Feed-index entry? |
 |---|---|---|
-| `public_broadcast` room | Event is **not** published as a Matrix timeline message. The event goes to the persona's Nostr write relays per NIP-01 (§10.5). | Yes if indexed (§6.8). The persona's `kind:31007` index lists this event. |
-| `public_moderated` room | Same — event on Nostr relays, not in the Matrix room. Moderator approval (kind:4550) also on Nostr relays. | Yes if indexed, in the moderator's `kind:31007` index (only after approval is issued). |
-| `private_verifiable` | `m.heterodyne.note.v1` (wrapped, encrypted under Megolm) in the room. | Yes if indexed; the persona's `kind:31007` index for this room is room-key wrapped per §6.7.4 (Megolm-derived key + NIP-44 v2 encryption). |
-| `private_deniable` | `m.room.message` (bare) by default; sender MAY opt to wrap. | Indexed only for events the sender chose to sign; index room-key wrapped per §6.7.4. |
-| `dm_verifiable` | `m.heterodyne.note.v1` (wrapped). | No. DM rooms do not maintain feed indexes. |
-| `dm_deniable` | `m.room.message` (bare) or with `heterodyne_nostr_sig`. | No. |
-| Vanilla Nostr relay | The unwrapped Nostr event per NIP-01. | N/A — Nostr relays do not host Heterodyne indexes other than `kind:31007` itself. |
+| `public_broadcast` room | Broadcast post is **not** a Matrix timeline message. The signed Nostr event goes to the persona's Nostr write relays per NIP-01 (§10.5). Members' reactions/replies are bare Matrix events in the room. | Yes if indexed (§6.8). The persona's plaintext `kind:31007` index lists this event. Reactions/replies are not indexed. |
+| `public_discussion` room (incl. moderated NIP-72) | Discussion message is a bare `m.room.message` in the Matrix room (OPTIONAL `heterodyne_nostr_sig`). Moderator approval (`kind:4550`) on Nostr relays. | No for bare discussion. Moderator approvals: yes, in the moderator's `kind:31007` index (only after approval). |
+| `private_broadcast` room | Broadcast post is **not** a Matrix timeline message. The signed Nostr event, room-key-wrapped per §6.10, goes to the relays advertised in the room. Members' reactions/replies are bare Matrix events inside the encrypted room. | Yes if indexed; the persona's `kind:31007` index for this room is room-key wrapped per §6.7.4. Reactions/replies are not indexed. |
+| `private_discussion` (incl. two-party DM) | `m.room.message` (bare, encrypted under Megolm) by default; sender MAY attach `heterodyne_nostr_sig` for in-room notarization. | No by default. DMs do not maintain feed indexes; group `private_discussion` rooms index only events the sender explicitly chose to publish to their feed (§5.5), via a room-key-wrapped `kind:31007` (§6.7.4). |
+| Vanilla Nostr relay | The unwrapped Nostr event per NIP-01 (plaintext; room-key-wrapped posts are not published to relays outside the room's advertised set). | N/A — Nostr relays do not host Heterodyne indexes other than `kind:31007` itself. |
 
 The destination set is computed from:
 
@@ -2236,15 +2321,28 @@ MUST NOT be used.
 
 ### 6.5 Replies and threading
 
-A reply is structurally a normal Nostr event of the appropriate kind
-(typically `kind:1` for short-form, or NIP-23 `kind:30023` for long-form
-comments) with NIP-10 `e` and `p` tags identifying the parent event and
-its author. The wrap and fan-out rules above apply unchanged.
+How a reply is carried depends on where it is sent:
+
+- **In discussion rooms** (`public_discussion`, `private_discussion`)
+  and as a reply to a broadcast post inside the broadcast room, a reply
+  defaults to a **bare Matrix event** — `m.room.message` with a
+  Matrix rich reply (`m.in_reply_to`) referencing the parent — and is
+  attributed to the replier's npub via §3.3. No Nostr event is
+  produced unless the replier opts in.
+- **When the replier wants the reply on their own feed** (e.g., quoting
+  a public post into the replier's own `public_broadcast` feed, or a
+  notarized reply), the reply is a normal Nostr event of the
+  appropriate kind (typically `kind:1`, or NIP-23 `kind:30023` for
+  long-form comments) with NIP-10 `e` and `p` tags identifying the
+  parent event and its author. The signing and fan-out rules above
+  then apply unchanged.
 
 A reply's destination set typically includes:
 
 - The room where the parent event was observed (so the conversation
-  remains visible to the same audience).
+  remains visible to the same audience). For a broadcast post observed
+  via Nostr, the reply MAY instead go to the parent author's reply
+  inbox (below).
 - Optionally, additional rooms the replier wants to broadcast the reply
   to (e.g., quoting a public post into the replier's own
   `public_broadcast` feed).
@@ -2265,10 +2363,10 @@ a public vanilla Nostr relay in the same operation, it publishes:
 
 The user is responsible for ensuring this is intended. Clients SHOULD
 warn before publishing to a public Nostr relay when the originating
-context is a `private_verifiable`, `private_deniable`,
-`dm_verifiable`, or `dm_deniable` room — the same user-level intent
-SHOULD NOT normally span both a private Matrix room and public Nostr
-relays. The warning is a UX guard, not a normative restriction.
+context is a `private_broadcast` or `private_discussion` room — the
+same user-level intent SHOULD NOT normally span both a private Matrix
+room and public Nostr relays. The warning is a UX guard, not a
+normative restriction.
 
 ### 6.7 Feed index (Nostr-native, `kind:31007`)
 
@@ -2334,10 +2432,11 @@ Normative rules:
   as the third element (NIP-01 convention). Future tags MAY
   carry additional metadata; the first three positions of an `e`
   tag are positionally fixed at `["e", "<event_id>", "<relay_hint>"]`.
-- For moderator approvals in `public_moderated` rooms, the index
-  references the moderator's own `kind:4550` approval events (not
-  the underlying contributor posts directly). Receivers correlate
-  the approval to the post via the approval's tags.
+- For moderator approvals in moderated `public_discussion`
+  communities, the index references the moderator's own
+  `kind:4550` approval events (not the underlying contributor
+  posts directly). Receivers correlate the approval to the post
+  via the approval's tags.
 
 #### 6.7.2 Paging, size limits, and page-chain integrity (ADR-006)
 
@@ -2400,20 +2499,24 @@ relays become reachable or the user revisits the feed.
 
 #### 6.7.3 Public rooms — plaintext on relays
 
-For `public_broadcast` and `public_moderated` rooms, the
-`kind:31007` index is published in plaintext to the persona's
-public write relays. Anyone with knowledge of the persona's npub
-and any of their write relays can fetch the index. This is the
-intended behavior — public feed curation should be inspectable.
+For `public_broadcast` rooms and moderated `public_discussion`
+communities, the `kind:31007` index is published in plaintext to
+the persona's public write relays. Anyone with knowledge of the
+persona's npub and any of their write relays can fetch the index.
+This is the intended behavior — public feed curation should be
+inspectable.
 
 #### 6.7.4 Private rooms — Heterodyne room-key wrap (ADR-005)
 
 Publishing a plaintext `kind:31007` for a private room would leak
 the room's existence and the persona's posting cadence (event
 ids + timestamps) to anyone subscribed to the persona's relays.
-For `private_verifiable`, `private_deniable`, `dm_verifiable`,
-and `dm_deniable` rooms, a persona publishing a feed index MUST
-use the **Heterodyne room-key wrap** defined in this subsection.
+For `private_broadcast` and `private_discussion` rooms (including
+two-party DMs), a persona publishing a feed index MUST use the
+**Heterodyne room-key wrap** defined in this subsection. The same
+wrap protects `private_broadcast` *post content* (§6.10), so a
+private broadcast feed and the posts it indexes share one
+encrypt-once-for-the-room key.
 
 The NIP-59 gift-wrap path for private indexes that appeared in
 earlier drafts has been WITHDRAWN: per-recipient `kind:1059`
@@ -2436,13 +2539,18 @@ room_key = HKDF-SHA256(
 )
 ```
 
-`HKDF-SHA256` is RFC 5869. Heterodyne clients MUST track Megolm
-session rotations and re-derive `room_key` whenever the outbound
-session rotates.
+`HKDF-SHA256` is RFC 5869. The `info` label `"heterodyne-index-key-v1"`
+domain-separates this index key from the `"heterodyne-post-key-v1"`
+key used for `private_broadcast` post content (§6.10); the two are
+derived from the same Megolm session but never share key material.
+Heterodyne clients MUST track Megolm session rotations and re-derive
+`room_key` whenever the outbound session rotates.
 
 **Encryption.** The `content` field of a `kind:31007` event for
-a private room MUST be the NIP-44 v2 encryption of the index
-payload using `room_key` as the NIP-44 conversation key. The
+a private room MUST be the NIP-44 v2 *symmetric* encryption of the
+index payload using `room_key` directly as the 32-byte NIP-44
+conversation key, per the Heterodyne NIP-44 profile defined in
+§6.10 (NIP-44 v2's symmetric layer only; no ECDH step). The
 index payload is the same JSON structure that would otherwise
 appear as plaintext `content` (in current §6.7.1 it is the empty
 string with all data in tags; this remains true — the `tags`
@@ -2479,26 +2587,32 @@ Normative rules for private `kind:31007` events:
   which Megolm outbound session derived `room_key`. Receivers
   MUST use this tag to select the correct Megolm session before
   re-deriving `room_key`.
-- `tags` MUST include `["matrix_room", "<room_id>"]` so
-  verifiers can confirm membership in the named room before
-  attempting decryption.
+- `tags` MUST include `["matrix_room", "<room_id>"]` to associate
+  the index with its room.
 - The `["d", "<page-identifier>"]` tag SHOULD be an opaque
   value (e.g., SHA-256 of `persona_pubkey || room_id ||
   page_sequence`) rather than including the literal room id —
   this prevents non-member relay observers from correlating
   page identifiers to known room ids.
 - Receivers MUST decrypt by: selecting the Megolm session named
-  by `megolm_session_id`; verifying current membership in the
-  named `matrix_room`; re-deriving `room_key` per the HKDF
-  formula above; applying NIP-44 v2 decryption to `content`.
+  by `megolm_session_id`; re-deriving `room_key` per the HKDF
+  formula above; applying NIP-44 v2 symmetric decryption to
+  `content`. As with `private_broadcast` posts (§6.10), the
+  access-control primitive is possession of the named Megolm
+  session, NOT current Matrix room membership — current membership
+  is a UX/soft gate only. A party without the session cannot
+  decrypt.
 
 **Rotation policy.** Heterodyne clients MUST trigger a Matrix
 Megolm rotation (and therefore a `room_key` rotation) when any
 member is removed, kicked, or leaves voluntarily from a
-`private_*` or `dm_*` room. Clients SHOULD republish the latest
-`kind:31007` index encrypted under the new `room_key` within
-60 seconds of a forced rotation, so newly excluded members
-cannot read subsequent updates. Clients MAY accept the existing
+`private_broadcast` or `private_discussion` room. Clients SHOULD
+republish the latest `kind:31007` index encrypted under the new
+`room_key` within 60 seconds of a forced rotation, so newly
+excluded members cannot read subsequent updates. For
+`private_broadcast` rooms the same rotation re-keys post content
+(§6.10): posts published under the prior key remain readable only
+by those who retain the prior Megolm session. Clients MAY accept the existing
 Megolm session (and therefore the existing `room_key`) when
 new members join — historical indexes encrypted under prior
 keys remain readable by those who possess the prior Megolm
@@ -2510,12 +2624,14 @@ sessions, which is expected behavior.
 `"room_key.v1"`. The withdrawn NIP-59 gift-wrap path is no
 longer recognized.
 
-**When NOT to publish a private index.** Whether to publish a
-feed index for a private room remains at the persona's option
-— private rooms can rely on the chronological Matrix DAG
-instead. Indexes are recommended for broadcast-style private
-rooms and discouraged for chat-style ones. The room-key wrap
-does not change this tradeoff; it just provides an honest
+**When NOT to publish a private index.** For `private_broadcast`
+rooms an index is expected — it is the persona's curated feed
+over the room-key-wrapped posts (§6.10). For `private_discussion`
+rooms a feed index remains at the persona's option: such rooms
+can rely on the chronological Matrix DAG instead, and an index
+typically covers only the subset of messages the sender
+explicitly chose to publish to their feed. The room-key wrap does
+not change this tradeoff; it just provides an honest
 single-event-per-update wire format for those who choose to
 publish.
 
@@ -2530,10 +2646,10 @@ the persona's curated feed by:
    pagination, all pages are fetched.
 2. For private-room indexes, applying the Heterodyne room-key
    wrap decryption per §6.7.4: select the Megolm session named
-   by `megolm_session_id`, verify membership in the named
-   `matrix_room`, re-derive `room_key`, NIP-44 v2 decrypt
-   `content`. (Non-members lack the Megolm session and therefore
-   cannot decrypt.)
+   by `megolm_session_id`, re-derive `room_key`, NIP-44 v2
+   symmetric decrypt `content`. (Access is gated by possession of
+   the named Megolm session, not current room membership;
+   a party without the session cannot decrypt.)
 3. Verifying each unwrapped `kind:31007`'s BIP-340 signature
    against the persona's currently authorized epoch key (§3.5).
 4. Walking `previous_index` tags backward to assemble the full
@@ -2578,13 +2694,28 @@ event is referenced from a `kind:31007` feed index entry (§6.7).
   publisher's client MUST add a `kind:31007` `e`-tag entry for
   each indexed event it publishes into a feed room.
 - **Non-indexed events** are ephemeral or decorative — reactions,
-  zap receipts, follow-list updates, deletion requests, status
-  changes, moderation reports. They are visible on Nostr relays
-  (or in encrypted Matrix rooms for private contexts) but are not
-  listed in the feed index. Clients render them contextually: a
-  reaction appears under the post it reacts to; a zap receipt is
-  shown as an interaction counter; a follow list update propagates
-  silently.
+  replies, zap receipts, follow-list updates, deletion requests,
+  status changes, moderation reports. They are visible on Nostr
+  relays (or in Matrix rooms) but are not listed in the feed
+  index. Clients render them contextually: a reaction appears
+  under the post it reacts to; a zap receipt is shown as an
+  interaction counter; a follow list update propagates silently.
+
+**Reactions and replies in rooms (never indexed).** A reaction or
+reply posted inside a Matrix room — a broadcast room (§5.2, §5.3)
+or a discussion room (§5.4, §5.5) — is by default a **bare Matrix
+event** (`m.reaction`, or `m.room.message` with `m.in_reply_to`).
+No Nostr signature is required: the event is attributed to its
+author's npub via the §3.3 delegation binding the sending Matrix
+device to that npub. Such events are NOT added to any `kind:31007`
+index and are NOT rebroadcast to relays. A client MAY optionally
+Nostr-sign a reaction (`kind:7`) or reply it sends — earning a
+"signed" badge — but that signature stays local to the room unless
+the user takes an explicit "publish to my feed" action (which would
+then make it an indexed event per the policy below). Followers who
+consume a public broadcast via Nostr rather than via the Matrix
+room MAY instead react with native Nostr `kind:7` events on the
+relays.
 
 #### 6.8.1 Default indexing policy by kind
 
@@ -2683,10 +2814,11 @@ complete.
 
 For private-room indexes (Heterodyne room-key wrapped per §6.7.4), Channel 1
 also serves the underlying events when the room is a
-`private_verifiable` and the events were also pushed to a
-publishing-pubkey relay. For events that live only inside the
-Matrix room as `m.heterodyne.note.v1` timeline messages, the
-client uses Matrix's normal `/messages` pagination plus its
+`private_broadcast` — the room-key-wrapped posts (§6.10) live on
+the room's advertised relays and are fetched the same way as the
+index, then decrypted with the room key. For optionally-signed
+events that live only inside a `private_discussion` Matrix room,
+the client uses Matrix's normal `/messages` pagination plus its
 locally cached Megolm sessions to back-load history rather than
 attempting a Nostr fetch.
 
@@ -2735,6 +2867,136 @@ event to the user.
   Publishers describe their own archive in
   `m.heterodyne.archive.v1`; receivers either succeed or surface
   the missing event.
+
+### 6.10 Encrypted broadcast posts — room-key wrap (ADR-017)
+
+`private_broadcast` rooms (§5.3) broadcast a persona's posts to a
+closed follower set without per-recipient NIP-59 gift-wrap. The
+mechanism is the §6.7.4 Heterodyne room-key wrap, generalized from
+feed indexes to **post content**: the persona encrypts each post
+once under the room key that every authorized follower can derive
+from the room's Megolm session, publishes the single ciphertext
+event to the relays advertised in the room, and indexes it in the
+room-key-wrapped `kind:31007` feed (§6.7.4). This is the
+encrypted analogue of `public_broadcast`, where the same post would
+be published in plaintext (§5.2).
+
+**Why not gift-wrap.** Per-recipient `kind:1059` gift-wrap produces
+one event per follower per post and scales poorly past a few dozen
+followers. The room key is a per-room shared secret the Megolm
+session already establishes; riding post content on it is
+encrypt-once, decrypt-by-anyone-in-the-room. Clients MUST NOT
+publish `private_broadcast` posts via NIP-59 gift-wrap.
+
+**Post key (domain-separated from the index key).** Posts and feed
+indexes are both protected by keys derived from the room's Megolm
+outbound session, but with **distinct HKDF `info` labels** so the
+two never share key material:
+
+```
+post_key  = HKDF-SHA256(ikm = megolm_outbound_session_key,
+                        salt = matrix_room_id,
+                        info = "heterodyne-post-key-v1",  L = 32)
+index_key = HKDF-SHA256(ikm = megolm_outbound_session_key,
+                        salt = matrix_room_id,
+                        info = "heterodyne-index-key-v1", L = 32)
+```
+
+`index_key` is the `room_key` of §6.7.4 (unchanged). `post_key` is
+new in this section. `salt` is the UTF-8 bytes of the room id
+including the leading `!`. A follower derives both from the one
+Megolm session they hold, so reading the whole feed still costs one
+session, but a compromise scoped to one label does not extend to the
+other.
+
+**NIP-44 profile (symmetric).** Heterodyne uses **only the
+symmetric encryption layer of NIP-44 v2** — the
+ChaCha20 + HMAC-SHA256 construction NIP-44 v2 defines over a 32-byte
+conversation key — supplying `post_key` (or `index_key`) directly as
+that 32-byte conversation key. Heterodyne does NOT perform NIP-44's
+ECDH key-agreement step (there is no per-recipient ephemeral key);
+the conversation key comes from the Megolm-derived HKDF above. This
+is a Heterodyne profile, not interoperable with a vanilla NIP-44
+sender/recipient exchange, and clients MUST treat
+`heterodyne_wrap` = `"room_key.v1"` as the signal to apply it.
+
+**Post wire form.** A `private_broadcast` post is a Nostr event of
+the normal content kind (e.g., `kind:1`, `kind:30023`) signed by the
+persona's current epoch key (§3.5). Its `content` is the NIP-44 v2
+symmetric encryption, under `post_key`, of an **inner payload**
+object carrying the real content and any sensitive tags:
+
+```json
+{
+  "id": "<32-byte hex>",
+  "pubkey": "<persona pubkey hex>",
+  "created_at": 0,
+  "kind": 1,
+  "tags": [
+    ["heterodyne_wrap", "room_key.v1"],
+    ["megolm_session_id", "<active outbound session id>"],
+    ["matrix_room", "<room_id>"]
+  ],
+  "content": "<NIP-44 v2 (symmetric, post_key) encryption of the inner payload below>",
+  "sig": "<64-byte hex BIP-340 sig by current epoch key>"
+}
+```
+
+The inner payload (plaintext before encryption) is a JSON object:
+
+```json
+{
+  "content": "<the post's real Nostr content string>",
+  "tags": [["e", "<parent_id>", "<relay>"], ["p", "<pubkey>"], ["t", "topic"]]
+}
+```
+
+Normative rules for `private_broadcast` posts:
+
+- The event MUST carry `["heterodyne_wrap", "room_key.v1"]`,
+  `["megolm_session_id", "<id>"]`, and `["matrix_room", "<room_id>"]`,
+  with the same meanings as in §6.7.4. Receivers MUST use
+  `megolm_session_id` to select the Megolm session and MUST
+  re-derive `post_key` per the HKDF formula above.
+- All semantically meaningful tags (NIP-10 `e`/`p` reply tags,
+  topic `t` tags, and any other kind-defining tags) MUST be carried
+  in the inner payload's `tags` array, NOT in the cleartext event
+  `tags`. After decryption, a receiver reconstructs the logical
+  Nostr event by taking the decrypted `content` and `tags` together
+  with the event's `kind`/`pubkey`/`created_at`/`id`/`sig`; the
+  reconstructed `tags` are the inner-payload tags. Only the three
+  wrap tags above (plus a `d` tag for replaceable kinds) appear in
+  the cleartext `tags`, so non-member relay observers learn nothing
+  beyond the room association and posting cadence.
+- Wrapping is applied to `content` **before** signing, so the signed
+  event `id` is stable across delivery and idempotent per §6.3 /
+  §6.1. Re-wrapping the same post under a rotated `post_key` (after a
+  §6.7.4 forced rotation) is a NEW intent with a new `id`.
+- The persona MUST add each post's event `id` to the room-key-
+  wrapped `kind:31007` index for the room (§6.7.4) if the post is an
+  indexed kind (§6.8).
+- **Access control is cryptographic, not membership-gated.** The
+  ability to read a post is exactly possession of the Megolm session
+  named by `megolm_session_id` (from which `post_key` is derived) —
+  this is what makes ex-members lose access to *future* posts after
+  a §6.7.4 rotation while legitimately retaining *past* posts they
+  already hold the session for. Current Matrix room membership is a
+  UX/soft gate only; a receiver MUST NOT treat current membership as
+  the access-control primitive (it neither proves publication-time
+  authorization nor is required for a legitimate historical reader).
+- Receivers decrypt by: selecting the Megolm session named by
+  `megolm_session_id`; re-deriving `post_key`; applying NIP-44 v2
+  symmetric decryption to `content`; reconstructing the logical
+  event from the inner payload; then verifying the BIP-340 signature
+  and the §4.5 delegation/epoch checks against the persona's
+  authorized key. A party without the session cannot decrypt.
+
+**Reactions and replies stay in Matrix.** Followers react and reply
+to `private_broadcast` posts with bare Matrix events inside the
+encrypted room (§5.3, §6.8); those are Megolm-protected and not
+published to relays. A follower who wants their reply on their own
+feed publishes it as their own (room-key-wrapped or public)
+broadcast post under their own persona.
 
 ## 7. Discovery and subscription
 
@@ -2829,7 +3091,7 @@ exclusively.
     "communities": [
       {
         "room_id": "!fediverse-news:matrix.org",
-        "kind": "public_moderated",
+        "kind": "public_discussion",
         "topics": [{"namespace": "com.example.tags", "tag": "fediverse"}],
         "role": "poster",
         "via": ["matrix.org"]
@@ -2853,8 +3115,9 @@ Field semantics:
 - `broadcasts`: `public_broadcast` rooms the persona admins. Each entry
   includes the room ID, kind, topic tags, and `via` servers as Matrix
   federation join hints.
-- `communities`: `public_moderated` rooms the persona participates in
-  as poster or moderator. The `role` field indicates relationship.
+- `communities`: `public_discussion` rooms (including moderated
+  NIP-72 communities) the persona participates in as poster or
+  moderator. The `role` field indicates relationship.
 - `nostr_relays`: NIP-65-compatible relay list with `read`/`write`
   markers. Followers using vanilla Nostr clients consume this list
   directly per NIP-65.
@@ -2875,7 +3138,7 @@ via standard Matrix state semantics.
 
 ### 7.2 Audience-scoped outbox advertisement
 
-Inside any `private_verifiable` or `private_deniable` room, a
+Inside any `private_broadcast` or `private_discussion` room, a
 persona MAY publish an `m.heterodyne.outbox.scoped.v1` state event
 listing additional feeds visible to members of that specific room:
 
@@ -2889,7 +3152,7 @@ listing additional feeds visible to members of that specific room:
     "broadcasts": [
       {
         "room_id": "!private-photos:matrix.org",
-        "kind": "private_verifiable",
+        "kind": "private_broadcast",
         "topics": [{"namespace": "com.example.tags", "tag": "photos"}],
         "via": ["matrix.org"]
       }
@@ -2897,7 +3160,7 @@ listing additional feeds visible to members of that specific room:
     "communities": [
       {
         "room_id": "!drafts-circle:matrix.org",
-        "kind": "private_deniable",
+        "kind": "private_discussion",
         "topics": [{"namespace": "com.example.tags", "tag": "long-form"}],
         "role": "owner",
         "via": ["matrix.org"]
@@ -2948,9 +3211,11 @@ A follower discovering a persona executes the following:
 3. **Read the public outbox** (`m.heterodyne.outbox.public.v1`).
    Choose which advertised feeds (by topic) to subscribe to.
 4. **Join chosen rooms.** For `public_broadcast` and
-   `public_moderated`, `world_readable` permits peek without joining;
-   full subscription is a join. For `private_verifiable` /
-   `private_deniable`, an invite is required.
+   `public_discussion`, `world_readable` permits peek without joining;
+   full subscription is a join. For `private_broadcast` /
+   `private_discussion`, an invite is required (and, for
+   `private_broadcast`, membership is what grants the room key that
+   decrypts the relay-published posts, §6.10).
 5. **Once a member of a friend-circle or community room**, read any
    `m.heterodyne.outbox.scoped.v1` state events inside that room to
    discover further feeds gated behind this room's membership.
@@ -2974,7 +3239,8 @@ subscriptions:
 - Following a persona across all public topics = joining their Space
   (if advertised) or each topic-tagged room individually.
 - Following a persona privately = being invited to one of their
-  `private_verifiable` or `private_deniable` rooms.
+  `private_broadcast` (followers-only feed) or `private_discussion`
+  rooms.
 - Following the persona via vanilla Nostr = subscribing to the
   `write`-marked relays in their public outbox per NIP-65.
 
@@ -3073,8 +3339,10 @@ Heterodyne moderation operates in two strictly independent layers:
   (MSC2313). Determines **who is in a room**.
 - **Heterodyne layer.** NIP-72-style approval signatures by appointed
   moderators determine **whose posts surface in the moderated feed
-  view** for `public_moderated` rooms. Optional layered editorial
-  curation; orthogonal to membership.
+  view** for moderated `public_discussion` communities (a
+  `public_discussion` room carrying an `m.heterodyne.moderators.v1`
+  state event, §5.4). Optional layered editorial curation; orthogonal
+  to membership.
 
 The layers do not interact and conflicts are not possible: a banned
 user cannot post (Matrix layer settles it before Heterodyne sees the
@@ -3086,7 +3354,7 @@ still permits it).
 sequenceDiagram
     participant A as Author
     participant N as Nostr relays
-    participant R as public_moderated Matrix room<br/>(homeserver; state only)
+    participant R as moderated public_discussion room<br/>(homeserver; state + live timeline)
     participant M as Moderator client
     participant F as Follower client
 
@@ -3118,9 +3386,9 @@ sequenceDiagram
 ### 8.0 Contributor submission flow (per ADR-014)
 
 This subsection specifies the SENDER side of the NIP-72 flow — what a
-contributor (a persona authoring content for a `public_moderated`
-community) does. §8.1 onward specifies the moderator side. §8.4
-specifies the follower side.
+contributor (a persona authoring content for a moderated
+`public_discussion` community) does. §8.1 onward specifies the
+moderator side. §8.4 specifies the follower side.
 
 **Community address tagging (MUST).** Contributors MUST tag candidate
 posts with the NIP-72 community address tag:
@@ -3138,7 +3406,7 @@ adding it post-signature invalidates the BIP-340 signature.
 **Moderator-relay publishing (SHOULD).** Contributors SHOULD publish
 candidate posts to the moderators' NIP-65 write relays. The moderator
 set is discovered from the `m.heterodyne.moderators.v1` state event of
-the `public_moderated` room: the listed moderator npubs are resolved
+the `public_discussion` community: the listed moderator npubs are resolved
 via the standard discovery walk (§7.3) to their `kind:10002` outbox
 lists; the union of their write relays forms the recommended publish
 set. Contributors MUST also publish to their own NIP-65 write relays.
@@ -3171,8 +3439,8 @@ model is preserved.
 
 **Backoff after multiple rejections (SHOULD).** Contributors that have
 had three consecutive posts implicitly rejected from a single
-`public_moderated` community SHOULD surface a warning to the user that
-"the community may not be accepting your submissions." This is a UX
+moderated `public_discussion` community SHOULD surface a warning to the
+user that "the community may not be accepting your submissions." This is a UX
 hint, not a protocol-level enforcement.
 
 **Interaction with anti-abuse contract.** Candidate posts are subject
@@ -3195,7 +3463,7 @@ approval read directly from a vanilla Nostr relay is indistinguishable
 from one produced by a vanilla NIP-72 client.
 
 A receiving Heterodyne client computing the moderated feed view for a
-`public_moderated` room MUST:
+moderated `public_discussion` community MUST:
 
 1. Read the `m.heterodyne.moderators.v1` state event to determine
    the set of currently authorized moderator npubs and the
@@ -3230,9 +3498,10 @@ am putting on the record for this room."
 
 ### 8.2 Moderator declaration
 
-A `public_moderated` room MUST contain exactly one
+A moderated `public_discussion` community MUST contain exactly one
 `m.heterodyne.moderators.v1` state event with empty state key, listing
-the appointed moderators:
+the appointed moderators (the presence of this state event is what
+makes a `public_discussion` room a moderated community, §5.4):
 
 ```json
 {
@@ -3383,8 +3652,8 @@ published and could mislead Heterodyne-aware Nostr clients into
 believing the approval still stood. The Nostr-side deletion plus
 the index update keeps both protocols consistent.
 
-A receiver computing the curated feed for a `public_moderated`
-room MUST honor a `kind:5` deletion against an approval event it
+A receiver computing the curated feed for a moderated
+`public_discussion` community MUST honor a `kind:5` deletion against an approval event it
 had previously surfaced: the post that approval gated is dropped
 from the moderator's feed-view computation. If a different
 moderator still has a live approval for the same post, that
@@ -3443,8 +3712,8 @@ client) is responsible for any sync.
 ### 8.6 Subscribable community blocklists (MSC2313)
 
 Heterodyne uses Matrix's existing MSC2313 policy-rooms mechanism
-unmodified for community-level moderation. A `public_moderated`,
-`private_verifiable`, or `private_deniable` room MAY subscribe to
+unmodified for community-level moderation. A `public_discussion`,
+`private_broadcast`, or `private_discussion` room MAY subscribe to
 one or more policy rooms
 via standard `m.policy.rule.user`, `m.policy.rule.server`, and
 `m.policy.rule.room` events.
@@ -3476,9 +3745,12 @@ moderated feed view to other users.
 Heterodyne inherits the following invariants from sibling project
 `mxdx`. They are restated here as Heterodyne normative requirements:
 
-- Every event in a `private_verifiable`, `private_deniable`,
-  `dm_verifiable`, `dm_deniable`, or `config_room` room MUST be
-  end-to-end encrypted, **including state events**. State-event
+- Every event in a `private_broadcast`, `private_discussion`, or
+  `config_room` room MUST be end-to-end encrypted, **including
+  state events**. (For `private_broadcast`, the persona's posts
+  are room-key-wrapped on relays per §6.10 rather than carried as
+  Matrix timeline events; the room's state events and the members'
+  in-room reactions/replies are E2EE as stated here.) State-event
   encryption is implemented client-side per ADR-001:
   Heterodyne clients encrypt the state event `content` field
   using MSC4362-compatible ciphertext and publish via the
@@ -3504,9 +3776,8 @@ clients MUST defend against this regardless of profile:
 
 - A receiver observing a state event of any `m.heterodyne.*`
   type with unencrypted (plaintext) content in a
-  `private_verifiable`, `private_deniable`, `dm_verifiable`,
-  `dm_deniable`, or `config_room` room MUST treat that state
-  event as INVALID.
+  `private_broadcast`, `private_discussion`, or `config_room`
+  room MUST treat that state event as INVALID.
 - INVALID state events MUST NOT contribute to authoritative
   state resolution and MUST NOT be presented to the user
   without an explicit "potentially forged" warning that
@@ -3540,9 +3811,9 @@ encryption algorithm in use:
 }
 ```
 
-In v0.1, every Heterodyne private room (`private_verifiable`,
-`private_deniable`, `dm_verifiable`, `dm_deniable`, `config_room`)
-MUST have this state event with `algorithm: "megolm"`.
+Every Heterodyne private room (`private_broadcast`,
+`private_discussion`, `config_room`) MUST have this state event
+with `algorithm: "megolm"`.
 
 Legacy room handling: if a private room lacks
 `m.heterodyne.encryption_version.v1` but does have
@@ -3726,9 +3997,10 @@ session keys in active rooms:
   keys.
 - This is a SHOULD, not a MUST: forced rotation across many rooms is
   expensive and clients MAY trade off against revocation risk per
-  room. A `private_verifiable` with high security expectations
-  SHOULD rotate; a low-stakes `private_deniable` chat room MAY
-  skip.
+  room. A `private_broadcast` followers-only feed with high security
+  expectations SHOULD rotate (and MUST follow the §6.7.4 membership-
+  change rotation policy); a low-stakes `private_discussion` chat
+  room MAY skip.
 
 Clients implementing the SHOULD path execute the rotation by sending
 a fresh Megolm session to remaining members, using the standard
@@ -3884,14 +4156,17 @@ A Heterodyne client publishing a public event:
 
 For content destined for private (E2EE) rooms or DMs, the Nostr
 event MUST NOT be published in plaintext to a public Nostr relay
-— that would defeat the room's E2EE (§6.6). The wrapped event
-lives only inside the encrypted Matrix room. The corresponding
-`kind:31007` index, if maintained for the room, uses the
-Heterodyne room-key wrap per §6.7.4.
+— that would defeat the room's E2EE (§6.6). A `private_broadcast`
+post is room-key-wrapped (NIP-44 under the room key) before it
+reaches the room's advertised relays (§6.10), so its plaintext
+never leaves authorized members; an optionally-signed
+`private_discussion` message lives only inside the encrypted
+Matrix room. The corresponding `kind:31007` index, if maintained
+for the room, uses the Heterodyne room-key wrap per §6.7.4.
 
-A Heterodyne client publishing into a `private_verifiable` or
-`private_deniable` room MAY *also* simultaneously publish the
-unwrapped Nostr event to relays the client knows are trusted
+A Heterodyne client publishing into a `private_broadcast` or
+`private_discussion` room MAY *also* simultaneously publish a
+plaintext unwrapped Nostr event to relays the client knows are trusted
 (e.g., an inbox relay belonging to a specific other persona).
 Whether this is appropriate is a per-event judgment by the user,
 not a protocol matter.
@@ -3990,25 +4265,25 @@ produce wrapped events or read feed-status state.
 
 What such a client sees, by room kind:
 
-- **`public_broadcast` and `public_moderated`:** the room timeline
-  is effectively empty by design — Heterodyne content and indexes
-  both live on Nostr relays. The vanilla client sees a quiet room
-  with unknown state events. Any `m.room.message` the vanilla
-  client posts is timeline noise. RECOMMENDED room power-level
-  defaults (`events_default = 50`; §5.2, §5.3) prevent
-  non-administrator timeline posts from non-Heterodyne clients in
-  the first place.
-- **`private_verifiable`:** the room timeline carries
-  `m.heterodyne.note.v1` events that vanilla clients render as
-  "unknown event type" (or via the `fallback` field, §11.5). Bare
-  `m.room.message` events from vanilla members are visible
-  in-timeline alongside the wrapped events.
-- **`private_deniable`:** the room timeline carries normal
-  `m.room.message` events; vanilla clients render them natively.
-  Wrapped events appear for the subset of messages where the
-  sender opted into authenticity.
-- **`dm_verifiable` / `dm_deniable`:** same as the corresponding
-  group kind but with two-party membership.
+- **`public_broadcast`:** the persona's posts live on Nostr relays,
+  not in the timeline. The vanilla client sees only members'
+  reactions/replies and unknown state events. The persona's curated
+  content is reached via the Nostr relays advertised in the outbox.
+- **`private_broadcast`:** the persona's posts are room-key-wrapped
+  on Nostr relays (§6.10) and never appear in the Matrix timeline;
+  the vanilla client sees the encrypted reactions/replies (which it
+  can decrypt if it holds the Megolm session) but cannot derive the
+  room key to read the relay-published posts.
+- **`public_discussion`:** an ordinary unencrypted Matrix room from
+  the vanilla client's perspective — it renders all `m.room.message`
+  and `m.reaction` events natively. Optional `heterodyne_nostr_sig`
+  fields and the moderated-feed view are simply ignored.
+- **`private_discussion`:** the room timeline carries normal
+  (Megolm-encrypted) `m.room.message` events; vanilla clients render
+  them natively. Wrapped events or `heterodyne_nostr_sig` appear for
+  the subset of messages where the sender opted into a signature; a
+  vanilla client renders the bare body and ignores the signature.
+  Two-party DMs are the same with two-party membership.
 
 For bare events that DO end up in any Heterodyne room, the interop
 policy resolves at the **client** layer:
@@ -4346,7 +4621,7 @@ state event in their identity room:
     "pds_endpoint": "https://pds.alice.example",
     "mirror_rooms": [
       "matrix:roomid/<public_broadcast_room_id>:<server>",
-      "matrix:roomid/<public_moderated_room_id>:<server>"
+      "matrix:roomid/<public_discussion_room_id>:<server>"
     ],
     "mirror_kinds": [1, 30023],
     "content_adaptation": "truncate_with_link",
@@ -4360,8 +4635,8 @@ Field semantics:
 - `state_key` MUST equal the DID and MUST correspond to a currently
   active `m.heterodyne.atproto_link.v1` (non-revoked binding).
 - `mirror_rooms` MUST be a subset of the persona's
-  `public_broadcast` and `public_moderated` rooms. Rooms not listed
-  do not mirror.
+  `public_broadcast` rooms and `public_discussion` communities
+  (the public, unencrypted kinds). Rooms not listed do not mirror.
 - `mirror_kinds` is an explicit Nostr-kind allow-list. Only events
   whose Nostr kind is in this list mirror. Events not on the list
   are not mirrored regardless of indexed-vs-non-indexed status (§6.8).
@@ -4518,21 +4793,36 @@ A client implementing this profile advertises the capability
 
 #### 11.7.1 Moderation enforcement requirements
 
-Strict-mode clients receiving events in `private_verifiable` or
-`dm_verifiable` rooms MUST:
+Strict-mode clients MUST:
 
-- Render BARE events (`m.room.message` without
-  `heterodyne_nostr_sig`) in a separate "filtered" or
-  "unsigned" view, NOT in the primary timeline. Clients MAY
-  hide bare events entirely; they MUST NOT present them as if
-  they were verified Heterodyne events.
+- In broadcast rooms (`public_broadcast`, `private_broadcast`),
+  treat the persona's posts as authenticity-required: a purported
+  broadcast post (on the room's advertised relays, including a
+  room-key-wrapped post per §6.10) that lacks a valid Nostr
+  signature from the persona's authorized epoch key MUST be
+  rejected or surfaced with a prominent "invalid signature"
+  indicator, never presented as an authentic broadcast post.
+  Members' bare reactions/replies in these rooms are expected to
+  be bare and are rendered normally (attributed via §3.3).
 - Process Nostr `kind:5` deletions issued by a recognized
   moderator (per §8.2) and remove the targeted events from
   rendered views within 30 seconds of observing the `kind:5`
-  event.
-- In `public_moderated` rooms, surface an "unmoderated" or
-  "pre-approval" UI indicator for any event lacking the
-  approval count required per §8.2.
+  event. The 30-second rule governs **local suppression**: a
+  recognized moderator's `kind:5` is sufficient to hide the
+  targeted event immediately, pending convergence with that
+  moderator's updated `kind:31007` index (which remains the
+  authoritative manifest of what the moderator surfaces, §8). If
+  the index later still references the event, the client surfaces
+  the inconsistency rather than silently un-hiding.
+- In moderated `public_discussion` communities, surface an
+  "unmoderated" or "pre-approval" UI indicator for any post
+  lacking the approval count required per §8.2.
+
+Because bare Matrix is the legitimate default for discussion-room
+traffic and for reactions/replies (§4.4), strict-mode clients MUST
+NOT hide bare discussion messages; they MAY present a clear
+"signed" vs "unsigned" affordance distinguishing messages that
+carry an OPTIONAL `heterodyne_nostr_sig` from those that do not.
 
 Strict-mode clients MUST log all filtering and rejection
 decisions to a user-accessible audit trail (last N decisions,
@@ -4545,7 +4835,7 @@ correctly.
 In addition to the baseline §9.1.1 validity rules (which apply
 to all conforming Heterodyne clients), strict-mode clients
 receiving an unencrypted Heterodyne state event in a
-`private_*`, `dm_*`, or `config_room` MUST:
+`private_broadcast`, `private_discussion`, or `config_room` MUST:
 
 - Display a prominent "potentially forged / state downgrade
   detected" warning naming the offending sender MXID.
@@ -4609,9 +4899,8 @@ preserve forward compatibility tracking.
 A client advertises its supported spec versions and event types via
 `m.heterodyne.capabilities.v1` state events. **By default,
 capabilities are advertised in scoped contexts only** — private
-group rooms (`private_verifiable` / `private_deniable`) and DM
-rooms (`dm_verifiable` / `dm_deniable`) — **not** in the public
-identity room. Public capability publication is a fingerprinting
+rooms (`private_broadcast` / `private_discussion`, including
+two-party DMs) — **not** in the public identity room. Public capability publication is a fingerprinting
 vector; making it scoped-by-default protects users from passive
 surveillance correlating client versions to identities.
 
@@ -4745,9 +5034,9 @@ Rooms MAY publish a recommended version (e.g., as a custom field on
 do NOT enforce version admission**. The wire protocol accepts what it
 accepts. Cross-version contracts are enforced editorially by
 moderators (§8): if a post is unparseable or undesirable due to
-version mismatch, moderators in `public_moderated` rooms simply do not
-approve it; in `private_verifiable` or `private_deniable` rooms,
-social/admin pressure applies. The protocol does not gate on
+version mismatch, moderators in moderated `public_discussion`
+communities simply do not approve it; in `private_broadcast` or
+`private_discussion` rooms, social/admin pressure applies. The protocol does not gate on
 version; the people in the room do.
 
 This is consistent with §11.1's policy: enforce social and editorial
@@ -4801,16 +5090,19 @@ can do; the spec's invariants state what they cannot.
   npub signatures.
 - **Member with Megolm session keys.** A participant in a
   private room. Can decrypt and attribute every message in the
-  room — including bare events in `private_deniable` and
-  `dm_deniable` rooms. Can export session keys to a non-member
-  collaborator, defeating room deniability against that
-  collaborator.
+  room — including bare events in `private_discussion` and
+  `private_broadcast` rooms — to its author's npub via the §3.3
+  delegation that binds the sending Matrix device to that npub.
+  Attribution does not depend on a Nostr signature; the
+  signature, when present, only adds a *transferable* proof the
+  member could show a third party. Heterodyne therefore does NOT
+  claim deniability for any room (§13.1.2).
 - **Colluding members.** Two or more members of a room who
   share session keys (and any other extracted material) with
-  each other or with outsiders. This breaks all forms of
-  in-room deniability; it is a structural property of any
-  shared-session ratchet (Megolm, MLS) and Heterodyne does NOT
-  claim to mitigate it.
+  each other or with outsiders. They can attribute and expose any
+  in-room message; this is a structural property of any
+  shared-session ratchet (Megolm, MLS) and is consistent with
+  Heterodyne's no-deniability posture (§13.1.2).
 - **Time-window attacker (root replay).** Possesses a stale
   but valid `m.heterodyne.root.v1` attestation and attempts to
   inject it into a fresh identity room context. Mitigated by
@@ -4856,15 +5148,54 @@ document at `docs/security/threat-model.md` covers additional
 scenarios. The classes above are the ones whose precise
 naming changes how §13.2 invariants are interpreted.
 
+### 13.1.2 Pseudonymity, not deniability (per ADR-017)
+
+Heterodyne provides **pseudonymity and confidentiality**, not
+deniability. The distinction matters and the spec does not
+overstate it:
+
+- **No room kind is deniable.** Earlier drafts labeled certain
+  rooms "deniable." That label is retired. Every message from a
+  Heterodyne-participating sender — bare or signed, public or
+  encrypted — is *intended to be* attributable to its author's
+  npub, because the Matrix device that published it is bound to
+  that npub by the §3.3 delegation. Any room member (and, in
+  unencrypted rooms, any observer) can perform this attribution
+  without a Nostr signature, **subject to having the identity-room
+  evidence to resolve the delegation** (a stale cache, an abandoned
+  identity room, or a vanilla non-Heterodyne participant can weaken
+  a specific verifier's confidence, but none of these turns the
+  posture into a deniability guarantee). A persona
+  that wishes to be unattributable must use a separate persona
+  (a different npub with no shared delegation), not a "deniable"
+  room.
+- **What confidentiality provides.** Non-members cannot read the
+  content of `private_broadcast` or `private_discussion` rooms —
+  the Megolm/MLS session (and, for `private_broadcast` relay
+  posts, the room-key wrap, §6.10) is the confidentiality
+  boundary. This protects *what was said* from outsiders; it does
+  not make *who said it* deniable to insiders.
+- **What the optional signature adds.** A bare message carries no
+  *transferable* proof of authorship: an honest member knows who
+  said it, but cannot hand a third party a self-verifying artifact.
+  An OPTIONAL `heterodyne_nostr_sig` or a wrapped event (§4.3,
+  §4.4) adds exactly that transferable proof — useful for
+  in-room notarization. This is the only security-relevant
+  difference between bare and signed in-room messages; it is an
+  authenticity upgrade, not a privacy mode.
+
 ### 13.2 Normative security invariants
 
 Heterodyne implementations MUST uphold:
 
 - **I1 — Blind server (client-enforced).** Heterodyne clients
   ensure no homeserver sees plaintext for any event in a
-  `private_verifiable`, `private_deniable`, `dm_verifiable`,
-  `dm_deniable`, or `config_room` room, including state events
-  (§9.1; client-side MSC4362-compatible encryption per ADR-001).
+  `private_broadcast`, `private_discussion`, or `config_room`
+  room, including state events (§9.1; client-side
+  MSC4362-compatible encryption per ADR-001). For
+  `private_broadcast`, the persona's posts are additionally
+  room-key-wrapped on Nostr relays (§6.10), so no relay sees
+  plaintext either.
   Because enforcement is client-side (the homeserver stores
   ciphertext as opaque content), every receiver MUST also
   uphold §9.1.1 (state-downgrade resistance) — unencrypted
@@ -5011,9 +5342,11 @@ Vectors are authored per spec section. The coverage targets:
 | `verification/` | §4.5 | Bad sig rejects; delegation mismatch rejects; revoked-key post-revoked_at rejects; backdated event in suspicion window |
 | `bridge/` (per ADR-010) | §6.4 | Asymmetric delivery — Nostr permanent failure (kind:31007 index not updated); Matrix permanent failure (kind:31007 index updated; Matrix-out-of-sync warning); idempotent re-publication via Nostr event id reuse |
 | `index/` (per ADR-005, ADR-006) | §6.7 | Room-key wrap derivation; room-key wrap encryption (NIP-44 v2); `prev_page_hash` page-chain integrity; complete-fetch-attempt across relay set |
+| `room-kind/` (per ADR-017) | §5 | Each of the four social kinds plus `identity_room`/`config_room` round-trips; rejection of a new room asserting a retired kind; read-back map of a legacy `public_moderated`/`private_verifiable`/`dm_*` room to its current kind with "legacy" indicator |
+| `broadcast/` (per ADR-017) | §5.3, §6.10 | `private_broadcast` post room-key-wrapped (NIP-44 v2 under §6.7.4 key, signed-after-wrap, stable id); decrypt-by-member / non-member-cannot-decrypt; reaction/reply stays bare in-room and is not indexed; rejection of a NIP-59 gift-wrapped broadcast post |
 | `outbox/` | §7 | Full public outbox; scoped outbox; transitive discovery walk; cross-persona attestation (valid and invalid) |
 | `moderation/` | §8 | NIP-72 approval; multi-mod requirement; moderator rotation through KERI key event log; redaction-of-approved-post; contributor submission with community-address tag and implicit-rejection window (per ADR-014) |
-| `moderation/strict-mode/` (per ADR-007) | §11.7 | Strict-mode bare-event filtering; `kind:5` deletion observed within 30s; state-downgrade warning rendering |
+| `moderation/strict-mode/` (per ADR-007) | §11.7 | Strict-mode invalid-broadcast-signature rejection; bare discussion message NOT hidden; `kind:5` deletion observed within 30s; state-downgrade warning rendering |
 | `encryption/` | §9 | `encryption_version` event; delegation-revocation triggering rotation (SHOULD path) |
 | `encryption/mls-migration/` (per ADR-012, OPTIONAL) | §9.2 | Eligibility check (capability gating); intent and ACK; abort on missing ACKs; receiver-verifiable flip with last-Megolm-key encryption of the flip event; 60-second tail-period acceptance of pre-flip-keyed Megolm events; offline-reconnect re-encryption with Nostr event id reuse; non-MLS receiver fallback |
 | `relay-interop/` (per ADR-013) | §10.5 | NIP-42 AUTH challenge and response signed by current epoch key (not cold root); AUTH rejection classified as permanent per ADR-010; KERI rotation produces AUTH events under the new epoch key |
@@ -5024,7 +5357,8 @@ Vectors are authored per spec section. The coverage targets:
 **Baseline conformance minimum vector set (per ADR-011).** An
 implementation claiming baseline Heterodyne v0.2 conformance MUST pass
 every vector in: `identity/`, `keri/`, `envelope/`, `verification/`,
-`bridge/`, `index/`, `outbox/`, `multi-homing/`, `relay-interop/`,
+`bridge/`, `index/`, `room-kind/`, `broadcast/`, `outbox/`,
+`multi-homing/`, `relay-interop/`,
 `moderation/` (excluding the `strict-mode/` subdirectory),
 `encryption/` (excluding the `mls-migration/` subdirectory),
 `interop/`, `versioning/`, and `config_room/`. Implementations MAY
