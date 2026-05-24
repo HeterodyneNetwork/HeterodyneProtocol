@@ -1,6 +1,6 @@
 # Heterodyne Protocol Specification
 
-**Version:** 0.2.0 (DRAFT — Nostr-native feed index, KERI commit, explicit room taxonomy)
+**Version:** 0.3.0 (DRAFT — broadcast/discussion taxonomy, encrypted broadcast, KERI cold-root/epoch signing)
 **Status:** Working draft (in-place revisions per project
 convention until first-party-client validation closes the
 freeze; see `docs/adr/` for the integration ADRs). v0.2.0 makes
@@ -457,7 +457,7 @@ The `m.heterodyne.root.v1` state event:
   "type": "m.heterodyne.root.v1",
   "state_key": "",
   "content": {
-    "spec_version": "0.2.0",
+    "spec_version": "0.3.0",
     "nostr_attestation": {
       "id": "<32-byte hex>",
       "pubkey": "<32-byte hex of the persona's current epoch key>",
@@ -544,7 +544,7 @@ the MXID:
   "type": "m.heterodyne.delegation.v1",
   "state_key": "@alice:matrix.org",
   "content": {
-    "spec_version": "0.2.0",
+    "spec_version": "0.3.0",
     "nostr_attestation": {
       "id": "<32-byte hex>",
       "pubkey": "<32-byte hex of the persona's current epoch key>",
@@ -1082,7 +1082,7 @@ fields.
   "type": "m.heterodyne.user_prefs.v1",
   "state_key": "",
   "content": {
-    "spec_version": "0.2.0",
+    "spec_version": "0.3.0",
     "ui": {
       "theme": "system | light | dark",
       "feed_density": "comfortable | compact",
@@ -1111,7 +1111,7 @@ this MXID is delegated for gets its own state event.
   "type": "m.heterodyne.persona_config.v1",
   "state_key": "<persona pubkey hex>",
   "content": {
-    "spec_version": "0.2.0",
+    "spec_version": "0.3.0",
     "private_mutes": {
       "pubkeys": ["<pubkey hex>", "<pubkey hex>"],
       "topics": [{"namespace": "com.example.tags", "tag": "spoilers"}],
@@ -1143,7 +1143,7 @@ Heterodyne-specific recovery codes.
   "type": "m.heterodyne.key_backup.v1",
   "state_key": "<persona pubkey hex>",
   "content": {
-    "spec_version": "0.2.0",
+    "spec_version": "0.3.0",
     "encrypted_nsec": {
       "algorithm": "<symmetric algorithm identifier, e.g. aes-256-gcm>",
       "ciphertext": "<base64>",
@@ -1169,7 +1169,7 @@ Bookkeeping of devices that have synced this room.
   "type": "m.heterodyne.device_inventory.v1",
   "state_key": "",
   "content": {
-    "spec_version": "0.2.0",
+    "spec_version": "0.3.0",
     "devices": [
       {
         "device_id": "<Matrix device id>",
@@ -1577,7 +1577,7 @@ transferable third-party proof of authorship.
 {
   "type": "m.heterodyne.note.v1",
   "content": {
-    "spec_version": "0.2.0",
+    "spec_version": "0.3.0",
     "nip01_raw": "[0,\"<pubkey>\",<created_at>,1,[[\"e\",\"...\"],[\"p\",\"...\"]],\"Hello, decentralized world.\"]",
     "nostr": {
       "id": "<32-byte hex>",
@@ -1902,7 +1902,7 @@ state event with empty state key:
   "type": "m.heterodyne.room_kind.v1",
   "state_key": "",
   "content": {
-    "spec_version": "0.2.0",
+    "spec_version": "0.3.0",
     "kind": "identity_room | config_room | public_broadcast | private_broadcast | public_discussion | private_discussion",
     "topics": [
       {"namespace": "com.example.tags", "tag": "tech"},
@@ -2937,7 +2937,7 @@ Nostr events and advertise it via an optional
   "type": "m.heterodyne.archive.v1",
   "state_key": "",
   "content": {
-    "spec_version": "0.2.0",
+    "spec_version": "0.3.0",
     "archive_url": "https://archive.alice.example/heterodyne/<nostr_event_id>",
     "archive_format": "nip-01-json"
   }
@@ -3177,7 +3177,7 @@ exclusively.
   "type": "m.heterodyne.outbox.public.v1",
   "state_key": "",
   "content": {
-    "spec_version": "0.2.0",
+    "spec_version": "0.3.0",
     "broadcasts": [
       {
         "room_id": "!techfeed:matrix.org",
@@ -3251,7 +3251,7 @@ listing additional feeds visible to members of that specific room:
   "type": "m.heterodyne.outbox.scoped.v1",
   "state_key": "<persona pubkey hex>",
   "content": {
-    "spec_version": "0.2.0",
+    "spec_version": "0.3.0",
     "scope_note": "Close friends — these are the private feeds I share with you.",
     "broadcasts": [
       {
@@ -3364,7 +3364,7 @@ double-signed by both npubs:
   "type": "m.heterodyne.related_persona.v1",
   "state_key": "<other persona pubkey hex>",
   "content": {
-    "spec_version": "0.2.0",
+    "spec_version": "0.3.0",
     "relation": "same_holder",
     "this_attestation": {
       "id": "<32-byte hex>",
@@ -3605,7 +3605,7 @@ approval's Nostr event id (and the approved post's id):
 {
   "type": "m.heterodyne.approval.v1",
   "content": {
-    "spec_version": "0.2.0",
+    "spec_version": "0.3.0",
     "approval_event_id": "<kind:4550 Nostr event id, hex>",
     "approved_post_id": "<approved post's Nostr event id, hex>"
   }
@@ -3647,7 +3647,7 @@ makes a `public_discussion` room a moderated community, §5.4):
   "type": "m.heterodyne.moderators.v1",
   "state_key": "",
   "content": {
-    "spec_version": "0.2.0",
+    "spec_version": "0.3.0",
     "approvals_required": 1,
     "moderators": [
       {
@@ -3842,7 +3842,7 @@ as a state event in the persona's identity room:
   "type": "m.heterodyne.mutes.public.v1",
   "state_key": "",
   "content": {
-    "spec_version": "0.2.0",
+    "spec_version": "0.3.0",
     "muted_pubkeys": [
       {"npub": "<hex>", "reason": "spam", "muted_at": 0},
       {"npub": "<hex>", "reason": "bot", "muted_at": 0}
@@ -3972,7 +3972,7 @@ encryption algorithm in use:
   "type": "m.heterodyne.encryption_version.v1",
   "state_key": "",
   "content": {
-    "spec_version": "0.2.0",
+    "spec_version": "0.3.0",
     "algorithm": "megolm",
     "migrated_from": null,
     "migrated_at": null
@@ -4068,7 +4068,7 @@ received, the initiator MUST publish `m.heterodyne.encryption_version.v1`
 
 ```json
 {
-  "spec_version": "0.2.0",
+  "spec_version": "0.3.0",
   "algorithm": "mls",
   "migrated_from": "megolm",
   "migrated_at": <unix-seconds>,
@@ -4523,7 +4523,7 @@ Heterodyne reserves Nostr `kind:31005` (Heterodyne identity pointer):
   "tags": [
     ["heterodyne", "identity_pointer"],
     ["matrix_identity_room", "matrix:roomid/<id>:<server>?via=<server>"],
-    ["spec_version", "0.2.0"]
+    ["spec_version", "0.3.0"]
   ],
   "content": "",
   "sig": "<64-byte hex>"
@@ -4701,7 +4701,7 @@ in the persona's identity room:
   "type": "m.heterodyne.atproto_link.v1",
   "state_key": "<DID, e.g. did:web:alice.example>",
   "content": {
-    "spec_version": "0.2.0",
+    "spec_version": "0.3.0",
     "did": "did:web:alice.example",
     "did_signing_key_id": "<key id from the DID document, e.g. #atproto>",
     "atproto_record_uri": "at://did:web:alice.example/social.heterodyne.identityLink/self",
@@ -4768,7 +4768,7 @@ half-binding forgery:
 
 ```
 canonical_binding_payload = JSON-canonical-serialize({
-  "spec_version": "0.2.0",
+  "spec_version": "0.3.0",
   "did": "<DID>",
   "did_signing_key_id": "<key id>",
   "matrix_identity_room": "<matrix: URI>",
@@ -4793,7 +4793,7 @@ state event in their identity room:
   "type": "m.heterodyne.outbox.atproto.v1",
   "state_key": "<DID>",
   "content": {
-    "spec_version": "0.2.0",
+    "spec_version": "0.3.0",
     "did": "<DID>",
     "pds_endpoint": "https://pds.alice.example",
     "mirror_rooms": [
@@ -5094,8 +5094,8 @@ Schema:
   "type": "m.heterodyne.capabilities.v1",
   "state_key": "@alice:matrix.org",
   "content": {
-    "spec_version": "0.2.0",
-    "spec_versions_supported": ["0.2.0"],
+    "spec_version": "0.3.0",
+    "spec_versions_supported": ["0.3.0", "0.2.0"],
     "event_types": [
       "m.heterodyne.note.v1",
       "m.heterodyne.root.v1",
