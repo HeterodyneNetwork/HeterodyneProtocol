@@ -1,8 +1,10 @@
 # Changelog
 
 All notable changes to the Heterodyne specification are recorded here.
-The spec remains a **DRAFT** — versions are milestones, not a frozen
-contract, until first-party-client validation closes the freeze.
+The spec is in its **0.x phase**: per the semver 0.x rule (§12.1),
+everything is subject to change and any `0.x` release MAY break the
+previous one. The strict PATCH/MINOR/MAJOR compatibility contract
+takes effect only at `1.0.0`.
 
 ## [0.3.0] — 2026-05-23
 

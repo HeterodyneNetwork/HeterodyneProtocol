@@ -1,10 +1,15 @@
 # Heterodyne Protocol Specification
 
 **Version:** 0.3.0 (DRAFT — broadcast/discussion taxonomy, encrypted broadcast, KERI cold-root/epoch signing)
-**Status:** Working draft (in-place revisions per project
-convention until first-party-client validation closes the
-freeze; see `docs/adr/` for the integration ADRs). v0.2.0 makes
-substantive structural changes following external review:
+**Status:** Working draft. While the major version is `0`,
+**everything in this specification is subject to change** — wire
+formats, event kinds, the room taxonomy, the signing model, and
+any normative requirement MAY change in any release, breaking
+prior `0.x` versions (semver 0.x rule; see §12.1). The strict
+PATCH/MINOR/MAJOR compatibility contract takes effect only at
+`1.0.0`. See `docs/adr/` for the decisions behind each revision.
+Recent revisions (v0.2.0–v0.3.0) make substantive structural
+changes following external review:
 (a) the per-room feed index is no longer a Matrix state event —
 it is a Nostr replaceable event (`kind:31007`) published to
 relays; for private rooms the index content is encrypted under a
@@ -4552,6 +4557,18 @@ kind. Heterodyne-aware clients (or vanilla clients reachable through
 NIP-89 handler discovery, §11.2) follow the pointer for full
 verification.
 
+> **Out of scope: vanilla discovery of epoch-key-signed content.** A
+> persona's posts and feed index are signed by rotating epoch keys
+> (§3.5.0), not by the npub directly, so a vanilla Nostr client that
+> knows only the npub does not automatically discover that content
+> without replaying the persona's KEL (§3.5.3) to learn the current
+> epoch key. Bridging that gap is **not a Heterodyne protocol
+> responsibility**: a client MAY implement KEL-aware discovery if it
+> wishes, but doing so is entirely OPTIONAL and the spec does not owe
+> a solution. Heterodyne-aware clients already have everything they
+> need via the §3.6 authority ladder (the cold-root-signed
+> `kind:31005` pointer plus the KEL).
+
 ### 11.4 Following vanilla Nostr-only users
 
 A Heterodyne user MAY follow a vanilla Nostr-only user — one without
@@ -5047,8 +5064,25 @@ filter layer on top.
 ### 12.1 Strict semver
 
 Every Heterodyne event content field carries `spec_version` as a
-semver-formatted string (`MAJOR.MINOR.PATCH`). The contract is
-strict semver:
+semver-formatted string (`MAJOR.MINOR.PATCH`).
+
+**Pre-1.0: everything is subject to change.** While the spec MAJOR
+version is `0` — the current phase — Heterodyne follows the standard
+semver 0.x rule: the protocol is **not yet stable**, and ANY part of
+it (wire formats, event kinds, the room taxonomy, the signing model,
+or any normative requirement) MAY change in ANY release, including a
+MINOR bump, in ways that break prior `0.x` versions. The strict
+PATCH/MINOR/MAJOR contract below describes the compatibility
+guarantees that take effect at and after `1.0.0`; before then,
+implementers MUST expect breaking changes between any two `0.x`
+versions and SHOULD pin to an exact `spec_version`. Capability
+advertisement (§12.2) and mismatch handling (§12.3) are the mechanism
+for coping with this churn during the 0.x phase. (For example, the
+v0.2.0 → v0.3.0 revision retired room kinds and changed the signing
+model — breaking changes that the 0.x rule permits but the strict
+contract below would classify as MAJOR.)
+
+At and after `1.0.0`, the contract is strict semver:
 
 - **PATCH bump.** Clarification only. No wire-format change.
   Implementations of the prior version remain fully conformant.
