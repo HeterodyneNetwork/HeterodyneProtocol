@@ -29,56 +29,70 @@ Nostr DMs/groups: Megolm and MLS create a shared session for the room, so the
 bridge encrypts once and Matrix handles key distribution to authorized
 members.
 
-## Room taxonomy (v0.2.0)
+## Room taxonomy (current 0.x draft)
 
-| Room kind | Purpose | Encryption | Default wrap mode | Moderation |
+Four social kinds on a **broadcast vs discussion × public vs private**
+axis, plus two infrastructure kinds (`identity_room`, `config_room`):
+
+| Room kind | Purpose | Encryption | Posts / authorship | Moderation |
 |---|---|---|---|---|
-| `public_broadcast` | Open broadcast (Twitter-style public feed). Content + index on Nostr. | None | N/A — no timeline | Server ACLs + community lists |
-| `public_moderated` | Communities, topic rooms, forums. Content + approvals on Nostr. | None | N/A — no timeline | NIP-72 moderator approvals + policy rooms |
-| `private_verifiable` | Group rooms where authorship is part of the contract (work, records) | Megolm/MLS | wrapped (Nostr-signed) | Single or small admin set |
-| `private_deniable` | Friend circles, casual planning, day-to-day groups | Megolm/MLS | bare (deniable against non-members; defeated by colluding members per ADR-004) | Single or small admin set |
-| `dm_verifiable` | Notarized two-party DMs (agreements, tickets) | Megolm/MLS | wrapped | Participants only |
-| `dm_deniable` | Standard two-party DM | Megolm/MLS | bare (deniable against non-members; defeated by counterparty session-key sharing per ADR-004) | Participants only |
+| `public_broadcast` | Open broadcast (Twitter-style public feed). Posts + index on Nostr relays; the Matrix room is a pointer/state container that also carries members' bare reactions/replies. | None | Nostr-signed, plaintext on relays | Server ACLs + community lists |
+| `private_broadcast` | Persona broadcasts to a closed follower set. The encrypted Matrix room's Megolm session is the follower keyring; reactions/replies are bare in-room. | Megolm/MLS | Nostr-signed, **room-key-wrapped** on relays (encrypt-once-for-the-room) | Single or small admin set |
+| `public_discussion` | Communities, topic rooms, forums, group chat. Moderated NIP-72 communities declare `m.heterodyne.moderators.v1`. | None | bare Matrix by default; OPTIONAL per-message signature badge | NIP-72 moderator approvals (when moderated) |
+| `private_discussion` | Friend circles, casual planning, day-to-day groups, and two-party DMs. | Megolm/MLS | bare Matrix by default; OPTIONAL per-message signature badge | Participants / small admin set |
+
+No kind claims deniability: every in-room message is attributable to
+its author's npub via the §3.3 delegation (bare messages carry no
+*transferable* third-party proof, but are not anonymous).
 
 ## Project status
 
-The v0.2 specification is **fully drafted with diagrams** at
+The specification is **fully drafted with diagrams** at
 [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md). All
 load-bearing protocol decisions (identity, envelope, rooms,
 publishing, discovery, moderation, encryption, bridge, interop,
-versioning, security, conformance) are written down. Following
-a 2026-05-21 external critique, seven themed ADRs in
-[`docs/adr/`](docs/adr/) record the substantive decisions that
-shaped v0.2.0's current text. Per project convention v0.2.0 is
-revised in place until first-party-client validation closes the
-freeze (no version bump for in-flight design work). v0.2.0
-makes substantive structural changes after external review:
-(a) feed indexes are migrated off Matrix state events to
-Nostr-native `kind:31007` replaceable events, npub-signed and
-gift-wrapped for private rooms; (b) the identity room is reframed
-as a disposable Matrix container with the `kind:31005` identity
-pointer as the authoritative npub→room mapping; (c) delegation
-acknowledgement no longer requires a Matrix MSK signature;
-(d) Heterodyne commits unconditionally to **KERI** for root
-inception and rotation, retiring the v0.1.4 single-key chain;
-(e) the room taxonomy now has six explicit kinds —
-`public_broadcast`, `public_moderated`, `private_verifiable`,
-`private_deniable`, `dm_verifiable`, `dm_deniable` — with the
-default wrap mode encoded in the kind name; (f) Matrix-DM
-retrieval backfill is forbidden (Nostr relays + user-hosted
-archives only); (g) moderator post-hoc removal uses Nostr
-`kind:5` deletions rather than Matrix redactions; (h) hardening
-— strict ±5 minute clock skew, mandatory SSRF prevention on
-ATProto DID resolution, mandatory `nip01_raw` canonical
-serialization on every signed event to prevent parser-reordering
-attacks. v0.1.4 added the OPTIONAL ATProto attached outbox
-(§11.6) and KERI social witnesses; v0.1.3 introduced the
-Nostr-relays-for-public-content pivot. The Cold Root + Epoch
-Keys design at
-`docs/superpowers/specs/2026-05-21-cold-root-epoch-keys-design.md`
-specifies the v0.2 identity rewrite that v0.2.0's KERI commitment
-anticipates. The spec is implementation-agnostic — no particular
-language or runtime is prescribed. Not yet final until v0.2 freeze.
+versioning, security, conformance) are written down.
+
+The spec is in its **0.x phase — in flux until 1.0**. Per the semver
+0.x rule (spec §12.1), everything is subject to change and any `0.x`
+release MAY break the prior one; the strict PATCH/MINOR/MAJOR
+compatibility contract takes effect only at `1.0.0`. Versions advance
+by milestone — the current release is **v0.3.0** — but prose should
+refer to the spec as **0.x** rather than pinning to a single point
+version. See [`CHANGELOG.md`](CHANGELOG.md) for the per-version
+history and [`docs/adr/`](docs/adr/) for the decision records behind
+each revision.
+
+Current shape (0.x):
+
+- **Identity** is anchored by a KERI cold-root key — the persona's
+  npub; a rotating epoch key signs routine attestations (root
+  attestation, delegations, outbox, feed index, posts, approvals).
+  Root inception and rotation use the inline Heterodyne KERI profile
+  (§3.5), retiring the v0.1.4 single-key successor chain. (See the
+  Cold Root + Epoch Keys design at
+  `docs/superpowers/specs/2026-05-21-cold-root-epoch-keys-design.md`.)
+- **Feed indexes** are Nostr-native `kind:31007` replaceable events
+  (not Matrix state), epoch-key-signed, and room-key-wrapped for
+  private rooms, so the canonical feed list cannot be silently
+  mutated by a hostile homeserver nor read by non-members.
+- **Rooms** follow the broadcast-vs-discussion × public-vs-private
+  taxonomy above. Broadcast posts are always Nostr-signed and live on
+  relays (room-key-wrapped when private); discussion is bare Matrix by
+  default with an OPTIONAL per-message signature badge. No kind claims
+  deniability. The identity room is a disposable container; the
+  `kind:31005` pointer is the authoritative npub→room mapping.
+- **Other invariants:** Matrix-DM retrieval backfill is forbidden
+  (Nostr relays + user-hosted archives only); moderator post-hoc
+  removal uses Nostr `kind:5` deletions; hardening includes scoped
+  ±5-minute clock skew on root attestations, mandatory SSRF
+  prevention on ATProto DID resolution, and a mandatory `nip01_raw`
+  canonical-serialization field on signed events. The OPTIONAL
+  ATProto attached outbox (§11.6) and KERI social witnesses are
+  available.
+
+The spec is implementation-agnostic — no particular language or
+runtime is prescribed.
 
 The next milestones are:
 
@@ -86,13 +100,13 @@ The next milestones are:
 2. Build a first-party client implementation (language and runtime
    to be chosen separately; the spec is agnostic) to validate the
    protocol end-to-end.
-3. Iterate the spec based on implementation feedback toward v0.2.
+3. Iterate the spec based on implementation feedback toward 1.0.
 
 ## How to navigate this repo
 
 | Path | What it is |
 |---|---|
-| `docs/spec/heterodyne.md` | The normative spec. Single living document, v0.1.1. |
+| `docs/spec/heterodyne.md` | The normative spec. Single living document (currently 0.x, in flux until 1.0). |
 | `docs/architecture.md` | Non-normative architecture overview + design rationale for each load-bearing decision. |
 | `docs/glossary.md` | Term definitions referenced from the spec. |
 | `docs/security/threat-model.md` | Companion analysis to spec §13 (security model). |

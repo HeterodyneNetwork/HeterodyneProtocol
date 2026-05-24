@@ -1188,7 +1188,7 @@ Bookkeeping of devices that have synced this room.
 }
 ```
 
-#### 3.8.4 Cross-MXID synchronization (out of scope for v0.1)
+#### 3.8.4 Cross-MXID synchronization (out of scope for the current 0.x spec)
 
 A user with multiple delegated MXIDs for the same persona has multiple
 config rooms — one per MXID — and persona-scoped state (private mutes
@@ -1448,7 +1448,7 @@ The persona MUST perform the migration steps in this order:
 
 1. **Create the new identity room on H2** with the pinned Matrix room
    version per ADR-002 (v11 as of that ADR).
-2. **Re-publish all v0.2 identity-room state events** to the new
+2. **Re-publish all current identity-room state events** to the new
    room: root attestation (`m.heterodyne.root.v1`), all
    currently-active delegation attestations
    (`m.heterodyne.delegation.v1`), the full KERI key event log mirror
@@ -3422,7 +3422,7 @@ Rules:
 ### 7.6 Discovery extensions (per ADR-016)
 
 Heterodyne specifies the in-scope status of three Nostr-side discovery
-mechanisms that the v0.2 baseline acknowledges explicitly:
+mechanisms that the current 0.x baseline acknowledges explicitly:
 
 - **NIP-50 (relay-side search) — OPTIONAL.** Clients MAY support NIP-50
   search queries against subscribed relays. Search results referencing
@@ -4002,7 +4002,7 @@ re-creation.
 
 #### 9.2.1 Megolm→MLS migration protocol (per ADR-012)
 
-v0.2 specifies the full Megolm→MLS migration protocol as a
+Heterodyne specifies the full Megolm→MLS migration protocol as a
 moderator-initiated, all-member-ACK'd, receiver-verifiable flip with
 a defined drain window, key-continuity recommendation, and explicit
 fallback for non-MLS clients. Capability advertisement (§12.2) gates
@@ -4412,7 +4412,7 @@ reputation does NOT carry forward on that relay. This is an
 unavoidable consequence of the vanilla-relay invariant: relays do
 not understand the Heterodyne KEL. Mitigations available to
 deployers: (a) operate a Heterodyne-aware relay that understands the
-KEL (out of scope for v0.2 baseline); (b) treat KERI rotations as
+KEL (out of scope for the current 0.x baseline); (b) treat KERI rotations as
 significant events (they already are per ADR-003) and accept that
 relay reputation rebuilds after each rotation. See §13 for the
 threat-model framing of this limitation.
@@ -4666,7 +4666,7 @@ SHOULD support:
   `did:plc:` but MUST surface to the user that PLC is a centralized
   directory whose operator can refuse updates.
 
-Other DID methods (e.g., `did:key`) are out of scope for v0.1.
+Other DID methods (e.g., `did:key`) are out of scope for the current 0.x spec.
 
 Heterodyne clients SHOULD cache resolved DID documents with a
 moderate TTL (e.g., 1 hour) and SHOULD invalidate the cache when an
@@ -5218,10 +5218,10 @@ the same `state_key`.
 
 If a receiver cannot find a capabilities event for a sender (e.g.,
 strangers in a `public_broadcast` room), the receiver MUST assume
-the **v0.1 baseline**: the sender supports only the v0.1 spec, only
-the event types listed in §3.0's table, and no optional features
-beyond what v0.1 mandates. This baseline is conservative and forward-
-compatible.
+the **minimal baseline**: the sender supports only the core event
+types listed in §3.0's table and no optional features. This baseline
+is conservative and forward-compatible, and does not assume any
+particular point release.
 
 ### 12.3 Mismatch handling
 
@@ -5284,7 +5284,7 @@ A Heterodyne deployment is secure under the following assumptions:
    may drop, delay, or refuse events but cannot forge signatures.
 5. The user's device is assumed to be free of OS-level malware that
    could extract secrets directly from memory or storage. Defending
-   against compromised endpoints is out of scope for v0.1.
+   against compromised endpoints is out of scope for the current 0.x spec.
 
 ### 13.1.1 Attacker capabilities (per ADR-004)
 
@@ -5493,7 +5493,7 @@ limitation explicitly is the honest move:
   PoW-target or rate-limit defaults on relays where they previously
   had elevated trust.
 - **Mitigation paths:** (a) operate a Heterodyne-aware relay that
-  understands the KEL (out of scope for v0.2 baseline); (b) accept
+  understands the KEL (out of scope for the current 0.x baseline); (b) accept
   rotation as a known event that triggers a reputation reset on
   every relay the persona writes to.
 
