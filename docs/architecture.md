@@ -4,6 +4,11 @@ This document is a non-normative introduction to Heterodyne for new
 contributors. The normative specification is at
 [`spec/heterodyne.md`](spec/heterodyne.md).
 
+The spec is in its **0.x phase — in flux until 1.0**: everything is
+subject to change and any `0.x` release MAY break the prior one
+(semver 0.x rule; see spec §12.1). This overview refers to the spec
+as **0.x** rather than a single point version.
+
 ## What we're building
 
 Heterodyne is a decentralized social network protocol. A user's identity
@@ -266,20 +271,20 @@ clients.
 
 ## Open design questions
 
-All v0.1 spec sections are drafted. The remaining open questions are
-follow-up work that does not block v0.1:
+All current (0.x) spec sections are drafted. The remaining open
+questions are follow-up work that does not block the current draft:
 
 - **Cross-MXID persona-private state synchronization.** A persona
   with multiple delegated MXIDs has separate config rooms (§3.8) per
   MXID; persona-scoped private state (mutes, prefs) does not auto-sync
-  across them in v0.1. A future spec version may define a
+  across them in the current draft. A future spec version may define a
   persona-private encrypted room joined by all the persona's MXIDs.
   Defer until usage demand is clear.
-- **`matrix:` URI refactor of §7 outbox schemas.** New constructs in
-  v0.1 (§3.8 config-room pointer, §3.5 successor URI, §11.3 identity
-  pointer) use `matrix:` URIs. The §7 outbox schemas still use the
-  legacy `{room_id, via}` structured form for backward source
-  compatibility. A minor-version bump can migrate them; not urgent.
+- **`matrix:` URI refactor of §7 outbox schemas.** Newer constructs
+  (§3.8 config-room pointer, §11.3 identity pointer) use `matrix:`
+  URIs. The §7 outbox schemas still use the legacy `{room_id, via}`
+  structured form for backward source compatibility. A future
+  revision can migrate them; not urgent.
 - **MLS migration procedure.** §9.2 reserves
   `m.heterodyne.encryption_version.v1` and the `algorithm` field, but
   the actual migration procedure (re-key, member re-acknowledgement,
@@ -305,5 +310,5 @@ follow-up work that does not block v0.1:
   switching. UX-only — defer to client implementation.
 - **Out-of-scope security threats.** Compromised user devices, traffic
   analysis under Tor-routed Matrix federation, and post-quantum
-  adversaries are explicitly out of scope for v0.1 (see threat model).
-  Each is a future-spec-version question.
+  adversaries are explicitly out of scope for the current 0.x spec
+  (see threat model). Each is a future-spec-version question.
