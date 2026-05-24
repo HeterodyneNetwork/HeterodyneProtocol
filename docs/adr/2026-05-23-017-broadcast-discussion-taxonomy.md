@@ -2,7 +2,7 @@
 
 Date: 2026-05-23
 Status: Accepted
-Spec target: `docs/spec/heterodyne.md` (v0.2.0, revised in place)
+Spec target: `docs/spec/heterodyne.md` (landed in v0.3.0)
 
 ## Context
 
