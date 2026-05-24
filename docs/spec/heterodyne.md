@@ -390,10 +390,10 @@ all persist. Only the Matrix-layer container moves.
 
 ```mermaid
 graph TB
-    Persona[Persona<br/>npub_alice<br/>secp256k1 keypair]
+    Persona[Persona<br/>npub_alice = cold root<br/>+ current epoch key]
     IR[Identity room<br/>Matrix room]
 
-    Persona -.signs all state.-> IR
+    Persona -.cold root signs KERI inception/rotation;<br/>epoch key signs root attestation + delegations.-> IR
 
     subgraph IdentityRoom["Identity room state events"]
         RK[m.heterodyne.room_kind.v1<br/>kind: identity_room]
@@ -439,9 +439,14 @@ The room MUST contain:
   `m.heterodyne.keri_rotation.v1` state events recording the
   persona's KERI key event log (§3.5).
 
-The Matrix room ID of the identity room is the persona's canonical
-Heterodyne address. Resolving a persona means joining (or peeking) the
-room and reading its state.
+The persona's canonical Heterodyne address is its **npub** — the KERI
+cold-root public key (§3.5.0) — not the identity-room ID. The room ID
+is only the persona's *current locator*. Authoritative resolution
+follows the latest `kind:31005` identity pointer (§11.3), which the
+npub controls, to whichever identity room is current (see the §3.6
+authority ladder). Resolving a persona therefore means following that
+pointer to the room and reading its state; a cached room ID is never
+authoritative on its own.
 
 #### 3.2.1 Root attestation
 
@@ -455,28 +460,43 @@ The `m.heterodyne.root.v1` state event:
     "spec_version": "0.2.0",
     "nostr_attestation": {
       "id": "<32-byte hex>",
-      "pubkey": "<32-byte hex of the npub>",
+      "pubkey": "<32-byte hex of the persona's current epoch key>",
       "created_at": 0,
       "kind": 31000,
       "tags": [
         ["heterodyne", "root"],
-        ["matrix_room", "<this room's room_id>"]
+        ["matrix_room", "<this room's room_id>"],
+        ["cold_root", "<32-byte hex of the persona's npub / cold-root key>"]
       ],
       "content": "",
-      "sig": "<64-byte hex>"
+      "sig": "<64-byte hex by the current epoch key>"
     }
   }
 }
 ```
 
 The `nostr_attestation` field is a valid Nostr event of
-Heterodyne-reserved kind `31000` (§3.0), signed by the npub's secret
-key per the canonical Nostr serialization (§3.0.1).
+Heterodyne-reserved kind `31000` (§3.0), signed by the persona's
+**current epoch key** (§3.5.0) per `nip01_raw` (§3.0.1.1). The cold
+root is never brought online to sign root attestations: the
+`cold_root` tag binds the attestation to the persona's permanent
+npub, and the verifier confirms — by replaying the KEL (§3.5.3) —
+that the signing epoch key is the one the cold root currently
+authorizes. (This is why re-signing a root attestation with a fresh
+`created_at`, below, is an epoch-key operation and not a cold-root
+ceremony.)
 
 Normative verification rules:
 
 - The Nostr `sig` MUST validate against the asserted `pubkey` per
-  BIP-340 Schnorr verification.
+  BIP-340 Schnorr verification (over `nip01_raw`, §3.0.1.1).
+- The `pubkey` MUST be the persona's **current epoch key** as
+  determined by replaying the persona's KEL (§3.5.3). A root
+  attestation signed by any key that is not the currently
+  authoritative epoch key MUST be rejected.
+- The `cold_root` tag MUST be present and MUST equal the persona's
+  npub (cold-root public key). This is the permanent identity the
+  attestation binds to the room.
 - The `matrix_room` tag MUST contain the Matrix room ID of the
   identity room itself, as a bare room ID (with leading `!`). Failure
   → reject.
@@ -489,8 +509,8 @@ Normative verification rules:
   hardens against replay of an old signed attestation re-injected
   into a fresh identity room. Genuine re-publication of a long-ago
   attestation is supported by re-signing with the persona's
-  current epoch key — the cold root remains the same, and the new
-  signature carries a current `created_at`.)
+  current epoch key — the npub bound in the `cold_root` tag is
+  unchanged, and the new signature carries a current `created_at`.)
 
 > **NOTE (scope of the ±5 minute rule, ADR-004).** This freshness
 > rule applies ONLY to `m.heterodyne.root.v1` root attestation
@@ -504,14 +524,14 @@ Normative verification rules:
 > event kinds. A persona whose identity room was created long ago
 > remains verifiable: the persona simply re-signs the root
 > attestation with a current `created_at` whenever it republishes
-> the identity-room state; the cold root and Matrix room id are
-> unchanged across re-publications.
-- The `nostr_attestation.pubkey` MUST be the persona's canonical
-  npub. The room MUST NOT contain a second `m.heterodyne.root.v1`
-  state event asserting a different pubkey; if Matrix state
-  resolution produces a conflict, verifiers MUST treat the room as
-  having no valid root and refuse to verify any delegation against
-  it.
+> the identity-room state — an epoch-key operation; the npub
+> (`cold_root` tag) and Matrix room id are unchanged across
+> re-publications.
+- The `cold_root` tag MUST be the persona's canonical npub. The room
+  MUST NOT contain a second `m.heterodyne.root.v1` state event
+  asserting a different `cold_root`; if Matrix state resolution
+  produces a conflict, verifiers MUST treat the room as having no
+  valid root and refuse to verify any delegation against it.
 
 ### 3.3 Delegations
 
@@ -527,16 +547,17 @@ the MXID:
     "spec_version": "0.2.0",
     "nostr_attestation": {
       "id": "<32-byte hex>",
-      "pubkey": "<32-byte hex of the npub>",
+      "pubkey": "<32-byte hex of the persona's current epoch key>",
       "created_at": 0,
       "kind": 31001,
       "tags": [
         ["heterodyne", "delegation"],
         ["matrix_mxid", "@alice:matrix.org"],
+        ["cold_root", "<32-byte hex of the persona's npub / cold-root key>"],
         ["valid_until", ""]
       ],
       "content": "",
-      "sig": "<64-byte hex from npub>"
+      "sig": "<64-byte hex by the current epoch key>"
     }
   }
 }
@@ -548,10 +569,13 @@ state event into the identity room. The MXID's authentication is
 performed by the homeserver's normal `/_matrix/client/v3/rooms/{roomId}/state/{eventType}/{stateKey}`
 authorization (Matrix `m.room.power_levels` plus access-token
 session). The cryptographic security of the binding rests on the
-npub's BIP-340 signature over the embedded Nostr attestation — the
-homeserver cannot forge a delegation that names another npub
-because it does not hold that npub's secret key, and the MXID's
-own identity is established by Matrix's existing protocol.
+BIP-340 signature by the persona's **current epoch key** over the
+embedded Nostr attestation — the homeserver cannot forge a
+delegation for another persona because it does not hold that
+persona's epoch-key secret, and the epoch key's authority chains to
+the cold-root npub via the KEL (§3.5). The `cold_root` tag names the
+persona the delegation is for; the MXID's own identity is
+established by Matrix's existing protocol.
 
 This is a simplification from earlier drafts that additionally
 required an Ed25519 signature by the MXID's cross-signing master
@@ -564,8 +588,12 @@ verify.
 
 A delegation is **active** if and only if:
 
-1. The Nostr signature on `nostr_attestation` validates against the
-   asserted npub per BIP-340 (using `nip01_raw` per §3.0.1.1).
+1. The Nostr signature on `nostr_attestation` validates, per BIP-340
+   over `nip01_raw` (§3.0.1.1), against the persona's **current epoch
+   key**: the `pubkey` MUST be the epoch key that the persona's KEL
+   (§3.5.3) had in authority at the time `t` against which the
+   delegation is being evaluated, and the `cold_root` tag MUST equal
+   the persona's npub.
 2. The Matrix state event's `sender` matches the value in
    `state_key` (the MXID published its own delegation). Verifiers
    MUST reject delegations published by any other sender.
@@ -579,14 +607,27 @@ A delegation is **active** if and only if:
    accommodation. This tolerance is operationally distinct from the
    §3.2.1 ±5-minute freshness rule, which applies only to
    `m.heterodyne.root.v1` root attestation events per ADR-004.
-5. No later KERI rotation in this identity room (§3.5) supersedes
-   the persona's epoch in a way that revokes this delegation.
+5. The epoch key that signed this delegation was KERI-authoritative
+   (§3.5.3) at the evaluation time `t`. A KERI rotation (§3.5, §3.9.9)
+   supersedes the epoch and thereby deactivates delegations signed
+   under it for any `t` after the rotation's effective time; the
+   persona re-signs still-active delegations under the new epoch when
+   it rotates.
+6. No `m.heterodyne.delegation_revoked.v1` state event for this MXID is
+   in effect. If such a state event exists with an `effective_at`
+   (clamped per §3.9.7) less than or equal to `t`, the delegation is
+   inactive from that time. The Matrix state event is **authoritative**
+   for revocation; the paired Nostr `kind:5` deletion (§3.9.7) is a
+   relay-side **mirror** so that Nostr-relay-only observers also learn
+   of the revocation, and is not itself required for a Matrix verifier
+   to treat the delegation as revoked.
 
 Receivers verifying a wrapped event (§4.2) MUST check that the event's
-`nostr.pubkey` matches the npub asserted by the sender's identity room
-and that an active delegation for the sending MXID exists. If verification
-fails, the receiver MUST mark the event untrusted; clients MAY render with
-a warning or suppress entirely.
+`nostr.pubkey` is the current epoch key of the persona asserted by the
+sender's identity room (per KEL replay, §3.5.3) and that an active
+delegation for the sending MXID exists. If verification fails, the
+receiver MUST mark the event untrusted; clients MAY render with a
+warning or suppress entirely.
 
 ### 3.4 Multiple personas
 
@@ -631,9 +672,18 @@ verifiability.
 
 **Cold root.** A 32-byte BIP-340 (secp256k1) public key generated
 on a clean device, held offline as the persona's permanent
-identity anchor. The cold root signs only inception events
-(`kind:31002`) and `committed`-strategy rotations
-(`kind:31003`). Used as little as possible to minimize exposure;
+identity anchor. The cold-root public key, encoded as the
+persona's **npub**, is the persona's permanent, publicly-advertised
+identity; throughout this spec "the persona's npub" denotes this
+cold-root key. The cold root signs only rare, identity-anchoring
+events: inception events (`kind:31002`), `committed`-strategy
+rotations (`kind:31003`), and the `kind:31005` identity pointer
+(§11.3, cold-root-signed so vanilla Nostr clients can discover the
+room by `authors:[npub]`). It never signs routine attestations —
+the root attestation (`kind:31000`), delegations (`kind:31001`),
+outbox advertisements, feed indexes (`kind:31007`), posts, or
+moderator approvals (`kind:4550`); those are signed by the current
+epoch key (below). Used as little as possible to minimize exposure;
 see §6 of the Cold Root + Epoch Keys companion for ceremony
 guidance.
 
@@ -785,8 +835,9 @@ v0.2.0 content. The migration ceremony is:
 
 1. The persona publishes a fresh `m.heterodyne.keri_inception.v1`
    state event in their identity room, with sequence number `0`,
-   co-signed by the cold root (the v0.1.4 npub) and the Matrix
-   MSK. Witnesses are optional but RECOMMENDED.
+   signed by the cold root (the v0.1.4 npub). Witnesses are optional
+   but RECOMMENDED. (No Matrix MSK co-signature is required; the MSK
+   requirement was retired in v0.2.0 per §3.3.)
 2. Any prior `m.heterodyne.successor.v1` / `m.heterodyne.predecessor.v1` /
    `m.heterodyne.revoke.v1` state events MAY remain in room state
    for archival readers but are no longer authoritative.
@@ -875,22 +926,35 @@ Normative algorithm:
      state, no timeline) and leaving after a verification fetch
      is acceptable.
 
-4. **Verify the root attestation.** Read
-   `m.heterodyne.root.v1`; apply the verification rules in §3.2.1.
-   On failure, reject the entire chain — without a valid root no
-   subsequent attestation can be trusted.
-
-5. **Verify the delegation.** Read the
-   `m.heterodyne.delegation.v1` state event keyed by the sender
-   MXID. Apply the verification rules in §3.3.
-
-6. **Replay the KERI log.** Apply §3.5 to fold every
+4. **Replay the KERI log.** Apply §3.5 to fold every
    `m.heterodyne.keri_inception.v1` and
    `m.heterodyne.keri_rotation.v1` in sequence-number order,
    resolving forks per KERI's deterministic rule, to obtain the
-   persona's current epoch public key and witness set. Pre-KERI
-   personas (still on v0.1.4 single-key chains) MUST be surfaced
-   with a "pre-KERI" indicator (per §3.5.1).
+   persona's current epoch public key and witness set. This step
+   comes **before** root- and delegation-verification because both
+   the root attestation and the delegation are now signed by the
+   current epoch key (§3.2.1, §3.3), so the verifier needs the KEL's
+   authoritative epoch key first. Pre-KERI personas (still on v0.1.4
+   single-key chains) MUST be surfaced with a "pre-KERI" indicator
+   (per §3.5.4). The cold-root `pubkey` of the **accepted inception
+   event** (`kind:31002`, `s=0`) is the persona's canonical npub for
+   this verification attempt; every subsequent check binds to that
+   value, breaking the apparent room→KEL→root circularity (the room
+   merely *hosts* the KEL; authority flows from the inception
+   pubkey).
+
+5. **Verify the root attestation.** Read
+   `m.heterodyne.root.v1`; apply the verification rules in §3.2.1,
+   confirming the signing `pubkey` is the current epoch key from step
+   4 and the `cold_root` tag equals the canonical npub (the accepted
+   inception pubkey) established in step 4. On failure, reject the
+   entire chain — without a valid root no subsequent attestation can
+   be trusted.
+
+6. **Verify the delegation.** Read the
+   `m.heterodyne.delegation.v1` state event keyed by the sender
+   MXID. Apply the verification rules in §3.3 (signature against the
+   epoch key from step 4; check for any `m.heterodyne.delegation_revoked.v1`).
 
 7. **Confirm authoritative identity pointer.** Fetch the latest
    `kind:31005` identity pointer event for the persona's npub
@@ -917,9 +981,11 @@ avoid round-tripping for every event. Cache invalidation:
 - The cache SHOULD be stored in the per-MXID config room (§3.8.3,
   `identity_room_cache` field) so new devices can resume verification
   from a warm state.
-- If a cached delegation's `valid_until` has expired or a successor
-  appears in the chain, the cache entry MUST be invalidated even if
-  the TTL has not yet elapsed.
+- If a cached delegation's `valid_until` has expired, a KERI rotation
+  (§3.5) supersedes the epoch key that signed it, or an
+  `m.heterodyne.delegation_revoked.v1` (§3.9.7) appears for the MXID,
+  the cache entry MUST be invalidated even if the TTL has not yet
+  elapsed.
 
 ### 3.7 Failure modes
 
@@ -1383,20 +1449,24 @@ The persona MUST perform the migration steps in this order:
    (`m.heterodyne.delegation.v1`), the full KERI key event log mirror
    (`m.heterodyne.keri_inception.v1` and all
    `m.heterodyne.keri_rotation.v1` events), the outbox advertisements
-   (`m.heterodyne.outbox.*.v1`). The npub root signs the root
-   attestation; the current epoch key signs the delegations and
-   outbox per existing §3 conventions. Re-publication does NOT count
-   as a new attestation for KERI sequence-number purposes; the KEL
-   is the persona's history, not the room's history.
+   (`m.heterodyne.outbox.*.v1`). The current epoch key signs the root
+   attestation, the delegations, and the outbox per §3 conventions
+   (the cold root is not required for any of these — see §3.2.1,
+   §3.3). Re-publication does NOT count as a new attestation for KERI
+   sequence-number purposes; the KEL is the persona's history, not the
+   room's history.
 
-   **WARNING — cold root unsealing.** Re-signing the root attestation
-   for the new room is one of the rare operations in v0.2 that
-   requires unsealing the cold root (along with KERI inception
-   per §3.5 and `committed`-strategy rotations). Clients
-   implementing the homeserver-exit UX SHOULD warn the user that
-   voluntary migration requires bringing the cold root online for a
-   single signing operation, and SHOULD recommend that the user
-   re-secure the cold root immediately afterward.
+   **WARNING — cold root unsealing.** Publishing the new `kind:31005`
+   identity pointer (step 3) is the one part of migration that
+   requires unsealing the persona's cold root, because `kind:31005` is
+   cold-root-signed so that vanilla Nostr clients can discover the new
+   room by the persona's npub (§11.3, §3.5.0). The re-signed root
+   attestation, delegations, and outbox in step 2 are epoch-key
+   operations and do NOT need the cold root. Clients implementing the
+   homeserver-exit UX SHOULD warn the user that voluntary migration
+   brings the cold root online for that single `kind:31005` signing
+   operation, and SHOULD recommend re-securing the cold root
+   immediately afterward.
 3. **Publish a new `kind:31005`** (identity pointer) event with
    `matrix_identity_room` pointing to the new room on H2. Per NIP-01
    replaceable-event semantics, this supersedes the prior `kind:31005`.
@@ -1540,9 +1610,12 @@ Normative rules:
   1:1 lift with no transformation.
 - Receivers MUST verify `nostr.sig` against `nostr.pubkey` using the
   digest of `nip01_raw`. Invalid signature → reject.
-- Receivers MUST verify that `nostr.pubkey` matches the npub bound to the
-  sending Matrix MXID via an active delegation in that npub's identity
-  room (§3.3). Mismatched pubkey → reject as impersonation.
+- Receivers MUST verify that `nostr.pubkey` is the **current epoch key**
+  (§3.5.0) of the persona bound to the sending Matrix MXID via an active
+  delegation in that persona's identity room (§3.3) — i.e., the epoch key
+  the persona's KEL had in authority at `nostr.created_at` (§3.5.3). A
+  pubkey that is not a KERI-authoritative epoch key for that persona →
+  reject as impersonation.
 - The `fallback` field is OPTIONAL but RECOMMENDED for Nostr kinds whose
   content can reasonably be represented as `m.text` (notably kind `1`
   microblog posts). It permits vanilla Matrix clients to render something
@@ -1652,7 +1725,8 @@ first so malformed events are rejected without expensive identity-room
 resolution.
 
 ```
-verify(event) -> {accept | reject(reason) | render_as_vanilla}:
+verify(event) -> {accept | accept_authenticated | accept_attributed
+                  | reject(reason) | render_as_vanilla}:
     # Step 1: Matrix-layer integrity (delegated to Matrix SDK)
     if not matrix_sdk.verify(event):
         return reject("matrix_layer_failure")
@@ -1660,52 +1734,53 @@ verify(event) -> {accept | reject(reason) | render_as_vanilla}:
     # Step 2: Branch on event type
     if event.type == "m.heterodyne.note.v1":
         return verify_wrapped(event)
-    elif event.type == "m.room.message":
+    elif event.type in ("m.room.message", "m.reaction"):
         if "heterodyne_nostr_sig" in event.content:
             return verify_bare_with_sig(event)
         else:
-            return render_as_vanilla(event)  # §11.1 hide-bare policy applies
+            # Bare discussion/reaction is the ADR-017 default, NOT hidden.
+            return render_bare_attributed(event)
     else:
         # Unknown Heterodyne types under spec_version mismatch (§12.3)
         return render_placeholder(event)
 
 
 verify_wrapped(event):
-    nostr = event.content.nostr
+    nostr     = event.content.nostr
+    nip01_raw = event.content.nip01_raw        # canonical serialization (§3.0.1.1)
     sender_mxid = event.sender
 
-    # Cheap structural checks first
-    if not nip01_well_formed(nostr):
+    # Cheap structural checks first. Hash the canonical bytes; never trust
+    # the embedded nostr.id, and confirm the parsed event matches nip01_raw.
+    if nip01_raw is absent or not nip01_well_formed(nostr):
         return reject("nostr_malformed")
-    if compute_event_id(nostr) != nostr.id:
-        return reject("nostr_id_mismatch")
-    if not bip340_verify(nostr.sig, nostr.id, nostr.pubkey):
+    digest = sha256(nip01_raw)
+    if digest != nostr.id or parse_nip01(nip01_raw) != nostr_fields(nostr):
+        return reject("nip01_raw_mismatch")
+    if not bip340_verify(nostr.sig, digest, nostr.pubkey):
         return reject("nostr_signature_invalid")
 
-    # Identity-room resolution (cached; §3.6.1)
+    # Identity-room resolution (cached; §3.6.1) yields the persona npub
+    # (cold root), the active delegation, and the replayed KERI key event
+    # log (KEL).
     identity = resolve_identity(sender_mxid)
     if identity is None:
         return reject("no_heterodyne_identity_for_sender")
 
-    # Delegation check
+    # Delegation check, evaluated at the event's created_at. is_active()
+    # honors the §3.3 step-6 m.heterodyne.delegation_revoked.v1 check, with
+    # revocation time clamped per §3.9.7 against backdating.
     delegation = identity.delegations[sender_mxid]
-    if delegation is None or not delegation.is_active(now()):
+    if delegation is None or not delegation.is_active(at=nostr.created_at):
         return reject("delegation_inactive_or_missing")
 
-    # Pubkey binding
-    if nostr.pubkey != identity.current_npub and \
-       nostr.pubkey not in identity.chain.historical_npubs:
-        return reject("pubkey_not_in_persona_chain")
-
-    # Revocation window check (§3.5.1)
-    if identity.chain.is_revoked(nostr.pubkey, at=nostr.created_at):
-        return reject("event_signed_by_revoked_key_after_revoked_at")
-
-    # Rotation window check (§3.5)
-    if identity.chain.is_outgoing(nostr.pubkey, at=nostr.created_at):
-        # Sole exception: the successor attestation itself
-        if not (nostr.kind == 31002 and nostr.tags has heterodyne=successor):
-            return reject("event_signed_by_outgoing_key_after_effective_at")
+    # Epoch-key authority. The signing key MUST be the epoch key the
+    # persona's KEL had in authority at nostr.created_at (§3.5.3 first-seen
+    # replay). This single check subsumes the old historical/revoked/
+    # outgoing branches: a key rotated out before created_at is, by
+    # definition, not authoritative at created_at.
+    if not identity.kel.epoch_key_authoritative_at(nostr.pubkey, t=nostr.created_at):
+        return reject("signing_key_not_keri_authoritative_at_created_at")
 
     return accept(event)
 
@@ -1713,9 +1788,12 @@ verify_wrapped(event):
 verify_bare_with_sig(event):
     sig = event.content.heterodyne_nostr_sig
 
+    # Recompute the canonical NIP-01 serialization and hash THAT (§3.0.1.1);
+    # never trust the embedded sig.id.
     if not nip01_well_formed(sig):
         return reject("sig_malformed", render_anyway=True)
-    if not bip340_verify(sig.sig, sig.id, sig.pubkey):
+    digest = sha256(nip01_serialize(sig))
+    if not bip340_verify(sig.sig, digest, sig.pubkey):
         return reject("sig_invalid", render_anyway=True)
 
     # Content must match Matrix body byte-for-byte after NFC
@@ -1723,24 +1801,48 @@ verify_bare_with_sig(event):
     if sig.content != matrix_body_nfc:
         return reject("sig_content_mismatch", render_anyway=True)
 
-    # Delegation check (same as wrapped)
+    # Delegation + epoch-key authority (same model as verify_wrapped)
     identity = resolve_identity(event.sender)
-    if not identity or not identity.delegations[event.sender].is_active(now()):
+    if not identity or not identity.delegations[event.sender].is_active(at=sig.created_at):
         return reject("delegation_inactive", render_anyway=True)
-    if sig.pubkey != identity.current_npub and \
-       sig.pubkey not in identity.chain.historical_npubs:
-        return reject("sig_pubkey_not_in_persona", render_anyway=True)
-    if identity.chain.is_revoked(sig.pubkey, at=sig.created_at):
-        return reject("sig_from_revoked_key", render_anyway=True)
+    if not identity.kel.epoch_key_authoritative_at(sig.pubkey, t=sig.created_at):
+        return reject("sig_key_not_keri_authoritative", render_anyway=True)
 
     return accept_authenticated(event)
+
+
+render_bare_attributed(event):
+    # Bare m.room.message / m.reaction with no Nostr signature: the ADR-017
+    # default for discussion traffic and broadcast-room reactions. It is
+    # attributable to its author's npub via the §3.3 delegation, and is
+    # rendered (never hidden) — the absence of a signature means only that
+    # there is no transferable third-party proof, not that authorship is
+    # hidden in-room.
+    #
+    # Attribution is evaluated at the bare event's OWN Matrix room position
+    # (its origin_server_ts / DAG position), NOT at verification time, so
+    # that a later revocation or epoch rotation does not retroactively
+    # un-attribute a message that was validly delegated when it was sent
+    # (matching §3.9.7: events from before the revocation's effective time
+    # remain attributed). t_event below denotes that position.
+    t_event  = event.origin_server_ts
+    identity = resolve_identity(event.sender)
+    if identity is not None and \
+       identity.delegations[event.sender] is not None and \
+       identity.delegations[event.sender].is_active(at=t_event):
+        return accept_attributed(event)   # show the author's persona, no proof badge
+    # Sender had no active Heterodyne delegation at t_event → vanilla Matrix.
+    return render_as_vanilla(event)
 ```
 
 `render_anyway=True` indicates the message body is still rendered to
 the user (since `m.room.message` semantics are Matrix-layer) but with
-a "signature invalid" indicator surfacing the failure. `accept` and
-`accept_authenticated` differ only in the UI affordance the client
-attaches.
+a "signature invalid" indicator surfacing the failure. The three
+accept verdicts differ only in the UI affordance the client attaches:
+`accept` (wrapped, verified), `accept_authenticated` (bare with a valid
+notarization badge), and `accept_attributed` (bare default, attributed
+to the author's npub via the delegation but carrying no transferable
+proof).
 
 Receivers MUST NOT silently drop events on verification failure.
 Either render with an explicit indicator, or surface the rejection to
@@ -2377,8 +2479,10 @@ admin silently rewrite a persona's curated feed without breaking
 any cryptographic invariant. Instead, a persona maintains their
 feed index by publishing a replaceable Nostr event of
 `kind:31007` to their designated write relays (per §7.1). The
-index is signed by the persona's npub directly, so verifiers can
-check authenticity without trusting any intermediary.
+index is signed by the persona's **current epoch key** (authorized
+under the cold-root KEL, §3.5.0/§3.5.3), so verifiers can check
+authenticity — chaining the epoch key back to the persona's npub —
+without trusting any intermediary.
 
 This is a substantive v0.2.0 change. The previous
 `m.heterodyne.feed_status.v1` Matrix state event from v0.1.4 is
@@ -3476,14 +3580,49 @@ moderated `public_discussion` community MUST:
    `kind:4550` event's NIP-72 tags identify the underlying
    contributor post being approved.
 4. For each candidate post id, count valid approvals across all
-   authorized moderators: the approval's Nostr signature MUST
-   validate (per `nip01_raw`), the approval's `pubkey` MUST be a
-   currently-active moderator per `m.heterodyne.moderators.v1`,
-   and that moderator MUST have referenced the approval from
-   their current `kind:31007` index. Honor any `kind:5` deletion
-   (§8.4) by dropping the corresponding approval from the count.
+   authorized moderators. An approval counts iff: (a) its Nostr
+   signature validates (per `nip01_raw`); (b) its `pubkey` — an
+   **epoch key** — maps, via the signing moderator's KEL (§3.5.3),
+   to a **cold-root npub** that is listed in the
+   `m.heterodyne.moderators.v1` resolved at the approval's
+   Matrix-state position (see §8.2.1 — the moderator set is read
+   *as-of* the approval, not at verification time, and the listing
+   names cold-root npubs per §8.2/§8.3); and (c) that moderator
+   referenced the approval from their current `kind:31007` index.
+   Honor any `kind:5` deletion (§8.4) by dropping the corresponding
+   approval from the count.
 5. Surface the post in the feed view only if the count meets or
    exceeds `approvals_required` (§8.2).
+
+**Matrix anchor for counted approvals (MUST).** An approval that
+counts toward the Heterodyne moderated view MUST be anchored by a
+Matrix event in the moderated `public_discussion` room: the
+approving moderator MUST send an `m.heterodyne.approval.v1` Matrix
+event into the room whose `content` references the `kind:4550`
+approval's Nostr event id (and the approved post's id):
+
+```json
+{
+  "type": "m.heterodyne.approval.v1",
+  "content": {
+    "spec_version": "0.2.0",
+    "approval_event_id": "<kind:4550 Nostr event id, hex>",
+    "approved_post_id": "<approved post's Nostr event id, hex>"
+  }
+}
+```
+
+This anchor is what gives a Nostr approval a position in the room's
+event DAG. Verifiers MUST evaluate the moderator set "as-of" the
+approval by resolving `m.heterodyne.moderators.v1` via Matrix state
+resolution **at the `m.heterodyne.approval.v1` event** (§8.2.1), and
+MUST confirm the anchor's `sender` MXID maps (via §3.3 delegation)
+to the same persona whose cold-root npub signs the referenced
+`kind:4550`. An approval whose `kind:4550` is referenced from the
+moderator's `kind:31007` index but which has no such Matrix anchor
+in the room MUST NOT be counted (it is treated as off-index, below).
+The forgeable Nostr `created_at` is never used to place the approval
+in moderator-set history.
 
 Moderators MAY also publish kind:4550 approvals to Nostr relays
 without updating their `kind:31007` index (for example, in a vanilla
@@ -3536,29 +3675,57 @@ Field semantics:
   communities (e.g., 2-of-N).
 - `moderators[].mxid`: the moderator's Matrix MXID. Used by the Matrix
   layer for power-level mapping (§5.3 recommends PL 50 for moderators).
-- `moderators[].npub`: the moderator's persona npub. Used by the
-  Heterodyne layer for signature verification of approvals.
+- `moderators[].npub`: the moderator's persona npub — their permanent
+  KERI **cold-root** controller (§3.5.0, §8.3), NOT the key that signs
+  approvals. Approvals (`kind:4550`) are signed by the moderator's
+  *current epoch key*; verifiers map that epoch key to this cold-root
+  npub via the moderator's KEL (§3.5.3). Because the listing is the
+  permanent cold root, a moderator who rotates epoch keys need not be
+  re-listed (§8.3).
 - `moderators[].powers`: string array of permitted moderator actions.
   In v0.1 only `"approve"` is defined; reserved for future graduated
   powers (e.g., per-topic approval, sub-moderator hierarchy).
 - `moderators[].appointed_at`: Unix seconds; informational.
 
-A moderator is **active** if and only if they appear in the current
-`m.heterodyne.moderators.v1` state event AND their KERI log (§3.5)
-has not rotated their listed epoch key out of authority at the
-time of the approval being verified.
+A moderator is **active** for an approval if and only if their
+cold-root npub appears in the `m.heterodyne.moderators.v1` resolved
+as-of that approval (§8.2.1) AND the epoch key that signed the
+approval was KERI-authoritative (§3.5.3) for that cold root at the
+approval's `created_at`.
 
 #### 8.2.1 Past approvals after moderator removal
 
-Approval validity is evaluated **at the time the approval was
-issued**, not at the time of verification. Concretely:
+Approval validity is evaluated **as-of the approval's own position
+in Matrix room state**, not at the time of later verification.
+Moderation in Heterodyne is a Matrix-room (discussion) activity:
+moderators operate as members of the moderated `public_discussion`
+room, and an approval that counts toward the Heterodyne moderated
+view (§8.1) has a Matrix-state anchor — the `m.heterodyne.approval.v1`
+event defined in §8.1 — and therefore a position in that room's
+event DAG. The moderator set in force for an approval is therefore
+the `m.heterodyne.moderators.v1` that **Matrix state resolution**
+reports as current *at that anchor event* ("state at event") — a
+deterministic, tamper-evident snapshot that does not depend on the
+approval's forgeable Nostr `created_at`. Concretely, an approval A
+(anchored by Matrix event X) is valid iff:
 
-- An approval signed at time T by moderator M who was active at T
-  remains valid even if M is later removed from the moderators
-  state event, banned from the room, or rotates a key without
-  revocation. The approval was authoritative when issued; rewriting
-  history would require a new state event that contradicts the
-  approval signature, which moderators do not control.
+- The `m.heterodyne.moderators.v1` resolved at X lists the approving
+  moderator's **cold-root npub**; AND
+- A's BIP-340 signature validates against the epoch key that the
+  moderator's KEL (§3.5.3) had in authority at A's `nostr.created_at`.
+
+Because the moderator set is read from room state *at the approval*,
+later removal of a moderator does NOT retroactively invalidate their
+prior approvals: the historical state still lists them at the point
+their approval was made, and rewriting it would require a new state
+event that does not change the past snapshot. No separate
+timestamp-history walk is required. (This relies on counted approvals
+having a Matrix-state anchor in the moderated room. Off-index,
+relay-only `kind:4550` approvals — vanilla NIP-72 — do not count
+toward the Heterodyne view in the first place per §8.1; a future
+spec version MAY define a timestamp-based fallback for relay-only
+moderation.)
+
 - The exception is **explicit revocation**: if a moderator's epoch
   key is rotated out by a KERI rotation event (§3.5) declaring the
   prior key revoked, approvals signed by that key with
@@ -3592,8 +3759,10 @@ A moderator approval is valid if:
 1. The approval's BIP-340 signature validates against the
    epoch key that was authoritative under the KEL at
    `nostr.created_at` (per §3.5.3 verifier algorithm); AND
-2. The moderator's cold-root pubkey is currently listed in
-   `m.heterodyne.moderators.v1`.
+2. The moderator's cold-root pubkey is listed in the
+   `m.heterodyne.moderators.v1` resolved at the approval's
+   Matrix-state anchor (§8.2.1) — not merely the verification-time
+   set.
 
 A moderator who rotates their epoch key does NOT need to be
 re-listed in `m.heterodyne.moderators.v1` because the cold-root
@@ -4370,6 +4539,14 @@ use a `["d", ""]` tag for the canonical version, and MAY publish
 additional pointer events with distinct `d` values for staging or
 versioned identity rooms).
 
+The `pubkey` is the persona's npub — the KERI cold-root public key
+(§3.5.0). `kind:31005` is one of the few **cold-root-signed** event
+kinds (alongside inception and `committed` rotation): it is signed by
+the cold root, not an epoch key, precisely so that a vanilla Nostr
+client that knows only the npub can discover the identity room by
+querying `authors:[<npub>]`. Re-signing it (e.g., at homeserver-exit,
+§3.10.1) is therefore a rare cold-root operation.
+
 Vanilla Nostr clients without Heterodyne awareness ignore the unknown
 kind. Heterodyne-aware clients (or vanilla clients reachable through
 NIP-89 handler discovery, §11.2) follow the pointer for full
@@ -4694,17 +4871,19 @@ For `m.heterodyne.keri_inception.v1` and `m.heterodyne.keri_rotation.v1`:
 - The DID signing key is treated as one peer witness signature
   among the optional witness set.
 - The witness signature is over the same canonical inception or
-  rotation payload that the cold root and Matrix MSK signatures
-  cover.
+  rotation payload that the controller signature (§3.5.2) covers.
 - An ATProto witness signature is **additive only** — it does not
   satisfy any MUST signature requirement. Inception still requires
-  cold root + Matrix MSK. `committed`-strategy rotation still
-  requires cold root + Matrix MSK plus the cryptographic chain to
-  the prior root. `none`-strategy rotation still requires Matrix
-  MSK; ATProto SHOULD be present as a witness because witness
-  signatures are the primary continuity signal in that case, but
-  the rotation does not become invalid if the persona chose other
-  witnesses instead.
+  the cold-root signature (§3.5.1). `committed`-strategy rotation
+  still requires the cold-root signature plus the cryptographic
+  chain to the prior event (§3.5.2). `none`-strategy rotation is
+  signed by the prior epoch key and relies on witness attestations
+  meeting the threshold (§3.5.2); ATProto SHOULD be present as a
+  witness because witness signatures are the primary continuity
+  signal in that case, but the rotation does not become invalid if
+  the persona chose other witnesses instead. (No Matrix MSK
+  signature is involved; the MSK requirement was retired in v0.2.0,
+  §3.3.)
 
 Why ATProto is a strong witness candidate:
 
@@ -4752,8 +4931,9 @@ and SHOULD NOT display it as authoritative.
 For KERI rotation verification (§11.6.7), a Heterodyne client
 MAY but is not required to verify ATProto witness signatures.
 Clients that do not implement §11.6 ignore the witness signature
-and rely on the cold root + Matrix MSK + non-ATProto witnesses,
-which is sufficient per §6.6 of the Cold Root + Epoch Keys design.
+and rely on the cold-root controller signature + non-ATProto
+witnesses, which is sufficient per §6.6 of the Cold Root + Epoch
+Keys design.
 
 #### 11.6.9 Adoption-vector rationale
 
@@ -5056,9 +5236,11 @@ threat model is non-normative; this section is normative.
 
 A Heterodyne deployment is secure under the following assumptions:
 
-1. The persona's `nsec` is held only by the persona's authorized
-   devices. A compromised device implies a compromised persona until
-   §3.5.1 revocation completes.
+1. The persona's signing keys are not otherwise disclosed: the
+   current epoch key resides on the persona's authorized devices, and
+   the cold root (§3.5.0) is held offline. A compromised device
+   implies a compromised epoch key until a KERI rotation (§3.5) or
+   single-MXID revocation (§3.9.7) completes.
 2. The Matrix client SDK on the user's device implements Megolm
    (eventually MLS) correctly. Heterodyne does not re-implement
    transport encryption.
@@ -5208,8 +5390,10 @@ Heterodyne implementations MUST uphold:
   MUST NOT be treated as identities in their own right by any
   Heterodyne client computing trust, attribution, or reputation.
 - **I3 — Dual-authenticated delegations.** A delegation is active only
-  with both (a) an npub-side BIP-340 Nostr signature over the embedded
-  attestation, AND (b) successful homeserver-mediated `/send/state`
+  with both (a) a BIP-340 Nostr signature by the persona's current
+  epoch key over the embedded attestation (whose authority chains to
+  the cold-root npub via the KEL, §3.5), AND (b) successful
+  homeserver-mediated `/send/state`
   authorization establishing that the MXID itself published the
   delegation state event (§3.3). Single-source delegations (npub
   signature published by a sender other than the named MXID, or
@@ -5241,12 +5425,12 @@ mitigated by the cited spec sections:
 | Threat | Mitigation section |
 |---|---|
 | Impersonation via friendly homeserver | §3.3 (delegation), §4.5 (verification), I2/I3/I4 |
-| Phantom delegation | §3.3 (npub BIP-340 signature + MXID self-publication via homeserver authorization), I3 |
-| Stale revocation | §3.5.1 (revocation), §3.6 (cache-then-revalidate) |
+| Phantom delegation | §3.3 (epoch-key BIP-340 signature + MXID self-publication via homeserver authorization), I3 |
+| Stale revocation | §3.9.7 (single-MXID revocation), §3.5 (KERI rotation), §3.6.1 (cache-then-revalidate) |
 | Cross-persona linking via metadata | §3.4 (personas not linked at protocol level), §12.2 (capabilities scoped) |
 | Bridge-side plaintext leak | §10.1 (no server-side bridge), I7 |
-| Replay across forked identity rooms | Matrix state resolution + §3.5 chain timestamps |
-| Backdating attacks by recently-revoked keys | §3.5.1 revoked_at + clock-skew tolerance |
+| Replay across forked identity rooms | Matrix state resolution + §3.5.3 KERI first-seen ordering (sequence numbers) + §3.2.1 ±5-min root-attestation freshness |
+| Backdating attacks by recently-revoked keys | §3.9.7 effective_at clamping (max of declared and observed time) + clock-skew tolerance |
 | Hostile relay refusing to deliver | §6.4 multi-destination fan-out; ADR-010 asymmetric-delivery contract |
 | Capabilities-fingerprinting surveillance | §12.2 default-scoped advertisement |
 | Federation-peer metadata observation | §13.1.1 attacker class (ADR-016); choose homeserver with trusted federation peer set |
