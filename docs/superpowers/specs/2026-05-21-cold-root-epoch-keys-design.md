@@ -3,7 +3,7 @@
 **Status:** approved for implementation planning
 **Date:** 2026-05-21
 **Scope:** (A) a standalone NIP for the Nostr ecosystem; (B) consequent
-changes to the Heterodyne v0.2 spec.
+changes to the Heterodyne spec (0.x; in flux until 1.0).
 
 ---
 
@@ -63,7 +63,7 @@ NIPs without modifying them:
   (tapscript commitment), #2237 (argon2 hash commitment) as related
   work.
 
-### B. Heterodyne v0.2 spec changes
+### B. Heterodyne spec changes (0.x)
 
 Changes to `docs/spec/heterodyne.md`:
 

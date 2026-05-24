@@ -88,7 +88,7 @@ Matrix device participates in multiple identity rooms.
 homeservers and/or used via different Matrix accounts. This is an
 unsolved problem at the Matrix transport layer and Heterodyne inherits
 the limitation. Future work might explore mixnet or onion-routed Matrix
-federation; out of scope for v0.1.
+federation; out of scope for the current 0.x spec.
 
 ### Bridge-side plaintext leak
 
@@ -138,7 +138,7 @@ vanilla Nostr individually.
 - Defenses against compromised user devices (key extraction via OS-level
   malware). The npub holder is assumed to be in control of their device.
 - Traffic analysis against Tor-routed Matrix federation. Matrix's traffic
-  pattern is itself fingerprintable; out of scope for the v0.1 spec.
+  pattern is itself fingerprintable; out of scope for the current 0.x spec.
 - Quantum-adversary resistance. `secp256k1` is not post-quantum.
   Mitigation strategy will follow Nostr's upstream when it has one.
 

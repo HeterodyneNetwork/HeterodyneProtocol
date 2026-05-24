@@ -133,10 +133,12 @@ tag. Contrast with non-indexed event.
 protocols characterized by inception and rotation events
 co-signable by the identity holder plus peer witnesses; witnesses
 provide social-continuity attestation without granting authority.
-In Heterodyne (Cold Root + Epoch Keys design, §3.5 in v0.2),
-inception and rotation events MUST be co-signed by the cold root
-and Matrix MSK; peer witnesses (including ATProto signatures per
-§11.6.7) MAY be added. Particularly load-bearing for `none`-strategy
+In Heterodyne (Cold Root + Epoch Keys design, §3.5), inception and
+`committed`-strategy rotation are signed by the cold root, while
+`none`-strategy rotation is signed by the prior epoch key and relies
+on witness attestations; peer witnesses (including ATProto signatures
+per §11.6.7) MAY be added. (No Matrix MSK co-signature — that
+requirement was removed per ADR-018.) Particularly load-bearing for `none`-strategy
 rotation where no cryptographic chain to the prior cold root
 exists.
 
@@ -180,8 +182,9 @@ spec use the URI form; legacy `{room_id, via}` structured form
 remains valid in §7. See spec §2.
 
 **Moderator.** A persona authorized in `m.heterodyne.moderators.v1`
-to issue NIP-72 approval signatures (and only NIP-72 approval
-signatures, in v0.1) for a `public_moderated` room. Identified by
+to issue NIP-72 approval signatures (and, in the current 0.x draft,
+only NIP-72 approval signatures) for a moderated `public_discussion`
+room. Identified by
 both MXID (for Matrix-layer power-level mapping) and npub (for
 signature verification). See spec §8.2.
 
