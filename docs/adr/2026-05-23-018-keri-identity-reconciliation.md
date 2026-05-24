@@ -2,7 +2,7 @@
 
 Date: 2026-05-23
 Status: Accepted
-Spec target: `docs/spec/heterodyne.md` (v0.2.0, revised in place)
+Spec target: `docs/spec/heterodyne.md` (landed in v0.3.0)
 
 ## Context
 
@@ -178,12 +178,18 @@ The nine items:
   Nostr event alone, off-index, remains NIP-72-only as before). Cold
   root is still needed for a single `kind:31005` signature at voluntary
   homeserver-exit.
-- **Out of scope / deferred.** The stable-subscription question (how a
-  vanilla Nostr follower who knows only the npub discovers epoch-key-signed
-  posts without replaying the KEL) is unchanged by this pass and remains
-  for a later discovery ADR. `docs/glossary.md`, `docs/architecture.md`,
-  and ADRs 001/002/004/005/007/014/015 still carry retired terminology
-  (shared with ADR-017's follow-up) and need a docs-wide sweep.
+- **Explicitly out of scope (not an obligation).** A vanilla Nostr
+  client that knows only a persona's npub does not automatically
+  discover epoch-key-signed posts (those are authored under rotating
+  epoch keys, discoverable by replaying the KEL). Helping
+  non-Heterodyne clients bridge that gap is **not a Heterodyne
+  protocol responsibility** — a client MAY implement KEL-aware
+  discovery, but it is entirely optional and the spec does not owe a
+  solution (recorded normatively at §11.3). Heterodyne-aware clients
+  use the §3.6 ladder and need nothing more. Separately,
+  `docs/glossary.md`, `docs/architecture.md`, and ADRs
+  001/002/004/005/007/014/015 still carry retired terminology (shared
+  with ADR-017's follow-up) and need a docs-wide sweep.
 - **Relation to prior ADRs.** Completes the propagation of ADR-003
   (KERI) and ADR-004 (MSK removal) into §§3, 4, 8, 13; consistent with
   ADR-017's broadcast/discussion taxonomy and pseudonymity stance.
