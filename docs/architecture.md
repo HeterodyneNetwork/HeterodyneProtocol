@@ -225,6 +225,47 @@ ecosystems should one emerge with stronger adoption signal.
 
 See spec §11.6.
 
+### 8. Embedded Tor: onion reachability is a universal client requirement
+
+Privacy-focused Nostr relays and Matrix homeservers increasingly live
+on `.onion`. If a Heterodyne client cannot reach them, they are
+advertised-but-unreachable — second-class. To make onion-hosted feeds
+and relays first-class, embedded Tor is a **universal client conformance
+requirement**, not an optional add-on.
+
+Two capabilities are deliberately kept separate, because conflating them
+is the easy mistake:
+
+- **Onion reachability** — can the client *connect to* a `.onion`
+  endpoint? This is a Universal MUST on every platform. The client ships
+  Tor *as part of the application* (a bundled library, native binding,
+  or WASM build), rather than depending on a separately installed Tor
+  daemon or an external SOCKS5 proxy. The one platform that cannot open
+  the raw TCP sockets Tor needs — browser/WASM runtimes — satisfies the
+  MUST by tunneling embedded Tor through a WebSocket pluggable-transport
+  bridge (experimental, bridge-dependent), and surfaces an indicator
+  when no bridge is reachable. Native desktop, Node.js, and mobile apps
+  embed Tor directly (Onion Browser and Orbot already do this on iOS).
+
+- **Egress-over-Tor** — does the client route the *user's own* traffic
+  over Tor to hide their network location? This is opt-in,
+  off-by-default, behind a prominent toggle. Keeping it opt-in protects
+  the compatibility-first stance: no surprise latency/battery cost, no
+  breakage on Tor-blocking networks. The strict-mode profile (spec
+  §11.7) elevates it to default-on.
+
+Why this doesn't violate the §1 "does not define a transport" non-goal:
+requiring that a client can *reach* an existing transport is a
+conformance property, not the definition of a new one. Tor is composed,
+exactly as clearnet TCP/TLS is. The requirements are written in terms of
+capability and reachability — never a named library, daemon, or version
+— preserving implementation-agnosticism. Egress-over-Tor upgrades the
+passive-network-observer and cross-persona-metadata-linking threats from
+"deferred future work" to in-scope mitigations; Tor-level traffic
+analysis remains a documented residual limitation.
+
+See spec §7.7 and ADR-019.
+
 ## High-level diagram
 
 ```mermaid

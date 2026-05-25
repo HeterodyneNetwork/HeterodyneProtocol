@@ -36,7 +36,7 @@ Heterodyne inherits the following invariants from sibling project
 | **Trusted client** | A conformant Heterodyne client implementation; honest. Holds the user's nsec and Matrix device keys. |
 | **Hostile homeserver** | Can drop, delay, reorder events. Can lie about state to clients that don't verify. Cannot decrypt E2EE traffic. May correlate metadata (room IDs, timing, participant MXIDs). |
 | **Hostile relay** (vanilla Nostr) | Can drop, delay events. Cannot forge signatures. Can correlate by npub. |
-| **Passive network observer** | TLS-bounded. Sees connection metadata (peers, timing, volume); cannot read content. |
+| **Passive network observer** | TLS-bounded. Sees connection metadata (peers, timing, volume); cannot read content. *Mitigation (per ADR-019):* clients ship embedded Tor and offer opt-in egress-over-Tor (§7.7 of the spec); with egress enabled, the observer no longer sees the user's real peer set or location — only a Tor entry guard. Residual: Tor-level timing/volume traffic analysis (below). |
 | **Federation peer** (per ADR-016) | A Matrix homeserver participating in a room's server-server federation that is neither the persona's own homeserver nor an adversary. Sees: all unencrypted state in public rooms; Megolm ciphertexts as opaque blobs; full `m.room.member` events; sender MXIDs + `origin_server_ts`; the federation join event graph. Cannot see: Megolm-encrypted content in private rooms; identity/config-room content for personas hosted on homeservers it is not federated with. Mitigation: personas concerned about membership-graph exposure SHOULD host their identity room on a homeserver whose federation peer set they trust. |
 | **Colluding co-delegated MXID** (per ADR-009) | A peer MXID under the same npub that turns hostile. Has Megolm access to all config rooms via §3.9 mutual membership. Can: observe coordination state; attempt to plant lease conflicts during partition windows; race the single-MXID revocation procedure between `effective_at` and observation. Cannot: forge events signed under the persona's epoch key (only the persona's own signing key produces those); evade the §3.9.6 partition-window void-and-requeue rule once the partition heals. Mitigations: §3.9.7 effective_at clamping; embedded Nostr-signed revocation attestations defend against forged peer revocations. |
 | **Old-homeserver-during-overlap** (per ADR-015) | The source homeserver `H1` during the 7-day voluntary homeserver-exit window. Retains write access to the old identity room; can attempt to forge state events after the migration. Mitigation: the §3.10.3 migration-pointer-precedence rule ensures the migration announcement in the OLD room is authoritative regardless of subsequent `H1`-side activity; followers' clients log discrepancies between the migration pointer and any later state changes in the OLD room. |
@@ -85,10 +85,19 @@ Even when content is encrypted, a homeserver can observe that the same
 Matrix device participates in multiple identity rooms.
 
 *Mitigation (incomplete):* personas SHOULD be hosted on different
-homeservers and/or used via different Matrix accounts. This is an
-unsolved problem at the Matrix transport layer and Heterodyne inherits
-the limitation. Future work might explore mixnet or onion-routed Matrix
-federation; out of scope for the current 0.x spec.
+homeservers and/or used via different Matrix accounts. Per ADR-019,
+clients ship embedded Tor and offer opt-in egress-over-Tor (§7.7 of the
+spec); when enabled, the homeserver and any on-path observer see only a
+Tor entry guard rather than the user's IP, removing the *network-level*
+correlator that would otherwise link a single device's connections to
+multiple identity rooms. This is now in scope as a mitigation, not
+deferred future work. It remains *incomplete*: same-device participation
+in multiple rooms is still observable to a homeserver *within* the
+encrypted Matrix layer regardless of network path, so Tor egress
+addresses the IP/location correlator but not the application-layer
+device-reuse correlator. Reducing the latter still relies on separate
+accounts/homeservers per persona, and a mixnet-grade defense against
+Tor-level traffic analysis remains future work.
 
 ### Bridge-side plaintext leak
 
@@ -137,8 +146,15 @@ vanilla Nostr individually.
 
 - Defenses against compromised user devices (key extraction via OS-level
   malware). The npub holder is assumed to be in control of their device.
-- Traffic analysis against Tor-routed Matrix federation. Matrix's traffic
-  pattern is itself fingerprintable; out of scope for the current 0.x spec.
+- Tor-level traffic analysis (timing/volume correlation against the Tor
+  network itself). As of ADR-019, `.onion` reachability and opt-in
+  egress-over-Tor are *in scope* (clients ship embedded Tor, §7.7 of the
+  spec) and mitigate the clearnet passive observer and the IP-level
+  cross-persona correlator. What remains out of scope is correlation
+  performed against the Tor circuit itself: Matrix's traffic pattern is
+  fingerprintable, and a global passive adversary observing Tor
+  entry/exit can still attempt timing/volume correlation. A mixnet-grade
+  defense is future work.
 - Quantum-adversary resistance. `secp256k1` is not post-quantum.
   Mitigation strategy will follow Nostr's upstream when it has one.
 

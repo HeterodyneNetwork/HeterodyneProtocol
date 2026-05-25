@@ -150,13 +150,21 @@ Heterodyne defines:
   NIP-72-style approval signatures for editorial control.
 - A **bridge model** that is purely client-side; no homeserver software
   modifications are required.
+- A **transport-reachability requirement** (§7.7) making embedded Tor a
+  universal client conformance obligation, so that `.onion` relays and
+  homeservers are first-class destinations and opt-in egress-over-Tor is
+  a one-toggle privacy feature.
 
 ### 1.2 Non-goals
 
 Heterodyne explicitly does not:
 
 - Define a new transport, relay protocol, or homeserver. It composes the
-  Matrix and Nostr networks as they exist.
+  Matrix and Nostr networks as they exist. Requiring that a conforming
+  client be able to *reach* an existing transport — specifically Tor
+  `.onion` endpoints (§7.7) — is a client conformance property, not the
+  definition of a new transport: Tor is an existing transport the client
+  composes, exactly as it composes clearnet TCP/TLS.
 - Reserve new Nostr event kinds for user content. Existing NIP-defined
   kinds are used verbatim inside the envelope. (A small range of
   Heterodyne-reserved kinds for identity-room state events is defined in
@@ -3439,6 +3447,69 @@ mechanisms that the current 0.x baseline acknowledges explicitly:
   from supporting them, but baseline conformance does not depend on DVM
   behavior. A future spec version may define DVM integration semantics.
 
+### 7.7 Onion reachability and Tor transport (per ADR-019)
+
+Privacy-focused Nostr relays and Matrix homeservers increasingly
+publish Tor `.onion` endpoints. For onion-hosted feeds and relays to be
+first-class destinations rather than advertised-but-unreachable
+addresses, Heterodyne makes **embedded Tor a universal client
+conformance requirement**. The requirement is expressed in terms of
+*capability and reachability*, never a named library, daemon, or
+version (§1.2 transport non-goal).
+
+Two distinct capabilities are required independently:
+
+1. **Onion reachability (Universal MUST).** A conforming client MUST be
+   able to establish connections to `.onion` relay and homeserver
+   endpoints that appear in user configuration or a discovered relay
+   list (e.g. NIP-65 `kind:10002`, §7.1). The client MUST provide
+   self-contained Tor capability *as part of the application* — a
+   bundled library, native binding, app-managed daemon, or WASM build;
+   the normative requirement is the *capability* (built-in, no external
+   dependency), not a specific packaging. The client MUST NOT depend on
+   a separately installed Tor daemon or an externally configured SOCKS5
+   proxy to satisfy this MUST. The `.onion` host MUST NOT leak to a
+   clearnet DNS resolver.
+   - **Matrix-side scope.** The reachability MUST applies to a
+     `.onion` Matrix homeserver whether it is a directly configured
+     client-server base URL or the result of standard Matrix discovery
+     (`.well-known` / delegated server name) that resolves to a
+     `.onion` host.
+   - **Browser/WASM clients.** A client running where raw TCP sockets
+     are unavailable (browser/WASM runtimes cannot open them) MUST
+     satisfy this MUST by *implementing* a path that tunnels its
+     embedded Tor through a WebSocket-based pluggable transport /
+     bridge. No platform is exempt from the MUST; only the *mechanism*
+     differs. Conformance is evaluated on the client's *capability to
+     use* such a bridge, not on ambient network conditions: a temporary
+     bridge outage is an operational condition, not a conformance
+     failure. Such a client MUST surface a clear indicator when no
+     usable bridge is available, so the unreachable state is never
+     silent. (This path is experimental and bridge-availability
+     dependent; see
+     [`../security/threat-model.md`](../security/threat-model.md).)
+
+2. **Egress-over-Tor (opt-in but prominent).** Routing the client's own
+   outbound connections over Tor anonymizes the user's network location.
+   A conforming client MUST offer this as a user-controllable feature;
+   MUST default it to OFF; and MUST expose its toggle through a
+   prominent, discoverable control rather than a buried setting. A
+   client MUST NOT silently route user egress over Tor without the user
+   having enabled it — *except* under a profile whose selection itself
+   constitutes that enablement (§11.7 strict-mode defaults egress-on; see
+   below), in which case the client MUST disclose that egress is
+   default-on. In all cases the client MUST surface an active indicator
+   while egress-over-Tor is on. The §11.7 strict-mode client profile
+   requires egress-over-Tor to be default-on.
+
+A conforming client MAY additionally honor an externally configured
+SOCKS5/system proxy, but MUST NOT treat that as a substitute for the
+embedded-Tor MUST in (1).
+
+Onion reachability and the browser bridge path are conformance-relevant
+(§14); the strict-mode profile (§11.7) is the natural home for any
+stronger egress guarantees.
+
 ## 8. Moderation
 
 Heterodyne moderation operates in two strictly independent layers:
@@ -4273,6 +4344,13 @@ following capabilities:
   HTTPS GET against user-hosted archive URLs (§6.9.2). DM-based
   retrieval is explicitly forbidden (§6.9.3).
 - Fan-out to vanilla Nostr relays for public content (§10.5).
+- Embedded Tor capability for `.onion` reachability and opt-in
+  egress-over-Tor (§7.7): the client MUST be able to reach `.onion`
+  relay/homeserver endpoints via self-contained, application-embedded
+  Tor (a bundled library, native binding, app-managed daemon, or WASM
+  build over a WebSocket bridge in browser/WASM runtimes) with no
+  external Tor dependency, and MUST offer egress-over-Tor as a
+  prominent, opt-in, off-by-default control.
 
 The spec is **language- and runtime-agnostic**. Clients MAY be
 written in any language; MAY package these capabilities as a shared
@@ -5014,6 +5092,10 @@ Strict-mode clients MUST:
 - In moderated `public_discussion` communities, surface an
   "unmoderated" or "pre-approval" UI indicator for any post
   lacking the approval count required per §8.2.
+- Default egress-over-Tor to **on** (§7.7), routing the client's
+  own outbound connections over Tor unless the user explicitly
+  disables it — elevating the baseline opt-in (off-by-default)
+  control to default-on for the high-assurance tier.
 
 Because bare Matrix is the legitimate default for discussion-room
 traffic and for reactions/replies (§4.4), strict-mode clients MUST
@@ -5569,6 +5651,8 @@ Vectors are authored per spec section. The coverage targets:
 | `encryption/mls-migration/` (per ADR-012, OPTIONAL) | §9.2 | Eligibility check (capability gating); intent and ACK; abort on missing ACKs; receiver-verifiable flip with last-Megolm-key encryption of the flip event; 60-second tail-period acceptance of pre-flip-keyed Megolm events; offline-reconnect re-encryption with Nostr event id reuse; non-MLS receiver fallback |
 | `relay-interop/` (per ADR-013) | §10.5 | NIP-42 AUTH challenge and response signed by current epoch key (not cold root); AUTH rejection classified as permanent per ADR-010; KERI rotation produces AUTH events under the new epoch key |
 | `homeserver-exit/` (per ADR-015, SKIPPABLE for read-only clients) | §3.10 | Identity-room migration with `m.heterodyne.identity_room_migrated.v1`; migration-pointer precedence over stale `kind:31005`; KERI rotation during exit window dual-publishes to both rooms |
+| `transport/` (per ADR-019) | §7.7 | `.onion` relay/homeserver reachable via embedded Tor; `.onion` host not leaked to a clearnet resolver; browser/WASM client reaches `.onion` over a WebSocket bridge and surfaces the no-bridge-available indicator; egress-over-Tor off by default with active-state indicator when enabled |
+| `transport/strict-mode/` (per ADR-019 / ADR-007) | §7.7, §11.7 | Strict-mode egress-over-Tor default-on unless the user explicitly disables it |
 | `interop/` | §11 | Wrapped → vanilla Nostr roundtrip; bare event with hide-bare preference; vanilla-Nostr-only follow; kind:31005 identity pointer |
 | `versioning/` | §12 | Older receiver vs newer sender; capabilities event roundtrip; cross-MAJOR mismatch placeholder rendering; unknown room-kind tolerance per ADR-016 |
 
@@ -5577,6 +5661,7 @@ implementation claiming baseline Heterodyne v0.2 conformance MUST pass
 every vector in: `identity/`, `keri/`, `envelope/`, `verification/`,
 `bridge/`, `index/`, `room-kind/`, `broadcast/`, `outbox/`,
 `multi-homing/`, `relay-interop/`,
+`transport/` (excluding the `strict-mode/` subdirectory),
 `moderation/` (excluding the `strict-mode/` subdirectory),
 `encryption/` (excluding the `mls-migration/` subdirectory),
 `interop/`, `versioning/`, and `config_room/`. Implementations MAY
@@ -5587,7 +5672,8 @@ read-only and never publishes; publishing clients MUST pass them.
 
 **Strict-mode conformance delta (per ADR-007 / ADR-011).** Claiming
 the strict-mode profile additionally requires passing every vector in
-`moderation/strict-mode/`. An implementation MAY claim baseline
+`moderation/strict-mode/` and `transport/strict-mode/`. An
+implementation MAY claim baseline
 conformance without strict-mode; it MUST NOT claim strict-mode without
 first passing all baseline-minimum vectors.
 
