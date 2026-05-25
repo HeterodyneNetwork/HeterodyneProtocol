@@ -148,21 +148,18 @@ An attacker mints many cheap "friend" identities and floods a persona's
 recovery with informal `kind:31008` vouches, hoping to push a key the
 persona never authorized over the rotation threshold.
 
-*Mitigation:* informal weight is *supplemental* and weight-capped
-(RECOMMENDED ≤1% of a declared witness): by the §3.5.5 / §3.5.3
-invariant it can never reach the threshold on its own, and acceptance
-always requires at least one declared-witness signature (or the cold
-root). Promotion of an informal voucher into the declared set is always
-a manual user action; clients MUST NOT auto-promote, so the snowball
-grows the *declared* set only through deliberate human decisions.
-*Residual:* because informal weight can bridge a fractional remainder,
-a persona running a very small declared set (e.g. threshold 2 with one
-honest witness) could in principle be pushed over by one
-already-compromised declared witness plus a large sybil swarm — but that
-already presupposes a compromised declared witness. The §3.5.6
-witness-hygiene SHOULDs (≥3 witnesses, ≥5 for personas with >1000
-mutuals, periodic re-verification) keep the declared set large enough
-that the supplemental remainder stays small relative to threshold.
+*Mitigation:* informal `kind:31008` vouches are **advisory only** — by
+the §3.5.5 / §3.5.3 invariant they are NEVER counted toward the rotation
+threshold, so no number of fake friends can move a rotation toward
+acceptance. Rotation acceptance rests entirely on declared-witness
+weight (or the cold root). Informal vouches only feed a UI confidence
+display and *manual* promotion suggestions; promotion into the declared
+set is always an explicit user action (clients MUST NOT auto-promote).
+The attack therefore has no purchase on acceptance at all. The §3.5.6
+witness-hygiene SHOULDs (≥3 declared witnesses, ≥5 for personas with
+>1000 mutuals, periodic re-verification) ensure the declared set — the
+only thing that *does* gate acceptance — stays live and adequately
+sized.
 
 ### Hostile mirror homeserver (per ADR-020)
 

@@ -54,13 +54,18 @@ bridge and deep fallback.**
 
 - **Informal vouchers (advisory tier).** Any friend MAY publish a
   signed "social vouch" for a persona's new key at a given sequence
-  (a new Heterodyne-reserved `kind:31008`). Each informal vouch carries
-  a small fractional weight (RECOMMENDED ≤ 1% of the default declared
-  witness weight). Clients MAY surface aggregate informal vouching and
-  MAY *suggest* the user promote an informal voucher into the declared
-  set (the intended web-of-trust snowball) — but **promotion is always
-  a manual user action**, and informal weight alone can never satisfy a
-  rotation threshold.
+  (a new Heterodyne-reserved `kind:31008`). Informal vouches are
+  **advisory only**: they are NEVER counted toward the rotation
+  threshold and never move a rotation toward acceptance. Clients MAY
+  surface aggregate informal vouching as a UI confidence signal and MAY
+  *suggest* the user promote a recurring voucher into the declared set
+  (the intended web-of-trust snowball) — but **promotion is always a
+  manual user action**. The recovery path's security therefore rests
+  wholly on the declared witness set, which the witness-hygiene UI
+  (below) keeps live and adequately sized. (This supersedes an earlier
+  "supplemental, capped-weight" model: with the witness-hygiene
+  client UI in place, advisory-only is preferred for being fully
+  sybil-proof.)
 
 - **Involuntary re-anchor.** When the identity-room homeserver is
   permanently gone, the persona signs a fresh `kind:31005` identity
@@ -95,16 +100,15 @@ bridge and deep fallback.**
   witnesses. An informal vouch MUST be a signed `kind:31008` event
   naming the persona npub, the target key, and the KERI sequence number
   it vouches for.
-- Informal vouch weight is **supplemental**: each vouch's contribution
-  MUST be capped (RECOMMENDED ≤ 1% of the default declared-witness
-  weight), and informal weight MAY help a rotation that already carries
-  at least one valid declared-witness signature cross the threshold. But
-  acceptance MUST always require at least one declared-witness signature
-  (or, for `committed` strategy, the cold root); the **total** informal
-  contribution MUST NOT reach the threshold on its own; and a rotation
-  backed only by informal vouches MUST NOT be accepted. (Verifier
-  invariant in §3.5.3: informal weight is counted only once a declared
-  signature is present, and capping limits it to a fractional remainder.)
+- Informal vouches are **advisory only**: they MUST NOT be counted
+  toward the rotation threshold in the §3.5.3 verifier algorithm.
+  Acceptance is decided exclusively by declared-witness weight (or, for
+  `committed` strategy, the cold root); a rotation that would meet the
+  threshold only by counting informal vouches MUST be treated as NOT
+  accepted. Clients MUST NOT let informal vouching influence the
+  accept/reject verdict, MAY surface it as a UI confidence signal, and
+  MUST NOT auto-promote a voucher into the declared set (promotion is an
+  explicit user action).
 - A client SHOULD steward the declared witness set (§3.5.6): it SHOULD
   continually nudge the user to designate witnesses until the persona
   has at least 3 (recurring when friends/mutuals are added, not
@@ -133,10 +137,10 @@ bridge and deep fallback.**
 - Open question #3 is resolved: a persona survives permanent
   homeserver loss via cold-root `kind:31005` re-anchor, with the social
   graph providing continuity of trust across the gap.
-- The two-tier model gives ordinary followers a real (if small) voice
-  in recovery and a growth path into the witness set, while the hard
-  cap + manual-promotion rule keeps informal vouching from becoming a
-  sybil takeover path. This trade is surfaced as a threat-model entry.
+- The two-tier model gives ordinary followers a voice in recovery (a UI
+  confidence signal) and a manual growth path into the witness set,
+  while the advisory-only rule keeps informal vouching fully out of the
+  acceptance decision — there is no sybil path to a rotation at all.
 - A new reserved kind (`kind:31008`, social vouch) is allocated from the
   31008–31099 reserved range and added to the §3 kind table.
 - The content-filtered cache (owner-signed feed/identity + KERI only)
@@ -148,5 +152,5 @@ bridge and deep fallback.**
   small (the 30-day, content-filtered cache stays cheap to hold).
 - Social recovery is OPTIONAL infrastructure layered on the existing
   §3.5 witness machinery; baseline conformance does not require a client
-  to act as a cacher or voucher, but it MUST honor the informal-weight
-  cap when verifying rotations that present `kind:31008` vouches.
+  to act as a cacher or voucher, but it MUST NOT count
+  `kind:31008` informal vouches toward the rotation threshold.

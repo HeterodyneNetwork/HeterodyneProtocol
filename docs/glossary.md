@@ -138,11 +138,10 @@ tag. Contrast with non-indexed event.
 
 **Informal voucher.** An undeclared friend who publishes a signed
 `kind:31008` social vouch (§3.5.5) for a persona's key during recovery.
-Carries a small capped weight (RECOMMENDED ≤1% of a declared witness)
-that can never meet the rotation threshold on its own; surfaced for
-manual, user-confirmed promotion into the declared witness set (the
-web-of-trust snowball). Contrast **Peer witness**. See spec §3.5.5,
-§3.12.3.
+**Advisory only:** never counted toward the rotation threshold — purely
+a UI confidence signal and a feed for manual, user-confirmed promotion
+into the declared witness set (the web-of-trust snowball). Contrast
+**Peer witness**. See spec §3.5.5, §3.12.3.
 
 **Involuntary re-anchor.** Recovery procedure (per ADR-021) for when a
 persona's identity-room homeserver is permanently gone and no mirror

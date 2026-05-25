@@ -878,18 +878,14 @@ epoch key. The algorithm follows canonical KERI semantics:
    configuration is in force; routine attestations are
    verified against the current epoch key.
 
-NOTE on informal vouches (§3.5.5): informal `kind:31008` vouch weight
-MAY supplement the cumulative weight in step 3d, but under two hard
-constraints that bound sybil risk. (i) At least one valid
-**declared-witness** signature (or, for `committed` strategy, the
-cold-root signature) MUST be present — a rotation backed only by
-informal vouches MUST be treated as NOT accepted (the KEL stalls per
-step 4), regardless of how much informal weight accrues. (ii) Each
-informal vouch is weight-capped (§3.5.5) so it can only bridge a
-fractional remainder, never substitute for a declared witness. Informal
-weight is thus supplemental: it can help a rotation that already has
-declared-witness backing cross the threshold, but can neither reach the
-threshold alone nor satisfy the mandatory declared-witness requirement.
+NOTE on informal vouches (§3.5.5): the cumulative-weight test in step 3d
+counts **declared-witness** weight only (plus, for `committed` strategy,
+the cold-root signature). Informal `kind:31008` vouches are **advisory
+only** and MUST NOT be counted toward `threshold` — they never move a
+rotation toward acceptance. A rotation that would meet `threshold` only
+by counting informal vouches MUST be treated as NOT accepted (the KEL
+stalls per step 4). Informal vouches are a UI/promotion signal handled
+outside this algorithm.
 
 NOTE on the v0.1.x witness rule: an earlier draft used a
 "highest cumulative witness weight, lexicographically smallest
@@ -962,38 +958,36 @@ Normative rules:
   voucher identity. A friend who holds only a `did:key` and is not a
   Nostr persona participates as a declared witness, not as an informal
   voucher.
-- An informal vouch's contribution to a rotation's accepted weight MUST
-  be capped at a small fraction of a declared witness's weight
-  (RECOMMENDED ≤ 1% of the default declared-witness weight of 1, i.e.
-  it takes on the order of 100 informal vouches to equal one declared
-  witness).
-- Informal weight is **supplemental**: it MAY help a rotation that
-  already carries declared-witness backing cross the `threshold`, but it
-  MUST NOT substitute for the mandatory declared-witness requirement.
-  Acceptance MUST always require at least one valid declared-witness
-  signature (or, for `committed` strategy, the cold-root signature); the
-  **total** informal contribution MUST NOT reach the threshold on its
-  own; and a rotation backed only by informal vouches MUST NOT be
-  accepted. (This is the §3.5.3 verifier-algorithm invariant: informal
-  weight is counted in step 3d only once at least one
-  declared-witness/cold-root signature is present, and per-vouch capping
-  ensures it can bridge only a fractional remainder.)
-- A client MAY surface aggregate informal vouching (e.g. "47 friends
-  vouched for this rotation") and MAY *suggest* that the user promote a
-  recurring informal voucher into the declared witness set — but
-  promotion MUST be an explicit user action. A client MUST NOT promote
-  an informal voucher to a declared witness automatically.
+- Informal vouches are **advisory only**: they MUST NOT be counted
+  toward the rotation `threshold` in the §3.5.3 verifier algorithm.
+  Acceptance of a rotation is decided exclusively by declared-witness
+  weight (and, for `committed` strategy, the cold-root signature); a
+  `kind:31008` vouch never moves a rotation toward acceptance and a
+  rotation that would meet `threshold` only by counting informal vouches
+  MUST be treated as NOT accepted. This makes the tier fully
+  sybil-proof: no number of `kind:31008` events can authorize a key the
+  persona's declared witnesses (or cold root) did not.
+- A client MAY surface aggregate informal vouching as a UI confidence
+  signal (e.g. "47 friends vouched for this rotation") and MAY rank
+  vouchers by its own web-of-trust to *suggest* that the user promote a
+  recurring voucher into the declared witness set — but promotion MUST
+  be an explicit user action. A client MUST NOT promote an informal
+  voucher to a declared witness automatically, and MUST NOT let informal
+  vouching influence the accept/reject verdict.
 
-The intended effect is a web-of-trust **snowball**: friends who vouch
-repeatedly get surfaced for promotion, gradually enlarging the declared
-witness set. The hard cap and the manual-promotion rule ensure the
-snowball can never, by itself, authorize a key the persona's declared
-witnesses (or cold root) did not.
+The intended effect is a web-of-trust **snowball** driven entirely by
+*manual promotion*: friends who vouch repeatedly get surfaced as
+promotion candidates, and the user enlarges the **declared** witness set
+by hand. Informal vouches are the discovery/UI layer for that snowball,
+never an input to rotation acceptance — so the recovery path's security
+rests wholly on the declared set, which §3.5.6 keeps live and adequately
+sized.
 
 #### 3.5.6 Witness-set hygiene (per ADR-021)
 
-Because recovery ultimately depends on declared witnesses (§3.5.5
-informal vouches cannot stand alone), clients SHOULD actively steward
+Because recovery depends *entirely* on declared witnesses (§3.5.5
+informal vouches are advisory only and never authorize a rotation),
+clients SHOULD actively steward
 the persona's declared witness set rather than leaving it empty or
 stale:
 
@@ -1952,13 +1946,13 @@ witness machinery, in two tiers:
   attestations, counted at full weight by the §3.5.3 verifier. A
   `none`-strategy rotation (§3.5.2) is the mechanism when the cold root
   itself is lost.
-- **Informal vouchers (supplemental).** Undeclared friends MAY publish
+- **Informal vouchers (advisory).** Undeclared friends MAY publish
   `kind:31008` social vouches. **§3.5.5 is the normative source of
-  truth** for their wire form, weight cap, the supplemental
-  threshold rule, and promotion; in summary: capped weight that can help
-  cross the threshold only alongside a declared-witness signature, never
-  alone, feeding the user-confirmed promotion snowball. Do not restate
-  the invariant elsewhere as authoritative — defer to §3.5.5.
+  truth** for their wire form and the advisory rule; in summary: they
+  are NEVER counted toward the rotation threshold, serving only as a UI
+  confidence signal and a feed for the user-confirmed promotion snowball
+  that grows the *declared* set. Do not restate the rule elsewhere as
+  authoritative — defer to §3.5.5.
 
 #### 3.12.4 Out-of-band identity verification is deferred
 
@@ -6105,7 +6099,7 @@ Vectors are authored per spec section. The coverage targets:
 | Topic | Spec sections | Vector categories |
 |---|---|---|
 | `identity/` | §3 | Root attestation; delegation (active, expired, revoked); revocation post-window; identity room with full state |
-| `keri/` (per ADR-003, ADR-021, ADR-022) | §3.5 | Inception event; rotation event (committed strategy); rotation event (none strategy with witness threshold); first-seen ordering verifier; fork-resolution with conflicting rotations; `did:key` witness verified against the embedded key with no network resolution (per ADR-022); `kind:31008` informal vouch counted at capped weight and informal weight alone never meeting threshold (per ADR-021) |
+| `keri/` (per ADR-003, ADR-021, ADR-022) | §3.5 | Inception event; rotation event (committed strategy); rotation event (none strategy with witness threshold); first-seen ordering verifier; fork-resolution with conflicting rotations; `did:key` witness verified against the embedded key with no network resolution (per ADR-022); `kind:31008` informal vouch NOT counted toward threshold — a rotation acceptable only by counting informal vouches is rejected (advisory-only, per ADR-021) |
 | `config_room/` | §3.8 | Minimal config room; persona_config with private mutes; key_backup with various wrapping algorithms; cross-MXID sync of persona_config/user_prefs/key_backup across mutual config rooms with device_inventory NOT synced (per ADR-020) |
 | `multi-homing/` (per ADR-009) | §3.9 | Active-room election; publish-lease acquisition and renewal; single-MXID revocation procedure; `kind:31005` race tiebreaker with KERI witness counts; partition-window void-and-requeue |
 | `envelope/` | §4 | Minimal kind:1 wrapped; bare DM with heterodyne_nostr_sig; fallback rendering verification; cross-kind wrapping (1, 7, 30023) |

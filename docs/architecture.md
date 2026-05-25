@@ -304,8 +304,8 @@ and recovery falls to the social graph, in three beats:
   fallback.
 - *Vouching.* Key continuity is re-established through the existing KERI
   witness machinery in two tiers: authoritative declared witnesses, plus
-  a capped, supplemental informal `kind:31008` vouch tier that can never
-  cross the threshold alone but feeds a manually-confirmed promotion
+  an advisory-only informal `kind:31008` vouch tier that is never counted
+  toward the threshold and feeds only a manually-confirmed promotion
   snowball. The human "is this really you?" check is deliberately left
   out of band — standardizing it would create one capturable surface.
 
