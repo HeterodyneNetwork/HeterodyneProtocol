@@ -266,6 +266,54 @@ analysis remains a documented residual limitation.
 
 See spec §7.7 and ADR-019.
 
+### 9. Redundancy and social recovery: survive losing a homeserver
+
+A persona's identity and content should not die with one homeserver.
+Two complementary layers address this, both built from Matrix and Nostr
+as they exist — no new replication protocol.
+
+**Infrastructure layer — mirroring (ADR-020).** A persona MAY keep
+full-replica mirrors of its identity room and broadcast rooms across the
+homeservers it controls. One replica is the primary (the room named by
+the cold-root `kind:31005` pointer / `kind:31007` feed index); the rest
+are warm standby, tied together by an `m.heterodyne.mirror_group.v1`
+state event. On primary failure the persona *promotes* a replica by
+republishing `kind:31005`. The insight that keeps this cheap: private
+broadcast bodies already live room-key-wrapped on relays (§6.10), so a
+mirror room carries state + the Megolm follower keyring + bare in-room
+traffic, not N copies of every post — and the keyring re-keys on member
+*removal*, not on join. Voluntary homeserver-exit (§3.10) collapses into
+"promote a replica," so there is one redundancy model, not two.
+
+**Cross-MXID config sync (ADR-020).** The same mirror substrate
+resolves the long-standing sync deferral: §3.9.1 already makes every
+delegated MXID a member of every other's config room, so
+`persona_config` / `user_prefs` / `key_backup` sync over that existing
+mutual membership with no new room.
+
+**Social layer — friend-cache + vouching (ADR-021).** When *every*
+persona-run homeserver is gone, infrastructure redundancy is exhausted
+and recovery falls to the social graph, in three beats:
+
+- *Friend-cache.* Followers cache the persona's identity-room state
+  (followers MAY, mutuals SHOULD, declared §3.5 witnesses MUST),
+  filtered to only the persona's own signed feed/identity events plus
+  KERI events — both cheap and poisoning-resistant.
+- *Re-anchor.* A fresh cold-root `kind:31005` on relays is the
+  authoritative new-room pointer, with the cache as trust bridge and
+  fallback.
+- *Vouching.* Key continuity is re-established through the existing KERI
+  witness machinery in two tiers: authoritative declared witnesses, plus
+  a capped, supplemental informal `kind:31008` vouch tier that can never
+  cross the threshold alone but feeds a manually-confirmed promotion
+  snowball. The human "is this really you?" check is deliberately left
+  out of band — standardizing it would create one capturable surface.
+
+`did:key` (ADR-022) is added precisely so a friend's bare key can be a
+declared witness without any DID-document resolution.
+
+See spec §3.8.4, §3.11, §3.12, §3.5.5, §10.6 and ADR-020/021/022.
+
 ## High-level diagram
 
 ```mermaid
@@ -315,12 +363,12 @@ clients.
 All current (0.x) spec sections are drafted. The remaining open
 questions are follow-up work that does not block the current draft:
 
-- **Cross-MXID persona-private state synchronization.** A persona
-  with multiple delegated MXIDs has separate config rooms (§3.8) per
-  MXID; persona-scoped private state (mutes, prefs) does not auto-sync
-  across them in the current draft. A future spec version may define a
-  persona-private encrypted room joined by all the persona's MXIDs.
-  Defer until usage demand is clear.
+- ~~**Cross-MXID persona-private state synchronization.**~~ *Resolved
+  (ADR-020).* Rather than a new persona-private room, sync rides the
+  mutual config-room membership §3.9.1 already establishes:
+  `persona_config` / `user_prefs` / `key_backup` synchronize across the
+  persona's config rooms via ordinary Matrix state replication
+  (`device_inventory` stays per-room). See §3.8.4 and decision 9 above.
 - **`matrix:` URI refactor of §7 outbox schemas.** Newer constructs
   (§3.8 config-room pointer, §11.3 identity pointer) use `matrix:`
   URIs. The §7 outbox schemas still use the legacy `{room_id, via}`

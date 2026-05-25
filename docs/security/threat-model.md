@@ -142,10 +142,66 @@ Censorship requires colluding with all relays *and* all federating
 homeservers, which is the same threshold as for vanilla Matrix or
 vanilla Nostr individually.
 
+### Sybil vouching for a hostile key (per ADR-021)
+
+An attacker mints many cheap "friend" identities and floods a persona's
+recovery with informal `kind:31008` vouches, hoping to push a key the
+persona never authorized over the rotation threshold.
+
+*Mitigation:* informal weight is *supplemental* and weight-capped
+(RECOMMENDED ≤1% of a declared witness): by the §3.5.5 / §3.5.3
+invariant it can never reach the threshold on its own, and acceptance
+always requires at least one declared-witness signature (or the cold
+root). Promotion of an informal voucher into the declared set is always
+a manual user action; clients MUST NOT auto-promote, so the snowball
+grows the *declared* set only through deliberate human decisions.
+*Residual:* because informal weight can bridge a fractional remainder,
+a persona running a very small declared set (e.g. threshold 2 with one
+honest witness) could in principle be pushed over by one
+already-compromised declared witness plus a large sybil swarm — but that
+already presupposes a compromised declared witness. The §3.5.6
+witness-hygiene SHOULDs (≥3 witnesses, ≥5 for personas with >1000
+mutuals, periodic re-verification) keep the declared set large enough
+that the supplemental remainder stays small relative to threshold.
+
+### Hostile mirror homeserver (per ADR-020)
+
+A homeserver hosting a non-primary mirror replica (§3.11) withholds
+state, serves stale state, or lies about room contents.
+
+*Mitigation:* the primary is the room named by the cold-root-signed
+`kind:31005` / `kind:31007` feed index, and every signed event is
+verified by its Nostr signature regardless of which replica served it.
+A hostile replica cannot forge persona-signed content, and followers
+deduplicate by Nostr event id. The blast radius of any one replica is
+bounded to availability, not authenticity — the same posture as the
+hostile-homeserver row, applied per replica.
+
+### Friend-cache poisoning (per ADR-021)
+
+A follower caching a persona's identity-room state (§3.12.1) attempts to
+serve poisoned or fabricated state to other followers during an outage.
+
+*Mitigation:* the cache content filter admits ONLY events signed by the
+persona's own Nostr identity (plus KERI events, which carry their own
+signatures/attestations); a cacher cannot inject arbitrary state.
+Cache-served state MUST be marked stale and cache-sourced, and the
+authoritative re-anchor signal remains the fresh cold-root `kind:31005`
+on relays (§3.12.2), which a poisoning cacher cannot forge.
+
 ## Out of scope (for now)
 
 - Defenses against compromised user devices (key extraction via OS-level
   malware). The npub holder is assumed to be in control of their device.
+  Heterodyne secures its own application surface, not the host OS or
+  device. The **cold root** is the relevant in-scope mitigation for the
+  application layer: because it is held offline and signs only rare
+  identity-anchoring events (§3.5.0), routine app-layer compromise of a
+  warm device does not expose it, and recovery from epoch-key loss is
+  possible via KERI rotation (§3.5) plus social vouching (§3.12). What
+  remains out of scope is an attacker who has fully compromised the OS
+  of the device that *holds* the cold root during a ceremony — that is a
+  platform-security problem Heterodyne cannot solve from inside its app.
 - Tor-level traffic analysis (timing/volume correlation against the Tor
   network itself). As of ADR-019, `.onion` reachability and opt-in
   egress-over-Tor are *in scope* (clients ship embedded Tor, §7.7 of the
@@ -160,12 +216,30 @@ vanilla Nostr individually.
 
 ## Open questions to address before v1.0
 
-1. How does identity-chain rotation interact with Megolm session keys?
-   Specifically: do existing Megolm sessions need to be invalidated when
-   a delegation revokes, or is that purely a verification-layer issue?
-2. What is the conformance requirement for client UI warning vs.
-   suppression on verification failure? The current spec leaves this
-   loose — should it tighten?
-3. How do we handle a user who declares an identity room on a homeserver
-   that subsequently goes offline permanently? Cached state has a
-   half-life; persistent followers need a graceful re-anchor procedure.
+The three open questions previously tracked here are now resolved:
+
+1. **Identity rotation × Megolm session keys — RESOLVED.** They are
+   independent. Spec §9.4 establishes that KERI epoch rotation changes
+   the persona's Nostr signing key but not the Matrix device or its
+   Megolm sessions: rotation is invisible to Megolm, no session
+   invalidation is required, and the new epoch key co-signs subsequent
+   attestations through the same MXIDs. Delegation revocation is a
+   verification-layer concern, not a Megolm-session concern.
+2. **Warning vs. suppression on verification failure — RESOLVED as
+   intentionally loose.** Clients choose contextually how to surface or
+   suppress verification-failure signals; the spec deliberately does
+   not tighten this into a single normative rule. (Strict mode, §11.7,
+   tightens the broadcast-signature subset for clients that opt into the
+   high-assurance profile.)
+3. **Permanent identity-room homeserver loss — RESOLVED (per ADR-020,
+   ADR-021).** A persona running identity-room mirrors (§3.11) survives
+   a single-homeserver outage by promoting a replica. When the
+   homeserver is permanently gone and no replica remains, the
+   involuntary re-anchor procedure (§3.12) applies: the persona
+   republishes a cold-root `kind:31005` to relays, and follower-cached
+   identity state bridges verification until it propagates. Two-tier
+   vouching (declared §3.5 witnesses + capped informal `kind:31008`
+   vouchers) re-establishes key continuity.
+
+No open questions remain blocking v1.0 from the items previously listed
+here; new ones will be added as the spec matures.

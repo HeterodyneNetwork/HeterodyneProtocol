@@ -154,6 +154,19 @@ Heterodyne defines:
   universal client conformance obligation, so that `.onion` relays and
   homeservers are first-class destinations and opt-in egress-over-Tor is
   a one-toggle privacy feature.
+- A **multi-homed redundancy model** (§3.11, per ADR-020): OPTIONAL
+  full-replica mirroring of a persona's identity and broadcast rooms
+  across the homeservers it controls, plus cross-MXID synchronization of
+  per-persona config (§3.8.4), so persona state survives the loss of any
+  single homeserver.
+- A **social-recovery model** (§3.12, per ADR-021): follower caching of
+  identity-room state and a two-tier (declared-witness + informal)
+  vouching process that lets a persona re-anchor after the permanent
+  loss of its identity-room homeserver.
+- An OPTIONAL **Heterodyne-aware relay profile** (§10.6, per ADR-022): a
+  strict superset of a vanilla NIP-01 relay that adds KEL-aware
+  reputation continuity, optional KEL-aware discovery, and a passive
+  witness-receipt store — never required for conformance.
 
 ### 1.2 Non-goals
 
@@ -280,7 +293,8 @@ new kinds outside the reserved range without a spec amendment.
 | **31005** | **Heterodyne: identity pointer (authoritative npub→room)** | §3.2, §11.3 | Heterodyne-reserved |
 | **31006** | **Heterodyne: cold root backup (NIP-49 encrypted)** | Cold Root design §6 | Heterodyne-reserved |
 | **31007** | **Heterodyne: feed index (per persona, per room)** | §6.7 | Heterodyne-reserved |
-| 31008-31099 | RESERVED for future Heterodyne use | — | — |
+| **31008** | **Heterodyne: social vouch (informal recovery attestation)** | §3.5.5 | Heterodyne-reserved |
+| 31009-31099 | RESERVED for future Heterodyne use | — | — |
 
 All Heterodyne-reserved kinds (31000-31099) follow Nostr's addressable
 event convention (NIP-01) for the 30000-39999 range: they are
@@ -709,15 +723,44 @@ events.
 **Witness.** A persona declared in an inception event's
 witness configuration as authorized to first-see and attest
 subsequent rotations. Witnesses MAY be other Heterodyne
-personas, ATProto DIDs (§11.6.7), or other identifiers
+personas (Nostr pubkeys), ATProto DIDs (§11.6.7), bare
+`did:key` identifiers (§3.5.0.1), or other identifiers
 designated by the persona. Each witness has an associated
 weight (default: 1); witness thresholds at rotation time
-reference these weights.
+reference these weights. A separate, capped **informal
+voucher** tier (§3.5.5) lets undeclared friends contribute a
+small advisory weight without being declared witnesses.
 
 **Key event log (KEL).** The ordered sequence of inception +
 rotation events produced by a persona. Each rotation references
 its prior event by digest. The KEL is the authoritative record
 of the persona's key continuity.
+
+##### 3.5.0.1 `did:key` witnesses (per ADR-022)
+
+A witness identifier MAY be a `did:key` — a bare, self-certifying
+key URI of the form `did:key:<multibase-multicodec-pubkey>`. Unlike
+`did:web` / `did:plc` (§11.6.2), a `did:key` has **no service
+endpoint and no DID document to fetch**: the public key is encoded
+directly in the identifier.
+
+- A verifier of a `did:key` witness attestation MUST extract the
+  public key from the multicodec-prefixed material in the identifier
+  and verify the attestation signature against it, using the
+  signature scheme implied by the multicodec key type.
+- A verifier MUST NOT perform any network resolution for a `did:key`
+  witness — there is nothing to resolve, and treating one as
+  resolvable would reintroduce an SSRF surface that the embedded key
+  exists to avoid.
+- A `did:key` is a witness identifier only. It MUST NOT be used as an
+  `m.heterodyne.atproto_link.v1` subject or a mirror-outbox target;
+  the ATProto attached-outbox machinery (§11.6) applies to `did:web`
+  and `did:plc` exclusively.
+
+`did:key` witnesses are the natural representation of a friend's bare
+signing key in the social-recovery flow (§3.5.5, §3.12): a voucher who
+is not a full Heterodyne persona can still hold a `did:key` and co-sign
+a rotation.
 
 #### 3.5.1 Inception event schema (`kind:31002`)
 
@@ -748,9 +791,10 @@ Normative rules:
 - `epoch_key` MUST be the initial epoch public key.
 - `witness` tags MAY appear zero or more times. Each entry is
   `["witness", "<witness-identifier>", "<weight>"]` where
-  `<witness-identifier>` is either a Nostr pubkey hex (for
-  Heterodyne witnesses) or an ATProto DID string (for ATProto
-  witnesses per §11.6.7).
+  `<witness-identifier>` is a Nostr pubkey hex (for Heterodyne
+  witnesses), an ATProto DID string (`did:web` / `did:plc`, for
+  ATProto witnesses per §11.6.7), or a `did:key` URI (for bare-key
+  witnesses verified per §3.5.0.1).
 - `threshold` MUST be present whenever at least one `witness`
   tag exists. Its value is the integer minimum cumulative
   weight required for a rotation to be accepted by verifiers.
@@ -834,6 +878,19 @@ epoch key. The algorithm follows canonical KERI semantics:
    configuration is in force; routine attestations are
    verified against the current epoch key.
 
+NOTE on informal vouches (§3.5.5): informal `kind:31008` vouch weight
+MAY supplement the cumulative weight in step 3d, but under two hard
+constraints that bound sybil risk. (i) At least one valid
+**declared-witness** signature (or, for `committed` strategy, the
+cold-root signature) MUST be present — a rotation backed only by
+informal vouches MUST be treated as NOT accepted (the KEL stalls per
+step 4), regardless of how much informal weight accrues. (ii) Each
+informal vouch is weight-capped (§3.5.5) so it can only bridge a
+fractional remainder, never substitute for a declared witness. Informal
+weight is thus supplemental: it can help a rotation that already has
+declared-witness backing cross the threshold, but can neither reach the
+threshold alone nor satisfy the mandatory declared-witness requirement.
+
 NOTE on the v0.1.x witness rule: an earlier draft used a
 "highest cumulative witness weight, lexicographically smallest
 event id" tiebreaker rule. That rule diverged from canonical
@@ -861,6 +918,104 @@ A persona that has not migrated by the time a verifier last
 synced is treated as still being on v0.1.4 semantics for backward
 read compatibility; verifiers MAY surface a "pre-KERI persona"
 indicator to the user.
+
+#### 3.5.5 Informal vouchers (per ADR-021)
+
+Beyond the **declared witnesses** of §3.5.0 — whose attestations are
+authoritative and counted at full weight toward the rotation
+`threshold` — Heterodyne defines an **informal voucher** tier: any
+friend MAY publicly attest a persona's key without being a declared
+witness. This is the wire substrate for the social-recovery snowball
+of §3.12, kept deliberately sybil-resistant.
+
+An informal vouch is a Heterodyne-reserved `kind:31008` event:
+
+```json
+{
+  "id": "<32-byte hex>",
+  "pubkey": "<voucher's Nostr pubkey hex>",
+  "created_at": 0,
+  "kind": 31008,
+  "tags": [
+    ["heterodyne", "social_vouch"],
+    ["p", "<vouched persona cold-root public key hex>"],
+    ["vouched_key", "<32-byte hex of the key being vouched: new epoch or cold key>"],
+    ["s", "<KERI sequence number this vouch refers to>"]
+  ],
+  "content": "<optional free-text note>",
+  "sig": "<64-byte hex BIP-340 sig by the voucher>"
+}
+```
+
+Normative rules:
+
+- An informal vouch MUST name the vouched persona's cold-root public key
+  (`p`, hex), the specific key vouched for (`vouched_key`), and the KERI
+  sequence number (`s`) it refers to. A vouch whose `s` or `vouched_key`
+  does not match the rotation being evaluated MUST be ignored for that
+  rotation.
+- An informal vouch is a **Nostr-signed event**: the voucher is
+  identified by the BIP-340 Nostr `pubkey` that signs the `kind:31008`
+  event. The `did:key` witness identifier of §3.5.0.1 applies to the
+  **declared** witness tier only (where the witness attestation is
+  carried in a rotation's `content`, §3.5.2); it is NOT a `kind:31008`
+  voucher identity. A friend who holds only a `did:key` and is not a
+  Nostr persona participates as a declared witness, not as an informal
+  voucher.
+- An informal vouch's contribution to a rotation's accepted weight MUST
+  be capped at a small fraction of a declared witness's weight
+  (RECOMMENDED ≤ 1% of the default declared-witness weight of 1, i.e.
+  it takes on the order of 100 informal vouches to equal one declared
+  witness).
+- Informal weight is **supplemental**: it MAY help a rotation that
+  already carries declared-witness backing cross the `threshold`, but it
+  MUST NOT substitute for the mandatory declared-witness requirement.
+  Acceptance MUST always require at least one valid declared-witness
+  signature (or, for `committed` strategy, the cold-root signature); the
+  **total** informal contribution MUST NOT reach the threshold on its
+  own; and a rotation backed only by informal vouches MUST NOT be
+  accepted. (This is the §3.5.3 verifier-algorithm invariant: informal
+  weight is counted in step 3d only once at least one
+  declared-witness/cold-root signature is present, and per-vouch capping
+  ensures it can bridge only a fractional remainder.)
+- A client MAY surface aggregate informal vouching (e.g. "47 friends
+  vouched for this rotation") and MAY *suggest* that the user promote a
+  recurring informal voucher into the declared witness set — but
+  promotion MUST be an explicit user action. A client MUST NOT promote
+  an informal voucher to a declared witness automatically.
+
+The intended effect is a web-of-trust **snowball**: friends who vouch
+repeatedly get surfaced for promotion, gradually enlarging the declared
+witness set. The hard cap and the manual-promotion rule ensure the
+snowball can never, by itself, authorize a key the persona's declared
+witnesses (or cold root) did not.
+
+#### 3.5.6 Witness-set hygiene (per ADR-021)
+
+Because recovery ultimately depends on declared witnesses (§3.5.5
+informal vouches cannot stand alone), clients SHOULD actively steward
+the persona's declared witness set rather than leaving it empty or
+stale:
+
+- **Minimum-witness nudge.** A client SHOULD continually prompt the
+  user to designate declared §3.5 witnesses until the persona has at
+  least **3**. The prompt SHOULD recur when the user adds friends /
+  mutuals (a natural moment to convert a friend into a witness) and
+  SHOULD NOT be permanently dismissable while the set is below 3.
+- **Scaling with reach.** A persona with more than **1000 mutuals**
+  SHOULD be recommended a minimum of **5** declared witnesses, since a
+  larger follower base raises both the stakes of a compromise and the
+  pool of trustworthy candidates.
+- **Periodic re-verification.** A client SHOULD periodically (RECOMMENDED
+  every 1–6 months) re-verify that the persona's declared witnesses are
+  still valid and reachable — e.g. their own KELs still resolve, their
+  keys have not been revoked, and ATProto/`did:key` witnesses still
+  verify — and SHOULD surface any stale or invalid witness so the user
+  can replace it before a recovery actually depends on it.
+
+These are client-UX SHOULDs, not wire requirements; they harden the
+social-recovery path (§3.12) by keeping a live, sufficiently large
+declared witness set in place ahead of need.
 
 ### 3.6 Identity discovery
 
@@ -1006,7 +1161,12 @@ avoid round-tripping for every event. Cache invalidation:
   are unavailable, the persona's bindings cannot be verified. Cached
   state MAY be used with an explicit "identity verification stale" UI
   signal. The persona's npub remains usable on vanilla Nostr relays
-  regardless.
+  regardless. A persona running identity-room mirrors (§3.11) survives a
+  single-homeserver outage by promoting a replica; if the homeserver is
+  *permanently* gone and no replica remains, recovery follows the
+  involuntary re-anchor procedure (§3.12), with follower-cached identity
+  state bridging verification until a fresh cold-root `kind:31005`
+  pointer propagates.
 - **Conflicting state events**: standard Matrix state resolution
   determines winners. Conflicting Heterodyne state is the room admin's
   responsibility to clean up; the spec does not introduce additional
@@ -1196,17 +1356,51 @@ Bookkeeping of devices that have synced this room.
 }
 ```
 
-#### 3.8.4 Cross-MXID synchronization (out of scope for the current 0.x spec)
+#### 3.8.4 Cross-MXID synchronization (per ADR-020)
 
-A user with multiple delegated MXIDs for the same persona has multiple
-config rooms — one per MXID — and persona-scoped state (private mutes
-in particular) is NOT automatically synchronized across them. The user
-or their client is responsible for any sync.
+A persona with multiple delegated MXIDs has one config room per MXID.
+Earlier 0.x drafts left synchronization of persona-scoped state across
+these rooms out of scope. As of ADR-020 it is specified — and it needs
+**no new room or transport**, because §3.9.1 already establishes
+**mutual config-room membership**: every delegated MXID is a member of
+every other delegated MXID's config room. Ordinary Matrix state
+replication across that shared membership is the sync substrate.
 
-Future spec versions MAY define a persona-private encrypted room
-(joined by all MXIDs delegated to that persona) for true cross-MXID
-persona state. Tracked as an open question in
-[`../architecture.md`](../architecture.md).
+Clients SHOULD keep the following §3.8.3 state events synchronized
+across all of a persona's mutually-joined config rooms, for redundancy
+and backup:
+
+- `m.heterodyne.persona_config.v1` — private mutes, feed preferences.
+- `m.heterodyne.user_prefs.v1` — UI/client preferences (so they follow
+  the user across their accounts).
+- `m.heterodyne.key_backup.v1` — the wrapped `nsec` backup, for
+  redundancy.
+
+`m.heterodyne.device_inventory.v1` MUST NOT be synchronized: it is
+inherently per-room bookkeeping of the devices that touched *that*
+room.
+
+Normative rules:
+
+- Synchronization MUST use ordinary Matrix state replication over the
+  §3.9.1 mutual membership; it MUST NOT introduce any homeserver-side
+  component and MUST NOT place persona config in the identity room or on
+  relays (no-unnecessary-broadcast, §3.9).
+- Conflicting synced state across config rooms is reconciled by the
+  §3.9 rule (greatest `origin_server_ts` wins), with two hardenings:
+  because these rooms span different homeservers, `origin_server_ts` is
+  a weak causality signal under clock skew, so (a) clients SHOULD embed
+  a monotonic per-state `revision` counter in the synced content and
+  prefer the greater `revision`, falling back to `origin_server_ts` only
+  when revisions are equal or absent, and (b) ties MUST be broken
+  deterministically by lex-min event id (mirroring the §3.9.2
+  tiebreak). Clients SHOULD surface a sync-conflict indicator on rapid
+  concurrent writes (consistent with §3.8.5).
+- Because syncing `m.heterodyne.key_backup.v1` copies the wrapped
+  `nsec` into every config room, a client MUST keep that backup wrapped
+  under the user-controlled secret in every replica (config-room E2EE
+  alone is not sufficient, per §3.8.3) and SHOULD offer the user an
+  opt-out for syncing the nsec backup specifically.
 
 #### 3.8.5 Failure modes
 
@@ -1450,6 +1644,15 @@ and KERI key event log throughout. This subsection specifies voluntary
 exit only; compromise-driven abandonment (cold-root loss, identity-room
 takeover) is covered by §3.7 and is NOT modified here.
 
+> **Relationship to mirroring (per ADR-020).** For a persona running
+> room mirrors (§3.11), voluntary exit is simply **mirror promotion**:
+> a replica already standing on H2 is promoted to primary by
+> republishing `kind:31005`, and the standing mirror set replaces the
+> 7-day dual-publish overlap below. The step-by-step procedure in this
+> section remains the canonical description of the underlying operations
+> and the path for personas **not** running mirrors. Where they overlap,
+> §3.11 promotion and the steps here describe the same state changes.
+
 #### 3.10.1 Identity-room migration steps
 
 The persona MUST perform the migration steps in this order:
@@ -1561,6 +1764,212 @@ A homeserver-exit MAY be combined with a KERI rotation (per §3.5
 `kind:31003`) — for example, the user takes the opportunity to rotate
 epoch keys when moving servers. The rotation event MUST be published
 to BOTH the old and new identity rooms during the overlap window.
+
+### 3.11 Mirroring and multi-homed redundancy (per ADR-020)
+
+A persona's identity room and broadcast rooms each live on a
+homeserver. To survive the loss of any single homeserver, a persona
+MAY maintain **full-replica mirrors** of those rooms across multiple
+homeservers it controls. Mirroring is OPTIONAL; baseline conformance
+does not require it. It is built entirely from Matrix federation and
+rooms as they exist — there is no new replication protocol and no
+homeserver-side component.
+
+#### 3.11.1 What is mirrored
+
+- **Identity room** — the persona maintains parallel identity rooms on
+  several of its homeservers, each carrying the same signed Heterodyne
+  state events (root attestation, delegations, KERI KEL mirror, outbox
+  advertisements). This is the most important room to keep alive.
+- **Broadcast rooms** (`public_broadcast`, `private_broadcast`) — each
+  is replicated across the persona's homeservers as a full room that
+  followers may join.
+
+Discussion rooms (`public_discussion`, `private_discussion`) are NOT
+covered by this mechanism: they are shared group spaces not owned
+solely by the persona, and their resilience is the room's own concern.
+
+#### 3.11.2 Mirror group and primary
+
+A persona advertises its mirror set with `m.heterodyne.mirror_group.v1`
+state events. A persona has **one event per mirrored room family**,
+discriminated by `state_key`, because the identity room and each
+broadcast room are independent families with independent primaries:
+
+- `state_key` is `"identity"` for the identity-room family, or the
+  `matrix:` URI of the *logical* broadcast room for a broadcast family.
+- `room_kind` names the family (`identity_room`, `public_broadcast`, or
+  `private_broadcast`).
+
+```json
+{
+  "type": "m.heterodyne.mirror_group.v1",
+  "state_key": "identity | <matrix: URI of the logical broadcast room>",
+  "content": {
+    "spec_version": "0.3.0",
+    "room_kind": "identity_room | public_broadcast | private_broadcast",
+    "primary_room_id": "!opaque:h1",
+    "replica_room_ids": ["!opaque:h1", "!opaque:h2", "!opaque:h3"],
+    "feed_index_addr": "<for broadcast families: the kind:31007 address (`30007:<npub>:<d-tag>`) whose retrieval points at this group; omitted for identity_room>",
+    "updated_at": 0
+  }
+}
+```
+
+- **Primary selection.** For the `identity` family, the primary MUST be
+  the room named by the persona's current cold-root-signed `kind:31005`
+  pointer. For a broadcast family, the primary MUST be the room whose
+  `kind:31007` feed index is named by `feed_index_addr`; that feed
+  index's retrieval hints (§6.7.1) MUST resolve to the primary replica.
+  Followers MUST treat the primary as canonical.
+- Followers MUST deduplicate content observed across replicas by Nostr
+  event `id` (every signed event is globally unique by `id`, §6.1).
+- Replicas other than the primary are warm standby; followers MAY read
+  from any replica when the primary is unreachable, treating the result
+  with the same staleness handling as cached state (§3.6.1).
+
+**Replication and failover discovery.** Because the identity room is
+itself mirrored, the `m.heterodyne.mirror_group.v1` events MUST be
+replicated into **every** identity replica (not only the primary), so a
+client that can reach any one replica can enumerate the rest. A client
+that cannot reach any replica and has no cached mirror group MUST fall
+through to the authoritative cold-root `kind:31005` discovery path
+(§3.12.2) — mirror failover is an optimization layered on top of
+`kind:31005`, never a replacement for it. This resolves the
+otherwise-circular dependency (needing the mirror group, which lives in
+the rooms being mirrored, to find the rooms).
+
+#### 3.11.3 Private content stays relay-borne
+
+Mirroring MUST NOT duplicate private (E2EE) post **bodies** into
+multiple Matrix rooms. A `private_broadcast` post remains
+room-key-wrapped on the room's advertised relays (§6.10); the mirror
+rooms carry only the Heterodyne state, the Megolm **follower keyring**
+(the room's group session), and bare in-room reactions/replies. The
+per-mirror cost is therefore re-keying and the re-publication of events
+that re-key necessitates — not N copies of every post.
+
+#### 3.11.4 Re-key on removal, not on join
+
+A mirrored private room SHOULD rotate its Megolm/room key when a member
+is **removed** (preserving forward secrecy against departed members)
+and SHOULD NOT rotate it when a member **joins** — joiners receive the
+current session forward. This holds the re-key cost down as followers
+and replica memberships come online, and is achievable wherever the
+client's Megolm implementation supports sharing the current session
+forward to new members. (Where it does not, the client MAY rotate on
+join, accepting the cost.)
+
+#### 3.11.5 Promotion
+
+When the primary's homeserver fails, the persona **promotes** a replica:
+
+1. Choose a healthy replica from `replica_room_ids`.
+2. Republish the cold-root-signed `kind:31005` (identity room) and/or
+   the `kind:31007` feed index (broadcast room) to point at the chosen
+   replica.
+3. Update `m.heterodyne.mirror_group.v1` with the new `primary_room_id`.
+
+Because `kind:31005` is cold-root-signed (§3.5.0, §11.3), promoting the
+identity-room primary unseals the cold root, exactly as voluntary
+migration does (§3.10.1). Clients implementing promotion MUST warn the
+user of the cold-root unsealing and SHOULD recommend re-securing the
+cold root immediately afterward. Promotion is a deliberate,
+persona-initiated operation; it is not automatic.
+
+Voluntary homeserver-exit (§3.10) is the planned case of promotion. The
+involuntary case — the primary's homeserver permanently gone with no
+healthy replica remaining — falls through to social recovery (§3.12).
+
+### 3.12 Social recovery and involuntary re-anchor (per ADR-021)
+
+§3.10 covers *voluntary* exit and §3.11 covers *promotion* among a
+persona's standing replicas. This section covers the deep fallback:
+the persona's identity-room homeserver is **permanently gone** and no
+persona-run replica remains. There is no overlap window and no way to
+post a migration pointer into the dead room. Recovery leans on the
+social graph as an axis independent of the persona's own
+infrastructure.
+
+#### 3.12.1 Follower caching of identity-room state
+
+Followers cache the persona's identity-room state so the persona stays
+verifiable across an outage and can be re-seeded after re-anchor.
+Caching duty scales with trust:
+
+- A follower MAY cache the persona's identity-room state.
+- A follower the persona mutually follows SHOULD cache it.
+- A follower that is a **declared §3.5 witness** for the persona MUST
+  cache it.
+
+Normative rules on the cache:
+
+- The cache MUST retain the state for at least **30 days**.
+- The cache MUST store ONLY (a) content signed by the persona's **own
+  Nostr identity** that is feed- or identity-related, and (b) KERI
+  events (`kind:31002`, `kind:31003`) present in the room. A client
+  MUST NOT cache arbitrary other room content.
+- KERI events are the sole exception to the "owner-Nostr-signed only"
+  rule, because they may legitimately be signed by a prior epoch key
+  (`none`-strategy rotation, §3.5.2) or carry witness attestations
+  rather than the persona's current signature.
+- A client serving cached identity state to other followers during an
+  outage MUST mark it cache-sourced and stale and MUST NOT present it
+  as live homeserver state.
+
+The content filter is what makes the cache cheap and
+poisoning-resistant: a hostile cacher cannot inject arbitrary state, because only
+the persona's own signed feed/identity events (plus KERI events) are
+cacheable. Keeping identity rooms deliberately small (the design
+intuition throughout §3) keeps the 30-day cache inexpensive to hold.
+
+#### 3.12.2 Re-anchor discovery path
+
+When the persona obtains a new homeserver, it re-establishes its
+identity room there and signs a **fresh cold-root `kind:31005`**
+identity pointer at the new room, publishing it to the persona's Nostr
+write relays.
+
+- The cold-root `kind:31005` on relays is the **authoritative**
+  discovery path: followers re-resolve by `authors:[npub]` independent
+  of the dead homeserver (§11.3), and the §3.10.3 pointer-precedence
+  rule applies.
+- The follower cache (§3.12.1) is the **trust bridge** during the gap
+  and the **fallback** discovery source if relays also lack the fresh
+  pointer.
+- Followers MUST treat the fresh cold-root `kind:31005` as
+  authoritative and MUST log any disagreement with cached state for
+  security review (consistent with §3.10.2).
+
+#### 3.12.3 Two-tier vouching
+
+Re-establishing key continuity after such a loss uses the §3.5 KERI
+witness machinery, in two tiers:
+
+- **Declared witnesses (authoritative).** The friends who cache and
+  vouch are, by default, the persona's declared §3.5 witnesses. Their
+  signatures on the persona's new key are ordinary KERI witness
+  attestations, counted at full weight by the §3.5.3 verifier. A
+  `none`-strategy rotation (§3.5.2) is the mechanism when the cold root
+  itself is lost.
+- **Informal vouchers (supplemental).** Undeclared friends MAY publish
+  `kind:31008` social vouches. **§3.5.5 is the normative source of
+  truth** for their wire form, weight cap, the supplemental
+  threshold rule, and promotion; in summary: capped weight that can help
+  cross the threshold only alongside a declared-witness signature, never
+  alone, feeding the user-confirmed promotion snowball. Do not restate
+  the invariant elsewhere as authoritative — defer to §3.5.5.
+
+#### 3.12.4 Out-of-band identity verification is deferred
+
+How a voucher satisfies themselves that the recovering party is
+genuinely the persona's owner — the human-trust step before they sign —
+is deliberately **left outside this protocol**. Vouchers MAY use any
+channel they choose (in-person, prior shared secret, video, etc.).
+Standardizing this step into a single protocol-defined mechanism would
+create one capturable, attackable surface; keeping it out of band is
+the safer choice. A future spec version MAY revisit optional, opt-in
+verification aids, but this version specifies none.
 
 ## 4. Event envelope
 
@@ -4489,8 +4898,10 @@ rotation per §3.5, the relay sees a "new" pubkey and per-persona
 reputation does NOT carry forward on that relay. This is an
 unavoidable consequence of the vanilla-relay invariant: relays do
 not understand the Heterodyne KEL. Mitigations available to
-deployers: (a) operate a Heterodyne-aware relay that understands the
-KEL (out of scope for the current 0.x baseline); (b) treat KERI rotations as
+deployers: (a) operate an OPTIONAL Heterodyne-aware relay (§10.6) that
+understands the KEL — defined as a strict NIP-01 superset, so vanilla
+relays and clients remain fully supported and baseline conformance does
+not depend on it; (b) treat KERI rotations as
 significant events (they already are per ADR-003) and accept that
 relay reputation rebuilds after each rotation. See §13 for the
 threat-model framing of this limitation.
@@ -4500,6 +4911,58 @@ NIP-42 AUTH-required is TRANSIENT (the client retries after
 authenticating). A subsequent post-authentication rejection is
 PERMANENT per ADR-010 req 1(a). NIP-13 PoW insufficient where the
 client cannot meet the target is PERMANENT per ADR-010 req 1(a).
+
+### 10.6 Optional Heterodyne-aware relay profile (per ADR-022)
+
+A **Heterodyne-aware relay** is an OPTIONAL relay profile that
+addresses the §13.4 reputation-reset limitation and related gaps. It
+is defined here as a **strict superset of a vanilla NIP-01 relay**.
+Baseline conformance NEVER depends on it: every Heterodyne client must
+work against ordinary vanilla relays (§10.5), and a persona MUST NOT
+rely on Heterodyne-aware relays being reachable.
+
+#### 10.6.1 Vanilla compatibility is mandatory
+
+- A Heterodyne-aware relay MUST remain a fully conformant NIP-01 relay.
+  Vanilla Nostr clients MUST be able to read from and write to it using
+  unmodified NIP-01, unaware of any Heterodyne extension.
+- The relay MUST advertise its Heterodyne capabilities in its NIP-11
+  relay-info document (a Heterodyne capability flag / supported-feature
+  list), so Heterodyne clients can detect the extra features and
+  vanilla clients can ignore them.
+
+#### 10.6.2 Capabilities
+
+A relay MAY offer any subset of:
+
+- **KEL-aware reputation continuity.** The relay reads a persona's KEL
+  (§3.5) so that per-pubkey reputation, rate limits, and
+  allowlist/denylist policy follow the persona across a KERI epoch
+  rotation, rather than resetting when the epoch key changes. This is
+  the direct mitigation for §13.4.
+- **KEL-aware discovery (optional, relay-side only).** The relay MAY
+  serve epoch-key-signed content in response to `authors:[<npub>]`
+  queries by replaying the persona's KEL to learn current and prior
+  epoch keys. This is a **server-side convenience offered at the
+  relay's option**; it does NOT make epoch-key-signed discovery a
+  *client* responsibility — clients remain free not to bridge it
+  (§11.3, §11.4 box). Operators offering it MUST advertise it via
+  NIP-11 so the altered `authors:` semantics are not a surprise.
+- **Passive witness-receipt store.** The relay MAY store and serve
+  (queryable by persona npub + KERI sequence number) the witness
+  attestation and `kind:31008` vouch events that others produce on a
+  persona's KERI ceremonies (§3.5, §3.12). Acting as a receipt store
+  does NOT make the relay a KERI witness: it stores and serves
+  attestations, it does not sign them. A relay operator who wishes to
+  *be* a witness does so by being enlisted in a persona's witness set
+  like any other witness (§3.5.0), independently of hosting receipts.
+
+#### 10.6.3 Conformance independence
+
+No §14 conformance verdict depends on Heterodyne-aware relay behavior.
+The relay profile's test vectors (§14.3) are OPTIONAL and live outside
+the baseline minimum set. A client that only ever speaks vanilla NIP-01
+to vanilla relays is fully conformant.
 
 ## 11. Interoperability
 
@@ -4744,7 +5207,12 @@ SHOULD support:
   `did:plc:` but MUST surface to the user that PLC is a centralized
   directory whose operator can refuse updates.
 
-Other DID methods (e.g., `did:key`) are out of scope for the current 0.x spec.
+`did:key` is supported, but **only as a KERI witness identifier**
+(§3.5.0.1), not as an ATProto identity: a `did:key` has no service
+endpoint, so it cannot host a PDS record, an identity binding
+(§11.6.3), or a mirror outbox. The ATProto attached-outbox machinery
+in this section therefore applies to `did:web` and `did:plc` only.
+Other DID methods are out of scope for the current 0.x spec.
 
 Heterodyne clients SHOULD cache resolved DID documents with a
 moderate TTL (e.g., 1 hour) and SHOULD invalidate the cache when an
@@ -5574,10 +6042,12 @@ limitation explicitly is the honest move:
 - **User impact:** post-rotation, the persona may temporarily face
   PoW-target or rate-limit defaults on relays where they previously
   had elevated trust.
-- **Mitigation paths:** (a) operate a Heterodyne-aware relay that
-  understands the KEL (out of scope for the current 0.x baseline); (b) accept
+- **Mitigation paths:** (a) operate an OPTIONAL Heterodyne-aware relay
+  (§10.6) whose KEL-aware reputation continuity follows a persona across
+  epoch rotation — a strict NIP-01 superset, so vanilla clients are
+  unaffected and baseline conformance does not depend on it; (b) accept
   rotation as a known event that triggers a reputation reset on
-  every relay the persona writes to.
+  every vanilla relay the persona writes to.
 
 ## 14. Conformance and test vectors
 
@@ -5635,8 +6105,8 @@ Vectors are authored per spec section. The coverage targets:
 | Topic | Spec sections | Vector categories |
 |---|---|---|
 | `identity/` | §3 | Root attestation; delegation (active, expired, revoked); revocation post-window; identity room with full state |
-| `keri/` (per ADR-003) | §3.5 | Inception event; rotation event (committed strategy); rotation event (none strategy with witness threshold); first-seen ordering verifier; fork-resolution with conflicting rotations |
-| `config_room/` | §3.8 | Minimal config room; persona_config with private mutes; key_backup with various wrapping algorithms |
+| `keri/` (per ADR-003, ADR-021, ADR-022) | §3.5 | Inception event; rotation event (committed strategy); rotation event (none strategy with witness threshold); first-seen ordering verifier; fork-resolution with conflicting rotations; `did:key` witness verified against the embedded key with no network resolution (per ADR-022); `kind:31008` informal vouch counted at capped weight and informal weight alone never meeting threshold (per ADR-021) |
+| `config_room/` | §3.8 | Minimal config room; persona_config with private mutes; key_backup with various wrapping algorithms; cross-MXID sync of persona_config/user_prefs/key_backup across mutual config rooms with device_inventory NOT synced (per ADR-020) |
 | `multi-homing/` (per ADR-009) | §3.9 | Active-room election; publish-lease acquisition and renewal; single-MXID revocation procedure; `kind:31005` race tiebreaker with KERI witness counts; partition-window void-and-requeue |
 | `envelope/` | §4 | Minimal kind:1 wrapped; bare DM with heterodyne_nostr_sig; fallback rendering verification; cross-kind wrapping (1, 7, 30023) |
 | `verification/` | §4.5 | Bad sig rejects; delegation mismatch rejects; revoked-key post-revoked_at rejects; backdated event in suspicion window |
@@ -5653,6 +6123,9 @@ Vectors are authored per spec section. The coverage targets:
 | `homeserver-exit/` (per ADR-015, SKIPPABLE for read-only clients) | §3.10 | Identity-room migration with `m.heterodyne.identity_room_migrated.v1`; migration-pointer precedence over stale `kind:31005`; KERI rotation during exit window dual-publishes to both rooms |
 | `transport/` (per ADR-019) | §7.7 | `.onion` relay/homeserver reachable via embedded Tor; `.onion` host not leaked to a clearnet resolver; browser/WASM client reaches `.onion` over a WebSocket bridge and surfaces the no-bridge-available indicator; egress-over-Tor off by default with active-state indicator when enabled |
 | `transport/strict-mode/` (per ADR-019 / ADR-007) | §7.7, §11.7 | Strict-mode egress-over-Tor default-on unless the user explicitly disables it |
+| `redundancy/` (per ADR-020, OPTIONAL) | §3.11 | `m.heterodyne.mirror_group.v1` with primary + replicas; promotion republishes cold-root `kind:31005` and updates the group; private broadcast body stays relay-borne (not duplicated per room); Megolm re-key on member removal but not on join; dedup across replicas by Nostr event id |
+| `social-recovery/` (per ADR-021, OPTIONAL) | §3.12 | Three-tier identity-room caching (follower MAY / mutual SHOULD / witness MUST); cache rejects non-owner-signed non-KERI content; 30-day retention; cold-root `kind:31005` re-anchor authoritative with friend-cache bridge/fallback; cache-sourced state marked stale |
+| `relay-profile/` (per ADR-022, OPTIONAL) | §10.6 | NIP-11 Heterodyne-capability advertisement; vanilla NIP-01 read/write unaffected; KEL-aware reputation continuity across epoch rotation; passive witness-receipt store that signs nothing |
 | `interop/` | §11 | Wrapped → vanilla Nostr roundtrip; bare event with hide-bare preference; vanilla-Nostr-only follow; kind:31005 identity pointer |
 | `versioning/` | §12 | Older receiver vs newer sender; capabilities event roundtrip; cross-MAJOR mismatch placeholder rendering; unknown room-kind tolerance per ADR-016 |
 
@@ -5669,6 +6142,16 @@ skip `encryption/mls-migration/*` vectors with documented rationale
 (MLS support is OPTIONAL in v0.2 per ADR-012). Implementations MAY
 skip `homeserver-exit/*` vectors only if the implementation is
 read-only and never publishes; publishing clients MUST pass them.
+
+The `redundancy/`, `social-recovery/`, and `relay-profile/` categories
+(per ADR-020, ADR-021, ADR-022) are OPTIONAL and are NOT part of the
+baseline minimum set: mirroring, social recovery, and the
+Heterodyne-aware relay are opt-in features. The verifier invariants
+they depend on that ARE baseline — the `did:key` witness rule and the
+`kind:31008` informal-vouch weight cap — live in the baseline `keri/`
+category, so a baseline client correctly verifies rotations that
+present those constructs even without implementing the optional
+features themselves.
 
 **Strict-mode conformance delta (per ADR-007 / ADR-011).** Claiming
 the strict-mode profile additionally requires passing every vector in

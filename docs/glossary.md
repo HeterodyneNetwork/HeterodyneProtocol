@@ -116,6 +116,13 @@ honor it for read-back compatibility with v0.1.4 publishers.
 ("here are my close friends"), same underlying construct (a Matrix
 room).
 
+**Heterodyne-aware relay.** An OPTIONAL relay profile (per ADR-022)
+defined as a strict superset of a vanilla NIP-01 relay: vanilla Nostr
+clients use it unchanged, while Heterodyne clients can use added
+KEL-aware reputation continuity, optional KEL-aware discovery, and a
+passive witness-receipt store. Advertised via NIP-11. Baseline
+conformance never depends on it. See spec §10.6.
+
 **Heterodyne client library.** A conformant implementation of the
 protocol's security-critical logic (event composition, signing,
 delegation checking, feed-index maintenance, retrieval). The spec
@@ -128,6 +135,20 @@ feed view and therefore appears as a `kind:31007` `e`-tag entry.
 Default classification by kind is given in spec §6.8.1; a publisher
 MAY override per-event via the `["heterodyne_index", "true"|"false"]`
 tag. Contrast with non-indexed event.
+
+**Informal voucher.** An undeclared friend who publishes a signed
+`kind:31008` social vouch (§3.5.5) for a persona's key during recovery.
+Carries a small capped weight (RECOMMENDED ≤1% of a declared witness)
+that can never meet the rotation threshold on its own; surfaced for
+manual, user-confirmed promotion into the declared witness set (the
+web-of-trust snowball). Contrast **Peer witness**. See spec §3.5.5,
+§3.12.3.
+
+**Involuntary re-anchor.** Recovery procedure (per ADR-021) for when a
+persona's identity-room homeserver is permanently gone and no mirror
+replica remains: the persona republishes a cold-root `kind:31005` to
+relays (authoritative), with follower-cached identity state bridging
+verification until it propagates. See spec §3.12.
 
 **KERI (Key Event Receipt Infrastructure).** A family of identity
 protocols characterized by inception and rotation events
@@ -180,6 +201,13 @@ ID; `matrix:r/<alias-without-hash>:<server>` for rooms by alias;
 `matrix:u/<user-without-at>:<server>` for users. New constructs in the
 spec use the URI form; legacy `{room_id, via}` structured form
 remains valid in §7. See spec §2.
+
+**Mirror group.** An `m.heterodyne.mirror_group.v1` state event (per
+ADR-020) naming a persona's full-replica rooms across the homeservers
+it controls and which replica is the **primary** (the one named by the
+cold-root `kind:31005` pointer / `kind:31007` feed index). On primary
+failure the persona promotes a replica by republishing `kind:31005`.
+See spec §3.11.
 
 **Moderator.** A persona authorized in `m.heterodyne.moderators.v1`
 to issue NIP-72 approval signatures (and, in the current 0.x draft,
@@ -258,6 +286,11 @@ spec §6.9.
 outbox rooms, recorded as `m.heterodyne.outbox.scoped.v1` state events
 inside friend-circle or community rooms (NOT the identity room).
 Visible only to members of the advertising room. See spec §7.2.
+
+**Social vouch (`kind:31008`).** A signed Nostr event by an informal
+voucher (§3.5.5) attesting a persona's new key at a given KERI sequence
+during recovery. Capped, non-authoritative; cannot meet a rotation
+threshold alone. See **Informal voucher**.
 
 **Successor / predecessor.** Roles in the identity chain. The outgoing
 npub publishes a successor pointer in its identity room; the incoming
