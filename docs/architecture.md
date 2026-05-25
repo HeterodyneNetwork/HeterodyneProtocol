@@ -12,14 +12,15 @@ as **0.x** rather than a single point version.
 ## What we're building
 
 Heterodyne is a decentralized social network protocol. A user's identity
-is a Nostr `secp256k1` keypair. The user's content is carried over Matrix
-rooms. The combination gives:
+is a Nostr `secp256k1` keypair. Broadcast content is Nostr-native;
+discussion and membership-gated interaction use Matrix rooms. The
+combination gives:
 
 | Property | Comes from |
 |---|---|
 | Cryptographic authenticity; key portability across homeservers; forwardability to vanilla Nostr | Nostr |
 | End-to-end group encryption (Megolm today, MLS in flight); stateful access control; federated transport; censorship resistance at the server layer; native moderation primitives | Matrix |
-| Multi-homing, persona-preserving key rotation, deniability-on-demand | Heterodyne's composition |
+| Multi-homing, persona-preserving key rotation, pseudonymous attribution with optional transferable proof | Heterodyne's composition |
 
 ## The load-bearing decisions
 
@@ -38,22 +39,23 @@ verbatim. Matrix is "just transport." This gives:
   layer, the Nostr signature still proves origin.
 
 Where Heterodyne carries an event over Nostr (the default for
-public broadcast and moderated rooms — see Decision 4 below), the
-event is just a NIP-01-compliant Nostr event on a Nostr relay. The
-Matrix room references it by ID from `feed_status`.
+`public_broadcast` and `private_broadcast` posts — see Decision 4
+below), the event is a NIP-01-compliant Nostr event on a relay. Public
+broadcasts are plaintext; private broadcasts are room-key-wrapped before
+signing and relay publication.
 
-Wrap is **optional inside E2EE Matrix rooms** — senders can choose
-deniability per event. In `private_community` rooms wrap is the
-sensible default but the sender can opt out per message. In DMs the
-default flips: bare by default, with an opt-in
-`heterodyne_nostr_sig` field for explicit authenticity.
+Discussion traffic and reactions/replies default to bare Matrix events:
+attributable to the sender's npub through delegation, but without a
+transferable third-party proof. A sender can opt into that proof with
+`heterodyne_nostr_sig` or a wrapped `m.heterodyne.note.v1`; this is an
+authenticity badge, not a deniability mode.
 
 See spec §4.
 
 ### 2. Identity: npub canonical, Matrix accounts are delegated publishers
 
 The npub is the authoritative identity. Matrix accounts are
-*delegated publishers* bound by npub-signed attestations in a
+*delegated publishers* bound by epoch-key-signed attestations in a
 per-persona **identity room**. Multiple personas are first-class.
 
 The identity room is a **disposable container** — if it is
@@ -68,13 +70,13 @@ followers) is solved by committing to **KERI** (Key Event Receipt
 Infrastructure) for root inception and rotation: explicit sequence
 numbering, threshold witnesses, deterministic fork resolution. The
 v0.1.4 single-key successor/predecessor chain was retired in v0.2.0
-because it was vulnerable to "fork-freezing" attacks. The exact
-KERI payload schemas are in the Cold Root + Epoch Keys design at
-`docs/superpowers/specs/2026-05-21-cold-root-epoch-keys-design.md`.
+because it was vulnerable to "fork-freezing" attacks. The normative
+KERI payload schemas are now in spec §3.5; the Cold Root + Epoch Keys
+design remains background rationale.
 
 Delegation acknowledgement no longer requires a Matrix MSK
 signature; the homeserver's normal `/send/state` authorization on
-the npub-signed delegation event is sufficient.
+the epoch-key-signed delegation event is sufficient.
 
 See spec §3.
 
@@ -86,43 +88,45 @@ membership. The client surfaces "distribution lists" and "friend
 circles"; Matrix power levels are the implementation detail and stay
 hidden from the user.
 
-This places the censorship-resistance burden on Matrix federation rather
-than on Nostr relays. The user gains stateful, fine-grained membership
-control. The cost is that "follow" becomes "join the broadcaster's
-room," which is heavier than Nostr's pure follow-list approach but
-unlocks the moderation and encryption story.
+This splits the censorship-resistance burden: relays carry broadcast
+events and feed indexes, while Matrix federation carries room state,
+membership, and discussion. The user gains stateful, fine-grained
+membership control. The cost is that "follow" often becomes "join the
+broadcaster's room," which is heavier than Nostr's pure follow-list
+approach but unlocks the moderation and encryption story.
 
 See spec §7.
 
 ### 4. Public content lives on Nostr; feed indexes are Nostr-native too
 
-Public Heterodyne content (posts in `public_broadcast` and
-`public_moderated` rooms) lives on Nostr relays, as do the
-per-room **feed indexes** (`kind:31007`) that record each
-persona's curated post order. Public Matrix rooms hold only
-standard room state — kind, moderators, power levels, optional
-archive pointer. Vanilla Matrix clients peeking at a
-`public_broadcast` room see an effectively empty timeline;
-that's the design.
+Public Heterodyne broadcast content (`public_broadcast` posts) lives on
+Nostr relays, as do the per-room **feed indexes** (`kind:31007`) that
+record each persona's curated post order. Moderated
+`public_discussion` communities also use Nostr for moderator approval
+events and per-moderator approval indexes. Public Matrix rooms hold
+standard room state, moderation state, optional archive pointers, and
+members' reactions/replies. Vanilla Matrix clients peeking at a
+`public_broadcast` room see reactions/replies, not the persona's
+broadcast posts; that's the design.
 
 This is a v0.2.0 change from v0.1.4. v0.1.4 stored feed indexes
 as Matrix state events (`m.heterodyne.feed_status.v1`), but that
 made the index mutable by anyone with state-write power in the
 room — a hostile homeserver admin could silently rewrite a
 persona's curated feed without breaking any cryptographic
-invariant. Moving the index onto Nostr makes it npub-signed and
-tamper-evident: only the persona's epoch key can produce a
-`kind:31007` for that persona.
+invariant. Moving the index onto Nostr makes it epoch-key-signed and
+tamper-evident: only the persona's current KERI-authorized epoch key can
+produce a `kind:31007` for that persona.
 
-Private E2EE content (`private_verifiable`, `private_deniable`,
-`dm_*`) continues to ride *inside* the Matrix room — leaking
-encrypted-room content to public Nostr relays would defeat the
-encryption. For private rooms that maintain a feed index, the
-`kind:31007` is NIP-44 gift-wrapped to room members so the
-existence-of-posts metadata is restricted to those who can already
-read the room. Indexes are bounded at 500 entries per event;
-clients page by chaining `kind:31007` events with a
-`previous_index` tag.
+Private discussion (`private_discussion`, including two-party DMs)
+continues to ride inside the encrypted Matrix room. Private broadcast
+(`private_broadcast`) is different: posts are Nostr events whose content
+is NIP-44-v2 symmetric ciphertext under a Megolm-derived room key, and
+the feed index is also room-key-wrapped. Private index relay-visible
+tags use opaque addresses; the actual room id, entries, relay hints, and
+page links live in the encrypted payload. Indexes are bounded at 500
+entries per page; public indexes use visible `previous_index` tags,
+while private indexes carry page links in encrypted payloads.
 
 This split plays each protocol to its strengths:
 
@@ -139,22 +143,23 @@ visible but rendered contextually). A publisher MAY override
 per-event via a `heterodyne_index` tag. See spec §6.8.
 
 **Retrieval.** Receivers fetch events referenced from a
-`kind:31007` `e` tag via Nostr relays (Channel 1) or, as a
-fallback, via the publisher's optional user-hosted HTTPS archive
-advertised as `m.heterodyne.archive.v1` in the identity room
-(Channel 2). The spec does NOT host an archive service; archive
-infrastructure is each publisher's responsibility. Matrix-DM
-backfill requests / responses / pushes are **forbidden** in
-v0.2.0 (DoS / rate-limit vector); events not retrievable via the
-two channels are considered permanently lost.
+public `kind:31007` `e` tags or private decrypted index entries via
+Nostr relays (Channel 1) or, as a fallback, via the publisher's
+optional user-hosted HTTPS archive advertised as
+`m.heterodyne.archive.v1` in the identity room (Channel 2). The spec
+does NOT host an archive service; archive infrastructure is each
+publisher's responsibility. Matrix-DM backfill requests / responses /
+pushes are **forbidden** in v0.2.0 (DoS / rate-limit vector); events
+not retrievable via the two channels are considered permanently lost.
 
 ### 4b. Bridge: pure client-side, any homeserver works unmodified
 
 There is no Heterodyne appservice and no homeserver modification. Every
 client is a full Matrix + Nostr client. The cross-protocol logic is
 part of the client implementation. The spec is language- and
-runtime-agnostic; conformance is determined by the test vectors (§14)
-rather than by language or packaging choice.
+runtime-agnostic; protocol conformance is determined by the normative
+spec, with authored test vectors (§14) serving as the interoperability
+suite rather than prescribing language or packaging choices.
 
 This is the design choice that protects the blind-server property: a
 homeserver-side bridge would see plaintext before Matrix encryption and
@@ -170,10 +175,11 @@ See spec §10 (bridge model) and §3.8 (config room).
 
 ### 5. DMs: pure Matrix with optional Nostr wrap
 
-Direct messages reuse Matrix DM rooms with `m.room.message` semantics. A
-Heterodyne client adds an OPTIONAL `heterodyne_nostr_sig` field for
-senders who want explicit authenticity on a specific message. By default
-DMs are deniable in the same way encrypted Matrix DMs already are.
+Direct messages are two-member `private_discussion` rooms with normal
+`m.room.message` semantics. A Heterodyne client adds an OPTIONAL
+`heterodyne_nostr_sig` field for senders who want a transferable proof
+on a specific message. By default DMs are attributable in-room via
+delegation but do not carry a portable Nostr proof.
 
 This makes vanilla Matrix clients render Heterodyne DMs natively, with
 zero special handling — a substantial UX win for cross-network
@@ -334,12 +340,13 @@ flowchart LR
     Relay <--> NPeers[Vanilla Nostr<br/>clients]
 ```
 
-Public content flows over Nostr relays; Matrix carries indexes
-(`feed_status` state events) and standard room state for the public
-rooms that organize that content. Private rooms use Matrix end-to-end
-encrypted transport for both content and indexes — the homeserver
-routes ciphertext only. The user's client is the only place that
-sees Nostr signatures and Matrix plaintext together.
+Public broadcast content and feed indexes flow over Nostr relays; Matrix
+carries the room state and member interactions for the rooms that
+organize that content. Private discussion uses Matrix end-to-end
+encrypted transport. Private broadcast uses Matrix membership/Megolm as
+the keyring while the room-key-wrapped posts and indexes live on the
+room's advertised relays. The user's client is the only place that sees
+Nostr signatures and Matrix plaintext together.
 
 ## Where `mxdx` fits
 
@@ -374,11 +381,10 @@ questions are follow-up work that does not block the current draft:
   URIs. The §7 outbox schemas still use the legacy `{room_id, via}`
   structured form for backward source compatibility. A future
   revision can migrate them; not urgent.
-- **MLS migration procedure.** §9.2 reserves
-  `m.heterodyne.encryption_version.v1` and the `algorithm` field, but
-  the actual migration procedure (re-key, member re-acknowledgement,
-  atomic flip) is deferred to a future spec version when Matrix MLS
-  is stable enough across client libraries to depend on.
+- **MLS implementation validation.** §9.2 defines the migration
+  procedure, but Matrix MLS support still needs first-party client
+  validation against real SDK behavior before it can be treated as
+  operationally mature.
 - **Conformance reporting formalization.** §14.4 leaves the
   conformance-claim mechanism informal. A future spec version may
   define a conformance manifest format consumable by a registry.

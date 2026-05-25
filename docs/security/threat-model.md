@@ -23,9 +23,10 @@ Heterodyne inherits the following invariants from sibling project
 
 - **The npub is the authoritative author.** Matrix MXIDs are never the
   source of truth for identity.
-- **Delegations are double-signed.** A delegation is only active if both
-  the npub and the MXID have signed it; either side alone cannot create
-  a binding.
+- **Delegations are dual-authenticated.** A delegation is active only if
+  the persona's current epoch key signs the Nostr attestation and the
+  named MXID self-publishes the Matrix state event via normal
+  `/send/state` authorization; either side alone cannot create a binding.
 - **No central directory.** Discovery is relationship-mediated; there is
   no global registry of users or personas to compromise.
 
@@ -41,7 +42,7 @@ Heterodyne inherits the following invariants from sibling project
 | **Colluding co-delegated MXID** (per ADR-009) | A peer MXID under the same npub that turns hostile. Has Megolm access to all config rooms via §3.9 mutual membership. Can: observe coordination state; attempt to plant lease conflicts during partition windows; race the single-MXID revocation procedure between `effective_at` and observation. Cannot: forge events signed under the persona's epoch key (only the persona's own signing key produces those); evade the §3.9.6 partition-window void-and-requeue rule once the partition heals. Mitigations: §3.9.7 effective_at clamping; embedded Nostr-signed revocation attestations defend against forged peer revocations. |
 | **Old-homeserver-during-overlap** (per ADR-015) | The source homeserver `H1` during the 7-day voluntary homeserver-exit window. Retains write access to the old identity room; can attempt to forge state events after the migration. Mitigation: the §3.10.3 migration-pointer-precedence rule ensures the migration announcement in the OLD room is authoritative regardless of subsequent `H1`-side activity; followers' clients log discrepancies between the migration pointer and any later state changes in the OLD room. |
 | **Compromised delegation** | Attacker controls a previously-authorized Matrix account. Can publish wrapped events claiming the npub *until revoked*. Cannot retroactively forge older events because each one is Nostr-signed at publication time. |
-| **Compromised npub root** | Catastrophic for the persona. Recovery requires §3.5 key rotation from a clean device; the identity chain preserves persona continuity but events the attacker published before revocation are valid. |
+| **Compromised cold root** | Catastrophic for the persona. Recovery requires §3.5 KERI rotation/recovery from a clean device with sufficient witness support; the KEL preserves persona continuity where possible, but events the attacker published before revocation are valid. |
 
 ## Threats and mitigations (initial list)
 
@@ -50,21 +51,24 @@ Heterodyne inherits the following invariants from sibling project
 A homeserver could insert events claiming to be from MXID X.
 
 *Mitigation:* every wrapped event carries an independent Nostr signature;
-receivers reject if signature fails or if `nostr.pubkey` doesn't match
-the MXID's active delegation. Bare events in DM rooms inherit Matrix's
-existing room-message authenticity guarantees (Matrix device-signed
-event).
+receivers reject if signature fails or if `nostr.pubkey` is not the
+KERI-authoritative epoch key for the persona delegated to the sender
+MXID. Bare Matrix events are attributed only when the event's
+`heterodyne_persona` (or an unambiguous room context) resolves to an
+active delegation for the sender at the event's Matrix timestamp;
+otherwise they render as vanilla Matrix.
 
 ### Phantom delegation
 
 A homeserver inserts a fake `m.heterodyne.delegation.v1` state event into
 an identity room it hosts.
 
-*Mitigation:* delegations are double-signed (npub + MXID). The Nostr
-signature must validate against the asserted npub, which the homeserver
-doesn't control. The Matrix signature must validate against the MXID's
-cross-signing master key, which is also outside homeserver control under
-Matrix's existing cross-signing model.
+*Mitigation:* delegations are dual-authenticated. The Nostr attestation
+must validate against the persona's current epoch key, whose authority
+chains to the cold-root npub through the KEL. The Matrix state event's
+`sender` must equal the delegation `state_key`, proving the named MXID
+self-published it through normal homeserver `/send/state` authorization.
+No Matrix cross-signing/MSK signature is required.
 
 ### Stale revocation
 
@@ -73,11 +77,10 @@ revocation yet and is still accepting events signed by the revoked key.
 
 *Mitigation:* identity-room state is re-validated on a configurable TTL
 and on every Matrix `/sync` cycle. Clients SHOULD display staleness
-indicators when verification cache exceeds the configured age. A
-defense-in-depth measure: the revocation is published from the
-*successor* identity room, so even an attacker holding the old key
-cannot prevent the legitimate user from publishing a revocation that
-victims will eventually see.
+indicators when verification cache exceeds the configured age. KERI
+sequence numbers, witness first-seen ordering, and the cold-root
+`kind:31005` identity pointer let verifiers distinguish the current
+identity room/KEL from stale rooms served by an attacker.
 
 ### Cross-persona linking via metadata
 

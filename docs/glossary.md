@@ -6,9 +6,9 @@ this glossary exists so the spec body itself can stay tight.
 
 **Approval (NIP-72).** A `kind:4550` Nostr event published by an
 authorized moderator that surfaces a candidate post in a
-`public_moderated` room's curated feed view. Wire form is the vanilla
-NIP-72 approval embedded in a standard `m.heterodyne.note.v1`
-envelope. See spec §8.1.
+moderated `public_discussion` room's curated feed view. Wire form is the
+vanilla NIP-72 approval event, referenced from the moderator's
+`kind:31007` approval index. See spec §8.1.
 
 **Audience-stratified discovery.** Heterodyne's discovery model:
 public outbox advertisements live in the identity room (visible to
@@ -17,8 +17,10 @@ community rooms (visible only to members). Different audiences see
 different sets of feeds. See spec §7.
 
 **Bare event.** A Heterodyne event published as a plain `m.room.message`
-with no Nostr signature. Deniable inside an E2EE Matrix room. The
-default wrap mode for DMs. See spec §4.3.
+or `m.reaction` with no Nostr signature. It is attributable in-room via
+the sender's delegation, but carries no transferable third-party proof.
+The default wrap mode for discussion rooms and broadcast-room
+reactions/replies. See spec §4.3.
 
 **Blind server / blind homeserver.** A homeserver that handles E2EE
 traffic but cannot read its plaintext. Heterodyne's client-side bridge
@@ -66,8 +68,10 @@ See spec §12.2.
 **Config room.** Per-MXID encrypted Matrix room (`config_room` kind in
 §5.1) holding portable client configuration, per-persona private state
 including private mutes, and Heterodyne-specific key backups. Single
-member: the owning MXID and their devices. Discovery via the
-`m.heterodyne.config_room` profile field. See spec §3.8.
+persona with one MXID: the owning MXID and its devices. Multi-MXID
+persona: co-delegated MXIDs mutually join per §3.9.1 for config sync.
+Discovery via the `m.heterodyne.config_room` profile field. See spec
+§3.8.
 
 **Cross-persona attestation.** A double-signed declaration in a
 persona's identity room (public) or in a friend-circle / community
@@ -76,8 +80,9 @@ from both npubs; single-signed claims are rejected. See spec §7.5.
 
 **Delegation.** An attestation in an identity room authorizing a specific
 Matrix MXID to publish events on behalf of the persona's npub.
-Double-signed by both the npub (proving authorization) and the MXID
-(proving acknowledgement). See spec §3.3.
+Authenticated by an epoch-key Nostr signature from the persona and by
+the MXID self-publishing the Matrix state event through normal
+`/send/state` authorization. See spec §3.3.
 
 **DID (Decentralized Identifier).** An ATProto-side identifier of
 the form `did:web:<host>` (DNS+HTTPS-resolved) or `did:plc:<id>`
@@ -98,19 +103,20 @@ spec §4.2, §11.5.
 **Feed index (`kind:31007`).** A Nostr replaceable event listing
 the event ids of a persona's (or moderator's) curated posts in
 intended display order. Each Heterodyne-managed room a persona
-posts into is keyed by `<room_id>:<page_id>` in the event's `d`
-tag. The index is signed by the persona's epoch key directly,
-making it tamper-evident: no homeserver or third party can rewrite
-it. Plaintext on the persona's write relays for public rooms;
-NIP-44 gift-wrapped to room members for private rooms. Bounded at
-500 `e`-tag entries per event; longer feeds are paginated via
-`previous_index` tags. Replaces the v0.1.4 `m.heterodyne.feed_status.v1`
-Matrix state event. See spec §6.7.
+posts into is keyed by a public `<room_id>:<page_id>` `d` value or, for
+private rooms, by an opaque `d` value advertised only in encrypted room
+state. The index is signed by the persona's current epoch key and bound
+to the cold-root npub through the KEL, making it tamper-evident: no
+homeserver or third party can rewrite it. Plaintext on the persona's
+write relays for public rooms; room-key-wrapped for private rooms, with
+the room id, entries, relay hints, and page links inside encrypted
+content. Bounded at 500 entries per page. Replaces the v0.1.4
+`m.heterodyne.feed_status.v1` Matrix state event. See spec §6.7.
 
-**Feed status.** Deprecated v0.1.4 term for what v0.2.0 calls the
+**Feed status.** Deprecated v0.1.4 term for what the current spec calls the
 "feed index." The `m.heterodyne.feed_status.v1` Matrix state event
-is no longer produced by conformant v0.2.0 clients; verifiers MAY
-honor it for read-back compatibility with v0.1.4 publishers.
+is no longer produced by conformant clients; verifiers MAY honor it for
+read-back compatibility with v0.1.4 publishers.
 
 **Friend circle.** Synonym for distribution list. Different UX surface
 ("here are my close friends"), same underlying construct (a Matrix
@@ -126,15 +132,17 @@ conformance never depends on it. See spec §10.6.
 **Heterodyne client library.** A conformant implementation of the
 protocol's security-critical logic (event composition, signing,
 delegation checking, feed-index maintenance, retrieval). The spec
-is implementation- and language-agnostic; conformance is determined
-by the test vectors (§14), not by language or packaging. See spec
-§10.2.
+is implementation- and language-agnostic; protocol conformance follows
+the normative spec, with vector-conformance reported for authored test
+vectors (§14). See spec §10.2.
 
 **Indexed event.** An event that belongs in a persona's curated
-feed view and therefore appears as a `kind:31007` `e`-tag entry.
-Default classification by kind is given in spec §6.8.1; a publisher
-MAY override per-event via the `["heterodyne_index", "true"|"false"]`
-tag. Contrast with non-indexed event.
+feed view and therefore appears in a `kind:31007` feed index: as an
+`e` tag for public indexes, or as an encrypted `entries[]` item for
+private indexes. Default classification by kind is given in spec
+§6.8.1; a publisher MAY override per-event via the
+`["heterodyne_index", "true"|"false"]` tag. Contrast with non-indexed
+event.
 
 **Informal voucher.** An undeclared friend who publishes a signed
 `kind:31008` social vouch (§3.5.5) for a persona's key during recovery.
@@ -166,6 +174,12 @@ exists.
 event carrying a Nostr-signed proof of the message content. Lets a
 sender opt in to authenticity without abandoning the `m.room.message`
 rendering path. See spec §4.3.
+
+**`heterodyne_persona`.** Optional/conditional field on bare Matrix
+events naming the sender's cold-root persona npub. Required for
+Heterodyne attribution when the sending MXID is delegated to multiple
+personas; otherwise the event renders as vanilla Matrix unless room
+context identifies exactly one persona. See spec §4.3.
 
 **Hide-bare-events.** A user preference in
 `m.heterodyne.user_prefs.v1` controlling whether bare
@@ -218,9 +232,10 @@ signature verification). See spec §8.2.
 **Mute list (public / private).** A persona's curated set of npubs
 they refuse to render in their feeds. Public mutes live as
 `m.heterodyne.mutes.public.v1` in the identity room and are
-inheritable by other personas; private mutes live in the per-MXID
-config room (§3.8) and stay invisible to the homeserver. See spec
-§8.5.
+inheritable by other personas; private mutes live in
+`m.heterodyne.persona_config.v1` in the per-MXID config room (§3.8),
+SHOULD sync across mutual config rooms for the same persona, and stay
+invisible to homeservers. See spec §8.5.
 
 **MXID.** A Matrix user identifier, of the form `@local:server.example`.
 In Heterodyne, MXIDs are *delegated publishers* of an npub, not
@@ -236,9 +251,12 @@ contextually rather than as a standalone feed item. See spec §6.8.
 `nsec1...`), corresponding to a `secp256k1` keypair. The npub is the
 canonical Heterodyne identity for a persona.
 
-**Outbox room.** A Matrix room where a persona publishes content. The
-persona is the room admin. Followers subscribe by joining. Multiple
-outbox rooms per persona enable distribution-list semantics.
+**Outbox room.** A Matrix room that organizes a persona's broadcast
+audience, state, and member interactions. The persona is the room admin;
+broadcast post bodies live on Nostr relays (plaintext for public
+broadcast, room-key-wrapped for private broadcast). Followers subscribe
+by joining. Multiple outbox rooms per persona enable distribution-list
+semantics.
 
 **PDS (Personal Data Server).** ATProto term for the server hosting
 a user's signed records. In Heterodyne the PDS is the publish target
@@ -268,10 +286,11 @@ where they prefer to observe replies and mentions. Repliers SHOULD
 include these destinations in fan-out. Analogous to NIP-65's `read`
 marker. See spec §7.1.
 
-**Retrieval hint.** Optional third element of a `kind:31007`
-`e`-tag carrying a relay URL where the referenced event can be
-fetched via standard NIP-01 REQ. Covers the common retrieval case;
-see spec §6.7.1, §6.9.1.
+**Retrieval hint.** Relay URL where an indexed event can be fetched via
+standard NIP-01 REQ. In public indexes it is the optional third element
+of a `kind:31007` `e` tag; in private indexes it is carried in the
+encrypted `entries[]` payload. Covers the common retrieval case; see
+spec §6.7.1, §6.7.4, §6.9.1.
 
 **Retrieval request / response / push.** Three Matrix event types
 defined in v0.1.4 drafts for DM-based backfill of events that
@@ -293,8 +312,9 @@ threshold alone. See **Informal voucher**.
 
 **Successor / predecessor.** Roles in the identity chain. The outgoing
 npub publishes a successor pointer in its identity room; the incoming
-npub publishes a predecessor pointer in its identity room. Both must
-match for the chain step to be valid.
+npub publishes a predecessor pointer in its identity room. Deprecated
+v0.1.4 terminology; current Heterodyne uses KERI inception/rotation
+events instead.
 
 **Topic tag.** A namespaced label attached to a Heterodyne room's
 kind state event indicating subject area ("tech", "photos",
