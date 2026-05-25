@@ -28,10 +28,11 @@ Two problems surfaced:
    set* without per-recipient NIP-59 gift-wrap (`kind:1059`), which
    scales as one event per recipient per post.
 
-The §6.7.4 room-key wrap (ADR-005) — NIP-44 v2 encryption under a key
-derived from the room's Megolm outbound session — already solves
-encrypt-once-for-the-room for private *feed indexes*. Generalizing it
-from indexes to *post content* yields encrypted broadcast for free.
+The §6.7.4 room-key wrap (ADR-005, key source updated by ADR-023) —
+NIP-44 v2 encryption under a key derived from the room's explicit
+Heterodyne room secret — already solves encrypt-once-for-the-room for
+private *feed indexes*. Generalizing it from indexes to *post content*
+yields encrypted broadcast for free.
 
 A cleaner organizing axis emerged: **broadcast vs discussion** ×
 **public vs private**. Broadcasting is intentionally publishing *as* a
@@ -48,7 +49,7 @@ making the separate verifiable/deniable axis redundant.
    kinds with unchanged roles.
 
 2. `private_broadcast` posts are published as **room-key-wrapped Nostr
-   events** (NIP-44 v2 under the §6.7.4 Megolm-derived `room_key`) to
+   events** (NIP-44 v2 under the §6.7.4 room-secret-derived `room_key`) to
    the relays advertised in the room — encrypt-once-for-the-room,
    replacing per-recipient gift-wrap for broadcast. The encrypted Matrix
    room's membership/Megolm session is the follower keyring; the room
@@ -80,8 +81,11 @@ making the separate verifiable/deniable axis redundant.
   timeline message; it MUST be published as a Nostr event whose
   `content` is NIP-44 v2 encrypted under `room_key` (§6.7.4 derivation),
   signed by the persona's current epoch key, carrying
-  `["heterodyne_wrap","room_key.v1"]`, `["megolm_session_id", …]`, and
-  `["matrix_room", …]` tags. Clients MUST NOT publish broadcast posts
+  `["heterodyne_wrap","room_key.v2"]` and `["key_id", …]` tags. The
+  post MUST NOT carry a cleartext `["megolm_session_id", …]` or
+  `["matrix_room", …]` tag (room association lives only in the encrypted
+  Matrix descriptor, per ADR-023); semantically meaningful tags move to
+  the encrypted inner payload. Clients MUST NOT publish broadcast posts
   via NIP-59 gift-wrap (`kind:1059`).
 - Broadcast posts (`public_broadcast`, `private_broadcast`) MUST be
   Nostr-signed by an epoch key authorized under §3.5.

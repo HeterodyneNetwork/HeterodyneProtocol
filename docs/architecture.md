@@ -121,10 +121,13 @@ produce a `kind:31007` for that persona.
 Private discussion (`private_discussion`, including two-party DMs)
 continues to ride inside the encrypted Matrix room. Private broadcast
 (`private_broadcast`) is different: posts are Nostr events whose content
-is NIP-44-v2 symmetric ciphertext under a Megolm-derived room key, and
-the feed index is also room-key-wrapped. Private index relay-visible
-tags use opaque addresses; the actual room id, entries, relay hints, and
-page links live in the encrypted payload. Indexes are bounded at 500
+is NIP-44-v2 symmetric ciphertext under a room key derived from an
+explicit Heterodyne room secret (a random 32-byte value distributed via
+a Megolm-encrypted `m.heterodyne.room_secret.v1` state event), and
+the feed index is also room-key-wrapped. Both the index and the posts
+carry only an opaque `key_id` and never the room id, entries, relay
+hints, or page links on the wire — those live in the encrypted payload
+and the in-room descriptor. Indexes are bounded at 500
 entries per page; public indexes use visible `previous_index` tags,
 while private indexes carry page links in encrypted payloads.
 

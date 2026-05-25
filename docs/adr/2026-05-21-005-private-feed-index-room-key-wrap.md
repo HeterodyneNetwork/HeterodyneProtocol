@@ -1,8 +1,25 @@
-# ADR-005: Private feed index — Heterodyne room-key wrap (Megolm-derived, NIP-44 v2)
+# ADR-005: Private feed index — Heterodyne room-key wrap (NIP-44 v2)
 
 **Date:** 2026-05-21
-**Status:** Accepted
+**Status:** Accepted; **key-derivation source superseded by [ADR-023](2026-05-25-023-keri-discovery-witness-receipts-room-secret.md)**
 **Decision makers:** Liam Helmer (architect); star-chamber providers: gemini-3.1-pro, gpt-5.4 (via Fuel-IX); local Claude subagent
+
+> **Superseded in part (2026-05-25, ADR-023).** This ADR originally
+> derived the wrap key from the Matrix Megolm outbound session key and
+> selected it with a `["megolm_session_id", …]` tag under
+> `heterodyne_wrap = "room_key.v1"`. Adversarial review found that
+> Megolm exposes no stable, portable 32-byte room secret (its ratchet
+> advances per message; export bytes depend on ratchet index), so
+> independent clients could derive divergent keys. ADR-023 replaces the
+> key source with an **explicit 32-byte Heterodyne room secret**
+> distributed via an `m.heterodyne.room_secret.v1` Megolm-encrypted
+> state event, selected by an opaque `["key_id", …]` tag under
+> `heterodyne_wrap = "room_key.v2"`. The HKDF construction, NIP-44 v2
+> profile, NIP-59 withdrawal, opaque-`d` rule, and rotation-on-leave
+> policy below are unchanged. The Decision and Requirements here have
+> been updated to the room-secret source; the Rationale and Alternatives
+> sections preserve the original 2026-05-21 reasoning that favored the
+> Megolm-derived approach (now reversed — see ADR-023 for why).
 
 ## Context
 
@@ -16,7 +33,7 @@ The architecture-review round 2 reviewers initially recommended deferring this d
 
 Replace the NIP-59 per-recipient gift-wrap path for private `kind:31007` indexes with a **Heterodyne-defined room-key wrap**:
 
-- **Key derivation:** the room key is derived from the active Matrix Megolm outbound session key using HKDF with the info string `"heterodyne-index-key-v1"`. When Megolm rotates (whether by membership change, time, or message count), the index key rotates with it.
+- **Key derivation:** the room key is derived from the room's explicit 32-byte **Heterodyne room secret** (per ADR-023, distributed via an `m.heterodyne.room_secret.v1` Megolm-encrypted state event) using HKDF with the info string `"heterodyne-index-key-v1"`. When the room secret rotates (a new `key_id`), the index key rotates with it.
 - **Encryption primitive:** NIP-44 v2 (ChaCha20 + HMAC-SHA256, with NIP-44 padding) using the derived room key as the NIP-44 conversation key.
 - **Rotation policy:** MUST rotate on member removal/kick/leave; MAY accept the existing key on join.
 - **Backward compatibility:** the NIP-59 gift-wrap path is withdrawn entirely; the room-key wrap is the only private-index mechanism.
@@ -27,20 +44,20 @@ This change applies only to **private rooms** (`private_verifiable`, `private_de
 
 ### Key derivation
 
-1. Heterodyne clients publishing a `kind:31007` index for a `private_verifiable`, `private_deniable`, `dm_verifiable`, or `dm_deniable` room MUST derive the room key as: `room_key = HKDF-SHA256(ikm=megolm_session_key, salt=room_id, info="heterodyne-index-key-v1", L=32)`, where `megolm_session_key` is the 32-byte outbound session key currently active for the room.
-2. Heterodyne clients MUST track Megolm session rotations and re-derive `room_key` whenever the outbound session rotates.
-3. Heterodyne clients MUST identify which Megolm session derived the current `room_key` via a `["megolm_session_id", "<session-id>"]` tag on each published `kind:31007` event, enabling receivers to select the correct key.
+1. Heterodyne clients publishing a `kind:31007` index for a `private_verifiable`, `private_deniable`, `dm_verifiable`, or `dm_deniable` room MUST derive the room key as: `room_key = HKDF-SHA256(ikm=room_secret, salt=room_id, info="heterodyne-index-key-v1", L=32)`, where `room_secret` is the 32-byte value from the active `m.heterodyne.room_secret.v1` generation for the room (ADR-023).
+2. Heterodyne clients MUST re-derive `room_key` whenever the room secret rotates (a new `key_id`).
+3. Heterodyne clients MUST identify which room-secret generation derived the current `room_key` via an opaque `["key_id", "<id>"]` tag on each published `kind:31007` event, enabling receivers to select the correct key. `key_id` MUST NOT encode the room id.
 
 ### Encryption
 
 4. The `content` field of a `kind:31007` event for a private room MUST contain the NIP-44 v2 encryption of the index payload (the same JSON structure that would otherwise appear in the unencrypted `content`), with `room_key` as the NIP-44 conversation key.
-5. Heterodyne clients MUST decrypt `kind:31007` events for private rooms by selecting the Megolm session indicated by the `["megolm_session_id", "..."]` tag, deriving `room_key`, and applying NIP-44 v2 decryption.
+5. Heterodyne clients MUST decrypt `kind:31007` events for private rooms by selecting the room secret indicated by the `["key_id", "..."]` tag, deriving `room_key`, and applying NIP-44 v2 decryption.
 6. The `tags` field of the `kind:31007` event remains plaintext, EXCEPT that the `["d", "..."]` addressable identifier MUST be a stable opaque value (e.g., a hash of the persona-pubkey + room-id) that does not leak the room's identity to non-members observing relays.
 
 ### Rotation
 
-7. Heterodyne clients MUST trigger a Matrix Megolm rotation (and therefore a `room_key` rotation) when any member is removed, kicked, or leaves voluntarily from a `private_*` or `dm_*` room.
-8. Heterodyne clients MAY accept the existing Megolm session (and therefore the existing `room_key`) when new members join — historical indexes encrypted under prior keys remain readable by those who possess the prior Megolm sessions.
+7. Heterodyne clients MUST generate a new room secret (a fresh `key_id`, published as an updated `m.heterodyne.room_secret.v1` state event) — and MUST also trigger a Matrix Megolm rotation so the new secret is not encrypted to the departed member — when any member is removed, kicked, or leaves voluntarily from a `private_*` or `dm_*` room.
+8. Heterodyne clients MAY keep the existing room secret (and therefore the existing `room_key`) when new members join — historical indexes encrypted under prior keys remain readable by those who possess the prior room secrets.
 9. Heterodyne clients MUST republish the latest `kind:31007` index encrypted under the new `room_key` within a normative window (SHOULD: 60 seconds) of a forced rotation, so that newly excluded members cannot read subsequent updates.
 
 ### Backward compatibility
@@ -105,19 +122,19 @@ Room-key lifecycle: derivation, encryption, rotation, member removal.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> MegolmActive: Matrix room has active Megolm session
-    MegolmActive --> RoomKeyDerived: HKDF(megolm_session_key, room_id, 'heterodyne-index-key-v1')
+    [*] --> SecretActive: room has active m.heterodyne.room_secret.v1
+    SecretActive --> RoomKeyDerived: HKDF(room_secret, room_id, 'heterodyne-index-key-v1')
     RoomKeyDerived --> EncryptIndex: NIP-44 v2 encrypt kind:31007 content
-    EncryptIndex --> PublishToRelay: tag with [megolm_session_id]
+    EncryptIndex --> PublishToRelay: tag with [key_id]
     PublishToRelay --> ReadyForFetch
     ReadyForFetch --> MemberRead: member fetches event
-    MemberRead --> SelectSession: lookup megolm_session_id tag
-    SelectSession --> DeriveSameKey: HKDF with same params
+    MemberRead --> SelectSecret: lookup key_id tag
+    SelectSecret --> DeriveSameKey: HKDF with same params
     DeriveSameKey --> DecryptIndex: NIP-44 v2 decrypt
     DecryptIndex --> [*]
     ReadyForFetch --> MemberLeaves: kick / leave / remove
-    MemberLeaves --> MegolmRotate: MUST rotate Megolm
-    MegolmRotate --> RoomKeyRederived: new megolm_session_key → new room_key
+    MemberLeaves --> SecretRotate: MUST publish new room secret + rotate Megolm
+    SecretRotate --> RoomKeyRederived: new room_secret (new key_id) → new room_key
     RoomKeyRederived --> RepublishWithin60s: republish latest index under new key
     RepublishWithin60s --> ReadyForFetch
     ReadyForFetch --> MemberJoins: invite accepted
@@ -130,8 +147,8 @@ stateDiagram-v2
 ## Consequences
 
 - §6.7.4 fully rewritten: NIP-59 gift-wrap text removed; room-key wrap mechanism specified.
-- New normative requirement: clients track Megolm session IDs and rotate index keys on member removal.
-- New tag: `["megolm_session_id", "<id>"]` on private `kind:31007` events.
+- New normative requirement: clients track room-secret generations and rotate index keys on member removal (per ADR-023).
+- New tag: `["key_id", "<id>"]` on private `kind:31007` events (was `["megolm_session_id", "<id>"]` pre-ADR-023).
 - New test vectors: key derivation, encryption/decryption, rotation on member removal.
 - New `["d", "..."]` requirement: opaque identifier that doesn't leak room identity (room identity is private metadata).
 - Loss of cross-Nostr-relay aggregation for private personas — but this was always inherently limited because private rooms are member-bound.

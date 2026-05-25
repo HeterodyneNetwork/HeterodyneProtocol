@@ -787,6 +787,7 @@ a rotation.
   "tags": [
     ["d", ""],
     ["heterodyne", "keri_inception"],
+    ["p", "<persona cold-root pubkey hex>"],
     ["s", "0"],
     ["epoch_key", "<32-byte hex of the initial epoch key>"],
     ["witness", "<witness-id-1>", "<weight-1>"],
@@ -801,6 +802,13 @@ a rotation.
 Normative rules:
 
 - `pubkey` MUST be the persona's cold-root public key.
+- A `["p", "<cold-root pubkey hex>"]` tag MUST be present and MUST
+  equal the persona's cold-root public key. This is the relay-indexed
+  discovery anchor for the whole KEL: every inception and rotation
+  event carries it (§3.5.2), so a verifier can fetch the complete key
+  history with a single `#p` filter regardless of which key authored
+  each event (§3.5.3 step 1). For an inception event the tag duplicates
+  `pubkey`; it is mandatory anyway so the discovery query is uniform.
 - `s` (sequence number) MUST be `"0"` for an inception event.
 - `epoch_key` MUST be the initial epoch public key.
 - `witness` tags MAY appear zero or more times. Each entry is
@@ -824,6 +832,7 @@ Normative rules:
   "tags": [
     ["d", "<s value, e.g. \"1\">"],
     ["heterodyne", "keri_rotation"],
+    ["p", "<persona cold-root pubkey hex>"],
     ["s", "1"],
     ["prior_digest", "<32-byte hex SHA-256 of the prior event's canonical NIP-01 serialization>"],
     ["strategy", "committed | none"],
@@ -831,13 +840,21 @@ Normative rules:
     ["witness", "<witness-id>", "<weight>"],
     ["threshold", "<integer>"]
   ],
-  "content": "<concatenated witness attestation signatures, base64-encoded>",
+  "content": "<JSON array of witness receipts — see below>",
   "sig": "<64-byte hex BIP-340 sig by the controller (cold root or prior epoch key per strategy)>"
 }
 ```
 
 Normative rules:
 
+- A `["p", "<cold-root pubkey hex>"]` tag MUST be present and MUST
+  equal the persona's cold-root public key — NOT the event author.
+  For a `committed` rotation `pubkey` is already the cold root, so the
+  tag duplicates it; for a `none` rotation `pubkey` is the **prior
+  epoch key** (the cold root is lost), so the `p` tag is the only
+  field binding the event to the persona's cold root and the only way
+  a relay-side verifier can discover it. A rotation lacking a matching
+  `p` tag MUST be ignored.
 - `s` MUST be strictly greater than the prior accepted event's
   `s` value.
 - `prior_digest` MUST be the SHA-256 of the prior accepted
@@ -848,30 +865,78 @@ Normative rules:
   with cryptographic chain via `prior_digest`) or `"none"`
   (recovery from cold-root loss; signed by the prior epoch
   key and relying on witness attestations for continuity).
-- Witness attestation signatures over the canonical event
-  (excluding the controller signature) MUST be concatenated
-  into `content` per the schema for the declared witness type
-  (BIP-340 hex for Nostr witnesses; DID-signing-scheme bytes
-  for ATProto witnesses).
+
+**Witness receipts (`content`).** `content` MUST be a JSON array of
+witness-receipt objects, serialized as compact UTF-8 (no insignificant
+whitespace). Each object has exactly three fields:
+
+```json
+[
+  {"witness_id": "<witness identifier>", "scheme": "bip340", "sig": "<lowercase hex of raw signature bytes>"},
+  {"witness_id": "<witness identifier>", "scheme": "did:key", "sig": "<lowercase hex of raw signature bytes>"}
+]
+```
+
+- `witness_id` MUST be one of the witness identifiers declared in the
+  witness configuration in force at the prior accepted event (a Nostr
+  pubkey hex, an ATProto DID, or a `did:key` URI per §3.5.0.1).
+- `scheme` MUST be one of `"bip340"` (Nostr-pubkey witnesses),
+  `"did:key"` (bare-key witnesses, §3.5.0.1), or `"atproto"`
+  (`did:web` / `did:plc` witnesses, §11.6.7). It selects the
+  verification algorithm and the public key for `witness_id`.
+- `sig` MUST be the lowercase-hex encoding of the witness's raw
+  signature bytes, regardless of scheme (e.g. 64 bytes for BIP-340 and
+  Ed25519).
+- Receipts MUST be ordered by ascending `witness_id` (byte-wise
+  lexicographic on the UTF-8 string). At most one receipt per
+  `witness_id` is counted; a verifier MUST ignore duplicate
+  `witness_id` entries beyond the first.
+- **Signed value.** Every witness signs the same 32-byte
+  `witness_digest`, defined as the SHA-256 of the canonical NIP-01
+  serialization of *this* rotation event computed **with `content` set
+  to the empty string `""`** (and the `sig` field is, as always,
+  excluded from NIP-01 serialization). Setting `content` empty breaks
+  the circularity — the receipts live in `content`, but the value they
+  sign does not include themselves. The event `id` and the next event's
+  `prior_digest` are still computed over the full `content` (the
+  receipt array), so the KEL chain commits to the receipts even though
+  no individual witness signs over the others' signatures.
 
 #### 3.5.3 Verifier algorithm — canonical KERI first-seen ordering
 
 Verifiers replay the persona's KEL to determine the current
 epoch key. The algorithm follows canonical KERI semantics:
 
-1. Fetch all `kind:31002` and `kind:31003` events for the
-   persona's cold-root pubkey from the persona's Nostr write
-   relays and from the Matrix identity room.
-2. Verify the inception event (`s = 0`): cold-root signature
-   MUST be valid; record the initial witness configuration.
-3. For each candidate rotation event in `s`-ascending order:
+1. Discover the candidate event set. The canonical query is by the
+   relay-indexed cold-root tag, NOT by author:
+   `{"kinds":[31002,31003], "#p":["<cold-root pubkey hex>"]}`. This is
+   the only query that returns `none`-strategy rotations, which are
+   authored by the prior epoch key rather than the cold root (§3.5.2).
+   Verifiers MUST issue this tag query against the persona's Nostr write
+   relays and SHOULD additionally fold in the Matrix identity-room
+   mirror. As a defensive secondary path, a verifier SHOULD also
+   chain-discover: after accepting each event (step 3) it learns that
+   event's `epoch_key`, and SHOULD issue follow-up `authors` queries for
+   the accepted epoch keys to recover any `none` rotation a relay
+   omitted from the `#p` result. All discovered events are merged and
+   deduplicated by `id`; the open `#p` query MAY return unrelated or
+   forged events, which the verification in steps 2–4 discards.
+2. Verify the inception event (`s = 0`): its `p` tag MUST equal the
+   cold-root pubkey and the cold-root signature MUST be valid; record
+   the initial witness configuration.
+3. For each candidate rotation event in `s`-ascending order
+   (discarding any whose `p` tag does not equal the cold-root pubkey):
    a. Verify the controller signature per `strategy`
       (`committed`: cold-root sig; `none`: prior epoch key sig).
    b. Verify `prior_digest` equals SHA-256 of the prior
       accepted event's canonical serialization.
-   c. Verify each witness attestation in `content` against
-      the witness configuration in force at the prior accepted
-      event.
+   c. Parse `content` as the witness-receipt array (§3.5.2) and verify
+      each receipt's `sig` over the `witness_digest` (SHA-256 of the
+      event's canonical serialization with `content` empty) using the
+      key and algorithm named by its `witness_id` and `scheme`, against
+      the witness configuration in force at the prior accepted event.
+      Receipts whose `witness_id` is not in that configuration, or that
+      fail signature verification, contribute zero weight.
    d. Compute the cumulative weight of valid witness
       attestations. The rotation is ACCEPTED only when this
       cumulative weight meets or exceeds the `threshold`
@@ -3118,12 +3183,41 @@ clients MUST NOT publish private `kind:31007` indexes using
 NIP-59 gift-wrap (`kind:1059`) and SHOULD ignore any such events
 they observe (defensive against legacy or buggy publishers).
 
-**Room key derivation.** The room key is derived from the active
-Matrix Megolm outbound session key for the room:
+**Heterodyne room secret.** The wrap key is NOT derived from Megolm
+key material. Megolm exposes no stable, portable 32-byte room secret:
+its ratchet advances on every message and exported session bytes depend
+on the ratchet index, so two members deriving from "the Megolm session"
+can arrive at different keys. Instead, each `private_broadcast` /
+`private_discussion` room has an explicit **Heterodyne room secret**: a
+uniformly random 32-byte value generated by the publisher (the room
+admin), distributed to members over the room's existing client-side
+Matrix encryption, and used as the HKDF input keying material below.
+
+The room secret is carried in an `m.heterodyne.room_secret.v1`
+**Megolm-encrypted state event** in the room (encrypted client-side per
+the §6 encryption model; a vanilla homeserver stores the ciphertext as
+opaque state). Its decrypted content is:
+
+```json
+{
+  "key_id": "<opaque random id of this room-secret generation, >=128 bits>",
+  "secret": "<32-byte hex room secret>",
+  "created_at": 0
+}
+```
+
+The current state event holds the active generation; rotation publishes
+a new one with a fresh `key_id` and `secret` (see Rotation policy
+below). A member who can decrypt the room (i.e. holds the Megolm
+session for the state event) learns the secret; a relay or non-member
+never sees it.
+
+**Room key derivation.** The index key is derived from the active room
+secret:
 
 ```
 room_key = HKDF-SHA256(
-  ikm  = megolm_outbound_session_key (32 bytes),
+  ikm  = room_secret (32 bytes, from m.heterodyne.room_secret.v1),
   salt = matrix_room_id (UTF-8 bytes of the room id including leading `!`),
   info = "heterodyne-index-key-v1",
   L    = 32 bytes
@@ -3133,9 +3227,9 @@ room_key = HKDF-SHA256(
 `HKDF-SHA256` is RFC 5869. The `info` label `"heterodyne-index-key-v1"`
 domain-separates this index key from the `"heterodyne-post-key-v1"`
 key used for `private_broadcast` post content (§6.10); the two are
-derived from the same Megolm session but never share key material.
-Heterodyne clients MUST track Megolm session rotations and re-derive
-`room_key` whenever the outbound session rotates.
+derived from the same room secret but never share key material.
+Heterodyne clients MUST re-derive `room_key` whenever the room secret
+rotates (a new `key_id`).
 
 **Encryption.** The `content` field of a `kind:31007` event for
 a private room MUST be the NIP-44 v2 *symmetric* encryption of the
@@ -3161,8 +3255,8 @@ For private indexes the schema modifies §6.7.1 as follows:
     ["d", "<opaque-page-identifier>"],
     ["heterodyne", "feed_index"],
     ["cold_root", "<persona cold-root pubkey hex>"],
-    ["heterodyne_wrap", "room_key.v1"],
-    ["megolm_session_id", "<active outbound session id>"]
+    ["heterodyne_wrap", "room_key.v2"],
+    ["key_id", "<opaque room-secret generation id>"]
   ],
   "content": "<NIP-44 v2 encryption of the private index payload under room_key>",
   "sig": "<64-byte hex BIP-340 sig by current epoch key>"
@@ -3192,15 +3286,17 @@ The decrypted private index payload is:
 
 Normative rules for private `kind:31007` events:
 
-- `tags` MUST include `["heterodyne_wrap", "room_key.v1"]` so
+- `tags` MUST include `["heterodyne_wrap", "room_key.v2"]` so
   receivers know to attempt room-key decryption rather than
   treat `content` as plaintext.
 - `tags` MUST include `["cold_root", "<persona cold-root pubkey hex>"]`
   so receivers can bind the epoch-key-signed index to the persona.
-- `tags` MUST include `["megolm_session_id", "<id>"]` indicating
-  which Megolm outbound session derived `room_key`. Receivers
-  MUST use this tag to select the correct Megolm session before
-  re-deriving `room_key`.
+- `tags` MUST include `["key_id", "<id>"]` naming which
+  `m.heterodyne.room_secret.v1` generation derived `room_key`.
+  Receivers MUST use this tag to select the matching room secret
+  before re-deriving `room_key`. `key_id` is opaque and carries no
+  room identifier, so a relay observer learns neither the room id nor
+  Megolm session churn from it.
 - The `["d", "<page-identifier>"]` tag MUST be an opaque value that
   does not include the literal room id. Producers SHOULD generate it
   from at least 128 bits of randomness, or from a keyed/salted digest
@@ -3211,16 +3307,22 @@ Normative rules for private `kind:31007` events:
   `e`, `previous_index`, `prev_page_hash`, or any other tag that
   reveals the room id, indexed event ids, page-chain topology, or
   retrieval hints. Those fields live in the encrypted payload.
-- Receivers MUST decrypt by: selecting the Megolm session named
-  by `megolm_session_id`; re-deriving `room_key` per the HKDF
-  formula above; applying NIP-44 v2 symmetric decryption to
-  `content`; then parsing the private index payload and confirming
-  its `room_id` equals the Matrix room whose feed is being rendered.
-  As with `private_broadcast` posts (§6.10), the
-  access-control primitive is possession of the named Megolm
-  session, NOT current Matrix room membership — current membership
-  is a UX/soft gate only. A party without the session cannot
-  decrypt.
+- Receivers MUST decrypt by: selecting the room secret whose
+  `key_id` matches the event's `key_id` tag (from the
+  `m.heterodyne.room_secret.v1` generation set, §6.7.4);
+  re-deriving `room_key` per the HKDF formula above; applying NIP-44 v2
+  symmetric decryption to `content`; then parsing the private index
+  payload and confirming its `room_id` equals the Matrix room whose
+  feed is being rendered. As with `private_broadcast` posts (§6.10),
+  the access-control primitive is possession of the room secret for
+  that `key_id`, NOT current Matrix room membership — current
+  membership is a UX/soft gate only. Because the room secret is itself
+  only readable by parties holding the Megolm session that encrypts
+  `m.heterodyne.room_secret.v1`, this preserves the property that an
+  ex-member who retains a prior Megolm session keeps access to content
+  re-derivable from secrets they already hold, but cannot read content
+  wrapped under a post-removal `key_id`. A party without the room
+  secret cannot decrypt.
 
 **Private index address discovery.** Because private indexes use opaque
 `d` values, receivers cannot discover them with a relay filter such as
@@ -3230,29 +3332,34 @@ inside encrypted Matrix state visible to those members — for example in
 the room's encrypted `m.heterodyne.outbox.scoped.v1` entry (§7.2) or an
 equivalent encrypted relay-pointer state event. The advertised descriptor
 MUST include the publisher pubkey, kind `31007`, the opaque `d` value of
-the latest page, and the relay set to query. Page traversal after the
-first fetch uses the decrypted `previous_index` payload.
+the latest page, the current `key_id`, and the relay set to query. Page
+traversal after the first fetch uses the decrypted `previous_index`
+payload.
 
-**Rotation policy.** Heterodyne clients MUST trigger a Matrix
-Megolm rotation (and therefore a `room_key` rotation) when any
-member is removed, kicked, or leaves voluntarily from a
-`private_broadcast` or `private_discussion` room. Clients SHOULD
-republish the latest `kind:31007` index encrypted under the new
-`room_key` within 60 seconds of a forced rotation, so newly
-excluded members cannot read subsequent updates. For
-`private_broadcast` rooms the same rotation re-keys post content
-(§6.10): posts published under the prior key remain readable only
-by those who retain the prior Megolm session. Clients MAY accept the existing
-Megolm session (and therefore the existing `room_key`) when
-new members join — historical indexes encrypted under prior
-keys remain readable by those who possess the prior Megolm
-sessions, which is expected behavior.
+**Rotation policy.** When any member is removed, kicked, or leaves
+voluntarily from a `private_broadcast` or `private_discussion` room,
+Heterodyne clients MUST generate a **new room secret** (a fresh
+`key_id`) and publish it as an updated `m.heterodyne.room_secret.v1`
+state event; this is the load-bearing re-key for relay-published wrapped
+content. Clients MUST also trigger a Matrix Megolm rotation so the new
+room secret (and subsequent in-room bare reactions/replies) are not
+encrypted to the departed member. Clients SHOULD republish the latest
+`kind:31007` index encrypted under the `room_key` derived from the new
+secret within 60 seconds, so newly excluded members cannot read
+subsequent updates. For `private_broadcast` rooms the same rotation
+re-keys post content (§6.10): posts published under the prior `key_id`
+remain readable only by those who retain the prior room secret. Clients
+MAY keep the existing room secret (and therefore the existing
+`room_key`) when new members join — historical indexes encrypted under
+prior keys remain readable by those who possess the prior room secrets,
+which is expected behavior.
 
 **Backward compatibility.** Receivers MUST NOT honor any
 `kind:31007` event for a private room published with
 `heterodyne_wrap` absent or set to a value other than
-`"room_key.v1"`. The withdrawn NIP-59 gift-wrap path is no
-longer recognized.
+`"room_key.v2"`. The `"room_key.v1"` construction (Megolm-derived
+key material, `megolm_session_id` selector) is retired and MUST NOT be
+honored, and the withdrawn NIP-59 gift-wrap path remains unrecognized.
 
 **When NOT to publish a private index.** For `private_broadcast`
 rooms an index is expected — it is the persona's curated feed
@@ -3280,12 +3387,12 @@ the persona's curated feed by:
      from the room/scoped state (§6.7.4, §7.2), then fetch the exact
      opaque `d` value from the descriptor's relay set.
 2. For private-room indexes, applying the Heterodyne room-key
-   wrap decryption per §6.7.4: select the Megolm session named
-   by `megolm_session_id`, re-derive `room_key`, NIP-44 v2
+   wrap decryption per §6.7.4: select the room secret named
+   by the `key_id` tag, re-derive `room_key`, NIP-44 v2
    symmetric decrypt `content`, and verify the decrypted payload's
    `room_id` equals the expected Matrix room. (Access is gated by
-   possession of the named Megolm session, not current room
-   membership; a party without the session cannot decrypt.)
+   possession of the room secret for that `key_id`, not current room
+   membership; a party without the room secret cannot decrypt.)
 3. Verifying each public or decrypted private `kind:31007`'s BIP-340 signature
    against the persona's currently authorized epoch key (§3.5).
 4. Walking public `previous_index` tags or private decrypted
@@ -3519,7 +3626,7 @@ closed follower set without per-recipient NIP-59 gift-wrap. The
 mechanism is the §6.7.4 Heterodyne room-key wrap, generalized from
 feed indexes to **post content**: the persona encrypts each post
 once under the room key that every authorized follower can derive
-from the room's Megolm session, publishes the single ciphertext
+from the room's Heterodyne room secret, publishes the single ciphertext
 event to the relays advertised in the room, and indexes it in the
 room-key-wrapped `kind:31007` feed (§6.7.4). This is the
 encrypted analogue of `public_broadcast`, where the same post would
@@ -3527,31 +3634,32 @@ be published in plaintext (§5.2).
 
 **Why not gift-wrap.** Per-recipient `kind:1059` gift-wrap produces
 one event per follower per post and scales poorly past a few dozen
-followers. The room key is a per-room shared secret the Megolm
-session already establishes; riding post content on it is
-encrypt-once, decrypt-by-anyone-in-the-room. Clients MUST NOT
+followers. The room secret (§6.7.4) is a per-room shared key
+distributed once over the room's Matrix encryption; riding post content
+on it is encrypt-once, decrypt-by-anyone-in-the-room. Clients MUST NOT
 publish `private_broadcast` posts via NIP-59 gift-wrap.
 
 **Post key (domain-separated from the index key).** Posts and feed
-indexes are both protected by keys derived from the room's Megolm
-outbound session, but with **distinct HKDF `info` labels** so the
+indexes are both protected by keys derived from the room's Heterodyne
+room secret (§6.7.4), but with **distinct HKDF `info` labels** so the
 two never share key material:
 
 ```
-post_key  = HKDF-SHA256(ikm = megolm_outbound_session_key,
+post_key  = HKDF-SHA256(ikm = room_secret,
                         salt = matrix_room_id,
                         info = "heterodyne-post-key-v1",  L = 32)
-index_key = HKDF-SHA256(ikm = megolm_outbound_session_key,
+index_key = HKDF-SHA256(ikm = room_secret,
                         salt = matrix_room_id,
                         info = "heterodyne-index-key-v1", L = 32)
 ```
 
 `index_key` is the `room_key` of §6.7.4 (unchanged). `post_key` is
-new in this section. `salt` is the UTF-8 bytes of the room id
-including the leading `!`. A follower derives both from the one
-Megolm session they hold, so reading the whole feed still costs one
-session, but a compromise scoped to one label does not extend to the
-other.
+new in this section. `room_secret` is the 32-byte value from the active
+`m.heterodyne.room_secret.v1` generation (§6.7.4); `salt` is the UTF-8
+bytes of the room id including the leading `!`. A follower derives both
+from the one room secret they hold, so reading the whole feed still
+costs one secret, but a compromise scoped to one label does not extend
+to the other.
 
 **NIP-44 profile (symmetric).** Heterodyne uses **only the
 symmetric encryption layer of NIP-44 v2** — the
@@ -3559,10 +3667,10 @@ ChaCha20 + HMAC-SHA256 construction NIP-44 v2 defines over a 32-byte
 conversation key — supplying `post_key` (or `index_key`) directly as
 that 32-byte conversation key. Heterodyne does NOT perform NIP-44's
 ECDH key-agreement step (there is no per-recipient ephemeral key);
-the conversation key comes from the Megolm-derived HKDF above. This
+the conversation key comes from the room-secret-derived HKDF above. This
 is a Heterodyne profile, not interoperable with a vanilla NIP-44
 sender/recipient exchange, and clients MUST treat
-`heterodyne_wrap` = `"room_key.v1"` as the signal to apply it.
+`heterodyne_wrap` = `"room_key.v2"` as the signal to apply it.
 
 **Post wire form.** A `private_broadcast` post is a Nostr event of
 the normal content kind (e.g., `kind:1`, `kind:30023`) signed by the
@@ -3577,9 +3685,8 @@ object carrying the real content and any sensitive tags:
   "created_at": 0,
   "kind": 1,
   "tags": [
-    ["heterodyne_wrap", "room_key.v1"],
-    ["megolm_session_id", "<active outbound session id>"],
-    ["matrix_room", "<room_id>"]
+    ["heterodyne_wrap", "room_key.v2"],
+    ["key_id", "<opaque room-secret generation id>"]
   ],
   "content": "<NIP-44 v2 (symmetric, post_key) encryption of the inner payload below>",
   "sig": "<64-byte hex BIP-340 sig by current epoch key>"
@@ -3597,43 +3704,49 @@ The inner payload (plaintext before encryption) is a JSON object:
 
 Normative rules for `private_broadcast` posts:
 
-- The event MUST carry `["heterodyne_wrap", "room_key.v1"]`,
-  `["megolm_session_id", "<id>"]`, and `["matrix_room", "<room_id>"]`,
-  with the same meanings as in §6.7.4. Receivers MUST use
-  `megolm_session_id` to select the Megolm session and MUST
-  re-derive `post_key` per the HKDF formula above.
+- The event MUST carry `["heterodyne_wrap", "room_key.v2"]` and
+  `["key_id", "<id>"]`, with the same meanings as in §6.7.4. Receivers
+  MUST use `key_id` to select the room secret and MUST re-derive
+  `post_key` per the HKDF formula above. The event MUST NOT carry a
+  cleartext `matrix_room`, `room`, or `megolm_session_id` tag: the room
+  association lives only inside the encrypted Matrix descriptor that
+  advertises this feed (§6.7.4), so a relay observer cannot link the
+  post to its room. `key_id` is opaque and reveals neither the room id
+  nor session churn.
 - All semantically meaningful tags (NIP-10 `e`/`p` reply tags,
   topic `t` tags, and any other kind-defining tags) MUST be carried
   in the inner payload's `tags` array, NOT in the cleartext event
   `tags`. After decryption, a receiver reconstructs the logical
   Nostr event by taking the decrypted `content` and `tags` together
   with the event's `kind`/`pubkey`/`created_at`/`id`/`sig`; the
-  reconstructed `tags` are the inner-payload tags. Only the three
+  reconstructed `tags` are the inner-payload tags. Only the two
   wrap tags above (plus a `d` tag for replaceable kinds) appear in
   the cleartext `tags`, so non-member relay observers learn nothing
-  beyond the room association and posting cadence.
+  beyond the fact that some Heterodyne room-wrapped post was published
+  and its timing — not which room it belongs to.
 - Wrapping is applied to `content` **before** signing, so the signed
   event `id` is stable across delivery and idempotent per §6.3 /
   §6.1. Re-wrapping the same post under a rotated `post_key` (after a
-  §6.7.4 forced rotation) is a NEW intent with a new `id`.
+  §6.7.4 room-secret rotation) is a NEW intent with a new `id`.
 - The persona MUST add each post's event `id` to the room-key-
   wrapped `kind:31007` index for the room (§6.7.4) if the post is an
   indexed kind (§6.8).
 - **Access control is cryptographic, not membership-gated.** The
-  ability to read a post is exactly possession of the Megolm session
-  named by `megolm_session_id` (from which `post_key` is derived) —
-  this is what makes ex-members lose access to *future* posts after
-  a §6.7.4 rotation while legitimately retaining *past* posts they
-  already hold the session for. Current Matrix room membership is a
-  UX/soft gate only; a receiver MUST NOT treat current membership as
-  the access-control primitive (it neither proves publication-time
-  authorization nor is required for a legitimate historical reader).
-- Receivers decrypt by: selecting the Megolm session named by
-  `megolm_session_id`; re-deriving `post_key`; applying NIP-44 v2
+  ability to read a post is exactly possession of the room secret
+  named by `key_id` (from which `post_key` is derived) — this is what
+  makes ex-members lose access to *future* posts after a §6.7.4
+  room-secret rotation while legitimately retaining *past* posts whose
+  `key_id` names a secret they already hold. Current Matrix room
+  membership is a UX/soft gate only; a receiver MUST NOT treat current
+  membership as the access-control primitive (it neither proves
+  publication-time authorization nor is required for a legitimate
+  historical reader).
+- Receivers decrypt by: selecting the room secret named by
+  `key_id`; re-deriving `post_key`; applying NIP-44 v2
   symmetric decryption to `content`; reconstructing the logical
   event from the inner payload; then verifying the BIP-340 signature
   and the §4.5 delegation/epoch checks against the persona's
-  authorized key. A party without the session cannot decrypt.
+  authorized key. A party without the room secret cannot decrypt.
 
 **Reactions and replies stay in Matrix.** Followers react and reply
 to `private_broadcast` posts with bare Matrix events inside the
@@ -5169,11 +5282,29 @@ contracts that the wire protocol cannot.
 
 ### 11.2 Vanilla Nostr clients consuming Heterodyne content
 
-A wrapped Heterodyne event is, by construction (§4.2), a verbatim
-Nostr event. When a Heterodyne client fans out to vanilla Nostr relays
-per §10.5, vanilla Nostr clients see exactly what they expect:
-NIP-01-compliant signed events. No special Heterodyne support is
-needed to read.
+Heterodyne's compatibility with vanilla Nostr is **relay-level, not
+social-graph-level**, and this section is careful not to overstate it.
+
+A wrapped Heterodyne event is, by construction (§4.2), a verbatim Nostr
+event: when a Heterodyne client fans out to vanilla Nostr relays per
+§10.5, those relays store and serve it like any other event, and a
+vanilla Nostr client that *has* the event can parse it and verify its
+BIP-340 signature as NIP-01-compliant. That is the full extent of the
+guarantee — **relay-level NIP-01 compatibility**: the bytes are valid
+Nostr.
+
+It is **not** social-graph compatibility. Heterodyne content is signed
+by rotating epoch keys, not by the persona's npub (§3.5.0), so a vanilla
+client that knows only the npub does not discover, attribute, follow, or
+thread that content without replaying the persona's KEL to learn the
+current epoch key. Author queries, follow lists, replies, reputation,
+and allowlists keyed to the npub will not resolve to epoch-key-signed
+posts on their own. Bridging that gap is OPTIONAL and out of scope for
+vanilla clients (see the boxed note in §11.3); Heterodyne-aware clients
+cross it via the §3.6 authority ladder. Encrypted `private_broadcast`
+content is additionally unreadable to any client without the room secret
+(§6.10). Implementers MUST NOT read "no special support needed to read"
+into the relay-level guarantee.
 
 To encourage adoption, a Heterodyne client SHOULD publish a NIP-89
 `kind:31990` application-handler-information event to the persona's
