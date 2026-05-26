@@ -1,0 +1,24 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "keri/rotation-none-witness-threshold",
+  "spec_refs": [
+    "§3.5",
+    "§14.3"
+  ],
+  "description": "None-strategy rotation is accepted only with the configured witness threshold.",
+  "input": {
+    "event_type": "rotation",
+    "sequence": 1,
+    "strategy": "none",
+    "witness_receipts": 3,
+    "threshold": 3
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "witness_threshold_satisfied": true
+    }
+  },
+  "direction": "consume"
+}

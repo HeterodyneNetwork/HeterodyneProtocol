@@ -1,0 +1,25 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "multi-homing/single-mxid-revocation",
+  "spec_refs": [
+    "§3.9",
+    "§14.3"
+  ],
+  "description": "Revoking one MXID removes only that MXID from the multi-homed persona set.",
+  "input": {
+    "revoked_mxid": "@alice-old:example.org",
+    "remaining_mxids": [
+      "@alice-new:example.org"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "active_mxids": [
+        "@alice-new:example.org"
+      ]
+    }
+  },
+  "direction": "consume"
+}

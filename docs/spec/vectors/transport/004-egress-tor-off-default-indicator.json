@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "transport/egress-tor-off-default-indicator",
+  "spec_refs": [
+    "§7.7",
+    "§14.3"
+  ],
+  "description": "Base mode defaults egress-over-Tor off and shows active-state indicator when enabled.",
+  "input": {
+    "mode": "base",
+    "default_egress_over_tor": false,
+    "enabled_now": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "active_state_indicator": true
+    }
+  },
+  "direction": "consume"
+}

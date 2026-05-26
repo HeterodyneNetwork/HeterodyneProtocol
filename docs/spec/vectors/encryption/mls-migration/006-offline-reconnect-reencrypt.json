@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "encryption/mls-migration-offline-reconnect-reencrypt",
+  "spec_refs": [
+    "§9.2",
+    "§14.3"
+  ],
+  "description": "Offline receiver reconnect causes re-encryption while preserving Nostr event id.",
+  "input": {
+    "original_event_id": "dededededededededededededededededededededededededededededededede",
+    "reencrypted_event_id": "dededededededededededededededededededededededededededededededede"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "nostr_event_id_reused": true
+    }
+  },
+  "direction": "consume"
+}

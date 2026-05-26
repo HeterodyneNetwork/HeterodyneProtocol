@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "moderation/strict-mode-invalid-broadcast-signature",
+  "spec_refs": [
+    "§11.7",
+    "§14.3",
+    "§14.5"
+  ],
+  "description": "Strict mode rejects the invalid broadcast signature that base mode only warns about.",
+  "input": {
+    "same_input_id": "broadcast-invalid-signature-fixture",
+    "mode": "strict"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "bad_signature"
+  },
+  "notes": "Base-mode companion outcome is warnings:[\"invalid_broadcast_signature\"] for the same input.",
+  "direction": "consume"
+}

@@ -1,0 +1,24 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "outbox/full-public-outbox",
+  "spec_refs": [
+    "§7",
+    "§14.3"
+  ],
+  "description": "Full public outbox lists all public relay endpoints.",
+  "input": {
+    "relays": [
+      "wss://relay-a",
+      "wss://relay-b"
+    ],
+    "scope": "all_public"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "relay_count": 2
+    }
+  },
+  "direction": "consume"
+}

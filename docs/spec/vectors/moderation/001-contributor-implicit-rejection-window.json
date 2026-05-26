@@ -1,0 +1,24 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "moderation/contributor-implicit-rejection-window",
+  "spec_refs": [
+    "§8",
+    "§14.3"
+  ],
+  "description": "A contributor submission remains pending until the implicit-rejection window elapses.",
+  "input": {
+    "submitted_at": 1767225600,
+    "simulated_clock": 1767227400,
+    "approval_events": [],
+    "implicit_rejection_seconds": 3600
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "moderation_state": "pending"
+    }
+  },
+  "simulated_clock": 1767227400,
+  "direction": "consume"
+}

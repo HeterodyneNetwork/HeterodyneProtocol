@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "moderation/strict-mode-bare-not-hidden",
+  "spec_refs": [
+    "§11.7",
+    "§14.3"
+  ],
+  "description": "Strict mode does not hide bare discussion messages solely because they are bare.",
+  "input": {
+    "mode": "strict",
+    "room_kind": "public_discussion",
+    "bare_message": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "hidden": false
+    }
+  },
+  "direction": "consume"
+}

@@ -1,0 +1,23 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "interop/vanilla-nostr-only-follow",
+  "spec_refs": [
+    "§11",
+    "§14.3"
+  ],
+  "description": "Vanilla-Nostr-only follow remains readable without Matrix room participation.",
+  "input": {
+    "follower_capabilities": [
+      "nip01"
+    ],
+    "matrix_joined": false
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "follow_readable_via_nostr": true
+    }
+  },
+  "direction": "consume"
+}

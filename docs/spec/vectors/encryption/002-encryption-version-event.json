@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "encryption/encryption-version-event",
+  "spec_refs": [
+    "§9",
+    "§14.3"
+  ],
+  "description": "encryption_version event declares the active encrypted-room protocol generation.",
+  "input": {
+    "state_type": "m.heterodyne.encryption_version.v1",
+    "version": "megolm-v1"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "encryption_version": "megolm-v1"
+    }
+  },
+  "direction": "consume"
+}

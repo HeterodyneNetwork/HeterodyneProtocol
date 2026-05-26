@@ -1,0 +1,26 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "moderation/nip72-approval",
+  "spec_refs": [
+    "§8",
+    "§14.3"
+  ],
+  "description": "NIP-72 approval event makes a candidate community post visible.",
+  "input": {
+    "candidate_id": "post-1",
+    "approvals": [
+      {
+        "moderator": "mod-a",
+        "valid": true
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "moderation_state": "approved"
+    }
+  },
+  "direction": "consume"
+}

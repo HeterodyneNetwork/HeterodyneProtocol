@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "transport/strict-mode-egress-tor-default-on",
+  "spec_refs": [
+    "§7.7",
+    "§11.7",
+    "§14.3"
+  ],
+  "description": "Strict mode rejects startup with Tor egress disabled unless the user explicitly disabled it.",
+  "input": {
+    "mode": "strict",
+    "egress_over_tor": false,
+    "user_explicitly_disabled": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "strict_mode_tor_disabled"
+  },
+  "direction": "consume"
+}

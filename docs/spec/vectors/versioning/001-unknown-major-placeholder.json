@@ -1,0 +1,23 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "versioning/unknown-major-placeholder",
+  "spec_refs": [
+    "§12",
+    "§14.3"
+  ],
+  "description": "Future incompatible major versions render as placeholders rather than being misinterpreted.",
+  "input": {
+    "receiver_supported_major": 0,
+    "sender_version": "1.0.0",
+    "event_kind": 31007
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "unknown_major_version",
+    "normalized": {
+      "placeholder_required": true
+    }
+  },
+  "direction": "consume"
+}

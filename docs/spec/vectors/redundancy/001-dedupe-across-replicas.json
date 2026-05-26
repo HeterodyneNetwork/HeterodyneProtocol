@@ -1,0 +1,32 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "redundancy/dedupe-across-replicas",
+  "spec_refs": [
+    "§3.11",
+    "§14.3"
+  ],
+  "description": "Replica rooms deduplicate the same relay-borne private broadcast by Nostr event id.",
+  "input": {
+    "replicas": [
+      {
+        "room_id": "!primary:example.org",
+        "nostr_event_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      {
+        "room_id": "!replica:example.org",
+        "nostr_event_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "unique_event_ids": [
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "duplicate_count": 1
+    }
+  },
+  "direction": "consume"
+}

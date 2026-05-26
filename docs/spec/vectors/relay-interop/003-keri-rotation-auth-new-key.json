@@ -1,0 +1,23 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "relay-interop/keri-rotation-auth-new-key",
+  "spec_refs": [
+    "§3.5",
+    "§10.5",
+    "§14.3"
+  ],
+  "description": "After KERI rotation, AUTH events are signed under the new epoch key.",
+  "input": {
+    "old_epoch_pubkey": "old",
+    "new_epoch_pubkey": "new",
+    "auth_pubkey": "new"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "auth_signed_by_current_epoch": true
+    }
+  },
+  "direction": "consume"
+}

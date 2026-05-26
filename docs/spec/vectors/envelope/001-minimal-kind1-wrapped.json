@@ -1,0 +1,59 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "envelope/minimal-kind1-wrapped",
+  "spec_refs": [
+    "§4",
+    "§14.1",
+    "§14.3"
+  ],
+  "description": "Minimal wrapped kind:1 carries nip01_raw matching the signed inner event.",
+  "input": {
+    "fixture_persona": "alice",
+    "inner_event_template": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767225610,
+      "kind": 1,
+      "tags": [
+        [
+          "client",
+          "heterodyne"
+        ]
+      ],
+      "content": "hello from a wrapped Heterodyne post"
+    },
+    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "expected_output": {
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225610,1,[[\"client\",\"heterodyne\"]],\"hello from a wrapped Heterodyne post\"]",
+    "decoded": {
+      "matrix_content": {
+        "msgtype": "m.text",
+        "body": "hello from a wrapped Heterodyne post",
+        "m.heterodyne.nostr": {
+          "id": "ddee6142b288cbc215d13ddab49b5eb50c3f89e90800f3c1712251e41599e182",
+          "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+          "sig": "7dba724cae8efcbb44b4fa1e00a7f1a81b30a9ad47e288b309caa8419c5e976b5aa43e9626ecc9bea2412e5fdf81360cf250fac1563e610bc756d50d62c91016",
+          "nip01_raw": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225610,1,[[\"client\",\"heterodyne\"]],\"hello from a wrapped Heterodyne post\"]"
+        }
+      },
+      "event": {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767225610,
+        "kind": 1,
+        "tags": [
+          [
+            "client",
+            "heterodyne"
+          ]
+        ],
+        "content": "hello from a wrapped Heterodyne post",
+        "id": "ddee6142b288cbc215d13ddab49b5eb50c3f89e90800f3c1712251e41599e182",
+        "sig": "7dba724cae8efcbb44b4fa1e00a7f1a81b30a9ad47e288b309caa8419c5e976b5aa43e9626ecc9bea2412e5fdf81360cf250fac1563e610bc756d50d62c91016"
+      }
+    },
+    "id": "ddee6142b288cbc215d13ddab49b5eb50c3f89e90800f3c1712251e41599e182",
+    "sig": "7dba724cae8efcbb44b4fa1e00a7f1a81b30a9ad47e288b309caa8419c5e976b5aa43e9626ecc9bea2412e5fdf81360cf250fac1563e610bc756d50d62c91016"
+  },
+  "direction": "produce"
+}

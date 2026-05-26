@@ -6474,3 +6474,43 @@ vector category and the reason.
 
 A future spec version may formalize the conformance-reporting
 mechanism; this 0.x draft leaves it to implementations.
+
+### 14.5 Vector reproduction and schema
+
+Vector files in [`vectors/`](vectors/) are the normative conformance artifact
+for the behavior they cover. The TypeScript generator under
+[`vectors/generator/`](vectors/generator/) is non-normative tooling used to
+author and verify those files; implementations do not need that generator or
+its libraries to claim conformance.
+
+Each vector file MUST carry an immutable `vector_id`, a
+`vector_schema_version`, `spec_version`, `spec_refs`, `description`,
+`direction`, `input`, and `expected_output`, as defined by
+[`vectors/schema/vector.schema.json`](vectors/schema/vector.schema.json). An
+incompatible behavior change MUST mint a new `vector_id` rather than silently
+rewriting the old assertion.
+
+Reproducible vectors pin all nondeterminism:
+
+- BIP-340 `produce` vectors use `aux_rand = 0x00 * 32`.
+- NIP-44 v2 vectors carry their nonce in `input`.
+- Time-sensitive vectors carry `simulated_clock`; verdicts MUST NOT depend on
+  wall-clock time.
+- `created_at` values are fixed constants derived from the shared fixture
+  epoch, not generated at author time.
+
+`produce` and `round-trip` vectors compare canonical bytes, never
+pretty-printed JSON. For Nostr events, the comparison surface is the NIP-01
+canonical serialization that produces `id` and `sig`; relay WebSocket frames
+and relay echo bytes are not part of the byte-identity assertion.
+
+`consume` rejects use the closed `reason_code` vocabulary documented in
+[`vectors/schema/reason-codes.md`](vectors/schema/reason-codes.md). These
+codes are diagnostic test vocabulary, not a wire API. Accepted vectors MAY
+include `expected_output.normalized`, which is limited to protocol-visible
+facts and MUST NOT encode implementation-private data structures.
+
+Encrypted vectors test the decrypted Matrix payload and the Heterodyne
+room-secret → HKDF → NIP-44 chain. They do not validate Matrix/Megolm wire
+behavior such as session rotation, device trust, withheld keys, redaction, or
+Matrix event authorization.

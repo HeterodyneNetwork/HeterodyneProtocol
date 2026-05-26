@@ -1,0 +1,26 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "identity/identity-room-full-state",
+  "spec_refs": [
+    "§3",
+    "§14.3"
+  ],
+  "description": "Identity room full state exposes root, delegation, KERI, and pointer facts.",
+  "input": {
+    "room_id": "!alice-identity:example.org",
+    "state_types": [
+      "root",
+      "delegation",
+      "kel",
+      "pointer"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "complete_identity_state": true
+    }
+  },
+  "direction": "consume"
+}

@@ -1,0 +1,20 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "social-recovery/retention-30-days",
+  "spec_refs": [
+    "§3.12",
+    "§14.3"
+  ],
+  "description": "Friend-cache retention keeps cache-sourced state for 30 days.",
+  "input": {
+    "retained_days": 30
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "retention_days": 30
+    }
+  },
+  "direction": "consume"
+}

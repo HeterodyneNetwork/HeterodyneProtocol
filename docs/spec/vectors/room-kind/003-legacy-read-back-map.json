@@ -1,0 +1,26 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "room-kind/legacy-read-back-map",
+  "spec_refs": [
+    "§5",
+    "§14.3"
+  ],
+  "description": "Legacy room kinds map to current kinds with a legacy indicator.",
+  "input": {
+    "legacy_kinds": [
+      "public_moderated",
+      "private_verifiable",
+      "dm_verifiable",
+      "dm_deniable"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "legacy_indicator": true,
+      "mapped_count": 4
+    }
+  },
+  "direction": "consume"
+}

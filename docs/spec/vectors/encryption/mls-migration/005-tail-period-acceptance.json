@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "encryption/mls-migration-tail-period-acceptance",
+  "spec_refs": [
+    "§9.2",
+    "§14.3"
+  ],
+  "description": "Pre-flip-keyed Megolm events are accepted during the 60-second tail period.",
+  "input": {
+    "seconds_after_flip": 45,
+    "keyed_pre_flip": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "accepted_in_tail_period": true
+    }
+  },
+  "direction": "consume"
+}

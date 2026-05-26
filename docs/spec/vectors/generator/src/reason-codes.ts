@@ -1,0 +1,92 @@
+export type ReasonCode = {
+  code: string;
+  spec_refs: string[];
+  description: string;
+};
+
+export const REASON_CODES: ReasonCode[] = [
+  {
+    code: "bad_signature",
+    spec_refs: ["§4.5", "§14.2"],
+    description: "Nostr event id or BIP-340 signature verification failed.",
+  },
+  {
+    code: "delegation_mismatch",
+    spec_refs: ["§3.3", "§4.5"],
+    description: "The Matrix sender is not covered by the active delegation.",
+  },
+  {
+    code: "revoked_key_post_revoked_at",
+    spec_refs: ["§3.5", "§4.5"],
+    description: "An event signed by a revoked epoch key was created after revoked_at.",
+  },
+  {
+    code: "expired_delegation",
+    spec_refs: ["§3.3", "§4.5"],
+    description: "The verifier clock is after the delegation valid_until bound.",
+  },
+  {
+    code: "retired_room_kind",
+    spec_refs: ["§5", "§14.3"],
+    description: "A new room asserts a retired pre-ADR-017 room kind.",
+  },
+  {
+    code: "informal_vouch_not_counted",
+    spec_refs: ["§3.5", "§3.12", "§14.3"],
+    description: "A KERI threshold is satisfied only if advisory vouches are counted.",
+  },
+  {
+    code: "nip59_broadcast_rejected",
+    spec_refs: ["§5.3", "§6.10", "§14.3"],
+    description: "A private broadcast post used the withdrawn NIP-59 wrapping path.",
+  },
+  {
+    code: "auth_rejected_permanent",
+    spec_refs: ["§6.4", "§10.5"],
+    description: "Relay rejected the write after NIP-42 AUTH, so the failure is permanent.",
+  },
+  {
+    code: "context_binding_mismatch",
+    spec_refs: ["§6.7", "§6.10", "§14.5"],
+    description: "Encrypted payload decrypted under a key derived for the wrong Matrix room context.",
+  },
+  {
+    code: "onion_dns_leak",
+    spec_refs: ["§7.7", "§14.3"],
+    description: "A .onion host was sent to a clearnet resolver instead of Tor.",
+  },
+  {
+    code: "strict_mode_tor_disabled",
+    spec_refs: ["§7.7", "§11.7"],
+    description: "Strict mode started with egress-over-Tor disabled without explicit user choice.",
+  },
+  {
+    code: "mls_missing_ack",
+    spec_refs: ["§9.2", "§14.3"],
+    description: "MLS migration proceeded without all required ACKs.",
+  },
+  {
+    code: "homeserver_exit_stale_pointer",
+    spec_refs: ["§3.10", "§14.3"],
+    description: "A stale identity-room pointer was preferred over the migration pointer.",
+  },
+  {
+    code: "unauthorized_cache_content",
+    spec_refs: ["§3.12", "§14.3"],
+    description: "Friend-cache content was not owner-signed non-KERI content.",
+  },
+  {
+    code: "relay_profile_mutation",
+    spec_refs: ["§10.6", "§14.3"],
+    description: "A Heterodyne-aware relay profile changed vanilla NIP-01 read/write behavior.",
+  },
+  {
+    code: "unknown_major_version",
+    spec_refs: ["§12", "§14.3"],
+    description: "A receiver encountered an incompatible future major version.",
+  },
+];
+
+export function reasonCodeValues(): string[] {
+  return REASON_CODES.map((reason) => reason.code);
+}

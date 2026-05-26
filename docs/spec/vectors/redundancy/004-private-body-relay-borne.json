@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "redundancy/private-body-relay-borne",
+  "spec_refs": [
+    "§3.11",
+    "§14.3"
+  ],
+  "description": "Private broadcast body remains relay-borne and is not duplicated per mirror room.",
+  "input": {
+    "body_storage": "relay",
+    "per_room_body_copies": 0
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "duplicated_per_room": false
+    }
+  },
+  "direction": "consume"
+}

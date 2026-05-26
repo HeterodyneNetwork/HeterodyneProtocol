@@ -1,0 +1,60 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "test_epoch": 1767225600,
+  "pinned_randomness": {
+    "schnorr_aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",
+    "nip44_nonce_policy": "Each vector carries a fixed 32-byte nonce in input."
+  },
+  "personas": {
+    "alice": {
+      "cold_root": {
+        "private_key": "0000000000000000000000000000000000000000000000000000000000000001",
+        "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+      },
+      "epoch_keys": {
+        "epoch_1": {
+          "private_key": "0000000000000000000000000000000000000000000000000000000000000002",
+          "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+          "valid_from": 1767225600
+        }
+      }
+    },
+    "bob": {
+      "cold_root": {
+        "private_key": "0000000000000000000000000000000000000000000000000000000000000003",
+        "pubkey": "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+      },
+      "epoch_keys": {
+        "epoch_1": {
+          "private_key": "0000000000000000000000000000000000000000000000000000000000000004",
+          "pubkey": "e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13",
+          "valid_from": 1767225600
+        }
+      }
+    }
+  },
+  "matrix_rooms": {
+    "identity_alice": "!alice-identity:example.org",
+    "private_broadcast_alice": "!alice-private-broadcast:example.org",
+    "config_alice": "!alice-config:example.org"
+  },
+  "room_secrets": {
+    "alice_private_broadcast_v1": {
+      "matrix_room_id": "!alice-private-broadcast:example.org",
+      "key_id": "room-secret-2026-05-25-a",
+      "secret": "1010101010101010101010101010101010101010101010101010101010101010"
+    }
+  },
+  "category_keysets": {
+    "identity": "alice",
+    "keri": "alice",
+    "envelope": "alice",
+    "verification": "alice",
+    "broadcast": "alice",
+    "index": "alice",
+    "relay_interop": "alice",
+    "config_room": "alice",
+    "default_peer": "bob"
+  }
+}

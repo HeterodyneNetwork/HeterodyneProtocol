@@ -1,0 +1,29 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "multi-homing/kind31005-race-tiebreaker",
+  "spec_refs": [
+    "§3.9",
+    "§14.3"
+  ],
+  "description": "kind:31005 pointer races break ties by KERI witness counts.",
+  "input": {
+    "candidates": [
+      {
+        "id": "a",
+        "witness_count": 1
+      },
+      {
+        "id": "b",
+        "witness_count": 2
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "accepted_pointer": "b"
+    }
+  },
+  "direction": "consume"
+}

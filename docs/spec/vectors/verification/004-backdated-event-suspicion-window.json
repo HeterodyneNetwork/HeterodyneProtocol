@@ -1,0 +1,26 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "verification/backdated-event-suspicion-window",
+  "spec_refs": [
+    "§4.5",
+    "§14.3"
+  ],
+  "description": "Backdated event inside the suspicion window is accepted with a warning.",
+  "input": {
+    "event_created_at": 1767225000,
+    "received_at": 1767225600,
+    "suspicion_window_seconds": 900
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "backdated": true
+    },
+    "warnings": [
+      "backdated_event_suspicion_window"
+    ]
+  },
+  "simulated_clock": 1767225600,
+  "direction": "consume"
+}

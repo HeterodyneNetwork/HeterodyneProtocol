@@ -1,0 +1,23 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "config_room/minimal-config-room",
+  "spec_refs": [
+    "§3.8",
+    "§14.3"
+  ],
+  "description": "Minimal config room contains the required persona config anchor.",
+  "input": {
+    "room_id": "!alice-config:example.org",
+    "state_types": [
+      "persona_config"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "minimal_config_room": true
+    }
+  },
+  "direction": "consume"
+}

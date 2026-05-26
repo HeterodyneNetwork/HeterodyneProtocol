@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "redundancy/promotion-republishes-pointer",
+  "spec_refs": [
+    "§3.11",
+    "§14.3"
+  ],
+  "description": "Replica promotion republishes cold-root kind:31005 and updates mirror_group.",
+  "input": {
+    "promoted_room": "!replica-a:example.org",
+    "kind31005_republished": true,
+    "mirror_group_updated": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "promoted": true
+    }
+  },
+  "direction": "consume"
+}

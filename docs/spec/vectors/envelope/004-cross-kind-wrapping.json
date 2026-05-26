@@ -1,0 +1,28 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "envelope/cross-kind-wrapping",
+  "spec_refs": [
+    "§4",
+    "§14.3"
+  ],
+  "description": "Wrapping rules apply consistently to kind 1, reaction kind 7, and long-form kind 30023.",
+  "input": {
+    "nostr_kinds": [
+      1,
+      7,
+      30023
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "wrapped_kinds": [
+        1,
+        7,
+        30023
+      ]
+    }
+  },
+  "direction": "consume"
+}

@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "social-recovery/cache-sourced-marked-stale",
+  "spec_refs": [
+    "§3.12",
+    "§14.3"
+  ],
+  "description": "Cache-sourced identity-room state is marked stale.",
+  "input": {
+    "source": "friend_cache",
+    "live_room_reachable": false
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "stale": true
+    }
+  },
+  "direction": "consume"
+}

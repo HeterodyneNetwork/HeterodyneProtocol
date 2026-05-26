@@ -1,0 +1,39 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "keri/informal-vouch-not-counted",
+  "spec_refs": [
+    "§3.5",
+    "§3.12",
+    "§14.3"
+  ],
+  "description": "A rotation that reaches threshold only by counting kind:31008 informal vouches is rejected.",
+  "input": {
+    "kel": [
+      {
+        "type": "inception",
+        "sequence": 0,
+        "witness_threshold": 2,
+        "witnesses": [
+          "did:key:z6Mkp1",
+          "did:key:z6Mkp2"
+        ]
+      },
+      {
+        "type": "rotation",
+        "sequence": 1,
+        "witness_receipts": [
+          "did:key:z6Mkp1"
+        ],
+        "informal_vouches": [
+          "kind:31008:z6Mkp2"
+        ]
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "informal_vouch_not_counted"
+  },
+  "direction": "consume"
+}

@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "interop/kind31005-identity-pointer",
+  "spec_refs": [
+    "§11",
+    "§14.3"
+  ],
+  "description": "kind:31005 identity pointer maps npub to identity room.",
+  "input": {
+    "kind": 31005,
+    "npub": "npub-alice",
+    "room_id": "!alice-identity:example.org"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "room_id": "!alice-identity:example.org"
+    }
+  },
+  "direction": "consume"
+}

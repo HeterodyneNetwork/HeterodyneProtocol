@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "social-recovery/cold-root-reanchor-authoritative",
+  "spec_refs": [
+    "§3.12",
+    "§14.3"
+  ],
+  "description": "Cold-root kind:31005 re-anchor is authoritative over friend-cache fallback.",
+  "input": {
+    "cold_root_pointer": "!new:example.org",
+    "cache_pointer": "!old:example.org"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "authoritative_pointer": "!new:example.org"
+    }
+  },
+  "direction": "consume"
+}

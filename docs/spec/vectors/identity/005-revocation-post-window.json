@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "identity/revocation-post-window",
+  "spec_refs": [
+    "§3.3",
+    "§4.5",
+    "§14.3"
+  ],
+  "description": "Post-revocation events are rejected after the revocation window.",
+  "input": {
+    "revoked_at": 1767225600,
+    "event_created_at": 1767225901,
+    "revocation_grace_seconds": 300
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "revoked_key_post_revoked_at"
+  },
+  "simulated_clock": 1767226000,
+  "direction": "consume"
+}

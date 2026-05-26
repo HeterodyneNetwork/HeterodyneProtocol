@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "relay-profile/passive-witness-store-signs-nothing",
+  "spec_refs": [
+    "§10.6",
+    "§14.3"
+  ],
+  "description": "Passive witness-receipt store stores receipts but signs no Heterodyne state.",
+  "input": {
+    "stored_receipts": 3,
+    "signatures_emitted": 0
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "passive_store": true
+    }
+  },
+  "direction": "consume"
+}

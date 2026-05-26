@@ -1,0 +1,29 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "keri/first-seen-ordering",
+  "spec_refs": [
+    "§3.5",
+    "§14.3"
+  ],
+  "description": "First-seen ordering picks the rotation first observed by each witness.",
+  "input": {
+    "witness_observations": [
+      {
+        "witness": "w1",
+        "first_seen": "rotation-a"
+      },
+      {
+        "witness": "w2",
+        "first_seen": "rotation-a"
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "accepted_rotation": "rotation-a"
+    }
+  },
+  "direction": "consume"
+}

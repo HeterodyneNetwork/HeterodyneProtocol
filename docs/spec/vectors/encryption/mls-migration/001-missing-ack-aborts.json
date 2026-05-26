@@ -1,0 +1,24 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "encryption/mls-migration-missing-ack-aborts",
+  "spec_refs": [
+    "§9.2",
+    "§14.3"
+  ],
+  "description": "MLS migration aborts if any eligible receiver fails to ACK intent.",
+  "input": {
+    "eligible_receivers": [
+      "@a:example.org",
+      "@b:example.org"
+    ],
+    "acked_receivers": [
+      "@a:example.org"
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "mls_missing_ack"
+  },
+  "direction": "consume"
+}

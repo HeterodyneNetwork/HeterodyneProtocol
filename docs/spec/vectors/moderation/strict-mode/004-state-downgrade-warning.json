@@ -1,0 +1,24 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "moderation/strict-mode-state-downgrade-warning",
+  "spec_refs": [
+    "§11.7",
+    "§14.3"
+  ],
+  "description": "Strict mode renders a warning when state downgrades below strict requirements.",
+  "input": {
+    "state_downgrade_detected": true,
+    "mode": "strict"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "warning_rendered": true
+    },
+    "warnings": [
+      "state_downgrade"
+    ]
+  },
+  "direction": "consume"
+}

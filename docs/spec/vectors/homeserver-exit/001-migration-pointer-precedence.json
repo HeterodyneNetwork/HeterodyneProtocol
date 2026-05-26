@@ -1,0 +1,25 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "homeserver-exit/migration-pointer-precedence",
+  "spec_refs": [
+    "§3.10",
+    "§14.3"
+  ],
+  "description": "Identity-room migration pointer takes precedence over a stale kind:31005 pointer.",
+  "input": {
+    "stale_kind31005_room": "!old:example.org",
+    "migration_event": {
+      "old_room": "!old:example.org",
+      "new_room": "!new:example.org"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "homeserver_exit_stale_pointer",
+    "normalized": {
+      "authoritative_room": "!new:example.org"
+    }
+  },
+  "direction": "consume"
+}

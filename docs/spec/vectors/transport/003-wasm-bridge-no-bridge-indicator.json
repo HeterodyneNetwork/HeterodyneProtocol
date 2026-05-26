@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "transport/wasm-bridge-no-bridge-indicator",
+  "spec_refs": [
+    "§7.7",
+    "§14.3"
+  ],
+  "description": "Browser/WASM client surfaces no-bridge-available when no Tor WebSocket bridge exists.",
+  "input": {
+    "runtime": "browser-wasm",
+    "websocket_bridge_available": false
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "no_bridge_indicator": true
+    }
+  },
+  "direction": "consume"
+}

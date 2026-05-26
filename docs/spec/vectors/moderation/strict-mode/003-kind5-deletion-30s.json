@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "moderation/strict-mode-kind5-deletion-30s",
+  "spec_refs": [
+    "§11.7",
+    "§14.3"
+  ],
+  "description": "Strict mode observes kind:5 deletion within 30 seconds.",
+  "input": {
+    "deletion_kind": 5,
+    "observed_after_seconds": 25
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "deletion_observed_within_30s": true
+    }
+  },
+  "direction": "consume"
+}

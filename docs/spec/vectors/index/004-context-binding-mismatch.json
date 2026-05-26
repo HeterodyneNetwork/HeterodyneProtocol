@@ -1,0 +1,19 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "index/context-binding-mismatch",
+  "spec_refs": [
+    "§6.7",
+    "§14.5"
+  ],
+  "description": "Index ciphertext derived with the wrong Matrix room salt rejects.",
+  "input": {
+    "expected_room_id": "!room-a:example.org",
+    "derived_with_room_id": "!room-b:example.org"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "context_binding_mismatch"
+  },
+  "direction": "consume"
+}

@@ -1,0 +1,28 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "outbox/transitive-discovery-walk",
+  "spec_refs": [
+    "§7",
+    "§14.3"
+  ],
+  "description": "Transitive discovery walk follows declared relay hints without entering private descriptors.",
+  "input": {
+    "start": "alice",
+    "follows": [
+      "bob"
+    ],
+    "private_descriptor_seen": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "visited_personas": [
+        "alice",
+        "bob"
+      ],
+      "private_descriptor_followed": false
+    }
+  },
+  "direction": "consume"
+}

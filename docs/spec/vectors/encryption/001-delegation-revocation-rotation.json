@@ -1,0 +1,26 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "encryption/delegation-revocation-rotation",
+  "spec_refs": [
+    "§9",
+    "§14.3"
+  ],
+  "description": "Delegation revocation triggers the documented room-secret rotation SHOULD path.",
+  "input": {
+    "revoked_mxid": "@old-device:example.org",
+    "active_key_id": "room-secret-2026-05-25-a",
+    "next_key_id": "room-secret-2026-05-25-b"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "rotation_recommended": true,
+      "next_key_id": "room-secret-2026-05-25-b"
+    },
+    "warnings": [
+      "should_rotate_room_secret"
+    ]
+  },
+  "direction": "consume"
+}

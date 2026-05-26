@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "redundancy/rekey-remove-not-join",
+  "spec_refs": [
+    "§3.11",
+    "§14.3"
+  ],
+  "description": "Mirror group rekeys on member removal but not on join.",
+  "input": {
+    "event": "member_removed",
+    "rekey_performed": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "rekey_required": true
+    }
+  },
+  "direction": "consume"
+}

@@ -1,0 +1,19 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "verification/delegation-mismatch-rejects",
+  "spec_refs": [
+    "§4.5",
+    "§14.3"
+  ],
+  "description": "Event signed for one delegated MXID rejects when sent by another.",
+  "input": {
+    "delegated_mxid": "@alice:example.org",
+    "sender_mxid": "@mallory:example.org"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "delegation_mismatch"
+  },
+  "direction": "consume"
+}

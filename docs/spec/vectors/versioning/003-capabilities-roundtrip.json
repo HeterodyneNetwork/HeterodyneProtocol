@@ -1,0 +1,28 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "versioning/capabilities-roundtrip",
+  "spec_refs": [
+    "§12",
+    "§14.3"
+  ],
+  "description": "Capabilities event round-trips supported feature flags.",
+  "input": {
+    "capabilities": [
+      "baseline",
+      "tor",
+      "strict-mode"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "capabilities": [
+        "baseline",
+        "tor",
+        "strict-mode"
+      ]
+    }
+  },
+  "direction": "consume"
+}

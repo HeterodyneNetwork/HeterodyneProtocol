@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "index/prev-page-hash",
+  "spec_refs": [
+    "§6.7",
+    "§14.3"
+  ],
+  "description": "prev_page_hash links each feed-index page to the canonical bytes of the previous page.",
+  "input": {
+    "page": 2,
+    "prev_page_hash": "1212121212121212121212121212121212121212121212121212121212121212",
+    "previous_page_canonical_hash": "1212121212121212121212121212121212121212121212121212121212121212"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "page_chain_valid": true
+    }
+  },
+  "direction": "consume"
+}

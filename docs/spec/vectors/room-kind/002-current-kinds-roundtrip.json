@@ -1,0 +1,27 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "room-kind/current-kinds-roundtrip",
+  "spec_refs": [
+    "§5",
+    "§14.3"
+  ],
+  "description": "Four social kinds plus identity_room and config_room round-trip.",
+  "input": {
+    "room_kinds": [
+      "public_broadcast",
+      "private_broadcast",
+      "public_discussion",
+      "private_discussion",
+      "identity_room",
+      "config_room"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "round_tripped_count": 6
+    }
+  },
+  "direction": "consume"
+}

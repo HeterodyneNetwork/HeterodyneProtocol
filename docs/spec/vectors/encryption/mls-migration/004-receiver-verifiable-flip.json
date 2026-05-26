@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "encryption/mls-migration-receiver-verifiable-flip",
+  "spec_refs": [
+    "§9.2",
+    "§14.3"
+  ],
+  "description": "Receiver verifies the MLS flip event encrypted under the last Megolm key.",
+  "input": {
+    "flip_event_encrypted_with": "last_megolm_key",
+    "receiver_has_last_key": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "flip_verified": true
+    }
+  },
+  "direction": "consume"
+}

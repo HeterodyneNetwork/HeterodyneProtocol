@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "identity/delegation-active",
+  "spec_refs": [
+    "§3.3",
+    "§14.3"
+  ],
+  "description": "Delegation is accepted while valid_until is greater than simulated_clock.",
+  "input": {
+    "mxid": "@alice:example.org",
+    "valid_until": 1767232800
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "delegation_state": "active"
+    }
+  },
+  "simulated_clock": 1767229200,
+  "direction": "consume"
+}

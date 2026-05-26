@@ -1,0 +1,19 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "verification/revoked-key-rejects",
+  "spec_refs": [
+    "§4.5",
+    "§14.3"
+  ],
+  "description": "Events created after epoch-key revocation are rejected.",
+  "input": {
+    "revoked_at": 1767225600,
+    "event_created_at": 1767225700
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "revoked_key_post_revoked_at"
+  },
+  "direction": "consume"
+}

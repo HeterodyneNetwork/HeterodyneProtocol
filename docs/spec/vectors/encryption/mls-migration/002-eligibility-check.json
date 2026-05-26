@@ -1,0 +1,29 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "encryption/mls-migration-eligibility-check",
+  "spec_refs": [
+    "§9.2",
+    "§14.3"
+  ],
+  "description": "MLS migration eligibility requires all receivers to advertise MLS support.",
+  "input": {
+    "receivers": [
+      {
+        "mxid": "@a",
+        "mls": true
+      },
+      {
+        "mxid": "@b",
+        "mls": true
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "eligible": true
+    }
+  },
+  "direction": "consume"
+}

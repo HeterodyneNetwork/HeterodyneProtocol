@@ -1,0 +1,28 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "relay-profile/vanilla-nip01-unaffected",
+  "spec_refs": [
+    "§10.6",
+    "§14.3"
+  ],
+  "description": "Heterodyne-aware relay profile must not mutate vanilla NIP-01 read/write behavior.",
+  "input": {
+    "relay_profile_enabled": true,
+    "vanilla_nip01_event_before": {
+      "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "content": "hello"
+    },
+    "vanilla_nip01_event_after": {
+      "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "content": "hello"
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "vanilla_nip01_unaffected": true
+    }
+  },
+  "direction": "consume"
+}

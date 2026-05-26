@@ -1,0 +1,24 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "homeserver-exit/dual-publish-during-exit",
+  "spec_refs": [
+    "§3.10",
+    "§14.3"
+  ],
+  "description": "KERI rotation during exit window is dual-published to old and new rooms.",
+  "input": {
+    "exit_window_active": true,
+    "published_rooms": [
+      "!old:example.org",
+      "!new:example.org"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "dual_published": true
+    }
+  },
+  "direction": "consume"
+}

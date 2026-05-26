@@ -1,0 +1,38 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "outbox/scoped-outbox",
+  "spec_refs": [
+    "§7",
+    "§14.3"
+  ],
+  "description": "Scoped outbox returns relays for the requested category without leaking private room descriptors.",
+  "input": {
+    "outbox": {
+      "public_relays": [
+        "wss://relay.example.org"
+      ],
+      "scoped": {
+        "articles": [
+          "wss://articles.example.org"
+        ]
+      },
+      "private_descriptors": [
+        {
+          "d": "opaque-private-feed"
+        }
+      ]
+    },
+    "request_scope": "articles"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "relays": [
+        "wss://articles.example.org"
+      ],
+      "private_descriptor_count": 0
+    }
+  },
+  "direction": "consume"
+}

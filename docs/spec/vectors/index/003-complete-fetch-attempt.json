@@ -1,0 +1,27 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "index/complete-fetch-attempt",
+  "spec_refs": [
+    "§6.7",
+    "§14.3"
+  ],
+  "description": "A complete fetch attempt queries the full configured relay set before declaring a page missing.",
+  "input": {
+    "relay_set": [
+      "wss://a",
+      "wss://b"
+    ],
+    "queried_relays": [
+      "wss://a",
+      "wss://b"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "complete_fetch_attempt": true
+    }
+  },
+  "direction": "consume"
+}

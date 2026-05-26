@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "keri/didkey-witness-no-network",
+  "spec_refs": [
+    "§3.5",
+    "§14.3"
+  ],
+  "description": "did:key witness verification uses the embedded key and performs no network resolution.",
+  "input": {
+    "witness": "did:key:z6Mkwitness",
+    "network_resolution_attempts": 0
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "didkey_verified_locally": true
+    }
+  },
+  "direction": "consume"
+}

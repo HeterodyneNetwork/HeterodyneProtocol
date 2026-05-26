@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "broadcast/member-decrypts",
+  "spec_refs": [
+    "§5.3",
+    "§6.10",
+    "§14.3"
+  ],
+  "description": "Room member with the active room secret decrypts the private broadcast body.",
+  "input": {
+    "member_has_room_secret": true,
+    "key_id": "room-secret-2026-05-25-a"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "decrypted": true
+    }
+  },
+  "direction": "consume"
+}

@@ -1,0 +1,29 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "bridge/matrix-permanent-failure-index-updated",
+  "spec_refs": [
+    "§6.4",
+    "§14.3"
+  ],
+  "description": "Matrix permanent failure leaves relay index updated and surfaces Matrix-out-of-sync warning.",
+  "input": {
+    "nostr_write": {
+      "status": "ok"
+    },
+    "matrix_write": {
+      "status": "permanent_failure",
+      "http_status": 403
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "index_updated": true
+    },
+    "warnings": [
+      "matrix_out_of_sync"
+    ]
+  },
+  "direction": "consume"
+}

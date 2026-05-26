@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "moderation/redaction-of-approved-post",
+  "spec_refs": [
+    "§8",
+    "§14.3"
+  ],
+  "description": "Redaction of an approved post makes it no longer visible in the moderated room view.",
+  "input": {
+    "approved": true,
+    "redacted": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "visible": false
+    }
+  },
+  "direction": "consume"
+}

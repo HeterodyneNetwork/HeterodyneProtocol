@@ -1,0 +1,23 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "config_room/private-mutes",
+  "spec_refs": [
+    "§3.8",
+    "§14.3"
+  ],
+  "description": "Persona config stores private mute entries without publishing them to relays.",
+  "input": {
+    "muted_npubs": [
+      "npub-muted"
+    ],
+    "relay_publication_attempts": 0
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "private_mutes_count": 1
+    }
+  },
+  "direction": "consume"
+}

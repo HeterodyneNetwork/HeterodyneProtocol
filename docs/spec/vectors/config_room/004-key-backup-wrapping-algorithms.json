@@ -1,0 +1,30 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "config_room/key-backup-wrapping-algorithms",
+  "spec_refs": [
+    "§3.8",
+    "§14.3"
+  ],
+  "description": "Key backup records preserve their declared wrapping algorithm.",
+  "input": {
+    "backups": [
+      {
+        "algorithm": "m.megolm_backup.v1"
+      },
+      {
+        "algorithm": "heterodyne.room_secret_wrap.v1"
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "wrapping_algorithms": [
+        "m.megolm_backup.v1",
+        "heterodyne.room_secret_wrap.v1"
+      ]
+    }
+  },
+  "direction": "consume"
+}

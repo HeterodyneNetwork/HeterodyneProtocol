@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "interop/bare-hide-pref",
+  "spec_refs": [
+    "§11",
+    "§14.3"
+  ],
+  "description": "Bare Matrix event respects the user's hide-bare preference.",
+  "input": {
+    "bare_event": true,
+    "hide_bare_preference": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "rendered": false
+    }
+  },
+  "direction": "consume"
+}

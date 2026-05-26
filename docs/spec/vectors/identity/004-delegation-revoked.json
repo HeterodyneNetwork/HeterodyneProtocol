@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "identity/delegation-revoked",
+  "spec_refs": [
+    "§3.3",
+    "§4.5",
+    "§14.3"
+  ],
+  "description": "Delegation is rejected after a revocation event for the delegated MXID.",
+  "input": {
+    "mxid": "@old-device:example.org",
+    "revoked_at": 1767226500,
+    "event_created_at": 1767226600
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "revoked_key_post_revoked_at"
+  },
+  "simulated_clock": 1767226700,
+  "direction": "consume"
+}

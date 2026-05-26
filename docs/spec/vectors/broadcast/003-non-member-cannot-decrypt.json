@@ -1,0 +1,20 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "broadcast/non-member-cannot-decrypt",
+  "spec_refs": [
+    "§5.3",
+    "§6.10",
+    "§14.3"
+  ],
+  "description": "Non-member without the room secret cannot decrypt the private broadcast body.",
+  "input": {
+    "member_has_room_secret": false,
+    "key_id": "room-secret-2026-05-25-a"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "context_binding_mismatch"
+  },
+  "direction": "consume"
+}

@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "room-kind/retired-kind-rejected",
+  "spec_refs": [
+    "§5",
+    "§14.3"
+  ],
+  "description": "A newly-created room asserting a retired pre-ADR-017 kind is rejected.",
+  "input": {
+    "room_state": {
+      "room_kind": "private_verifiable",
+      "created_at": 1767225600,
+      "legacy": false
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "retired_room_kind"
+  },
+  "direction": "consume"
+}

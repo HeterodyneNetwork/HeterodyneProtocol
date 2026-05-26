@@ -1,0 +1,54 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "interop/wrapped-vanilla-roundtrip",
+  "spec_refs": [
+    "§11",
+    "§14.1",
+    "§14.3",
+    "§14.5"
+  ],
+  "description": "Wrapped event round-trips through vanilla Nostr preserving NIP-01 canonical serialization.",
+  "direction": "round-trip",
+  "input": {
+    "fixture_persona": "alice",
+    "relay_frame": [
+      "EVENT",
+      "subscription-1",
+      {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767225630,
+        "kind": 1,
+        "tags": [
+          [
+            "client",
+            "heterodyne"
+          ]
+        ],
+        "content": "round trip through a vanilla relay",
+        "id": "a2d0d2b5ce1c48b975e675155e86f021b495675ed4a4ff9f0059ac17418e568e",
+        "sig": "2c7585dd286214eed56c16b914524587b1daf6c2320700911991fc8c9f7fe3775633d752462f6fc12387f2a207286b1c74d664eb02908ef3a0b176443a573155"
+      }
+    ]
+  },
+  "expected_output": {
+    "comparison_surface": "nip01_canonical_event_serialization",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225630,1,[[\"client\",\"heterodyne\"]],\"round trip through a vanilla relay\"]",
+    "decoded": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767225630,
+      "kind": 1,
+      "tags": [
+        [
+          "client",
+          "heterodyne"
+        ]
+      ],
+      "content": "round trip through a vanilla relay",
+      "id": "a2d0d2b5ce1c48b975e675155e86f021b495675ed4a4ff9f0059ac17418e568e",
+      "sig": "2c7585dd286214eed56c16b914524587b1daf6c2320700911991fc8c9f7fe3775633d752462f6fc12387f2a207286b1c74d664eb02908ef3a0b176443a573155"
+    },
+    "id": "a2d0d2b5ce1c48b975e675155e86f021b495675ed4a4ff9f0059ac17418e568e",
+    "sig": "2c7585dd286214eed56c16b914524587b1daf6c2320700911991fc8c9f7fe3775633d752462f6fc12387f2a207286b1c74d664eb02908ef3a0b176443a573155"
+  }
+}

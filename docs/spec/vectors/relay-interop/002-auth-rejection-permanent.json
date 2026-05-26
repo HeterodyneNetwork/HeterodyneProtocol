@@ -1,0 +1,20 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "relay-interop/auth-rejection-permanent",
+  "spec_refs": [
+    "§6.4",
+    "§10.5",
+    "§14.3"
+  ],
+  "description": "Post-AUTH relay rejection is classified as permanent.",
+  "input": {
+    "auth_attempted": true,
+    "relay_notice": "restricted: policy"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "auth_rejected_permanent"
+  },
+  "direction": "consume"
+}

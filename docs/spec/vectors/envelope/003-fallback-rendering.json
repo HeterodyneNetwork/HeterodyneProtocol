@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "envelope/fallback-rendering",
+  "spec_refs": [
+    "§4",
+    "§14.3"
+  ],
+  "description": "Fallback rendering exposes a usable body when Heterodyne metadata is ignored.",
+  "input": {
+    "body": "fallback text",
+    "heterodyne_metadata_present": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "fallback_body": "fallback text"
+    }
+  },
+  "direction": "consume"
+}

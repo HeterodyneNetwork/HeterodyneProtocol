@@ -1,0 +1,34 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "config_room/device-inventory-not-synced",
+  "spec_refs": [
+    "§3.8",
+    "§14.3"
+  ],
+  "description": "Cross-MXID config sync includes portable config but leaves device_inventory room-local.",
+  "input": {
+    "source_room": "!alice-config-a:example.org",
+    "target_room": "!alice-config-b:example.org",
+    "state_events": [
+      "persona_config",
+      "user_prefs",
+      "key_backup",
+      "device_inventory"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "synced_types": [
+        "persona_config",
+        "user_prefs",
+        "key_backup"
+      ],
+      "room_local_types": [
+        "device_inventory"
+      ]
+    }
+  },
+  "direction": "consume"
+}

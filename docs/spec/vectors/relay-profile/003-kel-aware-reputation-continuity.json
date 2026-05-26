@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "relay-profile/kel-aware-reputation-continuity",
+  "spec_refs": [
+    "§10.6",
+    "§14.3"
+  ],
+  "description": "KEL-aware relay preserves reputation continuity across epoch rotation.",
+  "input": {
+    "old_epoch_reputation": 10,
+    "new_epoch_reputation": 10,
+    "kel_rotation_valid": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "reputation_continues": true
+    }
+  },
+  "direction": "consume"
+}

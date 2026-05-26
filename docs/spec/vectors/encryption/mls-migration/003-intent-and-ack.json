@@ -1,0 +1,28 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "encryption/mls-migration-intent-and-ack",
+  "spec_refs": [
+    "§9.2",
+    "§14.3"
+  ],
+  "description": "MLS migration intent is accepted after all eligible receivers ACK.",
+  "input": {
+    "intent_id": "mls-intent-1",
+    "eligible": [
+      "@a",
+      "@b"
+    ],
+    "acked": [
+      "@a",
+      "@b"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "intent_acked": true
+    }
+  },
+  "direction": "consume"
+}

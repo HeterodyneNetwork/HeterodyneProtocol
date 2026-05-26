@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "social-recovery/cache-rejects-unauthorized-content",
+  "spec_refs": [
+    "§3.12",
+    "§14.3"
+  ],
+  "description": "Friend cache rejects non-owner-signed non-KERI identity-room content.",
+  "input": {
+    "cached_event": {
+      "type": "m.room.topic",
+      "signed_by_owner": false,
+      "keri_event": false
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "unauthorized_cache_content"
+  },
+  "direction": "consume"
+}

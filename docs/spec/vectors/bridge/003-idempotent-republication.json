@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "bridge/idempotent-republication",
+  "spec_refs": [
+    "§6.4",
+    "§14.3"
+  ],
+  "description": "Re-publication after a transient failure reuses the original Nostr event id.",
+  "input": {
+    "first_event_id": "abababababababababababababababababababababababababababababababab",
+    "retry_event_id": "abababababababababababababababababababababababababababababababab"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "idempotent_republish": true
+    }
+  },
+  "direction": "consume"
+}

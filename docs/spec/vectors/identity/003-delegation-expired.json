@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "identity/delegation-expired",
+  "spec_refs": [
+    "§3.3",
+    "§4.5",
+    "§14.3"
+  ],
+  "description": "Delegation is rejected after valid_until.",
+  "input": {
+    "mxid": "@alice:example.org",
+    "valid_until": 1767225600
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "expired_delegation"
+  },
+  "simulated_clock": 1767229200,
+  "direction": "consume"
+}

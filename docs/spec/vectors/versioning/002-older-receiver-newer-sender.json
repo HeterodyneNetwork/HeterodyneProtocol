@@ -1,0 +1,26 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "versioning/older-receiver-newer-sender",
+  "spec_refs": [
+    "§12",
+    "§14.3"
+  ],
+  "description": "Older receiver tolerates a newer compatible 0.x sender with unknown optional fields.",
+  "input": {
+    "receiver_version": "0.3.0",
+    "sender_version": "0.4.0",
+    "unknown_optional_fields": [
+      "x-new"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "ignored_unknown_optional_fields": [
+        "x-new"
+      ]
+    }
+  },
+  "direction": "consume"
+}

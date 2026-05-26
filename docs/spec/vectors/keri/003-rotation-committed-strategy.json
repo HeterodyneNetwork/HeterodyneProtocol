@@ -1,0 +1,24 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "keri/rotation-committed-strategy",
+  "spec_refs": [
+    "§3.5",
+    "§14.3"
+  ],
+  "description": "Committed-strategy rotation is accepted when it advances sequence and satisfies witnesses.",
+  "input": {
+    "event_type": "rotation",
+    "sequence": 1,
+    "strategy": "committed",
+    "witness_receipts": 2,
+    "threshold": 2
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "current_epoch_sequence": 1
+    }
+  },
+  "direction": "consume"
+}

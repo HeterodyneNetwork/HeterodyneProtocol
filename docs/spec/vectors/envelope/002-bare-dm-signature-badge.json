@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "envelope/bare-dm-signature-badge",
+  "spec_refs": [
+    "§4",
+    "§14.3"
+  ],
+  "description": "Bare DM with heterodyne_nostr_sig renders a verifiable signature badge.",
+  "input": {
+    "msgtype": "m.text",
+    "heterodyne_nostr_sig": "present"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "signature_badge": "verified"
+    }
+  },
+  "direction": "consume"
+}

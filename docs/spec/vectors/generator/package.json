@@ -1,0 +1,25 @@
+{
+  "name": "@heterodyne/vector-generator",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "vitest run",
+    "author": "tsx src/cli.ts author",
+    "verify": "tsx src/cli.ts verify",
+    "check": "npm run build && npm test && npm run verify"
+  },
+  "dependencies": {
+    "@noble/ciphers": "^1.3.0",
+    "@noble/curves": "^1.9.7",
+    "@noble/hashes": "^1.8.0",
+    "ajv": "^8.17.1",
+    "nostr-tools": "^2.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.13"
+  }
+}

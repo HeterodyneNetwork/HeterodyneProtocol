@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "outbox/cross-persona-attestation-valid",
+  "spec_refs": [
+    "§7",
+    "§14.3"
+  ],
+  "description": "Valid cross-persona attestation links a secondary persona to the root persona.",
+  "input": {
+    "attester": "alice",
+    "subject": "alice-work",
+    "signature_valid": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "cross_persona_attested": true
+    }
+  },
+  "direction": "consume"
+}

@@ -1,0 +1,28 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "social-recovery/three-tier-caching",
+  "spec_refs": [
+    "§3.12",
+    "§14.3"
+  ],
+  "description": "Follower MAY, mutual SHOULD, and witness MUST cache identity-room state.",
+  "input": {
+    "relationships": [
+      "follower",
+      "mutual",
+      "witness"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "cache_policy": {
+        "follower": "may",
+        "mutual": "should",
+        "witness": "must"
+      }
+    }
+  },
+  "direction": "consume"
+}

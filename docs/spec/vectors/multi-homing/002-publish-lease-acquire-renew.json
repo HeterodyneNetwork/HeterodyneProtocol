@@ -1,0 +1,23 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "multi-homing/publish-lease-acquire-renew",
+  "spec_refs": [
+    "§3.9",
+    "§14.3"
+  ],
+  "description": "Publish lease acquisition and renewal preserve a single active writer.",
+  "input": {
+    "holder": "@alice-a:example.org",
+    "renew_before_seconds": 30,
+    "competing_holders": []
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "lease_holder": "@alice-a:example.org",
+      "renewed": true
+    }
+  },
+  "direction": "consume"
+}

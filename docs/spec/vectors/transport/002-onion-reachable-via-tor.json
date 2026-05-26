@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "transport/onion-reachable-via-tor",
+  "spec_refs": [
+    "§7.7",
+    "§14.3"
+  ],
+  "description": ".onion relay is reachable through embedded Tor.",
+  "input": {
+    "target": "wss://relayhidden.onion",
+    "tor_bootstrapped": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "reached_via_tor": true
+    }
+  },
+  "direction": "consume"
+}

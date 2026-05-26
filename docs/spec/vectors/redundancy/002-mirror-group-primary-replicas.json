@@ -1,0 +1,24 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "redundancy/mirror-group-primary-replicas",
+  "spec_refs": [
+    "§3.11",
+    "§14.3"
+  ],
+  "description": "mirror_group contains one primary and declared replicas.",
+  "input": {
+    "primary": "!primary:example.org",
+    "replicas": [
+      "!replica-a:example.org",
+      "!replica-b:example.org"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "replica_count": 2
+    }
+  },
+  "direction": "consume"
+}

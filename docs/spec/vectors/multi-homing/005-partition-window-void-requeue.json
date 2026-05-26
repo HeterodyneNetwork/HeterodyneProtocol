@@ -1,0 +1,26 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.3.0",
+  "vector_id": "multi-homing/partition-window-void-requeue",
+  "spec_refs": [
+    "§3.9",
+    "§14.3"
+  ],
+  "description": "Writes made under a voided partition-window lease are requeued after partition heal.",
+  "input": {
+    "partition_window": true,
+    "lease_voided": true,
+    "pending_writes": [
+      "post-1"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "requeued_writes": [
+        "post-1"
+      ]
+    }
+  },
+  "direction": "consume"
+}

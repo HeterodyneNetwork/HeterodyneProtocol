@@ -4,12 +4,12 @@
 **ADRs:** docs/adr/2026-05-25-024-conformance-test-vector-suite.md
 **Research:** docs/research/2026-05-25-test-vectors-research.md
 **Mode:** --parallel
-**Autopilot:** false
+**Autopilot:** true
 **Accept-ADRs:** false
 **Lean:** false
 **Bullets:** false
 **Skills:** false
-**Teammate-model:** (unset)
+**Teammate-model:** opus
 **Branch:** brains/test-vector-suite
 
 Stub-level plan. Tasks are intentionally coarse so phase-3 re-architecture is
