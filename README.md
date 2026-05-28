@@ -198,5 +198,12 @@ discussion or proposal before large changes so the rationale is captured.
 
 ## License
 
-License to be determined. Until a `LICENSE` file is added to this repository,
-all rights are reserved by the authors.
+The Heterodyne specification and documentation in this repository are licensed
+under the **Creative Commons Attribution 4.0 International** license
+([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)) — see
+[`LICENSE`](LICENSE). You are free to share and adapt the material for any
+purpose, including building clients and derivative specs, as long as you give
+appropriate credit to the Heterodyne Protocol authors.
+
+This is an interim choice for the 0.x phase and may be revisited (for example,
+adding a separate software license) once a reference client lands.
