@@ -68,15 +68,18 @@ promise: **your identity is yours, and no platform owns or gatekeeps it.**
 
 ## How it works
 
-Heterodyne pairs **Nostr identity** with **Matrix transport**, using each system
+Heterodyne pairs **[Nostr](https://github.com/nostr-protocol/nips) identity**
+with **[Matrix](https://spec.matrix.org/latest/) transport**, using each system
 for what it does best:
 
-- **Nostr provides identity and authenticity.** A user's `secp256k1` keypair is
-  portable, censorship-resistant, and not bound to any homeserver or relay. It is
-  the durable, self-owned identity that followers trust.
-- **Matrix provides transport, encryption, and governance.** Megolm/MLS group
-  end-to-end encryption, native room state for membership and moderation power
-  levels, and federation for resilience.
+- **Nostr provides identity and authenticity.** A user's
+  [`secp256k1`](https://www.secg.org/sec2-v2.pdf) keypair is portable,
+  censorship-resistant, and not bound to any homeserver or relay. It is the
+  durable, self-owned identity that followers trust.
+- **Matrix provides transport, encryption, and governance.**
+  [Megolm](https://gitlab.matrix.org/matrix-org/olm/-/blob/master/docs/megolm.md)/[MLS](https://www.rfc-editor.org/rfc/rfc9420.html)
+  group end-to-end encryption, native room state for membership and moderation
+  power levels, and federation for resilience.
 
 The key insight: the user's identity (their Nostr keypair) is **decoupled** from
 the Matrix account used to publish any given event. **Broadcast** content (you
@@ -98,7 +101,9 @@ Encrypting once per room also sidesteps the *N-encryptions-for-N-recipients*
 scaling problem of classic encrypted broadcasts: a shared room session means
 encrypt-once, deliver-to-many.
 
-Identity is anchored by a **KERI cold-root key** (your public identity), with a
+Identity is anchored by a
+**[KERI](https://datatracker.ietf.org/doc/draft-ssmith-keri/) cold-root key**
+(your public identity), with a
 rotating **epoch key** that signs day-to-day attestations — so the root key
 stays cold and a compromised signing key can be rotated out without losing your
 identity.
@@ -181,6 +186,48 @@ byte-for-byte.
 When you need to look something up, **start at
 [`research/INDEX.md`](research/INDEX.md)** — it maps topics (outbox routing,
 NIP-72 communities, MLS group cryptography, …) to exact source locations.
+
+## References & standards
+
+Heterodyne does not reinvent its cryptography or transport — it composes
+existing open standards. These are the authoritative specifications for the
+protocols referenced above.
+
+**Nostr** (identity & broadcast layer)
+
+- [Nostr NIPs](https://github.com/nostr-protocol/nips) — the canonical set of
+  Nostr Implementation Possibilities (the protocol specification itself).
+- [NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md) — basic
+  protocol flow, the event format, and `secp256k1` Schnorr signatures.
+- [NIP-19](https://github.com/nostr-protocol/nips/blob/master/19.md) — bech32
+  identifiers (`npub` / `nsec` and related entities).
+- [NIP-65](https://github.com/nostr-protocol/nips/blob/master/65.md) — relay
+  list metadata (the "outbox" model) for discovering where a user publishes.
+- [NIP-72](https://github.com/nostr-protocol/nips/blob/master/72.md) — moderated
+  communities, the model behind Heterodyne's moderated discussion rooms.
+- [NIP-EE](https://github.com/nostr-protocol/nips/blob/master/EE.md) — MLS-based
+  end-to-end encryption for Nostr.
+
+**Matrix** (transport, state & encryption layer)
+
+- [Matrix specification](https://spec.matrix.org/latest/) — the full protocol:
+  rooms, room state, power levels, and federation.
+- [End-to-end encryption](https://spec.matrix.org/latest/client-server-api/#end-to-end-encryption)
+  — the Client-Server API E2EE module, including the `m.megolm.v1` scheme.
+- [Megolm ratchet](https://gitlab.matrix.org/matrix-org/olm/-/blob/master/docs/megolm.md)
+  — the cryptographic design of the group ratchet Heterodyne encrypts with today.
+
+**Cryptography & identity**
+
+- [MLS — RFC 9420](https://www.rfc-editor.org/rfc/rfc9420.html) — the IETF
+  Messaging Layer Security standard; the group-encryption target ahead of Megolm.
+- [secp256k1 — SEC 2](https://www.secg.org/sec2-v2.pdf) — the SECG standard
+  defining the elliptic curve behind every Heterodyne identity keypair.
+- [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) —
+  Schnorr signatures over secp256k1, the signature scheme Nostr events use.
+- [KERI](https://datatracker.ietf.org/doc/draft-ssmith-keri/) — Key Event
+  Receipt Infrastructure (IETF draft); the basis for the cold-root / epoch-key
+  identity model ([project home](https://keri.one/)).
 
 ## Contributing
 
