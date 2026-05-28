@@ -102,7 +102,7 @@ scaling problem of classic encrypted broadcasts: a shared room session means
 encrypt-once, deliver-to-many.
 
 Identity is anchored by a
-**[KERI](https://datatracker.ietf.org/doc/draft-ssmith-keri/) cold-root key**
+**[KERI](https://arxiv.org/abs/1907.02143) cold-root key**
 (your public identity), with a
 rotating **epoch key** that signs day-to-day attestations — so the root key
 stays cold and a compromised signing key can be rotated out without losing your
@@ -225,9 +225,12 @@ protocols referenced above.
   defining the elliptic curve behind every Heterodyne identity keypair.
 - [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) —
   Schnorr signatures over secp256k1, the signature scheme Nostr events use.
-- [KERI](https://datatracker.ietf.org/doc/draft-ssmith-keri/) — Key Event
-  Receipt Infrastructure (IETF draft); the basis for the cold-root / epoch-key
-  identity model ([project home](https://keri.one/)).
+- [KERI](https://arxiv.org/abs/1907.02143) — *Key Event Receipt Infrastructure*
+  by Samuel M. Smith (arXiv); the foundational paper for the cold-root /
+  epoch-key identity model. Active specification:
+  [ToIP KSWG KERI spec](https://trustoverip.github.io/kswg-keri-specification/)
+  ([repo](https://github.com/trustoverip/kswg-keri-specification)); project
+  home: [keri.one](https://keri.one/).
 
 ## Contributing
 
