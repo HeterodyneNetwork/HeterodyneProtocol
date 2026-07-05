@@ -65,6 +65,11 @@ promise: **your identity is yours, and no platform owns or gatekeeps it.**
   key is later compromised. For real-time group chat, the OPTIONAL Matrix layer
   adds end-to-end encryption with Matrix's ratchet (Megolm today, MLS ahead),
   where the homeserver routes ciphertext it can never read.
+- **Recoverable by design.** Your settings live as encrypted blobs in an
+  unadvertised config repository; your keys stay in an encrypted, local-only
+  keys repository synced device-to-device; and clients recommend periodic
+  offline (USB) backups of everything you produce and follow - so losing a
+  device does not mean losing your identity or your history.
 - **Light on resources.** No proof-of-work mining, no blockchain, no heavy
   consensus. Confidential broadcast encrypts **once for the audience** - instead
   of re-encrypting a message separately for every recipient - and the OPTIONAL
@@ -174,14 +179,20 @@ written down. See [`CHANGELOG.md`](CHANGELOG.md) for per-version history and
 
 The current release is **v0.4.0**, which pivots the core substrate to Radicle +
 Nostr with Matrix as an optional layer (ADR-026 through ADR-029) and breaks
-v0.3.0. Per the semver 0.x rule (spec §12.1), everything is subject to change
-until **1.0.0**.
+v0.3.0. Since v0.4.0 the draft has been hardened on the core substrate: NIP-51
+mute lists and sets, forward-secret direct messages over the
+nostr-double-ratchet wire (with conformance transcripts generated from the
+production iris wire library), a config-repository / keys-repository backup
+model with recommended removable-media backups, per-hosting moderation
+anchoring, and behavior verified against the Heartwood 1.9.1 source. Per the
+semver 0.x rule (spec §12.1), everything is subject to change until **1.0.0**.
 
 **Next milestones:**
 
-1. Expand and complete the conformance test vectors in
-   [`docs/spec/vectors/`](docs/spec/vectors/) (coverage is underway) and validate
-   them against the first reference client.
+1. Expand the authored conformance test-vector suite in
+   [`docs/spec/vectors/`](docs/spec/vectors/) (160 vectors covering the spec's
+   coverage map; edge cases grow with the 0.x draft) and validate it against
+   the first reference client.
 2. Build a first-party reference client to validate the protocol end-to-end
    (language and runtime to be chosen separately — the spec is agnostic).
 3. Iterate the spec based on implementation feedback toward 1.0.
@@ -209,7 +220,7 @@ byte-for-byte.
 | [`docs/architecture.md`](docs/architecture.md) | Non-normative architecture overview and design rationale. |
 | [`docs/glossary.md`](docs/glossary.md) | Term definitions referenced from the spec. |
 | [`docs/security/threat-model.md`](docs/security/threat-model.md) | Companion analysis to the spec's security model. |
-| [`docs/spec/vectors/`](docs/spec/vectors/) | Conformance test vectors (authored v0.4.0 suite covering the spec's coverage map; generator tooling included). |
+| [`docs/spec/vectors/`](docs/spec/vectors/) | Conformance test vectors (160-vector authored suite covering the spec's coverage map; deterministic generator tooling included). |
 | [`docs/adr/`](docs/adr/) | Architecture Decision Records behind each revision. |
 | [`research/INDEX.md`](research/INDEX.md) | Topic-keyed index into the background research. |
 | [`CLAUDE.md`](CLAUDE.md) | Project mission and full repository map. |
