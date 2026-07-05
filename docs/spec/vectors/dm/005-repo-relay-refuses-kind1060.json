@@ -1,0 +1,26 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "dm/repo-relay-refuses-kind1060",
+  "spec_refs": [
+    "§5.7.3",
+    "§10.1.2",
+    "§14.3"
+  ],
+  "description": "A repo relay refuses to store a kind:1060 double-ratchet message; ratchet ciphertext MUST NOT be archived in a repo.",
+  "input": {
+    "event_kind": 1060,
+    "submitted_to": "repo_relay"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "dm_event_not_storable"
+  },
+  "decision_trace": [
+    "classify_event_kind",
+    "apply_repo_relay_storage_policy",
+    "reject_ratchet_ciphertext_storage"
+  ],
+  "notes": "kind:1060 messages and kind:1059 invite responses MUST NOT be committed to any repo or accepted by a repo relay; archiving ratchet ciphertext would contradict forward secrecy (§5.7.3). Ordinary Nostr relays still carry them within their transient retention window; invites (kind:30078) MAY live on both backends.",
+  "direction": "consume"
+}

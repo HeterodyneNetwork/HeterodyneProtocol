@@ -1,0 +1,64 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "privacy-tiers/tier3-kind31012-audience-roster",
+  "spec_refs": [
+    "§6.7.4",
+    "§7.2",
+    "§14.3"
+  ],
+  "description": "Tier 3 kind:31012 audience roster: an epoch-key-signed replaceable event keyed by key_id enumerating the recipient npubs with one p tag each.",
+  "input": {
+    "fixture_persona": "alice",
+    "signer": "epoch_1",
+    "key_id": "aud-2026-05-25-a",
+    "recipients": [
+      "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+      "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01"
+    ],
+    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "notes": "The roster and the per-recipient kind:31011 wraps share the same key_id.",
+  "expected_output": {
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225683,31012,[[\"d\",\"aud-2026-05-25-a\"],[\"heterodyne\",\"audience_roster\"],[\"key_id\",\"aud-2026-05-25-a\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"p\",\"2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01\"]],\"\"]",
+    "decoded": {
+      "event": {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767225683,
+        "kind": 31012,
+        "tags": [
+          [
+            "d",
+            "aud-2026-05-25-a"
+          ],
+          [
+            "heterodyne",
+            "audience_roster"
+          ],
+          [
+            "key_id",
+            "aud-2026-05-25-a"
+          ],
+          [
+            "cold_root",
+            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+          ],
+          [
+            "p",
+            "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+          ],
+          [
+            "p",
+            "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01"
+          ]
+        ],
+        "content": "",
+        "id": "a7fd93d84fc4c922c5d974343ca90448a737a0b5e32afcd70f2e542796602767",
+        "sig": "3bfd5f3a86fabc7e014e5767390b14c9f30ee07b199d962ab40730b07465d6edd4eb1b01cc4bdf46830e2bea68361516452717a6ca180452ed23debbd2414fd8"
+      }
+    },
+    "id": "a7fd93d84fc4c922c5d974343ca90448a737a0b5e32afcd70f2e542796602767",
+    "sig": "3bfd5f3a86fabc7e014e5767390b14c9f30ee07b199d962ab40730b07465d6edd4eb1b01cc4bdf46830e2bea68361516452717a6ca180452ed23debbd2414fd8"
+  },
+  "direction": "produce"
+}

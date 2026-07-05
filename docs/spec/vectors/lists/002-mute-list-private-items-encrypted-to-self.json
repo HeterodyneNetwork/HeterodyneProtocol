@@ -1,0 +1,58 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "lists/mute-list-private-items-encrypted-to-self",
+  "spec_refs": [
+    "§8.5",
+    "§3.0",
+    "§14.3"
+  ],
+  "description": "NIP-51 kind:10000 mute list carrying private items: a JSON array of tag-shaped arrays, NIP-44 v2 encrypted-to-self under the persona's current epoch key, in content alongside the public tags.",
+  "input": {
+    "fixture_persona": "alice",
+    "signer": "epoch_1",
+    "self_conversation": true,
+    "nip44_nonce": "5252525252525252525252525252525252525252525252525252525252525252",
+    "private_items_plaintext": "[[\"p\",\"2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01\"],[\"word\",\"secret-topic\"]]"
+  },
+  "notes": "The self-encryption conversation key is the NIP-44 v2 ECDH of the epoch private key with its own x-only epoch pubkey (getConversationKey(epoch_priv, epoch_pub)). Private items are the JSON array of tag-shaped arrays. Decryptable by any holder of the epoch key; on KERI rotation the client re-encrypts under the new epoch key (see lists/006).",
+  "expected_output": {
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225701,10000,[[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"t\",\"spam\"]],\"AlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSLuXzFbzO7BM4hS899uGYPu4D9EqfOxyjsbBvxC9bg0K4RO8igOGnzzekFFY7u5Nq+s1hRfnaB/fMgNHkSn4UUjFnPxLutryQp3P4xo0iuYhoRkndv1hHXEVgehWdhsLmoTj2vr0hNfteUwFqq49rcJPpwHqb9paa9ePvVLz/EmDKE+KYlZAZsmnENs1SEM/YZg+wum2SiPSSf/Wa8Zc483iT\"]",
+    "decoded": {
+      "event": {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767225701,
+        "kind": 10000,
+        "tags": [
+          [
+            "p",
+            "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+          ],
+          [
+            "t",
+            "spam"
+          ]
+        ],
+        "content": "AlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSLuXzFbzO7BM4hS899uGYPu4D9EqfOxyjsbBvxC9bg0K4RO8igOGnzzekFFY7u5Nq+s1hRfnaB/fMgNHkSn4UUjFnPxLutryQp3P4xo0iuYhoRkndv1hHXEVgehWdhsLmoTj2vr0hNfteUwFqq49rcJPpwHqb9paa9ePvVLz/EmDKE+KYlZAZsmnENs1SEM/YZg+wum2SiPSSf/Wa8Zc483iT",
+        "id": "cc07ac79f740c19cfc0ca0ac53ac1f828a3d123fc8f2b55ce6566081bfba406c",
+        "sig": "be8d51ed33895712b0e619fc42ac832b1b411904089fdf3506ee0816b91780110ffd57f2c2a08a3c9257d2928294f6f33f4ed0e2944413a0c30bb9de280586ae"
+      },
+      "conversation_key": "b127d717e2a3a193d07ba78341dec2d76dcaf3c7de82ea3cedf8d2e327e4871c",
+      "nip44_nonce": "5252525252525252525252525252525252525252525252525252525252525252",
+      "private_items": [
+        [
+          "p",
+          "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01"
+        ],
+        [
+          "word",
+          "secret-topic"
+        ]
+      ],
+      "nip44_payload": "AlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSLuXzFbzO7BM4hS899uGYPu4D9EqfOxyjsbBvxC9bg0K4RO8igOGnzzekFFY7u5Nq+s1hRfnaB/fMgNHkSn4UUjFnPxLutryQp3P4xo0iuYhoRkndv1hHXEVgehWdhsLmoTj2vr0hNfteUwFqq49rcJPpwHqb9paa9ePvVLz/EmDKE+KYlZAZsmnENs1SEM/YZg+wum2SiPSSf/Wa8Zc483iT"
+    },
+    "id": "cc07ac79f740c19cfc0ca0ac53ac1f828a3d123fc8f2b55ce6566081bfba406c",
+    "sig": "be8d51ed33895712b0e619fc42ac832b1b411904089fdf3506ee0816b91780110ffd57f2c2a08a3c9257d2928294f6f33f4ed0e2944413a0c30bb9de280586ae"
+  },
+  "direction": "produce"
+}

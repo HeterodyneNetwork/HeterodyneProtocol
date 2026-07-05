@@ -1,0 +1,29 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "privacy-tiers/tier3-prev-page-hash-mismatch",
+  "spec_refs": [
+    "§6.7.2",
+    "§6.7.4",
+    "§14.3"
+  ],
+  "description": "A Tier 3 index page whose decrypted prev_page_hash does not match the prior page's canonical serialization indicates relay-side page substitution; the chain is broken.",
+  "input": {
+    "prior_page_id": "18422d157eb1b989797dad425887ac841abb99ecd671c594997c49d4d9362236",
+    "prior_page_canonical_hash": "18422d157eb1b989797dad425887ac841abb99ecd671c594997c49d4d9362236",
+    "current_page_previous_index": {
+      "event_id": "18422d157eb1b989797dad425887ac841abb99ecd671c594997c49d4d9362236",
+      "prev_page_hash": "9999999999999999999999999999999999999999999999999999999999999999"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "page_chain_broken"
+  },
+  "decision_trace": [
+    "sha256_prior_page_canonical",
+    "compare_to_prev_page_hash",
+    "mismatch"
+  ],
+  "direction": "consume"
+}

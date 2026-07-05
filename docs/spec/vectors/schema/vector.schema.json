@@ -136,7 +136,20 @@
                   "homeserver_exit_stale_pointer",
                   "unauthorized_cache_content",
                   "relay_profile_mutation",
-                  "unknown_major_version"
+                  "unknown_major_version",
+                  "nid_binding_missing_signature",
+                  "nid_proof_invalid",
+                  "node_advert_expired",
+                  "kel_revoked_nid",
+                  "not_canonical_branch_reachable",
+                  "org_member_add_unauthorized",
+                  "page_chain_broken",
+                  "stale_list_rollback",
+                  "dm_invite_unbound_device",
+                  "dm_invite_revoked_device",
+                  "dm_event_not_storable",
+                  "config_rid_advertised",
+                  "moderator_not_in_asof_declaration"
                 ]
               }
             },

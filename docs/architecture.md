@@ -15,9 +15,10 @@ as **0.x** rather than a single point version.
 > are carried over two co-equal MUST backends - ordinary Nostr relays
 > and Radicle-backed **repo relays** - and confidentiality is a property
 > of repo visibility plus app-layer encryption rather than of a
-> homeserver. Matrix is a SHOULD-level layer for real-time discussion,
-> DMs, calls, and encrypted rooms; a Matrix-free client is fully
-> conformant. This overview reflects the pivot throughout; for
+> homeserver. Matrix is a SHOULD-level layer for real-time group
+> discussion, calls, and encrypted rooms (two-party DMs also have a
+> CORE, Matrix-free double-ratchet path, §5.7); a Matrix-free client is
+> fully conformant. This overview reflects the pivot throughout; for
 > MUST/SHOULD detail defer to the normative spec (§5 repo-visibility
 > taxonomy, §7 discovery and node roles, §9 privacy tiers, §10 node
 > topology) and to ADR-026..029, which are authoritative. See
@@ -36,7 +37,7 @@ Matrix layer. The combination gives:
 | Cryptographic authenticity; key portability across servers; forwardability to vanilla Nostr; the canonical content unit | Nostr |
 | Durable peer-to-peer content replication behind a NIP-01 wire; signed git storage; repo-visibility privacy tiers; org governance via delegates + threshold (with optional per-ref `crefs`) | Radicle (core) |
 | End-to-end group encryption (Megolm today, MLS in flight); stateful access control; federated real-time transport; native moderation primitives | Matrix (OPTIONAL) |
-| Multi-homing, persona-preserving key rotation, pseudonymous attribution with optional transferable proof | Heterodyne's composition |
+| Multi-homing, persona-preserving key rotation, pseudonymous attribution with optional transferable proof, forward-secret Matrix-free DMs | Heterodyne's composition |
 
 ## The load-bearing decisions
 
@@ -144,9 +145,10 @@ Nostr relays), referencing the target event `id`. Threads are assembled
 scatter-gather across repliers' outboxes and deduplicated by event
 `id`. A full node MAY materialize a hot thread as a Radicle
 Collaborative Object (`xyz.heterodyne.thread`) as an optimization, but
-the outbox is the source of truth. Real-time chat, DMs, and calls are
-the province of the OPTIONAL Matrix layer, and clients MUST degrade
-gracefully to async outbox interaction when Matrix is absent.
+the outbox is the source of truth. Real-time chat and calls are the
+province of the OPTIONAL Matrix layer, and clients MUST degrade
+gracefully to async outbox interaction when Matrix is absent; two-party
+DMs additionally have a CORE, Matrix-free mechanism (Decision 5).
 
 This splits the censorship-resistance burden: repo relays and Nostr
 relays carry broadcast events and feed indexes, Radicle replicates the
@@ -221,6 +223,21 @@ deletion plus an updated `kind:31007` signals intent, but public /
 private-tier plaintext may persist on every node that seeded the repo,
 and Tier 3 ciphertext remains in immutable git history.
 
+Every repo that carries encrypted blobs (Tier 3 content repos and the
+config repository of Decision 9) lays its ciphertext out **one branch
+per audience-key generation**, `refs/heads/enc/<key_id>`; the
+`defaultBranch` carries no ciphertext. Rotating an audience key creates a
+fresh `enc/<key_id'>` branch and force-deletes the retired one from the
+signed ref set, so cooperating seeds converge to a ref tree without the
+old ciphertext. This scrub is deliberately framed as **cooperative
+hygiene, not cryptographic erasure**: a hostile or offline seed MAY keep
+the old branch, and copies already on ordinary Nostr relays are
+untouched. That honesty flows from Tier 3's forward-secrecy posture -
+the audience key is **static**, so a key compromise decrypts every past
+post under its `key_id`, and rotation limits only *future* exposure
+(spec §9.5). This is the sharpest contrast with the CORE DMs of Decision
+5, which are forward-secret.
+
 See spec §5, §6, §9 and ADR-028.
 
 ### 4b. Node topology: full / routing / light, and the repo-relay adapter
@@ -259,29 +276,64 @@ content, so it cannot tamper; a full node cannot forge npub-signed,
 client-verified events and can only withhold, which a light node routes
 around using other hosts and the Nostr-relay backend.
 
-Client state portability (preferences, per-persona private state
-including mute lists, key backups) moves onto the repo/Nostr substrate.
-The OPTIONAL Matrix encrypted config room (§3.8) MAY still be used but
-is no longer required.
+Client state portability moves onto the repo/Nostr substrate, split by
+sensitivity across three core carriers (spec §3.8.6-§3.8.8): a
+per-persona **config repository** (an unadvertised private Radicle repo
+of encrypted blobs) holds non-key private state - preferences, private
+config, device inventory; a strictly local-only **keys repository**
+(never Radicle-replicated) holds key material - the NIP-49-wrapped
+`nsec`, epoch/NID secrets, held audience keys, the config-repo pointer -
+and syncs between a user's own devices only over an encrypted CORE DM or
+an offline restore; and mute lists ride the NIP-51 carrier (Decision 6)
+as ordinary events on both backends. A RECOMMENDED removable-media (USB)
+backup covers produced and followed repos, config repositories, and the
+encrypted keys repository, restored keys-repo -> config-repo -> content.
+The OPTIONAL Matrix encrypted config room (§3.8) MAY still mirror this
+state but is no longer required, and the core carriers win on divergence.
 
 See spec §7 (discovery / node roles) and §10 (node topology and the
 repo-relay adapter), and ADR-026.
 
-### 5. DMs and real-time discussion: the OPTIONAL Matrix layer
+### 5. Direct messages (CORE double ratchet) and real-time discussion (OPTIONAL Matrix)
 
-Real-time chat, DMs, and calls are the province of the OPTIONAL Matrix
-layer (SHOULD-level). A Matrix DM is a two-member discussion room with
-normal `m.room.message` semantics, so vanilla Matrix clients render it
-natively; a Heterodyne client adds an OPTIONAL `heterodyne_nostr_sig`
-field for senders who want a transferable proof on a specific message.
+**Two-party DMs are CORE and Matrix-free.** Two personas message each
+other with a Signal-style **Double Ratchet carried in Nostr events** -
+the nostr-double-ratchet wire, with NIP-44 v2 payload encryption. This
+gives **forward secrecy and post-compromise security** (unlike the
+static-key Tier 3 broadcast of Decision 4) and hides conversation
+metadata from relays: each `kind:1060` ratchet message is signed by a
+fresh per-message key derived from the ratchet, *not* the sender's epoch
+key, so a relay cannot link a conversation's messages to each other or
+to either persona. Invites are addressable `kind:30078` events and
+invite responses are gift-wrap-shaped `kind:1059`. Ratchet ciphertext
+MUST NOT be committed to a repo or stored by a repo relay, and there is
+no DM backfill - so losing local ratchet state loses history, the
+honest cost of forward secrecy. DM support is a RECOMMENDED client
+feature; a client that offers DMs MUST implement this mechanism, so any
+two DM-capable clients interoperate without Matrix. DMs to
+vanilla-Nostr-only recipients fall back to NIP-17 gift-wrap, which has
+no forward secrecy.
 
-Because the repo substrate is announce-then-fetch with no real-time
-push, a client that requires live interaction SHOULD use Matrix and
-MUST degrade gracefully to async outbox interaction (Decision 3) when
-it is absent. A client that omits Matrix entirely is fully conformant
-for identity, publishing, discovery, and all three privacy tiers.
+The Heterodyne addition over the base wire is **delegation binding**: a
+session MUST bind to the peer persona through a currently-valid
+`kind:31001` delegation whose authority chains to the peer's cold root
+via the KEL, so a DM is a conversation with a *verified delegated
+device* under the same attribution model as everything else (Decision
+2). This pattern - a double ratchet over the nostr-double-ratchet wire -
+is adopted from the production iris-client Nostr client and adapted with
+Heterodyne's delegation binding.
 
-See spec §5.4, §5.5, §4.3, §4.4 and ADR-029.
+**Real-time group discussion and calls stay in the OPTIONAL Matrix
+layer** (SHOULD-level). Because the repo substrate is announce-then-fetch
+with no real-time push, a client that requires live group interaction
+SHOULD use Matrix and MUST degrade gracefully to async outbox
+interaction (Decision 3) when it is absent. A Matrix two-member
+`private_discussion` room is an *additional* DM surface, not a substitute
+for the CORE mechanism; a client that omits Matrix entirely is fully
+conformant for identity, publishing, discovery, DMs, and all three
+privacy tiers.
+
+See spec §5.7 (CORE DMs), §5.4, §5.5, §4.3, §4.4 and ADR-029.
 
 ### 6. Moderation: NIP-72 approval or the Radicle delegate-threshold canonical-branch editorial gate
 
@@ -294,12 +346,28 @@ community MAY use either or both:
   delegate-threshold-approved canonical feed branch (the commit a
   threshold of delegates agree on). Governance lives at the repo layer:
   the canonical branch requires M-of-N admin sign-off. Radicle's finer
-  per-ref `xyz.radicle.crefs` mechanism is an OPTIONAL, EXPERIMENTAL
-  refinement on top, pending verification against the pinned Heartwood
-  release.
-- **NIP-72 approval.** For relay-hosted or interoperating communities,
-  the existing `kind:4550` moderator-approval flow (§8, ADR-014) is
-  retained unchanged.
+  per-ref `xyz.radicle.crefs` mechanism is an OPTIONAL refinement on
+  top, verified against Heartwood 1.9.1; baseline canonicity does not
+  depend on it, a scoping choice rather than a verification hedge.
+- **NIP-72 approval.** The `kind:4550` moderator-approval flow (§8,
+  ADR-014) is a CORE mechanism: approvals are vanilla NIP-72 events
+  published to Nostr relays and referenced from the moderator's
+  `kind:31007` index. The moderator set and threshold live in a
+  **`kind:34550`** community-definition event on both core backends
+  (moderators listed by permanent cold-root npub; the threshold is a
+  Heterodyne `["approvals_required", "<N>"]` extension tag, absent = 1
+  and vanilla-NIP-72-compatible) - no Matrix room is required. What each
+  counted approval needs is an **anchor** that fixes the moderator set
+  as-of the approval: for a repo-hosted community the anchor is the
+  approval's introducing commit, resolved against the `kind:34550`
+  revision in that commit's ancestor history (git-native "state at
+  event"); for a Matrix-hosted community it is an
+  `m.heterodyne.approval.v1` event resolved by Matrix state; and a
+  relay-only community falls back to signed `created_at`, a
+  reduced-assurance mode because timestamps are author-forgeable.
+  Because the repo anchor rests on the same delegate-threshold sigrefs
+  that govern the repo, the only parties who could rewrite moderation
+  history are the same delegates who already control the moderator list.
 
 Organizations are first-class personas whose repo `delegates` and
 `threshold` (with optional per-ref `crefs`) encode governance (a plain
@@ -312,11 +380,30 @@ multi-signature on the event. For an org, both the posts and the
 before a client treats them as canonical, which stops a rogue epoch-key
 holder from bypassing governance via the relay backend.
 
-In the OPTIONAL Matrix layer, room-level ACLs (power levels, kicks,
-bans, server ACLs) still decide who is in a discussion room, but that
-is a property of the optional layer, not the moderation floor.
+Underneath editorial gating sits a **personal and community filtering
+layer**, all on the core NIP-51 carrier. A persona's mutes are an
+epoch-key-signed `kind:10000` list (public entries as clear tags,
+private entries NIP-44-encrypted to self, re-encrypted on rotation),
+published to both backends; the NIP-51 private-item pattern is adopted
+from iris-client and adapted with Heterodyne's epoch-key derivation.
+Community blocklists ride the same carrier: a **policy persona**
+publishes `kind:10000` / `kind:30007` / `kind:30000` lists a community
+adopts by tag in its `kind:34550` definition. NIP-32 `kind:1985` labels
+add a graded, advisory annotation signal that gates nothing on its own.
+On top, clients run a non-normative **web-of-trust filter** - follow
+distance from `kind:3` graphs plus an "overmuted ratio" that downranks
+authors whom more of the user's network mutes than follows, a
+crowd-moderation pattern proven in iris-client and enabled here by the
+subscribable NIP-51 carrier. Because a repo relay's event store is git,
+list revisions are tamper-evident, so a client can detect a relay
+serving a stale list and prefer the newest verifiable revision.
 
-See spec §8, §6.7.0 and ADR-027.
+In the OPTIONAL Matrix layer, room-level ACLs (power levels, kicks,
+bans, server ACLs) still decide who is in a discussion room, and
+MSC2313 policy rooms are an additional blocklist carrier, but that is a
+property of the optional layer, not the moderation floor.
+
+See spec §8, §8.5, §8.6, §8.9, §8.10, §6.7.0 and ADR-027.
 
 ### 7. ATProto as a decorative attached outbox (and KERI witness)
 
@@ -414,11 +501,14 @@ host-count and durable-host warnings rather than assume replication.
 Voluntary host-exit collapses into "point `kind:31005` at another RID,"
 so there is one redundancy model, not two.
 
-**Client-state sync (ADR-020).** Per-persona config, preferences, and
-key backups sync over the repo/Nostr substrate (Decision 4b), so a new
-device re-syncs without a Matrix config room. When the OPTIONAL Matrix
-layer is in use, the mutual config-room membership of §3.9.1 remains an
-alternative carrier.
+**Client-state sync (ADR-020).** Client state syncs over the repo/Nostr
+substrate on the three carriers of Decision 4b: non-key private state in
+the unadvertised **config repository**, key material in the local-only
+**keys repository** (synced device-to-device over an encrypted CORE DM or
+an offline restore, never replicated), and a RECOMMENDED removable-media
+(USB) backup as the durable floor. A new device re-syncs without a Matrix
+config room. When the OPTIONAL Matrix layer is in use, the mutual
+config-room membership of §3.9.1 remains an alternative mirror.
 
 **Social layer - friend-cache + vouching (ADR-021).** When *every*
 persona-run full node is gone, infrastructure redundancy is exhausted
@@ -475,8 +565,10 @@ Nostr-native advertisements without holding content; the light-node
 client fetches directly from a full node and verifies every event's
 Nostr signature locally. Broadcast confidentiality is set by
 repo-visibility tier plus app-layer NIP-44 encryption, not by a server.
-The OPTIONAL Matrix layer carries real-time discussion, DMs, and calls;
-a Matrix-free client is fully conformant.
+The OPTIONAL Matrix layer carries real-time group discussion and calls
+(and an additional DM surface); two-party DMs also have a CORE,
+Matrix-free double-ratchet path over Nostr, and a Matrix-free client is
+fully conformant.
 
 ## Where `mxdx` fits
 
@@ -517,7 +609,8 @@ questions are follow-up work that does not block the current draft:
   COB type registry, the NIP-01-filter → git-read mapping, and
   retention / GC / quota rules must be fixed before a repo relay can be
   declared conformant (ADR-026). Radicle's per-fetch size limits bound
-  this.
+  this - verified against Heartwood 1.9.1 as hardcoded defaults with no
+  CLI or node-config override (5 MiB special refs, 5 GiB data refs).
 - **`matrix:` URI refactor of §7 outbox schemas (OPTIONAL Matrix
   layer).** The OPTIONAL Matrix outbox listings still use the legacy
   `{room_id, via}` structured form for backward source compatibility,

@@ -1,0 +1,51 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "dm/invite-unbound-device-rejected",
+  "spec_refs": [
+    "§5.7.2",
+    "§3.3.1",
+    "§14.3"
+  ],
+  "description": "A kind:30078 invite signed by a publishing key with no valid kind:31001 delegation to the persona is rejected before a session is established.",
+  "input": {
+    "event": {
+      "pubkey": "00e3ae1974566ca06cc516d47e0fb165a674a3dabcfca15e722f0e3450f45889",
+      "created_at": 1767225711,
+      "kind": 30078,
+      "tags": [
+        [
+          "d",
+          "double-ratchet/invites/00e3ae1974566ca06cc516d47e0fb165a674a3dabcfca15e722f0e3450f45889"
+        ],
+        [
+          "heterodyne",
+          "dm_invite"
+        ],
+        [
+          "ephemeral_key",
+          "714651a9cb4af14c78ac98661e39723d234d56537053d0140f08670f188ce2bc"
+        ]
+      ],
+      "content": "",
+      "id": "584f1ee2c74cedb82641efb7d6d2920b286535fcde107c30d52fd80db8c86e6d",
+      "sig": "d0c2a1b824e10331de23c75addc79b1c0103a514ce2f9e6a317af75b9258ee1d0216bd50e0da489f1077742805a5538ddec20ead78315d62cd1291f3504c144a"
+    },
+    "signer_publishing_key": "00e3ae1974566ca06cc516d47e0fb165a674a3dabcfca15e722f0e3450f45889",
+    "persona_delegation_set": [
+      "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+      "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "dm_invite_unbound_device"
+  },
+  "decision_trace": [
+    "verify_outer_bip340_signature",
+    "resolve_signer_delegation",
+    "reject_no_kind31001_binding"
+  ],
+  "notes": "The outer Nostr signature is valid, but the signer key is absent from the persona's kind:31001 delegation set, so it does not chain to the cold root (§5.7.2).",
+  "direction": "consume"
+}

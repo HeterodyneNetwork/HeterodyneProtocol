@@ -1,0 +1,33 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "privacy-tiers/complete-fetch-attempt",
+  "spec_refs": [
+    "§6.7.2",
+    "§6.9.1",
+    "§14.3"
+  ],
+  "description": "A complete fetch attempt queries the full configured relay set and repo-relay set before declaring a Tier 3 page missing.",
+  "input": {
+    "relay_set": [
+      "wss://relay-a",
+      "wss://relay-b"
+    ],
+    "repo_relay_set": [
+      "wss://node-a.example/relay"
+    ],
+    "queried": [
+      "wss://relay-a",
+      "wss://relay-b",
+      "wss://node-a.example/relay"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "complete_fetch_attempt": true,
+      "queried_all_backends": true
+    }
+  },
+  "direction": "consume"
+}

@@ -1,0 +1,62 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "node-advert/nid-proof-invalid-rejected",
+  "spec_refs": [
+    "§7.0",
+    "§3.3.1",
+    "§14.3"
+  ],
+  "description": "A kind:31010 advertisement whose inner Ed25519 nid_proof does not verify under the advertised NID is rejected, even though the outer Nostr signature is valid.",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767225650,
+      "kind": 31010,
+      "tags": [
+        [
+          "d",
+          "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1"
+        ],
+        [
+          "heterodyne",
+          "node_advert"
+        ],
+        [
+          "rid",
+          "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1"
+        ],
+        [
+          "nid",
+          "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+        ],
+        [
+          "endpoint",
+          "wss://node-a.example/relay"
+        ],
+        [
+          "expiry",
+          "1767312000"
+        ],
+        [
+          "nid_proof",
+          "c00706f51e477bb36ef65052a1deb624c3713738b8f0a4127c2fdf8c59b49ad3b0cb4db1bedcf38d6f97630daa9e3260f899158b84bd382b42f10771d4852e0c"
+        ]
+      ],
+      "content": "",
+      "id": "0d7a246ff9653ccb9b053b6caca909392bb97123ca94da366a05bad9118de4b7",
+      "sig": "51f281f7563869e1550b8ca43bedee71b5ad5ec8f4f618455b7971bcbcfbfbac00ebbad89ec540f7e78edcf7eead81120cdb0ec09b801665f0a2e97927bfb49e"
+    },
+    "advertised_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+    "nid_proof_payload": "heterodyne-node-advert-v1|rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|wss://node-a.example/relay|1767312000|4a19af7f069f3c32d4235c726f666fc8cd0175fa"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "nid_proof_invalid"
+  },
+  "decision_trace": [
+    "verify_outer_bip340_signature",
+    "verify_inner_ed25519_nid_proof"
+  ],
+  "direction": "consume"
+}

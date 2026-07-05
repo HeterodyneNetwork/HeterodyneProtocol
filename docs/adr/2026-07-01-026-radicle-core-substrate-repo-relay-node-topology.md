@@ -306,3 +306,23 @@ Radicle write path, the `kind:31010` signed/expiring advertisement
 with repo-possession proof, the routing-node rename (vs Radicle
 seeding), the reframing of redundancy as opt-in seeding, the reserved
 event-storage namespace, and the expanded repo-relay threat surfaces.
+
+## Verification addendum (2026-07-05)
+
+Empirically verified against `rad`/`radicle-node` 1.9.1 and the
+Heartwood source at tag `releases/1.9.1`:
+
+- **Reserved event-storage namespace** (Decision, "Event storage
+  layout" - `refs/cobs/xyz.heterodyne.*` for collaborative objects such
+  as threads). Verified: custom reverse-DNS COB types need no protocol
+  or wire change, but `rad` tooling drives any non-built-in COB type
+  through an external helper binary `rad-cob-<suffix>` (JSON-Lines
+  protocol) that must be on PATH - an implementation that manipulates
+  `xyz.heterodyne.*` COBs via `rad` tooling must ship one.
+- **Fetch size limits** (Decision, "Radicle's fetch size limits
+  (special-refs and data-refs caps) bound per-fetch size"). Verified:
+  these are hardcoded in 1.9.1 with no CLI or node-config override
+  (5 MiB for special refs - `rad/id`, `rad/sigrefs` - and 5 GiB for
+  data refs); the repo-relay storage contract (§10, still a named
+  pre-1.0 TBD) must treat them as fixed Heartwood limits, not as
+  Heterodyne-tunable parameters.

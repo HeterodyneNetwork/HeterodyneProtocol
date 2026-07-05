@@ -1,0 +1,36 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "moderation/approvals-required-absent-default-one",
+  "spec_refs": [
+    "§8.2",
+    "§14.3"
+  ],
+  "description": "A kind:34550 community definition with no approvals_required tag defaults the threshold to 1.",
+  "input": {
+    "community_definition": {
+      "kind": 34550,
+      "tags": [
+        [
+          "d",
+          "acme-town-square"
+        ],
+        [
+          "p",
+          "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+          "wss://relay.example",
+          "moderator"
+        ]
+      ]
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "approvals_required": 1,
+      "threshold_source": "default_absent"
+    }
+  },
+  "notes": "Absent approvals_required means 1, keeping vanilla-NIP-72 compatibility (§8.2).",
+  "direction": "consume"
+}

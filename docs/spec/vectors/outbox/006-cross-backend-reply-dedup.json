@@ -1,0 +1,39 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "outbox/cross-backend-reply-dedup",
+  "spec_refs": [
+    "§6.5",
+    "§6.3",
+    "§14.3"
+  ],
+  "description": "Outbox-model reply and reaction observed on both the Nostr relay and the repo relay are deduplicated by event id during scatter-gather thread assembly.",
+  "input": {
+    "reply_event_id": "abababababababababababababababababababababababababababababababab",
+    "reply_observed_on": [
+      "nostr_relay",
+      "repo_relay"
+    ],
+    "reaction_event_id": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+    "reaction_observed_on": [
+      "nostr_relay",
+      "repo_relay"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "unique_event_ids": [
+        "abababababababababababababababababababababababababababababababab",
+        "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+      ],
+      "duplicate_count": 2,
+      "thread_assembly": "scatter_gather"
+    }
+  },
+  "decision_trace": [
+    "gather_across_backends",
+    "dedup_by_event_id"
+  ],
+  "direction": "consume"
+}

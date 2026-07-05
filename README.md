@@ -59,10 +59,12 @@ promise: **your identity is yours, and no platform owns or gatekeeps it.**
   by anyone), **private-but-not-discoverable** (a Radicle private repo - visible
   only to the audience you allow, though those allowed nodes hold it in the
   clear), and **encrypted** (NIP-44 ciphertext committed to the repo - readable
-  only by key-holders, so even the nodes that store it cannot open it). For
-  real-time group chat and DMs, the OPTIONAL Matrix layer adds end-to-end
-  encryption with Matrix's ratchet (Megolm today, MLS ahead), where the
-  homeserver routes ciphertext it can never read.
+  only by key-holders, so even the nodes that store it cannot open it).
+  **Direct messages** get their own forward-secret channel - a Signal-style
+  double ratchet carried in Nostr events, so past messages stay safe even if a
+  key is later compromised. For real-time group chat, the OPTIONAL Matrix layer
+  adds end-to-end encryption with Matrix's ratchet (Megolm today, MLS ahead),
+  where the homeserver routes ciphertext it can never read.
 - **Light on resources.** No proof-of-work mining, no blockchain, no heavy
   consensus. Confidential broadcast encrypts **once for the audience** - instead
   of re-encrypting a message separately for every recipient - and the OPTIONAL
@@ -96,8 +98,9 @@ real-time discussion. Each system does what it does best:
   redundancy scales with interest.
 - **Matrix (OPTIONAL) provides real-time encrypted discussion.**
   [Megolm](https://gitlab.matrix.org/matrix-org/olm/-/blob/master/docs/megolm.md)/[MLS](https://www.rfc-editor.org/rfc/rfc9420.html)
-  group end-to-end encryption, native room state, and federation for group chat,
-  DMs, and calls. A client that omits Matrix is still fully conformant.
+  group end-to-end encryption, native room state, and federation for group chat
+  and calls (plus an OPTIONAL two-party DM surface atop the CORE DM channel). A
+  client that omits Matrix is still fully conformant.
 
 The key insight: the user's identity (their Nostr keypair) is **decoupled** from
 the infrastructure that carries any given event. **Broadcast** content (you
@@ -105,8 +108,11 @@ publishing as yourself) is a signed Nostr event written to both core backends,
 under one of three privacy tiers (public repo, private repo, or
 encrypted-blobs-in-repo). **Replies and reactions** use the Nostr **outbox
 model**: each author writes into their own outbox and clients assemble threads
-scatter-gather. **Real-time group chat and DMs** flow through the OPTIONAL Matrix
-layer, whose homeserver acts as a blind relay for the ciphertext it routes.
+scatter-gather. **Direct messages** run on the core substrate as a Signal-style
+double ratchet carried in Nostr events (forward secrecy and post-compromise
+security), with a NIP-17 fallback for vanilla-Nostr recipients. **Real-time
+group chat** flows through the OPTIONAL Matrix layer, whose homeserver acts as a
+blind relay for the ciphertext it routes.
 
 Confidential broadcast encrypts **once for the audience** and commits the
 ciphertext to the repo, sidestepping the *N-encryptions-for-N-recipients*
@@ -125,7 +131,7 @@ ID, bound to the persona by the same KERI-anchored delegation.
 
 ```
                      your device (holds your keys)
-       broadcasts    │            │ replies/reactions    │ group chat / DMs
+       broadcasts    │            │ replies/reactions    │ group chat / calls
     signed Nostr     │            │ (outbox model)        │ (OPTIONAL)
     events           ▼            ▼                       ▼
         ┌─────────────────────┬──────────────────┐   Matrix homeserver
@@ -147,11 +153,14 @@ an explicitly stated trust boundary:
 | **Private repo** ("unencrypted-but-not-discoverable") | A Radicle private repo: invisible/unfetchable to non-allowed nodes. | Not confidential against allowed seeders - they hold it in the clear. |
 | **Encrypted-blobs-in-repo** | NIP-44 ciphertext committed under an audience key. | Everyone who is not a key-holder, including the nodes that store it. |
 
-Real-time **discussion** - communities, topic rooms, forums, group chat, and
-DMs - lives in the **OPTIONAL Matrix layer** as `public_discussion` and
+Real-time **discussion** - communities, topic rooms, forums, and group chat -
+lives in the **OPTIONAL Matrix layer** as `public_discussion` and
 `private_discussion` rooms (bare Matrix by default, with an optional per-message
-signature badge). When Matrix is absent, replies and reactions fall back to the
-Nostr outbox model. **No tier or discussion kind claims deniability** - every
+signature badge). **Direct messages** are a CORE feature carried on the substrate
+as a forward-secret double ratchet over Nostr events (with a NIP-17 fallback for
+vanilla-Nostr recipients); the Matrix layer's two-party rooms are an OPTIONAL
+additional DM surface. When Matrix is absent, replies and reactions fall back to
+the Nostr outbox model. **No tier or discussion kind claims deniability** - every
 post and message is attributable to its author's identity via the protocol's
 delegation, though bare messages carry no *transferable* third-party proof.
 
@@ -200,7 +209,7 @@ byte-for-byte.
 | [`docs/architecture.md`](docs/architecture.md) | Non-normative architecture overview and design rationale. |
 | [`docs/glossary.md`](docs/glossary.md) | Term definitions referenced from the spec. |
 | [`docs/security/threat-model.md`](docs/security/threat-model.md) | Companion analysis to the spec's security model. |
-| [`docs/spec/vectors/`](docs/spec/vectors/) | Conformance test vectors (format defined; vectors authored incrementally). |
+| [`docs/spec/vectors/`](docs/spec/vectors/) | Conformance test vectors (authored v0.4.0 suite covering the spec's coverage map; generator tooling included). |
 | [`docs/adr/`](docs/adr/) | Architecture Decision Records behind each revision. |
 | [`research/INDEX.md`](research/INDEX.md) | Topic-keyed index into the background research. |
 | [`CLAUDE.md`](CLAUDE.md) | Project mission and full repository map. |
@@ -223,12 +232,25 @@ protocols referenced above.
   protocol flow, the event format, and `secp256k1` Schnorr signatures.
 - [NIP-19](https://github.com/nostr-protocol/nips/blob/master/19.md) — bech32
   identifiers (`npub` / `nsec` and related entities).
+- [NIP-32](https://github.com/nostr-protocol/nips/blob/master/32.md) - labels,
+  the advisory moderation-annotation carrier (spec section 8.9).
+- [NIP-49](https://github.com/nostr-protocol/nips/blob/master/49.md) - private
+  key encryption, the nsec wrap format used by the keys repository.
+- [NIP-51](https://github.com/nostr-protocol/nips/blob/master/51.md) - lists
+  and sets, the core carrier for mute lists and the "sets file" (spec
+  section 8.5).
 - [NIP-65](https://github.com/nostr-protocol/nips/blob/master/65.md) — relay
   list metadata (the "outbox" model) for discovering where a user publishes.
 - [NIP-72](https://github.com/nostr-protocol/nips/blob/master/72.md) — moderated
   communities, the model behind Heterodyne's moderated discussion rooms.
+- [NIP-78](https://github.com/nostr-protocol/nips/blob/master/78.md) -
+  application-specific data, the carrier for double-ratchet DM invites.
 - [NIP-EE](https://github.com/nostr-protocol/nips/blob/master/EE.md) — MLS-based
   end-to-end encryption for Nostr.
+- [nostr-double-ratchet](https://github.com/irislib/nostr-double-ratchet) - the
+  Double Ratchet over Nostr wire protocol adopted for CORE direct messages
+  (spec section 5.7); prior art in production at
+  [iris-client](https://github.com/irislib/iris-client).
 
 **Radicle** (peer-to-peer content substrate)
 
@@ -255,6 +277,9 @@ protocols referenced above.
   defining the elliptic curve behind every Heterodyne identity keypair.
 - [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) —
   Schnorr signatures over secp256k1, the signature scheme Nostr events use.
+- [Double Ratchet](https://signal.org/docs/specifications/doubleratchet/) -
+  Signal's Double Ratchet algorithm specification; the forward-secrecy and
+  post-compromise-security construction behind CORE direct messages.
 - [KERI](https://arxiv.org/abs/1907.02143) — *Key Event Receipt Infrastructure*
   by Samuel M. Smith (arXiv); the foundational paper for the cold-root /
   epoch-key identity model. Active specification:

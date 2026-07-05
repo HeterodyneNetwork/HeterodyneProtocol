@@ -1,15 +1,17 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.3.0",
+  "spec_version": "0.4.0",
   "vector_id": "verification/delegation-mismatch-rejects",
   "spec_refs": [
+    "§3.3.1",
     "§4.5",
     "§14.3"
   ],
-  "description": "Event signed for one delegated MXID rejects when sent by another.",
+  "description": "An event signed by a publishing key not covered by the active NID delegation rejects.",
   "input": {
-    "delegated_mxid": "@alice:example.org",
-    "sender_mxid": "@mallory:example.org"
+    "delegated_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+    "delegated_publishing_key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+    "event_pubkey": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
   },
   "expected_output": {
     "verdict": "reject",

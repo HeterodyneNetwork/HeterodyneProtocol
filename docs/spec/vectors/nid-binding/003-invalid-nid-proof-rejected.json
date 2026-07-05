@@ -1,0 +1,61 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "nid-binding/invalid-nid-proof-rejected",
+  "spec_refs": [
+    "§3.3.1",
+    "§14.3"
+  ],
+  "description": "A kind:31001 NID delegation whose nid_proof does not verify under the advertised radicle_nid over the pinned binding payload is rejected.",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767225605,
+      "kind": 31001,
+      "tags": [
+        [
+          "d",
+          "nid:did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+        ],
+        [
+          "heterodyne",
+          "delegation"
+        ],
+        [
+          "radicle_nid",
+          "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+        ],
+        [
+          "publishing_key",
+          "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
+        ],
+        [
+          "cold_root",
+          "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        ],
+        [
+          "nid_proof",
+          "228eccd939a7c02c645e63b0574529d328ea0c3ef30cf48da17008095fd95b8309044d8586a09dc6b6ef8cfc58a79f9b1c1659e108591095277326baa120a805"
+        ],
+        [
+          "valid_until",
+          ""
+        ]
+      ],
+      "content": "",
+      "id": "030930943336b9d1426800aad36c642164d54a4bc9dd02c8a6d2ac8f6a52ce5d",
+      "sig": "9c44a3bebbbec31959365b05bf2a3004a2229dc045452e37a0204b91a44de48903b96392cb604110ea41603f53faf1b7b5bd2a69b0a6bd65251394e123baa5f8"
+    },
+    "radicle_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+    "nid_binding_payload": "heterodyne-nid-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|radicle-nid-delegation"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "nid_proof_invalid"
+  },
+  "decision_trace": [
+    "verify_outer_bip340_signature",
+    "verify_ed25519_nid_proof"
+  ],
+  "direction": "consume"
+}

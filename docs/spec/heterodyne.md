@@ -170,8 +170,8 @@ described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
 5. [Repo-visibility taxonomy (and OPTIONAL Matrix discussion kinds)](#5-repo-visibility-taxonomy-and-optional-matrix-discussion-kinds) - **drafted**
 6. [Publishing flow](#6-publishing-flow) - **drafted**
 7. [Discovery and subscription](#7-discovery-and-subscription) - **drafted**
-8. [Moderation](#8-moderation) - **drafted** (NIP-72 approval mode + Radicle editorial-gating mode §8.8, ADR-027)
-9. [Encryption guarantees](#9-encryption-guarantees) - **drafted** (three privacy tiers §9.0; Megolm/MLS scoped to OPTIONAL Matrix)
+8. [Moderation](#8-moderation) - **drafted** (NIP-72 approval mode + Radicle editorial-gating mode §8.8, ADR-027; NIP-51 lists/sets carrier §8.5-§8.6; NIP-32 labels §8.9)
+9. [Encryption guarantees](#9-encryption-guarantees) - **drafted** (three privacy tiers §9.0; per-mechanism forward-secrecy posture §9.5; Megolm/MLS scoped to OPTIONAL Matrix)
 10. [Bridge and client model](#10-bridge-and-client-model) - **drafted** (Nostr + repo-relay client; node roles §10.1.1; Matrix OPTIONAL)
 11. [Interoperability with vanilla Nostr and vanilla Matrix](#11-interoperability) - **drafted** (incl. §11.7 strict-mode profile, ADR-007)
 12. [Versioning and capability negotiation](#12-versioning-and-capability-negotiation) - **drafted**
@@ -214,7 +214,17 @@ Heterodyne defines:
 - A **moderation layering** combining a Radicle-native editorial-gating
   mode (reachability from the delegate-threshold-approved canonical feed
   branch, §8) with NIP-72-style approval signatures for editorial
-  control, and - in the OPTIONAL Matrix layer - room-level ACLs.
+  control, NIP-51 lists/sets as the personal and community blocklist
+  carrier (§8.5, §8.6), and - in the OPTIONAL Matrix layer - room-level
+  ACLs.
+- A **CORE direct-message mechanism** (§5.7): Double Ratchet sessions
+  carried in Nostr events (forward secrecy, post-compromise security,
+  relay-unlinkable metadata), bound to the persona's delegation set,
+  with NIP-17 as the vanilla-interop fallback (§11.4).
+- A **configuration and backup model** (§3.8.6-§3.8.8): an unadvertised
+  per-persona config repository of encrypted blobs for all non-key
+  state, a local-only keys repository for key material, and RECOMMENDED
+  periodic removable-media backup of all produced and followed repos.
 - A **bridge model** that is purely client-side; no homeserver, relay, or
   Radicle node software modifications are required.
 - A **transport-reachability requirement** (§7.7) making embedded Tor a
@@ -326,36 +336,52 @@ restated here.
 - **Collaborative Object (COB)** - a Radicle social artifact (issue,
   patch, identity document, or a custom reverse-DNS type such as
   `xyz.heterodyne.thread`) stored as git objects and merged with a CRDT.
-  Custom COB types need no protocol change.
+  Custom COB types need no protocol or wire change; note (verified
+  against Heartwood 1.9.1) that the standard `rad cob` tooling drives
+  any non-built-in type through an external helper binary named
+  `rad-cob-<suffix>` (the type name's last dot-segment) that must be on
+  PATH and speak Heartwood's JSON-Lines evaluation protocol, so an
+  implementation that manipulates custom COB types via `rad` tooling
+  must ship such a helper.
 - **Canonical `defaultBranch`** - the repo's canonical head, established
   as the commit a **threshold of delegates** agree on (the verified
   Radicle canonicity mechanism). Heterodyne's baseline org
   editorial-gating uses this delegate-threshold canonical feed branch
   (§6.7.0, §8).
-- **Canonical reference rules (`xyz.radicle.crefs`)** - an OPTIONAL,
-  EXPERIMENTAL Radicle per-ref refinement: per-ref rules, each with an
-  `allow` set of DIDs (or the keyword `"delegates"`) and a `threshold`,
-  that would govern which refs are canonical at finer granularity than
-  the single `defaultBranch`. A deployment MAY use it to gate individual
-  branches at different thresholds, but its exact semantics are NOT yet
-  verified against the pinned Heartwood release (the sources note only
-  that additional canonical branches beyond `defaultBranch` "may be
-  supported" in future); Heterodyne baseline canonicity MUST NOT depend
-  on it (§6.7.0, §8, §3.9.10, ADR-027).
+- **Canonical reference rules (`xyz.radicle.crefs`)** - an OPTIONAL
+  Radicle per-ref refinement, verified against Heartwood 1.9.1: a map of
+  ref patterns to rules, each with an `allow` set (an explicit non-empty
+  DID list or the keyword `"delegates"`) and a per-pattern `threshold`,
+  governing which refs are canonical at finer granularity than the
+  single `defaultBranch`. It is CLI-exposed via
+  `rad id update --payload xyz.radicle.crefs rules '{...}'` (see
+  rad-id(1)); rules that clash with the synthesized `defaultBranch` rule
+  are rejected. A deployment MAY use it to gate individual branches at
+  different thresholds, but Heterodyne baseline canonicity MUST NOT
+  depend on it - a deliberate scoping choice, not a verification hedge
+  (§6.7.0, §8, §3.9.10, ADR-027).
 - **Identity document** - a Radicle repository's Canonical JSON document
   (`delegates`, `threshold`, `payload`, `visibility`), the projection of
-  the persona's KERI-authoritative delegate set. Its exact storage
-  (a `xyz.radicle.id` COB versus a special ref) is UNVERIFIED pending the
-  pinned Heartwood release; the spec does not depend on that detail
-  normatively (§3.9, ADR-027).
+  the persona's KERI-authoritative delegate set. Verified against
+  Heartwood 1.9.1: it is stored as a `xyz.radicle.id` collaborative
+  object (COB); `refs/rad/id` is a local, per-node convenience ref that
+  points at the COB's current tip and is not a second, independent
+  storage form (§3.9, ADR-027).
 - **Delegates** - the Ed25519 NIDs empowered to change a repo's identity
   document and establish its canonical refs. Distinct from the
   `visibility.allow` set (which grants replication/read access without
   governance authority, §5, §6.10).
-- **Threshold** - the integer M in an M-of-N scheme: an identity-document
-  change or the canonical `defaultBranch` head is authoritative once M
-  delegates sign the same revision/commit. A sole-delegate persona has
-  threshold 1.
+- **Threshold** - the integer M in an M-of-N scheme. Verified against
+  Heartwood 1.9.1, the word covers two distinct mechanisms that MUST NOT
+  be conflated: (1) the canonical `defaultBranch` (or a `crefs`-ruled
+  branch) becomes authoritative once M delegates sign the same commit,
+  per the document's own `threshold` field; (2) the identity document's
+  *own* revisions (delegate, threshold, or payload changes) are instead
+  adopted once a **majority** (more than half) of the delegate set the
+  revision would replace has signed it via `rad id accept` - Heartwood's
+  identity COB does not consult the `threshold` field for its own
+  quorum. A sole-delegate persona trivially satisfies both forms with a
+  single signature.
 - **KERI key event log (KEL)** - the persona's authoritative key-rotation
   history (§3.5). It is authoritative over the Radicle identity document:
   on any divergence, clients trust the KEL (§3.9, ADR-027).
@@ -379,7 +405,28 @@ restated here.
   repo-visibility privacy tier (public / private / encrypted, §5).
   **Discussion** - many-party (or two-party DM) real-time conversation -
   is carried as bare Matrix in the OPTIONAL Matrix layer, or as async
-  outbox interaction when Matrix is absent.
+  outbox interaction when Matrix is absent; two-party DMs have a CORE
+  Matrix-free mechanism (§5.7).
+- **Sets file** - a persona's collection of NIP-51 set events (kinds
+  30000-39092, one per `(kind, d)` pair): follow sets, relay sets,
+  bookmark sets, kind-mute sets, starter packs. Published to both core
+  backends like any addressable event (§3.0, §8.5).
+- **Config repository** - a persona's dedicated, unadvertised Radicle
+  private repo of encrypted blobs holding all non-key private state
+  (preferences, private config, device inventory). Its RID is never
+  published; it is located only via the keys repository or a backup
+  restore (§3.8.6).
+- **Keys repository** - a strictly local-only versioned store (never
+  Radicle-replicated) of key material and secret pointers: the
+  NIP-49-wrapped nsec, epoch/NID secrets, audience keys, the config
+  repository RID, and the followed-repositories list. Synced between a
+  user's own devices only via an encrypted §5.7 DM session or offline
+  backup restore (§3.8.7).
+- **Key-ID branch (`enc/<key_id>`)** - the per-audience-key-generation
+  branch on which every encrypted blob in a repo lives. Rotation
+  creates a fresh branch for the new key and force-deletes the retired
+  one, scrubbing old ciphertext from cooperating seeds over time
+  (§6.10.4).
 - **Wrap mode** — whether an in-room message carries a Nostr signature
   (**wrapped** `m.heterodyne.note.v1` or a `heterodyne_nostr_sig`,
   authentic and forwardable to vanilla Nostr, giving a transferable
@@ -433,18 +480,25 @@ new kinds outside the reserved range without a spec amendment.
 | 1 | Short-form text note (microblog) | §4.2 | NIP-01 / NIP-10 |
 | 3 | Follow list (contact list) | §7.4 (OPTIONAL emit for interop) | NIP-02 |
 | 4 | Encrypted DM | NOT USED — deprecated upstream | NIP-04 |
+| 5 | Deletion request | §8.4, §6.10.3 | NIP-09 |
 | 7 | Reaction | §4.2 | NIP-25 |
+| 1060 | Double-ratchet DM outer message (CORE DMs; signed by the current ratchet key, rotated per DH ratchet step) | §5.7 | nostr-double-ratchet wire (NIP-44 v2 payload) |
 | 1984 | Reporting | §8 (community moderation interop) | NIP-56 |
+| 1985 | Label (moderation labels, RECOMMENDED signal) | §8.9 | NIP-32 |
 | 4550 | Community post approval | §8.1 | NIP-72 |
 | 9734 | Zap request | §7.1 reply-inbox interop | NIP-57 |
 | 9735 | Zap receipt | §7.1 reply-inbox interop | NIP-57 |
+| 10000 | Mute list (public items in tags; private items NIP-44-encrypted in content) | §8.5 | NIP-51 |
+| 10000-10102 | Other NIP-51 standard lists (pins 10001, bookmarks 10003, communities 10004, etc.), as used | §8.5 | NIP-51 |
 | 10002 | Relay list metadata | §7.1 `nostr_relays` interop | NIP-65 |
-| 14, 15 | NIP-17 chat message rumor (unsigned) | §11.4 (vanilla-Nostr-only DMs) | NIP-17 |
+| 14, 15 | NIP-17 chat message rumor (unsigned) | §5.7 (inner DM rumor), §11.4 (vanilla-Nostr-only DMs) | NIP-17 |
 | 13 | NIP-17 / NIP-59 seal (encrypted rumor, signed by author) | §11.4 | NIP-59 |
-| 1059 | NIP-17 / NIP-59 gift wrap (encrypts seal; signed by one-time key) | §11.4 | NIP-59 |
-| 10050 | NIP-17 DM relay list | §11.4 | NIP-17 |
+| 1059 | NIP-17 / NIP-59 gift wrap (encrypts seal; signed by one-time key); also the §5.7 double-ratchet invite response (gift-wrap-shaped) | §5.7, §11.4 | NIP-59 |
+| 10050 | DM relay list (where a persona listens for §5.7 and NIP-17 DMs) | §5.7, §11.4 | NIP-17 |
+| 30000-39092 | NIP-51 sets - the persona's "sets file" (follow sets 30000, relay sets 30002, bookmark sets 30003, kind-mute sets 30007, interest sets 30015, starter packs 39089, etc.) | §8.5 | NIP-51 |
 | 30023 | Long-form content (article) | §4.2, §11.5 | NIP-23 |
 | 30024 | Long-form content (draft) | §4.2 | NIP-23 |
+| 30078 | Application-specific data: §5.7 double-ratchet device invites (`d` = `double-ratchet/invites/<device>`) | §5.7 | NIP-78 |
 | 30402 | Classified listing | §4.2 (interop only) | NIP-99 |
 | **31000** | **Heterodyne: root attestation** | §3.2.1 | Heterodyne-reserved |
 | **31001** | **Heterodyne: delegation attestation (secp256k1 publisher + Ed25519 Radicle NID)** | §3.3 | Heterodyne-reserved |
@@ -460,6 +514,15 @@ new kinds outside the reserved range without a spec amendment.
 | **31011** | **Heterodyne: audience-key-wrap (per-recipient NIP-44 wrap of an audience key)** | §6.7.4, §6.10 | Heterodyne-reserved |
 | **31012** | **Heterodyne: audience roster (epoch-key-signed recipient set for a Tier 3 audience)** | §6.7.4, §7.2 | Heterodyne-reserved |
 | 31013-31099 | RESERVED for future Heterodyne use | - | - |
+
+**NIP-51 lists and sets are core-substrate constructs.** Every NIP-51
+standard list (kinds 10000-10102) and set (kinds 30000-39092) adopted
+above is an ordinary replaceable/addressable Nostr event and MUST be
+publishable to BOTH core backends - ordinary Nostr relays and repo
+relays - like any other event (§8.5). A repo relay MUST NOT
+special-case or reject NIP-51 kinds. A persona's sets (its "sets
+file") are the collection of its NIP-51 set events, one per
+`(kind, d)` pair.
 
 NOTES on the substrate pivot (ADR-026/027/028):
 
@@ -1710,30 +1773,46 @@ Cache invalidation:
   the room per §3.2 and publish a fresh `kind:31005` identity
   pointer to redirect followers to a new room.
 
-### 3.8 Client configuration (OPTIONAL encrypted Matrix config room)
+### 3.8 Client configuration and backups (core carriers + OPTIONAL Matrix config room)
 
 Portable client configuration, per-persona private state, and
-Heterodyne-specific backups are synchronized primarily over the
-**repo/Nostr substrate**: a persona commits this state as
-encrypted-blobs-in-repo (§5, §6.10) under a device/persona audience key
-distributed via `kind:31011` (§6.7.4), so a new or recovering device
-can re-sync from the persona's repo alone, with no Matrix dependency.
+Heterodyne-specific backups are carried by **three core constructs**,
+none of which involves Matrix:
 
-The **encrypted Matrix config room** is now OPTIONAL. When the OPTIONAL
-Matrix layer is in use, a Matrix account MAY maintain a single encrypted
-client configuration room: an E2EE Matrix room whose only members are
-the owning MXID's devices, used to store the same configuration and
-backups. It is one available carrier, not a requirement; no identity,
-publishing, discovery, or privacy behavior may depend on it.
+- the **config repository** (§3.8.6) - a dedicated, unadvertised
+  Radicle repo of encrypted blobs holding everything that is NOT a
+  key: preferences, per-persona private state, device inventory,
+  application state;
+- the **keys repository** (§3.8.7) - a strictly local-only (never
+  Radicle-replicated) store holding key material and secret pointers,
+  synchronized between the user's own devices only via an encrypted
+  §5.7 DM session or an offline backup restore; and
+- **removable-media backup** (§3.8.8, RECOMMENDED) - periodic offline
+  backup of every repo the user produces and follows, including
+  config repositories and the keys repository.
+
+A new or recovering device bootstraps in that order: restore or
+DM-sync the keys repository, use it to locate and decrypt the config
+repository, then re-fetch content repos. No Matrix dependency exists
+anywhere on this path.
+
+The **encrypted Matrix config room** (§3.8.1-§3.8.5) is an OPTIONAL
+mirror. When the OPTIONAL Matrix layer is in use, a Matrix account MAY
+maintain a single encrypted client configuration room used to mirror
+the same configuration and backups. It is one available carrier, not a
+requirement; the core carriers are authoritative on divergence, and no
+identity, publishing, discovery, or privacy behavior may depend on the
+config room.
 
 The motivation is portability. A user adding a new device, or
 recovering after losing one, re-syncs their preferences, mute lists,
-and key material from the persona's repo (or, if in use, the config
-room) without having to manually reconfigure each client surface.
+and key material from their own repos and backups (or, if in use, the
+config room) without having to manually reconfigure each client
+surface.
 
-#### 3.8.1 Room shape
+#### 3.8.1 Room shape (OPTIONAL Matrix mirror, §3.8.1-§3.8.5)
 
-REQUIRED:
+REQUIRED (when the config room is used at all):
 
 - `m.heterodyne.room_kind.v1.kind`: `config_room`.
 - `m.room.encryption.algorithm`: `m.megolm.v1.aes-sha2` (today); MLS
@@ -1813,7 +1892,10 @@ bare-event-display policy from §11.1.
 ##### `m.heterodyne.persona_config.v1`
 
 Per-persona private state, keyed by the persona's npub. Each persona
-this MXID is delegated for gets its own state event.
+this MXID is delegated for gets its own state event. This is a mirror:
+the core carriers for this state are the §8.5 NIP-51 private items
+(private mutes) and the §3.8.6 config repository, which are
+authoritative on divergence.
 
 ```json
 {
@@ -1841,11 +1923,14 @@ this MXID is delegated for gets its own state event.
 
 ##### `m.heterodyne.key_backup.v1`
 
-Encrypted backups of Heterodyne-specific keys. Matrix-native
-cross-signing and Megolm session backup are NOT covered here — those
-remain the Matrix layer's responsibility via standard Matrix recovery
-mechanisms. This event covers Nostr `nsec` backups and any
-Heterodyne-specific recovery codes.
+Encrypted backups of Heterodyne-specific keys. This is an OPTIONAL
+redundant mirror: the core carrier for key material is the keys
+repository (§3.8.7, NIP-49 wrap), and this state event MAY hold an
+additional wrapped-nsec copy. Matrix-native cross-signing and Megolm
+session backup are NOT covered here — those remain the Matrix layer's
+responsibility via standard Matrix recovery mechanisms. This event
+covers Nostr `nsec` backups and any Heterodyne-specific recovery
+codes.
 
 ```json
 {
@@ -1950,6 +2035,145 @@ Normative rules:
 - **Encrypted nsec backup with lost wrapping secret**: persona is
   unrecoverable from this MXID's backup; rotate via §3.5 from a
   device that still holds the nsec.
+
+#### 3.8.6 Config repository (core)
+
+Everything that is not a key is backed up as **encrypted blobs in a
+config repository**: a dedicated Radicle private repo
+(`visibility: private`, §6.10.2) whose allow list contains only the
+persona's own delegated NIDs (§3.3.1), and whose entire content is
+encrypted before commit using the §6.10 Tier 3 mechanism under a
+dedicated **config audience key**, laid out on the §6.10.4 key-ID
+branch scheme.
+
+Normative rules:
+
+- **One config repository per persona.** A client MUST NOT share a
+  config repository across personas: its allow list names device
+  NIDs, and a shared repo would link personas through their common
+  seeders (§3.4 unlinkability).
+- **The RID is unadvertised (MUST).** The config repository's RID
+  MUST NOT appear in any published event or profile surface: not in
+  `kind:31005`, `kind:31010`, NIP-65 relay lists, `kind:0` profiles,
+  NIP-51 lists/sets, feed indexes, node advertisements, or any Matrix
+  state. Knowledge of the RID travels only through the keys
+  repository (§3.8.7), a §5.7 device-to-device DM session, or a
+  backup restore (§3.8.8). Combined with private visibility, this
+  means non-allowed nodes cannot fetch it and observers cannot
+  associate it with the persona.
+- **Key distribution is off-substrate.** The config audience key MUST
+  NOT be distributed via published `kind:31011` wraps (publishing a
+  wrap would advertise the repo's existence and audience). It is
+  carried only in the keys repository and its §3.8.7 sync paths.
+  Rotation follows §6.10.4 (fresh key, fresh `enc/<key_id>` branch,
+  old branch force-deleted).
+- **No key material.** Keys - nsec, epoch secrets, NID secrets,
+  audience keys, ratchet state - MUST NOT be committed to the config
+  repository, even encrypted; they belong to the keys repository
+  (§3.8.7).
+
+Well-known blob contents (JSON objects before encryption; clients MAY
+add vendor-prefixed blobs):
+
+- `user_prefs` - UI and client preferences (same content shape as the
+  §3.8.3 `m.heterodyne.user_prefs.v1` mirror).
+- `persona_config` - per-persona private state: private mute entries
+  too sensitive for the §8.5 NIP-51 private-item carrier, feed
+  preferences, cached pointers.
+- `device_inventory` - bookkeeping of the persona's devices (names,
+  first/last seen). **Rollback guard:** a device MUST NOT commit a
+  revision that removes a device from the inventory except as an
+  explicit, marked revocation record; a stale or reduced inventory
+  snapshot MUST NOT overwrite a newer one. The inventory is
+  bookkeeping only - device *authorization* remains the KEL plus the
+  `kind:31001` delegation set (§3.3.1), and the inventory MUST NOT be
+  treated as an authorization source.
+
+A new device that has received the keys repository can locate the
+config repository (RID), fetch it from the persona's own full nodes,
+decrypt it with the config audience key, and restore all non-key
+state with no Matrix dependency. When the OPTIONAL Matrix config room
+is also in use, the config repository is authoritative on divergence.
+
+#### 3.8.7 Keys repository (core, local-only)
+
+Key material lives in a **keys repository**: a strictly local,
+versioned store on each device (a plain git repository is
+RECOMMENDED for versioning and diffable restores). It is local-only
+by definition:
+
+- It MUST NOT be a Radicle repository and MUST NOT be seeded,
+  replicated, or published; its content MUST NOT be committed to any
+  repo relay, published to any Nostr relay, or stored on any
+  homeserver.
+- It MUST be encrypted at rest (I6). The persona's `nsec` MUST be
+  stored wrapped per **NIP-49** (scrypt-wrapped private key export)
+  or an equivalent memory-hard scheme under a user-controlled
+  secret; the OS keystore SHOULD protect the store where available.
+
+Contents:
+
+- the persona's NIP-49-wrapped `nsec` (cold root) and current epoch
+  key secrets (§3.5);
+- Ed25519 NID secrets for this device (§3.3.1);
+- Tier 3 audience keys the persona owns or has been granted
+  (§6.7.4), keyed by `key_id`;
+- the config repository RID and its config audience key (§3.8.6);
+- the **followed-repositories list**: the RIDs of every repo the
+  user follows - including private RIDs that are not discoverable
+  anywhere else - with any held audience keys; and
+- OPTIONALLY, §5.7 double-ratchet session state.
+
+Synchronization between the user's own devices happens over exactly
+two paths:
+
+1. **Encrypted device-to-device DM (§5.7).** Two devices delegated to
+   the same persona (`kind:31001`) establish a double-ratchet session
+   and transfer keys-repository updates through it (e.g. phone to
+   desktop). The session's binding to the persona's delegation set is
+   the authentication; a client MUST refuse a keys-repository sync
+   from a device whose delegation is revoked or unverifiable.
+2. **Backup restore (§3.8.8).** Offline restore from removable-media
+   backup.
+
+Loss semantics (clients SHOULD surface these plainly): losing every
+copy of the keys repository and its backups loses the audience keys
+(Tier 3 history becomes unreadable), ratchet state (§5.7 DM history
+is unrecoverable - a forward-secrecy consequence, §9.5), and the
+config-repository pointer. Identity-level recovery of the persona
+itself remains the §3.5 KERI path; the OPTIONAL Matrix
+`m.heterodyne.key_backup.v1` mirror (§3.8.3) MAY hold a redundant
+wrapped-nsec copy.
+
+#### 3.8.8 Removable-media backup (RECOMMENDED)
+
+Clients SHOULD implement, and recommend to the user, **periodic
+backup to removable offline storage** (USB or equivalent) covering:
+
+- every repo the user's personas produce (all tiers);
+- every repo the user follows (the local replicas), so the user's
+  own reading history survives network-wide loss;
+- config repositories (§3.8.6); and
+- the keys repository (§3.8.7), in its encrypted form.
+
+Git repositories SHOULD be backed up as `git bundle` files (single
+file per repo, integrity-checkable) or full clones. Clients SHOULD
+track which repos have new commits or refs since the last backup and
+surface a non-intrusive indicator - e.g. a UI chip - when items await
+backup; backup remains user-initiated unless the user opts into
+automation.
+
+Restore order: keys repository first (unlocked with the user's
+secret), then config repositories (located and decrypted via the keys
+repository), then content repos. A restored Tier 3 repo backup
+includes the `enc/<key_id>` branches for keys the user held at backup
+time (§6.10.4).
+
+Honesty requirements: the medium carries Tier 1/Tier 2 plaintext and
+Tier 3/config ciphertext, plus the encrypted keys repository - making
+it as sensitive as the keys themselves. The keys-repository portion
+MUST remain encrypted in backups, and clients SHOULD warn users to
+treat the medium like a key.
 
 ### 3.9 Multi-homing coordination and identity reconciliation
 
@@ -2228,8 +2452,10 @@ persona (they do not depend on the OPTIONAL Matrix layer).
   document (an `id`-mechanism update accepted by the delegate quorum).
 - **Add-before-remove.** Delegate-set updates MUST be add-before-remove:
   a replacement NID MUST be added to the Radicle delegate set (and reach
-  quorum) BEFORE the NID it replaces is rescinded, so the identity
-  document never drops below its `threshold`.
+  quorum) BEFORE the NID it replaces is rescinded, so the live delegate
+  set never loses the ability to reach the majority that identity-document
+  revisions require (§3.9 terminology; the document's `threshold` field
+  governs canonical-branch acceptance, not its own revisions).
 - **Emergency re-inception / re-anchor.** If the KEL's live delegates
   fall below the Radicle quorum required to update the identity document
   (a deadlock, since Radicle has no native rotation), the persona MUST
@@ -2239,13 +2465,24 @@ persona (they do not depend on the OPTIONAL Matrix layer).
   the new RID, exactly as for a compromised-container migration (§3.2,
   §3.10, §3.12.2).
 
-> **NOTE (UNVERIFIED Radicle internals).** The exact `rad id` update
-> mechanism, the identity-document storage form (a `xyz.radicle.id` COB
-> versus a special ref), and the `xyz.radicle.crefs` semantics are
-> load-bearing for these rules and MUST be verified against the pinned
-> Heartwood release before normative dependence. Where a detail is not
-> yet confirmed the spec treats it as UNVERIFIED and does not commit to
-> it.
+> **NOTE (verified against Heartwood 1.9.1).**
+> The identity document is stored as a `xyz.radicle.id` COB (`refs/rad/id`
+> is a local convenience pointer to its current tip, not a second storage
+> form, §3.9 terminology). The `rad id` update mechanism is a
+> propose/accept flow: any current delegate proposes a revision
+> (`rad id update`); the revision is adopted as current once a majority
+> (more than half) of the delegate set it would replace signs it via
+> `rad id accept`, independent of the document's own `threshold` field
+> (that field instead governs canonical `defaultBranch`/`crefs`-ruled
+> branch acceptance, §3.9 terminology). A delegate being added MUST
+> already have a matching `rad/sigrefs` entry in the repository, or the
+> proposal is rejected outright. Heartwood 1.9.1 has no override, force,
+> or emergency-recovery path for a delegate set that cannot reach
+> majority - this is exactly the "no native rotation escape" deadlock the
+> re-anchor rule above exists for. The `xyz.radicle.crefs` per-ref rules
+> are likewise verified against Heartwood 1.9.1 (see the crefs
+> terminology entry); baseline canonicity still MUST NOT depend on them,
+> as a deliberate scoping choice.
 
 Reframing note: multi-homing is now primarily **multi-full-node** - a
 persona reachable through several full nodes that serve its repo relay
@@ -3263,11 +3500,13 @@ RECOMMENDED `m.room.power_levels`:
 
 An E2EE many-party room with invitation-controlled membership —
 friend circles, work groups, family records, casual planning,
-day-to-day group chat — and, in the two-member case, the standard
-Heterodyne direct-message room. This single kind replaces the
+day-to-day group chat — and, in the two-member case, the OPTIONAL
+Matrix layer's direct-message surface. This single kind replaces the
 retired `private_verifiable`, `private_deniable`, `dm_verifiable`,
-and `dm_deniable` kinds; two-party DMs are simply two-member
-`private_discussion` rooms.
+and `dm_deniable` kinds; two-party Matrix DMs are simply two-member
+`private_discussion` rooms. The CORE direct-message mechanism -
+required of any DM-capable client, Matrix or not - is the §5.7
+double-ratchet-over-Nostr session.
 
 DEFAULT message form: **bare Matrix** (`m.room.message`,
 `m.reaction`). The room's confidentiality boundary is the
@@ -3347,6 +3586,115 @@ Heterodyne feeds to its audience (§7.2). This is how a "close friends"
 context can advertise "I also keep a followers-only encrypted feed you
 can join" to its members without leaking that feed's existence to
 non-members.
+
+### 5.7 Direct messages (CORE: double ratchet over Nostr)
+
+Two Heterodyne personas DM each other over the core substrate with
+**Double Ratchet sessions carried in Nostr events** - the
+nostr-double-ratchet wire protocol (Signal-style Double Ratchet with
+NIP-44 v2 payload encryption). This is the CORE DM mechanism: it
+needs no Matrix, gives **forward secrecy and post-compromise
+security** (§9.5), and hides conversation metadata from relays via
+rotating ratchet-key outer signers that never reference either
+persona.
+
+Conformance: DM support is a RECOMMENDED client feature. A client
+that offers Heterodyne-to-Heterodyne direct messaging MUST implement
+this section, so any two DM-capable conformant clients interoperate
+without Matrix. The two-member §5.5 `private_discussion` room is the
+OPTIONAL Matrix layer's additional DM surface, not a substitute. DMs
+to vanilla-Nostr-only recipients fall back to NIP-17 per §11.4 (no
+forward secrecy - §9.5).
+
+#### 5.7.1 Wire protocol
+
+Heterodyne adopts the nostr-double-ratchet wire (0.x normative
+reference; a frozen wire spec will be extracted before 1.0):
+
+- **Invites (`kind:30078`).** Each DM-capable device publishes an
+  addressable invite event, `d` tag `double-ratchet/invites/<device>`,
+  carrying the inviter identity, an ephemeral public key, and a
+  shared secret for session bootstrap. Invites are ordinary
+  addressable events publishable to both backends; rotating an invite
+  replaces the event, and an empty-content replacement is the
+  tombstone. Out-of-band invite links (URL-fragment-encoded) are an
+  equivalent client-mediated bootstrap.
+- **Invite responses (`kind:1059`).** Gift-wrap-shaped bootstrap
+  responses addressed to the inviter's ephemeral key.
+- **Messages (`kind:1060`).** Each ratchet message is an outer event
+  signed by the sender's **current DH ratchet key** - a fresh key
+  generated at each ratchet step, NOT the sender's epoch key -
+  carrying the encrypted Double Ratchet header in a tag and the
+  NIP-44 v2 ciphertext in `content`. A receiver matches outer events
+  against its sessions' current/next expected keys. Relays therefore
+  cannot link outer events to either persona; messages sent within
+  the same ratchet epoch share an outer signer and are linkable to
+  each other until the next DH ratchet step (each round trip)
+  rotates it.
+- **Inner rumors.** The decrypted payload is an unsigned NIP-17-style
+  rumor: `kind:14` chat message, `kind:7` reaction, plus
+  receipt/typing rumors. Unsigned rumors carry no *transferable*
+  third-party proof of authorship, consistent with the §13.1.2
+  posture; they are attributable to the peer persona through the
+  session binding below, so DMs are pseudonymous, not anonymous.
+
+Senders publish `kind:1060` events to the recipient's **`kind:10050`
+DM relay list** (NIP-17); recipients listen there. A persona offering
+DMs SHOULD publish `kind:10050`.
+
+#### 5.7.2 Session binding to the persona (MUST)
+
+The Heterodyne addition over the base wire is delegation binding:
+
+- An invite MUST be signed by a device secp256k1 publishing key that
+  is currently delegated to the persona via `kind:31001` (§3.3.1).
+- Before establishing or accepting a session, a client MUST verify
+  that the peer device's publishing key chains to the peer persona's
+  cold root: a valid `kind:31001` delegation signed by an epoch key
+  that the peer's KEL (§3.5.3) shows authoritative, per the §4.5
+  checks.
+- When a device's delegation is revoked or expires, peers MUST stop
+  sending on sessions bound to that device and SHOULD surface the
+  revocation; the persona's remaining devices are unaffected
+  (§9.3 applies).
+
+This preserves the attribution model of §3.3: a DM is a conversation
+with a persona's *delegated device*, verified against the same KEL
+that governs everything else.
+
+#### 5.7.3 Transport and retention rules
+
+- **Relay-carried only (MUST).** `kind:1060` messages and `kind:1059`
+  responses MUST NOT be committed to any repo or accepted by a repo
+  relay for storage. Repos are durable replicated archives; archiving
+  ratchet ciphertext would contradict forward secrecy and build a
+  permanent traffic record. (Invites are ordinary addressable events
+  and MAY live on both backends.)
+- **No DM backfill (MUST).** The §6.9 prohibition extends to §5.7:
+  there is no DM retrieval protocol. History exists in the device's
+  own local store (encrypted at rest, I6) and nowhere else; relays
+  serve only their transient retention window. Losing ratchet state
+  loses history - a forward-secrecy consequence the client MUST
+  surface honestly (§3.8.7, §9.5).
+- **Multi-device.** Each delegated device publishes its own invite
+  and holds its own sessions; a sender SHOULD establish sessions with
+  each active device of the recipient persona (the current
+  `kind:31001` delegation set). Sessions between two devices of the
+  SAME persona ("self-DMs") are the §3.8.7 keys-repository sync
+  channel.
+- **Group DMs (OPTIONAL, non-normative in 0.x).** The sender-key
+  extension of the same wire (per-sender chains distributed pairwise
+  over 1:1 sessions; one O(1) outer event per group message) MAY be
+  implemented; group-DM interop is deferred to a later 0.x revision.
+
+#### 5.7.4 Acceptance gating (SHOULD)
+
+To keep DM spam out without leaking receipts, a client SHOULD gate
+incoming sessions: auto-accept iff the recipient follows the sender,
+has previously replied, or has prior outgoing session activity with
+that persona; otherwise queue as a **message request** rendered
+separately, sending no delivery receipt or typing signal until the
+user accepts (see also the §8.10 web-of-trust guidance).
 
 ## 6. Publishing flow
 
@@ -3648,25 +3996,24 @@ event signature alone. For a plain (single-delegate) persona the
 canonical branch is the persona's own namespace and this reduces to the
 ordinary signature check.
 
-**OPTIONAL per-ref refinement (EXPERIMENTAL).** A deployment MAY use
-Radicle's finer-grained per-ref `xyz.radicle.crefs` mechanism
-(per-ref-pattern allow lists with per-pattern thresholds) to gate
+**OPTIONAL per-ref refinement.** A deployment MAY use Radicle's
+finer-grained per-ref `xyz.radicle.crefs` mechanism (per-ref-pattern
+rules, each with an `allow` set and a per-pattern `threshold`; verified
+against Heartwood 1.9.1, see the crefs terminology entry) to gate
 individual branches at different thresholds - for example a canonical
 feed branch requiring M-of-N admin sign-off while each member's own
-namespace branch needs only that member. This per-ref refinement is
-OPTIONAL and EXPERIMENTAL: its semantics are NOT yet verified against the
-target Heartwood release (the sources note only that additional
-canonical branches beyond `defaultBranch` "may be supported" in future,
-§3.9.10). A deployment MUST NOT make baseline canonicity depend on
-`crefs`; baseline canonicity is the delegate-threshold canonical feed
-branch above, and `crefs` is an optional finer-grained overlay pending
-Heartwood-release verification.
+namespace branch needs only that member. A deployment MUST NOT make
+baseline canonicity depend on `crefs`; baseline canonicity is the
+delegate-threshold canonical feed branch above, and `crefs` is an
+optional finer-grained overlay. This is a deliberate scoping choice -
+the baseline rule stays evaluable without per-ref rules - not a
+verification hedge.
 
 > **NOTE.** The baseline rule (reachability from the delegate-threshold
-> canonical `defaultBranch`) rests on the verified Radicle canonicity
-> mechanism (§3.9.10). The OPTIONAL per-ref `xyz.radicle.crefs`
-> refinement is UNVERIFIED and MUST be verified against the pinned
-> Heartwood release before any normative dependence on it (§3.9.10).
+> canonical `defaultBranch`) and the OPTIONAL per-ref `xyz.radicle.crefs`
+> refinement both rest on Radicle canonicity mechanisms verified against
+> Heartwood 1.9.1 (§3.9.10); the baseline MUST NOT depend on `crefs` as
+> a matter of scope, not verification.
 
 #### 6.7.1 Event shape
 
@@ -4218,9 +4565,9 @@ events, unless the publisher explicitly overrides per-event:
 | 4550 | non-indexed | NIP-72 moderation approval — referenced from the moderator's own `kind:31007` index as a `kind:4550` entry, not as the post it approves |
 | 9734 | non-indexed | Zap request |
 | 9735 | non-indexed | Zap receipt |
-| 10000–10999 | non-indexed | Lists and replaceable metadata (mutes, relay lists) |
-| 30000–30099 | non-indexed | Lists (interest sets, etc.) |
-| 31000–31099 | non-indexed | Heterodyne-reserved attestations (live in identity rooms, not feed rooms) |
+| 10000–10999 | non-indexed | NIP-51 standard lists and replaceable metadata (mutes §8.5, relay lists); published to both backends but not feed entries |
+| 30000–30099 | non-indexed | NIP-51 sets - the §8.5 "sets file" (follow sets, mute sets, interest sets, etc.); published to both backends but not feed entries |
+| 31000–31099 | non-indexed | Heterodyne-reserved attestations (identity/routing state, not feed content) |
 
 For Nostr kinds not in this table:
 
@@ -4243,8 +4590,8 @@ spans both core backends: ordinary Nostr relays and repo relays
 (both the NIP-01 wire); a client MAY query either and dedups by
 event `id` (§6.3).
 
-**Automated Matrix-DM-based backfill requests are explicitly
-forbidden.** Earlier drafts defined a `m.heterodyne.retrieval_request.v1`
+**Automated DM-based backfill requests are explicitly forbidden -
+over any DM transport.** Earlier drafts defined a `m.heterodyne.retrieval_request.v1`
 / `m.heterodyne.retrieval_response.v1` / `m.heterodyne.retrieval_push.v1`
 trio of DM event types as an encrypted fallback channel for
 events that could not be retrieved via Nostr relays. The mechanism
@@ -4252,7 +4599,10 @@ is removed in v0.2.0 because it created a Matrix-DM DoS / rate-limit
 vector — any peer could ask any other peer for arbitrary historical
 events, and any publisher could spray unsolicited "pushes" through
 DM rooms. The performance / abuse tradeoff did not justify the
-small recovery convenience.
+small recovery convenience. The same prohibition covers the §5.7
+CORE DM channel: no automated retrieval requests, responses, or
+pushes over double-ratchet sessions, and no protocol for backfilling
+DM history itself (§5.7.3).
 
 Historical retrieval MUST be performed via Channel 1 (Nostr
 relays) or Channel 2 (user-hosted Web Archive). If an event is
@@ -4308,8 +4658,11 @@ rather than attempting a core-backend fetch.
 #### 6.9.2 Channel 2: user-hosted Web Archive
 
 A persona MAY operate an HTTPS archive of their own historical
-Nostr events and advertise it via an optional
-`m.heterodyne.archive.v1` state event in their identity room:
+Nostr events. The core advertisement carrier is the
+`retrieval_hints.archive_url` field of the persona's feed-index
+metadata (§6.7.1); when the OPTIONAL Matrix layer is in use, the
+archive MAY additionally be advertised via an
+`m.heterodyne.archive.v1` state event in the identity room:
 
 ```json
 {
@@ -4495,8 +4848,11 @@ Normative rules for Tier 3 posts:
 encrypted under the new key so removed members cannot read them. It
 SHOULD NOT occur on member **join** (joiners receive the current key
 forward). This excludes removed members from *future* content only;
-ciphertext they already held (and its residue in git history) is not
-retroactively protected.
+ciphertext they already held is not retroactively protected. In the
+repo, rotation additionally moves to a fresh `enc/<key_id>` branch and
+force-deletes the old one per §6.10.4, which scrubs the old ciphertext
+from cooperating seeds over time - a hygiene measure, not a
+confidentiality guarantee (§6.10.4).
 
 #### 6.10.2 Tier 2 - private repo (delegates vs `visibility.allow`)
 
@@ -4522,14 +4878,19 @@ describe a private repo as "encrypted" or "confidential against members"
 
 Deleting Tier 2 or Tier 3 content MUST use Nostr `kind:5` deletion plus
 an updated `kind:31007` index (§6.7); a client MUST treat git history as
-immutable and MUST NOT rely on repo rewriting for content removal.
-Clients MUST warn that deletion is an intent signal, not erasure, and
-that the residue is tier-specific:
+immutable and MUST NOT rely on repo rewriting for content removal. The
+ONE sanctioned ref-deletion path is the §6.10.4 rotation scrub, which
+deletes an entire retired `enc/<key_id>` branch - never individual
+events, and never by rewriting history on a live branch. Clients MUST
+warn that deletion is an intent signal, not erasure, and that the
+residue is tier-specific:
 
 - Tier 1 / Tier 2 plaintext may persist on every node that fetched or
   seeds the repo.
-- Tier 3 ciphertext remains in git history, recoverable only by current
-  audience-key holders.
+- Tier 3 ciphertext remains in git history (until a §6.10.4 rotation
+  scrub makes a retired branch unreachable, and indefinitely on
+  non-cooperating nodes), recoverable only by holders of the audience
+  key for its `key_id`.
 
 Deletion signals intent to conforming clients; it does not guarantee
 removal from other nodes' stores.
@@ -4541,6 +4902,104 @@ reply on their own feed publishes it under their own persona and tier.
 When the OPTIONAL Matrix layer is in use, members MAY additionally
 react/reply as bare Matrix events inside an encrypted room, which are
 Megolm-protected and not published to the core backends.
+
+#### 6.10.4 Key-ID branch layout and rotation scrubbing
+
+Every repo that carries encrypted blobs - Tier 3 content repos and
+§3.8.6 config repositories - lays its ciphertext out **per
+audience-key generation, one branch per key**:
+
+```
+refs/heads/enc/<key_id>
+```
+
+All blobs encrypted under the audience-key generation named by
+`key_id` (§6.7.4) MUST be committed on that generation's `enc/<key_id>`
+branch and MUST NOT be committed to any other branch. The repo's
+`defaultBranch` carries no ciphertext; for a pure Tier 3 feed repo it
+MAY be empty or administrative, and for an org community repo it
+remains the §8.8 canonical feed branch (whose index entries reference
+events on the `enc/` branches).
+
+**Key-ID derivation.** `key_id` remains opaque per §6.7.4 (>=128
+bits). The RECOMMENDED derivation is self-verifying:
+
+```
+key_id = lowercase-hex(SHA-256("heterodyne-key-id-v1" || audience_key))[0..32]
+```
+
+(the first 16 bytes / 32 hex characters of the domain-separated hash
+of the 32-byte audience key). With this derivation any key-holder can
+independently verify that a branch name corresponds to the key it
+holds; guessing attacks against the hash are infeasible because the
+audience key is 256 bits of entropy. A publisher MAY instead use a
+random UUID-style id; verifiers MUST treat `key_id` as opaque either
+way.
+
+**Rotation.** On audience-key rotation (§6.7.4, §6.10.1 - mandatory on
+member removal):
+
+1. The publisher generates the fresh audience key and its new
+   `key_id'`, and creates `enc/<key_id'>`.
+2. The publisher MAY re-encrypt retained history under the new key
+   onto the new branch. This is RECOMMENDED when continuing members
+   should keep history through the client (re-encrypted posts are new
+   intents with new event ids per §6.10.1); a publisher who skips it
+   starts the new branch empty and history remains readable only from
+   local caches and backups.
+3. The publisher MUST force-delete the retired `enc/<key_id>` branch:
+   remove the ref and publish updated signed refs (`rad/sigrefs`).
+   Because Radicle seeds mirror the publisher's signed ref set,
+   cooperating seeds converge to a ref tree without the retired
+   branch, and the old ciphertext objects become unreachable on those
+   seeds. Seeds SHOULD run housekeeping (`git gc`/prune semantics)
+   that reclaims unreachable objects; stock Heartwood 1.9.1 does this
+   after every fetch (see the verification note below).
+
+**Trust boundary (honest).** The rotation scrub is **cooperative
+hygiene, not cryptographic erasure**:
+
+- Ref deletion propagates only to nodes that continue to sync;
+  disk-level reclamation depends on each seed's housekeeping and is
+  neither immediate nor observable.
+- A hostile, offline, or non-conforming seed MAY retain the retired
+  branch's ciphertext forever. Confidentiality against removed
+  members rests on the key rotation itself (they already held the old
+  key; the old ciphertext was never secret from them), and
+  confidentiality against non-members rests on the encryption, not on
+  deletion.
+- Ciphertext previously published to ordinary Nostr relays (the other
+  MUST backend) is untouched by the branch scrub and persists per
+  relay policy.
+- What the scrub buys: it shrinks the long-tail exposure of retired
+  ciphertext on cooperating infrastructure (relevant to future key
+  compromise or cryptanalysis) and keeps seed storage proportional to
+  live generations. Clients MUST NOT present it as guaranteed erasure
+  (§6.10.3).
+
+Verification note (source-verified against the Heartwood source at
+tag `releases/1.9.1`): sigrefs-mirrored ref deletion is core
+replication behavior - `radicle-fetch` emits a prune update for any
+ref that disappears from the publisher's signed ref set. Reclamation
+of the now-unreachable objects is **fetch-driven, not timer-driven**:
+after every completed fetch of a repo, `radicle-node` runs
+`git gc --prune=1.hours.ago --auto` in that repo's storage
+(`radicle-node` worker; the one-hour expiry is hardcoded and not
+exposed in node configuration). Because of the `--auto` gate, the
+invocation is a no-op until git's auto thresholds (on the order of
+thousands of loose objects, or tens of packs) are exceeded, so
+retired ciphertext on a low-churn repo can remain on disk
+indefinitely even on a fully conforming seed; when gc does fire,
+unreachable objects older than one hour are pruned. Storage repos
+are plain bare repos with no reflogs, so nothing else pins
+deleted-branch objects. A seed operator who wants prompt scrubbing
+MAY lower the auto threshold (`git config gc.auto 1`) or run
+`git gc --prune=now` in the repo's storage directory; an operator
+who sets `gc.auto 0` silently never reclaims, which falls inside the
+non-conforming-seed boundary above. None of this changes the trust
+boundary: the scrub remains cooperative hygiene with unbounded,
+unobservable timing, and the repo-relay server-side retention/GC
+contract remains a separate pre-1.0 work item (§10.1.2).
 
 ## 7. Discovery and subscription
 
@@ -5094,8 +5553,8 @@ curated view?" - by different means (ADR-027):
   Editorial authority is a property of Radicle repo governance (delegates
   + `threshold`), not of a separate approval event. A deployment MAY
   OPTIONALLY layer the finer-grained per-ref `xyz.radicle.crefs`
-  mechanism on top, but that refinement is EXPERIMENTAL and pending
-  Heartwood-release verification (§6.7.0, §8.8).
+  mechanism on top (verified against Heartwood 1.9.1; baseline
+  editorial-gating MUST NOT depend on it, §6.7.0, §8.8).
 
 These are **two distinct mechanisms, not one folding into the other**.
 A community MAY use either or both, and a client MUST NOT treat one as a
@@ -5123,6 +5582,12 @@ to the raw
 room / repo; and a member removed from a room / allow list stops
 producing new content but their historical content is unaffected
 (§8.2.1, §8.8).
+
+The sequence below illustrates the Matrix-hosted case; for a
+repo-hosted community the moderator declaration is the `kind:34550`
+committed to the community repo and the approval anchor is the
+approval's introducing commit (§8.1, §8.2, §8.2.1) - no homeserver
+appears in the flow.
 
 ```mermaid
 sequenceDiagram
@@ -5179,12 +5644,15 @@ adding it post-signature invalidates the BIP-340 signature.
 
 **Moderator-relay publishing (SHOULD).** Contributors SHOULD publish
 candidate posts to the moderators' NIP-65 write relays. The moderator
-set is discovered from the `m.heterodyne.moderators.v1` state event of
-the `public_discussion` community: the listed moderator npubs are resolved
-via the standard discovery walk (§7.3) to their `kind:10002` outbox
-lists; the union of their write relays forms the recommended publish
-set. Contributors MUST also publish to their own NIP-65 write relays.
-The two relay sets MAY overlap; the union is used.
+set is discovered from the community's moderator declaration (§8.2) -
+the `kind:34550` community definition on the core backends, or the
+`m.heterodyne.moderators.v1` state event when the community is hosted
+in an OPTIONAL-Matrix `public_discussion` room. The listed moderator
+npubs are resolved via the standard discovery walk (§7.3) to their
+`kind:10002` outbox lists; the union of their write relays forms the
+recommended publish set. Contributors MUST also publish to their own
+NIP-65 write relays. The two relay sets MAY overlap; the union is
+used.
 
 **Client identification tag (OPTIONAL).** Contributors MAY add a
 `["client", "heterodyne"]` tag for moderator UI filtering. This tag is
@@ -5232,16 +5700,19 @@ NIP-72 convention; the Nostr event's tags reference the approved
 post's id and author.
 
 Mirroring NIP-72 exactly preserves the protocol-composition principle:
-approvals are content (Nostr), Matrix is transport for the index. An
-approval read directly from a vanilla Nostr relay is indistinguishable
-from one produced by a vanilla NIP-72 client.
+approvals are content (Nostr); the anchor (repo history or Matrix
+room, below) supplies only their *position* in moderator-set history.
+An approval read directly from a vanilla Nostr relay is
+indistinguishable from one produced by a vanilla NIP-72 client.
 
 A receiving Heterodyne client computing the moderated feed view for a
-moderated `public_discussion` community MUST:
+moderated community MUST:
 
-1. Read the `m.heterodyne.moderators.v1` state event to determine
-   the set of currently authorized moderator npubs and the
-   `approvals_required` threshold for the room (§8.2).
+1. Read the community's moderator declaration (§8.2) - the
+   `kind:34550` community definition (core), or the
+   `m.heterodyne.moderators.v1` state event when the community is
+   Matrix-hosted - to determine the set of currently authorized
+   moderator npubs and the `approvals_required` threshold (§8.2).
 2. For each authorized moderator npub, fetch their `kind:31007`
    feed index events filtered by `d` tag prefix `<room_id>:*` from
    their NIP-65 write relays (§6.7).
@@ -5253,46 +5724,72 @@ moderated `public_discussion` community MUST:
    authorized moderators. An approval counts iff: (a) its Nostr
    signature validates (per `nip01_raw`); (b) its `pubkey` — an
    **epoch key** — maps, via the signing moderator's KEL (§3.5.3),
-   to a **cold-root npub** that is listed in the
-   `m.heterodyne.moderators.v1` resolved at the approval's
-   Matrix-state position (see §8.2.1 — the moderator set is read
-   *as-of* the approval, not at verification time, and the listing
-   names cold-root npubs per §8.2/§8.3); and (c) that moderator
-   referenced the approval from their current `kind:31007` index.
-   Honor any `kind:5` deletion (§8.4) by dropping the corresponding
-   approval from the count.
+   to a **cold-root npub** that is listed in the moderator
+   declaration resolved at the approval's anchor position (see
+   §8.2.1 — the moderator set is read *as-of* the approval, not at
+   verification time, and the listing names cold-root npubs per
+   §8.2/§8.3); and (c) that moderator referenced the approval from
+   their current `kind:31007` index. Honor any `kind:5` deletion
+   (§8.4) by dropping the corresponding approval from the count.
 5. Surface the post in the feed view only if the count meets or
    exceeds `approvals_required` (§8.2).
 
-**Matrix anchor for counted approvals (MUST).** An approval that
-counts toward the Heterodyne moderated view MUST be anchored by a
-Matrix event in the moderated `public_discussion` room: the
-approving moderator MUST send an `m.heterodyne.approval.v1` Matrix
-event into the room whose `content` references the `kind:4550`
-approval's Nostr event id (and the approved post's id):
+**Anchoring counted approvals (MUST).** An approval that counts
+toward the Heterodyne moderated view MUST have an **anchor**: a
+position in a tamper-evident history that fixes the moderator set in
+force when the approval was made (the "as-of" resolution, §8.2.1).
+The anchor type follows the community's hosting:
 
-```json
-{
-  "type": "m.heterodyne.approval.v1",
-  "content": {
-    "spec_version": "0.4.0",
-    "approval_event_id": "<kind:4550 Nostr event id, hex>",
-    "approved_post_id": "<approved post's Nostr event id, hex>"
-  }
-}
-```
+1. **Repo anchor (core).** For a community hosted in a Radicle repo,
+   the `kind:4550` approval MUST be committed to the community's
+   repo: the community's full nodes MUST commit accepted approvals
+   from currently-listed moderators via the repo-relay write path
+   (§10.1.2), reachable from the delegate-threshold canonical
+   history (§8.8, §3.9.10). The approval's introducing commit is its
+   anchor; the moderator set as-of the approval is the newest
+   `kind:34550` revision reachable in that commit's **ancestor
+   history** (§8.2.1). Integrity rests on the same
+   delegate-threshold sigrefs machinery that anchors everything else
+   in the repo.
+2. **Matrix anchor (OPTIONAL Matrix layer).** For a community hosted
+   in a moderated `public_discussion` room, the approving moderator
+   MUST send an `m.heterodyne.approval.v1` Matrix event into the
+   room whose `content` references the `kind:4550` approval's Nostr
+   event id (and the approved post's id):
 
-This anchor is what gives a Nostr approval a position in the room's
-event DAG. Verifiers MUST evaluate the moderator set "as-of" the
-approval by resolving `m.heterodyne.moderators.v1` via Matrix state
-resolution **at the `m.heterodyne.approval.v1` event** (§8.2.1), and
-MUST confirm the anchor's `sender` MXID maps (via §3.3 delegation)
-to the same persona whose cold-root npub signs the referenced
-`kind:4550`. An approval whose `kind:4550` is referenced from the
-moderator's `kind:31007` index but which has no such Matrix anchor
-in the room MUST NOT be counted (it is treated as off-index, below).
-The forgeable Nostr `created_at` is never used to place the approval
-in moderator-set history.
+   ```json
+   {
+     "type": "m.heterodyne.approval.v1",
+     "content": {
+       "spec_version": "0.4.0",
+       "approval_event_id": "<kind:4550 Nostr event id, hex>",
+       "approved_post_id": "<approved post's Nostr event id, hex>"
+     }
+   }
+   ```
+
+   This gives the approval a position in the room's event DAG;
+   verifiers resolve `m.heterodyne.moderators.v1` via Matrix state
+   resolution **at the anchor event** (§8.2.1), and MUST confirm the
+   anchor's `sender` MXID maps (via §3.3 delegation) to the same
+   persona whose cold-root npub signs the referenced `kind:4550`.
+3. **Relay-only fallback (reduced assurance).** For a community with
+   neither a repo nor a Matrix room (vanilla-relay-hosted), the
+   as-of point falls back to signed timestamps: the moderator set
+   is the newest `kind:34550` revision whose `created_at` is <= the
+   approval's `created_at`. Because `created_at` is
+   author-forgeable, this fallback trusts listed-then-removed
+   moderators not to backdate; verifiers MUST treat relay-only
+   communities as carrying this weaker property, and communities
+   SHOULD host in a repo (or Matrix room) when moderation history
+   integrity matters.
+
+An approval whose `kind:4550` is referenced from the moderator's
+`kind:31007` index but which lacks the anchor its community's
+hosting requires MUST NOT be counted (it is treated as off-index,
+below). Outside the relay-only fallback, the forgeable Nostr
+`created_at` is never used to place an approval in moderator-set
+history.
 
 Moderators MAY also publish kind:4550 approvals to Nostr relays
 without updating their `kind:31007` index (for example, in a vanilla
@@ -5307,10 +5804,39 @@ am putting on the record for this room."
 
 ### 8.2 Moderator declaration
 
-A moderated `public_discussion` community MUST contain exactly one
+#### Core carrier: `kind:34550` community definition (MUST)
+
+Every moderated community MUST have a NIP-72 **`kind:34550`**
+community definition event on the core backends, signed by the
+community persona's current epoch key. It is the addressable
+`(pubkey, kind, d)` event contributors already tag (§8.0), and it
+carries the moderator declaration:
+
+- Moderators are listed per NIP-72 convention:
+  `["p", "<moderator cold-root npub hex>", "<relay hint>", "moderator"]`
+  - one tag per moderator. The listed npub is the moderator's
+  permanent KERI cold root (§8.3), NOT the epoch key that signs
+  approvals.
+- The approval threshold is a Heterodyne extension tag
+  `["approvals_required", "<N>"]`; absent means 1 (vanilla-NIP-72
+  compatible - a vanilla client ignores the tag and sees a normal
+  NIP-72 community).
+- For a repo-hosted community, `kind:34550` revisions MUST be
+  committed to the community repo so the declaration's revision
+  history is anchored in delegate-threshold canonical history - this
+  is what the §8.1 repo anchor's as-of resolution walks (§8.2.1).
+
+#### OPTIONAL Matrix carrier
+
+A community hosted in a moderated `public_discussion` room (OPTIONAL
+Matrix layer) additionally carries exactly one
 `m.heterodyne.moderators.v1` state event with empty state key, listing
 the appointed moderators (the presence of this state event is what
-makes a `public_discussion` room a moderated community, §5.4):
+makes a `public_discussion` room a moderated community, §5.4). A
+community declaring both carriers SHOULD keep them consistent; the
+§8.1 anchor type determines which declaration's history the as-of
+resolution reads (repo anchor -> `kind:34550` revisions; Matrix
+anchor -> Matrix state):
 
 ```json
 {
@@ -5358,43 +5884,54 @@ Field semantics:
 - `moderators[].appointed_at`: Unix seconds; informational.
 
 A moderator is **active** for an approval if and only if their
-cold-root npub appears in the `m.heterodyne.moderators.v1` resolved
-as-of that approval (§8.2.1) AND the epoch key that signed the
-approval was KERI-authoritative (§3.5.3) for that cold root at the
-approval's `created_at`.
+cold-root npub appears in the moderator declaration resolved
+as-of that approval's anchor (§8.2.1) AND the epoch key that signed
+the approval was KERI-authoritative (§3.5.3) for that cold root at
+the approval's `created_at`.
 
-#### 8.2.1 Past approvals after moderator removal
+#### 8.2.1 Past approvals after moderator removal (as-of resolution)
 
-Approval validity is evaluated **as-of the approval's own position
-in Matrix room state**, not at the time of later verification.
-Moderation in Heterodyne is a Matrix-room (discussion) activity:
-moderators operate as members of the moderated `public_discussion`
-room, and an approval that counts toward the Heterodyne moderated
-view (§8.1) has a Matrix-state anchor — the `m.heterodyne.approval.v1`
-event defined in §8.1 — and therefore a position in that room's
-event DAG. The moderator set in force for an approval is therefore
-the `m.heterodyne.moderators.v1` that **Matrix state resolution**
-reports as current *at that anchor event* ("state at event") — a
-deterministic, tamper-evident snapshot that does not depend on the
-approval's forgeable Nostr `created_at`. Concretely, an approval A
-(anchored by Matrix event X) is valid iff:
+Approval validity is evaluated **as-of the approval's own anchor
+position** (§8.1), not at the time of later verification. Each anchor
+type supplies a deterministic, tamper-evident "moderator set at that
+point" snapshot:
 
-- The `m.heterodyne.moderators.v1` resolved at X lists the approving
+- **Repo anchor (core).** The approval's anchor is the commit that
+  introduced its `kind:4550` into the community repo. The moderator
+  set as-of the approval is the newest `kind:34550` revision
+  reachable in that commit's **ancestor history** on the
+  delegate-threshold canonical history (§8.8, §3.9.10). Because a
+  repo relay's event store is git, every prior revision of the
+  declaration is retained; because commits append to the canonical
+  head, a removed moderator cannot obtain a new anchor positioned
+  before their removal. This is the git-native equivalent of Matrix
+  "state at event", with integrity resting on the same
+  delegate-threshold sigrefs that anchor the repo's canonicity -
+  the parties who could rewrite this history are the same delegates
+  who control the moderator list itself.
+- **Matrix anchor (OPTIONAL).** The moderator set in force is the
+  `m.heterodyne.moderators.v1` that **Matrix state resolution**
+  reports as current *at the `m.heterodyne.approval.v1` anchor
+  event* ("state at event").
+- **Relay-only fallback.** The newest `kind:34550` revision with
+  `created_at` <= the approval's `created_at`, with the reduced
+  assurance stated in §8.1 (forgeable timestamps; a removed
+  moderator could backdate).
+
+Concretely, an approval A (with anchor X) is valid iff:
+
+- The moderator declaration resolved at X lists the approving
   moderator's **cold-root npub**; AND
 - A's BIP-340 signature validates against the epoch key that the
   moderator's KEL (§3.5.3) had in authority at A's `nostr.created_at`.
 
-Because the moderator set is read from room state *at the approval*,
-later removal of a moderator does NOT retroactively invalidate their
-prior approvals: the historical state still lists them at the point
-their approval was made, and rewriting it would require a new state
-event that does not change the past snapshot. No separate
-timestamp-history walk is required. (This relies on counted approvals
-having a Matrix-state anchor in the moderated room. Off-index,
-relay-only `kind:4550` approvals — vanilla NIP-72 — do not count
-toward the Heterodyne view in the first place per §8.1; a future
-spec version MAY define a timestamp-based fallback for relay-only
-moderation.)
+Because the moderator set is read *at the approval's anchor*, later
+removal of a moderator does NOT retroactively invalidate their prior
+approvals: the historical declaration still lists them at the point
+their approval was anchored, and neither git ancestor history nor
+Matrix state resolution lets a later revision change a past
+snapshot. No separate timestamp-history walk is required outside the
+relay-only fallback.
 
 - The exception is **explicit revocation**: if a moderator's epoch
   key is rotated out by a KERI rotation event (§3.5) declaring the
@@ -5429,13 +5966,12 @@ A moderator approval is valid if:
 1. The approval's BIP-340 signature validates against the
    epoch key that was authoritative under the KEL at
    `nostr.created_at` (per §3.5.3 verifier algorithm); AND
-2. The moderator's cold-root pubkey is listed in the
-   `m.heterodyne.moderators.v1` resolved at the approval's
-   Matrix-state anchor (§8.2.1) — not merely the verification-time
-   set.
+2. The moderator's cold-root pubkey is listed in the moderator
+   declaration (§8.2) resolved at the approval's anchor (§8.2.1) —
+   not merely the verification-time set.
 
 A moderator who rotates their epoch key does NOT need to be
-re-listed in `m.heterodyne.moderators.v1` because the cold-root
+re-listed in the moderator declaration because the cold-root
 pubkey (which the listing references) is permanent. The KEL
 replay supplies the current epoch key automatically.
 
@@ -5444,7 +5980,7 @@ performs a `none`-strategy rotation (§3.5.2) provided witness
 attestations meet the threshold, and the room continues to honor
 their approvals. If no `none`-strategy rotation is possible (e.g.,
 insufficient witnesses), the moderator's cold root must be removed
-from `m.heterodyne.moderators.v1` and a replacement listed.
+from the moderator declaration (§8.2) and a replacement listed.
 
 When fetching a moderator's KEL, verifiers MUST query the
 moderator's Nostr write relays for `kind:31002` and `kind:31003`
@@ -5499,67 +6035,110 @@ moderator still has a live approval for the same post, that
 moderator's approval continues to surface the post in their
 own feed view; revocations are per-moderator.
 
-### 8.5 Personal mute lists
+### 8.5 Personal mute lists and NIP-51 lists/sets (core carrier)
 
-#### Public mutes
+Mute lists and every other NIP-51 list type are **core-substrate
+constructs** carried as ordinary NIP-51 events over BOTH backends.
+This replaces the pre-pivot Matrix-only carriers
+(`m.heterodyne.mutes.public.v1` in the identity room and the
+`private_mutes` field of the config room), which are demoted to
+OPTIONAL mirrors below.
 
-A persona's public mute list — npubs the persona has cut off and is
-willing to publicly identify as bots, spammers, or unwanted — lives
-as a state event in the persona's identity room:
+#### Core carrier (MUST)
 
-```json
-{
-  "type": "m.heterodyne.mutes.public.v1",
-  "state_key": "",
-  "content": {
-    "spec_version": "0.4.0",
-    "muted_pubkeys": [
-      {"npub": "<hex>", "reason": "spam", "muted_at": 0},
-      {"npub": "<hex>", "reason": "bot", "muted_at": 0}
-    ],
-    "muted_topics": [
-      {"namespace": "com.example.tags", "tag": "spoilers"}
-    ]
-  }
-}
-```
+- A persona's mute list is a NIP-51 **`kind:10000`** replaceable
+  event signed by the persona's current epoch key (§3.5), with public
+  entries as clear NIP-51 tags (`p` for pubkeys, `t` for hashtags,
+  `word` for string filters, `e` for threads).
+- A persona's **sets file** is its collection of NIP-51 **set**
+  events (kinds 30000-39092, one event per `(kind, d)` pair):
+  follow sets (`kind:30000`), relay sets (`kind:30002`), bookmark
+  sets (`kind:30003`), **kind-mute sets (`kind:30007`)**, interest
+  sets (`kind:30015`), starter packs (`kind:39089`), and any other
+  NIP-51 set type. Sets MAY carry the NIP-51 `title` / `image` /
+  `description` tags.
+- All of these events MUST be publishable to, and served by, both
+  core backends: ordinary Nostr relays and repo relays (§3.0). A
+  persona SHOULD commit its lists and sets to its persona repo so
+  they replicate with the feed; a repo relay MUST accept them like
+  any other replaceable/addressable event.
+- Replaceable-event convergence follows the normal
+  latest-`created_at` rule. Because a repo relay's event store is
+  git, the full revision history of a list is retained and
+  tamper-evident: a client MAY detect a **stale-list rollback** (a
+  relay serving an older revision than one reachable in the repo's
+  canonical history) and MUST prefer the newest verifiable revision.
 
-Reason values are non-normative free-form strings; community
-conventions may emerge. Clients SHOULD display them as informational
-context.
+#### Private list items (MUST, when offered)
 
-Public mutes are **subscribable** by other personas. A follower may
-inherit a trusted persona's public mutes via NIP-51-style mute set
-subscription, mediated entirely by the client (no protocol mechanism
-required). This implements the NIP-51 community-curated blocklist
-pattern.
+Private mute entries (and private items in any list/set) use the
+NIP-51 private-item mechanism: the private entries are serialized as
+a JSON array of tag-shaped arrays, NIP-44-encrypted to self, and
+carried in the same event's `content` field alongside the public
+tags. For Heterodyne personas the self-encryption conversation key is
+derived from the persona's **current epoch key**; on KERI epoch
+rotation (§3.5) the client MUST re-encrypt private items under the
+new epoch key when it next writes the list. Entries too sensitive to
+publish even as ciphertext (the list's existence and size are
+relay-visible) SHOULD be kept in the config repository instead
+(§3.8.6).
 
-#### Private mutes
+#### Subscribable mutes
 
-A persona's private mute list — sensitive entries the persona does NOT
-want publicly visible — lives in the persona's
-`m.heterodyne.persona_config.v1` state event inside the relevant
-MXID's encrypted client config room (§3.8.3, `private_mutes` field).
-The config room is E2EE so the list is invisible to the homeserver
-and to non-owners.
+Public mutes and mute sets are **subscribable** by other personas: a
+follower MAY inherit a trusted persona's `kind:10000` / `kind:30007`
+entries. Inheritance is client-mediated (no additional protocol
+mechanism), but the carrier is now defined, so subscription works
+identically against vanilla Nostr relays and repo relays. §8.6 builds
+community blocklists on this same carrier, and the §8.10 web-of-trust
+guidance consumes public mutes as its crowd-moderation signal.
 
-Cross-MXID synchronization of private mutes follows §3.8.4: because
-private mutes live in `m.heterodyne.persona_config.v1`, clients SHOULD
-sync them across the persona's mutually joined config rooms. Sync is a
-client responsibility, not a homeserver feature, and implementations MAY
-offer a user-visible opt-out for especially sensitive local-only state.
+#### OPTIONAL Matrix mirror
 
-### 8.6 Subscribable community blocklists (MSC2313)
+When the OPTIONAL Matrix layer is in use, a client MAY mirror the
+public mute list into the identity room as
+`m.heterodyne.mutes.public.v1` (schema per pre-pivot drafts) and MAY
+mirror private mutes into the config room's
+`m.heterodyne.persona_config.v1` `private_mutes` field (§3.8.3). The
+NIP-51 events on the core backends are authoritative; on divergence
+the Matrix mirror loses. No identity, publishing, discovery, or
+privacy behavior may depend on the mirror.
 
-Heterodyne uses Matrix's existing MSC2313 policy-rooms mechanism
-unmodified for community-level moderation. A `public_discussion`,
-`private_broadcast`, or `private_discussion` room MAY subscribe to
-one or more policy rooms
-via standard `m.policy.rule.user`, `m.policy.rule.server`, and
-`m.policy.rule.room` events.
+### 8.6 Subscribable community blocklists
 
-Subscription is the room admin's decision; the spec adds nothing new
-on top of MSC2313.
+#### Core carrier: NIP-51 policy lists (MUST)
+
+Community-level blocklists ride the same §8.5 carrier as personal
+mutes. A **policy persona** (typically the community persona itself,
+or a persona a community delegates moderation curation to) publishes
+its blocklist as ordinary NIP-51 events on both backends:
+
+- `kind:10000` mute list - blocked pubkeys (`p`), hashtags (`t`),
+  words (`word`), threads (`e`);
+- `kind:30007` kind-mute sets - per-kind blocking; and
+- `kind:30000` follow sets - allowlist-style curation where a
+  community prefers an allow model.
+
+A community declares its adopted policy lists in its `kind:34550`
+community definition with one `["a", ...]` (for sets) or
+`["p", <policy persona npub>, <relay hint>, "policy"]` tag per
+adopted source; clients computing the community's view SHOULD apply
+the adopted lists. Followers MAY additionally subscribe to any policy
+persona's lists directly (§8.5). Everything is epoch-key-signed,
+KEL-verifiable, and history-auditable when carried in a repo relay
+(§8.5 stale-list rollback detection).
+
+#### OPTIONAL Matrix carrier (MSC2313)
+
+When a community lives in the OPTIONAL Matrix layer, it MAY
+additionally use Matrix's MSC2313 policy-rooms mechanism unmodified:
+a `public_discussion` or `private_discussion` room MAY subscribe to
+one or more policy rooms via standard `m.policy.rule.user`,
+`m.policy.rule.server`, and `m.policy.rule.room` events. Subscription
+is the room admin's decision; the spec adds nothing on top of
+MSC2313. `m.policy.rule.server` has no core-substrate equivalent (it
+is Matrix-federation-specific); the core NIP-51 carrier covers user-
+and content-level policy.
 
 ### 8.7 Layer independence
 
@@ -5607,9 +6186,9 @@ delegate-threshold-signed canonical feed branch. A deployment MAY OPTIONALLY
 layer the finer-grained per-ref `xyz.radicle.crefs` mechanism on top to
 gate individual branches at different thresholds (e.g. the canonical feed
 branch requires M-of-N admin sign-off while each member's own namespace
-branch needs only that member), but that per-ref refinement is OPTIONAL
-and EXPERIMENTAL, pending Heartwood-release verification (§6.7.0,
-§3.9.10); baseline editorial-gating depends only on the delegate-threshold
+branch needs only that member); the per-ref refinement is verified
+against Heartwood 1.9.1 but remains OPTIONAL (§6.7.0, §3.9.10), and
+baseline editorial-gating depends only on the delegate-threshold
 canonical branch.
 
 Normative rules for Radicle editorial-gating mode:
@@ -5637,9 +6216,53 @@ Normative rules for Radicle editorial-gating mode:
 > **NOTE.** The baseline editorial-gating rule (reachability from the
 > delegate-threshold canonical `defaultBranch`) rests on the verified
 > Radicle canonicity mechanism (§3.9.10). The OPTIONAL per-ref
-> `xyz.radicle.crefs` refinement is UNVERIFIED and MUST be verified
-> against the pinned Heartwood release before any normative dependence on
-> it (§3.9.10).
+> `xyz.radicle.crefs` refinement is likewise verified against Heartwood
+> 1.9.1; the baseline MUST NOT depend on it as a matter of scope, not
+> verification (§3.9.10).
+
+### 8.9 Moderation labels (NIP-32, RECOMMENDED)
+
+Alongside NIP-56 reports (`kind:1984`, already adopted for
+interoperable reporting), clients and moderation services are
+RECOMMENDED to emit and consume NIP-32 **`kind:1985` label events**
+as a graded moderation signal: namespaced labels (`L` namespace tag,
+`l` label tag) attached to events or pubkeys via standard `e`/`p`
+tags. Labels are advisory metadata - they gate nothing by themselves
+and MUST NOT be treated as an editorial-gating mechanism (§8.1/§8.8
+remain the only two); their intended use is client-side filtering and
+rendering decisions (content warnings, topical tagging,
+quality/reputation annotation), weighted by the reader's trust in the
+labeler (§8.10). Both backends carry them like any other event.
+
+### 8.10 Web-of-trust filtering (non-normative client guidance)
+
+The mechanisms above are the protocol layer. Clients additionally
+need a personal, subjective spam/abuse filter; the following pattern
+is proven in production Nostr clients and is enabled by Heterodyne's
+carriers, but is deliberately non-normative - it involves no wire
+changes:
+
+- **Social graph.** Build a follow graph from `kind:3` follow lists
+  and public `kind:10000` mutes (§8.5), rooted at the user. Follow
+  distance (BFS degree from the user) is the basic trust radius;
+  content from authors beyond a configurable distance is de-ranked
+  or hidden.
+- **Overmuted ratio.** Hide or downrank an author whom more of the
+  user's network mutes than follows. This crowd-sources moderation
+  from the mute lists the §8.5 carrier makes subscribable, with no
+  central authority.
+- **Cold start.** A client MAY ship or fetch a precomputed graph
+  snapshot so a fresh install has a usable trust radius before the
+  user follows anyone; the snapshot is a cache, replaced by the
+  live-crawled graph, and MUST NOT override the user's own
+  follows/mutes.
+- **DM gating.** The same graph gates §5.7.4 DM acceptance.
+- **Labels as weighted input.** `kind:1985` labels (§8.9) from
+  labelers within the trust radius can drive content-warning and
+  filtering UX; labels from unknown labelers carry no weight.
+
+Nothing in this section changes what is canonical or approved
+(§6.7.0, §8.1, §8.8); it shapes only the reader's local view.
 
 ## 9. Encryption guarantees
 
@@ -6009,43 +6632,59 @@ receiving clients replay the KERI log to associate the new epoch
 key with the persona; Megolm provides the transport security for
 both, unchanged.
 
-### 9.5 Forward secrecy asymmetry
+### 9.5 Forward secrecy posture (per mechanism)
 
-Heterodyne combines two cryptographic systems with different forward
-secrecy properties. Implementers and users should understand the
-asymmetry:
+Heterodyne combines mechanisms with **different forward secrecy
+properties**, and clients MUST NOT let one mechanism's guarantee be
+inferred for another. The posture, stated per mechanism:
 
-- **Megolm forward secrecy**: Past Megolm sessions cannot be
-  decrypted by an attacker who later compromises the current session
-  key. Each new session limits exposure of old plaintext.
-- **Nostr signature non-secrecy**: A compromised epoch key lets an
-  attacker forge new events backdated to any timestamp. Old signed
-  events themselves remain verifiable (the signature is still valid),
-  but the forging asymmetry is real. Mitigation is KERI rotation
-  (§3.5); the ±5 minute clock-skew enforcement of §3.2.1 hardens
-  root-attestation replay specifically (see §3.2.1 NOTE for scope).
+| Mechanism | Forward secrecy | On key compromise |
+|---|---|---|
+| **Tier 3 audience-key broadcast (CORE, §6.7.4/§6.10)** | **None.** | A compromised audience key decrypts EVERY past post under its `key_id` - from relays, repo history, and backups. Rotation (mandatory on member removal) limits *future* exposure only; the §6.10.4 branch scrub is hygiene, not protection, and relay copies persist. |
+| **CORE DMs (§5.7, double ratchet)** | **Yes, plus post-compromise security.** | Per-message keys are deleted as the ratchet advances: compromising current state does not decrypt past messages, and a fresh DH step re-secures the session afterward. Corollary: lost ratchet state = unrecoverable history (§5.7.3). |
+| **NIP-17 gift-wrap DMs to vanilla recipients (§11.4)** | **None.** | The static ECDH conversation key decrypts all past and future gift wraps between the two keys. Clients SHOULD surface this when falling back. |
+| **Megolm/MLS (OPTIONAL Matrix layer, §9.2)** | **Yes, within session rotation semantics.** | Past Megolm sessions cannot be decrypted by an attacker who later compromises the current session key. Applies only inside Matrix rooms; it says nothing about the core tiers. |
 
-These guarantees do not replace each other. Megolm protects the
-*content* of past communications; Nostr signatures protect the
-*authorship* of future and past events from forgery in real time but
-not from forgery after key compromise. Heterodyne carries both because
-they cover different risks.
+Clients MUST NOT describe Tier 3 as forward-secret, and MUST NOT
+present the OPTIONAL Matrix layer's Megolm guarantee as if it covered
+core broadcast. A future 0.x revision MAY explore sender-key ratchets
+for no-history Tier 3 audiences; today the honest statement is: Tier 3
+confidentiality is exactly the secrecy of a static audience key.
+
+Separate from content secrecy, **Nostr signature non-secrecy**: a
+compromised epoch key lets an attacker forge new events backdated to
+any timestamp. Old signed events themselves remain verifiable (the
+signature is still valid), but the forging asymmetry is real.
+Mitigation is KERI rotation (§3.5); the ±5 minute clock-skew
+enforcement of §3.2.1 hardens root-attestation replay specifically
+(see §3.2.1 NOTE for scope). Content-secrecy and
+authorship-integrity guarantees do not replace each other; Heterodyne
+carries both because they cover different risks.
 
 ### 9.6 Backup and recovery
 
-The encrypted client configuration room (§3.8) provides
-Heterodyne-specific key backup via
-`m.heterodyne.key_backup.v1`. Specifically:
+Backup and recovery run entirely on the core carriers of §3.8.6-§3.8.8:
 
-- The persona's `nsec` MAY be backed up wrapped under a
-  user-controlled secret (passphrase, recovery phrase, or OS
-  keystore-protected material).
-- The wrapping key derivation MUST use a memory-hard KDF (Argon2id or
-  equivalent) when the wrapping secret is a passphrase or recovery
-  phrase.
-- The config room itself is E2EE, so the wrapped backup is doubly
-  protected: a compromised Megolm session still requires the wrapping
-  secret to recover the nsec.
+- **Key material** lives in the keys repository (§3.8.7): the `nsec`
+  wrapped per NIP-49 (or an equivalent memory-hard scheme) under a
+  user-controlled secret, plus epoch/NID secrets and audience keys.
+  The wrapping key derivation MUST use a memory-hard KDF (scrypt per
+  NIP-49, Argon2id, or equivalent) when the wrapping secret is a
+  passphrase or recovery phrase.
+- **Non-key state** (preferences, private config, device inventory)
+  lives as encrypted blobs in the unadvertised config repository
+  (§3.8.6).
+- **Durability** comes from the RECOMMENDED removable-media backup of
+  all produced and followed repos, config repositories, and the
+  encrypted keys repository (§3.8.8). Recovery on a new device is
+  keys repository first, then config repository, then content repos.
+
+When the OPTIONAL Matrix layer is in use, the encrypted config room
+MAY additionally mirror the wrapped-nsec backup via
+`m.heterodyne.key_backup.v1` (§3.8.3): the config room is E2EE, so the
+mirrored backup is doubly protected - a compromised Megolm session
+still requires the wrapping secret to recover the nsec. The core
+carriers are authoritative; no recovery path may require the mirror.
 
 Matrix-native key backup (cross-signing master key, recovery key,
 Megolm session backup) remains the Matrix layer's responsibility via
@@ -6147,8 +6786,12 @@ until a client-signed Radicle change envelope is specified (§3.3.1).
 under a reserved Heterodyne namespace: `refs/cobs/xyz.heterodyne.*` for
 collaborative objects (such as `xyz.heterodyne.thread` materialized
 threads, §6.5), and an event-id-addressed append-log ref layout for a
-persona's own outbox. Radicle's fetch size limits (special-refs and
-data-refs caps) bound per-fetch size.
+persona's own outbox. Radicle's fetch size limits bound per-fetch size;
+verified against Heartwood 1.9.1, these are hardcoded defaults with no
+CLI or node-config override (5 MiB for special refs - `rad/id` and
+`rad/sigrefs` - and 5 GiB for data refs), so the storage contract must
+treat them as fixed Heartwood limits rather than Heterodyne-tunable
+parameters.
 
 **Two conformance targets (repo-relay CLIENT vs SERVER/STORAGE).** The
 repo-relay requirement splits into two independently-testable targets so
@@ -6172,13 +6815,14 @@ contract:
   on as stable. Baseline conformance (client and vector) does NOT depend
   on it.
 
-> **TBD / UNVERIFIED.** The server storage contract above (ref namespace,
-> COB type registry, NIP-01-filter-to-git-read mapping, retention / GC /
-> quota) MUST be fixed before a repo relay is declared
-> server-conformant. Separately, the OPTIONAL/EXPERIMENTAL
-> `xyz.radicle.crefs` semantics and the identity-document storage detail
-> (COB versus special ref) remain UNVERIFIED and MUST be verified against
-> the pinned Heartwood release before normative dependence (§3.9.10).
+> **TBD.** The server storage contract above (ref namespace, COB type
+> registry, NIP-01-filter-to-git-read mapping, retention / GC / quota)
+> MUST be fixed before a repo relay is declared server-conformant.
+> The identity-document storage form, the `rad id` update mechanism, and
+> the `xyz.radicle.crefs` per-ref rules are now verified against
+> Heartwood 1.9.1 (§3.9.10) and no longer gate this TBD; `crefs` remains
+> OPTIONAL, and baseline canonicity MUST NOT depend on it as a matter of
+> scope.
 
 ### 10.2 Client library responsibilities
 
@@ -6638,8 +7282,12 @@ is supported as a first-class case:
 - Receiving clients verify only the Nostr signature; the §3.3
   delegation check is N/A and is omitted.
 - Subscription is via the followed user's NIP-65 write relays.
-- DMs to vanilla-Nostr-only users use NIP-44 / NIP-17 over Nostr
-  (no Matrix DM room exists since the recipient has no MXID).
+- DMs to vanilla-Nostr-only users use NIP-44 / NIP-17 over Nostr.
+  This is the interop fallback only: between Heterodyne clients, DMs
+  use the §5.7 double-ratchet mechanism (delegation-bound, forward
+  secret); NIP-17 gift wrap has no forward secrecy and no §3.3
+  delegation binding (§9.5), and clients SHOULD surface the reduced
+  guarantees.
 
 This is a reduced-feature case — no E2EE Matrix transport, no
 identity-chain rotation support, no scoped outbox advertisement —
@@ -7463,9 +8111,12 @@ CORE (Radicle + Nostr substrate) assumptions:
 4. Tier 2 private-repo content is **plaintext on every allowed seeder**:
    any node on a repo's `visibility.allow` set can read it. Confidentiality
    against seeders requires Tier 3 encrypt-before-commit (§9.0, §6.10).
-5. The Radicle RID / git-object hashing is currently SHA-1-based; the
-   collision surface is acknowledged and MUST be re-modeled before a
-   normative integrity claim is locked on the RID (§13.1.1).
+5. The Radicle RID / git-object hashing is SHA-1-based. Verified against
+   Heartwood 1.9.1: no SHA-256 repository mode exists (the identifier
+   type is structurally SHA-1-only), and the RID is the SHA-1 of the
+   genesis identity document's canonical-JSON blob. The residual risk is
+   RID-genesis-binding confusion, not content or event forgery
+   (§13.1.1).
 6. The user's choice of ordinary Nostr relay is not assumed honest;
    relays may drop, delay, or refuse events but cannot forge signatures.
 7. The user's device is assumed to be free of OS-level malware that
@@ -7617,13 +8268,25 @@ attacker classes:
   as canonical, so the single signature does not bypass M-of-N
   governance. FROST-style threshold epoch-key signing is the eventual
   stronger mitigation (deferred, ADR-027).
-- **SHA-1 RID / git-object collision (caveat).** Radicle RIDs and git
-  objects are SHA-1-based per the research (§3, §7 of the pivot
-  research). A collision surface exists for a security-sensitive social
-  log. This is flagged for threat modeling; the spec does not yet depend
-  on SHA-256 git repos and MUST re-model this surface (whether
-  SHA-256-mode Radicle repos are available) before locking a normative
-  integrity claim on the RID.
+- **SHA-1 RID / git-object collision (re-scoped, verified against
+  Heartwood 1.9.1).** Radicle RIDs and git objects are SHA-1-based: the
+  RID is the SHA-1 of the genesis identity document's canonical-JSON
+  blob, and Heartwood 1.9.1 has no SHA-256 repository mode (the
+  identifier type is structurally SHA-1-only), so a SHA-256 migration is
+  not currently available. The surface is narrower than generic
+  hash-collision forgery: every downstream artifact carries its own
+  independent signature - git refs and COB operations via delegate
+  Ed25519 signatures over `rad/sigrefs`, and every Nostr event via a
+  BIP-340 signature over its SHA-256 NIP-01 id - none of which derives
+  integrity from the RID's hash. A SHA-1 collision against the genesis
+  identity-document blob could therefore yield two different genesis
+  documents sharing one `rad:` RID string (RID-genesis-binding
+  confusion), but cannot forge a valid alternate identity document,
+  post, or event stream without separately controlling a delegate key
+  satisfying that document's own delegate/majority requirements.
+  Clients SHOULD resolve any observed genesis divergence for a RID via
+  the KEL and the cold-root-signed `kind:31005` binding (§3.5, §3.9.10),
+  both of which are SHA-1-independent.
 
 This enumeration is not exhaustive; the companion threat-model
 document at `docs/security/threat-model.md` covers additional
@@ -7651,12 +8314,15 @@ overstate it:
   that wishes to be unattributable must use a separate persona
   (a different npub with no shared delegation), not a "deniable"
   room.
-- **What confidentiality provides.** Non-members cannot read the
-  content of `private_broadcast` or `private_discussion` rooms —
-  the Megolm/MLS session (and, for `private_broadcast` relay
-  posts, the room-key wrap, §6.10) is the confidentiality
-  boundary. This protects *what was said* from outsiders; it does
-  not make *who said it* deniable to insiders.
+- **What confidentiality provides.** Non-key-holders cannot read
+  Tier 3 content: possession of the audience key named by `key_id`
+  is the confidentiality boundary (§6.10), against everyone
+  including the seeds and relays that store the ciphertext. For
+  CORE DMs the boundary is the §5.7 double-ratchet session; in the
+  OPTIONAL Matrix layer, the Megolm/MLS session bounds
+  `private_discussion` rooms. In every case this protects *what was
+  said* from outsiders; it does not make *who said it* deniable to
+  insiders.
 - **What the optional signature adds.** A bare message carries no
   *transferable* proof of authorship: an honest member knows who
   said it, but cannot hand a third party a self-verifying artifact.
@@ -7721,7 +8387,10 @@ Heterodyne implementations MUST uphold:
 - **I6 — At-rest encryption.** The persona's `nsec` (and its Ed25519
   NID secret where held), any cached identity state containing personal
   information, and any private mute lists MUST be stored encrypted at
-  rest (§3.8.3, §9.1, §9.6). OS keystore SHOULD be used where available.
+  rest - the keys repository (§3.8.7, NIP-49 wrap) for key material,
+  the config repository (§3.8.6) for non-key private state, and the
+  OPTIONAL Matrix mirror per §3.8.3 (§9.1, §9.6). OS keystore SHOULD
+  be used where available.
 - **I7 — Client-side bridging only.** The cross-backend/cross-protocol
   bridge runs on the user's device or on hardware they control (§10.1,
   §10.3). No full node, repo relay, routing node, Nostr relay, or
@@ -7750,11 +8419,14 @@ mitigated by the cited spec sections:
 | Full-node read-metadata (who fetched what/when) | §10.1.1 - multi-host + Nostr-relay fallback; §7.7 Tor egress |
 | Selective withholding / censorship by a full node | §10.1.1 multiple hosts + ordinary-Nostr-relay fallback + local signature verification (I4) |
 | Private-repo membership-graph leakage (the allow list) | §9.0 / §6.10.2 minimal allow list; §6.7.4 Tier 3 opaque `key_id` for confidential audiences |
+| Audience-key compromise exposes Tier 3 history (no PFS) | §9.5 honest posture; §6.7.4 removal-rekey; §6.10.4 key-ID branch scrub (long-tail hygiene); §3.8.7 keys-repo at-rest encryption |
+| DM conversation metadata at relays | §5.7.1 rotating ratchet-key outer signers (relay cannot link messages to personas; same-epoch messages share a signer and are linkable to each other until the next DH ratchet step); §5.7.4 no-receipt message requests |
+| Stale-list rollback (relay serves old mute/moderator list) | §8.5 repo-relay git history tamper-evidence; §8.2.1 as-of resolution from canonical ancestor history |
 | Malicious allowed seeder reads private-tier plaintext | §9.0 private-tier honesty MUST; use Tier 3 encrypt-before-commit (§6.10) for confidentiality against seeders |
 | Request-timing correlation | §7.7 Tor egress; §10.1.1 host rotation |
 | Storage exhaustion on a full node | §10.1.2 repo-relay retention / GC / quota rules (part of the repo-relay SERVER/STORAGE conformance target, TBD, MUST fix before a repo relay is server-conformant; does not gate baseline client/vector conformance) |
 | Org rogue-epoch-key relay-bypass | §6.7.0 / §8.8 delegate-threshold canonical-branch reachability rule; FROST deferred (ADR-027) |
-| SHA-1 RID / git-object collision | §13.1.1 caveat (flag for threat modeling); re-model before a normative RID-integrity claim |
+| SHA-1 RID / git-object collision | §13.1.1 (re-scoped, verified against Heartwood 1.9.1): RID-genesis-binding confusion only, not content/event forgery; resolve divergence via the KEL + cold-root `kind:31005`; no SHA-256 repo mode exists in 1.9.1 |
 
 For threats that are explicitly out of scope (compromised user
 devices, traffic analysis under Tor, post-quantum adversaries) see
@@ -7866,7 +8538,7 @@ Vectors are authored per spec section. The coverage targets:
 | `bridge/` (per ADR-010, OPTIONAL Matrix layer) | §6.4 | Asymmetric cross-backend delivery between Nostr and the OPTIONAL Matrix layer - Nostr permanent failure (kind:31007 index not updated); Matrix permanent failure (kind:31007 index updated; Matrix-out-of-sync warning); idempotent re-publication via Nostr event id reuse. Matrix-shaped: a Matrix-free client has no Matrix backend to bridge to |
 | `index/` (per ADR-005, ADR-006, OPTIONAL Matrix layer) | §6.7 | Matrix-era room-key wrap derivation and encryption (NIP-44 v2) for a Matrix-hosted audience. Matrix-shaped. The CORE audience-key-wrap and page-integrity coverage lives in `privacy-tiers/` (Tier 3 `kind:31011` wrap, `index_key` derivation, NIP-44 v2 encryption, `prev_page_hash` page-chain integrity, complete-fetch-attempt across the relay/repo set), which every Matrix-free client MUST pass |
 | `room-kind/` (per ADR-017) | §5 | Each of the four social kinds plus `identity_room`/`config_room` round-trips; rejection of a new room asserting a retired kind; read-back map of a legacy `public_moderated`/`private_verifiable`/`dm_*` room to its current kind with "legacy" indicator |
-| `broadcast/` (per ADR-017) | §5.3, §6.10 | `private_broadcast` post room-key-wrapped (NIP-44 v2 under §6.7.4 key, signed-after-wrap, stable id); decrypt-by-member / non-member-cannot-decrypt; reaction/reply stays bare in-room and is not indexed; rejection of a NIP-59 gift-wrapped broadcast post |
+| `broadcast/` (per ADR-017, OPTIONAL Matrix layer) | §5.3, §6.10 | Matrix-era room-key-wrapped relay carrier for a Matrix-hosted audience - the retired `private_broadcast` kind, forward-mapped to Tier 3 (§5.2.3): post room-key-wrapped (NIP-44 v2 under §6.7.4 key, signed-after-wrap, stable id); decrypt-by-member / non-member-cannot-decrypt; reaction/reply stays bare in-room and is not indexed; rejection of a NIP-59 gift-wrapped broadcast post. Matrix-shaped; the CORE Tier 3 coverage lives in `privacy-tiers/` |
 | `outbox/` | §7 | Full public outbox; scoped outbox; transitive discovery walk; cross-persona attestation (valid and invalid); outbox-model reply/reaction threading with cross-backend dedup by event id (per ADR-029) |
 | `repo-relay/` (per ADR-026) | §10.1.2 | Repo-relay CLIENT conformance (baseline, testable now): read AND write Nostr events over the repo relay's NIP-01 wire (indistinguishable from a plain relay); event with invalid Nostr signature rejected; light-node submit-to-repo-relay write path (event authenticity is the Nostr signature, not the git-ref signature). The repo-relay SERVER/STORAGE contract (ref namespace, COB type registry, filter-to-git-read mapping, retention/GC/quota) is a named pre-1.0 work item (§10.1.2) and is NOT part of baseline vector-conformance |
 | `routing-node/` (per ADR-026) | §7.0, §10.1.1 | Repo-location answer computed from `kind:31005`/`kind:31010` only; expired or unverifiable `kind:31010` advertisement discarded; routing node returns hints, serves no content |
@@ -7874,9 +8546,12 @@ Vectors are authored per spec section. The coverage targets:
 | `light-node/` (per ADR-026) | §7.3, §10.1.1 | Light node verifies every fetched event's Nostr signature locally; content NOT fetched through the routing node; withholding full node routed around via other hosts + Nostr-relay fallback |
 | `nid-binding/` (per ADR-027) | §3.3.1 | Bidirectional `kind:31001` NID binding - epoch-key Schnorr signature AND NID Ed25519 `nid_proof` both required; binding missing either signature rejected; binding-payload bytes pinned |
 | `identity-doc/` (per ADR-027) | §3.9.10 | KEL-over-identity-document precedence - a NID revoked by the KEL rejected as a delegate even if the identity doc still lists it; add-before-remove ordering; emergency re-anchor republishes cold-root `kind:31005` to a fresh RID |
-| `org/` (per ADR-027) | §3, §6.7.0, §8.8 | Org persona modeled with threshold>1 delegates; dual-authorized member NID add (member KEL AND org admin threshold, either alone insufficient); org `kind:31007` delegate-threshold canonical-branch reachability rule - a lone-epoch-key feed not reachable from the delegate-threshold-approved canonical `defaultBranch` is NOT canonical (rogue-epoch-key relay-bypass rejected). The OPTIONAL/EXPERIMENTAL per-ref `xyz.radicle.crefs` refinement is NOT part of this baseline vector |
+| `org/` (per ADR-027) | §3, §6.7.0, §8.8 | Org persona modeled with threshold>1 delegates; dual-authorized member NID add (member KEL AND org admin threshold, either alone insufficient); org `kind:31007` delegate-threshold canonical-branch reachability rule - a lone-epoch-key feed not reachable from the delegate-threshold-approved canonical `defaultBranch` is NOT canonical (rogue-epoch-key relay-bypass rejected). The OPTIONAL per-ref `xyz.radicle.crefs` refinement (verified against Heartwood 1.9.1) is NOT part of this baseline vector |
 | `privacy-tiers/` (per ADR-028) | §5.2, §9.0, §6.10, §6.7.4 | Tier 1 public plaintext on both backends; Tier 2 private-repo (allow-list read grant; NOT described as encrypted; not published to public relays); Tier 3 encrypt-before-commit with `kind:31011` per-recipient audience-key wrap, `index_key` HKDF derivation, NIP-44 v2 index encryption, `prev_page_hash` page-chain integrity, complete-fetch-attempt across the relay/repo set, `kind:31012` audience roster, non-circular bootstrap, and audience-key rotation on member removal |
-| `moderation/` | §8 | NIP-72 approval; multi-mod requirement; moderator rotation through KERI key event log; redaction-of-approved-post; contributor submission with community-address tag and implicit-rejection window (per ADR-014); Radicle editorial-gating mode - a post is approved iff reachable from the delegate-threshold-approved canonical feed branch, evaluated independently of `kind:4550` (per ADR-027) |
+| `moderation/` | §8 | NIP-72 approval; multi-mod requirement; moderator rotation through KERI key event log; redaction-of-approved-post; contributor submission with community-address tag and implicit-rejection window (per ADR-014); Radicle editorial-gating mode - a post is approved iff reachable from the delegate-threshold-approved canonical feed branch, evaluated independently of `kind:4550` (per ADR-027); repo-anchored as-of resolution - moderator set read from the `kind:34550` revision in the approval anchor's ancestor history, approval anchored after the moderator's removal rejected, relay-only `created_at` fallback flagged reduced-assurance (§8.1/§8.2.1); `kind:34550` moderator declaration with `approvals_required` extension tag |
+| `lists/` | §8.5, §8.6, §3.0 | NIP-51 `kind:10000` mute list round-trip on both backends (repo relay accepts it like any replaceable event); private list items NIP-44-encrypted to self under the epoch key, including re-encrypt-on-rotation; `kind:30007` kind-mute set and sets-file `(kind, d)` addressing; stale-list rollback detected from repo-relay revision history; community policy-list adoption via `kind:34550` tags (§8.6) |
+| `dm/` | §5.7 | Invite (`kind:30078`, `d` = `double-ratchet/invites/<device>`) with delegation binding - invite signed by a `kind:31001`-delegated device publishing key accepted, unbound or revoked-device invite rejected; `kind:1060` outer message shape (current-ratchet-key signer, header tag, NIP-44 v2 content) with unsigned `kind:14` inner rumor; repo relay refuses `kind:1060` storage; full five-message ratchet transcript (two DH ratchet steps, pinned session-setup secrets and ratchet-key injection seam) generated with the pinned upstream wire library (nostr-double-ratchet@0.0.138) |
+| `config-backup/` | §3.8.6-§3.8.8, §9.6 | Config-repo blob encrypt/decrypt under the config audience key; config-repo RID absent from every published surface (`kind:31005`/`kind:31010`/profile/NIP-65/lists); keys-repository NIP-49 nsec wrap/unwrap; §6.10.4 `key_id` RECOMMENDED hash derivation and rotation branch replacement (new `enc/<key_id'>`, old branch deleted from the signed ref set); restore order keys-repo -> config-repo -> content |
 | `moderation/strict-mode/` (per ADR-007) | §11.7 | Strict-mode invalid-broadcast-signature rejection; bare discussion message NOT hidden; `kind:5` deletion observed within 30s; state-downgrade warning rendering |
 | `encryption/` | §9 | `encryption_version` event; delegation-revocation triggering rotation (SHOULD path) |
 | `encryption/mls-migration/` (per ADR-012, OPTIONAL) | §9.2 | Eligibility check (capability gating); intent and ACK; abort on missing ACKs; receiver-verifiable flip with last-Megolm-key encryption of the flip event; 60-second tail-period acceptance of pre-flip-keyed Megolm events; offline-reconnect re-encryption with Nostr event id reuse; non-MLS receiver fallback |
@@ -7903,12 +8578,15 @@ tiebreaker, §3.9.8), `keri/`, `envelope/`, `verification/`, `outbox/`,
 `nid-binding/`, `identity-doc/`, `org/` (delegate-threshold canonicity),
 `privacy-tiers/` (including the CORE audience-key-wrap, `index_key`
 derivation, NIP-44 v2 index encryption, and `prev_page_hash`
-page-chain-integrity coverage), `relay-interop/`,
+page-chain-integrity coverage), `lists/`, `config-backup/`,
+`relay-interop/`,
 `transport/` (excluding the `strict-mode/` subdirectory),
 `moderation/` (excluding the `strict-mode/` subdirectory),
-`interop/`, and `versioning/`. The Matrix-shaped `bridge/` and `index/`
-categories are NOT part of the CORE set. A Matrix-free client passing
-this CORE set is **fully conformant** (ADR-029).
+`interop/`, and `versioning/`. `dm/` is CORE for any client that
+offers direct messaging (§5.7); a client that offers no DMs MAY skip
+`dm/` with that rationale. The Matrix-shaped `bridge/`, `index/`, and
+`broadcast/` categories are NOT part of the CORE set. A Matrix-free
+client passing this CORE set is **fully conformant** (ADR-029).
 
 OPTIONAL-Matrix baseline - a client that implements the Matrix layer
 MUST additionally pass `bridge/`, `index/`, `room-kind/`, `config_room/`,
@@ -7943,10 +8621,10 @@ first passing all baseline-minimum vectors.
 Vector counts will grow as the spec stabilizes. Any client
 implementation claiming full baseline vector-conformance to this spec
 version MUST pass every authored vector in the baseline minimum set
-defined in this section. Until those vectors exist, implementations
-SHOULD claim protocol conformance plus a partial vector-conformance
-report naming the vector coverage actually tested. CI enforcement is
-each implementation's responsibility.
+defined in this section. An implementation that has not yet run the
+full baseline set SHOULD claim protocol conformance plus a partial
+vector-conformance report naming the vector coverage actually tested.
+CI enforcement is each implementation's responsibility.
 
 ### 14.4 Conformance reporting
 

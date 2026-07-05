@@ -1,7 +1,10 @@
 import { schnorr } from "@noble/curves/secp256k1";
+import { sha256 } from "@noble/hashes/sha2";
 import { nip44 } from "nostr-tools";
+import * as nip49 from "nostr-tools/nip49";
 import { describe, expect, it } from "vitest";
-import { bytesToHex, hexToBytes } from "./hex.js";
+import { configKeyId, nip49EncryptDeterministic } from "./backup-crypto.js";
+import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 
 describe("external crypto known-answer vectors", () => {
   it("reproduces official BIP-340 Schnorr vector 0", () => {
@@ -28,5 +31,32 @@ describe("external crypto known-answer vectors", () => {
 
     expect(nip44.v2.encrypt(plaintext, conversationKey, nonce)).toBe(payload);
     expect(nip44.v2.decrypt(payload, conversationKey)).toBe(plaintext);
+  });
+});
+
+describe("Heterodyne backup crypto (§3.8.7, §6.10.4)", () => {
+  it("derives the §6.10.4 self-verifying key_id (first 16 bytes of the domain-separated hash)", () => {
+    const audienceKey = "42".repeat(32);
+    const domain = utf8Bytes("heterodyne-key-id-v1");
+    const key = hexToBytes(audienceKey);
+    const preimage = new Uint8Array(domain.length + key.length);
+    preimage.set(domain, 0);
+    preimage.set(key, domain.length);
+
+    const kid = configKeyId(audienceKey);
+    expect(kid).toHaveLength(32);
+    expect(kid).toBe(bytesToHex(sha256(preimage)).slice(0, 32));
+  });
+
+  it("wraps an nsec deterministically and round-trips through nostr-tools nip49.decrypt", () => {
+    const nsec = "0000000000000000000000000000000000000000000000000000000000000001";
+    const password = "heterodyne-vector-passphrase";
+    const salt = "70".repeat(16);
+    const nonce = "71".repeat(24);
+
+    const ncryptsec = nip49EncryptDeterministic(nsec, password, salt, nonce, 16, 2);
+    expect(ncryptsec.startsWith("ncryptsec1")).toBe(true);
+    expect(nip49EncryptDeterministic(nsec, password, salt, nonce, 16, 2)).toBe(ncryptsec);
+    expect(bytesToHex(nip49.decrypt(ncryptsec, password))).toBe(nsec);
   });
 });

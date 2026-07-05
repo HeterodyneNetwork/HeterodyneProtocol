@@ -2,9 +2,20 @@ import { hkdf } from "@noble/hashes/hkdf";
 import { sha256 } from "@noble/hashes/sha2";
 import { nip44 } from "nostr-tools";
 import { hexToBytes, utf8Bytes, bytesToHex } from "./hex.js";
+import { buildDmTranscriptVectors } from "./dm-transcript.js";
 import { canonicalNip01, signEvent } from "./nostr.js";
+import { buildV04Vectors } from "./topics-v04.js";
+import { buildV04bVectors } from "./topics-v04b.js";
+import {
+  AUX_RAND,
+  baseVector,
+  consume,
+  produceVector,
+  withoutSig,
+  type VectorFactory,
+} from "./vector-helpers.js";
 import type { Fixtures } from "./fixtures.js";
-import type { AuthoredVector, Vector } from "./types.js";
+import type { Vector, AuthoredVector } from "./types.js";
 
 export const TOPIC_SPECS = {
   identity: "§3",
@@ -28,19 +39,27 @@ export const TOPIC_SPECS = {
   "relay-profile": "§10.6",
   interop: "§11",
   versioning: "§12",
+  "repo-relay": "§10.1.2",
+  "routing-node": "§7.0",
+  "node-advert": "§7.0",
+  "light-node": "§7.3",
+  "nid-binding": "§3.3.1",
+  "identity-doc": "§3.9.10",
+  org: "§6.7.0",
+  "privacy-tiers": "§9.0",
+  lists: "§8.5",
+  dm: "§5.7",
+  "config-backup": "§3.8.6",
 } as const;
-
-const SCHEMA_VERSION = "1.0.0";
-const SPEC_VERSION = "0.3.0";
-const AUX_RAND = "00".repeat(32);
-
-type VectorFactory = (fixtures: Fixtures) => Promise<AuthoredVector> | AuthoredVector;
 
 export async function buildAllVectors(fixtures: Fixtures): Promise<AuthoredVector[]> {
   const vectors: AuthoredVector[] = [];
   for (const factory of VECTOR_FACTORIES) {
     vectors.push(await factory(fixtures));
   }
+  vectors.push(...(await buildV04Vectors(fixtures)));
+  vectors.push(...(await buildV04bVectors(fixtures)));
+  vectors.push(...buildDmTranscriptVectors(fixtures));
   return vectors;
 }
 
@@ -48,32 +67,26 @@ const VECTOR_FACTORIES: VectorFactory[] = [
   async (fixtures) => {
     const persona = fixtures.personas.alice;
     const rootEvent = await signEvent({
-      secretKey: persona.cold_root.private_key,
+      secretKey: persona.epoch_keys.epoch_1.private_key,
       created_at: fixtures.test_epoch,
       kind: 31000,
       tags: [
-        ["d", "m.heterodyne.root.v1"],
-        ["heterodyne_version", fixtures.spec_version],
-        ["matrix_room_id", fixtures.matrix_rooms.identity_alice],
-        ["epoch_pubkey", persona.epoch_keys.epoch_1.pubkey],
+        ["d", ""],
+        ["heterodyne", "root"],
+        ["cold_root", persona.cold_root.pubkey],
       ],
-      content: JSON.stringify({
-        type: "m.heterodyne.root.v1",
-        cold_root: persona.cold_root.pubkey,
-        matrix_room_id: fixtures.matrix_rooms.identity_alice,
-        epoch_pubkey: persona.epoch_keys.epoch_1.pubkey,
-      }),
+      content: "",
       auxRand: AUX_RAND,
     });
     return {
       relativePath: "identity/001-root-attestation-valid.json",
       vector: produceVector({
         vector_id: "identity/root-attestation-valid",
-        spec_refs: ["§3", "§14.1", "§14.5"],
-        description: "Root attestation event is signed with pinned aux_rand and reproduced byte-identically.",
+        spec_refs: ["§3.2.1", "§14.1", "§14.5"],
+        description: "Matrix-free root attestation: kind:31000 signed by the current epoch key, cold_root tag binds the npub, no matrix_room tag.",
         input: {
           fixture_persona: "alice",
-          signer: "cold_root",
+          signer: "epoch_1",
           aux_rand: AUX_RAND,
           event_template: withoutSig(rootEvent),
         },
@@ -83,6 +96,7 @@ const VECTOR_FACTORIES: VectorFactory[] = [
           id: rootEvent.id,
           sig: rootEvent.sig,
         },
+        notes: "Per §3.2.1 the root attestation is epoch-key-signed (the cold root is never brought online for it) and the matrix_room tag is omitted for a Matrix-free persona.",
       }),
     };
   },
@@ -472,35 +486,6 @@ const VECTOR_FACTORIES: VectorFactory[] = [
   }),
 ];
 
-function consume(relativePath: string, vector: Omit<Vector, "vector_schema_version" | "spec_version" | "direction">): VectorFactory {
-  return () => ({
-    relativePath,
-    vector: baseVector({ ...vector, direction: "consume" }),
-  });
-}
-
-function produceVector(vector: Omit<Vector, "vector_schema_version" | "spec_version" | "direction">): Vector {
-  return baseVector({ ...vector, direction: "produce" });
-}
-
-function baseVector(vector: Omit<Vector, "vector_schema_version" | "spec_version">): Vector {
-  return {
-    vector_schema_version: SCHEMA_VERSION,
-    spec_version: SPEC_VERSION,
-    ...vector,
-  };
-}
-
-function withoutSig(event: { pubkey: string; created_at: number; kind: number; tags: string[][]; content: string }) {
-  return {
-    pubkey: event.pubkey,
-    created_at: event.created_at,
-    kind: event.kind,
-    tags: event.tags,
-    content: event.content,
-  };
-}
-
 async function encryptedIndexVector(fixtures: Fixtures): Promise<AuthoredVector> {
   const secret = fixtures.room_secrets.alice_private_broadcast_v1;
   const roomKey = hkdf(
@@ -568,9 +553,9 @@ async function encryptedBroadcastVector(fixtures: Fixtures): Promise<AuthoredVec
   const event = await signEvent({
     secretKey: epoch.private_key,
     created_at: fixtures.test_epoch + 15,
-    kind: 31009,
+    kind: 1,
     tags: [
-      ["d", "private-broadcast-001"],
+      ["heterodyne_wrap", "room_key.v2"],
       ["key_id", secret.key_id],
       ["matrix_room_id", secret.matrix_room_id],
     ],
@@ -581,8 +566,8 @@ async function encryptedBroadcastVector(fixtures: Fixtures): Promise<AuthoredVec
     relativePath: "broadcast/001-private-broadcast-wrapped.json",
     vector: produceVector({
       vector_id: "broadcast/private-broadcast-wrapped",
-      spec_refs: ["§5.3", "§6.10", "§14.1", "§14.3", "§14.5"],
-      description: "Private broadcast post is NIP-44 wrapped under the room-derived post key, then signed.",
+      spec_refs: ["§5.3", "§6.10", "§6.7.4", "§14.1", "§14.3", "§14.5"],
+      description: "OPTIONAL Matrix-hosted audience: a private broadcast post NIP-44-wrapped under the Matrix room-secret-derived post key, then signed. Matrix-shaped; the CORE Tier 3 wrap is in privacy-tiers/.",
       input: {
         fixture_room_secret: "alice_private_broadcast_v1",
         fixture_persona: "alice",
@@ -617,39 +602,6 @@ type ConsumeCase = {
 };
 
 const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
-  {
-    relativePath: "identity/002-delegation-active.json",
-    vector: {
-      vector_id: "identity/delegation-active",
-      spec_refs: ["§3.3", "§14.3"],
-      description: "Delegation is accepted while valid_until is greater than simulated_clock.",
-      input: { mxid: "@alice:example.org", valid_until: 1767232800 },
-      expected_output: { verdict: "accept", normalized: { delegation_state: "active" } },
-      simulated_clock: 1767229200,
-    },
-  },
-  {
-    relativePath: "identity/003-delegation-expired.json",
-    vector: {
-      vector_id: "identity/delegation-expired",
-      spec_refs: ["§3.3", "§4.5", "§14.3"],
-      description: "Delegation is rejected after valid_until.",
-      input: { mxid: "@alice:example.org", valid_until: 1767225600 },
-      expected_output: { verdict: "reject", reason_code: "expired_delegation" },
-      simulated_clock: 1767229200,
-    },
-  },
-  {
-    relativePath: "identity/004-delegation-revoked.json",
-    vector: {
-      vector_id: "identity/delegation-revoked",
-      spec_refs: ["§3.3", "§4.5", "§14.3"],
-      description: "Delegation is rejected after a revocation event for the delegated MXID.",
-      input: { mxid: "@old-device:example.org", revoked_at: 1767226500, event_created_at: 1767226600 },
-      expected_output: { verdict: "reject", reason_code: "revoked_key_post_revoked_at" },
-      simulated_clock: 1767226700,
-    },
-  },
   {
     relativePath: "identity/005-revocation-post-window.json",
     vector: {
@@ -785,8 +737,8 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
     relativePath: "multi-homing/004-kind31005-race-tiebreaker.json",
     vector: {
       vector_id: "multi-homing/kind31005-race-tiebreaker",
-      spec_refs: ["§3.9", "§14.3"],
-      description: "kind:31005 pointer races break ties by KERI witness counts.",
+      spec_refs: ["§3.9.8", "§14.3"],
+      description: "OPTIONAL Matrix corroboration of the kind:31005 tiebreaker via KERI witness counts; the CORE Matrix-free tiebreaker lives in identity/ (§3.9.8).",
       input: { candidates: [{ id: "a", witness_count: 1 }, { id: "b", witness_count: 2 }] },
       expected_output: { verdict: "accept", normalized: { accepted_pointer: "b" } },
     },
@@ -829,16 +781,6 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
       description: "Wrapping rules apply consistently to kind 1, reaction kind 7, and long-form kind 30023.",
       input: { nostr_kinds: [1, 7, 30023] },
       expected_output: { verdict: "accept", normalized: { wrapped_kinds: [1, 7, 30023] } },
-    },
-  },
-  {
-    relativePath: "verification/002-delegation-mismatch-rejects.json",
-    vector: {
-      vector_id: "verification/delegation-mismatch-rejects",
-      spec_refs: ["§4.5", "§14.3"],
-      description: "Event signed for one delegated MXID rejects when sent by another.",
-      input: { delegated_mxid: "@alice:example.org", sender_mxid: "@mallory:example.org" },
-      expected_output: { verdict: "reject", reason_code: "delegation_mismatch" },
     },
   },
   {
@@ -1350,16 +1292,6 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
       description: "Vanilla-Nostr-only follow remains readable without Matrix room participation.",
       input: { follower_capabilities: ["nip01"], matrix_joined: false },
       expected_output: { verdict: "accept", normalized: { follow_readable_via_nostr: true } },
-    },
-  },
-  {
-    relativePath: "interop/004-kind31005-identity-pointer.json",
-    vector: {
-      vector_id: "interop/kind31005-identity-pointer",
-      spec_refs: ["§11", "§14.3"],
-      description: "kind:31005 identity pointer maps npub to identity room.",
-      input: { kind: 31005, npub: "npub-alice", room_id: "!alice-identity:example.org" },
-      expected_output: { verdict: "accept", normalized: { room_id: "!alice-identity:example.org" } },
     },
   },
   {

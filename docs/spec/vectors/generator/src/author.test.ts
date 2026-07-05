@@ -32,7 +32,9 @@ describe("author mode", () => {
     const identity = JSON.parse(
       await readFile(join(outputDir, "identity", "001-root-attestation-valid.json"), "utf8"),
     );
-    expect(identity.expected_output.canonical_wire).toContain("m.heterodyne.root.v1");
+    expect(identity.spec_version).toBe("0.4.0");
+    expect(identity.expected_output.canonical_wire).toContain('["heterodyne","root"]');
+    expect(identity.expected_output.canonical_wire).toContain("31000");
     expect(identity.expected_output.id).toHaveLength(64);
     expect(identity.expected_output.sig).toHaveLength(128);
   });

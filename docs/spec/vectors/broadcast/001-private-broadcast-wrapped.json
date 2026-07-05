@@ -1,15 +1,16 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.3.0",
+  "spec_version": "0.4.0",
   "vector_id": "broadcast/private-broadcast-wrapped",
   "spec_refs": [
     "§5.3",
     "§6.10",
+    "§6.7.4",
     "§14.1",
     "§14.3",
     "§14.5"
   ],
-  "description": "Private broadcast post is NIP-44 wrapped under the room-derived post key, then signed.",
+  "description": "OPTIONAL Matrix-hosted audience: a private broadcast post NIP-44-wrapped under the Matrix room-secret-derived post key, then signed. Matrix-shaped; the CORE Tier 3 wrap is in privacy-tiers/.",
   "input": {
     "fixture_room_secret": "alice_private_broadcast_v1",
     "fixture_persona": "alice",
@@ -23,16 +24,16 @@
     "cleartext": "{\"body\":\"private broadcast body\",\"matrix_room_id\":\"!alice-private-broadcast:example.org\",\"key_id\":\"room-secret-2026-05-25-a\"}"
   },
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225615,31009,[[\"d\",\"private-broadcast-001\"],[\"key_id\",\"room-secret-2026-05-25-a\"],[\"matrix_room_id\",\"!alice-private-broadcast:example.org\"]],\"AjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwQ9ZiMg7oMY4qeiDZbaxWUX1C8Uw9fLFFVhWZPpAXvhJutDwVQv1GjA/2MvzQV0c6y65aVRmxcn96kj+BW9reNT7+LRmkssiaO/Hk1+1P6xXhOzJYFadmNXXCZ33bCGLGJt3dJLST2saijDOX9xRMrcIq8atwAkOQ9FlV/XdUYojJSPAEBmu2gAsyxqjt6pli2Ip+/CF1CiclHzJCcmJ5YoQ/\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225615,1,[[\"heterodyne_wrap\",\"room_key.v2\"],[\"key_id\",\"room-secret-2026-05-25-a\"],[\"matrix_room_id\",\"!alice-private-broadcast:example.org\"]],\"AjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwQ9ZiMg7oMY4qeiDZbaxWUX1C8Uw9fLFFVhWZPpAXvhJutDwVQv1GjA/2MvzQV0c6y65aVRmxcn96kj+BW9reNT7+LRmkssiaO/Hk1+1P6xXhOzJYFadmNXXCZ33bCGLGJt3dJLST2saijDOX9xRMrcIq8atwAkOQ9FlV/XdUYojJSPAEBmu2gAsyxqjt6pli2Ip+/CF1CiclHzJCcmJ5YoQ/\"]",
     "decoded": {
       "event": {
         "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
         "created_at": 1767225615,
-        "kind": 31009,
+        "kind": 1,
         "tags": [
           [
-            "d",
-            "private-broadcast-001"
+            "heterodyne_wrap",
+            "room_key.v2"
           ],
           [
             "key_id",
@@ -44,8 +45,8 @@
           ]
         ],
         "content": "AjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwQ9ZiMg7oMY4qeiDZbaxWUX1C8Uw9fLFFVhWZPpAXvhJutDwVQv1GjA/2MvzQV0c6y65aVRmxcn96kj+BW9reNT7+LRmkssiaO/Hk1+1P6xXhOzJYFadmNXXCZ33bCGLGJt3dJLST2saijDOX9xRMrcIq8atwAkOQ9FlV/XdUYojJSPAEBmu2gAsyxqjt6pli2Ip+/CF1CiclHzJCcmJ5YoQ/",
-        "id": "d9d2399ff130a97d33fc2fb61c3217fddbc2a075aae055bbdfbf4c7a2c2f8135",
-        "sig": "0bff4b6f6840bd62afa3784a455b22da80f278907696fcd5593c06b306cd981c981eef49e0fcb892ca29c9d7cee60df5f62eb3176ff4d64e044a629ca58cfaca"
+        "id": "16b221dec1198eb8014af1864d9a654117f0b50b18f7a5d3f60854a831083e4e",
+        "sig": "ac2deeccc99f3e4a9350067758456dabae4a03a202f117cfbad946d0f374756fac27630d3d3ab5a73553f6d9e2bf545409af810dda78cb0fb6cfc4a582f392c7"
       },
       "post_key": "39894fdf4fb72f6702d33b8b81d312b4452614fe23da32617172d911fff38ffd",
       "cleartext": {
@@ -55,8 +56,8 @@
       },
       "nip44_payload": "AjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwQ9ZiMg7oMY4qeiDZbaxWUX1C8Uw9fLFFVhWZPpAXvhJutDwVQv1GjA/2MvzQV0c6y65aVRmxcn96kj+BW9reNT7+LRmkssiaO/Hk1+1P6xXhOzJYFadmNXXCZ33bCGLGJt3dJLST2saijDOX9xRMrcIq8atwAkOQ9FlV/XdUYojJSPAEBmu2gAsyxqjt6pli2Ip+/CF1CiclHzJCcmJ5YoQ/"
     },
-    "id": "d9d2399ff130a97d33fc2fb61c3217fddbc2a075aae055bbdfbf4c7a2c2f8135",
-    "sig": "0bff4b6f6840bd62afa3784a455b22da80f278907696fcd5593c06b306cd981c981eef49e0fcb892ca29c9d7cee60df5f62eb3176ff4d64e044a629ca58cfaca"
+    "id": "16b221dec1198eb8014af1864d9a654117f0b50b18f7a5d3f60854a831083e4e",
+    "sig": "ac2deeccc99f3e4a9350067758456dabae4a03a202f117cfbad946d0f374756fac27630d3d3ab5a73553f6d9e2bf545409af810dda78cb0fb6cfc4a582f392c7"
   },
   "notes": "Megolm transport is opaque; this vector validates the room-secret to NIP-44 post chain and context binding to matrix_room_id.",
   "direction": "produce"

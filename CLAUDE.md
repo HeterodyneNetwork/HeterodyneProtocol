@@ -46,23 +46,25 @@ relay.
 ## Content taxonomy (current 0.x draft)
 
 Broadcast content is organized by **repo-visibility privacy tier**, each with
-an explicitly stated trust boundary; discussion lives in the OPTIONAL Matrix
-layer:
+an explicitly stated trust boundary; two-party DMs are a CORE double-ratchet
+mechanism (§5.7) and multi-party discussion lives in the OPTIONAL Matrix layer:
 
 | Tier / kind | Purpose | Trust boundary | Moderation |
 |---|---|---|---|
 | **Tier 1 - public repo** | Open broadcast (Twitter-style public feed). Plaintext Nostr events on both backends. | Confidential against no one. | Server ACLs + community lists; NIP-72 or the Radicle delegate-threshold canonical-branch editorial gate |
 | **Tier 2 - private repo** ("unencrypted-but-not-discoverable") | Persona broadcasts to a closed audience via a Radicle private repo (`visibility: private` + allow list). | NOT confidential against members - plaintext on every allowed seeder. Client MUST warn and MUST NOT call it "encrypted." | Owner controls the allow list |
 | **Tier 3 - encrypted-blobs-in-repo** | Confidential broadcast: NIP-44 ciphertext under an audience key committed to a repo. | Confidential against everyone incl. seeders; only key-holders read it. | Owner controls the audience-key roster |
+| `direct_messages` (CORE) | Two-party DMs over the core substrate: nostr-double-ratchet wire (`kind:1060` relay-carried, never repo-committed), NIP-17 fallback for vanilla recipients. | Double Ratchet session - forward secrecy + post-compromise security. | Participants (§5.7.4 acceptance gating) |
 | `public_discussion` (OPTIONAL Matrix) | Communities, topic rooms, forums, group chat. | Unencrypted Matrix room. | NIP-72 moderator approvals (when moderated) |
-| `private_discussion` (OPTIONAL Matrix) | Friend circles, casual planning, day-to-day groups, and two-party DMs. | Megolm/MLS session boundary. | Participants / small admin set |
+| `private_discussion` (OPTIONAL Matrix) | Friend circles, casual planning, day-to-day groups; the OPTIONAL Matrix layer's additional DM surface. | Megolm/MLS session boundary. | Participants / small admin set |
 
 Moderation offers **two parallel editorial-gating mechanisms** (§8): the NIP-72
 `kind:4550` approval flow (relay-hosted / interoperating communities) and a
 native Radicle editorial-gating mode where a post is approved iff it is
 reachable from the delegate-threshold-approved canonical feed branch (the finer
-per-ref `xyz.radicle.crefs` refinement is OPTIONAL and EXPERIMENTAL, pending
-Heartwood-release verification). No tier or discussion kind
+per-ref `xyz.radicle.crefs` refinement is OPTIONAL, verified against Heartwood
+1.9.1; baseline canonicity MUST NOT depend on it, a scoping choice rather than
+a verification hedge). No tier or discussion kind
 claims deniability: every post/message is attributable to its author's npub via
 the §3.3 delegation (bare messages carry no *transferable* third-party proof,
 but are not anonymous).
@@ -118,22 +120,45 @@ Current shape (0.x):
   blobs-in-repo), each with an honest trust boundary (§9.0). The
   `kind:31005` pointer is the authoritative npub→RID mapping; a
   compromised container is abandoned by re-anchoring to a fresh RID.
-- **Other invariants:** replies/reactions use the Nostr outbox model
-  (scatter-gather threading, no write access to another persona's repo);
-  DM retrieval backfill is forbidden (relays + user-hosted archives
-  only); moderator post-hoc removal uses Nostr `kind:5` deletions;
-  hardening includes scoped ±5-minute clock skew on root attestations,
-  mandatory SSRF prevention on ATProto DID resolution, and a mandatory
-  `nip01_raw` canonical-serialization field on signed events. The
-  OPTIONAL ATProto attached outbox (§11.6) and KERI social witnesses are
-  available.
+- **Lists.** Mute lists and every other NIP-51 list/set are core
+  constructs: `kind:10000` mutes plus the sets file
+  (`kind:30000`-`39092`, incl. kind-mute sets `kind:30007`), published
+  to BOTH backends (repo relays MUST accept them), with private items
+  NIP-44-encrypted to self under the epoch key. Community policy lists
+  ride the same carrier via `kind:34550` tags (§8.5/§8.6).
+- **Backups.** Non-key state is encrypted blobs in a per-persona
+  unadvertised **config repository** (private repo, RID never
+  published); key material lives in a local-only **keys repository**
+  (NIP-49-wrapped nsec, epoch/NID secrets, audience keys, config-repo
+  RID, followed-repositories list) synced device-to-device only via a
+  §5.7 DM or backup restore. A RECOMMENDED removable-media (USB) backup
+  covers all produced AND followed repos + config/keys repos, with a
+  UI-chip freshness indicator (§3.8.6-§3.8.8, §9.6).
+- **Other invariants:** CORE DMs are a nostr-double-ratchet mechanism
+  (relay-carried, never repo-committed, no backfill; forward secrecy +
+  post-compromise security; §5.7); replies/reactions use the Nostr
+  outbox model (scatter-gather threading, no write access to another
+  persona's repo); moderation approvals anchor per hosting (repo anchor
+  in the delegate-threshold canonical history, OPTIONAL Matrix anchor,
+  or a reduced-assurance relay-only `created_at` fallback), NIP-32
+  `kind:1985` labels are advisory-only, and post-hoc removal uses Nostr
+  `kind:5` deletions; encrypted blobs live on `enc/<key_id>` branches
+  whose rotation force-deletes the retired branch (cooperative scrub,
+  not erasure; §6.10.4); Tier 3 has no forward secrecy - a compromised
+  audience key reads all past posts under its `key_id` (§9.5); hardening
+  includes scoped ±5-minute clock skew on root attestations, mandatory
+  SSRF prevention on ATProto DID resolution, and a mandatory `nip01_raw`
+  canonical-serialization field on signed events. The OPTIONAL ATProto
+  attached outbox (§11.6) and KERI social witnesses are available.
 
 The spec is implementation-agnostic — no particular language or
 runtime is prescribed.
 
 The next milestones are:
 
-1. Author test vectors in `docs/spec/vectors/` (one per spec section).
+1. Expand the authored v0.4.0 test-vector suite in `docs/spec/vectors/`
+   (all §14.3 coverage-map categories authored; edge cases grow with the
+   0.x draft).
 2. Build a first-party client implementation (language and runtime
    to be chosen separately; the spec is agnostic) to validate the
    protocol end-to-end.
@@ -147,7 +172,7 @@ The next milestones are:
 | `docs/architecture.md` | Non-normative architecture overview + design rationale for each load-bearing decision. |
 | `docs/glossary.md` | Term definitions referenced from the spec. |
 | `docs/security/threat-model.md` | Companion analysis to spec §13 (security model). |
-| `docs/spec/vectors/` | Test vectors (format defined; vectors authored incrementally). |
+| `docs/spec/vectors/` | Conformance test vectors (authored v0.4.0 suite covering the §14.3 map; generator tooling included). |
 | `docs/spec/extensions/nips/` | Forward-reference index for future NIP extractions. |
 | `docs/spec/extensions/mscs/` | Forward-reference index for future MSC extractions. |
 | `research/sources/` | Raw Gemini deep-research output, stored verbatim with citations. Do not edit. |

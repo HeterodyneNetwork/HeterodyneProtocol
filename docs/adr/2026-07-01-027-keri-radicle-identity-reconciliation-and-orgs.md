@@ -256,3 +256,35 @@ rule that closes the rogue-epoch-key relay bypass, the reframing of
 NIP-72 and `crefs` as two parallel editorial-gating mechanisms, the
 NID-optional light-device clarification, and softened identity-doc
 storage wording pending Heartwood-release verification.
+
+## Verification addendum (2026-07-05)
+
+Empirically verified against `rad`/`radicle-node` 1.9.1 and the
+Heartwood source at tag `releases/1.9.1`, closing the assumptions this
+ADR left open pending verification:
+
+- **Identity-doc storage form** (Context, "the exact COB-vs-special-ref
+  storage detail is verified before any normative dependence").
+  Verified: the identity document is a `xyz.radicle.id` COB; `refs/rad/id`
+  is a local per-node convenience pointer to that COB's tip, not a
+  second, independent storage form.
+- **`rad id update` / delegate-quorum mechanism** (Requirements, "the
+  Radicle identity document (`rad id update` accepted by delegate
+  quorum)"; the add-before-remove deadlock rule). Verified: revisions to
+  the identity doc (delegate, threshold, or payload changes) are adopted
+  once a **majority** of the live delegate set signs via `rad id accept`
+  - the document's own `threshold` field governs `defaultBranch`/`crefs`
+  canonical-ref acceptance, not its own revisions. These are now named as
+  two distinct mechanisms so the ADR's "quorum" language is not read as
+  the same thing as the `threshold` field. No force/override/emergency
+  path exists in 1.9.1, confirming the ADR's re-anchor escape (fresh
+  RID + cold-root `kind:31005`) as the only way out of a below-majority
+  deadlock.
+- **`crefs` semantics** (Context, "the `crefs` semantics are load-bearing
+  for org governance and MUST be independently verified against the
+  target Heartwood release before the spec depends on them normatively").
+  Verified: `xyz.radicle.crefs` per-ref canonical rules are fully
+  implemented and CLI-documented in 1.9.1. Promoted from "must be
+  verified" to "verified, still OPTIONAL" - baseline org canonicity
+  (the `defaultBranch` delegate-threshold rule) intentionally does not
+  depend on it, unchanged from this ADR's decision.

@@ -1,0 +1,55 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "nid-binding/missing-nid-proof-rejected",
+  "spec_refs": [
+    "§3.3.1",
+    "§14.3"
+  ],
+  "description": "A kind:31001 NID delegation that lacks the NID Ed25519 nid_proof is rejected: the binding MUST carry both signatures.",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767225605,
+      "kind": 31001,
+      "tags": [
+        [
+          "d",
+          "nid:did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+        ],
+        [
+          "heterodyne",
+          "delegation"
+        ],
+        [
+          "radicle_nid",
+          "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+        ],
+        [
+          "publishing_key",
+          "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
+        ],
+        [
+          "cold_root",
+          "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        ],
+        [
+          "valid_until",
+          ""
+        ]
+      ],
+      "content": "",
+      "id": "1d403495193803e6557c12942959c1afda261985dda3e28ef0969a393cf297fb",
+      "sig": "5a841f6031af06df48d67013b5f21b2f4c6f84edb7f78a67e9667a6dedced9557c3be0378b0f9856cb331c8dced3ccaabfcf7e2ef597b1df5f2e77ecb7641c79"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "nid_binding_missing_signature"
+  },
+  "decision_trace": [
+    "verify_outer_bip340_signature",
+    "require_nid_proof_tag"
+  ],
+  "direction": "consume"
+}

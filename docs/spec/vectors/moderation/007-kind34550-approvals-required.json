@@ -1,0 +1,61 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "moderation/kind34550-approvals-required",
+  "spec_refs": [
+    "§8.2",
+    "§8.1",
+    "§14.1",
+    "§14.3"
+  ],
+  "description": "A NIP-72 kind:34550 community definition signed by the community persona's epoch key, listing moderators by permanent cold-root npub and carrying the Heterodyne [\"approvals_required\",\"N\"] extension tag.",
+  "input": {
+    "fixture_persona": "alice",
+    "signer": "epoch_1",
+    "approvals_required": 2,
+    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "notes": "Moderators are listed per NIP-72 as [\"p\", <cold-root npub hex>, <relay hint>, \"moderator\"] - the permanent KERI cold root, not the epoch key that signs approvals. A vanilla NIP-72 client ignores approvals_required and sees a normal community (§8.2).",
+  "expected_output": {
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225730,34550,[[\"d\",\"acme-town-square\"],[\"name\",\"Acme Town Square\"],[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\",\"wss://relay.example\",\"moderator\"],[\"p\",\"2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01\",\"wss://relay.example\",\"moderator\"],[\"approvals_required\",\"2\"]],\"\"]",
+    "decoded": {
+      "event": {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767225730,
+        "kind": 34550,
+        "tags": [
+          [
+            "d",
+            "acme-town-square"
+          ],
+          [
+            "name",
+            "Acme Town Square"
+          ],
+          [
+            "p",
+            "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+            "wss://relay.example",
+            "moderator"
+          ],
+          [
+            "p",
+            "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01",
+            "wss://relay.example",
+            "moderator"
+          ],
+          [
+            "approvals_required",
+            "2"
+          ]
+        ],
+        "content": "",
+        "id": "0c4230bceab63ecf56bba51f26e4dee6124b5e569b8489a3392076fe2b85a0b3",
+        "sig": "065adc2910fe7762606da85753ceb58b13f67aa557ae955cf3940667675e1fa6dc5b0763214fb2c572577c1f84d6d5cabe3f99ad64c86716754d578b07137bb3"
+      }
+    },
+    "id": "0c4230bceab63ecf56bba51f26e4dee6124b5e569b8489a3392076fe2b85a0b3",
+    "sig": "065adc2910fe7762606da85753ceb58b13f67aa557ae955cf3940667675e1fa6dc5b0763214fb2c572577c1f84d6d5cabe3f99ad64c86716754d578b07137bb3"
+  },
+  "direction": "produce"
+}

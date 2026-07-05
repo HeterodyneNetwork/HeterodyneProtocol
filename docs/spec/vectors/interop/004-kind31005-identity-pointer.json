@@ -1,21 +1,28 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.3.0",
+  "spec_version": "0.4.0",
   "vector_id": "interop/kind31005-identity-pointer",
   "spec_refs": [
-    "§11",
+    "§11.3",
+    "§7.0",
     "§14.3"
   ],
-  "description": "kind:31005 identity pointer maps npub to identity room.",
+  "description": "kind:31005 identity pointer maps an npub to its canonical Radicle RID plus optional host hints.",
   "input": {
     "kind": 31005,
-    "npub": "npub-alice",
-    "room_id": "!alice-identity:example.org"
+    "npub": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+    "host_hints": [
+      "wss://node-a.example/relay"
+    ]
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "room_id": "!alice-identity:example.org"
+      "rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+      "host_hints": [
+        "wss://node-a.example/relay"
+      ]
     }
   },
   "direction": "consume"
