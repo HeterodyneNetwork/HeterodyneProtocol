@@ -1,49 +1,71 @@
 # Heterodyne
 
-A decentralized social network protocol that runs **Nostr events over Matrix
-rooms** to combine the strengths of both:
+A decentralized social network protocol that runs **Nostr signed events over a
+Radicle + Nostr core substrate, with Matrix as an OPTIONAL layer** (substrate
+pivot, ADR-026 through ADR-029):
 
-- **Nostr** provides the identity and authenticity layer — a user's
-  cryptographic `secp256k1` keypair is portable, censorship-resistant, and
-  not tied to any specific homeserver or relay.
-- **Matrix** provides the transport, state, encryption, and access control
-  layer — Megolm/MLS for group E2EE, native room state for membership and
-  power levels, federation for resilience.
+- **Nostr** provides the identity and authenticity layer and the canonical
+  content unit - a user's cryptographic `secp256k1` keypair is portable,
+  censorship-resistant, and not tied to any specific server. Every post is a
+  signed Nostr event carried over two co-equal MUST backends: ordinary Nostr
+  relays and **repo relays**.
+- **Radicle** (the Heartwood 1.x peer-to-peer git stack) provides durable,
+  censorship-resistant content storage behind repo relays - a repo relay is a
+  NIP-01 websocket endpoint whose event store is a Radicle git repository,
+  replicated peer-to-peer among full nodes. Radicle's Noise XK / TCP transport
+  lives entirely behind full nodes and never in front of a browser/mobile
+  client.
+- **Matrix** is an OPTIONAL (SHOULD-level) layer for real-time discussion
+  groups, DMs, calls, and encrypted rooms - Megolm/MLS for group E2EE, native
+  room state, federation. No identity, publishing, discovery, or privacy
+  requirement depends on it; a Matrix-free client is fully conformant.
 
-The user's identity (their Nostr keypair) is decoupled from the Matrix account
-used to publish a given event. A single user can be multi-homed across
-multiple Matrix accounts and homeservers while still presenting one cohesive
-Nostr identity to followers.
+The user's identity (their Nostr keypair) is decoupled from the infrastructure
+that carries a given event. A single user can be multi-homed across multiple
+full nodes (and, optionally, Matrix accounts) while still presenting one
+cohesive Nostr identity to followers.
 
 ## Core design intuition
 
-> By offloading group cryptography to Megolm (and eventually MLS) and routing
-> Nostr events into encrypted Matrix rooms, we outsource group privacy to
-> Matrix's ratchet. The bridge ingests the raw, unencrypted Nostr event; the
-> Matrix client SDK encrypts it client-side and pushes ciphertext to the
-> homeserver. The homeserver becomes a blind state manager — it routes
-> messages but cannot read payloads or metadata.
+> Nostr signed events are the canonical content unit; Radicle git repos give
+> them durable, peer-to-peer replication behind an ordinary NIP-01 wire, so
+> browsers and phones participate as light clients that verify every event's
+> signature locally. Confidentiality is a property of repo visibility plus
+> app-layer encryption, not of a homeserver: content is either public, gated by
+> selective replication (a private repo - plaintext on allowed seeders), or
+> NIP-44-encrypted before it is committed (confidential against everyone
+> including the nodes that store it).
 
-This solves the **N-encryption-per-N-recipients** scaling problem of standard
-Nostr DMs/groups: Megolm and MLS create a shared session for the room, so the
-bridge encrypts once and Matrix handles key distribution to authorized
-members.
+Confidential broadcast still solves the **N-encryption-per-N-recipients**
+scaling problem: the audience key encrypts content once and is distributed
+per-recipient via `kind:31011` wraps, and the storing nodes never see the
+plaintext. The OPTIONAL Matrix layer applies the same encrypt-once-per-room
+model via Megolm/MLS for real-time discussion, where the homeserver is a blind
+relay.
 
-## Room taxonomy (current 0.x draft)
+## Content taxonomy (current 0.x draft)
 
-Four social kinds on a **broadcast vs discussion × public vs private**
-axis, plus two infrastructure kinds (`identity_room`, `config_room`):
+Broadcast content is organized by **repo-visibility privacy tier**, each with
+an explicitly stated trust boundary; discussion lives in the OPTIONAL Matrix
+layer:
 
-| Room kind | Purpose | Encryption | Posts / authorship | Moderation |
-|---|---|---|---|---|
-| `public_broadcast` | Open broadcast (Twitter-style public feed). Posts + index on Nostr relays; the Matrix room is a pointer/state container that also carries members' bare reactions/replies. | None | Nostr-signed, plaintext on relays | Server ACLs + community lists |
-| `private_broadcast` | Persona broadcasts to a closed follower set. The encrypted Matrix room's Megolm session is the follower keyring; reactions/replies are bare in-room. | Megolm/MLS | Nostr-signed, **room-key-wrapped** on relays (encrypt-once-for-the-room) | Single or small admin set |
-| `public_discussion` | Communities, topic rooms, forums, group chat. Moderated NIP-72 communities declare `m.heterodyne.moderators.v1`. | None | bare Matrix by default; OPTIONAL per-message signature badge | NIP-72 moderator approvals (when moderated) |
-| `private_discussion` | Friend circles, casual planning, day-to-day groups, and two-party DMs. | Megolm/MLS | bare Matrix by default; OPTIONAL per-message signature badge | Participants / small admin set |
+| Tier / kind | Purpose | Trust boundary | Moderation |
+|---|---|---|---|
+| **Tier 1 - public repo** | Open broadcast (Twitter-style public feed). Plaintext Nostr events on both backends. | Confidential against no one. | Server ACLs + community lists; NIP-72 or the Radicle delegate-threshold canonical-branch editorial gate |
+| **Tier 2 - private repo** ("unencrypted-but-not-discoverable") | Persona broadcasts to a closed audience via a Radicle private repo (`visibility: private` + allow list). | NOT confidential against members - plaintext on every allowed seeder. Client MUST warn and MUST NOT call it "encrypted." | Owner controls the allow list |
+| **Tier 3 - encrypted-blobs-in-repo** | Confidential broadcast: NIP-44 ciphertext under an audience key committed to a repo. | Confidential against everyone incl. seeders; only key-holders read it. | Owner controls the audience-key roster |
+| `public_discussion` (OPTIONAL Matrix) | Communities, topic rooms, forums, group chat. | Unencrypted Matrix room. | NIP-72 moderator approvals (when moderated) |
+| `private_discussion` (OPTIONAL Matrix) | Friend circles, casual planning, day-to-day groups, and two-party DMs. | Megolm/MLS session boundary. | Participants / small admin set |
 
-No kind claims deniability: every in-room message is attributable to
-its author's npub via the §3.3 delegation (bare messages carry no
-*transferable* third-party proof, but are not anonymous).
+Moderation offers **two parallel editorial-gating mechanisms** (§8): the NIP-72
+`kind:4550` approval flow (relay-hosted / interoperating communities) and a
+native Radicle editorial-gating mode where a post is approved iff it is
+reachable from the delegate-threshold-approved canonical feed branch (the finer
+per-ref `xyz.radicle.crefs` refinement is OPTIONAL and EXPERIMENTAL, pending
+Heartwood-release verification). No tier or discussion kind
+claims deniability: every post/message is attributable to its author's npub via
+the §3.3 delegation (bare messages carry no *transferable* third-party proof,
+but are not anonymous).
 
 ## Project status
 
@@ -57,7 +79,9 @@ The spec is in its **0.x phase — in flux until 1.0**. Per the semver
 0.x rule (spec §12.1), everything is subject to change and any `0.x`
 release MAY break the prior one; the strict PATCH/MINOR/MAJOR
 compatibility contract takes effect only at `1.0.0`. Versions advance
-by milestone — the current release is **v0.3.0** — but prose should
+by milestone - the current release is **v0.4.0**, which pivots the
+core substrate to Radicle + Nostr with Matrix optional (ADR-026 through
+ADR-029) and breaks v0.3.0 under the semver-0.x rule - but prose should
 refer to the spec as **0.x** rather than pinning to a single point
 version. See [`CHANGELOG.md`](CHANGELOG.md) for the per-version
 history and [`docs/adr/`](docs/adr/) for the decision records behind
@@ -65,30 +89,43 @@ each revision.
 
 Current shape (0.x):
 
-- **Identity** is anchored by a KERI cold-root key — the persona's
+- **Substrate.** Nostr signed events over two co-equal MUST backends -
+  ordinary Nostr relays and Radicle-backed **repo relays** - with three
+  node roles: **full node** (runs a Radicle node + NIP-01 repo-relay
+  adapter; the only node type that holds content), **routing node**
+  (edge-runtime; answers repo-location queries from `kind:31005`/
+  `kind:31010` ads only; holds no content), and **light node** (fetches
+  directly and verifies every event's Nostr signature locally). Matrix
+  is OPTIONAL.
+- **Identity** is anchored by a KERI cold-root key - the persona's
   npub; a rotating epoch key signs routine attestations (root
-  attestation, delegations, outbox, feed index, posts, approvals).
-  Root inception and rotation use the inline Heterodyne KERI profile
-  (§3.5), retiring the v0.1.4 single-key successor chain. (See the
-  Cold Root + Epoch Keys design at
+  attestation, delegations, outbox, feed index, posts, approvals). The
+  KEL is authoritative over the Radicle identity document on any
+  divergence (§3.9.10). `kind:31001` delegations now target Ed25519
+  Radicle NIDs (bidirectionally bound, two keys per device, §3.3.1);
+  organizations are first-class personas governed by repo delegates +
+  threshold (with optional per-ref `crefs`). (See the Cold Root + Epoch
+  Keys design at
   `docs/superpowers/specs/2026-05-21-cold-root-epoch-keys-design.md`.)
-- **Feed indexes** are Nostr-native `kind:31007` replaceable events
-  (not Matrix state), epoch-key-signed, and room-key-wrapped for
-  private rooms, so the canonical feed list cannot be silently
-  mutated by a hostile homeserver nor read by non-members.
-- **Rooms** follow the broadcast-vs-discussion × public-vs-private
-  taxonomy above. Broadcast posts are always Nostr-signed and live on
-  relays (room-key-wrapped when private); discussion is bare Matrix by
-  default with an OPTIONAL per-message signature badge. No kind claims
-  deniability. The identity room is a disposable container; the
-  `kind:31005` pointer is the authoritative npub→room mapping.
-- **Other invariants:** Matrix-DM retrieval backfill is forbidden
-  (Nostr relays + user-hosted archives only); moderator post-hoc
-  removal uses Nostr `kind:5` deletions; hardening includes scoped
-  ±5-minute clock skew on root attestations, mandatory SSRF
-  prevention on ATProto DID resolution, and a mandatory `nip01_raw`
-  canonical-serialization field on signed events. The OPTIONAL
-  ATProto attached outbox (§11.6) and KERI social witnesses are
+- **Feed indexes** are Nostr-native `kind:31007` replaceable events,
+  epoch-key-signed, published to both backends, and audience-key-wrapped
+  for the encrypted tier, so the canonical feed list cannot be silently
+  mutated nor read by non-members. For org personas, canonicity requires
+  reachability from the delegate-threshold-approved canonical feed branch
+  (§6.7.0).
+- **Privacy** is a repo-visibility taxonomy of three tiers (public
+  repo; private "unencrypted-but-not-discoverable" repo; encrypted-
+  blobs-in-repo), each with an honest trust boundary (§9.0). The
+  `kind:31005` pointer is the authoritative npub→RID mapping; a
+  compromised container is abandoned by re-anchoring to a fresh RID.
+- **Other invariants:** replies/reactions use the Nostr outbox model
+  (scatter-gather threading, no write access to another persona's repo);
+  DM retrieval backfill is forbidden (relays + user-hosted archives
+  only); moderator post-hoc removal uses Nostr `kind:5` deletions;
+  hardening includes scoped ±5-minute clock skew on root attestations,
+  mandatory SSRF prevention on ATProto DID resolution, and a mandatory
+  `nip01_raw` canonical-serialization field on signed events. The
+  OPTIONAL ATProto attached outbox (§11.6) and KERI social witnesses are
   available.
 
 The spec is implementation-agnostic — no particular language or
