@@ -1,12 +1,12 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.3.0",
+  "spec_version": "0.4.0",
   "vector_id": "multi-homing/kind31005-race-tiebreaker",
   "spec_refs": [
-    "§3.9",
+    "§3.9.8",
     "§14.3"
   ],
-  "description": "kind:31005 pointer races break ties by KERI witness counts.",
+  "description": "OPTIONAL Matrix corroboration of the kind:31005 tiebreaker via KERI witness counts; the CORE Matrix-free tiebreaker lives in identity/ (§3.9.8).",
   "input": {
     "candidates": [
       {

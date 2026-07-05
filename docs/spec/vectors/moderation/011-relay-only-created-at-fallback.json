@@ -1,0 +1,47 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "moderation/relay-only-created-at-fallback",
+  "spec_refs": [
+    "§8.1",
+    "§8.2.1",
+    "§14.3"
+  ],
+  "description": "For a community with neither a repo nor a Matrix room, the as-of point falls back to the newest kind:34550 revision whose created_at is <= the approval's created_at, carrying reduced assurance.",
+  "input": {
+    "hosting": "relay_only",
+    "approval": {
+      "approval_event_id": "e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5",
+      "moderator_cold_root": "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+      "created_at": 1767226100
+    },
+    "kind34550_revisions": [
+      {
+        "revision": "rev-a",
+        "created_at": 1767225700,
+        "moderators": [
+          "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+        ]
+      },
+      {
+        "revision": "rev-b",
+        "created_at": 1767226300,
+        "moderators": [
+          "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01"
+        ]
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "counted": true,
+      "asof_source": "relay_only_created_at_fallback",
+      "asof_revision": "rev-a",
+      "reduced_assurance": true
+    }
+  },
+  "simulated_clock": 1767226500,
+  "notes": "REDUCED ASSURANCE: created_at is author-forgeable, so a listed-then-removed moderator could backdate an approval to fall under an older revision that still lists them. Communities SHOULD host in a repo (or Matrix room) when moderation-history integrity matters (§8.1).",
+  "direction": "consume"
+}

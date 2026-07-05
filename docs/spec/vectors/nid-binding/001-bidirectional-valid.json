@@ -1,0 +1,69 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "nid-binding/bidirectional-valid",
+  "spec_refs": [
+    "§3.3.1",
+    "§3.3.3",
+    "§14.1",
+    "§14.3"
+  ],
+  "description": "kind:31001 NID delegation: bidirectionally bound by the epoch-key Schnorr signature (outer Nostr sig over the tags) AND the NID's Ed25519 nid_proof over the pinned binding payload.",
+  "input": {
+    "fixture_persona": "alice",
+    "signer": "epoch_1",
+    "radicle_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+    "publishing_key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+    "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "notes": "Binding payload bytes are pinned by §3.3.1: heterodyne-nid-binding-v1|<npub>|<nid>|radicle-nid-delegation, UTF-8. <npub> is the 64-char lowercase-hex x-only cold-root key; <nid> is the did:key verbatim.",
+  "expected_output": {
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225605,31001,[[\"d\",\"nid:did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"],[\"heterodyne\",\"delegation\"],[\"radicle_nid\",\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"],[\"publishing_key\",\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"nid_proof\",\"2ccd2f7fc0b1fd1c7f823285e352ee3de25b771ba0c52ebd573dba97ce195e48fbbf3aee5be64e82b2d6fe6a33a58ad6592719a865b04cb66bbfd16fad30d70a\"],[\"valid_until\",\"\"]],\"\"]",
+    "decoded": {
+      "event": {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767225605,
+        "kind": 31001,
+        "tags": [
+          [
+            "d",
+            "nid:did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+          ],
+          [
+            "heterodyne",
+            "delegation"
+          ],
+          [
+            "radicle_nid",
+            "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+          ],
+          [
+            "publishing_key",
+            "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
+          ],
+          [
+            "cold_root",
+            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+          ],
+          [
+            "nid_proof",
+            "2ccd2f7fc0b1fd1c7f823285e352ee3de25b771ba0c52ebd573dba97ce195e48fbbf3aee5be64e82b2d6fe6a33a58ad6592719a865b04cb66bbfd16fad30d70a"
+          ],
+          [
+            "valid_until",
+            ""
+          ]
+        ],
+        "content": "",
+        "id": "9d6e934e6e193f3b071b16b6e96c115af5cdb0ead1cc0034a59049e409fba3fa",
+        "sig": "84c86cea4189dabe6fd6045b078da883641de17c13e41e7bdfc75d0f58338b8ff92d71bec753f1fc5dc8bdb067a96d0b68b4e6baca36419ab001da79845f0223"
+      },
+      "nid_binding_payload": "heterodyne-nid-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|radicle-nid-delegation",
+      "nid_proof": "2ccd2f7fc0b1fd1c7f823285e352ee3de25b771ba0c52ebd573dba97ce195e48fbbf3aee5be64e82b2d6fe6a33a58ad6592719a865b04cb66bbfd16fad30d70a"
+    },
+    "id": "9d6e934e6e193f3b071b16b6e96c115af5cdb0ead1cc0034a59049e409fba3fa",
+    "sig": "84c86cea4189dabe6fd6045b078da883641de17c13e41e7bdfc75d0f58338b8ff92d71bec753f1fc5dc8bdb067a96d0b68b4e6baca36419ab001da79845f0223"
+  },
+  "direction": "produce"
+}

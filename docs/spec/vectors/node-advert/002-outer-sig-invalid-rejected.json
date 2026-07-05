@@ -1,0 +1,59 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "node-advert/outer-sig-invalid-rejected",
+  "spec_refs": [
+    "§7.0",
+    "§14.3"
+  ],
+  "description": "A kind:31010 advertisement whose outer BIP-340 Nostr signature does not verify is rejected.",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767225650,
+      "kind": 31010,
+      "tags": [
+        [
+          "d",
+          "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1"
+        ],
+        [
+          "heterodyne",
+          "node_advert"
+        ],
+        [
+          "rid",
+          "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1"
+        ],
+        [
+          "nid",
+          "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+        ],
+        [
+          "endpoint",
+          "wss://node-a.example/relay"
+        ],
+        [
+          "expiry",
+          "1767312000"
+        ],
+        [
+          "nid_proof",
+          "0e639f620e4fc376d29ac453ac7d9a2b89c07e0784abcace71bba6e3b978156af08a4b2c09ed577f640a6c0cb4d395fce3bf5032da4fa5b8538221055c774b03"
+        ]
+      ],
+      "content": "",
+      "id": "ef84132e6767fff2313a10bc56915e4b5f0cb58eb5ac02efcbf3d203b51fb680",
+      "sig": "22222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "bad_signature"
+  },
+  "decision_trace": [
+    "validate_nip01_id",
+    "verify_outer_bip340_signature"
+  ],
+  "direction": "consume"
+}

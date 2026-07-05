@@ -1,0 +1,45 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "config-backup/config-rid-advertised-rejected",
+  "spec_refs": [
+    "§3.8.6",
+    "§14.3"
+  ],
+  "description": "The same negative surface scan detects the config RID leaked into a kind:31010 advertisement and rejects it.",
+  "input": {
+    "config_rid": "rad:z46D8R65rQo7sPAkdDXyMXwhZLD4k",
+    "published_surfaces": {
+      "kind31010": {
+        "tags": [
+          [
+            "d",
+            "rad:z46D8R65rQo7sPAkdDXyMXwhZLD4k"
+          ],
+          [
+            "rid",
+            "rad:z46D8R65rQo7sPAkdDXyMXwhZLD4k"
+          ],
+          [
+            "endpoint",
+            "wss://node-a.example/relay"
+          ]
+        ]
+      }
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "config_rid_advertised",
+    "normalized": {
+      "leaked_on": "kind:31010"
+    }
+  },
+  "decision_trace": [
+    "scan_for_config_rid",
+    "detect_config_rid_on_published_surface",
+    "reject"
+  ],
+  "notes": "Advertising the config RID would let observers associate the private config repo with the persona and let non-allowed nodes attempt to fetch it (§3.8.6).",
+  "direction": "consume"
+}

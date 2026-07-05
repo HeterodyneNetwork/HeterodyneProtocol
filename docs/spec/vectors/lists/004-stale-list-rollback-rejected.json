@@ -1,0 +1,39 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "lists/stale-list-rollback-rejected",
+  "spec_refs": [
+    "§8.5",
+    "§3.0",
+    "§14.3"
+  ],
+  "description": "A relay serving an older kind:10000 revision than one reachable in the repo's canonical git history is a stale-list rollback; the client rejects the stale copy and prefers the newest verifiable revision.",
+  "input": {
+    "list_kind": 10000,
+    "served_revision": {
+      "event_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "created_at": 1767225700
+    },
+    "repo_canonical_history_newest": {
+      "event_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "created_at": 1767225800,
+      "reachable_from_canonical_history": true
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "stale_list_rollback",
+    "normalized": {
+      "preferred_revision_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "preferred_created_at": 1767225800
+    }
+  },
+  "decision_trace": [
+    "read_served_revision",
+    "walk_repo_revision_history",
+    "detect_newer_reachable_revision",
+    "reject_stale_rollback"
+  ],
+  "notes": "Because a repo relay's event store is git, the full revision history is retained and tamper-evident; the client MUST prefer the newest verifiable revision (§8.5). Replaceable-event convergence otherwise follows latest-created_at.",
+  "direction": "consume"
+}

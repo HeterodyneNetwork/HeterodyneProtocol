@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "org/member-add-single-authorization-insufficient",
+  "spec_refs": [
+    "§3.3.1",
+    "§3.9.10",
+    "§14.3"
+  ],
+  "description": "An org member NID add carrying only the org admin threshold (no member KEL kind:31001) is rejected: either authorization alone is insufficient.",
+  "input": {
+    "member_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
+    "member_kel_kind31001": false,
+    "org_admin_threshold_met": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "org_member_add_unauthorized"
+  },
+  "direction": "consume"
+}

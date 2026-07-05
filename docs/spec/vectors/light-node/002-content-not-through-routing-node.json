@@ -1,0 +1,32 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "light-node/content-not-through-routing-node",
+  "spec_refs": [
+    "§7.3",
+    "§10.1.1",
+    "§14.3"
+  ],
+  "description": "A light node queries a routing node only for host hints and fetches content directly from a full node; it pulls no content through the routing node.",
+  "input": {
+    "routing_node": "https://routing.example",
+    "hosts_returned": [
+      "wss://node-a.example/relay"
+    ],
+    "fetched_direct_from": "wss://node-a.example/relay",
+    "content_bytes_via_routing_node": 0
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "fetched_direct": true,
+      "routing_node_content_bytes": 0
+    }
+  },
+  "decision_trace": [
+    "query_routing_node_for_hosts",
+    "connect_directly_to_full_node",
+    "verify_signature_locally"
+  ],
+  "direction": "consume"
+}

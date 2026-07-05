@@ -1,0 +1,26 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "config-backup/key-id-derivation",
+  "spec_refs": [
+    "§6.10.4",
+    "§14.3"
+  ],
+  "description": "The RECOMMENDED self-verifying key_id derivation: the first 16 bytes (32 hex chars) of SHA-256 over the ASCII domain separator concatenated with the raw 32-byte audience key; the ciphertext for this generation lives on refs/heads/enc/<key_id>.",
+  "input": {
+    "audience_key": "4242424242424242424242424242424242424242424242424242424242424242",
+    "domain_separator": "heterodyne-key-id-v1",
+    "derivation": "lowercase-hex(SHA-256(\"heterodyne-key-id-v1\" || audience_key))[0..32]"
+  },
+  "expected_output": {
+    "canonical_wire": "c5120a3891ce2129a423416f405d8d49",
+    "decoded": {
+      "audience_key": "4242424242424242424242424242424242424242424242424242424242424242",
+      "key_id": "c5120a3891ce2129a423416f405d8d49",
+      "enc_branch": "refs/heads/enc/c5120a3891ce2129a423416f405d8d49",
+      "domain_separator": "heterodyne-key-id-v1"
+    }
+  },
+  "notes": "The domain separator is concatenated as raw ASCII bytes with the raw 32-byte audience key before hashing (not the hex string). key_id remains opaque to verifiers; a publisher MAY instead use a random UUID-style id (§6.10.4).",
+  "direction": "produce"
+}

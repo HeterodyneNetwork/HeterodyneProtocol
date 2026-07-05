@@ -1,6 +1,6 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.3.0",
+  "spec_version": "0.4.0",
   "test_epoch": 1767225600,
   "pinned_randomness": {
     "schnorr_aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -32,6 +32,65 @@
           "valid_from": 1767225600
         }
       }
+    },
+    "carol": {
+      "cold_root": {
+        "private_key": "0000000000000000000000000000000000000000000000000000000000000008",
+        "pubkey": "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01"
+      },
+      "epoch_keys": {
+        "epoch_1": {
+          "private_key": "0000000000000000000000000000000000000000000000000000000000000009",
+          "pubkey": "acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe",
+          "valid_from": 1767225600
+        }
+      }
+    }
+  },
+  "ed25519_nids": {
+    "alice_device_1": {
+      "private_key": "00000000000000000000000000000000000000000000000000000000000000a1",
+      "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
+      "did_key": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+    },
+    "alice_device_2": {
+      "private_key": "00000000000000000000000000000000000000000000000000000000000000a2",
+      "public_key": "b9b9dd3a31d5a028924c624a82840f1752cb7c99946851b04ed51ed8e4a9825f",
+      "did_key": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
+    },
+    "bob_device_1": {
+      "private_key": "00000000000000000000000000000000000000000000000000000000000000b1",
+      "public_key": "ece129580f3b97b378a211db3d41ec47a03b69750f367233ac48d239738d5bb5",
+      "did_key": "did:key:z6MkvPwPvp2bVs8onVpU1HoxF9CeRWahpHwUX65XJZSQHkW8"
+    }
+  },
+  "device_publishing_keys": {
+    "alice_device_1": {
+      "private_key": "0000000000000000000000000000000000000000000000000000000000000005",
+      "pubkey": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
+    },
+    "alice_device_2": {
+      "private_key": "0000000000000000000000000000000000000000000000000000000000000006",
+      "pubkey": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+    },
+    "bob_device_1": {
+      "private_key": "0000000000000000000000000000000000000000000000000000000000000007",
+      "pubkey": "5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc"
+    }
+  },
+  "radicle_rids": {
+    "alice": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+    "alice_reanchor": "rad:z4cWBYC5PTLgTmWvmQAn4U25RGWH",
+    "org_acme": "rad:zFrWt9XjrvmW8vkFDXcL82YiFDsi"
+  },
+  "audience_keys": {
+    "alice_tier3_gen_a": {
+      "key_id": "aud-2026-05-25-a",
+      "key": "4040404040404040404040404040404040404040404040404040404040404040"
+    },
+    "alice_tier3_gen_b": {
+      "key_id": "aud-2026-05-25-b",
+      "key": "4141414141414141414141414141414141414141414141414141414141414141"
     }
   },
   "matrix_rooms": {
@@ -55,6 +114,11 @@
     "index": "alice",
     "relay_interop": "alice",
     "config_room": "alice",
+    "nid-binding": "alice",
+    "identity-doc": "alice",
+    "node-advert": "alice",
+    "privacy-tiers": "alice",
+    "org": "alice",
     "default_peer": "bob"
   }
 }

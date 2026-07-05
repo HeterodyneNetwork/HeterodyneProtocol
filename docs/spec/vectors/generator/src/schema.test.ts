@@ -7,7 +7,7 @@ describe("vector schema", () => {
       validateVectorOrThrow({
         vector_id: "identity/root-attestation-valid",
         vector_schema_version: "1.0.0",
-        spec_version: "0.3.0",
+        spec_version: "0.4.0",
         spec_refs: ["§3", "§14.5"],
         description: "root attestation is reproduced byte-identically",
         direction: "produce",
@@ -25,7 +25,7 @@ describe("vector schema", () => {
       validateVectorOrThrow({
         vector_id: "verification/bad-sig-rejects",
         vector_schema_version: "1.0.0",
-        spec_version: "0.3.0",
+        spec_version: "0.4.0",
         spec_refs: ["§4.5", "§14.5"],
         description: "bad signature rejects",
         direction: "consume",

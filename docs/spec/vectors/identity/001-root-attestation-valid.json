@@ -1,72 +1,65 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.3.0",
+  "spec_version": "0.4.0",
   "vector_id": "identity/root-attestation-valid",
   "spec_refs": [
-    "§3",
+    "§3.2.1",
     "§14.1",
     "§14.5"
   ],
-  "description": "Root attestation event is signed with pinned aux_rand and reproduced byte-identically.",
+  "description": "Matrix-free root attestation: kind:31000 signed by the current epoch key, cold_root tag binds the npub, no matrix_room tag.",
   "input": {
     "fixture_persona": "alice",
-    "signer": "cold_root",
+    "signer": "epoch_1",
     "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",
     "event_template": {
-      "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
       "created_at": 1767225600,
       "kind": 31000,
       "tags": [
         [
           "d",
-          "m.heterodyne.root.v1"
+          ""
         ],
         [
-          "heterodyne_version",
-          "0.3.0"
+          "heterodyne",
+          "root"
         ],
         [
-          "matrix_room_id",
-          "!alice-identity:example.org"
-        ],
-        [
-          "epoch_pubkey",
-          "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+          "cold_root",
+          "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
         ]
       ],
-      "content": "{\"type\":\"m.heterodyne.root.v1\",\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"matrix_room_id\":\"!alice-identity:example.org\",\"epoch_pubkey\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"}"
+      "content": ""
     }
   },
   "expected_output": {
-    "canonical_wire": "[0,\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",1767225600,31000,[[\"d\",\"m.heterodyne.root.v1\"],[\"heterodyne_version\",\"0.3.0\"],[\"matrix_room_id\",\"!alice-identity:example.org\"],[\"epoch_pubkey\",\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"]],\"{\\\"type\\\":\\\"m.heterodyne.root.v1\\\",\\\"cold_root\\\":\\\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\\\",\\\"matrix_room_id\\\":\\\"!alice-identity:example.org\\\",\\\"epoch_pubkey\\\":\\\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\\\"}\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225600,31000,[[\"d\",\"\"],[\"heterodyne\",\"root\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"]],\"\"]",
     "decoded": {
-      "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
       "created_at": 1767225600,
       "kind": 31000,
       "tags": [
         [
           "d",
-          "m.heterodyne.root.v1"
+          ""
         ],
         [
-          "heterodyne_version",
-          "0.3.0"
+          "heterodyne",
+          "root"
         ],
         [
-          "matrix_room_id",
-          "!alice-identity:example.org"
-        ],
-        [
-          "epoch_pubkey",
-          "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+          "cold_root",
+          "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
         ]
       ],
-      "content": "{\"type\":\"m.heterodyne.root.v1\",\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"matrix_room_id\":\"!alice-identity:example.org\",\"epoch_pubkey\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"}",
-      "id": "125639fcb0f8a2267c6a074e2f59d8ea97375821659bbe51f7056670b0ea4c0b",
-      "sig": "3697a74c5535b6007d1b7314bf75747a707b96585025523aeef79efb19f5b124d21c2a11f2dc78354a44101d17dabbc8589126790b74bbca1bb7815f055b3d4f"
+      "content": "",
+      "id": "c70b517895dad449a527f39127e7e63fe247996010a4396730f78f425c0ee998",
+      "sig": "9cc6fe476f77427c08e2f5a532a92085e5b4141395e9d05271fc33731d7a7d0be10dece91dace2a27cfd4238ba16ccb838605e5cc246d7e3b2ab4f6b2c1c0816"
     },
-    "id": "125639fcb0f8a2267c6a074e2f59d8ea97375821659bbe51f7056670b0ea4c0b",
-    "sig": "3697a74c5535b6007d1b7314bf75747a707b96585025523aeef79efb19f5b124d21c2a11f2dc78354a44101d17dabbc8589126790b74bbca1bb7815f055b3d4f"
+    "id": "c70b517895dad449a527f39127e7e63fe247996010a4396730f78f425c0ee998",
+    "sig": "9cc6fe476f77427c08e2f5a532a92085e5b4141395e9d05271fc33731d7a7d0be10dece91dace2a27cfd4238ba16ccb838605e5cc246d7e3b2ab4f6b2c1c0816"
   },
+  "notes": "Per §3.2.1 the root attestation is epoch-key-signed (the cold root is never brought online for it) and the matrix_room tag is omitted for a Matrix-free persona.",
   "direction": "produce"
 }

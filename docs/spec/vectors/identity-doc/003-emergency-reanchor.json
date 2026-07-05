@@ -1,0 +1,57 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "identity-doc/emergency-reanchor",
+  "spec_refs": [
+    "§3.9.10",
+    "§11.3",
+    "§14.1",
+    "§14.3"
+  ],
+  "description": "Emergency re-anchor: a cold-root-signed kind:31005 republishes the npub->RID binding to a fresh RID after the live delegate set falls below the Radicle identity-document quorum.",
+  "input": {
+    "fixture_persona": "alice",
+    "signer": "cold_root",
+    "fresh_rid": "rad:z4cWBYC5PTLgTmWvmQAn4U25RGWH",
+    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "notes": "The RID binding is cold-root-signed (pubkey is the npub), so vanilla Nostr clients can follow authors:[npub] to the fresh RID (§11.3, §3.9.10).",
+  "expected_output": {
+    "canonical_wire": "[0,\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",1767225670,31005,[[\"d\",\"\"],[\"heterodyne\",\"identity_pointer\"],[\"rid\",\"rad:z4cWBYC5PTLgTmWvmQAn4U25RGWH\"],[\"host_hint\",\"wss://node-b.example/relay\"],[\"spec_version\",\"0.4.0\"]],\"\"]",
+    "decoded": {
+      "event": {
+        "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "created_at": 1767225670,
+        "kind": 31005,
+        "tags": [
+          [
+            "d",
+            ""
+          ],
+          [
+            "heterodyne",
+            "identity_pointer"
+          ],
+          [
+            "rid",
+            "rad:z4cWBYC5PTLgTmWvmQAn4U25RGWH"
+          ],
+          [
+            "host_hint",
+            "wss://node-b.example/relay"
+          ],
+          [
+            "spec_version",
+            "0.4.0"
+          ]
+        ],
+        "content": "",
+        "id": "e0f343bce7255f5704d0cb384c8e1b26d612c0251fbd6c29c44a4b6c550802c3",
+        "sig": "b7afee0803827b34d3a23e6cb326744662ec928665a090ebc29f8961d60233fbf48b46a7837a2454e12ac5d2e3829c6506c4f600b098f75d511d26f8efe6251a"
+      }
+    },
+    "id": "e0f343bce7255f5704d0cb384c8e1b26d612c0251fbd6c29c44a4b6c550802c3",
+    "sig": "b7afee0803827b34d3a23e6cb326744662ec928665a090ebc29f8961d60233fbf48b46a7837a2454e12ac5d2e3829c6506c4f600b098f75d511d26f8efe6251a"
+  },
+  "direction": "produce"
+}

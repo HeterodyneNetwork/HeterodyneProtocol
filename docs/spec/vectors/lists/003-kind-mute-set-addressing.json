@@ -1,0 +1,52 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "lists/kind-mute-set-addressing",
+  "spec_refs": [
+    "§8.5",
+    "§3.0",
+    "§14.3"
+  ],
+  "description": "NIP-51 kind:30007 kind-mute set: an addressable (pubkey, kind, d) set event; one such event per (kind, d) pair forms the persona's sets file.",
+  "input": {
+    "fixture_persona": "alice",
+    "signer": "epoch_1",
+    "set_d": "1",
+    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "notes": "Per NIP-51 the kind:30007 d tag names the muted kind (here d=\"1\": pubkeys muted for kind:1 notes); the muted authors are p tags. The persona's sets file is the collection of its NIP-51 set events keyed by (kind, d) (§3.0, §8.5).",
+  "expected_output": {
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225702,30007,[[\"d\",\"1\"],[\"title\",\"Muted authors for kind 1\"],[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"p\",\"2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01\"]],\"\"]",
+    "decoded": {
+      "event": {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767225702,
+        "kind": 30007,
+        "tags": [
+          [
+            "d",
+            "1"
+          ],
+          [
+            "title",
+            "Muted authors for kind 1"
+          ],
+          [
+            "p",
+            "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+          ],
+          [
+            "p",
+            "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01"
+          ]
+        ],
+        "content": "",
+        "id": "c2e348d14ed858b4d1ec6c4b1464e39dbc49b49cc877db9f14709bd24fa2e02e",
+        "sig": "b547022b1943958f635628e178eebdfb73ac71d5ca37697e2089656bdf1b9c166041703bbb26645640d6792a3e085dbb134d47e00a57df612687bff5e38ed94b"
+      }
+    },
+    "id": "c2e348d14ed858b4d1ec6c4b1464e39dbc49b49cc877db9f14709bd24fa2e02e",
+    "sig": "b547022b1943958f635628e178eebdfb73ac71d5ca37697e2089656bdf1b9c166041703bbb26645640d6792a3e085dbb134d47e00a57df612687bff5e38ed94b"
+  },
+  "direction": "produce"
+}
