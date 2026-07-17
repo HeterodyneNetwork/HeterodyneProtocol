@@ -23,17 +23,22 @@
           [
             "client",
             "heterodyne"
+          ],
+          [
+            "kel_head",
+            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "0"
           ]
         ],
         "content": "round trip through a vanilla relay",
-        "id": "a2d0d2b5ce1c48b975e675155e86f021b495675ed4a4ff9f0059ac17418e568e",
-        "sig": "2c7585dd286214eed56c16b914524587b1daf6c2320700911991fc8c9f7fe3775633d752462f6fc12387f2a207286b1c74d664eb02908ef3a0b176443a573155"
+        "id": "2915d4407894b21e78d43c51a0ce7c69c40896b2d98c6a54fe789caa05c39785",
+        "sig": "ccd3799bcd3e65f4a3cf878cf9bb946b0f3067bf0a6274d72c823eab6cdf5f5e7d9aa6de9869a98b053ce9bde9725e6b13e6b4e79a1171ae728a0963900f83ca"
       }
     ]
   },
   "expected_output": {
     "comparison_surface": "nip01_canonical_event_serialization",
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225630,1,[[\"client\",\"heterodyne\"]],\"round trip through a vanilla relay\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225630,1,[[\"client\",\"heterodyne\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"round trip through a vanilla relay\"]",
     "decoded": {
       "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
       "created_at": 1767225630,
@@ -42,13 +47,18 @@
         [
           "client",
           "heterodyne"
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
         ]
       ],
       "content": "round trip through a vanilla relay",
-      "id": "a2d0d2b5ce1c48b975e675155e86f021b495675ed4a4ff9f0059ac17418e568e",
-      "sig": "2c7585dd286214eed56c16b914524587b1daf6c2320700911991fc8c9f7fe3775633d752462f6fc12387f2a207286b1c74d664eb02908ef3a0b176443a573155"
+      "id": "2915d4407894b21e78d43c51a0ce7c69c40896b2d98c6a54fe789caa05c39785",
+      "sig": "ccd3799bcd3e65f4a3cf878cf9bb946b0f3067bf0a6274d72c823eab6cdf5f5e7d9aa6de9869a98b053ce9bde9725e6b13e6b4e79a1171ae728a0963900f83ca"
     },
-    "id": "a2d0d2b5ce1c48b975e675155e86f021b495675ed4a4ff9f0059ac17418e568e",
-    "sig": "2c7585dd286214eed56c16b914524587b1daf6c2320700911991fc8c9f7fe3775633d752462f6fc12387f2a207286b1c74d664eb02908ef3a0b176443a573155"
+    "id": "2915d4407894b21e78d43c51a0ce7c69c40896b2d98c6a54fe789caa05c39785",
+    "sig": "ccd3799bcd3e65f4a3cf878cf9bb946b0f3067bf0a6274d72c823eab6cdf5f5e7d9aa6de9869a98b053ce9bde9725e6b13e6b4e79a1171ae728a0963900f83ca"
   }
 }

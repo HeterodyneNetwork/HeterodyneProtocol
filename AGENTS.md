@@ -140,8 +140,50 @@ on recall.
   Useful for discoverability; *less authoritative* than the arXiv paper or
   the KSWG spec.
 
+### Agentic clients
+
+- **[Model Context Protocol (MCP) - specification revision 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25)**
+  ([repo](https://github.com/modelcontextprotocol/modelcontextprotocol))
+  *(0.x draft, ADR-030; verified 2026-07-07)* - the open agent-capability
+  protocol: JSON-RPC 2.0 framing, an initialize lifecycle with
+  bidirectional capability negotiation, tools with JSON schemas, and
+  notifications. Heterodyne adopts the **data layer only**, carried as
+  §5.7 DR inner rumors (a custom transport, which MCP permits); MCP's
+  stdio and Streamable HTTP/SSE transports are not used. *Use when:*
+  working on the ADR-030 agentic RPC profile - the capabilities exchange,
+  tool schemas as the grant-enforcement surface, and driving ongoing
+  agent/terminal sessions on an agentic light client.
+- **[Agent Host Protocol (AHP)](https://github.com/microsoft/agent-host-protocol)**
+  *(considered, not adopted; verified 2026-07-07)* - Microsoft's protocol
+  for synchronized multi-client state over AI agent sessions (immutable
+  state, pure reducers, write-ahead reconciliation). Rejected for the
+  agentic profile because its state-sync model presumes reconnect/catch-up,
+  which the no-backfill DR carrier cannot provide (ADR-030, Alternatives
+  Considered). *Use when:* revisiting synchronized multi-device live
+  viewing of one agent session - the stated reopening condition.
+
 ### Reference implementations (prior art)
 
+- **[radicle-keri](https://github.com/radicle-dev/radicle-keri)**
+  *(dormant, Nov-Dec 2022, pre-Heartwood; verified 2026-07-08)* - the
+  Radicle team's early KERI-for-Radicle exploration. Code NOT reusable
+  (KEL write path unimplemented; vendored keriox 0.8.2 carries
+  RUSTSEC-2022-0093). Cited as prior art for ADR-032: git-anchored
+  KELs, the dual log/state commit-chain layout (spec §10.1.2
+  materialized-KEL profile), and point-in-time key-state binding
+  (spec §4.5.1 `kel_head`). *Use when:* consulting the design README
+  behind those constructs; never as a dependency.
+- **[keripy](https://github.com/WebOfTrust/keripy)** *(current stable;
+  verified 2026-07-08)* - the canonical KERI reference implementation;
+  the consumer the §11.8 did:webs export targets.
+  **[keriox (THCLab fork)](https://github.com/THCLab/keriox)**
+  *(keri-core 0.17.x, EUPL-1.2; verified 2026-07-08)* - the maintained
+  Rust KERI core, candidate for the first-party client; do NOT use
+  radicle-keri's vendored 0.8.2.
+  **[did:webs](https://trustoverip.github.io/tswg-did-method-webs-specification/)**
+  *(ToIP draft v0.9.x; verified 2026-07-08)* - the DID method the
+  §11.8 export produces artifacts for; the export AID is derived and
+  never authoritative over the npub.
 - **[iris-client](https://github.com/irislib/iris-client)** *(0.x draft)* -
   a production Nostr client. Several Heterodyne mechanisms adopt patterns
   proven here and adapt them with Heterodyne's delegation binding:

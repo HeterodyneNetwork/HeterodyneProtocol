@@ -1,0 +1,27 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "keri-authority/keri10json-cesr-wire-rejected",
+  "spec_refs": [
+    "§11.8",
+    "§3.0.1",
+    "§14.3"
+  ],
+  "description": "A KEL event presented in KERI10JSON/CESR on the wire (or as storage) is rejected: NIP-01 with nip01_raw is the only Heterodyne wire and storage format; canonical-KERI forms exist only as derived export artifacts.",
+  "input": {
+    "received_format": "KERI10JSON",
+    "payload_excerpt": "{\"v\":\"KERI10JSON0000fb_\",\"t\":\"icp\",\"d\":\"...\",\"i\":\"...\",\"s\":\"0\"}",
+    "also_rejected": "CESR",
+    "context": "kel_event_on_heterodyne_wire"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "keri_wire_format_rejected"
+  },
+  "decision_trace": [
+    "inspect_wire_format",
+    "detect_non_nip01_keri_cesr",
+    "reject"
+  ],
+  "direction": "consume"
+}

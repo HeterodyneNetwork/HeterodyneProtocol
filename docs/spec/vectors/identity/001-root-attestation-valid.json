@@ -28,13 +28,18 @@
         [
           "cold_root",
           "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
         ]
       ],
       "content": ""
     }
   },
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225600,31000,[[\"d\",\"\"],[\"heterodyne\",\"root\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"]],\"\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225600,31000,[[\"d\",\"\"],[\"heterodyne\",\"root\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"\"]",
     "decoded": {
       "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
       "created_at": 1767225600,
@@ -51,14 +56,19 @@
         [
           "cold_root",
           "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
         ]
       ],
       "content": "",
-      "id": "c70b517895dad449a527f39127e7e63fe247996010a4396730f78f425c0ee998",
-      "sig": "9cc6fe476f77427c08e2f5a532a92085e5b4141395e9d05271fc33731d7a7d0be10dece91dace2a27cfd4238ba16ccb838605e5cc246d7e3b2ab4f6b2c1c0816"
+      "id": "7d9c544d18a4c820060d2425f9e4ee74256c960fa26b76dee7cabcd3017fd4d6",
+      "sig": "92c28e7aed7e2f4857c799154a6912fe9e2a0a56052d3cdb5674a655671ba3d3c0d2ca89982b9b4257b7b081212428c732eed4f672993bae85761c0b410be7ee"
     },
-    "id": "c70b517895dad449a527f39127e7e63fe247996010a4396730f78f425c0ee998",
-    "sig": "9cc6fe476f77427c08e2f5a532a92085e5b4141395e9d05271fc33731d7a7d0be10dece91dace2a27cfd4238ba16ccb838605e5cc246d7e3b2ab4f6b2c1c0816"
+    "id": "7d9c544d18a4c820060d2425f9e4ee74256c960fa26b76dee7cabcd3017fd4d6",
+    "sig": "92c28e7aed7e2f4857c799154a6912fe9e2a0a56052d3cdb5674a655671ba3d3c0d2ca89982b9b4257b7b081212428c732eed4f672993bae85761c0b410be7ee"
   },
   "notes": "Per §3.2.1 the root attestation is epoch-key-signed (the cold root is never brought online for it) and the matrix_room tag is omitted for a Matrix-free persona.",
   "direction": "produce"

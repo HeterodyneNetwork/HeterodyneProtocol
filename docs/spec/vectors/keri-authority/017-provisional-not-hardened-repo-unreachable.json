@@ -1,0 +1,42 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "keri-authority/provisional-not-hardened-repo-unreachable",
+  "spec_refs": [
+    "§4.5.2",
+    "§3.7",
+    "§14.3"
+  ],
+  "description": "A relay-only key-material event under provisional-accept never hardens to final while the repo is unreachable; a light node without repo access operates in permanently reduced-assurance provisional mode.",
+  "input": {
+    "key_material_event": {
+      "kind": 31003,
+      "s": 1,
+      "seen_on": [
+        "nostr_relay"
+      ]
+    },
+    "repo_reachable": false,
+    "policy": "provisional-accept",
+    "node_role": "light"
+  },
+  "expected_output": {
+    "verdict": "accept_provisional",
+    "normalized": {
+      "hardened": false,
+      "reason": "repo_unreachable",
+      "reduced_assurance": true
+    },
+    "warnings": [
+      "provisional_not_final"
+    ]
+  },
+  "decision_trace": [
+    "classify_key_material",
+    "seen_relay_only",
+    "repo_unreachable",
+    "cannot_harden",
+    "remain_provisional"
+  ],
+  "direction": "consume"
+}

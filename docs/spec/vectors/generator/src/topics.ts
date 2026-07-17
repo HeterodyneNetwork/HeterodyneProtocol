@@ -3,7 +3,11 @@ import { sha256 } from "@noble/hashes/sha2";
 import { nip44 } from "nostr-tools";
 import { hexToBytes, utf8Bytes, bytesToHex } from "./hex.js";
 import { buildDmTranscriptVectors } from "./dm-transcript.js";
+import { withKelHead } from "./kel.js";
 import { canonicalNip01, signEvent } from "./nostr.js";
+import { buildKeriAuthorityWireVectors } from "./topics-keri-authority.js";
+import { buildKeriAuthorityBehavioralVectors } from "./topics-keri-authority-b.js";
+import { buildKeriAuthorityMaterializedVectors } from "./topics-keri-authority-c.js";
 import { buildV04Vectors } from "./topics-v04.js";
 import { buildV04bVectors } from "./topics-v04b.js";
 import {
@@ -50,6 +54,7 @@ export const TOPIC_SPECS = {
   lists: "§8.5",
   dm: "§5.7",
   "config-backup": "§3.8.6",
+  "keri-authority": "§4.5.1",
 } as const;
 
 export async function buildAllVectors(fixtures: Fixtures): Promise<AuthoredVector[]> {
@@ -60,6 +65,9 @@ export async function buildAllVectors(fixtures: Fixtures): Promise<AuthoredVecto
   vectors.push(...(await buildV04Vectors(fixtures)));
   vectors.push(...(await buildV04bVectors(fixtures)));
   vectors.push(...buildDmTranscriptVectors(fixtures));
+  vectors.push(...(await buildKeriAuthorityWireVectors(fixtures)));
+  vectors.push(...buildKeriAuthorityBehavioralVectors(fixtures));
+  vectors.push(...(await buildKeriAuthorityMaterializedVectors(fixtures)));
   return vectors;
 }
 
@@ -70,11 +78,14 @@ const VECTOR_FACTORIES: VectorFactory[] = [
       secretKey: persona.epoch_keys.epoch_1.private_key,
       created_at: fixtures.test_epoch,
       kind: 31000,
-      tags: [
-        ["d", ""],
-        ["heterodyne", "root"],
-        ["cold_root", persona.cold_root.pubkey],
-      ],
+      tags: withKelHead(
+        [
+          ["d", ""],
+          ["heterodyne", "root"],
+          ["cold_root", persona.cold_root.pubkey],
+        ],
+        fixtures.kel.alice.head,
+      ),
       content: "",
       auxRand: AUX_RAND,
     });
@@ -153,7 +164,7 @@ const VECTOR_FACTORIES: VectorFactory[] = [
       secretKey: epoch.private_key,
       created_at: fixtures.test_epoch + 10,
       kind: 1,
-      tags: [["client", "heterodyne"]],
+      tags: withKelHead([["client", "heterodyne"]], fixtures.kel.alice.head),
       content: "hello from a wrapped Heterodyne post",
       auxRand: AUX_RAND,
     });
@@ -442,7 +453,7 @@ const VECTOR_FACTORIES: VectorFactory[] = [
       secretKey: epoch.private_key,
       created_at: fixtures.test_epoch + 30,
       kind: 1,
-      tags: [["client", "heterodyne"]],
+      tags: withKelHead([["client", "heterodyne"]], fixtures.kel.alice.head),
       content: "round trip through a vanilla relay",
       auxRand: AUX_RAND,
     });
@@ -554,11 +565,14 @@ async function encryptedBroadcastVector(fixtures: Fixtures): Promise<AuthoredVec
     secretKey: epoch.private_key,
     created_at: fixtures.test_epoch + 15,
     kind: 1,
-    tags: [
-      ["heterodyne_wrap", "room_key.v2"],
-      ["key_id", secret.key_id],
-      ["matrix_room_id", secret.matrix_room_id],
-    ],
+    tags: withKelHead(
+      [
+        ["heterodyne_wrap", "room_key.v2"],
+        ["key_id", secret.key_id],
+        ["matrix_room_id", secret.matrix_room_id],
+      ],
+      fixtures.kel.alice.head,
+    ),
     content: ciphertext,
     auxRand: AUX_RAND,
   });

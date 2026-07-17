@@ -3,6 +3,7 @@ import { sha256 } from "@noble/hashes/sha2";
 import { nip44 } from "nostr-tools";
 import { configKeyId, nip49EncryptDeterministic } from "./backup-crypto.js";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
+import { withKelHead } from "./kel.js";
 import { canonicalNip01, getPublicKey, signEvent } from "./nostr.js";
 import { fixtureRid } from "./radicle.js";
 import { AUX_RAND, consumeVector, produceAuthored } from "./vector-helpers.js";
@@ -59,12 +60,15 @@ export async function buildV04bVectors(fixtures: Fixtures): Promise<AuthoredVect
     secretKey: epoch.private_key,
     created_at: T + 100,
     kind: 10000,
-    tags: [
-      ["p", bob.cold_root.pubkey],
-      ["t", "spam"],
-      ["word", "airdrop"],
-      ["e", "aa".repeat(32)],
-    ],
+    tags: withKelHead(
+      [
+        ["p", bob.cold_root.pubkey],
+        ["t", "spam"],
+        ["word", "airdrop"],
+        ["e", "aa".repeat(32)],
+      ],
+      fixtures.kel.alice.head,
+    ),
     content: "",
     auxRand: AUX_RAND,
   });
@@ -80,10 +84,13 @@ export async function buildV04bVectors(fixtures: Fixtures): Promise<AuthoredVect
     secretKey: epoch.private_key,
     created_at: T + 101,
     kind: 10000,
-    tags: [
-      ["p", bob.cold_root.pubkey],
-      ["t", "spam"],
-    ],
+    tags: withKelHead(
+      [
+        ["p", bob.cold_root.pubkey],
+        ["t", "spam"],
+      ],
+      fixtures.kel.alice.head,
+    ),
     content: privateItemsCipher,
     auxRand: AUX_RAND,
   });
@@ -92,12 +99,15 @@ export async function buildV04bVectors(fixtures: Fixtures): Promise<AuthoredVect
     secretKey: epoch.private_key,
     created_at: T + 102,
     kind: 30007,
-    tags: [
-      ["d", "1"],
-      ["title", "Muted authors for kind 1"],
-      ["p", bob.cold_root.pubkey],
-      ["p", carol.cold_root.pubkey],
-    ],
+    tags: withKelHead(
+      [
+        ["d", "1"],
+        ["title", "Muted authors for kind 1"],
+        ["p", bob.cold_root.pubkey],
+        ["p", carol.cold_root.pubkey],
+      ],
+      fixtures.kel.alice.head,
+    ),
     content: "",
     auxRand: AUX_RAND,
   });
@@ -566,13 +576,16 @@ export async function buildV04bVectors(fixtures: Fixtures): Promise<AuthoredVect
     secretKey: epoch.private_key,
     created_at: T + 130,
     kind: 34550,
-    tags: [
-      ["d", "acme-town-square"],
-      ["name", "Acme Town Square"],
-      ["p", bob.cold_root.pubkey, "wss://relay.example", "moderator"],
-      ["p", carol.cold_root.pubkey, "wss://relay.example", "moderator"],
-      ["approvals_required", "2"],
-    ],
+    tags: withKelHead(
+      [
+        ["d", "acme-town-square"],
+        ["name", "Acme Town Square"],
+        ["p", bob.cold_root.pubkey, "wss://relay.example", "moderator"],
+        ["p", carol.cold_root.pubkey, "wss://relay.example", "moderator"],
+        ["approvals_required", "2"],
+      ],
+      fixtures.kel.alice.head,
+    ),
     content: "",
     auxRand: AUX_RAND,
   });

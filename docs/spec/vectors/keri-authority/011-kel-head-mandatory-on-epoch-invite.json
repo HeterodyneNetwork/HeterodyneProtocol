@@ -1,0 +1,65 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "keri-authority/kel-head-mandatory-on-epoch-invite",
+  "spec_refs": [
+    "§3.0",
+    "§4.5.1",
+    "§5.7.1",
+    "§14.3"
+  ],
+  "description": "The ADR-030 epoch-key-signed enrollment invite (kind:30078, d=double-ratchet/invites/epoch) carrying a well-formed kel_head is accepted; this is the epoch-key carve-out from §5.7.2's device-key invite rule.",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767225942,
+      "kind": 30078,
+      "tags": [
+        [
+          "d",
+          "double-ratchet/invites/epoch"
+        ],
+        [
+          "heterodyne",
+          "dm_invite"
+        ],
+        [
+          "ephemeral_key",
+          "be2062003c51cc3004682904330e4dee7f3dcd10b01e580bf1971b04d4cad297"
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
+        ]
+      ],
+      "content": "",
+      "id": "59e22fad30928e9023802aefa92cfbdd42db03665f7421db7fb599a291439894",
+      "sig": "6448b51c69fc0d88bcfc8e62b66e0773d2ce8eb15a53adb86e593cb4044131b1fb07a34c4a83e9ce4165ef254b43be65ef26bb1899615d6fe181c4a9c47eab51"
+    },
+    "accepted_kel": [
+      {
+        "kind": 31002,
+        "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+        "s": 0,
+        "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+      }
+    ],
+    "signer": "epoch_key"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "d": "double-ratchet/invites/epoch",
+      "signer": "epoch_key",
+      "kel_head_present": true
+    }
+  },
+  "decision_trace": [
+    "classify_epoch_key_invite",
+    "verify_bip340_signature",
+    "require_kel_head_present",
+    "accept"
+  ],
+  "direction": "consume"
+}

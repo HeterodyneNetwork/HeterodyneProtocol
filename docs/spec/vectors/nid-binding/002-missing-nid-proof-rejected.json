@@ -36,11 +36,16 @@
         [
           "valid_until",
           ""
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
         ]
       ],
       "content": "",
-      "id": "1d403495193803e6557c12942959c1afda261985dda3e28ef0969a393cf297fb",
-      "sig": "5a841f6031af06df48d67013b5f21b2f4c6f84edb7f78a67e9667a6dedced9557c3be0378b0f9856cb331c8dced3ccaabfcf7e2ef597b1df5f2e77ecb7641c79"
+      "id": "d425f471bbe81cdb8bd2f8fee4463eb74fdad5bf6e9f20b0a791474cd09ae8c9",
+      "sig": "b24abd1b775060a1341415af07183840126a54d477fe4c8a8420aaa4ffc1f113f690e4abada5679bb9a437790bd986f8e08d30aad7c5d4f426c53eb13d5ce98f"
     }
   },
   "expected_output": {

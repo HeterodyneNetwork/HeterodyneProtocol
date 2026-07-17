@@ -469,6 +469,49 @@ Cache-served state MUST be marked stale and cache-sourced, and the
 authoritative re-anchor signal remains the fresh cold-root `kind:31005`
 on relays (§3.12.2), which a poisoning cacher cannot forge.
 
+### Lying or stale `kel_head` (per ADR-032)
+
+An attacker (or an honestly stale client) stamps a `kel_head` that
+does not match the persona's accepted KEL - stale, fabricated, or
+pointing at a fork - hoping a verifier shortcuts to the wrong key
+state, or a stolen epoch key emits backdated events naming a
+still-valid old head.
+
+*Mitigation:* spec §4.5.1 - `kel_head` is advisory and can never
+substitute for KEL replay; the accelerator runs only under
+decision-equivalence conditions (a)-(d), whose condition (c) applies
+the §3.5.2 `effective_compromise_since` retroactive cutoff (also
+enforced under full replay), closing the backdating hole; a head off
+the accepted KEL MUST yield the `equivocation-flagged` outcome and be
+surfaced.
+
+### Relay suppression, replica lag, and repo rollback of key material (per ADR-032)
+
+Relays drop or withhold key-material events (`kind:31002`/`31003`/
+`31001`); a stale repo replica makes a valid event look revoked; or a
+compromised repo host serves a rolled-back key history.
+
+*Mitigation:* spec §3.9.10.1 - dual publication is mandatory and the
+repo-carried set is canonical, so relay loss cannot regress key
+state; §4.5.2 - relay-only events are provisional (never silently
+final), absence-based withdrawal is convergence-gated (KEL `seq`
+watermark; for `kind:31001`, conflict, revocation, or the §10.1.2
+ingestion checkpoint - never bare absence); regressing repo heads are
+rejected absent an authenticated re-anchor, and GC must not drop
+finalized key material.
+
+### Export-AID misuse (per ADR-032)
+
+A verifier or downstream system treats a persona's derived did:webs
+export AID as an authoritative identity, or an operator mints export
+identities for personas without consent.
+
+*Mitigation:* spec §11.8 - the export AID is derived and never
+authoritative; substituting it for the npub anywhere the spec
+requires one is non-conformant; enabling an export AID requires
+operator consent; unmappable security-relevant state fails loudly
+(fixed taxonomy) rather than exporting degraded security state.
+
 ## Out of scope (for now)
 
 - Defenses against compromised user devices (key extraction via OS-level

@@ -1,0 +1,65 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "keri-authority/kel-head-forbidden-on-rotation",
+  "spec_refs": [
+    "§3.0",
+    "§4.5.1",
+    "§14.3"
+  ],
+  "description": "A kind:31003 rotation carrying a kel_head tag is rejected, including committed rotations; freshness comes from replay ordering, never kel_head (§3.5.2).",
+  "input": {
+    "event": {
+      "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "created_at": 1767229200,
+      "kind": 31003,
+      "tags": [
+        [
+          "d",
+          "1"
+        ],
+        [
+          "heterodyne",
+          "keri_rotation"
+        ],
+        [
+          "p",
+          "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        ],
+        [
+          "s",
+          "1"
+        ],
+        [
+          "prior_digest",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def"
+        ],
+        [
+          "strategy",
+          "committed"
+        ],
+        [
+          "epoch_key",
+          "1be68a5a028f2601d0e80d468c344ba331d611b96c358b6032e8b4da0547fc11"
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
+        ]
+      ],
+      "content": "[]",
+      "id": "9cc49e287fcdf70347d3fa6876bcb9c56b7284771c31b6298138b0ebf0e7782a",
+      "sig": "3d8fba6ee0f43b40bb6b22e1a6949390bc23cad6202fcdeca71a0c56cc0597a4a2e4a739126d9df5455e8cb213abac4765bb7fd86ecdcdacbc1dd50ccc0673ac"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "kel_head_forbidden"
+  },
+  "decision_trace": [
+    "classify_kel_event",
+    "reject_kel_head_on_kel_event"
+  ],
+  "direction": "consume"
+}

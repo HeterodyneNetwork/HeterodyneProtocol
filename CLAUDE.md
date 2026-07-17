@@ -161,7 +161,11 @@ The next milestones are:
    0.x draft).
 2. Build a first-party client implementation (language and runtime
    to be chosen separately; the spec is agnostic) to validate the
-   protocol end-to-end.
+   protocol end-to-end. Scheduled alongside this node work (ADR-032):
+   compromised-key content revocation - tooling that identifies and
+   revokes/quarantines repo commits authored inside a declared
+   `compromise_since` window (spec §3.5.2), interacting with `kind:5`
+   deletions and §6.10.4 branch-scrub semantics.
 3. Iterate the spec based on implementation feedback toward 1.0.
 
 ## How to navigate this repo

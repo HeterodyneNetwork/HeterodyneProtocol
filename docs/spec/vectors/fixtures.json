@@ -47,6 +47,110 @@
       }
     }
   },
+  "kel": {
+    "alice": {
+      "inception_event": {
+        "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "created_at": 1767225600,
+        "kind": 31002,
+        "tags": [
+          [
+            "d",
+            ""
+          ],
+          [
+            "heterodyne",
+            "keri_inception"
+          ],
+          [
+            "p",
+            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+          ],
+          [
+            "s",
+            "0"
+          ],
+          [
+            "epoch_key",
+            "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+          ]
+        ],
+        "content": ""
+      },
+      "head": {
+        "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+        "seq": 0
+      }
+    },
+    "bob": {
+      "inception_event": {
+        "pubkey": "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+        "created_at": 1767225600,
+        "kind": 31002,
+        "tags": [
+          [
+            "d",
+            ""
+          ],
+          [
+            "heterodyne",
+            "keri_inception"
+          ],
+          [
+            "p",
+            "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+          ],
+          [
+            "s",
+            "0"
+          ],
+          [
+            "epoch_key",
+            "e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13"
+          ]
+        ],
+        "content": ""
+      },
+      "head": {
+        "id": "3b33f28a2c090282bd4e23b59a18422d15aea63ac0e8f0703f3ea65b1ac93688",
+        "seq": 0
+      }
+    },
+    "carol": {
+      "inception_event": {
+        "pubkey": "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01",
+        "created_at": 1767225600,
+        "kind": 31002,
+        "tags": [
+          [
+            "d",
+            ""
+          ],
+          [
+            "heterodyne",
+            "keri_inception"
+          ],
+          [
+            "p",
+            "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01"
+          ],
+          [
+            "s",
+            "0"
+          ],
+          [
+            "epoch_key",
+            "acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe"
+          ]
+        ],
+        "content": ""
+      },
+      "head": {
+        "id": "15180a727fb846c711de14d9161710e922edbb68c1500cc31449967ef63700b6",
+        "seq": 0
+      }
+    }
+  },
   "ed25519_nids": {
     "alice_device_1": {
       "private_key": "00000000000000000000000000000000000000000000000000000000000000a1",

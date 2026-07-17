@@ -24,7 +24,7 @@
     "cleartext": "{\"body\":\"private broadcast body\",\"matrix_room_id\":\"!alice-private-broadcast:example.org\",\"key_id\":\"room-secret-2026-05-25-a\"}"
   },
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225615,1,[[\"heterodyne_wrap\",\"room_key.v2\"],[\"key_id\",\"room-secret-2026-05-25-a\"],[\"matrix_room_id\",\"!alice-private-broadcast:example.org\"]],\"AjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwQ9ZiMg7oMY4qeiDZbaxWUX1C8Uw9fLFFVhWZPpAXvhJutDwVQv1GjA/2MvzQV0c6y65aVRmxcn96kj+BW9reNT7+LRmkssiaO/Hk1+1P6xXhOzJYFadmNXXCZ33bCGLGJt3dJLST2saijDOX9xRMrcIq8atwAkOQ9FlV/XdUYojJSPAEBmu2gAsyxqjt6pli2Ip+/CF1CiclHzJCcmJ5YoQ/\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225615,1,[[\"heterodyne_wrap\",\"room_key.v2\"],[\"key_id\",\"room-secret-2026-05-25-a\"],[\"matrix_room_id\",\"!alice-private-broadcast:example.org\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"AjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwQ9ZiMg7oMY4qeiDZbaxWUX1C8Uw9fLFFVhWZPpAXvhJutDwVQv1GjA/2MvzQV0c6y65aVRmxcn96kj+BW9reNT7+LRmkssiaO/Hk1+1P6xXhOzJYFadmNXXCZ33bCGLGJt3dJLST2saijDOX9xRMrcIq8atwAkOQ9FlV/XdUYojJSPAEBmu2gAsyxqjt6pli2Ip+/CF1CiclHzJCcmJ5YoQ/\"]",
     "decoded": {
       "event": {
         "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
@@ -42,11 +42,16 @@
           [
             "matrix_room_id",
             "!alice-private-broadcast:example.org"
+          ],
+          [
+            "kel_head",
+            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "0"
           ]
         ],
         "content": "AjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwQ9ZiMg7oMY4qeiDZbaxWUX1C8Uw9fLFFVhWZPpAXvhJutDwVQv1GjA/2MvzQV0c6y65aVRmxcn96kj+BW9reNT7+LRmkssiaO/Hk1+1P6xXhOzJYFadmNXXCZ33bCGLGJt3dJLST2saijDOX9xRMrcIq8atwAkOQ9FlV/XdUYojJSPAEBmu2gAsyxqjt6pli2Ip+/CF1CiclHzJCcmJ5YoQ/",
-        "id": "16b221dec1198eb8014af1864d9a654117f0b50b18f7a5d3f60854a831083e4e",
-        "sig": "ac2deeccc99f3e4a9350067758456dabae4a03a202f117cfbad946d0f374756fac27630d3d3ab5a73553f6d9e2bf545409af810dda78cb0fb6cfc4a582f392c7"
+        "id": "df4c76f52f9084bfc1acd29f73c6583b2fcfaf176d8364a9e13b4f52b70feb57",
+        "sig": "2c101a95d4a921823a8c3aac9e895c93b0a8b5a537969d45a50ffe27a6e313f7307ea366c1eeefb4f1feaacf4266cd7b8258e48f2a20e988f236b2e85cb23f46"
       },
       "post_key": "39894fdf4fb72f6702d33b8b81d312b4452614fe23da32617172d911fff38ffd",
       "cleartext": {
@@ -56,8 +61,8 @@
       },
       "nip44_payload": "AjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwQ9ZiMg7oMY4qeiDZbaxWUX1C8Uw9fLFFVhWZPpAXvhJutDwVQv1GjA/2MvzQV0c6y65aVRmxcn96kj+BW9reNT7+LRmkssiaO/Hk1+1P6xXhOzJYFadmNXXCZ33bCGLGJt3dJLST2saijDOX9xRMrcIq8atwAkOQ9FlV/XdUYojJSPAEBmu2gAsyxqjt6pli2Ip+/CF1CiclHzJCcmJ5YoQ/"
     },
-    "id": "16b221dec1198eb8014af1864d9a654117f0b50b18f7a5d3f60854a831083e4e",
-    "sig": "ac2deeccc99f3e4a9350067758456dabae4a03a202f117cfbad946d0f374756fac27630d3d3ab5a73553f6d9e2bf545409af810dda78cb0fb6cfc4a582f392c7"
+    "id": "df4c76f52f9084bfc1acd29f73c6583b2fcfaf176d8364a9e13b4f52b70feb57",
+    "sig": "2c101a95d4a921823a8c3aac9e895c93b0a8b5a537969d45a50ffe27a6e313f7307ea366c1eeefb4f1feaacf4266cd7b8258e48f2a20e988f236b2e85cb23f46"
   },
   "notes": "Megolm transport is opaque; this vector validates the room-secret to NIP-44 post chain and context binding to matrix_room_id.",
   "direction": "produce"

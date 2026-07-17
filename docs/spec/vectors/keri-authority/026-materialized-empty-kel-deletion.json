@@ -1,0 +1,30 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "keri-authority/materialized-empty-kel-deletion",
+  "spec_refs": [
+    "§10.1.2",
+    "§14.3"
+  ],
+  "description": "An empty accepted KEL deletes BOTH refs (log and state) in one atomic multi-ref transaction. There is no log_tip or state_tip.",
+  "input": {
+    "accepted_kel": [],
+    "profile": "materialized-kel"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "log_ref_deleted": true,
+      "state_ref_deleted": true,
+      "atomic_multi_ref_transaction": true,
+      "log_tip": null,
+      "state_tip": null
+    }
+  },
+  "decision_trace": [
+    "observe_empty_accepted_kel",
+    "delete_log_and_state_refs",
+    "single_atomic_transaction"
+  ],
+  "direction": "consume"
+}
