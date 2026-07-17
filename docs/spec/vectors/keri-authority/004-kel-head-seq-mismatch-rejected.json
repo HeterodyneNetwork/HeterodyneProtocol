@@ -1,0 +1,53 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "keri-authority/kel-head-seq-mismatch-rejected",
+  "spec_refs": [
+    "§3.0",
+    "§4.5.1",
+    "§14.3"
+  ],
+  "description": "A well-formed kel_head names the inception event (s=0) but declares seq 1; once the named event is resolved on the accepted KEL its s (0) does not equal the tag's decimal seq (1).",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767225903,
+      "kind": 1,
+      "tags": [
+        [
+          "client",
+          "heterodyne"
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "1"
+        ]
+      ],
+      "content": "post whose kel_head seq disagrees with the named event's s",
+      "id": "5f0c23ba79431d5224f7476fad2e661bf12a867c44cf6cb2ee8cceded26a1842",
+      "sig": "056d7b1d8b4af6bf7c42f2c880461887f3816e389a8f30b354415b17140d94cd0e22575882e2e18623d79f61b89bde7af12f29c2b096d4d20eb259e02408a3a7"
+    },
+    "accepted_kel": [
+      {
+        "kind": 31002,
+        "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+        "s": 0,
+        "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+      }
+    ],
+    "resolved_event_s": 0,
+    "kel_head_seq": 1
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "kel_head_mismatch"
+  },
+  "decision_trace": [
+    "verify_bip340_signature",
+    "resolve_kel_head_on_accepted_kel",
+    "compare_seq_to_s",
+    "seq_mismatch"
+  ],
+  "direction": "consume"
+}

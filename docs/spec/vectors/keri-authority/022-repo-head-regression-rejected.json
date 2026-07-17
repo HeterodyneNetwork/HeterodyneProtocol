@@ -1,0 +1,31 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "keri-authority/repo-head-regression-rejected",
+  "spec_refs": [
+    "§3.9.10.1",
+    "§14.3"
+  ],
+  "description": "A repo presenting a key-material head that regresses below a previously finalized canonical head, with no authenticated re-anchor, is rejected: key state must never silently regress.",
+  "input": {
+    "previously_finalized_head_seq": 5,
+    "presented_repo_head_seq": 3,
+    "authenticated_reanchor": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "repo_head_regression",
+    "normalized": {
+      "regressed_from_seq": 5,
+      "presented_seq": 3,
+      "reanchor_present": false
+    }
+  },
+  "decision_trace": [
+    "load_finalized_canonical_head",
+    "observe_presented_head",
+    "no_authenticated_reanchor",
+    "reject_regression"
+  ],
+  "direction": "consume"
+}

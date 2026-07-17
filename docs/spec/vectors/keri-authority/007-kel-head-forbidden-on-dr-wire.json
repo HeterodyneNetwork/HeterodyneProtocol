@@ -1,0 +1,43 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "keri-authority/kel-head-forbidden-on-dr-wire",
+  "spec_refs": [
+    "§3.0",
+    "§4.5.1",
+    "§5.7",
+    "§14.3"
+  ],
+  "description": "A kind:1060 double-ratchet outer message (signed by a ratchet key) carrying a kel_head tag is rejected: §5.7 DR wire events MUST NOT carry it.",
+  "input": {
+    "event": {
+      "pubkey": "59ae134c1a41cfee81c5c2cd51ac727b4e7759552d729e07b25031df15661815",
+      "created_at": 1767225920,
+      "kind": 1060,
+      "tags": [
+        [
+          "header",
+          "ratchet-header-placeholder"
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
+        ]
+      ],
+      "content": "ratchet-ciphertext-placeholder",
+      "id": "db1cb4fa535b646fb1e96b994848a32177acc7d2b668fe73c3a8b8ba84adc6e8",
+      "sig": "62710811a1415adb004c9e2d9cc4f1224d61da998930f335bbdb832611e41ee215db8bf93903e9c26f260b202f9c86d25840b011aa3620e63ce60de11cd27b86"
+    },
+    "signer_kind": "current_ratchet_key"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "kel_head_forbidden"
+  },
+  "decision_trace": [
+    "classify_dr_wire_event",
+    "reject_kel_head_on_dr_wire"
+  ],
+  "direction": "consume"
+}

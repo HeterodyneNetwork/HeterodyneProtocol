@@ -1,0 +1,63 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "keri-authority/materialized-log-derivation",
+  "spec_refs": [
+    "§10.1.2",
+    "§3.0.1",
+    "§14.3"
+  ],
+  "description": "refs/xyz.heterodyne.keri/log derivation: one commit per accepted KEL event in s order, sole parent the prior event's commit (inception parentless). Each tree holds one entry mode 100644 path event.nip01 whose content is the event's exact nip01_raw bytes. Git object OIDs (sha1) are byte-identical to git hash-object / mktree / commit-tree.",
+  "input": {
+    "fixture_persona": "alice",
+    "kel": [
+      {
+        "event_id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+        "s": 0,
+        "created_at": 1767225600,
+        "nip01_raw": "[0,\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",1767225600,31002,[[\"d\",\"\"],[\"heterodyne\",\"keri_inception\"],[\"p\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"s\",\"0\"],[\"epoch_key\",\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"]],\"\"]"
+      },
+      {
+        "event_id": "5087532c7f6cb9e276b4499dd55f29a346f742785cd26abdd7db0fb60562fb52",
+        "s": 1,
+        "created_at": 1767229200,
+        "nip01_raw": "[0,\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",1767229200,31003,[[\"d\",\"1\"],[\"heterodyne\",\"keri_rotation\"],[\"p\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"s\",\"1\"],[\"prior_digest\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\"],[\"strategy\",\"committed\"],[\"epoch_key\",\"1be68a5a028f2601d0e80d468c344ba331d611b96c358b6032e8b4da0547fc11\"]],\"[]\"]"
+      }
+    ],
+    "git_actor": "Heterodyne KERI <keri@heterodyne.invalid>",
+    "commit_message_rule": "lowercase-64-hex event id + one LF"
+  },
+  "expected_output": {
+    "canonical_wire": "c1b8b81cc4262bbac4282290292baee2bbb9c400",
+    "decoded": {
+      "ref": "refs/xyz.heterodyne.keri/log",
+      "log_tip": "c1b8b81cc4262bbac4282290292baee2bbb9c400",
+      "commits": [
+        {
+          "s": 0,
+          "event_id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "path": "event.nip01",
+          "mode": "100644",
+          "blob_oid": "a8c3c25c035c9a66bd9fa68afc4f24484833d2a4",
+          "tree_oid": "9525da0a274c93f7c2efa05762963a725d1ddc23",
+          "commit_oid": "d3c49e5bf945410bca205c7a7bc0f57fa67b57ac",
+          "parents": []
+        },
+        {
+          "s": 1,
+          "event_id": "5087532c7f6cb9e276b4499dd55f29a346f742785cd26abdd7db0fb60562fb52",
+          "path": "event.nip01",
+          "mode": "100644",
+          "blob_oid": "3249634aead8822bf7fcb51532553f2c71c543e9",
+          "tree_oid": "02a6ea4675da8dc1e992f8952d446f390aac58a5",
+          "commit_oid": "c1b8b81cc4262bbac4282290292baee2bbb9c400",
+          "parents": [
+            "d3c49e5bf945410bca205c7a7bc0f57fa67b57ac"
+          ]
+        }
+      ]
+    }
+  },
+  "notes": "OID-level only (no packfiles). blob = sha1(\"blob \"+len+\"\\0\"+content); tree = sha1(\"tree \"+len+\"\\0\"+\"100644 <path>\\0\"+20-byte-raw-blob-oid); commit = sha1(\"commit \"+len+\"\\0\"+text) with author==committer==git_actor, both timestamps <created_at> +0000, no encoding/gpgsig headers.",
+  "direction": "produce"
+}

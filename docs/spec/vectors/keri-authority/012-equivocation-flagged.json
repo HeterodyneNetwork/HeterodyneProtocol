@@ -1,0 +1,59 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "keri-authority/equivocation-flagged",
+  "spec_refs": [
+    "§4.5.1",
+    "§13",
+    "§14.3"
+  ],
+  "description": "A structurally valid kel_head names an event that is not on the persona's accepted KEL; the verifier produces the equivocation-flagged outcome and surfaces it through the §13 security-warning interface.",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767225950,
+      "kind": 1,
+      "tags": [
+        [
+          "client",
+          "heterodyne"
+        ],
+        [
+          "kel_head",
+          "abababababababababababababababababababababababababababababababab",
+          "0"
+        ]
+      ],
+      "content": "post whose kel_head names an event not on the accepted KEL",
+      "id": "dace94ac7c06106a893ddcddd1044ac1013abc565ad231abb818ce94eac83d28",
+      "sig": "f6cfe9acddfe88ee8a356ea35de29f277dec89ccf7120bb687482244cec5bb0c32d7ce4bf885c504f171591bba2a367bbf97edcb43e8399472d593f2acdf4d59"
+    },
+    "accepted_kel": [
+      {
+        "kind": 31002,
+        "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+        "s": 0,
+        "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+      }
+    ],
+    "kel_head_names": "abababababababababababababababababababababababababababababababab"
+  },
+  "expected_output": {
+    "verdict": "equivocation_flagged",
+    "normalized": {
+      "kel_head_on_accepted_kel": false,
+      "surfaced_via_security_warning": true
+    },
+    "warnings": [
+      "equivocation_flagged"
+    ]
+  },
+  "decision_trace": [
+    "verify_bip340_signature",
+    "resolve_kel_head_on_accepted_kel",
+    "kel_head_not_on_accepted_kel",
+    "flag_equivocation_surface_warning"
+  ],
+  "notes": "equivocation_flagged is a distinct verification outcome (not a plain reject): the event is not silently accepted, and the duplicity is surfaced per §13.",
+  "direction": "consume"
+}

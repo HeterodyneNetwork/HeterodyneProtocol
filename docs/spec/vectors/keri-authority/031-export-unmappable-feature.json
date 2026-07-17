@@ -1,0 +1,24 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "keri-authority/export-unmappable-feature",
+  "spec_refs": [
+    "§11.8",
+    "§14.3"
+  ],
+  "description": "did:webs export fails when security-relevant KEL state uses a construct with no semantics-preserving canonical-KERI mapping (UNMAPPABLE_FEATURE). Security-relevant state MUST NOT be silently omitted or altered.",
+  "input": {
+    "security_relevant_feature": "unmappable_construct",
+    "mapping_exists": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "export_unmappable_feature"
+  },
+  "decision_trace": [
+    "scan_security_relevant_state",
+    "no_semantics_preserving_mapping",
+    "fail_unmappable_feature"
+  ],
+  "direction": "consume"
+}

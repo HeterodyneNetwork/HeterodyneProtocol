@@ -16,7 +16,7 @@
   },
   "notes": "kind:10000 is a standard NIP-51 replaceable list (10000-10102 range), replaced by (pubkey, kind) with no d tag. The identical event is publishable to ordinary Nostr relays and repo relays; a repo relay MUST accept it like any other replaceable event (§3.0, §8.5).",
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225700,10000,[[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"t\",\"spam\"],[\"word\",\"airdrop\"],[\"e\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]],\"\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225700,10000,[[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"t\",\"spam\"],[\"word\",\"airdrop\"],[\"e\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"\"]",
     "decoded": {
       "event": {
         "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
@@ -38,15 +38,20 @@
           [
             "e",
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          [
+            "kel_head",
+            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "0"
           ]
         ],
         "content": "",
-        "id": "56616518078a0331fc08c9c18a1f14a424cbf634c9b77126e5e33610cb597d09",
-        "sig": "f316d456a5123b2d6a5f64474fb6d98bcaf12b9649ca9dd94f5a18e118b518480b5bb937635c0f777951c97e4a4cc40ba98f35ee4e1cd0fb57d2dfb2043330be"
+        "id": "4115b738d56d2b199d4406490525be8bfb5b1f68e2af59e5655a787381437624",
+        "sig": "393d6fb725e1b5d9b317014a0cfdaccca3db9620563f36a67bb135389e7eb22ee530ea5cb931dd7dddf8509e964bb232395c2b4638cd7def0e65e412b43e566b"
       }
     },
-    "id": "56616518078a0331fc08c9c18a1f14a424cbf634c9b77126e5e33610cb597d09",
-    "sig": "f316d456a5123b2d6a5f64474fb6d98bcaf12b9649ca9dd94f5a18e118b518480b5bb937635c0f777951c97e4a4cc40ba98f35ee4e1cd0fb57d2dfb2043330be"
+    "id": "4115b738d56d2b199d4406490525be8bfb5b1f68e2af59e5655a787381437624",
+    "sig": "393d6fb725e1b5d9b317014a0cfdaccca3db9620563f36a67bb135389e7eb22ee530ea5cb931dd7dddf8509e964bb232395c2b4638cd7def0e65e412b43e566b"
   },
   "direction": "produce"
 }

@@ -1,0 +1,31 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "keri-authority/materialized-refs-not-authority",
+  "spec_refs": [
+    "§4.5.1",
+    "§10.1.2",
+    "§14.3"
+  ],
+  "description": "The refs/xyz.heterodyne.keri/state ref is derived, never authoritative: it MUST NOT establish acceptance. The verifier replays the accepted KEL and only populates its cache from the ref after independently matching it to that replay.",
+  "input": {
+    "presented_ref": "refs/xyz.heterodyne.keri/state",
+    "claim": "verification_authority",
+    "accepted_kel_events_available": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "materialized_ref_as_authority": false,
+      "authority_source": "replayed_accepted_kel",
+      "refs_used_as": "cache_after_independent_match"
+    }
+  },
+  "decision_trace": [
+    "receive_state_ref_claim",
+    "reject_ref_as_authority",
+    "replay_accepted_kel",
+    "populate_cache_only_after_match"
+  ],
+  "direction": "consume"
+}

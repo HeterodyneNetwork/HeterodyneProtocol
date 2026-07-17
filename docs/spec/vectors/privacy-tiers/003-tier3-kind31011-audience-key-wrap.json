@@ -20,7 +20,7 @@
   },
   "notes": "The NIP-44 plaintext is the 32-byte audience key as its 64-char lowercase-hex string. The conversation key is the NIP-44 v2 ECDH of the epoch private key and the recipient npub.",
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225681,31011,[[\"d\",\"aud-2026-05-25-a:f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"heterodyne\",\"audience_key_wrap\"],[\"key_id\",\"aud-2026-05-25-a\"],[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"]],\"AlBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQzp/E8AHxpmJikf7Pn62pLsHfDm+coVi1T5JP7w3YBpN+vWcLac0UxfDyS/HpHGFuBKMKiW5rwc+gSQabOSJuuUVO4E8BxZ7arBea2ErEaObWKj6XBfQSBW98ZYxEsu3txtk=\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225681,31011,[[\"d\",\"aud-2026-05-25-a:f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"heterodyne\",\"audience_key_wrap\"],[\"key_id\",\"aud-2026-05-25-a\"],[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"AlBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQzp/E8AHxpmJikf7Pn62pLsHfDm+coVi1T5JP7w3YBpN+vWcLac0UxfDyS/HpHGFuBKMKiW5rwc+gSQabOSJuuUVO4E8BxZ7arBea2ErEaObWKj6XBfQSBW98ZYxEsu3txtk=\"]",
     "decoded": {
       "event": {
         "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
@@ -46,11 +46,16 @@
           [
             "cold_root",
             "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+          ],
+          [
+            "kel_head",
+            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "0"
           ]
         ],
         "content": "AlBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQzp/E8AHxpmJikf7Pn62pLsHfDm+coVi1T5JP7w3YBpN+vWcLac0UxfDyS/HpHGFuBKMKiW5rwc+gSQabOSJuuUVO4E8BxZ7arBea2ErEaObWKj6XBfQSBW98ZYxEsu3txtk=",
-        "id": "db4a2647830495f0cc77fb124bb61b29e893656b3d36c4484d5cd7bd0a4a9f47",
-        "sig": "c29f23d52e8723ae2c023f84331b926915ec86ea402dcaad943bca3f5bcdb55b71a1810e6ac68c7fe7dab104ec181c5232c645e554b43a33a6755de1199a5656"
+        "id": "7f008ce007f41141418c83aca9e7a763a137f8b56747513d5c218dc818832160",
+        "sig": "94bc0384a104aeea430f6fcc14ed9cd1567f361cdafc84660fa256cfab8c4515451423eb2311e52afc78d33ad3526219e77ba0e281100a7bf6a47c5ebd392cd0"
       },
       "recipient_npub": "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
       "conversation_key": "dd8a0fe7f326cfcdd3c2cdce6da9a142a5655ad68bfa46a3a8aa1ddaa958d2c1",
@@ -58,8 +63,8 @@
       "audience_key_plaintext": "4040404040404040404040404040404040404040404040404040404040404040",
       "nip44_payload": "AlBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQzp/E8AHxpmJikf7Pn62pLsHfDm+coVi1T5JP7w3YBpN+vWcLac0UxfDyS/HpHGFuBKMKiW5rwc+gSQabOSJuuUVO4E8BxZ7arBea2ErEaObWKj6XBfQSBW98ZYxEsu3txtk="
     },
-    "id": "db4a2647830495f0cc77fb124bb61b29e893656b3d36c4484d5cd7bd0a4a9f47",
-    "sig": "c29f23d52e8723ae2c023f84331b926915ec86ea402dcaad943bca3f5bcdb55b71a1810e6ac68c7fe7dab104ec181c5232c645e554b43a33a6755de1199a5656"
+    "id": "7f008ce007f41141418c83aca9e7a763a137f8b56747513d5c218dc818832160",
+    "sig": "94bc0384a104aeea430f6fcc14ed9cd1567f361cdafc84660fa256cfab8c4515451423eb2311e52afc78d33ad3526219e77ba0e281100a7bf6a47c5ebd392cd0"
   },
   "direction": "produce"
 }

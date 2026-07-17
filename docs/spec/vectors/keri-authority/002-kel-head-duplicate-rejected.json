@@ -1,0 +1,49 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "keri-authority/kel-head-duplicate-rejected",
+  "spec_refs": [
+    "§3.0",
+    "§4.5.1",
+    "§14.3"
+  ],
+  "description": "An epoch-key-signed post carrying two kel_head tags fails: the event MUST carry exactly one well-formed instance.",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767225901,
+      "kind": 1,
+      "tags": [
+        [
+          "client",
+          "heterodyne"
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
+        ]
+      ],
+      "content": "post carrying two kel_head tags",
+      "id": "9dd91613cb95bb3fb3ffe52621975175417859199391d374743815c0ab74b3d6",
+      "sig": "4a9359ecd5cc3b56a261e30e4121647dae3a860526939ae9c44b2f7ff94c2a6b0f9deb7663406ac72b94cf8d129105e7f13048a4e3d28a610488b8b953fa71ce"
+    },
+    "kel_head_count": 2
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "kel_head_missing"
+  },
+  "decision_trace": [
+    "verify_bip340_signature",
+    "count_kel_head_tags",
+    "reject_not_exactly_one"
+  ],
+  "notes": "kel_head_missing covers absent, duplicate, and malformed (a single well-formed instance is required, §4.5.1).",
+  "direction": "consume"
+}

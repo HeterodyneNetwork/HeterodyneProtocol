@@ -2,6 +2,7 @@ import { hkdf } from "@noble/hashes/hkdf";
 import { sha256 } from "@noble/hashes/sha2";
 import { nip44 } from "nostr-tools";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
+import { withKelHead } from "./kel.js";
 import { canonicalNip01, getEventId, signEvent } from "./nostr.js";
 import { ed25519Sign, nidBindingPayload, nodeAdvertPayload } from "./radicle.js";
 import {
@@ -204,7 +205,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     secretKey: epoch.private_key,
     created_at: T + 40,
     kind: 1,
-    tags: [["client", "heterodyne"]],
+    tags: withKelHead([["client", "heterodyne"]], fixtures.kel.alice.head),
     content: "posted over a repo relay's NIP-01 wire",
     auxRand: AUX_RAND,
   });
@@ -333,15 +334,19 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
   const advExpiry = T + 86400;
   const advPayload = nodeAdvertPayload(rid, nid1.did_key, endpoint, advExpiry, repoHead);
   const nidProof = ed25519Sign(advPayload, nid1.private_key);
-  const advTags = (proof: string, expiry: number): string[][] => [
-    ["d", rid],
-    ["heterodyne", "node_advert"],
-    ["rid", rid],
-    ["nid", nid1.did_key],
-    ["endpoint", endpoint],
-    ["expiry", String(expiry)],
-    ["nid_proof", proof],
-  ];
+  const advTags = (proof: string, expiry: number): string[][] =>
+    withKelHead(
+      [
+        ["d", rid],
+        ["heterodyne", "node_advert"],
+        ["rid", rid],
+        ["nid", nid1.did_key],
+        ["endpoint", endpoint],
+        ["expiry", String(expiry)],
+        ["nid_proof", proof],
+      ],
+      fixtures.kel.alice.head,
+    );
   const advEvent = await signEvent({
     secretKey: epoch.private_key,
     created_at: T + 50,
@@ -504,7 +509,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
       tags.push(["nid_proof", proof]);
     }
     tags.push(["valid_until", ""]);
-    return tags;
+    return withKelHead(tags, fixtures.kel.alice.head);
   };
   const nidDelegation = await signEvent({
     secretKey: epoch.private_key,
@@ -695,14 +700,17 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     secretKey: epoch.private_key,
     created_at: T + 80,
     kind: 31007,
-    tags: [
-      ["d", "tech:2026-q2"],
-      ["heterodyne", "feed_index"],
-      ["cold_root", cold.pubkey],
-      ["rid", rid],
-      ["feed_label", "Tech"],
-      ["e", "cd".repeat(32), "wss://relay.example"],
-    ],
+    tags: withKelHead(
+      [
+        ["d", "tech:2026-q2"],
+        ["heterodyne", "feed_index"],
+        ["cold_root", cold.pubkey],
+        ["rid", rid],
+        ["feed_label", "Tech"],
+        ["e", "cd".repeat(32), "wss://relay.example"],
+      ],
+      fixtures.kel.alice.head,
+    ),
     content: "",
     auxRand: AUX_RAND,
   });
@@ -715,13 +723,16 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     secretKey: epoch.private_key,
     created_at: T + 81,
     kind: 31011,
-    tags: [
-      ["d", `${audA.key_id}:${recipientNpub}`],
-      ["heterodyne", "audience_key_wrap"],
-      ["key_id", audA.key_id],
-      ["p", recipientNpub],
-      ["cold_root", cold.pubkey],
-    ],
+    tags: withKelHead(
+      [
+        ["d", `${audA.key_id}:${recipientNpub}`],
+        ["heterodyne", "audience_key_wrap"],
+        ["key_id", audA.key_id],
+        ["p", recipientNpub],
+        ["cold_root", cold.pubkey],
+      ],
+      fixtures.kel.alice.head,
+    ),
     content: wrapContent,
     auxRand: AUX_RAND,
   });
@@ -741,13 +752,16 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     secretKey: epoch.private_key,
     created_at: T + 82,
     kind: 31007,
-    tags: [
-      ["d", "opaque-page-01"],
-      ["heterodyne", "feed_index"],
-      ["cold_root", cold.pubkey],
-      ["heterodyne_wrap", "room_key.v2"],
-      ["key_id", audA.key_id],
-    ],
+    tags: withKelHead(
+      [
+        ["d", "opaque-page-01"],
+        ["heterodyne", "feed_index"],
+        ["cold_root", cold.pubkey],
+        ["heterodyne_wrap", "room_key.v2"],
+        ["key_id", audA.key_id],
+      ],
+      fixtures.kel.alice.head,
+    ),
     content: idxCipher,
     auxRand: AUX_RAND,
   });
@@ -757,14 +771,17 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     secretKey: epoch.private_key,
     created_at: T + 83,
     kind: 31012,
-    tags: [
-      ["d", audA.key_id],
-      ["heterodyne", "audience_roster"],
-      ["key_id", audA.key_id],
-      ["cold_root", cold.pubkey],
-      ["p", bob.cold_root.pubkey],
-      ["p", carol.cold_root.pubkey],
-    ],
+    tags: withKelHead(
+      [
+        ["d", audA.key_id],
+        ["heterodyne", "audience_roster"],
+        ["key_id", audA.key_id],
+        ["cold_root", cold.pubkey],
+        ["p", bob.cold_root.pubkey],
+        ["p", carol.cold_root.pubkey],
+      ],
+      fixtures.kel.alice.head,
+    ),
     content: "",
     auxRand: AUX_RAND,
   });

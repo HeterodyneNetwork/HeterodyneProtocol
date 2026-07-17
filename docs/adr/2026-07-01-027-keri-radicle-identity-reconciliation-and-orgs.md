@@ -1,7 +1,7 @@
 # ADR-027: KERI ↔ Radicle identity reconciliation, and organizations as first-class personas
 
 **Date:** 2026-07-01
-**Status:** Accepted
+**Status:** Accepted (partially superseded by ADR-032: for the key-material class {31002, 31003, 31001}, relay-primary discovery and SHOULD-level repo mirroring are replaced by repo authority, spec §3.9.10.1)
 **Decision makers:** user + `/codex:rescue` review (star-chamber unavailable this session)
 
 ## Context

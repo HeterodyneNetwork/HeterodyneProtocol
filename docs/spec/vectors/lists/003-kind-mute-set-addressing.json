@@ -16,7 +16,7 @@
   },
   "notes": "Per NIP-51 the kind:30007 d tag names the muted kind (here d=\"1\": pubkeys muted for kind:1 notes); the muted authors are p tags. The persona's sets file is the collection of its NIP-51 set events keyed by (kind, d) (§3.0, §8.5).",
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225702,30007,[[\"d\",\"1\"],[\"title\",\"Muted authors for kind 1\"],[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"p\",\"2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01\"]],\"\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225702,30007,[[\"d\",\"1\"],[\"title\",\"Muted authors for kind 1\"],[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"p\",\"2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"\"]",
     "decoded": {
       "event": {
         "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
@@ -38,15 +38,20 @@
           [
             "p",
             "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01"
+          ],
+          [
+            "kel_head",
+            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "0"
           ]
         ],
         "content": "",
-        "id": "c2e348d14ed858b4d1ec6c4b1464e39dbc49b49cc877db9f14709bd24fa2e02e",
-        "sig": "b547022b1943958f635628e178eebdfb73ac71d5ca37697e2089656bdf1b9c166041703bbb26645640d6792a3e085dbb134d47e00a57df612687bff5e38ed94b"
+        "id": "0622ec310e389571898a27a27c80049de170b6430d2a6f1ee1f72911dcedd872",
+        "sig": "1ba085f533b716a1dd7f500a582bc1003accd2f6233cf457d5180e63a9a90def82d1be7878371c9a7d9dc70237960f7034a7fcba417e00b56ed34e00dd5485b0"
       }
     },
-    "id": "c2e348d14ed858b4d1ec6c4b1464e39dbc49b49cc877db9f14709bd24fa2e02e",
-    "sig": "b547022b1943958f635628e178eebdfb73ac71d5ca37697e2089656bdf1b9c166041703bbb26645640d6792a3e085dbb134d47e00a57df612687bff5e38ed94b"
+    "id": "0622ec310e389571898a27a27c80049de170b6430d2a6f1ee1f72911dcedd872",
+    "sig": "1ba085f533b716a1dd7f500a582bc1003accd2f6233cf457d5180e63a9a90def82d1be7878371c9a7d9dc70237960f7034a7fcba417e00b56ed34e00dd5485b0"
   },
   "direction": "produce"
 }

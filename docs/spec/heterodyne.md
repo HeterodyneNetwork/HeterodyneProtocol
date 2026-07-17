@@ -577,6 +577,39 @@ whose construction is defined by the section that introduces the
 kind. Schema examples MUST show the `d` tag explicitly; it is never
 implicit.
 
+Two Heterodyne-reserved single-letter-free tags are registered here
+(ADR-032):
+
+- `["kel_head", "<64-hex event id>", "<decimal seq>"]` - the latest
+  KEL event the signer had accepted at signing time. Carried exactly
+  once per the applicability matrix below; §4.5.1 defines handling.
+  Advisory only: it is never an input that can substitute for §3.5.3
+  replay. An event required to carry the tag MUST carry exactly one
+  well-formed instance (64-hex id, decimal seq) - absent, duplicate,
+  or malformed fails verification (`kel_head_missing`). After the
+  named event is resolved on the accepted KEL, its `s` value MUST
+  equal the tag's decimal `seq`; an id/sequence mismatch fails
+  verification (`kel_head_mismatch`).
+- `["compromise_since", "<unix-seconds>"]` - carried exactly once on
+  a compromise-declaring `kind:31003` rotation and MUST NOT appear on
+  a routine rotation (§3.5.2).
+
+Per-kind `kel_head` applicability (normative, ADR-032):
+
+| Class | `kel_head` |
+|---|---|
+| `kind:31002`/`kind:31003` KEL events - all of them, including `none`-strategy rotations signed by the prior epoch key; they chain via `prior_digest` and their freshness comes from replay ordering | MUST NOT |
+| `kind:31001` delegations (every variant, including the proposed ADR-030 session-device delegation) | MUST |
+| `kind:31000` root attestations (epoch-key-signed per §3.2.1) | MUST |
+| `kind:31005` identity pointer, `kind:31010` node advertisements | MUST when epoch-key-signed; MAY when cold-root-signed (re-anchor) |
+| The epoch-key-signed DR enrollment invite (`kind:30078`, `d` = `double-ratchet/invites/epoch`, proposed ADR-030) | MUST |
+| All other epoch-key-signed kinds (posts, `kind:31007` feed indexes, outbox attestations, approvals, NIP-51 lists) | MUST |
+| Genuinely cold-root-signed events | MAY |
+| NIP-42 `kind:22242` AUTH handshake events (ephemeral, relay-local, never stored or replicated - no Heterodyne payload for the tag to protect) | MAY |
+| §5.7.2 device-publishing-key-signed DM invites (`kind:30078`, `d` = `double-ratchet/invites/<device>`) - not epoch-key-signed | MAY |
+| §5.7 DR wire events signed by device, session, or ratchet keys (`kind:1060`/`kind:1059` and their inner rumors) and proposed-ADR-030 RPC rumors | MUST NOT |
+| ADR-031 vanilla-interop breadcrumbs | MUST NOT |
+
 ### 3.0.1 Canonical Nostr serialization
 
 Every embedded Nostr event in this specification — whether inside a
@@ -775,7 +808,8 @@ The `m.heterodyne.root.v1` state event:
         ["d", ""],
         ["heterodyne", "root"],
         ["matrix_room", "<this room's room_id>"],
-        ["cold_root", "<32-byte hex of the persona's npub / cold-root key>"]
+        ["cold_root", "<32-byte hex of the persona's npub / cold-root key>"],
+        ["kel_head", "<64-hex id of the latest accepted KEL event>", "<decimal seq>"]
       ],
       "content": "",
       "sig": "<64-byte hex by the current epoch key>"
@@ -806,6 +840,10 @@ Normative verification rules:
 - The `cold_root` tag MUST be present and MUST equal the persona's
   npub (cold-root public key). This is the permanent identity the
   attestation binds to the room.
+- The attestation MUST carry exactly one `kel_head` tag (§3.0,
+  ADR-032) naming the latest KEL event the signer had accepted at
+  signing time; it is advisory per §4.5.1 and MUST NOT substitute
+  for the KEL replay above.
 - The `matrix_room` tag applies ONLY when the OPTIONAL Matrix identity
   room (§3.2) is in use. When the attestation is carried inside a Matrix
   identity room, the `matrix_room` tag MUST contain that room's Matrix
@@ -891,6 +929,7 @@ NID:
     ["publishing_key", "<32-byte hex secp256k1 publishing key of this device>"],
     ["cold_root", "<32-byte hex of the persona's npub / cold-root key>"],
     ["nid_proof", "<Ed25519 signature by the NID over the binding payload>"],
+    ["kel_head", "<64-hex id of the latest accepted KEL event>", "<decimal seq>"],
     ["valid_until", ""]
   ],
   "content": "",
@@ -948,6 +987,14 @@ Normative rules for NID delegation:
 - The `d` tag MUST be `["d", "nid:<did:key>"]` so NID delegations are
   replaceable by `(pubkey, kind, d)`.
 - `["valid_until", ...]` follows the same expiry rules as §3.3.2 step 5.
+- The attestation MUST carry exactly one `kel_head` tag (§3.0,
+  ADR-032). Delegations are key-material events (§3.9.10.1): a
+  device's relay observation of its own `kind:31001` (ADR-030
+  enrollment) confirms only *provisional* enrollment under the
+  `provisional-accept` policy (§4.5.2); final enrollment requires the
+  delegation to be repo-carried (immediate at the issuing full node),
+  and `deny-until-repo` verifiers treat the device as unenrolled
+  until then.
 - The epoch key that signed the delegation MUST have been
   KERI-authoritative (§3.5.3) at the evaluation time `t`; a KERI
   rotation supersedes delegations signed under the prior epoch (§3.5,
@@ -963,6 +1010,12 @@ currently-authorized NIDs.
 
 The following MXID-targeted delegation survives only inside the OPTIONAL
 Matrix layer. A persona that does not run Matrix has no MXID delegations.
+The embedded `kind:31001` attestation is epoch-key-signed and MUST carry
+exactly one `kel_head` tag (§3.0, ADR-032), like its §3.3.1 sibling.
+As a `kind:31001`, it is a key-material event (§3.9.10.1): a copy
+observed only on relays or in the identity room confers *provisional*
+delegation under §4.5.2, and the delegation is *final* only once
+repo-carried; `deny-until-repo` verifiers do not honor it until then.
 Each Matrix account that publishes on behalf of the npub is bound by an
 `m.heterodyne.delegation.v1` state event in the identity room, keyed by
 the MXID:
@@ -983,6 +1036,7 @@ the MXID:
         ["heterodyne", "delegation"],
         ["matrix_mxid", "@alice:matrix.org"],
         ["cold_root", "<32-byte hex of the persona's npub / cold-root key>"],
+        ["kel_head", "<64-hex id of the latest accepted KEL event>", "<decimal seq>"],
         ["valid_until", ""]
       ],
       "content": "",
@@ -1290,6 +1344,31 @@ Normative rules:
   with cryptographic chain via `prior_digest`) or `"none"`
   (recovery from cold-root loss; signed by the prior epoch
   key and relying on witness attestations for continuity).
+- A **compromise-declaring** rotation MUST carry exactly one
+  `["compromise_since", "<unix-seconds>"]` tag (§3.0, ADR-032); a
+  routine rotation MUST NOT carry it. `compromise_since` MUST NOT
+  exceed the rotation's `created_at`. Its verification effect is
+  defined by the authority-window rules below.
+
+**Authority windows and compromise declarations (ADR-032).**
+`established_at(E)` is the `created_at` of the accepted KEL event
+whose `epoch_key` field establishes epoch key E. E's authority window
+is the half-open interval
+`[established_at(E), established_at(successor))`, unbounded when no
+accepted successor exists. When a compromise-declaring rotation is
+accepted, with
+`effective_compromise_since = min(compromise_since, rotation
+created_at)`, the superseded epoch key is non-authoritative for every
+event whose `created_at >= effective_compromise_since - 300` (the
+same +/-5-minute skew constant used elsewhere in this spec, applied
+conservatively so boundary events cannot escape by skew), regardless
+of any `kel_head` tag, under both full replay (§3.5.3) and the §4.5.1
+accelerator. ADR-031 vanilla-interop breadcrumbs are exempt (they are
+outside §4.5 verification entirely). Rotation events themselves are
+excluded from `kel_head` carriage regardless of signer - including
+`none`-strategy rotations signed by the prior epoch key - because
+they chain via `prior_digest`; KEL-event freshness comes from replay
+ordering, never from `kel_head`.
 
 **Witness receipts (`content`).** `content` MUST be a JSON array of
 witness-receipt objects, serialized as compact UTF-8 (no insignificant
@@ -1337,9 +1416,14 @@ epoch key. The algorithm follows canonical KERI semantics:
    `{"kinds":[31002,31003], "#p":["<cold-root pubkey hex>"]}`. This is
    the only query that returns `none`-strategy rotations, which are
    authored by the prior epoch key rather than the cold root (§3.5.2).
-   Verifiers MUST issue this tag query against the persona's Nostr write
-   relays and SHOULD additionally fold in the Matrix identity-room
-   mirror. As a defensive secondary path, a verifier SHOULD also
+   A verifier with repo access MUST first fetch the KEL events carried
+   in the persona's repo (via its repo relay, §10.1.2) and treat that
+   set as the authoritative candidate core (§3.9.10.1, ADR-032).
+   Verifiers MUST additionally issue this tag query against the
+   persona's Nostr write relays and SHOULD fold in the Matrix
+   identity-room mirror; relay-only candidates are provisional per
+   §4.5.2 until repo-carried. As a defensive secondary path, a
+   verifier SHOULD also
    chain-discover: after accepting each event (step 3) it learns that
    event's `epoch_key`, and SHOULD issue follow-up `authors` queries for
    the accepted epoch keys to recover any `none` rotation a relay
@@ -1376,7 +1460,13 @@ epoch key. The algorithm follows canonical KERI semantics:
    authoritative. If neither fork meets `threshold`, the KEL
    STALLS at the prior accepted event — no rotation has been
    confirmed — and verifiers MUST surface a "key continuity
-   stalled" indicator to the user.
+   stalled" indicator to the user. After signature and
+   witness-threshold validation, when valid candidates conflict at
+   the same `(cold_root, s)` across backends, the repo-carried
+   candidate is canonical (§3.9.10.1, ADR-032): verifiers follow the
+   branch carried by the persona's repo, and a relay-only conflicting
+   candidate remains provisional (§4.5.2) and MUST NOT displace it.
+   The duplicity condition is still flagged per §13.
 5. Return: the latest accepted rotation's `epoch_key` is the
    persona's current epoch public key; the latest witness
    configuration is in force; routine attestations are
@@ -1563,7 +1653,7 @@ rows in case of conflict:
 
 | Rank | Source | Authoritative for |
 |---|---|---|
-| 1 | KERI key event log (§3.5) — `kind:31002` / `kind:31003` events on the persona's Nostr write relays and/or repo relay | The persona's current epoch public key and witness configuration. No Matrix or Heterodyne state may contradict the KEL. |
+| 1 | KERI key event log (§3.5) — `kind:31002` / `kind:31003` events; the **repo-carried KEL is the canonical source** (§3.9.10.1, ADR-032), with Nostr-relay copies as provisional propagation (§4.5.2) | The persona's current epoch public key and witness configuration. No Matrix or Heterodyne state may contradict the KEL. |
 | 2 | `kind:31005` identity pointer (§11.3) on the persona's write relays | The persona's canonical RID and OPTIONAL full-node host hints. This is the authoritative npub→location mapping (§3.2). When the OPTIONAL Matrix layer is in use it also names the current identity room, superseding the room named by the MXID profile field if they differ. |
 | 3 (OPTIONAL Matrix layer) | `m.heterodyne.root.v1` state event in the named identity room | The cold-root pubkey-to-room binding (§3.2). Present only when the OPTIONAL Matrix layer is used; the root attestation is otherwise a relay-published event on the core backends. |
 | 4 (OPTIONAL Matrix layer) | `m.heterodyne.delegation.v1` state events in the same identity room | Active publisher MXIDs and their dual-authentication binding (§3.3.2). Meaningful only inside the OPTIONAL Matrix layer; NID delegations (§3.3.1) are the core mechanism. |
@@ -1734,6 +1824,12 @@ Cache invalidation:
   (§3.5) supersedes the epoch key that signed it, or a delegation
   revocation (§3.9.7) appears for the delegate, the cache entry MUST be
   invalidated even if the TTL has not yet elapsed.
+- Cache entries derived from provisional key-material state (§4.5.2)
+  MUST be marked provisional and MUST be reconciled (hardened or
+  withdrawn) at the next successful repo sync; a `kel_head` whose
+  `seq` is ahead of the cached head (§4.5.1) MUST trigger immediate
+  revalidation, repo relay first. Accelerator caches (§4.5.1) MUST be
+  rebuilt whenever the accepted KEL changes.
 
 ### 3.7 Failure modes
 
@@ -1742,14 +1838,20 @@ Cache invalidation:
   because its repo relays / full nodes and its Nostr relays are all
   unavailable - the persona's bindings cannot be freshly verified. Cached
   state (§3.6.1) MAY be used with an explicit "identity verification
-  stale" UI signal. Redundancy is opt-in Radicle seeding (§3.11): a
-  persona reachable through more than one full node survives a single
-  full-node outage, and the Nostr-relay backend provides an independent
-  path to the same signed events. If every serving full node is
-  *permanently* gone and no seeded replica remains, recovery follows the
-  involuntary re-anchor procedure (§3.12), with follower-cached identity
-  state bridging verification until a fresh cold-root `kind:31005`
-  pointer propagates.
+  stale" UI signal.
+- **Repo unreachable, relays reachable**: key-material events observed
+  relay-only remain provisional per §4.5.2 - they MUST NOT harden to
+  final, and MUST NOT be withdrawn for absence, until a successful
+  repo sync reconciles them. Clients operating in this state are in
+  reduced-assurance mode and SHOULD surface it when it persists.
+- **Full-node loss and redundancy**: redundancy is opt-in Radicle
+  seeding (§3.11): a persona reachable through more than one full node
+  survives a single full-node outage, and the Nostr-relay backend
+  provides an independent path to the same signed events. If every
+  serving full node is *permanently* gone and no seeded replica
+  remains, recovery follows the involuntary re-anchor procedure
+  (§3.12), with follower-cached identity state bridging verification
+  until a fresh cold-root `kind:31005` pointer propagates.
 - **Identity room unreachable (OPTIONAL Matrix layer)**: when the
   OPTIONAL Matrix layer is in use and identity state is being read from
   an identity room, an all-homeserver outage for that room blocks the
@@ -2489,6 +2591,38 @@ persona reachable through several full nodes that serve its repo relay
 (§3.11) - while the MXID-coordination subsections above cover the
 OPTIONAL Matrix layer only.
 
+#### 3.9.10.1 Repo authority for key-material events (per ADR-032)
+
+The **key-material class** is exactly {`kind:31002`, `kind:31003`,
+`kind:31001`} and is closed. Publication is unchanged - key-material
+events MUST be published to BOTH core backends - but authority is
+not symmetric: relays may forget (retention windows, filtering,
+operator churn), while the Radicle-replicated repo is eventually
+consistent and durable, and key state must never silently regress.
+
+- **Authoritative set.** The repo-carried set is the set of valid
+  key-material events reachable from the verified canonical
+  event-storage refs at the current repo head. Conflicts are keyed by
+  `(cold_root, s)` for KEL events and by the NIP-01 replaceable
+  address `(pubkey, 31001, d)` for delegations. On any divergence
+  between backends, the repo-carried set wins for canonical
+  acceptance; relay-only copies are provisional per §4.5.2.
+- **Rollback resistance.** A verifier MUST reject a repo head that
+  regresses below a previously finalized canonical head unless an
+  authenticated re-anchor (§3.9.10, §3.12.2) authorizes it. Node
+  retention/GC MUST NOT drop key-material events reachable from
+  finalized history.
+- **Bootstrap exclusion.** The bootstrap-discovery class - the
+  `kind:31005` identity pointer and `kind:31010` node advertisements -
+  is OUT of the key-material class: these events exist to LOCATE
+  repos, so repo authority over them would be circular. Their §3.9 /
+  ADR-027 rules stand unchanged. No other kind is in the key-material
+  class, so nothing else can reintroduce the circularity.
+- **Supersession note.** For this class, ADR-032 supersedes ADR-027's
+  relay-primary discovery and SHOULD-level repo mirroring, and amends
+  ADR-030 enrollment finality (§3.3.1: relay observation is
+  provisional; repo confirmation is final).
+
 ### 3.10 Voluntary homeserver-exit procedure (per ADR-015)
 
 This subsection applies to the **OPTIONAL Matrix layer** only: it
@@ -3067,7 +3201,7 @@ signature and identity resolves via the KEL / delegation / `kind:31005`
 core path (§3.6), not via any Matrix room.
 
 ```
-verify_nostr(event) -> {accept | accept_authenticated | accept_attributed
+verify_nostr(event) -> {accept | accept_provisional | equivocation_flagged
                         | reject(reason)}:
     # Core path: a Nostr event fetched from a repo relay or Nostr relay.
     # No Matrix layer is involved.
@@ -3086,14 +3220,39 @@ verify_nostr(event) -> {accept | accept_authenticated | accept_attributed
 
     # Identity resolution via the KEL / delegation / kind:31005 core path
     # (§3.6): resolve the signing pubkey to its persona npub (cold root),
-    # replay the KERI KEL, and check epoch-key authority at created_at.
-    # No Matrix room is consulted.
+    # replay the KERI KEL, and check epoch-key authority at created_at
+    # against the §3.5.2 authority window - including the retroactive
+    # effective_compromise_since cutoff. No Matrix room is consulted.
+    # identity.key_state_final is False when any key-material input on
+    # the resolution path is provisional (§4.5.2) or a KEL refresh is
+    # pending/failed (§4.5.1 condition (d)).
     identity = resolve_identity(signing_pubkey=nostr.pubkey)
     if identity is None:
         return reject("no_heterodyne_identity_for_signing_key")
+
+    # kel_head handling (§3.0 matrix + §4.5.1). Advisory for freshness,
+    # but structurally mandatory where the matrix says MUST.
+    head = check_kel_head(nostr, identity.kel)             # §4.5.1
+    if head.required_and_not_exactly_one_well_formed:
+        return reject("kel_head_missing")
+    if head.forbidden_but_present:
+        return reject("kel_head_forbidden")
+    if head.resolved_seq_mismatch:
+        return reject("kel_head_mismatch")
+    if head.off_accepted_kel:
+        return equivocation_flagged(event)                 # §4.5.1, §13
+    if head.seq_ahead_of_accepted_head:
+        refresh_kel(repo_relay_first=True)                 # §3.5.3 step 1
+        # A failed refresh leaves identity.key_state_final False:
+        # the event can pass checks below but only as provisional.
+
     if not identity.kel.epoch_key_authoritative_at(nostr.pubkey, t=nostr.created_at):
         return reject("signing_key_not_keri_authoritative_at_created_at")
 
+    # Finality (§4.5.2): acceptance derived from provisional key
+    # material is itself provisional and MUST NOT be reported final.
+    if not identity.key_state_final:
+        return accept_provisional(event)
     return accept(event)
 
 
@@ -3102,7 +3261,8 @@ verify_nostr(event) -> {accept | accept_authenticated | accept_attributed
 # Matrix-free client never reaches it. Its Matrix-layer integrity check
 # and its wrapped / bare branches are unchanged, but they are gated on
 # the event having arrived over Matrix.
-verify_matrix(event) -> {accept | accept_authenticated | accept_attributed
+verify_matrix(event) -> {accept | accept_provisional | equivocation_flagged
+                         | accept_authenticated | accept_attributed
                          | reject(reason) | render_as_vanilla}:
     # Step 1: Matrix-layer integrity (delegated to Matrix SDK). This
     # check is meaningful only in the OPTIONAL Matrix layer.
@@ -3149,6 +3309,21 @@ verify_wrapped(event):
     if identity is None:
         return reject("no_heterodyne_identity_for_sender")
 
+    # kel_head handling: identical to verify_nostr (§3.0 matrix +
+    # §4.5.1). The Matrix carrier changes nothing - the embedded Nostr
+    # event is judged by the same per-kind rules.
+    head = check_kel_head(nostr, identity.kel)             # §4.5.1
+    if head.required_and_not_exactly_one_well_formed:
+        return reject("kel_head_missing")
+    if head.forbidden_but_present:
+        return reject("kel_head_forbidden")
+    if head.resolved_seq_mismatch:
+        return reject("kel_head_mismatch")
+    if head.off_accepted_kel:
+        return equivocation_flagged(event)                 # §4.5.1, §13
+    if head.seq_ahead_of_accepted_head:
+        refresh_kel(repo_relay_first=True)                 # §3.5.3 step 1
+
     # Delegation check, evaluated at the event's created_at. is_active()
     # honors the §3.3 step-7 m.heterodyne.delegation_revoked.v1 check, with
     # revocation time clamped per §3.9.7 against backdating.
@@ -3164,6 +3339,10 @@ verify_wrapped(event):
     if not identity.kel.epoch_key_authoritative_at(nostr.pubkey, t=nostr.created_at):
         return reject("signing_key_not_keri_authoritative_at_created_at")
 
+    # Finality (§4.5.2): same rule as verify_nostr - provisional key
+    # material (or a pending/failed refresh) caps the verdict.
+    if not identity.key_state_final:
+        return accept_provisional(event)
     return accept(event)
 
 
@@ -3237,7 +3416,14 @@ accept verdicts differ only in the UI affordance the client attaches:
 `accept` (wrapped, verified), `accept_authenticated` (bare with a valid
 notarization badge), and `accept_attributed` (bare default, attributed
 to the author's npub via the delegation but carrying no transferable
-proof).
+proof). Two further outcomes come from ADR-032: `accept_provisional`
+(all checks passed, but the key state they rest on is provisional per
+§4.5.2 - the result MUST NOT be reported or persisted as final, and
+is reconciled at the next successful repo sync) and
+`equivocation_flagged` (a structurally valid `kel_head` names an
+event off the accepted KEL, §4.5.1 - the event is rendered with an
+explicit security warning per §13, never silently dropped, and never
+counted as verified).
 
 Receivers MUST NOT silently drop events on verification failure,
 whether the event arrived over a core backend or the OPTIONAL Matrix
@@ -3245,6 +3431,99 @@ layer.
 Either render with an explicit indicator, or surface the rejection to
 the user in a way they can act on (e.g., "this post failed
 verification, click for details"). Silent drops mask attacks.
+
+#### 4.5.1 `kel_head` handling and the verification accelerator (ADR-032)
+
+Applicability: the §3.0 per-kind matrix is normative. In summary:
+every epoch-key-signed Heterodyne event MUST carry exactly one
+`kel_head` tag, including the proposed-ADR-030 epoch-key-signed
+enrollment invite (`kind:30078`, `d` = `double-ratchet/invites/epoch`).
+`kind:31002`/`kind:31003` MUST NOT carry it (all strategies, §3.5.2).
+Cold-root-signed events MAY. Device-, session-, and
+ratchet-key-signed §5.7 DR wire events, proposed-ADR-030 RPC rumors,
+and ADR-031 breadcrumbs MUST NOT.
+
+Structural rules (§3.0): an event required to carry the tag fails
+verification unless it carries exactly one well-formed instance
+(`kel_head_missing` covers absent, duplicate, and malformed); once
+the named event is resolved on the accepted KEL, its `s` value MUST
+equal the tag's decimal `seq`, else verification fails
+(`kel_head_mismatch`). These are integrity checks on the tag itself,
+not staleness judgments.
+
+`kel_head` is advisory, never authoritative:
+
+- A verifier MUST NOT accept an event solely because its `kel_head`
+  checks out, and MUST NOT reject an otherwise-valid event solely
+  because its `kel_head` is stale - staleness is normal propagation
+  lag.
+- A `kel_head` whose `seq` is ahead of the verifier's accepted head
+  signals an unseen rotation; the verifier SHOULD refresh the KEL
+  (repo relay first, §3.5.3 step 1) before final acceptance.
+- A structurally valid `kel_head` naming an event that is not on the
+  persona's accepted KEL MUST produce the `equivocation-flagged`
+  verification outcome and MUST be surfaced through the
+  implementation's security-warning interface (§13).
+
+**Accelerator - decision-equivalent or not at all.** A verifier MAY
+check the signing epoch key against materialized key state at the
+referenced head instead of replaying ONLY when the result is
+decision-equivalent to a full §3.5.3 replay over its accepted KEL:
+(a) the referenced event is on the accepted KEL; (b) the event's
+`created_at` falls within that head's §3.5.2 authority window; (c) no
+later accepted KEL event retroactively invalidates the signing key at
+`created_at` (an `effective_compromise_since` covering it); and (d)
+no head-ahead or otherwise pending KEL refresh exists - an attempted
+but failed refresh does NOT satisfy (d). Until a successful refresh
+establishes the accepted head, the verifier MUST either run full
+§3.5.3 replay over a complete authoritative candidate set (repo-
+carried core plus relay candidates, §3.5.3 step 1) or hold the event
+provisional per §4.5.2, and MUST NOT report final acceptance. If any
+of (a)-(d) cannot be established, the verifier MUST fall back to full
+replay before surfacing the event as verified. "Materialized key state" here is a
+verifier-local cache built from the verifier's own completed replay
+of the accepted KEL; the optional `refs/xyz.heterodyne.keri/state`
+ref (§10.1.2) MUST NOT establish acceptance and MAY populate the
+cache only after the verifier has independently matched it to the
+accepted KEL.
+
+#### 4.5.2 Provisional acceptance and withdrawal for key-material events (ADR-032)
+
+The key-material class is exactly {`kind:31002`, `kind:31003`,
+`kind:31001`} (closed; §3.9.10.1). A key-material event seen only on
+relays is *provisional*, under a declared verifier policy:
+
+- `provisional-accept` (default): apply the event (e.g., verify fresh
+  posts under a just-rotated key) but mark that key state and every
+  acceptance derived from it provisional; provisional results MUST
+  NOT be reported as final.
+- `deny-until-repo` (strict): key-material events take effect only
+  once repo-carried.
+
+Hardening and withdrawal:
+
+- A repo-carried event hardens provisional acceptance to final.
+  Provisional status MUST NOT harden while the repo is unreachable.
+  Light nodes without repo access operate in `provisional-accept`
+  permanently reduced-assurance mode (§3.7) and MUST upgrade their
+  view from the repo relay when reachable.
+- **Convergence-gated withdrawal.** Absence-triggered withdrawal
+  requires causal convergence, not mere reachability. For a KEL event
+  at `seq` N: withdraw only when the verified repo-carried KEL head
+  has `seq >= N` and the event at N is missing or different (the hash
+  chain makes `seq` a true causality marker). For a `kind:31001`: its
+  `kel_head` proves nothing about repo convergence, so bare absence
+  NEVER withdraws - withdrawal requires a canonically-included
+  conflicting event at its replaceable address, an explicit
+  revocation, or a verified repo-ingestion checkpoint (§10.1.2)
+  proving the repo processed submissions at or beyond the
+  delegation's acknowledged submission. A reachable but causally
+  behind replica leaves provisional status unchanged.
+- **Withdrawal lifecycle.** If later full verification, a KEL update,
+  or repo reconciliation contradicts an acceptance made via the
+  §4.5.1 accelerator or under provisional key state, the verifier
+  MUST withdraw the acceptance signal, flag the event per §13, and
+  mark dependent events unresolved until reverified.
 
 ## 5. Repo-visibility taxonomy (and OPTIONAL Matrix discussion kinds)
 
@@ -5044,6 +5323,14 @@ Discovery rests on two Nostr-native pointers and three node roles.
   persona's repo relay SHOULD publish one so routing nodes can route to
   them.
 
+Discovery bootstraps over relays by design - `kind:31005` and
+`kind:31010` are the bootstrap-discovery class and are excluded from
+repo authority (§3.9.10.1). Once a persona's repo is located through
+them, a verifier with repo access MUST reconcile its key-material view
+(KEL, delegations) against the repo-carried set (§3.5.3 step 1,
+§4.5.2): the pointers get you to the repo; the repo is then the
+canonical source for key state (ADR-032).
+
 ```json
 {
   "id": "<32-byte hex>",
@@ -6793,6 +7080,95 @@ CLI or node-config override (5 MiB for special refs - `rad/id` and
 treat them as fixed Heartwood limits rather than Heterodyne-tunable
 parameters.
 
+**Materialized-KEL ref profile (OPTIONAL storage profile, ADR-032).**
+A second reserved namespace, `refs/xyz.heterodyne.keri/*`, holds an
+optional git materialization of the persona's KEL - deliberately NOT
+under `refs/cobs/`, which carries CRDT merge semantics; these chains
+are linear derived projections (the layout follows radicle-keri's
+design, cited as prior art). Repo relays MAY implement the profile;
+full nodes SHOULD. When implemented:
+
+- `refs/xyz.heterodyne.keri/log`: one commit per accepted KEL event
+  in `s` order; sole parent is the prior event's commit (the
+  inception commit is parentless). Each commit's tree holds exactly
+  one entry: mode `100644`, path `event.nip01`, content the event's
+  exact `nip01_raw` bytes.
+- `refs/xyz.heterodyne.keri/state`: a key-state chain; each state
+  commit's tree holds exactly one entry - mode `100644`, path
+  `state.json`, the key state after applying the corresponding log
+  event, canonicalized per RFC 8785 (JCS) against the normative
+  schema below - with two parents in normative order: the prior state
+  commit, then the producing log commit (the first state commit has
+  the inception log commit as sole parent).
+
+  `state.json` MUST validate against this schema before JCS
+  canonicalization; all six fields are required and no additional
+  properties are permitted:
+
+  ```json
+  {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["cold_root", "s", "epoch_key", "witnesses",
+                 "threshold", "producing_event_id"],
+    "properties": {
+      "cold_root": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+      "s": { "type": "integer", "minimum": 0 },
+      "epoch_key": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+      "witnesses": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "weight"],
+          "properties": {
+            "id": { "type": "string" },
+            "weight": { "type": "integer", "minimum": 1 }
+          }
+        }
+      },
+      "threshold": { "type": "integer", "minimum": 0 },
+      "producing_event_id": { "type": "string",
+                              "pattern": "^[0-9a-f]{64}$" }
+    }
+  }
+  ```
+
+  Value rules: `s`, `weight`, and `threshold` are JSON integers,
+  never strings. Hex strings are lowercase. Each witness `id` is the
+  witness identifier exactly as it appears in the KEL's witness
+  configuration in force at this event (the `did:key` string,
+  verbatim, §3.5.2). `witnesses` is sorted ascending by `id` compared
+  as Unicode code points; an empty witness set is the empty array
+  `[]`, never omitted or `null`. JCS then fixes member ordering and
+  number formatting, so two conforming nodes emit byte-identical
+  `state.json` blobs.
+- **Deterministic derivation.** Author and committer are exactly
+  `Heterodyne KERI <keri@heterodyne.invalid>`; both timestamps are
+  the event's decimal `created_at` with offset `+0000`; the commit
+  message is the lowercase 64-hex event id followed by exactly one
+  LF; no `encoding`, `gpgsig`, or other optional headers. Two
+  conforming nodes MUST derive byte-identical chains from the same
+  accepted KEL.
+- **Atomicity.** Rebuild and update MUST occur as one atomic
+  multi-ref transaction (compare-and-swap on both refs); an empty
+  accepted KEL deletes both refs in that transaction; a backend
+  unable to provide multi-ref atomicity MUST NOT claim this profile.
+  Re-derivation on divergence is a full atomic rebuild, never an
+  incremental patch. Readers MUST check both tips derive from the
+  same accepted KEL head before using either as a cache.
+- **Derived, never authoritative.** The refs are a projection of the
+  repo-carried KEL events (§3.9.10.1): on divergence the events win
+  and the node MUST re-derive. The refs are not an input to §4.5
+  verification (§4.5.1 cache rule).
+
+**Repo-ingestion checkpoint (ADR-032).** A repo relay SHOULD expose a
+monotonic ingestion watermark over its canonical event-storage head -
+a value that strictly increases as submissions are processed and that
+a verifier can compare against a submission acknowledgment. §4.5.2
+uses this checkpoint as the only absence-based withdrawal proof for
+`kind:31001` delegations.
+
 **Two conformance targets (repo-relay CLIENT vs SERVER/STORAGE).** The
 repo-relay requirement splits into two independently-testable targets so
 that baseline conformance does not wait on the not-yet-written storage
@@ -6842,8 +7218,17 @@ following CORE (Matrix-independent) capabilities:
 - Identity-state management (§3): root attestation, delegations
   (including the bidirectional `kind:31001` NID binding, §3.3.1), KERI
   key event log (§3.5), revocation, and the KEL-over-identity-document
-  reconciliation rules (§3.9.10). The KEL is published to Nostr relays
-  and SHOULD be mirrored into the identity repo.
+  reconciliation rules (§3.9.10). Key-material events MUST be
+  published to both backends, with the repo-carried set canonical
+  (§3.9.10.1, superseding the earlier relay-primary/SHOULD-mirror
+  rule); authoring stamps `kel_head` per the §3.0 matrix (handling in
+  §4.5.1), and verification tracks provisional/final key-material
+  state per §4.5.2.
+- Full-node builds: the derived-export-AID capability (§11.8) - a
+  full node SHOULD implement it, MUST NOT enable it for a persona
+  without operator consent, and once it is enabled SHOULD maintain
+  the export AID and produce the origin-independent export package
+  regardless of whether an operator origin is configured.
 - The three privacy tiers (§9.0): public repo, private repo (with the
   private-tier honesty warning, §9.0), and encrypted-blobs-in-repo
   (NIP-44 encrypt-before-commit plus `kind:31011` audience-key
@@ -7818,6 +8203,63 @@ restriction. §11.1 "the wire protocol accepts what it accepts"
 remains accurate; strict mode is the optional client-side
 filter layer on top.
 
+### 11.8 Canonical-KERI interop: did:webs export (ADR-032)
+
+**Wire-format non-goal (normative).** NIP-01 with `nip01_raw`
+(§3.0.1) is the wire; KERI10JSON/CESR MUST NOT appear as a Heterodyne
+wire or storage format. Canonical-KERI forms exist only as the
+derived export artifacts defined here.
+
+**Derived export AID, not signature conversion.** A
+signature-preserving transformation of the Heterodyne KEL into
+canonical KERI events is impossible: Nostr signatures verify over
+NIP-01 serialization, not KERI/CESR; historical epoch secrets are
+destroyed and the cold root is offline; and the Heterodyne KEL
+carries no canonical-KERI next-key commitments. The export is
+therefore a derived interoperability identity: a full node SHOULD
+implement the capability to maintain, per persona, an export-specific
+KERI AID - incepted once with export-held keys - whose KEL anchors
+digests of the persona's accepted Heterodyne KEL events in order, and
+whose DID document names the persona npub as its canonical Heterodyne
+subject. A full node MUST NOT enable an export AID for a persona
+without operator consent; once enabled for a persona, the node SHOULD
+maintain the export AID continuously (anchoring each newly accepted
+KEL event). Canonical KERI tooling (e.g., keripy) verifies the
+export AID's own KEL and anchored digests; persona authority remains
+solely the Heterodyne KEL, and the export AID/DID MUST NOT be treated
+as an alternate authoritative identity nor substituted for the npub
+anywhere this spec requires one.
+
+**Origin-independent package vs origin-bound artifacts.** Once
+enabled for a persona, a full node SHOULD produce the
+origin-independent export package (the export AID's CESR stream plus
+the anchored-digest map) regardless of whether an operator web origin
+is configured. did:webs-specific artifacts (`did.json`, `keri.cesr`,
+designated aliases - and the did:webs identifier itself, which embeds
+host and path) are produced only when an operator origin and path are
+supplied; their absence without an origin is NOT an export failure,
+nor is a missing served document a protocol error.
+
+**Failure and degraded semantics.** Security-relevant state MUST NOT
+be omitted or altered in a served artifact. Unmappable
+security-relevant state fails with `UNMAPPABLE_FEATURE` (no
+semantics-preserving mapping exists), `UNSUPPORTED_CRYPTO_SUITE`
+(mapping exists, crypto suite unavailable locally), or
+`INCOMPLETE_EXPORT` (required source events unavailable).
+Non-security metadata omissions MAY be emitted with status `degraded`
+plus explicit warning codes and MUST NOT be labeled complete.
+
+**Informative npub<->AID note.** The persona npub is, in KERI terms,
+comparable to a basic (non-transferable) prefix over secp256k1: the
+cold root is a single public key whose control authority Heterodyne
+then rotates via its own KEL rather than KERI next-key commitments.
+The mapping is explanatory only; it confers no identifier status.
+
+**Assumed versions.** KERI and CESR: ToIP KSWG drafts (primary KERI
+citation arXiv 1907.02143); did:webs: ToIP draft v0.9.x. The export
+targets the exact draft revisions pinned here at release time; pins
+advance with 0.x releases.
+
 ## 12. Versioning and capability negotiation
 
 ### 12.1 Strict semver
@@ -8427,6 +8869,13 @@ mitigated by the cited spec sections:
 | Storage exhaustion on a full node | §10.1.2 repo-relay retention / GC / quota rules (part of the repo-relay SERVER/STORAGE conformance target, TBD, MUST fix before a repo relay is server-conformant; does not gate baseline client/vector conformance) |
 | Org rogue-epoch-key relay-bypass | §6.7.0 / §8.8 delegate-threshold canonical-branch reachability rule; FROST deferred (ADR-027) |
 | SHA-1 RID / git-object collision | §13.1.1 (re-scoped, verified against Heartwood 1.9.1): RID-genesis-binding confusion only, not content/event forgery; resolve divergence via the KEL + cold-root `kind:31005`; no SHA-256 repo mode exists in 1.9.1 |
+| Lying/stale `kel_head` (author-asserted hint) | §4.5.1 advisory-only rule; accelerator permitted only under decision-equivalence conditions (a)-(d) |
+| Forked/off-KEL `kel_head` (equivocation probe) | §4.5.1 `equivocation-flagged` outcome MUST + security-warning surfacing |
+| Backdated events under a stolen epoch key | §3.5.2 `compromise_since` / `effective_compromise_since` retroactive cutoff, enforced by both replay and the accelerator |
+| Relay suppression or loss of key-material events | §3.9.10.1 repo authority + mandatory dual publication; §4.5.2 provisional contract (no silent finality) |
+| Stale-replica withdrawal race (absence mistaken for revocation) | §4.5.2 convergence-gated withdrawal: KEL `seq` watermark; `kind:31001` requires conflict, revocation, or the §10.1.2 ingestion checkpoint |
+| Repo rollback of key history | §3.9.10.1 rollback resistance (reject regressing heads absent authenticated re-anchor) + GC prohibition |
+| Export-AID/DID misuse as an identity | §11.8 derived-never-authoritative + npub-substitution prohibition + operator-consent MUST |
 
 For threats that are explicitly out of scope (compromised user
 devices, traffic analysis under Tor, post-quantum adversaries) see
@@ -8531,6 +8980,7 @@ Vectors are authored per spec section. The coverage targets:
 |---|---|---|
 | `identity/` | §3 | Root attestation; delegation (active, expired, revoked); revocation post-window; CORE Matrix-free `kind:31005` race tiebreaker (valid cold-root signature, then KEL consistency, then higher `created_at`, then lex-min id) resolved with no Matrix input (§3.9.8); identity room with full state (OPTIONAL Matrix layer) |
 | `keri/` (per ADR-003, ADR-021, ADR-022) | §3.5 | Inception event; rotation event (committed strategy); rotation event (none strategy with witness threshold); first-seen ordering verifier; fork-resolution with conflicting rotations; `did:key` witness verified against the embedded key with no network resolution (per ADR-022); `kind:31008` informal vouch NOT counted toward threshold — a rotation acceptable only by counting informal vouches is rejected (advisory-only, per ADR-021) |
+| `keri-authority/` (per ADR-032) | §3.0, §3.5.2, §4.5.1, §4.5.2, §3.9.10.1, §10.1.2, §11.8 | `kel_head` absent/duplicate/malformed/mismatched on an epoch-key-signed event; forbidden `kel_head` on `kind:31002`/`31003`, DR wire, and ADR-031 breadcrumbs; mandatory `kel_head` on `kind:31000`, `kind:31001`, and the ADR-030 epoch-key invite; accelerator decision-equivalence incl. a backdated event caught by `effective_compromise_since`; failed KEL refresh does not satisfy condition (d); provisional key material never hardens while the repo is unreachable; convergence-gated withdrawal with a causally behind replica (no withdrawal) and with a converged head (withdrawal); `(pubkey, 31001, d)` conflict resolution; dependent-event unresolved transitions after withdrawal; materialized refs never accepted as verification authority; byte-identical `refs/xyz.heterodyne.keri/*` derivation incl. empty-KEL deletion and atomic rebuild; export-AID digest anchoring; origin-absent artifact rules; degraded-vs-fail export cases; KERI10JSON/CESR-on-wire rejection; `equivocation-flagged` outcome; export-AID/DID substitution for the npub rejected |
 | `config_room/` | §3.8 | Minimal config room; persona_config with private mutes; key_backup with various wrapping algorithms; cross-MXID sync of persona_config/user_prefs/key_backup across mutual config rooms with device_inventory NOT synced (per ADR-020) |
 | `multi-homing/` (per ADR-009, OPTIONAL Matrix layer) | §3.9 | Active-room election; publish-lease acquisition and renewal; single-MXID revocation procedure; OPTIONAL Matrix corroboration of the `kind:31005` tiebreaker via KERI witness counts (the CORE Matrix-free tiebreaker lives in `identity/`, §3.9.8); partition-window void-and-requeue |
 | `envelope/` | §4 | Minimal kind:1 wrapped; bare DM with heterodyne_nostr_sig; fallback rendering verification; cross-kind wrapping (1, 7, 30023) |

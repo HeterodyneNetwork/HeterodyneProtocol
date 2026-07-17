@@ -1,0 +1,46 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "keri-authority/dependent-events-unresolved",
+  "spec_refs": [
+    "§4.5.2",
+    "§13",
+    "§14.3"
+  ],
+  "description": "When a key-material acceptance is withdrawn (per §4.5.2), the verifier withdraws the acceptance signal, flags per §13, and marks dependent events (posts verified under that key state) unresolved until reverified.",
+  "input": {
+    "withdrawn_key_material": {
+      "kind": 31003,
+      "seq": 2,
+      "event_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "dependent_events": [
+      {
+        "event_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "kind": 1
+      },
+      {
+        "event_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "kind": 31007
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "withdrawn_on_reconcile",
+    "normalized": {
+      "dependent_events_marked_unresolved": [
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      ],
+      "dependents_status": "unresolved_until_reverified"
+    }
+  },
+  "decision_trace": [
+    "withdraw_key_material",
+    "identify_dependent_events",
+    "mark_dependents_unresolved",
+    "await_reverification"
+  ],
+  "direction": "consume"
+}

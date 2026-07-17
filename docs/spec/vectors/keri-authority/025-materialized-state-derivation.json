@@ -1,0 +1,71 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "keri-authority/materialized-state-derivation",
+  "spec_refs": [
+    "§10.1.2",
+    "§14.3"
+  ],
+  "description": "refs/xyz.heterodyne.keri/state derivation: each state commit's tree holds one entry mode 100644 path state.json, the key state after applying the log event, canonicalized per RFC 8785 (JCS) against the §10.1.2 schema. Parents are, in order, the prior state commit then the producing log commit; the first state commit has the inception log commit as sole parent.",
+  "input": {
+    "fixture_persona": "alice",
+    "states": [
+      {
+        "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "s": 0,
+        "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "witnesses": [],
+        "threshold": 0,
+        "producing_event_id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def"
+      },
+      {
+        "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "s": 1,
+        "epoch_key": "1be68a5a028f2601d0e80d468c344ba331d611b96c358b6032e8b4da0547fc11",
+        "witnesses": [],
+        "threshold": 0,
+        "producing_event_id": "5087532c7f6cb9e276b4499dd55f29a346f742785cd26abdd7db0fb60562fb52"
+      }
+    ],
+    "jcs": "RFC 8785: keys sorted by UTF-16 code units; s/threshold/weight are JSON integers; hex lowercase; empty witness set is []."
+  },
+  "expected_output": {
+    "canonical_wire": "1456fe106098191c8ac06df3d92d985ea51b3cc8",
+    "decoded": {
+      "ref": "refs/xyz.heterodyne.keri/state",
+      "state_tip": "1456fe106098191c8ac06df3d92d985ea51b3cc8",
+      "log_tip": "c1b8b81cc4262bbac4282290292baee2bbb9c400",
+      "commits": [
+        {
+          "s": 0,
+          "producing_event_id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "path": "state.json",
+          "mode": "100644",
+          "state_json": "{\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"epoch_key\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"producing_event_id\":\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"s\":0,\"threshold\":0,\"witnesses\":[]}",
+          "blob_oid": "76b5d478b704eca50833a0245ead25ec25c20faa",
+          "tree_oid": "116c6e43d9aa60fbc8ecd60a4fb2b2f5e772240e",
+          "commit_oid": "6bdff9460228cc32bf7818f8c6310b6812368ad6",
+          "parents": [
+            "d3c49e5bf945410bca205c7a7bc0f57fa67b57ac"
+          ]
+        },
+        {
+          "s": 1,
+          "producing_event_id": "5087532c7f6cb9e276b4499dd55f29a346f742785cd26abdd7db0fb60562fb52",
+          "path": "state.json",
+          "mode": "100644",
+          "state_json": "{\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"epoch_key\":\"1be68a5a028f2601d0e80d468c344ba331d611b96c358b6032e8b4da0547fc11\",\"producing_event_id\":\"5087532c7f6cb9e276b4499dd55f29a346f742785cd26abdd7db0fb60562fb52\",\"s\":1,\"threshold\":0,\"witnesses\":[]}",
+          "blob_oid": "e23d150b1d0014dce7f21a62135f8deffbd7ca42",
+          "tree_oid": "961b2ad81f1ab4fa8c7d0db97412d4318ae2f493",
+          "commit_oid": "1456fe106098191c8ac06df3d92d985ea51b3cc8",
+          "parents": [
+            "6bdff9460228cc32bf7818f8c6310b6812368ad6",
+            "c1b8b81cc4262bbac4282290292baee2bbb9c400"
+          ]
+        }
+      ]
+    }
+  },
+  "notes": "The two-parent ordering (prior state commit, then producing log commit) appears at s=1; the s=0 state commit has the inception log commit as its sole parent. Readers MUST check both tips derive from the same accepted KEL head before using either as a cache.",
+  "direction": "produce"
+}

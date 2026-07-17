@@ -1,0 +1,64 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "keri-authority/kel-head-mandatory-on-root",
+  "spec_refs": [
+    "§3.0",
+    "§4.5.1",
+    "§14.3"
+  ],
+  "description": "A kind:31000 root attestation carrying exactly one well-formed kel_head that resolves to the accepted KEL head (s=0) passes the structural and resolution checks and is accepted.",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767225940,
+      "kind": 31000,
+      "tags": [
+        [
+          "d",
+          ""
+        ],
+        [
+          "heterodyne",
+          "root"
+        ],
+        [
+          "cold_root",
+          "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
+        ]
+      ],
+      "content": "",
+      "id": "9153c713205ed68c49276838a49fc10b4e8529b2b45bf2f71647315958c92fad",
+      "sig": "dd484ccd0f571158ae81a43903a3c5b941422a477891930e742283022fff3762014c663d400da0f44bdbcce1792e7c86031bce47494ab3d56a88fb2ff1552da5"
+    },
+    "accepted_kel": [
+      {
+        "kind": 31002,
+        "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+        "s": 0,
+        "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "kel_head_present": true,
+      "kel_head_seq": 0,
+      "kel_head_on_accepted_kel": true
+    }
+  },
+  "decision_trace": [
+    "verify_bip340_signature",
+    "require_kel_head_present",
+    "kel_head_well_formed",
+    "resolve_on_accepted_kel",
+    "accept"
+  ],
+  "direction": "consume"
+}

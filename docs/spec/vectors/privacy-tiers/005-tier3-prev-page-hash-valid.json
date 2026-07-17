@@ -9,11 +9,11 @@
   ],
   "description": "A Tier 3 index page chains to its predecessor: the decrypted previous_index.prev_page_hash equals the SHA-256 of the prior page's canonical NIP-01 serialization.",
   "input": {
-    "prior_page_id": "18422d157eb1b989797dad425887ac841abb99ecd671c594997c49d4d9362236",
-    "prior_page_canonical_hash": "18422d157eb1b989797dad425887ac841abb99ecd671c594997c49d4d9362236",
+    "prior_page_id": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28",
+    "prior_page_canonical_hash": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28",
     "current_page_previous_index": {
-      "event_id": "18422d157eb1b989797dad425887ac841abb99ecd671c594997c49d4d9362236",
-      "prev_page_hash": "18422d157eb1b989797dad425887ac841abb99ecd671c594997c49d4d9362236"
+      "event_id": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28",
+      "prev_page_hash": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28"
     }
   },
   "expected_output": {

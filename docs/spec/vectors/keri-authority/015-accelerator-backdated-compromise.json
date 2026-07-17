@@ -1,0 +1,36 @@
+{
+  "vector_schema_version": "1.0.0",
+  "spec_version": "0.4.0",
+  "vector_id": "keri-authority/accelerator-backdated-compromise",
+  "spec_refs": [
+    "§3.5.2",
+    "§4.5.1",
+    "§14.3"
+  ],
+  "description": "A backdated event signed by a superseded epoch key is caught by effective_compromise_since. With compromise_since=T+200 and rotation created_at=T+500, effective_compromise_since=min(200,500)=T+200; the -300s skew makes the key non-authoritative for any created_at >= T-100, so the event at T+100 is rejected under both replay and the accelerator.",
+  "input": {
+    "signing_epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+    "event_created_at": 1767225700,
+    "compromise_declaration": {
+      "compromise_since": 1767225800,
+      "rotation_created_at": 1767226100
+    },
+    "skew_seconds": 300
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "signing_key_compromised_at_created_at",
+    "normalized": {
+      "effective_compromise_since": 1767225800,
+      "non_authoritative_cutoff": 1767225500
+    }
+  },
+  "decision_trace": [
+    "accept_compromise_rotation",
+    "compute_effective_compromise_since",
+    "apply_300s_skew",
+    "created_at_at_or_after_cutoff",
+    "reject"
+  ],
+  "direction": "consume"
+}

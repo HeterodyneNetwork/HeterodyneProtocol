@@ -24,7 +24,7 @@
   },
   "notes": "NIP-44 v2 symmetric layer only (index_key used directly as the conversation key; no ECDH). The opaque d value is a fixture placeholder; producers SHOULD derive it from >=128 bits of randomness per §6.7.4.",
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225682,31007,[[\"d\",\"opaque-page-01\"],[\"heterodyne\",\"feed_index\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"heterodyne_wrap\",\"room_key.v2\"],[\"key_id\",\"aud-2026-05-25-a\"]],\"AlFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRXzH6jk3Cx70+Gli/nzonwZdXwo5SqnfD1WVIDW6vZPX9yarluBgjELUqglP8wMRbMNa9/XoiYB/WoMxL+IadWTfwM3q3+xM4Cbb5IQ7GUszPLWylXvuHv5Y4FYZ4bU2k+HRUpzA2is728/FHtAdVdrlPWfcN6FK6Lujy7TjroIEgSJDDR11JGiFlXL1qkJ42s/HvdmdusjVvDPhenI/ncnusHGs36dOoSvZAhx6tc+jzYxVNofCVzVB8GHDFmFCFXqwwcXKhRBDQMQdp/OTfMy5hOO4UBYz4kPvBoO3VWIondA/Bmuf6l22p9P1PZ9Bg6E7ilJVm4mYSrkSSfkedhxWXwT0cVVuiu7nSk2Pww+AhUOGz5U0vCx2fUX0H/KcQb/L7t0ElUspkXR7XEI0GxQS7mzdzAHWd+cksNtyUeWSZFyOp7CGr/K6rZoV5uVYVj19Muq7qoWjn8sQ+KvgJ+WkL\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225682,31007,[[\"d\",\"opaque-page-01\"],[\"heterodyne\",\"feed_index\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"heterodyne_wrap\",\"room_key.v2\"],[\"key_id\",\"aud-2026-05-25-a\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"AlFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRXzH6jk3Cx70+Gli/nzonwZdXwo5SqnfD1WVIDW6vZPX9yarluBgjELUqglP8wMRbMNa9/XoiYB/WoMxL+IadWTfwM3q3+xM4Cbb5IQ7GUszPLWylXvuHv5Y4FYZ4bU2k+HRUpzA2is728/FHtAdVdrlPWfcN6FK6Lujy7TjroIEgSJDDR11JGiFlXL1qkJ42s/HvdmdusjVvDPhenI/ncnusHGs36dOoSvZAhx6tc+jzYxVNofCVzVB8GHDFmFCFXqwwcXKhRBDQMQdp/OTfMy5hOO4UBYz4kPvBoO3VWIondA/Bmuf6l22p9P1PZ9Bg6E7ilJVm4mYSrkSSfkedhxWXwT0cVVuiu7nSk2Pww+AhUOGz5U0vCx2fUX0H/KcQb/L7t0ElUspkXR7XEI0GxQS7mzdzAHWd+cksNtyUeWSZFyOp7CGr/K6rZoV5uVYVj19Muq7qoWjn8sQ+KvgJ+WkL\"]",
     "decoded": {
       "event": {
         "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
@@ -50,11 +50,16 @@
           [
             "key_id",
             "aud-2026-05-25-a"
+          ],
+          [
+            "kel_head",
+            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "0"
           ]
         ],
         "content": "AlFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRXzH6jk3Cx70+Gli/nzonwZdXwo5SqnfD1WVIDW6vZPX9yarluBgjELUqglP8wMRbMNa9/XoiYB/WoMxL+IadWTfwM3q3+xM4Cbb5IQ7GUszPLWylXvuHv5Y4FYZ4bU2k+HRUpzA2is728/FHtAdVdrlPWfcN6FK6Lujy7TjroIEgSJDDR11JGiFlXL1qkJ42s/HvdmdusjVvDPhenI/ncnusHGs36dOoSvZAhx6tc+jzYxVNofCVzVB8GHDFmFCFXqwwcXKhRBDQMQdp/OTfMy5hOO4UBYz4kPvBoO3VWIondA/Bmuf6l22p9P1PZ9Bg6E7ilJVm4mYSrkSSfkedhxWXwT0cVVuiu7nSk2Pww+AhUOGz5U0vCx2fUX0H/KcQb/L7t0ElUspkXR7XEI0GxQS7mzdzAHWd+cksNtyUeWSZFyOp7CGr/K6rZoV5uVYVj19Muq7qoWjn8sQ+KvgJ+WkL",
-        "id": "18422d157eb1b989797dad425887ac841abb99ecd671c594997c49d4d9362236",
-        "sig": "56a1848a557e0f901a8dd356b061be730df70e7f5e4252131b53ef8c7ec7dbc3e034d6966f0c2c3311008b897f570f6190ca47cb45306aacb24c4c044d56a783"
+        "id": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28",
+        "sig": "f66c89312dae3d30f329110ea51ad7852047016456dc07c24e138e2fe9b28e4039f9209b361f36d92e500bd65f4e93eb32c367f230906348d329681eb85248c1"
       },
       "index_key": "8af8dbc5e089ab6857e01895e8aeba6520564f01ed5e22f6eb0f147b9cee75ab",
       "plaintext": {
@@ -72,8 +77,8 @@
       },
       "nip44_payload": "AlFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRXzH6jk3Cx70+Gli/nzonwZdXwo5SqnfD1WVIDW6vZPX9yarluBgjELUqglP8wMRbMNa9/XoiYB/WoMxL+IadWTfwM3q3+xM4Cbb5IQ7GUszPLWylXvuHv5Y4FYZ4bU2k+HRUpzA2is728/FHtAdVdrlPWfcN6FK6Lujy7TjroIEgSJDDR11JGiFlXL1qkJ42s/HvdmdusjVvDPhenI/ncnusHGs36dOoSvZAhx6tc+jzYxVNofCVzVB8GHDFmFCFXqwwcXKhRBDQMQdp/OTfMy5hOO4UBYz4kPvBoO3VWIondA/Bmuf6l22p9P1PZ9Bg6E7ilJVm4mYSrkSSfkedhxWXwT0cVVuiu7nSk2Pww+AhUOGz5U0vCx2fUX0H/KcQb/L7t0ElUspkXR7XEI0GxQS7mzdzAHWd+cksNtyUeWSZFyOp7CGr/K6rZoV5uVYVj19Muq7qoWjn8sQ+KvgJ+WkL"
     },
-    "id": "18422d157eb1b989797dad425887ac841abb99ecd671c594997c49d4d9362236",
-    "sig": "56a1848a557e0f901a8dd356b061be730df70e7f5e4252131b53ef8c7ec7dbc3e034d6966f0c2c3311008b897f570f6190ca47cb45306aacb24c4c044d56a783"
+    "id": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28",
+    "sig": "f66c89312dae3d30f329110ea51ad7852047016456dc07c24e138e2fe9b28e4039f9209b361f36d92e500bd65f4e93eb32c367f230906348d329681eb85248c1"
   },
   "direction": "produce"
 }

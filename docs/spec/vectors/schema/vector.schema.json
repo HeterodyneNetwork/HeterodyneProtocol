@@ -149,7 +149,20 @@
                   "dm_invite_revoked_device",
                   "dm_event_not_storable",
                   "config_rid_advertised",
-                  "moderator_not_in_asof_declaration"
+                  "moderator_not_in_asof_declaration",
+                  "kel_head_missing",
+                  "kel_head_mismatch",
+                  "kel_head_forbidden",
+                  "equivocation_flagged",
+                  "signing_key_compromised_at_created_at",
+                  "provisional_not_final",
+                  "withdrawn_on_reconcile",
+                  "repo_head_regression",
+                  "export_unmappable_feature",
+                  "export_unsupported_crypto_suite",
+                  "export_incomplete",
+                  "keri_wire_format_rejected",
+                  "export_aid_substituted_for_npub"
                 ]
               }
             },

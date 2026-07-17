@@ -40,11 +40,16 @@
         [
           "valid_until",
           ""
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
         ]
       ],
       "content": "",
-      "id": "030930943336b9d1426800aad36c642164d54a4bc9dd02c8a6d2ac8f6a52ce5d",
-      "sig": "9c44a3bebbbec31959365b05bf2a3004a2229dc045452e37a0204b91a44de48903b96392cb604110ea41603f53faf1b7b5bd2a69b0a6bd65251394e123baa5f8"
+      "id": "19563c92747c82adc6c6cbef6fee79d5e7e7d9c8fad3fb0538a0ed5df88d617c",
+      "sig": "85a2e9bc48d91f1f0369eed5842d4567962a0da5c86f97649a7843032d40b81990ce5863aa6445b72e6c954630693cf0851efb6ee44cf9f7a12c51d5f0472eef"
     },
     "radicle_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
     "nid_binding_payload": "heterodyne-nid-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|radicle-nid-delegation"

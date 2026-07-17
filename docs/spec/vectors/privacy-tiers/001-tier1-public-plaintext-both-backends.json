@@ -18,7 +18,7 @@
   },
   "notes": "Trust boundary: confidential against no one. The same event is published to the persona's Nostr write relays and its repo relay.",
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225680,31007,[[\"d\",\"tech:2026-q2\"],[\"heterodyne\",\"feed_index\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"rid\",\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1\"],[\"feed_label\",\"Tech\"],[\"e\",\"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",\"wss://relay.example\"]],\"\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225680,31007,[[\"d\",\"tech:2026-q2\"],[\"heterodyne\",\"feed_index\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"rid\",\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1\"],[\"feed_label\",\"Tech\"],[\"e\",\"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",\"wss://relay.example\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"\"]",
     "decoded": {
       "event": {
         "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
@@ -49,15 +49,20 @@
             "e",
             "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
             "wss://relay.example"
+          ],
+          [
+            "kel_head",
+            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "0"
           ]
         ],
         "content": "",
-        "id": "e25938fd5524d6d29e7ad122ad4b86ba851212a58fe3dc0c62cd9e6e83f33db1",
-        "sig": "cfbd5ff56efe8e7a5baddd0641cdc0275f01270e34e508c4912c96450e14acb2635d6c70f13f2461b2146fe08d4d455b13071ced2d87ef951209442d032f5a35"
+        "id": "2f31170f2397dfc914ee3b3756ed678312438f90e6ef611e09d78df20c466568",
+        "sig": "821735212567f1abfcd09d6f31b4c3db76a71e0c6fc556aeab2cef25c514e78268e20b32b4ff3791e7c8dc53d435b1801a1a9707fcf3f7263dd725997f61a754"
       }
     },
-    "id": "e25938fd5524d6d29e7ad122ad4b86ba851212a58fe3dc0c62cd9e6e83f33db1",
-    "sig": "cfbd5ff56efe8e7a5baddd0641cdc0275f01270e34e508c4912c96450e14acb2635d6c70f13f2461b2146fe08d4d455b13071ced2d87ef951209442d032f5a35"
+    "id": "2f31170f2397dfc914ee3b3756ed678312438f90e6ef611e09d78df20c466568",
+    "sig": "821735212567f1abfcd09d6f31b4c3db76a71e0c6fc556aeab2cef25c514e78268e20b32b4ff3791e7c8dc53d435b1801a1a9707fcf3f7263dd725997f61a754"
   },
   "direction": "produce"
 }
