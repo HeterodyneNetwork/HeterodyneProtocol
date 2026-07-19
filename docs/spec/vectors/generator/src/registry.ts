@@ -155,6 +155,21 @@ export function assertDocumentRegistryDownrefs(
   }
 }
 
+export function resolveStampingProfile(
+  registry: Registry,
+  kind: number,
+  discriminator: string,
+): KindProfile | null {
+  const matches =
+    registry.kinds
+      .find((entry) => entry.kind === kind)
+      ?.profiles.filter(
+        (profile) =>
+          profile.stamping && profile.discriminator === discriminator,
+      ) ?? [];
+  return matches.length === 1 ? matches[0] : null;
+}
+
 export function assertCommsReleaseGate(
   documentVersion: string,
   registry: Registry,

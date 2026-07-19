@@ -7,6 +7,7 @@ import {
   assertRegistryStatusTransition,
   computeRegistryDigest,
   loadRegistry,
+  resolveStampingProfile,
   type Registry,
   type RegistryEntrySet,
   validateRegistry,
@@ -109,6 +110,72 @@ describe("revisioned protocol registry", () => {
       computeRegistryDigest(registry),
     );
     expect(() => validateRegistry(registry)).not.toThrow();
+  });
+
+  it("registers the closed Tier-3 wrapped-content stamping profile set", () => {
+    const allocations = [
+      [1, "heterodyne-comms-tier3-wrapped-content-kind-1-v1"],
+      [6, "heterodyne-comms-tier3-wrapped-content-kind-6-v1"],
+      [16, "heterodyne-comms-tier3-wrapped-content-kind-16-v1"],
+      [1063, "heterodyne-comms-tier3-wrapped-content-kind-1063-v1"],
+      [30023, "heterodyne-comms-tier3-wrapped-content-kind-30023-v1"],
+      [30402, "heterodyne-comms-tier3-wrapped-content-kind-30402-v1"],
+    ] as const;
+    const profileIds = new Set<string>();
+
+    for (const [kindNumber, profileId] of allocations) {
+      const profile = registry.kinds
+        .find((entry) => entry.kind === kindNumber)
+        ?.profiles.find((entry) => entry.profile_id === profileId);
+      expect(profile, `missing Tier-3 profile for kind ${kindNumber}`).toMatchObject({
+        profile_id: profileId,
+        discriminator: "tag:heterodyne_wrap=room_key.v2",
+        owner: "comms",
+        stamping: true,
+        first_version: "comms/0.5.0",
+        status: "draft",
+      });
+      expect(
+        resolveStampingProfile(
+          registry,
+          kindNumber,
+          "tag:heterodyne_wrap=room_key.v2",
+        )?.owner,
+      ).toBe("comms");
+      profileIds.add(profileId);
+    }
+
+    expect(profileIds.size).toBe(allocations.length);
+    expect(
+      registry.kinds
+        .find((entry) => entry.kind === 1)
+        ?.profiles.map((profile) => profile.profile_id),
+    ).toEqual(
+      expect.arrayContaining([
+        "heterodyne-core-rotation-breadcrumb-note-v1",
+        "heterodyne-comms-tier3-wrapped-content-kind-1-v1",
+      ]),
+    );
+  });
+
+  it("does not resolve unregistered or Heterodyne-base Tier-3 profiles", () => {
+    expect(
+      resolveStampingProfile(
+        registry,
+        7,
+        "tag:heterodyne_wrap=room_key.v2",
+      ),
+    ).toBeNull();
+    expect(
+      resolveStampingProfile(
+        registry,
+        31007,
+        "tag:heterodyne_wrap=room_key.v2",
+      ),
+    ).toBeNull();
+    expect(
+      registry.kinds.find((entry) => entry.kind === 31007)?.base_schema_owner,
+    ).toBe("comms");
   });
 
   it("validates the manifest against the registry schema", () => {
