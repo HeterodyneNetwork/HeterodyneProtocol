@@ -75,7 +75,7 @@ function normativeParagraphLines(lines: readonly string[]): Set<number> {
   const normative = new Set<number>();
   let paragraph: number[] = [];
   let fenced = false;
-  let wrappedDependencyDeclaration = false;
+  let dependencyState: "none" | "awaiting-list" | "in-list" = "none";
 
   const flush = (): void => {
     if (
@@ -84,7 +84,7 @@ function normativeParagraphLines(lines: readonly string[]): Set<number> {
       for (const lineNumber of paragraph) normative.add(lineNumber);
     }
     paragraph = [];
-    wrappedDependencyDeclaration = false;
+    dependencyState = "none";
   };
 
   for (const [lineNumber, line] of lines.entries()) {
@@ -94,12 +94,20 @@ function normativeParagraphLines(lines: readonly string[]): Set<number> {
       continue;
     }
     if (fenced) continue;
-    if (
-      line.trim() === "" ||
-      /^#{1,6}\s/.test(line) ||
-      /^<a\s+id=/.test(line)
-    ) {
+    if (line.trim() === "") {
+      if (dependencyState === "awaiting-list") continue;
       flush();
+      continue;
+    }
+    if (/^#{1,6}\s/.test(line) || /^<a\s+id=/.test(line)) {
+      flush();
+      continue;
+    }
+
+    if (WRAPPED_DEPENDENCY_DECLARATION.test(line)) {
+      flush();
+      paragraph.push(lineNumber);
+      dependencyState = "awaiting-list";
       continue;
     }
 
@@ -111,15 +119,22 @@ function normativeParagraphLines(lines: readonly string[]): Set<number> {
     }
 
     if (LIST_ITEM.test(line)) {
-      if (paragraph.length > 0 && !wrappedDependencyDeclaration) flush();
+      if (dependencyState === "awaiting-list") {
+        dependencyState = "in-list";
+      } else if (dependencyState !== "in-list" && paragraph.length > 0) {
+        flush();
+      }
       paragraph.push(lineNumber);
       continue;
     }
 
-    paragraph.push(lineNumber);
-    if (WRAPPED_DEPENDENCY_DECLARATION.test(line)) {
-      wrappedDependencyDeclaration = true;
+    if (dependencyState === "in-list" && /^\s+/.test(line)) {
+      paragraph.push(lineNumber);
+      continue;
     }
+
+    if (dependencyState !== "none") flush();
+    paragraph.push(lineNumber);
   }
   flush();
   return normative;

@@ -290,6 +290,64 @@ describe("protocol family documents", () => {
     );
   });
 
+  it("reports a wrapped dependency list after blank lines", () => {
+    withFamilyDocs(
+      {
+        control: [
+          "Document ID: `control`",
+          '<a id="control-enrollment"></a>',
+        ].join("\n"),
+        social: [
+          "Document ID: `social`",
+          "Normative dependencies:",
+          "",
+          "",
+          "- `heterodyne:control/0.5.0#control-enrollment`",
+          '<a id="social-profile"></a>',
+        ].join("\n"),
+      },
+      (root) =>
+        expect(lintFamilyDocs(root)).toContainEqual(
+          expect.objectContaining({
+            path: "docs/spec/heterodyne-social.md",
+            line: 5,
+            code: "forbidden-dependency",
+          }),
+        ),
+    );
+  });
+
+  it("ends wrapped dependency force after the dependency list", () => {
+    withFamilyDocs(
+      {
+        core: [
+          "Document ID: `core`",
+          '<a id="core-identity-model"></a>',
+        ].join("\n"),
+        control: [
+          "Document ID: `control`",
+          '<a id="control-enrollment"></a>',
+        ].join("\n"),
+        social: [
+          "Document ID: `social`",
+          "Normative dependencies:",
+          "",
+          "- `heterodyne:core/0.5.0#core-identity-model`",
+          "",
+          "Background references:",
+          "- `heterodyne:control/0.5.0#control-enrollment`",
+          '<a id="social-profile"></a>',
+        ].join("\n"),
+      },
+      (root) =>
+        expect(
+          lintFamilyDocs(root).filter(
+            (issue) => issue.code === "forbidden-dependency",
+          ),
+        ).toEqual([]),
+    );
+  });
+
   it("does not carry normative force into an adjacent informative bullet", () => {
     withFamilyDocs(
       {
