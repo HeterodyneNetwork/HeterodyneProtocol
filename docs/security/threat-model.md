@@ -1,8 +1,14 @@
 # Heterodyne protocol-family threat model
 
-**Status:** Draft, non-normative security analysis for the 0.5.x family.
+**Status:** Draft, non-normative security analysis for the candidate 0.5.x family.
 
-This document analyzes the four independently versioned normative documents:
+**Pre-cutover authority:** [`docs/spec/heterodyne.md`](../spec/heterodyne.md) is
+the **current normative 0.4.0 monolith** until the Task 9 cutover. The four
+extracted 0.5.0 files are candidate normative documents and pre-release drafts;
+this document supports their review, but they become authoritative only at
+cutover.
+
+This document analyzes the four independently versioned candidate documents:
 
 - [Heterodyne Core](../spec/heterodyne-core.md) — identity, verification,
   registry, node roles, and repository substrate;
@@ -13,9 +19,10 @@ This document analyzes the four independently versioned normative documents:
 - [Heterodyne Social](../spec/heterodyne-social.md) — social behavior,
   moderation, and the optional Matrix feature.
 
-Normative security requirements live in their owning family document and in
-registry revision 1. This analysis neither creates nor relaxes requirements.
-The only normative dependency edges are:
+Before cutover, normative security requirements remain in the 0.4.0 monolith.
+The owner sections below reproduce the candidate registry revision 1 and
+security boundaries without creating or relaxing requirements.
+The candidate family's only normative dependency edges are:
 
 ```text
 Core <- Comms <- Control
@@ -42,8 +49,11 @@ any carrier authoritative for persona identity.
 
 ## 2. Registry-bound invariants
 
-The descriptions below reproduce registry revision 1 exactly. Each assumption,
-threat, and mitigation in later sections cites its owning identifier.
+The descriptions below reproduce candidate registry revision 1 exactly.
+Registry-bound rows cite an invariant where that invariant directly governs
+the mitigation. Metadata residuals, operational consequences, out-of-scope
+limitations, and open work may instead be cross-cutting and are not assigned a
+false invariant merely for uniformity.
 
 ### 2.1 Core
 
@@ -115,6 +125,7 @@ one mechanism's guarantee as another's.
 | Hostile Nostr relay | Correlates public keys, timing, and traffic and may drop, delay, reorder, or replay events. It cannot forge valid signatures. |
 | Passive network observer | Observes endpoints, timing, and volume outside encrypted transports. Optional Tor egress hides direct destinations but leaves timing and volume leakage. |
 | Hostile Matrix homeserver | Applies only to Social+Matrix. It sees room and federation metadata and may manipulate delivery or visible state, but must not receive private plaintext. |
+| Federation peer | A non-hosting Matrix server participating in a Social+Matrix room sees unencrypted public state, `m.room.member` events, opaque Megolm/MLS ciphertext, sender MXIDs, `origin_server_ts`, and the federation join graph. The membership graph is exposed to every participating server. A persona concerned about that exposure should host identity/config rooms on a homeserver whose federation peer set it trusts; residual metadata still includes sender and timing information. |
 | Compromised durable device | Uses its NID, epoch, audience, or ratchet authority until effective revocation; compromise windows and key rotation bound later trust. |
 | Control session device | Has only negotiated, granted Control authority. It is never a credential-plane device and receives none of the secrets prohibited by CONTROL-I-SESSION-KEY-CONFINEMENT. |
 | Colluding delegated MXID | Applies only to Social+Matrix. It can read rooms it legitimately joined, race coordination state, and exploit a partition window, but cannot forge the persona's epoch-key proof. |
@@ -152,7 +163,7 @@ one mechanism's guarantee as another's.
 | Config-repository traffic reveals its existence or owner | Keep its RID unadvertised, use encrypted blobs, and recognize that traffic analysis remains residual metadata (COMMS-I-CONFIG-AT-REST, COMMS-I-CLIENT-SIDE-DELIVERY). |
 | Backend bridge becomes a decryption oracle | Keep delivery, deduplication, and decryption on user-controlled clients (COMMS-I-CLIENT-SIDE-DELIVERY). |
 | Central feed directory blocks discovery | Resolve signed feed/outbox hints over multiple carriers (COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY). |
-| DM replay, ratchet-state loss, or metadata correlation | Enforce session replay checks and key deletion; keep outer DR events out of repositories and provide no backfill. |
+| DM replay, ratchet-state loss, or metadata correlation | Enforce session replay checks and key deletion; keep outer DR events out of repositories and provide no backfill. Within a ratchet epoch, messages share an outer signer and are linkable to each other until the next DH step. Lost or corrupted ratchet state makes local history unrecoverable because Comms intentionally provides no backfill. |
 | Org epoch-key holder bypasses delegate threshold through a relay | Require threshold-authorized canonical history for every org-owned Comms post and feed index, regardless of carrier (CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE, COMMS-I-CLIENT-SIDE-DELIVERY). |
 | Policy bypasses cryptography | Run the authenticated acceptance hook only after cryptographic checks; policy can tighten but never loosen a rejection. |
 
@@ -176,7 +187,7 @@ one mechanism's guarantee as another's.
 | Old or mirror homeserver races migration state | Apply signed migration precedence and lease/partition rules; a server location never becomes persona authority (SOCIAL-I-MXID-DELEGATION-DUAL-PROOF, SOCIAL-I-MATRIX-E2EE). |
 | Server-side bridge sees protected plaintext | Run Matrix and cross-protocol bridging only on user-controlled clients (SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE). |
 | Relay serves a stale mute, moderator, or policy list | Compare replaceable-event authority and timestamps, use anchored history where required, and retain encrypted local state (SOCIAL-I-PRIVATE-STATE-AT-REST, SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH, CORE-I-VERIFY-BEFORE-USE). |
-| Moderation authority changes after approval | Verify approval signatures and the moderator set at the required repository, Matrix, or reduced-assurance relay anchor. |
+| Listed-then-removed moderator backdates an approval | A relay-only anchor relies on author-controlled `created_at`, so a listed-then-removed moderator can attempt backdating and the residual cannot be eliminated there. A repository anchor binds the approval to an introducing commit and resolves the moderator declaration from canonical ancestor history; communities needing strong as-of integrity should use that repo anchor. |
 | Advisory label becomes authority | Treat NIP-32 labels and web-of-trust scoring as local policy, never identity or editorial authority. |
 | Sybil vouchers or poisoned friend caches drive recovery | Treat Social recovery bindings as advisory inputs only; accepted KEL and declared Core witness rules retain authority (SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH, CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
 
@@ -185,9 +196,38 @@ one mechanism's guarantee as another's.
 Encryption does not hide all metadata. Relays and repository hosts can observe
 timing, volume, public keys, branch changes, and fetch patterns; allowed Tier 2
 seeders also see the membership allow list. Routing nodes see lookup targets.
-Matrix federation exposes room membership and event-graph metadata to relevant
-servers. Tor reduces direct network-linkability but does not prevent global
-timing analysis.
+Matrix federation exposes the membership graph, sender MXIDs, timestamps, and
+event-graph metadata to relevant servers and their federation peer set. Hosting
+identity/config rooms with a deliberately trusted peer set limits, but cannot
+eliminate, this exposure. Tor reduces direct network-linkability but does not
+prevent global timing analysis.
+
+Within a ratchet epoch, multiple Comms DM messages use the same outer signer
+and are linkable to one another until the next DH ratchet step, even though the
+signer is not the persona epoch key. Lost or corrupted ratchet state makes the
+affected local history unrecoverable: no backfill exists by design, and a fresh
+session restores future communication rather than old message keys.
+
+The config repository has a distinct linkage boundary. Its Radicle identity
+document exposes its private `visibility.allow` allow-list to nodes that know
+the repository, revealing the device NIDs allowed to seed it. A keys-repository
+compromise, backup disclosure, access-log correlation, or accidental public
+reference can reveal its RID and location; subsequent traffic can link the
+otherwise unadvertised config repository to a persona or device set. Mitigation
+is one dedicated unadvertised RID per persona, no public pointer or
+`kind:31011` wrap, the smallest own-device allow-list, encrypted blobs before
+commit, private replication, and rotation to a fresh RID/key after a location
+compromise. These measures do not erase traffic already observed.
+
+Keys repository and backup loss have irreversible consequences. Losing every
+copy of an audience key permanently loses decryptability of retained Tier 3
+history; losing ratchet state permanently loses that device's DM history; and
+losing every cold-root/recovery copy can permanently prevent identity recovery
+or re-anchor. Operationally, clients should maintain periodic encrypted
+removable-media backups covering all produced and followed repositories plus
+config and keys repositories, show a freshness indicator for unbacked changes,
+keep backup media offline when not in use, and test restore procedures. Backup
+copies are as sensitive as the live keys repository.
 
 No deletion mechanism guarantees erasure from hostile relays, old git objects,
 backups, screenshots, or offline seeds. `kind:5`, canonical-index removal, and
@@ -226,9 +266,24 @@ carrier at once, or erasure of bytes retained by hostile third parties. Legal
 and operational moderation obligations are deployment concerns; the protocol
 defines authenticity and policy carriers, not universal content policy.
 
+Host-OS malware on a device during a key ceremony remains outside the
+application security boundary; keeping the cold root offline reduces exposure
+but cannot protect a secret while the operating system that handles it is
+fully compromised. Tor-level timing/volume correlation by a global observer
+also remains outside the delivered anonymity guarantee.
+
+The current cryptographic suites are **not post-quantum**. A quantum adversary
+capable of breaking secp256k1, Ed25519, or the deployed symmetric assumptions
+falls outside this threat model. A migration strategy is pre-1.0/open work and
+must coordinate with Nostr, Radicle, Matrix, KERI, and stored historical
+signature semantics rather than claiming present quantum resistance.
+
 Before relevant 1.0 claims, work remains to freeze the Comms double-ratchet
 wire profile, finish the repo-relay server/storage contract, exercise KERI fork
 and recovery behavior across independent implementations, validate Matrix MLS
 migration, integrate Control with its required vector corpus, and expand
 negative vectors for rollback, metadata, and recovery-policy attacks. Each
 item belongs to its named document and must not create a forbidden dependency.
+The repo-relay server/storage contract must also close storage-exhaustion,
+retention, garbage-collection, and quota behavior before that conformance class
+can reach 1.0.

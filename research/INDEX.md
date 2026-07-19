@@ -3,8 +3,14 @@
 Topic-keyed map into [`sources/`](sources/). Use it to jump to the exact file
 and line range that covers a given topic.
 
-Research sources are non-normative background. Apply them through the current
-four-document family boundary:
+**Pre-cutover authority:** [`docs/spec/heterodyne.md`](../docs/spec/heterodyne.md)
+is the **current normative 0.4.0 monolith** until the Task 9 cutover. The four
+extracted 0.5.0 files are candidate normative documents and pre-release drafts.
+Use their topic ownership for new research and review, but they become
+authoritative only at cutover.
+
+Research sources are non-normative background. Classify new work through the
+candidate four-document family boundary:
 
 | Family document | Research themes |
 |---|---|

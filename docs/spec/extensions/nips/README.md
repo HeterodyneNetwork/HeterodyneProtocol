@@ -1,7 +1,15 @@
 # Future NIP extractions
 
 This is an upstream-facing, non-normative extraction index. It is not a home
-for sibling Heterodyne protocols. Current family documents are
+for sibling Heterodyne protocols.
+
+**Pre-cutover authority:** [`docs/spec/heterodyne.md`](../../heterodyne.md) is
+the **current normative 0.4.0 monolith** until the Task 9 cutover. The four
+extracted 0.5.0 files are candidate normative documents and pre-release drafts.
+Use the qualified candidate anchors below for new extraction review, but they
+become authoritative only at cutover.
+
+Candidate family documents are
 [Core](../../heterodyne-core.md), [Comms](../../heterodyne-comms.md),
 [Control](../../heterodyne-control.md), and [Social](../../heterodyne-social.md).
 

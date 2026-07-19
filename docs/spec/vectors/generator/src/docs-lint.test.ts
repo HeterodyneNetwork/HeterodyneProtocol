@@ -35,6 +35,7 @@ const companionPaths = [
   "docs/spec/extensions/nips/README.md",
   "docs/spec/extensions/mscs/README.md",
 ] as const;
+const preCutoverCompanionPaths = [...companionPaths, "CHANGELOG.md"] as const;
 const adr030Path = resolve(
   repositoryRoot,
   "docs/adr/2026-07-07-030-light-client-enrollment-rpc-over-dr-dms.md",
@@ -1665,9 +1666,6 @@ describe("protocol family documents", () => {
           `heterodyne-${document}.md`,
         );
       }
-      expect(text, `${relativePath} claims one current normative spec`).not.toMatch(
-        /single normative spec|the normative spec|fully drafted[^\n]*heterodyne\.md/i,
-      );
       expect(text, `${relativePath} uses retired uppercase CORE terminology`).not.toMatch(
         /\bCORE\b(?!-I-)/,
       );
@@ -1687,6 +1685,57 @@ describe("protocol family documents", () => {
     const glossary = readFileSync(resolve(repositoryRoot, "docs/glossary.md"), "utf8");
     expect(glossary).toMatch(/non-normative index/i);
     expect(glossary).toMatch(/shared normative terminology[\s\S]*heterodyne-core\.md/i);
+  });
+
+  it("keeps the 0.4.0 monolith authoritative until the family cutover", () => {
+    for (const relativePath of preCutoverCompanionPaths) {
+      const text = readFileSync(resolve(repositoryRoot, relativePath), "utf8");
+      expect(text, `${relativePath} omits the current monolith`).toContain(
+        "heterodyne.md",
+      );
+      expect(text, `${relativePath} omits current pre-cutover authority`).toMatch(
+        /current normative 0\.4\.0 monolith/i,
+      );
+      expect(text, `${relativePath} omits candidate status`).toMatch(
+        /candidate/i,
+      );
+      expect(text, `${relativePath} omits cutover sequencing`).toMatch(
+        /cutover/i,
+      );
+      expect(text, `${relativePath} cuts authority over early`).not.toMatch(
+        /heterodyne\.md[^\n]{0,80}(?:is|remains) (?:a )?non-normative|four independently versioned normative documents:/i,
+      );
+    }
+  });
+
+  it("retains concrete federation, ratchet, moderation, storage, and crypto residuals", () => {
+    const text = readFileSync(threatModelPath, "utf8");
+
+    expect(text).toMatch(
+      /Federation peer[\s\S]*membership graph[\s\S]*peer set[\s\S]*(metadata|origin_server_ts)/i,
+    );
+    expect(text).toMatch(
+      /within (?:a )?ratchet epoch[\s\S]*outer signer[\s\S]*link/i,
+    );
+    expect(text).toMatch(
+      /lost or corrupt(?:ed)? ratchet state[\s\S]*no backfill[\s\S]*unrecoverable/i,
+    );
+    expect(text).toMatch(
+      /listed[- ]then[- ]removed moderator[\s\S]*relay-only[\s\S]*backdat[\s\S]*repo(?:sitory)? anchor/i,
+    );
+    expect(text).toMatch(/not post-quantum[\s\S]*quantum adversar/i);
+    expect(text).toMatch(
+      /config repository[\s\S]*allow-list[\s\S]*(location|RID)[\s\S]*(link|correlat|compromis)/i,
+    );
+    expect(text).toMatch(
+      /keys repository[\s\S]*backup loss[\s\S]*permanent(?:ly)?[\s\S]*(decrypt|identity recover)/i,
+    );
+    expect(text).toMatch(
+      /removable-media[\s\S]*produced[\s\S]*followed[\s\S]*freshness[\s\S]*restore/i,
+    );
+    expect(text).toMatch(
+      /registry-bound rows cite[\s\S]*directly govern[\s\S]*residual[\s\S]*cross-cutting/i,
+    );
   });
 
   it("requires every moderation condition at the approval anchor", () => {

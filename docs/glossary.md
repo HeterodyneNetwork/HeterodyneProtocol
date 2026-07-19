@@ -1,23 +1,32 @@
 # Heterodyne glossary
 
 This file is a **non-normative index**. It helps readers find terminology; it
-does not define conformance. Shared normative terminology lives in
-[Heterodyne Core](spec/heterodyne-core.md), especially `core-terminology`.
-Document-local terms are defined by their owners:
+does not define conformance.
+
+**Pre-cutover authority:** [`docs/spec/heterodyne.md`](spec/heterodyne.md) is
+the **current normative 0.4.0 monolith** until the Task 9 cutover. The four
+extracted 0.5.0 files are candidate normative documents and pre-release drafts.
+Use this index and those owner documents for new development and review; their
+terminology becomes authoritative only at cutover.
+
+Candidate shared normative terminology lives in
+[Heterodyne Core](spec/heterodyne-core.md), especially `core-terminology`, and
+document-local terms are assigned to their candidate owners:
 
 - [Heterodyne Core](spec/heterodyne-core.md)
 - [Heterodyne Comms](spec/heterodyne-comms.md)
 - [Heterodyne Control](spec/heterodyne-control.md)
 - [Heterodyne Social](spec/heterodyne-social.md)
 
-When this index and an owning document differ, the owning version-qualified
-document controls.
+Before cutover, the monolith controls any conflict. After cutover, the owning
+version-qualified family document controls.
 
 ## Family and conformance
 
-**Core.** The foundation document for persona identity, KEL verification,
-canonical signed bytes, Radicle delegation and storage substrate, registry,
-versioning, and base conformance. Every Heterodyne implementation claims Core.
+**Core.** The candidate foundation document for persona identity, KEL
+verification, canonical signed bytes, Radicle delegation and storage substrate,
+registry, versioning, and base conformance. After cutover, every Heterodyne
+implementation claims Core.
 
 **Comms.** The document for Nostr-native application envelopes, repository
 privacy tiers, publishing and retrieval, canonical feeds, direct messages,

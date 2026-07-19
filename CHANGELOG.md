@@ -8,14 +8,20 @@ compatibility contract takes effect independently when a document reaches
 
 ## [Unreleased]
 
+**Pre-cutover authority:** [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md)
+is the **current normative 0.4.0 monolith** until the Task 9 cutover. The four
+extracted 0.5.0 files are candidate normative documents and pre-release drafts;
+this Unreleased section records their preparation, and they become authoritative
+only at cutover.
+
 ### Changed - four-document protocol family (ADR-033)
 
-- Split the archived 0.4.0 monolith into four independently versioned first
-  releases: [Core](docs/spec/heterodyne-core.md) `core/0.5.0`,
+- Prepared four independently versioned candidate first releases from the
+  current 0.4.0 monolith: [Core](docs/spec/heterodyne-core.md) `core/0.5.0`,
   [Comms](docs/spec/heterodyne-comms.md) `comms/0.5.0`,
   [Control](docs/spec/heterodyne-control.md) `control/0.5.0`, and
   [Social](docs/spec/heterodyne-social.md) `social/0.5.0`.
-- Established the only normative dependency edges as
+- Established the candidate family's only normative dependency edges as
   `Core <- Comms <- Control` and `Core <- Comms <- Social`. Control is an
   incomplete Comms profile and cannot yet be claimed.
 - Added the Core-owned, separately revisioned registry for kind allocations,

@@ -1,16 +1,22 @@
 # Heterodyne protocol-family architecture
 
-This is a non-normative guide to the family and its design rationale. Normative
-requirements live in the owning document:
+This is a non-normative guide to the candidate family and its design rationale.
+
+**Pre-cutover authority:** [`docs/spec/heterodyne.md`](spec/heterodyne.md) is
+the **current normative 0.4.0 monolith** until the Task 9 cutover. The four
+extracted 0.5.0 files are candidate normative documents and pre-release drafts.
+Use their ownership boundaries for new development and review; they become
+authoritative only at cutover:
 
 - [Heterodyne Core](spec/heterodyne-core.md)
 - [Heterodyne Comms](spec/heterodyne-comms.md)
 - [Heterodyne Control](spec/heterodyne-control.md)
 - [Heterodyne Social](spec/heterodyne-social.md)
 
-The short [family map](spec/heterodyne.md) is also non-normative. Historical
-0.4.0 text remains frozen in [the archive](spec/archive/heterodyne-0.4.0.md);
-the migration phase publishes the complete old-section anchor map.
+At cutover, the monolith path becomes a short non-normative family map.
+Its current 0.4.0 bytes remain frozen in
+[the archive](spec/archive/heterodyne-0.4.0.md); the migration phase also
+publishes the complete old-section anchor map.
 
 ## 1. The exact dependency DAG
 
