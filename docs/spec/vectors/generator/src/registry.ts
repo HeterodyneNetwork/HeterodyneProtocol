@@ -117,7 +117,7 @@ export function validateRegistry(
   registryRoot = DEFAULT_REGISTRY_ROOT,
 ): void {
   validateUniqueEntries(registry);
-  validateHistory(registry);
+  validateRegistryHistory(registry.history);
   validateEntryMetadata(registry);
 
   validateAgainstSchema(registry, registryRoot);
@@ -157,15 +157,28 @@ export function assertDocumentRegistryDownrefs(
 
 export function assertCommsReleaseGate(
   documentVersion: string,
-  doubleRatchetWireStatus: RegistryStatus,
+  registry: Registry,
 ): void {
   const parsed = parseQualifiedVersion(documentVersion);
   if (parsed.document !== "comms") {
     throw new Error("Comms release gate requires a comms qualified version");
   }
   const major = Number.parseInt(parsed.semver.split(".", 1)[0], 10);
-  if (major >= 1 && doubleRatchetWireStatus !== "frozen") {
-    throw new Error("double-ratchet wire profile must be frozen before Comms 1.0");
+  if (major < 1) return;
+
+  const requiredProfiles = [
+    [1059, "heterodyne-comms-double-ratchet-invite-response-v1"],
+    [1060, "heterodyne-comms-double-ratchet-message-v1"],
+  ] as const;
+  const allFrozen = requiredProfiles.every(([kindNumber, profileId]) =>
+    registry.kinds
+      .find((entry) => entry.kind === kindNumber)
+      ?.profiles.some(
+        (profile) => profile.profile_id === profileId && profile.status === "frozen",
+      ),
+  );
+  if (!allFrozen) {
+    throw new Error("double-ratchet wire profiles must be frozen before Comms 1.0");
   }
 }
 
@@ -212,17 +225,24 @@ function validateEntryMetadata(registry: RegistryEntrySet): void {
   }
 }
 
-function validateHistory(registry: Registry): void {
-  const revisions = [...registry.history.keys()].sort((left, right) => left - right);
+export function validateRegistryHistory(
+  history: ReadonlyMap<number, RegistryEntrySet>,
+): void {
+  const revisions = [...history.keys()].sort((left, right) => left - right);
+  const historicalProfiles = new Map<
+    string,
+    { kind: number; owner: DocumentId; discriminator: string; last: KindProfile }
+  >();
   for (let index = 0; index < revisions.length; index += 1) {
     if (revisions[index] !== index + 1) {
       throw new Error("registry history revisions must be contiguous from 1");
     }
-    if (index === 0) continue;
-    compareHistoryEntries(
-      registry.history.get(revisions[index - 1])!,
-      registry.history.get(revisions[index])!,
-    );
+    const current = history.get(revisions[index])!;
+    validateUniqueEntries(current);
+    if (index > 0) {
+      compareHistoryEntries(history.get(revisions[index - 1])!, current);
+    }
+    validateHistoricalProfiles(current, historicalProfiles);
   }
 }
 
@@ -230,27 +250,52 @@ function compareHistoryEntries(previous: RegistryEntrySet, current: RegistryEntr
   compareCollection(previous.kinds, current.kinds, (entry) => String(entry.kind));
   compareCollection(previous.reason_codes, current.reason_codes, (entry) => entry.code);
   compareCollection(previous.security_invariants, current.security_invariants, (entry) => entry.id);
+}
 
-  const currentKinds = new Map(current.kinds.map((entry) => [entry.kind, entry]));
-  for (const oldKind of previous.kinds) {
-    const newKind = currentKinds.get(oldKind.kind);
-    if (newKind === undefined) continue;
-    const currentProfiles = new Map(
-      newKind.profiles.map((profile) => [profile.profile_id, profile]),
-    );
-    for (const oldProfile of oldKind.profiles) {
-      const newProfile = currentProfiles.get(oldProfile.profile_id);
-      if (newProfile === undefined) {
-        if (oldProfile.status === "frozen") throw new Error("frozen entry removed");
+function validateHistoricalProfiles(
+  current: RegistryEntrySet,
+  historical: Map<
+    string,
+    { kind: number; owner: DocumentId; discriminator: string; last: KindProfile }
+  >,
+): void {
+  const present = new Set<string>();
+  for (const kind of current.kinds) {
+    for (const profile of kind.profiles) {
+      present.add(profile.profile_id);
+      const prior = historical.get(profile.profile_id);
+      if (prior === undefined) {
+        historical.set(profile.profile_id, {
+          kind: kind.kind,
+          owner: profile.owner,
+          discriminator: profile.discriminator,
+          last: profile,
+        });
         continue;
       }
-      if (oldProfile.discriminator !== newProfile.discriminator) {
+      if (prior.kind !== kind.kind) {
+        throw new Error("profile kind is immutable");
+      }
+      if (prior.owner !== profile.owner) {
+        throw new Error("profile owner is immutable");
+      }
+      if (prior.discriminator !== profile.discriminator) {
         throw new Error("profile discriminator is immutable");
       }
-      assertRegistryStatusTransition(oldProfile.status, newProfile.status);
-      if (oldProfile.status === "frozen" && canonicalize(oldProfile) !== canonicalize(newProfile)) {
+      assertRegistryStatusTransition(prior.last.status, profile.status);
+      if (
+        prior.last.status === "frozen" &&
+        canonicalize(prior.last) !== canonicalize(profile)
+      ) {
         throw new Error("frozen entry changed");
       }
+      prior.last = profile;
+    }
+  }
+
+  for (const [profileId, prior] of historical) {
+    if (prior.last.status === "frozen" && !present.has(profileId)) {
+      throw new Error("frozen entry removed");
     }
   }
 }

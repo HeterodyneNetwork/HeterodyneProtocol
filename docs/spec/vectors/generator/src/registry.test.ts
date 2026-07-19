@@ -10,6 +10,7 @@ import {
   type Registry,
   type RegistryEntrySet,
   validateRegistry,
+  validateRegistryHistory,
 } from "./registry.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -70,6 +71,36 @@ describe("revisioned protocol registry", () => {
       base_schema_owner: "comms",
       first_version: "comms/0.5.0",
     });
+    expect(
+      registry.kinds
+        .find((entry) => entry.kind === 1059)
+        ?.profiles.find(
+          (profile) =>
+            profile.profile_id ===
+            "heterodyne-comms-double-ratchet-invite-response-v1",
+        ),
+    ).toMatchObject({
+      discriminator: "wire:nostr-double-ratchet@0.0.138;kind=1059",
+      owner: "comms",
+      status: "draft",
+      first_version: "comms/0.5.0",
+      stamping: false,
+    });
+    expect(
+      registry.kinds
+        .find((entry) => entry.kind === 1060)
+        ?.profiles.find(
+          (profile) =>
+            profile.profile_id ===
+            "heterodyne-comms-double-ratchet-message-v1",
+        ),
+    ).toMatchObject({
+      discriminator: "wire:nostr-double-ratchet@0.0.138;kind=1060",
+      owner: "comms",
+      status: "draft",
+      first_version: "comms/0.5.0",
+      stamping: false,
+    });
   });
 
   it("commits the canonical digest of the current entry set", () => {
@@ -123,6 +154,131 @@ describe("revisioned protocol registry", () => {
     ).toThrow("profile discriminator is immutable");
   });
 
+  it("rejects removal of a frozen profile with its draft parent kind", () => {
+    const previous = currentEntrySet(registry);
+    const kind = previous.kinds.find((entry) => entry.kind === 1059);
+    const profile = kind?.profiles.find(
+      (entry) =>
+        entry.profile_id ===
+        "heterodyne-comms-double-ratchet-invite-response-v1",
+    );
+    if (kind === undefined || profile === undefined) {
+      throw new Error("missing kind 1059 profile fixture");
+    }
+    expect(kind.status).toBe("draft");
+    profile.status = "frozen";
+    const current = structuredClone(previous);
+    current.kinds = current.kinds.filter((entry) => entry.kind !== 1059);
+
+    expect(() =>
+      validateRegistryHistory(
+        new Map([
+          [1, previous],
+          [2, current],
+        ]),
+      ),
+    ).toThrow("frozen entry");
+  });
+
+  it("rejects moving a profile id to another kind", () => {
+    const previous = currentEntrySet(registry);
+    const current = structuredClone(previous);
+    const source = current.kinds.find((entry) => entry.kind === 1059);
+    const target = current.kinds.find((entry) => entry.kind === 1060);
+    const profile = source?.profiles.shift();
+    if (target === undefined || profile === undefined) {
+      throw new Error("missing double-ratchet profile fixtures");
+    }
+    target.profiles.push(profile);
+
+    expect(() =>
+      validateRegistryHistory(
+        new Map([
+          [1, previous],
+          [2, current],
+        ]),
+      ),
+    ).toThrow("profile kind is immutable");
+  });
+
+  it("rejects changing a profile owner after allocation", () => {
+    const previous = currentEntrySet(registry);
+    const current = structuredClone(previous);
+    const profile = current.kinds
+      .find((entry) => entry.kind === 1059)
+      ?.profiles.find(
+        (entry) =>
+          entry.profile_id ===
+          "heterodyne-comms-double-ratchet-invite-response-v1",
+      );
+    if (profile === undefined) throw new Error("missing kind 1059 profile fixture");
+    profile.owner = "social";
+    profile.first_version = "social/0.5.0";
+
+    expect(() =>
+      validateRegistryHistory(
+        new Map([
+          [1, previous],
+          [2, current],
+        ]),
+      ),
+    ).toThrow("profile owner is immutable");
+  });
+
+  it("rejects changed discriminator after removal and reintroduction", () => {
+    const first = currentEntrySet(registry);
+    const profile = first.kinds
+      .find((entry) => entry.kind === 1059)
+      ?.profiles.find(
+        (entry) =>
+          entry.profile_id ===
+          "heterodyne-comms-double-ratchet-invite-response-v1",
+      );
+    if (profile === undefined) throw new Error("missing kind 1059 profile fixture");
+    const second = structuredClone(first);
+    second.kinds.find((entry) => entry.kind === 1059)!.profiles = [];
+    const third = structuredClone(second);
+    third.kinds
+      .find((entry) => entry.kind === 1059)!
+      .profiles.push({ ...profile, discriminator: "changed-after-gap" });
+
+    expect(() =>
+      validateRegistryHistory(
+        new Map([
+          [1, first],
+          [2, second],
+          [3, third],
+        ]),
+      ),
+    ).toThrow("profile discriminator is immutable");
+  });
+
+  it("allows matching non-frozen profile reintroduction", () => {
+    const first = currentEntrySet(registry);
+    const profile = first.kinds
+      .find((entry) => entry.kind === 1059)
+      ?.profiles.find(
+        (entry) =>
+          entry.profile_id ===
+          "heterodyne-comms-double-ratchet-invite-response-v1",
+      );
+    if (profile === undefined) throw new Error("missing kind 1059 profile fixture");
+    const second = structuredClone(first);
+    second.kinds.find((entry) => entry.kind === 1059)!.profiles = [];
+    const third = structuredClone(second);
+    third.kinds.find((entry) => entry.kind === 1059)!.profiles.push(profile);
+
+    expect(() =>
+      validateRegistryHistory(
+        new Map([
+          [1, first],
+          [2, second],
+          [3, third],
+        ]),
+      ),
+    ).not.toThrow();
+  });
+
   it("rejects mutation, reassignment, and removal of frozen entries", () => {
     const previous = currentEntrySet(registry);
     previous.kinds[0].status = "frozen";
@@ -159,10 +315,30 @@ describe("revisioned protocol registry", () => {
   });
 
   it("blocks Comms 1.0 until the double-ratchet wire is frozen", () => {
-    expect(() => assertCommsReleaseGate("comms/0.9.0", "draft")).not.toThrow();
-    expect(() => assertCommsReleaseGate("comms/1.0.0", "stable")).toThrow(
-      "double-ratchet wire profile must be frozen",
+    expect(() => assertCommsReleaseGate("comms/0.9.0", registry)).not.toThrow();
+    expect(() => assertCommsReleaseGate("comms/1.0.0", registry)).toThrow(
+      "double-ratchet wire profiles must be frozen",
     );
-    expect(() => assertCommsReleaseGate("comms/1.0.0", "frozen")).not.toThrow();
+
+    const missingProfile = cloneRegistry(registry);
+    const kind1059 = missingProfile.kinds.find((entry) => entry.kind === 1059);
+    if (kind1059 === undefined) throw new Error("missing kind 1059 fixture");
+    kind1059.profiles = [];
+    expect(() =>
+      assertCommsReleaseGate("comms/1.0.0", missingProfile),
+    ).toThrow("double-ratchet wire profiles must be frozen");
+
+    const future = cloneRegistry(registry);
+    for (const [kindNumber, profileId] of [
+      [1059, "heterodyne-comms-double-ratchet-invite-response-v1"],
+      [1060, "heterodyne-comms-double-ratchet-message-v1"],
+    ] as const) {
+      const profile = future.kinds
+        .find((entry) => entry.kind === kindNumber)
+        ?.profiles.find((entry) => entry.profile_id === profileId);
+      if (profile === undefined) throw new Error(`missing ${profileId} fixture`);
+      profile.status = "frozen";
+    }
+    expect(() => assertCommsReleaseGate("comms/1.0.0", future)).not.toThrow();
   });
 });

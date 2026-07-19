@@ -88,7 +88,16 @@
       "base_schema_owner": "nostr",
       "status": "draft",
       "first_version": "comms/0.5.0",
-      "profiles": []
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-double-ratchet-invite-response-v1",
+          "owner": "comms",
+          "discriminator": "wire:nostr-double-ratchet@0.0.138;kind=1059",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
     },
     {
       "kind": 1060,
@@ -96,7 +105,16 @@
       "base_schema_owner": "nostr",
       "status": "draft",
       "first_version": "comms/0.5.0",
-      "profiles": []
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-double-ratchet-message-v1",
+          "owner": "comms",
+          "discriminator": "wire:nostr-double-ratchet@0.0.138;kind=1060",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
     },
     {
       "kind": 1984,
