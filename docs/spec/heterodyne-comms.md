@@ -307,10 +307,11 @@ without changing its id.
 
 `kind:31007` is a persona's canonical ordering authority independent of which
 backend served an event. It is an addressable, epoch-key-signed Comms event,
-with an empty `content` and a `["spec_version","comms/0.5.0"]` tag.
-Publication is tier-qualified by §5.3: there is no common destination set for
-all indexes. The example below is the plaintext metadata form used within the
-Tier 1 or Tier 2 trust boundary.
+with a `["spec_version","comms/0.5.0"]` tag. Tier 1 and Tier 2 indexes MUST
+have empty `content`; Tier 3 index `content` MUST be ciphertext as defined by
+§5.3. Publication is likewise tier-qualified by §5.3: there is no common
+destination set for all indexes. The example below is the plaintext metadata
+form used within the Tier 1 or Tier 2 trust boundary.
 
 ```json
 {
@@ -370,13 +371,17 @@ verifier MUST check every page signature and hash; mismatch breaks the chain
 with `page_chain_broken` and a visible feed-integrity error. A legacy missing
 hash MAY be rendered only with an unverifiable-chain warning.
 
-After a complete fetch attempt cannot resolve a prior page, the client MUST
-surface exactly "feed truncated at `<created_at-of-prior-page>` / `<d-tag-of-missing-page>`",
-continue from the newest resolvable page, and MUST NOT call the result
-complete. It MUST remember unresolved pages across fetch attempts and retry
-when a new relay becomes reachable or the user revisits the feed. Equal
-`(pubkey, kind, d, created_at)` conflicts select the lexicographically
-smallest event id.
+After a complete fetch attempt cannot resolve a predecessor, the newest
+resolvable page containing that missing predecessor link is the referring
+page. The client MUST surface exactly "feed truncated after `<created_at-of-referring-page>` / `<d-tag-of-referring-page>`; missing `<event_id>`",
+substituting the referring page's own `created_at` and `d` and
+the exact unavailable predecessor event id from its `previous_index` link.
+The client MUST continue from the newest resolvable page and MUST NOT call the
+result complete. It MUST persist the unresolved predecessor event id and the
+referring-page locator (its event id, `created_at`, and `d`) across process
+restart, and retry when a new relay becomes reachable or the user revisits the
+feed. Equal `(pubkey, kind, d, created_at)` conflicts select the
+lexicographically smallest event id.
 
 <a id="comms-private-index"></a>
 ### 5.3 Tier-specific indexes and descriptors
@@ -624,73 +629,122 @@ member sequence is closed and exactly the displayed sequence. Encodings are:
 - `action` is exactly `grant` or `revoke`; and
 - `signature` is exactly 64 bytes encoded as 128 lowercase hex.
 
-A grant MUST have `valid_until > issued_at` and `valid_until` strictly greater
-than the evaluation time. A revoke MUST use `valid_until` equal to `0`, the
-permanent sentinel. A revoke tombstone MUST NOT expire and MUST never be
-discarded because of `valid_until`. A missing, duplicate, unknown, misordered,
-or wrongly typed member at either object level MUST be rejected.
+A grant MUST have `valid_until > issued_at`. Its expiry is not an individual
+record-validity failure and is evaluated only by the operational resolver
+below. A revoke MUST use `valid_until` equal to `0`, the permanent sentinel. A
+revoke tombstone MUST NOT expire and MUST never be discarded because of
+`valid_until`. A missing, duplicate, unknown, misordered, or wrongly typed
+member at either object level MUST be rejected.
 
-A verifier MUST also require the target to be its own NID, require a unique
-authorization id, validate the epoch signature and epoch authority at
-`issued_at`, validate `kel_head`, and require the target's active NID-bearing
-delegation. Revoking or expiring the underlying Core delegation is an
-independent immediate revocation even before ledger convergence.
+A new grant MUST create an `authorization_id` not previously used for any
+grant in this persona. A revoke MUST reuse that grant's ID and target NID. A
+later grant MUST NOT reuse a previous or revoked ID; reauthorization requires
+a fresh random `authorization_id`. Exact duplicate bytes are idempotent, but
+records themselves are unique by their signed record digest/bytes, not by
+`authorization_id`. Thus a conforming ID history contains exactly one distinct
+grant record and zero or more distinct revoke records, all for the grant's
+target. A revoke with no matching grant, a target mismatch, or a second
+distinct grant makes that ID history invalid for credential transfer; those
+individually valid signed records remain retained for audit and continuity.
+
+For individual record eligibility, a verifier MUST validate the epoch
+signature, epoch authority at `issued_at`, and `kel_head`. Requiring the target
+to be the receiving device's own NID and requiring its currently active
+NID-bearing delegation are operational checks below, not filters on the
+canonical record set. Revoking or expiring the underlying Core delegation is
+an independent immediate authorization failure even before ledger convergence.
 
 **Durable authority.** The authoritative authorization ledger is a
 Comms-owned non-key record set inside the encrypted private config repository,
-keyed by the pair (`authorization_id`, target NID). Epoch-signed grant and
-revoke records have authority only when reachable from the verified canonical
-config-repository state. A self-DM presents and transports a signed grant or
-revoke record, but a self-DM MUST NOT become an authorization authority.
+where each record is identified by its signed bytes, as defined below.
+Epoch-signed grant and revoke records have authority only when reachable from
+the verified canonical config-repository state. A self-DM presents and
+transports a signed grant or revoke record, but a self-DM MUST NOT become an
+authorization authority.
 
-The accepted ledger record set is the union of valid records reachable from
-the active `enc/<key_id>` config branch in the canonical signed-ref state after
-a complete sync with every currently configured persona full node. A record
-on an unmerged device branch has no authority. Authorized writers MUST merge
-new records without deleting existing keys; the record-level ordering below
-then makes concurrent grants and revokes converge. If configured nodes expose
+The complete canonical signed-record set is the union of all individually
+structurally, cryptographically, and KEL-valid authorization records reachable
+from the active `enc/<key_id>` config branch in canonical signed-ref state
+after a complete sync with every currently configured persona full node.
+Individual validity requires the closed schema and encodings above, a valid
+signature and persona/purpose binding, and an authoritative epoch key and
+`kel_head` at `issued_at`. It also requires `valid_until > issued_at` for a
+grant or the zero sentinel for a revoke. The set MUST include expired grants
+and every revoke tombstone. Current evaluation time and current delegation
+status MUST NOT remove an otherwise valid record from this set.
+
+A record on an unmerged device branch has no authority. Authorized writers
+MUST merge new records without deleting any record. If configured nodes expose
 unresolved candidate canonical heads, or any configured node is unreachable,
-authoritative current state cannot be established and credential sync is held.
+the canonical record set cannot be established and credential sync is held.
 
-For each key, discard records whose signature, KEL state, persona, purpose,
-target, schema, or action-specific validity rule fails. If any valid revoke
-exists, the resolved state is permanently revoked: the newest revoke is the
-representative record, and a digest tie selects the lexicographically smallest
-SHA-256 digest of signed bytes. A revoke wins every exact-time tie and every
-cross-time conflict with a grant. A later or replayed grant with that
-authorization id MUST NOT resurrect it; reauthorization requires a new random
-authorization id. With no tombstone, the greatest-`issued_at` unexpired grant
-wins, with the same digest tiebreaker. Reusing one `authorization_id` with
-another target NID invalidates all records for that id. These rules are
-deterministic across multi-writer config-repository merges.
-
-**Ledger continuity across config-key rotation.** The canonical resolved
-ledger is a compact JSON array sorted lexicographically by
-(`authorization_id`, `target_nid`). Each entry has exactly the ordered members
-`authorization_id`, `target_nid`, `state`, and `record_digest`; `state` is
-`grant`, `inactive`, or `revoke`, and every revoke tombstone is included.
+Canonical record identity and ordering are exact:
 
 ```text
+canonical_signed_record_bytes(record) = UTF8(canonical_compact_json(record))
+record_digest(record) = lowercase-hex(SHA-256(canonical_signed_record_bytes(record)))
+action_rank("grant") = 0
+action_rank("revoke") = 1
+```
+
+Here `record` contains every member, including `signature`, in the displayed
+top-level order. Byte-identical duplicates collapse to one record. Two
+different byte strings with the same digest make canonical state invalid. Sort
+the distinct records ascending by this fully specified tuple:
+
+```text
+(decoded authorization_id bytes,
+ UTF8(target_nid) bytes,
+ issued_at as an integer,
+ action_rank(action),
+ decoded record_digest bytes)
+```
+
+All byte comparisons are unsigned lexicographic comparisons. The canonical
+digest input is the canonical compact JSON array of the ordered records'
+`record_digest` strings, with no whitespace:
+
+```text
+canonical_authorization_record_digests =
+  canonical_compact_json([record_digest(record_0), ..., record_digest(record_n)])
 predecessor_ledger_digest = lowercase-hex(
-  SHA-256(UTF8(canonical_compact_json(resolved_predecessor_ledger)))
+  SHA-256(UTF8(canonical_authorization_record_digests))
 )
 ```
 
-Before a config audience-key / `enc/<key_id>` rotation retires the predecessor
-branch, the new branch MUST atomically commit the complete resolved
-authorization state, including every tombstone, plus metadata containing the
-old `key_id`, `predecessor_ledger_digest`, and the new resolved ledger digest.
-The verifier MUST reconstruct the full predecessor state, verify the digest,
-and verify that the successor equals that predecessor plus only KEL-valid,
-signed authorization changes included in the same atomic commit. No existing
-key or tombstone may disappear. Only after that commit is canonical may one
+This complete canonical set and its digest are independent of authorization
+evaluation time: crossing a grant's `valid_until` MUST NOT change either one.
+
+**Operational resolution.** Credential-transfer authority is evaluated
+separately at an explicit evaluation time. The resolver first validates the
+authorization-ID history rules above, the target match, and the target's
+currently active NID-bearing delegation. An invalid history is rejected. If
+any revoke exists for a valid history, revocation is absorbing and the result
+is revoked regardless of issue or evaluation time; greatest `issued_at`
+selects the representative revoke and the lexicographically smallest decoded
+`record_digest` wins a tie. Otherwise the same ordering selects the
+representative grant. Only after choosing that representative does the
+resolver require `evaluation_time < valid_until`; an expired representative
+is rejected and an older grant is not substituted. These operational outcomes
+MUST NOT alter or filter the canonical signed-record set. An old grant replayed
+after a tombstone remains revoked.
+
+**Ledger continuity across config-key rotation.** Before a config audience-key
+/ `enc/<key_id>` rotation retires the predecessor branch, the new branch MUST
+atomically commit the complete canonical signed-record set: the exact signed
+record bytes and digests for every predecessor record, including expired
+grants and tombstones, plus metadata containing the old `key_id`,
+`predecessor_ledger_digest`, and the new record-set digest. The verifier MUST
+reconstruct the complete predecessor set, verify its digest, and verify that
+the successor set equals the predecessor set union only individually valid,
+signed authorization records included in the same atomic commit. No
+predecessor record may disappear. Only after that commit is canonical may one
 signed-ref transition publish the new branch and retire/delete the old branch.
 
-An implementation MUST refuse rotation and credential transfer if the full
-predecessor state, predecessor digest continuity, successor-state equality,
-or atomic publication cannot be established. An old grant replayed after a
-tombstone or branch rotation remains revoked. These rules instantiate Core's
-rollback-detection and atomic-rotation requirements for this profile.
+An implementation MUST refuse rotation and credential transfer if the complete
+predecessor signed-record set, predecessor digest continuity, successor-set
+equality, or atomic publication cannot be established. These rules instantiate
+Core's rollback-detection and atomic-rotation requirements for this profile.
 
 Before any credential transfer, the source MUST sync and verify canonical
 config-repository state from its configured persona full nodes, resolve any

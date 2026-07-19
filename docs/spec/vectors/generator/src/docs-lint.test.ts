@@ -23,40 +23,81 @@ type CredentialRecordProbe = {
   action: "grant" | "revoke";
   issuedAt: number;
   validUntil: number;
+  signedDigest: string;
 };
+
+function hasValidAuthorizationIdHistoryProbe(
+  records: readonly CredentialRecordProbe[],
+): boolean {
+  const uniqueRecords = [
+    ...new Map(records.map((record) => [record.signedDigest, record])).values(),
+  ];
+  const grants = uniqueRecords.filter((record) => record.action === "grant");
+  if (grants.length !== 1) return false;
+  const [grant] = grants;
+  return uniqueRecords.every(
+    (record) =>
+      record.authorizationId === grant.authorizationId &&
+      record.targetNid === grant.targetNid &&
+      (record.action === "grant" || record.issuedAt > grant.issuedAt),
+  );
+}
 
 function resolveCredentialProbe(
   records: readonly CredentialRecordProbe[],
   now: number,
-): "grant" | "revoke" | "inactive" {
+): "grant" | "revoke" | "inactive" | "invalid" {
+  if (!hasValidAuthorizationIdHistoryProbe(records)) return "invalid";
   if (records.some((record) => record.action === "revoke")) return "revoke";
-  const activeGrants = records
-    .filter(
-      (record) =>
-        record.action === "grant" &&
-        record.validUntil > record.issuedAt &&
-        record.validUntil > now,
-    )
-    .sort((left, right) => right.issuedAt - left.issuedAt);
-  return activeGrants.length > 0 ? "grant" : "inactive";
+  const representative = records
+    .filter((record) => record.action === "grant")
+    .sort(
+      (left, right) =>
+        right.issuedAt - left.issuedAt ||
+        left.signedDigest.localeCompare(right.signedDigest),
+    )[0];
+  return representative.validUntil > now ? "grant" : "inactive";
 }
 
-function ledgerDigestProbe(entries: readonly string[]): string {
+function canonicalRecordDigestsProbe(
+  records: readonly CredentialRecordProbe[],
+): string[] {
+  return [
+    ...new Map(records.map((record) => [record.signedDigest, record])).values(),
+  ]
+    .sort(
+      (left, right) =>
+        left.authorizationId.localeCompare(right.authorizationId) ||
+        left.targetNid.localeCompare(right.targetNid) ||
+        left.issuedAt - right.issuedAt ||
+        left.action.localeCompare(right.action) ||
+        left.signedDigest.localeCompare(right.signedDigest),
+    )
+    .map((record) => record.signedDigest);
+}
+
+function ledgerDigestProbe(
+  records: readonly CredentialRecordProbe[],
+  _evaluationTime: number,
+): string {
   return createHash("sha256")
-    .update(JSON.stringify([...entries].sort()), "utf8")
+    .update(JSON.stringify(canonicalRecordDigestsProbe(records)), "utf8")
     .digest("hex");
 }
 
-function rotationPreservesTombstonesProbe(
-  predecessor: readonly string[],
-  successor: readonly string[],
+function rotationPreservesCompleteRecordSetProbe(
+  predecessor: readonly CredentialRecordProbe[],
+  successor: readonly CredentialRecordProbe[],
   claimedPredecessorDigest: string,
+  evaluationTime: number,
 ): boolean {
-  if (ledgerDigestProbe(predecessor) !== claimedPredecessorDigest) return false;
-  const successorSet = new Set(successor);
-  return predecessor
-    .filter((entry) => entry.endsWith(":revoke"))
-    .every((entry) => successorSet.has(entry));
+  if (ledgerDigestProbe(predecessor, evaluationTime) !== claimedPredecessorDigest) {
+    return false;
+  }
+  const successorSet = new Set(canonicalRecordDigestsProbe(successor));
+  return canonicalRecordDigestsProbe(predecessor).every((recordDigest) =>
+    successorSet.has(recordDigest),
+  );
 }
 
 function negotiationAllowsPayloadProbe(
@@ -301,8 +342,8 @@ describe("protocol family documents", () => {
 
     expect(text).toMatch(/authoritative authorization ledger/i);
     expect(text).toMatch(/inside the encrypted private config repository/i);
-    expect(text).toMatch(/keyed by[\s\S]*`authorization_id`[\s\S]*target NID/i);
-    expect(text).toMatch(/revoke wins[\s\S]*exact-time tie/i);
+    expect(text).toMatch(/record[\s\S]*identified by its signed bytes/i);
+    expect(text).toMatch(/revocation is absorbing/i);
     expect(text).toMatch(/Before any credential transfer, the source MUST sync/i);
     expect(text).toMatch(/verify canonical[\s\S]*config-repository state/i);
     expect(text).toMatch(/offline device[\s\S]*discover[\s\S]*revocation/i);
@@ -372,59 +413,93 @@ describe("protocol family documents", () => {
 
   it("makes credential revocation an absorbing permanent tombstone", () => {
     const text = readFileSync(commsPath, "utf8");
-    const records: CredentialRecordProbe[] = [
-      {
-        authorizationId: "00".repeat(16),
-        targetNid: "did:key:zTarget",
-        action: "grant",
-        issuedAt: 10,
-        validUntil: 20,
-      },
-      {
-        authorizationId: "00".repeat(16),
-        targetNid: "did:key:zTarget",
-        action: "revoke",
-        issuedAt: 15,
-        validUntil: 0,
-      },
-      {
-        authorizationId: "00".repeat(16),
-        targetNid: "did:key:zTarget",
-        action: "grant",
-        issuedAt: 30,
-        validUntil: 100,
-      },
-    ];
+    const grant: CredentialRecordProbe = {
+      authorizationId: "00".repeat(16),
+      targetNid: "did:key:zTarget",
+      action: "grant",
+      issuedAt: 10,
+      validUntil: 20,
+      signedDigest: "11".repeat(32),
+    };
+    const revoke: CredentialRecordProbe = {
+      ...grant,
+      action: "revoke",
+      issuedAt: 15,
+      validUntil: 0,
+      signedDigest: "22".repeat(32),
+    };
+    const reusedGrant: CredentialRecordProbe = {
+      ...grant,
+      issuedAt: 30,
+      validUntil: 100,
+      signedDigest: "33".repeat(32),
+    };
 
-    expect(resolveCredentialProbe(records, 40)).toBe("revoke");
+    expect(hasValidAuthorizationIdHistoryProbe([grant, revoke])).toBe(true);
+    expect(resolveCredentialProbe([grant, revoke], 40)).toBe("revoke");
+    expect(hasValidAuthorizationIdHistoryProbe([grant, revoke, reusedGrant])).toBe(false);
+    expect(resolveCredentialProbe([grant, revoke, reusedGrant], 40)).toBe("invalid");
     expect(text).toMatch(/revoke[\s\S]*`valid_until`[\s\S]*`0`[\s\S]*permanent/i);
     expect(text).toMatch(/tombstone[\s\S]*MUST NOT expire/i);
-    expect(text).toMatch(/later[\s\S]*grant[\s\S]*MUST NOT[\s\S]*resurrect/i);
+    expect(text).toMatch(/new grant[\s\S]*authorization_id[\s\S]*not previously used/i);
+    expect(text).toMatch(/revoke[\s\S]*reuse[\s\S]*grant[\s\S]*ID[\s\S]*target/i);
+    expect(text).toMatch(/records[\s\S]*unique[\s\S]*signed[\s\S]*(digest|bytes)/i);
   });
 
-  it("requires digest-continuous atomic ledger migration", () => {
+  it("hashes and migrates the complete time-independent signed-record set", () => {
     const text = readFileSync(commsPath, "utf8");
-    const predecessor = ["a:nid:grant", "b:nid:revoke"];
-    const digest = ledgerDigestProbe(predecessor);
+    const expiredGrant: CredentialRecordProbe = {
+      authorizationId: "00".repeat(16),
+      targetNid: "did:key:zExpired",
+      action: "grant",
+      issuedAt: 10,
+      validUntil: 20,
+      signedDigest: "11".repeat(32),
+    };
+    const liveGrant: CredentialRecordProbe = {
+      authorizationId: "aa".repeat(16),
+      targetNid: "did:key:zLive",
+      action: "grant",
+      issuedAt: 12,
+      validUntil: 100,
+      signedDigest: "22".repeat(32),
+    };
+    const revoke: CredentialRecordProbe = {
+      ...liveGrant,
+      action: "revoke",
+      issuedAt: 18,
+      validUntil: 0,
+      signedDigest: "33".repeat(32),
+    };
+    const predecessor = [expiredGrant, liveGrant, revoke];
+    const beforeExpiry = ledgerDigestProbe(predecessor, 19);
+    const afterExpiry = ledgerDigestProbe(predecessor, 21);
 
+    expect(afterExpiry).toBe(beforeExpiry);
+    expect(canonicalRecordDigestsProbe(predecessor)).toContain(expiredGrant.signedDigest);
     expect(
-      rotationPreservesTombstonesProbe(
+      rotationPreservesCompleteRecordSetProbe(
         predecessor,
-        ["a:nid:grant"],
-        digest,
+        [liveGrant, revoke],
+        afterExpiry,
+        21,
       ),
     ).toBe(false);
     expect(
-      rotationPreservesTombstonesProbe(
+      rotationPreservesCompleteRecordSetProbe(
         predecessor,
         predecessor,
-        "00".repeat(32),
+        afterExpiry,
+        21,
       ),
-    ).toBe(false);
+    ).toBe(true);
     expect(text).toContain("predecessor_ledger_digest");
-    expect(text).toMatch(/complete resolved\s+authorization state/i);
+    expect(text).toMatch(/complete canonical[\s\S]*signed-record set/i);
+    expect(text).toMatch(/MUST include expired grants/i);
+    expect(text).toMatch(/independent of[\s\S]*evaluation time/i);
+    expect(text).toMatch(/operational[\s\S]*explicit evaluation time/i);
     expect(text).toMatch(/Before a config[\s\S]*rotation retires/i);
-    expect(text).toMatch(/new branch MUST atomically commit/i);
+    expect(text).toMatch(/new branch MUST[\s\S]*atomically commit/i);
     expect(text).toMatch(/refuse[\s\S]*credential transfer/i);
   });
 
@@ -436,6 +511,8 @@ describe("protocol family documents", () => {
     );
 
     expect(intro).not.toMatch(/published to ordinary relays and its repo relay/);
+    expect(intro).toMatch(/Tier 1 and Tier 2[\s\S]*empty `content`/i);
+    expect(intro).toMatch(/Tier 3[\s\S]*`content` MUST be ciphertext/i);
     expect(text).toMatch(/Tier 3 index[\s\S]*MUST[\s\S]*ordinary relays[\s\S]*repo relay/i);
     expect(text).toContain("max(3, ceil(len(known_relays) * 0.5))");
     expect(text).toMatch(
@@ -469,9 +546,12 @@ describe("protocol family documents", () => {
     expect(text).toMatch(
       /every subsequent post, index, and descriptor[\s\S]*fresh[\s\S]*`key_id`/i,
     );
-    expect(text).toMatch(/MUST remember unresolved pages[\s\S]*retry/i);
+    expect(text).toMatch(/MUST persist[\s\S]*across process[\s\S]*restart/i);
     expect(text).toContain(
-      "feed truncated at `<created_at-of-prior-page>` / `<d-tag-of-missing-page>`",
+      "feed truncated after `<created_at-of-referring-page>` / `<d-tag-of-referring-page>`; missing `<event_id>`",
+    );
+    expect(text).toMatch(
+      /persist[\s\S]*predecessor event id[\s\S]*referring-page locator[\s\S]*process[\s\S]*restart/i,
     );
   });
 
