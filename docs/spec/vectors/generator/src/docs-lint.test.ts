@@ -1,0 +1,180 @@
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { describe, expect, it } from "vitest";
+import { lintFamilyDocs } from "./docs-lint.js";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const repositoryRoot = resolve(here, "../../../../../");
+const corePath = resolve(repositoryRoot, "docs/spec/heterodyne-core.md");
+
+function withFamilyDocs(
+  documents: Partial<Record<"core" | "comms" | "control" | "social", string>>,
+  run: (root: string) => void,
+): void {
+  const root = mkdtempSync(resolve(tmpdir(), "heterodyne-docs-lint-"));
+  const spec = resolve(root, "docs/spec");
+  mkdirSync(spec, { recursive: true });
+  try {
+    for (const [document, text] of Object.entries(documents)) {
+      writeFileSync(resolve(spec, `heterodyne-${document}.md`), text, "utf8");
+    }
+    run(root);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+describe("protocol family documents", () => {
+  it("keeps Heterodyne Core on its extraction boundary", () => {
+    const text = readFileSync(corePath, "utf8");
+
+    expect(text).toContain("Document ID: `core`");
+    expect(text).toContain("Version: `core/0.5.0`");
+    expect(text).toContain("Registry revision: `1`");
+    expect(text).not.toMatch(
+      /normative[^\n]*(heterodyne-comms|heterodyne-control|heterodyne-social)/i,
+    );
+    expect(text).not.toMatch(
+      /follow|mutual follow|friend|Matrix identity-room cache/i,
+    );
+  });
+
+  it("accepts resolved qualified references along the allowed DAG", () => {
+    withFamilyDocs(
+      {
+        core: [
+          "Document ID: `core`",
+          "Normative dependencies: None.",
+          '<a id="core-identity-model"></a>',
+        ].join("\n"),
+        comms: [
+          "Document ID: `comms`",
+          "Normative dependencies: `heterodyne:core/0.5.0#core-identity-model`.",
+          '<a id="comms-envelope"></a>',
+        ].join("\n"),
+      },
+      (root) => expect(lintFamilyDocs(root)).toEqual([]),
+    );
+  });
+
+  it("reports duplicate anchors with the duplicate line", () => {
+    withFamilyDocs(
+      {
+        core: [
+          "Document ID: `core`",
+          '<a id="core-identity-model"></a>',
+          "text",
+          '<a id="core-identity-model"></a>',
+        ].join("\n"),
+      },
+      (root) =>
+        expect(lintFamilyDocs(root)).toContainEqual(
+          expect.objectContaining({
+            path: "docs/spec/heterodyne-core.md",
+            line: 4,
+            code: "duplicate-anchor",
+          }),
+        ),
+    );
+  });
+
+  it("reports unresolved qualified anchors", () => {
+    withFamilyDocs(
+      {
+        core: [
+          "Document ID: `core`",
+          '<a id="core-identity-model"></a>',
+        ].join("\n"),
+        comms: [
+          "Document ID: `comms`",
+          "See `heterodyne:core/0.5.0#core-missing`.",
+          '<a id="comms-envelope"></a>',
+        ].join("\n"),
+      },
+      (root) =>
+        expect(lintFamilyDocs(root)).toContainEqual(
+          expect.objectContaining({
+            path: "docs/spec/heterodyne-comms.md",
+            line: 2,
+            code: "unresolved-reference",
+          }),
+        ),
+    );
+  });
+
+  it("resolves an anchor only in the referenced document", () => {
+    withFamilyDocs(
+      {
+        core: [
+          "Document ID: `core`",
+          "See `heterodyne:core/0.5.0#social-shared-name`.",
+          '<a id="core-identity-model"></a>',
+        ].join("\n"),
+        social: [
+          "Document ID: `social`",
+          '<a id="social-shared-name"></a>',
+        ].join("\n"),
+      },
+      (root) =>
+        expect(lintFamilyDocs(root)).toContainEqual(
+          expect.objectContaining({
+            path: "docs/spec/heterodyne-core.md",
+            line: 2,
+            code: "unresolved-reference",
+          }),
+        ),
+    );
+  });
+
+  it("reports forbidden normative dependency edges", () => {
+    withFamilyDocs(
+      {
+        core: [
+          "Document ID: `core`",
+          "Normative dependencies: `heterodyne:comms/0.5.0#comms-envelope`.",
+          '<a id="core-identity-model"></a>',
+        ].join("\n"),
+        comms: [
+          "Document ID: `comms`",
+          '<a id="comms-envelope"></a>',
+        ].join("\n"),
+      },
+      (root) =>
+        expect(lintFamilyDocs(root)).toContainEqual(
+          expect.objectContaining({
+            path: "docs/spec/heterodyne-core.md",
+            line: 2,
+            code: "forbidden-dependency",
+          }),
+        ),
+    );
+  });
+
+  it("reports bare relative normative cross-document links", () => {
+    withFamilyDocs(
+      {
+        comms: [
+          "Document ID: `comms`",
+          "This is normatively defined by [Core](heterodyne-core.md#identity-model).",
+          '<a id="comms-envelope"></a>',
+        ].join("\n"),
+      },
+      (root) =>
+        expect(lintFamilyDocs(root)).toContainEqual(
+          expect.objectContaining({
+            path: "docs/spec/heterodyne-comms.md",
+            line: 2,
+            code: "bare-normative-link",
+          }),
+        ),
+    );
+  });
+});

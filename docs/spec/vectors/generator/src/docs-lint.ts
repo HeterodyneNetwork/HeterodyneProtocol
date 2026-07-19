@@ -1,0 +1,142 @@
+import { existsSync, readFileSync } from "node:fs";
+import { relative, resolve, sep } from "node:path";
+import {
+  assertAllowedDependency,
+  parseQualifiedVersion,
+} from "./family.js";
+import type { DocumentId } from "./types.js";
+
+export type FamilyDocIssue = {
+  path: string;
+  line: number;
+  code:
+    | "duplicate-anchor"
+    | "unresolved-reference"
+    | "forbidden-dependency"
+    | "bare-normative-link";
+  message: string;
+};
+
+type FamilyDocument = {
+  document: DocumentId;
+  absolutePath: string;
+  displayPath: string;
+  lines: string[];
+};
+
+const DOCUMENTS: readonly DocumentId[] = [
+  "core",
+  "comms",
+  "control",
+  "social",
+];
+
+const EXPLICIT_ANCHOR = /<a\s+id="([a-z0-9]+(?:-[a-z0-9]+)*)"\s*><\/a>/g;
+const QUALIFIED_REFERENCE =
+  /heterodyne:(core|comms|control|social)\/((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)#([a-z0-9]+(?:-[a-z0-9]+)*)/g;
+const BARE_FAMILY_LINK =
+  /\]\((?:\.\/)?heterodyne-(core|comms|control|social)\.md(?:#[^)]+)?\)/i;
+const NORMATIVE_LINE = /\bnormative(?:ly)?\b|\b(?:MUST|REQUIRED|SHALL)\b/;
+
+function displayPath(repoRoot: string, path: string): string {
+  return relative(repoRoot, path).split(sep).join("/");
+}
+
+function loadFamilyDocuments(repoRoot: string): FamilyDocument[] {
+  return DOCUMENTS.flatMap((document) => {
+    const absolutePath = resolve(
+      repoRoot,
+      "docs/spec",
+      `heterodyne-${document}.md`,
+    );
+    if (!existsSync(absolutePath)) return [];
+    return [
+      {
+        document,
+        absolutePath,
+        displayPath: displayPath(repoRoot, absolutePath),
+        lines: readFileSync(absolutePath, "utf8").split(/\r?\n/),
+      },
+    ];
+  });
+}
+
+export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
+  const documents = loadFamilyDocuments(repoRoot);
+  const issues: FamilyDocIssue[] = [];
+  const anchors = new Map<string, { path: string; line: number }>();
+  const documentAnchors = new Set<string>();
+
+  for (const document of documents) {
+    for (const [index, line] of document.lines.entries()) {
+      for (const match of line.matchAll(EXPLICIT_ANCHOR)) {
+        const anchor = match[1];
+        documentAnchors.add(`${document.document}:${anchor}`);
+        const existing = anchors.get(anchor);
+        if (existing !== undefined) {
+          issues.push({
+            path: document.displayPath,
+            line: index + 1,
+            code: "duplicate-anchor",
+            message: `anchor ${anchor} duplicates ${existing.path}:${existing.line}`,
+          });
+        } else {
+          anchors.set(anchor, {
+            path: document.displayPath,
+            line: index + 1,
+          });
+        }
+      }
+    }
+  }
+
+  for (const document of documents) {
+    for (const [index, line] of document.lines.entries()) {
+      const lineNumber = index + 1;
+      const references = [...line.matchAll(QUALIFIED_REFERENCE)];
+
+      for (const match of references) {
+        const target = match[1] as DocumentId;
+        const version = match[2];
+        const anchor = match[3];
+        parseQualifiedVersion(`${target}/${version}`);
+        if (!documentAnchors.has(`${target}:${anchor}`)) {
+          issues.push({
+            path: document.displayPath,
+            line: lineNumber,
+            code: "unresolved-reference",
+            message: `${match[0]} does not resolve to an explicit family anchor`,
+          });
+        }
+      }
+
+      if (/^Normative dependencies\s*:/i.test(line.trim())) {
+        for (const match of references) {
+          const target = match[1] as DocumentId;
+          try {
+            assertAllowedDependency(document.document, target);
+          } catch {
+            issues.push({
+              path: document.displayPath,
+              line: lineNumber,
+              code: "forbidden-dependency",
+              message: `${document.document} cannot normatively depend on ${target}`,
+            });
+          }
+        }
+      }
+
+      if (NORMATIVE_LINE.test(line) && BARE_FAMILY_LINK.test(line)) {
+        issues.push({
+          path: document.displayPath,
+          line: lineNumber,
+          code: "bare-normative-link",
+          message:
+            "normative family references must use a qualified heterodyne: URI",
+        });
+      }
+    }
+  }
+
+  return issues;
+}

@@ -8,10 +8,12 @@ import {
   parseQualifiedVersion,
 } from "./family.js";
 import type { DocumentId } from "./types.js";
+import { lintFamilyDocs } from "./docs-lint.js";
 import { verifyVectorTree } from "./verify.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultVectorRoot = resolve(here, "..", "..");
+const defaultRepositoryRoot = resolve(here, "../../../../../");
 const command = process.argv[2];
 const root = resolve(process.argv[3] ?? defaultVectorRoot);
 
@@ -33,10 +35,21 @@ if (command === "author") {
       assertAllowedDependency(document, dependency);
     }
   }
-  console.log("validated protocol document family");
+  const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
+  const issues = lintFamilyDocs(repositoryRoot);
+  if (issues.length > 0) {
+    for (const issue of issues) {
+      console.error(
+        `${issue.path}:${issue.line} [${issue.code}] ${issue.message}`,
+      );
+    }
+    process.exitCode = 1;
+  } else {
+    console.log("validated protocol document family");
+  }
 } else {
   console.error(
-    "usage: tsx src/cli.ts <author|verify|family-check> [vector-root]",
+    "usage: tsx src/cli.ts <author|verify|family-check> [root]",
   );
   process.exitCode = 2;
 }
