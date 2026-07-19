@@ -1,0 +1,239 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.example/spec/registry/registry.schema.json",
+  "title": "Heterodyne protocol registry revision 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest",
+    "kinds",
+    "reason_codes",
+    "security_invariants"
+  ],
+  "properties": {
+    "manifest": {
+      "$ref": "#/definitions/manifest"
+    },
+    "kinds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/kind"
+      }
+    },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/reason_code"
+      }
+    },
+    "security_invariants": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/invariant"
+      }
+    }
+  },
+  "definitions": {
+    "document_id": {
+      "type": "string",
+      "enum": [
+        "core",
+        "comms",
+        "control",
+        "social"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "stable",
+        "frozen"
+      ]
+    },
+    "qualified_version": {
+      "type": "string",
+      "pattern": "^(core|comms|control|social)/(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "qualified_reference": {
+      "type": "string",
+      "pattern": "^heterodyne:(core|comms|control|social)/(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?#[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "schema_version",
+        "entry_set_sha256"
+      ],
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "const": 1
+        },
+        "schema_version": {
+          "type": "string",
+          "const": "1.0.0"
+        },
+        "entry_set_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "owner",
+        "discriminator",
+        "stamping",
+        "first_version",
+        "status"
+      ],
+      "properties": {
+        "profile_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owner": {
+          "$ref": "#/definitions/document_id"
+        },
+        "discriminator": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Immutable in-band discriminator or production rule that selects this profile."
+        },
+        "stamping": {
+          "type": "boolean",
+          "description": "True only when the profile overrides the base-schema or upstream stamp owner. False retains the Heterodyne base-owner stamp, or remains unstamped when the base schema is upstream."
+        },
+        "first_version": {
+          "$ref": "#/definitions/qualified_version"
+        },
+        "status": {
+          "$ref": "#/definitions/status"
+        }
+      }
+    },
+    "kind": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "allocation_authority",
+        "base_schema_owner",
+        "status",
+        "first_version",
+        "profiles"
+      ],
+      "properties": {
+        "kind": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "allocation_authority": {
+          "type": "string",
+          "enum": [
+            "heterodyne",
+            "nostr"
+          ]
+        },
+        "base_schema_owner": {
+          "type": "string",
+          "enum": [
+            "core",
+            "comms",
+            "control",
+            "social",
+            "nostr"
+          ]
+        },
+        "status": {
+          "$ref": "#/definitions/status"
+        },
+        "first_version": {
+          "$ref": "#/definitions/qualified_version"
+        },
+        "profiles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/profile"
+          }
+        }
+      }
+    },
+    "reason_code": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "owner",
+        "status",
+        "first_version",
+        "description",
+        "spec_refs"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:_[a-z0-9]+)*$"
+        },
+        "owner": {
+          "$ref": "#/definitions/document_id"
+        },
+        "status": {
+          "$ref": "#/definitions/status"
+        },
+        "first_version": {
+          "$ref": "#/definitions/qualified_version"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "spec_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/qualified_reference"
+          }
+        }
+      }
+    },
+    "invariant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "owner",
+        "status",
+        "first_version",
+        "description"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^(CORE|COMMS|CONTROL|SOCIAL)-I-[A-Z0-9]+(?:-[A-Z0-9]+)*$"
+        },
+        "owner": {
+          "$ref": "#/definitions/document_id"
+        },
+        "status": {
+          "$ref": "#/definitions/status"
+        },
+        "first_version": {
+          "$ref": "#/definitions/qualified_version"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

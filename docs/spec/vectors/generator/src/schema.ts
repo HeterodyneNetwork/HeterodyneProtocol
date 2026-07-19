@@ -2,6 +2,8 @@ import { Ajv, type ErrorObject, type JSONSchemaType } from "ajv";
 import { reasonCodeValues } from "./reason-codes.js";
 import type { Vector } from "./types.js";
 
+const REGISTRY_REASON_CODES = reasonCodeValues();
+
 export const VECTOR_SCHEMA: JSONSchemaType<Vector> = {
   type: "object",
   additionalProperties: false,
@@ -70,7 +72,7 @@ export const VECTOR_SCHEMA: JSONSchemaType<Vector> = {
             required: ["verdict", "reason_code"],
             properties: {
               verdict: { const: "reject" },
-              reason_code: { type: "string", enum: reasonCodeValues() },
+              reason_code: { type: "string", enum: REGISTRY_REASON_CODES },
             },
             additionalProperties: true,
           },

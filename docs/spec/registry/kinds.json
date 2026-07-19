@@ -1,0 +1,444 @@
+{
+  "kinds": [
+    {
+      "kind": 0,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-core-rotation-breadcrumb-profile-v1",
+          "owner": "core",
+          "discriminator": "production-rule:adr-031-kind0-v1",
+          "stamping": false,
+          "first_version": "core/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 1,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-core-rotation-breadcrumb-note-v1",
+          "owner": "core",
+          "discriminator": "production-rule:adr-031-kind1-v1",
+          "stamping": false,
+          "first_version": "core/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 3,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 5,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 7,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 13,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 14,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 15,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 1059,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 1060,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 1984,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 1985,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 4550,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 9734,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 9735,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 10000,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-social-mute-list-v1",
+          "owner": "social",
+          "discriminator": "tag:heterodyne=social-mute-list-v1",
+          "stamping": true,
+          "first_version": "social/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 10001,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 10002,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 10003,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 10004,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 10050,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30000,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30002,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30003,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30007,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30015,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30023,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30024,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30078,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-double-ratchet-invite-v1",
+          "owner": "comms",
+          "discriminator": "d-prefix:double-ratchet/invites/",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 30402,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31000,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31001,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-control-session-device-v1",
+          "owner": "control",
+          "discriminator": "tags:heterodyne=delegation,binding_nonce,key_proof;radicle_nid=absent",
+          "stamping": false,
+          "first_version": "control/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 31002,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31003,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31004,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31005,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31007,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-social-org-feed-v1",
+          "owner": "social",
+          "discriminator": "content.profile=heterodyne.social.org-feed.v1",
+          "stamping": true,
+          "first_version": "social/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 31008,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31009,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31010,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31011,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31012,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31015,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "comms-subprotocol-negotiation-v1",
+          "owner": "comms",
+          "discriminator": "content.protocol_type=negotiation",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 31016,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "comms-subprotocol-payload-v1",
+          "owner": "comms",
+          "discriminator": "content.protocol_type=payload",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 34550,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 39089,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    }
+  ]
+}

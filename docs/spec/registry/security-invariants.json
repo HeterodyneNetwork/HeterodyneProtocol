@@ -1,0 +1,123 @@
+{
+  "security_invariants": [
+    {
+      "id": "CORE-I-IDENTITY-INTEGRITY",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "The cold-root npub and accepted KEL are authoritative for persona identity; downstream caches and delegated identifiers cannot override them."
+    },
+    {
+      "id": "CORE-I-NID-DELEGATION-DUAL-PROOF",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A Radicle NID delegation is active only after both the persona epoch-key BIP-340 signature and the delegated NID Ed25519 proof verify over the same binding."
+    },
+    {
+      "id": "CORE-I-VERIFY-BEFORE-USE",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Every signed object is locally signature-verified and, where applicable, delegation-checked before rendering, storage, or authorization."
+    },
+    {
+      "id": "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Core discovery does not depend on a centralized persona, npub, RID, or serving-node directory."
+    },
+    {
+      "id": "CORE-I-KEY-MATERIAL-AT-REST",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Persona nsec, NID secrets, and sensitive cached identity material are protected by the Core keys-repository profile, including NIP-49 wrapping where applicable."
+    },
+    {
+      "id": "COMMS-I-TIER3-BLIND-CARRIER",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay."
+    },
+    {
+      "id": "COMMS-I-TIER2-HONESTY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Tier 2 private repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly."
+    },
+    {
+      "id": "COMMS-I-CONFIG-AT-REST",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Comms-owned non-key private state and audience or ratchet material are encrypted under the Comms repository-encryption profile."
+    },
+    {
+      "id": "COMMS-I-CLIENT-SIDE-DELIVERY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Cross-backend Comms processing runs on user-controlled clients; full nodes, repository relays, routing nodes, and Nostr relays are blind carriers for protected plaintext."
+    },
+    {
+      "id": "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Feed, outbox, and delivery discovery do not depend on a centralized delivery directory."
+    },
+    {
+      "id": "SOCIAL-I-MATRIX-E2EE",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "Private Matrix discussion and configuration content, including protected state, remains end-to-end encrypted and downgrade-resistant from the homeserver."
+    },
+    {
+      "id": "SOCIAL-I-MXID-DELEGATION-DUAL-PROOF",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "A Matrix MXID delegation requires both the persona epoch-key signature and successful MXID self-publication through Matrix state authorization."
+    },
+    {
+      "id": "SOCIAL-I-PRIVATE-STATE-AT-REST",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "Private mute, feed-preference, followed-repository, and other Social state are encrypted at rest using the owning Social or bound Comms profile."
+    },
+    {
+      "id": "SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "Matrix and cross-protocol Social bridging runs on user-controlled clients; no homeserver or relay bridge receives protected plaintext."
+    },
+    {
+      "id": "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "Following, transitive discovery, and social-graph evaluation do not depend on a centralized follow-graph oracle."
+    },
+    {
+      "id": "CONTROL-I-AUDIT-AT-REST",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Control audit records containing requests, grants, tokens, or side effects are encrypted at rest under Core, Comms, and Control-owned protection rules without a Social dependency."
+    },
+    {
+      "id": "CONTROL-I-SESSION-KEY-CONFINEMENT",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A Control session device never receives persona epoch, NID, audience, repository-decryption, or ratchet secrets."
+    }
+  ]
+}
