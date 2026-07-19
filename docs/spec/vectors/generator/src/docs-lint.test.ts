@@ -209,6 +209,114 @@ describe("protocol family documents", () => {
     }
   });
 
+  it("closes Tier 3 wrapping to registered stamping profiles and integrity tags", () => {
+    const text = readFileSync(commsPath, "utf8");
+
+    for (const kind of [1, 6, 16, 1063, 30023, 30402]) {
+      expect(text).toContain(
+        `heterodyne-comms-tier3-wrapped-content-kind-${kind}-v1`,
+      );
+    }
+    expect(text).toMatch(
+      /other upstream kind[\s\S]*MUST NOT[\s\S]*`room_key\.v2`/i,
+    );
+    expect(text).toMatch(
+      /Tier 3 post[\s\S]*`kel_head`[\s\S]*exactly[\s\S]*Core/i,
+    );
+    expect(text).toMatch(
+      /`spec_version`[\s\S]*`comms\/0\.5\.0`[\s\S]*stamping profile/i,
+    );
+  });
+
+  it("defines complete closed unsigned carrier-rumor wire forms", () => {
+    const text = readFileSync(commsPath, "utf8");
+
+    expect(text).toMatch(/`content` MUST be a JSON string/i);
+    expect(text).toMatch(/object-valued `content` MUST be rejected/i);
+    expect(text).toMatch(/unsigned Nostr rumor[\s\S]*`id`[\s\S]*`pubkey`/i);
+    expect(text).toMatch(
+      /`created_at`[\s\S]*`kind`[\s\S]*`tags`[\s\S]*`content`[\s\S]*MUST NOT include `sig`/i,
+    );
+    expect(text).toMatch(
+      /a missing,[\s\S]*duplicate, unknown, misordered, or wrongly typed[\s\S]*MUST[\s\S]*rejected/i,
+    );
+    expect(text).toMatch(/SHA-256[\s\S]*NIP-01 serialization[\s\S]*`id`/i);
+  });
+
+  it("makes the config authorization ledger authoritative and deterministic", () => {
+    const text = readFileSync(commsPath, "utf8");
+
+    expect(text).toMatch(/authoritative authorization ledger/i);
+    expect(text).toMatch(/inside the encrypted private config repository/i);
+    expect(text).toMatch(/keyed by[\s\S]*`authorization_id`[\s\S]*target NID/i);
+    expect(text).toMatch(/revoke wins[\s\S]*exact-time tie/i);
+    expect(text).toMatch(/Before any credential transfer, the source MUST sync/i);
+    expect(text).toMatch(/verify canonical[\s\S]*config-repository state/i);
+    expect(text).toMatch(/offline device[\s\S]*discover[\s\S]*revocation/i);
+    expect(text).toMatch(/self-DM[\s\S]*MUST NOT[\s\S]*authorit/i);
+  });
+
+  it("defines a total Comms-native acceptance decision table", () => {
+    const text = readFileSync(commsPath, "utf8");
+
+    expect(text).toMatch(/established locally accepted[\s\S]*`accept`/i);
+    expect(text).toMatch(/new `ordinary-dm`[\s\S]*`hold-as-message-request`/i);
+    expect(text).toMatch(
+      /`credential-sync`[\s\S]*`accept` iff[\s\S]*authoritative ledger/i,
+    );
+    expect(text).toMatch(
+      /current state[\s\S]*cannot be established[\s\S]*`hold-as-message-request`/i,
+    );
+    expect(text).toMatch(
+      /invalid, revoked, expired, mismatched, or NID-less[\s\S]*`reject`/i,
+    );
+    expect(text).toMatch(/`control-enrollment`[\s\S]*`hold-as-message-request`/i);
+  });
+
+  it("retains DR lifecycle, audience rotation, and vanilla fallback", () => {
+    const text = readFileSync(commsPath, "utf8");
+
+    expect(text).toMatch(/empty-content replacement[\s\S]*tombstone/i);
+    expect(text).toMatch(/out-of-band invite[\s\S]*URL fragment/i);
+    expect(text).toMatch(/delegation expires or is revoked/);
+    expect(text).toMatch(/active peers MUST stop[\s\S]*sending/);
+    expect(text).toMatch(/vanilla[\s\S]*MUST[\s\S]*NIP-17 fallback/i);
+    expect(text).toMatch(
+      /member addition MUST publish a replacing `kind:31012` under the same\s+`key_id`/i,
+    );
+    expect(text).toMatch(
+      /member removal[\s\S]*republish[\s\S]*encrypted index[\s\S]*60 seconds/i,
+    );
+  });
+
+  it("retains tier-specific publication and exact retrieval metadata", () => {
+    const text = readFileSync(commsPath, "utf8");
+
+    expect(text).toMatch(/Tier 1[\s\S]*ordinary relays[\s\S]*repo relay/i);
+    expect(text).toMatch(
+      /Tier 2[\s\S]*private[\s\S]*MUST NOT[\s\S]*public relay/i,
+    );
+    expect(text).toMatch(/Tier 3[\s\S]*ciphertext[\s\S]*ordinary[\s\S]*repo/i);
+    expect(text).toMatch(/`retrieval_hints\.archive_url`/);
+    expect(text).toMatch(/`<nostr_event_id>`[\s\S]*`\?id=<nostr_event_id>`/);
+    expect(text).toMatch(/known_relays[\s\S]*union[\s\S]*NIP-65[\s\S]*relay hints/i);
+    expect(text).toMatch(/NIP-13[\s\S]*PERMANENT/);
+    expect(text).toMatch(/plaintext[\s\S]*may persist[\s\S]*every node/i);
+  });
+
+  it("retains exact public and private feed-index addressing", () => {
+    const text = readFileSync(commsPath, "utf8");
+
+    expect(text).toContain('["d", "<feed_id>:<page_id>"]');
+    expect(text).toContain('["previous_index", "<event_id>"]');
+    expect(text).toContain('["prev_page_hash", "<hex-sha256>"]');
+    expect(text).toMatch(
+      /Tier 3[\s\S]*opaque `d`[\s\S]*128 bits[\s\S]*(random|keyed)/i,
+    );
+    expect(text).toContain("retrieval_hints");
+    expect(text).toContain("feed_label");
+  });
+
   it("accepts resolved qualified references along the allowed DAG", () => {
     withFamilyDocs(
       {

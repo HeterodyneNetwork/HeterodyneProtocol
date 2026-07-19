@@ -94,8 +94,9 @@ confirmation. `visibility.allow` MUST NOT be conflated with the repository
 
 Tier 3 content MUST be encrypted before it reaches any repository, full node,
 seed, or relay. Plaintext Tier 3 content MUST NOT be committed or published.
-The outer event exposes only the wrap marker and opaque `key_id`; sensitive
-content, tags, RID, audience association, and retrieval hints are encrypted.
+The outer event exposes only its registered profile marker, opaque `key_id`,
+required Core integrity/identity tags, and Comms profile stamp; semantic
+content and tags, RID, audience association, and retrieval hints are encrypted.
 
 <a id="comms-audience-keys"></a>
 ### 3.1 Audience key distribution and roster
@@ -127,11 +128,18 @@ The replaceable `kind:31012` roster uses `d = key_id`, the
 tag per recipient. It MUST be epoch-key signed and KEL-validated. A sensitive
 roster MAY instead be carried inside a Tier 3 encrypted object.
 
-A removal MUST generate a fresh audience key and `key_id`, publish the new
-roster, redistribute `kind:31011` wraps only to remaining members, and publish
-subsequent content under the new key. Joining SHOULD NOT rotate: the new
-member receives the current generation. Rotation limits future exposure; it
-does not revoke ciphertext encrypted under a key already possessed.
+A member addition MUST publish a replacing `kind:31012` under the same
+`key_id` containing the new member and MUST publish that member's
+`kind:31011` wrap. Addition SHOULD NOT rotate: the new member receives the
+current generation.
+
+A member removal MUST generate a fresh audience key and `key_id`, publish the
+new roster, redistribute `kind:31011` wraps only to remaining members,
+republish the current encrypted index under the newly derived `index_key`, and
+supersede the in-audience descriptor. The index and descriptor updates MUST
+complete within 60 seconds. Rotation excludes the removed member from future
+content only; it cannot revoke old ciphertext encrypted under a key the member
+already possessed.
 
 <a id="comms-tier-three-profile"></a>
 ### 3.2 Tier 3 encryption profile
@@ -149,13 +157,53 @@ index_key = HKDF-SHA256(audience_key, UTF8(key_id),
                         "heterodyne-index-key-v1", 32)
 ```
 
-A Tier 3 post uses its ordinary Nostr content kind. Clear tags MUST contain
-`["heterodyne_wrap","room_key.v2"]` and `["key_id","<id>"]`; only a `d`
-tag required by an addressable upstream kind may be added. It MUST NOT expose
-`room`, `matrix_room`, `rid`, `megolm_session_id`, semantic `e`/`p`/`t` tags,
-or retrieval hints. Its encrypted inner JSON is exactly a `content` string
-and `tags` array. Encryption happens before signing, so re-encryption is a new
-intent and event id.
+Registry revision 1 permits Tier 3 wrapping only for this closed stamping
+profile set:
+
+| Nostr kind | Profile ID |
+|---|---|
+| `1` | `heterodyne-comms-tier3-wrapped-content-kind-1-v1` |
+| `6` | `heterodyne-comms-tier3-wrapped-content-kind-6-v1` |
+| `16` | `heterodyne-comms-tier3-wrapped-content-kind-16-v1` |
+| `1063` | `heterodyne-comms-tier3-wrapped-content-kind-1063-v1` |
+| `30023` | `heterodyne-comms-tier3-wrapped-content-kind-30023-v1` |
+| `30402` | `heterodyne-comms-tier3-wrapped-content-kind-30402-v1` |
+
+Every profile uses discriminator `tag:heterodyne_wrap=room_key.v2` and is
+stamping. Another upstream kind MUST NOT use `room_key.v2` until a later
+registry revision allocates its own immutable profile.
+
+A Tier 3 post has this outer shape (kind `1` shown):
+
+```json
+{
+  "id": "<SHA-256 of canonical NIP-01 serialization>",
+  "pubkey": "<current epoch key>",
+  "created_at": 0,
+  "kind": 1,
+  "tags": [
+    ["heterodyne_wrap", "room_key.v2"],
+    ["key_id", "<opaque audience-key generation id>"],
+    ["kel_head", "<accepted KEL event id>", "<decimal seq>"],
+    ["spec_version", "comms/0.5.0"]
+  ],
+  "content": "<NIP-44-v2 symmetric ciphertext of the inner payload>",
+  "sig": "<BIP-340 signature by current epoch key>"
+}
+```
+
+The clear tags of every Tier 3 post MUST include the two wrap tags,
+`spec_version` equal to `comms/0.5.0` as required by its stamping profile, and `kel_head`
+exactly as Core requires for an epoch-signed event. For addressable kinds
+`30023` and `30402`, an additional outer `d` tag is REQUIRED and MUST be an
+opaque value derived from at least 128 bits of randomness or a keyed digest;
+the semantic address remains encrypted. No other clear tag is permitted.
+In particular, `room`, `matrix_room`, `rid`, `megolm_session_id`, semantic
+`e`/`p`/`t` tags, and retrieval hints MUST remain encrypted.
+
+The encrypted inner JSON is exactly a `content` string and `tags` array.
+Encryption happens before signing, so re-encryption is a new intent and event
+id.
 
 A receiver MUST select the audience key named by `key_id`, derive `post_key`,
 decrypt and parse the closed inner object, reconstruct the logical event, and
@@ -168,7 +216,7 @@ not current membership metadata, is the cryptographic access test.
 
 <!-- Monolith provenance: §3.8.6; payload ownership rewritten by ADR-033 req 6. -->
 
-The config repository instantiates
+The `heterodyne-comms-config-repository-v1` protection profile instantiates
 `heterodyne:core/0.5.0#core-protected-repository` with the Tier 3 profile
 above. There is exactly one private,
 unadvertised config repository per persona; its allow list contains only the
@@ -182,6 +230,8 @@ The dedicated config audience key MUST NOT be distributed by published
 MUST contain no nsec, epoch secret, NID secret, audience key, or ratchet state.
 Comms owns its encryption profile and audience/ratchet payload types; private
 social preferences and followed-repository payloads are outside Comms.
+The credential authorization ledger in §8.1 is an allowed Comms-owned non-key
+configuration payload.
 
 Authorization comes only from the KEL and active delegations defined by
 `heterodyne:core/0.5.0#core-nid-delegation`. A device
@@ -209,6 +259,9 @@ otherwise.
 Individual deletion uses Nostr `kind:5` plus an updated feed index. It signals
 intent, not erasure. Live history MUST NOT be rewritten; deletion of a whole
 retired `enc/<key_id>` ref is the sole sanctioned ref-deletion path.
+Clients MUST warn that Tier 1 and Tier 2 plaintext may persist on every node
+that fetched or seeded it. Tier 3 ciphertext may persist on relays and
+non-cooperating seeds and remains readable to holders of its retired key.
 
 <a id="comms-publishing"></a>
 ## 4. Publishing and delivery
@@ -221,18 +274,22 @@ intent. Tier 3 encryption precedes signing. The event `id` is the idempotency
 token across ordinary and repo relays, and receivers SHOULD deduplicate on it.
 
 The destination set contains the persona's configured ordinary write relays
-and the appropriate repo relay. Tier 1 is sent to both. Tier 2 plaintext MUST
-remain on allowed private-repo seeders and MUST NOT be sent to public relays.
-Tier 3 ciphertext may be sent to both. Scheduling, batching, and retry are
-implementation choices, but partial failure MUST be shown with destination
-and reason; a generic unexplained partial-failure message is insufficient.
+and the appropriate repo relay. Tier 1 plaintext MUST be published to ordinary
+relays and the public repo relay. Tier 2 plaintext MUST be published only to
+private-repo allowed seeders and MUST NOT be sent to a public relay. Tier 3
+ciphertext MUST be published to its repo relay and MAY also be published to
+the audience's ordinary relays. The feed index follows the same tier-specific
+publication boundary. Scheduling, batching, and retry are implementation
+choices, but partial failure MUST be shown with destination and reason; a
+generic unexplained partial-failure message is insufficient.
 
 A Nostr write is permanently failed when a relay returns NIP-01 `OK=false`
 with `invalid:`, `blocked:`, or `restricted:`, when `rate-limited:` exceeds
 one hour, after three consecutive retry windows, or on application close code
 4000-4999. Other failures are transient. An AUTH-required rejection is
 transient before NIP-42 authentication and permanent if repeated afterward
-(`auth_rejected_permanent`).
+(`auth_rejected_permanent`). A NIP-13 proof-of-work rejection is PERMANENT
+when the client cannot meet the relay's target.
 
 An indexed event MUST NOT enter `kind:31007` until at least one configured
 Comms destination has accepted it. If every configured write destination
@@ -258,6 +315,8 @@ published to ordinary relays and its repo relay, with an empty `content` and a
     ["heterodyne", "feed_index"],
     ["cold_root", "<persona cold root>"],
     ["rid", "<feed RID>"],
+    ["feed_label", "<optional human-readable label>"],
+    ["retrieval_hints", "{\"archive_url\":\"https://archive.example/<nostr_event_id>\"}"],
     ["e", "<event id>", "<relay hint>"],
     ["kel_head", "<accepted KEL event id>", "<seq>"],
     ["spec_version", "comms/0.5.0"]
@@ -266,8 +325,12 @@ published to ordinary relays and its repo relay, with an empty `content` and a
 }
 ```
 
-`d`, `heterodyne`, and `cold_root` are REQUIRED. `rid` SHOULD appear for a
-repo-backed feed. Ordered `e` tags define the display order. A profile above
+The public `d` tag MUST be exactly `["d", "<feed_id>:<page_id>"]`.
+`heterodyne` and `cold_root` are REQUIRED. `rid` SHOULD appear for a
+repo-backed feed; `feed_label` and `retrieval_hints` are OPTIONAL feed
+metadata. When present, `retrieval_hints` contains canonical compact JSON and
+its `archive_url` is interpreted by §6. Ordered `e` tags define the display
+order. A profile above
 Comms declares which application events are indexed; absent such a profile,
 persistent authored content SHOULD be indexed and ephemeral metadata SHOULD
 not. An explicit `heterodyne_index=true|false` tag overrides that default.
@@ -294,9 +357,10 @@ threshold authorization is not a presentation-layer option.
 
 <!-- Monolith provenance: §6.7.2. -->
 
-A page MUST contain at most 500 entries and SHOULD contain 256. A chained page
-uses `previous_index` and MUST include `prev_page_hash`, the SHA-256 of the
-prior page's canonical NIP-01 bytes. The first page MUST omit the hash. A
+A page MUST contain at most 500 entries and SHOULD contain 256. A chained
+public page uses exactly `["previous_index", "<event_id>"]` and MUST also use
+`["prev_page_hash", "<hex-sha256>"]`, where the hash is SHA-256 of the
+prior page's canonical NIP-01 bytes. The first page MUST omit both tags. A
 verifier MUST check every page signature and hash; mismatch breaks the chain
 with `page_chain_broken` and a visible feed-integrity error. A legacy missing
 hash MAY be rendered only with an unverifiable-chain warning.
@@ -311,11 +375,19 @@ conflicts select the lexicographically smallest event id.
 
 <!-- Monolith provenance: §6.7.3-§6.7.5 and §7.2. -->
 
-Tier 1 and Tier 2 indexes are plaintext within their respective trust
-boundaries. A Tier 3 index MUST encrypt its closed payload with `index_key`.
+Tier 1 indexes are plaintext and MUST be published to ordinary relays and the
+public repo relay. Tier 2 indexes are plaintext only on private-repo allowed
+seeders and MUST NOT be published to a public relay. A Tier 3 index MUST
+encrypt its closed payload with `index_key` and is published as ciphertext to
+its repo relay and, where configured, its audience's ordinary relays.
 Clear tags are limited to opaque `d`, `heterodyne=feed_index`, `cold_root`,
 `heterodyne_wrap=room_key.v2`, `key_id`, `kel_head`, and the Comms version
 tag. RID, entries, hints, and previous-page data MUST be inside ciphertext.
+
+The Tier 3 outer `d` MUST be opaque and generated from at least 128 bits of
+randomness or from a keyed digest whose secret input is known only to the
+audience. It MUST NOT contain a literal RID, room identifier, feed label, or
+semantic page name.
 
 The decrypted payload contains `spec_version`, `rid`, `page_id`, optional
 `feed_label`, ordered `entries[{event_id,relay_hint}]`, and optional
@@ -337,17 +409,23 @@ descriptor under the fresh generation within 60 seconds.
 <!-- Monolith provenance: §6.9 and §7.1-§7.2; follower/community surfaces removed. -->
 
 A missing indexed event is queried by NIP-01 id from its hint, then the
-persona's NIP-65 write and read relays, and eligible repo relays. A complete
-fetch attempt queries `max(3, ceil(known_relays * 0.5))`, uses a default
+persona's NIP-65 write and read relays, and eligible repo relays. For this
+calculation, `known_relays` is exactly the set union of the persona's current
+NIP-65 `read` and `write` relays and all relay hints accompanying the feed
+entry or page, after URL normalization and deduplication. A complete fetch
+attempt queries `max(3, ceil(known_relays * 0.5))`, uses a default
 10-second timeout, makes at most three retries (1/4/16 seconds RECOMMENDED),
 and orders hints, write relays, then read relays. Clients MUST refresh changed
 `kind:10002` relay lists before declaring the attempt complete.
 
 Tier 3 fetches ciphertext then decrypts it. Tier 2 fetches only from an
-allowed full node. A persona MAY advertise its own HTTPS archive; failure is
-not a protocol error. If relay, repo, and explicitly advertised archive
-channels fail, the object is permanently lost to the network and SHOULD be
-shown as missing.
+allowed full node. A persona MAY advertise its own HTTPS archive in the
+`retrieval_hints.archive_url` field of feed-index metadata. If the URL
+contains the literal `<nostr_event_id>`, a client substitutes the requested
+event id. Otherwise it appends or sets `?id=<nostr_event_id>`. The publisher
+is entirely responsible for the endpoint; archive failure is not a protocol
+error. If relay, repo, and explicitly advertised archive channels fail, the
+object is permanently lost to the network and SHOULD be shown as missing.
 
 Automated historical retrieval requests, responses, or pushes over any DM
 transport are forbidden. Double-ratchet history has no backfill. Comms defines
@@ -390,6 +468,12 @@ device's active delegation under
 `heterodyne:core/0.5.0#core-nid-delegation` and KEL authority; missing or revoked bindings
 are `dm_invite_unbound_device` or `dm_invite_revoked_device`.
 
+Publishing a newer invite with the same `(pubkey, kind, d)` replaces the old
+invite; an empty-content replacement is its tombstone. An out-of-band invite
+whose bootstrap bytes are encoded in a URL fragment is an equivalent
+client-mediated bootstrap and MUST undergo the same delegation, KEL, expiry,
+and acceptance checks.
+
 An invite response is `kind:1059`. A `kind:1060` message is signed by the
 current DH-ratchet key, not an epoch key, and carries the encrypted header and
 NIP-44-v2 ciphertext. Current and next expected ratchet keys select a session.
@@ -400,6 +484,9 @@ Decrypted chat, reaction, receipt, and typing data are unsigned NIP-17-style
 rumors. They are attributable through the authenticated session but provide no
 transferable third-party authorship proof. Messages are sent to the recipient's
 NIP-17 `kind:10050` DM relay list; a DM-capable persona SHOULD publish one.
+When the authenticated recipient is a vanilla-Nostr recipient that does not
+support this DR profile, a DM-capable client MUST offer the NIP-17 fallback
+and MUST label that it lacks forward secrecy and post-compromise security.
 
 <a id="comms-dm-retention"></a>
 ### 7.2 Retention and ratchet state
@@ -421,6 +508,10 @@ Every durable delegated device owns separate invites and sessions. A sender
 SHOULD establish a session with each active recipient device. Self-DMs between
 devices of the same persona carry authorized credential sync. Group sender-key
 extensions are OPTIONAL and non-normative in this release.
+
+When a peer device's delegation expires or is revoked, active peers MUST stop
+sending on every session bound to that device and SHOULD surface the change;
+other devices of the persona are unaffected.
 
 Neither `kind:1059` nor `kind:1060` carries a Heterodyne version marker,
 `kel_head`, or persona identifier. Only encrypted inner Comms carrier rumors
@@ -455,13 +546,21 @@ state and MUST NOT emit a receipt, typing signal, delivery acknowledgement,
 automatic retry hint, or any other sender-observable signal until the user
 accepts.
 
-The Comms-native default is: an already established, locally accepted peer
-session may `accept`; a cryptographically valid new `ordinary-dm` is
-`hold-as-message-request`; a valid credential request proceeds only under
-§8.1; and `control-enrollment` is held unless a composed profile supplies a
-stricter explicit authorization. Everything cryptographically invalid is
-`reject`. Higher profiles MAY tighten these outcomes but MUST NOT turn a
-Comms rejection into another result.
+The Comms-native default is a total decision table applied only after
+cryptographic authentication succeeds:
+
+| Context and authenticated state | Outcome |
+|---|---|
+| `ordinary-dm`, established locally accepted session | `accept` |
+| new `ordinary-dm` | `hold-as-message-request` |
+| `credential-sync` | `accept` iff every §8.1 authoritative ledger and current-grant check passes |
+| `credential-sync`, authoritative current state cannot be established | `hold-as-message-request`; no transfer and no sender-observable signal |
+| `credential-sync`, invalid, revoked, expired, mismatched, or NID-less | `reject` |
+| `control-enrollment` without a stricter composed profile decision | `hold-as-message-request` |
+
+Cryptographically invalid input is rejected before the hook runs. A composed
+profile MAY tighten the table but MUST NOT turn a Comms rejection into another
+result or accept an unauthenticated input.
 
 <a id="comms-credential-sync"></a>
 ### 8.1 Credential-plane synchronization
@@ -477,8 +576,7 @@ secret, epoch secret, or ratchet state.
 Every credential-sync grant is bound to the target NID and credential-sync
 purpose, validated against the KEL, and revocable as defined below.
 
-The authorization is a canonical compact-JSON object carried inside an
-authenticated self-DM:
+The authorization record is canonical compact JSON:
 
 ```json
 {
@@ -507,16 +605,52 @@ rejected.
 
 Revocation is the same signed object with the same `authorization_id`, target,
 persona, and purpose, a later `issued_at`, `action:"revoke"`, and a current
-`kel_head`. The latest KEL-valid object wins; a revoke wins an exact-time tie.
-Revoking/expiring the underlying delegation immediately revokes the grant.
-Credential transfer MUST stop if either authorization becomes provisional,
-expires, is revoked, or no longer matches the target NID.
+`kel_head`. Revoking or expiring the underlying Core delegation is an
+independent immediate revocation even before ledger convergence.
+
+**Durable authority.** The authoritative authorization ledger is a
+Comms-owned non-key record set inside the encrypted private config repository,
+keyed by the pair (`authorization_id`, target NID). Epoch-signed grant and
+revoke records have authority only when reachable from the verified canonical
+config-repository state. A self-DM presents and transports a signed grant or
+revoke record, but a self-DM MUST NOT become an authorization authority.
+
+The accepted ledger record set is the union of valid records reachable from
+the active `enc/<key_id>` config branch in the canonical signed-ref state after
+a complete sync with every currently configured persona full node. A record
+on an unmerged device branch has no authority. Authorized writers MUST merge
+new records without deleting existing keys; the record-level ordering below
+then makes concurrent grants and revokes converge. If configured nodes expose
+unresolved candidate canonical heads, or any configured node is unreachable,
+authoritative current state cannot be established and credential sync is held.
+
+For each key, discard records whose signature, KEL state, persona, purpose,
+target, schema, or validity interval fails. Of the remaining records, greatest
+`issued_at` wins; revoke wins an exact-time tie; if same-time same-action
+records differ, the record with the lexicographically smallest SHA-256 digest
+of its signed bytes wins. Reusing one `authorization_id` with another target
+NID invalidates all records for that id. These rules are deterministic across
+multi-writer config-repository merges.
+
+Before any credential transfer, the source MUST sync and verify canonical
+config-repository state from its configured persona full nodes, resolve any
+multi-writer heads under the repository's canonical-ref rules, replay the KEL,
+verify the active durable NID delegation, and apply revoke-wins resolution.
+If the current canonical state cannot be established because synchronization
+is incomplete, refs conflict, or key state is provisional, the hook MUST hold
+the request and transfer nothing. Invalid, revoked, expired, mismatched, or
+NID-less state MUST be rejected.
+
+Every device MUST re-evaluate the ledger after config-repository sync, so an
+offline device will discover a revocation before its next credential transfer.
+Credential transfer MUST stop if either authorization or delegation becomes
+provisional, expires, is revoked, or no longer matches the target NID.
 
 Only after the `credential-sync` hook returns `accept` may a self-DM transfer
 the encrypted keys repository and its integrity metadata. The receiving
-device MUST verify the transfer against the authorization and MUST keep key
-material encrypted at rest. This permission does not authorize remote
-actions, configuration mutations, or application payloads.
+device MUST verify the presented record against the same current ledger state
+and MUST keep key material encrypted at rest. This permission does not
+authorize remote actions, configuration mutations, or application payloads.
 
 <a id="comms-subprotocol-negotiation"></a>
 ## 9. Encrypted subprotocol negotiation and carrier
@@ -524,28 +658,45 @@ actions, configuration mutations, or application payloads.
 <!-- Split provenance: ADR-033 reqs 15 and 23-26; no monolith wire existed. -->
 
 Generic subprotocol traffic is carried only as encrypted inner rumors in an
-accepted DR session. A negotiation frame MUST be processed before any payload
-for that protocol is interpreted:
+accepted DR session. Each carrier is a complete unsigned Nostr rumor with
+exactly these outer members in this order: `id`, `pubkey`, `created_at`,
+`kind`, `tags`, `content`. It MUST NOT include `sig` or any additional member.
+`pubkey` is the session-authenticated sending device's publishing key;
+`created_at` is an integer Unix timestamp; `tags` is an array and MUST contain
+exactly one `["p","<recipient device publishing key>"]` tag.
+
+`content` MUST be a JSON string whose decoded bytes are the canonical compact
+JSON frame defined below; object-valued `content` MUST be rejected. To produce
+and validate `id`, serialize `[0,pubkey,created_at,kind,tags,content]` by
+NIP-01 using the content *string*, hash that NIP-01 serialization with SHA-256,
+and require the lowercase digest to equal `id`. Authenticity comes from the
+accepted encrypted DR session and transcript, not a rumor signature.
+
+A negotiation frame MUST be processed before any payload for that protocol is
+interpreted. The complete kind `31015` unsigned Nostr rumor form is:
 
 ```json
 {
+  "id": "<SHA-256 of the NIP-01 serialization>",
+  "pubkey": "<sender device publishing key>",
+  "created_at": 0,
   "kind": 31015,
-  "content": {
-    "spec_version": "comms/0.5.0",
-    "protocol_type": "negotiation",
-    "protocol_id": "<stable protocol id>",
-    "supported_versions": ["<qualified or profile version>"],
-    "required_features": ["<feature id>"]
-  }
+  "tags": [["p", "<recipient device publishing key>"]],
+  "content": "{\"spec_version\":\"comms/0.5.0\",\"protocol_type\":\"negotiation\",\"protocol_id\":\"<stable protocol id>\",\"supported_versions\":[\"<qualified or profile version>\"],\"required_features\":[\"<feature id>\"]}"
 }
 ```
 
 This is registry profile `comms-subprotocol-negotiation-v1`, discriminator
-`content.protocol_type=negotiation`. Both peers MUST choose one mutually
-supported version and all required features or reject the subprotocol. The
-chosen protocol id, version, required features, session id, peer identity,
-and transcript binding MUST be retained in encrypted local audit records for
-at least as long as any payload decision derived from them.
+`content.protocol_type=negotiation`, evaluated after decoding the string. The
+decoded object MUST have exactly these members in the displayed order and
+types: string `spec_version` equal to `comms/0.5.0`, string `protocol_type`
+equal to `negotiation`, non-empty string `protocol_id`, non-empty array of
+unique non-empty strings `supported_versions`, and array of unique non-empty
+strings `required_features`. Both peers MUST choose one mutually supported
+version and all required features or reject the subprotocol. The chosen
+protocol id, version, required features, session id, peer identity, and
+transcript binding MUST be retained in encrypted local audit records for at
+least as long as any payload decision derived from them.
 
 After agreement, payload uses `kind:31016`, registry profile
 `comms-subprotocol-payload-v1`, discriminator
@@ -553,20 +704,26 @@ After agreement, payload uses `kind:31016`, registry profile
 
 ```json
 {
+  "id": "<SHA-256 of the NIP-01 serialization>",
+  "pubkey": "<sender device publishing key>",
+  "created_at": 0,
   "kind": 31016,
-  "content": {
-    "spec_version": "comms/0.5.0",
-    "protocol_type": "payload",
-    "protocol_id": "<negotiated id>",
-    "protocol_version": "<negotiated version>",
-    "payload": {}
-  }
+  "tags": [["p", "<recipient device publishing key>"]],
+  "content": "{\"spec_version\":\"comms/0.5.0\",\"protocol_type\":\"payload\",\"protocol_id\":\"<negotiated id>\",\"protocol_version\":\"<negotiated version>\",\"payload\":{}}"
 }
 ```
 
-A mismatch, payload before negotiation, unnegotiated feature, or transcript
-change MUST be rejected before payload interpretation. Comms owns both
-carrier kinds and their sole encrypted wire stamp. A higher-layer protocol,
+The decoded payload frame MUST have exactly these members in the displayed
+order: string `spec_version` equal to `comms/0.5.0`, string `protocol_type`
+equal to `payload`, non-empty string `protocol_id`, non-empty string
+`protocol_version`, and JSON value `payload`. For both rumor kinds, a missing,
+duplicate, unknown, misordered, or wrongly typed outer or decoded member MUST
+be rejected before application processing. A mismatch, payload before
+negotiation, unnegotiated feature, or transcript change MUST also be rejected
+before payload interpretation.
+
+Comms owns both carrier kinds. The Comms stamp is inside the canonical content
+string and is their sole encrypted wire stamp. A higher-layer protocol,
 including Control, MUST NOT add or own a wire stamp; the Comms stamp identifies
 only the carrier version and conveys no higher-layer conformance.
 
