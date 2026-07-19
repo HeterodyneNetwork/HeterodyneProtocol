@@ -36,7 +36,10 @@ const QUALIFIED_REFERENCE =
   /heterodyne:(core|comms|control|social)\/((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)#([a-z0-9]+(?:-[a-z0-9]+)*)/g;
 const BARE_FAMILY_LINK =
   /\]\((?:\.\/)?heterodyne-(core|comms|control|social)\.md(?:#[^)]+)?\)/i;
-const NORMATIVE_LINE = /\bnormative(?:ly)?\b|\b(?:MUST|REQUIRED|SHALL)\b/;
+const BCP14_KEYWORD =
+  /\b(?:MUST(?: NOT)?|REQUIRED|SHALL(?: NOT)?|SHOULD(?: NOT)?|RECOMMENDED|NOT RECOMMENDED|MAY|OPTIONAL)\b/;
+const EXPLICIT_NORMATIVE =
+  /(?<!non-)(?<!non )\bnormative(?:ly)?\b/i;
 
 function displayPath(repoRoot: string, path: string): string {
   return relative(repoRoot, path).split(sep).join("/");
@@ -59,6 +62,45 @@ function loadFamilyDocuments(repoRoot: string): FamilyDocument[] {
       },
     ];
   });
+}
+
+function carriesNormativeForce(line: string): boolean {
+  return BCP14_KEYWORD.test(line) || EXPLICIT_NORMATIVE.test(line);
+}
+
+function normativeParagraphLines(lines: readonly string[]): Set<number> {
+  const normative = new Set<number>();
+  let paragraph: number[] = [];
+  let fenced = false;
+
+  const flush = (): void => {
+    if (
+      paragraph.some((lineNumber) => carriesNormativeForce(lines[lineNumber]))
+    ) {
+      for (const lineNumber of paragraph) normative.add(lineNumber);
+    }
+    paragraph = [];
+  };
+
+  for (const [lineNumber, line] of lines.entries()) {
+    if (/^\s*```/.test(line)) {
+      flush();
+      fenced = !fenced;
+      continue;
+    }
+    if (fenced) continue;
+    if (
+      line.trim() === "" ||
+      /^#{1,6}\s/.test(line) ||
+      /^<a\s+id=/.test(line)
+    ) {
+      flush();
+      continue;
+    }
+    paragraph.push(lineNumber);
+  }
+  flush();
+  return normative;
 }
 
 export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
@@ -91,6 +133,7 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
   }
 
   for (const document of documents) {
+    const normativeLines = normativeParagraphLines(document.lines);
     for (const [index, line] of document.lines.entries()) {
       const lineNumber = index + 1;
       const references = [...line.matchAll(QUALIFIED_REFERENCE)];
@@ -110,7 +153,7 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
         }
       }
 
-      if (/^Normative dependencies\s*:/i.test(line.trim())) {
+      if (normativeLines.has(index)) {
         for (const match of references) {
           const target = match[1] as DocumentId;
           try {
@@ -126,7 +169,7 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
         }
       }
 
-      if (NORMATIVE_LINE.test(line) && BARE_FAMILY_LINK.test(line)) {
+      if (normativeLines.has(index) && BARE_FAMILY_LINK.test(line)) {
         issues.push({
           path: document.displayPath,
           line: lineNumber,

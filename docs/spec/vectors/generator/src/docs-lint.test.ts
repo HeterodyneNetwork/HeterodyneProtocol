@@ -47,6 +47,42 @@ describe("protocol family documents", () => {
     );
   });
 
+  it("retains the Core KEL and delegation verification requirements", () => {
+    const text = readFileSync(corePath, "utf8");
+
+    expect(text).toMatch(
+      /`scheme` MUST be one of `bip340`, `did:key`, or `atproto`/,
+    );
+    expect(text).toMatch(/scheme\/identifier mismatch MUST be rejected/);
+    expect(text).toMatch(
+      /empty `valid_until` means no expiry[\s\S]*strictly greater than the evaluation clock/,
+    );
+  });
+
+  it("retains operator consent and exact materialized-KEL atomicity", () => {
+    const text = readFileSync(corePath, "utf8");
+
+    expect(text).toMatch(
+      /MUST NOT enable an export AID[\s\S]*operator[\s\S]*consent/,
+    );
+    expect(text).toMatch(/inception[\s\S]*log commit is parentless/);
+    expect(text).toMatch(/empty accepted KEL MUST[\s\S]*delete both refs/);
+    expect(text).toMatch(/MUST NOT claim this profile/);
+    expect(text).toMatch(
+      /Readers MUST verify that both tips[\s\S]*same accepted KEL head/,
+    );
+  });
+
+  it("defines a closed legacy owner-inference mapping", () => {
+    const text = readFileSync(corePath, "utf8");
+
+    expect(text).toContain("Closed legacy owner-inference table");
+    expect(text).toContain("`31000`, `31001`, `31002`, `31003`, `31005`, `31010`");
+    expect(text).toContain("`31007`, `31011`, `31012`");
+    expect(text).toContain("`31004`, `31008`, `31009`");
+    expect(text).toMatch(/No legacy kind maps to Control/);
+  });
+
   it("accepts resolved qualified references along the allowed DAG", () => {
     withFamilyDocs(
       {
@@ -158,6 +194,79 @@ describe("protocol family documents", () => {
     );
   });
 
+  it("reports a forbidden Core body reference carrying normative force", () => {
+    withFamilyDocs(
+      {
+        core: [
+          "Document ID: `core`",
+          "Core MUST implement `heterodyne:comms/0.5.0#comms-envelope`.",
+          '<a id="core-identity-model"></a>',
+        ].join("\n"),
+        comms: [
+          "Document ID: `comms`",
+          '<a id="comms-envelope"></a>',
+        ].join("\n"),
+      },
+      (root) =>
+        expect(lintFamilyDocs(root)).toContainEqual(
+          expect.objectContaining({
+            path: "docs/spec/heterodyne-core.md",
+            line: 2,
+            code: "forbidden-dependency",
+          }),
+        ),
+    );
+  });
+
+  it("reports a forbidden Social body reference to Control", () => {
+    withFamilyDocs(
+      {
+        control: [
+          "Document ID: `control`",
+          '<a id="control-enrollment"></a>',
+        ].join("\n"),
+        social: [
+          "Document ID: `social`",
+          "This profile SHALL use `heterodyne:control/0.5.0#control-enrollment`.",
+          '<a id="social-profile"></a>',
+        ].join("\n"),
+      },
+      (root) =>
+        expect(lintFamilyDocs(root)).toContainEqual(
+          expect.objectContaining({
+            path: "docs/spec/heterodyne-social.md",
+            line: 2,
+            code: "forbidden-dependency",
+          }),
+        ),
+    );
+  });
+
+  it("reports forbidden edges in wrapped dependency declarations", () => {
+    withFamilyDocs(
+      {
+        control: [
+          "Document ID: `control`",
+          '<a id="control-enrollment"></a>',
+        ].join("\n"),
+        social: [
+          "Document ID: `social`",
+          "Normative dependencies:",
+          "- `heterodyne:control/0.5.0#control-enrollment`",
+          '<a id="social-profile"></a>',
+        ].join("\n"),
+      },
+      (root) =>
+        expect(lintFamilyDocs(root)).toContainEqual(
+          expect.objectContaining({
+            path: "docs/spec/heterodyne-social.md",
+            line: 3,
+            code: "forbidden-dependency",
+          }),
+        ),
+    );
+  });
+
   it("reports bare relative normative cross-document links", () => {
     withFamilyDocs(
       {
@@ -175,6 +284,50 @@ describe("protocol family documents", () => {
             code: "bare-normative-link",
           }),
         ),
+    );
+  });
+
+  it("recognizes SHOULD, MAY, and OPTIONAL as normative link contexts", () => {
+    withFamilyDocs(
+      {
+        comms: [
+          "Document ID: `comms`",
+          "A client SHOULD use [Core](heterodyne-core.md#core-identity-model).",
+          "",
+          "A client MAY use [Core](./heterodyne-core.md#core-identity-model).",
+          "",
+          "This [Core](heterodyne-core.md#core-identity-model) behavior is OPTIONAL.",
+          '<a id="comms-envelope"></a>',
+        ].join("\n"),
+      },
+      (root) => {
+        const issues = lintFamilyDocs(root).filter(
+          (issue) => issue.code === "bare-normative-link",
+        );
+        expect(issues.map((issue) => issue.line)).toEqual([2, 4, 6]);
+      },
+    );
+  });
+
+  it("does not infer an edge from explicitly nonnormative prose", () => {
+    withFamilyDocs(
+      {
+        core: [
+          "Document ID: `core`",
+          "Nonnormative background: `heterodyne:comms/0.5.0#comms-envelope`.",
+          '<a id="core-identity-model"></a>',
+        ].join("\n"),
+        comms: [
+          "Document ID: `comms`",
+          '<a id="comms-envelope"></a>',
+        ].join("\n"),
+      },
+      (root) =>
+        expect(
+          lintFamilyDocs(root).filter(
+            (issue) => issue.code === "forbidden-dependency",
+          ),
+        ).toEqual([]),
     );
   });
 });
