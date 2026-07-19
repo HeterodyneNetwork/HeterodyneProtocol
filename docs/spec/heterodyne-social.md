@@ -1338,26 +1338,100 @@ namespaced by ADR-033. -->
 
 Registry revision 1 binds these exact Social invariants:
 
-- **SOCIAL-I-MATRIX-E2EE:** Private Matrix discussion and configuration
-  content, including protected state, remains end-to-end encrypted and
-  downgrade-resistant from the homeserver.
-- **SOCIAL-I-MXID-DELEGATION-DUAL-PROOF:** An MXID delegation requires both
-  the persona epoch-key signature and successful MXID self-publication through
-  Matrix state authorization.
-- **SOCIAL-I-PRIVATE-STATE-AT-REST:** Private mute, feed-preference,
-  followed-repository, and other Social state is encrypted at rest using the
-  Social profile or the bound Comms repository-encryption profile.
-- **SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE:** Matrix and cross-protocol Social
-  bridging runs on user-controlled clients; no homeserver or relay bridge
-  receives protected plaintext.
-- **SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH:** Following, transitive discovery, and
-  social-graph evaluation do not depend on a centralized follow-graph oracle.
+- **SOCIAL-I-MATRIX-E2EE:** Private Matrix discussion and configuration content, including protected state, remains end-to-end encrypted and downgrade-resistant from the homeserver.
+- **SOCIAL-I-MXID-DELEGATION-DUAL-PROOF:** A Matrix MXID delegation requires both the persona epoch-key signature and successful MXID self-publication through Matrix state authorization.
+- **SOCIAL-I-PRIVATE-STATE-AT-REST:** Private mute, feed-preference, followed-repository, and other Social state are encrypted at rest using the owning Social or bound Comms profile.
+- **SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE:** Matrix and cross-protocol Social bridging runs on user-controlled clients; no homeserver or relay bridge receives protected plaintext.
+- **SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH:** Following, transitive discovery, and social-graph evaluation do not depend on a centralized follow-graph oracle.
 
 The mechanism boundaries MUST remain honest. Tier 2 and Tier 3 guarantees
 come from Comms, not Matrix. A Matrix private room uses its Megolm/MLS session;
 a bare Matrix event is attributed but not a transferable Nostr proof. Social
 ranking is advisory and never identity or editorial authority. ATProto is an
 attached public outbox and optional witness, never persona authority.
+
+<a id="social-strict-profiles"></a>
+### 13.1 Social strict profiles
+
+The Matrix-free Social strict profile composes the Core, Comms, and applicable
+Social invariant sets. Matrix-only invariants are not applicable until Matrix
+is advertised, so they are added by the separate Social+Matrix profile.
+
+<!-- fixture:social-strict-profile -->
+```json
+{
+  "profile_id": "heterodyne-social-strict-v1",
+  "conformance_class": "Social",
+  "state": "active",
+  "requires_profiles": [
+    "heterodyne-core-strict-v1",
+    "heterodyne-comms-strict-v1"
+  ],
+  "required_invariants": [
+    "CORE-I-IDENTITY-INTEGRITY",
+    "CORE-I-NID-DELEGATION-DUAL-PROOF",
+    "CORE-I-VERIFY-BEFORE-USE",
+    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
+    "CORE-I-KEY-MATERIAL-AT-REST",
+    "COMMS-I-TIER3-BLIND-CARRIER",
+    "COMMS-I-TIER2-HONESTY",
+    "COMMS-I-CONFIG-AT-REST",
+    "COMMS-I-CLIENT-SIDE-DELIVERY",
+    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+    "SOCIAL-I-PRIVATE-STATE-AT-REST",
+    "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH"
+  ]
+}
+```
+
+This profile additionally requires a valid signed event to pass baseline
+verification before Social policy, observation of a valid `kind:5` deletion
+within 30 seconds on an active source, and a visible warning when a previously
+met strict requirement becomes unmet. It does not require Matrix.
+
+`heterodyne-social-matrix-strict-v1` has the exact conformance class
+`Social+Matrix`. It composes the Matrix-free Social strict profile and adds all
+Matrix-specific Social invariants and obligations:
+
+<!-- fixture:social-matrix-strict-profile -->
+```json
+{
+  "profile_id": "heterodyne-social-matrix-strict-v1",
+  "conformance_class": "Social+Matrix",
+  "state": "active",
+  "requires_profiles": ["heterodyne-social-strict-v1"],
+  "required_invariants": [
+    "CORE-I-IDENTITY-INTEGRITY",
+    "CORE-I-NID-DELEGATION-DUAL-PROOF",
+    "CORE-I-VERIFY-BEFORE-USE",
+    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
+    "CORE-I-KEY-MATERIAL-AT-REST",
+    "COMMS-I-TIER3-BLIND-CARRIER",
+    "COMMS-I-TIER2-HONESTY",
+    "COMMS-I-CONFIG-AT-REST",
+    "COMMS-I-CLIENT-SIDE-DELIVERY",
+    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+    "SOCIAL-I-PRIVATE-STATE-AT-REST",
+    "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
+    "SOCIAL-I-MATRIX-E2EE",
+    "SOCIAL-I-MXID-DELEGATION-DUAL-PROOF",
+    "SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE"
+  ],
+  "matrix_obligations": [
+    "encrypted-private-content-and-state",
+    "mxid-dual-proof",
+    "downgrade-warning",
+    "bare-message-visibility"
+  ]
+}
+```
+
+The Matrix profile requires private content and protected state encryption,
+MXID dual proof, a visible downgrade warning, and rendering of a valid bare
+message with its unauthenticated indicator rather than hiding it solely for
+being bare. Capability advertisements MUST include every prerequisite profile
+actually met and MUST omit either Social profile when any corresponding
+invariant, obligation, feature, or vector is unmet.
 
 <a id="social-conformance"></a>
 ## 14. Conformance
@@ -1381,6 +1455,11 @@ kinds, Megolm baseline, downgrade resistance, MLS migration when advertised,
 client-side bridge boundary, homeserver independence, and fallback rendering.
 A partial Matrix implementation MUST list gaps and MUST NOT claim
 `Social+Matrix`.
+
+A Social conformance report that claims a strict profile MUST reproduce its
+exact membership, prerequisite results, applicable strict-vector results, and
+any Matrix obligations. It MUST use the conformance class stated in the
+profile fixture and MUST NOT collapse `Social` and `Social+Matrix`.
 
 Wire conformance is byte-exact. Existing signed 0.4 events MUST NOT be
 restamped. Plain upstream NIP-51 and NIP-72 events remain unstamped; only the

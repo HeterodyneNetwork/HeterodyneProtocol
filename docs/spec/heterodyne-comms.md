@@ -922,16 +922,11 @@ only the carrier version and conveys no higher-layer conformance.
 
 Registry revision 1 defines these Comms invariants:
 
-- **COMMS-I-TIER3-BLIND-CARRIER:** Tier 3 is audience-key encrypted before
-  any repository, seed, full node, or relay receives it.
-- **COMMS-I-TIER2-HONESTY:** Tier 2 is selective replication, not encryption,
-  and its plaintext trust boundary is presented honestly.
-- **COMMS-I-CONFIG-AT-REST:** Comms-owned non-key private state and audience
-  or ratchet material use the Comms repository-encryption profile.
-- **COMMS-I-CLIENT-SIDE-DELIVERY:** cross-backend processing is client-side;
-  carriers receive no protected plaintext.
-- **COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY:** feed, outbox, and delivery
-  discovery require no central directory.
+- **COMMS-I-TIER3-BLIND-CARRIER:** Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay.
+- **COMMS-I-TIER2-HONESTY:** Tier 2 private repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly.
+- **COMMS-I-CONFIG-AT-REST:** Comms-owned non-key private state and audience or ratchet material are encrypted under the Comms repository-encryption profile.
+- **COMMS-I-CLIENT-SIDE-DELIVERY:** Cross-backend Comms processing runs on user-controlled clients; full nodes, repository relays, routing nodes, and Nostr relays are blind carriers for protected plaintext.
+- **COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY:** Feed, outbox, and delivery discovery do not depend on a centralized delivery directory.
 
 Mechanism guarantees MUST remain distinct. Tier 3 has no forward secrecy: a
 compromised audience key decrypts every retained post and index under its
@@ -940,6 +935,40 @@ secrecy and post-compromise security subject to prompt message-key deletion.
 NIP-17 fallback to a vanilla recipient has neither guarantee because its
 static conversation key exposes past and future wraps. Clients MUST label a
 fallback and MUST NOT infer one mechanism's guarantee for another.
+
+<a id="comms-strict-profile"></a>
+### 10.1 Comms strict profile
+
+The stable Comms strict profile composes the Core strict profile. Its flattened
+invariant membership is exact:
+
+<!-- fixture:comms-strict-profile -->
+```json
+{
+  "profile_id": "heterodyne-comms-strict-v1",
+  "conformance_class": "Core+Comms",
+  "state": "active",
+  "requires_profiles": ["heterodyne-core-strict-v1"],
+  "required_invariants": [
+    "CORE-I-IDENTITY-INTEGRITY",
+    "CORE-I-NID-DELEGATION-DUAL-PROOF",
+    "CORE-I-VERIFY-BEFORE-USE",
+    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
+    "CORE-I-KEY-MATERIAL-AT-REST",
+    "COMMS-I-TIER3-BLIND-CARRIER",
+    "COMMS-I-TIER2-HONESTY",
+    "COMMS-I-CONFIG-AT-REST",
+    "COMMS-I-CLIENT-SIDE-DELIVERY",
+    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY"
+  ]
+}
+```
+
+A `heterodyne-comms-strict-v1` implementation MUST meet
+`heterodyne-core-strict-v1`, MUST present the Tier 2 plaintext-on-allowed-seeds
+warning before publication, and MUST retain no retired message keys after the
+Comms deletion points. Its capability advertisement MUST contain both profile
+IDs. An implementation missing either condition MUST omit the Comms profile.
 
 <a id="comms-conformance"></a>
 ## 11. Conformance
@@ -952,6 +981,12 @@ supported features and strict profiles. A base implementation MUST implement
 the envelope, tiers, publishing, feed, retrieval, hook, negotiation carrier,
 and all five security invariants. It MAY omit the `double-ratchet` feature;
 one that advertises DMs MUST implement all of §7 and §8.
+
+A report claiming `heterodyne-comms-strict-v1` MUST include the flattened
+membership above, the Core prerequisite result, the Tier 2 warning result,
+message-key deletion evidence when double-ratchet is advertised, and every
+applicable strict-vector result. It MUST NOT claim the profile if any item is
+missing.
 
 Wire conformance is byte-exact. Semantically similar encodings do not conform.
 An unknown Comms version or registry profile MUST be rejected or explicitly

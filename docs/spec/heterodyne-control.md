@@ -173,15 +173,56 @@ wire behavior.
 
 Registry revision 1 assigns exactly these Control invariants:
 
-- **CONTROL-I-AUDIT-AT-REST:** Control audit records containing requests,
-  grants, tokens, or side effects are encrypted at rest under Core, Comms,
-  and Control-owned protection rules without a Social dependency.
-- **CONTROL-I-SESSION-KEY-CONFINEMENT:** A Control session device never
-  receives persona epoch, NID, audience, repository-decryption, or ratchet
-  secrets.
+- **CONTROL-I-AUDIT-AT-REST:** Control audit records containing requests, grants, tokens, or side effects are encrypted at rest under Core, Comms, and Control-owned protection rules without a Social dependency.
+- **CONTROL-I-SESSION-KEY-CONFINEMENT:** A Control session device never receives persona epoch, NID, audience, repository-decryption, or ratchet secrets.
 
 These invariants allocate the security boundary. Full conformance tests for
 them are part of the integration gate below.
+
+<a id="control-strict-profile"></a>
+### 6.1 Reserved Control strict profile
+
+The stable identifier `heterodyne-control-strict-v1` is defined now so a later
+activation cannot silently change its composition. The profile remains
+reserved and inactive with the rest of Control 0.5.0:
+
+<!-- fixture:control-strict-profile -->
+```json
+{
+  "profile_id": "heterodyne-control-strict-v1",
+  "conformance_class": "Core+Comms+Control profile",
+  "state": "reserved-inactive",
+  "requires_profiles": [
+    "heterodyne-core-strict-v1",
+    "heterodyne-comms-strict-v1"
+  ],
+  "required_invariants": [
+    "CORE-I-IDENTITY-INTEGRITY",
+    "CORE-I-NID-DELEGATION-DUAL-PROOF",
+    "CORE-I-VERIFY-BEFORE-USE",
+    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
+    "CORE-I-KEY-MATERIAL-AT-REST",
+    "COMMS-I-TIER3-BLIND-CARRIER",
+    "COMMS-I-TIER2-HONESTY",
+    "COMMS-I-CONFIG-AT-REST",
+    "COMMS-I-CLIENT-SIDE-DELIVERY",
+    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+    "CONTROL-I-AUDIT-AT-REST",
+    "CONTROL-I-SESSION-KEY-CONFINEMENT"
+  ]
+}
+```
+
+`CONTROL-I-AUDIT-AT-REST` depends only on the listed Core, Comms, and Control
+rules. An implementation MUST NOT make it depend on any `SOCIAL-I-*`
+invariant, Social feature, or Matrix feature. This preserves a usable Control
+profile for a client that implements no Social document.
+
+Because Control conformance is closed, an implementation MUST NOT place
+`heterodyne-control-strict-v1` in `strict_profiles`, claim the profile in a
+conformance report, or treat its stable identifier as evidence of activation.
+Activation requires the same accepted-ADR, integrated-schema, and vector gates
+as baseline Control conformance, plus all prerequisite strict-profile results.
 
 <a id="control-conformance"></a>
 ## 7. Incomplete conformance gate

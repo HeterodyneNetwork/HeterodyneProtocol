@@ -1034,8 +1034,14 @@ Every capability advertisement uses this Core-parsable bootstrap object:
 REQUIRED. Each supported-version set contains qualified versions for that
 document only. `required_features` uses stable feature IDs; document names
 alone do not establish feature conformance. `strict_profiles` contains stable
-profile IDs and asserts only profiles actually implemented. Unknown fields and
-unknown optional IDs MUST be retained or ignored safely, not reinterpreted.
+profile IDs. It MUST contain only profiles whose complete invariant,
+obligation, feature, vector, and prerequisite-profile sets are actually met by
+the advertiser. A composed profile MUST advertise every prerequisite profile
+in the same object and MUST advertise the document versions and required
+features on which those profiles depend. An unknown strict-profile ID MUST be
+retained or ignored safely and MUST NOT be used to infer conformance, grant a
+capability, or satisfy a known profile. Unknown fields and other unknown
+optional IDs use the same fail-closed rule.
 
 The descriptor SHOULD be committed to the identity repo so a peer can discover
 it without a higher protocol. A Core-only implementation MUST use this carrier;
@@ -1050,6 +1056,42 @@ For asynchronous input, no negotiation is presumed: an unsupported stamped
 version MUST be rejected or processed only by an explicitly declared degraded
 mode that does not apply unknown security semantics. An unknown MAJOR MUST NOT
 be silently treated as compatible.
+
+<a id="core-strict-profile"></a>
+### 12.2 Strict-profile composition
+
+Strict profiles are additive conformance claims, not negotiation shortcuts.
+They never weaken baseline requirements and do not change wire parsing. The
+stable Core strict profile is defined by this complete machine-readable
+membership declaration:
+
+<!-- fixture:core-strict-profile -->
+```json
+{
+  "profile_id": "heterodyne-core-strict-v1",
+  "conformance_class": "Core",
+  "state": "active",
+  "requires_profiles": [],
+  "required_invariants": [
+    "CORE-I-IDENTITY-INTEGRITY",
+    "CORE-I-NID-DELEGATION-DUAL-PROOF",
+    "CORE-I-VERIFY-BEFORE-USE",
+    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
+    "CORE-I-KEY-MATERIAL-AT-REST"
+  ]
+}
+```
+
+`heterodyne-core-strict-v1` additionally requires egress-over-Tor to start
+enabled for every supported network backend unless the user has explicitly
+disabled it, and requires invalid signatures or delegations to be rejected
+rather than rendered with a warning. A claim MUST satisfy every listed
+invariant at registry revision 1 and every applicable strict vector.
+
+Higher-document strict profiles compose by naming prerequisite profile IDs and
+listing their complete flattened invariant membership. A conforming report
+MUST reject a duplicate profile ID with conflicting membership. Profile IDs
+are stable: changing membership or an obligation requires a new ID.
 
 <a id="core-security"></a>
 <!-- Monolith provenance: §9.1 and §13. -->
@@ -1070,20 +1112,11 @@ they never replace local verification.
 
 Registry revision 1 binds these exact normative invariants:
 
-- **CORE-I-IDENTITY-INTEGRITY**: The cold-root npub and accepted KEL are
-  authoritative for persona identity; downstream caches and delegated
-  identifiers cannot override them.
-- **CORE-I-NID-DELEGATION-DUAL-PROOF**: A Radicle NID delegation is active only
-  after both the persona epoch-key BIP-340 signature and the delegated NID
-  Ed25519 proof verify over the same binding.
-- **CORE-I-VERIFY-BEFORE-USE**: Every signed object is locally
-  signature-verified and, where applicable, delegation-checked before
-  rendering, storage, or authorization.
-- **CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY**: Core discovery does not depend on a
-  centralized persona, npub, RID, or serving-node directory.
-- **CORE-I-KEY-MATERIAL-AT-REST**: Persona nsec, NID secrets, and sensitive
-  cached identity material are protected by the Core keys-repository profile,
-  including NIP-49 wrapping where applicable.
+- **CORE-I-IDENTITY-INTEGRITY:** The cold-root npub and accepted KEL are authoritative for persona identity; downstream caches and delegated identifiers cannot override them.
+- **CORE-I-NID-DELEGATION-DUAL-PROOF:** A Radicle NID delegation is active only after both the persona epoch-key BIP-340 signature and the delegated NID Ed25519 proof verify over the same binding.
+- **CORE-I-VERIFY-BEFORE-USE:** Every signed object is locally signature-verified and, where applicable, delegation-checked before rendering, storage, or authorization.
+- **CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY:** Core discovery does not depend on a centralized persona, npub, RID, or serving-node directory.
+- **CORE-I-KEY-MATERIAL-AT-REST:** Persona nsec, NID secrets, and sensitive cached identity material are protected by the Core keys-repository profile, including NIP-49 wrapping where applicable.
 
 <a id="core-conformance"></a>
 <!-- Monolith provenance: §14; split rules: ADR-033. -->
@@ -1094,6 +1127,13 @@ the exact qualified version, registry revision or digest, supported feature
 IDs, strict-profile IDs, implementation role, and every dependency version.
 Core has no document dependencies. Protocol conformance and vector conformance
 are distinct claims.
+
+A conformance report MUST, for each strict-profile ID, list the profile's state,
+conformance class, prerequisite profile IDs, required invariant IDs, required
+features, applicable strict-vector results, and any gaps. It MUST NOT report a
+profile as met while any required invariant, obligation, feature, prerequisite
+profile, or vector is unmet. A partial report may describe an unknown or unmet
+profile but MUST NOT advertise it in `strict_profiles`.
 
 Normative vectors compare canonical bytes and exact verdicts; semantic
 equivalence is insufficient. Each vector has an immutable ID, owner document,

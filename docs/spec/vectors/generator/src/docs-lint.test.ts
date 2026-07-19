@@ -23,6 +23,18 @@ const corePath = resolve(repositoryRoot, "docs/spec/heterodyne-core.md");
 const commsPath = resolve(repositoryRoot, "docs/spec/heterodyne-comms.md");
 const controlPath = resolve(repositoryRoot, "docs/spec/heterodyne-control.md");
 const socialPath = resolve(repositoryRoot, "docs/spec/heterodyne-social.md");
+const threatModelPath = resolve(repositoryRoot, "docs/security/threat-model.md");
+const companionPaths = [
+  "README.md",
+  "CLAUDE.md",
+  "AGENTS.md",
+  "docs/architecture.md",
+  "docs/glossary.md",
+  "docs/security/threat-model.md",
+  "research/INDEX.md",
+  "docs/spec/extensions/nips/README.md",
+  "docs/spec/extensions/mscs/README.md",
+] as const;
 const adr030Path = resolve(
   repositoryRoot,
   "docs/adr/2026-07-07-030-light-client-enrollment-rpc-over-dr-dms.md",
@@ -375,6 +387,15 @@ type MatrixStateFixture = {
   sender?: string;
   origin_server_ts?: number;
   content: Record<string, unknown>;
+};
+
+type StrictProfileFixture = {
+  profile_id: string;
+  conformance_class: string;
+  state: "active" | "reserved-inactive";
+  requires_profiles: string[];
+  required_invariants: string[];
+  matrix_obligations?: string[];
 };
 
 function exactKeys(value: Record<string, unknown>, keys: string[]): boolean {
@@ -1523,6 +1544,149 @@ describe("protocol family documents", () => {
     ]) {
       expect(text).toContain(invariant);
     }
+  });
+
+  it("defines exact composable strict profiles without opening Control conformance", () => {
+    const core = readFileSync(corePath, "utf8");
+    const comms = readFileSync(commsPath, "utf8");
+    const control = readFileSync(controlPath, "utf8");
+    const social = readFileSync(socialPath, "utf8");
+    const coreInvariants = [
+      "CORE-I-IDENTITY-INTEGRITY",
+      "CORE-I-NID-DELEGATION-DUAL-PROOF",
+      "CORE-I-VERIFY-BEFORE-USE",
+      "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
+      "CORE-I-KEY-MATERIAL-AT-REST",
+    ];
+    const commsInvariants = [
+      ...coreInvariants,
+      "COMMS-I-TIER3-BLIND-CARRIER",
+      "COMMS-I-TIER2-HONESTY",
+      "COMMS-I-CONFIG-AT-REST",
+      "COMMS-I-CLIENT-SIDE-DELIVERY",
+      "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+    ];
+    const controlInvariants = [
+      ...commsInvariants,
+      "CONTROL-I-AUDIT-AT-REST",
+      "CONTROL-I-SESSION-KEY-CONFINEMENT",
+    ];
+    const nonMatrixSocialInvariants = [
+      ...commsInvariants,
+      "SOCIAL-I-PRIVATE-STATE-AT-REST",
+      "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
+    ];
+    const matrixSocialInvariants = [
+      ...nonMatrixSocialInvariants,
+      "SOCIAL-I-MATRIX-E2EE",
+      "SOCIAL-I-MXID-DELEGATION-DUAL-PROOF",
+      "SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE",
+    ];
+
+    expect(fixtureFromMarkdown<StrictProfileFixture>(core, "core-strict-profile")).toEqual({
+      profile_id: "heterodyne-core-strict-v1",
+      conformance_class: "Core",
+      state: "active",
+      requires_profiles: [],
+      required_invariants: coreInvariants,
+    });
+    expect(fixtureFromMarkdown<StrictProfileFixture>(comms, "comms-strict-profile")).toEqual({
+      profile_id: "heterodyne-comms-strict-v1",
+      conformance_class: "Core+Comms",
+      state: "active",
+      requires_profiles: ["heterodyne-core-strict-v1"],
+      required_invariants: commsInvariants,
+    });
+    expect(fixtureFromMarkdown<StrictProfileFixture>(control, "control-strict-profile")).toEqual({
+      profile_id: "heterodyne-control-strict-v1",
+      conformance_class: "Core+Comms+Control profile",
+      state: "reserved-inactive",
+      requires_profiles: [
+        "heterodyne-core-strict-v1",
+        "heterodyne-comms-strict-v1",
+      ],
+      required_invariants: controlInvariants,
+    });
+    expect(fixtureFromMarkdown<StrictProfileFixture>(social, "social-strict-profile")).toEqual({
+      profile_id: "heterodyne-social-strict-v1",
+      conformance_class: "Social",
+      state: "active",
+      requires_profiles: [
+        "heterodyne-core-strict-v1",
+        "heterodyne-comms-strict-v1",
+      ],
+      required_invariants: nonMatrixSocialInvariants,
+    });
+    expect(fixtureFromMarkdown<StrictProfileFixture>(social, "social-matrix-strict-profile")).toEqual({
+      profile_id: "heterodyne-social-matrix-strict-v1",
+      conformance_class: "Social+Matrix",
+      state: "active",
+      requires_profiles: ["heterodyne-social-strict-v1"],
+      required_invariants: matrixSocialInvariants,
+      matrix_obligations: [
+        "encrypted-private-content-and-state",
+        "mxid-dual-proof",
+        "downgrade-warning",
+        "bare-message-visibility",
+      ],
+    });
+
+    expect(control).toMatch(/heterodyne-control-strict-v1[\s\S]*MUST NOT[\s\S]*`strict_profiles`/);
+    expect(control).toMatch(/CONTROL-I-AUDIT-AT-REST[\s\S]*MUST NOT[\s\S]*SOCIAL-I/);
+  });
+
+  it("makes strict-profile advertisements and conformance reports fail closed", () => {
+    const core = readFileSync(corePath, "utf8");
+
+    expect(core).toMatch(/`strict_profiles`[\s\S]*MUST contain only[\s\S]*actually met/i);
+    expect(core).toMatch(/unknown strict-profile ID[\s\S]*MUST NOT[\s\S]*(infer|grant|satisf)/i);
+    expect(core).toMatch(/conformance report[\s\S]*strict-profile ID[\s\S]*required invariant/i);
+    expect(core).toMatch(/composed profile[\s\S]*prerequisite profile/i);
+  });
+
+  it("uses only namespaced current invariants and exact registry descriptions", () => {
+    const threatModel = readFileSync(threatModelPath, "utf8");
+    const registry = JSON.parse(
+      readFileSync(resolve(repositoryRoot, "docs/spec/registry/security-invariants.json"), "utf8"),
+    ) as { security_invariants: Array<{ id: string; description: string }> };
+
+    expect(threatModel).not.toMatch(/\bI(?:1|3|6|7)\b/);
+    for (const invariant of registry.security_invariants) {
+      expect(threatModel).toContain(invariant.id);
+      expect(threatModel).toContain(invariant.description);
+    }
+  });
+
+  it("navigates every current companion through the four-document family", () => {
+    for (const relativePath of companionPaths) {
+      const text = readFileSync(resolve(repositoryRoot, relativePath), "utf8");
+      for (const document of ["core", "comms", "control", "social"]) {
+        expect(text, `${relativePath} missing ${document}`).toContain(
+          `heterodyne-${document}.md`,
+        );
+      }
+      expect(text, `${relativePath} claims one current normative spec`).not.toMatch(
+        /single normative spec|the normative spec|fully drafted[^\n]*heterodyne\.md/i,
+      );
+      expect(text, `${relativePath} uses retired uppercase CORE terminology`).not.toMatch(
+        /\bCORE\b(?!-I-)/,
+      );
+    }
+
+    const changelog = readFileSync(resolve(repositoryRoot, "CHANGELOG.md"), "utf8");
+    for (const document of ["core", "comms", "control", "social"]) {
+      expect(changelog).toContain(`heterodyne-${document}.md`);
+    }
+    const historicalChangelog = changelog.indexOf("Historical 0.4.0");
+    expect(historicalChangelog).toBeGreaterThan(-1);
+    expect(changelog.slice(0, historicalChangelog)).not.toMatch(/\bCORE\b(?!-I-)/);
+
+    const architecture = readFileSync(resolve(repositoryRoot, "docs/architecture.md"), "utf8");
+    expect(architecture).toContain("Core <- Comms <- Control");
+    expect(architecture).toContain("Core <- Comms <- Social");
+    const glossary = readFileSync(resolve(repositoryRoot, "docs/glossary.md"), "utf8");
+    expect(glossary).toMatch(/non-normative index/i);
+    expect(glossary).toMatch(/shared normative terminology[\s\S]*heterodyne-core\.md/i);
   });
 
   it("requires every moderation condition at the approval anchor", () => {

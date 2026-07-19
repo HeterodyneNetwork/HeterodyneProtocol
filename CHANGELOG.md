@@ -1,12 +1,36 @@
 # Changelog
 
-All notable changes to the Heterodyne specification are recorded here.
-The spec is in its **0.x phase**: per the semver 0.x rule (§12.1),
-everything is subject to change and any `0.x` release MAY break the
-previous one. The strict PATCH/MINOR/MAJOR compatibility contract
-takes effect only at `1.0.0`.
+All notable changes to the Heterodyne protocol family are recorded here.
+Each document is in its **0.x phase**: under Core's version rules, any `0.x`
+document release may break its predecessor. The strict PATCH/MINOR/MAJOR
+compatibility contract takes effect independently when a document reaches
+`1.0.0`.
 
 ## [Unreleased]
+
+### Changed - four-document protocol family (ADR-033)
+
+- Split the archived 0.4.0 monolith into four independently versioned first
+  releases: [Core](docs/spec/heterodyne-core.md) `core/0.5.0`,
+  [Comms](docs/spec/heterodyne-comms.md) `comms/0.5.0`,
+  [Control](docs/spec/heterodyne-control.md) `control/0.5.0`, and
+  [Social](docs/spec/heterodyne-social.md) `social/0.5.0`.
+- Established the only normative dependency edges as
+  `Core <- Comms <- Control` and `Core <- Comms <- Social`. Control is an
+  incomplete Comms profile and cannot yet be claimed.
+- Added the Core-owned, separately revisioned registry for kind allocations,
+  immutable profile discriminators, reason codes, and namespaced security
+  invariants.
+- Replaced the historical monolith strict mode with composable stable profile
+  IDs for Core, Comms, Control, Social, and Social+Matrix. The Control strict
+  identifier is reserved-inactive with its baseline conformance gate.
+- Preserved all pre-split normative bytes in
+  [`docs/spec/archive/heterodyne-0.4.0.md`](docs/spec/archive/heterodyne-0.4.0.md)
+  unchanged; the complete old-section anchor map is part of the final migration
+  cutover. The 0.4.0 notes below are historical archive descriptions, not
+  current ownership guidance.
+
+### Historical 0.4.0 work recorded before the family split
 
 Empirical verification pass against `rad`/`radicle-node` 1.9.1 and the
 Heartwood source at tag `releases/1.9.1`, closing several items the
