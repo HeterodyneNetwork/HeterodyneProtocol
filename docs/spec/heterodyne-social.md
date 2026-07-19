@@ -4,15 +4,12 @@ Document ID: `social`<br>
 Version: `social/0.5.0`<br>
 Registry revision: `1`
 
-> Pre-release extraction draft. Until family cutover, the archived 0.4.0
-> monolith remains normative.
-
 Normative dependencies:
 
 - `heterodyne:core/0.5.0#core-conformance`
 - `heterodyne:comms/0.5.0#comms-conformance`
 
-This is the first Social release descended from the Heterodyne 0.4.x
+This is Social's first 0.5.0 release, descended from the Heterodyne 0.4.x
 monolith. It is not a synchronized family version. While Social is 0.x, a
 conformance claim MUST pin the exact Social, Core, and Comms versions; any 0.x
 release MAY break an earlier one. The key words MUST, MUST NOT, REQUIRED,

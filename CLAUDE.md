@@ -9,13 +9,12 @@ The protocol is implementation-agnostic and in its 0.x phase. Breaking changes
 between 0.x releases are permitted. Do not promise backward compatibility
 before 1.0.
 
-**Pre-cutover authority:** [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md)
-is the **current normative 0.4.0 monolith** until the Task 9 cutover. The four
-extracted 0.5.0 files are candidate normative documents and pre-release drafts.
-Route new development and review to them, but do not treat them as authoritative
-before cutover.
+[`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is the non-normative
+family map. Normative authority is divided among the four independently
+versioned documents below. The 0.4.0 monolith is frozen under
+[`docs/spec/archive/`](docs/spec/archive/).
 
-## Candidate 0.5.0 family
+## 0.5.0 family
 
 | Document | Owns |
 |---|---|
@@ -35,8 +34,8 @@ Social never depends on Control. Client implementations may compose the two
 claims. Document versions are independent qualified identifiers such as
 `core/0.5.0` and `comms/0.5.0`; there is no synchronized family version.
 
-At Task 9 cutover, `docs/spec/heterodyne.md` becomes the non-normative family
-map. Its current bytes are frozen under [`docs/spec/archive/`](docs/spec/archive/).
+The [anchor migration map](docs/spec/archive/heterodyne-0.4.0-anchor-map.md)
+redirects old monolith section links to permanent family anchors.
 
 ## Core design intuition
 
@@ -54,7 +53,7 @@ map. Its current bytes are frozen under [`docs/spec/archive/`](docs/spec/archive
 
 ## Conformance shape
 
-Under the candidate 0.5.0 rules after cutover, every implementation claims Core.
+Under the 0.5.0 rules, every implementation claims Core.
 A Heterodyne persona claims Core+Comms.
 Social and Social+Matrix are separate claims. Control requires Core+Comms plus
 the Control profile, but its 0.5.0 gate remains closed.
@@ -67,11 +66,11 @@ covered behavior.
 
 | Path | Purpose |
 |---|---|
-| `docs/spec/heterodyne.md` | Current normative 0.4.0 monolith until cutover |
-| `docs/spec/heterodyne-core.md` | Core 0.5.0 candidate normative document |
-| `docs/spec/heterodyne-comms.md` | Comms 0.5.0 candidate normative document |
-| `docs/spec/heterodyne-control.md` | Incomplete Control 0.5.0 candidate profile |
-| `docs/spec/heterodyne-social.md` | Social 0.5.0 candidate normative document |
+| `docs/spec/heterodyne.md` | Non-normative family overview and map |
+| `docs/spec/heterodyne-core.md` | Core 0.5.0 normative document |
+| `docs/spec/heterodyne-comms.md` | Comms 0.5.0 normative document |
+| `docs/spec/heterodyne-control.md` | Incomplete Control 0.5.0 profile |
+| `docs/spec/heterodyne-social.md` | Social 0.5.0 normative document |
 | `docs/spec/registry/` | Core-owned revisioned allocation registry |
 | `docs/spec/vectors/` | Normative vectors plus generator tooling |
 | `docs/spec/archive/` | Frozen 0.4.0 monolith and anchor map |

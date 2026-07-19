@@ -1,14 +1,11 @@
 # Heterodyne protocol-family threat model
 
-**Status:** Draft, non-normative security analysis for the candidate 0.5.x family.
+**Status:** Draft, non-normative security analysis for the 0.5.x family.
 
-**Pre-cutover authority:** [`docs/spec/heterodyne.md`](../spec/heterodyne.md) is
-the **current normative 0.4.0 monolith** until the Task 9 cutover. The four
-extracted 0.5.0 files are candidate normative documents and pre-release drafts;
-this document supports their review, but they become authoritative only at
-cutover.
+[`docs/spec/heterodyne.md`](../spec/heterodyne.md) is the non-normative family
+map. Security requirements are owned by the four versioned documents below.
 
-This document analyzes the four independently versioned candidate documents:
+This document analyzes the four independently versioned documents:
 
 - [Heterodyne Core](../spec/heterodyne-core.md) — identity, verification,
   registry, node roles, and repository substrate;
@@ -19,10 +16,9 @@ This document analyzes the four independently versioned candidate documents:
 - [Heterodyne Social](../spec/heterodyne-social.md) — social behavior,
   moderation, and the optional Matrix feature.
 
-Before cutover, normative security requirements remain in the 0.4.0 monolith.
-The owner sections below reproduce the candidate registry revision 1 and
-security boundaries without creating or relaxing requirements.
-The candidate family's only normative dependency edges are:
+The owner sections below reproduce registry revision 1 and security boundaries
+without creating or relaxing requirements. The family's only normative
+dependency edges are:
 
 ```text
 Core <- Comms <- Control

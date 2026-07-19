@@ -8,33 +8,55 @@ compatibility contract takes effect independently when a document reaches
 
 ## [Unreleased]
 
-**Pre-cutover authority:** [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md)
-is the **current normative 0.4.0 monolith** until the Task 9 cutover. The four
-extracted 0.5.0 files are candidate normative documents and pre-release drafts;
-this Unreleased section records their preparation, and they become authoritative
-only at cutover.
+No unreleased protocol changes.
 
-### Changed - four-document protocol family (ADR-033)
+## 0.5.0 document releases - 2026-07-19
 
-- Prepared four independently versioned candidate first releases from the
-  current 0.4.0 monolith: [Core](docs/spec/heterodyne-core.md) `core/0.5.0`,
-  [Comms](docs/spec/heterodyne-comms.md) `comms/0.5.0`,
-  [Control](docs/spec/heterodyne-control.md) `control/0.5.0`, and
-  [Social](docs/spec/heterodyne-social.md) `social/0.5.0`.
-- Established the candidate family's only normative dependency edges as
-  `Core <- Comms <- Control` and `Core <- Comms <- Social`. Control is an
-  incomplete Comms profile and cannot yet be claimed.
+ADR-033 split the 0.4.0 monolith into four independently versioned first
+releases. [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is now the
+non-normative family map. Release combinations and the exact registry digest
+are recorded in [machine-readable manifests](docs/spec/releases/).
+
+### Core 0.5.0
+
+- Published [Core](docs/spec/heterodyne-core.md) `core/0.5.0`, owning identity,
+  KEL verification, canonical bytes, Radicle delegation and repository
+  substrate, registry, versioning, and base conformance.
 - Added the Core-owned, separately revisioned registry for kind allocations,
   immutable profile discriminators, reason codes, and namespaced security
   invariants.
+
+### Comms 0.5.0
+
+- Published [Comms](docs/spec/heterodyne-comms.md) `comms/0.5.0`, depending on
+  `core/0.5.0` and owning privacy tiers, publishing, feeds, direct messages,
+  credential sync, and generic subprotocol carriage.
+
+### Control 0.5.0
+
+- Published [Control](docs/spec/heterodyne-control.md) `control/0.5.0` as an
+  incomplete Comms profile requiring Core, Comms, and `double-ratchet`.
+  Control remains non-claimable until its integration and vector gates close.
+
+### Social 0.5.0
+
+- Published [Social](docs/spec/heterodyne-social.md) `social/0.5.0`, depending
+  on Core and Comms and owning social behavior plus the optional Matrix
+  feature.
+
+### Family migration and conformance
+
+- Established the family's only normative dependency edges as
+  `Core <- Comms <- Control` and `Core <- Comms <- Social`.
 - Replaced the historical monolith strict mode with composable stable profile
   IDs for Core, Comms, Control, Social, and Social+Matrix. The Control strict
   identifier is reserved-inactive with its baseline conformance gate.
 - Preserved all pre-split normative bytes in
   [`docs/spec/archive/heterodyne-0.4.0.md`](docs/spec/archive/heterodyne-0.4.0.md)
-  unchanged; the complete old-section anchor map is part of the final migration
-  cutover. The 0.4.0 notes below are historical archive descriptions, not
-  current ownership guidance.
+  unchanged and published the complete
+  [old-section anchor map](docs/spec/archive/heterodyne-0.4.0-anchor-map.md).
+  The 0.4.0 notes below are historical archive descriptions, not current
+  ownership guidance.
 
 ### Historical 0.4.0 work recorded before the family split
 

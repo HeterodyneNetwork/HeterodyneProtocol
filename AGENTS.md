@@ -6,22 +6,21 @@ project mission and the in-repo map; AGENTS.md focuses on **externally-anchored
 ground truth** (the standards Heterodyne composes on top of) and a few
 agent-specific working conventions.
 
-**Pre-cutover authority:** [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md)
-is the **current normative 0.4.0 monolith** until the Task 9 cutover. The four
-extracted 0.5.0 family files are candidate normative documents and pre-release
-drafts. Use them for new development and review, but resolve current authority
-against the monolith until cutover.
+[`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is the non-normative
+family map. Normative authority is divided among the four independently
+versioned 0.5.0 documents below. The former 0.4.0 monolith and its anchor
+migration map live under [`docs/spec/archive/`](docs/spec/archive/).
 
 ## Where to look first
 
 | If you need… | Go to |
 |---|---|
 | Project mission, room taxonomy summary, full repo map | [`CLAUDE.md`](CLAUDE.md) |
-| Current normative requirements before cutover | [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) |
-| Candidate identity, registry, versions, base conformance | [`docs/spec/heterodyne-core.md`](docs/spec/heterodyne-core.md) |
-| Candidate publishing, privacy, DMs, credential sync | [`docs/spec/heterodyne-comms.md`](docs/spec/heterodyne-comms.md) |
-| Candidate own-device control profile | [`docs/spec/heterodyne-control.md`](docs/spec/heterodyne-control.md) |
-| Candidate social behavior and optional Matrix | [`docs/spec/heterodyne-social.md`](docs/spec/heterodyne-social.md) |
+| Family overview and migration links | [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) |
+| Identity, registry, versions, base conformance | [`docs/spec/heterodyne-core.md`](docs/spec/heterodyne-core.md) |
+| Publishing, privacy, DMs, credential sync | [`docs/spec/heterodyne-comms.md`](docs/spec/heterodyne-comms.md) |
+| Own-device control profile | [`docs/spec/heterodyne-control.md`](docs/spec/heterodyne-control.md) |
+| Social behavior and optional Matrix | [`docs/spec/heterodyne-social.md`](docs/spec/heterodyne-social.md) |
 | Why a decision was made the way it was | [`docs/adr/`](docs/adr/) |
 | Conformance test vector format and current corpus | [`docs/spec/vectors/`](docs/spec/vectors/) |
 | Non-normative architecture rationale | [`docs/architecture.md`](docs/architecture.md) |

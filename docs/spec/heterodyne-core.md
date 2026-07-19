@@ -4,12 +4,10 @@ Document ID: `core`<br>
 Version: `core/0.5.0`<br>
 Registry revision: `1`
 
-> Pre-release extraction draft. Until family cutover, the archived 0.4.0
-> monolith remains normative.
-
 Normative dependencies: None.
 
-This is the first Core release descended from the Heterodyne 0.4.x monolith.
+This is Core's first 0.5.0 release, descended from the Heterodyne 0.4.x
+monolith.
 `core/0.5.0` is not a synchronized family version. The key words MUST, MUST
 NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RECOMMENDED, NOT
 RECOMMENDED, MAY, and OPTIONAL are to be interpreted as described by BCP 14

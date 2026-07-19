@@ -8,7 +8,11 @@ import {
   parseQualifiedVersion,
 } from "./family.js";
 import type { DocumentId } from "./types.js";
-import { lintFamilyDocs } from "./docs-lint.js";
+import {
+  lintFamilyCutover,
+  lintFamilyDocs,
+  writeReleaseManifests,
+} from "./docs-lint.js";
 import { verifyVectorTree } from "./verify.js";
 import { writeCoverage } from "./coverage.js";
 
@@ -37,7 +41,10 @@ if (command === "author") {
     }
   }
   const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
-  const issues = lintFamilyDocs(repositoryRoot);
+  const issues = [
+    ...lintFamilyDocs(repositoryRoot),
+    ...lintFamilyCutover(repositoryRoot),
+  ];
   if (issues.length > 0) {
     for (const issue of issues) {
       console.error(
@@ -51,9 +58,13 @@ if (command === "author") {
 } else if (command === "coverage") {
   await writeCoverage(root);
   console.log(`generated vector coverage under ${resolve(root, "coverage")}`);
+} else if (command === "release-manifests") {
+  const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
+  const written = writeReleaseManifests(repositoryRoot);
+  console.log(`generated ${written.length} release manifests`);
 } else {
   console.error(
-    "usage: tsx src/cli.ts <author|verify|family-check|coverage> [root]",
+    "usage: tsx src/cli.ts <author|verify|family-check|coverage|release-manifests> [root]",
   );
   process.exitCode = 2;
 }

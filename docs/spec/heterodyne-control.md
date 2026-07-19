@@ -12,8 +12,8 @@ Normative dependencies:
 
 - `heterodyne:comms/0.5.0#comms-conformance`
 
-This document is descended independently from the archived Heterodyne 0.4.x
-monolith. It is not a synchronized family version. Its conformance expression
+This is Control's first 0.5.0 release, descended independently from the
+archived Heterodyne 0.4.x monolith. It is not a synchronized family version. Its conformance expression
 is **Core + Comms conformant + Control profile**, but this incomplete draft
 makes no Control conformance claim.
 

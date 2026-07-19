@@ -1,0 +1,15 @@
+{
+  "document": "control",
+  "version": "0.5.0",
+  "qualified_version": "control/0.5.0",
+  "registry_revision": 1,
+  "registry_sha256": "4de436e3c1be75fd1155eea21e2511517f7aab8c468c81fd6f9f8da83d83d2fb",
+  "dependencies": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "features": [
+    "double-ratchet"
+  ],
+  "conformance_status": "incomplete-draft"
+}

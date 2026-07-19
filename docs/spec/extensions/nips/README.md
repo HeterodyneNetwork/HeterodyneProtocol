@@ -3,13 +3,10 @@
 This is an upstream-facing, non-normative extraction index. It is not a home
 for sibling Heterodyne protocols.
 
-**Pre-cutover authority:** [`docs/spec/heterodyne.md`](../../heterodyne.md) is
-the **current normative 0.4.0 monolith** until the Task 9 cutover. The four
-extracted 0.5.0 files are candidate normative documents and pre-release drafts.
-Use the qualified candidate anchors below for new extraction review, but they
-become authoritative only at cutover.
+[`docs/spec/heterodyne.md`](../../heterodyne.md) is the non-normative family
+map. The qualified owner anchors below are the current normative references.
 
-Candidate family documents are
+Family documents are
 [Core](../../heterodyne-core.md), [Comms](../../heterodyne-comms.md),
 [Control](../../heterodyne-control.md), and [Social](../../heterodyne-social.md).
 

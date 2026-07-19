@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.example/spec/releases/release-manifest.schema.json",
+  "title": "Heterodyne 0.5.0 document release manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document",
+    "version",
+    "qualified_version",
+    "registry_revision",
+    "registry_sha256",
+    "dependencies",
+    "features",
+    "conformance_status"
+  ],
+  "properties": {
+    "document": {
+      "type": "string",
+      "enum": ["core", "comms", "control", "social"]
+    },
+    "version": {
+      "const": "0.5.0"
+    },
+    "qualified_version": {
+      "type": "string",
+      "enum": ["core/0.5.0", "comms/0.5.0", "control/0.5.0", "social/0.5.0"]
+    },
+    "registry_revision": {
+      "const": 1
+    },
+    "registry_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "const": "4de436e3c1be75fd1155eea21e2511517f7aab8c468c81fd6f9f8da83d83d2fb"
+    },
+    "dependencies": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "core": { "const": "core/0.5.0" },
+        "comms": { "const": "comms/0.5.0" }
+      }
+    },
+    "features": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "conformance_status": {
+      "type": "string",
+      "enum": ["conformant", "incomplete-draft"]
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "document": { "const": "core" },
+        "qualified_version": { "const": "core/0.5.0" },
+        "dependencies": { "maxProperties": 0 },
+        "features": { "maxItems": 0 },
+        "conformance_status": { "const": "conformant" }
+      }
+    },
+    {
+      "properties": {
+        "document": { "const": "comms" },
+        "qualified_version": { "const": "comms/0.5.0" },
+        "dependencies": { "required": ["core"], "minProperties": 1, "maxProperties": 1 },
+        "features": { "maxItems": 0 },
+        "conformance_status": { "const": "conformant" }
+      }
+    },
+    {
+      "properties": {
+        "document": { "const": "control" },
+        "qualified_version": { "const": "control/0.5.0" },
+        "dependencies": { "required": ["core", "comms"], "minProperties": 2, "maxProperties": 2 },
+        "features": { "const": ["double-ratchet"] },
+        "conformance_status": { "const": "incomplete-draft" }
+      }
+    },
+    {
+      "properties": {
+        "document": { "const": "social" },
+        "qualified_version": { "const": "social/0.5.0" },
+        "dependencies": { "required": ["core", "comms"], "minProperties": 2, "maxProperties": 2 },
+        "features": { "maxItems": 0 },
+        "conformance_status": { "const": "conformant" }
+      }
+    }
+  ]
+}

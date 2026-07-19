@@ -4,12 +4,10 @@ Document ID: `comms`<br>
 Version: `comms/0.5.0`<br>
 Registry revision: `1`
 
-> Pre-release extraction draft. Until family cutover, the archived 0.4.0
-> monolith remains normative.
-
 Normative dependencies: `heterodyne:core/0.5.0#core-conformance`.
 
-This is the first Comms release descended from the Heterodyne 0.4.x monolith.
+This is Comms' first 0.5.0 release, descended from the Heterodyne 0.4.x
+monolith.
 `comms/0.5.0` is not a synchronized family version. While Comms is 0.x, exact
 version matching is required. The key words MUST, MUST NOT, REQUIRED, SHALL,
 SHALL NOT, SHOULD, SHOULD NOT, RECOMMENDED, NOT RECOMMENDED, MAY, and OPTIONAL

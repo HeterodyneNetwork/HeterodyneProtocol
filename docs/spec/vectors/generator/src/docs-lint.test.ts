@@ -9,10 +9,15 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
+import { Ajv, type AnySchema } from "ajv";
 import { ed25519 } from "@noble/curves/ed25519";
 import { sha256 } from "@noble/hashes/sha2";
 import { describe, expect, it } from "vitest";
-import { lintFamilyDocs } from "./docs-lint.js";
+import {
+  expectedReleaseManifests,
+  lintFamilyCutover,
+  lintFamilyDocs,
+} from "./docs-lint.js";
 import { hexToBytes, utf8Bytes } from "./hex.js";
 import { verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
 import { loadRegistry, resolveStampingProfile } from "./registry.js";
@@ -23,6 +28,16 @@ const corePath = resolve(repositoryRoot, "docs/spec/heterodyne-core.md");
 const commsPath = resolve(repositoryRoot, "docs/spec/heterodyne-comms.md");
 const controlPath = resolve(repositoryRoot, "docs/spec/heterodyne-control.md");
 const socialPath = resolve(repositoryRoot, "docs/spec/heterodyne-social.md");
+const overviewPath = resolve(repositoryRoot, "docs/spec/heterodyne.md");
+const archivePath = resolve(
+  repositoryRoot,
+  "docs/spec/archive/heterodyne-0.4.0.md",
+);
+const anchorMapPath = resolve(
+  repositoryRoot,
+  "docs/spec/archive/heterodyne-0.4.0-anchor-map.md",
+);
+const releasesPath = resolve(repositoryRoot, "docs/spec/releases");
 const threatModelPath = resolve(repositoryRoot, "docs/security/threat-model.md");
 const companionPaths = [
   "README.md",
@@ -401,6 +416,30 @@ type StrictProfileFixture = {
 
 function exactKeys(value: Record<string, unknown>, keys: string[]): boolean {
   return JSON.stringify(Object.keys(value)) === JSON.stringify(keys);
+}
+
+function githubHeadingAnchors(markdown: string): string[] {
+  const anchors: string[] = [];
+  const counts = new Map<string, number>();
+  let fenced = false;
+  for (const line of markdown.split(/\r?\n/)) {
+    if (/^\s*```/.test(line)) {
+      fenced = !fenced;
+      continue;
+    }
+    if (fenced) continue;
+    const heading = line.match(/^#{1,6}\s+(.+?)\s*#*\s*$/)?.[1];
+    if (!heading) continue;
+    const base = heading
+      .toLowerCase()
+      .replace(/<[^>]*>/g, "")
+      .replace(/[^\p{L}\p{N}\s_-]/gu, "")
+      .replace(/ /g, "-");
+    const duplicate = counts.get(base) ?? 0;
+    counts.set(base, duplicate + 1);
+    anchors.push(`#${base}${duplicate === 0 ? "" : `-${duplicate}`}`);
+  }
+  return anchors;
 }
 
 function validateCapabilityBootstrap(content: Record<string, unknown>): string[] {
@@ -1687,25 +1726,89 @@ describe("protocol family documents", () => {
     expect(glossary).toMatch(/shared normative terminology[\s\S]*heterodyne-core\.md/i);
   });
 
-  it("keeps the 0.4.0 monolith authoritative until the family cutover", () => {
-    for (const relativePath of preCutoverCompanionPaths) {
-      const text = readFileSync(resolve(repositoryRoot, relativePath), "utf8");
-      expect(text, `${relativePath} omits the current monolith`).toContain(
-        "heterodyne.md",
+  it("maps every archived ATX heading exactly once to a current permanent anchor", () => {
+    const archive = readFileSync(archivePath, "utf8");
+    const anchorMap = readFileSync(anchorMapPath, "utf8");
+    const archiveDigest = createHash("sha256").update(archive, "utf8").digest("hex");
+    expect(anchorMap).toContain(`Archive SHA-256: \`${archiveDigest}\``);
+
+    const expectedOldAnchors = githubHeadingAnchors(archive);
+    const rows = [...anchorMap.matchAll(
+      /^\| `(#(?:[^`]+))` \| (Core|Comms|Control|Social) \| `(heterodyne:(core|comms|control|social)\/0\.5\.0#([a-z0-9]+(?:-[a-z0-9]+)*))` \|$/gm,
+    )];
+    expect(rows.map((row) => row[1])).toEqual(expectedOldAnchors);
+    expect(new Set(rows.map((row) => row[1])).size).toBe(expectedOldAnchors.length);
+
+    const family = new Map([
+      ["core", readFileSync(corePath, "utf8")],
+      ["comms", readFileSync(commsPath, "utf8")],
+      ["control", readFileSync(controlPath, "utf8")],
+      ["social", readFileSync(socialPath, "utf8")],
+    ]);
+    for (const row of rows) {
+      expect(row[2].toLowerCase()).toBe(row[4]);
+      expect(family.get(row[4]), row[3]).toContain(`<a id="${row[5]}"></a>`);
+    }
+  });
+
+  it("cuts heterodyne.md over to a requirement-free family overview", () => {
+    const text = readFileSync(overviewPath, "utf8");
+
+    expect(text).toMatch(/non-normative family overview/i);
+    expect(text).toContain("Core <- Comms <- Control");
+    expect(text).toContain("Core <- Comms <- Social");
+    for (const document of ["core", "comms", "control", "social"]) {
+      expect(text).toContain(`heterodyne-${document}.md`);
+      expect(text).toContain(`${document}/0.5.0`);
+    }
+    expect(text).toContain("archive/heterodyne-0.4.0.md");
+    expect(text).toContain("archive/heterodyne-0.4.0-anchor-map.md");
+    expect(text).toContain("registry/manifest.json");
+    expect(text).toContain("vectors/coverage/manifest.json");
+    expect(text).toContain("vectors/coverage/family.md");
+    expect(text).not.toMatch(
+      /\b(?:MUST(?: NOT)?|REQUIRED|SHALL(?: NOT)?|SHOULD(?: NOT)?|RECOMMENDED|NOT RECOMMENDED|MAY|OPTIONAL)\b/,
+    );
+  });
+
+  it("publishes exact registry-bound 0.5.0 release manifests", () => {
+    const schema = JSON.parse(
+      readFileSync(resolve(releasesPath, "release-manifest.schema.json"), "utf8"),
+    ) as AnySchema;
+    const validate = new Ajv({ allErrors: true, strict: false }).compile(schema);
+    const expected = expectedReleaseManifests(repositoryRoot);
+
+    for (const [document, manifest] of Object.entries(expected)) {
+      const actual = JSON.parse(
+        readFileSync(resolve(releasesPath, document, "0.5.0.json"), "utf8"),
       );
-      expect(text, `${relativePath} omits current pre-cutover authority`).toMatch(
-        /current normative 0\.4\.0 monolith/i,
-      );
-      expect(text, `${relativePath} omits candidate status`).toMatch(
-        /candidate/i,
-      );
-      expect(text, `${relativePath} omits cutover sequencing`).toMatch(
-        /cutover/i,
-      );
-      expect(text, `${relativePath} cuts authority over early`).not.toMatch(
-        /heterodyne\.md[^\n]{0,80}(?:is|remains) (?:a )?non-normative|four independently versioned normative documents:/i,
+      expect(actual).toEqual(manifest);
+      expect(validate(actual), JSON.stringify(validate.errors)).toBe(true);
+    }
+  });
+
+  it("finalizes sibling lineage and companion authority at cutover", () => {
+    for (const path of [corePath, commsPath, controlPath, socialPath]) {
+      const text = readFileSync(path, "utf8");
+      expect(text).not.toMatch(/pre-release extraction draft/i);
+      expect(text).toMatch(
+        /first[\s\S]*0\.5\.0[\s\S]*release[\s\S]*descended[\s\S]*0\.4\.x/i,
       );
     }
+    const control = readFileSync(controlPath, "utf8");
+    expect(control).toMatch(/incomplete 0\.5\.0 draft/i);
+    expect(control).toMatch(/makes no Control conformance claim/);
+
+    for (const relativePath of preCutoverCompanionPaths) {
+      const text = readFileSync(resolve(repositoryRoot, relativePath), "utf8");
+      expect(text, `${relativePath} retains stale pre-cutover authority`).not.toMatch(
+        /pre-cutover authority|current normative 0\.4\.0 monolith|until the Task 9 cutover/i,
+      );
+    }
+  });
+
+  it("passes the executable family-cutover lint", () => {
+    expect(lintFamilyCutover(repositoryRoot)).toEqual([]);
   });
 
   it("retains concrete federation, ratchet, moderation, storage, and crypto residuals", () => {
