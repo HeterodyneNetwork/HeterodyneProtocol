@@ -195,23 +195,34 @@ pair.
 ```json
 {
   "left": {
-    "pubkey": "1111111111111111111111111111111111111111111111111111111111111111",
+    "pubkey": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
     "created_at": 1710000000,
     "kind": 31004,
-    "tags": [["d","endorses:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],["heterodyne","related_persona"],["other_npub","bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],["relation","endorses"],["scope","professional"],["cold_root","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],["kel_head","3333333333333333333333333333333333333333333333333333333333333333","4"],["spec_version","social/0.5.0"]],
+    "tags": [["d","endorses:4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766"],["heterodyne","related_persona"],["other_npub","4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766"],["relation","endorses"],["scope","professional"],["cold_root","1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"],["kel_head","3333333333333333333333333333333333333333333333333333333333333333","0"],["spec_version","social/0.5.0"]],
     "content": "",
-    "sig": "55555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555"
+    "id": "89a6a1bf0345535482d296e6910b5115a623dbafe8b9cdd5011af28f686eb45d",
+    "sig": "7ff8bd7d316fd67820547ed4d92c60a556ed1fd089afd6aafe30190c2fe9812e34f81b3bf8200eb1437e3ccdcc74bfa874d9014d6cd924efb6ad1072dfd1a3ff"
   },
   "right": {
-    "pubkey": "2222222222222222222222222222222222222222222222222222222222222222",
+    "pubkey": "4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766",
     "created_at": 1710000001,
     "kind": 31004,
-    "tags": [["d","endorsed_by:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],["heterodyne","related_persona"],["other_npub","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],["relation","endorsed_by"],["scope","professional"],["cold_root","bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],["kel_head","4444444444444444444444444444444444444444444444444444444444444444","9"],["spec_version","social/0.5.0"]],
+    "tags": [["d","endorsed_by:1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"],["heterodyne","related_persona"],["other_npub","1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"],["relation","endorsed_by"],["scope","professional"],["cold_root","4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766"],["kel_head","4444444444444444444444444444444444444444444444444444444444444444","0"],["spec_version","social/0.5.0"]],
     "content": "",
-    "sig": "66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666"
+    "id": "5781bb1481f0872b2f30cb814504ff2d88a6f3e7698ef5d282efd408181fa135",
+    "sig": "dff1363b0c75c624a849bea8251eb8404fe1cc0972aa7e68663737351dcaea6138d146eee98ce3bdefbe20de8765d0d017596910f96128c451cf9690e7d8a1b0"
+  },
+  "kel_authority": {
+    "left": {"cold_root":"1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f","accepted_head":"3333333333333333333333333333333333333333333333333333333333333333","authorized_epoch_key":"1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"},
+    "right": {"cold_root":"4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766","accepted_head":"4444444444444444444444444444444444444444444444444444444444444444","authorized_epoch_key":"4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766"}
   }
 }
 ```
+
+The fixture's `kel_authority` object is test metadata, not part of either
+Nostr event. It records the accepted Core KEL head and authorized epoch key
+used to verify each event independently; both example personas are at their
+inception epoch, so each authorized epoch key equals its cold root.
 
 <a id="social-discovery-extensions"></a>
 ### 3.3 Search, starter packs, and graph sources
@@ -601,15 +612,21 @@ follow sets `30000`, relay sets `30002`, bookmark sets `30003`, kind-mute sets
 packs `39089`. Sets MAY use upstream `title`, `image`, and `description` tags.
 They remain unstamped unless a registry profile explicitly opts them in.
 
-Every NIP-51 list or set used by Social MUST be publishable to and served from
-both the persona's ordinary relays and its repo relay under the applicable
-Comms tier. The repo relay MUST accept conforming NIP-51 events for a repository
-it serves. The persona SHOULD also commit each current list revision to its
-persona repository. A reader MUST prefer the newest
+Every ordinary Social NIP-51 list or set uses a public dual-backend carrier:
+it MUST be publishable to and served from both the persona's ordinary relays
+and its repo relay. The repo relay MUST accept conforming NIP-51 events for a
+repository it serves. Upstream private items remain NIP-44-encrypted to self
+inside that same publishable event; ciphertext does not make the event or its
+metadata private. This dual-backend rule MUST NOT imply Tier 2 delivery or a
+private-repository allow list.
+
+The persona SHOULD also commit each current list revision to its persona
+repository. A reader MUST prefer the newest
 verifiable replaceable/addressable revision and SHOULD detect an older relay
-revision when canonical repo history proves a newer one. Items too sensitive
-to expose even as ciphertext, including list existence/size, SHOULD be stored
-as a Social-owned private payload in the encrypted config repository.
+revision when canonical repo history proves a newer one. Data whose existence
+or size must not be exposed even as ciphertext SHOULD be stored as a
+Social-owned private payload in the encrypted config repository instead of a
+NIP-51 event.
 
 <a id="social-community-policy"></a>
 ### 7.3 Community policy lists
@@ -706,6 +723,15 @@ be added. The DID signature MUST verify under the resolved key over SHA-256 of
 the canonical payload. Both signatures MUST verify; a one-sided claim MUST be
 rejected.
 
+The executable fixture below uses a deterministic Ed25519 DID key. Its PDS
+proof records `algorithm`, the resolved raw `public_key`, the lowercase-hex
+SHA-256 `signed_payload_hash` of the exact compact payload bytes, and the
+lowercase-hex signature over that 32-byte hash. Those proof members are outside
+the PDS record `value`; the value remains byte-identical to the Nostr content.
+A verifier MUST recompute the hash, require the resolved DID key and algorithm,
+and cryptographically verify the proof rather than treating the fields as
+non-empty markers.
+
 Verification MUST begin from the PDS record and proceed through every binding:
 resolve the DID and verify its named signing key and record signature; read the
 payload's cold-root npub; verify that npub's current Core `kind:31005`; follow
@@ -725,24 +751,28 @@ the signed payload or become authoritative.
 ```json
 {
   "nostr_event": {
-    "pubkey": "1111111111111111111111111111111111111111111111111111111111111111",
+    "pubkey": "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337",
     "created_at": 1710000000,
     "kind": 31009,
-    "tags": [["d","did:web:alice.example"],["heterodyne","atproto_link"],["cold_root","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],["did","did:web:alice.example"],["kel_head","2222222222222222222222222222222222222222222222222222222222222222","5"]],
-    "content": "{\"spec_version\":\"social/0.5.0\",\"did\":\"did:web:alice.example\",\"did_signing_key_id\":\"did:web:alice.example#atproto\",\"npub\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"rid\":\"rad:zAlice\",\"established_at\":1710000000}",
-    "sig": "33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333"
+    "tags": [["d","did:web:alice.example"],["heterodyne","atproto_link"],["cold_root","531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337"],["did","did:web:alice.example"],["kel_head","5555555555555555555555555555555555555555555555555555555555555555","0"]],
+    "content": "{\"spec_version\":\"social/0.5.0\",\"did\":\"did:web:alice.example\",\"did_signing_key_id\":\"did:web:alice.example#atproto\",\"npub\":\"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337\",\"rid\":\"rad:zAlice\",\"established_at\":1710000000}",
+    "id": "cd41c76501b0b7145c8dd115503473553e0e8a31c8e5849822aa7c87d19c6bf6",
+    "sig": "a63775bd44e0b09a9400ed900aa13cdae9b239237056fe9b2bc87b24297af117d562a61f80a5d522680fc8d683b6ffa1f3d5e963a7c99635bdf0385ea80b03d5"
   },
   "pds_record": {
     "collection": "social.heterodyne.identityLink",
     "rkey": "self",
-    "value": {"spec_version":"social/0.5.0","did":"did:web:alice.example","did_signing_key_id":"did:web:alice.example#atproto","npub":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","rid":"rad:zAlice","established_at":1710000000},
-    "signature": "did-signature-base64url"
+    "value": {"spec_version":"social/0.5.0","did":"did:web:alice.example","did_signing_key_id":"did:web:alice.example#atproto","npub":"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337","rid":"rad:zAlice","established_at":1710000000},
+    "algorithm": "Ed25519",
+    "public_key": "ca93ac1705187071d67b83c7ff0efe8108e8ec4530575d7726879333dbdabe7c",
+    "signed_payload_hash": "6adf242345b2ac833ec54689e1eb6607d84897a5a116ef00df447646c5c541a0",
+    "signature": "83a5f27554ae5dcd20552e19894c6d0c87d5a0efc91b423d88cb6ded67d1763c20013b7dec15aea8e8bf577c3dccab4749227756441a608d20d979c2ddc1570b"
   },
   "matrix_mirror": {
     "type": "m.heterodyne.atproto_link.v1",
     "state_key": "did:web:alice.example",
     "sender": "@alice:matrix.example",
-    "content": {"spec_version":"social/0.5.0","mxid":"@alice:matrix.example","did":"did:web:alice.example","did_signing_key_id":"did:web:alice.example#atproto","atproto_record_uri":"at://did:web:alice.example/social.heterodyne.identityLink/self","nostr_event_id":"4444444444444444444444444444444444444444444444444444444444444444","binding_payload":"{\"spec_version\":\"social/0.5.0\",\"did\":\"did:web:alice.example\",\"did_signing_key_id\":\"did:web:alice.example#atproto\",\"npub\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"rid\":\"rad:zAlice\",\"established_at\":1710000000}","atproto_attestation":{"alg":"Ed25519","sig":"did-signature-base64url","signed_payload_hash":"8888888888888888888888888888888888888888888888888888888888888888"},"established_at":1710000000,"revoked_at":null}
+    "content": {"spec_version":"social/0.5.0","mxid":"@alice:matrix.example","did":"did:web:alice.example","did_signing_key_id":"did:web:alice.example#atproto","atproto_record_uri":"at://did:web:alice.example/social.heterodyne.identityLink/self","nostr_event_id":"cd41c76501b0b7145c8dd115503473553e0e8a31c8e5849822aa7c87d19c6bf6","binding_payload":"{\"spec_version\":\"social/0.5.0\",\"did\":\"did:web:alice.example\",\"did_signing_key_id\":\"did:web:alice.example#atproto\",\"npub\":\"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337\",\"rid\":\"rad:zAlice\",\"established_at\":1710000000}","atproto_attestation":{"alg":"Ed25519","public_key":"ca93ac1705187071d67b83c7ff0efe8108e8ec4530575d7726879333dbdabe7c","sig":"83a5f27554ae5dcd20552e19894c6d0c87d5a0efc91b423d88cb6ded67d1763c20013b7dec15aea8e8bf577c3dccab4749227756441a608d20d979c2ddc1570b","signed_payload_hash":"6adf242345b2ac833ec54689e1eb6607d84897a5a116ef00df447646c5c541a0"},"established_at":1710000000,"revoked_at":null}
   }
 }
 ```
@@ -767,24 +797,24 @@ the revocation and is never authoritative by itself.
 ```json
 {
   "nostr": {
-    "pubkey": "1111111111111111111111111111111111111111111111111111111111111111",
+    "pubkey": "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337",
     "created_at": 1710000100,
     "kind": 31009,
-    "tags": [["d","did:web:alice.example"],["heterodyne","atproto_link_revocation"],["did","did:web:alice.example"],["cold_root","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],["kel_head","2222222222222222222222222222222222222222222222222222222222222222","5"]],
-    "content": "{\"spec_version\":\"social/0.5.0\",\"record_type\":\"atproto_link_revocation\",\"did\":\"did:web:alice.example\",\"npub\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"binding_hash\":\"5555555555555555555555555555555555555555555555555555555555555555\",\"revoked_at\":1710000100}",
+    "tags": [["d","did:web:alice.example"],["heterodyne","atproto_link_revocation"],["did","did:web:alice.example"],["cold_root","531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337"],["kel_head","5555555555555555555555555555555555555555555555555555555555555555","0"]],
+    "content": "{\"spec_version\":\"social/0.5.0\",\"record_type\":\"atproto_link_revocation\",\"did\":\"did:web:alice.example\",\"npub\":\"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337\",\"binding_hash\":\"6adf242345b2ac833ec54689e1eb6607d84897a5a116ef00df447646c5c541a0\",\"revoked_at\":1710000100}",
     "sig": "66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666"
   },
   "atproto": {
     "collection": "social.heterodyne.identityLink",
     "rkey": "self",
-    "value": {"spec_version":"social/0.5.0","record_type":"atproto_link_revocation","did":"did:web:alice.example","npub":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","binding_hash":"5555555555555555555555555555555555555555555555555555555555555555","revoked_at":1710000100},
+    "value": {"spec_version":"social/0.5.0","record_type":"atproto_link_revocation","did":"did:web:alice.example","npub":"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337","binding_hash":"6adf242345b2ac833ec54689e1eb6607d84897a5a116ef00df447646c5c541a0","revoked_at":1710000100},
     "signature": "did-revocation-signature-base64url"
   },
   "matrix": {
     "type": "m.heterodyne.atproto_link.v1",
     "state_key": "did:web:alice.example",
     "sender": "@alice:matrix.example",
-    "content": {"spec_version":"social/0.5.0","mxid":"@alice:matrix.example","did":"did:web:alice.example","npub":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","binding_hash":"5555555555555555555555555555555555555555555555555555555555555555","revocation_source":"nostr","revoked_at":1710000100,"nostr_revocation_event_id":"7777777777777777777777777777777777777777777777777777777777777777"}
+    "content": {"spec_version":"social/0.5.0","mxid":"@alice:matrix.example","did":"did:web:alice.example","npub":"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337","binding_hash":"6adf242345b2ac833ec54689e1eb6607d84897a5a116ef00df447646c5c541a0","revocation_source":"nostr","revoked_at":1710000100,"nostr_revocation_event_id":"7777777777777777777777777777777777777777777777777777777777777777"}
   }
 }
 ```
@@ -1148,11 +1178,18 @@ unknown logical algorithm MUST NOT be silently inferred as Megolm.
 Baseline Social+Matrix capability MUST advertise Megolm. A client claiming
 MLS MUST advertise it. The encrypted, scoped Matrix carrier is
 `m.heterodyne.capabilities.v1`, state-keyed by its publishing MXID; the sender
-MUST equal that state key. Its closed Social schema is shown below. It MUST be
-published on the first Heterodyne interaction in a shared private room, updated
-when the advertised set changes, and omitted from a public identity room unless
-the user opts in. `advertised_at` is the freshness time used by the migration
-gate.
+MUST equal that state key. Its content MUST begin with the mandatory
+`heterodyne:core/0.5.0#core-capabilities` bootstrap object. Core support,
+descriptor, bootstrap version, registry revision, supported document set,
+required features, and strict profiles are mandatory. Social+Matrix adds only
+safely ignorable extension members after that bootstrap. An extension MUST NOT
+replace, rename, or reinterpret any Core bootstrap member.
+
+The carrier MUST be published on the first Heterodyne interaction in a shared
+private room, updated when the advertised set changes, and omitted from a
+public identity room unless the user opts in. The migration gate reads the
+extension members `encryption_algorithms_supported` and `advertised_at`; it
+still MUST reject an advertisement whose Core bootstrap is invalid.
 
 <!-- fixture:matrix-mls-capabilities -->
 ```json
@@ -1161,7 +1198,7 @@ gate.
   "state_key": "@alice:matrix.example",
   "sender": "@alice:matrix.example",
   "origin_server_ts": 1710000000000,
-  "content": {"spec_version":"social/0.5.0","spec_versions_supported":["social/0.5.0"],"backends":["nostr_relay","repo_relay"],"node_roles":["light"],"matrix":true,"event_types":["m.heterodyne.encryption_version.v1","m.heterodyne.migration_intent.v1","m.heterodyne.migration_ack.v1","m.heterodyne.migration_abort.v1"],"nostr_kinds":[31004,31009],"profiles":[],"encryption_algorithms_supported":["megolm","mls"],"advertised_at":1710000000}
+  "content": {"descriptor":"heterodyne-capabilities-v1","bootstrap_version":"core/0.5.0","registry_revision":1,"supported_versions":{"core":["core/0.5.0"],"comms":["comms/0.5.0"],"control":[],"social":["social/0.5.0"]},"required_features":["core.identity.v1","core.repo-relay-client.v1","core.embedded-tor.v1"],"strict_profiles":[],"backends":["nostr_relay","repo_relay"],"node_roles":["light"],"matrix":true,"event_types":["m.heterodyne.encryption_version.v1","m.heterodyne.migration_intent.v1","m.heterodyne.migration_ack.v1","m.heterodyne.migration_abort.v1"],"nostr_kinds":[31004,31009],"encryption_algorithms_supported":["megolm","mls"],"advertised_at":1710000000}
 }
 ```
 

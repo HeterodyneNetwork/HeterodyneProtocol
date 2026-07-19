@@ -9,8 +9,12 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
+import { ed25519 } from "@noble/curves/ed25519";
+import { sha256 } from "@noble/hashes/sha2";
 import { describe, expect, it } from "vitest";
 import { lintFamilyDocs } from "./docs-lint.js";
+import { hexToBytes, utf8Bytes } from "./hex.js";
+import { verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
 import { loadRegistry, resolveStampingProfile } from "./registry.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -163,6 +167,15 @@ function tagValues(event: ExampleEvent, name: string): string[][] {
   return event.tags.filter((tag) => tag[0] === name);
 }
 
+function hasValidNostrSignature(event: ExampleEvent): boolean {
+  if (!event.id || !event.sig) return false;
+  try {
+    return verifyEventSignature(event as NostrSignedEvent);
+  } catch {
+    return false;
+  }
+}
+
 function validateOrgFeedExample(
   event: ExampleEvent,
   tier: 1 | 2 | 3,
@@ -192,9 +205,11 @@ function validateOrgFeedExample(
     errors.push("d");
   }
   if (tagValues(event, "heterodyne")[0]?.[1] !== "feed_index") errors.push("heterodyne");
-  for (const required of ["cold_root", "rid", "kel_head"]) {
+  for (const required of ["cold_root", "kel_head"]) {
     if (tagValues(event, required).length !== 1) errors.push(required);
   }
+  const rid = tagValues(event, "rid");
+  if (rid.length > 1 || (rid.length === 1 && !rid[0][1])) errors.push("rid");
   const previous = tagValues(event, "previous_index");
   const previousHash = tagValues(event, "prev_page_hash");
   if ((previous.length === 1) !== (previousHash.length === 1)) errors.push("paging-pair");
@@ -206,9 +221,16 @@ function validateOrgFeedExample(
   return [...new Set(errors)].sort();
 }
 
-type RelatedPairFixture = { left: ExampleEvent; right: ExampleEvent };
+type RelatedPairFixture = {
+  left: ExampleEvent;
+  right: ExampleEvent;
+  kel_authority?: {
+    left: { cold_root: string; accepted_head: string; authorized_epoch_key: string };
+    right: { cold_root: string; accepted_head: string; authorized_epoch_key: string };
+  };
+};
 
-function validateRelatedPair(pair: RelatedPairFixture): string[] {
+function validateRelatedPairStructure(pair: RelatedPairFixture): string[] {
   const errors: string[] = [];
   const relationOf = (event: ExampleEvent) => tagValues(event, "relation")[0]?.[1];
   const otherOf = (event: ExampleEvent) => tagValues(event, "other_npub")[0]?.[1];
@@ -242,6 +264,7 @@ function validateRelatedPair(pair: RelatedPairFixture): string[] {
       tagValues(event, "cold_root").length !== 1 ||
       tagValues(event, "kel_head").length !== 1 ||
       event.content !== "" ||
+      !event.id ||
       !event.sig
     ) {
       errors.push("proof");
@@ -254,11 +277,30 @@ function validateRelatedPair(pair: RelatedPairFixture): string[] {
   if (expectedReverse[relationOf(pair.left)] !== relationOf(pair.right)) errors.push("relation-pair");
   if (scopeOf(pair.left) !== scopeOf(pair.right)) errors.push("scope");
   if (
-    pair.left.sig === pair.right.sig ||
     pair.left.pubkey === pair.right.pubkey ||
     rootOf(pair.left) === rootOf(pair.right) ||
     tagValues(pair.left, "kel_head")[0]?.[1] === tagValues(pair.right, "kel_head")[0]?.[1]
   ) {
+    errors.push("independent-signers");
+  }
+  return [...new Set(errors)].sort();
+}
+
+function validateRelatedPairCryptography(pair: RelatedPairFixture): string[] {
+  const errors: string[] = [];
+  for (const [side, event] of [["left", pair.left], ["right", pair.right]] as const) {
+    const authority = pair.kel_authority?.[side];
+    if (
+      !authority ||
+      authority.cold_root !== tagValues(event, "cold_root")[0]?.[1] ||
+      authority.accepted_head !== tagValues(event, "kel_head")[0]?.[1] ||
+      authority.authorized_epoch_key !== event.pubkey ||
+      !hasValidNostrSignature(event)
+    ) {
+      errors.push("proof");
+    }
+  }
+  if (pair.left.id === pair.right.id || pair.left.sig === pair.right.sig) {
     errors.push("independent-signers");
   }
   return [...new Set(errors)].sort();
@@ -276,6 +318,25 @@ function exactKeys(value: Record<string, unknown>, keys: string[]): boolean {
   return JSON.stringify(Object.keys(value)) === JSON.stringify(keys);
 }
 
+function validateCapabilityBootstrap(content: Record<string, unknown>): string[] {
+  const errors: string[] = [];
+  const supported = content.supported_versions as Record<string, unknown> | undefined;
+  if (content.descriptor !== "heterodyne-capabilities-v1") errors.push("descriptor");
+  if (content.bootstrap_version !== "core/0.5.0") errors.push("bootstrap-version");
+  if (content.registry_revision !== 1) errors.push("registry-revision");
+  if (!supported || !exactKeys(supported, ["core", "comms", "control", "social"])) {
+    errors.push("document-set");
+  } else {
+    if (JSON.stringify(supported.core) !== JSON.stringify(["core/0.5.0"])) errors.push("core-support");
+    if (JSON.stringify(supported.comms) !== JSON.stringify(["comms/0.5.0"])) errors.push("comms-support");
+    if (JSON.stringify(supported.control) !== JSON.stringify([])) errors.push("control-support");
+    if (JSON.stringify(supported.social) !== JSON.stringify(["social/0.5.0"])) errors.push("social-support");
+  }
+  if (!Array.isArray(content.required_features)) errors.push("required-features");
+  if (!Array.isArray(content.strict_profiles)) errors.push("strict-profiles");
+  return [...new Set(errors)].sort();
+}
+
 function matrixTailAcceptsFromFixture(
   flip: MatrixStateFixture,
   event: { origin_server_ts: number; pre_flip_session: boolean; member_at_flip: boolean },
@@ -291,6 +352,9 @@ type AtprotoFixture = {
     collection: string;
     rkey: string;
     value: Record<string, unknown>;
+    algorithm: string;
+    public_key: string;
+    signed_payload_hash: string;
     signature: string;
   };
   matrix_mirror: MatrixStateFixture;
@@ -304,7 +368,34 @@ function validateAtprotoFixture(fixture: AtprotoFixture): string[] {
   if (fixture.nostr_event.kind !== 31009 || fixture.nostr_event.content !== JSON.stringify(payload)) {
     errors.push("shared-payload");
   }
-  if (!fixture.nostr_event.sig || !fixture.pds_record.signature) errors.push("dual-signatures");
+  const canonicalPayload = JSON.stringify(payload);
+  const payloadHash = sha256(utf8Bytes(canonicalPayload));
+  const payloadHashHex = Buffer.from(payloadHash).toString("hex");
+  if (
+    !hasValidNostrSignature(fixture.nostr_event)
+  ) {
+    errors.push("nostr-signature");
+  }
+  let didSignatureValid = false;
+  if (
+    fixture.pds_record.algorithm === "Ed25519" &&
+    fixture.pds_record.signed_payload_hash === payloadHashHex &&
+    typeof fixture.pds_record.signature === "string" &&
+    typeof fixture.pds_record.public_key === "string"
+  ) {
+    try {
+      didSignatureValid = ed25519.verify(
+        hexToBytes(fixture.pds_record.signature),
+        payloadHash,
+        hexToBytes(fixture.pds_record.public_key),
+      );
+    } catch {
+      didSignatureValid = false;
+    }
+  }
+  if (!didSignatureValid) {
+    errors.push("atproto-signature");
+  }
   if (tagValues(fixture.nostr_event, "d")[0]?.[1] !== payload.did) errors.push("did-binding");
   if (tagValues(fixture.nostr_event, "cold_root")[0]?.[1] !== payload.npub) errors.push("npub-binding");
   const matrixAttestation = fixture.matrix_mirror.content.atproto_attestation as
@@ -315,7 +406,10 @@ function validateAtprotoFixture(fixture: AtprotoFixture): string[] {
     fixture.matrix_mirror.content.did !== payload.did ||
     fixture.matrix_mirror.sender !== fixture.matrix_mirror.content.mxid ||
     fixture.matrix_mirror.content.binding_payload !== fixture.nostr_event.content ||
-    matrixAttestation?.sig !== fixture.pds_record.signature
+    matrixAttestation?.alg !== fixture.pds_record.algorithm ||
+    matrixAttestation?.public_key !== fixture.pds_record.public_key ||
+    matrixAttestation?.sig !== fixture.pds_record.signature ||
+    matrixAttestation?.signed_payload_hash !== fixture.pds_record.signed_payload_hash
   ) {
     errors.push("matrix-binding");
   }
@@ -828,6 +922,10 @@ describe("protocol family documents", () => {
     expect(text).toContain('["heterodyne", "social-mute-list-v1"]');
     expect(text).toContain('["spec_version", "social/0.5.0"]');
     expect(text).toMatch(/plain upstream NIP-51[\s\S]*MUST remain unstamped/i);
+    expect(text).toMatch(/ordinary Social NIP-51[\s\S]*public dual-backend carrier/i);
+    expect(text).toMatch(/NIP-44-encrypted to self[\s\S]*publishable event/i);
+    expect(text).toMatch(/MUST NOT imply Tier 2/i);
+    expect(text).toMatch(/existence[\s\S]*size[\s\S]*encrypted config repository/i);
     expect(text).toContain("heterodyne-social-org-feed-v1");
     expect(text).toContain("content.profile=heterodyne.social.org-feed.v1");
   });
@@ -839,6 +937,20 @@ describe("protocol family documents", () => {
 
     expect(validateOrgFeedExample(event, 1, registry)).toEqual([]);
     expect(validateOrgFeedExample(event, 2, registry)).toEqual([]);
+    expect(
+      validateOrgFeedExample(
+        { ...event, tags: event.tags.filter((tag) => tag[0] !== "rid") },
+        1,
+        registry,
+      ),
+    ).toEqual([]);
+    expect(
+      validateOrgFeedExample(
+        { ...event, tags: [...event.tags, ["rid", "rad:zDuplicate"]] },
+        1,
+        registry,
+      ),
+    ).toContain("rid");
     expect(validateOrgFeedExample({ ...event, content: "" }, 1, registry)).toContain("content");
     expect(
       validateOrgFeedExample(
@@ -914,7 +1026,28 @@ describe("protocol family documents", () => {
     const text = readFileSync(socialPath, "utf8");
     const pair = fixtureFromMarkdown<RelatedPairFixture>(text, "related-persona-pair");
 
-    expect(validateRelatedPair(pair)).toEqual([]);
+    expect(validateRelatedPairStructure(pair)).toEqual([]);
+    expect(validateRelatedPairCryptography(pair)).toEqual([]);
+    expect(
+      validateRelatedPairCryptography({
+        ...pair,
+        left: { ...pair.left, sig: `${pair.left.sig?.slice(0, -2)}00` },
+      }),
+    ).toContain("proof");
+    expect(
+      validateRelatedPairCryptography({
+        ...pair,
+        kel_authority: pair.kel_authority
+          ? {
+              ...pair.kel_authority,
+              left: {
+                ...pair.kel_authority.left,
+                authorized_epoch_key: pair.right.pubkey,
+              },
+            }
+          : undefined,
+      }),
+    ).toContain("proof");
     for (const symmetric of ["same_holder", "linked"] as const) {
       const symmetricPair: RelatedPairFixture = {
         left: {
@@ -938,10 +1071,10 @@ describe("protocol family documents", () => {
           ),
         },
       };
-      expect(validateRelatedPair(symmetricPair)).toEqual([]);
+      expect(validateRelatedPairStructure(symmetricPair)).toEqual([]);
     }
     expect(
-      validateRelatedPair({
+      validateRelatedPairStructure({
         ...pair,
         right: {
           ...pair.right,
@@ -952,7 +1085,7 @@ describe("protocol family documents", () => {
       }),
     ).toContain("cross-binding");
     expect(
-      validateRelatedPair({
+      validateRelatedPairStructure({
         ...pair,
         right: {
           ...pair.right,
@@ -963,13 +1096,13 @@ describe("protocol family documents", () => {
       }),
     ).toContain("relation-pair");
     expect(
-      validateRelatedPair({
+      validateRelatedPairCryptography({
         ...pair,
         right: { ...pair.right, sig: pair.left.sig },
       }),
     ).toContain("independent-signers");
     expect(
-      validateRelatedPair({
+      validateRelatedPairStructure({
         ...pair,
         right: {
           ...pair.right,
@@ -1016,8 +1149,29 @@ describe("protocol family documents", () => {
     expect(exactKeys(baseline.content, ["spec_version", "algorithm", "migrated_from", "migrated_at"])).toBe(true);
     expect(capabilities.type).toBe("m.heterodyne.capabilities.v1");
     expect(capabilities.state_key).toBe(capabilities.sender);
-    expect(exactKeys(capabilities.content, ["spec_version", "spec_versions_supported", "backends", "node_roles", "matrix", "event_types", "nostr_kinds", "profiles", "encryption_algorithms_supported", "advertised_at"])).toBe(true);
+    expect(validateCapabilityBootstrap(capabilities.content)).toEqual([]);
+    expect(exactKeys(capabilities.content, ["descriptor", "bootstrap_version", "registry_revision", "supported_versions", "required_features", "strict_profiles", "backends", "node_roles", "matrix", "event_types", "nostr_kinds", "encryption_algorithms_supported", "advertised_at"])).toBe(true);
     expect(capabilities.content.encryption_algorithms_supported).toEqual(["megolm", "mls"]);
+    expect(validateCapabilityBootstrap({ ...capabilities.content, descriptor: undefined })).toContain("descriptor");
+    expect(validateCapabilityBootstrap({ ...capabilities.content, registry_revision: 2 })).toContain("registry-revision");
+    expect(
+      validateCapabilityBootstrap({
+        ...capabilities.content,
+        supported_versions: {
+          ...(capabilities.content.supported_versions as Record<string, unknown>),
+          extra: [],
+        },
+      }),
+    ).toContain("document-set");
+    expect(
+      validateCapabilityBootstrap({
+        ...capabilities.content,
+        supported_versions: {
+          ...(capabilities.content.supported_versions as Record<string, unknown>),
+          core: [],
+        },
+      }),
+    ).toContain("core-support");
     expect(intent.type).toBe("m.heterodyne.migration_intent.v1");
     expect(intent.state_key).toBe(intent.content.intent_id);
     expect(exactKeys(intent.content, ["spec_version", "target_algorithm", "drain_window_seconds", "intent_id", "initiator_mxid", "initiator_npub"])).toBe(true);
@@ -1043,7 +1197,7 @@ describe("protocol family documents", () => {
     expect(matrixTailAcceptsFromFixture(flip, { origin_server_ts: flipTs + 30_000, pre_flip_session: true, member_at_flip: false })).toBe(false);
   });
 
-  it("parses and validates the ATProto dual binding and Matrix mirror", () => {
+  it("cryptographically validates the ATProto binding and structurally parses revocation mirrors", () => {
     const text = readFileSync(socialPath, "utf8");
     const fixture = fixtureFromMarkdown<AtprotoFixture>(text, "atproto-identity-link");
     const revocations = fixtureFromMarkdown<{
@@ -1058,6 +1212,30 @@ describe("protocol family documents", () => {
     expect(fixture.matrix_mirror.content.binding_payload).toBe(fixture.nostr_event.content);
     expect(tagValues(fixture.nostr_event, "spec_version")).toEqual([]);
     expect(validateAtprotoFixture({ ...fixture, pds_record: { ...fixture.pds_record, collection: "wrong" } })).toContain("collection");
+    expect(
+      validateAtprotoFixture({
+        ...fixture,
+        nostr_event: { ...fixture.nostr_event, id: "00".repeat(32) },
+      }),
+    ).toContain("nostr-signature");
+    expect(
+      validateAtprotoFixture({
+        ...fixture,
+        nostr_event: { ...fixture.nostr_event, sig: "00".repeat(64) },
+      }),
+    ).toContain("nostr-signature");
+    expect(
+      validateAtprotoFixture({
+        ...fixture,
+        pds_record: { ...fixture.pds_record, signed_payload_hash: "00".repeat(32) },
+      }),
+    ).toContain("atproto-signature");
+    expect(
+      validateAtprotoFixture({
+        ...fixture,
+        pds_record: { ...fixture.pds_record, signature: "00".repeat(64) },
+      }),
+    ).toContain("atproto-signature");
     expect(validateAtprotoFixture({ ...fixture, matrix_mirror: { ...fixture.matrix_mirror, state_key: "did:web:other.example" } })).toContain("matrix-binding");
     expect(revocations.nostr.kind).toBe(31009);
     const nostrRevocation = JSON.parse(revocations.nostr.content) as Record<string, unknown>;
