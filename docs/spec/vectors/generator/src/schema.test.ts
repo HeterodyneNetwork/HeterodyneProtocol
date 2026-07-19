@@ -11,7 +11,7 @@ describe("vector schema", () => {
       ? { core: "core/0.5.0" }
       : owner === "social"
         ? { core: "core/0.5.0", comms: "comms/0.5.0" }
-        : { comms: "comms/0.5.0" },
+        : { core: "core/0.5.0", comms: "comms/0.5.0" },
     registry_revision: 1,
     spec_refs: [`heterodyne:${owner}/0.5.0#${owner}-conformance`],
     description: "exact family metadata",
@@ -98,7 +98,7 @@ describe("vector schema", () => {
     expect(() => validateVectorOrThrow({ ...valid("comms"), dependency_versions: {} }))
       .toThrow(/dependency/);
     expect(() => validateVectorOrThrow({
-      ...valid("control"), dependency_versions: { comms: "comms/0.5.0", core: "core/0.5.0" },
+      ...valid("control"), dependency_versions: { comms: "comms/0.5.0" },
     })).toThrow(/dependency/);
     expect(() => validateVectorOrThrow({
       ...valid("social"), dependency_versions: { core: "core/0.5.0", comms: "comms/0.4.0" },
@@ -117,6 +117,16 @@ describe("vector schema", () => {
     expect(() => validateVectorOrThrow({
       ...valid("social"), spec_refs: ["heterodyne:core/0.4.0#core-conformance"],
     })).toThrow(/spec_ref/);
+  });
+
+  it("allows Control references to both exact direct dependencies", () => {
+    expect(() => validateVectorOrThrow({
+      ...valid("control"),
+      spec_refs: [
+        "heterodyne:core/0.5.0#core-version-stamps",
+        "heterodyne:comms/0.5.0#comms-subprotocol-negotiation",
+      ],
+    })).not.toThrow();
   });
 
   it("rejects null for the optional profile field", () => {

@@ -179,3 +179,49 @@ Remediation RED/GREEN evidence:
 - Full final suite: 13 files, 146 tests passed; all 262 vectors verified.
 - `family:check` passed and the 0.4 archive remained byte-identical to its
   source snapshot.
+
+## Final review follow-up
+
+Follow-up remediation from `af93544` restores the Task 1 dependency contract
+and makes the remaining protocol fixtures byte- and vocabulary-exact. This
+section supersedes the earlier Control count: the final distribution is Core
+122, Comms 57, Social 82, and Control 1. The sole Control-owned vector is
+reservation-only profile coverage, not a Control conformance corpus.
+
+- `DOCUMENT_DEPENDENCIES.control` is restored to `["core", "comms"]`.
+  Runtime validation, generated JSON Schema, metadata tests, and the sole
+  Control reservation vector all require the exact pins `core/0.5.0` and
+  `comms/0.5.0`; Control references may target either direct dependency.
+- Every acceptance-hook case now uses only the closed contexts `ordinary-dm`,
+  `credential-sync`, and `control-enrollment`, and only the outcomes `accept`,
+  `hold-as-message-request`, and `reject`. Credential cases identify
+  `credential-sync`; all five negative credential cases explicitly start from
+  an authenticated session. Hook cases carry the complete closed precondition
+  surface from Comms section 8.
+- Both Comms rumor kinds use the session-authenticated Alice/Bob device
+  publishing keys, not persona epoch keys. Every negotiation id is exactly 16
+  bytes encoded as 32 lowercase hex characters.
+- Profile metadata now resolves to confirmed permanent anchors:
+  `core-version-stamps`, `comms-tier-three-profile`, `comms-dm-wire`,
+  `comms-subprotocol-negotiation`, `social-org-feed-profile`,
+  `social-mute-profile`, and `control-session-device-profile`.
+- The kind:1059 profile fixture is now a complete deterministic
+  `nostr-double-ratchet@0.0.138` response. It pins all three NIP-44 nonces,
+  identities, session key, shared secret, timestamps, event id, content,
+  pubkey, and BIP-340 signature. Its validator decrypts the outer
+  random-sender/ephemeral layer, the shared-secret layer, and the device-DH
+  layer, then matches the recovered invitee identity, session key, and owner.
+  It also requires transient relay carriage with `repo_storable=false` and
+  `backfill=false`; mutation tests reject an incomplete signature and an
+  incorrectly repo-storable fixture.
+
+Follow-up TDD evidence:
+
+- Initial focused RED: 14 intended failures across the restored Control DAG,
+  exact dependency schema, hook vocabulary/preconditions, carrier identities,
+  permanent anchors, and kind:1059 completeness/storage semantics.
+- Focused GREEN: 6 files, 34 tests passed.
+- Deterministic authoring remains 262 vectors.
+- Full follow-up `check`: TypeScript passed; 14 files, 157 tests passed; all
+  262 vectors verified. `family:check`, archive comparison, and diff checks
+  passed.

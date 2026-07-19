@@ -6,7 +6,7 @@
   "registry_revision": 1,
   "profile": "heterodyne-core-rotation-breadcrumb-profile-v1",
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-conformance"
+    "heterodyne:core/0.5.0#core-version-stamps"
   ],
   "vector_id": "profiles/core-breadcrumb-kind0",
   "description": "A complete signed ADR-031 kind:0 successor breadcrumb remains a standard unstamped Nostr profile.",

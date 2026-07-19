@@ -8,7 +8,7 @@
   "registry_revision": 1,
   "profile": "heterodyne-comms-double-ratchet-message-v1",
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-direct-messages"
+    "heterodyne:comms/0.5.0#comms-dm-wire"
   ],
   "vector_id": "dm/double-ratchet-transcript",
   "description": "Full five-message double-ratchet transcript (alice x2 in one sending chain, bob reply, alice after a DH ratchet, bob after a second DH ratchet) produced by the pinned upstream wire library from the pinned session-setup secrets; a conforming receiver replays the outer events in delivery order and must recover every inner rumor.",

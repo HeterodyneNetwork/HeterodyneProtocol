@@ -15,7 +15,7 @@ export const DOCUMENT_DEPENDENCIES: Record<
 > = {
   core: [],
   comms: ["core"],
-  control: ["comms"],
+  control: ["core", "comms"],
   social: ["core", "comms"],
 };
 

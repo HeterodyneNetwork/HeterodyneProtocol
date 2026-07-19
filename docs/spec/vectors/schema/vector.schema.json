@@ -193,6 +193,7 @@
           },
           "dependency_versions": {
             "const": {
+              "core": "core/0.5.0",
               "comms": "comms/0.5.0"
             }
           }

@@ -25,7 +25,14 @@ describe("family coverage", () => {
       [...coverage.map(({ vector_id }) => vector_id)].sort(),
     );
     expect(new Set(coverage.map(({ vector_id }) => vector_id)).size).toBe(vectors.length);
-    expect(coverage).not.toContainEqual(expect.objectContaining({ owner_document: "control" }));
+    expect(coverage.filter(({ owner_document }) => owner_document === "control")).toEqual([
+      expect.objectContaining({
+        vector_id: "stamping/control-profile-retains-core-owner",
+        dependency_versions: { core: "core/0.5.0", comms: "comms/0.5.0" },
+        profile: "heterodyne-control-session-device-v1",
+        spec_refs: ["heterodyne:control/0.5.0#control-session-device-profile"],
+      }),
+    ]);
     expect(coverage).toContainEqual(
       expect.objectContaining({
         vector_id: "stamping/tier3-profile-owner",
@@ -79,6 +86,6 @@ describe("family coverage", () => {
 
     expect(second).toEqual(first);
     expect(first[3]).toContain("incomplete-draft");
-    expect(first[3]).toContain("No Control conformance corpus");
+    expect(first[3]).toContain("Reservation-only coverage is not a Control conformance corpus");
   });
 });

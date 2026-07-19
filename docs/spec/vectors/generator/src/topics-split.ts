@@ -1,4 +1,6 @@
-import { canonicalNip01, getEventId, signEvent, verifyEventSignature } from "./nostr.js";
+import { nip44 } from "nostr-tools";
+import { hexToBytes } from "./hex.js";
+import { canonicalNip01, getEventId, getPublicKey, signEvent, verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
 import { AUX_RAND, baseVector } from "./vector-helpers.js";
 import type { Fixtures } from "./fixtures.js";
 import type { AuthoredVector, VectorDirection } from "./types.js";
@@ -15,6 +17,8 @@ type Case = {
 export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVector[]> {
   const sender = fixtures.personas.alice.epoch_keys.epoch_1;
   const recipient = fixtures.personas.bob.epoch_keys.epoch_1;
+  const senderDevice = fixtures.device_publishing_keys.alice_device_1;
+  const recipientDevice = fixtures.device_publishing_keys.bob_device_1;
   const native = await signEvent({
     secretKey: sender.private_key,
     created_at: fixtures.test_epoch + 500,
@@ -26,17 +30,17 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
   const payloadContent = JSON.stringify({
     spec_version: "comms/0.5.0",
     protocol_type: "payload",
-    negotiation_id: "aa".repeat(32),
+    negotiation_id: "aa".repeat(16),
     protocol_id: "heterodyne-device-rpc",
     protocol_version: "1.0.0",
     responder_confirmation_hash: "bb".repeat(32),
     payload: { method: "claims.list", request_id: "fixture-1" },
   });
   const rumorBase = {
-    pubkey: sender.pubkey,
+    pubkey: senderDevice.pubkey,
     created_at: fixtures.test_epoch + 501,
     kind: 31016,
-    tags: [["p", recipient.pubkey]],
+    tags: [["p", recipientDevice.pubkey]],
     content: payloadContent,
   };
   const rumor = { id: getEventId(rumorBase), ...rumorBase };
@@ -59,6 +63,38 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
     secretKey: sender.private_key, created_at: fixtures.test_epoch + 505, kind: 31007,
     tags: [["d", "org-news:page-1"], ["heterodyne", "feed_index"], ["cold_root", fixtures.personas.alice.cold_root.pubkey], ["rid", fixtures.radicle_rids.org_acme], ["feed_label", "Org news"], ["e", "33".repeat(32), "wss://relay.example"], ["kel_head", fixtures.kel.alice.head.id, "0"]],
     content: "{\"profile\":\"heterodyne.social.org-feed.v1\",\"spec_version\":\"social/0.5.0\"}", auxRand: AUX_RAND,
+  });
+  const inviterEphemeralPrivateKey = "0c".repeat(32);
+  const inviterEphemeralPublicKey = getPublicKey(inviterEphemeralPrivateKey);
+  const inviteeSessionPrivateKey = "0d".repeat(32);
+  const inviteeSessionPublicKey = getPublicKey(inviteeSessionPrivateKey);
+  const randomSenderPrivateKey = "0e".repeat(32);
+  const sharedSecret = "0f".repeat(32);
+  const inviteResponsePayload = JSON.stringify({
+    sessionKey: inviteeSessionPublicKey,
+    ownerPublicKey: fixtures.personas.bob.cold_root.pubkey,
+  });
+  const dhEncrypted = nip44.v2.encrypt(
+    inviteResponsePayload,
+    nip44.v2.utils.getConversationKey(hexToBytes(recipientDevice.private_key), senderDevice.pubkey),
+    hexToBytes("61".repeat(32)),
+  );
+  const innerEvent = {
+    pubkey: recipientDevice.pubkey,
+    content: nip44.v2.encrypt(dhEncrypted, hexToBytes(sharedSecret), hexToBytes("62".repeat(32))),
+    created_at: fixtures.test_epoch + 506,
+  };
+  const inviteResponse = await signEvent({
+    secretKey: randomSenderPrivateKey,
+    created_at: fixtures.test_epoch + 507,
+    kind: 1059,
+    tags: [["p", inviterEphemeralPublicKey]],
+    content: nip44.v2.encrypt(
+      JSON.stringify(innerEvent),
+      nip44.v2.utils.getConversationKey(hexToBytes(randomSenderPrivateKey), inviterEphemeralPublicKey),
+      hexToBytes("63".repeat(32)),
+    ),
+    auxRand: AUX_RAND,
   });
   const dynamic: Case[] = [
     {
@@ -88,8 +124,9 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
     { path: "profiles/010-social-org-feed-kind31007.json", vector_id: "profiles/social-org-feed-kind31007", description: "The active Social organization-feed profile is a complete signed Comms feed-index with its exact canonical content marker.", direction: "round-trip", input: { event: orgFeed, canonical_wire: canonicalNip01(orgFeed) }, expected_output: { verdict: "accept", normalized: { signature_valid: verifyEventSignature(orgFeed), owner: "social", stamp_location: "content.spec_version" } } },
     { path: "profiles/011-comms-negotiation-kind31015.json", vector_id: "profiles/comms-negotiation-kind31015", description: "The active Comms negotiation profile is a complete canonical unsigned rumor with one recipient tag.", direction: "round-trip", input: { rumor: negotiationRumor, canonical_wire: canonicalNip01(negotiationBase) }, expected_output: { verdict: "accept", normalized: { owner: "comms", outer_signature_present: false } } },
     { path: "profiles/012-comms-payload-kind31016.json", vector_id: "profiles/comms-payload-kind31016", description: "The active Comms payload profile is a complete canonical unsigned rumor whose string content carries the Comms stamp.", direction: "round-trip", input: { rumor, canonical_wire: canonicalNip01(rumorBase) }, expected_output: { verdict: "accept", normalized: { owner: "comms", outer_signature_present: false } } },
+    { path: "profiles/009-dr-invite-response-kind1059.json", vector_id: "profiles/dr-invite-response-kind1059", description: "A complete deterministic nostr-double-ratchet 0.0.138 kind:1059 invite response is transient relay traffic and never repository storage or backfill.", direction: "round-trip", input: { wire_version: "nostr-double-ratchet/0.0.138", event: inviteResponse, canonical_wire: canonicalNip01(inviteResponse), inviter_ephemeral_private_key: inviterEphemeralPrivateKey, inviter_identity_private_key: senderDevice.private_key, shared_secret: sharedSecret, pinned_nonces: ["61".repeat(32), "62".repeat(32), "63".repeat(32)] }, expected_output: { verdict: "accept", normalized: { invitee_identity: recipientDevice.pubkey, invitee_session_public_key: inviteeSessionPublicKey, owner_public_key: fixtures.personas.bob.cold_root.pubkey, stamp_count: 0, relay_carriage: "transient", repo_storable: false, backfill: false } } },
   ];
-  return [...dynamic, ...CASES].map((testCase) => ({
+  const authored = [...dynamic, ...CASES].map((testCase) => ({
     relativePath: testCase.path,
     vector: baseVector({
       vector_id: testCase.vector_id,
@@ -100,6 +137,38 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
       expected_output: testCase.expected_output,
     }),
   }));
+  validateInviteResponseProfileFixture(authored.find(({ vector }) => vector.vector_id === "profiles/dr-invite-response-kind1059")!.vector);
+  return authored;
+}
+
+export function validateInviteResponseProfileFixture(vector: {
+  input: Record<string, unknown>;
+  expected_output: Record<string, unknown>;
+}): void {
+  const event = vector.input.event as Partial<NostrSignedEvent> | undefined;
+  if (event === undefined || event.kind !== 1059 || typeof event.id !== "string" || typeof event.sig !== "string" ||
+      typeof event.pubkey !== "string" || typeof event.created_at !== "number" || typeof event.content !== "string" ||
+      !Array.isArray(event.tags) || !verifyEventSignature(event as NostrSignedEvent)) {
+    throw new Error("kind:1059 fixture must be a complete signed deterministic event");
+  }
+  const normalized = vector.expected_output.normalized as Record<string, unknown> | undefined;
+  if (normalized?.repo_storable !== false || normalized.backfill !== false || normalized.relay_carriage !== "transient") {
+    throw new Error("kind:1059 fixture must declare transient relay carriage without repository storage or backfill");
+  }
+  if (event.tags.length !== 1 || event.tags[0]?.[0] !== "p" || event.tags[0]?.length !== 2) {
+    throw new Error("kind:1059 fixture must contain exactly one ephemeral recipient p tag");
+  }
+  const inviterEphemeralPrivateKey = vector.input.inviter_ephemeral_private_key as string;
+  const inviterIdentityPrivateKey = vector.input.inviter_identity_private_key as string;
+  const sharedSecret = vector.input.shared_secret as string;
+  const outerKey = nip44.v2.utils.getConversationKey(hexToBytes(inviterEphemeralPrivateKey), event.pubkey);
+  const innerEvent = JSON.parse(nip44.v2.decrypt(event.content, outerKey)) as { pubkey: string; content: string; created_at: number };
+  const dhEncrypted = nip44.v2.decrypt(innerEvent.content, hexToBytes(sharedSecret));
+  const identityKey = nip44.v2.utils.getConversationKey(hexToBytes(inviterIdentityPrivateKey), innerEvent.pubkey);
+  const payload = JSON.parse(nip44.v2.decrypt(dhEncrypted, identityKey)) as { sessionKey: string; ownerPublicKey?: string };
+  if (normalized.invitee_identity !== innerEvent.pubkey || normalized.invitee_session_public_key !== payload.sessionKey || normalized.owner_public_key !== payload.ownerPublicKey) {
+    throw new Error("kind:1059 fixture decoded identity/session bytes do not match expected output");
+  }
 }
 
 const CASES: Case[] = [
@@ -121,28 +190,28 @@ const CASES: Case[] = [
     path: "acceptance-gating/001-authentication-before-policy.json",
     vector_id: "acceptance-gating/authentication-before-policy",
     description: "Cryptographic authentication rejects invalid input before the Comms policy hook runs.",
-    input: { signature_valid: false, policy_would_accept: true },
-    expected_output: { verdict: "reject", reason_code: "bad_signature", normalized: { policy_hook_invoked: false } },
+    input: hookInput({ context: "ordinary-dm", authenticated: false, signature_valid: false, policy_would_accept: true }),
+    expected_output: { verdict: "reject", reason_code: "bad_signature", normalized: { outcome: "reject", policy_hook_invoked: false } },
   },
   {
     path: "acceptance-gating/002-message-request-no-receipt.json",
     vector_id: "acceptance-gating/message-request-no-receipt",
     description: "A new authenticated DM is held as a message request without sender-observable signals.",
-    input: { context: "ordinary-dm", established_locally_accepted_session: false, authenticated: true },
+    input: hookInput({ context: "ordinary-dm", established_locally_accepted_session: false, authenticated: true }),
     expected_output: { verdict: "accept", normalized: { outcome: "hold-as-message-request", receipts: 0, typing_signals: 0, retry_hints: 0 } },
   },
   {
     path: "acceptance-gating/003-social-mute-tightens.json",
     vector_id: "acceptance-gating/social-mute-tightens",
     description: "Social mute state may tighten an authenticated Comms acceptance into rejection.",
-    input: { comms_outcome: "accept", authenticated_peer_muted: true },
+    input: hookInput({ context: "ordinary-dm", comms_outcome: "accept", authenticated_peer_muted: true }),
     expected_output: { verdict: "accept", normalized: { composed_outcome: "reject", loosened_comms_result: false } },
   },
   {
     path: "acceptance-gating/004-social-policy-cannot-loosen.json",
     vector_id: "acceptance-gating/social-policy-cannot-loosen",
     description: "Social policy cannot turn a Comms rejection into hold or accept.",
-    input: { comms_outcome: "reject", social_policy_outcome: "accept" },
+    input: hookInput({ context: "ordinary-dm", comms_outcome: "reject", social_policy_outcome: "accept" }),
     expected_output: { verdict: "accept", normalized: { composed_outcome: "reject", loosened_comms_result: false } },
   },
   {
@@ -204,26 +273,47 @@ const CASES: Case[] = [
 ];
 
 function acceptanceCases(): Case[] {
-  const hold = { outcome: "hold", content_transferred: false, receipts: 0, typing_signals: 0, retry_hints: 0 };
+  const hold = { outcome: "hold-as-message-request", content_transferred: false, receipts: 0, typing_signals: 0, retry_hints: 0 };
   return [
-    ["005-established-ordinary-accept", "established-ordinary-accept", { context: "ordinary", authenticated: true, established: true }, { verdict: "accept", normalized: { outcome: "accept" } }],
-    ["006-new-ordinary-hold", "new-ordinary-hold", { context: "ordinary", authenticated: true, established: false }, { verdict: "accept", normalized: hold }],
-    ["007-authentication-reject", "authentication-reject", { authenticated: false }, { verdict: "reject", reason_code: "bad_signature" }],
-    ["008-credential-valid-accept", "credential-valid-accept", { authenticated: true, credential: { status: "valid", nid_bound: true, subject_matches: true } }, { verdict: "accept", normalized: { outcome: "accept" } }],
-    ["009-authoritative-state-unavailable-hold", "authoritative-state-unavailable-hold", { authenticated: true, credential: { authoritative_state: "unavailable" } }, { verdict: "accept", normalized: hold }],
-    ["010-credential-invalid-reject", "credential-invalid-reject", { credential: { status: "invalid" } }, { verdict: "reject", reason_code: "nid_proof_invalid" }],
-    ["011-credential-revoked-reject", "credential-revoked-reject", { credential: { status: "revoked" } }, { verdict: "reject", reason_code: "kel_revoked_nid" }],
-    ["012-credential-expired-reject", "credential-expired-reject", { credential: { status: "expired" } }, { verdict: "reject", reason_code: "expired_delegation" }],
-    ["013-credential-subject-mismatch-reject", "credential-subject-mismatch-reject", { credential: { subject_matches: false } }, { verdict: "reject", reason_code: "delegation_mismatch" }],
-    ["014-credential-nidless-reject", "credential-nidless-reject", { credential: { nid_bound: false } }, { verdict: "reject", reason_code: "nid_binding_missing_signature" }],
-    ["015-control-enrollment-default-hold", "control-enrollment-default-hold", { context: "control-enrollment", authenticated: true, explicitly_approved: false }, { verdict: "accept", normalized: hold }],
-    ["016-social-wot-tightens-only", "social-wot-tightens-only", { comms_outcome: "accept", social: { follows: false, replied_before: false, trust_distance: 4, overmuted_ratio: 0.75 } }, { verdict: "accept", normalized: { composed_outcome: "hold", loosened_comms_result: false } }],
-    ["017-social-wot-cannot-loosen", "social-wot-cannot-loosen", { comms_outcome: "reject", social: { follows: true, replied_before: true, trust_distance: 1, overmuted_ratio: 0 } }, { verdict: "accept", normalized: { composed_outcome: "reject", loosened_comms_result: false } }],
+    ["005-established-ordinary-accept", "established-ordinary-accept", hookInput({ context: "ordinary-dm", authenticated: true, established_locally_accepted_session: true }), { verdict: "accept", normalized: { outcome: "accept" } }],
+    ["006-new-ordinary-hold", "new-ordinary-hold", hookInput({ context: "ordinary-dm", authenticated: true, established_locally_accepted_session: false }), { verdict: "accept", normalized: hold }],
+    ["007-authentication-reject", "authentication-reject", hookInput({ context: "ordinary-dm", authenticated: false }), { verdict: "reject", reason_code: "bad_signature", normalized: { outcome: "reject" } }],
+    ["008-credential-valid-accept", "credential-valid-accept", hookInput({ context: "credential-sync", authenticated: true, credential: { status: "valid", nid_bound: true, subject_matches: true } }), { verdict: "accept", normalized: { outcome: "accept" } }],
+    ["009-authoritative-state-unavailable-hold", "authoritative-state-unavailable-hold", hookInput({ context: "credential-sync", authenticated: true, credential: { authoritative_state: "unavailable" } }), { verdict: "accept", normalized: hold }],
+    ["010-credential-invalid-reject", "credential-invalid-reject", hookInput({ context: "credential-sync", authenticated: true, credential: { status: "invalid" } }), { verdict: "reject", reason_code: "nid_proof_invalid", normalized: { outcome: "reject" } }],
+    ["011-credential-revoked-reject", "credential-revoked-reject", hookInput({ context: "credential-sync", authenticated: true, credential: { status: "revoked" } }), { verdict: "reject", reason_code: "kel_revoked_nid", normalized: { outcome: "reject" } }],
+    ["012-credential-expired-reject", "credential-expired-reject", hookInput({ context: "credential-sync", authenticated: true, credential: { status: "expired" } }), { verdict: "reject", reason_code: "expired_delegation", normalized: { outcome: "reject" } }],
+    ["013-credential-subject-mismatch-reject", "credential-subject-mismatch-reject", hookInput({ context: "credential-sync", authenticated: true, credential: { subject_matches: false } }), { verdict: "reject", reason_code: "delegation_mismatch", normalized: { outcome: "reject" } }],
+    ["014-credential-nidless-reject", "credential-nidless-reject", hookInput({ context: "credential-sync", authenticated: true, credential: { nid_bound: false } }), { verdict: "reject", reason_code: "nid_binding_missing_signature", normalized: { outcome: "reject" } }],
+    ["015-control-enrollment-default-hold", "control-enrollment-default-hold", hookInput({ context: "control-enrollment", authenticated: true, explicitly_approved: false }), { verdict: "accept", normalized: hold }],
+    ["016-social-wot-tightens-only", "social-wot-tightens-only", hookInput({ context: "ordinary-dm", authenticated: true, comms_outcome: "accept", social: { follows: false, replied_before: false, trust_distance: 4, overmuted_ratio: 0.75 } }), { verdict: "accept", normalized: { composed_outcome: "hold-as-message-request", loosened_comms_result: false } }],
+    ["017-social-wot-cannot-loosen", "social-wot-cannot-loosen", hookInput({ context: "ordinary-dm", authenticated: true, comms_outcome: "reject", social: { follows: true, replied_before: true, trust_distance: 1, overmuted_ratio: 0 } }), { verdict: "accept", normalized: { composed_outcome: "reject", loosened_comms_result: false } }],
   ].map(([file, id, input, expected_output]) => ({
     path: `acceptance-gating/${file}.json`, vector_id: `acceptance-gating/${id}`,
     description: `Closed Comms acceptance outcome: ${String(id).replaceAll("-", " ")}.`,
     input: input as Record<string, unknown>, expected_output: expected_output as Record<string, unknown>,
   }));
+}
+
+function hookInput(overrides: Record<string, unknown>): Record<string, unknown> {
+  return {
+    peer_persona_cold_root: "11".repeat(32),
+    peer_device_publishing_key: "22".repeat(32),
+    peer_delegation_id: "device:bob:1",
+    local_recipient_persona: "33".repeat(32),
+    target_device_nid: "did:key:z6MkFixtureTarget",
+    context: "ordinary-dm",
+    session_id: "44".repeat(32),
+    transcript_binding: "55".repeat(32),
+    protocol_id: "heterodyne-dm",
+    requested_features: [],
+    active_delegation: true,
+    finality: "final",
+    revoked: false,
+    prior_session_state: "new",
+    explicit_user_decision: null,
+    ...overrides,
+  };
 }
 
 function profileCases(): Case[] {
@@ -238,7 +328,6 @@ function profileCases(): Case[] {
   }));
   return [
     ...tier3,
-    { path: "profiles/009-dr-invite-response-kind1059.json", vector_id: "profiles/dr-invite-response-kind1059", description: "The active DR invite response kind:1059 is covered as an unstamped ratchet outer event.", direction: "round-trip", input: { kind: 1059, tags: [["p", "22".repeat(32)]], content: "AratchetInviteResponse" }, expected_output: { verdict: "accept", normalized: { stamp_count: 0, storable: true } } },
   ];
 }
 

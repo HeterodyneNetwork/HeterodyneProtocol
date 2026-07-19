@@ -13,10 +13,28 @@
   "description": "Closed Comms acceptance outcome: authentication reject.",
   "direction": "consume",
   "input": {
+    "peer_persona_cold_root": "1111111111111111111111111111111111111111111111111111111111111111",
+    "peer_device_publishing_key": "2222222222222222222222222222222222222222222222222222222222222222",
+    "peer_delegation_id": "device:bob:1",
+    "local_recipient_persona": "3333333333333333333333333333333333333333333333333333333333333333",
+    "target_device_nid": "did:key:z6MkFixtureTarget",
+    "context": "ordinary-dm",
+    "session_id": "4444444444444444444444444444444444444444444444444444444444444444",
+    "transcript_binding": "5555555555555555555555555555555555555555555555555555555555555555",
+    "protocol_id": "heterodyne-dm",
+    "requested_features": [],
+    "active_delegation": true,
+    "finality": "final",
+    "revoked": false,
+    "prior_session_state": "new",
+    "explicit_user_decision": null,
     "authenticated": false
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "bad_signature"
+    "reason_code": "bad_signature",
+    "normalized": {
+      "outcome": "reject"
+    }
   }
 }

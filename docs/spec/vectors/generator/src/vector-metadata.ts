@@ -124,7 +124,6 @@ stamping/upstream-unstamped
 stamping/upstream-profile-owner
 stamping/non-stamping-profile-unchanged
 stamping/dr-outer-unstamped
-stamping/control-profile-retains-core-owner
 stamping/control-carrier-comms-owner
 stamping/legacy-monolith-explicit
 stamping/legacy-monolith-inferred
@@ -285,6 +284,10 @@ acceptance-gating/social-wot-cannot-loosen
 profiles/social-org-feed-kind31007
 `);
 
+const CONTROL_IDS = ids(`
+stamping/control-profile-retains-core-owner
+`);
+
 const PROFILE_BY_VECTOR = new Map<string, string>([
   ["stamping/upstream-profile-owner", "heterodyne-social-mute-list-v1"],
   ["stamping/non-stamping-profile-unchanged", "heterodyne-core-rotation-breadcrumb-profile-v1"],
@@ -324,6 +327,7 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
   const owners = ([
     ["core", CORE_IDS],
     ["comms", COMMS_IDS],
+    ["control", CONTROL_IDS],
     ["social", SOCIAL_IDS],
   ] as const).filter(([, entries]) => entries.has(vectorId));
   if (owners.length !== 1) {
@@ -336,7 +340,7 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
       `${dependency}/${DOCUMENT_VERSIONS[dependency]}`,
     ]),
   ) as Partial<Record<DocumentId, string>>;
-  const anchor = anchorFor(vectorId, owner);
+  const reference = referenceFor(vectorId, owner);
   const profile = PROFILE_BY_VECTOR.get(vectorId);
   return {
     owner_document: owner,
@@ -344,8 +348,34 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
     dependency_versions: dependencies,
     registry_revision: 1,
     ...(profile === undefined ? {} : { profile }),
-    spec_refs: [`heterodyne:${owner}/${DOCUMENT_VERSIONS[owner]}#${anchor}`],
+    spec_refs: [`heterodyne:${reference.document}/${DOCUMENT_VERSIONS[reference.document]}#${reference.anchor}`],
   };
+}
+
+function referenceFor(vectorId: string, owner: DocumentId): { document: DocumentId; anchor: string } {
+  if (vectorId.startsWith("stamping/") || vectorId.startsWith("profiles/core-breadcrumb")) {
+    if (vectorId === "stamping/control-profile-retains-core-owner") {
+      return { document: "control", anchor: "control-session-device-profile" };
+    }
+    return { document: "core", anchor: "core-version-stamps" };
+  }
+  const profile = PROFILE_BY_VECTOR.get(vectorId);
+  if (profile?.startsWith("heterodyne-comms-tier3-")) {
+    return { document: "comms", anchor: "comms-tier-three-profile" };
+  }
+  if (profile?.startsWith("heterodyne-comms-double-ratchet-")) {
+    return { document: "comms", anchor: "comms-dm-wire" };
+  }
+  if (profile === "comms-subprotocol-negotiation-v1" || profile === "comms-subprotocol-payload-v1") {
+    return { document: "comms", anchor: "comms-subprotocol-negotiation" };
+  }
+  if (profile === "heterodyne-social-org-feed-v1") {
+    return { document: "social", anchor: "social-org-feed-profile" };
+  }
+  if (profile === "heterodyne-social-mute-list-v1") {
+    return { document: "social", anchor: "social-mute-profile" };
+  }
+  return { document: owner, anchor: anchorFor(vectorId, owner) };
 }
 
 function anchorFor(vectorId: string, owner: DocumentId): string {

@@ -27,6 +27,7 @@ describe("protocol document family", () => {
       "forbidden dependency",
     );
     expect(() => assertAllowedDependency("control", "comms")).not.toThrow();
+    expect(() => assertAllowedDependency("control", "core")).not.toThrow();
     expect(() => assertAllowedDependency("social", "comms")).not.toThrow();
   });
 });

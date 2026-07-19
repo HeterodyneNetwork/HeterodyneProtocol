@@ -8,7 +8,7 @@
   "registry_revision": 1,
   "profile": "heterodyne-comms-double-ratchet-invite-v1",
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-direct-messages"
+    "heterodyne:comms/0.5.0#comms-dm-wire"
   ],
   "vector_id": "dm/invite-delegated-device-valid",
   "description": "A kind:30078 double-ratchet invite (d = double-ratchet/invites/<device>) signed by a device secp256k1 publishing key that is currently kind:31001-delegated to the persona.",

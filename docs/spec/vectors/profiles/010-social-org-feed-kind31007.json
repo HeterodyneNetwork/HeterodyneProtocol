@@ -9,7 +9,7 @@
   "registry_revision": 1,
   "profile": "heterodyne-social-org-feed-v1",
   "spec_refs": [
-    "heterodyne:social/0.5.0#social-conformance"
+    "heterodyne:social/0.5.0#social-org-feed-profile"
   ],
   "vector_id": "profiles/social-org-feed-kind31007",
   "description": "The active Social organization-feed profile is a complete signed Comms feed-index with its exact canonical content marker.",

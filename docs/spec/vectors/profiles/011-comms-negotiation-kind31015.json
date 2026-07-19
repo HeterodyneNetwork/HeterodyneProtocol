@@ -8,26 +8,26 @@
   "registry_revision": 1,
   "profile": "comms-subprotocol-negotiation-v1",
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-conformance"
+    "heterodyne:comms/0.5.0#comms-subprotocol-negotiation"
   ],
   "vector_id": "profiles/comms-negotiation-kind31015",
   "description": "The active Comms negotiation profile is a complete canonical unsigned rumor with one recipient tag.",
   "direction": "round-trip",
   "input": {
     "rumor": {
-      "id": "850edaf93e318f1c7a0d801bf698897b7fa45e00782b07cf19c4603611615443",
-      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "id": "fa363a69f41ee1d3b961a43705a57c9eb49c28dc007bdd78ba907f7d983157c5",
+      "pubkey": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
       "created_at": 1767226102,
       "kind": 31015,
       "tags": [
         [
           "p",
-          "e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13"
+          "5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc"
         ]
       ],
       "content": "{\"spec_version\":\"comms/0.5.0\",\"protocol_type\":\"negotiation\",\"phase\":\"offer\",\"negotiation_id\":\"cccccccccccccccccccccccccccccccc\",\"protocol_id\":\"heterodyne-device-rpc\",\"supported_versions\":[\"1.0.0\"],\"required_features\":[\"claims\"]}"
     },
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767226102,31015,[[\"p\",\"e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13\"]],\"{\\\"spec_version\\\":\\\"comms/0.5.0\\\",\\\"protocol_type\\\":\\\"negotiation\\\",\\\"phase\\\":\\\"offer\\\",\\\"negotiation_id\\\":\\\"cccccccccccccccccccccccccccccccc\\\",\\\"protocol_id\\\":\\\"heterodyne-device-rpc\\\",\\\"supported_versions\\\":[\\\"1.0.0\\\"],\\\"required_features\\\":[\\\"claims\\\"]}\"]"
+    "canonical_wire": "[0,\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\",1767226102,31015,[[\"p\",\"5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc\"]],\"{\\\"spec_version\\\":\\\"comms/0.5.0\\\",\\\"protocol_type\\\":\\\"negotiation\\\",\\\"phase\\\":\\\"offer\\\",\\\"negotiation_id\\\":\\\"cccccccccccccccccccccccccccccccc\\\",\\\"protocol_id\\\":\\\"heterodyne-device-rpc\\\",\\\"supported_versions\\\":[\\\"1.0.0\\\"],\\\"required_features\\\":[\\\"claims\\\"]}\"]"
   },
   "expected_output": {
     "verdict": "accept",

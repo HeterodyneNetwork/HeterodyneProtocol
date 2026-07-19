@@ -77,8 +77,8 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `org/member-add-dual-authorized` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-threshold-authority` |
 | `org/member-add-single-authorization-insufficient` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-threshold-authority` |
 | `org/threshold-delegate-governance` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-threshold-authority` |
-| `profiles/core-breadcrumb-kind0` | core | `core/0.5.0` | — | 1 | `heterodyne-core-rotation-breadcrumb-profile-v1` | `heterodyne:core/0.5.0#core-conformance` |
-| `profiles/core-breadcrumb-kind1` | core | `core/0.5.0` | — | 1 | `heterodyne-core-rotation-breadcrumb-note-v1` | `heterodyne:core/0.5.0#core-conformance` |
+| `profiles/core-breadcrumb-kind0` | core | `core/0.5.0` | — | 1 | `heterodyne-core-rotation-breadcrumb-profile-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
+| `profiles/core-breadcrumb-kind1` | core | `core/0.5.0` | — | 1 | `heterodyne-core-rotation-breadcrumb-note-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
 | `registry/downref-nonfrozen-rejected` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-registry` |
 | `registry/frozen-entry-immutable` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-registry` |
 | `relay-profile/kel-aware-reputation-continuity` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-nostr-relay-interop` |
@@ -95,7 +95,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `social-recovery/cache-sourced-marked-stale` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-recovery` |
 | `social-recovery/cold-root-reanchor-authoritative` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-recovery` |
 | `stamping/control-carrier-comms-owner` | core | `core/0.5.0` | — | 1 | `comms-subprotocol-payload-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
-| `stamping/control-profile-retains-core-owner` | core | `core/0.5.0` | — | 1 | `heterodyne-control-session-device-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/dr-outer-unstamped` | core | `core/0.5.0` | — | 1 | `heterodyne-comms-double-ratchet-message-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/heterodyne-empty-content-tag-owner` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/heterodyne-json-content-owner` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-version-stamps` |

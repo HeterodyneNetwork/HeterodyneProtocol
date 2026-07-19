@@ -8,26 +8,47 @@
   "registry_revision": 1,
   "profile": "heterodyne-comms-double-ratchet-invite-response-v1",
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-conformance"
+    "heterodyne:comms/0.5.0#comms-dm-wire"
   ],
   "vector_id": "profiles/dr-invite-response-kind1059",
-  "description": "The active DR invite response kind:1059 is covered as an unstamped ratchet outer event.",
+  "description": "A complete deterministic nostr-double-ratchet 0.0.138 kind:1059 invite response is transient relay traffic and never repository storage or backfill.",
   "direction": "round-trip",
   "input": {
-    "kind": 1059,
-    "tags": [
-      [
-        "p",
-        "2222222222222222222222222222222222222222222222222222222222222222"
-      ]
-    ],
-    "content": "AratchetInviteResponse"
+    "wire_version": "nostr-double-ratchet/0.0.138",
+    "event": {
+      "pubkey": "99c2aa85d2b21a62f396907a802a58e521dafd5bddaccbd72786eea189bc4dc9",
+      "created_at": 1767226107,
+      "kind": 1059,
+      "tags": [
+        [
+          "p",
+          "0f0fb9a244ad31a369ee02b7abfbbb0bfa3812b9a39ed93346d03d67d412d177"
+        ]
+      ],
+      "content": "AmNjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2Njrf1pEwyxKY1PPD8juYwXS7Q+rL35J3+IAXtD1VEO5xHn1EGpJnwrLamn44Z/md1lP1c2bItQNrDs2741m7VplOBL1Lrem5aY8DyWub/+zD6BIn2tcCuu/xo68vUzljcYmmgrwmxWSzAvMkKpmn/lRTDHVzjvVwB7p8O0nGr8YcOPE/Vn5hjHbXbbPeqb3DZuut6+d0HVO7Hks13xtzfVP/io+JiSSTA3pw3RXoiwlGiU7cOY3GQXxCwY0OBl0L8Gq2KUYqex4bIEzx9DMRiGn1DOFW4CibZEGzlaSzmU2f6R50vYo8I02SG2EviIbJ6Ka556mwsoxTqCpSoGC3pR7wgICgluGb+pLVWRtxh8MgJNN9EM2tDJCgMyMpTToolmgVUTCLuYOUz8MPmhqfY4EjBAsH4dUl9abNGLo8NuDJPgv1LN/DQzKd4iC2JRThEfrD5OQDcNSRSDGidOYoVZPc42jOEoKFeK6vMYLVMM/4g6tOXuIc4UrWGJqelKlCfYVqweGn7o43G2KO+dMWGNZQGwcnzZ3PaKRjCwiuJRuHz2oEv92NMyNJpAHsf3IXScLit52PXiv3t6fyybNapD99E6WgRjDmc6mdePNGrO6Fs9egjAU+Fg2pUHBWokCRgevEE9HW7CXZ75c0mR1Bt+lQRsRVtW795gkAAvD6MsYK1h77zP+chLEs9ucgRdHOXZ/QPjL7a+pZovVlU4V7H2EzpOxORQ/bTUTJv7/ozt0Dg0OVp7paYQg7asJPkpFLhEDDTgvcq5kfss8t6VdIkrWYw96V73PN/h4Im0USsKeNGG5In4c6k6+t96LfpHe9wveAklYjJjIlDxsNslqYEzqwoq2t/xXVG0BFO763G+/0FkWw/wFe+vijN25/+XiUr2E4jTr/ActVPGtPZSwUIw3p2iMVAkYV5ID0yOakQo4w1qGQsQthc6FBQYc83uPMug/+BxzhmI7C2GBL+D55XTNEL4hx/qIy+lz50dXxsLXdlAV532QV99zWhDmVG4sz7cs5XsHJ9ZqPm8maUV2MzKkRyhVXqSmqu7QmPBAzrtjmh/+g==",
+      "id": "d7adf407b6ff63280b45bd44a21662adae4e04054f4939758567b86942eec8a5",
+      "sig": "6483d9557d445d8d2331130df9bd0cdeee4899c6d59f6306a930d32bc379f056a07daa867867201f6a50c51bb6191401cd1d03a680c9cec2166a259aa9bbab85"
+    },
+    "canonical_wire": "[0,\"99c2aa85d2b21a62f396907a802a58e521dafd5bddaccbd72786eea189bc4dc9\",1767226107,1059,[[\"p\",\"0f0fb9a244ad31a369ee02b7abfbbb0bfa3812b9a39ed93346d03d67d412d177\"]],\"AmNjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2Njrf1pEwyxKY1PPD8juYwXS7Q+rL35J3+IAXtD1VEO5xHn1EGpJnwrLamn44Z/md1lP1c2bItQNrDs2741m7VplOBL1Lrem5aY8DyWub/+zD6BIn2tcCuu/xo68vUzljcYmmgrwmxWSzAvMkKpmn/lRTDHVzjvVwB7p8O0nGr8YcOPE/Vn5hjHbXbbPeqb3DZuut6+d0HVO7Hks13xtzfVP/io+JiSSTA3pw3RXoiwlGiU7cOY3GQXxCwY0OBl0L8Gq2KUYqex4bIEzx9DMRiGn1DOFW4CibZEGzlaSzmU2f6R50vYo8I02SG2EviIbJ6Ka556mwsoxTqCpSoGC3pR7wgICgluGb+pLVWRtxh8MgJNN9EM2tDJCgMyMpTToolmgVUTCLuYOUz8MPmhqfY4EjBAsH4dUl9abNGLo8NuDJPgv1LN/DQzKd4iC2JRThEfrD5OQDcNSRSDGidOYoVZPc42jOEoKFeK6vMYLVMM/4g6tOXuIc4UrWGJqelKlCfYVqweGn7o43G2KO+dMWGNZQGwcnzZ3PaKRjCwiuJRuHz2oEv92NMyNJpAHsf3IXScLit52PXiv3t6fyybNapD99E6WgRjDmc6mdePNGrO6Fs9egjAU+Fg2pUHBWokCRgevEE9HW7CXZ75c0mR1Bt+lQRsRVtW795gkAAvD6MsYK1h77zP+chLEs9ucgRdHOXZ/QPjL7a+pZovVlU4V7H2EzpOxORQ/bTUTJv7/ozt0Dg0OVp7paYQg7asJPkpFLhEDDTgvcq5kfss8t6VdIkrWYw96V73PN/h4Im0USsKeNGG5In4c6k6+t96LfpHe9wveAklYjJjIlDxsNslqYEzqwoq2t/xXVG0BFO763G+/0FkWw/wFe+vijN25/+XiUr2E4jTr/ActVPGtPZSwUIw3p2iMVAkYV5ID0yOakQo4w1qGQsQthc6FBQYc83uPMug/+BxzhmI7C2GBL+D55XTNEL4hx/qIy+lz50dXxsLXdlAV532QV99zWhDmVG4sz7cs5XsHJ9ZqPm8maUV2MzKkRyhVXqSmqu7QmPBAzrtjmh/+g==\"]",
+    "inviter_ephemeral_private_key": "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c",
+    "inviter_identity_private_key": "0000000000000000000000000000000000000000000000000000000000000005",
+    "shared_secret": "0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f",
+    "pinned_nonces": [
+      "6161616161616161616161616161616161616161616161616161616161616161",
+      "6262626262626262626262626262626262626262626262626262626262626262",
+      "6363636363636363636363636363636363636363636363636363636363636363"
+    ]
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
+      "invitee_identity": "5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc",
+      "invitee_session_public_key": "2f1b310f4c065331bc0d79ba4661bb9822d67d7c4a1b0a1892e1fd0cd23aa68d",
+      "owner_public_key": "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
       "stamp_count": 0,
-      "storable": true
+      "relay_carriage": "transient",
+      "repo_storable": false,
+      "backfill": false
     }
   }
 }
