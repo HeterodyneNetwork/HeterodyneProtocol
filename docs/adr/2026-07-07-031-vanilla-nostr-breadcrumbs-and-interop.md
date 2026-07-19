@@ -4,6 +4,32 @@
 **Status:** Proposed (codex review complete; awaiting acceptance)
 **Decision makers:** user (design direction); codex review integrated
 
+## Family-allocation amendment (2026-07-19)
+
+ADR-033 split this proposal across the protocol family before acceptance.
+The split is exact:
+
+| Family document | Allocation |
+|---|---|
+| `Core` | Breadcrumb production during rotation and the verification exclusion that gives breadcrumbs no identity authority. |
+| `Social` | Following vanilla Nostr authors, manual refollow behavior, reduced-guarantee presentation, and related UI. |
+
+Registry revision 1 records the Core production profiles
+`heterodyne-core-rotation-breadcrumb-profile-v1` for `kind:0` and
+`heterodyne-core-rotation-breadcrumb-note-v1` for `kind:1`. Both profiles are
+non-stamping, so their signed bytes remain legible to vanilla Nostr clients.
+
+The qualified integration targets are
+`heterodyne:core/0.5.0#core-kel-rotation`,
+`heterodyne:core/0.5.0#core-version-stamps`, and
+`heterodyne:social/0.5.0#social-following`. These replace the candidate
+monolith targets in the original proposal.
+
+**Historical monolith reference label.** Every unqualified `§...` reference
+in the original text below refers only to the frozen 0.4.0 monolith and is
+historical context, not a current integration target. If original allocation
+language conflicts with this amendment, this amendment controls.
+
 ## Context
 
 Heterodyne's vanilla-Nostr compatibility is relay-level, not
@@ -80,7 +106,7 @@ Nostr users remains first-class.**
    them. This is inherent to vanilla Nostr and is exactly the bridge
    this ADR declines to build.
 
-6. **Following vanilla users is core.** §11.4 is affirmed: a
+6. **Following vanilla users is Social.** The historical §11.4 behavior is affirmed: a
    Heterodyne client MUST treat plain Nostr events and authors with no
    Heterodyne constructs (no `kind:31005` pointer, no delegations,
    relay-only) as first-class follow targets - Nostr signature
@@ -171,10 +197,12 @@ flowchart LR
 
 ## Consequences
 
-- §3.5 (rotation) gains the breadcrumb publication step as SHOULD.
-- §11.2/§11.3 are softened at the edges: the "out of scope" boxed note
-  stands for machine verification, with a pointer to the advisory
-  breadcrumb mechanism; §11.4 is unchanged.
+- Core rotation at `heterodyne:core/0.5.0#core-kel-rotation` owns breadcrumb
+  production, while `heterodyne:core/0.5.0#core-version-stamps` keeps both
+  registered profiles non-stamping and outside identity verification.
+- Social following and reduced-guarantee presentation integrate at
+  `heterodyne:social/0.5.0#social-following`; machine verification for
+  vanilla clients remains out of scope.
 - The threat model notes the compromise limitation of breadcrumbs
   explicitly so no security weight is ever attached to them.
 - Minimal vector surface: breadcrumb events are ordinary kind:0/kind:1

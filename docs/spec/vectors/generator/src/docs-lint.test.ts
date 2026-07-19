@@ -21,7 +21,16 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(here, "../../../../../");
 const corePath = resolve(repositoryRoot, "docs/spec/heterodyne-core.md");
 const commsPath = resolve(repositoryRoot, "docs/spec/heterodyne-comms.md");
+const controlPath = resolve(repositoryRoot, "docs/spec/heterodyne-control.md");
 const socialPath = resolve(repositoryRoot, "docs/spec/heterodyne-social.md");
+const adr030Path = resolve(
+  repositoryRoot,
+  "docs/adr/2026-07-07-030-light-client-enrollment-rpc-over-dr-dms.md",
+);
+const adr031Path = resolve(
+  repositoryRoot,
+  "docs/adr/2026-07-07-031-vanilla-nostr-breadcrumbs-and-interop.md",
+);
 
 type CredentialRecordProbe = {
   authorizationId: string;
@@ -142,6 +151,42 @@ function declaredDependencies(text: string): string[] {
   return [...declaration[1].matchAll(/- `(heterodyne:[^`]+)`/g)].map(
     (match) => match[1],
   );
+}
+
+function allocationTable(
+  text: string,
+  heading: string,
+): Record<string, string> {
+  const start = text.indexOf(heading);
+  if (start < 0) return {};
+  const remainder = text.slice(start + heading.length);
+  const nextHeading = remainder.search(/^## /m);
+  const section = nextHeading < 0 ? remainder : remainder.slice(0, nextHeading);
+  const rows: Record<string, string> = {};
+  for (const line of section.split("\n")) {
+    if (!line.startsWith("|")) continue;
+    const cells = line
+      .split("|")
+      .slice(1, -1)
+      .map((cell) => cell.trim());
+    if (
+      cells.length !== 2 ||
+      cells[0] === "Family document" ||
+      /^-+$/.test(cells[0])
+    ) {
+      continue;
+    }
+    rows[cells[0].replaceAll("`", "")] = cells[1];
+  }
+  return rows;
+}
+
+function sectionUnderHeading(text: string, heading: string): string {
+  const start = text.indexOf(heading);
+  if (start < 0) return "";
+  const remainder = text.slice(start + heading.length);
+  const nextHeading = remainder.search(/^## /m);
+  return nextHeading < 0 ? remainder : remainder.slice(0, nextHeading);
 }
 
 function fixtureFromMarkdown<T>(text: string, name: string): T {
@@ -859,6 +904,152 @@ describe("protocol family documents", () => {
     expect(text).toMatch(
       /persist[\s\S]*predecessor event id[\s\S]*referring-page locator[\s\S]*process[\s\S]*restart/i,
     );
+  });
+
+  it("declares Control as an incomplete Comms profile with an exact dependency contract", () => {
+    const text = readFileSync(controlPath, "utf8");
+    const metadata = fixtureFromMarkdown<{
+      document_id: string;
+      version: string;
+      status: string;
+      conformance_expression: string;
+      direct_dependencies: string[];
+      supported_comms_versions: string[];
+      required_comms_features: string[];
+      transport_owner: string;
+      wire_stamp_owner: string | null;
+    }>(text, "control-profile-metadata");
+
+    expect(metadata).toEqual({
+      document_id: "control",
+      version: "control/0.5.0",
+      status: "incomplete 0.5.0 draft",
+      conformance_expression: "Core + Comms conformant + Control profile",
+      direct_dependencies: ["heterodyne:comms/0.5.0#comms-conformance"],
+      supported_comms_versions: ["comms/0.5.0"],
+      required_comms_features: ["double-ratchet"],
+      transport_owner: "comms",
+      wire_stamp_owner: null,
+    });
+    expect(declaredDependencies(text)).toEqual([
+      "heterodyne:comms/0.5.0#comms-conformance",
+    ]);
+  });
+
+  it("binds Control to the registered non-stamping session-device profile", () => {
+    const text = readFileSync(controlPath, "utf8");
+    const registry = loadRegistry(repositoryRoot);
+    const delegation = registry.kinds.find((entry) => entry.kind === 31001);
+    const profile = delegation?.profiles.find(
+      (entry) =>
+        entry.discriminator ===
+        "tags:heterodyne=delegation,binding_nonce,key_proof;radicle_nid=absent",
+    );
+
+    expect(delegation?.base_schema_owner).toBe("core");
+    expect(profile).toMatchObject({
+      profile_id: "heterodyne-control-session-device-v1",
+      owner: "control",
+      stamping: false,
+      first_version: "control/0.5.0",
+    });
+    expect(text).toMatch(/kind:31001[\s\S]*Core base\s+schema[\s\S]*Core stamp/i);
+    expect(text).toMatch(/immutable discriminator[\s\S]*radicle_nid=absent/i);
+    expect(text).toMatch(/Control MUST NOT[\s\S]*wire stamp/i);
+    expect(text).not.toMatch(/control\/0\.5\.0.*stamp/i);
+  });
+
+  it("requires the exact registered Comms double-ratchet profile set", () => {
+    const text = readFileSync(controlPath, "utf8");
+    const registry = loadRegistry(repositoryRoot);
+    const required = [
+      "heterodyne-comms-double-ratchet-invite-v1",
+      "heterodyne-comms-double-ratchet-invite-response-v1",
+      "heterodyne-comms-double-ratchet-message-v1",
+    ];
+    const registered = registry.kinds
+      .flatMap((entry) => entry.profiles)
+      .filter((profile) => required.includes(profile.profile_id))
+      .map((profile) => profile.profile_id)
+      .sort();
+
+    expect(registered).toEqual([...required].sort());
+    for (const profileId of required) expect(text).toContain(profileId);
+  });
+
+  it("keeps the Control conformance gate closed until ADR-030 integration and vectors", () => {
+    const text = readFileSync(controlPath, "utf8");
+    const gate = fixtureFromMarkdown<{
+      can_claim_control_conformance: boolean;
+      blockers: string[];
+    }>(text, "control-conformance-gate");
+
+    expect(gate).toEqual({
+      can_claim_control_conformance: false,
+      blockers: [
+        "adr-030-accepted",
+        "adr-030-integrated",
+        "minimum-control-vectors",
+      ],
+    });
+    expect(text).toContain("no Control conformance claim");
+    expect(text).toMatch(/negotiated Control version[\s\S]*audit/i);
+    for (const invariant of [
+      "CONTROL-I-AUDIT-AT-REST",
+      "CONTROL-I-SESSION-KEY-CONFINEMENT",
+    ]) {
+      expect(text).toContain(invariant);
+    }
+  });
+
+  it("amends ADR-030 with the exact Core, Comms, and Control allocation", () => {
+    const text = readFileSync(adr030Path, "utf8");
+    const rows = allocationTable(text, "## Family-allocation amendment (2026-07-19)");
+
+    expect(Object.keys(rows)).toEqual(["Core", "Comms", "Control"]);
+    expect(rows.Core).toMatch(/session-device base extensibility/i);
+    expect(rows.Comms).toMatch(
+      /epoch-key invite[\s\S]*undelegated initiator[\s\S]*DR contexts[\s\S]*negotiation/i,
+    );
+    expect(rows.Control).toMatch(
+      /enrollment[\s\S]*RPC[\s\S]*grants[\s\S]*tokens[\s\S]*MCP/i,
+    );
+    expect(text).toMatch(
+      /session devices[\s\S]*MUST NOT\s+receive[\s\S]*epoch[\s\S]*NID[\s\S]*audience[\s\S]*ratchet/i,
+    );
+    expect(text).toMatch(
+      /authorized durable NID devices[\s\S]*credential-plane synchronization/i,
+    );
+    const amendment = sectionUnderHeading(
+      text,
+      "## Family-allocation amendment (2026-07-19)",
+    );
+    expect(amendment).toContain("heterodyne:core/0.5.0#core-nid-delegation");
+    expect(amendment).toContain("heterodyne:comms/0.5.0#comms-direct-messages");
+    expect(amendment).not.toMatch(/docs\/spec\/heterodyne\.md|§[0-9]/);
+    expect(text).toMatch(/unqualified `§/);
+    expect(text).toMatch(/historical[\s\S]*frozen 0\.4\.0 monolith/i);
+  });
+
+  it("amends ADR-031 with Core breadcrumb and Social interop ownership", () => {
+    const text = readFileSync(adr031Path, "utf8");
+    const rows = allocationTable(text, "## Family-allocation amendment (2026-07-19)");
+
+    expect(Object.keys(rows)).toEqual(["Core", "Social"]);
+    expect(rows.Core).toMatch(/production[\s\S]*verification exclusion/i);
+    expect(rows.Social).toMatch(/vanilla[\s\S]*follow[\s\S]*UI/i);
+    expect(text).toContain("heterodyne-core-rotation-breadcrumb-profile-v1");
+    expect(text).toContain("heterodyne-core-rotation-breadcrumb-note-v1");
+    expect(text).toMatch(/both profiles[\s\S]*non-stamping/i);
+    const amendment = sectionUnderHeading(
+      text,
+      "## Family-allocation amendment (2026-07-19)",
+    );
+    expect(amendment).toContain("heterodyne:core/0.5.0#core-version-stamps");
+    expect(amendment).toContain("heterodyne:social/0.5.0#social-following");
+    expect(amendment).not.toMatch(/docs\/spec\/heterodyne\.md|§[0-9]/);
+    expect(text).toMatch(/unqualified `§/);
+    expect(text).toMatch(/historical[\s\S]*frozen 0\.4\.0 monolith/i);
   });
 
   it("declares the exact Social dependency set and Matrix-free claim", () => {
