@@ -3,10 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ReasonCodeEntry } from "./registry.js";
 
-export type ReasonCode = Pick<
-  ReasonCodeEntry,
-  "code" | "spec_refs" | "description"
->;
+export type ReasonCode = ReasonCodeEntry;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const registryPath = resolve(here, "../../../registry/reason-codes.json");
@@ -16,10 +13,8 @@ const registryReasonCodes = (
   }
 ).reason_codes;
 
-/** Compatibility projection for the vector authoring outputs until Task 8. */
-export const REASON_CODES: ReasonCode[] = registryReasonCodes.map(
-  ({ code, spec_refs, description }) => ({ code, spec_refs, description }),
-);
+/** Generated compatibility copy; docs/spec/registry/reason-codes.json is authoritative. */
+export const REASON_CODES: ReasonCode[] = registryReasonCodes;
 
 export function reasonCodeValues(): string[] {
   return registryReasonCodes.map((reason) => reason.code);

@@ -1,11 +1,16 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "room-kind/current-kinds-roundtrip",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§5",
-    "§14.3"
+    "heterodyne:social/0.5.0#social-discussion-rooms"
   ],
+  "vector_id": "room-kind/current-kinds-roundtrip",
   "description": "Four social kinds plus identity_room and config_room round-trip.",
   "input": {
     "room_kinds": [

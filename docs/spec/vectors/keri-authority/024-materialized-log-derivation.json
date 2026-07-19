@@ -1,12 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "keri-authority/materialized-log-derivation",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§10.1.2",
-    "§3.0.1",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-kel-verification"
   ],
+  "vector_id": "keri-authority/materialized-log-derivation",
   "description": "refs/xyz.heterodyne.keri/log derivation: one commit per accepted KEL event in s order, sole parent the prior event's commit (inception parentless). Each tree holds one entry mode 100644 path event.nip01 whose content is the event's exact nip01_raw bytes. Git object OIDs (sha1) are byte-identical to git hash-object / mktree / commit-tree.",
   "input": {
     "fixture_persona": "alice",
@@ -25,7 +26,10 @@
       }
     ],
     "git_actor": "Heterodyne KERI <keri@heterodyne.invalid>",
-    "commit_message_rule": "lowercase-64-hex event id + one LF"
+    "commit_message_rule": "lowercase-64-hex event id + one LF",
+    "vector_context": {
+      "notes": "OID-level only (no packfiles). blob = sha1(\"blob \"+len+\"\\0\"+content); tree = sha1(\"tree \"+len+\"\\0\"+\"100644 <path>\\0\"+20-byte-raw-blob-oid); commit = sha1(\"commit \"+len+\"\\0\"+text) with author==committer==git_actor, both timestamps <created_at> +0000, no encoding/gpgsig headers."
+    }
   },
   "expected_output": {
     "canonical_wire": "c1b8b81cc4262bbac4282290292baee2bbb9c400",
@@ -58,6 +62,5 @@
       ]
     }
   },
-  "notes": "OID-level only (no packfiles). blob = sha1(\"blob \"+len+\"\\0\"+content); tree = sha1(\"tree \"+len+\"\\0\"+\"100644 <path>\\0\"+20-byte-raw-blob-oid); commit = sha1(\"commit \"+len+\"\\0\"+text) with author==committer==git_actor, both timestamps <created_at> +0000, no encoding/gpgsig headers.",
   "direction": "produce"
 }

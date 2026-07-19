@@ -1,11 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "node-advert/outer-sig-invalid-rejected",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§7.0",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-node-advertisement"
   ],
+  "vector_id": "node-advert/outer-sig-invalid-rejected",
   "description": "A kind:31010 advertisement whose outer BIP-340 Nostr signature does not verify is rejected.",
   "input": {
     "event": {
@@ -50,15 +52,17 @@
       "content": "",
       "id": "e75b9e6fe516bd5a1143a11180bc5dc54f50b55386077906c7a93f685fa9e4df",
       "sig": "22222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "vector_context": {
+      "decision_trace": [
+        "validate_nip01_id",
+        "verify_outer_bip340_signature"
+      ]
     }
   },
   "expected_output": {
     "verdict": "reject",
     "reason_code": "bad_signature"
   },
-  "decision_trace": [
-    "validate_nip01_id",
-    "verify_outer_bip340_signature"
-  ],
   "direction": "consume"
 }

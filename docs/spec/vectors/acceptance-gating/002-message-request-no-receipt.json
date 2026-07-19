@@ -1,0 +1,29 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-acceptance-hook"
+  ],
+  "vector_id": "acceptance-gating/message-request-no-receipt",
+  "description": "A new authenticated DM is held as a message request without sender-observable signals.",
+  "direction": "consume",
+  "input": {
+    "context": "ordinary-dm",
+    "established_locally_accepted_session": false,
+    "authenticated": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "outcome": "hold-as-message-request",
+      "receipts": 0,
+      "typing_signals": 0,
+      "retry_hints": 0
+    }
+  }
+}

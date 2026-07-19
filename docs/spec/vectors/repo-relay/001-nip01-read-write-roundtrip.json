@@ -1,13 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "repo-relay/nip01-read-write-roundtrip",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§10.1.2",
-    "§10.2",
-    "§14.1",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-repo-relay"
   ],
+  "vector_id": "repo-relay/nip01-read-write-roundtrip",
   "direction": "round-trip",
   "description": "A Nostr event read and written over a repo relay's NIP-01 wire is byte-identical to the same event over a plain Nostr relay (indistinguishable at the wire).",
   "input": {
@@ -57,7 +57,10 @@
         "id": "d8c4e3efddb743987cfe9c78e68fa7d8d17c99d0f3ceffddf1021839a4936ea5",
         "sig": "275b57ed1ae0194162b6c721df734c2056e45594ce58ce9f2e7e52a00b4a1511e7ea1ee6553f040673376d9f428858ea3f81902a0268c5f0e5738bf875c439a8"
       }
-    ]
+    ],
+    "vector_context": {
+      "notes": "Repo-relay CLIENT conformance only. The repo relay presents the ordinary NIP-01 websocket wire; the SERVER/STORAGE contract (ref namespace, COB registry, filter-to-git-read, GC/quota) is a named pre-1.0 work item (§10.1.2) and is NOT vectored."
+    }
   },
   "expected_output": {
     "comparison_surface": "nip01_canonical_event_serialization",
@@ -83,6 +86,5 @@
     },
     "id": "d8c4e3efddb743987cfe9c78e68fa7d8d17c99d0f3ceffddf1021839a4936ea5",
     "sig": "275b57ed1ae0194162b6c721df734c2056e45594ce58ce9f2e7e52a00b4a1511e7ea1ee6553f040673376d9f428858ea3f81902a0268c5f0e5738bf875c439a8"
-  },
-  "notes": "Repo-relay CLIENT conformance only. The repo relay presents the ordinary NIP-01 websocket wire; the SERVER/STORAGE contract (ref namespace, COB registry, filter-to-git-read, GC/quota) is a named pre-1.0 work item (§10.1.2) and is NOT vectored."
+  }
 }

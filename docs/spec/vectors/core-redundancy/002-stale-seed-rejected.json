@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-multi-host-seeding"
+  ],
+  "vector_id": "core-redundancy/stale-seed-rejected",
+  "description": "A stale seed cannot replace the locally accepted canonical repository head.",
+  "direction": "consume",
+  "input": {
+    "accepted_seq": 9,
+    "offered_seq": 8,
+    "offered_host": "node-stale"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "repo_head_regression"
+  }
+}

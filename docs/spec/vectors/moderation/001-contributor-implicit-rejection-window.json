@@ -1,17 +1,25 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "moderation/contributor-implicit-rejection-window",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§8",
-    "§14.3"
+    "heterodyne:social/0.5.0#social-moderation"
   ],
+  "vector_id": "moderation/contributor-implicit-rejection-window",
   "description": "A contributor submission remains pending until the implicit-rejection window elapses.",
   "input": {
     "submitted_at": 1767225600,
     "simulated_clock": 1767227400,
     "approval_events": [],
-    "implicit_rejection_seconds": 3600
+    "implicit_rejection_seconds": 3600,
+    "vector_context": {
+      "simulated_clock": 1767227400
+    }
   },
   "expected_output": {
     "verdict": "accept",
@@ -19,6 +27,5 @@
       "moderation_state": "pending"
     }
   },
-  "simulated_clock": 1767227400,
   "direction": "consume"
 }

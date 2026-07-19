@@ -1,0 +1,29 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-envelope"
+  ],
+  "vector_id": "comms-envelope/nostr-native-event-valid",
+  "description": "A NIP-01 signed event is the Comms-native envelope on both ordinary and repo relays.",
+  "direction": "round-trip",
+  "input": {
+    "event_id": "1111111111111111111111111111111111111111111111111111111111111111",
+    "carriers": [
+      "nostr_relay",
+      "repo_relay"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "deduplication_key": "1111111111111111111111111111111111111111111111111111111111111111",
+      "carrier_bytes_equal": true
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-registry"
+  ],
+  "vector_id": "registry/downref-nonfrozen-rejected",
+  "description": "A 1.0 document cannot require a non-frozen registry entry.",
+  "direction": "round-trip",
+  "input": {
+    "document_version": "core/1.0.0",
+    "required_entry_status": "stable"
+  },
+  "expected_output": {
+    "valid": false,
+    "error": "requires_frozen_registry_entry"
+  }
+}

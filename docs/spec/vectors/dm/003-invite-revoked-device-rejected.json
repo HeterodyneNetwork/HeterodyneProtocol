@@ -1,12 +1,15 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "dm/invite-revoked-device-rejected",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§5.7.2",
-    "§3.9.7",
-    "§14.3"
+    "heterodyne:comms/0.5.0#comms-direct-messages"
   ],
+  "vector_id": "dm/invite-revoked-device-rejected",
   "description": "A kind:30078 invite signed by a device whose kind:31001 delegation has been revoked is rejected; the persona's remaining devices are unaffected.",
   "input": {
     "event": {
@@ -33,19 +36,21 @@
     },
     "signer_publishing_key": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556",
     "revoked_at": 1767226500,
-    "event_created_at": 1767226600
+    "event_created_at": 1767226600,
+    "vector_context": {
+      "simulated_clock": 1767226700,
+      "decision_trace": [
+        "verify_outer_bip340_signature",
+        "resolve_signer_delegation",
+        "check_revocation",
+        "reject_revoked_device"
+      ],
+      "notes": "Peers MUST stop accepting sessions bound to a revoked device (§5.7.2). The invite's created_at is after revoked_at."
+    }
   },
   "expected_output": {
     "verdict": "reject",
     "reason_code": "dm_invite_revoked_device"
   },
-  "simulated_clock": 1767226700,
-  "decision_trace": [
-    "verify_outer_bip340_signature",
-    "resolve_signer_delegation",
-    "check_revocation",
-    "reject_revoked_device"
-  ],
-  "notes": "Peers MUST stop accepting sessions bound to a revoked device (§5.7.2). The invite's created_at is after revoked_at.",
   "direction": "consume"
 }

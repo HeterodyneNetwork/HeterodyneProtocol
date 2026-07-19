@@ -1,11 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "nid-binding/invalid-nid-proof-rejected",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§3.3.1",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-nid-delegation"
   ],
+  "vector_id": "nid-binding/invalid-nid-proof-rejected",
   "description": "A kind:31001 NID delegation whose nid_proof does not verify under the advertised radicle_nid over the pinned binding payload is rejected.",
   "input": {
     "event": {
@@ -52,15 +54,17 @@
       "sig": "85a2e9bc48d91f1f0369eed5842d4567962a0da5c86f97649a7843032d40b81990ce5863aa6445b72e6c954630693cf0851efb6ee44cf9f7a12c51d5f0472eef"
     },
     "radicle_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-    "nid_binding_payload": "heterodyne-nid-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|radicle-nid-delegation"
+    "nid_binding_payload": "heterodyne-nid-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|radicle-nid-delegation",
+    "vector_context": {
+      "decision_trace": [
+        "verify_outer_bip340_signature",
+        "verify_ed25519_nid_proof"
+      ]
+    }
   },
   "expected_output": {
     "verdict": "reject",
     "reason_code": "nid_proof_invalid"
   },
-  "decision_trace": [
-    "verify_outer_bip340_signature",
-    "verify_ed25519_nid_proof"
-  ],
   "direction": "consume"
 }

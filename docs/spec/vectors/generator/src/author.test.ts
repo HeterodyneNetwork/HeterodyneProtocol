@@ -32,10 +32,28 @@ describe("author mode", () => {
     const identity = JSON.parse(
       await readFile(join(outputDir, "identity", "001-root-attestation-valid.json"), "utf8"),
     );
-    expect(identity.spec_version).toBe("0.4.0");
+    expect(identity).not.toHaveProperty("spec_version");
+    expect(identity.owner_document).toBe("core");
+    expect(identity.owner_version).toBe("core/0.5.0");
+    expect(identity.dependency_versions).toEqual({});
+    expect(identity.registry_revision).toBe(1);
+    expect(identity.spec_refs).toEqual(
+      expect.arrayContaining([
+        "heterodyne:core/0.5.0#core-root-attestation",
+      ]),
+    );
     expect(identity.expected_output.canonical_wire).toContain('["heterodyne","root"]');
     expect(identity.expected_output.canonical_wire).toContain("31000");
     expect(identity.expected_output.id).toHaveLength(64);
     expect(identity.expected_output.sig).toHaveLength(128);
+
+    const verification = JSON.parse(
+      await readFile(join(outputDir, "verification", "001-bad-signature-rejects.json"), "utf8"),
+    );
+    expect(verification.expected_output).not.toHaveProperty("decision_trace");
+    expect(verification.input.vector_context.decision_trace).toEqual([
+      "validate_nip01_id",
+      "verify_bip340_signature",
+    ]);
   });
 });

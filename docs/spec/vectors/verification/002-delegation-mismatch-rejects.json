@@ -1,12 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "verification/delegation-mismatch-rejects",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§3.3.1",
-    "§4.5",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-verification"
   ],
+  "vector_id": "verification/delegation-mismatch-rejects",
   "description": "An event signed by a publishing key not covered by the active NID delegation rejects.",
   "input": {
     "delegated_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",

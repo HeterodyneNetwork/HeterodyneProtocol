@@ -1,11 +1,16 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "config_room/device-inventory-not-synced",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§3.8",
-    "§14.3"
+    "heterodyne:social/0.5.0#social-config-room"
   ],
+  "vector_id": "config_room/device-inventory-not-synced",
   "description": "Cross-MXID config sync includes portable config but leaves device_inventory room-local.",
   "input": {
     "source_room": "!alice-config-a:example.org",

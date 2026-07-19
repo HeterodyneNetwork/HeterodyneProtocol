@@ -1,11 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "keri-authority/materialized-state-derivation",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§10.1.2",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-kel-verification"
   ],
+  "vector_id": "keri-authority/materialized-state-derivation",
   "description": "refs/xyz.heterodyne.keri/state derivation: each state commit's tree holds one entry mode 100644 path state.json, the key state after applying the log event, canonicalized per RFC 8785 (JCS) against the §10.1.2 schema. Parents are, in order, the prior state commit then the producing log commit; the first state commit has the inception log commit as sole parent.",
   "input": {
     "fixture_persona": "alice",
@@ -27,7 +29,10 @@
         "producing_event_id": "5087532c7f6cb9e276b4499dd55f29a346f742785cd26abdd7db0fb60562fb52"
       }
     ],
-    "jcs": "RFC 8785: keys sorted by UTF-16 code units; s/threshold/weight are JSON integers; hex lowercase; empty witness set is []."
+    "jcs": "RFC 8785: keys sorted by UTF-16 code units; s/threshold/weight are JSON integers; hex lowercase; empty witness set is [].",
+    "vector_context": {
+      "notes": "The two-parent ordering (prior state commit, then producing log commit) appears at s=1; the s=0 state commit has the inception log commit as its sole parent. Readers MUST check both tips derive from the same accepted KEL head before using either as a cache."
+    }
   },
   "expected_output": {
     "canonical_wire": "1456fe106098191c8ac06df3d92d985ea51b3cc8",
@@ -66,6 +71,5 @@
       ]
     }
   },
-  "notes": "The two-parent ordering (prior state commit, then producing log commit) appears at s=1; the s=0 state commit has the inception log commit as its sole parent. Readers MUST check both tips derive from the same accepted KEL head before using either as a cache.",
   "direction": "produce"
 }

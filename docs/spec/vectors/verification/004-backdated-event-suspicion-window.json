@@ -1,16 +1,21 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "verification/backdated-event-suspicion-window",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§4.5",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-verification"
   ],
+  "vector_id": "verification/backdated-event-suspicion-window",
   "description": "Backdated event inside the suspicion window is accepted with a warning.",
   "input": {
     "event_created_at": 1767225000,
     "received_at": 1767225600,
-    "suspicion_window_seconds": 900
+    "suspicion_window_seconds": 900,
+    "vector_context": {
+      "simulated_clock": 1767225600
+    }
   },
   "expected_output": {
     "verdict": "accept",
@@ -21,6 +26,5 @@
       "backdated_event_suspicion_window"
     ]
   },
-  "simulated_clock": 1767225600,
   "direction": "consume"
 }

@@ -1,11 +1,16 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "homeserver-exit/migration-pointer-precedence",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§3.10",
-    "§14.3"
+    "heterodyne:social/0.5.0#social-homeserver-exit"
   ],
+  "vector_id": "homeserver-exit/migration-pointer-precedence",
   "description": "Identity-room migration pointer takes precedence over a stale kind:31005 pointer.",
   "input": {
     "stale_kind31005_room": "!old:example.org",

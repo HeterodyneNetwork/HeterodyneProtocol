@@ -1,18 +1,28 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "keri-authority/withdrawal-converged-head",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§4.5.2",
-    "§13",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-kel-verification"
   ],
+  "vector_id": "keri-authority/withdrawal-converged-head",
   "description": "Convergence-gated withdrawal: a provisional KEL event at seq 2 is withdrawn once the verified repo-carried head reaches seq 3 (>= 2) and the event at seq 2 differs from the provisional one. The hash chain makes seq a true causality marker.",
   "input": {
     "provisional_kel_event_seq": 2,
     "provisional_event_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "repo_carried_head_seq": 3,
-    "repo_event_at_seq_2_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    "repo_event_at_seq_2_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "vector_context": {
+      "decision_trace": [
+        "provisional_event_seq_2",
+        "repo_head_seq_3_ge_2",
+        "event_at_seq_differs",
+        "convergence_gate_satisfied",
+        "withdraw_acceptance"
+      ]
+    }
   },
   "expected_output": {
     "verdict": "reject",
@@ -23,12 +33,5 @@
       "flagged_per_section_13": true
     }
   },
-  "decision_trace": [
-    "provisional_event_seq_2",
-    "repo_head_seq_3_ge_2",
-    "event_at_seq_differs",
-    "convergence_gate_satisfied",
-    "withdraw_acceptance"
-  ],
   "direction": "consume"
 }

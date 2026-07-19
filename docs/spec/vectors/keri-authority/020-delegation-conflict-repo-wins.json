@@ -1,12 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "keri-authority/delegation-conflict-repo-wins",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§3.9.10.1",
-    "§4.5.2",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-kel-verification"
   ],
+  "vector_id": "keri-authority/delegation-conflict-repo-wins",
   "description": "Two kind:31001 delegations occupy the same replaceable address (pubkey, 31001, d). The repo-carried copy is canonical for acceptance; the relay-only conflicting copy stays provisional and MUST NOT displace it.",
   "input": {
     "replaceable_address": {
@@ -21,6 +22,14 @@
     "relay_only": {
       "event_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "valid_until": 1767229200
+    },
+    "vector_context": {
+      "decision_trace": [
+        "collect_conflicting_31001_at_address",
+        "identify_repo_carried",
+        "repo_carried_wins",
+        "mark_relay_only_provisional"
+      ]
     }
   },
   "expected_output": {
@@ -31,11 +40,5 @@
       "relay_only_status": "provisional"
     }
   },
-  "decision_trace": [
-    "collect_conflicting_31001_at_address",
-    "identify_repo_carried",
-    "repo_carried_wins",
-    "mark_relay_only_provisional"
-  ],
   "direction": "consume"
 }

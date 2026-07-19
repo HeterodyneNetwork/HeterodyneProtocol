@@ -1,0 +1,29 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-envelope"
+  ],
+  "vector_id": "comms-envelope/owner-stamp-valid",
+  "description": "A Comms-allocated JSON kind carries the Comms qualified owner stamp in content.",
+  "direction": "consume",
+  "input": {
+    "kind": 31007,
+    "content": {
+      "spec_version": "comms/0.5.0",
+      "page": 0
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "owner": "comms",
+      "stamp_location": "content.spec_version"
+    }
+  }
+}

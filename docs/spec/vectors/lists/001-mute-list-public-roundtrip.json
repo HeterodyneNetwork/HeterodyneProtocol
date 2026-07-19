@@ -1,20 +1,25 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "lists/mute-list-public-roundtrip",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§8.5",
-    "§3.0",
-    "§14.1",
-    "§14.3"
+    "heterodyne:social/0.5.0#social-lists"
   ],
+  "vector_id": "lists/mute-list-public-roundtrip",
   "description": "NIP-51 kind:10000 mute list: public entries as clear p/t/word/e tags, epoch-key-signed, publishable to both core backends.",
   "input": {
     "fixture_persona": "alice",
     "signer": "epoch_1",
-    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
+    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",
+    "vector_context": {
+      "notes": "kind:10000 is a standard NIP-51 replaceable list (10000-10102 range), replaced by (pubkey, kind) with no d tag. The identical event is publishable to ordinary Nostr relays and repo relays; a repo relay MUST accept it like any other replaceable event (§3.0, §8.5)."
+    }
   },
-  "notes": "kind:10000 is a standard NIP-51 replaceable list (10000-10102 range), replaced by (pubkey, kind) with no d tag. The identical event is publishable to ordinary Nostr relays and repo relays; a repo relay MUST accept it like any other replaceable event (§3.0, §8.5).",
   "expected_output": {
     "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225700,10000,[[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"t\",\"spam\"],[\"word\",\"airdrop\"],[\"e\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"\"]",
     "decoded": {

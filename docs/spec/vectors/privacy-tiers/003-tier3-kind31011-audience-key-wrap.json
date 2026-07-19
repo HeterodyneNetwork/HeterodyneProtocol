@@ -1,13 +1,15 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "privacy-tiers/tier3-kind31011-audience-key-wrap",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§6.7.4",
-    "§6.10",
-    "§9.0",
-    "§14.3"
+    "heterodyne:comms/0.5.0#comms-privacy-tiers"
   ],
+  "vector_id": "privacy-tiers/tier3-kind31011-audience-key-wrap",
   "description": "Tier 3 kind:31011 per-recipient audience-key wrap: the 32-byte audience key is NIP-44 v2 ECDH-wrapped from the persona's epoch key to the recipient npub.",
   "input": {
     "fixture_persona": "alice",
@@ -16,9 +18,11 @@
     "recipient_npub": "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
     "key_id": "aud-2026-05-25-a",
     "nip44_nonce": "5050505050505050505050505050505050505050505050505050505050505050",
-    "audience_key": "4040404040404040404040404040404040404040404040404040404040404040"
+    "audience_key": "4040404040404040404040404040404040404040404040404040404040404040",
+    "vector_context": {
+      "notes": "The NIP-44 plaintext is the 32-byte audience key as its 64-char lowercase-hex string. The conversation key is the NIP-44 v2 ECDH of the epoch private key and the recipient npub."
+    }
   },
-  "notes": "The NIP-44 plaintext is the 32-byte audience key as its 64-char lowercase-hex string. The conversation key is the NIP-44 v2 ECDH of the epoch private key and the recipient npub.",
   "expected_output": {
     "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225681,31011,[[\"d\",\"aud-2026-05-25-a:f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"heterodyne\",\"audience_key_wrap\"],[\"key_id\",\"aud-2026-05-25-a\"],[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"AlBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQzp/E8AHxpmJikf7Pn62pLsHfDm+coVi1T5JP7w3YBpN+vWcLac0UxfDyS/HpHGFuBKMKiW5rwc+gSQabOSJuuUVO4E8BxZ7arBea2ErEaObWKj6XBfQSBW98ZYxEsu3txtk=\"]",
     "decoded": {

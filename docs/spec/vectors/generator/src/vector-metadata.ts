@@ -1,0 +1,343 @@
+import { DOCUMENT_DEPENDENCIES, DOCUMENT_VERSIONS } from "./family.js";
+import type { DocumentId } from "./types.js";
+
+export type VectorMetadata = {
+  owner_document: DocumentId;
+  owner_version: string;
+  dependency_versions: Partial<Record<DocumentId, string>>;
+  registry_revision: 1;
+  profile?: string;
+  spec_refs: string[];
+};
+
+const ids = (value: string) => new Set(value.trim().split(/\s+/));
+
+// ADR-033 requirement 38 assigns ownership per vector, never by directory.
+// This exhaustive inventory intentionally names every pre-split vector ID.
+const CORE_IDS = ids(`
+config-backup/config-rid-advertised-rejected
+config-backup/config-rid-unadvertised-clean
+config-backup/nip49-nsec-wrap
+identity-doc/add-before-remove
+identity-doc/emergency-reanchor
+identity-doc/kel-revoked-nid-rejected
+identity/delegation-active
+identity/delegation-expired
+identity/delegation-revoked
+identity/kind31005-race-tiebreaker-core
+identity/revocation-post-window
+identity/root-attestation-valid
+interop/kind31005-identity-pointer
+keri-authority/accelerator-backdated-compromise
+keri-authority/accelerator-decision-equivalent
+keri-authority/delegation-conflict-repo-wins
+keri-authority/dependent-events-unresolved
+keri-authority/equivocation-flagged
+keri-authority/export-aid-digest-anchoring
+keri-authority/export-aid-substituted-for-npub-rejected
+keri-authority/export-degraded-metadata
+keri-authority/export-incomplete
+keri-authority/export-origin-absent-not-failure
+keri-authority/export-unmappable-feature
+keri-authority/export-unsupported-crypto-suite
+keri-authority/kel-head-absent-rejected
+keri-authority/kel-head-duplicate-rejected
+keri-authority/kel-head-forbidden-on-breadcrumb
+keri-authority/kel-head-forbidden-on-dr-wire
+keri-authority/kel-head-forbidden-on-inception
+keri-authority/kel-head-forbidden-on-rotation
+keri-authority/kel-head-malformed-rejected
+keri-authority/kel-head-mandatory-on-delegation
+keri-authority/kel-head-mandatory-on-epoch-invite
+keri-authority/kel-head-mandatory-on-root
+keri-authority/kel-head-seq-mismatch-rejected
+keri-authority/keri10json-cesr-wire-rejected
+keri-authority/materialized-atomic-rebuild
+keri-authority/materialized-empty-kel-deletion
+keri-authority/materialized-log-derivation
+keri-authority/materialized-refs-not-authority
+keri-authority/materialized-state-derivation
+keri-authority/provisional-not-hardened-repo-unreachable
+keri-authority/refresh-failed-not-condition-d
+keri-authority/repo-head-regression-rejected
+keri-authority/withdrawal-causally-behind-no-withdraw
+keri-authority/withdrawal-converged-head
+keri/didkey-witness-no-network
+keri/first-seen-ordering
+keri/fork-resolution-conflicting-rotations
+keri/inception-event
+keri/informal-vouch-not-counted
+keri/rotation-committed-strategy
+keri/rotation-none-witness-threshold
+light-node/content-not-through-routing-node
+light-node/route-around-withholding-host
+light-node/verifies-signature-locally
+nid-binding/bidirectional-valid
+nid-binding/invalid-nid-proof-rejected
+nid-binding/missing-nid-proof-rejected
+node-advert/expired-rejected
+node-advert/nid-proof-invalid-rejected
+node-advert/outer-sig-invalid-rejected
+node-advert/valid-dual-signed
+org/member-add-dual-authorized
+org/member-add-single-authorization-insufficient
+org/threshold-delegate-governance
+relay-profile/kel-aware-reputation-continuity
+relay-profile/nip11-capability-advert
+relay-profile/passive-witness-store-signs-nothing
+relay-profile/vanilla-nip01-unaffected
+repo-relay/invalid-signature-rejected
+repo-relay/light-node-submit-write-path
+repo-relay/nip01-read-write-roundtrip
+routing-node/expired-advert-discarded
+routing-node/repo-location-from-ads-only
+routing-node/unverifiable-advert-discarded
+social-recovery/cold-root-reanchor-authoritative
+social-recovery/cache-rejects-unauthorized-content
+social-recovery/cache-sourced-marked-stale
+transport/egress-tor-off-default-indicator
+transport/onion-no-clearnet-dns-leak
+transport/onion-reachable-via-tor
+transport/strict-mode-egress-tor-default-on
+transport/wasm-bridge-no-bridge-indicator
+verification/backdated-event-suspicion-window
+verification/bad-signature-rejects
+verification/delegation-mismatch-rejects
+verification/revoked-key-rejects
+versioning/capabilities-roundtrip
+versioning/older-receiver-newer-sender
+versioning/unknown-major-placeholder
+core-redundancy/radicle-multihost-replication
+core-redundancy/stale-seed-rejected
+versioning/qualified-version-valid
+versioning/qualified-version-unqualified-rejected
+versioning/core-capability-bootstrap
+versioning/per-document-negotiation
+versioning/unknown-asynchronous-stamp-rejected
+stamping/heterodyne-json-content-owner
+stamping/heterodyne-empty-content-tag-owner
+stamping/upstream-unstamped
+stamping/upstream-profile-owner
+stamping/non-stamping-profile-unchanged
+stamping/dr-outer-unstamped
+stamping/control-profile-retains-core-owner
+stamping/control-carrier-comms-owner
+stamping/legacy-monolith-explicit
+stamping/legacy-monolith-inferred
+stamping/legacy-upstream-not-inferable
+stamping/no-restamp-existing-bytes
+stamping/tier3-profile-owner
+registry/downref-nonfrozen-rejected
+registry/frozen-entry-immutable
+`);
+
+const COMMS_IDS = ids(`
+config-backup/config-blob-encrypt-decrypt
+config-backup/key-id-derivation
+config-backup/key-rotation-ref-delta
+dm/double-ratchet-transcript
+dm/invite-delegated-device-valid
+dm/invite-revoked-device-rejected
+dm/invite-unbound-device-rejected
+dm/kind1060-outer-message-shape
+dm/repo-relay-refuses-kind1060
+index/complete-fetch-attempt
+index/prev-page-hash
+org/canonical-branch-reachability
+outbox/full-public-outbox
+outbox/scoped-outbox
+outbox/transitive-discovery-walk
+privacy-tiers/audience-key-rotation-on-removal
+privacy-tiers/complete-fetch-attempt
+privacy-tiers/non-circular-bootstrap
+privacy-tiers/tier1-public-plaintext-both-backends
+privacy-tiers/tier2-private-repo-not-encrypted
+privacy-tiers/tier3-index-key-derivation-and-encryption
+privacy-tiers/tier3-kind31011-audience-key-wrap
+privacy-tiers/tier3-kind31012-audience-roster
+privacy-tiers/tier3-prev-page-hash-mismatch
+privacy-tiers/tier3-prev-page-hash-valid
+relay-interop/auth-rejection-permanent
+relay-interop/keri-rotation-auth-new-key
+relay-interop/nip42-auth-current-epoch-key
+comms-envelope/nostr-native-event-valid
+comms-envelope/owner-stamp-valid
+acceptance-gating/authentication-before-policy
+acceptance-gating/message-request-no-receipt
+`);
+
+const SOCIAL_IDS = ids(`
+bridge/idempotent-republication
+bridge/matrix-permanent-failure-index-updated
+bridge/nostr-permanent-failure-index-not-updated
+broadcast/member-decrypts
+broadcast/nip59-rejected
+broadcast/non-member-cannot-decrypt
+broadcast/private-broadcast-wrapped
+broadcast/reaction-reply-bare-not-indexed
+config_room/device-inventory-not-synced
+config_room/key-backup-wrapping-algorithms
+config_room/minimal-config-room
+config_room/private-mutes
+encryption/delegation-revocation-rotation
+encryption/encryption-version-event
+encryption/mls-migration-eligibility-check
+encryption/mls-migration-intent-and-ack
+encryption/mls-migration-missing-ack-aborts
+encryption/mls-migration-non-mls-receiver-fallback
+encryption/mls-migration-offline-reconnect-reencrypt
+encryption/mls-migration-receiver-verifiable-flip
+encryption/mls-migration-tail-period-acceptance
+envelope/bare-dm-signature-badge
+envelope/cross-kind-wrapping
+envelope/fallback-rendering
+envelope/minimal-kind1-wrapped
+homeserver-exit/dual-publish-during-exit
+homeserver-exit/identity-room-migration
+homeserver-exit/migration-pointer-precedence
+identity/identity-room-full-state
+index/context-binding-mismatch
+index/room-key-wrap-encryption
+interop/bare-hide-pref
+interop/vanilla-nostr-only-follow
+interop/wrapped-vanilla-roundtrip
+lists/kind-mute-set-addressing
+lists/mute-list-private-items-encrypted-to-self
+lists/mute-list-public-roundtrip
+lists/policy-list-adoption-parsed
+lists/private-items-reencrypt-on-rotation
+lists/stale-list-rollback-rejected
+moderation/approvals-required-absent-default-one
+moderation/contributor-implicit-rejection-window
+moderation/kind34550-approvals-required
+moderation/moderator-rotation-through-kel
+moderation/multi-mod-requirement
+moderation/nip72-approval
+moderation/radicle-editorial-gating
+moderation/redaction-of-approved-post
+moderation/relay-only-created-at-fallback
+moderation/repo-anchor-asof-after-removal-rejected
+moderation/repo-anchor-asof-before-removal-counts
+moderation/strict-mode-bare-not-hidden
+moderation/strict-mode-invalid-broadcast-signature
+moderation/strict-mode-kind5-deletion-30s
+moderation/strict-mode-state-downgrade-warning
+multi-homing/active-room-election
+multi-homing/kind31005-race-tiebreaker
+multi-homing/partition-window-void-requeue
+multi-homing/publish-lease-acquire-renew
+multi-homing/single-mxid-revocation
+outbox/cross-backend-reply-dedup
+outbox/cross-persona-attestation-invalid
+outbox/cross-persona-attestation-valid
+redundancy/dedupe-across-replicas
+redundancy/mirror-group-primary-replicas
+redundancy/private-body-relay-borne
+redundancy/promotion-republishes-pointer
+redundancy/rekey-remove-not-join
+room-kind/current-kinds-roundtrip
+room-kind/legacy-read-back-map
+room-kind/retired-kind-rejected
+social-recovery/retention-30-days
+social-recovery/three-tier-caching
+versioning/unknown-room-kind-tolerance
+acceptance-gating/social-mute-tightens
+acceptance-gating/social-policy-cannot-loosen
+`);
+
+const PROFILE_BY_VECTOR = new Map<string, string>([
+  ["stamping/upstream-profile-owner", "heterodyne-social-mute-list-v1"],
+  ["stamping/non-stamping-profile-unchanged", "heterodyne-core-rotation-breadcrumb-profile-v1"],
+  ["stamping/dr-outer-unstamped", "heterodyne-comms-double-ratchet-message-v1"],
+  ["stamping/control-profile-retains-core-owner", "heterodyne-control-session-device-v1"],
+  ["stamping/control-carrier-comms-owner", "comms-subprotocol-payload-v1"],
+  ["stamping/tier3-profile-owner", "heterodyne-comms-tier3-wrapped-content-kind-1-v1"],
+]);
+
+export function vectorMetadata(vectorId: string): VectorMetadata {
+  const owners = ([
+    ["core", CORE_IDS],
+    ["comms", COMMS_IDS],
+    ["social", SOCIAL_IDS],
+  ] as const).filter(([, entries]) => entries.has(vectorId));
+  if (owners.length !== 1) {
+    throw new Error(`vector owner is not assigned exactly once: ${vectorId}`);
+  }
+  const owner = owners[0][0];
+  const dependencies = Object.fromEntries(
+    DOCUMENT_DEPENDENCIES[owner].map((dependency) => [
+      dependency,
+      `${dependency}/${DOCUMENT_VERSIONS[dependency]}`,
+    ]),
+  ) as Partial<Record<DocumentId, string>>;
+  const anchor = anchorFor(vectorId, owner);
+  const profile = PROFILE_BY_VECTOR.get(vectorId);
+  return {
+    owner_document: owner,
+    owner_version: `${owner}/${DOCUMENT_VERSIONS[owner]}`,
+    dependency_versions: dependencies,
+    registry_revision: 1,
+    ...(profile === undefined ? {} : { profile }),
+    spec_refs: [`heterodyne:${owner}/${DOCUMENT_VERSIONS[owner]}#${anchor}`],
+  };
+}
+
+function anchorFor(vectorId: string, owner: DocumentId): string {
+  const prefix = vectorId.split("/", 1)[0];
+  const anchors: Partial<Record<DocumentId, Record<string, string>>> = {
+    core: {
+      identity: vectorId === "identity/root-attestation-valid" ? "core-root-attestation" : "core-nid-delegation",
+      "identity-doc": "core-identity-discovery",
+      keri: "core-kel-primitives",
+      "keri-authority": "core-kel-verification",
+      "nid-binding": "core-nid-delegation",
+      "node-advert": "core-node-advertisement",
+      "repo-relay": "core-repo-relay",
+      "routing-node": "core-node-roles",
+      "light-node": "core-client-responsibilities",
+      "relay-profile": "core-nostr-relay-interop",
+      transport: "core-tor-reachability",
+      versioning: "core-versioning",
+      verification: "core-verification",
+      "config-backup": "core-keys-repository",
+      "social-recovery": "core-recovery",
+      interop: "core-identity-pointer",
+      org: "core-threshold-authority",
+      "core-redundancy": "core-multi-host-seeding",
+      stamping: "core-version-stamps",
+      registry: "core-registry",
+    },
+    comms: {
+      "config-backup": "comms-config-repository",
+      dm: "comms-direct-messages",
+      index: "comms-feed-index",
+      org: "comms-org-authorization",
+      outbox: "comms-retrieval",
+      "privacy-tiers": "comms-privacy-tiers",
+      "relay-interop": "comms-publishing",
+      "comms-envelope": "comms-envelope",
+      "acceptance-gating": "comms-acceptance-hook",
+    },
+    social: {
+      bridge: "social-headless-bridge",
+      broadcast: "social-matrix-envelopes",
+      config_room: "social-config-room",
+      encryption: "social-matrix-encryption",
+      envelope: "social-matrix-envelopes",
+      "homeserver-exit": "social-homeserver-exit",
+      identity: "social-identity-room",
+      index: "social-encrypted-state",
+      interop: "social-vanilla-matrix",
+      lists: "social-lists",
+      moderation: "social-moderation",
+      "multi-homing": "social-active-room-election",
+      outbox: "social-interactions",
+      redundancy: "social-matrix-mirroring",
+      "room-kind": "social-discussion-rooms",
+      "social-recovery": "social-recovery-binding",
+      versioning: "social-discussion-rooms",
+      "acceptance-gating": "social-admission-policy",
+    },
+  };
+  return anchors[owner]?.[prefix] ?? `${owner}-conformance`;
+}

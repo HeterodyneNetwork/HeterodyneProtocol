@@ -1,12 +1,16 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "moderation/repo-anchor-asof-after-removal-rejected",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§8.1",
-    "§8.2.1",
-    "§14.3"
+    "heterodyne:social/0.5.0#social-moderation"
   ],
+  "vector_id": "moderation/repo-anchor-asof-after-removal-rejected",
   "description": "Repo-anchored as-of resolution: an approval anchored after a moderator's removal does not count, because the newest kind:34550 revision reachable in the anchor commit's ancestor history no longer lists the moderator.",
   "input": {
     "hosting": "repo",
@@ -32,7 +36,17 @@
           "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01"
         ]
       }
-    ]
+    ],
+    "vector_context": {
+      "decision_trace": [
+        "resolve_anchor_commit",
+        "walk_ancestor_history",
+        "select_newest_reachable_kind34550",
+        "moderator_absent",
+        "reject_approval"
+      ],
+      "notes": "The approval's anchor is commit seq 9; the newest reachable kind:34550 (seq <= 9) is rev-b (seq 8), which removed bob. A removed moderator cannot obtain a new anchor positioned before their removal because commits append to the canonical head (§8.2.1)."
+    }
   },
   "expected_output": {
     "verdict": "reject",
@@ -41,13 +55,5 @@
       "asof_revision": "rev-b"
     }
   },
-  "decision_trace": [
-    "resolve_anchor_commit",
-    "walk_ancestor_history",
-    "select_newest_reachable_kind34550",
-    "moderator_absent",
-    "reject_approval"
-  ],
-  "notes": "The approval's anchor is commit seq 9; the newest reachable kind:34550 (seq <= 9) is rev-b (seq 8), which removed bob. A removed moderator cannot obtain a new anchor positioned before their removal because commits append to the canonical head (§8.2.1).",
   "direction": "consume"
 }

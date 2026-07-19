@@ -1,11 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "identity-doc/kel-revoked-nid-rejected",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§3.9.10",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-identity-discovery"
   ],
+  "vector_id": "identity-doc/kel-revoked-nid-rejected",
   "description": "A NID revoked by the KEL MUST NOT be honored as a delegate even if the Radicle identity document still lists it; git refs signed by it are rejected.",
   "input": {
     "identity_doc_delegates": [
@@ -15,16 +17,18 @@
     "kel_revoked_nids": [
       "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
     ],
-    "ref_signed_by_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
+    "ref_signed_by_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
+    "vector_context": {
+      "decision_trace": [
+        "replay_kel",
+        "project_authorized_nids",
+        "reject_ref_signed_by_kel_revoked_nid"
+      ]
+    }
   },
   "expected_output": {
     "verdict": "reject",
     "reason_code": "kel_revoked_nid"
   },
-  "decision_trace": [
-    "replay_kel",
-    "project_authorized_nids",
-    "reject_ref_signed_by_kel_revoked_nid"
-  ],
   "direction": "consume"
 }

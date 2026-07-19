@@ -1,12 +1,15 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "privacy-tiers/audience-key-rotation-on-removal",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§6.7.4",
-    "§6.10",
-    "§14.3"
+    "heterodyne:comms/0.5.0#comms-privacy-tiers"
   ],
+  "vector_id": "privacy-tiers/audience-key-rotation-on-removal",
   "description": "Removing a member rotates the audience key to a fresh key_id, republishes the kind:31012 roster, and redistributes via kind:31011; the removed member cannot read post-removal content but retains content wrapped under the prior key_id.",
   "input": {
     "removed_member": "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01",

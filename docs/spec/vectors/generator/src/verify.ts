@@ -58,6 +58,7 @@ async function listVectorFiles(rootDir: string): Promise<string[]> {
     .filter((path) => path.endsWith(".json"))
     .filter((path) => path !== "fixtures.json")
     .filter((path) => !path.startsWith("schema/"))
+    .filter((path) => !path.startsWith("coverage/"))
     .filter((path) => !path.startsWith("generator/"))
     .sort();
 }

@@ -1,12 +1,15 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "relay-interop/nip42-auth-current-epoch-key",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§10.5",
-    "§3.5",
-    "§14.3"
+    "heterodyne:comms/0.5.0#comms-publishing"
   ],
+  "vector_id": "relay-interop/nip42-auth-current-epoch-key",
   "description": "NIP-42 AUTH response is signed by the current epoch key, not the cold root.",
   "input": {
     "challenge": "auth-challenge-001",

@@ -10,6 +10,7 @@ import { buildKeriAuthorityBehavioralVectors } from "./topics-keri-authority-b.j
 import { buildKeriAuthorityMaterializedVectors } from "./topics-keri-authority-c.js";
 import { buildV04Vectors } from "./topics-v04.js";
 import { buildV04bVectors } from "./topics-v04b.js";
+import { buildSplitVectors } from "./topics-split.js";
 import {
   AUX_RAND,
   baseVector,
@@ -17,6 +18,7 @@ import {
   produceVector,
   withoutSig,
   type VectorFactory,
+  type VectorBody,
 } from "./vector-helpers.js";
 import type { Fixtures } from "./fixtures.js";
 import type { Vector, AuthoredVector } from "./types.js";
@@ -55,6 +57,11 @@ export const TOPIC_SPECS = {
   dm: "§5.7",
   "config-backup": "§3.8.6",
   "keri-authority": "§4.5.1",
+  "comms-envelope": "heterodyne:comms/0.5.0#comms-envelope",
+  "core-redundancy": "heterodyne:core/0.5.0#core-multi-host-seeding",
+  "acceptance-gating": "heterodyne:comms/0.5.0#comms-acceptance-hook",
+  stamping: "heterodyne:core/0.5.0#core-version-stamps",
+  registry: "heterodyne:core/0.5.0#core-registry",
 } as const;
 
 export async function buildAllVectors(fixtures: Fixtures): Promise<AuthoredVector[]> {
@@ -68,6 +75,7 @@ export async function buildAllVectors(fixtures: Fixtures): Promise<AuthoredVecto
   vectors.push(...(await buildKeriAuthorityWireVectors(fixtures)));
   vectors.push(...buildKeriAuthorityBehavioralVectors(fixtures));
   vectors.push(...(await buildKeriAuthorityMaterializedVectors(fixtures)));
+  vectors.push(...buildSplitVectors());
   return vectors;
 }
 
@@ -612,7 +620,7 @@ async function encryptedBroadcastVector(fixtures: Fixtures): Promise<AuthoredVec
 
 type ConsumeCase = {
   relativePath: string;
-  vector: Omit<Vector, "vector_schema_version" | "spec_version" | "direction">;
+  vector: VectorBody;
 };
 
 const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [

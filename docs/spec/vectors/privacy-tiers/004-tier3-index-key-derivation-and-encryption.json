@@ -1,13 +1,15 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "privacy-tiers/tier3-index-key-derivation-and-encryption",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§6.7.4",
-    "§9.0",
-    "§14.3",
-    "§14.5"
+    "heterodyne:comms/0.5.0#comms-privacy-tiers"
   ],
+  "vector_id": "privacy-tiers/tier3-index-key-derivation-and-encryption",
   "description": "Tier 3 kind:31007 index: index_key = HKDF-SHA256(audience_key, salt=key_id, info=heterodyne-index-key-v1, 32); content is NIP-44 v2 symmetric encryption of the index payload under index_key; relay-visible tags carry only heterodyne_wrap, key_id, cold_root and an opaque d.",
   "input": {
     "fixture_persona": "alice",
@@ -20,9 +22,11 @@
       "output_len": 32
     },
     "nip44_nonce": "5151515151515151515151515151515151515151515151515151515151515151",
-    "plaintext": "{\"spec_version\":\"0.4.0\",\"rid\":\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1\",\"page_id\":\"opaque-page-01\",\"feed_label\":\"Close friends\",\"entries\":[{\"event_id\":\"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",\"relay_hint\":\"wss://relay.example\"}],\"previous_index\":null}"
+    "plaintext": "{\"spec_version\":\"0.4.0\",\"rid\":\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1\",\"page_id\":\"opaque-page-01\",\"feed_label\":\"Close friends\",\"entries\":[{\"event_id\":\"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",\"relay_hint\":\"wss://relay.example\"}],\"previous_index\":null}",
+    "vector_context": {
+      "notes": "NIP-44 v2 symmetric layer only (index_key used directly as the conversation key; no ECDH). The opaque d value is a fixture placeholder; producers SHOULD derive it from >=128 bits of randomness per §6.7.4."
+    }
   },
-  "notes": "NIP-44 v2 symmetric layer only (index_key used directly as the conversation key; no ECDH). The opaque d value is a fixture placeholder; producers SHOULD derive it from >=128 bits of randomness per §6.7.4.",
   "expected_output": {
     "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225682,31007,[[\"d\",\"opaque-page-01\"],[\"heterodyne\",\"feed_index\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"heterodyne_wrap\",\"room_key.v2\"],[\"key_id\",\"aud-2026-05-25-a\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"AlFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRXzH6jk3Cx70+Gli/nzonwZdXwo5SqnfD1WVIDW6vZPX9yarluBgjELUqglP8wMRbMNa9/XoiYB/WoMxL+IadWTfwM3q3+xM4Cbb5IQ7GUszPLWylXvuHv5Y4FYZ4bU2k+HRUpzA2is728/FHtAdVdrlPWfcN6FK6Lujy7TjroIEgSJDDR11JGiFlXL1qkJ42s/HvdmdusjVvDPhenI/ncnusHGs36dOoSvZAhx6tc+jzYxVNofCVzVB8GHDFmFCFXqwwcXKhRBDQMQdp/OTfMy5hOO4UBYz4kPvBoO3VWIondA/Bmuf6l22p9P1PZ9Bg6E7ilJVm4mYSrkSSfkedhxWXwT0cVVuiu7nSk2Pww+AhUOGz5U0vCx2fUX0H/KcQb/L7t0ElUspkXR7XEI0GxQS7mzdzAHWd+cksNtyUeWSZFyOp7CGr/K6rZoV5uVYVj19Muq7qoWjn8sQ+KvgJ+WkL\"]",
     "decoded": {

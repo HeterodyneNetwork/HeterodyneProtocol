@@ -1,15 +1,16 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "broadcast/private-broadcast-wrapped",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§5.3",
-    "§6.10",
-    "§6.7.4",
-    "§14.1",
-    "§14.3",
-    "§14.5"
+    "heterodyne:social/0.5.0#social-matrix-envelopes"
   ],
+  "vector_id": "broadcast/private-broadcast-wrapped",
   "description": "OPTIONAL Matrix-hosted audience: a private broadcast post NIP-44-wrapped under the Matrix room-secret-derived post key, then signed. Matrix-shaped; the CORE Tier 3 wrap is in privacy-tiers/.",
   "input": {
     "fixture_room_secret": "alice_private_broadcast_v1",
@@ -21,7 +22,10 @@
       "output_len": 32
     },
     "nip44_nonce": "3030303030303030303030303030303030303030303030303030303030303030",
-    "cleartext": "{\"body\":\"private broadcast body\",\"matrix_room_id\":\"!alice-private-broadcast:example.org\",\"key_id\":\"room-secret-2026-05-25-a\"}"
+    "cleartext": "{\"body\":\"private broadcast body\",\"matrix_room_id\":\"!alice-private-broadcast:example.org\",\"key_id\":\"room-secret-2026-05-25-a\"}",
+    "vector_context": {
+      "notes": "Megolm transport is opaque; this vector validates the room-secret to NIP-44 post chain and context binding to matrix_room_id."
+    }
   },
   "expected_output": {
     "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225615,1,[[\"heterodyne_wrap\",\"room_key.v2\"],[\"key_id\",\"room-secret-2026-05-25-a\"],[\"matrix_room_id\",\"!alice-private-broadcast:example.org\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"AjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwQ9ZiMg7oMY4qeiDZbaxWUX1C8Uw9fLFFVhWZPpAXvhJutDwVQv1GjA/2MvzQV0c6y65aVRmxcn96kj+BW9reNT7+LRmkssiaO/Hk1+1P6xXhOzJYFadmNXXCZ33bCGLGJt3dJLST2saijDOX9xRMrcIq8atwAkOQ9FlV/XdUYojJSPAEBmu2gAsyxqjt6pli2Ip+/CF1CiclHzJCcmJ5YoQ/\"]",
@@ -64,6 +68,5 @@
     "id": "df4c76f52f9084bfc1acd29f73c6583b2fcfaf176d8364a9e13b4f52b70feb57",
     "sig": "2c101a95d4a921823a8c3aac9e895c93b0a8b5a537969d45a50ffe27a6e313f7307ea366c1eeefb4f1feaacf4266cd7b8258e48f2a20e988f236b2e85cb23f46"
   },
-  "notes": "Megolm transport is opaque; this vector validates the room-secret to NIP-44 post chain and context binding to matrix_room_id.",
   "direction": "produce"
 }

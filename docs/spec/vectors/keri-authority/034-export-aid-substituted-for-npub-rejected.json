@@ -1,25 +1,29 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "keri-authority/export-aid-substituted-for-npub-rejected",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§11.8",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-kel-verification"
   ],
+  "vector_id": "keri-authority/export-aid-substituted-for-npub-rejected",
   "description": "A consumer that substitutes the derived export AID (or its did:webs DID) for the persona npub where the spec requires the npub is rejected: the export identity confers no identifier status and is never an alternate authoritative identity.",
   "input": {
     "required_identifier": "persona_npub",
     "presented_identifier": "export_aid",
-    "context": "identity_resolution_requiring_npub"
+    "context": "identity_resolution_requiring_npub",
+    "vector_context": {
+      "decision_trace": [
+        "expect_persona_npub",
+        "observe_export_aid_substitution",
+        "reject_substitution"
+      ]
+    }
   },
   "expected_output": {
     "verdict": "reject",
     "reason_code": "export_aid_substituted_for_npub"
   },
-  "decision_trace": [
-    "expect_persona_npub",
-    "observe_export_aid_substitution",
-    "reject_substitution"
-  ],
   "direction": "consume"
 }

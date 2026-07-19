@@ -1,240 +1,106 @@
 # Test vectors
 
-This directory contains conformance test vectors for the Heterodyne
-specification. Each vector is a JSON file demonstrating a specific behavior the
-spec requires. When a vector exists for a behavior, implementations claiming
-vector-conformance for that category MUST produce byte-identical output for
-every `produce` vector and MUST accept (and correctly validate) every
-`consume` vector.
+This directory contains the normative conformance vectors for the Heterodyne
+protocol family. A vector is owned by exactly one independently versioned
+document; directory names do not imply ownership.
 
-Vectors are normative for the behavior they cover: failing an authored vector
-means a Heterodyne client is non-conformant for the corresponding vector
-category. The current files are a coverage-map suite: every §14.3 topic has
-authored vectors for the behaviors listed in the spec, with room for future
-edge-case expansion as the 0.x draft stabilizes.
+When a vector exists for a behavior, an implementation claiming that vector's
+coverage MUST reproduce `produce` output byte-for-byte, MUST accept and
+validate `consume` input as specified, and MUST preserve the declared
+comparison surface for `round-trip` input. Existing vector IDs are immutable.
+Changed behavior receives a new ID.
 
-## CORE vs OPTIONAL-Matrix (ADR-029)
+## Family metadata
 
-Conformance is split so a Matrix-free client can be **fully conformant**
-(spec §14, ADR-029). Vector categories are correspondingly split:
-
-- **CORE (Matrix-independent).** Every conformant client MUST pass these:
-  `identity/` (including the CORE Matrix-free `kind:31005` tiebreaker, §3.9.8),
-  `keri/`, `envelope/`, `verification/`, `outbox/`, `repo-relay/`,
-  `routing-node/`, `node-advert/`, `light-node/`, `nid-binding/`,
-  `identity-doc/`, `org/`, `privacy-tiers/` (the CORE audience-key wrap,
-  `index_key` derivation, NIP-44 v2 index encryption, and `prev_page_hash`
-  page-chain integrity), `lists/`, `config-backup/`, `relay-interop/`,
-  `transport/` (excluding `strict-mode/`), `moderation/` (excluding
-  `strict-mode/`), `interop/`, and `versioning/`. `dm/` is CORE for any
-  client that offers direct messaging (§5.7); a client that offers no DMs
-  MAY skip `dm/` with that rationale.
-- **OPTIONAL-Matrix.** Only clients that implement the Matrix layer MUST pass
-  these: `bridge/`, `index/` (the Matrix-era room-key wrap), `room-kind/`,
-  `config_room/`, `multi-homing/`, `broadcast/` (the room-key-wrapped-relay
-  carrier for a Matrix-hosted audience), `encryption/` (excluding
-  `mls-migration/`), and `homeserver-exit/`. A Matrix-free client MAY skip
-  these with the rationale "Matrix layer not implemented (SHOULD-level,
-  ADR-029)".
-
-Nothing in a CORE category depends on Matrix. The Matrix-shaped categories
-carry an explicit "OPTIONAL Matrix layer" framing in their descriptions.
-
-## Format
-
-```
-vectors/
-  <topic>/
-    <NN>-<short-description>.json
-```
-
-Each JSON file validates against
-[`schema/vector.schema.json`](schema/vector.schema.json) and has the following
-shape:
+Every vector validates against
+[`schema/vector.schema.json`](schema/vector.schema.json) and carries:
 
 ```json
 {
   "vector_id": "<topic>/<stable-id>",
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "spec_refs": ["§4.2", "§14.5"],
-  "description": "<one-line plain-English summary>",
+  "owner_document": "core | comms | control | social",
+  "owner_version": "<owner>/0.5.0",
+  "dependency_versions": {
+    "<permitted-lower-document>": "<document>/0.5.0"
+  },
+  "registry_revision": 1,
+  "profile": "<optional immutable profile id>",
+  "spec_refs": ["heterodyne:<document>/0.5.0#<permanent-anchor>"],
+  "description": "<behavior>",
   "direction": "produce | consume | round-trip",
-  "input": {
-    "...": "what the implementation is fed"
-  },
-  "expected_output": {
-    "...": "what the implementation must emit, OR the verdict for consume"
-  },
-  "simulated_clock": 1767225600,
-  "decision_trace": ["optional ordered checks"],
-  "transport_context": {
-    "...": "optional Matrix-to-protocol adapter context"
-  },
-  "notes": "<optional clarifications, deferred questions, edge cases>"
+  "input": {},
+  "expected_output": {}
 }
 ```
 
-- `produce` vectors: given `input` (e.g. user content + identity material),
-  the implementation MUST emit `expected_output.canonical_wire`
-  byte-identically. Signed events also include the decoded object, `id`, and
-  `sig`.
-- `consume` vectors: given `input` (the protocol input), the implementation
-  MUST emit `expected_output` with `{ "verdict": "accept" }` or
-  `{ "verdict": "reject", "reason_code": "..." }` plus a normalized view of the
-  event where applicable.
-- `round-trip` vectors: an event survives a wrap → unwrap → re-publication
-  cycle byte-identically over the declared `comparison_surface`.
+The former scalar `spec_version` is not vector metadata. A `spec_version`
+inside a tested event's `input` or `expected_output` is part of that event's
+wire format and is not the vector envelope version.
 
-## Determinism policy
+Dependency versions follow the family DAG:
 
-Vectors pin every value that could otherwise vary between runs:
+```text
+Core <- Comms <- Control
+Core <- Comms <- Social
+```
 
-- BIP-340 signatures use `aux_rand = 0x00 * 32`.
-- NIP-44 v2 vectors carry a fixed 32-byte nonce in `input`.
-- Time-sensitive vectors carry `simulated_clock`; runners MUST NOT use
-  wall-clock time to decide their verdict.
-- `created_at` values are fixed offsets from the shared `test_epoch` in
-  [`fixtures.json`](fixtures.json).
-- `produce` and `round-trip` comparison is against canonical bytes, never
-  pretty-printed JSON or relay WebSocket framing.
-- The `dm/006` double-ratchet transcript is generated by driving the
-  exact-pinned upstream wire library (`nostr-double-ratchet@0.0.138`,
-  irislib, MIT) under a deterministic RNG and clock; the DH ratchet keys
-  drawn during generation are pinned in `input.ratchet_keys` as the
-  injection seam, and conformance is receive-side replay (see the vector's
-  `notes`).
+Core vectors therefore have no dependencies; Comms vectors pin Core; Control
+and Social vectors pin Core and Comms. Control currently has no vectors and is
+explicitly `incomplete-draft`; no implementation may claim its profile until
+ADR-030's minimum corpus exists.
 
-Megolm ciphertext is intentionally out of scope. Encrypted vectors test the
-decrypted Matrix payload plus the room-secret → HKDF → NIP-44 chain.
+## Coverage authority
 
-## Consume contract
+[`coverage/manifest.json`](coverage/manifest.json) is the sole coverage source.
+The Core, Comms, Control, Social, and family Markdown files in `coverage/` are
+deterministic generated projections. Do not maintain parallel maps by hand.
 
-`consume` rejects use the closed `reason_code` vocabulary in
-[`schema/reason-codes.md`](schema/reason-codes.md). These codes are diagnostic
-test vocabulary only; implementations do not need to emit them on the wire.
+Ownership corrections required by ADR-033 are per vector. In particular:
 
-When an accepted vector includes `expected_output.normalized`, the normalized
-object contains only protocol-visible facts: event ids, pubkeys, room ids, room
-kind, index-update effect, warnings, or other values a conforming
-implementation can observe at the protocol boundary. It MUST NOT encode an
-implementation's private data structures.
+- existing Matrix envelope and mirror-redundancy vectors are Social;
+- new Nostr-native envelope vectors are Comms;
+- `interop/001-003` are Social while `interop/004` is Core;
+- `org/001-003` are Core while `org/004` is Comms;
+- recovery and config-backup vectors split by the behavior each exercises;
+- Core Radicle multi-host redundancy uses new `core-redundancy/` IDs; and
+- acceptance gating is split between Comms hook behavior and Social
+  tighten-only policy behavior.
 
-For inputs that could fail multiple checks, the expected `reason_code` follows
-the §4.5 evaluation order, with cheap structural/signature checks before
-delegation, revocation, policy, and UI-profile checks.
+## Reason codes
 
-## Matrix adapter boundary
+The authoritative reason-code allocation container is
+[`../registry/reason-codes.json`](../registry/reason-codes.json). The files
+under `schema/reason-codes.*` are generated compatibility projections, not a
+second authority. These diagnostic strings are test vocabulary; an
+implementation does not need to emit them on the wire.
 
-Transport vectors target the boundary after the Matrix SDK has performed its
-normal work. A runner feeds the Heterodyne protocol layer:
+## Determinism
 
-- Matrix event type.
-- Matrix room id.
-- Sender MXID.
-- Matrix event id and `origin_server_ts` when the spec uses them.
-- Decrypted cleartext payload for encrypted rooms.
-- Transport failure classification inputs from §6.4.1.
+Vectors pin all nondeterministic input. BIP-340 signatures use an all-zero
+32-byte auxiliary value; NIP-44 vectors carry fixed nonces; time-sensitive
+cases place `simulated_clock` in `input`; and canonical comparisons use signed
+NIP-01 bytes rather than pretty JSON or relay framing. The double-ratchet
+transcript uses the exact pinned `nostr-double-ratchet@0.0.138` wire library
+with deterministic keys, randomness, and time.
 
-Vectors do not validate Matrix federation auth, Megolm session rotation,
-device trust, withheld keys, redaction semantics, or Matrix event
-authorization.
-
-## Planned vector topics
-
-CORE categories (Matrix-independent):
-
-| Topic | Coverage | Status |
-|---|---|---|
-| `identity/` | root attestation (Matrix-free, epoch-key-signed); NID delegation (active, expired, revoked); revocation post-window; CORE Matrix-free `kind:31005` race tiebreaker (§3.9.8); identity room with full state (OPTIONAL Matrix) | coverage authored |
-| `keri/` (per ADR-003, ADR-021, ADR-022) | inception; rotation (committed strategy); rotation (none strategy with witness threshold); first-seen ordering verifier; fork-resolution with conflicting rotations; `did:key` witness verification; `kind:31008` informal vouch not counted toward threshold | coverage authored |
-| `envelope/` | wrapped event; bare event with `heterodyne_nostr_sig`; fallback rendering; cross-kind wrapping | coverage authored |
-| `verification/` | signature failures; NID delegation-mismatch rejection; revoked-key rejection; backdated-event handling | coverage authored |
-| `outbox/` | scoped/full public outbox; transitive discovery walk; cross-persona attestation; cross-backend reply/reaction dedup by event id (per ADR-029) | coverage authored |
-| `repo-relay/` (per ADR-026) | CLIENT conformance: NIP-01 read/write round-trip indistinguishable from a plain relay; invalid-signature rejection; light-node submit-to-repo-relay write path. The SERVER/STORAGE contract is TBD and NOT vectored | coverage authored |
-| `routing-node/` (per ADR-026) | repo-location answer from `kind:31005`/`kind:31010` only; expired advert discarded; unverifiable advert discarded; hints only, no content | coverage authored |
-| `node-advert/` (per ADR-026) | `kind:31010` valid dual signature (outer BIP-340 + inner Ed25519 `nid_proof`); outer-sig-invalid, nid-proof-invalid, and expired rejections | coverage authored |
-| `light-node/` (per ADR-026) | verifies every fetched event locally; content not fetched through the routing node; routes around a withholding host | coverage authored |
-| `nid-binding/` (per ADR-027) | bidirectional `kind:31001` NID delegation (epoch-key Schnorr + NID Ed25519 `nid_proof`); missing/invalid nid_proof rejection; binding-payload bytes pinned | coverage authored |
-| `identity-doc/` (per ADR-027) | KEL-revoked NID rejected as delegate; add-before-remove ordering; emergency re-anchor cold-root `kind:31005` to a fresh RID | coverage authored |
-| `org/` (per ADR-027) | threshold delegate governance; dual-authorized member NID add (either alone insufficient); delegate-threshold canonical-branch reachability (rogue-epoch-key relay-bypass rejected) | coverage authored |
-| `privacy-tiers/` (per ADR-028) | Tier 1 public plaintext; Tier 2 private-repo (not encrypted, not on public relays); Tier 3 `kind:31011` audience-key wrap, `index_key` HKDF derivation, NIP-44 v2 index encryption, `prev_page_hash` chain (valid + mismatch), complete-fetch-attempt, `kind:31012` roster, non-circular bootstrap, rotation on removal | coverage authored |
-| `lists/` (per §8.5, §8.6, §3.0) | NIP-51 `kind:10000` public mute list round-trip (both backends); private items NIP-44-encrypted to self under the epoch key (+ re-encrypt on rotation); `kind:30007` kind-mute set `(kind, d)` addressing; stale-list rollback rejected from repo revision history; community policy-list adoption parsed from `kind:34550` `p`/`a` tags | coverage authored |
-| `dm/` (CORE when DMs offered, per §5.7) | `kind:30078` invite (`d` = `double-ratchet/invites/<device>`) signed by a `kind:31001`-delegated device key (valid); unbound-device and revoked-device invites rejected; `kind:1060` outer-message shape (current-ratchet-key signer, header tag, NIP-44 v2 content, unsigned `kind:14` inner rumor); repo relay refuses `kind:1060` storage; full five-message ratchet transcript with two DH ratchet steps, generated with the pinned upstream wire library | coverage authored |
-| `config-backup/` (per §3.8.6-§3.8.8, §6.10.4) | §6.10.4 `key_id` hash derivation + `enc/<key_id>` branch; config-repo blob encrypt/decrypt under the config audience key (`post_key`); rotation ref-set delta (old branch deleted); NIP-49 nsec wrap round-trip; config-RID-unadvertised surface scan (clean + leaked-and-rejected) | coverage authored |
-| `moderation/` | NIP-72 approval flow; multi-mod requirement; moderator rotation; redaction; contributor implicit-rejection window (per ADR-014); Radicle editorial-gating mode (per ADR-027); `kind:34550` moderator declaration with `approvals_required` tag (present + absent-means-1); repo-anchored as-of resolution (approval before removal counts, after removal rejected); relay-only `created_at` fallback flagged reduced-assurance (§8.1/§8.2.1) | coverage authored |
-| `relay-interop/` (per ADR-013) | NIP-42 AUTH challenge and response signed by current epoch key (not cold root); AUTH rejection classified as permanent per ADR-010; KERI rotation produces AUTH events under new epoch key | coverage authored |
-| `transport/` (per ADR-019) | `.onion` relay/homeserver reachability via embedded Tor; no clearnet DNS leak; browser/WASM bridge behavior; egress-over-Tor off by default with active-state indicator | coverage authored |
-| `interop/` | wrapped event round-tripped through a vanilla Nostr relay; bare event hide preference; vanilla-Nostr-only follow; `kind:31005` npub->RID identity pointer | coverage authored |
-| `versioning/` | older receiver vs newer sender; capabilities event roundtrip; cross-major placeholder; unknown room-kind tolerance per ADR-016 | coverage authored |
-
-OPTIONAL-Matrix categories (Matrix-shaped; a Matrix-free client MAY skip):
-
-| Topic | Coverage | Status |
-|---|---|---|
-| `bridge/` (per ADR-010, OPTIONAL Matrix) | asymmetric cross-backend delivery between Nostr and the OPTIONAL Matrix layer: Nostr permanent failure (index NOT updated); Matrix permanent failure (index updated; Matrix-out-of-sync warning); idempotent re-publication via Nostr event id reuse | coverage authored |
-| `index/` (per ADR-005, ADR-006, OPTIONAL Matrix) | Matrix-era room-key wrap derivation (HKDF from Matrix room secret); room-key wrap encryption (NIP-44 v2); `prev_page_hash`; complete-fetch-attempt. CORE audience-key coverage lives in `privacy-tiers/` | coverage authored |
-| `room-kind/` (per ADR-017, OPTIONAL Matrix) | current Matrix room kinds; retired-kind rejection/read-back mapping | coverage authored |
-| `broadcast/` (per ADR-017, OPTIONAL Matrix) | Matrix-hosted-audience room-key-wrapped post; decrypt-by-member; non-member-cannot-decrypt; reaction/reply not indexed; NIP-59 rejection | coverage authored |
-| `config_room/` (OPTIONAL Matrix) | minimal config room; persona_config with private mutes; key_backup wrapping algorithms; cross-MXID sync with device_inventory left room-local | coverage authored |
-| `multi-homing/` (per ADR-009, OPTIONAL Matrix) | active-room election; publish-lease acquisition/renewal; single-MXID revocation; OPTIONAL Matrix corroboration of the `kind:31005` tiebreaker via KERI witness counts; partition-window void-and-requeue | coverage authored |
-| `encryption/` (OPTIONAL Matrix) | encryption_version event; delegation-revocation triggering rotation (SHOULD path) | coverage authored |
-| `encryption/mls-migration/` (per ADR-012, OPTIONAL) | SKIPPABLE with rationale. Eligibility check; intent and ACK; abort on missing ACKs; receiver-verifiable flip; 60s tail period; offline-reconnect re-encryption; non-MLS receiver fallback | coverage authored |
-| `homeserver-exit/` (per ADR-015, OPTIONAL Matrix) | Skippable for read-only/Matrix-free clients. Identity-room migration; migration-pointer precedence over stale `kind:31005`; KERI rotation during exit window dual-publishes | coverage authored |
-| `moderation/strict-mode/` (per ADR-007) | Strict-mode only. Invalid-broadcast-signature rejection; bare discussion message not hidden; `kind:5` deletion observed within 30s; state-downgrade warning rendering | coverage authored |
-| `transport/strict-mode/` (per ADR-019 / ADR-007) | Strict-mode egress-over-Tor default-on unless explicitly disabled | coverage authored |
-| `redundancy/` (per ADR-020, optional) | mirror group; promotion; dedupe across replicas | coverage authored |
-| `social-recovery/` (per ADR-021, optional) | follower caching; cold-root `kind:31005` re-anchor; stale/cache-sourced markings | coverage authored |
-| `relay-profile/` (per ADR-022, optional) | Heterodyne-aware relay advertisement; KEL-aware reputation; passive witness-receipt store | coverage authored |
-
-Protocol conformance is defined by the normative spec; vector-conformance is
-claimable only for authored vector files or categories. Once the baseline
-minimum set exists, any client implementation claiming full baseline
-vector-conformance MUST run every baseline vector (see §14.3 / ADR-011)
-through its CI pipeline.
-
-## Conformance levels
-
-Per ADR-011, split by ADR-029:
-
-- **CORE baseline vector-conformance** (every conformant client, including
-  Matrix-free clients) requires passing every authored vector in the CORE
-  categories listed above (`identity/` including the CORE Matrix-free
-  `kind:31005` tiebreaker §3.9.8, `keri/`, `envelope/`, `verification/`,
-  `outbox/`, `repo-relay/`, `routing-node/`, `node-advert/`, `light-node/`,
-  `nid-binding/`, `identity-doc/`, `org/`, `privacy-tiers/`, `lists/`,
-  `config-backup/`, `relay-interop/`,
-  `transport/` excluding `strict-mode/`, `moderation/` excluding
-  `strict-mode/`, `interop/`, `versioning/`; plus `dm/` for any client that
-  offers direct messaging, §5.7). A Matrix-free client passing the
-  CORE set is **fully conformant** (ADR-029).
-- **OPTIONAL-Matrix baseline** additionally requires `bridge/`, `index/`,
-  `room-kind/`, `config_room/`, `multi-homing/`, `broadcast/`, `encryption/`
-  excluding `mls-migration/`, and `homeserver-exit/`. A Matrix-free client MAY
-  skip these with the rationale "Matrix layer not implemented (SHOULD-level,
-  ADR-029)".
-- **Strict-mode vector-conformance** additionally requires every vector in
-  `moderation/strict-mode/` and `transport/strict-mode/` (per ADR-007 /
-  ADR-019).
-- **OPTIONAL skippable categories** are `encryption/mls-migration/` (clients
-  without MLS support) and `homeserver-exit/` (read-only or Matrix-free
-  clients). `redundancy/`, `social-recovery/`, and `relay-profile/` are
-  optional opt-in features and are NOT part of the baseline minimum set.
-
-Implementations that skip mandatory authored vectors MUST NOT claim baseline
-vector-conformance; they MAY claim partial or experimental vector-conformance
-with a documented gap list.
+Matrix vectors begin at the adapter boundary after the Matrix SDK has handled
+federation and E2EE. They cover Social's Heterodyne-visible payload and policy
+semantics, not Matrix server authorization or Megolm internals.
 
 ## Generator
 
-[`generator/`](generator/) contains non-normative TypeScript tooling used to
-author and verify this corpus. The committed JSON files are the normative
-artifact; implementations do not need the generator, TypeScript, Node.js,
-`nostr-tools`, or `@noble/*` to claim conformance.
+[`generator/`](generator/) is non-normative TypeScript authoring and
+verification tooling. The committed JSON vectors are the normative artifacts.
 
-## Vector format note
+From the repository root:
 
-The "successor chain" planned category from earlier drafts has been removed:
-the v0.1.4 single-key successor-chain mechanism was deprecated in v0.2.0
-(§3.5.4) and replaced by inline KERI per ADR-003. The KERI categories above
-(`keri/`) cover the replacement protocol.
+```bash
+npm --prefix docs/spec/vectors/generator run author
+npm --prefix docs/spec/vectors/generator run coverage
+npm --prefix docs/spec/vectors/generator run check
+```
+
+Running `author` also regenerates `fixtures.json`, the vector JSON schema, and
+the compatibility reason-code projections from their authoritative sources.
+Running `coverage` then regenerates the manifest and all Markdown views.

@@ -1,22 +1,25 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "privacy-tiers/tier1-public-plaintext-both-backends",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§5.2.1",
-    "§6.7.1",
-    "§6.7.3",
-    "§9.0",
-    "§14.3"
+    "heterodyne:comms/0.5.0#comms-privacy-tiers"
   ],
+  "vector_id": "privacy-tiers/tier1-public-plaintext-both-backends",
   "description": "Tier 1 (public repo) kind:31007 feed index is plaintext (content empty, e tags in the clear) and published to both core backends.",
   "input": {
     "fixture_persona": "alice",
     "signer": "epoch_1",
     "rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
+    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",
+    "vector_context": {
+      "notes": "Trust boundary: confidential against no one. The same event is published to the persona's Nostr write relays and its repo relay."
+    }
   },
-  "notes": "Trust boundary: confidential against no one. The same event is published to the persona's Nostr write relays and its repo relay.",
   "expected_output": {
     "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225680,31007,[[\"d\",\"tech:2026-q2\"],[\"heterodyne\",\"feed_index\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"rid\",\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1\"],[\"feed_label\",\"Tech\"],[\"e\",\"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",\"wss://relay.example\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"\"]",
     "decoded": {

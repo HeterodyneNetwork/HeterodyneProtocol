@@ -1,11 +1,16 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "multi-homing/single-mxid-revocation",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§3.9",
-    "§14.3"
+    "heterodyne:social/0.5.0#social-active-room-election"
   ],
+  "vector_id": "multi-homing/single-mxid-revocation",
   "description": "Revoking one MXID removes only that MXID from the multi-homed persona set.",
   "input": {
     "revoked_mxid": "@alice-old:example.org",

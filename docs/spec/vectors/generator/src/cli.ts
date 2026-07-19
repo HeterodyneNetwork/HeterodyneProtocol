@@ -10,6 +10,7 @@ import {
 import type { DocumentId } from "./types.js";
 import { lintFamilyDocs } from "./docs-lint.js";
 import { verifyVectorTree } from "./verify.js";
+import { writeCoverage } from "./coverage.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultVectorRoot = resolve(here, "..", "..");
@@ -47,9 +48,12 @@ if (command === "author") {
   } else {
     console.log("validated protocol document family");
   }
+} else if (command === "coverage") {
+  await writeCoverage(root);
+  console.log(`generated vector coverage under ${resolve(root, "coverage")}`);
 } else {
   console.error(
-    "usage: tsx src/cli.ts <author|verify|family-check> [root]",
+    "usage: tsx src/cli.ts <author|verify|family-check|coverage> [root]",
   );
   process.exitCode = 2;
 }

@@ -1,11 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "config-backup/nip49-nsec-wrap",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§3.8.7",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-keys-repository"
   ],
+  "vector_id": "config-backup/nip49-nsec-wrap",
   "description": "The keys repository stores the persona's nsec wrapped per NIP-49 (scrypt N=2^16, r=8, p=1; XChaCha20-Poly1305; key-security-byte 2). The resulting ncryptsec round-trips through nostr-tools nip49.decrypt.",
   "input": {
     "fixture_persona": "alice",
@@ -14,7 +16,10 @@
     "scrypt_logn": 16,
     "scrypt_salt": "70707070707070707070707070707070",
     "xchacha_nonce": "717171717171717171717171717171717171717171717171",
-    "key_security_byte": 2
+    "key_security_byte": 2,
+    "vector_context": {
+      "notes": "NIP-49 draws the 16-byte salt and 24-byte nonce randomly; here both are pinned fixture bytes for reproducibility (never random). The nsec (alice's well-known test cold root) and password are test fixtures only. Round-trip is asserted in crypto-kat.test.ts via nostr-tools nip49.decrypt."
+    }
   },
   "expected_output": {
     "canonical_wire": "ncryptsec1qgg8qurswpc8qurswpc8qurswpc8qut3w9chzut3w9chzut3w9chzut3w9chzut3w9cs94qllsm00wthedvhuku2xh0pfjz0tcjf0uzk6mdua4e2xudvvv9qjp7kap0fpqna98ryem09whn3fgct46w0",
@@ -33,6 +38,5 @@
       "ncryptsec": "ncryptsec1qgg8qurswpc8qurswpc8qurswpc8qut3w9chzut3w9chzut3w9chzut3w9chzut3w9cs94qllsm00wthedvhuku2xh0pfjz0tcjf0uzk6mdua4e2xudvvv9qjp7kap0fpqna98ryem09whn3fgct46w0"
     }
   },
-  "notes": "NIP-49 draws the 16-byte salt and 24-byte nonce randomly; here both are pinned fixture bytes for reproducibility (never random). The nsec (alice's well-known test cold root) and password are test fixtures only. Round-trip is asserted in crypto-kat.test.ts via nostr-tools nip49.decrypt.",
   "direction": "produce"
 }

@@ -1,0 +1,27 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-registry"
+  ],
+  "vector_id": "registry/frozen-entry-immutable",
+  "description": "A frozen registry entry cannot be removed or semantically reassigned in a later revision.",
+  "direction": "round-trip",
+  "input": {
+    "previous": {
+      "status": "frozen",
+      "owner": "core"
+    },
+    "current": {
+      "status": "frozen",
+      "owner": "comms"
+    }
+  },
+  "expected_output": {
+    "valid": false,
+    "error": "frozen_entry_changed"
+  }
+}

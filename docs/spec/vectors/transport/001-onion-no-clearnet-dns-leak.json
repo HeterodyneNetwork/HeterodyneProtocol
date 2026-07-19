@@ -1,11 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "transport/onion-no-clearnet-dns-leak",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§7.7",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-tor-reachability"
   ],
+  "vector_id": "transport/onion-no-clearnet-dns-leak",
   "description": ".onion relay discovery must not send the host to a clearnet resolver.",
   "input": {
     "target": "wss://examplehiddenservice.onion",
@@ -14,14 +16,16 @@
         "resolver": "system_dns",
         "host": "examplehiddenservice.onion"
       }
-    ]
+    ],
+    "vector_context": {
+      "transport_context": {
+        "adapter_boundary": "matrix_to_protocol"
+      }
+    }
   },
   "expected_output": {
     "verdict": "reject",
     "reason_code": "onion_dns_leak"
-  },
-  "transport_context": {
-    "adapter_boundary": "matrix_to_protocol"
   },
   "direction": "consume"
 }

@@ -1,12 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "keri-authority/kel-head-malformed-rejected",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§3.0",
-    "§4.5.1",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-kel-verification"
   ],
+  "vector_id": "keri-authority/kel-head-malformed-rejected",
   "description": "An epoch-key-signed post whose single kel_head tag carries a non-hex id (not 64 lowercase-hex) fails verification.",
   "input": {
     "event": {
@@ -28,16 +29,18 @@
       "id": "bf84e9f4517723c701861e38b1673bdb1ecf1c985cae285f9984e4d0423a784d",
       "sig": "bd79e4faf58f3d892cae2f826781e989e3991615409a46f1809618f416e93ce30c6750a58518c96eb314e9730dbaa3b7c620f0967c2babf32b446ec45afa11ee"
     },
-    "malformed_field": "id"
+    "malformed_field": "id",
+    "vector_context": {
+      "decision_trace": [
+        "verify_bip340_signature",
+        "parse_kel_head",
+        "reject_malformed_id"
+      ]
+    }
   },
   "expected_output": {
     "verdict": "reject",
     "reason_code": "kel_head_missing"
   },
-  "decision_trace": [
-    "verify_bip340_signature",
-    "parse_kel_head",
-    "reject_malformed_id"
-  ],
   "direction": "consume"
 }

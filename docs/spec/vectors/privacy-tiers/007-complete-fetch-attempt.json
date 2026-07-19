@@ -1,12 +1,15 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "privacy-tiers/complete-fetch-attempt",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§6.7.2",
-    "§6.9.1",
-    "§14.3"
+    "heterodyne:comms/0.5.0#comms-privacy-tiers"
   ],
+  "vector_id": "privacy-tiers/complete-fetch-attempt",
   "description": "A complete fetch attempt queries the full configured relay set and repo-relay set before declaring a Tier 3 page missing.",
   "input": {
     "relay_set": [

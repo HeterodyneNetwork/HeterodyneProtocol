@@ -1,12 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "identity/kind31005-race-tiebreaker-core",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§3.9.8",
-    "§11.3",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-nid-delegation"
   ],
+  "vector_id": "identity/kind31005-race-tiebreaker-core",
   "description": "CORE Matrix-free kind:31005 tiebreaker: discard invalid cold-root sig, prefer KEL-consistent, then highest created_at, then lex-min id, with no Matrix input.",
   "input": {
     "npub": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
@@ -33,7 +34,15 @@
         "kel_consistent": false
       }
     ],
-    "matrix_input": null
+    "matrix_input": null,
+    "vector_context": {
+      "decision_trace": [
+        "discard_invalid_cold_root_sig",
+        "prefer_kel_consistent",
+        "higher_created_at",
+        "lex_min_id"
+      ]
+    }
   },
   "expected_output": {
     "verdict": "accept",
@@ -44,11 +53,5 @@
       "tiebreaker_step": "higher_created_at"
     }
   },
-  "decision_trace": [
-    "discard_invalid_cold_root_sig",
-    "prefer_kel_consistent",
-    "higher_created_at",
-    "lex_min_id"
-  ],
   "direction": "consume"
 }

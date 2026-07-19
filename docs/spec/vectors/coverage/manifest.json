@@ -1,0 +1,2520 @@
+[
+  {
+    "vector_id": "acceptance-gating/authentication-before-policy",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-acceptance-hook"
+    ]
+  },
+  {
+    "vector_id": "acceptance-gating/message-request-no-receipt",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-acceptance-hook"
+    ]
+  },
+  {
+    "vector_id": "acceptance-gating/social-mute-tightens",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-admission-policy"
+    ]
+  },
+  {
+    "vector_id": "acceptance-gating/social-policy-cannot-loosen",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-admission-policy"
+    ]
+  },
+  {
+    "vector_id": "bridge/idempotent-republication",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-headless-bridge"
+    ]
+  },
+  {
+    "vector_id": "bridge/matrix-permanent-failure-index-updated",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-headless-bridge"
+    ]
+  },
+  {
+    "vector_id": "bridge/nostr-permanent-failure-index-not-updated",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-headless-bridge"
+    ]
+  },
+  {
+    "vector_id": "broadcast/member-decrypts",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-envelopes"
+    ]
+  },
+  {
+    "vector_id": "broadcast/nip59-rejected",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-envelopes"
+    ]
+  },
+  {
+    "vector_id": "broadcast/non-member-cannot-decrypt",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-envelopes"
+    ]
+  },
+  {
+    "vector_id": "broadcast/private-broadcast-wrapped",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-envelopes"
+    ]
+  },
+  {
+    "vector_id": "broadcast/reaction-reply-bare-not-indexed",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-envelopes"
+    ]
+  },
+  {
+    "vector_id": "comms-envelope/nostr-native-event-valid",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-envelope"
+    ]
+  },
+  {
+    "vector_id": "comms-envelope/owner-stamp-valid",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-envelope"
+    ]
+  },
+  {
+    "vector_id": "config-backup/config-blob-encrypt-decrypt",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-config-repository"
+    ]
+  },
+  {
+    "vector_id": "config-backup/config-rid-advertised-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-keys-repository"
+    ]
+  },
+  {
+    "vector_id": "config-backup/config-rid-unadvertised-clean",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-keys-repository"
+    ]
+  },
+  {
+    "vector_id": "config-backup/key-id-derivation",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-config-repository"
+    ]
+  },
+  {
+    "vector_id": "config-backup/key-rotation-ref-delta",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-config-repository"
+    ]
+  },
+  {
+    "vector_id": "config-backup/nip49-nsec-wrap",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-keys-repository"
+    ]
+  },
+  {
+    "vector_id": "config_room/device-inventory-not-synced",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-config-room"
+    ]
+  },
+  {
+    "vector_id": "config_room/key-backup-wrapping-algorithms",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-config-room"
+    ]
+  },
+  {
+    "vector_id": "config_room/minimal-config-room",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-config-room"
+    ]
+  },
+  {
+    "vector_id": "config_room/private-mutes",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-config-room"
+    ]
+  },
+  {
+    "vector_id": "core-redundancy/radicle-multihost-replication",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-multi-host-seeding"
+    ]
+  },
+  {
+    "vector_id": "core-redundancy/stale-seed-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-multi-host-seeding"
+    ]
+  },
+  {
+    "vector_id": "dm/double-ratchet-transcript",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-direct-messages"
+    ]
+  },
+  {
+    "vector_id": "dm/invite-delegated-device-valid",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-direct-messages"
+    ]
+  },
+  {
+    "vector_id": "dm/invite-revoked-device-rejected",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-direct-messages"
+    ]
+  },
+  {
+    "vector_id": "dm/invite-unbound-device-rejected",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-direct-messages"
+    ]
+  },
+  {
+    "vector_id": "dm/kind1060-outer-message-shape",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-direct-messages"
+    ]
+  },
+  {
+    "vector_id": "dm/repo-relay-refuses-kind1060",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-direct-messages"
+    ]
+  },
+  {
+    "vector_id": "encryption/delegation-revocation-rotation",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-encryption"
+    ]
+  },
+  {
+    "vector_id": "encryption/encryption-version-event",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-encryption"
+    ]
+  },
+  {
+    "vector_id": "encryption/mls-migration-eligibility-check",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-encryption"
+    ]
+  },
+  {
+    "vector_id": "encryption/mls-migration-intent-and-ack",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-encryption"
+    ]
+  },
+  {
+    "vector_id": "encryption/mls-migration-missing-ack-aborts",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-encryption"
+    ]
+  },
+  {
+    "vector_id": "encryption/mls-migration-non-mls-receiver-fallback",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-encryption"
+    ]
+  },
+  {
+    "vector_id": "encryption/mls-migration-offline-reconnect-reencrypt",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-encryption"
+    ]
+  },
+  {
+    "vector_id": "encryption/mls-migration-receiver-verifiable-flip",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-encryption"
+    ]
+  },
+  {
+    "vector_id": "encryption/mls-migration-tail-period-acceptance",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-encryption"
+    ]
+  },
+  {
+    "vector_id": "envelope/bare-dm-signature-badge",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-envelopes"
+    ]
+  },
+  {
+    "vector_id": "envelope/cross-kind-wrapping",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-envelopes"
+    ]
+  },
+  {
+    "vector_id": "envelope/fallback-rendering",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-envelopes"
+    ]
+  },
+  {
+    "vector_id": "envelope/minimal-kind1-wrapped",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-envelopes"
+    ]
+  },
+  {
+    "vector_id": "homeserver-exit/dual-publish-during-exit",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-homeserver-exit"
+    ]
+  },
+  {
+    "vector_id": "homeserver-exit/identity-room-migration",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-homeserver-exit"
+    ]
+  },
+  {
+    "vector_id": "homeserver-exit/migration-pointer-precedence",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-homeserver-exit"
+    ]
+  },
+  {
+    "vector_id": "identity-doc/add-before-remove",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-identity-discovery"
+    ]
+  },
+  {
+    "vector_id": "identity-doc/emergency-reanchor",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-identity-discovery"
+    ]
+  },
+  {
+    "vector_id": "identity-doc/kel-revoked-nid-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-identity-discovery"
+    ]
+  },
+  {
+    "vector_id": "identity/delegation-active",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nid-delegation"
+    ]
+  },
+  {
+    "vector_id": "identity/delegation-expired",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nid-delegation"
+    ]
+  },
+  {
+    "vector_id": "identity/delegation-revoked",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nid-delegation"
+    ]
+  },
+  {
+    "vector_id": "identity/identity-room-full-state",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-identity-room"
+    ]
+  },
+  {
+    "vector_id": "identity/kind31005-race-tiebreaker-core",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nid-delegation"
+    ]
+  },
+  {
+    "vector_id": "identity/revocation-post-window",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nid-delegation"
+    ]
+  },
+  {
+    "vector_id": "identity/root-attestation-valid",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-root-attestation"
+    ]
+  },
+  {
+    "vector_id": "index/complete-fetch-attempt",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-feed-index"
+    ]
+  },
+  {
+    "vector_id": "index/context-binding-mismatch",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-encrypted-state"
+    ]
+  },
+  {
+    "vector_id": "index/prev-page-hash",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-feed-index"
+    ]
+  },
+  {
+    "vector_id": "index/room-key-wrap-encryption",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-encrypted-state"
+    ]
+  },
+  {
+    "vector_id": "interop/bare-hide-pref",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-vanilla-matrix"
+    ]
+  },
+  {
+    "vector_id": "interop/kind31005-identity-pointer",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-identity-pointer"
+    ]
+  },
+  {
+    "vector_id": "interop/vanilla-nostr-only-follow",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-vanilla-matrix"
+    ]
+  },
+  {
+    "vector_id": "interop/wrapped-vanilla-roundtrip",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-vanilla-matrix"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/accelerator-backdated-compromise",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/accelerator-decision-equivalent",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/delegation-conflict-repo-wins",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/dependent-events-unresolved",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/equivocation-flagged",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/export-aid-digest-anchoring",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/export-aid-substituted-for-npub-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/export-degraded-metadata",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/export-incomplete",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/export-origin-absent-not-failure",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/export-unmappable-feature",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/export-unsupported-crypto-suite",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/kel-head-absent-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/kel-head-duplicate-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/kel-head-forbidden-on-breadcrumb",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/kel-head-forbidden-on-dr-wire",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/kel-head-forbidden-on-inception",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/kel-head-forbidden-on-rotation",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/kel-head-malformed-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/kel-head-mandatory-on-delegation",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/kel-head-mandatory-on-epoch-invite",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/kel-head-mandatory-on-root",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/kel-head-seq-mismatch-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/keri10json-cesr-wire-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/materialized-atomic-rebuild",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/materialized-empty-kel-deletion",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/materialized-log-derivation",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/materialized-refs-not-authority",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/materialized-state-derivation",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/provisional-not-hardened-repo-unreachable",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/refresh-failed-not-condition-d",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/repo-head-regression-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/withdrawal-causally-behind-no-withdraw",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri-authority/withdrawal-converged-head",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-verification"
+    ]
+  },
+  {
+    "vector_id": "keri/didkey-witness-no-network",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-primitives"
+    ]
+  },
+  {
+    "vector_id": "keri/first-seen-ordering",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-primitives"
+    ]
+  },
+  {
+    "vector_id": "keri/fork-resolution-conflicting-rotations",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-primitives"
+    ]
+  },
+  {
+    "vector_id": "keri/inception-event",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-primitives"
+    ]
+  },
+  {
+    "vector_id": "keri/informal-vouch-not-counted",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-primitives"
+    ]
+  },
+  {
+    "vector_id": "keri/rotation-committed-strategy",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-primitives"
+    ]
+  },
+  {
+    "vector_id": "keri/rotation-none-witness-threshold",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-primitives"
+    ]
+  },
+  {
+    "vector_id": "light-node/content-not-through-routing-node",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-client-responsibilities"
+    ]
+  },
+  {
+    "vector_id": "light-node/route-around-withholding-host",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-client-responsibilities"
+    ]
+  },
+  {
+    "vector_id": "light-node/verifies-signature-locally",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-client-responsibilities"
+    ]
+  },
+  {
+    "vector_id": "lists/kind-mute-set-addressing",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-lists"
+    ]
+  },
+  {
+    "vector_id": "lists/mute-list-private-items-encrypted-to-self",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-lists"
+    ]
+  },
+  {
+    "vector_id": "lists/mute-list-public-roundtrip",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-lists"
+    ]
+  },
+  {
+    "vector_id": "lists/policy-list-adoption-parsed",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-lists"
+    ]
+  },
+  {
+    "vector_id": "lists/private-items-reencrypt-on-rotation",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-lists"
+    ]
+  },
+  {
+    "vector_id": "lists/stale-list-rollback-rejected",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-lists"
+    ]
+  },
+  {
+    "vector_id": "moderation/approvals-required-absent-default-one",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-moderation"
+    ]
+  },
+  {
+    "vector_id": "moderation/contributor-implicit-rejection-window",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-moderation"
+    ]
+  },
+  {
+    "vector_id": "moderation/kind34550-approvals-required",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-moderation"
+    ]
+  },
+  {
+    "vector_id": "moderation/moderator-rotation-through-kel",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-moderation"
+    ]
+  },
+  {
+    "vector_id": "moderation/multi-mod-requirement",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-moderation"
+    ]
+  },
+  {
+    "vector_id": "moderation/nip72-approval",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-moderation"
+    ]
+  },
+  {
+    "vector_id": "moderation/radicle-editorial-gating",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-moderation"
+    ]
+  },
+  {
+    "vector_id": "moderation/redaction-of-approved-post",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-moderation"
+    ]
+  },
+  {
+    "vector_id": "moderation/relay-only-created-at-fallback",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-moderation"
+    ]
+  },
+  {
+    "vector_id": "moderation/repo-anchor-asof-after-removal-rejected",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-moderation"
+    ]
+  },
+  {
+    "vector_id": "moderation/repo-anchor-asof-before-removal-counts",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-moderation"
+    ]
+  },
+  {
+    "vector_id": "moderation/strict-mode-bare-not-hidden",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-moderation"
+    ]
+  },
+  {
+    "vector_id": "moderation/strict-mode-invalid-broadcast-signature",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-moderation"
+    ]
+  },
+  {
+    "vector_id": "moderation/strict-mode-kind5-deletion-30s",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-moderation"
+    ]
+  },
+  {
+    "vector_id": "moderation/strict-mode-state-downgrade-warning",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-moderation"
+    ]
+  },
+  {
+    "vector_id": "multi-homing/active-room-election",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-active-room-election"
+    ]
+  },
+  {
+    "vector_id": "multi-homing/kind31005-race-tiebreaker",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-active-room-election"
+    ]
+  },
+  {
+    "vector_id": "multi-homing/partition-window-void-requeue",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-active-room-election"
+    ]
+  },
+  {
+    "vector_id": "multi-homing/publish-lease-acquire-renew",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-active-room-election"
+    ]
+  },
+  {
+    "vector_id": "multi-homing/single-mxid-revocation",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-active-room-election"
+    ]
+  },
+  {
+    "vector_id": "nid-binding/bidirectional-valid",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nid-delegation"
+    ]
+  },
+  {
+    "vector_id": "nid-binding/invalid-nid-proof-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nid-delegation"
+    ]
+  },
+  {
+    "vector_id": "nid-binding/missing-nid-proof-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nid-delegation"
+    ]
+  },
+  {
+    "vector_id": "node-advert/expired-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-node-advertisement"
+    ]
+  },
+  {
+    "vector_id": "node-advert/nid-proof-invalid-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-node-advertisement"
+    ]
+  },
+  {
+    "vector_id": "node-advert/outer-sig-invalid-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-node-advertisement"
+    ]
+  },
+  {
+    "vector_id": "node-advert/valid-dual-signed",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-node-advertisement"
+    ]
+  },
+  {
+    "vector_id": "org/canonical-branch-reachability",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-org-authorization"
+    ]
+  },
+  {
+    "vector_id": "org/member-add-dual-authorized",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-threshold-authority"
+    ]
+  },
+  {
+    "vector_id": "org/member-add-single-authorization-insufficient",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-threshold-authority"
+    ]
+  },
+  {
+    "vector_id": "org/threshold-delegate-governance",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-threshold-authority"
+    ]
+  },
+  {
+    "vector_id": "outbox/cross-backend-reply-dedup",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-interactions"
+    ]
+  },
+  {
+    "vector_id": "outbox/cross-persona-attestation-invalid",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-interactions"
+    ]
+  },
+  {
+    "vector_id": "outbox/cross-persona-attestation-valid",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-interactions"
+    ]
+  },
+  {
+    "vector_id": "outbox/full-public-outbox",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-retrieval"
+    ]
+  },
+  {
+    "vector_id": "outbox/scoped-outbox",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-retrieval"
+    ]
+  },
+  {
+    "vector_id": "outbox/transitive-discovery-walk",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-retrieval"
+    ]
+  },
+  {
+    "vector_id": "privacy-tiers/audience-key-rotation-on-removal",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-privacy-tiers"
+    ]
+  },
+  {
+    "vector_id": "privacy-tiers/complete-fetch-attempt",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-privacy-tiers"
+    ]
+  },
+  {
+    "vector_id": "privacy-tiers/non-circular-bootstrap",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-privacy-tiers"
+    ]
+  },
+  {
+    "vector_id": "privacy-tiers/tier1-public-plaintext-both-backends",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-privacy-tiers"
+    ]
+  },
+  {
+    "vector_id": "privacy-tiers/tier2-private-repo-not-encrypted",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-privacy-tiers"
+    ]
+  },
+  {
+    "vector_id": "privacy-tiers/tier3-index-key-derivation-and-encryption",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-privacy-tiers"
+    ]
+  },
+  {
+    "vector_id": "privacy-tiers/tier3-kind31011-audience-key-wrap",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-privacy-tiers"
+    ]
+  },
+  {
+    "vector_id": "privacy-tiers/tier3-kind31012-audience-roster",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-privacy-tiers"
+    ]
+  },
+  {
+    "vector_id": "privacy-tiers/tier3-prev-page-hash-mismatch",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-privacy-tiers"
+    ]
+  },
+  {
+    "vector_id": "privacy-tiers/tier3-prev-page-hash-valid",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-privacy-tiers"
+    ]
+  },
+  {
+    "vector_id": "redundancy/dedupe-across-replicas",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-mirroring"
+    ]
+  },
+  {
+    "vector_id": "redundancy/mirror-group-primary-replicas",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-mirroring"
+    ]
+  },
+  {
+    "vector_id": "redundancy/private-body-relay-borne",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-mirroring"
+    ]
+  },
+  {
+    "vector_id": "redundancy/promotion-republishes-pointer",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-mirroring"
+    ]
+  },
+  {
+    "vector_id": "redundancy/rekey-remove-not-join",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-mirroring"
+    ]
+  },
+  {
+    "vector_id": "registry/downref-nonfrozen-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-registry"
+    ]
+  },
+  {
+    "vector_id": "registry/frozen-entry-immutable",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-registry"
+    ]
+  },
+  {
+    "vector_id": "relay-interop/auth-rejection-permanent",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-publishing"
+    ]
+  },
+  {
+    "vector_id": "relay-interop/keri-rotation-auth-new-key",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-publishing"
+    ]
+  },
+  {
+    "vector_id": "relay-interop/nip42-auth-current-epoch-key",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-publishing"
+    ]
+  },
+  {
+    "vector_id": "relay-profile/kel-aware-reputation-continuity",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nostr-relay-interop"
+    ]
+  },
+  {
+    "vector_id": "relay-profile/nip11-capability-advert",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nostr-relay-interop"
+    ]
+  },
+  {
+    "vector_id": "relay-profile/passive-witness-store-signs-nothing",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nostr-relay-interop"
+    ]
+  },
+  {
+    "vector_id": "relay-profile/vanilla-nip01-unaffected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nostr-relay-interop"
+    ]
+  },
+  {
+    "vector_id": "repo-relay/invalid-signature-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-repo-relay"
+    ]
+  },
+  {
+    "vector_id": "repo-relay/light-node-submit-write-path",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-repo-relay"
+    ]
+  },
+  {
+    "vector_id": "repo-relay/nip01-read-write-roundtrip",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-repo-relay"
+    ]
+  },
+  {
+    "vector_id": "room-kind/current-kinds-roundtrip",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-discussion-rooms"
+    ]
+  },
+  {
+    "vector_id": "room-kind/legacy-read-back-map",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-discussion-rooms"
+    ]
+  },
+  {
+    "vector_id": "room-kind/retired-kind-rejected",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-discussion-rooms"
+    ]
+  },
+  {
+    "vector_id": "routing-node/expired-advert-discarded",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-node-roles"
+    ]
+  },
+  {
+    "vector_id": "routing-node/repo-location-from-ads-only",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-node-roles"
+    ]
+  },
+  {
+    "vector_id": "routing-node/unverifiable-advert-discarded",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-node-roles"
+    ]
+  },
+  {
+    "vector_id": "social-recovery/cache-rejects-unauthorized-content",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-recovery"
+    ]
+  },
+  {
+    "vector_id": "social-recovery/cache-sourced-marked-stale",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-recovery"
+    ]
+  },
+  {
+    "vector_id": "social-recovery/cold-root-reanchor-authoritative",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-recovery"
+    ]
+  },
+  {
+    "vector_id": "social-recovery/retention-30-days",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-recovery-binding"
+    ]
+  },
+  {
+    "vector_id": "social-recovery/three-tier-caching",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-recovery-binding"
+    ]
+  },
+  {
+    "vector_id": "stamping/control-carrier-comms-owner",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "profile": "comms-subprotocol-payload-v1",
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-version-stamps"
+    ]
+  },
+  {
+    "vector_id": "stamping/control-profile-retains-core-owner",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "profile": "heterodyne-control-session-device-v1",
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-version-stamps"
+    ]
+  },
+  {
+    "vector_id": "stamping/dr-outer-unstamped",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "profile": "heterodyne-comms-double-ratchet-message-v1",
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-version-stamps"
+    ]
+  },
+  {
+    "vector_id": "stamping/heterodyne-empty-content-tag-owner",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-version-stamps"
+    ]
+  },
+  {
+    "vector_id": "stamping/heterodyne-json-content-owner",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-version-stamps"
+    ]
+  },
+  {
+    "vector_id": "stamping/legacy-monolith-explicit",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-version-stamps"
+    ]
+  },
+  {
+    "vector_id": "stamping/legacy-monolith-inferred",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-version-stamps"
+    ]
+  },
+  {
+    "vector_id": "stamping/legacy-upstream-not-inferable",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-version-stamps"
+    ]
+  },
+  {
+    "vector_id": "stamping/no-restamp-existing-bytes",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-version-stamps"
+    ]
+  },
+  {
+    "vector_id": "stamping/non-stamping-profile-unchanged",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "profile": "heterodyne-core-rotation-breadcrumb-profile-v1",
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-version-stamps"
+    ]
+  },
+  {
+    "vector_id": "stamping/tier3-profile-owner",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "profile": "heterodyne-comms-tier3-wrapped-content-kind-1-v1",
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-version-stamps"
+    ]
+  },
+  {
+    "vector_id": "stamping/upstream-profile-owner",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "profile": "heterodyne-social-mute-list-v1",
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-version-stamps"
+    ]
+  },
+  {
+    "vector_id": "stamping/upstream-unstamped",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-version-stamps"
+    ]
+  },
+  {
+    "vector_id": "transport/egress-tor-off-default-indicator",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-tor-reachability"
+    ]
+  },
+  {
+    "vector_id": "transport/onion-no-clearnet-dns-leak",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-tor-reachability"
+    ]
+  },
+  {
+    "vector_id": "transport/onion-reachable-via-tor",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-tor-reachability"
+    ]
+  },
+  {
+    "vector_id": "transport/strict-mode-egress-tor-default-on",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-tor-reachability"
+    ]
+  },
+  {
+    "vector_id": "transport/wasm-bridge-no-bridge-indicator",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-tor-reachability"
+    ]
+  },
+  {
+    "vector_id": "verification/backdated-event-suspicion-window",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-verification"
+    ]
+  },
+  {
+    "vector_id": "verification/bad-signature-rejects",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-verification"
+    ]
+  },
+  {
+    "vector_id": "verification/delegation-mismatch-rejects",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-verification"
+    ]
+  },
+  {
+    "vector_id": "verification/revoked-key-rejects",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-verification"
+    ]
+  },
+  {
+    "vector_id": "versioning/capabilities-roundtrip",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-versioning"
+    ]
+  },
+  {
+    "vector_id": "versioning/core-capability-bootstrap",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-versioning"
+    ]
+  },
+  {
+    "vector_id": "versioning/older-receiver-newer-sender",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-versioning"
+    ]
+  },
+  {
+    "vector_id": "versioning/per-document-negotiation",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-versioning"
+    ]
+  },
+  {
+    "vector_id": "versioning/qualified-version-unqualified-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-versioning"
+    ]
+  },
+  {
+    "vector_id": "versioning/qualified-version-valid",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-versioning"
+    ]
+  },
+  {
+    "vector_id": "versioning/unknown-asynchronous-stamp-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-versioning"
+    ]
+  },
+  {
+    "vector_id": "versioning/unknown-major-placeholder",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-versioning"
+    ]
+  },
+  {
+    "vector_id": "versioning/unknown-room-kind-tolerance",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-discussion-rooms"
+    ]
+  }
+]
