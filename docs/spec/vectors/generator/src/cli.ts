@@ -1,6 +1,13 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { authorAllVectors } from "./author.js";
+import {
+  assertAllowedDependency,
+  DOCUMENT_DEPENDENCIES,
+  DOCUMENT_VERSIONS,
+  parseQualifiedVersion,
+} from "./family.js";
+import type { DocumentId } from "./types.js";
 import { verifyVectorTree } from "./verify.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -19,7 +26,17 @@ if (command === "author") {
   } else {
     console.log(`verified ${result.validFiles} vectors under ${root}`);
   }
+} else if (command === "family-check") {
+  for (const document of Object.keys(DOCUMENT_VERSIONS) as DocumentId[]) {
+    parseQualifiedVersion(`${document}/${DOCUMENT_VERSIONS[document]}`);
+    for (const dependency of DOCUMENT_DEPENDENCIES[document]) {
+      assertAllowedDependency(document, dependency);
+    }
+  }
+  console.log("validated protocol document family");
 } else {
-  console.error("usage: tsx src/cli.ts <author|verify> [vector-root]");
+  console.error(
+    "usage: tsx src/cli.ts <author|verify|family-check> [vector-root]",
+  );
   process.exitCode = 2;
 }

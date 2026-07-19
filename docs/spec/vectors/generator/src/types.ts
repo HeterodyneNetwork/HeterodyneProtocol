@@ -1,3 +1,7 @@
+export type DocumentId = "core" | "comms" | "control" | "social";
+
+export type QualifiedVersion = { document: DocumentId; semver: string };
+
 export type VectorDirection = "produce" | "consume" | "round-trip";
 
 export type Vector = {
