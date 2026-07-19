@@ -8,6 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { lintFamilyDocs } from "./docs-lint.js";
 
@@ -15,6 +16,58 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(here, "../../../../../");
 const corePath = resolve(repositoryRoot, "docs/spec/heterodyne-core.md");
 const commsPath = resolve(repositoryRoot, "docs/spec/heterodyne-comms.md");
+
+type CredentialRecordProbe = {
+  authorizationId: string;
+  targetNid: string;
+  action: "grant" | "revoke";
+  issuedAt: number;
+  validUntil: number;
+};
+
+function resolveCredentialProbe(
+  records: readonly CredentialRecordProbe[],
+  now: number,
+): "grant" | "revoke" | "inactive" {
+  if (records.some((record) => record.action === "revoke")) return "revoke";
+  const activeGrants = records
+    .filter(
+      (record) =>
+        record.action === "grant" &&
+        record.validUntil > record.issuedAt &&
+        record.validUntil > now,
+    )
+    .sort((left, right) => right.issuedAt - left.issuedAt);
+  return activeGrants.length > 0 ? "grant" : "inactive";
+}
+
+function ledgerDigestProbe(entries: readonly string[]): string {
+  return createHash("sha256")
+    .update(JSON.stringify([...entries].sort()), "utf8")
+    .digest("hex");
+}
+
+function rotationPreservesTombstonesProbe(
+  predecessor: readonly string[],
+  successor: readonly string[],
+  claimedPredecessorDigest: string,
+): boolean {
+  if (ledgerDigestProbe(predecessor) !== claimedPredecessorDigest) return false;
+  const successorSet = new Set(successor);
+  return predecessor
+    .filter((entry) => entry.endsWith(":revoke"))
+    .every((entry) => successorSet.has(entry));
+}
+
+function negotiationAllowsPayloadProbe(
+  processed: ReadonlySet<"offer" | "selection" | "confirmation">,
+): boolean {
+  return (
+    processed.has("offer") &&
+    processed.has("selection") &&
+    processed.has("confirmation")
+  );
+}
 
 function withFamilyDocs(
   documents: Partial<Record<"core" | "comms" | "control" | "social", string>>,
@@ -315,6 +368,111 @@ describe("protocol family documents", () => {
     );
     expect(text).toContain("retrieval_hints");
     expect(text).toContain("feed_label");
+  });
+
+  it("makes credential revocation an absorbing permanent tombstone", () => {
+    const text = readFileSync(commsPath, "utf8");
+    const records: CredentialRecordProbe[] = [
+      {
+        authorizationId: "00".repeat(16),
+        targetNid: "did:key:zTarget",
+        action: "grant",
+        issuedAt: 10,
+        validUntil: 20,
+      },
+      {
+        authorizationId: "00".repeat(16),
+        targetNid: "did:key:zTarget",
+        action: "revoke",
+        issuedAt: 15,
+        validUntil: 0,
+      },
+      {
+        authorizationId: "00".repeat(16),
+        targetNid: "did:key:zTarget",
+        action: "grant",
+        issuedAt: 30,
+        validUntil: 100,
+      },
+    ];
+
+    expect(resolveCredentialProbe(records, 40)).toBe("revoke");
+    expect(text).toMatch(/revoke[\s\S]*`valid_until`[\s\S]*`0`[\s\S]*permanent/i);
+    expect(text).toMatch(/tombstone[\s\S]*MUST NOT expire/i);
+    expect(text).toMatch(/later[\s\S]*grant[\s\S]*MUST NOT[\s\S]*resurrect/i);
+  });
+
+  it("requires digest-continuous atomic ledger migration", () => {
+    const text = readFileSync(commsPath, "utf8");
+    const predecessor = ["a:nid:grant", "b:nid:revoke"];
+    const digest = ledgerDigestProbe(predecessor);
+
+    expect(
+      rotationPreservesTombstonesProbe(
+        predecessor,
+        ["a:nid:grant"],
+        digest,
+      ),
+    ).toBe(false);
+    expect(
+      rotationPreservesTombstonesProbe(
+        predecessor,
+        predecessor,
+        "00".repeat(32),
+      ),
+    ).toBe(false);
+    expect(text).toContain("predecessor_ledger_digest");
+    expect(text).toMatch(/complete resolved\s+authorization state/i);
+    expect(text).toMatch(/Before a config[\s\S]*rotation retires/i);
+    expect(text).toMatch(/new branch MUST atomically commit/i);
+    expect(text).toMatch(/refuse[\s\S]*credential transfer/i);
+  });
+
+  it("keeps tier publication and encrypted retrieval hints coherent", () => {
+    const text = readFileSync(commsPath, "utf8");
+    const intro = text.slice(
+      text.indexOf('<a id="comms-feed-index">'),
+      text.indexOf('<a id="comms-org-authorization">'),
+    );
+
+    expect(intro).not.toMatch(/published to ordinary relays and its repo relay/);
+    expect(text).toMatch(/Tier 3 index[\s\S]*MUST[\s\S]*ordinary relays[\s\S]*repo relay/i);
+    expect(text).toContain("max(3, ceil(len(known_relays) * 0.5))");
+    expect(text).toMatch(
+      /decrypted payload[\s\S]*optional `retrieval_hints`/i,
+    );
+    expect(text).toMatch(
+      /Relay-visible tags MUST NOT[\s\S]*`retrieval_hints`/i,
+    );
+  });
+
+  it("requires mutual negotiation confirmation before payload", () => {
+    const text = readFileSync(commsPath, "utf8");
+
+    expect(
+      negotiationAllowsPayloadProbe(new Set(["offer", "selection"])),
+    ).toBe(false);
+    expect(
+      negotiationAllowsPayloadProbe(
+        new Set(["offer", "selection", "confirmation"]),
+      ),
+    ).toBe(true);
+    expect(text).toMatch(/initiator[\s\S]*offer[\s\S]*normative preference/i);
+    expect(text).toMatch(/responder[\s\S]*first\s+offered exact version/i);
+    expect(text).toMatch(/selection[\s\S]*confirm[\s\S]*tuple[\s\S]*hash/i);
+    expect(text).toMatch(/MUST NOT accept[\s\S]*`kind:31016`[\s\S]*confirmation/i);
+  });
+
+  it("requires fresh-generation continuation and remembered truncation", () => {
+    const text = readFileSync(commsPath, "utf8");
+
+    expect(text).toMatch(
+      /every subsequent post, index, and descriptor[\s\S]*fresh[\s\S]*`key_id`/i,
+    );
+    expect(text).toMatch(/MUST remember unresolved pages[\s\S]*retry/i);
+    expect(text).toContain(
+      "feed truncated at `<created_at-of-prior-page>` / `<d-tag-of-missing-page>`",
+    );
   });
 
   it("accepts resolved qualified references along the allowed DAG", () => {

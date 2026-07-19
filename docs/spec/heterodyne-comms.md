@@ -140,6 +140,9 @@ supersede the in-audience descriptor. The index and descriptor updates MUST
 complete within 60 seconds. Rotation excludes the removed member from future
 content only; it cannot revoke old ciphertext encrypted under a key the member
 already possessed.
+After that removal, every subsequent post, index, and descriptor MUST use the
+fresh audience generation and its fresh `key_id`; reuse of the retired
+generation for any new object MUST be rejected.
 
 <a id="comms-tier-three-profile"></a>
 ### 3.2 Tier 3 encryption profile
@@ -277,8 +280,8 @@ The destination set contains the persona's configured ordinary write relays
 and the appropriate repo relay. Tier 1 plaintext MUST be published to ordinary
 relays and the public repo relay. Tier 2 plaintext MUST be published only to
 private-repo allowed seeders and MUST NOT be sent to a public relay. Tier 3
-ciphertext MUST be published to its repo relay and MAY also be published to
-the audience's ordinary relays. The feed index follows the same tier-specific
+ciphertext MUST be published to both its configured ordinary relays and its
+repo relay. The feed index follows the same tier-specific
 publication boundary. Scheduling, batching, and retry are implementation
 choices, but partial failure MUST be shown with destination and reason; a
 generic unexplained partial-failure message is insufficient.
@@ -304,8 +307,10 @@ without changing its id.
 
 `kind:31007` is a persona's canonical ordering authority independent of which
 backend served an event. It is an addressable, epoch-key-signed Comms event,
-published to ordinary relays and its repo relay, with an empty `content` and a
-`["spec_version","comms/0.5.0"]` tag.
+with an empty `content` and a `["spec_version","comms/0.5.0"]` tag.
+Publication is tier-qualified by §5.3: there is no common destination set for
+all indexes. The example below is the plaintext metadata form used within the
+Tier 1 or Tier 2 trust boundary.
 
 ```json
 {
@@ -366,9 +371,12 @@ with `page_chain_broken` and a visible feed-integrity error. A legacy missing
 hash MAY be rendered only with an unverifiable-chain warning.
 
 After a complete fetch attempt cannot resolve a prior page, the client MUST
-show where history was truncated, continue from the newest resolvable page,
-and MUST NOT call the result complete. Equal `(pubkey, kind, d, created_at)`
-conflicts select the lexicographically smallest event id.
+surface exactly "feed truncated at `<created_at-of-prior-page>` / `<d-tag-of-missing-page>`",
+continue from the newest resolvable page, and MUST NOT call the result
+complete. It MUST remember unresolved pages across fetch attempts and retry
+when a new relay becomes reachable or the user revisits the feed. Equal
+`(pubkey, kind, d, created_at)` conflicts select the lexicographically
+smallest event id.
 
 <a id="comms-private-index"></a>
 ### 5.3 Tier-specific indexes and descriptors
@@ -378,22 +386,27 @@ conflicts select the lexicographically smallest event id.
 Tier 1 indexes are plaintext and MUST be published to ordinary relays and the
 public repo relay. Tier 2 indexes are plaintext only on private-repo allowed
 seeders and MUST NOT be published to a public relay. A Tier 3 index MUST
-encrypt its closed payload with `index_key` and is published as ciphertext to
-its repo relay and, where configured, its audience's ordinary relays.
+encrypt its closed payload with `index_key` and MUST be published as
+ciphertext to both its configured ordinary relays and its repo relay.
 Clear tags are limited to opaque `d`, `heterodyne=feed_index`, `cold_root`,
 `heterodyne_wrap=room_key.v2`, `key_id`, `kel_head`, and the Comms version
-tag. RID, entries, hints, and previous-page data MUST be inside ciphertext.
+tag. Relay-visible tags MUST NOT contain `retrieval_hints`, RID, entries,
+hints, or previous-page data; all of them MUST be inside ciphertext.
 
 The Tier 3 outer `d` MUST be opaque and generated from at least 128 bits of
 randomness or from a keyed digest whose secret input is known only to the
 audience. It MUST NOT contain a literal RID, room identifier, feed label, or
 semantic page name.
 
-The decrypted payload contains `spec_version`, `rid`, `page_id`, optional
-`feed_label`, ordered `entries[{event_id,relay_hint}]`, and optional
-`previous_index{event_id,prev_page_hash}`. A receiver MUST select and derive
-the matching `index_key`, decrypt, require the expected RID, verify signature
-and KEL authority, then traverse the decrypted chain.
+The closed decrypted payload contains, in order, `spec_version`, `rid`,
+`page_id`, optional `feed_label`, optional `retrieval_hints`, ordered
+`entries[{event_id,relay_hint}]`, and optional
+`previous_index{event_id,prev_page_hash}`. `retrieval_hints`, when present,
+MUST be an object with exactly one string `archive_url` member. Missing,
+duplicate, unknown, misordered, or wrongly typed members MUST be rejected. A
+receiver MUST select and derive the matching `index_key`, decrypt, require the
+expected RID, verify signature and KEL authority, then traverse the decrypted
+chain.
 
 Every audience-scoped feed MUST publish an in-audience descriptor. Tier 2
 carries it in the private repository; Tier 3 carries an epoch-key-authenticated
@@ -413,7 +426,8 @@ persona's NIP-65 write and read relays, and eligible repo relays. For this
 calculation, `known_relays` is exactly the set union of the persona's current
 NIP-65 `read` and `write` relays and all relay hints accompanying the feed
 entry or page, after URL normalization and deduplication. A complete fetch
-attempt queries `max(3, ceil(known_relays * 0.5))`, uses a default
+attempt queries `max(3, ceil(len(known_relays) * 0.5))` relays, subject to the
+available set (when fewer are known, it queries every known relay), uses a default
 10-second timeout, makes at most three retries (1/4/16 seconds RECOMMENDED),
 and orders hints, write relays, then read relays. Clients MUST refresh changed
 `kind:10002` relay lists before declaring the attempt complete.
@@ -581,31 +595,45 @@ The authorization record is canonical compact JSON:
 ```json
 {
   "type": "heterodyne.credential-sync.authorization.v1",
-  "authorization_id": "<128-bit-or-greater random id>",
-  "persona": "<cold-root npub hex>",
-  "target_nid": "<did:key NID>",
+  "authorization_id": "<32 lowercase hex characters>",
+  "persona": "<64 lowercase hex cold-root npub>",
+  "target_nid": "<canonical Ed25519 did:key NID>",
   "purpose": "credential-sync",
   "issued_at": 0,
   "valid_until": 9999999999,
   "kel_head": {"event_id": "<KEL event id>", "seq": 0},
   "action": "grant",
-  "signature": "<BIP-340 signature by the authoritative epoch key>"
+  "signature": "<128 lowercase hex BIP-340 signature>"
 }
 ```
 
 The signature covers SHA-256 of the UTF-8 bytes
 `heterodyne-credential-sync-authorization-v1|` followed by compact JSON of
-all members except `signature` in the displayed member order. A verifier MUST
-require the exact type and
-purpose, target its own NID, require a unique authorization id, validate the
-epoch signature and epoch authority at `issued_at`, validate `kel_head`,
-require the target's active NID-bearing delegation, and require `valid_until`
-to be later than the evaluation time. Unknown or duplicate members MUST be
-rejected.
+all members except `signature` in the displayed member order. The top-level
+member sequence is closed and exactly the displayed sequence. Encodings are:
 
-Revocation is the same signed object with the same `authorization_id`, target,
-persona, and purpose, a later `issued_at`, `action:"revoke"`, and a current
-`kel_head`. Revoking or expiring the underlying Core delegation is an
+- `type` and `purpose` are the displayed literals;
+- `authorization_id` is exactly 16 random bytes encoded as 32 lowercase hex;
+- `persona` is exactly 32 bytes encoded as 64 lowercase hex;
+- `target_nid` is the canonical `did:key` multibase encoding of an Ed25519
+  Radicle NID; decoding and re-encoding MUST reproduce the input byte-for-byte;
+- `issued_at`, `valid_until`, and `kel_head.seq` are JSON-safe nonnegative
+  integers from 0 through 9007199254740991 inclusive;
+- `kel_head` has exactly the ordered members `event_id`, `seq`, where
+  `event_id` is 32 bytes encoded as 64 lowercase hex;
+- `action` is exactly `grant` or `revoke`; and
+- `signature` is exactly 64 bytes encoded as 128 lowercase hex.
+
+A grant MUST have `valid_until > issued_at` and `valid_until` strictly greater
+than the evaluation time. A revoke MUST use `valid_until` equal to `0`, the
+permanent sentinel. A revoke tombstone MUST NOT expire and MUST never be
+discarded because of `valid_until`. A missing, duplicate, unknown, misordered,
+or wrongly typed member at either object level MUST be rejected.
+
+A verifier MUST also require the target to be its own NID, require a unique
+authorization id, validate the epoch signature and epoch authority at
+`issued_at`, validate `kel_head`, and require the target's active NID-bearing
+delegation. Revoking or expiring the underlying Core delegation is an
 independent immediate revocation even before ledger convergence.
 
 **Durable authority.** The authoritative authorization ledger is a
@@ -625,12 +653,44 @@ unresolved candidate canonical heads, or any configured node is unreachable,
 authoritative current state cannot be established and credential sync is held.
 
 For each key, discard records whose signature, KEL state, persona, purpose,
-target, schema, or validity interval fails. Of the remaining records, greatest
-`issued_at` wins; revoke wins an exact-time tie; if same-time same-action
-records differ, the record with the lexicographically smallest SHA-256 digest
-of its signed bytes wins. Reusing one `authorization_id` with another target
-NID invalidates all records for that id. These rules are deterministic across
-multi-writer config-repository merges.
+target, schema, or action-specific validity rule fails. If any valid revoke
+exists, the resolved state is permanently revoked: the newest revoke is the
+representative record, and a digest tie selects the lexicographically smallest
+SHA-256 digest of signed bytes. A revoke wins every exact-time tie and every
+cross-time conflict with a grant. A later or replayed grant with that
+authorization id MUST NOT resurrect it; reauthorization requires a new random
+authorization id. With no tombstone, the greatest-`issued_at` unexpired grant
+wins, with the same digest tiebreaker. Reusing one `authorization_id` with
+another target NID invalidates all records for that id. These rules are
+deterministic across multi-writer config-repository merges.
+
+**Ledger continuity across config-key rotation.** The canonical resolved
+ledger is a compact JSON array sorted lexicographically by
+(`authorization_id`, `target_nid`). Each entry has exactly the ordered members
+`authorization_id`, `target_nid`, `state`, and `record_digest`; `state` is
+`grant`, `inactive`, or `revoke`, and every revoke tombstone is included.
+
+```text
+predecessor_ledger_digest = lowercase-hex(
+  SHA-256(UTF8(canonical_compact_json(resolved_predecessor_ledger)))
+)
+```
+
+Before a config audience-key / `enc/<key_id>` rotation retires the predecessor
+branch, the new branch MUST atomically commit the complete resolved
+authorization state, including every tombstone, plus metadata containing the
+old `key_id`, `predecessor_ledger_digest`, and the new resolved ledger digest.
+The verifier MUST reconstruct the full predecessor state, verify the digest,
+and verify that the successor equals that predecessor plus only KEL-valid,
+signed authorization changes included in the same atomic commit. No existing
+key or tombstone may disappear. Only after that commit is canonical may one
+signed-ref transition publish the new branch and retire/delete the old branch.
+
+An implementation MUST refuse rotation and credential transfer if the full
+predecessor state, predecessor digest continuity, successor-state equality,
+or atomic publication cannot be established. An old grant replayed after a
+tombstone or branch rotation remains revoked. These rules instantiate Core's
+rollback-detection and atomic-rotation requirements for this profile.
 
 Before any credential transfer, the source MUST sync and verify canonical
 config-repository state from its configured persona full nodes, resolve any
@@ -682,21 +742,76 @@ interpreted. The complete kind `31015` unsigned Nostr rumor form is:
   "created_at": 0,
   "kind": 31015,
   "tags": [["p", "<recipient device publishing key>"]],
-  "content": "{\"spec_version\":\"comms/0.5.0\",\"protocol_type\":\"negotiation\",\"protocol_id\":\"<stable protocol id>\",\"supported_versions\":[\"<qualified or profile version>\"],\"required_features\":[\"<feature id>\"]}"
+  "content": "{\"spec_version\":\"comms/0.5.0\",\"protocol_type\":\"negotiation\",\"phase\":\"offer\",\"negotiation_id\":\"<32 lowercase hex>\",\"protocol_id\":\"<stable protocol id>\",\"supported_versions\":[\"<qualified or profile version>\"],\"required_features\":[\"<feature id>\"]}"
 }
 ```
 
 This is registry profile `comms-subprotocol-negotiation-v1`, discriminator
-`content.protocol_type=negotiation`, evaluated after decoding the string. The
-decoded object MUST have exactly these members in the displayed order and
-types: string `spec_version` equal to `comms/0.5.0`, string `protocol_type`
-equal to `negotiation`, non-empty string `protocol_id`, non-empty array of
-unique non-empty strings `supported_versions`, and array of unique non-empty
-strings `required_features`. Both peers MUST choose one mutually supported
-version and all required features or reject the subprotocol. The chosen
-protocol id, version, required features, session id, peer identity, and
-transcript binding MUST be retained in encrypted local audit records for at
-least as long as any payload decision derived from them.
+`content.protocol_type=negotiation`, evaluated after decoding the string.
+Negotiation is an authenticated initiator/responder exchange over kind `31015`
+with three phases: offer, selection, and confirmation. Every phase uses a
+fresh rumor id, the same 16-byte lowercase-hex `negotiation_id`, and the same
+accepted DR session.
+
+1. **Offer.** The initiator sends the exact decoded member sequence shown in
+   the example: `spec_version`, `protocol_type`, `phase`, `negotiation_id`,
+   `protocol_id`, `supported_versions`, `required_features`. `phase` is
+   `offer`; the arrays contain unique non-empty strings. Initiator offer order
+   is normative preference from most to least preferred version.
+2. **Selection.** The responder validates the offer and selects the first
+   offered exact version it supports while also supporting all
+   `required_features`; it MUST NOT reorder preference, choose an unoffered
+   version, or remove a required feature. Its decoded sequence is exactly
+   `spec_version`, `protocol_type`, `phase`, `negotiation_id`, `protocol_id`,
+   `selected_version`, `required_features`, `offer_hash`, where `phase` is
+   `selection` and `offer_hash` is defined below. No match rejects the
+   negotiation without a selection.
+3. **Initiator confirmation.** The initiator validates the selected exact
+   tuple and hashes, then sends exactly `spec_version`, `protocol_type`,
+   `phase`, `role`, `negotiation_id`, `protocol_id`, `selected_version`,
+   `required_features`, `offer_hash`, `selection_hash`, `tuple_hash`, with
+   `phase=confirmation` and `role=initiator`.
+4. **Responder confirmation.** After processing the initiator confirmation,
+   the responder echoes the same tuple and hashes in that exact schema with
+   `role=responder` and appends `initiator_confirmation_hash`. The initiator
+   processes and validates this responder confirmation.
+
+All phase strings are non-empty UTF-8, `negotiation_id` is 16 bytes encoded as
+32 lowercase hex, every hash is 32 bytes encoded as 64 lowercase hex, and the
+selection/confirmation `required_features` array MUST be byte-identical to the
+offer's canonical array. Missing, duplicate, unknown, misordered, or wrongly
+typed phase members MUST be rejected.
+
+The transcript hashes are lowercase SHA-256 hex:
+
+```text
+offer_hash = H("heterodyne-comms-offer-v1" || session_id || offer_rumor.id)
+selection_hash = H("heterodyne-comms-selection-v1" || offer_hash || selection_rumor.id)
+tuple_hash = H("heterodyne-comms-tuple-v1" || canonical_compact_json(
+  [protocol_id, selected_version, required_features]))
+initiator_confirmation_hash = H("heterodyne-comms-confirmation-v1" ||
+  selection_hash || initiator_confirmation_rumor.id)
+responder_confirmation_hash = H("heterodyne-comms-responder-confirmation-v1" ||
+  initiator_confirmation_hash || responder_confirmation_rumor.id)
+```
+
+`H` is SHA-256. Each hash input uses UTF-8 and the displayed ASCII `||` is
+concatenation, not data. A phase with a wrong role, order, tuple, session,
+prior hash, or member set MUST reject and erase the pending negotiation state.
+A duplicate phase is idempotent only when its rumor id and canonical content
+are identical.
+
+Both peers MUST NOT accept a `kind:31016` payload until both have processed a
+confirmation: the responder processes the initiator confirmation before
+sending its confirmation, and the initiator processes the responder
+confirmation before sending or accepting payload. Every payload binds
+`responder_confirmation_hash`; this proves to the responder that an initiating
+sender processed the responder confirmation and prevents reordering a payload
+ahead of mutual confirmation. A receiver that has not processed the matching
+confirmation MUST reject the payload without interpretation. The chosen
+protocol id, version, required features, all five hashes, session id, peer
+identity, and rumor ids MUST be retained in encrypted local audit records for
+at least as long as any payload decision derived from them.
 
 After agreement, payload uses `kind:31016`, registry profile
 `comms-subprotocol-payload-v1`, discriminator
@@ -709,14 +824,16 @@ After agreement, payload uses `kind:31016`, registry profile
   "created_at": 0,
   "kind": 31016,
   "tags": [["p", "<recipient device publishing key>"]],
-  "content": "{\"spec_version\":\"comms/0.5.0\",\"protocol_type\":\"payload\",\"protocol_id\":\"<negotiated id>\",\"protocol_version\":\"<negotiated version>\",\"payload\":{}}"
+  "content": "{\"spec_version\":\"comms/0.5.0\",\"protocol_type\":\"payload\",\"negotiation_id\":\"<32 lowercase hex>\",\"protocol_id\":\"<negotiated id>\",\"protocol_version\":\"<negotiated version>\",\"responder_confirmation_hash\":\"<64 lowercase hex>\",\"payload\":{}}"
 }
 ```
 
 The decoded payload frame MUST have exactly these members in the displayed
 order: string `spec_version` equal to `comms/0.5.0`, string `protocol_type`
-equal to `payload`, non-empty string `protocol_id`, non-empty string
-`protocol_version`, and JSON value `payload`. For both rumor kinds, a missing,
+equal to `payload`, `negotiation_id`, non-empty string `protocol_id`, non-empty
+string `protocol_version`, `responder_confirmation_hash`, and JSON value
+`payload`. The id and hash encodings are those defined above and MUST match the
+locally confirmed tuple. For both rumor kinds, a missing,
 duplicate, unknown, misordered, or wrongly typed outer or decoded member MUST
 be rejected before application processing. A mismatch, payload before
 negotiation, unnegotiated feature, or transcript change MUST also be rejected
