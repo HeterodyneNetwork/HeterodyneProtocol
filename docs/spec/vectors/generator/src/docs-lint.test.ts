@@ -14,6 +14,7 @@ import { lintFamilyDocs } from "./docs-lint.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(here, "../../../../../");
 const corePath = resolve(repositoryRoot, "docs/spec/heterodyne-core.md");
+const commsPath = resolve(repositoryRoot, "docs/spec/heterodyne-comms.md");
 
 function withFamilyDocs(
   documents: Partial<Record<"core" | "comms" | "control" | "social", string>>,
@@ -104,6 +105,108 @@ describe("protocol family documents", () => {
     expect(text).toContain("`31007`, `31011`, `31012`");
     expect(text).toContain("`31004`, `31008`, `31009`");
     expect(text).toMatch(/No legacy kind maps to Control/);
+  });
+
+  it("keeps Heterodyne Comms on its Thin-P1 extraction boundary", () => {
+    const text = readFileSync(commsPath, "utf8");
+
+    expect(text).toContain("Document ID: `comms`");
+    expect(text).toContain("Version: `comms/0.5.0`");
+    expect(text).toContain("Registry revision: `1`");
+    expect(text).toContain(
+      "heterodyne:core/0.5.0#core-conformance",
+    );
+    expect(text).not.toMatch(
+      /normative[^\n]*(heterodyne-control|heterodyne-social)/i,
+    );
+    expect(text).not.toMatch(/follow.*gate|web-of-trust.*gate/i);
+    expect(text).not.toMatch(/NIP-51.*core construct/i);
+  });
+
+  it("defines the authenticated Comms acceptance hook", () => {
+    const text = readFileSync(commsPath, "utf8");
+
+    for (const outcome of ["accept", "hold-as-message-request", "reject"]) {
+      expect(text).toContain(outcome);
+    }
+    for (const context of [
+      "ordinary-dm",
+      "credential-sync",
+      "control-enrollment",
+    ]) {
+      expect(text).toContain(context);
+    }
+    expect(text).toMatch(
+      /cryptographic checks[\s\S]*before[\s\S]*acceptance policy/i,
+    );
+    expect(text).toMatch(
+      /hold-as-message-request[\s\S]*MUST NOT[\s\S]*(receipt|sender-observable)/,
+    );
+  });
+
+  it("retains the double-ratchet no-repository and no-backfill boundary", () => {
+    const text = readFileSync(commsPath, "utf8");
+
+    expect(text).toContain("heterodyne-comms-double-ratchet-invite-v1");
+    expect(text).toContain(
+      "heterodyne-comms-double-ratchet-invite-response-v1",
+    );
+    expect(text).toContain("heterodyne-comms-double-ratchet-message-v1");
+    expect(text).toMatch(/`kind:1060`[\s\S]*MUST NOT[\s\S]*repo/i);
+    expect(text).toMatch(/double-ratchet[\s\S]*no backfill/i);
+    expect(text).toMatch(/MUST delete[\s\S]*message key/i);
+  });
+
+  it("retains privacy-tier honesty and org-threshold authorization", () => {
+    const text = readFileSync(commsPath, "utf8");
+
+    expect(text).toMatch(
+      /Tier 2[\s\S]*MUST NOT[\s\S]*(encrypted|end-to-end encrypted)/i,
+    );
+    expect(text).toMatch(
+      /Tier 3[\s\S]*encrypted before[\s\S]*(repository|full node|seed)/i,
+    );
+    expect(text).toMatch(
+      /org-owned[\s\S]*posts[\s\S]*feed indexes[\s\S]*threshold/i,
+    );
+    expect(text).toMatch(/lone[\s\S]*epoch-key[\s\S]*MUST NOT/i);
+  });
+
+  it("defines credential-sync and generic subprotocol negotiation", () => {
+    const text = readFileSync(commsPath, "utf8");
+
+    expect(text).toMatch(
+      /credential-sync[\s\S]*target NID[\s\S]*purpose[\s\S]*KEL[\s\S]*revoc/i,
+    );
+    expect(text).toMatch(/NID-less session device[\s\S]*MUST[\s\S]*reject/i);
+    for (const field of [
+      "protocol_id",
+      "supported_versions",
+      "required_features",
+    ]) {
+      expect(text).toContain(field);
+    }
+    expect(text).toContain("comms-subprotocol-negotiation-v1");
+    expect(text).toContain("comms-subprotocol-payload-v1");
+    expect(text).toMatch(
+      /negotiat[\s\S]*before[\s\S]*payload[\s\S]*interpret/i,
+    );
+    expect(text).toMatch(/local audit records/);
+    expect(text).toMatch(/Control[\s\S]*MUST NOT[\s\S]*wire stamp/i);
+  });
+
+  it("binds all registered Comms security invariants", () => {
+    const text = readFileSync(commsPath, "utf8");
+
+    for (const invariant of [
+      "COMMS-I-TIER3-BLIND-CARRIER",
+      "COMMS-I-TIER2-HONESTY",
+      "COMMS-I-CONFIG-AT-REST",
+      "COMMS-I-CLIENT-SIDE-DELIVERY",
+      "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+    ]) {
+      expect(text).toContain(invariant);
+    }
   });
 
   it("accepts resolved qualified references along the allowed DAG", () => {
