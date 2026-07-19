@@ -10,79 +10,92 @@
     "heterodyne:comms/0.5.0#comms-privacy-tiers"
   ],
   "vector_id": "privacy-tiers/tier3-index-key-derivation-and-encryption",
-  "description": "Tier 3 kind:31007 index: index_key = HKDF-SHA256(audience_key, salt=key_id, info=heterodyne-index-key-v1, 32); content is NIP-44 v2 symmetric encryption of the index payload under index_key; relay-visible tags carry only heterodyne_wrap, key_id, cold_root and an opaque d.",
+  "description": "Verify preserved privacy-tiers/tier3-index-key-derivation-and-encryption bytes as an archived monolith/0.4.0 form; never restamp or resign them.",
+  "direction": "consume",
   "input": {
-    "fixture_persona": "alice",
-    "signer": "epoch_1",
-    "fixture_audience_key": "alice_tier3_gen_a",
-    "key_id": "aud-2026-05-25-a",
-    "hkdf": {
-      "salt": "aud-2026-05-25-a",
-      "info": "heterodyne-index-key-v1",
-      "output_len": 32
+    "source_schema": "monolith/0.4.0",
+    "archived_form_valid": true,
+    "historical_input": {
+      "fixture_persona": "alice",
+      "signer": "epoch_1",
+      "fixture_audience_key": "alice_tier3_gen_a",
+      "key_id": "aud-2026-05-25-a",
+      "hkdf": {
+        "salt": "aud-2026-05-25-a",
+        "info": "heterodyne-index-key-v1",
+        "output_len": 32
+      },
+      "nip44_nonce": "5151515151515151515151515151515151515151515151515151515151515151",
+      "plaintext": "{\"spec_version\":\"0.4.0\",\"rid\":\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1\",\"page_id\":\"opaque-page-01\",\"feed_label\":\"Close friends\",\"entries\":[{\"event_id\":\"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",\"relay_hint\":\"wss://relay.example\"}],\"previous_index\":null}",
+      "vector_context": {
+        "notes": "NIP-44 v2 symmetric layer only (index_key used directly as the conversation key; no ECDH). The opaque d value is a fixture placeholder; producers SHOULD derive it from >=128 bits of randomness per §6.7.4."
+      }
     },
-    "nip44_nonce": "5151515151515151515151515151515151515151515151515151515151515151",
-    "plaintext": "{\"spec_version\":\"0.4.0\",\"rid\":\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1\",\"page_id\":\"opaque-page-01\",\"feed_label\":\"Close friends\",\"entries\":[{\"event_id\":\"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",\"relay_hint\":\"wss://relay.example\"}],\"previous_index\":null}",
-    "vector_context": {
-      "notes": "NIP-44 v2 symmetric layer only (index_key used directly as the conversation key; no ECDH). The opaque d value is a fixture placeholder; producers SHOULD derive it from >=128 bits of randomness per §6.7.4."
+    "historical_expected_output": {
+      "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225682,31007,[[\"d\",\"opaque-page-01\"],[\"heterodyne\",\"feed_index\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"heterodyne_wrap\",\"room_key.v2\"],[\"key_id\",\"aud-2026-05-25-a\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"AlFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRXzH6jk3Cx70+Gli/nzonwZdXwo5SqnfD1WVIDW6vZPX9yarluBgjELUqglP8wMRbMNa9/XoiYB/WoMxL+IadWTfwM3q3+xM4Cbb5IQ7GUszPLWylXvuHv5Y4FYZ4bU2k+HRUpzA2is728/FHtAdVdrlPWfcN6FK6Lujy7TjroIEgSJDDR11JGiFlXL1qkJ42s/HvdmdusjVvDPhenI/ncnusHGs36dOoSvZAhx6tc+jzYxVNofCVzVB8GHDFmFCFXqwwcXKhRBDQMQdp/OTfMy5hOO4UBYz4kPvBoO3VWIondA/Bmuf6l22p9P1PZ9Bg6E7ilJVm4mYSrkSSfkedhxWXwT0cVVuiu7nSk2Pww+AhUOGz5U0vCx2fUX0H/KcQb/L7t0ElUspkXR7XEI0GxQS7mzdzAHWd+cksNtyUeWSZFyOp7CGr/K6rZoV5uVYVj19Muq7qoWjn8sQ+KvgJ+WkL\"]",
+      "decoded": {
+        "event": {
+          "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+          "created_at": 1767225682,
+          "kind": 31007,
+          "tags": [
+            [
+              "d",
+              "opaque-page-01"
+            ],
+            [
+              "heterodyne",
+              "feed_index"
+            ],
+            [
+              "cold_root",
+              "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+            ],
+            [
+              "heterodyne_wrap",
+              "room_key.v2"
+            ],
+            [
+              "key_id",
+              "aud-2026-05-25-a"
+            ],
+            [
+              "kel_head",
+              "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+              "0"
+            ]
+          ],
+          "content": "AlFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRXzH6jk3Cx70+Gli/nzonwZdXwo5SqnfD1WVIDW6vZPX9yarluBgjELUqglP8wMRbMNa9/XoiYB/WoMxL+IadWTfwM3q3+xM4Cbb5IQ7GUszPLWylXvuHv5Y4FYZ4bU2k+HRUpzA2is728/FHtAdVdrlPWfcN6FK6Lujy7TjroIEgSJDDR11JGiFlXL1qkJ42s/HvdmdusjVvDPhenI/ncnusHGs36dOoSvZAhx6tc+jzYxVNofCVzVB8GHDFmFCFXqwwcXKhRBDQMQdp/OTfMy5hOO4UBYz4kPvBoO3VWIondA/Bmuf6l22p9P1PZ9Bg6E7ilJVm4mYSrkSSfkedhxWXwT0cVVuiu7nSk2Pww+AhUOGz5U0vCx2fUX0H/KcQb/L7t0ElUspkXR7XEI0GxQS7mzdzAHWd+cksNtyUeWSZFyOp7CGr/K6rZoV5uVYVj19Muq7qoWjn8sQ+KvgJ+WkL",
+          "id": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28",
+          "sig": "f66c89312dae3d30f329110ea51ad7852047016456dc07c24e138e2fe9b28e4039f9209b361f36d92e500bd65f4e93eb32c367f230906348d329681eb85248c1"
+        },
+        "index_key": "8af8dbc5e089ab6857e01895e8aeba6520564f01ed5e22f6eb0f147b9cee75ab",
+        "plaintext": {
+          "spec_version": "0.4.0",
+          "rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+          "page_id": "opaque-page-01",
+          "feed_label": "Close friends",
+          "entries": [
+            {
+              "event_id": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+              "relay_hint": "wss://relay.example"
+            }
+          ],
+          "previous_index": null
+        },
+        "nip44_payload": "AlFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRXzH6jk3Cx70+Gli/nzonwZdXwo5SqnfD1WVIDW6vZPX9yarluBgjELUqglP8wMRbMNa9/XoiYB/WoMxL+IadWTfwM3q3+xM4Cbb5IQ7GUszPLWylXvuHv5Y4FYZ4bU2k+HRUpzA2is728/FHtAdVdrlPWfcN6FK6Lujy7TjroIEgSJDDR11JGiFlXL1qkJ42s/HvdmdusjVvDPhenI/ncnusHGs36dOoSvZAhx6tc+jzYxVNofCVzVB8GHDFmFCFXqwwcXKhRBDQMQdp/OTfMy5hOO4UBYz4kPvBoO3VWIondA/Bmuf6l22p9P1PZ9Bg6E7ilJVm4mYSrkSSfkedhxWXwT0cVVuiu7nSk2Pww+AhUOGz5U0vCx2fUX0H/KcQb/L7t0ElUspkXR7XEI0GxQS7mzdzAHWd+cksNtyUeWSZFyOp7CGr/K6rZoV5uVYVj19Muq7qoWjn8sQ+KvgJ+WkL"
+      },
+      "id": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28",
+      "sig": "f66c89312dae3d30f329110ea51ad7852047016456dc07c24e138e2fe9b28e4039f9209b361f36d92e500bd65f4e93eb32c367f230906348d329681eb85248c1"
     }
   },
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225682,31007,[[\"d\",\"opaque-page-01\"],[\"heterodyne\",\"feed_index\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"heterodyne_wrap\",\"room_key.v2\"],[\"key_id\",\"aud-2026-05-25-a\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"AlFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRXzH6jk3Cx70+Gli/nzonwZdXwo5SqnfD1WVIDW6vZPX9yarluBgjELUqglP8wMRbMNa9/XoiYB/WoMxL+IadWTfwM3q3+xM4Cbb5IQ7GUszPLWylXvuHv5Y4FYZ4bU2k+HRUpzA2is728/FHtAdVdrlPWfcN6FK6Lujy7TjroIEgSJDDR11JGiFlXL1qkJ42s/HvdmdusjVvDPhenI/ncnusHGs36dOoSvZAhx6tc+jzYxVNofCVzVB8GHDFmFCFXqwwcXKhRBDQMQdp/OTfMy5hOO4UBYz4kPvBoO3VWIondA/Bmuf6l22p9P1PZ9Bg6E7ilJVm4mYSrkSSfkedhxWXwT0cVVuiu7nSk2Pww+AhUOGz5U0vCx2fUX0H/KcQb/L7t0ElUspkXR7XEI0GxQS7mzdzAHWd+cksNtyUeWSZFyOp7CGr/K6rZoV5uVYVj19Muq7qoWjn8sQ+KvgJ+WkL\"]",
-    "decoded": {
-      "event": {
-        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-        "created_at": 1767225682,
-        "kind": 31007,
-        "tags": [
-          [
-            "d",
-            "opaque-page-01"
-          ],
-          [
-            "heterodyne",
-            "feed_index"
-          ],
-          [
-            "cold_root",
-            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-          ],
-          [
-            "heterodyne_wrap",
-            "room_key.v2"
-          ],
-          [
-            "key_id",
-            "aud-2026-05-25-a"
-          ],
-          [
-            "kel_head",
-            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
-            "0"
-          ]
-        ],
-        "content": "AlFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRXzH6jk3Cx70+Gli/nzonwZdXwo5SqnfD1WVIDW6vZPX9yarluBgjELUqglP8wMRbMNa9/XoiYB/WoMxL+IadWTfwM3q3+xM4Cbb5IQ7GUszPLWylXvuHv5Y4FYZ4bU2k+HRUpzA2is728/FHtAdVdrlPWfcN6FK6Lujy7TjroIEgSJDDR11JGiFlXL1qkJ42s/HvdmdusjVvDPhenI/ncnusHGs36dOoSvZAhx6tc+jzYxVNofCVzVB8GHDFmFCFXqwwcXKhRBDQMQdp/OTfMy5hOO4UBYz4kPvBoO3VWIondA/Bmuf6l22p9P1PZ9Bg6E7ilJVm4mYSrkSSfkedhxWXwT0cVVuiu7nSk2Pww+AhUOGz5U0vCx2fUX0H/KcQb/L7t0ElUspkXR7XEI0GxQS7mzdzAHWd+cksNtyUeWSZFyOp7CGr/K6rZoV5uVYVj19Muq7qoWjn8sQ+KvgJ+WkL",
-        "id": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28",
-        "sig": "f66c89312dae3d30f329110ea51ad7852047016456dc07c24e138e2fe9b28e4039f9209b361f36d92e500bd65f4e93eb32c367f230906348d329681eb85248c1"
-      },
-      "index_key": "8af8dbc5e089ab6857e01895e8aeba6520564f01ed5e22f6eb0f147b9cee75ab",
-      "plaintext": {
-        "spec_version": "0.4.0",
-        "rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-        "page_id": "opaque-page-01",
-        "feed_label": "Close friends",
-        "entries": [
-          {
-            "event_id": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
-            "relay_hint": "wss://relay.example"
-          }
-        ],
-        "previous_index": null
-      },
-      "nip44_payload": "AlFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRXzH6jk3Cx70+Gli/nzonwZdXwo5SqnfD1WVIDW6vZPX9yarluBgjELUqglP8wMRbMNa9/XoiYB/WoMxL+IadWTfwM3q3+xM4Cbb5IQ7GUszPLWylXvuHv5Y4FYZ4bU2k+HRUpzA2is728/FHtAdVdrlPWfcN6FK6Lujy7TjroIEgSJDDR11JGiFlXL1qkJ42s/HvdmdusjVvDPhenI/ncnusHGs36dOoSvZAhx6tc+jzYxVNofCVzVB8GHDFmFCFXqwwcXKhRBDQMQdp/OTfMy5hOO4UBYz4kPvBoO3VWIondA/Bmuf6l22p9P1PZ9Bg6E7ilJVm4mYSrkSSfkedhxWXwT0cVVuiu7nSk2Pww+AhUOGz5U0vCx2fUX0H/KcQb/L7t0ElUspkXR7XEI0GxQS7mzdzAHWd+cksNtyUeWSZFyOp7CGr/K6rZoV5uVYVj19Muq7qoWjn8sQ+KvgJ+WkL"
-    },
-    "id": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28",
-    "sig": "f66c89312dae3d30f329110ea51ad7852047016456dc07c24e138e2fe9b28e4039f9209b361f36d92e500bd65f4e93eb32c367f230906348d329681eb85248c1"
-  },
-  "direction": "produce"
+    "verdict": "accept",
+    "normalized": {
+      "owner": "monolith/0.4.0",
+      "direction": "verify",
+      "historical_bytes_preserved": true,
+      "restamped": false
+    }
+  }
 }

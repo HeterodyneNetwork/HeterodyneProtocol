@@ -11,59 +11,72 @@
     "heterodyne:social/0.5.0#social-lists"
   ],
   "vector_id": "lists/mute-list-private-items-encrypted-to-self",
-  "description": "NIP-51 kind:10000 mute list carrying private items: a JSON array of tag-shaped arrays, NIP-44 v2 encrypted-to-self under the persona's current epoch key, in content alongside the public tags.",
+  "description": "Verify preserved lists/mute-list-private-items-encrypted-to-self bytes as an archived monolith/0.4.0 form; never restamp or resign them.",
+  "direction": "consume",
   "input": {
-    "fixture_persona": "alice",
-    "signer": "epoch_1",
-    "self_conversation": true,
-    "nip44_nonce": "5252525252525252525252525252525252525252525252525252525252525252",
-    "private_items_plaintext": "[[\"p\",\"2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01\"],[\"word\",\"secret-topic\"]]",
-    "vector_context": {
-      "notes": "The self-encryption conversation key is the NIP-44 v2 ECDH of the epoch private key with its own x-only epoch pubkey (getConversationKey(epoch_priv, epoch_pub)). Private items are the JSON array of tag-shaped arrays. Decryptable by any holder of the epoch key; on KERI rotation the client re-encrypts under the new epoch key (see lists/006)."
+    "source_schema": "monolith/0.4.0",
+    "archived_form_valid": true,
+    "historical_input": {
+      "fixture_persona": "alice",
+      "signer": "epoch_1",
+      "self_conversation": true,
+      "nip44_nonce": "5252525252525252525252525252525252525252525252525252525252525252",
+      "private_items_plaintext": "[[\"p\",\"2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01\"],[\"word\",\"secret-topic\"]]",
+      "vector_context": {
+        "notes": "The self-encryption conversation key is the NIP-44 v2 ECDH of the epoch private key with its own x-only epoch pubkey (getConversationKey(epoch_priv, epoch_pub)). Private items are the JSON array of tag-shaped arrays. Decryptable by any holder of the epoch key; on KERI rotation the client re-encrypts under the new epoch key (see lists/006)."
+      }
+    },
+    "historical_expected_output": {
+      "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225701,10000,[[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"t\",\"spam\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"AlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSLuXzFbzO7BM4hS899uGYPu4D9EqfOxyjsbBvxC9bg0K4RO8igOGnzzekFFY7u5Nq+s1hRfnaB/fMgNHkSn4UUjFnPxLutryQp3P4xo0iuYhoRkndv1hHXEVgehWdhsLmoTj2vr0hNfteUwFqq49rcJPpwHqb9paa9ePvVLz/EmDKE+KYlZAZsmnENs1SEM/YZg+wum2SiPSSf/Wa8Zc483iT\"]",
+      "decoded": {
+        "event": {
+          "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+          "created_at": 1767225701,
+          "kind": 10000,
+          "tags": [
+            [
+              "p",
+              "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+            ],
+            [
+              "t",
+              "spam"
+            ],
+            [
+              "kel_head",
+              "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+              "0"
+            ]
+          ],
+          "content": "AlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSLuXzFbzO7BM4hS899uGYPu4D9EqfOxyjsbBvxC9bg0K4RO8igOGnzzekFFY7u5Nq+s1hRfnaB/fMgNHkSn4UUjFnPxLutryQp3P4xo0iuYhoRkndv1hHXEVgehWdhsLmoTj2vr0hNfteUwFqq49rcJPpwHqb9paa9ePvVLz/EmDKE+KYlZAZsmnENs1SEM/YZg+wum2SiPSSf/Wa8Zc483iT",
+          "id": "2afb3ad3e79de0204eb5086aec11185c215d5aa1986d5621e6f26c25792ca166",
+          "sig": "ca8ddacf95ba7caf6d2a53b697e69bbbc0039a2bcced33f85f3bbbe4dab3e68b7dca98c99a91b69d1de0cc220b79cf102d9fe6e9a0e4be7823609a3c5d0b9e59"
+        },
+        "conversation_key": "b127d717e2a3a193d07ba78341dec2d76dcaf3c7de82ea3cedf8d2e327e4871c",
+        "nip44_nonce": "5252525252525252525252525252525252525252525252525252525252525252",
+        "private_items": [
+          [
+            "p",
+            "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01"
+          ],
+          [
+            "word",
+            "secret-topic"
+          ]
+        ],
+        "nip44_payload": "AlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSLuXzFbzO7BM4hS899uGYPu4D9EqfOxyjsbBvxC9bg0K4RO8igOGnzzekFFY7u5Nq+s1hRfnaB/fMgNHkSn4UUjFnPxLutryQp3P4xo0iuYhoRkndv1hHXEVgehWdhsLmoTj2vr0hNfteUwFqq49rcJPpwHqb9paa9ePvVLz/EmDKE+KYlZAZsmnENs1SEM/YZg+wum2SiPSSf/Wa8Zc483iT"
+      },
+      "id": "2afb3ad3e79de0204eb5086aec11185c215d5aa1986d5621e6f26c25792ca166",
+      "sig": "ca8ddacf95ba7caf6d2a53b697e69bbbc0039a2bcced33f85f3bbbe4dab3e68b7dca98c99a91b69d1de0cc220b79cf102d9fe6e9a0e4be7823609a3c5d0b9e59"
     }
   },
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225701,10000,[[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"t\",\"spam\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"AlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSLuXzFbzO7BM4hS899uGYPu4D9EqfOxyjsbBvxC9bg0K4RO8igOGnzzekFFY7u5Nq+s1hRfnaB/fMgNHkSn4UUjFnPxLutryQp3P4xo0iuYhoRkndv1hHXEVgehWdhsLmoTj2vr0hNfteUwFqq49rcJPpwHqb9paa9ePvVLz/EmDKE+KYlZAZsmnENs1SEM/YZg+wum2SiPSSf/Wa8Zc483iT\"]",
-    "decoded": {
-      "event": {
-        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-        "created_at": 1767225701,
-        "kind": 10000,
-        "tags": [
-          [
-            "p",
-            "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
-          ],
-          [
-            "t",
-            "spam"
-          ],
-          [
-            "kel_head",
-            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
-            "0"
-          ]
-        ],
-        "content": "AlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSLuXzFbzO7BM4hS899uGYPu4D9EqfOxyjsbBvxC9bg0K4RO8igOGnzzekFFY7u5Nq+s1hRfnaB/fMgNHkSn4UUjFnPxLutryQp3P4xo0iuYhoRkndv1hHXEVgehWdhsLmoTj2vr0hNfteUwFqq49rcJPpwHqb9paa9ePvVLz/EmDKE+KYlZAZsmnENs1SEM/YZg+wum2SiPSSf/Wa8Zc483iT",
-        "id": "2afb3ad3e79de0204eb5086aec11185c215d5aa1986d5621e6f26c25792ca166",
-        "sig": "ca8ddacf95ba7caf6d2a53b697e69bbbc0039a2bcced33f85f3bbbe4dab3e68b7dca98c99a91b69d1de0cc220b79cf102d9fe6e9a0e4be7823609a3c5d0b9e59"
-      },
-      "conversation_key": "b127d717e2a3a193d07ba78341dec2d76dcaf3c7de82ea3cedf8d2e327e4871c",
-      "nip44_nonce": "5252525252525252525252525252525252525252525252525252525252525252",
-      "private_items": [
-        [
-          "p",
-          "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01"
-        ],
-        [
-          "word",
-          "secret-topic"
-        ]
-      ],
-      "nip44_payload": "AlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSLuXzFbzO7BM4hS899uGYPu4D9EqfOxyjsbBvxC9bg0K4RO8igOGnzzekFFY7u5Nq+s1hRfnaB/fMgNHkSn4UUjFnPxLutryQp3P4xo0iuYhoRkndv1hHXEVgehWdhsLmoTj2vr0hNfteUwFqq49rcJPpwHqb9paa9ePvVLz/EmDKE+KYlZAZsmnENs1SEM/YZg+wum2SiPSSf/Wa8Zc483iT"
-    },
-    "id": "2afb3ad3e79de0204eb5086aec11185c215d5aa1986d5621e6f26c25792ca166",
-    "sig": "ca8ddacf95ba7caf6d2a53b697e69bbbc0039a2bcced33f85f3bbbe4dab3e68b7dca98c99a91b69d1de0cc220b79cf102d9fe6e9a0e4be7823609a3c5d0b9e59"
-  },
-  "direction": "produce"
+    "verdict": "accept",
+    "normalized": {
+      "owner": "monolith/0.4.0",
+      "direction": "verify",
+      "historical_bytes_preserved": true,
+      "restamped": false
+    }
+  }
 }

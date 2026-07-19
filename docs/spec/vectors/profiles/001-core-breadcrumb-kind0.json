@@ -1,0 +1,34 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
+  "profile": "heterodyne-core-rotation-breadcrumb-profile-v1",
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-conformance"
+  ],
+  "vector_id": "profiles/core-breadcrumb-kind0",
+  "description": "A complete signed ADR-031 kind:0 successor breadcrumb remains a standard unstamped Nostr profile.",
+  "direction": "round-trip",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767226103,
+      "kind": 0,
+      "tags": [],
+      "content": "{\"name\":\"Alice (moved)\",\"about\":\"Continues at npub e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13\",\"website\":\"https://example.test/npub/e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13\"}",
+      "id": "9b2a6f5a52ca102ed0e1473e39ff19479ee4a2e14b34abe4044b1fba02f679fa",
+      "sig": "b22e160ac247cee5d1ae9bc57a8d4608901ba93e87a264de775829b8c6cc15a2563ce3018031a42132e14f9affcf2bd5a5eccf3e54ce141c2d95991efab39d5e"
+    },
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767226103,0,[],\"{\\\"name\\\":\\\"Alice (moved)\\\",\\\"about\\\":\\\"Continues at npub e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13\\\",\\\"website\\\":\\\"https://example.test/npub/e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13\\\"}\"]"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "signature_valid": true,
+      "stamp_count": 0,
+      "nip05_present": false
+    }
+  }
+}

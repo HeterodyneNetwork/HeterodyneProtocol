@@ -68,19 +68,40 @@ describe("registry-driven owner stamping", () => {
 
   it("scopes legacy inference to archived monolith forms", () => {
     expect(
-      inferLegacyOwner({ kind: 31001, stamp: "0.4.0", adopted_upstream: false }),
+      inferLegacyOwner({ kind: 31001, stamp: "0.4.0", adopted_upstream: false,
+        archived_form_valid: true, post_split_discriminator: false, profile_only: false }),
     ).toBe("monolith/0.4.0");
     expect(
-      inferLegacyOwner({ kind: 31007, adopted_upstream: false }),
+      inferLegacyOwner({ kind: 31007, adopted_upstream: false,
+        archived_form_valid: true, post_split_discriminator: false, profile_only: false }),
     ).toBe("monolith/0.4.0");
     expect(() =>
-      inferLegacyOwner({ kind: 1, adopted_upstream: true }),
+      inferLegacyOwner({ kind: 1, adopted_upstream: true,
+        archived_form_valid: true, post_split_discriminator: false, profile_only: false }),
     ).toThrow("not inferable");
     expect(() =>
-      inferLegacyOwner({ kind: 31006, adopted_upstream: false }),
+      inferLegacyOwner({ kind: 31006, adopted_upstream: false,
+        archived_form_valid: true, post_split_discriminator: false, profile_only: false }),
     ).toThrow("not inferable");
     expect(() =>
-      inferLegacyOwner({ kind: 31001, stamp: "core/0.5.0", adopted_upstream: false }),
+      inferLegacyOwner({ kind: 31001, stamp: "core/0.5.0", adopted_upstream: false,
+        archived_form_valid: true, post_split_discriminator: false, profile_only: false }),
     ).toThrow("not inferable");
+  });
+
+  it.each([
+    ["malformed archived form", { archived_form_valid: false }],
+    ["post-split discriminator", { post_split_discriminator: true }],
+    ["profile-only form", { profile_only: true }],
+    ["adopted upstream form", { adopted_upstream: true }],
+  ])("does not infer an unstamped %s", (_name, overrides) => {
+    expect(() => inferLegacyOwner({
+      kind: 31001,
+      adopted_upstream: false,
+      archived_form_valid: true,
+      post_split_discriminator: false,
+      profile_only: false,
+      ...overrides,
+    })).toThrow("not inferable");
   });
 });

@@ -1,0 +1,116 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-node-advertisement"
+  ],
+  "vector_id": "node-advert/valid-dual-signed-v050",
+  "description": "Current 0.5 production form replacing archived node-advert/valid-dual-signed bytes without relabeling them.",
+  "input": {
+    "migrated_from": "node-advert/valid-dual-signed",
+    "event_template": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767225650,
+      "kind": 31010,
+      "tags": [
+        [
+          "d",
+          "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1"
+        ],
+        [
+          "heterodyne",
+          "node_advert"
+        ],
+        [
+          "rid",
+          "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1"
+        ],
+        [
+          "nid",
+          "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+        ],
+        [
+          "endpoint",
+          "wss://node-a.example/relay"
+        ],
+        [
+          "expiry",
+          "1767312000"
+        ],
+        [
+          "nid_proof",
+          "0e639f620e4fc376d29ac453ac7d9a2b89c07e0784abcace71bba6e3b978156af08a4b2c09ed577f640a6c0cb4d395fce3bf5032da4fa5b8538221055c774b03"
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
+        ],
+        [
+          "spec_version",
+          "core/0.5.0"
+        ]
+      ],
+      "content": ""
+    },
+    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "expected_output": {
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225650,31010,[[\"d\",\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1\"],[\"heterodyne\",\"node_advert\"],[\"rid\",\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1\"],[\"nid\",\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"],[\"endpoint\",\"wss://node-a.example/relay\"],[\"expiry\",\"1767312000\"],[\"nid_proof\",\"0e639f620e4fc376d29ac453ac7d9a2b89c07e0784abcace71bba6e3b978156af08a4b2c09ed577f640a6c0cb4d395fce3bf5032da4fa5b8538221055c774b03\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"],[\"spec_version\",\"core/0.5.0\"]],\"\"]",
+    "decoded": {
+      "event": {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767225650,
+        "kind": 31010,
+        "tags": [
+          [
+            "d",
+            "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1"
+          ],
+          [
+            "heterodyne",
+            "node_advert"
+          ],
+          [
+            "rid",
+            "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1"
+          ],
+          [
+            "nid",
+            "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+          ],
+          [
+            "endpoint",
+            "wss://node-a.example/relay"
+          ],
+          [
+            "expiry",
+            "1767312000"
+          ],
+          [
+            "nid_proof",
+            "0e639f620e4fc376d29ac453ac7d9a2b89c07e0784abcace71bba6e3b978156af08a4b2c09ed577f640a6c0cb4d395fce3bf5032da4fa5b8538221055c774b03"
+          ],
+          [
+            "kel_head",
+            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "0"
+          ],
+          [
+            "spec_version",
+            "core/0.5.0"
+          ]
+        ],
+        "content": "",
+        "id": "375b77c5f6271e24119b871b71f70ce9a0e3cd8a264ffac0b7479d743a2fa1de",
+        "sig": "1ed7bf6beb79cf96f2a5a6be70f9e33c26123a74a68aa49f76ee6605ee43b5f3bc9c112221ef5783a630d76406ed39ffbe56fa28a8d570fefffb8912a1c99473"
+      }
+    },
+    "id": "375b77c5f6271e24119b871b71f70ce9a0e3cd8a264ffac0b7479d743a2fa1de",
+    "sig": "1ed7bf6beb79cf96f2a5a6be70f9e33c26123a74a68aa49f76ee6605ee43b5f3bc9c112221ef5783a630d76406ed39ffbe56fa28a8d570fefffb8912a1c99473"
+  },
+  "direction": "produce"
+}

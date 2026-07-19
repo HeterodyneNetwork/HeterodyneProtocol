@@ -6,6 +6,8 @@ import { authorAllVectors } from "./author.js";
 import { buildCoverage, writeCoverage } from "./coverage.js";
 import { buildAllVectors } from "./topics.js";
 import { buildFixtures } from "./fixtures.js";
+import { loadRegistry } from "./registry.js";
+import { resolve } from "node:path";
 
 const tempDirs: string[] = [];
 
@@ -47,6 +49,15 @@ describe("family coverage", () => {
     expect(ownerById.get("social-recovery/cold-root-reanchor-authoritative")).toBe("core");
     expect(ownerById.get("social-recovery/cache-sourced-marked-stale")).toBe("core");
     expect(coverage.every(({ spec_refs }) => spec_refs.every((ref) => ref.startsWith("heterodyne:")))).toBe(true);
+
+    const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
+    const activeProfiles = registry.kinds.flatMap(({ profiles }) => profiles)
+      .filter(({ owner }) => owner !== "control")
+      .map(({ profile_id }) => profile_id);
+    const coveredProfiles = new Set(coverage.flatMap(({ profile }) => profile === undefined ? [] : [profile]));
+    for (const profile of activeProfiles) expect(coveredProfiles.has(profile)).toBe(true);
+    expect(coverage.filter(({ profile }) => profile === "heterodyne-control-session-device-v1"))
+      .toHaveLength(1);
   });
 
   it("writes deterministic Markdown views derived from manifest.json", async () => {

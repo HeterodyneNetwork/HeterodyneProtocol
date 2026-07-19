@@ -1,0 +1,33 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
+  "profile": "heterodyne-comms-double-ratchet-invite-response-v1",
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "profiles/dr-invite-response-kind1059",
+  "description": "The active DR invite response kind:1059 is covered as an unstamped ratchet outer event.",
+  "direction": "round-trip",
+  "input": {
+    "kind": 1059,
+    "tags": [
+      [
+        "p",
+        "2222222222222222222222222222222222222222222222222222222222222222"
+      ]
+    ],
+    "content": "AratchetInviteResponse"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "stamp_count": 0,
+      "storable": true
+    }
+  }
+}

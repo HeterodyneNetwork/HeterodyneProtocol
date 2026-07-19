@@ -1,0 +1,38 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-multi-host-seeding"
+  ],
+  "vector_id": "core-redundancy/stale-seed-does-not-remove-durability",
+  "description": "A stale seed remains a discoverable replica while two current independent hosts preserve durable canonical repository availability.",
+  "direction": "consume",
+  "input": {
+    "canonical_head": "2222222222222222222222222222222222222222",
+    "hosts": [
+      {
+        "host": "node-a",
+        "head_current": true
+      },
+      {
+        "host": "node-b",
+        "head_current": true
+      },
+      {
+        "host": "node-stale",
+        "head_current": false
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "durable_current_host_count": 2,
+      "stale_host_retained": true,
+      "canonical_head_authority_changed": false
+    }
+  }
+}

@@ -20,6 +20,7 @@ config-backup/config-rid-unadvertised-clean
 config-backup/nip49-nsec-wrap
 identity-doc/add-before-remove
 identity-doc/emergency-reanchor
+identity-doc/emergency-reanchor-v050
 identity-doc/kel-revoked-nid-rejected
 identity/delegation-active
 identity/delegation-expired
@@ -27,6 +28,7 @@ identity/delegation-revoked
 identity/kind31005-race-tiebreaker-core
 identity/revocation-post-window
 identity/root-attestation-valid
+identity/root-attestation-valid-v050
 interop/kind31005-identity-pointer
 keri-authority/accelerator-backdated-compromise
 keri-authority/accelerator-decision-equivalent
@@ -73,12 +75,14 @@ light-node/content-not-through-routing-node
 light-node/route-around-withholding-host
 light-node/verifies-signature-locally
 nid-binding/bidirectional-valid
+nid-binding/bidirectional-valid-v050
 nid-binding/invalid-nid-proof-rejected
 nid-binding/missing-nid-proof-rejected
 node-advert/expired-rejected
 node-advert/nid-proof-invalid-rejected
 node-advert/outer-sig-invalid-rejected
 node-advert/valid-dual-signed
+node-advert/valid-dual-signed-v050
 org/member-add-dual-authorized
 org/member-add-single-authorization-insufficient
 org/threshold-delegate-governance
@@ -108,7 +112,7 @@ versioning/capabilities-roundtrip
 versioning/older-receiver-newer-sender
 versioning/unknown-major-placeholder
 core-redundancy/radicle-multihost-replication
-core-redundancy/stale-seed-rejected
+core-redundancy/stale-seed-does-not-remove-durability
 versioning/qualified-version-valid
 versioning/qualified-version-unqualified-rejected
 versioning/core-capability-bootstrap
@@ -127,6 +131,11 @@ stamping/legacy-monolith-inferred
 stamping/legacy-upstream-not-inferable
 stamping/no-restamp-existing-bytes
 stamping/tier3-profile-owner
+stamping/legacy-malformed-not-inferable
+stamping/legacy-post-split-not-inferable
+stamping/legacy-profile-only-not-inferable
+profiles/core-breadcrumb-kind0
+profiles/core-breadcrumb-kind1
 registry/downref-nonfrozen-rejected
 registry/frozen-entry-immutable
 `);
@@ -157,13 +166,38 @@ privacy-tiers/tier3-kind31011-audience-key-wrap
 privacy-tiers/tier3-kind31012-audience-roster
 privacy-tiers/tier3-prev-page-hash-mismatch
 privacy-tiers/tier3-prev-page-hash-valid
+privacy-tiers/tier1-public-plaintext-both-backends-v050
+privacy-tiers/tier3-index-key-derivation-and-encryption-v050
+privacy-tiers/tier3-kind31011-audience-key-wrap-v050
+privacy-tiers/tier3-kind31012-audience-roster-v050
 relay-interop/auth-rejection-permanent
 relay-interop/keri-rotation-auth-new-key
 relay-interop/nip42-auth-current-epoch-key
 comms-envelope/nostr-native-event-valid
 comms-envelope/owner-stamp-valid
+comms-envelope/nostr-native-signature-mutation
 acceptance-gating/authentication-before-policy
 acceptance-gating/message-request-no-receipt
+acceptance-gating/established-ordinary-accept
+acceptance-gating/new-ordinary-hold
+acceptance-gating/authentication-reject
+acceptance-gating/credential-valid-accept
+acceptance-gating/authoritative-state-unavailable-hold
+acceptance-gating/credential-invalid-reject
+acceptance-gating/credential-revoked-reject
+acceptance-gating/credential-expired-reject
+acceptance-gating/credential-subject-mismatch-reject
+acceptance-gating/credential-nidless-reject
+acceptance-gating/control-enrollment-default-hold
+profiles/tier3-kind-1
+profiles/tier3-kind-6
+profiles/tier3-kind-16
+profiles/tier3-kind-1063
+profiles/tier3-kind-30023
+profiles/tier3-kind-30402
+profiles/dr-invite-response-kind1059
+profiles/comms-negotiation-kind31015
+profiles/comms-payload-kind31016
 `);
 
 const SOCIAL_IDS = ids(`
@@ -174,6 +208,7 @@ broadcast/member-decrypts
 broadcast/nip59-rejected
 broadcast/non-member-cannot-decrypt
 broadcast/private-broadcast-wrapped
+broadcast/private-broadcast-wrapped-v050
 broadcast/reaction-reply-bare-not-indexed
 config_room/device-inventory-not-synced
 config_room/key-backup-wrapping-algorithms
@@ -204,6 +239,8 @@ interop/wrapped-vanilla-roundtrip
 lists/kind-mute-set-addressing
 lists/mute-list-private-items-encrypted-to-self
 lists/mute-list-public-roundtrip
+lists/mute-list-public-roundtrip-v050
+lists/mute-list-private-items-encrypted-to-self-v050
 lists/policy-list-adoption-parsed
 lists/private-items-reencrypt-on-rotation
 lists/stale-list-rollback-rejected
@@ -243,6 +280,9 @@ social-recovery/three-tier-caching
 versioning/unknown-room-kind-tolerance
 acceptance-gating/social-mute-tightens
 acceptance-gating/social-policy-cannot-loosen
+acceptance-gating/social-wot-tightens-only
+acceptance-gating/social-wot-cannot-loosen
+profiles/social-org-feed-kind31007
 `);
 
 const PROFILE_BY_VECTOR = new Map<string, string>([
@@ -252,6 +292,32 @@ const PROFILE_BY_VECTOR = new Map<string, string>([
   ["stamping/control-profile-retains-core-owner", "heterodyne-control-session-device-v1"],
   ["stamping/control-carrier-comms-owner", "comms-subprotocol-payload-v1"],
   ["stamping/tier3-profile-owner", "heterodyne-comms-tier3-wrapped-content-kind-1-v1"],
+  ["profiles/core-breadcrumb-kind0", "heterodyne-core-rotation-breadcrumb-profile-v1"],
+  ["profiles/core-breadcrumb-kind1", "heterodyne-core-rotation-breadcrumb-note-v1"],
+  ["profiles/tier3-kind-1", "heterodyne-comms-tier3-wrapped-content-kind-1-v1"],
+  ["profiles/tier3-kind-6", "heterodyne-comms-tier3-wrapped-content-kind-6-v1"],
+  ["profiles/tier3-kind-16", "heterodyne-comms-tier3-wrapped-content-kind-16-v1"],
+  ["profiles/tier3-kind-1063", "heterodyne-comms-tier3-wrapped-content-kind-1063-v1"],
+  ["profiles/tier3-kind-30023", "heterodyne-comms-tier3-wrapped-content-kind-30023-v1"],
+  ["profiles/tier3-kind-30402", "heterodyne-comms-tier3-wrapped-content-kind-30402-v1"],
+  ["profiles/dr-invite-response-kind1059", "heterodyne-comms-double-ratchet-invite-response-v1"],
+  ["profiles/social-org-feed-kind31007", "heterodyne-social-org-feed-v1"],
+  ["profiles/comms-negotiation-kind31015", "comms-subprotocol-negotiation-v1"],
+  ["profiles/comms-payload-kind31016", "comms-subprotocol-payload-v1"],
+  ["comms-envelope/owner-stamp-valid", "comms-subprotocol-payload-v1"],
+  ["broadcast/private-broadcast-wrapped-v050", "heterodyne-comms-tier3-wrapped-content-kind-1-v1"],
+  ["lists/mute-list-public-roundtrip-v050", "heterodyne-social-mute-list-v1"],
+  ["lists/mute-list-private-items-encrypted-to-self-v050", "heterodyne-social-mute-list-v1"],
+  ["lists/private-items-reencrypt-on-rotation", "heterodyne-social-mute-list-v1"],
+  ["lists/stale-list-rollback-rejected", "heterodyne-social-mute-list-v1"],
+  ["broadcast/member-decrypts", "heterodyne-comms-tier3-wrapped-content-kind-1-v1"],
+  ["broadcast/non-member-cannot-decrypt", "heterodyne-comms-tier3-wrapped-content-kind-1-v1"],
+  ["dm/invite-delegated-device-valid", "heterodyne-comms-double-ratchet-invite-v1"],
+  ["dm/invite-unbound-device-rejected", "heterodyne-comms-double-ratchet-invite-v1"],
+  ["dm/invite-revoked-device-rejected", "heterodyne-comms-double-ratchet-invite-v1"],
+  ["dm/kind1060-outer-message-shape", "heterodyne-comms-double-ratchet-message-v1"],
+  ["dm/repo-relay-refuses-kind1060", "heterodyne-comms-double-ratchet-message-v1"],
+  ["dm/double-ratchet-transcript", "heterodyne-comms-double-ratchet-message-v1"],
 ]);
 
 export function vectorMetadata(vectorId: string): VectorMetadata {
@@ -283,10 +349,13 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
 }
 
 function anchorFor(vectorId: string, owner: DocumentId): string {
+  if (vectorId.startsWith("keri-authority/export-")) return "core-keri-export";
+  if (vectorId.startsWith("keri-authority/materialized-")) return "core-materialized-kel";
+  if (vectorId.includes("kel-head")) return "core-kel-head";
   const prefix = vectorId.split("/", 1)[0];
   const anchors: Partial<Record<DocumentId, Record<string, string>>> = {
     core: {
-      identity: vectorId === "identity/root-attestation-valid" ? "core-root-attestation" : "core-nid-delegation",
+      identity: vectorId.startsWith("identity/root-attestation-valid") ? "core-root-attestation" : "core-nid-delegation",
       "identity-doc": "core-identity-discovery",
       keri: "core-kel-primitives",
       "keri-authority": "core-kel-verification",

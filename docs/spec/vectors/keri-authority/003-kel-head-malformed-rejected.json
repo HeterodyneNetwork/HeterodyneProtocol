@@ -5,7 +5,7 @@
   "dependency_versions": {},
   "registry_revision": 1,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-kel-verification"
+    "heterodyne:core/0.5.0#core-kel-head"
   ],
   "vector_id": "keri-authority/kel-head-malformed-rejected",
   "description": "An epoch-key-signed post whose single kel_head tag carries a non-hex id (not 64 lowercase-hex) fails verification.",

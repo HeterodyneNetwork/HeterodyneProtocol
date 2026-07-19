@@ -1,0 +1,32 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:social/0.5.0#social-admission-policy"
+  ],
+  "vector_id": "acceptance-gating/social-wot-tightens-only",
+  "description": "Closed Comms acceptance outcome: social wot tightens only.",
+  "direction": "consume",
+  "input": {
+    "comms_outcome": "accept",
+    "social": {
+      "follows": false,
+      "replied_before": false,
+      "trust_distance": 4,
+      "overmuted_ratio": 0.75
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "composed_outcome": "hold",
+      "loosened_comms_result": false
+    }
+  }
+}

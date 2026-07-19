@@ -1,0 +1,116 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-nid-delegation"
+  ],
+  "vector_id": "nid-binding/bidirectional-valid-v050",
+  "description": "Current 0.5 production form replacing archived nid-binding/bidirectional-valid bytes without relabeling them.",
+  "input": {
+    "migrated_from": "nid-binding/bidirectional-valid",
+    "event_template": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767225605,
+      "kind": 31001,
+      "tags": [
+        [
+          "d",
+          "nid:did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+        ],
+        [
+          "heterodyne",
+          "delegation"
+        ],
+        [
+          "radicle_nid",
+          "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+        ],
+        [
+          "publishing_key",
+          "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
+        ],
+        [
+          "cold_root",
+          "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        ],
+        [
+          "nid_proof",
+          "2ccd2f7fc0b1fd1c7f823285e352ee3de25b771ba0c52ebd573dba97ce195e48fbbf3aee5be64e82b2d6fe6a33a58ad6592719a865b04cb66bbfd16fad30d70a"
+        ],
+        [
+          "valid_until",
+          ""
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
+        ],
+        [
+          "spec_version",
+          "core/0.5.0"
+        ]
+      ],
+      "content": ""
+    },
+    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "expected_output": {
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225605,31001,[[\"d\",\"nid:did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"],[\"heterodyne\",\"delegation\"],[\"radicle_nid\",\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"],[\"publishing_key\",\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"nid_proof\",\"2ccd2f7fc0b1fd1c7f823285e352ee3de25b771ba0c52ebd573dba97ce195e48fbbf3aee5be64e82b2d6fe6a33a58ad6592719a865b04cb66bbfd16fad30d70a\"],[\"valid_until\",\"\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"],[\"spec_version\",\"core/0.5.0\"]],\"\"]",
+    "decoded": {
+      "event": {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767225605,
+        "kind": 31001,
+        "tags": [
+          [
+            "d",
+            "nid:did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+          ],
+          [
+            "heterodyne",
+            "delegation"
+          ],
+          [
+            "radicle_nid",
+            "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+          ],
+          [
+            "publishing_key",
+            "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
+          ],
+          [
+            "cold_root",
+            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+          ],
+          [
+            "nid_proof",
+            "2ccd2f7fc0b1fd1c7f823285e352ee3de25b771ba0c52ebd573dba97ce195e48fbbf3aee5be64e82b2d6fe6a33a58ad6592719a865b04cb66bbfd16fad30d70a"
+          ],
+          [
+            "valid_until",
+            ""
+          ],
+          [
+            "kel_head",
+            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "0"
+          ],
+          [
+            "spec_version",
+            "core/0.5.0"
+          ]
+        ],
+        "content": "",
+        "id": "b2041dbecbb546c2ffb55b4d4959b8811ab9b8bc5f9336de92bbe28c490b8b77",
+        "sig": "25fcd6e817385bc0280eae2f634c5ac25ccfc333e7d869584bc92ee357ec442b9e77c51bd880eed438270931d4f67e6608bed0531c7e5d472d25e1ee688d475e"
+      }
+    },
+    "id": "b2041dbecbb546c2ffb55b4d4959b8811ab9b8bc5f9336de92bbe28c490b8b77",
+    "sig": "25fcd6e817385bc0280eae2f634c5ac25ccfc333e7d869584bc92ee357ec442b9e77c51bd880eed438270931d4f67e6608bed0531c7e5d472d25e1ee688d475e"
+  },
+  "direction": "produce"
+}

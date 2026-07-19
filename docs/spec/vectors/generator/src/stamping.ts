@@ -43,11 +43,17 @@ export function inferLegacyOwner(input: {
   kind: number;
   stamp?: string;
   adopted_upstream: boolean;
+  archived_form_valid: boolean;
+  post_split_discriminator: boolean;
+  profile_only: boolean;
 }): "monolith/0.4.0" {
   if (
     input.adopted_upstream ||
+    input.post_split_discriminator ||
+    input.profile_only ||
     !LEGACY_MONOLITH_KINDS.has(input.kind) ||
-    (input.stamp !== undefined && input.stamp !== "0.4.0")
+    (input.stamp !== undefined && input.stamp !== "0.4.0") ||
+    (input.stamp === undefined && !input.archived_form_valid)
   ) {
     throw new Error("legacy owner is not inferable");
   }

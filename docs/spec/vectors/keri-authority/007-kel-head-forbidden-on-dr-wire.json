@@ -5,7 +5,7 @@
   "dependency_versions": {},
   "registry_revision": 1,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-kel-verification"
+    "heterodyne:core/0.5.0#core-kel-head"
   ],
   "vector_id": "keri-authority/kel-head-forbidden-on-dr-wire",
   "description": "A kind:1060 double-ratchet outer message (signed by a ratchet key) carrying a kel_head tag is rejected: §5.7 DR wire events MUST NOT carry it.",

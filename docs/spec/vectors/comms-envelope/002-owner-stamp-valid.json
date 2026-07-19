@@ -6,24 +6,36 @@
     "core": "core/0.5.0"
   },
   "registry_revision": 1,
+  "profile": "comms-subprotocol-payload-v1",
   "spec_refs": [
     "heterodyne:comms/0.5.0#comms-envelope"
   ],
   "vector_id": "comms-envelope/owner-stamp-valid",
-  "description": "A Comms-allocated JSON kind carries the Comms qualified owner stamp in content.",
+  "description": "A complete unsigned kind:31016 Comms rumor carries its qualified stamp inside the canonical JSON content string.",
   "direction": "consume",
   "input": {
-    "kind": 31007,
-    "content": {
-      "spec_version": "comms/0.5.0",
-      "page": 0
-    }
+    "rumor": {
+      "id": "28f5f7f3445d3746b1e28ead5f55a98b63513332bcb48f1015a562b3ab7ef9a7",
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767226101,
+      "kind": 31016,
+      "tags": [
+        [
+          "p",
+          "e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13"
+        ]
+      ],
+      "content": "{\"spec_version\":\"comms/0.5.0\",\"protocol_type\":\"payload\",\"negotiation_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"protocol_id\":\"heterodyne-device-rpc\",\"protocol_version\":\"1.0.0\",\"responder_confirmation_hash\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"payload\":{\"method\":\"claims.list\",\"request_id\":\"fixture-1\"}}"
+    },
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767226101,31016,[[\"p\",\"e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13\"]],\"{\\\"spec_version\\\":\\\"comms/0.5.0\\\",\\\"protocol_type\\\":\\\"payload\\\",\\\"negotiation_id\\\":\\\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\",\\\"protocol_id\\\":\\\"heterodyne-device-rpc\\\",\\\"protocol_version\\\":\\\"1.0.0\\\",\\\"responder_confirmation_hash\\\":\\\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\\\",\\\"payload\\\":{\\\"method\\\":\\\"claims.list\\\",\\\"request_id\\\":\\\"fixture-1\\\"}}\"]"
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
       "owner": "comms",
-      "stamp_location": "content.spec_version"
+      "stamp_location": "content.spec_version",
+      "event_id": "28f5f7f3445d3746b1e28ead5f55a98b63513332bcb48f1015a562b3ab7ef9a7",
+      "outer_signature_present": false
     }
   }
 }

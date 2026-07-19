@@ -1,6 +1,6 @@
 import { Ajv, type ErrorObject, type JSONSchemaType } from "ajv";
 import { reasonCodeValues } from "./reason-codes.js";
-import { assertAllowedDependency, parseQualifiedVersion } from "./family.js";
+import { parseQualifiedVersion } from "./family.js";
 import type { DocumentId, Vector } from "./types.js";
 
 const REGISTRY_REASON_CODES = reasonCodeValues();
@@ -27,17 +27,17 @@ export const VECTOR_SCHEMA = {
     owner_document: { type: "string", enum: ["core", "comms", "control", "social"] },
     owner_version: {
       type: "string",
-      pattern: "^(core|comms|control|social)/(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+      enum: ["core/0.5.0", "comms/0.5.0", "control/0.5.0", "social/0.5.0"],
     },
     dependency_versions: {
       type: "object",
       required: [],
       additionalProperties: false,
       properties: {
-        core: { type: "string" },
-        comms: { type: "string" },
-        control: { type: "string" },
-        social: { type: "string" },
+        core: { type: "string", const: "core/0.5.0" },
+        comms: { type: "string", const: "comms/0.5.0" },
+        control: { type: "string", const: "control/0.5.0" },
+        social: { type: "string", const: "social/0.5.0" },
       },
     },
     registry_revision: { type: "integer", minimum: 1 },
@@ -47,7 +47,7 @@ export const VECTOR_SCHEMA = {
       minItems: 1,
       items: {
         type: "string",
-        pattern: "^heterodyne:(core|comms|control|social)/(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?#[a-z0-9]+(?:-[a-z0-9]+)*$",
+        pattern: "^heterodyne:(core|comms|control|social)/0\\.5\\.0#[a-z0-9]+(?:-[a-z0-9]+)*$",
       },
     },
     description: { type: "string", minLength: 1 },
@@ -56,6 +56,20 @@ export const VECTOR_SCHEMA = {
     expected_output: { type: "object", additionalProperties: true, required: [] },
   },
   allOf: [
+    ...([
+      ["core", "core/0.5.0", {}],
+      ["comms", "comms/0.5.0", { core: "core/0.5.0" }],
+      ["social", "social/0.5.0", { core: "core/0.5.0", comms: "comms/0.5.0" }],
+      ["control", "control/0.5.0", { comms: "comms/0.5.0" }],
+    ] as const).map(([owner, ownerVersion, dependencies]) => ({
+      if: { properties: { owner_document: { const: owner } }, required: ["owner_document"] },
+      then: {
+        properties: {
+          owner_version: { const: ownerVersion },
+          dependency_versions: { const: dependencies },
+        },
+      },
+    })),
     {
       if: {
         properties: {
@@ -98,21 +112,25 @@ export function validateVectorOrThrow(value: unknown): asserts value is Vector {
 }
 
 function validateFamilyMetadata(vector: Vector): void {
+  const exactDependencies: Record<DocumentId, Partial<Record<DocumentId, string>>> = {
+    core: {},
+    comms: { core: "core/0.5.0" },
+    social: { core: "core/0.5.0", comms: "comms/0.5.0" },
+    control: { comms: "comms/0.5.0" },
+  };
   const ownerVersion = parseQualifiedVersion(vector.owner_version);
-  if (ownerVersion.document !== vector.owner_document) {
+  if (ownerVersion.document !== vector.owner_document || vector.owner_version !== `${vector.owner_document}/0.5.0`) {
     throw new Error("owner_version does not match owner_document");
   }
-  for (const [dependency, version] of Object.entries(vector.dependency_versions)) {
-    const document = dependency as DocumentId;
-    assertAllowedDependency(vector.owner_document, document);
-    let parsed;
-    try {
-      parsed = parseQualifiedVersion(version);
-    } catch {
-      throw new Error(`dependency version is not qualified: ${document}`);
-    }
-    if (parsed.document !== document) {
-      throw new Error(`dependency version does not match ${document}`);
+  const expected = exactDependencies[vector.owner_document];
+  if (JSON.stringify(vector.dependency_versions) !== JSON.stringify(expected)) {
+    throw new Error(`dependency_versions do not exactly match ${vector.owner_document}`);
+  }
+  const allowedRefs = new Set([vector.owner_document, ...Object.keys(expected)]);
+  for (const ref of vector.spec_refs) {
+    const match = /^heterodyne:(core|comms|control|social)\/0\.5\.0#[a-z0-9]+(?:-[a-z0-9]+)*$/.exec(ref);
+    if (match === null || !allowedRefs.has(match[1])) {
+      throw new Error(`spec_ref is outside the owner dependency closure: ${ref}`);
     }
   }
 }

@@ -5,7 +5,7 @@
   "dependency_versions": {},
   "registry_revision": 1,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-kel-verification"
+    "heterodyne:core/0.5.0#core-keri-export"
   ],
   "vector_id": "keri-authority/export-unsupported-crypto-suite",
   "description": "did:webs export fails when a mapping exists but the target crypto suite is unavailable locally (UNSUPPORTED_CRYPTO_SUITE).",

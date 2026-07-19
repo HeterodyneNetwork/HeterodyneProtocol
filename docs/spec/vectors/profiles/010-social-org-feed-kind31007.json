@@ -1,0 +1,68 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
+  "profile": "heterodyne-social-org-feed-v1",
+  "spec_refs": [
+    "heterodyne:social/0.5.0#social-conformance"
+  ],
+  "vector_id": "profiles/social-org-feed-kind31007",
+  "description": "The active Social organization-feed profile is a complete signed Comms feed-index with its exact canonical content marker.",
+  "direction": "round-trip",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767226105,
+      "kind": 31007,
+      "tags": [
+        [
+          "d",
+          "org-news:page-1"
+        ],
+        [
+          "heterodyne",
+          "feed_index"
+        ],
+        [
+          "cold_root",
+          "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        ],
+        [
+          "rid",
+          "rad:zFrWt9XjrvmW8vkFDXcL82YiFDsi"
+        ],
+        [
+          "feed_label",
+          "Org news"
+        ],
+        [
+          "e",
+          "3333333333333333333333333333333333333333333333333333333333333333",
+          "wss://relay.example"
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
+        ]
+      ],
+      "content": "{\"profile\":\"heterodyne.social.org-feed.v1\",\"spec_version\":\"social/0.5.0\"}",
+      "id": "9335dcc7f98162b05d799485506984cf2118fec0f8f113bc0d2ca694c65a245e",
+      "sig": "ecce01c4d11260b39b848767cd4bcf68546dd23688ad27ee966891e4e54c42798d4694cc7896d1207a08f4170aed3b12580697d21a0303c3560415c66a59cc07"
+    },
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767226105,31007,[[\"d\",\"org-news:page-1\"],[\"heterodyne\",\"feed_index\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"rid\",\"rad:zFrWt9XjrvmW8vkFDXcL82YiFDsi\"],[\"feed_label\",\"Org news\"],[\"e\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"wss://relay.example\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"{\\\"profile\\\":\\\"heterodyne.social.org-feed.v1\\\",\\\"spec_version\\\":\\\"social/0.5.0\\\"}\"]"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "signature_valid": true,
+      "owner": "social",
+      "stamp_location": "content.spec_version"
+    }
+  }
+}

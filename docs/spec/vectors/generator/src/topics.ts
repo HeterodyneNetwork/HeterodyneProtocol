@@ -11,6 +11,7 @@ import { buildKeriAuthorityMaterializedVectors } from "./topics-keri-authority-c
 import { buildV04Vectors } from "./topics-v04.js";
 import { buildV04bVectors } from "./topics-v04b.js";
 import { buildSplitVectors } from "./topics-split.js";
+import { remediateHistoricalProduction } from "./legacy-remediation.js";
 import {
   AUX_RAND,
   baseVector,
@@ -75,8 +76,8 @@ export async function buildAllVectors(fixtures: Fixtures): Promise<AuthoredVecto
   vectors.push(...(await buildKeriAuthorityWireVectors(fixtures)));
   vectors.push(...buildKeriAuthorityBehavioralVectors(fixtures));
   vectors.push(...(await buildKeriAuthorityMaterializedVectors(fixtures)));
-  vectors.push(...buildSplitVectors());
-  return vectors;
+  vectors.push(...(await buildSplitVectors(fixtures)));
+  return remediateHistoricalProduction(vectors, fixtures);
 }
 
 const VECTOR_FACTORIES: VectorFactory[] = [

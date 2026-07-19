@@ -5,7 +5,7 @@
   "dependency_versions": {},
   "registry_revision": 1,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-kel-verification"
+    "heterodyne:core/0.5.0#core-kel-head"
   ],
   "vector_id": "keri-authority/kel-head-duplicate-rejected",
   "description": "An epoch-key-signed post carrying two kel_head tags fails: the event MUST carry exactly one well-formed instance.",

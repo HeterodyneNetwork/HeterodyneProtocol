@@ -5,7 +5,7 @@
   "dependency_versions": {},
   "registry_revision": 1,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-kel-verification"
+    "heterodyne:core/0.5.0#core-keri-export"
   ],
   "vector_id": "keri-authority/export-degraded-metadata",
   "description": "A non-security metadata omission is emitted with status degraded plus an explicit warning code and MUST NOT be labeled complete; security-relevant state is intact.",

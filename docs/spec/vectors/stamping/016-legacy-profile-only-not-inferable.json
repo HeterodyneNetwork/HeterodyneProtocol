@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-version-stamps"
+  ],
+  "vector_id": "stamping/legacy-profile-only-not-inferable",
+  "description": "Owner-stamp conformance class: legacy profile only not inferable.",
+  "direction": "round-trip",
+  "input": {
+    "kind": 31001,
+    "archived_form_valid": true,
+    "profile_only": true
+  },
+  "expected_output": {
+    "owner": null,
+    "inferable": false
+  }
+}

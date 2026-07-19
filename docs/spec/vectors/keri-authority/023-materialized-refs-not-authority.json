@@ -5,7 +5,7 @@
   "dependency_versions": {},
   "registry_revision": 1,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-kel-verification"
+    "heterodyne:core/0.5.0#core-materialized-kel"
   ],
   "vector_id": "keri-authority/materialized-refs-not-authority",
   "description": "The refs/xyz.heterodyne.keri/state ref is derived, never authoritative: it MUST NOT establish acceptance. The verifier replays the accepted KEL and only populates its cache from the ref after independently matching it to that replay.",

@@ -1,4 +1,6 @@
-import { baseVector, consumeVector, produceAuthored } from "./vector-helpers.js";
+import { canonicalNip01, getEventId, signEvent, verifyEventSignature } from "./nostr.js";
+import { AUX_RAND, baseVector } from "./vector-helpers.js";
+import type { Fixtures } from "./fixtures.js";
 import type { AuthoredVector, VectorDirection } from "./types.js";
 
 type Case = {
@@ -10,8 +12,84 @@ type Case = {
   expected_output: Record<string, unknown>;
 };
 
-export function buildSplitVectors(): AuthoredVector[] {
-  return CASES.map((testCase) => ({
+export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVector[]> {
+  const sender = fixtures.personas.alice.epoch_keys.epoch_1;
+  const recipient = fixtures.personas.bob.epoch_keys.epoch_1;
+  const native = await signEvent({
+    secretKey: sender.private_key,
+    created_at: fixtures.test_epoch + 500,
+    kind: 1,
+    tags: [["kel_head", fixtures.kel.alice.head.id, "0"]],
+    content: "deterministic Comms-native envelope",
+    auxRand: AUX_RAND,
+  });
+  const payloadContent = JSON.stringify({
+    spec_version: "comms/0.5.0",
+    protocol_type: "payload",
+    negotiation_id: "aa".repeat(32),
+    protocol_id: "heterodyne-device-rpc",
+    protocol_version: "1.0.0",
+    responder_confirmation_hash: "bb".repeat(32),
+    payload: { method: "claims.list", request_id: "fixture-1" },
+  });
+  const rumorBase = {
+    pubkey: sender.pubkey,
+    created_at: fixtures.test_epoch + 501,
+    kind: 31016,
+    tags: [["p", recipient.pubkey]],
+    content: payloadContent,
+  };
+  const rumor = { id: getEventId(rumorBase), ...rumorBase };
+  const negotiationContent = JSON.stringify({
+    spec_version: "comms/0.5.0", protocol_type: "negotiation", phase: "offer",
+    negotiation_id: "cc".repeat(16), protocol_id: "heterodyne-device-rpc",
+    supported_versions: ["1.0.0"], required_features: ["claims"],
+  });
+  const negotiationBase = { ...rumorBase, created_at: fixtures.test_epoch + 502, kind: 31015, content: negotiationContent };
+  const negotiationRumor = { id: getEventId(negotiationBase), ...negotiationBase };
+  const breadcrumbProfile = await signEvent({
+    secretKey: sender.private_key, created_at: fixtures.test_epoch + 503, kind: 0, tags: [],
+    content: JSON.stringify({ name: "Alice (moved)", about: `Continues at npub ${recipient.pubkey}`, website: `https://example.test/npub/${recipient.pubkey}` }), auxRand: AUX_RAND,
+  });
+  const breadcrumbNote = await signEvent({
+    secretKey: sender.private_key, created_at: fixtures.test_epoch + 504, kind: 1, tags: [],
+    content: `This account continues at npub ${recipient.pubkey}`, auxRand: AUX_RAND,
+  });
+  const orgFeed = await signEvent({
+    secretKey: sender.private_key, created_at: fixtures.test_epoch + 505, kind: 31007,
+    tags: [["d", "org-news:page-1"], ["heterodyne", "feed_index"], ["cold_root", fixtures.personas.alice.cold_root.pubkey], ["rid", fixtures.radicle_rids.org_acme], ["feed_label", "Org news"], ["e", "33".repeat(32), "wss://relay.example"], ["kel_head", fixtures.kel.alice.head.id, "0"]],
+    content: "{\"profile\":\"heterodyne.social.org-feed.v1\",\"spec_version\":\"social/0.5.0\"}", auxRand: AUX_RAND,
+  });
+  const dynamic: Case[] = [
+    {
+      path: "comms-envelope/001-nostr-native-event-valid.json",
+      vector_id: "comms-envelope/nostr-native-event-valid",
+      description: "A complete deterministic BIP-340-signed NIP-01 event is the Comms-native envelope on ordinary and repo relays.",
+      direction: "round-trip",
+      input: { event: native, canonical_wire: canonicalNip01(native), carriers: ["nostr_relay", "repo_relay"] },
+      expected_output: { verdict: "accept", normalized: { deduplication_key: native.id, carrier_bytes_equal: true, id_valid: true, signature_valid: verifyEventSignature(native) } },
+    },
+    {
+      path: "comms-envelope/002-owner-stamp-valid.json",
+      vector_id: "comms-envelope/owner-stamp-valid",
+      description: "A complete unsigned kind:31016 Comms rumor carries its qualified stamp inside the canonical JSON content string.",
+      input: { rumor, canonical_wire: canonicalNip01(rumorBase) },
+      expected_output: { verdict: "accept", normalized: { owner: "comms", stamp_location: "content.spec_version", event_id: rumor.id, outer_signature_present: false } },
+    },
+    {
+      path: "comms-envelope/003-nostr-native-signature-mutation.json",
+      vector_id: "comms-envelope/nostr-native-signature-mutation",
+      description: "Changing signed NIP-01 content while retaining the deterministic id and signature is rejected.",
+      input: { event: { ...native, content: `${native.content} tampered` } },
+      expected_output: { verdict: "reject", reason_code: "bad_signature" },
+    },
+    { path: "profiles/001-core-breadcrumb-kind0.json", vector_id: "profiles/core-breadcrumb-kind0", description: "A complete signed ADR-031 kind:0 successor breadcrumb remains a standard unstamped Nostr profile.", direction: "round-trip", input: { event: breadcrumbProfile, canonical_wire: canonicalNip01(breadcrumbProfile) }, expected_output: { verdict: "accept", normalized: { signature_valid: verifyEventSignature(breadcrumbProfile), stamp_count: 0, nip05_present: false } } },
+    { path: "profiles/002-core-breadcrumb-kind1.json", vector_id: "profiles/core-breadcrumb-kind1", description: "A complete signed ADR-031 final kind:1 continuation note remains unstamped.", direction: "round-trip", input: { event: breadcrumbNote, canonical_wire: canonicalNip01(breadcrumbNote) }, expected_output: { verdict: "accept", normalized: { signature_valid: verifyEventSignature(breadcrumbNote), stamp_count: 0 } } },
+    { path: "profiles/010-social-org-feed-kind31007.json", vector_id: "profiles/social-org-feed-kind31007", description: "The active Social organization-feed profile is a complete signed Comms feed-index with its exact canonical content marker.", direction: "round-trip", input: { event: orgFeed, canonical_wire: canonicalNip01(orgFeed) }, expected_output: { verdict: "accept", normalized: { signature_valid: verifyEventSignature(orgFeed), owner: "social", stamp_location: "content.spec_version" } } },
+    { path: "profiles/011-comms-negotiation-kind31015.json", vector_id: "profiles/comms-negotiation-kind31015", description: "The active Comms negotiation profile is a complete canonical unsigned rumor with one recipient tag.", direction: "round-trip", input: { rumor: negotiationRumor, canonical_wire: canonicalNip01(negotiationBase) }, expected_output: { verdict: "accept", normalized: { owner: "comms", outer_signature_present: false } } },
+    { path: "profiles/012-comms-payload-kind31016.json", vector_id: "profiles/comms-payload-kind31016", description: "The active Comms payload profile is a complete canonical unsigned rumor whose string content carries the Comms stamp.", direction: "round-trip", input: { rumor, canonical_wire: canonicalNip01(rumorBase) }, expected_output: { verdict: "accept", normalized: { owner: "comms", outer_signature_present: false } } },
+  ];
+  return [...dynamic, ...CASES].map((testCase) => ({
     relativePath: testCase.path,
     vector: baseVector({
       vector_id: testCase.vector_id,
@@ -26,21 +104,6 @@ export function buildSplitVectors(): AuthoredVector[] {
 
 const CASES: Case[] = [
   {
-    path: "comms-envelope/001-nostr-native-event-valid.json",
-    vector_id: "comms-envelope/nostr-native-event-valid",
-    description: "A NIP-01 signed event is the Comms-native envelope on both ordinary and repo relays.",
-    direction: "round-trip",
-    input: { event_id: "11".repeat(32), carriers: ["nostr_relay", "repo_relay"] },
-    expected_output: { verdict: "accept", normalized: { deduplication_key: "11".repeat(32), carrier_bytes_equal: true } },
-  },
-  {
-    path: "comms-envelope/002-owner-stamp-valid.json",
-    vector_id: "comms-envelope/owner-stamp-valid",
-    description: "A Comms-allocated JSON kind carries the Comms qualified owner stamp in content.",
-    input: { kind: 31007, content: { spec_version: "comms/0.5.0", page: 0 } },
-    expected_output: { verdict: "accept", normalized: { owner: "comms", stamp_location: "content.spec_version" } },
-  },
-  {
     path: "core-redundancy/001-radicle-multihost-replication.json",
     vector_id: "core-redundancy/radicle-multihost-replication",
     description: "Two independent Radicle seeds replicate the same signed canonical repository head.",
@@ -48,11 +111,11 @@ const CASES: Case[] = [
     expected_output: { verdict: "accept", normalized: { independent_host_count: 2, canonical_head_agrees: true } },
   },
   {
-    path: "core-redundancy/002-stale-seed-rejected.json",
-    vector_id: "core-redundancy/stale-seed-rejected",
-    description: "A stale seed cannot replace the locally accepted canonical repository head.",
-    input: { accepted_seq: 9, offered_seq: 8, offered_host: "node-stale" },
-    expected_output: { verdict: "reject", reason_code: "repo_head_regression" },
+    path: "core-redundancy/002-stale-seed-does-not-remove-durability.json",
+    vector_id: "core-redundancy/stale-seed-does-not-remove-durability",
+    description: "A stale seed remains a discoverable replica while two current independent hosts preserve durable canonical repository availability.",
+    input: { canonical_head: "22".repeat(20), hosts: [{ host: "node-a", head_current: true }, { host: "node-b", head_current: true }, { host: "node-stale", head_current: false }] },
+    expected_output: { verdict: "accept", normalized: { durable_current_host_count: 2, stale_host_retained: true, canonical_head_authority_changed: false } },
   },
   {
     path: "acceptance-gating/001-authentication-before-policy.json",
@@ -119,6 +182,8 @@ const CASES: Case[] = [
     input: { received_stamp: "comms/9.0.0", negotiated_session: false, degraded_mode_declared: false },
     expected_output: { verdict: "reject", reason_code: "unknown_major_version" },
   },
+  ...acceptanceCases(),
+  ...profileCases(),
   ...stampCases(),
   {
     path: "registry/001-downref-nonfrozen-rejected.json",
@@ -138,9 +203,48 @@ const CASES: Case[] = [
   },
 ];
 
+function acceptanceCases(): Case[] {
+  const hold = { outcome: "hold", content_transferred: false, receipts: 0, typing_signals: 0, retry_hints: 0 };
+  return [
+    ["005-established-ordinary-accept", "established-ordinary-accept", { context: "ordinary", authenticated: true, established: true }, { verdict: "accept", normalized: { outcome: "accept" } }],
+    ["006-new-ordinary-hold", "new-ordinary-hold", { context: "ordinary", authenticated: true, established: false }, { verdict: "accept", normalized: hold }],
+    ["007-authentication-reject", "authentication-reject", { authenticated: false }, { verdict: "reject", reason_code: "bad_signature" }],
+    ["008-credential-valid-accept", "credential-valid-accept", { authenticated: true, credential: { status: "valid", nid_bound: true, subject_matches: true } }, { verdict: "accept", normalized: { outcome: "accept" } }],
+    ["009-authoritative-state-unavailable-hold", "authoritative-state-unavailable-hold", { authenticated: true, credential: { authoritative_state: "unavailable" } }, { verdict: "accept", normalized: hold }],
+    ["010-credential-invalid-reject", "credential-invalid-reject", { credential: { status: "invalid" } }, { verdict: "reject", reason_code: "nid_proof_invalid" }],
+    ["011-credential-revoked-reject", "credential-revoked-reject", { credential: { status: "revoked" } }, { verdict: "reject", reason_code: "kel_revoked_nid" }],
+    ["012-credential-expired-reject", "credential-expired-reject", { credential: { status: "expired" } }, { verdict: "reject", reason_code: "expired_delegation" }],
+    ["013-credential-subject-mismatch-reject", "credential-subject-mismatch-reject", { credential: { subject_matches: false } }, { verdict: "reject", reason_code: "delegation_mismatch" }],
+    ["014-credential-nidless-reject", "credential-nidless-reject", { credential: { nid_bound: false } }, { verdict: "reject", reason_code: "nid_binding_missing_signature" }],
+    ["015-control-enrollment-default-hold", "control-enrollment-default-hold", { context: "control-enrollment", authenticated: true, explicitly_approved: false }, { verdict: "accept", normalized: hold }],
+    ["016-social-wot-tightens-only", "social-wot-tightens-only", { comms_outcome: "accept", social: { follows: false, replied_before: false, trust_distance: 4, overmuted_ratio: 0.75 } }, { verdict: "accept", normalized: { composed_outcome: "hold", loosened_comms_result: false } }],
+    ["017-social-wot-cannot-loosen", "social-wot-cannot-loosen", { comms_outcome: "reject", social: { follows: true, replied_before: true, trust_distance: 1, overmuted_ratio: 0 } }, { verdict: "accept", normalized: { composed_outcome: "reject", loosened_comms_result: false } }],
+  ].map(([file, id, input, expected_output]) => ({
+    path: `acceptance-gating/${file}.json`, vector_id: `acceptance-gating/${id}`,
+    description: `Closed Comms acceptance outcome: ${String(id).replaceAll("-", " ")}.`,
+    input: input as Record<string, unknown>, expected_output: expected_output as Record<string, unknown>,
+  }));
+}
+
+function profileCases(): Case[] {
+  const tier3Kinds = [1, 6, 16, 1063, 30023, 30402];
+  const tier3 = tier3Kinds.map((kind, index): Case => ({
+    path: `profiles/${String(index + 3).padStart(3, "0")}-tier3-kind-${kind}.json`,
+    vector_id: `profiles/tier3-kind-${kind}`,
+    description: `The active Tier-3 kind:${kind} profile uses the exact opaque carrier tags and Comms owner stamp.`,
+    direction: "round-trip",
+    input: { event_template: { kind, tags: [...(kind >= 30000 ? [["d", `opaque-${kind}`]] : []), ["heterodyne_wrap", "room_key.v2"], ["key_id", "aud-fixture"], ["kel_head", "11".repeat(32), "0"], ["spec_version", "comms/0.5.0"]], content: "AopaqueNIP44fixture" } },
+    expected_output: { verdict: "accept", normalized: { owner: "comms", stamp_location: "tag", semantic_cleartext_tags: 0 } },
+  }));
+  return [
+    ...tier3,
+    { path: "profiles/009-dr-invite-response-kind1059.json", vector_id: "profiles/dr-invite-response-kind1059", description: "The active DR invite response kind:1059 is covered as an unstamped ratchet outer event.", direction: "round-trip", input: { kind: 1059, tags: [["p", "22".repeat(32)]], content: "AratchetInviteResponse" }, expected_output: { verdict: "accept", normalized: { stamp_count: 0, storable: true } } },
+  ];
+}
+
 function stampCases(): Case[] {
   const values: Array<[string, string, Record<string, unknown>, Record<string, unknown>]> = [
-    ["001-heterodyne-json-content-owner", "heterodyne-json-content-owner", { kind: 31001, content_is_heterodyne_json: true }, { owner: "core", placement: "content.spec_version" }],
+    ["001-heterodyne-json-content-owner", "heterodyne-json-content-owner", { kind: 31003, content_is_heterodyne_json: true, content: { spec_version: "core/0.5.0" } }, { owner: "core", placement: "content.spec_version" }],
     ["002-heterodyne-empty-content-tag-owner", "heterodyne-empty-content-tag-owner", { kind: 31001, content_is_heterodyne_json: false }, { owner: "core", placement: "tag" }],
     ["003-upstream-unstamped", "upstream-unstamped", { kind: 10000 }, { owner: null, placement: null }],
     ["004-upstream-profile-owner", "upstream-profile-owner", { kind: 10000, profile_id: "heterodyne-social-mute-list-v1" }, { owner: "social", placement: "tag" }],
@@ -153,6 +257,9 @@ function stampCases(): Case[] {
     ["011-legacy-upstream-not-inferable", "legacy-upstream-not-inferable", { kind: 1, adopted_upstream: true }, { owner: null, inferable: false }],
     ["012-no-restamp-existing-bytes", "no-restamp-existing-bytes", { historical_stamp: "0.4.0", migration_target: "core/0.5.0" }, { historical_stamp: "0.4.0", resign: false, bytes_changed: false }],
     ["013-tier3-profile-owner", "tier3-profile-owner", { kind: 1, profile_id: "heterodyne-comms-tier3-wrapped-content-kind-1-v1", content_is_heterodyne_json: false }, { owner: "comms", placement: "tag" }],
+    ["014-legacy-malformed-not-inferable", "legacy-malformed-not-inferable", { kind: 31001, archived_form_valid: false }, { owner: null, inferable: false }],
+    ["015-legacy-post-split-not-inferable", "legacy-post-split-not-inferable", { kind: 31001, archived_form_valid: true, post_split_discriminator: true }, { owner: null, inferable: false }],
+    ["016-legacy-profile-only-not-inferable", "legacy-profile-only-not-inferable", { kind: 31001, archived_form_valid: true, profile_only: true }, { owner: null, inferable: false }],
   ];
   return values.map(([file, id, input, expected_output]) => ({
     path: `stamping/${file}.json`,

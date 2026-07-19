@@ -5,7 +5,7 @@
   "dependency_versions": {},
   "registry_revision": 1,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-kel-verification"
+    "heterodyne:core/0.5.0#core-keri-export"
   ],
   "vector_id": "keri-authority/export-aid-digest-anchoring",
   "description": "The derived export AID's KEL anchors digests of the persona's accepted Heterodyne KEL events in order, and its DID document names the persona npub as the canonical Heterodyne subject. Persona authority remains solely the Heterodyne KEL; the export AID/DID is never an alternate authoritative identity.",
