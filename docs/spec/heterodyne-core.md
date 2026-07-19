@@ -279,6 +279,15 @@ exceed the sum of configured weights. The event MUST NOT carry `kel_head`.
 }
 ```
 
+The rotation event `content` MUST be the compact UTF-8 JSON serialization of
+exactly one object with exactly two members in this order:
+`spec_version`, whose value is exactly `core/0.5.0`, and `receipts`, whose
+value is an array of the receipt objects defined below. The byte form is
+`{"spec_version":"core/0.5.0","receipts":[...]}` with no insignificant
+whitespace; an empty receipt set is `[]`. Any missing, duplicate, or unknown
+top-level member, a member in the wrong order, a wrong `spec_version`, or a
+non-array `receipts` value MUST be rejected.
+
 The `p` tag MUST equal the cold root. `s` MUST advance from the prior accepted
 event and `d` MUST equal `s`. `prior_digest` MUST equal the prior accepted
 event id. `committed` requires the cold-root signature; `none` requires the
@@ -754,10 +763,11 @@ at `accept_provisional`.
 The declared key-material policy is also part of every verification path. A
 relay-only key-material input under `provisional-accept` may be applied only
 with provisional status. Under `deny-until-repo`, it has no authority and the
-path MUST return internal reason `provisional_not_final`; that reason maps to
-the non-final `accept_provisional` outcome and MUST NOT become final acceptance
-or a permanent rejection. Verification of an embedded signature MUST apply the
-same head ordering, refresh, re-resolution, and `provisional_not_final` rules.
+path MUST return `reject` with reason `provisional_not_final`; it MUST NOT
+return `accept_provisional`. This policy rejection holds the object unresolved
+for re-evaluation after repo synchronization and is not a permanent validity
+judgment. Verification of an embedded signature MUST apply the same head
+ordering, refresh, re-resolution, and `provisional_not_final` rules.
 
 <a id="core-verification-accelerator"></a>
 <!-- Monolith provenance: §4.5.1. -->
@@ -962,8 +972,8 @@ Once enabled, the node SHOULD maintain an origin-independent CESR stream and
 anchored-digest map. Origin-bound did:webs artifacts are produced only when an
 operator origin and path exist. Security-relevant source state MUST NOT be
 omitted. Failures are `UNMAPPABLE_FEATURE`, `UNSUPPORTED_CRYPTO_SUITE`, or
-`INCOMPLETE_EXPORT`; non-security omissions require degraded status and
-explicit warnings.
+`INCOMPLETE_EXPORT`; an export with any non-security omission MUST be marked
+degraded, MUST NOT be labeled complete, and MUST carry explicit warnings.
 
 <a id="core-versioning"></a>
 <!-- Monolith provenance: §12; split rules: ADR-033. -->

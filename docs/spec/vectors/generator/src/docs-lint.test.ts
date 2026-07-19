@@ -59,6 +59,29 @@ describe("protocol family documents", () => {
     );
   });
 
+  it("retains the closed rotation content schema and degraded export label", () => {
+    const text = readFileSync(corePath, "utf8");
+
+    expect(text).toMatch(
+      /rotation event `content` MUST be the compact UTF-8 JSON[\s\S]*`spec_version`[\s\S]*`receipts`/,
+    );
+    expect(text).toMatch(
+      /missing, duplicate, or unknown[\s\S]*top-level member[\s\S]*MUST be rejected/,
+    );
+    expect(text).toMatch(/MUST NOT be labeled complete/);
+  });
+
+  it("keeps deny-until-repo key material out of provisional acceptance", () => {
+    const text = readFileSync(corePath, "utf8");
+
+    expect(text).toMatch(
+      /Under `deny-until-repo`[\s\S]*MUST return `reject` with reason `provisional_not_final`/,
+    );
+    expect(text).not.toMatch(
+      /reason `provisional_not_final`[\s\S]{0,240}maps to[\s\S]*`accept_provisional`/,
+    );
+  });
+
   it("retains operator consent and exact materialized-KEL atomicity", () => {
     const text = readFileSync(corePath, "utf8");
 
@@ -264,6 +287,79 @@ describe("protocol family documents", () => {
             code: "forbidden-dependency",
           }),
         ),
+    );
+  });
+
+  it("does not carry normative force into an adjacent informative bullet", () => {
+    withFamilyDocs(
+      {
+        core: [
+          "Document ID: `core`",
+          "- Core MUST validate its local state.",
+          "- Background: `heterodyne:comms/0.5.0#comms-envelope`.",
+          '<a id="core-identity-model"></a>',
+        ].join("\n"),
+        comms: [
+          "Document ID: `comms`",
+          '<a id="comms-envelope"></a>',
+        ].join("\n"),
+      },
+      (root) =>
+        expect(
+          lintFamilyDocs(root).filter(
+            (issue) => issue.code === "forbidden-dependency",
+          ),
+        ).toEqual([]),
+    );
+  });
+
+  it("keeps continuation lines in the same normative bullet", () => {
+    withFamilyDocs(
+      {
+        core: [
+          "Document ID: `core`",
+          "- Core MUST validate its local state using",
+          "  `heterodyne:comms/0.5.0#comms-envelope`.",
+          '<a id="core-identity-model"></a>',
+        ].join("\n"),
+        comms: [
+          "Document ID: `comms`",
+          '<a id="comms-envelope"></a>',
+        ].join("\n"),
+      },
+      (root) =>
+        expect(lintFamilyDocs(root)).toContainEqual(
+          expect.objectContaining({
+            path: "docs/spec/heterodyne-core.md",
+            line: 3,
+            code: "forbidden-dependency",
+          }),
+        ),
+    );
+  });
+
+  it("does not carry normative force into an adjacent informative table row", () => {
+    withFamilyDocs(
+      {
+        core: [
+          "Document ID: `core`",
+          "| Rule | Detail |",
+          "|---|---|",
+          "| Core MUST validate state | Locally |",
+          "| Background | `heterodyne:comms/0.5.0#comms-envelope` |",
+          '<a id="core-identity-model"></a>',
+        ].join("\n"),
+        comms: [
+          "Document ID: `comms`",
+          '<a id="comms-envelope"></a>',
+        ].join("\n"),
+      },
+      (root) =>
+        expect(
+          lintFamilyDocs(root).filter(
+            (issue) => issue.code === "forbidden-dependency",
+          ),
+        ).toEqual([]),
     );
   });
 

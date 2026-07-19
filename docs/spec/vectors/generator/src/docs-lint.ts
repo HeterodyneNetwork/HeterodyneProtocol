@@ -40,6 +40,9 @@ const BCP14_KEYWORD =
   /\b(?:MUST(?: NOT)?|REQUIRED|SHALL(?: NOT)?|SHOULD(?: NOT)?|RECOMMENDED|NOT RECOMMENDED|MAY|OPTIONAL)\b/;
 const EXPLICIT_NORMATIVE =
   /(?<!non-)(?<!non )\bnormative(?:ly)?\b/i;
+const LIST_ITEM = /^\s{0,3}(?:[-+*]|\d+[.)])\s+/;
+const TABLE_ROW = /^\s*\|.*\|\s*$/;
+const WRAPPED_DEPENDENCY_DECLARATION = /^\s*Normative dependencies\s*:\s*$/i;
 
 function displayPath(repoRoot: string, path: string): string {
   return relative(repoRoot, path).split(sep).join("/");
@@ -72,6 +75,7 @@ function normativeParagraphLines(lines: readonly string[]): Set<number> {
   const normative = new Set<number>();
   let paragraph: number[] = [];
   let fenced = false;
+  let wrappedDependencyDeclaration = false;
 
   const flush = (): void => {
     if (
@@ -80,6 +84,7 @@ function normativeParagraphLines(lines: readonly string[]): Set<number> {
       for (const lineNumber of paragraph) normative.add(lineNumber);
     }
     paragraph = [];
+    wrappedDependencyDeclaration = false;
   };
 
   for (const [lineNumber, line] of lines.entries()) {
@@ -97,7 +102,24 @@ function normativeParagraphLines(lines: readonly string[]): Set<number> {
       flush();
       continue;
     }
+
+    if (TABLE_ROW.test(line)) {
+      flush();
+      paragraph.push(lineNumber);
+      flush();
+      continue;
+    }
+
+    if (LIST_ITEM.test(line)) {
+      if (paragraph.length > 0 && !wrappedDependencyDeclaration) flush();
+      paragraph.push(lineNumber);
+      continue;
+    }
+
     paragraph.push(lineNumber);
+    if (WRAPPED_DEPENDENCY_DECLARATION.test(line)) {
+      wrappedDependencyDeclaration = true;
+    }
   }
   flush();
   return normative;
