@@ -62,7 +62,7 @@ describe("split remediation wire and hook contracts", () => {
     ["profiles/comms-payload-kind31016", "heterodyne:comms/0.5.0#comms-subprotocol-negotiation"],
     ["profiles/social-org-feed-kind31007", "heterodyne:social/0.5.0#social-org-feed-profile"],
     ["lists/mute-list-public-roundtrip-v050", "heterodyne:social/0.5.0#social-mute-profile"],
-    ["stamping/control-profile-retains-core-owner", "heterodyne:control/0.5.0#control-session-device-profile"],
+    ["stamping/control-profile-retains-core-owner", "heterodyne:core/0.5.0#core-version-stamps"],
   ])("anchors %s at its concrete profile section", (id, ref) => {
     expect(vectorMetadata(id).spec_refs).toContain(ref);
   });

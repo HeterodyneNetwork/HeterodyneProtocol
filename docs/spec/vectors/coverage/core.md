@@ -95,6 +95,7 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `social-recovery/cache-sourced-marked-stale` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-recovery` |
 | `social-recovery/cold-root-reanchor-authoritative` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-recovery` |
 | `stamping/control-carrier-comms-owner` | core | `core/0.5.0` | — | 1 | `comms-subprotocol-payload-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
+| `stamping/control-profile-retains-core-owner` | core | `core/0.5.0` | — | 1 | `heterodyne-control-session-device-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/dr-outer-unstamped` | core | `core/0.5.0` | — | 1 | `heterodyne-comms-double-ratchet-message-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/heterodyne-empty-content-tag-owner` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/heterodyne-json-content-owner` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-version-stamps` |

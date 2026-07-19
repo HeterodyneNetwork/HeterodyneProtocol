@@ -2,9 +2,9 @@
 
 Generated from [manifest.json](manifest.json); do not edit by hand.
 
-- core: 122
+- core: 123
 - comms: 57
-- control: 1
+- control: 0
 - social: 82
 
 | Vector | Owner | Version | Dependencies | Registry | Profile | Spec references |
@@ -238,7 +238,7 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `social-recovery/retention-30-days` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-recovery-binding` |
 | `social-recovery/three-tier-caching` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-recovery-binding` |
 | `stamping/control-carrier-comms-owner` | core | `core/0.5.0` | — | 1 | `comms-subprotocol-payload-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
-| `stamping/control-profile-retains-core-owner` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | `heterodyne-control-session-device-v1` | `heterodyne:control/0.5.0#control-session-device-profile` |
+| `stamping/control-profile-retains-core-owner` | core | `core/0.5.0` | — | 1 | `heterodyne-control-session-device-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/dr-outer-unstamped` | core | `core/0.5.0` | — | 1 | `heterodyne-comms-double-ratchet-message-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/heterodyne-empty-content-tag-owner` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/heterodyne-json-content-owner` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-version-stamps` |

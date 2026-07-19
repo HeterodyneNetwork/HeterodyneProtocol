@@ -62,7 +62,7 @@ export async function writeCoverage(vectorRoot: string): Promise<void> {
 function renderDocumentView(document: DocumentId, entries: CoverageEntry[]): string {
   const title = document[0].toUpperCase() + document.slice(1);
   if (document === "control") {
-    return `# ${title} vector coverage\n\nStatus: \`incomplete-draft\`.\n\nReservation-only coverage is not a Control conformance corpus. The Control profile remains non-claimable until the ADR-030 minimum corpus exists.\n\n${renderTable(entries)}`;
+    return `# ${title} vector coverage\n\nStatus: \`incomplete-draft\`.\n\nNo Control conformance corpus is published. The Control profile remains non-claimable until the ADR-030 minimum corpus exists.\n`;
   }
   return `# ${title} vector coverage\n\nGenerated from [manifest.json](manifest.json); do not edit by hand.\n\n${renderTable(entries)}`;
 }

@@ -225,3 +225,25 @@ Follow-up TDD evidence:
 - Full follow-up `check`: TypeScript passed; 14 files, 157 tests passed; all
   262 vectors verified. `family:check`, archive comparison, and diff checks
   passed.
+
+## Final inactive-Control ownership correction
+
+Independent review correctly distinguished the owner of a conformance vector
+from the owner named by the inactive profile reservation. The vector
+`stamping/control-profile-retains-core-owner` verifies Core stamp retention;
+it is therefore Core-owned and anchored at `core-version-stamps`. It does not
+create a Control-owned normative vector. This correction supersedes the
+intermediate distribution above: final ownership is Core 123, Comms 57,
+Social 82, Control 0. The Control coverage view again contains no rows and
+remains `incomplete-draft`/non-claimable.
+
+The public dependency contract is unchanged by this ownership correction:
+`DOCUMENT_DEPENDENCIES.control` remains `["core", "comms"]`, and runtime,
+JSON Schema, and tests continue to require both exact pins and permit both
+direct-dependency references for any future Control-owned vector.
+
+- Focused RED: 3 intended failures proved the stale Control owner, Control
+  anchor, and coverage row.
+- Focused GREEN: 4 files, 26 tests passed.
+- Full final `check`: TypeScript passed; 14 files, 157 tests passed; all 262
+  vectors verified. Family validation and archive comparison passed.

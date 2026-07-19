@@ -124,6 +124,7 @@ stamping/upstream-unstamped
 stamping/upstream-profile-owner
 stamping/non-stamping-profile-unchanged
 stamping/dr-outer-unstamped
+stamping/control-profile-retains-core-owner
 stamping/control-carrier-comms-owner
 stamping/legacy-monolith-explicit
 stamping/legacy-monolith-inferred
@@ -284,9 +285,7 @@ acceptance-gating/social-wot-cannot-loosen
 profiles/social-org-feed-kind31007
 `);
 
-const CONTROL_IDS = ids(`
-stamping/control-profile-retains-core-owner
-`);
+const CONTROL_IDS = new Set<string>();
 
 const PROFILE_BY_VECTOR = new Map<string, string>([
   ["stamping/upstream-profile-owner", "heterodyne-social-mute-list-v1"],
@@ -354,9 +353,6 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
 
 function referenceFor(vectorId: string, owner: DocumentId): { document: DocumentId; anchor: string } {
   if (vectorId.startsWith("stamping/") || vectorId.startsWith("profiles/core-breadcrumb")) {
-    if (vectorId === "stamping/control-profile-retains-core-owner") {
-      return { document: "control", anchor: "control-session-device-profile" };
-    }
     return { document: "core", anchor: "core-version-stamps" };
   }
   const profile = PROFILE_BY_VECTOR.get(vectorId);
