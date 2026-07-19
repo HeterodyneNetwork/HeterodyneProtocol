@@ -141,6 +141,10 @@ Following is a set of feed subscriptions, not one global server-side edge:
   membership; and
 - vanilla-Nostr following subscribes through the target's NIP-65 write relays.
 
+A client that follows a public feed SHOULD offer to opt into seeding its
+Radicle repository. Seeding remains an explicit user choice and MUST NOT be
+inferred from popularity or from following alone.
+
 A client MAY publish a NIP-02 `kind:3` follow list for vanilla interop, but
 MUST NOT require a public follow list. Private follows, feed preferences,
 followed-repository locators, private mutes, and UI preferences are
@@ -160,7 +164,9 @@ fallback and labels the lack of Double Ratchet forward secrecy.
 ### 3.2 Cross-persona advertisements
 
 `kind:31004` is the Social `related_persona` attestation. A relationship is
-valid only when both personas publish matching attestations, each carrying:
+valid only when two distinct personas A and B publish a matching pair of
+attestations. A's `other_npub` MUST be B's cold-root npub and B's
+`other_npub` MUST be A's. Each event carries:
 
 ```text
 ['d','<relation>:<other_npub_hex>']
@@ -174,10 +180,38 @@ valid only when both personas publish matching attestations, each carrying:
 
 Both signatures and both personas' Core key authority MUST verify. A
 single-signed relationship MUST be rejected. The `d`, `other_npub`, and
-opposite-party values MUST match exactly. A relationship MAY be advertised
+opposite-party values MUST match exactly. `same_holder` and `linked` are
+symmetric: both events MUST use the same relation. `endorses` and
+`endorsed_by` are the only inverse pair. The events MUST have independent
+signatures, signing epoch keys, cold roots, and accepted `kel_head` proofs.
+An OPTIONAL `['scope','<value>']` tag is valid only when it is either absent
+from both events or occurs exactly once with the same value in both. A
+relationship MAY be advertised
 publicly or inside a Comms audience, but a client MUST NOT infer relationships
 from co-hosting, timing, caches, or any signal other than an explicit valid
 pair.
+
+<!-- fixture:related-persona-pair -->
+```json
+{
+  "left": {
+    "pubkey": "1111111111111111111111111111111111111111111111111111111111111111",
+    "created_at": 1710000000,
+    "kind": 31004,
+    "tags": [["d","endorses:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],["heterodyne","related_persona"],["other_npub","bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],["relation","endorses"],["scope","professional"],["cold_root","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],["kel_head","3333333333333333333333333333333333333333333333333333333333333333","4"],["spec_version","social/0.5.0"]],
+    "content": "",
+    "sig": "55555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555"
+  },
+  "right": {
+    "pubkey": "2222222222222222222222222222222222222222222222222222222222222222",
+    "created_at": 1710000001,
+    "kind": 31004,
+    "tags": [["d","endorsed_by:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],["heterodyne","related_persona"],["other_npub","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],["relation","endorsed_by"],["scope","professional"],["cold_root","bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],["kel_head","4444444444444444444444444444444444444444444444444444444444444444","9"],["spec_version","social/0.5.0"]],
+    "content": "",
+    "sig": "66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666"
+  }
+}
+```
 
 <a id="social-discovery-extensions"></a>
 ### 3.3 Search, starter packs, and graph sources
@@ -207,6 +241,11 @@ Social+Matrix, a Matrix identity-room cache:
 - a mutual follow SHOULD cache it; and
 - a declared Core witness MUST retain the material required by the Core
   recovery profile for at least 30 days.
+
+<!-- fixture:social-recovery-cache-duties -->
+```json
+{"follower":"may","mutual-follow":"should","declared-witness":"must"}
+```
 
 Only persona-signed identity/feed material and valid KEL events may enter this
 cache. A serving peer MUST mark cached data stale and cache-sourced. Social
@@ -276,8 +315,11 @@ persona's curated feed.
 Registry revision 1 defines the stamping profile
 `heterodyne-social-org-feed-v1` on the Comms-owned `kind:31007`, with immutable
 discriminator `content.profile=heterodyne.social.org-feed.v1`. An event opting
-into this profile MUST otherwise validate the complete Comms feed-index schema
-and MUST include exactly:
+into this profile MUST otherwise validate the complete Comms feed-index schema.
+Revision 1 permits it only in Tier 1 and Tier 2; Tier 3 use and ciphertext are
+forbidden. It replaces the ordinary Comms empty content with exactly this
+canonical compact JSON string, including member order and with no unknown
+members:
 
 ```json
 {
@@ -286,11 +328,25 @@ and MUST include exactly:
 }
 ```
 
-as members of its Comms-defined JSON content. The displayed fragment does not
-replace the other required Comms members. Because the profile is stamping, the
-Social stamp is the event's sole owner stamp; it MUST NOT also carry a Comms
-stamp. A Comms `kind:31007` without the exact discriminator remains a Comms
-event and MUST NOT be interpreted as this Social profile.
+Because the profile is stamping, the Social stamp is the event's sole owner
+stamp and occurs only in `content`; the event MUST NOT carry either a Comms or
+Social version tag. All Comms tags, paging, thresholds, page-size, publication,
+retrieval, signature, and KEL requirements remain in force. It MUST NOT carry
+`heterodyne_wrap` or `key_id`. A Comms `kind:31007` without the exact
+discriminator remains a Comms event and MUST NOT be interpreted as this Social
+profile.
+
+<!-- fixture:social-org-feed-index -->
+```json
+{
+  "pubkey": "1111111111111111111111111111111111111111111111111111111111111111",
+  "created_at": 1710000000,
+  "kind": 31007,
+  "tags": [["d","org-news:page-2"],["heterodyne","feed_index"],["cold_root","2222222222222222222222222222222222222222222222222222222222222222"],["rid","rad:zExample"],["feed_label","Org news"],["e","3333333333333333333333333333333333333333333333333333333333333333","wss://relay.example"],["previous_index","4444444444444444444444444444444444444444444444444444444444444444"],["prev_page_hash","5555555555555555555555555555555555555555555555555555555555555555"],["kel_head","6666666666666666666666666666666666666666666666666666666666666666","7"]],
+  "content": "{\"profile\":\"heterodyne.social.org-feed.v1\",\"spec_version\":\"social/0.5.0\"}",
+  "sig": "77777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777"
+}
+```
 
 The profile controls only org/community/editorial presentation. It MUST NOT
 weaken the requirement that both the org post and index be reachable from the
@@ -348,15 +404,21 @@ A NIP-72 candidate MUST include before signing:
 ['a','34550:<community-pubkey-hex>:<community-d-tag>']
 ```
 
-The contributor SHOULD publish to the union of its own NIP-65 write relays and
-the current moderators' write relays. A `['client','heterodyne']` tag is
+The contributor MUST publish to its own NIP-65 write relays and SHOULD also
+publish to the current moderators' write relays. A
+`['client','heterodyne']` tag is
 OPTIONAL and MUST NOT be used to exclude vanilla submissions. A contributor
-SHOULD poll or subscribe to moderator indexes; polling begins at five-minute
-intervals and MAY back off after 30 minutes. It MUST stop on approval or after
-seven days. If no approval appears within seven days of candidate
+SHOULD poll or subscribe to moderator indexes. Polling MUST use five-minute
+intervals for the first 30 minutes, then MAY use exponential backoff of 5, 10,
+30, then 60 minutes. It MUST stop on approval or when the seven-day
+implicit-rejection window expires. If no approval appears within seven days of candidate
 `created_at`, conforming clients MUST treat the candidate as implicitly
-rejected and offer abandon, edited republication with a new id, or intentional
-unchanged republication.
+rejected, MUST surface exactly "post not approved within 7-day window", and
+offer abandon, edited republication with a new id, or intentional unchanged
+republication. This release defines no explicit moderator-rejection event;
+silence is rejection. After three consecutive posts are implicitly rejected
+from one community, the client SHOULD warn that "the community may not be
+accepting your submissions." This is advisory UX, not enforcement.
 
 Every moderated community MUST publish a NIP-72 `kind:34550` addressable
 community definition on the Core/Comms backends. It lists each moderator's
@@ -403,6 +465,11 @@ An approval required to have a repo or Matrix anchor but lacking it MUST NOT
 count. An approval omitted from the moderator's current index is off-index and
 MUST NOT count in the Heterodyne curated view even if a vanilla NIP-72 client
 uses it.
+
+<!-- fixture:social-approval-anchor-evidence -->
+```json
+{"indexed":true,"signatureValid":true,"moderatorAuthorizedAtAnchor":true,"requiredAnchorPresent":true,"deleted":false}
+```
 
 The moderator set is evaluated at the anchor, not verification time. Later
 removal does not invalidate an earlier approval. A KERI compromise cutoff
@@ -534,8 +601,11 @@ follow sets `30000`, relay sets `30002`, bookmark sets `30003`, kind-mute sets
 packs `39089`. Sets MAY use upstream `title`, `image`, and `description` tags.
 They remain unstamped unless a registry profile explicitly opts them in.
 
-Social-profile lists SHOULD be published to the persona's ordinary and repo
-relays under the applicable Comms tier. A reader MUST prefer the newest
+Every NIP-51 list or set used by Social MUST be publishable to and served from
+both the persona's ordinary relays and its repo relay under the applicable
+Comms tier. The repo relay MUST accept conforming NIP-51 events for a repository
+it serves. The persona SHOULD also commit each current list revision to its
+persona repository. A reader MUST prefer the newest
 verifiable replaceable/addressable revision and SHOULD detect an older relay
 revision when canonical repo history proves a newer one. Items too sensitive
 to expose even as ciphertext, including list existence/size, SHOULD be stored
@@ -561,12 +631,22 @@ NIP-72 or Radicle editorial record.
 
 Social implements mute and web-of-trust admission only through
 `heterodyne:comms/0.5.0#comms-acceptance-hook`. Authentication and all Comms
-cryptographic checks run first. The Social policy MAY tighten the Comms-native
+cryptographic checks run first. An explicit user decision is an input to a
+fresh Comms hook evaluation, not a Social override: the client MUST first
+recompute the Comms-native outcome with that locally authenticated decision,
+then apply Social policy. Social MAY only preserve or tighten that recomputed
 outcome using the user's mutes, follows, reply relationship, trust distance,
 overmuted ratio, and explicitly accepted contacts. It MUST NOT bypass a
-cryptographic check, loosen admission, convert `reject` to another outcome, or
-convert `hold-as-message-request` to `accept` unless the Comms hook's locally
-authenticated context already permits acceptance.
+cryptographic check or loosen admission. Specifically, it may change
+`accept` to `hold-as-message-request` or `reject`, and may change
+`hold-as-message-request` to `reject`; `reject` is absorbing. No-op transitions
+are allowed. It MUST NOT change `hold-as-message-request` to `accept` or
+change `reject` to either other outcome.
+
+<!-- fixture:social-acceptance-lattice -->
+```json
+{"accept":["accept","hold-as-message-request","reject"],"hold-as-message-request":["hold-as-message-request","reject"],"reject":["reject"]}
+```
 
 Before acceptance, `hold-as-message-request` emits no receipt, typing signal,
 read marker, or other sender-observable response. A Social policy MUST preserve
@@ -607,8 +687,10 @@ changes from the cached value.
 <a id="social-atproto-binding"></a>
 ### 8.2 Bidirectional binding
 
-The Social-owned `kind:31009` `atproto_link` attestation and the DID-side
-signature cover the same canonical compact JSON object:
+The DID-side record MUST use ATProto collection
+`social.heterodyne.identityLink` with record key `self`. Its `value` and the
+Social-owned `kind:31009` `atproto_link` event's content cover the same
+canonical compact JSON object:
 
 ```json
 {"spec_version":"social/0.5.0","did":"<DID>","did_signing_key_id":"<key id>","npub":"<cold-root hex>","rid":"<canonical RID>","established_at":0}
@@ -622,12 +704,96 @@ use the canonical payload above as its JSON `content`. The in-content
 `spec_version` is the event's Social stamp; a duplicate version tag MUST NOT
 be added. The DID signature MUST verify under the resolved key over SHA-256 of
 the canonical payload. Both signatures MUST verify; a one-sided claim MUST be
-rejected. Either side MAY publish a timestamped revocation, which supersedes
-the binding from that time.
+rejected.
+
+Verification MUST begin from the PDS record and proceed through every binding:
+resolve the DID and verify its named signing key and record signature; read the
+payload's cold-root npub; verify that npub's current Core `kind:31005`; follow
+its canonical RID and KEL; locate the current Social `kind:31009`; verify its
+Nostr id, epoch-key signature, KEL authority, tags, and byte-exact payload; and
+finally require the two payloads to be identical. No Matrix service is needed
+for this procedure.
 
 Under Social+Matrix, the binding MAY be mirrored in
-`m.heterodyne.atproto_link.v1`; that mirror MAY carry a Matrix identity-room
-locator, but it MUST NOT modify the signed payload or become authoritative.
+`m.heterodyne.atproto_link.v1` with state key equal to the DID. Its sender MUST
+equal `content.mxid`, and that MXID MUST have a current delegation for the
+payload npub. The mirror MAY carry a Matrix identity-room locator, but it MUST
+embed the byte-exact signed payload and both proof locators; it MUST NOT modify
+the signed payload or become authoritative.
+
+<!-- fixture:atproto-identity-link -->
+```json
+{
+  "nostr_event": {
+    "pubkey": "1111111111111111111111111111111111111111111111111111111111111111",
+    "created_at": 1710000000,
+    "kind": 31009,
+    "tags": [["d","did:web:alice.example"],["heterodyne","atproto_link"],["cold_root","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],["did","did:web:alice.example"],["kel_head","2222222222222222222222222222222222222222222222222222222222222222","5"]],
+    "content": "{\"spec_version\":\"social/0.5.0\",\"did\":\"did:web:alice.example\",\"did_signing_key_id\":\"did:web:alice.example#atproto\",\"npub\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"rid\":\"rad:zAlice\",\"established_at\":1710000000}",
+    "sig": "33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "pds_record": {
+    "collection": "social.heterodyne.identityLink",
+    "rkey": "self",
+    "value": {"spec_version":"social/0.5.0","did":"did:web:alice.example","did_signing_key_id":"did:web:alice.example#atproto","npub":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","rid":"rad:zAlice","established_at":1710000000},
+    "signature": "did-signature-base64url"
+  },
+  "matrix_mirror": {
+    "type": "m.heterodyne.atproto_link.v1",
+    "state_key": "did:web:alice.example",
+    "sender": "@alice:matrix.example",
+    "content": {"spec_version":"social/0.5.0","mxid":"@alice:matrix.example","did":"did:web:alice.example","did_signing_key_id":"did:web:alice.example#atproto","atproto_record_uri":"at://did:web:alice.example/social.heterodyne.identityLink/self","nostr_event_id":"4444444444444444444444444444444444444444444444444444444444444444","binding_payload":"{\"spec_version\":\"social/0.5.0\",\"did\":\"did:web:alice.example\",\"did_signing_key_id\":\"did:web:alice.example#atproto\",\"npub\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"rid\":\"rad:zAlice\",\"established_at\":1710000000}","atproto_attestation":{"alg":"Ed25519","sig":"did-signature-base64url","signed_payload_hash":"8888888888888888888888888888888888888888888888888888888888888888"},"established_at":1710000000,"revoked_at":null}
+  }
+}
+```
+
+Either identity may revoke unilaterally. The persona publishes an
+epoch-key-signed `kind:31009` with `heterodyne=atproto_link_revocation`,
+`d=<DID>`, `did`, `cold_root`, and `kel_head`; the closed ordered content has
+`spec_version`, `record_type=atproto_link_revocation`, `did`, `npub`,
+`binding_hash` (SHA-256 of the binding payload), and integer `revoked_at`. The
+DID owner publishes the same revocation value, signed by the current DID key,
+to `social.heterodyne.identityLink/self`. Either independently verified
+revocation supersedes the binding at `revoked_at`; establishing a link still
+requires both signatures.
+
+Under Social+Matrix a revocation MAY be mirrored by updating the same
+`m.heterodyne.atproto_link.v1` DID state with non-null `revoked_at`. The sender
+MUST equal `content.mxid` and be currently delegated for the binding npub; the
+mirror MUST identify the verified Nostr event or ATProto record that caused
+the revocation and is never authoritative by itself.
+
+<!-- fixture:atproto-link-revocations -->
+```json
+{
+  "nostr": {
+    "pubkey": "1111111111111111111111111111111111111111111111111111111111111111",
+    "created_at": 1710000100,
+    "kind": 31009,
+    "tags": [["d","did:web:alice.example"],["heterodyne","atproto_link_revocation"],["did","did:web:alice.example"],["cold_root","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],["kel_head","2222222222222222222222222222222222222222222222222222222222222222","5"]],
+    "content": "{\"spec_version\":\"social/0.5.0\",\"record_type\":\"atproto_link_revocation\",\"did\":\"did:web:alice.example\",\"npub\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"binding_hash\":\"5555555555555555555555555555555555555555555555555555555555555555\",\"revoked_at\":1710000100}",
+    "sig": "66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666"
+  },
+  "atproto": {
+    "collection": "social.heterodyne.identityLink",
+    "rkey": "self",
+    "value": {"spec_version":"social/0.5.0","record_type":"atproto_link_revocation","did":"did:web:alice.example","npub":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","binding_hash":"5555555555555555555555555555555555555555555555555555555555555555","revoked_at":1710000100},
+    "signature": "did-revocation-signature-base64url"
+  },
+  "matrix": {
+    "type": "m.heterodyne.atproto_link.v1",
+    "state_key": "did:web:alice.example",
+    "sender": "@alice:matrix.example",
+    "content": {"spec_version":"social/0.5.0","mxid":"@alice:matrix.example","did":"did:web:alice.example","npub":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","binding_hash":"5555555555555555555555555555555555555555555555555555555555555555","revocation_source":"nostr","revoked_at":1710000100,"nostr_revocation_event_id":"7777777777777777777777777777777777777777777777777777777777777777"}
+  }
+}
+```
+
+Successful DID, PDS, binding, and revocation verification SHOULD be cached for
+at most one hour. A changed `kind:31005`, KEL head, DID document, PDS record,
+or observed revocation MUST invalidate the relevant cache immediately. Any
+signature or binding failure MUST invalidate the cached success rather than
+extending its TTL.
 
 <a id="social-atproto-mirror"></a>
 ### 8.3 Mirror publication and witnessing
@@ -676,7 +842,9 @@ make the room invalid for delegation verification.
 
 An MXID may locate the room through ordinary Matrix profile/discovery data,
 but a verifier MUST corroborate it against the latest valid Core identity
-pointer before trusting any mirrored state.
+pointer before trusting any mirrored state. If Matrix profile or room-mirror
+lookup fails, the verifier MUST fall back to the persona's current cold-root
+`kind:31005` identity pointer rather than treating the persona as unresolved.
 
 <a id="social-mxid-delegation"></a>
 ### 9.2 MXID delegation
@@ -820,7 +988,9 @@ Config-room movement uses the election machinery above. Private room history
 and Megolm sessions do not migrate automatically: users MUST recreate rooms,
 reinvite members, and receive a warning. A KEL rotation MAY coincide with
 exit, but the rotation MUST be published into both identity rooms during the
-overlap.
+overlap. Before retiring an MXID during exit, the client SHOULD tombstone that
+MXID's config room through `m.heterodyne.config_room_tombstone.v1`, elect a
+surviving room, and only then revoke or retire the MXID.
 
 <a id="social-matrix-mirroring"></a>
 ### 10.5 Matrix room mirroring and promotion
@@ -904,7 +1074,8 @@ from the Matrix sender alone.
 Every managed Matrix room MUST have empty-state-key
 `m.heterodyne.room_kind.v1` with `spec_version: social/0.5.0`, a current kind,
 and optional namespaced topics. New rooms use exactly `identity_room`,
-`config_room`, `public_discussion`, or `private_discussion`. Retired 0.4 kinds
+`config_room`, `public_discussion`, or `private_discussion`. The
+pre-0.4/v0.3-era kinds
 MAY be mapped for read-back with a visible legacy marker, but MUST NOT be
 produced.
 
@@ -950,35 +1121,145 @@ Removing an MXID SHOULD start a fresh Megolm session for remaining members.
 KERI epoch rotation alone does not require Megolm rotation because the Matrix
 device/session membership is unchanged.
 
+Every Heterodyne E2EE Matrix room MUST declare its logical encryption version
+with empty-state-key `m.heterodyne.encryption_version.v1`. Its initial closed
+content schema is `spec_version`, `algorithm: "megolm"`, `migrated_from:
+null`, and `migrated_at: null`, in that order:
+
+<!-- fixture:matrix-encryption-megolm -->
+```json
+{
+  "type": "m.heterodyne.encryption_version.v1",
+  "state_key": "",
+  "sender": "@alice:matrix.example",
+  "origin_server_ts": 1710000000000,
+  "content": {"spec_version":"social/0.5.0","algorithm":"megolm","migrated_from":null,"migrated_at":null}
+}
+```
+
+If that state is absent but `m.room.encryption.algorithm` is
+`m.megolm.v1.aes-sha2`, a client MUST infer the exact baseline state above and
+SHOULD publish it on its next send to the room. A conflicting downgrade or an
+unknown logical algorithm MUST NOT be silently inferred as Megolm.
+
 <a id="social-megolm-mls"></a>
 ### 12.2 Megolm-to-MLS migration
 
 Baseline Social+Matrix capability MUST advertise Megolm. A client claiming
-MLS MUST advertise it. Migration MUST NOT begin until every current member has
-a fresh (at most 30-day-old) capability advertisement including MLS. The
-highest-power currently delegated moderator initiates; ties use
-lexicographically smallest persona npub.
+MLS MUST advertise it. The encrypted, scoped Matrix carrier is
+`m.heterodyne.capabilities.v1`, state-keyed by its publishing MXID; the sender
+MUST equal that state key. Its closed Social schema is shown below. It MUST be
+published on the first Heterodyne interaction in a shared private room, updated
+when the advertised set changes, and omitted from a public identity room unless
+the user opts in. `advertised_at` is the freshness time used by the migration
+gate.
 
-The initiator publishes encrypted `m.heterodyne.migration_intent.v1` naming
-MLS, the initiator, UUIDv4 intent id, and a 60-second drain window. Every
-member MUST ACK within the window. A missing ACK requires an encrypted abort
-listing missing members; a retry MUST wait at least 24 hours. Members SHOULD
-not originate new timeline traffic during drain.
+<!-- fixture:matrix-mls-capabilities -->
+```json
+{
+  "type": "m.heterodyne.capabilities.v1",
+  "state_key": "@alice:matrix.example",
+  "sender": "@alice:matrix.example",
+  "origin_server_ts": 1710000000000,
+  "content": {"spec_version":"social/0.5.0","spec_versions_supported":["social/0.5.0"],"backends":["nostr_relay","repo_relay"],"node_roles":["light"],"matrix":true,"event_types":["m.heterodyne.encryption_version.v1","m.heterodyne.migration_intent.v1","m.heterodyne.migration_ack.v1","m.heterodyne.migration_abort.v1"],"nostr_kinds":[31004,31009],"profiles":[],"encryption_algorithms_supported":["megolm","mls"],"advertised_at":1710000000}
+}
+```
 
-After all ACKs, the initiator publishes encrypted
-`m.heterodyne.encryption_version.v1` under the last Megolm session. Receivers
-treat events after that state event's local DAG position as MLS. An offline
-sender MUST reread current state and re-encrypt queued plaintext into fresh
-MLS state; it MUST NOT publish queued Megolm ciphertext. An incapable client
-MUST fail the queued send visibly.
+Migration MUST NOT begin until every current joined member has a most-recent,
+signature- and delegation-verified capability advertisement no more than 30
+days old that includes `mls`. The initiator MUST be the currently delegated
+moderator with the highest Matrix power level; a tie selects the
+lexicographically smallest persona npub. The selected initiator's sending MXID
+and npub MUST match the intent.
 
-A receiver that has observed the flip MAY accept a lagging Megolm event only
-within 60 seconds, only with a pre-flip session key, and only from a member at
-flip state. Any failure, or any Megolm event after the tail, MUST be rejected.
-The first MLS commit SHOULD carry an encrypted Megolm session export for
-history continuity. A non-MLS client MUST stop accepting new room traffic,
-retain readable pre-flip history, and display an upgrade warning. MLS-to-
-Megolm rollback is FORBIDDEN in this release.
+The initiator publishes encrypted state
+`m.heterodyne.migration_intent.v1`, state-keyed by a UUIDv4 `intent_id`, under
+the current Megolm session. Its closed ordered content is:
+
+<!-- fixture:matrix-mls-intent -->
+```json
+{
+  "type": "m.heterodyne.migration_intent.v1",
+  "state_key": "123e4567-e89b-42d3-a456-426614174000",
+  "sender": "@alice:matrix.example",
+  "origin_server_ts": 1710000000000,
+  "content": {"spec_version":"social/0.5.0","target_algorithm":"mls","drain_window_seconds":60,"intent_id":"123e4567-e89b-42d3-a456-426614174000","initiator_mxid":"@alice:matrix.example","initiator_npub":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+}
+```
+
+Every current member MUST ACK within the 60-second drain window. An ACK is
+encrypted `m.heterodyne.migration_ack.v1` state with key
+`<intent_id>:<member_npub>`; its sender MUST be a joined MXID currently
+delegated for `member_npub`, and `acked_at` MUST fall within the window:
+
+<!-- fixture:matrix-mls-ack -->
+```json
+{
+  "type": "m.heterodyne.migration_ack.v1",
+  "state_key": "123e4567-e89b-42d3-a456-426614174000:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "sender": "@bob:matrix.example",
+  "origin_server_ts": 1710000030000,
+  "content": {"spec_version":"social/0.5.0","intent_id":"123e4567-e89b-42d3-a456-426614174000","member_npub":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","acked_at":1710000030}
+}
+```
+
+Members SHOULD NOT originate new timeline traffic during drain; in-flight
+Megolm events created before the intent may complete. At expiry, any missing or
+invalid ACK requires the initiator to publish encrypted
+`m.heterodyne.migration_abort.v1`, state-keyed by the intent id, with the exact
+missing npubs. The room remains on Megolm, and no retry may begin for 24 hours:
+
+<!-- fixture:matrix-mls-abort -->
+```json
+{
+  "type": "m.heterodyne.migration_abort.v1",
+  "state_key": "123e4567-e89b-42d3-a456-426614174000",
+  "sender": "@alice:matrix.example",
+  "origin_server_ts": 1710000060000,
+  "content": {"spec_version":"social/0.5.0","intent_id":"123e4567-e89b-42d3-a456-426614174000","reason":"missing_acks","missing_npubs":["bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],"aborted_at":1710000060}
+}
+```
+
+With all ACKs, the initiator MUST publish the flip as empty-state-key
+`m.heterodyne.encryption_version.v1`, itself encrypted under the last Megolm
+session. `migrated_at` is integer Unix seconds and MUST correspond to the
+event's Matrix `origin_server_ts` in milliseconds:
+
+<!-- fixture:matrix-mls-flip -->
+```json
+{
+  "type": "m.heterodyne.encryption_version.v1",
+  "state_key": "",
+  "sender": "@alice:matrix.example",
+  "origin_server_ts": 1710000060000,
+  "content": {"spec_version":"social/0.5.0","algorithm":"mls","migrated_from":"megolm","migrated_at":1710000060,"intent_id":"123e4567-e89b-42d3-a456-426614174000"}
+}
+```
+
+The flip is receiver-verifiable, not atomic. Events with
+`origin_server_ts` at or before the flip are Megolm; later events are MLS,
+subject only to the tail exception below. An offline sender MUST reread current
+encryption state before publish and re-encrypt queued plaintext with fresh MLS
+state, reusing the original Nostr id as Matrix transaction id. It MUST NOT send
+queued Megolm ciphertext. A sender without MLS MUST fail the queued send
+visibly. If the same event was already published through a Comms backend while
+the member was offline, Matrix-side re-encryption still proceeds and the Comms
+asymmetric-delivery and deduplication rules remain applicable.
+
+A receiver that has observed the flip may accept a lagging Megolm event only
+when all three conditions hold: its `origin_server_ts` is no more than 60
+seconds after the flip; it references a Megolm session key the receiver
+obtained before the flip; and its sender MXID was joined at the flip according
+to pre-flip `m.room.member` state. Missing provenance or membership is
+rejection. After the 60-second tail, every Megolm event MUST be rejected.
+
+The first MLS commit SHOULD carry the Megolm session export, encrypted as
+opaque `app_data.megolm_session_export`, for pre-flip history continuity. A
+non-MLS client encountering the flip MUST stop accepting new room traffic,
+retain readable pre-flip and valid-tail history, and display an MLS-upgrade
+warning. MLS-to-Megolm rollback is FORBIDDEN in this release. An abort or
+expired intent never changes the algorithm; repeated aborts SHOULD warn
+moderators that members are not upgrading.
 
 <a id="social-headless-bridge"></a>
 ### 12.3 Client-side bridge and homeserver boundary

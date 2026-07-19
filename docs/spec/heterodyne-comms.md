@@ -307,11 +307,14 @@ without changing its id.
 
 `kind:31007` is a persona's canonical ordering authority independent of which
 backend served an event. It is an addressable, epoch-key-signed Comms event,
-with a `["spec_version","comms/0.5.0"]` tag. Tier 1 and Tier 2 indexes MUST
-have empty `content`; Tier 3 index `content` MUST be ciphertext as defined by
-§5.3. Publication is likewise tier-qualified by §5.3: there is no common
-destination set for all indexes. The example below is the plaintext metadata
-form used within the Tier 1 or Tier 2 trust boundary.
+with a `["spec_version","comms/0.5.0"]` tag unless a registered stamping
+profile assigns the event's sole owner stamp elsewhere.
+Tier 1 and Tier 2 ordinary indexes MUST have empty `content`.
+Tier 3 index `content` MUST be ciphertext as defined by §5.3.
+Publication is likewise tier-qualified by
+§5.3: there is no common destination set for all indexes. The example below
+is the ordinary plaintext metadata form used within the Tier 1 or Tier 2 trust
+boundary.
 
 ```json
 {
@@ -340,6 +343,20 @@ order. A profile above
 Comms declares which application events are indexed; absent such a profile,
 persistent authored content SHOULD be indexed and ephemeral metadata SHOULD
 not. An explicit `heterodyne_index=true|false` tag overrides that default.
+
+Registry revision 1 defines one narrow exception to the empty-content and
+Comms-version-tag rules: the Social stamping profile whose immutable
+discriminator is
+`content.profile=heterodyne.social.org-feed.v1`. That profile is valid only
+for Tier 1 or Tier 2 and replaces the ordinary empty content with the exact
+canonical compact JSON string
+`{"profile":"heterodyne.social.org-feed.v1","spec_version":"social/0.5.0"}`.
+Its object is closed and ordered: `profile` then `spec_version`, with no other
+members. The Social stamp occurs only in `content`; the event MUST NOT carry a
+Comms or Social `spec_version` tag. Every other Comms tag, paging, size,
+publication, retrieval, signature, KEL, and organization-threshold rule
+remains unchanged. The profile MUST NOT be used for Tier 3, MUST NOT contain
+Tier 3 ciphertext, and MUST NOT carry `heterodyne_wrap` or `key_id` tags.
 
 <a id="comms-org-authorization"></a>
 ### 5.1 Organization threshold authorization

@@ -114,18 +114,6 @@ function negotiationAllowsPayloadProbe(
 
 type SocialPolicyOutcome = "accept" | "hold-as-message-request" | "reject";
 
-function socialPolicyCanReturnProbe(
-  commsOutcome: SocialPolicyOutcome,
-  socialOutcome: SocialPolicyOutcome,
-): boolean {
-  const admissionOrder: Record<SocialPolicyOutcome, number> = {
-    reject: 0,
-    "hold-as-message-request": 1,
-    accept: 2,
-  };
-  return admissionOrder[socialOutcome] <= admissionOrder[commsOutcome];
-}
-
 function approvalCountsProbe(input: {
   indexed: boolean;
   signatureValid: boolean;
@@ -142,29 +130,6 @@ function approvalCountsProbe(input: {
   );
 }
 
-function matrixTailAcceptsProbe(input: {
-  secondsAfterFlip: number;
-  usesPreFlipSession: boolean;
-  senderWasMemberAtFlip: boolean;
-}): boolean {
-  return (
-    input.secondsAfterFlip >= 0 &&
-    input.secondsAfterFlip <= 60 &&
-    input.usesPreFlipSession &&
-    input.senderWasMemberAtFlip
-  );
-}
-
-function recoveryCacheDutyProbe(
-  role: "follower" | "mutual-follow" | "declared-witness",
-): "may" | "should" | "must" {
-  return role === "declared-witness"
-    ? "must"
-    : role === "mutual-follow"
-      ? "should"
-      : "may";
-}
-
 function declaredDependencies(text: string): string[] {
   const declaration = text.match(
     /Normative dependencies:\n\n((?:- `heterodyne:[^`]+`\n?)+)/,
@@ -173,6 +138,188 @@ function declaredDependencies(text: string): string[] {
   return [...declaration[1].matchAll(/- `(heterodyne:[^`]+)`/g)].map(
     (match) => match[1],
   );
+}
+
+function fixtureFromMarkdown<T>(text: string, name: string): T {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = text.match(
+    new RegExp(`<!-- fixture:${escaped} -->\\s*\\x60\\x60\\x60json\\n([\\s\\S]*?)\\n\\x60\\x60\\x60`),
+  );
+  if (!match) throw new Error(`missing fixture:${name}`);
+  return JSON.parse(match[1]) as T;
+}
+
+type ExampleEvent = {
+  id?: string;
+  pubkey: string;
+  created_at: number;
+  kind: number;
+  tags: string[][];
+  content: string;
+  sig?: string;
+};
+
+function tagValues(event: ExampleEvent, name: string): string[][] {
+  return event.tags.filter((tag) => tag[0] === name);
+}
+
+function validateOrgFeedExample(
+  event: ExampleEvent,
+  tier: 1 | 2 | 3,
+  registry: ReturnType<typeof loadRegistry>,
+): string[] {
+  const errors: string[] = [];
+  const exactContent =
+    '{"profile":"heterodyne.social.org-feed.v1","spec_version":"social/0.5.0"}';
+  let parsedContent: unknown;
+  try {
+    parsedContent = JSON.parse(event.content);
+  } catch {
+    parsedContent = null;
+  }
+  const discriminator =
+    parsedContent && typeof parsedContent === "object"
+      ? `content.profile=${String((parsedContent as { profile?: unknown }).profile)}`
+      : "";
+  const profile = resolveStampingProfile(registry, event.kind, discriminator);
+  if (event.kind !== 31007) errors.push("kind");
+  if (profile?.profile_id !== "heterodyne-social-org-feed-v1") {
+    errors.push("profile");
+  }
+  if (tier === 3) errors.push("tier3-forbidden");
+  if (event.content !== exactContent) errors.push("content");
+  if (tagValues(event, "d").length !== 1 || !tagValues(event, "d")[0][1]?.includes(":")) {
+    errors.push("d");
+  }
+  if (tagValues(event, "heterodyne")[0]?.[1] !== "feed_index") errors.push("heterodyne");
+  for (const required of ["cold_root", "rid", "kel_head"]) {
+    if (tagValues(event, required).length !== 1) errors.push(required);
+  }
+  const previous = tagValues(event, "previous_index");
+  const previousHash = tagValues(event, "prev_page_hash");
+  if ((previous.length === 1) !== (previousHash.length === 1)) errors.push("paging-pair");
+  if (tagValues(event, "e").length > 500) errors.push("page-size");
+  if (tagValues(event, "spec_version").length !== 0) errors.push("version-tag");
+  if (tagValues(event, "heterodyne_wrap").length !== 0 || tagValues(event, "key_id").length !== 0) {
+    errors.push("tier3-tags");
+  }
+  return [...new Set(errors)].sort();
+}
+
+type RelatedPairFixture = { left: ExampleEvent; right: ExampleEvent };
+
+function validateRelatedPair(pair: RelatedPairFixture): string[] {
+  const errors: string[] = [];
+  const relationOf = (event: ExampleEvent) => tagValues(event, "relation")[0]?.[1];
+  const otherOf = (event: ExampleEvent) => tagValues(event, "other_npub")[0]?.[1];
+  const rootOf = (event: ExampleEvent) => tagValues(event, "cold_root")[0]?.[1];
+  const scopeOf = (event: ExampleEvent) => tagValues(event, "scope")[0]?.[1];
+  const expectedReverse: Record<string, string> = {
+    endorses: "endorsed_by",
+    endorsed_by: "endorses",
+    same_holder: "same_holder",
+    linked: "linked",
+  };
+  for (const event of [pair.left, pair.right]) {
+    const relation = relationOf(event);
+    const other = otherOf(event);
+    if (event.kind !== 31004) errors.push("kind");
+    if (
+      tagValues(event, "relation").length !== 1 ||
+      tagValues(event, "other_npub").length !== 1 ||
+      tagValues(event, "d").length !== 1 ||
+      !relation ||
+      !other ||
+      tagValues(event, "d")[0]?.[1] !== `${relation}:${other}`
+    ) {
+      errors.push("d-binding");
+    }
+    if (
+      tagValues(event, "heterodyne").length !== 1 ||
+      tagValues(event, "heterodyne")[0]?.[1] !== "related_persona" ||
+      tagValues(event, "spec_version").length !== 1 ||
+      tagValues(event, "spec_version")[0]?.[1] !== "social/0.5.0" ||
+      tagValues(event, "cold_root").length !== 1 ||
+      tagValues(event, "kel_head").length !== 1 ||
+      event.content !== "" ||
+      !event.sig
+    ) {
+      errors.push("proof");
+    }
+    if (tagValues(event, "scope").length > 1) errors.push("scope");
+  }
+  if (otherOf(pair.left) !== rootOf(pair.right) || otherOf(pair.right) !== rootOf(pair.left)) {
+    errors.push("cross-binding");
+  }
+  if (expectedReverse[relationOf(pair.left)] !== relationOf(pair.right)) errors.push("relation-pair");
+  if (scopeOf(pair.left) !== scopeOf(pair.right)) errors.push("scope");
+  if (
+    pair.left.sig === pair.right.sig ||
+    pair.left.pubkey === pair.right.pubkey ||
+    rootOf(pair.left) === rootOf(pair.right) ||
+    tagValues(pair.left, "kel_head")[0]?.[1] === tagValues(pair.right, "kel_head")[0]?.[1]
+  ) {
+    errors.push("independent-signers");
+  }
+  return [...new Set(errors)].sort();
+}
+
+type MatrixStateFixture = {
+  type: string;
+  state_key: string;
+  sender?: string;
+  origin_server_ts?: number;
+  content: Record<string, unknown>;
+};
+
+function exactKeys(value: Record<string, unknown>, keys: string[]): boolean {
+  return JSON.stringify(Object.keys(value)) === JSON.stringify(keys);
+}
+
+function matrixTailAcceptsFromFixture(
+  flip: MatrixStateFixture,
+  event: { origin_server_ts: number; pre_flip_session: boolean; member_at_flip: boolean },
+): boolean {
+  if (typeof flip.origin_server_ts !== "number") return false;
+  const delta = event.origin_server_ts - flip.origin_server_ts;
+  return delta >= 0 && delta <= 60_000 && event.pre_flip_session && event.member_at_flip;
+}
+
+type AtprotoFixture = {
+  nostr_event: ExampleEvent;
+  pds_record: {
+    collection: string;
+    rkey: string;
+    value: Record<string, unknown>;
+    signature: string;
+  };
+  matrix_mirror: MatrixStateFixture;
+};
+
+function validateAtprotoFixture(fixture: AtprotoFixture): string[] {
+  const errors: string[] = [];
+  const payload = fixture.pds_record.value;
+  if (fixture.pds_record.collection !== "social.heterodyne.identityLink") errors.push("collection");
+  if (fixture.pds_record.rkey !== "self") errors.push("rkey");
+  if (fixture.nostr_event.kind !== 31009 || fixture.nostr_event.content !== JSON.stringify(payload)) {
+    errors.push("shared-payload");
+  }
+  if (!fixture.nostr_event.sig || !fixture.pds_record.signature) errors.push("dual-signatures");
+  if (tagValues(fixture.nostr_event, "d")[0]?.[1] !== payload.did) errors.push("did-binding");
+  if (tagValues(fixture.nostr_event, "cold_root")[0]?.[1] !== payload.npub) errors.push("npub-binding");
+  const matrixAttestation = fixture.matrix_mirror.content.atproto_attestation as
+    | Record<string, unknown>
+    | undefined;
+  if (
+    fixture.matrix_mirror.state_key !== payload.did ||
+    fixture.matrix_mirror.content.did !== payload.did ||
+    fixture.matrix_mirror.sender !== fixture.matrix_mirror.content.mxid ||
+    fixture.matrix_mirror.content.binding_payload !== fixture.nostr_event.content ||
+    matrixAttestation?.sig !== fixture.pds_record.signature
+  ) {
+    errors.push("matrix-binding");
+  }
+  return [...new Set(errors)].sort();
 }
 
 function withFamilyDocs(
@@ -685,15 +832,57 @@ describe("protocol family documents", () => {
     expect(text).toContain("content.profile=heterodyne.social.org-feed.v1");
   });
 
+  it("validates the complete Social org-feed profile event and rejects incompatible forms", () => {
+    const text = readFileSync(socialPath, "utf8");
+    const registry = loadRegistry(repositoryRoot);
+    const event = fixtureFromMarkdown<ExampleEvent>(text, "social-org-feed-index");
+
+    expect(validateOrgFeedExample(event, 1, registry)).toEqual([]);
+    expect(validateOrgFeedExample(event, 2, registry)).toEqual([]);
+    expect(validateOrgFeedExample({ ...event, content: "" }, 1, registry)).toContain("content");
+    expect(
+      validateOrgFeedExample(
+        { ...event, tags: [...event.tags, ["spec_version", "comms/0.5.0"]] },
+        1,
+        registry,
+      ),
+    ).toContain("version-tag");
+    expect(
+      validateOrgFeedExample(
+        {
+          ...event,
+          content:
+            '{"profile":"heterodyne.social.org-feed.v1","spec_version":"social/0.5.0","extra":true}',
+        },
+        1,
+        registry,
+      ),
+    ).toContain("content");
+    expect(validateOrgFeedExample(event, 3, registry)).toContain("tier3-forbidden");
+    expect(
+      validateOrgFeedExample(
+        { ...event, tags: [...event.tags, ["heterodyne_wrap", "room_key.v2"], ["key_id", "opaque"]] },
+        3,
+        registry,
+      ),
+    ).toEqual(expect.arrayContaining(["tier3-forbidden", "tier3-tags"]));
+  });
+
   it("implements Social admission only as a tighten-only Comms hook", () => {
     const text = readFileSync(socialPath, "utf8");
+    const lattice = fixtureFromMarkdown<Record<SocialPolicyOutcome, SocialPolicyOutcome[]>>(
+      text,
+      "social-acceptance-lattice",
+    );
 
-    expect(socialPolicyCanReturnProbe("reject", "reject")).toBe(true);
-    expect(socialPolicyCanReturnProbe("reject", "hold-as-message-request")).toBe(false);
-    expect(socialPolicyCanReturnProbe("reject", "accept")).toBe(false);
-    expect(socialPolicyCanReturnProbe("hold-as-message-request", "reject")).toBe(true);
-    expect(socialPolicyCanReturnProbe("hold-as-message-request", "accept")).toBe(false);
-    expect(socialPolicyCanReturnProbe("accept", "hold-as-message-request")).toBe(true);
+    expect(lattice).toEqual({
+      accept: ["accept", "hold-as-message-request", "reject"],
+      "hold-as-message-request": ["hold-as-message-request", "reject"],
+      reject: ["reject"],
+    });
+    expect(lattice.reject).not.toContain("hold-as-message-request");
+    expect(lattice.reject).not.toContain("accept");
+    expect(lattice["hold-as-message-request"]).not.toContain("accept");
 
     expect(text).toContain("heterodyne:comms/0.5.0#comms-acceptance-hook");
     expect(text).toMatch(/mute[\s\S]*web-of-trust[\s\S]*tighten/i);
@@ -704,10 +893,16 @@ describe("protocol family documents", () => {
 
   it("binds generic Core recovery roles only inside Social", () => {
     const text = readFileSync(socialPath, "utf8");
+    const duties = fixtureFromMarkdown<Record<string, string>>(
+      text,
+      "social-recovery-cache-duties",
+    );
 
-    expect(recoveryCacheDutyProbe("follower")).toBe("may");
-    expect(recoveryCacheDutyProbe("mutual-follow")).toBe("should");
-    expect(recoveryCacheDutyProbe("declared-witness")).toBe("must");
+    expect(duties).toEqual({
+      follower: "may",
+      "mutual-follow": "should",
+      "declared-witness": "must",
+    });
 
     expect(text).toContain("heterodyne:core/0.5.0#core-recovery");
     expect(text).toMatch(/recovery peers[\s\S]*follows[\s\S]*mutual follows[\s\S]*friends/i);
@@ -715,37 +910,79 @@ describe("protocol family documents", () => {
     expect(text).toMatch(/advisory[\s\S]*MUST NOT[\s\S]*replace[\s\S]*(cold-root|Core)/i);
   });
 
+  it("validates exact cross-persona pair binding", () => {
+    const text = readFileSync(socialPath, "utf8");
+    const pair = fixtureFromMarkdown<RelatedPairFixture>(text, "related-persona-pair");
+
+    expect(validateRelatedPair(pair)).toEqual([]);
+    for (const symmetric of ["same_holder", "linked"] as const) {
+      const symmetricPair: RelatedPairFixture = {
+        left: {
+          ...pair.left,
+          tags: pair.left.tags.map((tag) =>
+            tag[0] === "relation"
+              ? ["relation", symmetric]
+              : tag[0] === "d"
+                ? ["d", `${symmetric}:${tagValues(pair.left, "other_npub")[0][1]}`]
+                : tag,
+          ),
+        },
+        right: {
+          ...pair.right,
+          tags: pair.right.tags.map((tag) =>
+            tag[0] === "relation"
+              ? ["relation", symmetric]
+              : tag[0] === "d"
+                ? ["d", `${symmetric}:${tagValues(pair.right, "other_npub")[0][1]}`]
+                : tag,
+          ),
+        },
+      };
+      expect(validateRelatedPair(symmetricPair)).toEqual([]);
+    }
+    expect(
+      validateRelatedPair({
+        ...pair,
+        right: {
+          ...pair.right,
+          tags: pair.right.tags.map((tag) =>
+            tag[0] === "other_npub" ? ["other_npub", "ff".repeat(32)] : tag,
+          ),
+        },
+      }),
+    ).toContain("cross-binding");
+    expect(
+      validateRelatedPair({
+        ...pair,
+        right: {
+          ...pair.right,
+          tags: pair.right.tags.map((tag) =>
+            tag[0] === "relation" ? ["relation", "endorses"] : tag,
+          ),
+        },
+      }),
+    ).toContain("relation-pair");
+    expect(
+      validateRelatedPair({
+        ...pair,
+        right: { ...pair.right, sig: pair.left.sig },
+      }),
+    ).toContain("independent-signers");
+    expect(
+      validateRelatedPair({
+        ...pair,
+        right: {
+          ...pair.right,
+          tags: pair.right.tags.map((tag) =>
+            tag[0] === "scope" ? ["scope", "different"] : tag,
+          ),
+        },
+      }),
+    ).toContain("scope");
+  });
+
   it("retains the complete optional Matrix security boundary", () => {
     const text = readFileSync(socialPath, "utf8");
-
-    expect(
-      matrixTailAcceptsProbe({
-        secondsAfterFlip: 60,
-        usesPreFlipSession: true,
-        senderWasMemberAtFlip: true,
-      }),
-    ).toBe(true);
-    expect(
-      matrixTailAcceptsProbe({
-        secondsAfterFlip: 61,
-        usesPreFlipSession: true,
-        senderWasMemberAtFlip: true,
-      }),
-    ).toBe(false);
-    expect(
-      matrixTailAcceptsProbe({
-        secondsAfterFlip: 30,
-        usesPreFlipSession: false,
-        senderWasMemberAtFlip: true,
-      }),
-    ).toBe(false);
-    expect(
-      matrixTailAcceptsProbe({
-        secondsAfterFlip: 30,
-        usesPreFlipSession: true,
-        senderWasMemberAtFlip: false,
-      }),
-    ).toBe(false);
 
     expect(text).toMatch(/MXID delegation[\s\S]*epoch-key[\s\S]*self-publication/i);
     expect(text).toMatch(/active-room election[\s\S]*publish lease[\s\S]*failover/i);
@@ -755,6 +992,86 @@ describe("protocol family documents", () => {
     expect(text).toMatch(/headless bridge[\s\S]*user-controlled/i);
     expect(text).toMatch(/homeserver[\s\S]*MUST NOT[\s\S]*plaintext/i);
     expect(text).toMatch(/vanilla Matrix[\s\S]*fallback/i);
+  });
+
+  it("parses the complete Matrix encryption and MLS migration schemas", () => {
+    const text = readFileSync(socialPath, "utf8");
+    const baseline = fixtureFromMarkdown<MatrixStateFixture>(text, "matrix-encryption-megolm");
+    const capabilities = fixtureFromMarkdown<MatrixStateFixture>(text, "matrix-mls-capabilities");
+    const intent = fixtureFromMarkdown<MatrixStateFixture>(text, "matrix-mls-intent");
+    const ack = fixtureFromMarkdown<MatrixStateFixture>(text, "matrix-mls-ack");
+    const abort = fixtureFromMarkdown<MatrixStateFixture>(text, "matrix-mls-abort");
+    const flip = fixtureFromMarkdown<MatrixStateFixture>(text, "matrix-mls-flip");
+
+    expect(baseline).toMatchObject({
+      type: "m.heterodyne.encryption_version.v1",
+      state_key: "",
+      content: {
+        spec_version: "social/0.5.0",
+        algorithm: "megolm",
+        migrated_from: null,
+        migrated_at: null,
+      },
+    });
+    expect(exactKeys(baseline.content, ["spec_version", "algorithm", "migrated_from", "migrated_at"])).toBe(true);
+    expect(capabilities.type).toBe("m.heterodyne.capabilities.v1");
+    expect(capabilities.state_key).toBe(capabilities.sender);
+    expect(exactKeys(capabilities.content, ["spec_version", "spec_versions_supported", "backends", "node_roles", "matrix", "event_types", "nostr_kinds", "profiles", "encryption_algorithms_supported", "advertised_at"])).toBe(true);
+    expect(capabilities.content.encryption_algorithms_supported).toEqual(["megolm", "mls"]);
+    expect(intent.type).toBe("m.heterodyne.migration_intent.v1");
+    expect(intent.state_key).toBe(intent.content.intent_id);
+    expect(exactKeys(intent.content, ["spec_version", "target_algorithm", "drain_window_seconds", "intent_id", "initiator_mxid", "initiator_npub"])).toBe(true);
+    expect(intent.content.drain_window_seconds).toBe(60);
+    expect(String(intent.content.intent_id)).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(ack.type).toBe("m.heterodyne.migration_ack.v1");
+    expect(ack.state_key).toBe(`${ack.content.intent_id}:${ack.content.member_npub}`);
+    expect(exactKeys(ack.content, ["spec_version", "intent_id", "member_npub", "acked_at"])).toBe(true);
+    expect(abort.type).toBe("m.heterodyne.migration_abort.v1");
+    expect(abort.state_key).toBe(abort.content.intent_id);
+    expect(abort.content.reason).toBe("missing_acks");
+    expect(exactKeys(abort.content, ["spec_version", "intent_id", "reason", "missing_npubs", "aborted_at"])).toBe(true);
+    expect(flip.type).toBe("m.heterodyne.encryption_version.v1");
+    expect(flip.state_key).toBe("");
+    expect(exactKeys(flip.content, ["spec_version", "algorithm", "migrated_from", "migrated_at", "intent_id"])).toBe(true);
+    expect(typeof flip.origin_server_ts).toBe("number");
+    expect(flip.content.migrated_at).toBe((flip.origin_server_ts as number) / 1000);
+
+    const flipTs = flip.origin_server_ts as number;
+    expect(matrixTailAcceptsFromFixture(flip, { origin_server_ts: flipTs + 60_000, pre_flip_session: true, member_at_flip: true })).toBe(true);
+    expect(matrixTailAcceptsFromFixture(flip, { origin_server_ts: flipTs + 60_001, pre_flip_session: true, member_at_flip: true })).toBe(false);
+    expect(matrixTailAcceptsFromFixture(flip, { origin_server_ts: flipTs + 30_000, pre_flip_session: false, member_at_flip: true })).toBe(false);
+    expect(matrixTailAcceptsFromFixture(flip, { origin_server_ts: flipTs + 30_000, pre_flip_session: true, member_at_flip: false })).toBe(false);
+  });
+
+  it("parses and validates the ATProto dual binding and Matrix mirror", () => {
+    const text = readFileSync(socialPath, "utf8");
+    const fixture = fixtureFromMarkdown<AtprotoFixture>(text, "atproto-identity-link");
+    const revocations = fixtureFromMarkdown<{
+      nostr: ExampleEvent;
+      atproto: AtprotoFixture["pds_record"];
+      matrix: MatrixStateFixture;
+    }>(text, "atproto-link-revocations");
+
+    expect(validateAtprotoFixture(fixture)).toEqual([]);
+    expect(exactKeys(fixture.pds_record.value, ["spec_version", "did", "did_signing_key_id", "npub", "rid", "established_at"])).toBe(true);
+    expect(fixture.matrix_mirror.type).toBe("m.heterodyne.atproto_link.v1");
+    expect(fixture.matrix_mirror.content.binding_payload).toBe(fixture.nostr_event.content);
+    expect(tagValues(fixture.nostr_event, "spec_version")).toEqual([]);
+    expect(validateAtprotoFixture({ ...fixture, pds_record: { ...fixture.pds_record, collection: "wrong" } })).toContain("collection");
+    expect(validateAtprotoFixture({ ...fixture, matrix_mirror: { ...fixture.matrix_mirror, state_key: "did:web:other.example" } })).toContain("matrix-binding");
+    expect(revocations.nostr.kind).toBe(31009);
+    const nostrRevocation = JSON.parse(revocations.nostr.content) as Record<string, unknown>;
+    expect(nostrRevocation).toMatchObject({
+      spec_version: "social/0.5.0",
+      record_type: "atproto_link_revocation",
+      revoked_at: expect.any(Number),
+    });
+    expect(exactKeys(nostrRevocation, ["spec_version", "record_type", "did", "npub", "binding_hash", "revoked_at"])).toBe(true);
+    expect(revocations.atproto.collection).toBe("social.heterodyne.identityLink");
+    expect(revocations.atproto.value.revoked_at).toEqual(expect.any(Number));
+    expect(revocations.matrix.type).toBe("m.heterodyne.atproto_link.v1");
+    expect(revocations.matrix.state_key).toBe(revocations.matrix.content.did);
+    expect(revocations.matrix.sender).toBe(revocations.matrix.content.mxid);
   });
 
   it("binds every registered Social security invariant", () => {
@@ -773,13 +1090,10 @@ describe("protocol family documents", () => {
 
   it("requires every moderation condition at the approval anchor", () => {
     const text = readFileSync(socialPath, "utf8");
-    const valid = {
-      indexed: true,
-      signatureValid: true,
-      moderatorAuthorizedAtAnchor: true,
-      requiredAnchorPresent: true,
-      deleted: false,
-    };
+    const valid = fixtureFromMarkdown<Parameters<typeof approvalCountsProbe>[0]>(
+      text,
+      "social-approval-anchor-evidence",
+    );
 
     expect(approvalCountsProbe(valid)).toBe(true);
     for (const omitted of [
