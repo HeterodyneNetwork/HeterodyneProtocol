@@ -50,8 +50,8 @@ document.
 
 Control has no transport and no wire-stamp authority. Session-carried Control
 payloads use accepted Comms double-ratchet sessions, Comms negotiation, and
-Comms carrier rumors. Relay-published Control-profiled delegations retain
-their Core base schema and Core owner stamp.
+Comms carrier rumors. The registry's session-device entry is only a reserved,
+inactive allocation; this draft activates no relay-published Control profile.
 
 <a id="control-comms-contract"></a>
 ## 2. Exact Comms contract
@@ -87,20 +87,44 @@ or conformance.
 <a id="control-session-device-profile"></a>
 ## 3. Session-device delegation profile
 
-Registry revision 1 reserves
-`heterodyne-control-session-device-v1` on Core `kind:31001`. The Core base
-schema, verification algorithm, and Core stamp remain authoritative. The
-Control profile adds session-device semantics only and MUST NOT change the
-Core event shape or owner stamp.
-
-The profile's immutable discriminator is
+Registry revision 1 contains the draft reservation
+`heterodyne-control-session-device-v1` on Core `kind:31001`, with immutable
+discriminator
 `tags:heterodyne=delegation,binding_nonce,key_proof;radicle_nid=absent`.
-It selects a NID-less session-device interpretation only when all of those
-conditions hold. The profile is non-stamping: it adds no `control/0.5.0`
-marker and does not override the Core stamp. A verifier applies the base
-delegation requirements at
-`heterodyne:core/0.5.0#core-nid-delegation` before any Control-specific
-enrollment or grant decision.
+The reservation is explicitly **reserved-inactive** in `control/0.5.0`.
+
+The current Core NID-delegation event requires an NID-addressed `d` tag,
+`radicle_nid`, and `nid_proof`. It does not accept this NID-less discriminator
+or its `binding_nonce`/`key_proof` shape. Current Core verification therefore
+rejects that proposed shape, and no event may claim conformance to this
+profile under `control/0.5.0`.
+
+The registry entry's `owner: control`, `stamping: false`, and draft status
+record its future ownership and stamp intention; that reservation does not
+make it active, change current Core verification, or authorize production.
+Activation requires all of the following in order:
+
+1. ADR-030 is accepted;
+2. a future Core amendment defines the common `kind:31001` envelope and the
+   NID-less subtype's complete verification rules; and
+3. Control vectors plus the registry integration gate prove the resulting
+   schema, discriminator, owner-stamp behavior, and rejection cases.
+
+<!-- fixture:control-session-device-reservation -->
+```json
+{
+  "profile_id": "heterodyne-control-session-device-v1",
+  "registry_status": "draft",
+  "profile_state": "reserved-inactive",
+  "current_core_compatible": false,
+  "conforming_events_allowed": false,
+  "activation_requires": [
+    "adr-030-accepted",
+    "future-core-kind-31001-subtype-amendment",
+    "control-vectors-and-registry-integration-gate"
+  ]
+}
+```
 
 Session devices are distinct from authorized durable NID devices. The former
 are confined Control principals; the latter may separately qualify for Comms
@@ -110,11 +134,12 @@ device into a durable credential-sync device.
 <a id="control-wire-ownership"></a>
 ## 4. Wire ownership and audit binding
 
-Control MUST NOT own or add a wire stamp. A relay-published session-device
-`kind:31001` carries only the Core base-schema version placement. Encrypted
-session traffic rides the Comms `kind:31015` and `kind:31016` inner-rumor
-carriers; their `comms/0.5.0` stamp identifies only the carrier and never a
-Control conformance level.
+Control MUST NOT own or add a wire stamp. If a future accepted amendment
+activates a relay-published session-device subtype, Core remains the intended
+base-schema and stamp owner; the current reservation itself permits no such
+event. Encrypted session traffic rides the Comms `kind:31015` and `kind:31016`
+inner-rumor carriers; their `comms/0.5.0` stamp identifies only the carrier
+and never a Control conformance level.
 
 The Control version is bound by the mutually confirmed Comms negotiation,
 not by another event marker. Every side-effect audit record MUST retain the

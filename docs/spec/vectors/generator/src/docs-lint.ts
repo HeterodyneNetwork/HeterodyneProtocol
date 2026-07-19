@@ -13,6 +13,7 @@ export type FamilyDocIssue = {
     | "duplicate-anchor"
     | "unresolved-reference"
     | "forbidden-dependency"
+    | "undeclared-dependency"
     | "bare-normative-link";
   message: string;
 };
@@ -140,6 +141,41 @@ function normativeParagraphLines(lines: readonly string[]): Set<number> {
   return normative;
 }
 
+function declaredNormativeDependencies(
+  lines: readonly string[],
+): Set<string> {
+  const declared = new Set<string>();
+  const addReferences = (line: string): void => {
+    for (const match of line.matchAll(QUALIFIED_REFERENCE)) {
+      declared.add(`${match[1]}/${match[2]}`);
+    }
+  };
+
+  for (const [index, line] of lines.entries()) {
+    if (!/^\s*Normative dependencies\s*:/i.test(line)) continue;
+    addReferences(line);
+    let listStarted = false;
+    for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
+      const candidate = lines[cursor];
+      if (candidate.trim() === "") {
+        if (listStarted) break;
+        continue;
+      }
+      if (LIST_ITEM.test(candidate)) {
+        listStarted = true;
+        addReferences(candidate);
+        continue;
+      }
+      if (listStarted && /^\s+/.test(candidate)) {
+        addReferences(candidate);
+        continue;
+      }
+      break;
+    }
+  }
+  return declared;
+}
+
 export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
   const documents = loadFamilyDocuments(repoRoot);
   const issues: FamilyDocIssue[] = [];
@@ -171,6 +207,7 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
 
   for (const document of documents) {
     const normativeLines = normativeParagraphLines(document.lines);
+    const declaredDependencies = declaredNormativeDependencies(document.lines);
     for (const [index, line] of document.lines.entries()) {
       const lineNumber = index + 1;
       const references = [...line.matchAll(QUALIFIED_REFERENCE)];
@@ -193,6 +230,18 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
       if (normativeLines.has(index)) {
         for (const match of references) {
           const target = match[1] as DocumentId;
+          const targetVersion = `${target}/${match[2]}`;
+          if (
+            target !== document.document &&
+            !declaredDependencies.has(targetVersion)
+          ) {
+            issues.push({
+              path: document.displayPath,
+              line: lineNumber,
+              code: "undeclared-dependency",
+              message: `${document.document} normatively references undeclared dependency ${targetVersion}`,
+            });
+          }
           try {
             assertAllowedDependency(document.document, target);
           } catch {

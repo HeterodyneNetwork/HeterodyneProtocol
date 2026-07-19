@@ -189,6 +189,24 @@ function sectionUnderHeading(text: string, heading: string): string {
   return nextHeading < 0 ? remainder : remainder.slice(0, nextHeading);
 }
 
+function jsonBlockUnderAnchor<T>(text: string, anchor: string): T {
+  const start = text.indexOf(`<a id="${anchor}"></a>`);
+  if (start < 0) throw new Error(`missing anchor:${anchor}`);
+  const match = text.slice(start).match(/```json\n([\s\S]*?)\n```/);
+  if (!match) throw new Error(`missing JSON block under anchor:${anchor}`);
+  return JSON.parse(match[1]) as T;
+}
+
+function matchesReservedSessionDeviceDiscriminator(event: ExampleEvent): boolean {
+  const names = new Set(event.tags.map((tag) => tag[0]));
+  return (
+    tagValues(event, "heterodyne").some((tag) => tag[1] === "delegation") &&
+    names.has("binding_nonce") &&
+    names.has("key_proof") &&
+    !names.has("radicle_nid")
+  );
+}
+
 function fixtureFromMarkdown<T>(text: string, name: string): T {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = text.match(
@@ -936,8 +954,9 @@ describe("protocol family documents", () => {
     ]);
   });
 
-  it("binds Control to the registered non-stamping session-device profile", () => {
+  it("keeps the registered non-stamping session-device profile reserved and inactive", () => {
     const text = readFileSync(controlPath, "utf8");
+    const coreText = readFileSync(corePath, "utf8");
     const registry = loadRegistry(repositoryRoot);
     const delegation = registry.kinds.find((entry) => entry.kind === 31001);
     const profile = delegation?.profiles.find(
@@ -953,8 +972,40 @@ describe("protocol family documents", () => {
       stamping: false,
       first_version: "control/0.5.0",
     });
-    expect(text).toMatch(/kind:31001[\s\S]*Core base\s+schema[\s\S]*Core stamp/i);
-    expect(text).toMatch(/immutable discriminator[\s\S]*radicle_nid=absent/i);
+    const coreEvent = jsonBlockUnderAnchor<ExampleEvent>(
+      coreText,
+      "core-nid-delegation",
+    );
+    expect(coreEvent.kind).toBe(31001);
+    expect(tagValues(coreEvent, "d")[0]?.[1]).toMatch(/^nid:/);
+    expect(tagValues(coreEvent, "radicle_nid")).toHaveLength(1);
+    expect(tagValues(coreEvent, "nid_proof")).toHaveLength(1);
+    expect(matchesReservedSessionDeviceDiscriminator(coreEvent)).toBe(false);
+
+    const reservation = fixtureFromMarkdown<{
+      profile_id: string;
+      registry_status: string;
+      profile_state: string;
+      current_core_compatible: boolean;
+      conforming_events_allowed: boolean;
+      activation_requires: string[];
+    }>(text, "control-session-device-reservation");
+    expect(reservation).toEqual({
+      profile_id: "heterodyne-control-session-device-v1",
+      registry_status: "draft",
+      profile_state: "reserved-inactive",
+      current_core_compatible: false,
+      conforming_events_allowed: false,
+      activation_requires: [
+        "adr-030-accepted",
+        "future-core-kind-31001-subtype-amendment",
+        "control-vectors-and-registry-integration-gate",
+      ],
+    });
+    expect(text).toMatch(/current Core[\s\S]*does not accept[\s\S]*discriminator/i);
+    expect(text).toMatch(/no event may claim conformance[\s\S]*profile/i);
+    expect(text).toMatch(/ownership[\s\S]*stamp intention[\s\S]*does not\s+make it active/i);
+    expect(text).not.toContain("heterodyne:core/");
     expect(text).toMatch(/Control MUST NOT[\s\S]*wire stamp/i);
     expect(text).not.toMatch(/control\/0\.5\.0.*stamp/i);
   });
@@ -1029,6 +1080,23 @@ describe("protocol family documents", () => {
     expect(amendment).not.toMatch(/docs\/spec\/heterodyne\.md|§[0-9]/);
     expect(text).toMatch(/unqualified `§/);
     expect(text).toMatch(/historical[\s\S]*frozen 0\.4\.0 monolith/i);
+  });
+
+  it("keeps ADR-030 on unsigned generic Comms carriers without dedicated Control kinds", () => {
+    const text = readFileSync(adr030Path, "utf8");
+
+    expect(text).toMatch(/session device\s+key signs the enrollment `key_proof`/i);
+    expect(text).toMatch(/participates in Comms DR wire\s+authentication/i);
+    expect(text).toMatch(/Control RPC inner rumors are unsigned/i);
+    expect(text).toMatch(
+      /authenticated by the accepted DR session, transcript, and carrier\s+validation/i,
+    );
+    expect(text).toMatch(/single generic Comms[\s\S]*kind:31015[\s\S]*kind:31016/i);
+    expect(text).toMatch(
+      /negotiated Control\s+protocol[\s\S]*method[\s\S]*direction[\s\S]*capabilities/i,
+    );
+    expect(text).not.toMatch(/signs only[\s\S]{0,180}RPC requests/i);
+    expect(text).not.toMatch(/separate kinds|both rumor families|dedicated Control kind/i);
   });
 
   it("amends ADR-031 with Core breadcrumb and Social interop ownership", () => {
@@ -1609,6 +1677,64 @@ describe("protocol family documents", () => {
             path: "docs/spec/heterodyne-core.md",
             line: 2,
             code: "forbidden-dependency",
+          }),
+        ),
+    );
+  });
+
+  it("reports a normative reference omitted from declared dependencies", () => {
+    withFamilyDocs(
+      {
+        core: [
+          "Document ID: `core`",
+          "Normative dependencies: None.",
+          '<a id="core-identity-model"></a>',
+        ].join("\n"),
+        comms: [
+          "Document ID: `comms`",
+          "Normative dependencies: `heterodyne:core/0.5.0#core-identity-model`.",
+          '<a id="comms-conformance"></a>',
+        ].join("\n"),
+        control: [
+          "Document ID: `control`",
+          "Normative dependencies:",
+          "",
+          "- `heterodyne:comms/0.5.0#comms-conformance`",
+          '<a id="control-scope"></a>',
+          "A verifier MUST use `heterodyne:core/0.5.0#core-identity-model`.",
+        ].join("\n"),
+      },
+      (root) =>
+        expect(lintFamilyDocs(root)).toContainEqual(
+          expect.objectContaining({
+            path: "docs/spec/heterodyne-control.md",
+            line: 6,
+            code: "undeclared-dependency",
+          }),
+        ),
+    );
+  });
+
+  it("requires normative references to match the exact declared dependency version", () => {
+    withFamilyDocs(
+      {
+        comms: [
+          "Document ID: `comms`",
+          '<a id="comms-conformance"></a>',
+        ].join("\n"),
+        control: [
+          "Document ID: `control`",
+          "Normative dependencies: `heterodyne:comms/0.5.0#comms-conformance`.",
+          "A client MUST apply `heterodyne:comms/0.6.0#comms-conformance`.",
+          '<a id="control-scope"></a>',
+        ].join("\n"),
+      },
+      (root) =>
+        expect(lintFamilyDocs(root)).toContainEqual(
+          expect.objectContaining({
+            path: "docs/spec/heterodyne-control.md",
+            line: 3,
+            code: "undeclared-dependency",
           }),
         ),
     );

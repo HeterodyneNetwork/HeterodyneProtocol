@@ -32,9 +32,9 @@ KEL-validated, revocable authorization. That credential path does not grant
 Control authority and does not weaken session-device confinement.
 
 **Historical monolith reference label.** Every unqualified `§...` reference
-in the original text below refers only to the frozen 0.4.0 monolith and is
-historical context, not a current integration target. If original allocation
-language conflicts with this amendment, this amendment controls.
+below names a section of the frozen 0.4.0 monolith and is not a current
+integration target. This label applies only to those reference destinations;
+live proposal statements are corrected in place by this amendment.
 
 ## Context
 
@@ -68,7 +68,8 @@ governance flow (see Requirements).
 
 Design goals set by the user: no direct light-to-full-node
 connectivity (relays mediate everything); onboarding by QR scan or
-provisioning token; private keys never leave the full node; the light
+provisioning token; Control session devices receive no persona, NID,
+audience, repository-decryption, or ratchet secrets; the light
 client receives the full configuration so its UI matches any other
 device; light-device keys are session-scoped and disposable; oracle
 power is configurable.
@@ -91,9 +92,11 @@ support automated and agentic enrollment.**
    persona's keys on its behalf. It coexists with §10.1.2's
    **delegated publishing device** class (durable delegation, authors
    its own events); §10.1.2's "light node MUST author with its own
-   key" rule is scoped to that class at spec integration. A session
-   device's key signs only channel-level material: DR session events,
-   RPC requests, and the enrollment `key_proof`.
+   key" rule is scoped to that class at spec integration. The session device
+   key signs the enrollment `key_proof` and participates in Comms DR wire
+   authentication as defined by Comms. Control RPC inner rumors are unsigned;
+   they are authenticated by the accepted DR session, transcript, and carrier
+   validation.
 
 2. **Session-device delegation schema.** Enrollment produces a
    NID-less `kind:31001` mirroring the §3.3.1 bidirectional pattern:
@@ -403,13 +406,15 @@ with expiry-backed timeouts make the browser the disposable component,
 so the system can revoke eagerly. Tokens move the ceremony in time
 rather than removing it, and issuer-bound redemption gives single-use
 semantics one point of atomicity instead of a replication race.
-Splitting security-policy state from configuration keeps the grant
-system non-self-modifying. The agentic split (separate kinds, explicit
-bidirectional capabilities) keeps remote execution in both directions
-from ever being confusable with, or silently reachable from, the human
-client path. Framing agentic payloads as MCP keeps both rumor families
-JSON-RPC-shaped, reuses a proven capability-negotiation lifecycle, and
-- unlike a state-sync protocol - tolerates the no-backfill DR carrier.
+Splitting security-policy state from configuration keeps the grant system
+non-self-modifying. Human and agentic traffic share the single generic Comms
+carrier family: `kind:31015` negotiation and `kind:31016` payload. They are
+differentiated inside encrypted canonical content by the negotiated Control
+protocol, method, direction, and capabilities, keeping remote execution in
+both directions from being confusable with, or silently reachable from, the
+human client path. Framing agentic payloads as MCP keeps the payloads
+JSON-RPC-shaped, reuses a proven capability-negotiation lifecycle, and -
+unlike a state-sync protocol - tolerates the no-backfill DR carrier.
 
 ## Alternatives Considered
 
