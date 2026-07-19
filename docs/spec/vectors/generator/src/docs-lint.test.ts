@@ -11,11 +11,13 @@ import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { lintFamilyDocs } from "./docs-lint.js";
+import { loadRegistry, resolveStampingProfile } from "./registry.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(here, "../../../../../");
 const corePath = resolve(repositoryRoot, "docs/spec/heterodyne-core.md");
 const commsPath = resolve(repositoryRoot, "docs/spec/heterodyne-comms.md");
+const socialPath = resolve(repositoryRoot, "docs/spec/heterodyne-social.md");
 
 type CredentialRecordProbe = {
   authorizationId: string;
@@ -107,6 +109,69 @@ function negotiationAllowsPayloadProbe(
     processed.has("offer") &&
     processed.has("selection") &&
     processed.has("confirmation")
+  );
+}
+
+type SocialPolicyOutcome = "accept" | "hold-as-message-request" | "reject";
+
+function socialPolicyCanReturnProbe(
+  commsOutcome: SocialPolicyOutcome,
+  socialOutcome: SocialPolicyOutcome,
+): boolean {
+  const admissionOrder: Record<SocialPolicyOutcome, number> = {
+    reject: 0,
+    "hold-as-message-request": 1,
+    accept: 2,
+  };
+  return admissionOrder[socialOutcome] <= admissionOrder[commsOutcome];
+}
+
+function approvalCountsProbe(input: {
+  indexed: boolean;
+  signatureValid: boolean;
+  moderatorAuthorizedAtAnchor: boolean;
+  requiredAnchorPresent: boolean;
+  deleted: boolean;
+}): boolean {
+  return (
+    input.indexed &&
+    input.signatureValid &&
+    input.moderatorAuthorizedAtAnchor &&
+    input.requiredAnchorPresent &&
+    !input.deleted
+  );
+}
+
+function matrixTailAcceptsProbe(input: {
+  secondsAfterFlip: number;
+  usesPreFlipSession: boolean;
+  senderWasMemberAtFlip: boolean;
+}): boolean {
+  return (
+    input.secondsAfterFlip >= 0 &&
+    input.secondsAfterFlip <= 60 &&
+    input.usesPreFlipSession &&
+    input.senderWasMemberAtFlip
+  );
+}
+
+function recoveryCacheDutyProbe(
+  role: "follower" | "mutual-follow" | "declared-witness",
+): "may" | "should" | "must" {
+  return role === "declared-witness"
+    ? "must"
+    : role === "mutual-follow"
+      ? "should"
+      : "may";
+}
+
+function declaredDependencies(text: string): string[] {
+  const declaration = text.match(
+    /Normative dependencies:\n\n((?:- `heterodyne:[^`]+`\n?)+)/,
+  );
+  if (!declaration) return [];
+  return [...declaration[1].matchAll(/- `(heterodyne:[^`]+)`/g)].map(
+    (match) => match[1],
   );
 }
 
@@ -553,6 +618,182 @@ describe("protocol family documents", () => {
     expect(text).toMatch(
       /persist[\s\S]*predecessor event id[\s\S]*referring-page locator[\s\S]*process[\s\S]*restart/i,
     );
+  });
+
+  it("declares the exact Social dependency set and Matrix-free claim", () => {
+    const text = readFileSync(socialPath, "utf8");
+
+    expect(text).toContain("Document ID: `social`");
+    expect(text).toContain("Version: `social/0.5.0`");
+    expect(text).toContain("Registry revision: `1`");
+    expect(declaredDependencies(text)).toEqual([
+      "heterodyne:core/0.5.0#core-conformance",
+      "heterodyne:comms/0.5.0#comms-conformance",
+    ]);
+    expect(text).not.toContain("heterodyne:control/");
+    expect(text).toMatch(/Matrix-free implementation[\s\S]*fully Social-conformant/i);
+    expect(text).toMatch(/distinct[\s\S]*`Social`[\s\S]*`Social\+Matrix`[\s\S]*claims/i);
+  });
+
+  it("keeps Matrix-free Social behavior complete", () => {
+    const text = readFileSync(socialPath, "utf8");
+
+    expect(text).toMatch(/replies[\s\S]*reactions[\s\S]*thread/i);
+    expect(text).toMatch(/following[\s\S]*transitive[\s\S]*discovery/i);
+    expect(text).toMatch(/cross-persona[\s\S]*advertisement/i);
+    expect(text).toMatch(/reply inbox/i);
+    expect(text).toMatch(/mixed-tier[\s\S]*fan-out/i);
+    expect(text).toMatch(/NIP-72[\s\S]*Radicle editorial/i);
+    expect(text).toMatch(/starter pack[\s\S]*ATProto/i);
+    expect(text).toMatch(/None of these[\s\S]*require Matrix/i);
+  });
+
+  it("binds Social wire profiles and leaves plain NIP-51 unstamped", () => {
+    const text = readFileSync(socialPath, "utf8");
+    const registry = loadRegistry(repositoryRoot);
+    const muteProfile = resolveStampingProfile(
+      registry,
+      10000,
+      "tag:heterodyne=social-mute-list-v1",
+    );
+    const orgProfile = resolveStampingProfile(
+      registry,
+      31007,
+      "content.profile=heterodyne.social.org-feed.v1",
+    );
+
+    expect(muteProfile).toMatchObject({
+      profile_id: "heterodyne-social-mute-list-v1",
+      owner: "social",
+      stamping: true,
+      first_version: "social/0.5.0",
+    });
+    expect(orgProfile).toMatchObject({
+      profile_id: "heterodyne-social-org-feed-v1",
+      owner: "social",
+      stamping: true,
+      first_version: "social/0.5.0",
+    });
+    expect(resolveStampingProfile(registry, 10000, "")).toBeNull();
+
+    expect(text).toContain("heterodyne-social-mute-list-v1");
+    expect(text).toContain("tag:heterodyne=social-mute-list-v1");
+    expect(text).toContain('["heterodyne", "social-mute-list-v1"]');
+    expect(text).toContain('["spec_version", "social/0.5.0"]');
+    expect(text).toMatch(/plain upstream NIP-51[\s\S]*MUST remain unstamped/i);
+    expect(text).toContain("heterodyne-social-org-feed-v1");
+    expect(text).toContain("content.profile=heterodyne.social.org-feed.v1");
+  });
+
+  it("implements Social admission only as a tighten-only Comms hook", () => {
+    const text = readFileSync(socialPath, "utf8");
+
+    expect(socialPolicyCanReturnProbe("reject", "reject")).toBe(true);
+    expect(socialPolicyCanReturnProbe("reject", "hold-as-message-request")).toBe(false);
+    expect(socialPolicyCanReturnProbe("reject", "accept")).toBe(false);
+    expect(socialPolicyCanReturnProbe("hold-as-message-request", "reject")).toBe(true);
+    expect(socialPolicyCanReturnProbe("hold-as-message-request", "accept")).toBe(false);
+    expect(socialPolicyCanReturnProbe("accept", "hold-as-message-request")).toBe(true);
+
+    expect(text).toContain("heterodyne:comms/0.5.0#comms-acceptance-hook");
+    expect(text).toMatch(/mute[\s\S]*web-of-trust[\s\S]*tighten/i);
+    expect(text).toMatch(/MUST NOT[\s\S]*(loosen|convert)[\s\S]*`reject`/i);
+    expect(text).toMatch(/MUST NOT[\s\S]*bypass[\s\S]*cryptographic/i);
+    expect(text).toMatch(/hold-as-message-request[\s\S]*no[\s\S]*receipt/i);
+  });
+
+  it("binds generic Core recovery roles only inside Social", () => {
+    const text = readFileSync(socialPath, "utf8");
+
+    expect(recoveryCacheDutyProbe("follower")).toBe("may");
+    expect(recoveryCacheDutyProbe("mutual-follow")).toBe("should");
+    expect(recoveryCacheDutyProbe("declared-witness")).toBe("must");
+
+    expect(text).toContain("heterodyne:core/0.5.0#core-recovery");
+    expect(text).toMatch(/recovery peers[\s\S]*follows[\s\S]*mutual follows[\s\S]*friends/i);
+    expect(text).toMatch(/Matrix identity-room cache/i);
+    expect(text).toMatch(/advisory[\s\S]*MUST NOT[\s\S]*replace[\s\S]*(cold-root|Core)/i);
+  });
+
+  it("retains the complete optional Matrix security boundary", () => {
+    const text = readFileSync(socialPath, "utf8");
+
+    expect(
+      matrixTailAcceptsProbe({
+        secondsAfterFlip: 60,
+        usesPreFlipSession: true,
+        senderWasMemberAtFlip: true,
+      }),
+    ).toBe(true);
+    expect(
+      matrixTailAcceptsProbe({
+        secondsAfterFlip: 61,
+        usesPreFlipSession: true,
+        senderWasMemberAtFlip: true,
+      }),
+    ).toBe(false);
+    expect(
+      matrixTailAcceptsProbe({
+        secondsAfterFlip: 30,
+        usesPreFlipSession: false,
+        senderWasMemberAtFlip: true,
+      }),
+    ).toBe(false);
+    expect(
+      matrixTailAcceptsProbe({
+        secondsAfterFlip: 30,
+        usesPreFlipSession: true,
+        senderWasMemberAtFlip: false,
+      }),
+    ).toBe(false);
+
+    expect(text).toMatch(/MXID delegation[\s\S]*epoch-key[\s\S]*self-publication/i);
+    expect(text).toMatch(/active-room election[\s\S]*publish lease[\s\S]*failover/i);
+    expect(text).toMatch(/wrapped[\s\S]*bare[\s\S]*nip01_raw/i);
+    expect(text).toMatch(/private_discussion[\s\S]*Megolm[\s\S]*MLS/i);
+    expect(text).toMatch(/encrypted state[\s\S]*downgrade/i);
+    expect(text).toMatch(/headless bridge[\s\S]*user-controlled/i);
+    expect(text).toMatch(/homeserver[\s\S]*MUST NOT[\s\S]*plaintext/i);
+    expect(text).toMatch(/vanilla Matrix[\s\S]*fallback/i);
+  });
+
+  it("binds every registered Social security invariant", () => {
+    const text = readFileSync(socialPath, "utf8");
+
+    for (const invariant of [
+      "SOCIAL-I-MATRIX-E2EE",
+      "SOCIAL-I-MXID-DELEGATION-DUAL-PROOF",
+      "SOCIAL-I-PRIVATE-STATE-AT-REST",
+      "SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE",
+      "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
+    ]) {
+      expect(text).toContain(invariant);
+    }
+  });
+
+  it("requires every moderation condition at the approval anchor", () => {
+    const text = readFileSync(socialPath, "utf8");
+    const valid = {
+      indexed: true,
+      signatureValid: true,
+      moderatorAuthorizedAtAnchor: true,
+      requiredAnchorPresent: true,
+      deleted: false,
+    };
+
+    expect(approvalCountsProbe(valid)).toBe(true);
+    for (const omitted of [
+      "indexed",
+      "signatureValid",
+      "moderatorAuthorizedAtAnchor",
+      "requiredAnchorPresent",
+    ] as const) {
+      expect(approvalCountsProbe({ ...valid, [omitted]: false })).toBe(false);
+    }
+    expect(approvalCountsProbe({ ...valid, deleted: true })).toBe(false);
+    expect(text).toMatch(/moderator set is evaluated at the anchor/i);
+    expect(text).toMatch(/lacking it MUST NOT\s+count/i);
+    expect(text).toMatch(/kind:5[\s\S]*updated moderator index/i);
   });
 
   it("accepts resolved qualified references along the allowed DAG", () => {
