@@ -141,6 +141,91 @@ describe("revisioned protocol registry", () => {
     );
   });
 
+  it("rejects stable kind downgrade after an absent revision", () => {
+    const first = currentEntrySet(registry);
+    const entry = first.kinds.find((kind) => kind.kind === 3);
+    if (entry === undefined) throw new Error("missing kind 3 fixture");
+    entry.status = "stable";
+    const second = structuredClone(first);
+    second.kinds = second.kinds.filter((kind) => kind.kind !== entry.kind);
+    const third = structuredClone(second);
+    third.kinds.push({ ...entry, status: "draft" });
+
+    expect(() =>
+      validateRegistryHistory(
+        new Map([
+          [1, first],
+          [2, second],
+          [3, third],
+        ]),
+      ),
+    ).toThrow("invalid registry status transition");
+  });
+
+  it("rejects reason-code state skipping after an absent revision", () => {
+    const first = currentEntrySet(registry);
+    const entry = first.reason_codes[0];
+    const second = structuredClone(first);
+    second.reason_codes = second.reason_codes.filter(
+      (reason) => reason.code !== entry.code,
+    );
+    const third = structuredClone(second);
+    third.reason_codes.push({ ...entry, status: "frozen" });
+
+    expect(() =>
+      validateRegistryHistory(
+        new Map([
+          [1, first],
+          [2, second],
+          [3, third],
+        ]),
+      ),
+    ).toThrow("invalid registry status transition");
+  });
+
+  it("rejects invariant downgrade after an absent revision", () => {
+    const first = currentEntrySet(registry);
+    const entry = first.security_invariants[0];
+    entry.status = "stable";
+    const second = structuredClone(first);
+    second.security_invariants = second.security_invariants.filter(
+      (invariant) => invariant.id !== entry.id,
+    );
+    const third = structuredClone(second);
+    third.security_invariants.push({ ...entry, status: "draft" });
+
+    expect(() =>
+      validateRegistryHistory(
+        new Map([
+          [1, first],
+          [2, second],
+          [3, third],
+        ]),
+      ),
+    ).toThrow("invalid registry status transition");
+  });
+
+  it("allows an adjacent top-level progression after an absent revision", () => {
+    const first = currentEntrySet(registry);
+    const entry = first.reason_codes[0];
+    const second = structuredClone(first);
+    second.reason_codes = second.reason_codes.filter(
+      (reason) => reason.code !== entry.code,
+    );
+    const third = structuredClone(second);
+    third.reason_codes.push({ ...entry, status: "stable" });
+
+    expect(() =>
+      validateRegistryHistory(
+        new Map([
+          [1, first],
+          [2, second],
+          [3, third],
+        ]),
+      ),
+    ).not.toThrow();
+  });
+
   it("keeps an allocated profile discriminator immutable", () => {
     const previous = currentEntrySet(registry);
     const current = structuredClone(previous);

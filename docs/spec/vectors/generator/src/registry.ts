@@ -233,23 +233,32 @@ export function validateRegistryHistory(
     string,
     { kind: number; owner: DocumentId; discriminator: string; last: KindProfile }
   >();
+  const historicalKinds = new Map<string, { last: KindEntry }>();
+  const historicalReasonCodes = new Map<string, { last: ReasonCodeEntry }>();
+  const historicalInvariants = new Map<string, { last: InvariantEntry }>();
   for (let index = 0; index < revisions.length; index += 1) {
     if (revisions[index] !== index + 1) {
       throw new Error("registry history revisions must be contiguous from 1");
     }
     const current = history.get(revisions[index])!;
     validateUniqueEntries(current);
-    if (index > 0) {
-      compareHistoryEntries(history.get(revisions[index - 1])!, current);
-    }
+    validateHistoricalCollection(
+      current.kinds,
+      historicalKinds,
+      (entry) => String(entry.kind),
+    );
+    validateHistoricalCollection(
+      current.reason_codes,
+      historicalReasonCodes,
+      (entry) => entry.code,
+    );
+    validateHistoricalCollection(
+      current.security_invariants,
+      historicalInvariants,
+      (entry) => entry.id,
+    );
     validateHistoricalProfiles(current, historicalProfiles);
   }
-}
-
-function compareHistoryEntries(previous: RegistryEntrySet, current: RegistryEntrySet): void {
-  compareCollection(previous.kinds, current.kinds, (entry) => String(entry.kind));
-  compareCollection(previous.reason_codes, current.reason_codes, (entry) => entry.code);
-  compareCollection(previous.security_invariants, current.security_invariants, (entry) => entry.id);
 }
 
 function validateHistoricalProfiles(
@@ -300,21 +309,33 @@ function validateHistoricalProfiles(
   }
 }
 
-function compareCollection<T extends { status: RegistryStatus }>(
-  previous: T[],
+function validateHistoricalCollection<T extends { status: RegistryStatus }>(
   current: T[],
+  historical: Map<string, { last: T }>,
   key: (entry: T) => string,
 ): void {
-  const currentByKey = new Map(current.map((entry) => [key(entry), entry]));
-  for (const oldEntry of previous) {
-    const newEntry = currentByKey.get(key(oldEntry));
-    if (newEntry === undefined) {
-      if (oldEntry.status === "frozen") throw new Error("frozen entry removed");
+  const present = new Set<string>();
+  for (const entry of current) {
+    const entryKey = key(entry);
+    present.add(entryKey);
+    const prior = historical.get(entryKey);
+    if (prior === undefined) {
+      historical.set(entryKey, { last: entry });
       continue;
     }
-    assertRegistryStatusTransition(oldEntry.status, newEntry.status);
-    if (oldEntry.status === "frozen" && canonicalize(oldEntry) !== canonicalize(newEntry)) {
+    assertRegistryStatusTransition(prior.last.status, entry.status);
+    if (
+      prior.last.status === "frozen" &&
+      canonicalize(prior.last) !== canonicalize(entry)
+    ) {
       throw new Error("frozen entry changed");
+    }
+    prior.last = entry;
+  }
+
+  for (const [entryKey, prior] of historical) {
+    if (prior.last.status === "frozen" && !present.has(entryKey)) {
+      throw new Error("frozen entry removed");
     }
   }
 }
