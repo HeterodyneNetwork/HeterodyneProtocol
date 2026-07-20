@@ -1,6 +1,21 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { Registry } from "./registry.js";
 import type { DocumentId, Vector } from "./types.js";
+
+/**
+ * ADR-034 phase gate. These registry allocations intentionally precede their
+ * normative vectors in the claims/OIDC implementation plan. Remove each entry
+ * when its vector lands; no other uncovered active profile is permitted.
+ */
+export const ADR034_PENDING_PROFILE_IDS = [
+  "heterodyne-comms-key-claim-nostr-bip340-v1",
+  "heterodyne-comms-key-claim-radicle-ed25519-v1",
+  "heterodyne-comms-key-claim-jwk-jws-v1",
+  "heterodyne-comms-claim-revocation-nostr-bip340-v1",
+  "heterodyne-comms-claim-revocation-radicle-ed25519-v1",
+  "heterodyne-comms-claim-revocation-jwk-jws-v1",
+] as const;
 
 export type CoverageEntry = {
   vector_id: string;
@@ -33,6 +48,23 @@ export function buildCoverage(vectors: Vector[]): CoverageEntry[] {
     .sort((left, right) =>
       left.vector_id < right.vector_id ? -1 : left.vector_id > right.vector_id ? 1 : 0,
     );
+}
+
+export function findUncoveredProfiles(
+  registry: Pick<Registry, "kinds">,
+  coverage: readonly CoverageEntry[],
+): string[] {
+  const covered = new Set(
+    coverage.flatMap(({ profile }) => profile === undefined ? [] : [profile]),
+  );
+  const pending = new Set<string>(ADR034_PENDING_PROFILE_IDS);
+  return registry.kinds
+    .flatMap(({ profiles }) => profiles)
+    .filter(({ owner, profile_id }) =>
+      owner !== "control" && !covered.has(profile_id) && !pending.has(profile_id),
+    )
+    .map(({ profile_id }) => profile_id)
+    .sort();
 }
 
 export async function writeCoverage(vectorRoot: string): Promise<void> {

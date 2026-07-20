@@ -46,3 +46,36 @@ Generated compatibility projection. The authoritative allocation container is `d
 | `export_incomplete` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | did:webs export failed: required source KEL events or attachments are unavailable (INCOMPLETE_EXPORT). |
 | `keri_wire_format_rejected` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | A KEL event or stream was presented in KERI10JSON/CESR on the Heterodyne wire or as storage; NIP-01 with nip01_raw is the only wire and storage format. |
 | `export_aid_substituted_for_npub` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | A derived export AID or its did:webs DID was substituted for the persona npub where the spec requires the npub; the export identity is never an alternate authoritative identity. |
+| `claim-schema-invalid` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The claim or revocation does not satisfy its registered Comms schema. |
+| `claim-id-mismatch` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The claim_id does not equal the lowercase SHA-256 digest of the canonical semantic body. |
+| `claim-key-reference-invalid` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | An issuer, subject, or proof key reference is malformed or uses an unregistered type. |
+| `claim-event-signature-invalid` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The outer Nostr claim or revocation event signature is invalid. |
+| `claim-issuer-authority-invalid` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | Core/KEL validation does not establish the issuer's claimed authority at issuance time. |
+| `claim-issuer-untrusted` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The claim is cryptographically valid but its issuer is outside the verifier's trust policy. |
+| `claim-chain-cycle` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The claim issuance chain contains a repeated claim identifier. |
+| `claim-chain-depth-exceeded` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The claim issuance chain exceeds the strict eight-edge limit. |
+| `claim-delegation-not-authorized` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The parent claim does not authorize the child issuer to redelegate. |
+| `claim-attenuation-violation` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | A child claim widens scope, audience, resources, validity, or delegation depth. |
+| `claim-subject-proof-required` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | Authorization use requires a fresh proof of possession that was not supplied. |
+| `claim-subject-proof-invalid` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The registered native proof profile did not validate possession of the subject key. |
+| `claim-repository-unconfirmed` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | A persona-issued authorization is not reachable from authoritative canonical repository state. |
+| `claim-repository-conflict` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | Concurrent non-monotonic claim-ledger state remains unresolved and cannot authorize. |
+| `claim-expired` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The claim's bounded validity interval has ended. |
+| `claim-revoked` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | An irreversible valid revocation covers the claim. |
+| `claim-revoker-unauthorized` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The signer is not permitted to revoke this authorization or descriptive assertion. |
+| `claim-ledger-reader-unauthorized` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | A device lacks an active durable NID-bearing claim-ledger-reader authorization. |
+| `claim-ledger-rollback` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | Presented claim-ledger state regresses below a previously finalized checkpoint. |
+| `oidc-issuer-authority-invalid` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The minting node lacks active oidc-token-issuer authority for the persona. |
+| `oidc-signing-key-unavailable` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The minting node cannot decrypt or use an active shared issuer signing key. |
+| `oidc-checkpoint-stale` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The authoritative ledger checkpoint exceeds the issuer manifest's at-most-300-second freshness bound. |
+| `oidc-client-unregistered` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The requesting OAuth/OIDC client is not explicitly registered. |
+| `oidc-grant-prohibited` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The request uses Client Credentials, implicit, password, or another prohibited grant. |
+| `oidc-consent-required` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The requested claim release lacks the required persona consent. |
+| `oidc-claim-release-denied` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | Requested claims exceed the intersection of scope, audience, policy, consent, trust, and active state. |
+| `oidc-issuer-mismatch` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | Discovery metadata, JWT iss, or continuity state names a different exact issuer URL. |
+| `oidc-token-type-invalid` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | A JWT is missing or misuses the token-type separation required by the profile. |
+| `oidc-audience-invalid` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The JWT audience does not authorize the relying party or protected resource. |
+| `oidc-status-stale` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The pinned draft-21 Status List Token is expired, outside ttl, or not fresh enough for policy. |
+| `oidc-status-digest-mismatch` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The HTTPS and Radicle status copies are not byte-identical under the continuity digest. |
+| `oidc-status-index-invalid` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | A status index is out of range, reused, or outside its writer-NID namespace allocation. |
+| `oidc-status-invalid` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | The token status is INVALID or cannot provide valid evidence of VALID. |

@@ -486,6 +486,72 @@
       "profiles": []
     },
     {
+      "kind": 31013,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-key-claim-nostr-bip340-v1",
+          "owner": "comms",
+          "discriminator": "production-rule:claim-subject-pop;proof=nostr-bip340-v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-key-claim-radicle-ed25519-v1",
+          "owner": "comms",
+          "discriminator": "production-rule:claim-subject-pop;proof=radicle-ed25519-v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-key-claim-jwk-jws-v1",
+          "owner": "comms",
+          "discriminator": "production-rule:claim-subject-pop;proof=jwk-jws-v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 31014,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-claim-revocation-nostr-bip340-v1",
+          "owner": "comms",
+          "discriminator": "production-rule:claim-revoker;proof=nostr-bip340-v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-claim-revocation-radicle-ed25519-v1",
+          "owner": "comms",
+          "discriminator": "production-rule:claim-revoker;proof=radicle-ed25519-v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-claim-revocation-jwk-jws-v1",
+          "owner": "comms",
+          "discriminator": "production-rule:claim-revoker;proof=jwk-jws-v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
       "kind": 31015,
       "allocation_authority": "heterodyne",
       "base_schema_owner": "comms",

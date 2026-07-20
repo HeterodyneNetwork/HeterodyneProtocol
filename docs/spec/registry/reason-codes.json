@@ -419,6 +419,270 @@
       "spec_refs": [
         "heterodyne:core/0.5.0#core-conformance"
       ]
+    },
+    {
+      "code": "claim-schema-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The claim or revocation does not satisfy its registered Comms schema.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "claim-id-mismatch",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The claim_id does not equal the lowercase SHA-256 digest of the canonical semantic body.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "claim-key-reference-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "An issuer, subject, or proof key reference is malformed or uses an unregistered type.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "claim-event-signature-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The outer Nostr claim or revocation event signature is invalid.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "claim-issuer-authority-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Core/KEL validation does not establish the issuer's claimed authority at issuance time.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "claim-issuer-untrusted",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The claim is cryptographically valid but its issuer is outside the verifier's trust policy.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "claim-chain-cycle",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The claim issuance chain contains a repeated claim identifier.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "claim-chain-depth-exceeded",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The claim issuance chain exceeds the strict eight-edge limit.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "claim-delegation-not-authorized",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The parent claim does not authorize the child issuer to redelegate.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "claim-attenuation-violation",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A child claim widens scope, audience, resources, validity, or delegation depth.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "claim-subject-proof-required",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Authorization use requires a fresh proof of possession that was not supplied.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "claim-subject-proof-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The registered native proof profile did not validate possession of the subject key.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "claim-repository-unconfirmed",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A persona-issued authorization is not reachable from authoritative canonical repository state.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "claim-repository-conflict",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Concurrent non-monotonic claim-ledger state remains unresolved and cannot authorize.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "claim-expired",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The claim's bounded validity interval has ended.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "claim-revoked",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "An irreversible valid revocation covers the claim.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "claim-revoker-unauthorized",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The signer is not permitted to revoke this authorization or descriptive assertion.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "claim-ledger-reader-unauthorized",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A device lacks an active durable NID-bearing claim-ledger-reader authorization.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "claim-ledger-rollback",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Presented claim-ledger state regresses below a previously finalized checkpoint.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "oidc-issuer-authority-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The minting node lacks active oidc-token-issuer authority for the persona.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "oidc-signing-key-unavailable",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The minting node cannot decrypt or use an active shared issuer signing key.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "oidc-checkpoint-stale",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The authoritative ledger checkpoint exceeds the issuer manifest's at-most-300-second freshness bound.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "oidc-client-unregistered",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The requesting OAuth/OIDC client is not explicitly registered.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "oidc-grant-prohibited",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The request uses Client Credentials, implicit, password, or another prohibited grant.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "oidc-consent-required",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The requested claim release lacks the required persona consent.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "oidc-claim-release-denied",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Requested claims exceed the intersection of scope, audience, policy, consent, trust, and active state.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "oidc-issuer-mismatch",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Discovery metadata, JWT iss, or continuity state names a different exact issuer URL.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "oidc-token-type-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A JWT is missing or misuses the token-type separation required by the profile.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "oidc-audience-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The JWT audience does not authorize the relying party or protected resource.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "oidc-status-stale",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The pinned draft-21 Status List Token is expired, outside ttl, or not fresh enough for policy.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "oidc-status-digest-mismatch",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The HTTPS and Radicle status copies are not byte-identical under the continuity digest.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "oidc-status-index-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A status index is out of range, reused, or outside its writer-NID namespace allocation.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "oidc-status-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The token status is INVALID or cannot provide valid evidence of VALID.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
     }
   ]
 }

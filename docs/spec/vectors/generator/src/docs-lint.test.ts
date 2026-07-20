@@ -14,9 +14,12 @@ import { ed25519 } from "@noble/curves/ed25519";
 import { sha256 } from "@noble/hashes/sha2";
 import { describe, expect, it } from "vitest";
 import {
+  ADR034_PENDING_INVARIANT_IDS,
   expectedReleaseManifests,
+  findMissingInvariantEvidence,
   lintFamilyCutover,
   lintFamilyDocs,
+  validateReleaseManifestRegistryPin,
 } from "./docs-lint.js";
 import { hexToBytes, utf8Bytes } from "./hex.js";
 import { verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
@@ -1697,15 +1700,30 @@ describe("protocol family documents", () => {
 
   it("uses only namespaced current invariants and exact registry descriptions", () => {
     const threatModel = readFileSync(threatModelPath, "utf8");
+    const adr034 = readFileSync(
+      resolve(repositoryRoot, "docs/adr/2026-07-18-034-key-claims-private-ledger-oidc-projection.md"),
+      "utf8",
+    );
     const registry = JSON.parse(
       readFileSync(resolve(repositoryRoot, "docs/spec/registry/security-invariants.json"), "utf8"),
     ) as { security_invariants: Array<{ id: string; description: string }> };
 
     expect(threatModel).not.toMatch(/\bI(?:1|3|6|7)\b/);
-    for (const invariant of registry.security_invariants) {
-      expect(threatModel).toContain(invariant.id);
-      expect(threatModel).toContain(invariant.description);
-    }
+    expect(findMissingInvariantEvidence(
+      registry.security_invariants,
+      threatModel,
+      adr034,
+    )).toEqual([]);
+    expect(ADR034_PENDING_INVARIANT_IDS).toHaveLength(11);
+
+    expect(findMissingInvariantEvidence(
+      [...registry.security_invariants, {
+        id: "COMMS-I-UNLISTED-FUTURE-INVARIANT",
+        description: "A future invariant with no evidence.",
+      }],
+      threatModel,
+      adr034,
+    )).toEqual(["COMMS-I-UNLISTED-FUTURE-INVARIANT"]);
   });
 
   it("navigates every current companion through the four-document family", () => {
@@ -1792,18 +1810,36 @@ describe("protocol family documents", () => {
       readFileSync(resolve(releasesPath, "release-manifest.schema.json"), "utf8"),
     ) as AnySchema;
     const validate = new Ajv({ allErrors: true, strict: false }).compile(schema);
-    const expected = expectedReleaseManifests(repositoryRoot);
-
-    for (const [document, manifest] of Object.entries(expected)) {
+    for (const document of ["core", "comms", "control", "social"] as const) {
       const bytes = readFileSync(
         resolve(releasesPath, document, "0.5.0.json"),
         "utf8",
       );
-      const actual = JSON.parse(bytes);
-      expect(actual).toEqual(manifest);
+      const actual = JSON.parse(bytes) as ReturnType<typeof expectedReleaseManifests>[typeof document];
+      const expected = expectedReleaseManifests(
+        repositoryRoot,
+        actual.registry_revision,
+      )[document];
+      expect(actual).toEqual(expected);
+      expect(() => validateReleaseManifestRegistryPin(repositoryRoot, actual)).not.toThrow();
       expect(validate(actual), JSON.stringify(validate.errors)).toBe(true);
-      expect(bytes).toBe(`${canonicalJsonProbe(manifest)}\n`);
+      expect(bytes).toBe(`${canonicalJsonProbe(expected)}\n`);
     }
+  });
+
+  it("validates historical and current release pins and rejects unknown or mismatched pins", () => {
+    const historical = expectedReleaseManifests(repositoryRoot, 1).core;
+    const current = expectedReleaseManifests(repositoryRoot, 2).core;
+    expect(() => validateReleaseManifestRegistryPin(repositoryRoot, historical)).not.toThrow();
+    expect(() => validateReleaseManifestRegistryPin(repositoryRoot, current)).not.toThrow();
+    expect(() => validateReleaseManifestRegistryPin(repositoryRoot, {
+      ...historical,
+      registry_revision: 999,
+    })).toThrow(/unknown registry history revision 999/);
+    expect(() => validateReleaseManifestRegistryPin(repositoryRoot, {
+      ...historical,
+      registry_sha256: "0".repeat(64),
+    })).toThrow(/registry digest mismatch/);
   });
 
   it("finalizes sibling lineage and companion authority at cutover", () => {

@@ -11,7 +11,26 @@ import {
   parseQualifiedVersion,
 } from "./family.js";
 import type { DocumentId } from "./types.js";
-import { loadRegistry } from "./registry.js";
+import { computeRegistryDigest, loadRegistry } from "./registry.js";
+
+/**
+ * ADR-034 phase gate. Registry allocation intentionally precedes the claims
+ * threat-model task. Until then, the accepted ADR must reproduce each exact
+ * identifier and description. No unlisted invariant receives this exception.
+ */
+export const ADR034_PENDING_INVARIANT_IDS = [
+  "COMMS-I-CLAIM-AUTHENTICITY",
+  "COMMS-I-CLAIM-ATTENUATION",
+  "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
+  "COMMS-I-CLAIM-REVOCATION",
+  "COMMS-I-LEDGER-CONFINEMENT",
+  "COMMS-I-ISSUER-KEY-CONFINEMENT",
+  "COMMS-I-MINT-FRESHNESS",
+  "COMMS-I-ISSUER-CONTINUITY",
+  "COMMS-I-CLAIM-RELEASE",
+  "COMMS-I-JWT-TYPE-AUDIENCE",
+  "COMMS-I-STATUS-INTEGRITY",
+] as const;
 
 export type FamilyDocIssue = {
   path: string;
@@ -336,10 +355,56 @@ export function releaseManifestBytes(manifest: ReleaseManifest): string {
   return `${canonicalJson(manifest)}\n`;
 }
 
-export function expectedReleaseManifests(repoRoot: string): Record<DocumentId, ReleaseManifest> {
+export function findMissingInvariantEvidence(
+  invariants: readonly { id: string; description: string }[],
+  threatModel: string,
+  acceptedAdr034: string,
+): string[] {
+  const pending = new Set<string>(ADR034_PENDING_INVARIANT_IDS);
+  const adrAccepted = /\*\*Status:\*\* Accepted\b/.test(acceptedAdr034);
+  return invariants
+    .filter(({ id, description }) => {
+      if (threatModel.includes(id) && threatModel.includes(description)) return false;
+      return !(
+        pending.has(id) &&
+        adrAccepted &&
+        acceptedAdr034.includes(id) &&
+        acceptedAdr034.includes(description)
+      );
+    })
+    .map(({ id }) => id);
+}
+
+export function validateReleaseManifestRegistryPin(
+  repoRoot: string,
+  manifest: Pick<ReleaseManifest, "registry_revision" | "registry_sha256">,
+): void {
   const registry = loadRegistry(repoRoot);
-  const registryRevision = registry.manifest.revision;
-  const registrySha256 = registry.manifest.entry_set_sha256;
+  const entrySet = registry.history.get(manifest.registry_revision);
+  if (entrySet === undefined) {
+    throw new Error(
+      `unknown registry history revision ${manifest.registry_revision}`,
+    );
+  }
+  const expectedDigest = computeRegistryDigest(entrySet);
+  if (manifest.registry_sha256 !== expectedDigest) {
+    throw new Error(
+      `registry digest mismatch for revision ${manifest.registry_revision}`,
+    );
+  }
+}
+
+export function expectedReleaseManifests(
+  repoRoot: string,
+  revision?: number,
+): Record<DocumentId, ReleaseManifest> {
+  const registry = loadRegistry(repoRoot);
+  const registryRevision = revision ?? registry.manifest.revision;
+  const entrySet = registry.history.get(registryRevision);
+  if (entrySet === undefined) {
+    throw new Error(`unknown registry history revision ${registryRevision}`);
+  }
+  const registrySha256 = computeRegistryDigest(entrySet);
   return {
     core: {
       document: "core",
@@ -515,7 +580,6 @@ export function lintFamilyCutover(repoRoot: string): FamilyDocIssue[] {
     }
   }
 
-  const expected = expectedReleaseManifests(repoRoot);
   const schemaPath = resolve(repoRoot, "docs/spec/releases/release-manifest.schema.json");
   if (!existsSync(schemaPath)) {
     issues.push({
@@ -527,14 +591,27 @@ export function lintFamilyCutover(repoRoot: string): FamilyDocIssue[] {
     return issues;
   }
   const schema = JSON.parse(readFileSync(schemaPath, "utf8")) as {
-    properties?: { registry_sha256?: { const?: unknown } };
+    properties?: {
+      registry_revision?: { const?: unknown };
+      registry_sha256?: { const?: unknown };
+    };
   };
-  if (schema.properties?.registry_sha256?.const !== expected.core.registry_sha256) {
+  const schemaRevision = schema.properties?.registry_revision?.const;
+  const schemaDigest = schema.properties?.registry_sha256?.const;
+  try {
+    if (typeof schemaRevision !== "number" || typeof schemaDigest !== "string") {
+      throw new Error("release schema registry pin is incomplete");
+    }
+    validateReleaseManifestRegistryPin(repoRoot, {
+      registry_revision: schemaRevision,
+      registry_sha256: schemaDigest,
+    });
+  } catch (error) {
     issues.push({
       path: displayPath(repoRoot, schemaPath),
       line: 1,
       code: "release-manifest-mismatch",
-      message: "release schema does not pin the validated registry digest",
+      message: `release schema has an invalid historical registry pin: ${error instanceof Error ? error.message : String(error)}`,
     });
   }
   for (const document of DOCUMENTS) {
@@ -549,12 +626,21 @@ export function lintFamilyCutover(repoRoot: string): FamilyDocIssue[] {
       continue;
     }
     const actualBytes = readFileSync(path, "utf8");
-    if (actualBytes !== releaseManifestBytes(expected[document])) {
+    try {
+      const actual = JSON.parse(actualBytes) as ReleaseManifest;
+      validateReleaseManifestRegistryPin(repoRoot, actual);
+      const expected = expectedReleaseManifests(
+        repoRoot,
+        actual.registry_revision,
+      )[document];
+      if (actualBytes === releaseManifestBytes(expected)) continue;
+      throw new Error("fields or canonical bytes differ from the pinned form");
+    } catch (error) {
       issues.push({
         path: displayPath(repoRoot, path),
         line: 1,
         code: "release-manifest-mismatch",
-        message: `${document} release manifest differs from the validated registry-derived form`,
+        message: `${document} release manifest differs from its validated historical registry-derived form: ${error instanceof Error ? error.message : String(error)}`,
       });
     }
   }

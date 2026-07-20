@@ -3,7 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { authorAllVectors } from "./author.js";
-import { buildCoverage, writeCoverage } from "./coverage.js";
+import {
+  ADR034_PENDING_PROFILE_IDS,
+  buildCoverage,
+  findUncoveredProfiles,
+  writeCoverage,
+} from "./coverage.js";
 import { buildAllVectors } from "./topics.js";
 import { buildFixtures } from "./fixtures.js";
 import { loadRegistry } from "./registry.js";
@@ -58,13 +63,37 @@ describe("family coverage", () => {
     expect(coverage.every(({ spec_refs }) => spec_refs.every((ref) => ref.startsWith("heterodyne:")))).toBe(true);
 
     const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
-    const activeProfiles = registry.kinds.flatMap(({ profiles }) => profiles)
-      .filter(({ owner }) => owner !== "control")
-      .map(({ profile_id }) => profile_id);
-    const coveredProfiles = new Set(coverage.flatMap(({ profile }) => profile === undefined ? [] : [profile]));
-    for (const profile of activeProfiles) expect(coveredProfiles.has(profile)).toBe(true);
+    expect(findUncoveredProfiles(registry, coverage)).toEqual([]);
+    expect(ADR034_PENDING_PROFILE_IDS).toEqual([
+      "heterodyne-comms-key-claim-nostr-bip340-v1",
+      "heterodyne-comms-key-claim-radicle-ed25519-v1",
+      "heterodyne-comms-key-claim-jwk-jws-v1",
+      "heterodyne-comms-claim-revocation-nostr-bip340-v1",
+      "heterodyne-comms-claim-revocation-radicle-ed25519-v1",
+      "heterodyne-comms-claim-revocation-jwk-jws-v1",
+    ]);
     expect(coverage.filter(({ profile }) => profile === "heterodyne-control-session-device-v1"))
       .toHaveLength(1);
+  });
+
+  it("fails the staged coverage gate for any unlisted uncovered profile", async () => {
+    const vectors = (await buildAllVectors(buildFixtures())).map(({ vector }) => vector);
+    const coverage = buildCoverage(vectors);
+    const registry = structuredClone(
+      loadRegistry(resolve(import.meta.dirname, "../../../../../")),
+    );
+    registry.kinds[0].profiles.push({
+      profile_id: "unlisted-future-profile",
+      owner: "comms",
+      discriminator: "test:unlisted",
+      stamping: false,
+      first_version: "comms/0.5.0",
+      status: "draft",
+    });
+
+    expect(findUncoveredProfiles(registry, coverage)).toEqual([
+      "unlisted-future-profile",
+    ]);
   });
 
   it("writes deterministic Markdown views derived from manifest.json", async () => {

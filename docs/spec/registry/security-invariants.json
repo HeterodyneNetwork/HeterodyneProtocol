@@ -118,6 +118,83 @@
       "status": "draft",
       "first_version": "control/0.5.0",
       "description": "A Control session device never receives persona epoch, NID, audience, repository-decryption, or ratchet secrets."
+    },
+    {
+      "id": "COMMS-I-CLAIM-AUTHENTICITY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Claim IDs, event signatures, issuer authority, typed references, and native proofs are verified before trust or authorization policy is applied."
+    },
+    {
+      "id": "COMMS-I-CLAIM-ATTENUATION",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Every delegated claim strictly preserves or narrows all authority dimensions and issuance chains contain at most eight edges."
+    },
+    {
+      "id": "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Persona-issued device authorization is final only in canonical private claim-repository state, while authenticated reductions take effect immediately."
+    },
+    {
+      "id": "COMMS-I-CLAIM-REVOCATION",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A valid revocation or authority reduction is irreversible, monotonic, and wins concurrent repository merges."
+    },
+    {
+      "id": "COMMS-I-LEDGER-CONFINEMENT",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Private claim-ledger contents and decryption material are available only to active durable NID-bearing ledger readers."
+    },
+    {
+      "id": "COMMS-I-ISSUER-KEY-CONFINEMENT",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Shared OIDC signing keys are separately encrypted and released only to nodes with active oidc-token-issuer authority."
+    },
+    {
+      "id": "COMMS-I-MINT-FRESHNESS",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A node mints only from a synchronized canonical checkpoint no older than the manifest bound, which cannot exceed 300 seconds."
+    },
+    {
+      "id": "COMMS-I-ISSUER-CONTINUITY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "HTTPS issuer metadata and the root-key-scoped Radicle continuity tree agree on the exact active issuer, keys, status digests, and authorized succession."
+    },
+    {
+      "id": "COMMS-I-CLAIM-RELEASE",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "OIDC projection releases only claims allowed by scope, audience, client policy, consent, active repository state, issuer trust, and proof requirements."
+    },
+    {
+      "id": "COMMS-I-JWT-TYPE-AUDIENCE",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "JWT consumers enforce exact issuer, intended audience, time, signature, nonce when applicable, and token-type separation including typ at+jwt for access tokens."
+    },
+    {
+      "id": "COMMS-I-STATUS-INTEGRITY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Draft-21 status lists are signed, fresh, digest-bound across HTTPS and Radicle mirrors, writer-namespaced without index reuse, and never let VALID override other token failures."
     }
   ]
 }
