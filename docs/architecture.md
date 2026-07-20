@@ -109,6 +109,24 @@ recovery state only between durable NID-bearing devices with an explicit,
 revocable credential-sync authorization. A NID-less Control session device can
 never qualify.
 
+### 3.3 Key claims, private authority, and public projection
+
+Comms also owns atomic signed claims about typed keys. Cryptographic validity
+is evaluated before trust, and authorization claims are usable only after
+fresh subject proof and confirmation in the persona's canonical encrypted
+private claim ledger. The ledger is multi-writer: monotonic revocations and
+authority reductions win, while incompatible policy changes remain conflicted
+and fail closed.
+
+OIDC discovery, JWKS, ID Tokens, RFC 9068 access tokens, and draft-21 status
+lists project selected active claim state to ordinary third parties. They are
+not the canonical authorization plane. Public HTTPS material has a
+byte-identical, cold-root-scoped Radicle continuity tree; private claims,
+consent, issuance mappings, reader membership, audience keys, and signing
+secrets never enter that tree. Signing keys are separately wrapped only to
+active issuer nodes, which must mint from a canonical checkpoint no more than
+300 seconds old.
+
 ## 4. Control: a profile, not a transport
 
 Control rides accepted Comms double-ratchet sessions and generic Comms
@@ -155,19 +173,27 @@ flowchart TB
   subgraph Device[User-controlled endpoint]
     Verify[Core verification]
     Publish[Comms publishing and decryption]
+    Claims[Comms claim verification + private ledger]
+    OIDC[OIDC/JWT projection]
     Policy[Social policy]
     RPC[Control session logic]
     Keys[Protected local stores]
     Verify --> Publish
+    Verify --> Claims
+    Claims --> OIDC
     Publish --> Policy
     Publish --> RPC
     Verify --> Keys
   end
   Nostr[Ordinary Nostr relays]
   Repo[Repo relays + Radicle seeds]
+  HTTPS[OIDC HTTPS discovery + JWKS]
   Matrix[Optional Matrix homeservers]
   Publish <--> Nostr
   Publish <--> Repo
+  Claims <--> Repo
+  OIDC --> HTTPS
+  OIDC --> Repo
   Policy -. optional ciphertext .-> Matrix
 ```
 
@@ -239,7 +265,9 @@ Security invariant IDs follow document ownership:
 - `CORE-I-*` covers persona authority, dual-proof NID delegation, verification,
   decentralized identity discovery, and Core key storage.
 - `COMMS-I-*` covers Tier 3 confidentiality, Tier 2 honesty, Comms private
-  state, client-side delivery, and decentralized delivery discovery.
+  state, client-side delivery, decentralized delivery discovery, claim
+  authenticity/attenuation, private-ledger authority, issuer confinement and
+  continuity, minimized release, JWT separation, and token-status integrity.
 - `CONTROL-I-*` covers audit protection and session-device key confinement.
 - `SOCIAL-I-*` covers private Social state, decentralized graph evaluation,
   and optional Matrix identity/encryption/bridging.

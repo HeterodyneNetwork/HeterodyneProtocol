@@ -17,13 +17,12 @@ versioned documents below. The 0.4.0 monolith is frozen under
 ## 0.5.0 family
 
 The prepared 0.5.0 documents are current normative authority in the repository
-but remain unreleased until the claims/OIDC work is complete and explicit
-release approval is given.
+but remain unreleased pending explicit release approval.
 
 | Document | Owns |
 |---|---|
 | [`docs/spec/heterodyne-core.md`](docs/spec/heterodyne-core.md) | Identity, KEL, canonical bytes, delegations, node roles, repositories, registry, versioning, and base conformance |
-| [`docs/spec/heterodyne-comms.md`](docs/spec/heterodyne-comms.md) | Privacy tiers, publishing, feed/retrieval, direct messages, credential sync, and subprotocol carriage |
+| [`docs/spec/heterodyne-comms.md`](docs/spec/heterodyne-comms.md) | Privacy tiers, publishing, direct messages, atomic key claims, the private claim ledger, and OIDC/JWT projection |
 | [`docs/spec/heterodyne-control.md`](docs/spec/heterodyne-control.md) | Own-device enrollment, grants, RPC, and agentic semantics; currently incomplete and non-claimable |
 | [`docs/spec/heterodyne-social.md`](docs/spec/heterodyne-social.md) | Social graph, interactions, moderation, lists, ATProto attachment, and optional Matrix behavior |
 
@@ -52,6 +51,9 @@ redirects old monolith section links to permanent family anchors.
   encrypted before storage.
 - Double-ratchet direct messages are Comms behavior and have no repository
   backfill.
+- Persona-issued device authority is resolved from the encrypted private claim
+  ledger. OIDC and JWT are interoperable projections, not canonical
+  authorization.
 - Matrix is optional inside Social and never supplies persona authority.
 - Control is a Comms profile, not another transport.
 
@@ -76,6 +78,7 @@ covered behavior.
 | `docs/spec/heterodyne-control.md` | Incomplete Control 0.5.0 profile |
 | `docs/spec/heterodyne-social.md` | Social 0.5.0 normative document |
 | `docs/spec/registry/` | Core-owned revisioned allocation registry |
+| `docs/spec/releases/` | Untagged per-document release manifests and schema |
 | `docs/spec/vectors/` | Normative vectors plus generator tooling |
 | `docs/spec/archive/` | Frozen 0.4.0 monolith and anchor map |
 | `docs/adr/` | Architecture Decision Records |

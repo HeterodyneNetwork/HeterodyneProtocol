@@ -10,8 +10,8 @@ agent-specific working conventions.
 family map. Normative authority is divided among the four independently
 versioned 0.5.0 documents below. The former 0.4.0 monolith and its anchor
 migration map live under [`docs/spec/archive/`](docs/spec/archive/).
-The prepared 0.5.0 documents remain unreleased until claims/OIDC work is
-complete and explicit release approval is given.
+The prepared 0.5.0 documents remain unreleased pending explicit release
+approval.
 
 ## Where to look first
 
@@ -20,7 +20,7 @@ complete and explicit release approval is given.
 | Project mission, room taxonomy summary, full repo map | [`CLAUDE.md`](CLAUDE.md) |
 | Family overview and migration links | [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) |
 | Identity, registry, versions, base conformance | [`docs/spec/heterodyne-core.md`](docs/spec/heterodyne-core.md) |
-| Publishing, privacy, DMs, credential sync | [`docs/spec/heterodyne-comms.md`](docs/spec/heterodyne-comms.md) |
+| Publishing, privacy, DMs, claims, private ledger, OIDC/JWT | [`docs/spec/heterodyne-comms.md`](docs/spec/heterodyne-comms.md) |
 | Own-device control profile | [`docs/spec/heterodyne-control.md`](docs/spec/heterodyne-control.md) |
 | Social behavior and optional Matrix | [`docs/spec/heterodyne-social.md`](docs/spec/heterodyne-social.md) |
 | Why a decision was made the way it was | [`docs/adr/`](docs/adr/) |
@@ -158,6 +158,57 @@ on recall.
 - **[keri.one](https://keri.one/)** — KERI project home and pointer hub.
   Useful for discoverability; *less authoritative* than the arXiv paper or
   the KSWG spec.
+
+### Claims and OAuth/OIDC interoperability
+
+The sources in this section were verified at their canonical pages on
+2026-07-20. Fetch the named source whenever changing the corresponding Comms
+wire, validation, discovery, or security behavior; do not implement from
+memory.
+
+- **[OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html)**
+  — OpenID Connect Core 1.0 incorporating errata set 2. *Use when:* defining
+  or validating ID Tokens, nonce, exact issuer/audience checks, pairwise
+  subjects, authentication flows, consent, or OIDC claim release.
+- **[OpenID Connect Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html)**
+  — OpenID Connect Discovery 1.0 incorporating errata set 2. *Use when:*
+  implementing the issuer-relative `openid-configuration` endpoint, exact
+  issuer matching, advertised endpoints, JWKS discovery, or discovery
+  validation.
+- **[RFC 7517](https://www.rfc-editor.org/rfc/rfc7517.html)** — JSON Web Key
+  (JWK). *Use when:* producing or consuming `jwks.json`, selecting a key by
+  `kid`, or validating required public-key members.
+- **[RFC 7519](https://www.rfc-editor.org/rfc/rfc7519.html)** — JSON Web Token
+  (JWT). *Use when:* implementing JWT claims, numeric dates, audience
+  processing, `jti`, or signature-validation inputs.
+- **[RFC 7636](https://www.rfc-editor.org/rfc/rfc7636.html)** — Proof Key for
+  Code Exchange (PKCE). *Use when:* implementing the required Authorization
+  Code flow, `S256` challenges, or one-time verifier validation.
+- **[RFC 7638](https://www.rfc-editor.org/rfc/rfc7638.html)** — JSON Web Key
+  thumbprints. *Use when:* canonicalizing JWK-thumbprint typed keys, deriving
+  signing-key `kid`, or validating `cnf.jkt`.
+- **[RFC 8414](https://www.rfc-editor.org/rfc/rfc8414.html)** — OAuth 2.0
+  Authorization Server Metadata. *Use when:* implementing the host-level
+  metadata alias, issuer/path insertion rules, or authorization-server
+  metadata validation.
+- **[RFC 8628](https://www.rfc-editor.org/rfc/rfc8628.html)** — OAuth 2.0
+  Device Authorization Grant. *Use when:* implementing device codes, user
+  codes, polling intervals, `slow_down`, expiry, approval, or denial.
+- **[RFC 8705](https://www.rfc-editor.org/rfc/rfc8705.html)** — OAuth 2.0
+  mutual-TLS client authentication and certificate-bound access tokens. *Use when:*
+  implementing or validating mutual-TLS sender constraints and
+  `cnf.x5t#S256`.
+- **[RFC 9068](https://www.rfc-editor.org/rfc/rfc9068.html)** — JWT Profile
+  for OAuth 2.0 Access Tokens. *Use when:* minting or validating the required
+  `at+jwt` token type, access-token claims, audience, client, or scope.
+- **[RFC 9449](https://www.rfc-editor.org/rfc/rfc9449.html)** — OAuth 2.0
+  Demonstrating Proof of Possession (DPoP). *Use when:* implementing DPoP
+  proofs, replay defenses, or `cnf.jkt` sender constraints.
+- **[draft-ietf-oauth-status-list-21](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-21)**
+  *(exact Comms 0.5.0 pin)* — Token Status List draft revision 21. *Use when:*
+  implementing status references, Status List Tokens, bit ordering,
+  compression, `ttl`, or status media types. This exact revision MUST NOT be
+  replaced by a floating draft URL or silently updated to a later draft.
 
 ### Agentic clients
 

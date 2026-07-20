@@ -19,7 +19,7 @@ The family has four independently versioned documents:
 | Document | Prepared version | Responsibility |
 |---|---:|---|
 | [Heterodyne Core](docs/spec/heterodyne-core.md) | `core/0.5.0` | Persona identity, KEL verification, canonical Nostr bytes, Radicle delegation, node roles, repository substrate, registry, versioning, and base conformance. |
-| [Heterodyne Comms](docs/spec/heterodyne-comms.md) | `comms/0.5.0` | Nostr-native envelopes, privacy tiers, publishing, retrieval, feeds, double-ratchet direct messages, credential sync, and encrypted subprotocol carriage. |
+| [Heterodyne Comms](docs/spec/heterodyne-comms.md) | `comms/0.5.0` | Nostr-native envelopes, privacy tiers, publishing, retrieval, direct messages, atomic key claims, the private claim ledger, and the OIDC/JWT projection. |
 | [Heterodyne Control](docs/spec/heterodyne-control.md) | `control/0.5.0` | Own-device enrollment, grants, RPC, and agentic sessions as a Comms profile. This release is incomplete and not claimable. |
 | [Heterodyne Social](docs/spec/heterodyne-social.md) | `social/0.5.0` | Following, interactions, moderation, lists, social discovery, ATProto attachment, and optional Matrix behavior. |
 
@@ -31,8 +31,7 @@ Core <- Comms <- Social
 ```
 
 These prepared 0.5.0 documents are current normative authority in the
-repository, but remain unreleased until the claims/OIDC work is complete and
-explicit release approval is given.
+repository, but remain unreleased pending explicit release approval.
 
 Versions are qualified per document. `core/0.5.0` and `social/0.5.0`, for
 example, are independent releases rather than one synchronized family version.
@@ -55,6 +54,11 @@ redirects historical section links.
 - **Forward-secret direct messages.** Comms uses a Signal-style double ratchet
   over Nostr events, with no repository retention or backfill. NIP-17 remains
   an interoperability fallback with weaker guarantees.
+- **Key claims and interoperable tokens.** Comms verifies atomic claims about
+  typed keys against a persona's encrypted multi-writer ledger. Its OIDC/JWT
+  surface is a consent-limited projection for third-party interoperability,
+  never the canonical authorization source; canonical device authority stays
+  in verified private-ledger state.
 - **Independent feature growth.** Control and Social both build on Comms but do
   not depend on each other. Matrix remains optional inside Social.
 - **Client-side trust.** Relays, full nodes, routing nodes, and Matrix
@@ -91,6 +95,7 @@ exactly; semantic similarity is not conformance.
 | [docs/spec/heterodyne-control.md](docs/spec/heterodyne-control.md) | Incomplete Control 0.5.0 profile |
 | [docs/spec/heterodyne-social.md](docs/spec/heterodyne-social.md) | Social 0.5.0 normative document |
 | [docs/spec/registry](docs/spec/registry/) | Core-owned kind, profile, reason-code, and invariant registry |
+| [docs/spec/releases](docs/spec/releases/) | Untagged per-document release manifests pinned to an exact registry snapshot |
 | [docs/spec/vectors](docs/spec/vectors/) | Normative conformance vectors and verification tooling |
 | [docs/architecture.md](docs/architecture.md) | Non-normative family architecture and rationale |
 | [docs/glossary.md](docs/glossary.md) | Non-normative term index |
@@ -125,6 +130,9 @@ cryptography or backend protocols:
 - [Signal Double Ratchet](https://signal.org/docs/specifications/doubleratchet/)
 - [Matrix](https://spec.matrix.org/latest/) and
   [MLS RFC 9420](https://www.rfc-editor.org/rfc/rfc9420.html)
+- [OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html)
+  and [Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html),
+  with the OAuth/JWT sources indexed in [AGENTS.md](AGENTS.md)
 
 ## License
 

@@ -190,6 +190,39 @@ between durable NID-bearing devices. It is distinct from Control.
 ID, version, and required features before an encrypted generic payload is
 interpreted.
 
+**Atomic key claim.** A complete `kind:31013` signed assertion containing one
+namespace, name, and atomic JSON value about one typed key. Releasing one claim
+does not disclose or imply another.
+
+**Claim state.** One of `invalid`, `untrusted`, `provisional`, `active`,
+`expired`, `revoked`, or `conflicted`. Only `active` can authorize.
+
+**Private claim ledger.** A persona's encrypted multi-writer Radicle
+repository. Canonical `main` is authoritative for persona-issued device
+claims, reductions, consent, issuance mappings, reader state, and separately
+wrapped issuer-key distribution.
+
+**Claim-ledger reader.** A durable NID with an active
+`claim-ledger-reader` authorization. NID-less session devices can receive
+filtered decisions but not repository access or ledger audience keys.
+
+**OIDC issuer.** The persona's one exact HTTPS issuer at
+`https://<host>/oidc/<cold-root-npub>`. Its JWTs are interoperable projections
+of active claim state, not canonical Heterodyne authorization.
+
+**Issuer continuity tree.** Public OIDC metadata, JWKS, manifest, and signed
+status artifacts committed under `.well-known/<cold-root-npub>/` on canonical
+public `main`. It contains no private claims, consent, issuance mappings,
+membership, audience keys, or signing secrets.
+
+**Token issuer.** A synchronized node with active `oidc-token-issuer`
+authority and a separately wrapped signing key. Ordinary ledger-reader status
+does not grant mint authority.
+
+**Status List Token.** The separate signed draft-21 JWT referenced by a
+projected token. A fresh `VALID` bit is necessary but never overrides another
+token validation failure.
+
 ## Control terms
 
 **Session device.** A confined, NID-less Control principal. It is not a

@@ -28,12 +28,12 @@
       "enum": ["core/0.5.0", "comms/0.5.0", "control/0.5.0", "social/0.5.0"]
     },
     "registry_revision": {
-      "const": 1
+      "const": 2
     },
     "registry_sha256": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$",
-      "const": "4de436e3c1be75fd1155eea21e2511517f7aab8c468c81fd6f9f8da83d83d2fb"
+      "const": "b52c0a6f99fdb8a34fa761a74c8374a5a55bd3b0e0494e9d973589e00febccf9"
     },
     "dependencies": {
       "type": "object",
@@ -68,7 +68,7 @@
         "document": { "const": "comms" },
         "qualified_version": { "const": "comms/0.5.0" },
         "dependencies": { "required": ["core"], "minProperties": 1, "maxProperties": 1 },
-        "features": { "maxItems": 0 },
+        "features": { "const": ["key-claims", "private-claim-ledger", "oidc-jwt-projection", "token-status-list-draft-21"] },
         "conformance_status": { "const": "conformant" }
       }
     },

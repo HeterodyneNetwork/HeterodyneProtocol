@@ -13,12 +13,8 @@ import {
 import type { DocumentId } from "./types.js";
 import { computeRegistryDigest, loadRegistry } from "./registry.js";
 
-/**
- * ADR-034 phase gate. Registry allocation intentionally precedes the claims
- * threat-model task. Until then, the accepted ADR must reproduce each exact
- * identifier and description. No unlisted invariant receives this exception.
- */
-export const ADR034_PENDING_INVARIANT_IDS = [
+/** The complete ADR-034 invariant set required in the family threat model. */
+export const ADR034_INVARIANT_IDS = [
   "COMMS-I-CLAIM-AUTHENTICITY",
   "COMMS-I-CLAIM-ATTENUATION",
   "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
@@ -366,27 +362,16 @@ function parseInvariantRows(text: string): Map<string, string> {
 export function findInvariantEvidenceIssues(
   invariants: readonly { id: string; description: string }[],
   threatModel: string,
-  acceptedAdr034: string,
 ): string[] {
-  const pending = new Set<string>(ADR034_PENDING_INVARIANT_IDS);
-  const adrAccepted = /\*\*Status:\*\* Accepted\b/.test(acceptedAdr034);
   const threatRows = parseInvariantRows(threatModel);
-  const adrRows = parseInvariantRows(acceptedAdr034);
   const registered = new Map(invariants.map(({ id, description }) => [id, description]));
   const issues: string[] = [];
 
-  for (const id of pending) {
-    if (!registered.has(id)) issues.push(`pending invariant not registered: ${id}`);
+  for (const id of ADR034_INVARIANT_IDS) {
+    if (!registered.has(id)) issues.push(`ADR-034 invariant not registered: ${id}`);
   }
   for (const { id, description } of invariants) {
-    const threatModelHasExactRow = threatRows.get(id) === description;
-    if (pending.has(id)) {
-      if (threatModelHasExactRow) {
-        issues.push(`stale pending invariant: ${id}`);
-      } else if (!adrAccepted || adrRows.get(id) !== description) {
-        issues.push(`invalid ADR-034 invariant row: ${id}`);
-      }
-    } else if (!threatModelHasExactRow) {
+    if (threatRows.get(id) !== description) {
       issues.push(`missing invariant evidence: ${id}`);
     }
   }
@@ -481,7 +466,12 @@ export function expectedReleaseManifests(
       registry_revision: registryRevision,
       registry_sha256: registrySha256,
       dependencies: { core: "core/0.5.0" },
-      features: [],
+      features: [
+        "key-claims",
+        "private-claim-ledger",
+        "oidc-jwt-projection",
+        "token-status-list-draft-21",
+      ],
       conformance_status: "conformant",
     },
     control: {
@@ -597,7 +587,7 @@ export function lintFamilyCutover(repoRoot: string): FamilyDocIssue[] {
   }
   if (
     !/prepared 0\.5\.0 documents/i.test(overview) ||
-    !/unreleased[\s\S]*claims\/OIDC[\s\S]*explicit\s+release\s+approval/i.test(
+    !/unreleased[\s\S]*explicit\s+release\s+approval/i.test(
       overview,
     ) ||
     /current release|release records/i.test(overview)
@@ -623,7 +613,7 @@ export function lintFamilyCutover(repoRoot: string): FamilyDocIssue[] {
         path: displayPath(repoRoot, changelogPath),
         line: 1,
         code: "premature-release-claim",
-        message: "0.5.0 must remain in Unreleased pending claims/OIDC completion and explicit approval",
+        message: "0.5.0 must remain in Unreleased pending explicit approval",
       });
     }
   }
@@ -656,7 +646,7 @@ export function lintFamilyCutover(repoRoot: string): FamilyDocIssue[] {
       path: displayPath(repoRoot, schemaPath),
       line: 1,
       code: "release-manifest-mismatch",
-      message: `release schema has an invalid historical registry pin: ${error instanceof Error ? error.message : String(error)}`,
+      message: `release schema has an invalid registry pin: ${error instanceof Error ? error.message : String(error)}`,
     });
   }
   for (const document of DOCUMENTS) {

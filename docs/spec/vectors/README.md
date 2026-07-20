@@ -24,7 +24,7 @@ Every vector validates against
   "dependency_versions": {
     "<permitted-lower-document>": "<document>/0.5.0"
   },
-  "registry_revision": 1,
+  "registry_revision": 2,
   "profile": "<optional immutable profile id>",
   "spec_refs": ["heterodyne:<document>/0.5.0#<permanent-anchor>"],
   "description": "<behavior>",
@@ -67,6 +67,25 @@ Ownership corrections required by ADR-033 are per vector. In particular:
 - acceptance gating is split between Comms hook behavior and Social
   tighten-only policy behavior.
 
+ADR-034 adds four Comms-owned groups, all pinned to registry revision 2:
+
+- `claims/` covers canonical IDs and typed keys, issuer/trust decisions,
+  attenuation, proof of possession, visibility, and revocation;
+- `claim-ledger/` covers repository confirmation, rollback, confinement,
+  reader removal, monotonic multi-writer replay, issuer authority, and mint
+  freshness;
+- `oidc/` covers exact discovery, required and prohibited grants, consent,
+  pairwise subjects, ID/access/assertion token separation, and sender
+  constraints; and
+- `token-status/` covers the exact draft-21 profile, writer allocation,
+  freshness, byte-identical HTTPS/Radicle mirrors, key compromise, and issuer
+  succession.
+
+The coverage manifest maps every vector to one permanent Comms anchor. OIDC
+vectors test an interoperable projection; they do not make JWTs or HTTPS the
+canonical authorization source. Private claims, consent records, issuance
+mappings, and audience keys are never public-discovery fixtures.
+
 ## Reason codes
 
 The authoritative reason-code allocation container is
@@ -98,6 +117,7 @@ From the repository root:
 ```bash
 npm --prefix docs/spec/vectors/generator run author
 npm --prefix docs/spec/vectors/generator run coverage
+npm --prefix docs/spec/vectors/generator run release-manifests
 npm --prefix docs/spec/vectors/generator run check
 ```
 

@@ -25,14 +25,14 @@ Control; clients can compose their independently stated claims.
 | Document | Prepared version | Scope | Status |
 |---|---|---|---|
 | [Core](heterodyne-core.md) | `core/0.5.0` | Identity, KEL verification, node roles, repositories, registry, versioning, and base conformance | Normative |
-| [Comms](heterodyne-comms.md) | `comms/0.5.0` | Privacy tiers, publishing, feeds, direct messages, credential sync, and subprotocol carriage | Normative |
+| [Comms](heterodyne-comms.md) | `comms/0.5.0` | Privacy tiers, publishing, direct messages, atomic key claims, private claim ledger, and OIDC/JWT projection | Normative |
 | [Control](heterodyne-control.md) | `control/0.5.0` | Own-device enrollment, grants, RPC, and agentic semantics over Comms | Incomplete draft; not claimable |
 | [Social](heterodyne-social.md) | `social/0.5.0` | Social graph, interactions, moderation, lists, ATProto attachment, and the Matrix feature | Normative 0.x |
 
 These are four independent version lineages descended from the 0.4.x
 monolith, not a synchronized family version. Their contents are current
 normative authority at these repository paths. The 0.5.0 artifacts remain
-unreleased pending claims/OIDC completion and explicit release approval.
+unreleased pending explicit release approval.
 Machine-readable prepared-release manifests are under
 [`releases/`](releases/).
 

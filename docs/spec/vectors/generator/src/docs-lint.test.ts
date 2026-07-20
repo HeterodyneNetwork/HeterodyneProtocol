@@ -2,6 +2,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -16,7 +17,7 @@ import { ed25519 } from "@noble/curves/ed25519";
 import { sha256 } from "@noble/hashes/sha2";
 import { describe, expect, it } from "vitest";
 import {
-  ADR034_PENDING_INVARIANT_IDS,
+  ADR034_INVARIANT_IDS,
   expectedReleaseManifests,
   findInvariantEvidenceIssues,
   lintFamilyCutover,
@@ -1756,10 +1757,6 @@ describe("protocol family documents", () => {
 
   it("uses only namespaced current invariants and exact registry descriptions", () => {
     const threatModel = readFileSync(threatModelPath, "utf8");
-    const adr034 = readFileSync(
-      resolve(repositoryRoot, "docs/adr/2026-07-18-034-key-claims-private-ledger-oidc-projection.md"),
-      "utf8",
-    );
     const registry = JSON.parse(
       readFileSync(resolve(repositoryRoot, "docs/spec/registry/security-invariants.json"), "utf8"),
     ) as { security_invariants: Array<{ id: string; description: string }> };
@@ -1768,9 +1765,8 @@ describe("protocol family documents", () => {
     expect(findInvariantEvidenceIssues(
       registry.security_invariants,
       threatModel,
-      adr034,
     )).toEqual([]);
-    expect(ADR034_PENDING_INVARIANT_IDS).toHaveLength(11);
+    expect(ADR034_INVARIANT_IDS).toHaveLength(11);
 
     expect(findInvariantEvidenceIssues(
       [...registry.security_invariants, {
@@ -1778,67 +1774,228 @@ describe("protocol family documents", () => {
         description: "A future invariant with no evidence.",
       }],
       threatModel,
-      adr034,
     )).toContain(
       "missing invariant evidence: COMMS-I-UNLISTED-FUTURE-INVARIANT",
     );
   });
 
-  it("requires structurally paired ADR-034 invariant evidence", () => {
+  it("requires structurally paired threat-model invariant evidence", () => {
     const threatModel = readFileSync(threatModelPath, "utf8");
-    const adr034 = readFileSync(
-      resolve(repositoryRoot, "docs/adr/2026-07-18-034-key-claims-private-ledger-oidc-projection.md"),
-      "utf8",
-    );
     const registry = JSON.parse(
       readFileSync(resolve(repositoryRoot, "docs/spec/registry/security-invariants.json"), "utf8"),
     ) as { security_invariants: Array<{ id: string; description: string }> };
-    const [firstId, secondId] = ADR034_PENDING_INVARIANT_IDS;
+    const [firstId, secondId] = ADR034_INVARIANT_IDS;
     const first = registry.security_invariants.find(({ id }) => id === firstId)!;
     const second = registry.security_invariants.find(({ id }) => id === secondId)!;
     const firstRow = `- **${first.id}:** ${first.description}`;
     const secondRow = `- **${second.id}:** ${second.description}`;
-    const swapped = adr034
+    const swapped = threatModel
       .replace(firstRow, `- **${first.id}:** ${second.description}`)
       .replace(secondRow, `- **${second.id}:** ${first.description}`);
-    const floating = adr034.replace(
+    const floating = threatModel.replace(
       firstRow,
       `${first.id}\n\n${first.description}`,
     );
 
     expect(findInvariantEvidenceIssues(
       registry.security_invariants,
-      threatModel,
       swapped,
     )).toEqual(expect.arrayContaining([
-      `invalid ADR-034 invariant row: ${first.id}`,
-      `invalid ADR-034 invariant row: ${second.id}`,
+      `missing invariant evidence: ${first.id}`,
+      `missing invariant evidence: ${second.id}`,
     ]));
     expect(findInvariantEvidenceIssues(
       registry.security_invariants,
-      threatModel,
       floating,
-    )).toContain(`invalid ADR-034 invariant row: ${first.id}`);
+    )).toContain(`missing invariant evidence: ${first.id}`);
   });
 
-  it("fails stale ADR-034 invariant exceptions after threat-model integration", () => {
+  it("does not accept ADR-034 as a substitute for threat-model integration", () => {
     const threatModel = readFileSync(threatModelPath, "utf8");
+    const registry = JSON.parse(
+      readFileSync(resolve(repositoryRoot, "docs/spec/registry/security-invariants.json"), "utf8"),
+    ) as { security_invariants: Array<{ id: string; description: string }> };
+    const integrated = registry.security_invariants.find(
+      ({ id }) => id === ADR034_INVARIANT_IDS[0],
+    )!;
+    const withoutIntegratedRow = threatModel.replace(
+      `- **${integrated.id}:** ${integrated.description}`,
+      "",
+    );
+
+    expect(findInvariantEvidenceIssues(
+      registry.security_invariants,
+      withoutIntegratedRow,
+    )).toContain(`missing invariant evidence: ${integrated.id}`);
+  });
+
+  it("requires canonical claims/OIDC standards references and fetch guidance", () => {
+    const agents = readFileSync(resolve(repositoryRoot, "AGENTS.md"), "utf8");
+    const references = [
+      ["OpenID Connect Core", "https://openid.net/specs/openid-connect-core-1_0.html"],
+      ["OpenID Connect Discovery", "https://openid.net/specs/openid-connect-discovery-1_0.html"],
+      ["RFC 7517", "https://www.rfc-editor.org/rfc/rfc7517.html"],
+      ["RFC 7519", "https://www.rfc-editor.org/rfc/rfc7519.html"],
+      ["RFC 7636", "https://www.rfc-editor.org/rfc/rfc7636.html"],
+      ["RFC 7638", "https://www.rfc-editor.org/rfc/rfc7638.html"],
+      ["RFC 8414", "https://www.rfc-editor.org/rfc/rfc8414.html"],
+      ["RFC 8628", "https://www.rfc-editor.org/rfc/rfc8628.html"],
+      ["RFC 8705", "https://www.rfc-editor.org/rfc/rfc8705.html"],
+      ["RFC 9068", "https://www.rfc-editor.org/rfc/rfc9068.html"],
+      ["RFC 9449", "https://www.rfc-editor.org/rfc/rfc9449.html"],
+      [
+        "draft-ietf-oauth-status-list-21",
+        "https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-21",
+      ],
+    ] as const;
+    for (const [name, url] of references) {
+      expect(agents, name).toContain(`[${name}](${url})`);
+      const entry = agents.match(new RegExp(
+        `^- \\*\\*\\[${name.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}\\]\\(${url.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}\\)\\*\\*[\\s\\S]*?(?=^- \\*\\*\\[|^### |^## |\\Z)`,
+        "m",
+      ))?.[0];
+      expect(entry, `${name} needs source-specific fetch guidance`).toMatch(/\*Use when:\*/);
+    }
+    expect(agents).toMatch(
+      /draft-ietf-oauth-status-list-21[\s\S]*exact[\s\S]*MUST NOT[\s\S]*floating/i,
+    );
+  });
+
+  it("integrates every ADR-034 invariant into the family threat model", () => {
+    const threatModel = readFileSync(threatModelPath, "utf8");
+    const registry = JSON.parse(
+      readFileSync(resolve(repositoryRoot, "docs/spec/registry/security-invariants.json"), "utf8"),
+    ) as { security_invariants: Array<{ id: string; description: string }> };
+    const required = registry.security_invariants.filter(({ id }) =>
+      ADR034_INVARIANT_IDS.includes(id as typeof ADR034_INVARIANT_IDS[number]),
+    );
+    expect(required).toHaveLength(11);
+    for (const invariant of required) {
+      expect(threatModel).toContain(`- **${invariant.id}:** ${invariant.description}`);
+    }
+  });
+
+  it("maps every Task 9 claims/OIDC threat to an invariant, Comms anchor, and vectors", () => {
+    const threatModel = readFileSync(threatModelPath, "utf8");
+    const threatNames = [
+      "Claim forgery or semantic malleation",
+      "Compromised or stale claim issuer",
+      "Delegation-chain amplification",
+      "Subject-proof replay",
+      "Provisional authorization use",
+      "Private-ledger rollback",
+      "Private-ledger metadata leakage",
+      "Removed ledger reader retains access",
+      "Multi-writer policy conflict",
+      "OIDC signing-key overdistribution",
+      "Stale token minter",
+      "Confused deputy or JWT type/audience confusion",
+      "OIDC issuer mix-up",
+      "Consent overrelease",
+      "Status collision, staleness, or downgrade",
+      "Radicle/HTTPS equivocation",
+      "Issuer-successor hijack",
+      "Status-correlation privacy leakage",
+    ] as const;
+    for (const threat of threatNames) {
+      const row = threatModel.split("\n").find((line) => line.startsWith(`| ${threat} |`));
+      expect(row, `missing threat row: ${threat}`).toBeDefined();
+      expect(row, `${threat} lacks namespaced invariant`).toMatch(/COMMS-I-[A-Z0-9-]+/);
+      expect(row, `${threat} lacks permanent Comms mitigation anchor`).toMatch(
+        /heterodyne:comms\/0\.5\.0#comms-[a-z0-9-]+/,
+      );
+      expect(row, `${threat} lacks vector evidence`).toMatch(
+        /`(?:claims|claim-ledger|oidc|token-status)\/[0-9]{3}(?:-[a-z0-9-]+)?`/,
+      );
+    }
+  });
+
+  it("keeps private claim state out of public issuer discovery", () => {
+    const threatModel = readFileSync(threatModelPath, "utf8");
+    for (const privateItem of [
+      "private claim",
+      "consent record",
+      "issuance mapping",
+      "audience key",
+    ]) {
+      expect(threatModel, privateItem).toMatch(
+        new RegExp(`${privateItem}[\\s\\S]{0,180}(?:MUST NOT|never)[\\s\\S]{0,120}public (?:issuer )?(?:discovery|continuity)`, "i"),
+      );
+    }
+  });
+
+  it("publishes an eight-criterion claims/OIDC acceptance evidence map", () => {
+    const threatModel = readFileSync(threatModelPath, "utf8");
+    const rows = [...threatModel.matchAll(
+      /^\| ([1-8]) \| `(docs\/adr\/2026-07-18-034-key-claims-private-ledger-oidc-projection\.md#[^`]+)` \| `(heterodyne:comms\/0\.5\.0#comms-[a-z0-9-]+)` \| `([^`]+)` \| `((?:claims|claim-ledger|oidc|token-status)\/[^`]+)` \| `(COMMS-I-[A-Z0-9-]+)` \|$/gm,
+    )];
+    expect(rows.map((row) => row[1])).toEqual(["1", "2", "3", "4", "5", "6", "7", "8"]);
+    const comms = readFileSync(commsPath, "utf8");
     const adr034 = readFileSync(
       resolve(repositoryRoot, "docs/adr/2026-07-18-034-key-claims-private-ledger-oidc-projection.md"),
       "utf8",
     );
-    const registry = JSON.parse(
-      readFileSync(resolve(repositoryRoot, "docs/spec/registry/security-invariants.json"), "utf8"),
-    ) as { security_invariants: Array<{ id: string; description: string }> };
-    const stale = registry.security_invariants.find(
-      ({ id }) => id === ADR034_PENDING_INVARIANT_IDS[0],
-    )!;
+    const adrAnchors = new Set(githubHeadingAnchors(adr034));
+    const registry = loadRegistry(repositoryRoot);
+    const invariantIds = new Set(registry.currentEntrySet.security_invariants.map(({ id }) => id));
+    const profileIds = new Set(registry.currentEntrySet.kinds.flatMap(({ profiles }) =>
+      profiles.map(({ profile_id }) => profile_id),
+    ));
+    for (const row of rows) {
+      expect(adrAnchors).toContain(`#${row[2].split("#")[1]}`);
+      expect(comms).toContain(`<a id="${row[3].split("#")[1]}"></a>`);
+      const registryEntry = row[4];
+      if (registryEntry === "kind:31013 and kind:31014") {
+        expect(registry.currentEntrySet.kinds.map(({ kind }) => kind)).toEqual(
+          expect.arrayContaining([31013, 31014]),
+        );
+      } else if (registryEntry === "registry revision 2") {
+        expect(registry.manifest.revision).toBe(2);
+      } else if (registryEntry.startsWith("COMMS-I-")) {
+        expect(invariantIds).toContain(registryEntry);
+      } else {
+        expect(profileIds).toContain(registryEntry);
+      }
+      const vectorEvidence = row[5];
+      if (vectorEvidence.includes(" + ")) {
+        for (const group of vectorEvidence.split(" + ")) {
+          const directory = resolve(repositoryRoot, "docs/spec/vectors", group.replace(/\/\*$/, ""));
+          expect(readdirSync(directory).some((name) => name.endsWith(".json"))).toBe(true);
+        }
+      } else {
+        expect(existsSync(resolve(repositoryRoot, "docs/spec/vectors", `${vectorEvidence}.json`))).toBe(true);
+      }
+      expect(invariantIds).toContain(row[6]);
+    }
+  });
 
-    expect(findInvariantEvidenceIssues(
-      registry.security_invariants,
-      `${threatModel}\n- **${stale.id}:** ${stale.description}\n`,
-      adr034,
-    )).toContain(`stale pending invariant: ${stale.id}`);
+  it("advertises claims/OIDC release features only from Comms", () => {
+    const manifests = Object.fromEntries(
+      (["core", "comms", "control", "social"] as const).map((document) => [
+        document,
+        JSON.parse(readFileSync(resolve(releasesPath, document, "0.5.0.json"), "utf8")) as {
+          registry_revision: number;
+          registry_sha256: string;
+          dependencies: Record<string, string>;
+          features: string[];
+        },
+      ]),
+    );
+    const features = [
+      "key-claims",
+      "private-claim-ledger",
+      "oidc-jwt-projection",
+      "token-status-list-draft-21",
+    ];
+    for (const manifest of Object.values(manifests)) expect(manifest.registry_revision).toBe(2);
+    expect(manifests.comms.features).toEqual(features);
+    expect(manifests.core.features).toEqual([]);
+    expect(manifests.social.features).toEqual([]);
+    expect(manifests.control.features).toEqual(["double-ratchet"]);
+    expect(manifests.control.dependencies.comms).toBe("comms/0.5.0");
+    const control = readFileSync(controlPath, "utf8");
+    expect(control).toMatch(/authorize with only `active` state[\s\S]*Comms claim/i);
+    expect(control).not.toMatch(/Control-owned claim (?:wire|transport|status) profile/i);
   });
 
   it("assigns permanent Comms anchors to every claims, ledger, OIDC, status, minting, and continuity surface", () => {
@@ -1852,7 +2009,7 @@ describe("protocol family documents", () => {
     for (const anchor of requiredAnchors) expect(comms).toContain(`<a id="${anchor}"></a>`);
     expect(comms).toMatch(/whole atomic signed claims[\s\S]*MUST NOT[\s\S]*SD-JWT/i);
     expect(comms).toMatch(/MUST NOT[\s\S]*automatic(?:ally)?[\s\S]*multiple claim names/i);
-    for (const invariant of ADR034_PENDING_INVARIANT_IDS) expect(comms).toContain(`**${invariant}:**`);
+    for (const invariant of ADR034_INVARIANT_IDS) expect(comms).toContain(`**${invariant}:**`);
   });
 
   it("defines exact claim visibility and repository-backed OAuth claim semantics", () => {
@@ -2032,7 +2189,7 @@ describe("protocol family documents", () => {
     expect(text).toContain("Core <- Comms <- Social");
     expect(text).toMatch(/prepared 0\.5\.0 documents/i);
     expect(text).toMatch(
-      /unreleased.*claims\/OIDC.*explicit\s+release\s+approval/is,
+      /unreleased.*explicit\s+release\s+approval/is,
     );
     expect(text).not.toMatch(/current release|release records/i);
     for (const document of ["core", "comms", "control", "social"]) {
@@ -2083,25 +2240,27 @@ describe("protocol family documents", () => {
       registry_sha256: "0".repeat(64),
     })).toThrow(/registry digest mismatch/);
     expect(loadReleaseSchemaRegistryPin(repositoryRoot)).toEqual({
-      registry_revision: 1,
-      registry_sha256: historical.registry_sha256,
+      registry_revision: 2,
+      registry_sha256: current.registry_sha256,
     });
-    expect(() => validateReleaseManifestSchemaPin(repositoryRoot, current)).toThrow(
+    expect(() => validateReleaseManifestSchemaPin(repositoryRoot, historical)).toThrow(
       /does not match release schema pin/,
     );
+    expect(() => validateReleaseManifestSchemaPin(repositoryRoot, current)).not.toThrow();
   });
 
-  it("defaults release generation to the schema's historical pin without drift", () => {
+  it("can generate an explicitly selected historical pin without drift", () => {
     const historical = expectedReleaseManifests(repositoryRoot, 1).core;
     withReleaseFixture(1, historical.registry_sha256, (root) => {
       const paths = ["core", "comms", "control", "social"].map((document) =>
         resolve(root, `docs/spec/releases/${document}/0.5.0.json`),
       );
-      const before = paths.map((path) => readFileSync(path, "utf8"));
       writeReleaseManifests(root);
-      const after = paths.map((path) => readFileSync(path, "utf8"));
-      expect(after).toEqual(before);
-      expect(after.every((bytes) => JSON.parse(bytes).registry_revision === 1)).toBe(true);
+      const first = paths.map((path) => readFileSync(path, "utf8"));
+      writeReleaseManifests(root);
+      const second = paths.map((path) => readFileSync(path, "utf8"));
+      expect(second).toEqual(first);
+      expect(second.every((bytes) => JSON.parse(bytes).registry_revision === 1)).toBe(true);
     });
   });
 

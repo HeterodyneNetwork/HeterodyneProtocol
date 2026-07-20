@@ -15,6 +15,8 @@ work is complete and explicit release approval is given.
 [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is now the non-normative
 family map. Prepared release combinations and the exact registry digest are
 recorded in [machine-readable manifests](docs/spec/releases/).
+The documents remain untagged and unreleased pending explicit release
+approval.
 
 ### Core 0.5.0
 
@@ -30,12 +32,24 @@ recorded in [machine-readable manifests](docs/spec/releases/).
 - Prepared [Comms](docs/spec/heterodyne-comms.md) `comms/0.5.0`, depending on
   `core/0.5.0` and owning privacy tiers, publishing, feeds, direct messages,
   credential sync, and generic subprotocol carriage.
+- Added ADR-034 atomic `kind:31013` typed-key claims and irreversible
+  `kind:31014` revocations, strict attenuation and native possession proofs,
+  and an encrypted private multi-writer claim ledger as the authority for
+  persona-issued device claims.
+- Added the one-persona OIDC/OAuth issuer, interoperable RS256 ID Tokens and
+  RFC 9068 access tokens, consent-gated pairwise release, the public Radicle
+  continuity mirror, and the exactly pinned
+  `draft-ietf-oauth-status-list-21` profile. These JWTs are projections, not
+  canonical Heterodyne authorization.
 
 ### Control 0.5.0
 
 - Prepared [Control](docs/spec/heterodyne-control.md) `control/0.5.0` as an
   incomplete Comms profile requiring Core, Comms, and `double-ratchet`.
   Control remains non-claimable until its integration and vector gates close.
+- Control consumes only `active` Comms claim decisions for enrollment and RPC;
+  it defines no independent claim wire profile and gives NID-less session
+  devices neither ledger access nor ledger keys.
 
 ### Social 0.5.0
 
@@ -47,6 +61,10 @@ recorded in [machine-readable manifests](docs/spec/releases/).
 
 - Established the family's only normative dependency edges as
   `Core <- Comms <- Control` and `Core <- Comms <- Social`.
+- Advanced all four untagged 0.5.0 release manifests to registry revision 2.
+  Only Comms advertises `key-claims`, `private-claim-ledger`,
+  `oidc-jwt-projection`, and `token-status-list-draft-21`; Core and Social add
+  no claims/OIDC feature, and Control retains its exact Comms dependency.
 - Replaced the historical monolith strict mode with composable stable profile
   IDs for Core, Comms, Control, Social, and Social+Matrix. The Control strict
   identifier is reserved-inactive with its baseline conformance gate.
