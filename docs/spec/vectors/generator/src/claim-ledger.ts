@@ -570,19 +570,23 @@ export function resolveAuthoritativeClaimState(
   state: LedgerMergeResult,
   evaluationTime = state.checkpoint.observed_at,
 ): ClaimState {
-  if (!HEX_32.test(claimId)) return "invalid";
+  if (!HEX_32.test(claimId) || !Number.isSafeInteger(evaluationTime) || evaluationTime < state.checkpoint.observed_at) {
+    return "invalid";
+  }
   const related = state.records.filter((record) => recordClaimId(record) === claimId);
   if (related.some((record) => isReduction(record) && record.created_at > evaluationTime)) return "invalid";
   if (related.some(isReduction)) return "revoked";
   if (state.conflicted_claim_ids.includes(claimId)) return "conflicted";
-  const claimRecords = related.filter((record) => claimArtifactFromRecord(record) !== null);
+  const claimRecords = related.filter((record) =>
+    record.record_type === "claim" && claimArtifactFromRecord(record) !== null
+  );
   if (claimRecords.length === 0) return "provisional";
   if (claimRecords.every(({ record_id }) => !(state.repository_confirmed_record_ids ?? []).includes(record_id))) {
     return "provisional";
   }
   const claims = claimRecords.map((record) => claimArtifactFromRecord(record)!.semantic);
-  if (claims.some((claim) => state.checkpoint.observed_at < claim.not_before)) return "provisional";
-  if (claims.some((claim) => claim.expires_at !== undefined && state.checkpoint.observed_at >= claim.expires_at)) {
+  if (claims.some((claim) => evaluationTime < claim.not_before)) return "provisional";
+  if (claims.some((claim) => claim.expires_at !== undefined && evaluationTime >= claim.expires_at)) {
     return "expired";
   }
   return "active";

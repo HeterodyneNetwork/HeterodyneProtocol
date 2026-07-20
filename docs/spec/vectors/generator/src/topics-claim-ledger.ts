@@ -101,7 +101,19 @@ export function replayClaimLedgerVector(encodedInput: unknown): unknown {
     }
     case "authoritative-state": {
       const state = resolveAuthoritativeClaimState(input.claim_id, replayMerge(input.merge), input.evaluation_time);
-      return { verdict: "reject", reason_code: input.reason_code, state };
+      const output: Record<string, unknown> = { verdict: "reject", reason_code: input.reason_code, state };
+      if (Array.isArray(input.temporal_cases)) {
+        output.temporal_transitions = input.temporal_cases.map((testCase: any) => {
+          const temporalState = replayMerge(testCase.merge);
+          return {
+            name: testCase.name,
+            states: testCase.evaluation_times.map((evaluationTime: number) =>
+              resolveAuthoritativeClaimState(testCase.claim_id, temporalState, evaluationTime)
+            ),
+          };
+        });
+      }
+      return output;
     }
     case "reduction-precedence": {
       const state = replayMerge(input.merge);
@@ -222,6 +234,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   const claimOne = await makeClaim(writerOne);
   const claimTwo = await makeClaim(writerTwo);
   const alternateClaimOne = await makeClaim(writerOne, { expires_at: now + 1_800 });
+  const temporalClaim = await makeClaim(writerOne, { not_before: now + 55, expires_at: now + 65 });
   const allClaims = new Map([
     [claimOne.artifact.semantic.claim_id, claimOne.artifact.semantic],
     [claimTwo.artifact.semantic.claim_id, claimTwo.artifact.semantic],
@@ -295,12 +308,16 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
 
   const claimRecordOne = signRecord("claim", { claim_artifact: claimOne.artifact });
   const claimRecordTwo = signRecord("claim", { claim_artifact: claimTwo.artifact }, writerTwo);
+  const temporalClaimRecord = signRecord("claim", { claim_artifact: temporalClaim.artifact });
   const grantOne = signRecord("reader-change", {
     action: "grant", reader_nid: writerOne.did_key, claim_artifact: claimOne.artifact,
   }, writerOne, [claimRecordOne.record_id], now + 2);
   const grantDivergent = signRecord("reader-change", {
     action: "grant", reader_nid: writerOne.did_key, claim_artifact: alternateClaimOne.artifact,
   }, writerTwo, [claimRecordOne.record_id], now + 2);
+  const grantOnly = signRecord("reader-change", {
+    action: "grant", reader_nid: writerOne.did_key, claim_artifact: claimOne.artifact,
+  }, writerOne, [], now + 2);
 
   const revocationSemantic: ClaimRevocation = {
     claim_id: claimOne.artifact.semantic.claim_id,
@@ -337,6 +354,22 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   addClaimEvidence(claimRecordTwo, claimTwo);
   addClaimEvidence(grantOne, claimOne);
   addClaimEvidence(grantDivergent, alternateClaimOne);
+  const temporalVerification = makeVerification(temporalClaim);
+  temporalVerification.now = temporalClaim.artifact.semantic.not_before;
+  const temporalRecordEvidence: LedgerRecordValidationEvidence = {
+    record_id: temporalClaimRecord.record_id,
+    payload_digest: temporalClaimRecord.payload_digest,
+    claim_envelope_context: { issuer_authorized: true, registry_revision: 2 },
+    claims_by_id: new Map([[temporalClaim.artifact.semantic.claim_id, temporalClaim.artifact.semantic]]),
+    claim_verification_context: temporalVerification,
+  };
+  const grantOnlyEvidence: LedgerRecordValidationEvidence = {
+    record_id: grantOnly.record_id,
+    payload_digest: grantOnly.payload_digest,
+    claim_envelope_context: { issuer_authorized: true, registry_revision: 2 },
+    claims_by_id: new Map(allClaims),
+    claim_verification_context: makeVerification(claimOne),
+  };
   const revocationVerification = makeVerification(claimOne);
   revocationVerification.now = now + 40;
   for (const record of [revocationRecord, reductionRecord, removalRecord]) evidence.set(record.record_id, {
@@ -411,8 +444,8 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
 
   return {
     now, persona, issuer, writerOne, writerTwo, rid, resource, audienceKeyOne, audienceKeyTwo,
-    claimOne, claimTwo, alternateClaimOne, allClaims, makeVerification, requestFor, evidence, makeContext,
-    claimRecordOne, claimRecordTwo, grantOne, grantDivergent, revocationRecord, reductionRecord, removalRecord,
+    claimOne, claimTwo, alternateClaimOne, temporalClaim, allClaims, makeVerification, requestFor, evidence, temporalRecordEvidence, grantOnlyEvidence, makeContext,
+    claimRecordOne, claimRecordTwo, temporalClaimRecord, grantOne, grantDivergent, grantOnly, revocationRecord, reductionRecord, removalRecord,
     epochOneRecord, epochTwoRecord, reservationOne, reservationTwo, statusInvalidation,
     baseRepository, epochOneRepository,
   };
@@ -447,6 +480,19 @@ export async function buildClaimLedgerVectors(fixtures: Fixtures): Promise<Autho
   const finalRequestOne = s.requestFor(s.claimRecordOne, s.claimOne);
   finalRequestOne.verification_context.now = finalRepo.checkpoint.observed_at;
   const emptyRepo = buildLedgerRepositoryEvidence({ repository_rid: s.rid, confirmed_records: [], observed_at: s.now + 50 });
+  const temporalRepo = buildLedgerRepositoryEvidence({
+    repository_rid: s.rid, confirmed_records: [s.temporalClaimRecord], observed_at: s.now + 50,
+  });
+  const grantOnlyRepo = buildLedgerRepositoryEvidence({
+    repository_rid: s.rid, confirmed_records: [s.grantOnly], observed_at: s.now + 50,
+  });
+  const temporalContext = s.makeContext(temporalRepo.repository);
+  temporalContext.record_evidence.set(s.temporalClaimRecord.record_id, s.temporalRecordEvidence);
+  const temporalRequest = s.requestFor(s.temporalClaimRecord, s.temporalClaim);
+  temporalRequest.verification_context.now = temporalRepo.checkpoint.observed_at;
+  temporalContext.reader_requests.set(s.temporalClaimRecord.record_id, temporalRequest);
+  const grantOnlyContext = s.makeContext(grantOnlyRepo.repository);
+  grantOnlyContext.record_evidence.set(s.grantOnly.record_id, s.grantOnlyEvidence);
   const rollbackRepository = structuredClone(s.epochOneRepository.repository);
   rollbackRepository.commits[rollbackRepository.commits.length - 1].parents = [];
 
@@ -470,6 +516,20 @@ export async function buildClaimLedgerVectors(fixtures: Fixtures): Promise<Autho
     }),
     entry("003-delivered-grant-provisional.json", "delivered-grant-provisional", "A delivered signed claim outside the canonical tree remains provisional.", {
       operation: "authoritative-state", merge: mergeInput([], [s.claimRecordOne], emptyRepo.checkpoint, s.makeContext(emptyRepo.repository)), claim_id: s.claimOne.artifact.semantic.claim_id, evaluation_time: emptyRepo.checkpoint.observed_at, reason_code: "claim-repository-unconfirmed",
+      temporal_cases: [
+        {
+          name: "signed-claim-time-window",
+          merge: mergeInput([s.temporalClaimRecord], [], temporalRepo.checkpoint, temporalContext),
+          claim_id: s.temporalClaim.artifact.semantic.claim_id,
+          evaluation_times: [s.now + 50, s.now + 55, s.now + 65],
+        },
+        {
+          name: "embedded-grant-not-confirmation",
+          merge: mergeInput([s.grantOnly], [], grantOnlyRepo.checkpoint, grantOnlyContext),
+          claim_id: s.claimOne.artifact.semantic.claim_id,
+          evaluation_times: [s.now + 50],
+        },
+      ],
     }),
     entry("004-immediate-revocation.json", "immediate-revocation", "A Task-3-authenticated delivered revocation applies before repository finality.", {
       operation: "authoritative-state", merge: mergeInput(baseRecords, [s.revocationRecord], s.baseRepository.checkpoint, s.makeContext(s.baseRepository.repository)), claim_id: s.claimOne.artifact.semantic.claim_id, evaluation_time: s.baseRepository.checkpoint.observed_at, reason_code: "claim-revoked",
