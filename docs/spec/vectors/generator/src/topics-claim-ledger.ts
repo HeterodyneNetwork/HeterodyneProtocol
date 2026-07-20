@@ -41,6 +41,7 @@ import { jcsCanonicalize } from "./jcs.js";
 import { signEvent } from "./nostr.js";
 import type { AuthoredVector } from "./types.js";
 import { AUX_RAND, consumeVector } from "./vector-helpers.js";
+import { OIDC_RSA_ONE, OIDC_RSA_TWO } from "./oidc-rsa-fixtures.js";
 
 export type ClaimLedgerScenario = Awaited<ReturnType<typeof buildClaimLedgerScenario>>;
 
@@ -75,7 +76,7 @@ export function encodeClaimLedgerReplayValue(value: unknown): JsonValue {
   throw new Error("claim-schema-invalid: unsupported replay input value");
 }
 
-function decodeClaimLedgerReplayValue(value: unknown): any {
+export function decodeClaimLedgerReplayValue(value: unknown): any {
   if (value === null || typeof value !== "object") return value;
   if (Array.isArray(value)) return value.map(decodeClaimLedgerReplayValue);
   const object = value as Record<string, unknown>;
@@ -169,7 +170,7 @@ export function replayClaimLedgerVector(encodedInput: unknown): unknown {
       const writers = input.writers.map((writer: any) => {
         return {
           writer_nid: writer.writer_nid,
-          signing_key_id: writer.envelope.content_digest,
+          signing_key_id: writer.envelope.signing_key_id,
           eligibility: evaluateMintingAttempt({
             now: input.now, manifest_max_age_seconds: input.maximum_age,
             writer_nid: writer.writer_nid, state,
@@ -636,18 +637,8 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     [epochOneRecord.record_id, removalRecord.record_id], now + 61);
   evidence.set(epochTwoRecord.record_id, { record_id: epochTwoRecord.record_id, payload_digest: epochTwoRecord.payload_digest });
 
-  const signingJwk: JsonValue = {
-    kty: "RSA",
-    n: "uQ1F7hW9XKq43_Deterministic_Task5_Modulus",
-    e: "AQAB",
-    d: "private-task5-signing-material",
-  };
-  const rotatedSigningJwk: JsonValue = {
-    kty: "RSA",
-    n: "uQ1F7hW9XKq43_Deterministic_Task5_Rotated_Modulus",
-    e: "AQAB",
-    d: "rotated-private-task5-signing-material",
-  };
+  const signingJwk: JsonValue = OIDC_RSA_ONE.private_jwk;
+  const rotatedSigningJwk: JsonValue = OIDC_RSA_TWO.private_jwk;
   const issuerEvidence = new Map<string, LedgerRecordValidationEvidence>();
   const addIssuerEvidence = (record: LedgerRecord, claim: typeof issuerClaimOne) => issuerEvidence.set(record.record_id, {
     record_id: record.record_id,
@@ -767,7 +758,10 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     reservation: reserveStatusIndex(writerOne.did_key, now + 3_600, 0, []),
     checkpoint: issuerKeyEpochOneRepository.checkpoint,
     manifest_max_age_seconds: 300,
-    signing_key_id: issuerKeyEnvelopeOne.content_digest,
+    signing_key_id: issuerKeyEnvelopeOne.signing_key_id,
+    client_id: "heterodyne-task5-client",
+    authorization_request_digest: bytesToHex(sha256(utf8Bytes("task5-request-writer-one"))),
+    release_digest: bytesToHex(sha256(utf8Bytes("task5-release-writer-one"))),
     source_claim_ids: [claimOne.artifact.semantic.claim_id],
     issued_at: now + 66,
     expires_at: now + 3_600,
@@ -777,7 +771,10 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     reservation: reserveStatusIndex(writerTwo.did_key, now + 3_600, 0, [issuanceOne]),
     checkpoint: issuerKeyEpochOneRepository.checkpoint,
     manifest_max_age_seconds: 300,
-    signing_key_id: issuerKeyEnvelopeOne.content_digest,
+    signing_key_id: issuerKeyEnvelopeOne.signing_key_id,
+    client_id: "heterodyne-task5-client",
+    authorization_request_digest: bytesToHex(sha256(utf8Bytes("task5-request-writer-two"))),
+    release_digest: bytesToHex(sha256(utf8Bytes("task5-release-writer-two"))),
     source_claim_ids: [claimOne.artifact.semantic.claim_id],
     issued_at: now + 66,
     expires_at: now + 3_600,
@@ -790,13 +787,13 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     cause: "source-claim-revoked", jti: "writer_one_token_0001", source_claim_id: claimOne.artifact.semantic.claim_id, revocation_artifact: revocationArtifact,
     writer_authority_claim_id: issuerClaimTwo.artifact.semantic.claim_id,
     authority_checkpoint: issuerKeyEpochOneRepository.checkpoint,
-    issuer_key_epoch: 1, issuer_key_digest: issuerKeyEnvelopeOne.content_digest,
+    issuer_key_epoch: 1, issuer_key_digest: issuerKeyEnvelopeOne.signing_key_id,
   }, writerTwo, [reservationOne.record_id], now + 71);
   const statusInvalidationTwo = signRecord("status-invalidation", {
     cause: "source-claim-revoked", jti: "writer_two_token_0001", source_claim_id: claimOne.artifact.semantic.claim_id, revocation_artifact: revocationArtifact,
     writer_authority_claim_id: issuerClaimOne.artifact.semantic.claim_id,
     authority_checkpoint: issuerKeyEpochOneRepository.checkpoint,
-    issuer_key_epoch: 1, issuer_key_digest: issuerKeyEnvelopeOne.content_digest,
+    issuer_key_epoch: 1, issuer_key_digest: issuerKeyEnvelopeOne.signing_key_id,
   }, writerOne, [reservationTwo.record_id], now + 71);
 
   // Preserve Task 4's unused replay-evidence map entries byte-for-byte so
@@ -856,7 +853,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
 
   return {
     now, persona, issuer, writerOne, writerTwo, rid, resource, audienceKeyOne, audienceKeyTwo, issuerAudienceKeyOne, issuerAudienceKeyTwo,
-    claimOne, claimTwo, issuerClaimOne, issuerClaimTwo, alternateClaimOne, temporalClaim, allClaims, makeVerification, requestFor, evidence, temporalRecordEvidence, grantOnlyEvidence, makeContext, makeTask5Context,
+    claimOne, claimTwo, issuerClaimOne, issuerClaimTwo, alternateClaimOne, temporalClaim, allClaims, makeClaim, makeVerification, requestFor, signRecord, evidence, temporalRecordEvidence, grantOnlyEvidence, makeContext, makeTask5Context,
     claimRecordOne, claimRecordTwo, temporalClaimRecord, grantOne, grantDivergent, grantOnly, revocationRecord, reductionRecord, removalRecord,
     issuerClaimRecordOne, issuerClaimRecordTwo, issuerAuthorityRecordOne, issuerAuthorityRecordTwo, issuerRemovalRecord,
     epochOneRecord, epochTwoRecord, signingJwk, issuerKeyEnvelopeOne, issuerKeyEnvelopeTwo,
@@ -956,7 +953,7 @@ export async function buildClaimLedgerVectors(fixtures: Fixtures): Promise<Autho
     repository_rid: s.rid,
     epoch: 1,
     audience_key: alternateGenesisAudienceKey,
-    signing_jwk: { kty: "RSA", d: "vector-alternate-genesis-material" },
+    signing_jwk: OIDC_RSA_TWO.private_jwk,
     authority_state: s.authorityState,
     recipient_nids: [s.writerOne.did_key, s.writerTwo.did_key],
   });

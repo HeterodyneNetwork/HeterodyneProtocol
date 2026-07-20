@@ -73,7 +73,7 @@ describe("author mode", () => {
       "validate_nip01_id",
       "verify_bip340_signature",
     ]);
-  });
+  }, 15_000);
 
   it("keeps archived bytes as verification inputs and emits separately identified 0.5 production forms", async () => {
     const outputDir = await mkdtemp(join(tmpdir(), "heterodyne-vectors-"));

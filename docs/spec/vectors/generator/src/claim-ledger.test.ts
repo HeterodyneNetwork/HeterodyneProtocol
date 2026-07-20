@@ -37,6 +37,7 @@ import {
 } from "./topics-claim-ledger.js";
 import { bytesToHex, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
+import { OIDC_RSA_ONE, OIDC_RSA_TWO } from "./oidc-rsa-fixtures.js";
 
 const fixtures = buildFixtures();
 let s: ClaimLedgerScenario;
@@ -363,6 +364,43 @@ describe("reader lifecycle and metadata privacy", () => {
 });
 
 describe("multi-writer OIDC issuer authority", () => {
+  it("separates the RFC 7638 signing-key identity from encrypted-content integrity", () => {
+    const audienceKey = Uint8Array.from({ length: 32 }, () => 0x70);
+    const envelope = createIssuerKeyEnvelope({
+      persona: s.persona,
+      repository_rid: s.rid,
+      epoch: 1,
+      audience_key: audienceKey,
+      signing_jwk: OIDC_RSA_ONE.private_jwk,
+      authority_state: s.authorityState,
+      recipient_nids: [s.writerOne.did_key, s.writerTwo.did_key],
+    });
+    expect(envelope.signing_key_id).toBe(OIDC_RSA_ONE.key_id);
+    expect(envelope.content_digest).toMatch(/^[0-9a-f]{64}$/);
+    expect(envelope.content_digest).not.toBe(envelope.signing_key_id);
+    expect(unwrapIssuerSigningJwk(envelope, s.writerOne.did_key, audienceKey))
+      .toEqual(OIDC_RSA_ONE.private_jwk);
+
+    expect(() => createIssuerKeyEnvelope({
+      persona: s.persona,
+      repository_rid: s.rid,
+      epoch: 1,
+      audience_key: audienceKey,
+      signing_jwk: { ...OIDC_RSA_ONE.private_jwk, kid: OIDC_RSA_TWO.key_id },
+      authority_state: s.authorityState,
+      recipient_nids: [s.writerOne.did_key, s.writerTwo.did_key],
+    })).toThrow(/kid|thumbprint|signing key/);
+
+    expect(() => validateIssuanceRecordOrThrow({
+      ...s.issuanceOne,
+      signing_key_id: OIDC_RSA_ONE.key_id,
+    })).not.toThrow();
+    expect(() => validateIssuanceRecordOrThrow({
+      ...s.issuanceOne,
+      signing_key_id: "11".repeat(32),
+    })).toThrow(/signing_key_id|pattern/);
+  });
+
   it("creates a closed issuer-key genesis epoch bound to canonical authority", () => {
     expect(createIssuerKeyEpochPayload({
       authority_state: s.authorityState,
@@ -485,7 +523,7 @@ describe("multi-writer OIDC issuer authority", () => {
     const alternateGenesisEnvelope = createIssuerKeyEnvelope({
       persona: s.persona, repository_rid: s.rid, epoch: 1,
       audience_key: alternateGenesisKey,
-      signing_jwk: { kty: "RSA", d: "alternate-genesis-material" },
+      signing_jwk: OIDC_RSA_TWO.private_jwk,
       authority_state: s.authorityState,
       recipient_nids: [s.writerOne.did_key, s.writerTwo.did_key],
     });
@@ -515,7 +553,7 @@ describe("multi-writer OIDC issuer authority", () => {
     const alternateRotationEnvelope = createIssuerKeyEnvelope({
       persona: s.persona, repository_rid: s.rid, epoch: 2,
       audience_key: alternateRotationKey,
-      signing_jwk: { kty: "RSA", d: "alternate-rotation-material" },
+      signing_jwk: OIDC_RSA_TWO.private_jwk,
       authority_state: s.removedAuthorityState,
       recipient_nids: [s.writerTwo.did_key],
       previous: { envelope: s.issuerKeyEnvelopeOne, audience_key: s.issuerAudienceKeyOne },
@@ -724,7 +762,7 @@ describe("multi-writer OIDC issuer authority", () => {
       jti: "unauthorized_bob_token_0001",
       reservation: reserveStatusIndex(bob.did_key, s.now + 3_600, 0, []),
       checkpoint: s.issuerKeyEpochOneRepository.checkpoint,
-      signing_key_id: "ff".repeat(32),
+      signing_key_id: OIDC_RSA_TWO.key_id,
       issued_at: s.now + 66,
     };
     const record = createSignedLedgerRecord({
@@ -899,7 +937,7 @@ describe("multi-writer OIDC issuer authority", () => {
       return value.writer_authority_claim_id === s.issuerClaimTwo.artifact.semantic.claim_id &&
         value.authority_checkpoint.commit_oid === state.checkpoint.commit_oid &&
         value.issuer_key_epoch === 1 &&
-        value.issuer_key_digest === s.issuerKeyEnvelopeOne.content_digest;
+        value.issuer_key_digest === s.issuerKeyEnvelopeOne.signing_key_id;
     })).toBe(true);
 
     const deliveredOnly = mergeClaimLedger(
@@ -984,7 +1022,7 @@ describe("multi-writer OIDC issuer authority", () => {
         ...(s.statusInvalidation.payload as Record<string, unknown>),
         authority_checkpoint: issuedRepo.checkpoint,
         issuer_key_epoch: 1,
-        issuer_key_digest: s.issuerKeyEnvelopeOne.content_digest,
+        issuer_key_digest: s.issuerKeyEnvelopeOne.signing_key_id,
       } as never,
     }, s.writerTwo.private_key);
     const records = [...issuedRecords, invalidation];
@@ -1026,7 +1064,7 @@ describe("multi-writer OIDC issuer authority", () => {
       repository_rid: s.rid,
       epoch: 2,
       audience_key: rotatedAudienceKey,
-      signing_jwk: { kty: "RSA", d: "historical-invalidation-rotation" },
+      signing_jwk: OIDC_RSA_TWO.private_jwk,
       authority_state: removedState,
       recipient_nids: [s.writerTwo.did_key],
       previous: { envelope: s.issuerKeyEnvelopeOne, audience_key: s.issuerAudienceKeyOne },
@@ -1066,7 +1104,7 @@ describe("multi-writer OIDC issuer authority", () => {
       writer_nid: s.writerTwo.did_key,
       writer_secret_key: s.writerTwo.private_key,
       created_at: state.checkpoint.observed_at + 1,
-      compromised_signing_key_ids: [s.issuerKeyEnvelopeOne.content_digest],
+      compromised_signing_key_ids: [s.issuerKeyEnvelopeOne.signing_key_id],
     });
     expect(invalidations).toHaveLength(4);
     expect(new Set(invalidations.map(({ payload }) => (payload as any).jti))).toEqual(
@@ -1080,7 +1118,7 @@ describe("multi-writer OIDC issuer authority", () => {
 
   it("confines a separately encrypted signing JWK to active issuer devices", () => {
     const issuerKey = Uint8Array.from({ length: 32 }, () => 0x71);
-    const jwk = { kty: "RSA", kid: "issuer-key-1", d: "private-material" };
+    const jwk = OIDC_RSA_ONE.private_jwk;
     const envelope = createIssuerKeyEnvelope({
       persona: s.persona,
       repository_rid: s.rid,
@@ -1113,7 +1151,7 @@ describe("multi-writer OIDC issuer authority", () => {
       repository_rid: s.rid,
       epoch: 2,
       audience_key: Uint8Array.from({ length: 32 }, () => 0x72),
-      signing_jwk: { ...jwk, kid: "issuer-key-2", d: "rotated-private-material" },
+      signing_jwk: OIDC_RSA_TWO.private_jwk,
       authority_state: s.removedAuthorityState,
       recipient_nids: [s.writerTwo.did_key],
       previous: { envelope, audience_key: issuerKey },
@@ -1134,7 +1172,7 @@ describe("multi-writer OIDC issuer authority", () => {
       repository_rid: s.rid,
       epoch: 2,
       audience_key: Uint8Array.from({ length: 32 }, () => 0x74),
-      signing_jwk: { ...jwk, kid: "issuer-key-3", d: "third-private-material" },
+      signing_jwk: OIDC_RSA_TWO.private_jwk,
       authority_state: s.removedAuthorityState,
       recipient_nids: [s.writerTwo.did_key],
       previous: {
@@ -1183,7 +1221,10 @@ describe("multi-writer OIDC issuer authority", () => {
       reservation: first,
       checkpoint: s.baseRepository.checkpoint,
       manifest_max_age_seconds: 300,
-      signing_key_id: "11".repeat(32),
+      signing_key_id: OIDC_RSA_ONE.key_id,
+      client_id: "heterodyne-task5-client",
+      authorization_request_digest: "21".repeat(32),
+      release_digest: "22".repeat(32),
       source_claim_ids: [s.claimOne.artifact.semantic.claim_id],
       issued_at: s.baseRepository.checkpoint.observed_at,
       expires_at: s.now + 172_800,

@@ -82,7 +82,7 @@ export async function buildAllVectors(fixtures: Fixtures): Promise<AuthoredVecto
   vectors.push(...(await buildSplitVectors(fixtures)));
   vectors.push(...(await buildClaimVectors(fixtures)));
   vectors.push(...(await buildClaimLedgerVectors(fixtures)));
-  vectors.push(...buildOidcVectors(fixtures));
+  vectors.push(...(await buildOidcVectors(fixtures)));
   return remediateHistoricalProduction(vectors, fixtures);
 }
 

@@ -4,7 +4,7 @@
   "title": "Heterodyne Comms OIDC issuance record v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["jti", "reservation", "checkpoint", "manifest_max_age_seconds", "signing_key_id", "source_claim_ids", "issued_at", "expires_at"],
+  "required": ["jti", "reservation", "checkpoint", "manifest_max_age_seconds", "signing_key_id", "client_id", "authorization_request_digest", "release_digest", "source_claim_ids", "issued_at", "expires_at"],
   "properties": {
     "jti": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
     "reservation": {
@@ -31,7 +31,10 @@
       }
     },
     "manifest_max_age_seconds": { "type": "integer", "minimum": 0, "maximum": 300 },
-    "signing_key_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "signing_key_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+    "client_id": { "type": "string", "pattern": "^[A-Za-z0-9._~-]{1,255}$" },
+    "authorization_request_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "release_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "source_claim_ids": {
       "type": "array",
       "minItems": 1,

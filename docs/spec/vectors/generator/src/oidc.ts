@@ -1,8 +1,19 @@
-import { createHmac, createPrivateKey, createPublicKey, sign, verify, type JsonWebKey } from "node:crypto";
+import { createHash, createHmac, createPrivateKey, createPublicKey, sign, verify, type JsonWebKey } from "node:crypto";
 import { nip19 } from "nostr-tools";
-import type { AuthorizationDecision, JsonValue } from "./claims.js";
+import type { AuthorizationDecision, ClaimVerificationContext, JsonValue } from "./claims.js";
 import { jcsCanonicalize } from "./jcs.js";
-import { validateIssuanceRecordOrThrow, type IssuanceRecord, type LedgerCheckpoint, type MintingEligibility } from "./claim-ledger.js";
+import {
+  canReturnToken,
+  canonicalValidatedCheckpoint,
+  evaluateMintingAttempt,
+  replayConfirmedClaimForAuthorization,
+  unwrapIssuerSigningJwk,
+  validateIssuanceRecordOrThrow,
+  type IssuanceRecord,
+  type IssuerKeyEnvelope,
+  type LedgerCheckpoint,
+  type LedgerMergeResult,
+} from "./claim-ledger.js";
 import { validateOidcIssuerMetadataSchemaOrThrow } from "./schema.js";
 
 export const KEY_REF_SCOPE = "heterodyne:key-ref";
@@ -10,6 +21,8 @@ export const KEY_REF_CLAIM = "https://heterodyne.network/jwt/key-ref";
 export const CHECKPOINT_CLAIM = "https://heterodyne.network/jwt/ledger-checkpoint";
 export const STATUS_MIRROR_CLAIM = "https://heterodyne.network/jwt/status-mirror";
 const DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code";
+
+export type PersonaIdentityState = { cold_root_npub: string; epoch_npubs: string[] };
 
 export type DiscoveryPaths = {
   issuer: string;
@@ -46,15 +59,14 @@ export type JwtProjectionInput = {
   scopes: string[];
   now: number;
   expires_at: number;
-  nonce?: string;
-  cnf?: Record<string, JsonValue>;
-  sender_constraint: "none" | "dpop" | "mtls";
-  issuance: IssuanceRecord;
-  released_claims: Record<string, JsonValue>;
+  issuance_record_id: string;
+  state: LedgerMergeResult;
+  authorization_request: OidcAuthorizationRequest;
+  issuer_envelope: IssuerKeyEnvelope;
+  issuer_audience_key: Uint8Array;
+  issuer_writer_nid: string;
+  identity: PersonaIdentityState;
   status_mirror: StatusMirror;
-  release_decision: OidcAuthorizationDecision;
-  mint_eligibility: MintingEligibility;
-  historical_returnability: AuthorizationDecision;
 };
 
 export type ProjectedJwt = {
@@ -69,6 +81,7 @@ export type RegisteredClient = {
   grant_types: string[];
   scopes: string[];
   audiences: string[];
+  claims: string[];
   assertion_profiles?: string[];
   sector_identifier: string;
 };
@@ -80,6 +93,41 @@ export type OidcAuthorizationDecision = AuthorizationDecision & {
   released_claims?: Record<string, JsonValue>;
   source_claim_ids?: string[];
   checkpoint?: LedgerCheckpoint;
+  request_digest?: string;
+  registration_record_id?: string;
+  consent_record_id?: string;
+  source_record_ids?: string[];
+  release_digest?: string;
+  assertion_profiles?: string[];
+  nonce?: string;
+  cnf?: Record<string, JsonValue>;
+  sender_constraint?: "none" | "dpop" | "mtls";
+};
+
+export type OidcClaimEvidence = {
+  claim_record_id: string;
+  verification_context: ClaimVerificationContext;
+};
+
+export type OidcAuthorizationRequest = {
+  flow: "authorization_code" | "device_authorization";
+  grant_type: "authorization_code" | typeof DEVICE_GRANT;
+  response_type?: "code";
+  client_id: string;
+  redirect_uri?: string;
+  code_challenge?: string;
+  code_challenge_method?: "S256";
+  requested_scopes: string[];
+  requested_audiences: string[];
+  requested_claims: string[];
+  pairwise_secret: string;
+  state: LedgerMergeResult;
+  registration: OidcClaimEvidence;
+  consent: OidcClaimEvidence;
+  source_claims: OidcClaimEvidence[];
+  nonce?: string;
+  cnf?: Record<string, JsonValue>;
+  sender_constraint: "none" | "dpop" | "mtls";
 };
 
 export type JwtValidationOptions = {
@@ -90,10 +138,101 @@ export type JwtValidationOptions = {
   assertion_profile?: string;
   cnf?: Record<string, JsonValue>;
   sender_constraint: "none" | "dpop" | "mtls";
+  permitted_audiences: string[];
 };
 
-export function issuerUrl(origin: string, coldRootNpub: string): string {
+export type AuthorizationCodeRecord = {
+  code: string; client_id: string; redirect_uri: string; code_challenge: string;
+  issued_at: number; expires_at: number; release_digest: string;
+};
+
+export type DeviceAuthorizationRecord = {
+  device_code: string; user_code: string; client_id: string; scopes: string[];
+  issued_at: number; expires_at: number; interval: number; last_poll_at: number | null;
+  status: "pending" | "approved" | "denied" | "consumed"; release_digest: string;
+};
+
+export function issueAuthorizationCode(
+  request: OidcAuthorizationRequest,
+  now: number,
+  lifetimeSeconds = 300,
+): AuthorizationCodeRecord {
+  const decision = validateAuthorizationRequest(request);
+  if (!decision.allowed || decision.release_digest === undefined || request.flow !== "authorization_code" ||
+      request.redirect_uri === undefined || !canonicalPkceValue(request.code_challenge) ||
+      !Number.isSafeInteger(now) || !Number.isSafeInteger(lifetimeSeconds) || lifetimeSeconds < 1 || lifetimeSeconds > 600) {
+    throw new Error("oidc-grant-prohibited: authorization code prerequisites failed");
+  }
+  const core = { client_id: request.client_id, redirect_uri: request.redirect_uri,
+    code_challenge: request.code_challenge, issued_at: now, expires_at: now + lifetimeSeconds,
+    release_digest: decision.release_digest };
+  return { code: createHash("sha256").update(`heterodyne-authorization-code-v1\0${jcsCanonicalize(core)}`).digest("base64url"), ...core };
+}
+
+export function redeemAuthorizationCode(
+  record: AuthorizationCodeRecord,
+  input: { code: string; client_id: string; redirect_uri: string; code_verifier: string; now: number },
+  consumedCodes: Set<string>,
+): AuthorizationDecision {
+  if (consumedCodes.has(record.code) || input.code !== record.code || input.client_id !== record.client_id ||
+      input.redirect_uri !== record.redirect_uri || input.now < record.issued_at || input.now >= record.expires_at ||
+      typeof input.code_verifier !== "string" || !/^[A-Za-z0-9\-._~]{43,128}$/.test(input.code_verifier) ||
+      createHash("sha256").update(input.code_verifier).digest("base64url") !== record.code_challenge) {
+    return denied("oidc-grant-prohibited");
+  }
+  consumedCodes.add(record.code);
+  return accepted();
+}
+
+export function issueDeviceAuthorization(
+  request: OidcAuthorizationRequest,
+  now: number,
+  lifetimeSeconds = 600,
+  interval = 5,
+): DeviceAuthorizationRecord {
+  const decision = validateAuthorizationRequest(request);
+  if (!decision.allowed || decision.release_digest === undefined || request.flow !== "device_authorization" ||
+      !Number.isSafeInteger(now) || !Number.isSafeInteger(lifetimeSeconds) || lifetimeSeconds < 1 ||
+      !Number.isSafeInteger(interval) || interval < 1) throw new Error("oidc-grant-prohibited: device authorization prerequisites failed");
+  const core = { client_id: request.client_id, scopes: uniqueSorted(decision.scopes ?? []), issued_at: now,
+    expires_at: now + lifetimeSeconds, interval, release_digest: decision.release_digest };
+  const digest = createHash("sha256").update(`heterodyne-device-code-v1\0${jcsCanonicalize(core)}`).digest();
+  return { device_code: digest.toString("base64url"), user_code: digest.subarray(0, 5).toString("hex").toUpperCase(),
+    ...core, last_poll_at: null, status: "pending" };
+}
+
+export function decideDeviceAuthorization(
+  record: DeviceAuthorizationRecord,
+  decision: "approve" | "deny",
+  now: number,
+): DeviceAuthorizationRecord {
+  if (record.status !== "pending" || now < record.issued_at || now >= record.expires_at) {
+    throw new Error("expired_token");
+  }
+  return { ...record, status: decision === "approve" ? "approved" : "denied" };
+}
+
+export function redeemDeviceCode(
+  record: DeviceAuthorizationRecord,
+  input: { device_code: string; client_id: string; now: number },
+): { record: DeviceAuthorizationRecord; result: "authorization_pending" | "slow_down" | "access_denied" | "expired_token" | "success" } {
+  if (input.device_code !== record.device_code || input.client_id !== record.client_id) {
+    return { record, result: "access_denied" };
+  }
+  if (input.now >= record.expires_at || record.status === "consumed") return { record, result: "expired_token" };
+  if (record.status === "denied") return { record, result: "access_denied" };
+  if (record.last_poll_at !== null && input.now < record.last_poll_at + record.interval) {
+    return { record: { ...record, interval: record.interval + 5, last_poll_at: input.now }, result: "slow_down" };
+  }
+  if (record.status === "pending") return { record: { ...record, last_poll_at: input.now }, result: "authorization_pending" };
+  return { record: { ...record, last_poll_at: input.now, status: "consumed" }, result: "success" };
+}
+
+export function issuerUrl(origin: string, coldRootNpub: string, identity: PersonaIdentityState): string {
   const canonicalOrigin = exactHttpsOrigin(origin);
+  if (!validateColdRootBinding(coldRootNpub, identity).allowed) {
+    throw new Error("oidc-issuer-mismatch: issuer path is not the authenticated cold root");
+  }
   let decoded: ReturnType<typeof nip19.decode>;
   try {
     decoded = nip19.decode(coldRootNpub);
@@ -107,9 +246,9 @@ export function issuerUrl(origin: string, coldRootNpub: string): string {
   return `${canonicalOrigin}/oidc/${coldRootNpub}`;
 }
 
-export function discoveryPaths(origin: string, coldRootNpub: string): DiscoveryPaths {
+export function discoveryPaths(origin: string, coldRootNpub: string, identity: PersonaIdentityState): DiscoveryPaths {
   const exactOrigin = exactHttpsOrigin(origin);
-  const issuer = issuerUrl(exactOrigin, coldRootNpub);
+  const issuer = issuerUrl(exactOrigin, coldRootNpub, identity);
   return {
     issuer,
     oidc_discovery: `${issuer}/.well-known/openid-configuration`,
@@ -120,9 +259,9 @@ export function discoveryPaths(origin: string, coldRootNpub: string): DiscoveryP
 export function issuerMetadata(
   origin: string,
   coldRootNpub: string,
-  optionalAlgorithms: Array<"ES256" | "EdDSA"> = [],
+  identity: PersonaIdentityState,
 ): IssuerMetadata {
-  const { issuer } = discoveryPaths(origin, coldRootNpub);
+  const { issuer } = discoveryPaths(origin, coldRootNpub, identity);
   return {
     issuer,
     authorization_endpoint: `${issuer}/authorize`,
@@ -133,7 +272,7 @@ export function issuerMetadata(
     grant_types_supported: ["authorization_code", DEVICE_GRANT],
     code_challenge_methods_supported: ["S256"],
     subject_types_supported: ["pairwise"],
-    id_token_signing_alg_values_supported: ["RS256", ...uniqueSorted(optionalAlgorithms) as Array<"ES256" | "EdDSA">],
+    id_token_signing_alg_values_supported: ["RS256"],
     token_endpoint_auth_signing_alg_values_supported: ["RS256"],
   };
 }
@@ -155,12 +294,12 @@ export function validateIssuerMetadata(
       return denied("oidc-issuer-mismatch");
     }
     const root = issuer.pathname.slice("/oidc/".length);
-    if (!validateColdRootBinding(root, { cold_root_npub: root, epoch_npubs: [] }).allowed) return denied("oidc-issuer-mismatch");
+    canonicalNpub(root);
     const algorithms = Array.isArray(metadata.id_token_signing_alg_values_supported)
       ? metadata.id_token_signing_alg_values_supported
       : [];
-    const optional = algorithms.filter((value): value is "ES256" | "EdDSA" => value === "ES256" || value === "EdDSA");
-    const expected = issuerMetadata(issuer.origin, root, optional);
+    if (algorithms.length !== 1 || algorithms[0] !== "RS256") return denied("oidc-issuer-mismatch");
+    const expected = issuerMetadata(issuer.origin, root, { cold_root_npub: root, epoch_npubs: [] });
     if (jcsCanonicalize(metadata as unknown as JsonValue) !== jcsCanonicalize(expected as unknown as JsonValue)) {
       return denied("oidc-issuer-mismatch");
     }
@@ -196,120 +335,132 @@ export function derivePairwiseSubject(localSubject: string, sectorIdentifier: st
     .digest("base64url");
 }
 
-export function validateAuthorizationRequest(input: Record<string, JsonValue>): OidcAuthorizationDecision {
-  const registration = asObject(input.registration);
-  const clientId = stringValue(input.client_id);
-  if (registration === null || input.registration_status !== "active" || clientId === null || registration.client_id !== clientId) {
-    return denied("oidc-client-unregistered");
-  }
-  const registeredGrants = stringArray(registration.grant_types);
-  const grant = stringValue(input.grant_type);
-  const flow = stringValue(input.flow);
-  if (grant === null || !registeredGrants.includes(grant) ||
-      !((flow === "authorization_code" && grant === "authorization_code") ||
-        (flow === "device_authorization" && grant === DEVICE_GRANT))) {
-    return denied("oidc-grant-prohibited");
-  }
-  if (["implicit", "password", "client_credentials"].includes(grant)) {
-    return denied("oidc-grant-prohibited");
-  }
-  if (flow === "authorization_code") {
-    const redirect = stringValue(input.redirect_uri);
-    if (input.response_type !== "code" || redirect === null ||
-        !stringArray(registration.redirect_uris).includes(redirect) ||
-        input.code_challenge_method !== "S256" ||
-        !/^[A-Za-z0-9_-]{43,128}$/.test(String(input.code_challenge ?? ""))) {
+export function validateAuthorizationRequest(input: OidcAuthorizationRequest): OidcAuthorizationDecision {
+  try {
+    const canonicalCheckpoint = canonicalValidatedCheckpoint(input.state);
+    const requestCore = {
+      flow: input.flow, grant_type: input.grant_type,
+      ...(input.response_type === undefined ? {} : { response_type: input.response_type }),
+      client_id: input.client_id,
+      ...(input.redirect_uri === undefined ? {} : { redirect_uri: input.redirect_uri }),
+      ...(input.code_challenge === undefined ? {} : { code_challenge: input.code_challenge }),
+      ...(input.code_challenge_method === undefined ? {} : { code_challenge_method: input.code_challenge_method }),
+      requested_scopes: uniqueSorted(input.requested_scopes),
+      requested_audiences: uniqueSorted(input.requested_audiences),
+      requested_claims: uniqueSorted(input.requested_claims),
+      ...(input.nonce === undefined ? {} : { nonce: input.nonce }),
+      ...(input.cnf === undefined ? {} : { cnf: input.cnf }),
+      sender_constraint: input.sender_constraint,
+      registration_record_id: input.registration.claim_record_id,
+      consent_record_id: input.consent.claim_record_id,
+      source_record_ids: uniqueSorted(input.source_claims.map(({ claim_record_id }) => claim_record_id)),
+      checkpoint: canonicalCheckpoint,
+    };
+    const request_digest = jsonDigest(requestCore);
+    const registrationReplay = replayConfirmedClaimForAuthorization({
+      state: input.state, claim_record_id: input.registration.claim_record_id,
+      verification_context: input.registration.verification_context,
+    });
+    const consentReplay = replayConfirmedClaimForAuthorization({
+      state: input.state, claim_record_id: input.consent.claim_record_id,
+      verification_context: input.consent.verification_context,
+    });
+    if (!registrationReplay.decision.allowed || !consentReplay.decision.allowed ||
+        registrationReplay.semantic.namespace !== "heterodyne.oidc" ||
+        registrationReplay.semantic.name !== "client-registration" ||
+        consentReplay.semantic.namespace !== "heterodyne.oidc" || consentReplay.semantic.name !== "consent" ||
+        registrationReplay.semantic.visibility !== "repository-private" ||
+        consentReplay.semantic.visibility !== "repository-private" ||
+        jcsCanonicalize(registrationReplay.semantic.subject) !== jcsCanonicalize(consentReplay.semantic.subject)) {
+      return denied("oidc-client-unregistered");
+    }
+    const registration = validateRegisteredClientValue(registrationReplay.semantic.value);
+    const consent = validateConsentValue(consentReplay.semantic.value);
+    if (registration.client_id !== input.client_id || consent.client_id !== input.client_id) {
+      return denied("oidc-client-unregistered");
+    }
+    if (!registration.grant_types.includes(input.grant_type) ||
+        !((input.flow === "authorization_code" && input.grant_type === "authorization_code") ||
+          (input.flow === "device_authorization" && input.grant_type === DEVICE_GRANT))) {
       return denied("oidc-grant-prohibited");
     }
-  }
-  const registeredScopes = new Set(stringArray(registration.scopes));
-  const registeredAudience = new Set(stringArray(registration.audiences));
-  const consentedScopes = new Set(stringArray(input.consented_scopes));
-  const consentedAudience = new Set(stringArray(input.consented_audiences));
-  const scopes = uniqueSorted(stringArray(input.requested_scopes)
-    .filter((scope) => registeredScopes.has(scope) && consentedScopes.has(scope)));
-  const audience = uniqueSorted(stringArray(input.requested_audiences)
-    .filter((value) => registeredAudience.has(value) && consentedAudience.has(value)));
-  if (!scopes.includes("openid") || audience.length === 0) return denied("oidc-consent-required");
-  const pairwiseContext = asObject(input.pairwise_subject_context);
-  let pairwiseSub: string;
-  try {
-    if (pairwiseContext === null || pairwiseContext.sector_identifier !== registration.sector_identifier) throw new Error("binding");
-    pairwiseSub = derivePairwiseSubject(
-      String(pairwiseContext.local_subject ?? ""),
-      String(pairwiseContext.sector_identifier ?? ""),
-      String(pairwiseContext.secret ?? ""),
+    if (input.flow === "authorization_code" && (input.response_type !== "code" ||
+        input.redirect_uri === undefined || !registration.redirect_uris.includes(input.redirect_uri) ||
+        input.code_challenge_method !== "S256" || !canonicalPkceValue(input.code_challenge))) {
+      return denied("oidc-grant-prohibited");
+    }
+    if (input.flow === "device_authorization" &&
+        [input.response_type, input.redirect_uri, input.code_challenge, input.code_challenge_method]
+          .some((value) => value !== undefined)) return denied("oidc-grant-prohibited");
+    const scopes = exactIntersection(input.requested_scopes, registration.scopes, consent.scopes);
+    const audience = exactIntersection(input.requested_audiences, registration.audiences, consent.audiences);
+    const permittedClaims = new Set(exactIntersection(input.requested_claims, registration.claims, consent.claims));
+    if (!scopes.includes("openid") || audience.length === 0) return denied("oidc-consent-required");
+    const pairwise_sub = derivePairwiseSubject(
+      jsonDigest(registrationReplay.semantic.subject), registration.sector_identifier, input.pairwise_secret,
     );
-    if (input.pairwise_sub !== undefined && input.pairwise_sub !== pairwiseSub) throw new Error("caller-arbitrary sub");
+    if ((input.sender_constraint === "none") !== (input.cnf === undefined) ||
+        (input.cnf !== undefined && !validConfirmation(input.cnf, input.sender_constraint))) {
+      return denied("oidc-claim-release-denied");
+    }
+    const released_claims: Record<string, JsonValue> = {};
+    const sourceClaimIds = [registrationReplay.semantic.claim_id, consentReplay.semantic.claim_id];
+    const sourceRecordIds = [registrationReplay.record.record_id, consentReplay.record.record_id];
+    for (const evidence of input.source_claims) {
+      const replay = replayConfirmedClaimForAuthorization({
+        state: input.state, claim_record_id: evidence.claim_record_id,
+        verification_context: evidence.verification_context,
+      });
+      const semantic = replay.semantic;
+      if (!replay.decision.allowed || semantic.visibility !== "repository-private" ||
+          jcsCanonicalize(semantic.subject) !== jcsCanonicalize(registrationReplay.semantic.subject) ||
+          evidence.verification_context.audience !== registrationReplay.record.persona ||
+          evidence.verification_context.requested_namespace !== semantic.namespace ||
+          !audience.includes(evidence.verification_context.resource)) return denied("oidc-claim-release-denied");
+      const projectedName = semantic.namespace === "heterodyne.device" && semantic.name === "key-ref"
+        ? KEY_REF_CLAIM : semantic.name;
+      const requiredScope = projectedName === KEY_REF_CLAIM ? KEY_REF_SCOPE : semantic.namespace;
+      if (!permittedClaims.has(projectedName) || !scopes.includes(requiredScope) ||
+          !consent.source_claim_ids.includes(semantic.claim_id)) continue;
+      if (Object.prototype.hasOwnProperty.call(released_claims, projectedName)) return denied("oidc-claim-release-denied");
+      released_claims[projectedName] = semantic.value;
+      sourceClaimIds.push(semantic.claim_id);
+      sourceRecordIds.push(replay.record.record_id);
+    }
+    if (!consent.source_claim_ids.every((claimId) => sourceClaimIds.includes(claimId))) {
+      return denied("oidc-claim-release-denied");
+    }
+    const releaseCore = {
+      request_digest,
+      registration_record_id: registrationReplay.record.record_id,
+      consent_record_id: consentReplay.record.record_id,
+      source_record_ids: uniqueSorted(sourceRecordIds), source_claim_ids: uniqueSorted(sourceClaimIds),
+      pairwise_sub, scopes, audience, released_claims,
+      assertion_profiles: [...(registration.assertion_profiles ?? [])].sort(),
+      ...(input.nonce === undefined ? {} : { nonce: input.nonce }),
+      ...(input.cnf === undefined ? {} : { cnf: input.cnf }),
+      sender_constraint: input.sender_constraint,
+      checkpoint: canonicalCheckpoint,
+    };
+    return { ...accepted(), ...releaseCore, release_digest: jsonDigest(releaseCore) };
   } catch {
     return denied("oidc-claim-release-denied");
   }
-  const trusted = new Set(stringArray(input.trusted_namespaces));
-  const ledgerCheckpoint = asObject(input.ledger_checkpoint);
-  if (input.canonical_claim_state !== true || !validCheckpoint(ledgerCheckpoint)) {
-    return denied("oidc-claim-release-denied");
-  }
-  const consentedClaims = new Set(stringArray(input.consented_claims));
-  const released: Record<string, JsonValue> = {};
-  const sourceClaimIds: string[] = [];
-  let stableKeyClaims = 0;
-  const claims = Array.isArray(input.active_claims) ? input.active_claims : [];
-  for (const candidate of claims) {
-    const claim = asObject(candidate);
-    if (claim === null || claim.state !== "active" || claim.repository_confirmed !== true ||
-        claim.issuer_trusted !== true || claim.subject_proof_valid !== true ||
-        typeof claim.claim_id !== "string" || !/^[0-9a-f]{64}$/.test(claim.claim_id)) continue;
-    const namespace = stringValue(claim.namespace);
-    const name = stringValue(claim.name);
-    if (namespace === null || name === null || !trusted.has(namespace) || claim.value === undefined) continue;
-    if (namespace === "heterodyne.device" && name === "key-ref") {
-      stableKeyClaims += 1;
-      if (scopes.includes(KEY_REF_SCOPE) && registeredScopes.has(KEY_REF_SCOPE) &&
-          consentedScopes.has(KEY_REF_SCOPE) && consentedClaims.has(KEY_REF_CLAIM)) {
-        released[KEY_REF_CLAIM] = claim.value;
-        sourceClaimIds.push(claim.claim_id);
-      }
-      continue;
-    }
-    if (consentedClaims.has(name) && scopes.includes(namespace)) {
-      if (Object.prototype.hasOwnProperty.call(released, name)) return denied("oidc-claim-release-denied");
-      released[name] = claim.value;
-      sourceClaimIds.push(claim.claim_id);
-    }
-  }
-  if (stableKeyClaims > 1) return denied("oidc-claim-release-denied");
-  return {
-    ...accepted(),
-    pairwise_sub: pairwiseSub,
-    scopes,
-    audience,
-    released_claims: released,
-    source_claim_ids: uniqueSorted(sourceClaimIds),
-    checkpoint: ledgerCheckpoint,
-  };
 }
 
-export function projectIdToken(input: JwtProjectionInput, privateJwk: JsonValue): ProjectedJwt {
-  if (input.nonce === undefined || input.nonce.length === 0) {
-    throw new Error("oidc-token-type-invalid: ID Token nonce is required by this projection");
-  }
-  return project(input, privateJwk, "JWT", { nonce: input.nonce });
+export function projectIdToken(input: JwtProjectionInput): ProjectedJwt {
+  return project(input, "JWT", {});
 }
 
-export function projectAccessToken(input: JwtProjectionInput, privateJwk: JsonValue): ProjectedJwt {
-  return project(input, privateJwk, "at+jwt", {});
+export function projectAccessToken(input: JwtProjectionInput): ProjectedJwt {
+  return project(input, "at+jwt", {});
 }
 
 export function projectJwtAssertion(
   input: JwtProjectionInput,
-  privateJwk: JsonValue,
   assertionProfile: string,
-  registration: RegisteredClient,
 ): ProjectedJwt {
-  if (registration.client_id !== input.client_id || !registration.assertion_profiles?.includes(assertionProfile)) {
-    throw new Error("oidc-client-unregistered: JWT assertion profile is not registered");
-  }
-  return project(input, privateJwk, "heterodyne-assertion+jwt", { assertion_profile: assertionProfile });
+  return project(input, "heterodyne-assertion+jwt", { assertion_profile: assertionProfile });
 }
 
 export function validateProjectedJwt(
@@ -326,7 +477,7 @@ export function validateProjectedJwt(
       : "";
     if (trustedIssuer.protocol !== "https:" || trustedIssuer.username !== "" || trustedIssuer.password !== "" ||
         trustedIssuer.search !== "" || trustedIssuer.hash !== "" || `${trustedIssuer.origin}${trustedIssuer.pathname}` !== expectedIssuer ||
-        !validateColdRootBinding(trustedRoot, { cold_root_npub: trustedRoot, epoch_npubs: [] }).allowed) {
+        canonicalNpub(trustedRoot) !== trustedRoot) {
       return denied("oidc-issuer-mismatch");
     }
     const segments = jwt.split(".");
@@ -336,12 +487,20 @@ export function validateProjectedJwt(
     }
     const header = parseSegment(segments[0]);
     const claims = parseSegment(segments[1]);
-    if (header.alg !== "RS256" || typeof header.kid !== "string" || !/^[0-9a-f]{64}$/.test(header.kid)) return denied("oidc-token-type-invalid");
+    if (!exactObjectKeys(header, ["alg", "kid", "typ"]) || header.alg !== "RS256" ||
+        !canonicalSha256Base64url(header.kid)) return denied("oidc-token-type-invalid");
     const keysObject = asObject(jwks);
-    const keys = keysObject === null || !Array.isArray(keysObject.keys) ? [] : keysObject.keys;
+    if (keysObject === null || !exactObjectKeys(keysObject, ["keys"]) || !Array.isArray(keysObject.keys)) {
+      return denied("oidc-token-type-invalid");
+    }
+    const keys = keysObject.keys;
+    if (keys.length === 0 || !keys.every((candidate) => {
+      const key = asObject(candidate);
+      return key !== null && validPublicRsaJwk(key);
+    })) return denied("oidc-token-type-invalid");
     const matching = keys.filter((candidate) => {
       const key = asObject(candidate);
-      return key?.kid === header.kid && key.kty === "RSA" && key.alg === "RS256" && key.use === "sig" && key.d === undefined;
+      return key !== null && validPublicRsaJwk(key) && key.kid === header.kid;
     });
     if (matching.length !== 1) return denied("oidc-token-type-invalid");
     const publicKey = createPublicKey({ key: matching[0] as JsonWebKey, format: "jwk" });
@@ -356,14 +515,21 @@ export function validateProjectedJwt(
       return denied("oidc-token-type-invalid");
     }
     const audiences = typeof claims.aud === "string" ? [claims.aud] : stringArray(claims.aud);
-    if (!audiences.includes(expectedAudience)) return denied("oidc-audience-invalid");
+    const expectedAudiences = options.token_use === "id_token"
+      ? [options.client_id]
+      : uniqueSorted(options.permitted_audiences);
+    if (jcsCanonicalize(audiences) !== jcsCanonicalize(expectedAudiences) ||
+        !expectedAudiences.includes(expectedAudience)) return denied("oidc-audience-invalid");
     if (!Number.isSafeInteger(options.now) || options.now < 0 || options.client_id.length === 0) {
       return denied("oidc-token-type-invalid");
     }
     const now = options.now;
+    const scopeTokens = typeof claims.scope === "string" ? claims.scope.split(" ") : [];
     if (!safeTime(claims.iat) || !safeTime(claims.exp) || Number(claims.iat) > now || Number(claims.exp) <= now ||
-        typeof claims.sub !== "string" || typeof claims.jti !== "string" || typeof claims.client_id !== "string" ||
-        typeof claims.scope !== "string" || !claims.scope.split(" ").every((scope) => scope.length > 0)) {
+        !canonicalSha256Base64url(claims.sub) || typeof claims.jti !== "string" ||
+        !/^[A-Za-z0-9_-]{16,128}$/.test(claims.jti) || typeof claims.client_id !== "string" ||
+        scopeTokens.length === 0 || scopeTokens.some((scope) => !/^[\x21\x23-\x5B\x5D-\x7E]+$/.test(scope)) ||
+        jcsCanonicalize(scopeTokens) !== jcsCanonicalize(uniqueSorted(scopeTokens))) {
       return denied("oidc-token-type-invalid");
     }
     if (claims.client_id !== options.client_id) return denied("oidc-token-type-invalid");
@@ -402,36 +568,46 @@ export function validateProjectedJwt(
 
 function project(
   input: JwtProjectionInput,
-  privateJwkValue: JsonValue,
   typ: "JWT" | "at+jwt" | "heterodyne-assertion+jwt",
   extraClaims: Record<string, JsonValue>,
 ): ProjectedJwt {
-  validateProjectionInput(input);
-  const privateJwk = asObject(privateJwkValue);
-  if (privateJwk === null || privateJwk.kty !== "RSA" || privateJwk.alg !== "RS256" ||
-      privateJwk.use !== "sig" || typeof privateJwk.kid !== "string" || !/^[0-9a-f]{64}$/.test(privateJwk.kid) ||
-      typeof privateJwk.d !== "string") {
-    throw new Error("RS256 private signing JWK with immutable lowercase kid is required");
+  const { issuance, release, private_jwk } = validateProjectionInput(input);
+  if (typ === "JWT") {
+    if (typeof release.nonce !== "string" || release.nonce.length === 0) {
+      throw new Error("oidc-token-type-invalid: signed authorization request nonce is required");
+    }
+    extraClaims = { ...extraClaims, nonce: release.nonce };
   }
-  if (privateJwk.kid !== input.issuance.signing_key_id) {
+  if (typ === "heterodyne-assertion+jwt" && (typeof extraClaims.assertion_profile !== "string" ||
+      !release.assertion_profiles?.includes(extraClaims.assertion_profile))) {
+    throw new Error("oidc-client-unregistered: JWT assertion profile is not signed in canonical registration");
+  }
+  const privateJwk = asObject(private_jwk);
+  if (privateJwk === null || privateJwk.kty !== "RSA" || privateJwk.alg !== "RS256" ||
+      privateJwk.use !== "sig" || typeof privateJwk.kid !== "string" || !canonicalSha256Base64url(privateJwk.kid) ||
+      !Array.isArray(privateJwk.key_ops) || privateJwk.key_ops.length !== 1 || privateJwk.key_ops[0] !== "sign" ||
+      typeof privateJwk.d !== "string") {
+    throw new Error("RS256 private signing JWK with RFC 7638 kid is required");
+  }
+  if (privateJwk.kid !== issuance.signing_key_id || privateJwk.kid !== input.issuer_envelope.signing_key_id) {
     throw new Error("oidc-signing-key-unavailable: signing JWK does not match canonical issuance key");
   }
   const protected_header: Record<string, JsonValue> = { alg: "RS256", kid: privateJwk.kid, typ };
-  const statusUri = `${input.issuer}/${input.issuance.reservation.uri}`;
+  const statusUri = `${input.issuer}/${issuance.reservation.uri}`;
   const claims: Record<string, JsonValue> = {
     iss: input.issuer,
     sub: input.pairwise_sub,
-    aud: typ === "JWT" ? [input.client_id] : [...input.audience],
+    aud: typ === "JWT" ? [input.client_id] : [...release.audience],
     exp: input.expires_at,
     iat: input.now,
-    jti: input.issuance.jti,
+    jti: issuance.jti,
     client_id: input.client_id,
     scope: uniqueSorted(input.scopes).join(" "),
-    ...input.released_claims,
+    ...release.released_claims,
     ...extraClaims,
-    ...(input.cnf === undefined ? {} : { cnf: input.cnf }),
-    [CHECKPOINT_CLAIM]: input.issuance.checkpoint,
-    status: { status_list: { uri: statusUri, idx: input.issuance.reservation.idx } },
+    ...(release.cnf === undefined ? {} : { cnf: release.cnf }),
+    [CHECKPOINT_CLAIM]: issuance.checkpoint,
+    status: { status_list: { uri: statusUri, idx: issuance.reservation.idx } },
     [STATUS_MIRROR_CLAIM]: input.status_mirror,
   };
   for (const forbidden of ["source_claim_ids", "consent", "provenance", "ledger_contents", "reader_membership"]) {
@@ -448,51 +624,81 @@ function project(
   return { protected_header, claims, compact: `${signingInput}.${base64url(signature)}` };
 }
 
-function validateProjectionInput(input: JwtProjectionInput): void {
-  validateIssuanceRecordOrThrow(input.issuance);
+function validateProjectionInput(input: JwtProjectionInput): {
+  issuance: IssuanceRecord;
+  release: OidcAuthorizationDecision & Required<Pick<OidcAuthorizationDecision, "pairwise_sub" | "scopes" | "audience" | "released_claims" | "source_claim_ids" | "checkpoint">>;
+  private_jwk: JsonValue;
+} {
+  const currentCheckpoint = canonicalValidatedCheckpoint(input.state);
+  const releaseCheckpoint = canonicalValidatedCheckpoint(input.authorization_request.state);
+  const record = input.state.records.find(({ record_id }) => record_id === input.issuance_record_id);
+  if (record?.record_type !== "issuance-reservation" ||
+      !(input.state.repository_confirmed_record_ids ?? []).includes(input.issuance_record_id)) {
+    throw new Error("oidc-token-type-invalid: canonical issuance record is absent");
+  }
+  const issuance = record.payload as unknown as IssuanceRecord;
+  validateIssuanceRecordOrThrow(issuance);
+  const release = validateAuthorizationRequest(input.authorization_request);
+  const mint = evaluateMintingAttempt({ now: input.now, manifest_max_age_seconds: issuance.manifest_max_age_seconds,
+    writer_nid: input.issuer_writer_nid, state: input.authorization_request.state, envelope: input.issuer_envelope,
+    audience_key: input.issuer_audience_key });
+  const currentReturn = canReturnToken(
+    input.issuance_record_id, input.state, input.issuer_envelope, input.issuer_audience_key,
+  );
+  if (!release.allowed || release.pairwise_sub === undefined || release.scopes === undefined ||
+      release.audience === undefined || release.released_claims === undefined || release.source_claim_ids === undefined ||
+      release.checkpoint === undefined || release.request_digest === undefined || release.release_digest === undefined ||
+      !mint.allowed || !currentReturn.allowed) {
+    throw new Error("oidc-token-type-invalid: evidence-derived authorization or minting failed");
+  }
+  const private_jwk = unwrapIssuerSigningJwk(input.issuer_envelope, input.issuer_writer_nid, input.issuer_audience_key);
   if (!Number.isSafeInteger(input.now) || !Number.isSafeInteger(input.expires_at) ||
-      input.now !== input.issuance.issued_at || input.expires_at !== input.issuance.expires_at ||
+      input.now !== issuance.issued_at || input.expires_at !== issuance.expires_at ||
       input.expires_at <= input.now || input.audience.length === 0 || input.scopes.length === 0 ||
       !input.scopes.every(nonempty) || !input.audience.every(exactHttpsResource) ||
-      !nonempty(input.client_id) || !/^[A-Za-z0-9._~-]{16,255}$/.test(input.pairwise_sub) ||
-      !validStatusMirror(input.status_mirror) || input.status_mirror.repository_rid !== input.issuance.checkpoint.repository_rid ||
-      !input.release_decision.allowed || input.release_decision.state !== "active" ||
-      !input.mint_eligibility.allowed || input.mint_eligibility.reason_code !== null ||
-      input.mint_eligibility.checkpoint.commit_oid !== input.issuance.checkpoint.commit_oid ||
-      !input.historical_returnability.allowed || input.historical_returnability.state !== "active" ||
-      input.release_decision.pairwise_sub !== input.pairwise_sub ||
-      jcsCanonicalize(input.release_decision.scopes) !== jcsCanonicalize(uniqueSorted(input.scopes)) ||
-      jcsCanonicalize(input.release_decision.audience) !== jcsCanonicalize(uniqueSorted(input.audience)) ||
-      jcsCanonicalize(input.release_decision.released_claims) !== jcsCanonicalize(input.released_claims) ||
-      jcsCanonicalize(input.release_decision.source_claim_ids) !== jcsCanonicalize(uniqueSorted(input.issuance.source_claim_ids)) ||
-      jcsCanonicalize(input.release_decision.checkpoint) !== jcsCanonicalize(input.issuance.checkpoint)) {
+      !nonempty(input.client_id) || input.client_id !== input.authorization_request.client_id ||
+      !/^[A-Za-z0-9._~-]{16,255}$/.test(input.pairwise_sub) ||
+      !validStatusMirror(input.status_mirror) || input.status_mirror.repository_rid !== issuance.checkpoint.repository_rid ||
+      releaseCheckpoint.repository_rid !== issuance.checkpoint.repository_rid ||
+      currentCheckpoint.repository_rid !== issuance.checkpoint.repository_rid ||
+      input.issuer_envelope.repository_rid !== issuance.checkpoint.repository_rid ||
+      release.pairwise_sub !== input.pairwise_sub ||
+      issuance.client_id !== input.client_id ||
+      issuance.authorization_request_digest !== release.request_digest ||
+      issuance.release_digest !== release.release_digest ||
+      jcsCanonicalize(release.scopes) !== jcsCanonicalize(uniqueSorted(input.scopes)) ||
+      jcsCanonicalize(release.audience) !== jcsCanonicalize(uniqueSorted(input.audience)) ||
+      jcsCanonicalize(release.source_claim_ids) !== jcsCanonicalize(uniqueSorted(issuance.source_claim_ids)) ||
+      jcsCanonicalize(release.checkpoint) !== jcsCanonicalize(issuance.checkpoint)) {
     throw new Error("oidc-token-type-invalid: invalid JWT projection input");
   }
   const parsed = new URL(input.issuer);
   const root = parsed.pathname.startsWith("/oidc/") ? parsed.pathname.slice("/oidc/".length) : "";
+  const decodedRoot = nip19.decode(root);
+  const rootPersona = decodedRoot.type === "npub" && typeof decodedRoot.data === "string" ? decodedRoot.data : "";
   if (parsed.protocol !== "https:" || parsed.search !== "" || parsed.hash !== "" || parsed.pathname.endsWith("/") ||
-      !validateColdRootBinding(root, { cold_root_npub: root, epoch_npubs: [] }).allowed) {
+      !validateColdRootBinding(root, input.identity).allowed ||
+      issuerUrl(parsed.origin, root, input.identity) !== input.issuer || rootPersona !== input.issuer_envelope.persona ||
+      input.state.records.some(({ persona }) => persona !== rootPersona) ||
+      input.authorization_request.state.records.some(({ persona }) => persona !== rootPersona)) {
     throw new Error("oidc-issuer-mismatch: exact HTTPS issuer is required");
   }
-  const expectedStatusSuffix = `/${input.issuance.reservation.uri}`;
-  if (!input.status_mirror.path.endsWith(expectedStatusSuffix)) {
+  const expectedStatusPath = `.well-known/${root}/${issuance.reservation.uri}`;
+  if (input.status_mirror.path !== expectedStatusPath) {
     throw new Error("oidc-token-type-invalid: status mirror does not bind issuance reservation");
-  }
-  if ((input.sender_constraint === "none") !== (input.cnf === undefined) ||
-      (input.cnf !== undefined && !validConfirmation(input.cnf, input.sender_constraint))) {
-    throw new Error("oidc-token-type-invalid: cnf must contain exactly one DPoP jkt or mTLS x5t#S256 thumbprint");
   }
   const reserved = new Set([
     "iss", "sub", "aud", "exp", "iat", "jti", "client_id", "scope", "nonce", "cnf",
     "status", "assertion_profile", CHECKPOINT_CLAIM, STATUS_MIRROR_CLAIM,
     "source_claim_ids", "consent", "provenance", "ledger_contents", "reader_membership",
   ]);
-  if (Object.keys(input.released_claims).some((claim) => reserved.has(claim))) {
+  if (Object.keys(release.released_claims).some((claim) => reserved.has(claim))) {
     throw new Error("oidc-claim-release-denied: reserved or private claim cannot be projected");
   }
-  if (Object.values(input.released_claims).some((value) => containsForbiddenField(value, reserved))) {
+  if (Object.values(release.released_claims).some((value) => containsForbiddenField(value, reserved))) {
     throw new Error("oidc-claim-release-denied: private claim provenance cannot be projected");
   }
+  return { issuance, release: release as never, private_jwk };
 }
 
 function exactHttpsOrigin(origin: string): string {
@@ -522,8 +728,90 @@ function validStatusMirror(value: unknown): value is StatusMirror {
 
 function validConfirmation(value: Record<string, JsonValue>, method: "none" | "dpop" | "mtls"): boolean {
   const keys = Object.keys(value);
-  return keys.length === 1 && ((method === "dpop" && keys[0] === "jkt" && typeof value.jkt === "string" && /^[A-Za-z0-9_-]{43}$/.test(value.jkt)) ||
-    (method === "mtls" && keys[0] === "x5t#S256" && typeof value["x5t#S256"] === "string" && /^[A-Za-z0-9_-]{43}$/.test(value["x5t#S256"])));
+  const thumbprint = method === "dpop" ? value.jkt : value["x5t#S256"];
+  return keys.length === 1 && ((method === "dpop" && keys[0] === "jkt") ||
+    (method === "mtls" && keys[0] === "x5t#S256")) && canonicalSha256Base64url(thumbprint);
+}
+
+function canonicalSha256Base64url(value: unknown): value is string {
+  if (typeof value !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(value)) return false;
+  const decoded = Buffer.from(value, "base64url");
+  return decoded.length === 32 && decoded.toString("base64url") === value;
+}
+
+function canonicalPkceValue(value: unknown): value is string {
+  if (typeof value !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(value)) return false;
+  const decoded = Buffer.from(value, "base64url");
+  return decoded.length === 32 && decoded.toString("base64url") === value;
+}
+
+function jsonDigest(value: unknown): string {
+  return createHash("sha256").update(jcsCanonicalize(value)).digest("hex");
+}
+
+function exactIntersection(...sets: string[][]): string[] {
+  if (sets.some((values) => values.some((value) => typeof value !== "string" || value.length === 0) ||
+      new Set(values).size !== values.length)) throw new Error("non-canonical set");
+  const rest = sets.slice(1).map((values) => new Set(values));
+  return uniqueSorted(sets[0].filter((value) => rest.every((set) => set.has(value))));
+}
+
+function validateRegisteredClientValue(value: JsonValue): RegisteredClient {
+  const client = asObject(value);
+  const expected = ["assertion_profiles", "audiences", "claims", "client_id", "grant_types", "redirect_uris", "scopes", "sector_identifier"];
+  if (client === null || jcsCanonicalize(Object.keys(client).sort()) !== jcsCanonicalize(expected) ||
+      !nonempty(String(client.client_id ?? "")) || !Array.isArray(client.redirect_uris) ||
+      !Array.isArray(client.grant_types) || !Array.isArray(client.scopes) || !Array.isArray(client.audiences) ||
+      !Array.isArray(client.claims) || !Array.isArray(client.assertion_profiles) ||
+      ![client.redirect_uris, client.grant_types, client.scopes, client.audiences, client.claims, client.assertion_profiles]
+        .every((values) => values.every((entry) => typeof entry === "string" && entry.length > 0) && new Set(values).size === values.length) ||
+      typeof client.sector_identifier !== "string") throw new Error("client-registration");
+  exactHttpsOrigin(client.sector_identifier);
+  for (const redirect of client.redirect_uris) {
+    if (typeof redirect !== "string" || !exactHttpsResource(redirect)) throw new Error("client-registration");
+  }
+  for (const audience of client.audiences) {
+    if (typeof audience !== "string" || !exactHttpsResource(audience)) throw new Error("client-registration");
+  }
+  return client as unknown as RegisteredClient;
+}
+
+function validateConsentValue(value: JsonValue): {
+  client_id: string; scopes: string[]; audiences: string[]; claims: string[]; source_claim_ids: string[];
+} {
+  const consent = asObject(value);
+  const expected = ["audiences", "claims", "client_id", "scopes", "source_claim_ids"];
+  if (consent === null || jcsCanonicalize(Object.keys(consent).sort()) !== jcsCanonicalize(expected) ||
+      typeof consent.client_id !== "string" || !Array.isArray(consent.scopes) || !Array.isArray(consent.audiences) ||
+      !Array.isArray(consent.claims) || !Array.isArray(consent.source_claim_ids) ||
+      ![consent.scopes, consent.audiences, consent.claims, consent.source_claim_ids].every((values) =>
+        values.every((entry) => typeof entry === "string" && entry.length > 0) && new Set(values).size === values.length) ||
+      !consent.source_claim_ids.every((id) => typeof id === "string" && /^[0-9a-f]{64}$/.test(id))) throw new Error("consent");
+  return consent as unknown as { client_id: string; scopes: string[]; audiences: string[]; claims: string[]; source_claim_ids: string[] };
+}
+
+function exactObjectKeys(value: Record<string, JsonValue>, keys: string[]): boolean {
+  return jcsCanonicalize(Object.keys(value).sort()) === jcsCanonicalize([...keys].sort());
+}
+
+function validPublicRsaJwk(key: Record<string, JsonValue>): boolean {
+  try {
+    if (!exactObjectKeys(key, ["alg", "e", "key_ops", "kid", "kty", "n", "use"]) ||
+        key.kty !== "RSA" || key.alg !== "RS256" || key.use !== "sig" ||
+        !Array.isArray(key.key_ops) || key.key_ops.length !== 1 || key.key_ops[0] !== "verify" ||
+        typeof key.n !== "string" || typeof key.e !== "string" || !canonicalSha256Base64url(key.kid)) return false;
+    for (const member of [key.n, key.e]) {
+      if (!/^[A-Za-z0-9_-]+$/.test(member)) return false;
+      const bytes = Buffer.from(member, "base64url");
+      if (bytes.length === 0 || bytes.toString("base64url") !== member || (bytes.length > 1 && bytes[0] === 0)) return false;
+    }
+    const thumbprint = createHash("sha256")
+      .update(jcsCanonicalize({ e: key.e, kty: "RSA", n: key.n }))
+      .digest("base64url");
+    if (key.kid !== thumbprint) return false;
+    const publicKey = createPublicKey({ key: key as JsonWebKey, format: "jwk" });
+    return (publicKey.asymmetricKeyDetails?.modulusLength ?? 0) >= 2048;
+  } catch { return false; }
 }
 
 function denied(reason_code: string): OidcAuthorizationDecision {

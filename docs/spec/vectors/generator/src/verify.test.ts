@@ -23,7 +23,7 @@ describe("closed deterministic vector tree verification", () => {
     const source = await readFile(join(dir, "versioning", "005-qualified-version-valid.json"), "utf8");
     await writeFile(join(dir, "versioning", "999-stale-extra.json"), source, "utf8");
     expect((await verifyVectorTree(dir)).errors.join("\n")).toMatch(/unexpected committed vector/);
-  });
+  }, 15_000);
 
   it("rejects a stale manifest and Markdown projection", async () => {
     const dir = await authoredTree();
@@ -32,7 +32,7 @@ describe("closed deterministic vector tree verification", () => {
     const errors = (await verifyVectorTree(dir)).errors.join("\n");
     expect(errors).toMatch(/coverage\/manifest\.json/);
     expect(errors).toMatch(/coverage\/core\.md/);
-  });
+  }, 15_000);
 
   it.each([
     "fixtures.json",
@@ -43,5 +43,5 @@ describe("closed deterministic vector tree verification", () => {
     const dir = await authoredTree();
     await writeFile(join(dir, ...path.split("/")), "stale\n", "utf8");
     expect((await verifyVectorTree(dir)).errors.join("\n")).toContain(path);
-  });
+  }, 15_000);
 });

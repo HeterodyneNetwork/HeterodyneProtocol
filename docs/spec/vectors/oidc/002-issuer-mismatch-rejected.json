@@ -10,11 +10,11 @@
     "heterodyne:comms/0.5.0#comms-conformance"
   ],
   "vector_id": "oidc/issuer-mismatch-rejected",
-  "description": "A trailing-slash issuer alias is rejected even when every other discovery member is unchanged.",
+  "description": "A valid epoch npub is rejected as an issuer.",
   "input": {
-    "operation": "metadata-validation",
+    "operation": "jwt-validation",
     "metadata": {
-      "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/",
+      "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
       "authorization_endpoint": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/authorize",
       "token_endpoint": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/token",
       "device_authorization_endpoint": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/device_authorization",
@@ -39,8 +39,35 @@
         "RS256"
       ]
     },
-    "expected_issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
-    "expected_jwks_uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/.well-known/jwks.json"
+    "jwks": {
+      "keys": [
+        {
+          "kty": "RSA",
+          "n": "zvh2fntchh51kVXPblIG2eeggjb0bya6jHF5xOsHTUhr8bi01jmbNjP29oPeFyoztGGKpndDxqt9qHvOL5x3euFKrm6kZywZ_XDVfdZVm7icnpybEmNdammqZcf97EIwOr_mczhRZ9QYK7SsSnBEQW1-BAs9dEHxNT39VqHjCq81uhzLKeemrpW4Kim_s4iYmoRoVkiPHghPhGo9CKXNXj2tGyDmj5hwuXa_gv5sZu5C7u0L9y4T25a-VHFVyUnCoa1yhyiT3teW3256KPmA6rBz1YhdLOCnwWDqIaBGOe4J6gkIODNCuCHwtI8JnX3gcRni_Pz19f3SNqtEJMvWjw",
+          "e": "AQAB",
+          "kid": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
+          "alg": "RS256",
+          "use": "sig",
+          "key_ops": [
+            "verify"
+          ]
+        }
+      ]
+    },
+    "compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkpGeE0xN1FwU01HcDRtMm80bGtkMDNzY0hfeEFyTWVTM2pxeHFvYVdoZW8iLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZCIsInN1YiI6IjVsbmJ2bEtEVG9ZM01FakMydzFYZGtWU01kY3VNUF9QUGFpVE9iRUNzQmciLCJhdWQiOlsicmVnaXN0ZXJlZC1jbGllbnQiXSwiZXhwIjoxNzY3MjQ2MjY5LCJpYXQiOjE3NjcyNDU2NjksImp0aSI6Im9pZGMtZXZpZGVuY2UtanRpLTAwMDEiLCJjbGllbnRfaWQiOiJyZWdpc3RlcmVkLWNsaWVudCIsInNjb3BlIjoiaGV0ZXJvZHluZTprZXktcmVmIG9wZW5pZCBwcm9maWxlIiwibmFtZSI6IkFsaWNlIiwiaHR0cHM6Ly9oZXRlcm9keW5lLm5ldHdvcmsvand0L2tleS1yZWYiOnsidHlwZSI6Im5vc3RyLXNlY3AyNTZrMSIsInZhbHVlIjoiYzYwNDdmOTQ0MWVkN2Q2ZDMwNDU0MDZlOTVjMDdjZDg1Yzc3OGU0YjhjZWYzY2E3YWJhYzA5Yjk1YzcwOWVlNSJ9LCJub25jZSI6Im9pZGMtdmVjdG9yLW5vbmNlIiwiaHR0cHM6Ly9oZXRlcm9keW5lLm5ldHdvcmsvand0L2xlZGdlci1jaGVja3BvaW50Ijp7InJlcG9zaXRvcnlfcmlkIjoicmFkOnoyVEpvREFoSzVwVG1MenFtSzlXNEZNZHRqeXkxIiwiYnJhbmNoIjoibWFpbiIsImNvbW1pdF9vaWQiOiJmNGYyMTY5NDhlMWE5NDA3ZmI0NmQzZmFjNjQzNmViNGRkNzMxNGI2MGE2NjEzMmZlNWQ2OWQ4NTk5Nzc1N2RhIiwib2JzZXJ2ZWRfYXQiOjE3NjcyNDU2Njh9LCJzdGF0dXMiOnsic3RhdHVzX2xpc3QiOnsidXJpIjoiaHR0cHM6Ly9ub2RlLmV4YW1wbGUvb2lkYy9ucHViMTB4bHh2bGhlbWphNmM0ZHF2MjJ1YXBjdHF1cGZobHhtOWg4ejNrMmU3MnE0azloY3o3dnFwa2dlNmQvc3RhdHVzLWxpc3RzLzIwNDU0LzllMmQ4Zjk2OTY2MmZkN2M2OGM5Y2M2OGM3YjIwNWM4LzAuand0IiwiaWR4IjowfX0sImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9zdGF0dXMtbWlycm9yIjp7InJlcG9zaXRvcnlfcmlkIjoicmFkOnoyVEpvREFoSzVwVG1MenFtSzlXNEZNZHRqeXkxIiwiYnJhbmNoIjoibWFpbiIsInBhdGgiOiIud2VsbC1rbm93bi9ucHViMTB4bHh2bGhlbWphNmM0ZHF2MjJ1YXBjdHF1cGZobHhtOWg4ejNrMmU3MnE0azloY3o3dnFwa2dlNmQvc3RhdHVzLWxpc3RzLzIwNDU0LzllMmQ4Zjk2OTY2MmZkN2M2OGM5Y2M2OGM3YjIwNWM4LzAuand0Iiwic2hhMjU2IjoiMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMyJ9fQ.QF6pvPGC4Wb7Se4qj-DlnHlUXICVHoCh46M8vXyhKoJpaFp9-8mCBvogL03cBoA63YJgi_oxaZ8KGYX1dSq3lZW8hUbMK9GKBNwXKSzc69Zr63aSBYOVYjyk2Z-gbmNJIs76TXjCXGuVRVpFr6JjMeaREwrt-rm6_VAj0pfjdau1VJEU0oWbSHkYbdaZPLru0EjCte5zo4_cMXXBBctP-FX1UzHYiYDxn5jhrYouHwJa5beqOxZ7jjuDaJDPVyP6DBRVH7CIA_SM_qBbzMVi1IBCap4WeiNaK-uCbGUKu4vS3AGlyjVPQKfZmSdKn9PteqBikjr8Kx4W5sIGiBgv5Q",
+    "expected_audience": "registered-client",
+    "expected_issuer": "https://node.example/oidc/npub1ccz8l9zpa47k6vz9gphftsrumpw80rjt3nhnefat4symjhrsnmjs38mnyd",
+    "expected_jwks_uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/.well-known/jwks.json",
+    "options": {
+      "now": 1767245669,
+      "client_id": "registered-client",
+      "permitted_audiences": [
+        "https://api.example"
+      ],
+      "token_use": "id_token",
+      "nonce": "oidc-vector-nonce",
+      "sender_constraint": "none"
+    }
   },
   "expected_output": {
     "verdict": "reject",

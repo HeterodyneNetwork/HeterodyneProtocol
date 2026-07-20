@@ -27,14 +27,7 @@
     "grant_types_supported": { "const": ["authorization_code", "urn:ietf:params:oauth:grant-type:device_code"] },
     "code_challenge_methods_supported": { "const": ["S256"] },
     "subject_types_supported": { "const": ["pairwise"] },
-    "id_token_signing_alg_values_supported": {
-      "type": "array",
-      "minItems": 1,
-      "maxItems": 3,
-      "uniqueItems": true,
-      "contains": { "const": "RS256" },
-      "items": { "enum": ["RS256", "ES256", "EdDSA"] }
-    },
+    "id_token_signing_alg_values_supported": { "const": ["RS256"] },
     "token_endpoint_auth_signing_alg_values_supported": { "const": ["RS256"] }
   },
   "definitions": {

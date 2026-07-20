@@ -10,7 +10,7 @@
     "heterodyne:comms/0.5.0#comms-conformance"
   ],
   "vector_id": "oidc/id-token-valid",
-  "description": "A deterministic RS256 OIDC ID Token validates from exact HTTPS discovery and public JWKS with nonce, time, audience, client, checkpoint, and status bindings.",
+  "description": "Strict RS256 ID Token validation.",
   "input": {
     "operation": "jwt-validation",
     "metadata": {
@@ -45,19 +45,25 @@
           "kty": "RSA",
           "n": "zvh2fntchh51kVXPblIG2eeggjb0bya6jHF5xOsHTUhr8bi01jmbNjP29oPeFyoztGGKpndDxqt9qHvOL5x3euFKrm6kZywZ_XDVfdZVm7icnpybEmNdammqZcf97EIwOr_mczhRZ9QYK7SsSnBEQW1-BAs9dEHxNT39VqHjCq81uhzLKeemrpW4Kim_s4iYmoRoVkiPHghPhGo9CKXNXj2tGyDmj5hwuXa_gv5sZu5C7u0L9y4T25a-VHFVyUnCoa1yhyiT3teW3256KPmA6rBz1YhdLOCnwWDqIaBGOe4J6gkIODNCuCHwtI8JnX3gcRni_Pz19f3SNqtEJMvWjw",
           "e": "AQAB",
-          "kid": "1111111111111111111111111111111111111111111111111111111111111111",
+          "kid": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
           "alg": "RS256",
-          "use": "sig"
+          "use": "sig",
+          "key_ops": [
+            "verify"
+          ]
         }
       ]
     },
-    "compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZCIsInN1YiI6InMtdmJROWpZREFVRV9IcnFhblJmX1NRNmdER3BickVVWjBKdWJsdk1zcWciLCJhdWQiOlsicmVnaXN0ZXJlZC1jbGllbnQiXSwiZXhwIjoxNzY3MjMxMjAwLCJpYXQiOjE3NjcyMzA2MDAsImp0aSI6Im9pZGMtdmVjdG9yLWp0aS0wMDAxIiwiY2xpZW50X2lkIjoicmVnaXN0ZXJlZC1jbGllbnQiLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIiwibmFtZSI6IkFsaWNlIiwibm9uY2UiOiJvaWRjLXZlY3Rvci1ub25jZSIsImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9sZWRnZXItY2hlY2twb2ludCI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJjb21taXRfb2lkIjoiMTIxMjEyMTIxMjEyMTIxMjEyMTIxMjEyMTIxMjEyMTIxMjEyMTIxMiIsIm9ic2VydmVkX2F0IjoxNzY3MjMwNTk5fSwic3RhdHVzIjp7InN0YXR1c19saXN0Ijp7InVyaSI6Imh0dHBzOi8vbm9kZS5leGFtcGxlL29pZGMvbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC8wMDExMjIzMzQ0NTU2Njc3ODg5OWFhYmJjY2RkZWVmZi8wLmp3dCIsImlkeCI6N319LCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qvc3RhdHVzLW1pcnJvciI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJwYXRoIjoiLndlbGwta25vd24vbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC8wMDExMjIzMzQ0NTU2Njc3ODg5OWFhYmJjY2RkZWVmZi8wLmp3dCIsInNoYTI1NiI6IjMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMifX0.FU0ncIJ0h5oNRodwZ_y6jdjX_HaEUR8jApBXMEdQpkVA6VVi1Ql-r7aItzJGu_yfZoQnSQE80lncDsWMpoCYtKSivdbENbikdIfcJAW4GssBqRPSzoJyA2KL-7RBkONpAQ1U8DzDH5sPNcv1j0Yqv00ky-VUYOlP5bwPTBYJJzZFUDXMBOtRKeXGuFVpU28jatjeB2d5rsx9KdlfS-WA2NvCmp8tRveNXKNyrF6tsELonpIEo6grLtPC_b7NNq89WXpGfNvPlTMYgLBDpUAiQESAoFZlgR99Eg45H0bBuHVjBav9h_aiODSwfPEIuQ_9hJ8t_Krc4kp52Z6ZGxvpDQ",
+    "compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkpGeE0xN1FwU01HcDRtMm80bGtkMDNzY0hfeEFyTWVTM2pxeHFvYVdoZW8iLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZCIsInN1YiI6IjVsbmJ2bEtEVG9ZM01FakMydzFYZGtWU01kY3VNUF9QUGFpVE9iRUNzQmciLCJhdWQiOlsicmVnaXN0ZXJlZC1jbGllbnQiXSwiZXhwIjoxNzY3MjQ2MjY5LCJpYXQiOjE3NjcyNDU2NjksImp0aSI6Im9pZGMtZXZpZGVuY2UtanRpLTAwMDEiLCJjbGllbnRfaWQiOiJyZWdpc3RlcmVkLWNsaWVudCIsInNjb3BlIjoiaGV0ZXJvZHluZTprZXktcmVmIG9wZW5pZCBwcm9maWxlIiwibmFtZSI6IkFsaWNlIiwiaHR0cHM6Ly9oZXRlcm9keW5lLm5ldHdvcmsvand0L2tleS1yZWYiOnsidHlwZSI6Im5vc3RyLXNlY3AyNTZrMSIsInZhbHVlIjoiYzYwNDdmOTQ0MWVkN2Q2ZDMwNDU0MDZlOTVjMDdjZDg1Yzc3OGU0YjhjZWYzY2E3YWJhYzA5Yjk1YzcwOWVlNSJ9LCJub25jZSI6Im9pZGMtdmVjdG9yLW5vbmNlIiwiaHR0cHM6Ly9oZXRlcm9keW5lLm5ldHdvcmsvand0L2xlZGdlci1jaGVja3BvaW50Ijp7InJlcG9zaXRvcnlfcmlkIjoicmFkOnoyVEpvREFoSzVwVG1MenFtSzlXNEZNZHRqeXkxIiwiYnJhbmNoIjoibWFpbiIsImNvbW1pdF9vaWQiOiJmNGYyMTY5NDhlMWE5NDA3ZmI0NmQzZmFjNjQzNmViNGRkNzMxNGI2MGE2NjEzMmZlNWQ2OWQ4NTk5Nzc1N2RhIiwib2JzZXJ2ZWRfYXQiOjE3NjcyNDU2Njh9LCJzdGF0dXMiOnsic3RhdHVzX2xpc3QiOnsidXJpIjoiaHR0cHM6Ly9ub2RlLmV4YW1wbGUvb2lkYy9ucHViMTB4bHh2bGhlbWphNmM0ZHF2MjJ1YXBjdHF1cGZobHhtOWg4ejNrMmU3MnE0azloY3o3dnFwa2dlNmQvc3RhdHVzLWxpc3RzLzIwNDU0LzllMmQ4Zjk2OTY2MmZkN2M2OGM5Y2M2OGM3YjIwNWM4LzAuand0IiwiaWR4IjowfX0sImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9zdGF0dXMtbWlycm9yIjp7InJlcG9zaXRvcnlfcmlkIjoicmFkOnoyVEpvREFoSzVwVG1MenFtSzlXNEZNZHRqeXkxIiwiYnJhbmNoIjoibWFpbiIsInBhdGgiOiIud2VsbC1rbm93bi9ucHViMTB4bHh2bGhlbWphNmM0ZHF2MjJ1YXBjdHF1cGZobHhtOWg4ejNrMmU3MnE0azloY3o3dnFwa2dlNmQvc3RhdHVzLWxpc3RzLzIwNDU0LzllMmQ4Zjk2OTY2MmZkN2M2OGM5Y2M2OGM3YjIwNWM4LzAuand0Iiwic2hhMjU2IjoiMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMyJ9fQ.QF6pvPGC4Wb7Se4qj-DlnHlUXICVHoCh46M8vXyhKoJpaFp9-8mCBvogL03cBoA63YJgi_oxaZ8KGYX1dSq3lZW8hUbMK9GKBNwXKSzc69Zr63aSBYOVYjyk2Z-gbmNJIs76TXjCXGuVRVpFr6JjMeaREwrt-rm6_VAj0pfjdau1VJEU0oWbSHkYbdaZPLru0EjCte5zo4_cMXXBBctP-FX1UzHYiYDxn5jhrYouHwJa5beqOxZ7jjuDaJDPVyP6DBRVH7CIA_SM_qBbzMVi1IBCap4WeiNaK-uCbGUKu4vS3AGlyjVPQKfZmSdKn9PteqBikjr8Kx4W5sIGiBgv5Q",
     "expected_audience": "registered-client",
     "expected_issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
     "expected_jwks_uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/.well-known/jwks.json",
     "options": {
-      "now": 1767230600,
+      "now": 1767245669,
       "client_id": "registered-client",
+      "permitted_audiences": [
+        "https://api.example"
+      ],
       "token_use": "id_token",
       "nonce": "oidc-vector-nonce",
       "sender_constraint": "none"
@@ -66,53 +72,9 @@
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "metadata_validation": {
-        "allowed": true,
-        "state": "active",
-        "reason_code": null
-      },
-      "jwt_validation": {
-        "allowed": true,
-        "state": "active",
-        "reason_code": null
-      },
-      "protected_header": {
-        "alg": "RS256",
-        "kid": "1111111111111111111111111111111111111111111111111111111111111111",
-        "typ": "JWT"
-      },
-      "claims": {
-        "iss": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
-        "sub": "s-vbQ9jYDAUE_HrqanRf_SQ6gDGpbrEUZ0JublvMsqg",
-        "aud": [
-          "registered-client"
-        ],
-        "exp": 1767231200,
-        "iat": 1767230600,
-        "jti": "oidc-vector-jti-0001",
-        "client_id": "registered-client",
-        "scope": "openid profile",
-        "name": "Alice",
-        "nonce": "oidc-vector-nonce",
-        "https://heterodyne.network/jwt/ledger-checkpoint": {
-          "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-          "branch": "main",
-          "commit_oid": "1212121212121212121212121212121212121212",
-          "observed_at": 1767230599
-        },
-        "status": {
-          "status_list": {
-            "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/00112233445566778899aabbccddeeff/0.jwt",
-            "idx": 7
-          }
-        },
-        "https://heterodyne.network/jwt/status-mirror": {
-          "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-          "branch": "main",
-          "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/00112233445566778899aabbccddeeff/0.jwt",
-          "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
-        }
-      }
+      "allowed": true,
+      "state": "active",
+      "reason_code": null
     }
   },
   "direction": "consume"

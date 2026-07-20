@@ -138,7 +138,7 @@ describe("canonical evaluation time and confirmation", () => {
     const issuancePayload = {
       ...s.issuanceOne,
       checkpoint: epochRepository.checkpoint,
-      signing_key_id: issuerEnvelope.content_digest,
+      signing_key_id: issuerEnvelope.signing_key_id,
       issued_at: s.now + 52,
     };
     const issuance = createSignedLedgerRecord({
@@ -166,7 +166,7 @@ describe("canonical evaluation time and confirmation", () => {
         ...(s.statusInvalidation.payload as Record<string, unknown>),
         authority_checkpoint: issuedRepository.checkpoint,
         issuer_key_epoch: 1,
-        issuer_key_digest: issuerEnvelope.content_digest,
+        issuer_key_digest: issuerEnvelope.signing_key_id,
       },
     }, s.writerTwo.private_key);
     const repository = buildLedgerRepositoryEvidence({

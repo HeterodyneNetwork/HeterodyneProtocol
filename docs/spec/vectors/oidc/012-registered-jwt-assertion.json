@@ -10,9 +10,9 @@
     "heterodyne:comms/0.5.0#comms-conformance"
   ],
   "vector_id": "oidc/registered-jwt-assertion",
-  "description": "A signed JWT assertion is type-separated and accepted only under its separately registered assertion profile.",
+  "description": "Assertion validation rejects an unregistered profile despite a valid signature.",
   "input": {
-    "operation": "jwt-validation",
+    "operation": "jwt-validation-cases",
     "metadata": {
       "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
       "authorization_endpoint": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/authorize",
@@ -45,74 +45,60 @@
           "kty": "RSA",
           "n": "zvh2fntchh51kVXPblIG2eeggjb0bya6jHF5xOsHTUhr8bi01jmbNjP29oPeFyoztGGKpndDxqt9qHvOL5x3euFKrm6kZywZ_XDVfdZVm7icnpybEmNdammqZcf97EIwOr_mczhRZ9QYK7SsSnBEQW1-BAs9dEHxNT39VqHjCq81uhzLKeemrpW4Kim_s4iYmoRoVkiPHghPhGo9CKXNXj2tGyDmj5hwuXa_gv5sZu5C7u0L9y4T25a-VHFVyUnCoa1yhyiT3teW3256KPmA6rBz1YhdLOCnwWDqIaBGOe4J6gkIODNCuCHwtI8JnX3gcRni_Pz19f3SNqtEJMvWjw",
           "e": "AQAB",
-          "kid": "1111111111111111111111111111111111111111111111111111111111111111",
+          "kid": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
           "alg": "RS256",
-          "use": "sig"
+          "use": "sig",
+          "key_ops": [
+            "verify"
+          ]
         }
       ]
     },
-    "compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTEiLCJ0eXAiOiJoZXRlcm9keW5lLWFzc2VydGlvbitqd3QifQ.eyJpc3MiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZCIsInN1YiI6InMtdmJROWpZREFVRV9IcnFhblJmX1NRNmdER3BickVVWjBKdWJsdk1zcWciLCJhdWQiOlsiaHR0cHM6Ly9hcGkuZXhhbXBsZSJdLCJleHAiOjE3NjcyMzEyMDAsImlhdCI6MTc2NzIzMDYwMCwianRpIjoib2lkYy12ZWN0b3ItanRpLTAwMDEiLCJjbGllbnRfaWQiOiJyZWdpc3RlcmVkLWNsaWVudCIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUiLCJuYW1lIjoiQWxpY2UiLCJhc3NlcnRpb25fcHJvZmlsZSI6InVybjpleGFtcGxlOmp3dC1hc3NlcnRpb246djEiLCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3QvbGVkZ2VyLWNoZWNrcG9pbnQiOnsicmVwb3NpdG9yeV9yaWQiOiJyYWQ6ejJUSm9EQWhLNXBUbUx6cW1LOVc0Rk1kdGp5eTEiLCJicmFuY2giOiJtYWluIiwiY29tbWl0X29pZCI6IjEyMTIxMjEyMTIxMjEyMTIxMjEyMTIxMjEyMTIxMjEyMTIxMjEyMTIiLCJvYnNlcnZlZF9hdCI6MTc2NzIzMDU5OX0sInN0YXR1cyI6eyJzdGF0dXNfbGlzdCI6eyJ1cmkiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZC9zdGF0dXMtbGlzdHMvMjA0NTQvMDAxMTIyMzM0NDU1NjY3Nzg4OTlhYWJiY2NkZGVlZmYvMC5qd3QiLCJpZHgiOjd9fSwiaHR0cHM6Ly9oZXRlcm9keW5lLm5ldHdvcmsvand0L3N0YXR1cy1taXJyb3IiOnsicmVwb3NpdG9yeV9yaWQiOiJyYWQ6ejJUSm9EQWhLNXBUbUx6cW1LOVc0Rk1kdGp5eTEiLCJicmFuY2giOiJtYWluIiwicGF0aCI6Ii53ZWxsLWtub3duL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZC9zdGF0dXMtbGlzdHMvMjA0NTQvMDAxMTIyMzM0NDU1NjY3Nzg4OTlhYWJiY2NkZGVlZmYvMC5qd3QiLCJzaGEyNTYiOiIzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzIn19.elCW9IWUz2K5G_Bh8vsi7cJ5mL0lZ7aCk7m3sIL5n-mdLqIr2MYvjZxPdo2wASqrbMhIPERrdOT4_dievjfy9tjelamxXsEQKiN6y8xLs1ijbkTNQTu3oGjDGlg5Vzub6iIX17XeBUEu8EOaJLTwjDrOYTlFb2PEMTJG8r2aiEXzKXvV9dJPpXLFH7encToWMCmRLeZ5GuBofRlABoR6QgtU8yHo-IQIcKk0Wg-_s_fXOyeKszvjVr5x1t7C5oCWzzw7Wn42Q0IkPjmR-kjUbivKu6bPCdfC9AExE3wscYBPB_gvqwNOwXLVR8M3aLGBauyySg6mLyPYA4MNKa1vig",
-    "expected_audience": "https://api.example",
-    "expected_issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
-    "expected_jwks_uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/.well-known/jwks.json",
-    "options": {
-      "now": 1767230600,
-      "client_id": "registered-client",
-      "token_use": "jwt_assertion",
-      "assertion_profile": "urn:example:jwt-assertion:v1",
-      "sender_constraint": "none"
-    }
+    "compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkpGeE0xN1FwU01HcDRtMm80bGtkMDNzY0hfeEFyTWVTM2pxeHFvYVdoZW8iLCJ0eXAiOiJoZXRlcm9keW5lLWFzc2VydGlvbitqd3QifQ.eyJpc3MiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZCIsInN1YiI6IjVsbmJ2bEtEVG9ZM01FakMydzFYZGtWU01kY3VNUF9QUGFpVE9iRUNzQmciLCJhdWQiOlsiaHR0cHM6Ly9hcGkuZXhhbXBsZSJdLCJleHAiOjE3NjcyNDYyNjksImlhdCI6MTc2NzI0NTY2OSwianRpIjoib2lkYy1ldmlkZW5jZS1qdGktMDAwMSIsImNsaWVudF9pZCI6InJlZ2lzdGVyZWQtY2xpZW50Iiwic2NvcGUiOiJoZXRlcm9keW5lOmtleS1yZWYgb3BlbmlkIHByb2ZpbGUiLCJuYW1lIjoiQWxpY2UiLCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qva2V5LXJlZiI6eyJ0eXBlIjoibm9zdHItc2VjcDI1NmsxIiwidmFsdWUiOiJjNjA0N2Y5NDQxZWQ3ZDZkMzA0NTQwNmU5NWMwN2NkODVjNzc4ZTRiOGNlZjNjYTdhYmFjMDliOTVjNzA5ZWU1In0sImFzc2VydGlvbl9wcm9maWxlIjoidXJuOmV4YW1wbGU6and0LWFzc2VydGlvbjp2MSIsImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9sZWRnZXItY2hlY2twb2ludCI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJjb21taXRfb2lkIjoiZjRmMjE2OTQ4ZTFhOTQwN2ZiNDZkM2ZhYzY0MzZlYjRkZDczMTRiNjBhNjYxMzJmZTVkNjlkODU5OTc3NTdkYSIsIm9ic2VydmVkX2F0IjoxNzY3MjQ1NjY4fSwic3RhdHVzIjp7InN0YXR1c19saXN0Ijp7InVyaSI6Imh0dHBzOi8vbm9kZS5leGFtcGxlL29pZGMvbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsImlkeCI6MH19LCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qvc3RhdHVzLW1pcnJvciI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJwYXRoIjoiLndlbGwta25vd24vbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsInNoYTI1NiI6IjMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMifX0.QMJlRIkqQCfYMaL6Z2uViSQVT_JXuXIioakbiMe2pOrl83MVunCPjEjh5x05Ww-SrHgwJyiHyPxOIAJzJsh6Dqmrerwl9perHUgpYI1cs9qPWzUgirT7H1CFLMM1cEKjVokttTTLaa-HdN0BZOHkamCNCybpK-mVUGE5c6IC4QW4lSBodm-3_y2yo-5-8TxHu31eY9hQBlID1XL-x3AETMOAdHr6i-YNBbnzYldH-AHBc3LN4E6Gr1Nj_YIdGHnaRYf_SbBIbXJwheSBc0NtuU1vH0FHwEYBEjxc3p6EblYzHtCjwqVaIG2bvQxoc6mR4e8vGWBjHL6bCYmuRWsADw",
+    "cases": [
+      {
+        "expected_audience": "https://api.example",
+        "options": {
+          "now": 1767245669,
+          "client_id": "registered-client",
+          "permitted_audiences": [
+            "https://api.example"
+          ],
+          "token_use": "jwt_assertion",
+          "assertion_profile": "urn:example:jwt-assertion:v1",
+          "sender_constraint": "none"
+        }
+      },
+      {
+        "expected_audience": "https://api.example",
+        "options": {
+          "now": 1767245669,
+          "client_id": "registered-client",
+          "permitted_audiences": [
+            "https://api.example"
+          ],
+          "token_use": "jwt_assertion",
+          "assertion_profile": "urn:unregistered",
+          "sender_constraint": "none"
+        }
+      }
+    ]
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "metadata_validation": {
-        "allowed": true,
-        "state": "active",
-        "reason_code": null
-      },
-      "jwt_validation": {
-        "allowed": true,
-        "state": "active",
-        "reason_code": null
-      },
-      "protected_header": {
-        "alg": "RS256",
-        "kid": "1111111111111111111111111111111111111111111111111111111111111111",
-        "typ": "heterodyne-assertion+jwt"
-      },
-      "claims": {
-        "iss": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
-        "sub": "s-vbQ9jYDAUE_HrqanRf_SQ6gDGpbrEUZ0JublvMsqg",
-        "aud": [
-          "https://api.example"
-        ],
-        "exp": 1767231200,
-        "iat": 1767230600,
-        "jti": "oidc-vector-jti-0001",
-        "client_id": "registered-client",
-        "scope": "openid profile",
-        "name": "Alice",
-        "assertion_profile": "urn:example:jwt-assertion:v1",
-        "https://heterodyne.network/jwt/ledger-checkpoint": {
-          "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-          "branch": "main",
-          "commit_oid": "1212121212121212121212121212121212121212",
-          "observed_at": 1767230599
+      "decisions": [
+        {
+          "allowed": true,
+          "state": "active",
+          "reason_code": null
         },
-        "status": {
-          "status_list": {
-            "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/00112233445566778899aabbccddeeff/0.jwt",
-            "idx": 7
-          }
-        },
-        "https://heterodyne.network/jwt/status-mirror": {
-          "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-          "branch": "main",
-          "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/00112233445566778899aabbccddeeff/0.jwt",
-          "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+        {
+          "allowed": false,
+          "state": "invalid",
+          "reason_code": "oidc-token-type-invalid"
         }
-      }
+      ]
     }
   },
   "direction": "consume"

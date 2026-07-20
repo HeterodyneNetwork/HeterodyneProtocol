@@ -5,6 +5,7 @@ import { sha256 } from "@noble/hashes/sha2";
 import { base58 } from "@scure/base";
 import {
   authorizeWithClaim,
+  computeJwkThumbprint,
   validateClaimEnvelope,
   validateClaimRevocationEnvelope,
   verifyClaimChain,
@@ -74,6 +75,9 @@ export type IssuanceRecord = {
   checkpoint: LedgerCheckpoint;
   manifest_max_age_seconds: number;
   signing_key_id: string;
+  client_id: string;
+  authorization_request_digest: string;
+  release_digest: string;
   source_claim_ids: string[];
   issued_at: number;
   expires_at: number;
@@ -87,6 +91,7 @@ export type IssuerKeyEnvelope = {
   epoch: number;
   audience_key_id: string;
   previous_key_id: string;
+  signing_key_id: string;
   content_digest: string;
   nonce: string;
   ciphertext: string;
@@ -216,6 +221,7 @@ type UnsignedLedgerRecord = Omit<LedgerRecord, "record_id" | "payload_digest" | 
 
 const HEX_32 = /^[0-9a-f]{64}$/;
 const HEX_64 = /^[0-9a-f]{128}$/;
+const JWK_THUMBPRINT = /^[A-Za-z0-9_-]{43}$/;
 const PERSONA = HEX_32;
 const COMMIT_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const RID = /^rad:z[1-9A-HJ-NP-Za-km-z]+$/;
@@ -245,6 +251,8 @@ const RECORD_TYPES = new Set<LedgerRecordType>([
 ]);
 const VALIDATED_LEDGER_STATES = new WeakSet<object>();
 const VALIDATED_LEDGER_REPOSITORIES = new WeakMap<object, LedgerRepositoryEvidence>();
+const VALIDATED_LEDGER_CONTEXTS = new WeakMap<object, LedgerValidationContext>();
+const VALIDATED_LEDGER_SNAPSHOTS = new WeakMap<object, LedgerMergeResult>();
 type ReplayValidationFingerprint = {
   record: string;
   evidence: string;
@@ -395,7 +403,67 @@ export function mergeClaimLedger(
   };
   VALIDATED_LEDGER_STATES.add(result);
   VALIDATED_LEDGER_REPOSITORIES.set(result, structuredClone(context.repository));
+  VALIDATED_LEDGER_CONTEXTS.set(result, structuredClone(context));
+  VALIDATED_LEDGER_SNAPSHOTS.set(result, structuredClone(result));
   return result;
+}
+
+export function canonicalValidatedCheckpoint(state: LedgerMergeResult): LedgerCheckpoint {
+  assertValidatedLedgerState(state);
+  const snapshot = VALIDATED_LEDGER_SNAPSHOTS.get(state);
+  if (snapshot === undefined) throw new Error("claim-repository-unconfirmed: immutable state snapshot is absent");
+  if (jcsCanonicalize(state) !== jcsCanonicalize(snapshot)) {
+    throw new Error("claim-repository-conflict: validated ledger state was mutated after merge");
+  }
+  return structuredClone(snapshot.checkpoint);
+}
+
+export function replayConfirmedClaimForAuthorization(input: {
+  state: LedgerMergeResult;
+  claim_record_id: string;
+  verification_context: ClaimVerificationContext;
+}): { record: LedgerRecord; semantic: ClaimSemanticBody; decision: AuthorizationDecision } {
+  assertValidatedLedgerState(input.state);
+  canonicalValidatedCheckpoint(input.state);
+  if (jcsCanonicalize(input.state.checkpoint) !==
+      jcsCanonicalize(validatedRepositoryForState(input.state).checkpoint)) {
+    throw new Error("claim-ledger-rollback: release checkpoint is not the full canonical checkpoint");
+  }
+  const snapshot = VALIDATED_LEDGER_SNAPSHOTS.get(input.state);
+  if (snapshot === undefined) throw new Error("claim-repository-unconfirmed: immutable state snapshot is absent");
+  const record = snapshot.records.find(({ record_id }) => record_id === input.claim_record_id);
+  const context = VALIDATED_LEDGER_CONTEXTS.get(input.state);
+  const repository = validatedRepositoryForState(input.state);
+  const canonicalHead = repository.commits.find(({ commit_oid }) => commit_oid === repository.canonical_head);
+  if (record?.record_type !== "claim" || context === undefined ||
+      !repository.repository_confirmed_record_ids.includes(input.claim_record_id) ||
+      !canonicalHead?.record_ids.includes(input.claim_record_id)) {
+    throw new Error("claim-repository-unconfirmed: release source claim is not canonical");
+  }
+  const records = new Map(snapshot.records.map((candidate) => [candidate.record_id, candidate]));
+  const evidence = context.record_evidence.get(record.record_id);
+  validateLedgerRecordOrThrow(record, records, evidence);
+  const artifact = claimArtifactFromRecord(record);
+  if (artifact === null || evidence?.claim_envelope_context === undefined || evidence.claims_by_id === undefined) {
+    throw new Error("claim-event-signature-invalid: release source claim evidence is absent");
+  }
+  const semantic = validateClaimEnvelope(artifact.event, evidence.claim_envelope_context);
+  if (jcsCanonicalize(semantic) !== jcsCanonicalize(artifact.semantic)) {
+    throw new Error("claim-id-mismatch: release source semantic mismatch");
+  }
+  const claimsById = new Map(evidence.claims_by_id);
+  claimsById.set(semantic.claim_id, semantic);
+  const chain = verifyClaimChain(semantic, claimsById);
+  const decision = authorizeWithClaim(semantic, chain, {
+    ...input.verification_context,
+    repository_confirmed: confirmedClaimIds(snapshot),
+    repository_conflicted: new Set(snapshot.conflicted_claim_ids),
+    revocations: [...(snapshot.authenticated_revocations ?? [])],
+  });
+  if (resolveAuthoritativeClaimState(semantic.claim_id, snapshot, input.verification_context.now) !== decision.state) {
+    throw new Error("claim-repository-conflict: replayed and authoritative claim state disagree");
+  }
+  return { record, semantic, decision };
 }
 
 export function deriveLedgerPath(audienceKey: Uint8Array, recordId: string): string {
@@ -581,7 +649,7 @@ export function createIssuerKeyEpochPayload(input: {
     scope: "oidc-issuer-key",
     epoch: input.envelope.epoch,
     envelope_digest: digestJson(input.envelope),
-    key_digest: input.envelope.content_digest,
+    key_digest: input.envelope.signing_key_id,
     previous_epoch: previousEpoch,
     previous_envelope_digest: previousEnvelopeDigest,
     previous_key_digest: previousKeyDigest,
@@ -715,6 +783,7 @@ export function reserveStatusIndex(
 
 export function validateIssuanceRecordOrThrow(record: IssuanceRecord): void {
   validateOidcIssuanceRecordSchemaOrThrow(record);
+  assertCanonicalSigningKeyId(record.signing_key_id);
   if (record.expires_at <= record.issued_at ||
       record.issued_at < record.checkpoint.observed_at ||
       record.issued_at - record.checkpoint.observed_at > record.manifest_max_age_seconds ||
@@ -723,6 +792,38 @@ export function validateIssuanceRecordOrThrow(record: IssuanceRecord): void {
     throw new Error("claim-schema-invalid: issuance record freshness or reservation binding is invalid");
   }
   validateCheckpoint(record.checkpoint);
+}
+
+function assertCanonicalSigningKeyId(value: unknown, label = "signing_key_id"): asserts value is string {
+  if (typeof value !== "string" || !JWK_THUMBPRINT.test(value)) {
+    throw new Error(`claim-schema-invalid: ${label} must be a canonical SHA-256 JWK thumbprint`);
+  }
+  const decoded = Buffer.from(value, "base64url");
+  if (decoded.length !== 32 || decoded.toString("base64url") !== value) {
+    throw new Error(`claim-schema-invalid: ${label} must decode to exactly 32 bytes`);
+  }
+}
+
+function validatePrivateIssuerJwk(value: JsonValue): string {
+  assertPlainObject(value, "private issuer signing JWK");
+  assertExactKeys(value, [
+    "kty", "n", "e", "d", "p", "q", "dp", "dq", "qi", "kid", "alg", "use", "key_ops",
+  ], "private issuer signing JWK");
+  if (value.kty !== "RSA" || value.alg !== "RS256" || value.use !== "sig" ||
+      !Array.isArray(value.key_ops) || value.key_ops.length !== 1 || value.key_ops[0] !== "sign") {
+    throw new Error("oidc-signing-key-unavailable: issuer signing JWK metadata is invalid");
+  }
+  for (const member of ["n", "e", "d", "p", "q", "dp", "dq", "qi"] as const) {
+    if (typeof value[member] !== "string" || value[member].length === 0) {
+      throw new Error(`oidc-signing-key-unavailable: issuer signing JWK ${member} is missing`);
+    }
+  }
+  const thumbprint = computeJwkThumbprint({ kty: "RSA", n: value.n, e: value.e });
+  assertCanonicalSigningKeyId(thumbprint);
+  if (value.kid !== thumbprint) {
+    throw new Error("oidc-signing-key-unavailable: private JWK kid must equal its RFC 7638 public thumbprint");
+  }
+  return thumbprint;
 }
 
 export function createIssuerKeyEnvelope(input: {
@@ -753,6 +854,7 @@ export function createIssuerKeyEnvelope(input: {
   if (jcsCanonicalize([...input.recipient_nids].sort()) !== jcsCanonicalize(activeIssuerNids)) {
     throw new Error("oidc-issuer-authority-invalid: issuer-key recipients must exactly equal active canonical issuers");
   }
+  const signing_key_id = validatePrivateIssuerJwk(input.signing_jwk);
   const plaintext = utf8Bytes(jcsCanonicalize(input.signing_jwk));
   const content_digest = bytesToHex(sha256(plaintext));
   const audience_key_id = bytesToHex(sha256(input.audience_key));
@@ -774,6 +876,7 @@ export function createIssuerKeyEnvelope(input: {
       repository_rid: input.repository_rid,
       next_epoch: input.epoch,
       next_audience_key_id: audience_key_id,
+      next_signing_key_id: signing_key_id,
       next_content_digest: content_digest,
     });
   }
@@ -794,6 +897,7 @@ export function createIssuerKeyEnvelope(input: {
     epoch: input.epoch,
     audience_key_id,
     previous_key_id,
+    signing_key_id,
     content_digest,
     authority_record_set_digest,
   };
@@ -817,6 +921,7 @@ export function createIssuerKeyEnvelope(input: {
     epoch: input.epoch,
     audience_key_id,
     previous_key_id,
+    signing_key_id,
     content_digest,
     nonce: bytesToHex(nonce),
     ciphertext: bytesToHex(ciphertext),
@@ -848,6 +953,7 @@ export function unwrapIssuerSigningJwk(
     epoch: envelope.epoch,
     audience_key_id: envelope.audience_key_id,
     previous_key_id: envelope.previous_key_id,
+    signing_key_id: envelope.signing_key_id,
     content_digest: envelope.content_digest,
     authority_record_set_digest: envelope.authority_record_set_digest,
   };
@@ -872,7 +978,9 @@ export function unwrapIssuerSigningJwk(
       utf8Bytes(jcsCanonicalize(context)),
     ).decrypt(hexToBytes(envelope.ciphertext));
     if (bytesToHex(sha256(plaintext)) !== envelope.content_digest) throw new Error("digest");
-    return JSON.parse(new TextDecoder().decode(plaintext)) as JsonValue;
+    const jwk = JSON.parse(new TextDecoder().decode(plaintext)) as JsonValue;
+    if (validatePrivateIssuerJwk(jwk) !== envelope.signing_key_id) throw new Error("thumbprint");
+    return jwk;
   } catch {
     throw new Error("oidc-signing-key-unavailable: issuer signing JWK decryption failed");
   }
@@ -883,7 +991,9 @@ export function invalidationsForCompromisedSigningKey(
   replacementEnvelope: IssuerKeyEnvelope,
   existing: IssuanceRecord[],
 ): string[] {
-  if (!HEX_32.test(compromisedKeyId) || replacementEnvelope.content_digest === compromisedKeyId ||
+  assertCanonicalSigningKeyId(compromisedKeyId, "compromised signing key id");
+  assertCanonicalSigningKeyId(replacementEnvelope.signing_key_id, "replacement signing key id");
+  if (replacementEnvelope.signing_key_id === compromisedKeyId ||
       replacementEnvelope.audience_key_id === replacementEnvelope.previous_key_id || replacementEnvelope.epoch < 2) {
     throw new Error("oidc-signing-key-unavailable: compromised key was not rotated before minting resumed");
   }
@@ -911,9 +1021,7 @@ export function createStatusInvalidationRecords(input: {
     throw new Error("claim-schema-invalid: invalid invalidation creation time");
   }
   const compromised = [...new Set(input.compromised_signing_key_ids)].sort();
-  if (compromised.some((keyId) => !HEX_32.test(keyId))) {
-    throw new Error("claim-schema-invalid: invalid compromised signing-key ID");
-  }
+  compromised.forEach((keyId) => assertCanonicalSigningKeyId(keyId, "compromised signing-key ID"));
   const authorityClaimId = canonicalIssuerAuthorityClaimId(input.writer_nid, input.state, input.created_at);
   const issuerEpochRecord = currentIssuerKeyEpochRecord(input.state);
   const issuerEpoch = issuerEpochRecord === null
@@ -1213,7 +1321,7 @@ export function evaluateMintingAttempt(input: {
   const issuerEpochBindingValid = currentIssuerEpochPayload !== null &&
     currentIssuerEpochPayload.epoch === input.envelope.epoch &&
     currentIssuerEpochPayload.envelope_digest === digestJson(input.envelope) &&
-    currentIssuerEpochPayload.key_digest === input.envelope.content_digest &&
+    currentIssuerEpochPayload.key_digest === input.envelope.signing_key_id &&
     jcsCanonicalize(currentIssuerEpochPayload.recipient_nids) ===
       jcsCanonicalize(input.envelope.recipient_wraps.map(({ writer_nid }) => writer_nid).sort());
   const hasIssuerRemoval = input.state.records.some((record) =>
@@ -1314,7 +1422,7 @@ export function canReturnToken(
     if (!mintBinding.allowed) {
       return { allowed: false, state: "invalid", reason_code: mintBinding.reason_code };
     }
-    if (issuance.signing_key_id !== envelope.content_digest) {
+    if (issuance.signing_key_id !== envelope.signing_key_id) {
       return { allowed: false, state: "invalid", reason_code: "oidc-signing-key-unavailable" };
     }
     return { allowed: true, state: "active", reason_code: null };
@@ -1729,9 +1837,11 @@ function validatePayload(type: LedgerRecordType, value: JsonValue): void {
           throw new Error("claim-schema-invalid: invalid issuer key epoch");
         }
         assertClaimId(payload.envelope_digest);
-        assertClaimId(payload.key_digest);
+        assertCanonicalSigningKeyId(payload.key_digest, "issuer key epoch key_digest");
         assertClaimId(payload.previous_envelope_digest);
-        assertClaimId(payload.previous_key_digest);
+        if (payload.previous_key_digest !== GENESIS_AUDIENCE_KEY_ID) {
+          assertCanonicalSigningKeyId(payload.previous_key_digest, "issuer key epoch previous_key_digest");
+        }
         validateNidSet(payload.recipient_nids);
         validateCheckpoint(payload.checkpoint as unknown as LedgerCheckpoint);
         return;
@@ -1763,7 +1873,7 @@ function validatePayload(type: LedgerRecordType, value: JsonValue): void {
       if (!Number.isSafeInteger(payload.issuer_key_epoch) || Number(payload.issuer_key_epoch) < 1) {
         throw new Error("claim-schema-invalid: invalid invalidation issuer-key epoch");
       }
-      assertClaimId(payload.issuer_key_digest);
+      assertCanonicalSigningKeyId(payload.issuer_key_digest, "issuer_key_digest");
       if (payload.cause === "source-claim-revoked") {
         assertExactKeys(payload, [
           "cause", "jti", "source_claim_id", "revocation_artifact", "writer_authority_claim_id",
@@ -1775,7 +1885,7 @@ function validatePayload(type: LedgerRecordType, value: JsonValue): void {
           "cause", "jti", "signing_key_id", "compromise_evidence", "writer_authority_claim_id",
           "authority_checkpoint", "issuer_key_epoch", "issuer_key_digest",
         ], "key invalidation payload");
-        assertClaimId(payload.signing_key_id);
+        assertCanonicalSigningKeyId(payload.signing_key_id);
         const compromise = payloadObject(payload.compromise_evidence);
         assertExactKeys(compromise, ["detected_at", "evidence_digest"], "key compromise evidence");
         if (!Number.isSafeInteger(compromise.detected_at)) throw new Error("claim-schema-invalid: invalid compromise time");
@@ -2028,7 +2138,7 @@ function validateLedgerStateInvariants(
       assertPlainObject(material.envelope, "canonical issuer envelope");
       assertExactKeys(material.envelope, [
         "object_type", "persona", "repository_rid", "checkpoint_commit_oid", "epoch",
-        "audience_key_id", "previous_key_id", "content_digest", "nonce", "ciphertext",
+        "audience_key_id", "previous_key_id", "signing_key_id", "content_digest", "nonce", "ciphertext",
         "authority_record_ids", "authority_record_set_digest", "recipient_wraps", "removed_issuer_nids",
       ], "canonical issuer envelope");
       if (!Array.isArray(material.envelope.recipient_wraps) ||
@@ -2046,7 +2156,7 @@ function validateLedgerStateInvariants(
         material.envelope.object_type !== "oidc-signing-jwk-v1" ||
         material.envelope.persona !== record.persona ||
         material.envelope.repository_rid !== context.repository.repository_rid ||
-        material.envelope.content_digest !== payload.key_digest || material.envelope.epoch !== payload.epoch ||
+        material.envelope.signing_key_id !== payload.key_digest || material.envelope.epoch !== payload.epoch ||
         material.envelope.checkpoint_commit_oid !== payload.checkpoint.commit_oid ||
         jcsCanonicalize(material.envelope.authority_record_ids) !== jcsCanonicalize(expectedAuthorityIds) ||
         material.envelope.authority_record_set_digest !== digestJson(expectedAuthorityIds) ||
@@ -2345,6 +2455,7 @@ function validatePreviousIssuerKeyEnvelope(input: {
   repository_rid: string;
   next_epoch: number;
   next_audience_key_id: string;
+  next_signing_key_id: string;
   next_content_digest: string;
 }): string[] {
   try {
@@ -2352,16 +2463,17 @@ function validatePreviousIssuerKeyEnvelope(input: {
     assertPlainObject(envelope, "previous issuer envelope");
     assertExactKeys(envelope, [
       "object_type", "persona", "repository_rid", "checkpoint_commit_oid", "epoch",
-      "audience_key_id", "previous_key_id", "content_digest", "nonce", "ciphertext",
+      "audience_key_id", "previous_key_id", "signing_key_id", "content_digest", "nonce", "ciphertext",
       "authority_record_ids", "authority_record_set_digest", "recipient_wraps", "removed_issuer_nids",
     ], "previous issuer envelope");
+    assertCanonicalSigningKeyId(envelope.signing_key_id, "previous issuer signing_key_id");
     if (envelope.object_type !== "oidc-signing-jwk-v1" || envelope.persona !== input.persona ||
         envelope.repository_rid !== input.repository_rid || !Number.isSafeInteger(envelope.epoch) || envelope.epoch < 1 ||
         input.next_epoch !== envelope.epoch + 1 || !HEX_32.test(envelope.audience_key_id) ||
         !HEX_32.test(envelope.previous_key_id) || !HEX_32.test(envelope.content_digest) ||
         !/^[0-9a-f]{48}$/.test(envelope.nonce) || !/^[0-9a-f]+$/.test(envelope.ciphertext) ||
         envelope.ciphertext.length < 32 || envelope.ciphertext.length % 2 !== 0 ||
-        envelope.content_digest === input.next_content_digest ||
+        envelope.content_digest === input.next_content_digest || envelope.signing_key_id === input.next_signing_key_id ||
         envelope.audience_key_id === input.next_audience_key_id ||
         bytesToHex(sha256(input.previous.audience_key)) !== envelope.audience_key_id) {
       throw new Error("binding");

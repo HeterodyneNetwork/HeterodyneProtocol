@@ -10,124 +10,19 @@
     "heterodyne:comms/0.5.0#comms-conformance"
   ],
   "vector_id": "oidc/pairwise-subject",
-  "description": "The accepted release uses a registration-bound pairwise subject and does not expose a persona or key identifier as sub.",
+  "description": "The same authenticated local subject derives distinct pairwise subjects for distinct sectors.",
   "input": {
-    "operation": "authorization",
-    "request": {
-      "flow": "authorization_code",
-      "grant_type": "authorization_code",
-      "response_type": "code",
-      "client_id": "registered-client",
-      "registration": {
-        "client_id": "registered-client",
-        "redirect_uris": [
-          "https://client.example/cb"
-        ],
-        "grant_types": [
-          "authorization_code",
-          "urn:ietf:params:oauth:grant-type:device_code"
-        ],
-        "scopes": [
-          "heterodyne:key-ref",
-          "openid",
-          "profile"
-        ],
-        "audiences": [
-          "https://api.example"
-        ],
-        "assertion_profiles": [
-          "urn:example:jwt-assertion:v1"
-        ],
-        "sector_identifier": "https://client.example"
-      },
-      "registration_status": "active",
-      "redirect_uri": "https://client.example/cb",
-      "code_challenge": "Wz4aL3h4c3Nad0JzV2k1NVJiUU1JQjRXM1c4SjJVUGV5TQ",
-      "code_challenge_method": "S256",
-      "requested_scopes": [
-        "openid",
-        "profile",
-        "heterodyne:key-ref"
-      ],
-      "requested_audiences": [
-        "https://api.example"
-      ],
-      "consented_scopes": [
-        "openid",
-        "profile"
-      ],
-      "consented_audiences": [
-        "https://api.example"
-      ],
-      "consented_claims": [
-        "name"
-      ],
-      "trusted_namespaces": [
-        "profile"
-      ],
-      "pairwise_subject_context": {
-        "local_subject": "persona-local-subject",
-        "sector_identifier": "https://client.example",
-        "secret": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      },
-      "pairwise_sub": "s-vbQ9jYDAUE_HrqanRf_SQ6gDGpbrEUZ0JublvMsqg",
-      "canonical_claim_state": true,
-      "ledger_checkpoint": {
-        "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-        "branch": "main",
-        "commit_oid": "1212121212121212121212121212121212121212",
-        "observed_at": 1767230599
-      },
-      "active_claims": [
-        {
-          "claim_id": "2222222222222222222222222222222222222222222222222222222222222222",
-          "namespace": "profile",
-          "name": "name",
-          "value": "Alice",
-          "state": "active",
-          "repository_confirmed": true,
-          "issuer_trusted": true,
-          "subject_proof_valid": true
-        },
-        {
-          "claim_id": "2323232323232323232323232323232323232323232323232323232323232323",
-          "namespace": "internal",
-          "name": "private-provenance",
-          "value": "never-release",
-          "state": "active",
-          "repository_confirmed": true,
-          "issuer_trusted": true,
-          "subject_proof_valid": true
-        }
-      ]
-    }
+    "operation": "pairwise-sectors",
+    "local_subject": "9e2d8f969662fd7c68c9cc68c7b205c853ba7d070dc1914e3cd6ae1434003e02",
+    "first_sector": "https://client.example",
+    "second_sector": "https://other-client.example",
+    "secret": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "allowed": true,
-      "state": "active",
-      "reason_code": null,
-      "pairwise_sub": "s-vbQ9jYDAUE_HrqanRf_SQ6gDGpbrEUZ0JublvMsqg",
-      "scopes": [
-        "openid",
-        "profile"
-      ],
-      "audience": [
-        "https://api.example"
-      ],
-      "released_claims": {
-        "name": "Alice"
-      },
-      "source_claim_ids": [
-        "2222222222222222222222222222222222222222222222222222222222222222"
-      ],
-      "checkpoint": {
-        "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-        "branch": "main",
-        "commit_oid": "1212121212121212121212121212121212121212",
-        "observed_at": 1767230599
-      }
+      "first": "2T_5Exd2p7vtPCuPlSVfARQVkXHX-jff1EtPAjFeQS0",
+      "second": "Wx7ESt_gf_arbJcT0tGjSJlWapGmIC4J1KpVoo_Kg1k"
     }
   },
   "direction": "consume"
