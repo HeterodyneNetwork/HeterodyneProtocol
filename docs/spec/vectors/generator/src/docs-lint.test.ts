@@ -48,6 +48,101 @@ const anchorMapPath = resolve(
 );
 const releasesPath = resolve(repositoryRoot, "docs/spec/releases");
 const threatModelPath = resolve(repositoryRoot, "docs/security/threat-model.md");
+
+type AcceptanceEvidence = {
+  criterion: string;
+  summary: string;
+  adr: string[];
+  comms: string[];
+  registry: string[];
+  vectors: string[];
+  invariants: string[];
+};
+
+const acceptanceEvidence = (criterion: string, summary: string, adr: string[], comms: string[],
+  registry: string[], vectors: string[], invariants: string[]): AcceptanceEvidence => ({
+  criterion, summary, adr: [...adr].sort(), comms: [...comms].sort(), registry: [...registry].sort(),
+  vectors: [...vectors].sort(), invariants: [...invariants].sort(),
+});
+
+const ADR034 = "docs/adr/2026-07-18-034-key-claims-private-ledger-oidc-projection.md";
+const ADR033 = "docs/adr/2026-07-16-033-four-document-protocol-family-split.md";
+const C = "heterodyne:comms/0.5.0";
+
+const EXPECTED_ACCEPTANCE_EVIDENCE: AcceptanceEvidence[] = [
+  acceptanceEvidence("1", "A new accepted ADR records the kind allocations, ownership, draft-21 pin, repository authority, and OIDC projection.", [
+    `${ADR034}#ownership-and-allocations`, `${ADR034}#authoritative-private-multi-writer-ledger`,
+    `${ADR034}#oauthoidc-and-interoperable-jwt-profile`, `${ADR034}#draft-21-token-status-and-writer-allocation`,
+  ], [`${C}#comms-key-claims`, `${C}#comms-claim-ledger`, `${C}#comms-jwt-projection`, `${C}#comms-token-status`], [
+    "kind:31013", "kind:31014", "registry revision 2",
+  ], ["claims/001-canonical-nostr-subject", "claim-ledger/001-reader-nid-authorized",
+    "oidc/009-rfc9068-access-token-valid", "token-status/001-valid-status-list"], [
+    "COMMS-I-CLAIM-AUTHENTICITY", "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
+    "COMMS-I-JWT-TYPE-AUDIENCE", "COMMS-I-STATUS-INTEGRITY",
+  ]),
+  acceptanceEvidence("2", "The ADR-033 split is complete and the design integrates into Comms with bounded Core/Control amendments only.", [
+    `${ADR033}#a-document-set-and-dependency-direction`, `${ADR033}#b-document-boundaries`, `${ADR034}#ownership-and-allocations`,
+  ], [`${C}#comms-scope`, `${C}#comms-conformance`], ["registry revision 2"], [
+    "versioning/008-per-document-negotiation", "stamping/008-control-carrier-comms-owner",
+  ], ["COMMS-I-CLAIM-AUTHENTICITY"]),
+  acceptanceEvidence("3", "Claim verification and merge behavior are deterministic and vectorized.", [
+    `${ADR034}#atomic-claims-and-native-subject-proof`, `${ADR034}#layered-and-irreversible-revocation`,
+    `${ADR034}#authoritative-private-multi-writer-ledger`,
+  ], [`${C}#comms-claim-verification`, `${C}#comms-claim-revocation`, `${C}#comms-claim-ledger`], [
+    "kind:31013", "kind:31014", "COMMS-I-CLAIM-AUTHENTICITY", "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
+    "COMMS-I-CLAIM-REVOCATION",
+  ], ["claims/004-claim-id-mismatch", "claims/005-persona-issuance-active",
+    "claim-ledger/005-multiwriter-revocation-wins", "claim-ledger/007-nonmonotonic-conflict-blocks"], [
+    "COMMS-I-CLAIM-AUTHENTICITY", "COMMS-I-CLAIM-REPOSITORY-AUTHORITY", "COMMS-I-CLAIM-REVOCATION",
+  ]),
+  acceptanceEvidence("4", "Private metadata is absent from public repos and outer transport metadata.", [
+    `${ADR034}#atomic-claims-and-native-subject-proof`, `${ADR034}#authoritative-private-multi-writer-ledger`,
+    `${ADR034}#one-issuer-and-simultaneous-radicle-continuity`,
+  ], [`${C}#comms-key-claims`, `${C}#comms-claim-ledger`, `${C}#comms-issuer-continuity`], [
+    "kind:31013", "COMMS-I-LEDGER-CONFINEMENT",
+  ], ["claims/018-pairwise-private-dr-delivery", "claim-ledger/009-keyed-path-metadata-private"], [
+    "COMMS-I-LEDGER-CONFINEMENT",
+  ]),
+  acceptanceEvidence("5", "Multiple authorized nodes can mint without index collisions or stale-state authorization.", [
+    `${ADR034}#shared-issuer-keys-and-mint-authority`, `${ADR034}#draft-21-token-status-and-writer-allocation`,
+  ], [`${C}#comms-multiwriter-minting`, `${C}#comms-token-status`], [
+    "COMMS-I-ISSUER-KEY-CONFINEMENT", "COMMS-I-MINT-FRESHNESS", "COMMS-I-STATUS-INTEGRITY",
+  ], ["claim-ledger/011-multiwriter-status-allocation", "claim-ledger/012-stale-minter-denied"], [
+    "COMMS-I-ISSUER-KEY-CONFINEMENT", "COMMS-I-MINT-FRESHNESS", "COMMS-I-STATUS-INTEGRITY",
+  ]),
+  acceptanceEvidence("6", "Vanilla OIDC/OAuth parties can validate JWTs without Heterodyne software.", [
+    `${ADR034}#oauthoidc-and-interoperable-jwt-profile`, `${ADR034}#draft-21-token-status-and-writer-allocation`,
+  ], [`${C}#comms-oidc-endpoints`, `${C}#comms-jwt-projection`, `${C}#comms-token-status`], [
+    "COMMS-I-JWT-TYPE-AUDIENCE", "COMMS-I-STATUS-INTEGRITY",
+  ], ["oidc/001-discovery-exact-issuer", "oidc/008-id-token-valid", "oidc/009-rfc9068-access-token-valid",
+    "token-status/001-valid-status-list"], ["COMMS-I-JWT-TYPE-AUDIENCE", "COMMS-I-STATUS-INTEGRITY"]),
+  acceptanceEvidence("7", "Heterodyne-aware parties can recover issuer keys and token status from the canonical public Radicle mirror.", [
+    `${ADR034}#one-issuer-and-simultaneous-radicle-continuity`, `${ADR034}#draft-21-token-status-and-writer-allocation`,
+  ], [`${C}#comms-issuer-continuity`, `${C}#comms-token-status`], [
+    "COMMS-I-ISSUER-CONTINUITY", "COMMS-I-STATUS-INTEGRITY",
+  ], ["token-status/005-https-radicle-byte-identity", "token-status/007-https-outage-radicle-fallback",
+    "token-status/008-issuer-successor"], ["COMMS-I-ISSUER-CONTINUITY", "COMMS-I-STATUS-INTEGRITY"]),
+  acceptanceEvidence("8", "Registry, schema, generator, threat model, and companion documentation all pass the family conformance checks.", [
+    `${ADR034}#security-and-privacy-consequences`, `${ADR034}#conformance-obligations`,
+  ], [`${C}#comms-security`, `${C}#comms-conformance`], [
+    "registry revision 2", "registry digest b52c0a6f99fdb8a34fa761a74c8374a5a55bd3b0e0494e9d973589e00febccf9",
+  ], ["claims/*", "claim-ledger/*", "oidc/*", "token-status/*", "registry/002-frozen-entry-immutable",
+    "versioning/008-per-document-negotiation", "stamping/008-control-carrier-comms-owner"], [
+    "COMMS-I-CLAIM-AUTHENTICITY", "COMMS-I-CLAIM-ATTENUATION", "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
+    "COMMS-I-CLAIM-REVOCATION", "COMMS-I-LEDGER-CONFINEMENT", "COMMS-I-ISSUER-KEY-CONFINEMENT",
+    "COMMS-I-MINT-FRESHNESS", "COMMS-I-ISSUER-CONTINUITY", "COMMS-I-CLAIM-RELEASE",
+    "COMMS-I-JWT-TYPE-AUDIENCE", "COMMS-I-STATUS-INTEGRITY",
+  ]),
+];
+
+function parseAcceptanceEvidence(markdown: string): AcceptanceEvidence[] {
+  return markdown.split("\n").filter((line) => /^\| [1-8] \|/.test(line)).map((line) => {
+    const cells = line.slice(2, -2).split(" | ");
+    const tokens = (cell = ""): string[] => [...cell.matchAll(/`([^`]+)`/g)].map((match) => match[1]);
+    return acceptanceEvidence(cells[0], cells[1], tokens(cells[2]), tokens(cells[3]), tokens(cells[4]),
+      tokens(cells[5]), tokens(cells[6]));
+  });
+}
 const companionPaths = [
   "README.md",
   "CLAUDE.md",
@@ -1926,47 +2021,88 @@ describe("protocol family documents", () => {
 
   it("publishes an eight-criterion claims/OIDC acceptance evidence map", () => {
     const threatModel = readFileSync(threatModelPath, "utf8");
-    const rows = [...threatModel.matchAll(
-      /^\| ([1-8]) \| `(docs\/adr\/2026-07-18-034-key-claims-private-ledger-oidc-projection\.md#[^`]+)` \| `(heterodyne:comms\/0\.5\.0#comms-[a-z0-9-]+)` \| `([^`]+)` \| `((?:claims|claim-ledger|oidc|token-status)\/[^`]+)` \| `(COMMS-I-[A-Z0-9-]+)` \|$/gm,
-    )];
-    expect(rows.map((row) => row[1])).toEqual(["1", "2", "3", "4", "5", "6", "7", "8"]);
-    const comms = readFileSync(commsPath, "utf8");
-    const adr034 = readFileSync(
-      resolve(repositoryRoot, "docs/adr/2026-07-18-034-key-claims-private-ledger-oidc-projection.md"),
-      "utf8",
+    const rows = parseAcceptanceEvidence(threatModel);
+    expect(rows).toEqual(EXPECTED_ACCEPTANCE_EVIDENCE);
+    expect(readFileSync(resolve(repositoryRoot, ADR034), "utf8")).toContain(
+      "**Status:** Accepted",
     );
-    const adrAnchors = new Set(githubHeadingAnchors(adr034));
+    const comms = readFileSync(commsPath, "utf8");
     const registry = loadRegistry(repositoryRoot);
     const invariantIds = new Set(registry.currentEntrySet.security_invariants.map(({ id }) => id));
-    const profileIds = new Set(registry.currentEntrySet.kinds.flatMap(({ profiles }) =>
-      profiles.map(({ profile_id }) => profile_id),
-    ));
     for (const row of rows) {
-      expect(adrAnchors).toContain(`#${row[2].split("#")[1]}`);
-      expect(comms).toContain(`<a id="${row[3].split("#")[1]}"></a>`);
-      const registryEntry = row[4];
-      if (registryEntry === "kind:31013 and kind:31014") {
-        expect(registry.currentEntrySet.kinds.map(({ kind }) => kind)).toEqual(
-          expect.arrayContaining([31013, 31014]),
-        );
-      } else if (registryEntry === "registry revision 2") {
-        expect(registry.manifest.revision).toBe(2);
-      } else if (registryEntry.startsWith("COMMS-I-")) {
-        expect(invariantIds).toContain(registryEntry);
-      } else {
-        expect(profileIds).toContain(registryEntry);
+      for (const adrRef of row.adr) {
+        const [path, anchor] = adrRef.split("#");
+        const adr = readFileSync(resolve(repositoryRoot, path), "utf8");
+        expect(new Set(githubHeadingAnchors(adr)), adrRef).toContain(`#${anchor}`);
       }
-      const vectorEvidence = row[5];
-      if (vectorEvidence.includes(" + ")) {
-        for (const group of vectorEvidence.split(" + ")) {
-          const directory = resolve(repositoryRoot, "docs/spec/vectors", group.replace(/\/\*$/, ""));
-          expect(readdirSync(directory).some((name) => name.endsWith(".json"))).toBe(true);
+      for (const commsRef of row.comms) {
+        expect(comms, commsRef).toContain(`<a id="${commsRef.split("#")[1]}"></a>`);
+      }
+      for (const registryEntry of row.registry) {
+        if (/^kind:[0-9]+$/.test(registryEntry)) {
+          expect(registry.currentEntrySet.kinds.map(({ kind }) => kind)).toContain(Number(registryEntry.slice(5)));
+        } else if (registryEntry === "registry revision 2") {
+          expect(registry.manifest.revision).toBe(2);
+        } else if (registryEntry.startsWith("registry digest ")) {
+          expect(registry.manifest.entry_set_sha256).toBe(registryEntry.slice("registry digest ".length));
+        } else {
+          expect(invariantIds).toContain(registryEntry);
         }
-      } else {
-        expect(existsSync(resolve(repositoryRoot, "docs/spec/vectors", `${vectorEvidence}.json`))).toBe(true);
       }
-      expect(invariantIds).toContain(row[6]);
+      for (const vectorEvidence of row.vectors) {
+        if (vectorEvidence.endsWith("/*")) {
+          const directory = resolve(repositoryRoot, "docs/spec/vectors", vectorEvidence.slice(0, -2));
+          expect(readdirSync(directory).some((name) => name.endsWith(".json"))).toBe(true);
+        } else {
+          expect(existsSync(resolve(repositoryRoot, "docs/spec/vectors", `${vectorEvidence}.json`))).toBe(true);
+        }
+      }
+      for (const invariant of row.invariants) expect(invariantIds).toContain(invariant);
     }
+  });
+
+  it("rejects valid but criterion-irrelevant acceptance evidence swaps", () => {
+    const threatModel = readFileSync(threatModelPath, "utf8");
+    const swapInCriterion = (criterion: string, from: string, to: string): string => threatModel
+      .split("\n")
+      .map((line) => line.startsWith(`| ${criterion} |`) ? line.replace(`\`${from}\``, `\`${to}\``) : line)
+      .join("\n");
+
+    const wrongVector = swapInCriterion("6", "oidc/001-discovery-exact-issuer", "claims/001-canonical-nostr-subject");
+    const wrongRegistryEntry = swapInCriterion("6", "COMMS-I-JWT-TYPE-AUDIENCE", "kind:31013");
+    expect(parseAcceptanceEvidence(wrongVector)).not.toEqual(EXPECTED_ACCEPTANCE_EVIDENCE);
+    expect(parseAcceptanceEvidence(wrongRegistryEntry)).not.toEqual(EXPECTED_ACCEPTANCE_EVIDENCE);
+  });
+
+  it("documents mixed immutable registry revisions without rewriting vector history", () => {
+    const readme = readFileSync(resolve(repositoryRoot, "docs/spec/vectors/README.md"), "utf8");
+    const coverage = JSON.parse(
+      readFileSync(resolve(repositoryRoot, "docs/spec/vectors/coverage/manifest.json"), "utf8"),
+    ) as Array<{ registry_revision: number }>;
+    const counts = new Map<number, number>();
+    for (const { registry_revision: revision } of coverage) counts.set(revision, (counts.get(revision) ?? 0) + 1);
+
+    expect(readme).toContain('"registry_revision": "<pinned-registry-revision>"');
+    expect(readme).toContain(`${counts.get(1)} immutable registry-revision-1 vectors`);
+    expect(readme).toContain(`${counts.get(2)} ADR-034 registry-revision-2 vectors`);
+    expect(readme).toMatch(/historical vectors[\s\S]*MUST NOT[\s\S]*rewritten/i);
+  });
+
+  it("maps exact revocation stamp, tag, and proof checks to their revocation vector", () => {
+    const threatModel = readFileSync(threatModelPath, "utf8");
+    const row = threatModel.split("\n").find((line) => line.startsWith("| Claim forgery or semantic malleation |"));
+    expect(row).toContain("`claims/015-authorization-self-revocation`");
+    expect(row).toContain("`kind:31014`");
+    expect(row).toContain("`comms/0.5.0`");
+    expect(row).toContain('`[["d","<claim_id>"]]`');
+    expect(row).toMatch(/native proof[\s\S]*Comms profile[\s\S]*registry revision/i);
+  });
+
+  it("keeps release approval as the only remaining 0.5.0 release condition", () => {
+    const changelog = readFileSync(resolve(repositoryRoot, "CHANGELOG.md"), "utf8");
+    const unreleased = sectionUnderHeading(changelog, "## [Unreleased]");
+    expect(unreleased).toMatch(/unreleased[\s\S]*explicit release approval/i);
+    expect(unreleased).not.toMatch(/until the claims\/OIDC\s+work is complete/i);
   });
 
   it("advertises claims/OIDC release features only from Comms", () => {

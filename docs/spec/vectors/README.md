@@ -24,7 +24,7 @@ Every vector validates against
   "dependency_versions": {
     "<permitted-lower-document>": "<document>/0.5.0"
   },
-  "registry_revision": 2,
+  "registry_revision": "<pinned-registry-revision>",
   "profile": "<optional immutable profile id>",
   "spec_refs": ["heterodyne:<document>/0.5.0#<permanent-anchor>"],
   "description": "<behavior>",
@@ -37,6 +37,13 @@ Every vector validates against
 The former scalar `spec_version` is not vector metadata. A `spec_version`
 inside a tested event's `input` or `expected_output` is part of that event's
 wire format and is not the vector envelope version.
+
+The schema requires each actual vector's `registry_revision` to be an integer;
+the placeholder above means that every vector pins the revision governing its
+behavior. The current coverage manifest contains 262 immutable registry-revision-1 vectors
+and 55 ADR-034 registry-revision-2 vectors. Historical vectors and the signed
+behavior they describe MUST NOT be rewritten to the latest registry revision.
+Changed behavior receives a new vector ID.
 
 Dependency versions follow the family DAG:
 

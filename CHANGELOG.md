@@ -10,13 +10,11 @@ compatibility contract takes effect independently when a document reaches
 
 ADR-033 split the 0.4.0 monolith and prepared four independently versioned
 0.5.0 documents. Their contents are current normative authority at their
-repository paths, but the versions remain unreleased until the claims/OIDC
-work is complete and explicit release approval is given.
+repository paths, but the versions remain untagged and unreleased pending
+explicit release approval.
 [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is now the non-normative
 family map. Prepared release combinations and the exact registry digest are
 recorded in [machine-readable manifests](docs/spec/releases/).
-The documents remain untagged and unreleased pending explicit release
-approval.
 
 ### Core 0.5.0
 
