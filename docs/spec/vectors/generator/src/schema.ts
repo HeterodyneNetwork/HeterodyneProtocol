@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { Ajv, type AnySchema, type ErrorObject, type JSONSchemaType } from "ajv";
 import { reasonCodeValues } from "./reason-codes.js";
 import { parseQualifiedVersion } from "./family.js";
+import { jcsCanonicalize } from "./jcs.js";
 import type { DocumentId, Vector } from "./types.js";
 
 const REGISTRY_REASON_CODES = reasonCodeValues();
@@ -131,6 +132,7 @@ export function validateVectorOrThrow(value: unknown): asserts value is Vector {
 }
 
 export function validateKeyClaimSchemaOrThrow(value: unknown): void {
+  assertJcsInput(value);
   if (!validateKeyClaim(value)) {
     throw new Error(`claim-schema-invalid: ${formatErrors(validateKeyClaim.errors ?? [])}`);
   }
@@ -144,12 +146,21 @@ export function validateKeyClaimSchemaOrThrow(value: unknown): void {
 }
 
 export function validateClaimRevocationSchemaOrThrow(value: unknown): void {
+  assertJcsInput(value);
   if (!validateClaimRevocation(value)) {
     throw new Error(`claim-schema-invalid: ${formatErrors(validateClaimRevocation.errors ?? [])}`);
   }
   const reasonCode = (value as { reason_code: string }).reason_code;
   if (!REGISTRY_REASON_CODES.includes(reasonCode)) {
     throw new Error(`claim-schema-invalid: reason_code is not registered: ${reasonCode}`);
+  }
+}
+
+function assertJcsInput(value: unknown): void {
+  try {
+    jcsCanonicalize(value);
+  } catch (error) {
+    throw new Error(`claim-schema-invalid: ${error instanceof Error ? error.message : "invalid JCS value"}`);
   }
 }
 

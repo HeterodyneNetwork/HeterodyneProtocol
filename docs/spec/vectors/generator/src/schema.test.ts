@@ -210,6 +210,16 @@ describe("Comms claim schemas", () => {
     expect(() => validateKeyClaimSchemaOrThrow({ ...base, expires_at: base.not_before - 1 })).toThrow(/expires_at/);
   });
 
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    "rejects non-finite numeric fields through the direct claim API: %s",
+    (value) => expect(() => validateKeyClaimSchemaOrThrow({ ...base, issued_at: value })).toThrow(),
+  );
+
+  it("rejects non-finite values recursively through the direct claim API", () => {
+    expect(() => validateKeyClaimSchemaOrThrow({ ...base, value: { nested: [Number.NaN] } })).toThrow(/finite|JCS|number/);
+    expect(() => validateKeyClaimSchemaOrThrow({ ...base, value: [Number.POSITIVE_INFINITY] })).toThrow(/finite|JCS|number/);
+  });
+
   it("accepts exact revocations and rejects unregistered reasons and extras", () => {
     const revocation = {
       claim_id: base.claim_id,
@@ -220,5 +230,6 @@ describe("Comms claim schemas", () => {
     expect(() => validateClaimRevocationSchemaOrThrow(revocation)).not.toThrow();
     expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, reason_code: "not-registered" })).toThrow(/reason_code/);
     expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, extra: true })).toThrow(/additional/);
+    expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, revoked_at: Number.NEGATIVE_INFINITY })).toThrow();
   });
 });

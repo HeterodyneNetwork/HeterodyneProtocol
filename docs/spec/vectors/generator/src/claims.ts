@@ -1,5 +1,6 @@
 import { createPublicKey, verify as verifyNativeSignature, type JsonWebKey } from "node:crypto";
 import { ed25519 } from "@noble/curves/ed25519";
+import { p256 } from "@noble/curves/nist";
 import { schnorr } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha2";
 import { base58 } from "@scure/base";
@@ -91,6 +92,8 @@ const LOWER_HEX_32_PATTERN = /^[0-9a-f]{64}$/;
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
 const REGISTERED_REASON_CODES = new Set(reasonCodeValues());
 const PRIVATE_JWK_MEMBERS = new Set(["d", "k", "p", "q", "dp", "dq", "qi", "oth"]);
+const REMOTE_JWK_MEMBERS = new Set(["jku", "x5u"]);
+const NIP01_SIGNED_EVENT_FIELDS = ["content", "created_at", "id", "kind", "pubkey", "sig", "tags"];
 
 export function computeClaimId(body: Omit<ClaimSemanticBody, "claim_id">): string {
   const { claim_id: _omitted, ...semantic } = body as Omit<ClaimSemanticBody, "claim_id"> & {
@@ -112,6 +115,7 @@ export function validateClaimEnvelope(
   event: NostrSignedEvent,
   context: ClaimEnvelopeContext,
 ): ClaimSemanticBody {
+  assertNip01EventStructure(event);
   assertAddressedCommsEvent(event, CLAIM_KIND);
   const parsed = parseCanonicalContent(event.content, "claim") as unknown;
   validateKeyClaimSchemaOrThrow(parsed);
@@ -150,6 +154,7 @@ export function revocationProofPayload(body: RevocationProofBody): string {
 }
 
 export function validateClaimRevocationEnvelope(event: NostrSignedEvent): VerifiedRevocation {
+  assertNip01EventStructure(event);
   assertAddressedCommsEvent(event, REVOCATION_KIND);
   const parsed = parseCanonicalContent(event.content, "revocation") as unknown;
   validateClaimRevocationSchemaOrThrow(parsed);
@@ -184,6 +189,10 @@ export function validateKeyRef(key: KeyRef): void {
     if (!/^[A-Za-z0-9_-]{43}$/.test(key.value)) {
       throw new Error("claim-key-reference-invalid: JWK thumbprint must be a canonical SHA-256 base64url value");
     }
+    const decoded = decodeCanonicalBase64url(key.value, "JWK thumbprint");
+    if (decoded.length !== 32) {
+      throw new Error("claim-key-reference-invalid: JWK thumbprint must decode to exactly 32 bytes");
+    }
     return;
   }
   throw new Error("claim-key-reference-invalid: unsupported typed key reference");
@@ -198,6 +207,42 @@ export function computeJwkThumbprint(jwk: Record<string, JsonValue>): string {
 function assertAddressedCommsEvent(event: NostrSignedEvent, expectedKind: number): void {
   if (event.kind !== expectedKind) {
     throw new Error(`claim-schema-invalid: expected kind:${expectedKind}`);
+  }
+}
+
+function assertNip01EventStructure(event: NostrSignedEvent): void {
+  if (event === null || Array.isArray(event) || typeof event !== "object") {
+    throw new Error("claim-event-signature-invalid: NIP-01 event structure must be an object");
+  }
+  const fields = Reflect.ownKeys(event);
+  if (
+    fields.some((field) => typeof field !== "string") ||
+    fields.length !== NIP01_SIGNED_EVENT_FIELDS.length ||
+    [...(fields as string[])].sort().some((field, index) => field !== NIP01_SIGNED_EVENT_FIELDS[index])
+  ) {
+    throw new Error("claim-event-signature-invalid: NIP-01 signed event has unexpected or missing fields");
+  }
+  if (
+    typeof event.id !== "string" ||
+    typeof event.pubkey !== "string" ||
+    !LOWER_HEX_32_PATTERN.test(event.id) ||
+    !LOWER_HEX_32_PATTERN.test(event.pubkey)
+  ) {
+    throw new Error("claim-event-signature-invalid: NIP-01 id and pubkey require lowercase 64-hex encoding");
+  }
+  if (typeof event.sig !== "string" || !/^[0-9a-f]{128}$/.test(event.sig)) {
+    throw new Error("claim-event-signature-invalid: NIP-01 sig requires lowercase 128-hex encoding");
+  }
+  if (!Number.isSafeInteger(event.created_at) || event.created_at < 0) {
+    throw new Error("claim-event-signature-invalid: NIP-01 created_at must be a nonnegative safe integer");
+  }
+  if (!Number.isInteger(event.kind) || typeof event.content !== "string" || !Array.isArray(event.tags)) {
+    throw new Error("claim-event-signature-invalid: NIP-01 kind, content, or tags has the wrong type");
+  }
+  for (const tag of event.tags) {
+    if (!Array.isArray(tag) || tag.length === 0 || tag.some((member) => typeof member !== "string")) {
+      throw new Error("claim-event-signature-invalid: every NIP-01 tag must be a non-empty string array");
+    }
   }
 }
 
@@ -308,18 +353,58 @@ function parseLowerHex(value: string, bytes: number, label: string): Uint8Array 
 function thumbprintMembers(jwk: Record<string, JsonValue>): Record<string, string> {
   const kty = requireJwkString(jwk, "kty");
   if (kty === "RSA") {
-    return { e: requireCanonicalBase64urlMember(jwk, "e"), kty, n: requireCanonicalBase64urlMember(jwk, "n") };
+    const n = requireBase64urlUInt(jwk, "n");
+    const e = requireBase64urlUInt(jwk, "e");
+    const modulusBits = (n.bytes.length - 1) * 8 + (32 - Math.clz32(n.bytes[0]));
+    if (modulusBits < 2048) {
+      throw new Error("claim-key-reference-invalid: RSA modulus must be at least 2048 bits");
+    }
+    if ((n.bytes[n.bytes.length - 1] & 1) === 0) {
+      throw new Error("claim-key-reference-invalid: RSA modulus is not a valid odd public modulus");
+    }
+    const exponent = bytesToBigInt(e.bytes);
+    if (exponent < 3n || (exponent & 1n) === 0n) {
+      throw new Error("claim-key-reference-invalid: RSA exponent is not a valid odd public exponent");
+    }
+    return { e: e.value, kty, n: n.value };
   }
   if (kty === "EC") {
+    const crv = requireJwkString(jwk, "crv");
+    if (crv !== "P-256") {
+      throw new Error(`claim-key-reference-invalid: unsupported EC curve ${crv}`);
+    }
+    const x = requireExactBase64urlMember(jwk, "x", 32);
+    const y = requireExactBase64urlMember(jwk, "y", 32);
+    const encoded = new Uint8Array(65);
+    encoded[0] = 0x04;
+    encoded.set(x.bytes, 1);
+    encoded.set(y.bytes, 33);
+    try {
+      p256.Point.fromBytes(encoded).assertValidity();
+    } catch {
+      throw new Error("claim-key-reference-invalid: P-256 coordinates do not encode a valid public point");
+    }
     return {
-      crv: requireJwkString(jwk, "crv"),
+      crv,
       kty,
-      x: requireCanonicalBase64urlMember(jwk, "x"),
-      y: requireCanonicalBase64urlMember(jwk, "y"),
+      x: x.value,
+      y: y.value,
     };
   }
   if (kty === "OKP") {
-    return { crv: requireJwkString(jwk, "crv"), kty, x: requireCanonicalBase64urlMember(jwk, "x") };
+    const crv = requireJwkString(jwk, "crv");
+    if (crv !== "Ed25519") {
+      throw new Error(`claim-key-reference-invalid: unsupported OKP curve ${crv}`);
+    }
+    const x = requireExactBase64urlMember(jwk, "x", 32);
+    try {
+      const point = ed25519.Point.fromBytes(x.bytes, false);
+      point.assertValidity();
+      if (point.isSmallOrder() || !point.isTorsionFree()) throw new Error("invalid subgroup");
+    } catch {
+      throw new Error("claim-key-reference-invalid: Ed25519 x does not encode a valid prime-order public point");
+    }
+    return { crv, kty, x: x.value };
   }
   throw new Error(`claim-key-reference-invalid: unsupported public JWK kty ${kty}`);
 }
@@ -333,6 +418,29 @@ function assertPublicJwk(jwk: Record<string, JsonValue>): void {
       throw new Error(`claim-key-reference-invalid: embedded JWK contains private key member ${member}`);
     }
   }
+  for (const member of REMOTE_JWK_MEMBERS) {
+    if (Object.prototype.hasOwnProperty.call(jwk, member)) {
+      throw new Error(`claim-key-reference-invalid: embedded JWK contains prohibited remote-key metadata ${member}`);
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(jwk, "use") && jwk.use !== "sig") {
+    throw new Error("claim-key-reference-invalid: JWK use metadata must be the string sig");
+  }
+  if (Object.prototype.hasOwnProperty.call(jwk, "key_ops")) {
+    const operations = jwk.key_ops;
+    if (
+      !Array.isArray(operations) ||
+      operations.some((operation) => typeof operation !== "string") ||
+      new Set(operations).size !== operations.length ||
+      operations.length !== 1 ||
+      operations[0] !== "verify"
+    ) {
+      throw new Error("claim-key-reference-invalid: JWK key_ops must contain exactly one unique verify operation");
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(jwk, "alg") && typeof jwk.alg !== "string") {
+    throw new Error("claim-key-reference-invalid: JWK alg metadata must be a string");
+  }
 }
 
 function requireJwkString(jwk: Record<string, JsonValue>, member: string): string {
@@ -343,9 +451,34 @@ function requireJwkString(jwk: Record<string, JsonValue>, member: string): strin
   return value;
 }
 
-function requireCanonicalBase64urlMember(jwk: Record<string, JsonValue>, member: string): string {
+function requireExactBase64urlMember(
+  jwk: Record<string, JsonValue>,
+  member: string,
+  bytes: number,
+): { value: string; bytes: Buffer } {
   const value = requireJwkString(jwk, member);
-  decodeCanonicalBase64url(value, `JWK ${member}`);
+  const decoded = decodeCanonicalBase64url(value, `JWK ${member}`);
+  if (decoded.length !== bytes) {
+    throw new Error(`claim-key-reference-invalid: JWK ${member} must decode to exactly ${bytes} bytes`);
+  }
+  return { value, bytes: decoded };
+}
+
+function requireBase64urlUInt(
+  jwk: Record<string, JsonValue>,
+  member: string,
+): { value: string; bytes: Buffer } {
+  const value = requireJwkString(jwk, member);
+  const bytes = decodeCanonicalBase64url(value, `JWK ${member}`);
+  if (bytes.length > 1 && bytes[0] === 0) {
+    throw new Error(`claim-key-reference-invalid: JWK ${member} Base64urlUInt is not minimal (leading zero)`);
+  }
+  return { value, bytes };
+}
+
+function bytesToBigInt(bytes: Uint8Array): bigint {
+  let value = 0n;
+  for (const byte of bytes) value = (value << 8n) | BigInt(byte);
   return value;
 }
 
@@ -418,19 +551,15 @@ function verifyDetachedJws(proof: Extract<KeyProof, { type: "jwk-jws" }>, payloa
 
 function algorithmForJwk(jwk: Record<string, JsonValue>): "EdDSA" | "RS256" | "ES256" {
   assertPublicJwk(jwk);
+  thumbprintMembers(jwk);
   const kty = requireJwkString(jwk, "kty");
   if (kty === "OKP" && requireJwkString(jwk, "crv") === "Ed25519") {
-    requireCanonicalBase64urlMember(jwk, "x");
     return "EdDSA";
   }
   if (kty === "RSA") {
-    requireCanonicalBase64urlMember(jwk, "e");
-    requireCanonicalBase64urlMember(jwk, "n");
     return "RS256";
   }
   if (kty === "EC" && requireJwkString(jwk, "crv") === "P-256") {
-    requireCanonicalBase64urlMember(jwk, "x");
-    requireCanonicalBase64urlMember(jwk, "y");
     return "ES256";
   }
   throw new Error(`claim-subject-proof-invalid: unsupported JWS key or algorithm for ${kty}`);

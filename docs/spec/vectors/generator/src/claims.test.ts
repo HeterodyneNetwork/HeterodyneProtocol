@@ -1,5 +1,6 @@
 import { createHash, generateKeyPairSync, sign as signNative } from "node:crypto";
 import { ed25519 } from "@noble/curves/ed25519";
+import { schnorr } from "@noble/curves/secp256k1";
 import { describe, expect, it } from "vitest";
 import {
   computeClaimId,
@@ -8,13 +9,15 @@ import {
   validateClaimEnvelope,
   validateClaimId,
   validateClaimRevocationEnvelope,
+  validateKeyRef,
   type ClaimRevocation,
   type ClaimSemanticBody,
+  type JsonValue,
 } from "./claims.js";
 import { buildFixtures } from "./fixtures.js";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
-import { signEvent } from "./nostr.js";
+import { getEventId, signEvent, type NostrSignedEvent, type NostrUnsignedEvent } from "./nostr.js";
 
 const fixtures = buildFixtures();
 const epoch = fixtures.personas.alice.epoch_keys.epoch_1;
@@ -151,6 +154,11 @@ describe("canonical key claims", () => {
     });
     expect(() => validateClaimEnvelope(mismatched, { issuer_authorized: true, registry_revision: 2 })).toThrow(/signer.*issuer/);
   });
+
+  it("rejects noncanonical or non-SHA-256 JWK thumbprint references", () => {
+    expect(() => validateKeyRef({ type: "jwk-thumbprint", value: `${"A".repeat(42)}B` })).toThrow(/thumbprint|base64url/);
+    expect(() => validateKeyRef({ type: "jwk-thumbprint", value: "A".repeat(42) })).toThrow(/thumbprint|base64url/);
+  });
 });
 
 describe("claim revocation envelopes", () => {
@@ -196,7 +204,14 @@ describe("claim revocation envelopes", () => {
   });
 
   it("verifies a detached JWS proof and RFC 7638 thumbprint", async () => {
-    const jwk = { kty: "OKP", crv: "Ed25519", x: Buffer.from(hexToBytes(device.public_key)).toString("base64url") };
+    const jwk = {
+      kty: "OKP",
+      crv: "Ed25519",
+      x: Buffer.from(hexToBytes(device.public_key)).toString("base64url"),
+      use: "sig",
+      key_ops: ["verify"],
+      alg: "EdDSA",
+    };
     const thumbprint = computeJwkThumbprint(jwk);
     const unsigned = {
       claim_id: semanticBody().claim_id,
@@ -218,6 +233,48 @@ describe("claim revocation envelopes", () => {
       revoker: { type: "jwk-thumbprint", value: "A".repeat(43) },
     });
     expect(() => validateClaimRevocationEnvelope(wrongThumbprintEvent)).toThrow(/thumbprint/);
+
+    for (const jwkMetadata of [
+      { use: "enc" },
+      { use: 7 },
+      { key_ops: ["verify", "encrypt"] },
+      { key_ops: ["sign"] },
+      { key_ops: ["verify", "verify"] },
+      { key_ops: "verify" },
+      { alg: 7 },
+      { alg: "RS256" },
+      { jku: "https://attacker.example/jwks.json" },
+      { x5u: "https://attacker.example/cert.pem" },
+    ] as Array<Record<string, JsonValue>>) {
+      const invalidMetadata = {
+        ...revocation,
+        proof: { ...revocation.proof!, jwk: { ...jwk, ...jwkMetadata } },
+      } as ClaimRevocation;
+      const invalidMetadataEvent = await revocationEvent(invalidMetadata);
+      expect(() => validateClaimRevocationEnvelope(invalidMetadataEvent)).toThrow(/JWK|metadata|use|key_ops|alg|remote/);
+    }
+  });
+
+  it("rejects non-minimal, undersized, or invalid JWK public forms", () => {
+    const rsa2048 = generateKeyPairSync("rsa", { modulusLength: 2048 }).publicKey.export({ format: "jwk" });
+    expect(() => computeJwkThumbprint(rsa2048 as Record<string, string>)).not.toThrow();
+    const leadingZeroN = Buffer.concat([Buffer.from([0]), Buffer.from(rsa2048.n!, "base64url")]).toString("base64url");
+    expect(() => computeJwkThumbprint({ ...rsa2048, n: leadingZeroN } as Record<string, string>)).toThrow(/minimal|leading zero/);
+    const leadingZeroE = Buffer.concat([Buffer.from([0]), Buffer.from(rsa2048.e!, "base64url")]).toString("base64url");
+    expect(() => computeJwkThumbprint({ ...rsa2048, e: leadingZeroE } as Record<string, string>)).toThrow(/minimal|leading zero/);
+
+    const rsa1024 = generateKeyPairSync("rsa", { modulusLength: 1024 }).publicKey.export({ format: "jwk" });
+    expect(() => computeJwkThumbprint(rsa1024 as Record<string, string>)).toThrow(/2048|modulus/);
+
+    const validEd = { kty: "OKP", crv: "Ed25519", x: Buffer.from(hexToBytes(device.public_key)).toString("base64url") };
+    expect(() => computeJwkThumbprint(validEd)).not.toThrow();
+    expect(() => computeJwkThumbprint({ ...validEd, x: Buffer.alloc(31).toString("base64url") })).toThrow(/32/);
+    expect(() => computeJwkThumbprint({ ...validEd, x: Buffer.alloc(32).toString("base64url") })).toThrow(/public|point|order/);
+
+    const p256Jwk = generateKeyPairSync("ec", { namedCurve: "P-256" }).publicKey.export({ format: "jwk" });
+    expect(() => computeJwkThumbprint(p256Jwk as Record<string, string>)).not.toThrow();
+    expect(() => computeJwkThumbprint({ ...p256Jwk, y: Buffer.alloc(31).toString("base64url") } as Record<string, string>)).toThrow(/32/);
+    expect(() => computeJwkThumbprint({ ...p256Jwk, x: Buffer.alloc(32).toString("base64url") } as Record<string, string>)).toThrow(/public|point|curve/);
   });
 
   it("supports only the explicit EdDSA, RS256, and ES256 native JWS suites", async () => {
@@ -229,7 +286,12 @@ describe("claim revocation envelopes", () => {
       const pair = keyType === "rsa"
         ? generateKeyPairSync("rsa", { modulusLength: 2048 })
         : generateKeyPairSync("ec", { namedCurve: "P-256" });
-      const jwk = pair.publicKey.export({ format: "jwk" }) as Record<string, string>;
+      const jwk = {
+        ...pair.publicKey.export({ format: "jwk" }),
+        use: "sig",
+        key_ops: ["verify"],
+        alg,
+      } as Record<string, JsonValue>;
       const unsigned = {
         claim_id: semanticBody().claim_id,
         revoked_at: issuedAt + (alg === "RS256" ? 31 : 32),
@@ -280,5 +342,78 @@ describe("claim revocation envelopes", () => {
 
     const paddedEvent = await revocationEvent({ ...base, proof: { ...proof, protected: `${proof.protected}=` } });
     expect(() => validateClaimRevocationEnvelope(paddedEvent)).toThrow(/base64url|schema/);
+  });
+});
+
+describe("closed NIP-01 claim and revocation event structure", () => {
+  function signRaw(unsigned: NostrUnsignedEvent): NostrSignedEvent {
+    const id = getEventId(unsigned);
+    const sig = bytesToHex(schnorr.sign(id, hexToBytes(epoch.private_key), auxRand));
+    return { ...unsigned, id, sig };
+  }
+
+  it("rejects malformed structure before cryptography for both allocated kinds", async () => {
+    const claim = semanticBody();
+    const revocation: ClaimRevocation = {
+      claim_id: claim.claim_id,
+      revoked_at: issuedAt + 90,
+      reason_code: "claim-revoked",
+      revoker: { type: "nostr-secp256k1", value: epoch.pubkey },
+    };
+    const fixturesByKind = [
+      {
+        kind: 31013,
+        created_at: issuedAt,
+        tags: [["d", claim.claim_id]],
+        content: jcsCanonicalize(claim),
+        validate: (event: NostrSignedEvent) => validateClaimEnvelope(event, { issuer_authorized: true, registry_revision: 2 }),
+      },
+      {
+        kind: 31014,
+        created_at: revocation.revoked_at,
+        tags: [["d", revocation.claim_id]],
+        content: jcsCanonicalize(revocation),
+        validate: (event: NostrSignedEvent) => validateClaimRevocationEnvelope(event),
+      },
+    ];
+
+    for (const fixture of fixturesByKind) {
+      const unsigned = {
+        pubkey: epoch.pubkey,
+        created_at: fixture.created_at,
+        kind: fixture.kind,
+        tags: fixture.tags,
+        content: fixture.content,
+      };
+      const valid = signRaw(unsigned);
+      const fractional = signRaw({ ...unsigned, created_at: fixture.created_at + 0.5 });
+      const uppercasePubkey = signRaw({ ...unsigned, pubkey: epoch.pubkey.toUpperCase() });
+      const emptyTag = signRaw({ ...unsigned, tags: [...fixture.tags, []] });
+      const numericTag = signRaw({
+        ...unsigned,
+        tags: [...fixture.tags, ["x", 1, null] as unknown as string[]],
+      });
+      const stringTimestamp = signRaw({ ...unsigned, created_at: String(fixture.created_at) as unknown as number });
+      const numericContent = signRaw({ ...unsigned, content: 7 as unknown as string });
+      const nullTags = signRaw({ ...unsigned, tags: null as unknown as string[][] });
+      const extra = { ...valid, extra: true } as NostrSignedEvent;
+      const uppercaseId = { ...valid, id: valid.id.toUpperCase() };
+      const uppercaseSig = { ...valid, sig: valid.sig.toUpperCase() };
+
+      for (const malformed of [
+        fractional,
+        uppercasePubkey,
+        emptyTag,
+        numericTag,
+        stringTimestamp,
+        numericContent,
+        nullTags,
+        extra,
+        uppercaseId,
+        uppercaseSig,
+      ]) {
+        expect(() => fixture.validate(malformed)).toThrow(/NIP-01|structure|lowercase|created_at|tag|field|encoding/);
+      }
+    }
   });
 });
