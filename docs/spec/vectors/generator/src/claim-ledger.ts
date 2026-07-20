@@ -245,7 +245,15 @@ const RECORD_TYPES = new Set<LedgerRecordType>([
 ]);
 const VALIDATED_LEDGER_STATES = new WeakSet<object>();
 const VALIDATED_LEDGER_REPOSITORIES = new WeakMap<object, LedgerRepositoryEvidence>();
-const REPLAY_VALIDATED_RECORDS = new WeakMap<LedgerValidationContext, WeakSet<LedgerRecord>>();
+type ReplayValidationFingerprint = {
+  record: string;
+  evidence: string;
+  record_context: string;
+};
+const REPLAY_VALIDATED_RECORDS = new WeakMap<
+  LedgerValidationContext,
+  Map<LedgerRecord, ReplayValidationFingerprint>
+>();
 
 export function prepareLedgerReplayValidationContext(
   context: LedgerValidationContext,
@@ -254,8 +262,8 @@ export function prepareLedgerReplayValidationContext(
   if (REPLAY_VALIDATED_RECORDS.has(context)) return;
   REPLAY_VALIDATED_RECORDS.set(
     context,
-    source === undefined ? new WeakSet<LedgerRecord>() :
-      (REPLAY_VALIDATED_RECORDS.get(source) ?? new WeakSet<LedgerRecord>()),
+    source === undefined ? new Map<LedgerRecord, ReplayValidationFingerprint>() :
+      (REPLAY_VALIDATED_RECORDS.get(source) ?? new Map<LedgerRecord, ReplayValidationFingerprint>()),
   );
 }
 
@@ -334,14 +342,27 @@ export function mergeClaimLedger(
   const records = [...recordsById.values()];
   validateRepositoryEvidence(checkpoint, recordsById, context.repository);
   const replayValidatedRecords = REPLAY_VALIDATED_RECORDS.get(context);
+  const recordContextFingerprint = replayValidatedRecords === undefined
+    ? null
+    : replayValidationFingerprint([...records].sort((left, right) => left.record_id.localeCompare(right.record_id)));
   for (const record of records) {
     if (replayValidatedRecords === undefined) {
       validateLedgerRecordOrThrow(record, recordsById, context.record_evidence.get(record.record_id));
       continue;
     }
-    if (!replayValidatedRecords.has(record)) {
-      validateLedgerRecordOrThrow(record, recordsById, context.record_evidence.get(record.record_id));
-      replayValidatedRecords.add(record);
+    const evidence = context.record_evidence.get(record.record_id);
+    const fingerprint = {
+      record: replayValidationFingerprint(record),
+      evidence: replayValidationFingerprint(evidence),
+      record_context: recordContextFingerprint!,
+    };
+    const validated = replayValidatedRecords.get(record);
+    if (validated === undefined ||
+        validated.record !== fingerprint.record ||
+        validated.evidence !== fingerprint.evidence ||
+        validated.record_context !== fingerprint.record_context) {
+      validateLedgerRecordOrThrow(record, recordsById, evidence);
+      replayValidatedRecords.set(record, fingerprint);
     }
   }
   assertAcyclic(recordsById);
@@ -1344,8 +1365,7 @@ export function determineHistoricalTokenReturnability(
     }
     const preMintCommit = commits.get(issuance.checkpoint.commit_oid);
     const epochRecords = historical.records
-      .filter((candidate) => candidate.record_type === "audience-key-epoch" &&
-        payloadObject(candidate.payload).scope === "oidc-issuer-key")
+      .filter(isIssuerKeyEpochRecord)
       .sort((left, right) => Number(payloadObject(right.payload).epoch) - Number(payloadObject(left.payload).epoch));
     const epochRecord = epochRecords[0];
     const epoch = epochRecord === undefined ? null : payloadObject(epochRecord.payload) as unknown as IssuerKeyEpochPayload;
@@ -1494,6 +1514,37 @@ function withoutRecordId(record: LedgerRecord): Omit<LedgerRecord, "record_id"> 
 
 function digestJson(value: unknown): string {
   return bytesToHex(sha256(utf8Bytes(jcsCanonicalize(value))));
+}
+
+function replayValidationFingerprint(value: unknown): string {
+  return digestJson(replayFingerprintValue(value));
+}
+
+function replayFingerprintValue(value: unknown): JsonValue {
+  if (value === undefined) return ["undefined"];
+  if (value === null) return ["null"];
+  if (typeof value === "boolean") return ["boolean", value];
+  if (typeof value === "number") return ["number", value];
+  if (typeof value === "string") return ["string", value];
+  if (value instanceof Uint8Array) return ["bytes", bytesToHex(value)];
+  if (Array.isArray(value)) return ["array", ...value.map(replayFingerprintValue)];
+  if (value instanceof Map) {
+    const entries = [...value.entries()].map(([key, entryValue]) => [
+      replayFingerprintValue(key), replayFingerprintValue(entryValue),
+    ] as JsonValue[]);
+    entries.sort((left, right) => jcsCanonicalize(left[0]).localeCompare(jcsCanonicalize(right[0])));
+    return ["map", ...entries];
+  }
+  if (value instanceof Set) {
+    const entries = [...value].map(replayFingerprintValue)
+      .sort((left, right) => jcsCanonicalize(left).localeCompare(jcsCanonicalize(right)));
+    return ["set", ...entries];
+  }
+  if (typeof value === "object") {
+    const object = value as Record<string, unknown>;
+    return ["object", ...Object.keys(object).sort().map((key) => [key, replayFingerprintValue(object[key])])];
+  }
+  throw new Error("claim-schema-invalid: unsupported replay validation context value");
 }
 
 function ed25519PublicKeyFromNid(nid: string): Uint8Array {
@@ -1949,8 +2000,7 @@ function validateLedgerStateInvariants(
     validateHistoricalInvalidationAuthority(invalidationRecord, stateForReaders, context.repository);
   }
   const issuerEpochRecords = records
-    .filter((record) => record.record_type === "audience-key-epoch" &&
-      payloadObject(record.payload).scope === "oidc-issuer-key")
+    .filter(isIssuerKeyEpochRecord)
     .sort((left, right) => Number(payloadObject(left.payload).epoch) - Number(payloadObject(right.payload).epoch));
   const issuerEpochs = new Map<number, LedgerRecord>();
   const repositoryCommits = new Map(context.repository.commits.map((commit) => [commit.commit_oid, commit]));
@@ -2038,8 +2088,7 @@ function validateLedgerStateInvariants(
     issuerEpochs.set(payload.epoch, record);
   }
   const maximumEpoch = records
-    .filter((record) => record.record_type === "audience-key-epoch" &&
-      payloadObject(record.payload).scope !== "oidc-issuer-key")
+    .filter(isReaderAudienceKeyEpochRecord)
     .reduce((maximum, epochRecord) => Math.max(maximum, Number(payloadObject(epochRecord.payload).epoch)), 0);
   const canonicalReaderClaims = records.filter((record) => {
     if (record.record_type !== "claim" || !context.repository.repository_confirmed_record_ids.includes(record.record_id)) {
@@ -2065,8 +2114,7 @@ function validateLedgerStateInvariants(
     }
   }
   for (const record of recordsById.values()) {
-    if (record.record_type !== "audience-key-epoch") continue;
-    if (payloadObject(record.payload).scope === "oidc-issuer-key") continue;
+    if (!isReaderAudienceKeyEpochRecord(record)) continue;
     const payload = payloadObject(record.payload) as unknown as AudienceKeyEpochPayload;
     const readers = payload.reader_nids as string[];
     const removed = payload.removed_reader_nids as string[];
@@ -2103,7 +2151,7 @@ function validateLedgerStateInvariants(
       throw new Error("claim-ledger-rollback: audience-key epoch is not bound to repository history");
     }
     const previousEpochRecord = [...recordsById.values()].find((candidate) => {
-      if (candidate.record_type !== "audience-key-epoch") return false;
+      if (!isReaderAudienceKeyEpochRecord(candidate)) return false;
       const candidatePayload = payloadObject(candidate.payload);
       return candidatePayload.epoch === payload.previous_epoch && candidatePayload.key_id === payload.previous_key_id;
     });
@@ -2189,6 +2237,16 @@ function reductionRemovesReader(record: LedgerRecord, readerNid: string): boolea
 function payloadObject(value: JsonValue | undefined): Record<string, JsonValue> {
   assertPlainObject(value, "payload");
   return value;
+}
+
+function isIssuerKeyEpochRecord(record: LedgerRecord): boolean {
+  return record.record_type === "audience-key-epoch" &&
+    payloadObject(record.payload).scope === "oidc-issuer-key";
+}
+
+function isReaderAudienceKeyEpochRecord(record: LedgerRecord): boolean {
+  return record.record_type === "audience-key-epoch" &&
+    payloadObject(record.payload).scope !== "oidc-issuer-key";
 }
 
 function assertPlainObject(value: unknown, label: string): asserts value is Record<string, JsonValue> {
@@ -2396,14 +2454,13 @@ function confirmedClaimIds(state: LedgerMergeResult): Set<string> {
 function currentAudienceEpochRecord(state: LedgerMergeResult): LedgerRecord | null {
   const confirmed = new Set(state.repository_confirmed_record_ids ?? []);
   return state.records
-    .filter((record) => record.record_type === "audience-key-epoch" && confirmed.has(record.record_id))
+    .filter((record) => isReaderAudienceKeyEpochRecord(record) && confirmed.has(record.record_id))
     .sort((left, right) => Number(payloadObject(right.payload).epoch) - Number(payloadObject(left.payload).epoch))[0] ?? null;
 }
 
 function currentIssuerKeyEpochRecord(state: LedgerMergeResult): LedgerRecord | null {
   const confirmed = new Set(state.repository_confirmed_record_ids ?? []);
   return state.records
-    .filter((record) => record.record_type === "audience-key-epoch" && confirmed.has(record.record_id) &&
-      payloadObject(record.payload).scope === "oidc-issuer-key")
+    .filter((record) => isIssuerKeyEpochRecord(record) && confirmed.has(record.record_id))
     .sort((left, right) => Number(payloadObject(right.payload).epoch) - Number(payloadObject(left.payload).epoch))[0] ?? null;
 }

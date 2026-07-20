@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { sha256 } from "@noble/hashes/sha2";
+import { ed25519 } from "@noble/curves/ed25519";
 import { createHmac } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import {
@@ -12,6 +13,7 @@ import {
   evaluateReaderAccess,
   materializeLedgerLayout,
   mergeClaimLedger,
+  prepareLedgerReplayValidationContext,
   resolveAuthoritativeClaimState,
   validateReaderOnboardingBundle,
   type LedgerRecordValidationEvidence,
@@ -20,7 +22,8 @@ import {
 } from "./claim-ledger.js";
 import * as claimLedgerModule from "./claim-ledger.js";
 import { buildFixtures } from "./fixtures.js";
-import { bytesToHex, utf8Bytes } from "./hex.js";
+import { subjectProofPayload } from "./claims.js";
+import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import { buildClaimLedgerScenario, type ClaimLedgerScenario } from "./topics-claim-ledger.js";
 import * as claimLedgerTopics from "./topics-claim-ledger.js";
@@ -364,6 +367,53 @@ describe("exhaustive readers and canonical key epochs", () => {
 });
 
 describe("authenticated onboarding and snapshot-wide layout", () => {
+  it("selects the ordinary reader epoch when canonical issuer epochs coexist", () => {
+    const issuerRecords = [
+      s.claimRecordOne, s.claimRecordTwo, s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
+      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo, s.issuerKeyEpochRecordOne,
+      s.issuerRemovalRecord, s.issuerKeyEpochRecordTwo,
+    ];
+    const records = [...issuerRecords, s.epochOneRecord];
+    const repository = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid,
+      confirmed_records: records,
+      observed_at: s.now + 110,
+      prior: s.issuerKeyEpochTwoRepository.repository,
+    });
+    const context = s.makeTask5Context(repository.repository);
+    const refreshedRequest = (
+      record: typeof s.claimRecordOne,
+      claim: typeof s.claimOne,
+      writer: typeof s.writerOne,
+    ) => {
+      const request = cloneRequest(s.requestFor(record, claim));
+      request.verification_context.now = repository.checkpoint.observed_at;
+      const subjectProof = request.verification_context.subject_proof!;
+      subjectProof.challenge.issued_at = repository.checkpoint.observed_at;
+      subjectProof.challenge.expires_at = repository.checkpoint.observed_at + 60;
+      subjectProof.proof.signature = bytesToHex(ed25519.sign(
+        utf8Bytes(subjectProofPayload(subjectProof.challenge)),
+        hexToBytes(writer.private_key),
+      ));
+      return request;
+    };
+    const request = refreshedRequest(s.claimRecordOne, s.claimOne, s.writerOne);
+    const requestTwo = refreshedRequest(s.claimRecordTwo, s.claimTwo, s.writerTwo);
+    context.reader_requests.set(s.claimRecordOne.record_id, request);
+    context.reader_requests.set(s.claimRecordTwo.record_id, requestTwo);
+    expect(evaluateReaderAccess(s.writerOne.did_key, s.issuerKeyEpochTwoState, request)).toMatchObject({ allowed: true });
+    expect(evaluateReaderAccess(s.writerTwo.did_key, s.issuerKeyEpochTwoState, requestTwo)).toMatchObject({ allowed: true });
+    const state = mergeClaimLedger(records, [], repository.checkpoint, context);
+    const bundle = buildReaderOnboardingBundle({
+      reader_nid: s.writerOne.did_key,
+      request,
+      audience_key: s.audienceKeyOne,
+      compact_state: { mixed_epoch_scopes: true },
+    }, state);
+    expect(bundle.key_epoch.epoch).toBe(1);
+    expect(() => validateReaderOnboardingBundle(bundle, state, request)).not.toThrow();
+  });
+
   it("rejects forged signed-authorization identifiers even with a recomputed unkeyed digest", () => {
     const records = [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord];
     const state = mergeClaimLedger(
@@ -413,6 +463,29 @@ describe("authenticated onboarding and snapshot-wide layout", () => {
 });
 
 describe("self-contained Task 4 vectors", () => {
+  it("revalidates prepared records after in-place record or evidence mutation", () => {
+    for (const mutate of [
+      (records: typeof s.claimRecordOne[], _context: ReturnType<typeof s.makeContext>) => {
+        (records[0].payload as unknown as { claim_artifact: { event: { sig: string } } })
+          .claim_artifact.event.sig = "00".repeat(64);
+      },
+      (records: typeof s.claimRecordOne[], context: ReturnType<typeof s.makeContext>) => {
+        context.record_evidence.get(records[0].record_id)!.payload_digest = "00".repeat(32);
+      },
+    ]) {
+      const records = structuredClone([s.claimRecordOne, s.claimRecordTwo]);
+      const context = s.makeContext(s.baseRepository.repository);
+      prepareLedgerReplayValidationContext(context);
+      expect(() => mergeClaimLedger(
+        records, [], s.baseRepository.checkpoint, context,
+      )).not.toThrow();
+      mutate(records, context);
+      expect(() => mergeClaimLedger(
+        records, [], s.baseRepository.checkpoint, context,
+      )).toThrow(/signature|record.?id|evidence|payload/i);
+    }
+  });
+
   it("replays every committed vector input to its committed expected output", () => {
     const directory = new URL("../../claim-ledger/", import.meta.url);
     const files = readdirSync(directory).filter((file) => file.endsWith(".json")).sort();
