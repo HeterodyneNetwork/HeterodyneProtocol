@@ -17,6 +17,11 @@ export const ADR034_PENDING_PROFILE_IDS = [
   "heterodyne-comms-claim-revocation-jwk-jws-v1",
 ] as const;
 
+/** The only registry profile whose conformance gate is explicitly inactive. */
+export const INACTIVE_PROFILE_IDS = [
+  "heterodyne-control-session-device-v1",
+] as const;
+
 export type CoverageEntry = {
   vector_id: string;
   owner_document: DocumentId;
@@ -50,7 +55,7 @@ export function buildCoverage(vectors: Vector[]): CoverageEntry[] {
     );
 }
 
-export function findUncoveredProfiles(
+export function findProfileCoverageIssues(
   registry: Pick<Registry, "kinds">,
   coverage: readonly CoverageEntry[],
 ): string[] {
@@ -58,13 +63,37 @@ export function findUncoveredProfiles(
     coverage.flatMap(({ profile }) => profile === undefined ? [] : [profile]),
   );
   const pending = new Set<string>(ADR034_PENDING_PROFILE_IDS);
-  return registry.kinds
-    .flatMap(({ profiles }) => profiles)
-    .filter(({ owner, profile_id }) =>
-      owner !== "control" && !covered.has(profile_id) && !pending.has(profile_id),
-    )
-    .map(({ profile_id }) => profile_id)
-    .sort();
+  const inactive = new Set<string>(INACTIVE_PROFILE_IDS);
+  const profiles = registry.kinds.flatMap(({ profiles }) => profiles);
+  const issues: string[] = [];
+
+  for (const profileId of pending) {
+    if (covered.has(profileId)) {
+      issues.push(`stale pending profile: ${profileId}`);
+    }
+  }
+
+  for (const profile of profiles) {
+    if (covered.has(profile.profile_id) || pending.has(profile.profile_id)) continue;
+    if (inactive.has(profile.profile_id)) {
+      continue;
+    }
+    issues.push(`uncovered profile: ${profile.profile_id}`);
+  }
+
+  for (const profileId of inactive) {
+    const profile = profiles.find((candidate) => candidate.profile_id === profileId);
+    if (profile === undefined) issues.push(`inactive profile not registered: ${profileId}`);
+    else if (profile.owner !== "control") {
+      issues.push(`inactive profile owner mismatch: ${profileId}`);
+    }
+  }
+  for (const profileId of pending) {
+    if (!profiles.some((profile) => profile.profile_id === profileId)) {
+      issues.push(`pending profile not registered: ${profileId}`);
+    }
+  }
+  return issues.sort();
 }
 
 export async function writeCoverage(vectorRoot: string): Promise<void> {

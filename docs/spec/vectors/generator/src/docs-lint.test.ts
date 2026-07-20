@@ -1,6 +1,7 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  cpSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -16,10 +17,13 @@ import { describe, expect, it } from "vitest";
 import {
   ADR034_PENDING_INVARIANT_IDS,
   expectedReleaseManifests,
-  findMissingInvariantEvidence,
+  findInvariantEvidenceIssues,
   lintFamilyCutover,
   lintFamilyDocs,
+  loadReleaseSchemaRegistryPin,
   validateReleaseManifestRegistryPin,
+  validateReleaseManifestSchemaPin,
+  writeReleaseManifests,
 } from "./docs-lint.js";
 import { hexToBytes, utf8Bytes } from "./hex.js";
 import { verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
@@ -565,6 +569,35 @@ function withFamilyDocs(
     for (const [document, text] of Object.entries(documents)) {
       writeFileSync(resolve(spec, `heterodyne-${document}.md`), text, "utf8");
     }
+    run(root);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+function withReleaseFixture(
+  revision: number,
+  digest: string,
+  run: (root: string) => void,
+): void {
+  const root = mkdtempSync(resolve(tmpdir(), "heterodyne-release-pin-"));
+  const spec = resolve(root, "docs/spec");
+  mkdirSync(spec, { recursive: true });
+  try {
+    cpSync(resolve(repositoryRoot, "docs/spec/registry"), resolve(spec, "registry"), {
+      recursive: true,
+    });
+    cpSync(releasesPath, resolve(spec, "releases"), { recursive: true });
+    const schemaPath = resolve(spec, "releases/release-manifest.schema.json");
+    const schema = JSON.parse(readFileSync(schemaPath, "utf8")) as {
+      properties: {
+        registry_revision: { const: number };
+        registry_sha256: { const: string };
+      };
+    };
+    schema.properties.registry_revision.const = revision;
+    schema.properties.registry_sha256.const = digest;
+    writeFileSync(schemaPath, `${JSON.stringify(schema, null, 2)}\n`, "utf8");
     run(root);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -1709,21 +1742,80 @@ describe("protocol family documents", () => {
     ) as { security_invariants: Array<{ id: string; description: string }> };
 
     expect(threatModel).not.toMatch(/\bI(?:1|3|6|7)\b/);
-    expect(findMissingInvariantEvidence(
+    expect(findInvariantEvidenceIssues(
       registry.security_invariants,
       threatModel,
       adr034,
     )).toEqual([]);
     expect(ADR034_PENDING_INVARIANT_IDS).toHaveLength(11);
 
-    expect(findMissingInvariantEvidence(
+    expect(findInvariantEvidenceIssues(
       [...registry.security_invariants, {
         id: "COMMS-I-UNLISTED-FUTURE-INVARIANT",
         description: "A future invariant with no evidence.",
       }],
       threatModel,
       adr034,
-    )).toEqual(["COMMS-I-UNLISTED-FUTURE-INVARIANT"]);
+    )).toContain(
+      "missing invariant evidence: COMMS-I-UNLISTED-FUTURE-INVARIANT",
+    );
+  });
+
+  it("requires structurally paired ADR-034 invariant evidence", () => {
+    const threatModel = readFileSync(threatModelPath, "utf8");
+    const adr034 = readFileSync(
+      resolve(repositoryRoot, "docs/adr/2026-07-18-034-key-claims-private-ledger-oidc-projection.md"),
+      "utf8",
+    );
+    const registry = JSON.parse(
+      readFileSync(resolve(repositoryRoot, "docs/spec/registry/security-invariants.json"), "utf8"),
+    ) as { security_invariants: Array<{ id: string; description: string }> };
+    const [firstId, secondId] = ADR034_PENDING_INVARIANT_IDS;
+    const first = registry.security_invariants.find(({ id }) => id === firstId)!;
+    const second = registry.security_invariants.find(({ id }) => id === secondId)!;
+    const firstRow = `- **${first.id}:** ${first.description}`;
+    const secondRow = `- **${second.id}:** ${second.description}`;
+    const swapped = adr034
+      .replace(firstRow, `- **${first.id}:** ${second.description}`)
+      .replace(secondRow, `- **${second.id}:** ${first.description}`);
+    const floating = adr034.replace(
+      firstRow,
+      `${first.id}\n\n${first.description}`,
+    );
+
+    expect(findInvariantEvidenceIssues(
+      registry.security_invariants,
+      threatModel,
+      swapped,
+    )).toEqual(expect.arrayContaining([
+      `invalid ADR-034 invariant row: ${first.id}`,
+      `invalid ADR-034 invariant row: ${second.id}`,
+    ]));
+    expect(findInvariantEvidenceIssues(
+      registry.security_invariants,
+      threatModel,
+      floating,
+    )).toContain(`invalid ADR-034 invariant row: ${first.id}`);
+  });
+
+  it("fails stale ADR-034 invariant exceptions after threat-model integration", () => {
+    const threatModel = readFileSync(threatModelPath, "utf8");
+    const adr034 = readFileSync(
+      resolve(repositoryRoot, "docs/adr/2026-07-18-034-key-claims-private-ledger-oidc-projection.md"),
+      "utf8",
+    );
+    const registry = JSON.parse(
+      readFileSync(resolve(repositoryRoot, "docs/spec/registry/security-invariants.json"), "utf8"),
+    ) as { security_invariants: Array<{ id: string; description: string }> };
+    const stale = registry.security_invariants.find(
+      ({ id }) => id === ADR034_PENDING_INVARIANT_IDS[0],
+    )!;
+
+    expect(findInvariantEvidenceIssues(
+      registry.security_invariants,
+      `${threatModel}\n- **${stale.id}:** ${stale.description}\n`,
+      adr034,
+    )).toContain(`stale pending invariant: ${stale.id}`);
   });
 
   it("navigates every current companion through the four-document family", () => {
@@ -1816,12 +1908,10 @@ describe("protocol family documents", () => {
         "utf8",
       );
       const actual = JSON.parse(bytes) as ReturnType<typeof expectedReleaseManifests>[typeof document];
-      const expected = expectedReleaseManifests(
-        repositoryRoot,
-        actual.registry_revision,
-      )[document];
+      const expected = expectedReleaseManifests(repositoryRoot)[document];
       expect(actual).toEqual(expected);
       expect(() => validateReleaseManifestRegistryPin(repositoryRoot, actual)).not.toThrow();
+      expect(() => validateReleaseManifestSchemaPin(repositoryRoot, actual)).not.toThrow();
       expect(validate(actual), JSON.stringify(validate.errors)).toBe(true);
       expect(bytes).toBe(`${canonicalJsonProbe(expected)}\n`);
     }
@@ -1840,6 +1930,51 @@ describe("protocol family documents", () => {
       ...historical,
       registry_sha256: "0".repeat(64),
     })).toThrow(/registry digest mismatch/);
+    expect(loadReleaseSchemaRegistryPin(repositoryRoot)).toEqual({
+      registry_revision: 1,
+      registry_sha256: historical.registry_sha256,
+    });
+    expect(() => validateReleaseManifestSchemaPin(repositoryRoot, current)).toThrow(
+      /does not match release schema pin/,
+    );
+  });
+
+  it("defaults release generation to the schema's historical pin without drift", () => {
+    const historical = expectedReleaseManifests(repositoryRoot, 1).core;
+    withReleaseFixture(1, historical.registry_sha256, (root) => {
+      const paths = ["core", "comms", "control", "social"].map((document) =>
+        resolve(root, `docs/spec/releases/${document}/0.5.0.json`),
+      );
+      const before = paths.map((path) => readFileSync(path, "utf8"));
+      writeReleaseManifests(root);
+      const after = paths.map((path) => readFileSync(path, "utf8"));
+      expect(after).toEqual(before);
+      expect(after.every((bytes) => JSON.parse(bytes).registry_revision === 1)).toBe(true);
+    });
+  });
+
+  it("uses a revision-2 schema pin deterministically and rejects bad schema pins", () => {
+    const revision2 = expectedReleaseManifests(repositoryRoot, 2).core;
+    withReleaseFixture(2, revision2.registry_sha256, (root) => {
+      writeReleaseManifests(root);
+      const first = readFileSync(resolve(root, "docs/spec/releases/core/0.5.0.json"), "utf8");
+      writeReleaseManifests(root);
+      const second = readFileSync(resolve(root, "docs/spec/releases/core/0.5.0.json"), "utf8");
+      expect(second).toBe(first);
+      expect(JSON.parse(second)).toMatchObject({
+        registry_revision: 2,
+        registry_sha256: revision2.registry_sha256,
+      });
+    });
+
+    withReleaseFixture(999, "0".repeat(64), (root) => {
+      expect(() => writeReleaseManifests(root)).toThrow(
+        /unknown registry history revision 999/,
+      );
+    });
+    withReleaseFixture(1, "0".repeat(64), (root) => {
+      expect(() => writeReleaseManifests(root)).toThrow(/registry digest mismatch/);
+    });
   });
 
   it("finalizes sibling lineage and companion authority at cutover", () => {

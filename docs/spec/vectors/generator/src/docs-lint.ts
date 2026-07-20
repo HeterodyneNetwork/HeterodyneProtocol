@@ -355,24 +355,42 @@ export function releaseManifestBytes(manifest: ReleaseManifest): string {
   return `${canonicalJson(manifest)}\n`;
 }
 
-export function findMissingInvariantEvidence(
+function parseInvariantRows(text: string): Map<string, string> {
+  return new Map(
+    [...text.matchAll(
+      /^- \*\*((?:CORE|COMMS|CONTROL|SOCIAL)-I-[A-Z0-9]+(?:-[A-Z0-9]+)*):\*\* ([^\r\n]+)$/gm,
+    )].map((match) => [match[1], match[2]]),
+  );
+}
+
+export function findInvariantEvidenceIssues(
   invariants: readonly { id: string; description: string }[],
   threatModel: string,
   acceptedAdr034: string,
 ): string[] {
   const pending = new Set<string>(ADR034_PENDING_INVARIANT_IDS);
   const adrAccepted = /\*\*Status:\*\* Accepted\b/.test(acceptedAdr034);
-  return invariants
-    .filter(({ id, description }) => {
-      if (threatModel.includes(id) && threatModel.includes(description)) return false;
-      return !(
-        pending.has(id) &&
-        adrAccepted &&
-        acceptedAdr034.includes(id) &&
-        acceptedAdr034.includes(description)
-      );
-    })
-    .map(({ id }) => id);
+  const threatRows = parseInvariantRows(threatModel);
+  const adrRows = parseInvariantRows(acceptedAdr034);
+  const registered = new Map(invariants.map(({ id, description }) => [id, description]));
+  const issues: string[] = [];
+
+  for (const id of pending) {
+    if (!registered.has(id)) issues.push(`pending invariant not registered: ${id}`);
+  }
+  for (const { id, description } of invariants) {
+    const threatModelHasExactRow = threatRows.get(id) === description;
+    if (pending.has(id)) {
+      if (threatModelHasExactRow) {
+        issues.push(`stale pending invariant: ${id}`);
+      } else if (!adrAccepted || adrRows.get(id) !== description) {
+        issues.push(`invalid ADR-034 invariant row: ${id}`);
+      }
+    } else if (!threatModelHasExactRow) {
+      issues.push(`missing invariant evidence: ${id}`);
+    }
+  }
+  return issues.sort();
 }
 
 export function validateReleaseManifestRegistryPin(
@@ -394,12 +412,52 @@ export function validateReleaseManifestRegistryPin(
   }
 }
 
+export function loadReleaseSchemaRegistryPin(
+  repoRoot: string,
+): Pick<ReleaseManifest, "registry_revision" | "registry_sha256"> {
+  const schemaPath = resolve(
+    repoRoot,
+    "docs/spec/releases/release-manifest.schema.json",
+  );
+  const schema = JSON.parse(readFileSync(schemaPath, "utf8")) as {
+    properties?: {
+      registry_revision?: { const?: unknown };
+      registry_sha256?: { const?: unknown };
+    };
+  };
+  const registryRevision = schema.properties?.registry_revision?.const;
+  const registrySha256 = schema.properties?.registry_sha256?.const;
+  if (typeof registryRevision !== "number" || typeof registrySha256 !== "string") {
+    throw new Error("release schema registry pin is incomplete");
+  }
+  const pin = {
+    registry_revision: registryRevision,
+    registry_sha256: registrySha256,
+  };
+  validateReleaseManifestRegistryPin(repoRoot, pin);
+  return pin;
+}
+
+export function validateReleaseManifestSchemaPin(
+  repoRoot: string,
+  manifest: Pick<ReleaseManifest, "registry_revision" | "registry_sha256">,
+): void {
+  const schemaPin = loadReleaseSchemaRegistryPin(repoRoot);
+  if (
+    manifest.registry_revision !== schemaPin.registry_revision ||
+    manifest.registry_sha256 !== schemaPin.registry_sha256
+  ) {
+    throw new Error("release manifest does not match release schema pin");
+  }
+  validateReleaseManifestRegistryPin(repoRoot, manifest);
+}
+
 export function expectedReleaseManifests(
   repoRoot: string,
   revision?: number,
 ): Record<DocumentId, ReleaseManifest> {
   const registry = loadRegistry(repoRoot);
-  const registryRevision = revision ?? registry.manifest.revision;
+  const registryRevision = revision ?? loadReleaseSchemaRegistryPin(repoRoot).registry_revision;
   const entrySet = registry.history.get(registryRevision);
   if (entrySet === undefined) {
     throw new Error(`unknown registry history revision ${registryRevision}`);
@@ -590,22 +648,9 @@ export function lintFamilyCutover(repoRoot: string): FamilyDocIssue[] {
     });
     return issues;
   }
-  const schema = JSON.parse(readFileSync(schemaPath, "utf8")) as {
-    properties?: {
-      registry_revision?: { const?: unknown };
-      registry_sha256?: { const?: unknown };
-    };
-  };
-  const schemaRevision = schema.properties?.registry_revision?.const;
-  const schemaDigest = schema.properties?.registry_sha256?.const;
+  let schemaPin: Pick<ReleaseManifest, "registry_revision" | "registry_sha256"> | null = null;
   try {
-    if (typeof schemaRevision !== "number" || typeof schemaDigest !== "string") {
-      throw new Error("release schema registry pin is incomplete");
-    }
-    validateReleaseManifestRegistryPin(repoRoot, {
-      registry_revision: schemaRevision,
-      registry_sha256: schemaDigest,
-    });
+    schemaPin = loadReleaseSchemaRegistryPin(repoRoot);
   } catch (error) {
     issues.push({
       path: displayPath(repoRoot, schemaPath),
@@ -627,11 +672,12 @@ export function lintFamilyCutover(repoRoot: string): FamilyDocIssue[] {
     }
     const actualBytes = readFileSync(path, "utf8");
     try {
+      if (schemaPin === null) throw new Error("release schema registry pin is invalid");
       const actual = JSON.parse(actualBytes) as ReleaseManifest;
-      validateReleaseManifestRegistryPin(repoRoot, actual);
+      validateReleaseManifestSchemaPin(repoRoot, actual);
       const expected = expectedReleaseManifests(
         repoRoot,
-        actual.registry_revision,
+        schemaPin.registry_revision,
       )[document];
       if (actualBytes === releaseManifestBytes(expected)) continue;
       throw new Error("fields or canonical bytes differ from the pinned form");

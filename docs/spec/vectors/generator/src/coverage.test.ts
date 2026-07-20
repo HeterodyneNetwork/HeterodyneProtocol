@@ -5,8 +5,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { authorAllVectors } from "./author.js";
 import {
   ADR034_PENDING_PROFILE_IDS,
+  INACTIVE_PROFILE_IDS,
   buildCoverage,
-  findUncoveredProfiles,
+  findProfileCoverageIssues,
   writeCoverage,
 } from "./coverage.js";
 import { buildAllVectors } from "./topics.js";
@@ -63,7 +64,7 @@ describe("family coverage", () => {
     expect(coverage.every(({ spec_refs }) => spec_refs.every((ref) => ref.startsWith("heterodyne:")))).toBe(true);
 
     const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
-    expect(findUncoveredProfiles(registry, coverage)).toEqual([]);
+    expect(findProfileCoverageIssues(registry, coverage)).toEqual([]);
     expect(ADR034_PENDING_PROFILE_IDS).toEqual([
       "heterodyne-comms-key-claim-nostr-bip340-v1",
       "heterodyne-comms-key-claim-radicle-ed25519-v1",
@@ -72,6 +73,15 @@ describe("family coverage", () => {
       "heterodyne-comms-claim-revocation-radicle-ed25519-v1",
       "heterodyne-comms-claim-revocation-jwk-jws-v1",
     ]);
+    expect(INACTIVE_PROFILE_IDS).toEqual([
+      "heterodyne-control-session-device-v1",
+    ]);
+    expect(
+      registry.kinds
+        .flatMap(({ profiles }) => profiles)
+        .find(({ profile_id }) => profile_id === INACTIVE_PROFILE_IDS[0])
+        ?.owner,
+    ).toBe("control");
     expect(coverage.filter(({ profile }) => profile === "heterodyne-control-session-device-v1"))
       .toHaveLength(1);
   });
@@ -91,9 +101,70 @@ describe("family coverage", () => {
       status: "draft",
     });
 
-    expect(findUncoveredProfiles(registry, coverage)).toEqual([
-      "unlisted-future-profile",
+    expect(findProfileCoverageIssues(registry, coverage)).toEqual([
+      "uncovered profile: unlisted-future-profile",
     ]);
+  });
+
+  it("does not exempt an unlisted Control-owned profile", async () => {
+    const vectors = (await buildAllVectors(buildFixtures())).map(({ vector }) => vector);
+    const coverage = buildCoverage(vectors);
+    const registry = structuredClone(
+      loadRegistry(resolve(import.meta.dirname, "../../../../../")),
+    );
+    registry.kinds[0].profiles.push({
+      profile_id: "unlisted-control-profile",
+      owner: "control",
+      discriminator: "test:unlisted-control",
+      stamping: false,
+      first_version: "control/0.5.0",
+      status: "draft",
+    });
+
+    expect(findProfileCoverageIssues(registry, coverage)).toContain(
+      "uncovered profile: unlisted-control-profile",
+    );
+  });
+
+  it("fails when a covered profile remains in the ADR-034 pending set", async () => {
+    const vectors = (await buildAllVectors(buildFixtures())).map(({ vector }) => vector);
+    const coverage = buildCoverage(vectors);
+    coverage.push({
+      ...coverage[0],
+      vector_id: "claims/pending-profile-now-covered",
+      profile: ADR034_PENDING_PROFILE_IDS[0],
+    });
+    const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
+
+    expect(findProfileCoverageIssues(registry, coverage)).toContain(
+      `stale pending profile: ${ADR034_PENDING_PROFILE_IDS[0]}`,
+    );
+  });
+
+  it("permits only the exact inactive profile and currently-uncovered pending set", async () => {
+    const vectors = (await buildAllVectors(buildFixtures())).map(({ vector }) => vector);
+    const coverage = buildCoverage(vectors).filter(
+      ({ profile }) => profile !== INACTIVE_PROFILE_IDS[0],
+    );
+    const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
+
+    expect(findProfileCoverageIssues(registry, coverage)).toEqual([]);
+  });
+
+  it("requires the exact inactive profile to remain Control-owned", async () => {
+    const vectors = (await buildAllVectors(buildFixtures())).map(({ vector }) => vector);
+    const coverage = buildCoverage(vectors);
+    const registry = structuredClone(
+      loadRegistry(resolve(import.meta.dirname, "../../../../../")),
+    );
+    const inactive = registry.kinds
+      .flatMap(({ profiles }) => profiles)
+      .find(({ profile_id }) => profile_id === INACTIVE_PROFILE_IDS[0])!;
+    inactive.owner = "comms";
+
+    expect(findProfileCoverageIssues(registry, coverage)).toContain(
+      `inactive profile owner mismatch: ${INACTIVE_PROFILE_IDS[0]}`,
+    );
   });
 
   it("writes deterministic Markdown views derived from manifest.json", async () => {
