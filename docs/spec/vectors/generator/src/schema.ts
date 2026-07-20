@@ -122,8 +122,10 @@ export const KEY_CLAIM_REVOCATION_SCHEMA = readSchema("key-claim-revocation-v1.s
 export const CLAIM_LEDGER_RECORD_SCHEMA = readSchema("claim-ledger-record-v1.schema.json");
 
 const commsSchemaAjv = new Ajv({ allErrors: true, strict: false });
-const validateKeyClaim = commsSchemaAjv.compile(KEY_CLAIM_SCHEMA);
-const validateClaimRevocation = commsSchemaAjv.compile(KEY_CLAIM_REVOCATION_SCHEMA);
+commsSchemaAjv.addSchema(KEY_CLAIM_SCHEMA);
+commsSchemaAjv.addSchema(KEY_CLAIM_REVOCATION_SCHEMA);
+const validateKeyClaim = commsSchemaAjv.getSchema("https://heterodyne.network/schemas/comms/key-claim-v1.schema.json")!;
+const validateClaimRevocation = commsSchemaAjv.getSchema("https://heterodyne.network/schemas/comms/key-claim-revocation-v1.schema.json")!;
 const validateClaimLedgerRecord = commsSchemaAjv.compile(CLAIM_LEDGER_RECORD_SCHEMA);
 
 export function validateVectorOrThrow(value: unknown): asserts value is Vector {

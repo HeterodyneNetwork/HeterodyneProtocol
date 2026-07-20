@@ -10,119 +10,164 @@
     "heterodyne:comms/0.5.0#comms-conformance"
   ],
   "vector_id": "claim-ledger/reader-removal-key-rotation",
-  "description": "Reader removal denies immediately, rotates the dedicated audience key to remaining NIDs, removes access, and retires prior ciphertext.",
+  "description": "Authenticated removal precedes a distinct monotonic key epoch wrapped only to active remaining NIDs.",
   "input": {
-    "prior_records": [
-      {
-        "record_id": "33fa4406d27eeafe71aa1e0cf3475e865ce6051f53fd572938c112f277ced6f5",
-        "record_type": "claim",
-        "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-        "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-        "created_at": 1767245601,
-        "parents": [],
-        "payload": {
-          "claim": {
-            "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
-            "issuer": {
-              "type": "nostr-secp256k1",
-              "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
-            },
-            "subject": {
-              "type": "radicle-ed25519-nid",
-              "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
-            },
-            "claim_class": "authorization",
-            "namespace": "heterodyne.device",
-            "name": "claim-ledger-reader",
-            "value": true,
-            "issued_at": 1767245600,
-            "not_before": 1767245600,
-            "expires_at": 1767249200,
-            "audience": [
-              "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-            ],
-            "resources": [
-              "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger"
-            ],
-            "visibility": "repository-private",
-            "comms_version": "comms/0.5.0",
-            "registry_revision": 2
-          }
-        },
-        "payload_digest": "341f0c0a935c867a566aa51725a614d1731f9a0af6889180698ccf4c943fa9de",
-        "signature": "06cdc2aff7bc3b6acf5fceeedc7e8a02c70af1bdba3033df7bd685d506d2c68482f4797ca7e2aadf7cec767836455f4e5ccf3e68b7a680eab8dcc751ecb9860b"
-      }
-    ],
-    "reduction": {
-      "record_id": "563247d6be8f1e1d95b6716242cf260d795d09e7932ab0d5848e90ef5ead3027",
-      "record_type": "authority-reduction",
+    "removal_record": {
+      "record_id": "2f57b913b37c4216837320ce8dacab2fafbfd054de6a4de8f6f3b9dd700940a0",
+      "record_type": "reader-change",
       "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
       "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
-      "created_at": 1767245603,
+      "created_at": 1767245631,
       "parents": [
-        "33fa4406d27eeafe71aa1e0cf3475e865ce6051f53fd572938c112f277ced6f5"
+        "5efb1a25f7d06ec8c7b7c79cc71058975c42cb22bffc06f7070c1ddaa86af064"
       ],
       "payload": {
-        "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
-        "subject_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-        "authority": "claim-ledger-reader",
-        "evidence": {
-          "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
-          "event_id": "3232323232323232323232323232323232323232323232323232323232323232",
-          "authority": "claim-ledger-reader",
-          "validated_at": 1767245603,
-          "core_kel_authority_valid": true,
-          "evidence_digest": "b13b64cefc2210de23261d9408deb04d68ed1d77dc6b90f1d85016ebb5e6983b"
+        "action": "remove",
+        "reader_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+        "revocation_artifact": {
+          "event": {
+            "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+            "created_at": 1767245630,
+            "kind": 31014,
+            "tags": [
+              [
+                "d",
+                "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c"
+              ]
+            ],
+            "content": "{\"claim_id\":\"243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c\",\"reason_code\":\"claim-revoked\",\"revoked_at\":1767245630,\"revoker\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"}}",
+            "id": "49d17243b14299a55a68e9898089ce1004d4b84e23925fd8bae710f7025e920f",
+            "sig": "fc7a97d771a4fe6770ee6bdbcab0bd732c2172ecb9c8c6ca7c4fa229ddc074e3573a6ef63d47fb402f6946d5c2af72bd28ec0aba19f02d9c27568ae4ab879c98"
+          },
+          "semantic": {
+            "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+            "revoked_at": 1767245630,
+            "reason_code": "claim-revoked",
+            "revoker": {
+              "type": "nostr-secp256k1",
+              "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+            }
+          }
         }
       },
-      "payload_digest": "5accad507fad74cbd00b9a231e0eca3c4f405e78a3cf2e1068ea71705272fdca",
-      "signature": "8f9af18b04601a398cd468e9c6d92049b4fc13a97d52ca32a83ef9f932ad9b2cf04912122aa86ad45afbf3b50f8cc2542058ff98c3c72f9b9f39791945334a04"
+      "payload_digest": "f8786e40a7179e221d100db0a30d36c2ace8888d555143acf9b7ad3ff53401e0",
+      "signature": "1d8eb4db8feeea82e4794e5749dc02ea400345d24734b66a7e0116bdfa9f1c568a47f604a92dfc7d6f43fce39273fd2d1e99f22f6f624e446b1c1e7c00217f0e"
     },
-    "audience_key_epoch": {
-      "record_id": "b4c330b54a3e0139f5916814b3701bea4dfde66c2b40f22ed2278a976b53ea75",
+    "prior_epoch_record": {
+      "record_id": "71096a89494c649f73a9add1c301a833c6a612a30acd1e787f475f400c8f6c68",
       "record_type": "audience-key-epoch",
       "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
       "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
-      "created_at": 1767245604,
+      "created_at": 1767245651,
       "parents": [
-        "563247d6be8f1e1d95b6716242cf260d795d09e7932ab0d5848e90ef5ead3027"
+        "5efb1a25f7d06ec8c7b7c79cc71058975c42cb22bffc06f7070c1ddaa86af064",
+        "fd10aa1a3f93f2e12d063c1a3748a11350225049fd63b4ff2e7add2fe1f34d68"
       ],
       "payload": {
-        "key_id": "ledger-epoch-b",
-        "previous_key_id": "ledger-epoch-a",
+        "epoch": 1,
+        "key_id": "ledger-epoch-1",
+        "key_digest": "2cf2c6077769e8f910ed119ac8fa288d12817d4fdcef245576c752a076d3217a",
+        "previous_epoch": 0,
+        "previous_key_id": "ledger-genesis",
+        "reader_nids": [
+          "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+          "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
+        ],
+        "removed_reader_nids": [],
+        "recipient_wraps": [
+          {
+            "reader_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+            "context_digest": "ccdf2607217586c4a960bda47f7f613fad281c4c85091d1de3c9d9ff2d85c633",
+            "wrapped_key": "06ee177f9e84401f2354ab943e40c8bd573856b2264ac5259eb4c1f07267cc7bc0ab9f36782f13a936dbf225a564080e76dfbcaa495f0d204a550862547418b4"
+          },
+          {
+            "reader_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
+            "context_digest": "14532ced8b28a8cd06e1d0acbd8dbd19130cea6410ad0f77cb22fea81ab604c2",
+            "wrapped_key": "2e8623e63484d59f92ceb6b7eaae59468b8ecb67eac1c47dd08a2606fc64937de29269c1d33059e4b8c713fa6d557295e95575a66da3db7e8e7e07890fcfb593"
+          }
+        ],
+        "radicle_access_removed": [],
+        "checkpoint_commit_oid": "dc92933df7ef45ab4be0073c8e0e28dc4be9a964650a0ecceaa00dc494234a36",
+        "retire_previous_state": true,
+        "scrub_profile": "comms-encrypted-branch-cooperative-v1"
+      },
+      "payload_digest": "5e1c1b373b963740a847b29876bd2d5c5d716696c1fb708cd8be93a15fbc1014",
+      "signature": "5f5705bab49565e5f97b4991a66411610b4bb58eb61cbe4e4dba67b86ece91cb4dbc8bad56457e3d9d04b804f6d998ea14640477fec670b260d477ed2d3bce0e"
+    },
+    "next_epoch_record": {
+      "record_id": "8e92344f030b3aed20906b0a20f9e8a50c8f671bd626a7e2c8f41e838fd2a3bd",
+      "record_type": "audience-key-epoch",
+      "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
+      "created_at": 1767245661,
+      "parents": [
+        "71096a89494c649f73a9add1c301a833c6a612a30acd1e787f475f400c8f6c68",
+        "2f57b913b37c4216837320ce8dacab2fafbfd054de6a4de8f6f3b9dd700940a0"
+      ],
+      "payload": {
+        "epoch": 2,
+        "key_id": "ledger-epoch-2",
+        "key_digest": "16b72cfab7dbca73cb348f4e59a74b5c56d6e95574c1e9ca84850d69f5fa9430",
+        "previous_epoch": 1,
+        "previous_key_id": "ledger-epoch-1",
         "reader_nids": [
           "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
         ],
         "removed_reader_nids": [
           "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
         ],
+        "recipient_wraps": [
+          {
+            "reader_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
+            "context_digest": "e9e29f4849c3439cc6769456374f778f536c228e8c1b716bbe3be5eec6d7b15b",
+            "wrapped_key": "a289ccbfd6f0869fdc6ba1c6e8383e741b1541a315bfb2a09fa163a815da49af723c2f2b9dcb41051e852f57125ceeba7d84b0578da0ad356899da16f4e51db9"
+          }
+        ],
         "radicle_access_removed": [
           "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
         ],
+        "checkpoint_commit_oid": "56c63b44a52f91e4ddcf035ef15f16a6134ce237d799a6ad76a0bea235e2b583",
         "retire_previous_state": true,
         "scrub_profile": "comms-encrypted-branch-cooperative-v1"
       },
-      "payload_digest": "1d8a4e8518b32f85275178666d51665c46369fddf4302d13eb32d07bade72159",
-      "signature": "fecca92b2f6c2e1edcde2492d57792d984e1a93284f9b0b8d1d6ecbcf8870d7d5be805a7273780d42cf1bbac82a7c870521c76fcccd94943cdd820e7e2bbde07"
-    },
-    "checkpoint": {
-      "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-      "branch": "main",
-      "commit_oid": "abababababababababababababababababababab",
-      "observed_at": 1767245700
+      "payload_digest": "7b3975c7d59f15b9312232aba3e129cb30aa0d3d94a3e28d521d9044976d72e5",
+      "signature": "d3ed384942d89008a270f212e4f0222538c812cc22f956bd686f77b1c8d8f24ea508f5470bd692eab121db1de5cec8395d69d38d1515d1539743d86b88cb7e09"
     }
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "removed_reader_allowed": false,
-      "remaining_readers": [
-        "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
-      ],
-      "radicle_access_removed": [
-        "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
-      ],
-      "retired_state_scrub": "cooperative-no-erasure-claim"
+      "removed_access": {
+        "allowed": true,
+        "state": "active",
+        "reason_code": null
+      },
+      "next_epoch": {
+        "epoch": 2,
+        "key_id": "ledger-epoch-2",
+        "key_digest": "16b72cfab7dbca73cb348f4e59a74b5c56d6e95574c1e9ca84850d69f5fa9430",
+        "previous_epoch": 1,
+        "previous_key_id": "ledger-epoch-1",
+        "reader_nids": [
+          "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
+        ],
+        "removed_reader_nids": [
+          "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+        ],
+        "recipient_wraps": [
+          {
+            "reader_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
+            "context_digest": "e9e29f4849c3439cc6769456374f778f536c228e8c1b716bbe3be5eec6d7b15b",
+            "wrapped_key": "a289ccbfd6f0869fdc6ba1c6e8383e741b1541a315bfb2a09fa163a815da49af723c2f2b9dcb41051e852f57125ceeba7d84b0578da0ad356899da16f4e51db9"
+          }
+        ],
+        "radicle_access_removed": [
+          "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+        ],
+        "checkpoint_commit_oid": "56c63b44a52f91e4ddcf035ef15f16a6134ce237d799a6ad76a0bea235e2b583",
+        "retire_previous_state": true,
+        "scrub_profile": "comms-encrypted-branch-cooperative-v1"
+      }
     }
   },
   "direction": "consume"

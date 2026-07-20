@@ -10,21 +10,21 @@
     "heterodyne:comms/0.5.0#comms-conformance"
   ],
   "vector_id": "claim-ledger/checkpoint-rollback-rejected",
-  "description": "A main-branch checkpoint that does not descend from the finalized checkpoint is rejected as rollback.",
+  "description": "A mutated canonical head lacking the finalized ancestor fails executable commit-DAG validation.",
   "input": {
-    "previous_checkpoint": {
+    "prior_checkpoint": {
       "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
       "branch": "main",
-      "commit_oid": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      "commit_oid": "dc92933df7ef45ab4be0073c8e0e28dc4be9a964650a0ecceaa00dc494234a36",
       "observed_at": 1767245650
     },
     "candidate_checkpoint": {
       "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
       "branch": "main",
-      "commit_oid": "abababababababababababababababababababab",
-      "observed_at": 1767245700
+      "commit_oid": "56c63b44a52f91e4ddcf035ef15f16a6134ce237d799a6ad76a0bea235e2b583",
+      "observed_at": 1767245660
     },
-    "canonical_ancestors": []
+    "mutation": "drop-parent"
   },
   "expected_output": {
     "verdict": "reject",

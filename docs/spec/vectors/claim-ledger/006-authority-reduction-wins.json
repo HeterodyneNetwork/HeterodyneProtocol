@@ -10,18 +10,36 @@
     "heterodyne:comms/0.5.0#comms-conformance"
   ],
   "vector_id": "claim-ledger/authority-reduction-wins",
-  "description": "An authenticated reader-authority reduction wins over concurrent authorization and denies immediately.",
+  "description": "An authenticated role reduction is absorbing over concurrent divergent grants.",
   "input": {
-    "prior_state": [
-      {
-        "record_id": "33fa4406d27eeafe71aa1e0cf3475e865ce6051f53fd572938c112f277ced6f5",
-        "record_type": "claim",
-        "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-        "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-        "created_at": 1767245601,
-        "parents": [],
-        "payload": {
-          "claim": {
+    "writer_one_grant": {
+      "record_id": "7a079dd92c13a7192ee1dc340087630ab83e2de6360faf4fe828e1bb0b6a00ca",
+      "record_type": "reader-change",
+      "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+      "created_at": 1767245602,
+      "parents": [
+        "5efb1a25f7d06ec8c7b7c79cc71058975c42cb22bffc06f7070c1ddaa86af064"
+      ],
+      "payload": {
+        "action": "grant",
+        "reader_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+        "claim_artifact": {
+          "event": {
+            "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+            "created_at": 1767245600,
+            "kind": 31013,
+            "tags": [
+              [
+                "d",
+                "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c"
+              ]
+            ],
+            "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c\",\"comms_version\":\"comms/0.5.0\",\"expires_at\":1767249200,\"issued_at\":1767245600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767245600,\"registry_revision\":2,\"resources\":[\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger\"],\"subject\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"},\"value\":true,\"visibility\":\"repository-private\"}",
+            "id": "9d0b32ada19067c6a5881dccdf08bb7837a8cada2771f07e6313f47d4cc654d1",
+            "sig": "e07508cd3122d7b785af7db8538b3d48fcaafe76fdc6b9e044b6d959c36cefb8702c0de06dc6bb337ccbd53d71fd9d257a6d1246cb2cfcedcc14517934a9af95"
+          },
+          "semantic": {
             "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
             "issuer": {
               "type": "nostr-secp256k1",
@@ -48,47 +66,121 @@
             "comms_version": "comms/0.5.0",
             "registry_revision": 2
           }
-        },
-        "payload_digest": "341f0c0a935c867a566aa51725a614d1731f9a0af6889180698ccf4c943fa9de",
-        "signature": "06cdc2aff7bc3b6acf5fceeedc7e8a02c70af1bdba3033df7bd685d506d2c68482f4797ca7e2aadf7cec767836455f4e5ccf3e68b7a680eab8dcc751ecb9860b"
-      }
-    ],
-    "authenticated_reduction": {
-      "record_id": "563247d6be8f1e1d95b6716242cf260d795d09e7932ab0d5848e90ef5ead3027",
+        }
+      },
+      "payload_digest": "facac4319a9cbe2e39233dffc9a2426d169107b6aed0b01e751a3d792d802ba2",
+      "signature": "ede97a5399cf8f4f25bed95d67c3d5c569b296d7deb9373457e58ccf9ea4d39880c884b5ef04904e07053e5acd358a392bfd949d7947cc536ff59484b6402a06"
+    },
+    "writer_two_grant": {
+      "record_id": "5db55d6ff3c131eee3ea4f802386c936e2e5701091bfb3daef722f2f49c7c931",
+      "record_type": "reader-change",
+      "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
+      "created_at": 1767245602,
+      "parents": [
+        "5efb1a25f7d06ec8c7b7c79cc71058975c42cb22bffc06f7070c1ddaa86af064"
+      ],
+      "payload": {
+        "action": "grant",
+        "reader_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+        "claim_artifact": {
+          "event": {
+            "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+            "created_at": 1767245600,
+            "kind": 31013,
+            "tags": [
+              [
+                "d",
+                "f1dc1a6817d67e2cd0f450ed3c5b20165be2bae350428aa3082663513456e234"
+              ]
+            ],
+            "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"f1dc1a6817d67e2cd0f450ed3c5b20165be2bae350428aa3082663513456e234\",\"comms_version\":\"comms/0.5.0\",\"expires_at\":1767247400,\"issued_at\":1767245600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767245600,\"registry_revision\":2,\"resources\":[\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger\"],\"subject\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"},\"value\":true,\"visibility\":\"repository-private\"}",
+            "id": "696198e24320a4403f32c3c3333132407418b8aff14d8a629c92e3a3429f9c87",
+            "sig": "8b5feef2ff49c9c5d6e5894047fe5f529d7d76bc615bdc9b4f38962d0fc5c30c5c13042827b433393c00edb8ac9cf31e66b8101225f4a5c149d683b25740ff28"
+          },
+          "semantic": {
+            "claim_id": "f1dc1a6817d67e2cd0f450ed3c5b20165be2bae350428aa3082663513456e234",
+            "issuer": {
+              "type": "nostr-secp256k1",
+              "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+            },
+            "subject": {
+              "type": "radicle-ed25519-nid",
+              "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+            },
+            "claim_class": "authorization",
+            "namespace": "heterodyne.device",
+            "name": "claim-ledger-reader",
+            "value": true,
+            "issued_at": 1767245600,
+            "not_before": 1767245600,
+            "expires_at": 1767247400,
+            "audience": [
+              "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+            ],
+            "resources": [
+              "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger"
+            ],
+            "visibility": "repository-private",
+            "comms_version": "comms/0.5.0",
+            "registry_revision": 2
+          }
+        }
+      },
+      "payload_digest": "135c0f5d540fbca0b248fe725102e56ad9b5d4cc447e0bf3608f3b9976242ca0",
+      "signature": "f9e0910cfd82bd9a13f532724c2722373625326baeba9bc92e22909225a3f51ca083a7552932c22c4a84a3cb373869e80287eaab17a387044c9b36f59a16a700"
+    },
+    "delivered_reduction": {
+      "record_id": "bde4dfdeb432dadc8ee133ae98d0a9e2d5e6817f7c4305078bd5e128726a07b3",
       "record_type": "authority-reduction",
       "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
       "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
-      "created_at": 1767245603,
+      "created_at": 1767245631,
       "parents": [
-        "33fa4406d27eeafe71aa1e0cf3475e865ce6051f53fd572938c112f277ced6f5"
+        "5efb1a25f7d06ec8c7b7c79cc71058975c42cb22bffc06f7070c1ddaa86af064"
       ],
       "payload": {
-        "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+        "role": "claim-ledger-reader",
         "subject_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-        "authority": "claim-ledger-reader",
-        "evidence": {
-          "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
-          "event_id": "3232323232323232323232323232323232323232323232323232323232323232",
-          "authority": "claim-ledger-reader",
-          "validated_at": 1767245603,
-          "core_kel_authority_valid": true,
-          "evidence_digest": "b13b64cefc2210de23261d9408deb04d68ed1d77dc6b90f1d85016ebb5e6983b"
+        "revocation_artifact": {
+          "event": {
+            "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+            "created_at": 1767245630,
+            "kind": 31014,
+            "tags": [
+              [
+                "d",
+                "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c"
+              ]
+            ],
+            "content": "{\"claim_id\":\"243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c\",\"reason_code\":\"claim-revoked\",\"revoked_at\":1767245630,\"revoker\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"}}",
+            "id": "49d17243b14299a55a68e9898089ce1004d4b84e23925fd8bae710f7025e920f",
+            "sig": "fc7a97d771a4fe6770ee6bdbcab0bd732c2172ecb9c8c6ca7c4fa229ddc074e3573a6ef63d47fb402f6946d5c2af72bd28ec0aba19f02d9c27568ae4ab879c98"
+          },
+          "semantic": {
+            "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+            "revoked_at": 1767245630,
+            "reason_code": "claim-revoked",
+            "revoker": {
+              "type": "nostr-secp256k1",
+              "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+            }
+          }
         }
       },
-      "payload_digest": "5accad507fad74cbd00b9a231e0eca3c4f405e78a3cf2e1068ea71705272fdca",
-      "signature": "8f9af18b04601a398cd468e9c6d92049b4fc13a97d52ca32a83ef9f932ad9b2cf04912122aa86ad45afbf3b50f8cc2542058ff98c3c72f9b9f39791945334a04"
-    },
-    "checkpoint": {
-      "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-      "branch": "main",
-      "commit_oid": "abababababababababababababababababababab",
-      "observed_at": 1767245700
+      "payload_digest": "fc96095f602780b1a65d8aed368531aaa81b9ee8ef1eca772848aaa1e304119d",
+      "signature": "160403fe565593aeb8c8ae9a500ab9b772b3986952e48c6621cca16d57bba5669b981438bec4185637b2554d16267b5bfbc8c444a656df0b2a860ab02a12ab06"
     }
   },
   "expected_output": {
-    "verdict": "reject",
-    "reason_code": "claim-revoked",
-    "state": "revoked"
+    "verdict": "accept",
+    "normalized": {
+      "conflicted_claim_ids": [
+        "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+        "f1dc1a6817d67e2cd0f450ed3c5b20165be2bae350428aa3082663513456e234"
+      ],
+      "target_state": "revoked"
+    }
   },
   "direction": "consume"
 }

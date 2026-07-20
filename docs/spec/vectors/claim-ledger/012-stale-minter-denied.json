@@ -10,22 +10,20 @@
     "heterodyne:comms/0.5.0#comms-conformance"
   ],
   "vector_id": "claim-ledger/stale-minter-denied",
-  "description": "The ledger state boundary marks a checkpoint 301 seconds old ineligible; Task 5 owns complete mint eligibility.",
+  "description": "The ledger boundary rejects a checkpoint older than the 300-second maximum.",
   "input": {
-    "canonical_checkpoint": {
+    "checkpoint": {
       "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
       "branch": "main",
-      "commit_oid": "abababababababababababababababababababab",
-      "observed_at": 1767245700
+      "commit_oid": "dc92933df7ef45ab4be0073c8e0e28dc4be9a964650a0ecceaa00dc494234a36",
+      "observed_at": 1767245650
     },
-    "mint_evaluation_time": 1767246001,
-    "manifest_max_age_seconds": 300
+    "evaluation_time": 1767245951,
+    "maximum_age": 300
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "oidc-checkpoint-stale",
-    "minting": false,
-    "evaluation_owner": "claims-task-5"
+    "reason_code": "oidc-checkpoint-stale"
   },
   "direction": "consume"
 }

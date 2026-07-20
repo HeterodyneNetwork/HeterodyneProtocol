@@ -4,125 +4,109 @@
   "title": "Heterodyne Comms private claim-ledger record v1",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "record_id",
-    "record_type",
-    "persona",
-    "writer_nid",
-    "created_at",
-    "parents",
-    "payload",
-    "payload_digest",
-    "signature"
-  ],
+  "required": ["record_id", "record_type", "persona", "writer_nid", "created_at", "parents", "payload", "payload_digest", "signature"],
   "properties": {
     "record_id": { "$ref": "#/definitions/sha256" },
     "record_type": {
-      "type": "string",
-      "enum": [
-        "claim",
-        "revocation",
-        "authority-reduction",
-        "reader-change",
-        "audience-key-epoch",
-        "issuer-authority",
-        "issuance-reservation",
-        "status-invalidation"
-      ]
+      "enum": ["claim", "revocation", "authority-reduction", "reader-change", "audience-key-epoch", "issuer-authority", "issuance-reservation", "status-invalidation"]
     },
-    "persona": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "persona": { "$ref": "#/definitions/sha256" },
     "writer_nid": { "$ref": "#/definitions/nid" },
     "created_at": { "$ref": "#/definitions/json_safe_integer" },
-    "parents": {
-      "type": "array",
-      "maxItems": 256,
-      "uniqueItems": true,
-      "items": { "$ref": "#/definitions/sha256" }
-    },
+    "parents": { "type": "array", "maxItems": 256, "uniqueItems": true, "items": { "$ref": "#/definitions/sha256" } },
     "payload": { "type": "object" },
     "payload_digest": { "$ref": "#/definitions/sha256" },
     "signature": { "type": "string", "pattern": "^[0-9a-f]{128}$" }
   },
   "allOf": [
     {
-      "if": { "properties": { "record_type": { "const": "claim" } } },
-      "then": {
-        "properties": {
-          "payload": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["claim"],
-            "properties": { "claim": { "type": "object" } }
-          }
-        }
-      }
+      "if": { "properties": { "record_type": { "const": "claim" } }, "required": ["record_type"] },
+      "then": { "properties": { "payload": { "$ref": "#/definitions/claim_payload" } } }
     },
     {
-      "if": { "properties": { "record_type": { "const": "revocation" } } },
-      "then": {
-        "properties": {
-          "payload": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["claim_id", "reason_code", "evidence"],
-            "properties": {
-              "claim_id": { "$ref": "#/definitions/sha256" },
-              "reason_code": { "type": "string", "minLength": 1, "maxLength": 128 },
-              "evidence": { "$ref": "#/definitions/reduction_evidence" }
-            }
-          }
-        }
-      }
+      "if": { "properties": { "record_type": { "const": "revocation" } }, "required": ["record_type"] },
+      "then": { "properties": { "payload": { "$ref": "#/definitions/revocation_payload" } } }
     },
     {
-      "if": { "properties": { "record_type": { "const": "authority-reduction" } } },
+      "if": { "properties": { "record_type": { "const": "authority-reduction" } }, "required": ["record_type"] },
       "then": {
         "properties": {
           "payload": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["claim_id", "subject_nid", "authority", "evidence"],
+            "required": ["role", "subject_nid", "revocation_artifact"],
             "properties": {
-              "claim_id": { "$ref": "#/definitions/sha256" },
+              "role": { "enum": ["claim-ledger-reader", "oidc-token-issuer"] },
               "subject_nid": { "$ref": "#/definitions/nid" },
-              "authority": { "enum": ["claim-ledger-reader", "oidc-token-issuer"] },
-              "evidence": { "$ref": "#/definitions/reduction_evidence" }
+              "revocation_artifact": { "$ref": "#/definitions/revocation_artifact" }
             }
           }
         }
       }
     },
     {
-      "if": { "properties": { "record_type": { "const": "reader-change" } } },
+      "if": { "properties": { "record_type": { "const": "reader-change" } }, "required": ["record_type"] },
       "then": {
         "properties": {
           "payload": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["claim_id", "reader_nid", "action"],
-            "properties": {
-              "claim_id": { "$ref": "#/definitions/sha256" },
-              "reader_nid": { "$ref": "#/definitions/nid" },
-              "action": { "enum": ["grant", "remove"] }
-            }
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["action", "reader_nid", "claim_artifact"],
+                "properties": {
+                  "action": { "const": "grant" },
+                  "reader_nid": { "$ref": "#/definitions/nid" },
+                  "claim_artifact": { "$ref": "#/definitions/claim_artifact" }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["action", "reader_nid", "revocation_artifact"],
+                "properties": {
+                  "action": { "const": "remove" },
+                  "reader_nid": { "$ref": "#/definitions/nid" },
+                  "revocation_artifact": { "$ref": "#/definitions/revocation_artifact" }
+                }
+              }
+            ]
           }
         }
       }
     },
     {
-      "if": { "properties": { "record_type": { "const": "audience-key-epoch" } } },
+      "if": { "properties": { "record_type": { "const": "audience-key-epoch" } }, "required": ["record_type"] },
       "then": {
         "properties": {
           "payload": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["key_id", "reader_nids", "removed_reader_nids", "radicle_access_removed", "retire_previous_state", "scrub_profile"],
+            "required": ["epoch", "key_id", "key_digest", "previous_epoch", "previous_key_id", "reader_nids", "removed_reader_nids", "recipient_wraps", "radicle_access_removed", "checkpoint_commit_oid", "retire_previous_state", "scrub_profile"],
             "properties": {
-              "key_id": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$" },
-              "previous_key_id": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$" },
+              "epoch": { "$ref": "#/definitions/json_safe_integer" },
+              "key_id": { "$ref": "#/definitions/identifier" },
+              "key_digest": { "$ref": "#/definitions/sha256" },
+              "previous_epoch": { "$ref": "#/definitions/json_safe_integer" },
+              "previous_key_id": { "$ref": "#/definitions/identifier" },
               "reader_nids": { "$ref": "#/definitions/nids" },
               "removed_reader_nids": { "$ref": "#/definitions/nids" },
+              "recipient_wraps": {
+                "type": "array",
+                "maxItems": 256,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["reader_nid", "context_digest", "wrapped_key"],
+                  "properties": {
+                    "reader_nid": { "$ref": "#/definitions/nid" },
+                    "context_digest": { "$ref": "#/definitions/sha256" },
+                    "wrapped_key": { "type": "string", "pattern": "^[0-9a-f]{128}$" }
+                  }
+                }
+              },
               "radicle_access_removed": { "$ref": "#/definitions/nids" },
+              "checkpoint_commit_oid": { "$ref": "#/definitions/sha256" },
               "retire_previous_state": { "const": true },
               "scrub_profile": { "const": "comms-encrypted-branch-cooperative-v1" }
             }
@@ -131,24 +115,30 @@
       }
     },
     {
-      "if": { "properties": { "record_type": { "const": "issuer-authority" } } },
+      "if": { "properties": { "record_type": { "const": "issuer-authority" } }, "required": ["record_type"] },
       "then": {
         "properties": {
           "payload": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["claim_id", "writer_nid", "action"],
-            "properties": {
-              "claim_id": { "$ref": "#/definitions/sha256" },
-              "writer_nid": { "$ref": "#/definitions/nid" },
-              "action": { "enum": ["grant", "remove"] }
-            }
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["action", "writer_nid", "claim_artifact"],
+                "properties": { "action": { "const": "grant" }, "writer_nid": { "$ref": "#/definitions/nid" }, "claim_artifact": { "$ref": "#/definitions/claim_artifact" } }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["action", "writer_nid", "revocation_artifact"],
+                "properties": { "action": { "const": "remove" }, "writer_nid": { "$ref": "#/definitions/nid" }, "revocation_artifact": { "$ref": "#/definitions/revocation_artifact" } }
+              }
+            ]
           }
         }
       }
     },
     {
-      "if": { "properties": { "record_type": { "const": "issuance-reservation" } } },
+      "if": { "properties": { "record_type": { "const": "issuance-reservation" } }, "required": ["record_type"] },
       "then": {
         "properties": {
           "payload": {
@@ -158,13 +148,7 @@
             "properties": {
               "jti": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
               "writer_nid": { "$ref": "#/definitions/nid" },
-              "source_claim_ids": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 256,
-                "uniqueItems": true,
-                "items": { "$ref": "#/definitions/sha256" }
-              },
+              "source_claim_ids": { "type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": { "$ref": "#/definitions/sha256" } },
               "allocation_ref": { "type": "string", "pattern": "^pending:[A-Za-z0-9._:-]{1,256}$" }
             }
           }
@@ -172,17 +156,17 @@
       }
     },
     {
-      "if": { "properties": { "record_type": { "const": "status-invalidation" } } },
+      "if": { "properties": { "record_type": { "const": "status-invalidation" } }, "required": ["record_type"] },
       "then": {
         "properties": {
           "payload": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["jti", "source_claim_id", "evidence"],
+            "required": ["jti", "source_claim_id", "revocation_artifact"],
             "properties": {
               "jti": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
               "source_claim_id": { "$ref": "#/definitions/sha256" },
-              "evidence": { "$ref": "#/definitions/reduction_evidence" }
+              "revocation_artifact": { "$ref": "#/definitions/revocation_artifact" }
             }
           }
         }
@@ -192,26 +176,52 @@
   "definitions": {
     "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "nid": { "type": "string", "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$", "maxLength": 128 },
-    "nids": {
-      "type": "array",
-      "maxItems": 256,
-      "uniqueItems": true,
-      "items": { "$ref": "#/definitions/nid" }
-    },
-    "json_safe_integer": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
-    ,
-    "reduction_evidence": {
+    "nids": { "type": "array", "maxItems": 256, "uniqueItems": true, "items": { "$ref": "#/definitions/nid" } },
+    "identifier": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$" },
+    "json_safe_integer": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "nostr_signed_event": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["claim_id", "event_id", "authority", "validated_at", "core_kel_authority_valid", "evidence_digest"],
+      "required": ["pubkey", "created_at", "kind", "tags", "content", "id", "sig"],
       "properties": {
-        "claim_id": { "$ref": "#/definitions/sha256" },
-        "event_id": { "$ref": "#/definitions/sha256" },
-        "authority": { "enum": ["claim-revocation", "claim-ledger-reader", "oidc-token-issuer", "source-claim"] },
-        "validated_at": { "$ref": "#/definitions/json_safe_integer" },
-        "core_kel_authority_valid": { "const": true },
-        "evidence_digest": { "$ref": "#/definitions/sha256" }
+        "pubkey": { "$ref": "#/definitions/sha256" },
+        "created_at": { "$ref": "#/definitions/json_safe_integer" },
+        "kind": { "type": "integer", "minimum": 0, "maximum": 65535 },
+        "tags": { "type": "array", "items": { "type": "array", "items": { "type": "string" } } },
+        "content": { "type": "string" },
+        "id": { "$ref": "#/definitions/sha256" },
+        "sig": { "type": "string", "pattern": "^[0-9a-f]{128}$" }
       }
+    },
+    "claim_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event", "semantic"],
+      "properties": {
+        "event": { "$ref": "#/definitions/nostr_signed_event" },
+        "semantic": { "$ref": "https://heterodyne.network/schemas/comms/key-claim-v1.schema.json" }
+      }
+    },
+    "revocation_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event", "semantic"],
+      "properties": {
+        "event": { "$ref": "#/definitions/nostr_signed_event" },
+        "semantic": { "$ref": "https://heterodyne.network/schemas/comms/key-claim-revocation-v1.schema.json" }
+      }
+    },
+    "claim_payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim_artifact"],
+      "properties": { "claim_artifact": { "$ref": "#/definitions/claim_artifact" } }
+    },
+    "revocation_payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revocation_artifact"],
+      "properties": { "revocation_artifact": { "$ref": "#/definitions/revocation_artifact" } }
     }
   }
 }

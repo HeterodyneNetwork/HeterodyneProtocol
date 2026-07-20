@@ -10,42 +10,64 @@
     "heterodyne:comms/0.5.0#comms-conformance"
   ],
   "vector_id": "claim-ledger/delivered-grant-provisional",
-  "description": "A valid DR-delivered reader grant remains provisional until reachable from canonical repository state.",
+  "description": "A delivered signed claim outside the canonical tree remains provisional.",
   "input": {
-    "delivered_claim": {
-      "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
-      "issuer": {
-        "type": "nostr-secp256k1",
-        "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+    "delivered_record": {
+      "record_id": "5efb1a25f7d06ec8c7b7c79cc71058975c42cb22bffc06f7070c1ddaa86af064",
+      "record_type": "claim",
+      "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+      "created_at": 1767245601,
+      "parents": [],
+      "payload": {
+        "claim_artifact": {
+          "event": {
+            "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+            "created_at": 1767245600,
+            "kind": 31013,
+            "tags": [
+              [
+                "d",
+                "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c"
+              ]
+            ],
+            "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c\",\"comms_version\":\"comms/0.5.0\",\"expires_at\":1767249200,\"issued_at\":1767245600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767245600,\"registry_revision\":2,\"resources\":[\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger\"],\"subject\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"},\"value\":true,\"visibility\":\"repository-private\"}",
+            "id": "9d0b32ada19067c6a5881dccdf08bb7837a8cada2771f07e6313f47d4cc654d1",
+            "sig": "e07508cd3122d7b785af7db8538b3d48fcaafe76fdc6b9e044b6d959c36cefb8702c0de06dc6bb337ccbd53d71fd9d257a6d1246cb2cfcedcc14517934a9af95"
+          },
+          "semantic": {
+            "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+            "issuer": {
+              "type": "nostr-secp256k1",
+              "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+            },
+            "subject": {
+              "type": "radicle-ed25519-nid",
+              "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+            },
+            "claim_class": "authorization",
+            "namespace": "heterodyne.device",
+            "name": "claim-ledger-reader",
+            "value": true,
+            "issued_at": 1767245600,
+            "not_before": 1767245600,
+            "expires_at": 1767249200,
+            "audience": [
+              "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+            ],
+            "resources": [
+              "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger"
+            ],
+            "visibility": "repository-private",
+            "comms_version": "comms/0.5.0",
+            "registry_revision": 2
+          }
+        }
       },
-      "subject": {
-        "type": "radicle-ed25519-nid",
-        "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
-      },
-      "claim_class": "authorization",
-      "namespace": "heterodyne.device",
-      "name": "claim-ledger-reader",
-      "value": true,
-      "issued_at": 1767245600,
-      "not_before": 1767245600,
-      "expires_at": 1767249200,
-      "audience": [
-        "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-      ],
-      "resources": [
-        "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger"
-      ],
-      "visibility": "repository-private",
-      "comms_version": "comms/0.5.0",
-      "registry_revision": 2
+      "payload_digest": "fee636ba1762aa2d8d66e2b20563c529d87568af7a013fe7d4a04f53be7d1129",
+      "signature": "00b9fce9d7a532404a48306fba6a51d5a01e81a46ca28d240f48f14396d1ae8e80ecb05cd731c7781195cfc16b6d676dbca8caf8abebfe876ba4c5b945794f0d"
     },
-    "canonical_records": [],
-    "checkpoint": {
-      "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-      "branch": "main",
-      "commit_oid": "abababababababababababababababababababab",
-      "observed_at": 1767245700
-    }
+    "repository_confirmed_record_ids": []
   },
   "expected_output": {
     "verdict": "reject",

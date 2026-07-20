@@ -10,43 +10,36 @@
     "heterodyne:comms/0.5.0#comms-conformance"
   ],
   "vector_id": "claim-ledger/nidless-reader-denied",
-  "description": "A NID-less session device cannot replicate or decrypt the private claim ledger.",
+  "description": "NID-less readers fail before repository replication or decryption.",
   "input": {
     "reader_nid": null,
-    "claims": [
-      {
-        "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
-        "issuer": {
-          "type": "nostr-secp256k1",
-          "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
-        },
-        "subject": {
+    "request": {
+      "claim_record_id": "5efb1a25f7d06ec8c7b7c79cc71058975c42cb22bffc06f7070c1ddaa86af064",
+      "event_id": "9d0b32ada19067c6a5881dccdf08bb7837a8cada2771f07e6313f47d4cc654d1",
+      "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "resource": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger",
+      "nonce": "0102030405060708090a0b0c0d0e0f10",
+      "subject_proof": {
+        "key": {
           "type": "radicle-ed25519-nid",
           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
         },
-        "claim_class": "authorization",
-        "namespace": "heterodyne.device",
-        "name": "claim-ledger-reader",
-        "value": true,
-        "issued_at": 1767245600,
-        "not_before": 1767245600,
-        "expires_at": 1767249200,
-        "audience": [
-          "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-        ],
-        "resources": [
-          "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger"
-        ],
-        "visibility": "repository-private",
-        "comms_version": "comms/0.5.0",
-        "registry_revision": 2
+        "challenge": {
+          "domain": "heterodyne-claim-pop-v1",
+          "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+          "nonce": "0102030405060708090a0b0c0d0e0f10",
+          "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+          "resource": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger",
+          "operation": "read",
+          "issued_at": 1767245610,
+          "expires_at": 1767245670
+        },
+        "proof": {
+          "type": "radicle-ed25519",
+          "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
+          "signature": "3481432cba7a35d9a540c7f606a3f5c3d66f3c01a1003ec2115efddfa833415368614b0025bd49dff57fe0b9e9c176c1d5365d12f7b6f2c3c25123830421b700"
+        }
       }
-    ],
-    "checkpoint": {
-      "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-      "branch": "main",
-      "commit_oid": "abababababababababababababababababababab",
-      "observed_at": 1767245700
     }
   },
   "expected_output": {

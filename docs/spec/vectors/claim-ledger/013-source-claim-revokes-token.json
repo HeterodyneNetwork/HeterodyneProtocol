@@ -10,89 +10,96 @@
     "heterodyne:comms/0.5.0#comms-conformance"
   ],
   "vector_id": "claim-ledger/source-claim-revokes-token",
-  "description": "A source-claim revocation makes its issuance mapping invalid in ledger state; Task 7 owns token-status encoding.",
+  "description": "Source revocation and token invalidation are separate executable effects; status encoding remains Task 7.",
   "input": {
-    "issuance_reservation": {
-      "record_id": "e4320e268f976ab5d7b4d20c90fe9028b053fdd346082420bd0431ebb8ca9ea9",
-      "record_type": "issuance-reservation",
-      "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-      "created_at": 1767245605,
-      "parents": [
-        "33fa4406d27eeafe71aa1e0cf3475e865ce6051f53fd572938c112f277ced6f5"
-      ],
-      "payload": {
-        "jti": "writer_one_token_0001",
-        "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-        "source_claim_ids": [
-          "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c"
-        ],
-        "allocation_ref": "pending:writer-one:sequence-0"
-      },
-      "payload_digest": "991bd8f5811b58d0afad4133a1ac7f00ca30c89339dbb1ca77f0017f6cebf962",
-      "signature": "8aaab7ad1ec6c1011d23dd67165730b1fa8d685d1128436a7999cce685d596bcba49bf1cc865ab2d0d705697fc20767230c7ceee713e2580ecc0a4640340da05"
-    },
-    "source_revocation": {
-      "record_id": "4a5c737db8ed3a6a7925309caa43c3da6a0f96b3c2fd12c24d68cdeb8b0a0812",
+    "claim_revocation": {
+      "record_id": "70c6f93b2b4bc7baf6ae15425899b98745fd584c8d71531a375c843e2dbb4391",
       "record_type": "revocation",
       "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
       "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
-      "created_at": 1767245602,
+      "created_at": 1767245631,
       "parents": [
-        "33fa4406d27eeafe71aa1e0cf3475e865ce6051f53fd572938c112f277ced6f5"
+        "5efb1a25f7d06ec8c7b7c79cc71058975c42cb22bffc06f7070c1ddaa86af064"
       ],
       "payload": {
-        "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
-        "reason_code": "claim-revoked",
-        "evidence": {
-          "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
-          "event_id": "3131313131313131313131313131313131313131313131313131313131313131",
-          "authority": "claim-revocation",
-          "validated_at": 1767245602,
-          "core_kel_authority_valid": true,
-          "evidence_digest": "1fcbcf0ff6a7a06d3884b208cc0c180acfafb97c6b170695c83881d6575cc68a"
+        "revocation_artifact": {
+          "event": {
+            "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+            "created_at": 1767245630,
+            "kind": 31014,
+            "tags": [
+              [
+                "d",
+                "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c"
+              ]
+            ],
+            "content": "{\"claim_id\":\"243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c\",\"reason_code\":\"claim-revoked\",\"revoked_at\":1767245630,\"revoker\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"}}",
+            "id": "49d17243b14299a55a68e9898089ce1004d4b84e23925fd8bae710f7025e920f",
+            "sig": "fc7a97d771a4fe6770ee6bdbcab0bd732c2172ecb9c8c6ca7c4fa229ddc074e3573a6ef63d47fb402f6946d5c2af72bd28ec0aba19f02d9c27568ae4ab879c98"
+          },
+          "semantic": {
+            "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+            "revoked_at": 1767245630,
+            "reason_code": "claim-revoked",
+            "revoker": {
+              "type": "nostr-secp256k1",
+              "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+            }
+          }
         }
       },
-      "payload_digest": "30d53a9c2d6d935031a3904a7911f59d2883dd4fde9687f6aa8e2654c49fb990",
-      "signature": "82d8b7b782875ff280e5bfc1733bf15241757e8eb8ee410e3200454dca80e841bc26c00f67f2c7820959d5f62f0b4b9bb19e854e301625d92071d6b137e24707"
+      "payload_digest": "e28b294038b269e0b3c2fd26adfab591175c9363473603bb8f5f84d589ebdda9",
+      "signature": "f0ad7d045843a9e1b485ed171f075bff81aa11ddbb947dbf2588c6a24daefbdb08e1f13496490d540a8194cf66ddc18c143759fb6269f167d236db4b315b0e02"
     },
-    "status_invalidation": {
-      "record_id": "c24dec0386034bcb14f4044d17641b99b326f912eb79b1a201073e9b4e3002c4",
+    "token_invalidation": {
+      "record_id": "74e0a88b5c2d452d7a3768719a81a68e2098aa1356652554b52909f969c6abdb",
       "record_type": "status-invalidation",
       "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
       "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
-      "created_at": 1767245606,
+      "created_at": 1767245671,
       "parents": [
-        "e4320e268f976ab5d7b4d20c90fe9028b053fdd346082420bd0431ebb8ca9ea9"
+        "6eb2994eb43cbba44ebac5fc9556de909652198521076d53201a731ee2750e02"
       ],
       "payload": {
         "jti": "writer_one_token_0001",
         "source_claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
-        "evidence": {
-          "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
-          "event_id": "3434343434343434343434343434343434343434343434343434343434343434",
-          "authority": "source-claim",
-          "validated_at": 1767245606,
-          "core_kel_authority_valid": true,
-          "evidence_digest": "01bf11fde6c1da5d8b8442553549a014e261cd030fccdef2370e953a57b7aa70"
+        "revocation_artifact": {
+          "event": {
+            "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+            "created_at": 1767245630,
+            "kind": 31014,
+            "tags": [
+              [
+                "d",
+                "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c"
+              ]
+            ],
+            "content": "{\"claim_id\":\"243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c\",\"reason_code\":\"claim-revoked\",\"revoked_at\":1767245630,\"revoker\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"}}",
+            "id": "49d17243b14299a55a68e9898089ce1004d4b84e23925fd8bae710f7025e920f",
+            "sig": "fc7a97d771a4fe6770ee6bdbcab0bd732c2172ecb9c8c6ca7c4fa229ddc074e3573a6ef63d47fb402f6946d5c2af72bd28ec0aba19f02d9c27568ae4ab879c98"
+          },
+          "semantic": {
+            "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+            "revoked_at": 1767245630,
+            "reason_code": "claim-revoked",
+            "revoker": {
+              "type": "nostr-secp256k1",
+              "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+            }
+          }
         }
       },
-      "payload_digest": "04719628c220d9b8e1199e0a2001f95cfbbf73974301166618ab012595ffb6b4",
-      "signature": "95b0b9a2940c5eb1a25facb271e8c751c4f2cc294e39a507547e00b74c2b1cb19081d06b3a493b2e1f229f3db113c7fc363c3e134cd1066fa678467502065508"
-    },
-    "checkpoint": {
-      "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-      "branch": "main",
-      "commit_oid": "abababababababababababababababababababab",
-      "observed_at": 1767245700
+      "payload_digest": "12a858bd509f60ffffec34e6eedec55f5adb38c5e9bae20c6c484cc641a3f082",
+      "signature": "cd0bd32b56dfd20a4240d8ec559266b2a6156b2085f1f1a71995abb8a4d0c1c0fb71d528db7de649d2311ff46f3c507a10fb196ea7bd61ce0357aa627687e20d"
     }
   },
   "expected_output": {
-    "verdict": "reject",
-    "reason_code": "claim-revoked",
+    "verdict": "accept",
     "normalized": {
       "source_claim_state": "revoked",
-      "token_state": "invalid",
+      "token_invalidations": [
+        "writer_one_token_0001"
+      ],
       "status_encoding": "deferred-to-claims-task-7"
     }
   },
