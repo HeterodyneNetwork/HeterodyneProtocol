@@ -89,6 +89,8 @@ export type IssuerKeyEnvelope = {
   content_digest: string;
   nonce: string;
   ciphertext: string;
+  authority_record_ids: string[];
+  authority_record_set_digest: string;
   recipient_wraps: Array<{ writer_nid: string; context_digest: string; wrapped_key: string }>;
   removed_issuer_nids: string[];
 };
@@ -101,6 +103,14 @@ export type LedgerMergeResult = {
   delivered_record_ids?: string[];
   authenticated_revocations?: VerifiedRevocation[];
   token_invalidations?: string[];
+  canonical_commit_oids?: string[];
+};
+
+export type MintingAttemptDecision = MintingEligibility & {
+  authority_state: ClaimState;
+  active_issuer_nids: string[];
+  key_epoch: number;
+  pending_rotation: boolean;
 };
 
 export type ClaimArtifact = { event: NostrSignedEvent; semantic: ClaimSemanticBody };
@@ -219,6 +229,8 @@ const RECORD_TYPES = new Set<LedgerRecordType>([
   "issuance-reservation",
   "status-invalidation",
 ]);
+const VALIDATED_LEDGER_STATES = new WeakSet<object>();
+const VALIDATED_LEDGER_REPOSITORIES = new WeakMap<object, LedgerRepositoryEvidence>();
 
 export function createSignedLedgerRecord(input: UnsignedLedgerRecord, writerSecretKey: string): LedgerRecord {
   const payload_digest = digestJson(input.payload);
@@ -309,17 +321,13 @@ export function mergeClaimLedger(
     .map(revocationArtifactFromRecord)
     .filter((artifact): artifact is RevocationArtifact => artifact !== null)
     .map(({ event }) => validateClaimRevocationEnvelope(event));
+  const confirmedSet = new Set(confirmed);
   const explicitTokenInvalidations = records
-    .filter(({ record_type }) => record_type === "status-invalidation")
+    .filter(({ record_type, record_id }) => record_type === "status-invalidation" && confirmedSet.has(record_id))
     .map((record) => String(payloadObject(record.payload).jti));
-  const reducedClaimIds = new Set(records.filter(isReduction).map(recordClaimId).filter((id): id is string => id !== null));
-  const derivedTokenInvalidations = records
-    .filter(({ record_type }) => record_type === "issuance-reservation")
-    .map(({ payload }) => payloadObject(payload) as unknown as IssuanceRecord)
-    .filter(({ source_claim_ids }) => source_claim_ids.some((claimId) => reducedClaimIds.has(claimId)))
-    .map(({ jti }) => jti);
-  const tokenInvalidations = [...new Set([...explicitTokenInvalidations, ...derivedTokenInvalidations])].sort();
-  return {
+  const tokenInvalidations = [...new Set(explicitTokenInvalidations)].sort();
+  const canonicalCommits = canonicalAncestorCommits(context.repository);
+  const result: LedgerMergeResult = {
     records,
     conflicted_claim_ids: findConflictedClaims(records),
     checkpoint: { ...checkpoint },
@@ -327,7 +335,11 @@ export function mergeClaimLedger(
     delivered_record_ids: records.map(({ record_id }) => record_id).filter((id) => !confirmed.includes(id)).sort(),
     authenticated_revocations: authenticatedRevocations,
     token_invalidations: tokenInvalidations,
+    canonical_commit_oids: canonicalCommits.map(({ commit_oid }) => commit_oid),
   };
+  VALIDATED_LEDGER_STATES.add(result);
+  VALIDATED_LEDGER_REPOSITORIES.set(result, structuredClone(context.repository));
+  return result;
 }
 
 export function deriveLedgerPath(audienceKey: Uint8Array, recordId: string): string {
@@ -557,11 +569,10 @@ export function canMint(
   if (issuerClaimState !== "active") return denied("oidc-issuer-authority-invalid");
   if (!hasSigningKey) return denied("oidc-signing-key-unavailable");
   if (!Number.isSafeInteger(now) || !Number.isSafeInteger(manifestMaxAgeSeconds) ||
-      manifestMaxAgeSeconds < 0 || now < checkpoint.observed_at) {
+      manifestMaxAgeSeconds <= 0 || manifestMaxAgeSeconds > 300 || now < checkpoint.observed_at) {
     return denied("oidc-checkpoint-stale");
   }
-  const effectiveMaximumAge = Math.min(manifestMaxAgeSeconds, 300);
-  if (now - checkpoint.observed_at > effectiveMaximumAge) return denied("oidc-checkpoint-stale");
+  if (now - checkpoint.observed_at > manifestMaxAgeSeconds) return denied("oidc-checkpoint-stale");
   return { allowed: true, reason_code: null, checkpoint: { ...checkpoint } };
 }
 
@@ -609,45 +620,79 @@ export function validateIssuanceRecordOrThrow(record: IssuanceRecord): void {
 export function createIssuerKeyEnvelope(input: {
   persona: string;
   repository_rid: string;
-  checkpoint_commit_oid: string;
   epoch: number;
-  previous_key_id?: string;
   audience_key: Uint8Array;
   signing_jwk: JsonValue;
-  active_issuer_nids: string[];
-  removed_issuer_nids?: string[];
+  authority_state: LedgerMergeResult;
+  recipient_nids: string[];
+  previous?: { envelope: IssuerKeyEnvelope; audience_key: Uint8Array };
 }): IssuerKeyEnvelope {
-  if (!PERSONA.test(input.persona) || !RID.test(input.repository_rid) || !COMMIT_OID.test(input.checkpoint_commit_oid) ||
+  assertValidatedLedgerState(input.authority_state);
+  const repository = validatedRepositoryForState(input.authority_state);
+  const checkpoint_commit_oid = input.authority_state.checkpoint.commit_oid;
+  if (!PERSONA.test(input.persona) || !RID.test(input.repository_rid) ||
       !Number.isSafeInteger(input.epoch) || input.epoch < 1 || input.audience_key.length !== 32) {
     throw new Error("claim-schema-invalid: invalid issuer signing-key envelope context");
   }
-  validateNidSet(input.active_issuer_nids);
-  validateNidSet(input.removed_issuer_nids ?? []);
-  if ((input.removed_issuer_nids ?? []).some((nid) => input.active_issuer_nids.includes(nid))) {
-    throw new Error("oidc-issuer-authority-invalid: removed issuer retained in recipient wraps");
+  if (input.authority_state.checkpoint.repository_rid !== input.repository_rid ||
+      input.authority_state.records.some((record) =>
+        record.record_type === "issuer-authority" && payloadObject(record.payload).action === "remove" &&
+        !(input.authority_state.repository_confirmed_record_ids ?? []).includes(record.record_id))) {
+    throw new Error("claim-repository-unconfirmed: issuer-key rotation requires canonical authority reductions");
   }
-  const audience_key_id = bytesToHex(sha256(input.audience_key));
-  const previous_key_id = input.previous_key_id ?? GENESIS_AUDIENCE_KEY_ID;
-  if (!HEX_32.test(previous_key_id) || (input.epoch > 1 && previous_key_id === audience_key_id) ||
-      (input.epoch === 1 && previous_key_id !== GENESIS_AUDIENCE_KEY_ID)) {
-    throw new Error("oidc-signing-key-unavailable: issuer audience key was not rotated");
+  validateNidSet(input.recipient_nids);
+  const activeIssuerNids = deriveActiveIssuerNids(input.authority_state);
+  if (jcsCanonicalize([...input.recipient_nids].sort()) !== jcsCanonicalize(activeIssuerNids)) {
+    throw new Error("oidc-issuer-authority-invalid: issuer-key recipients must exactly equal active canonical issuers");
   }
   const plaintext = utf8Bytes(jcsCanonicalize(input.signing_jwk));
   const content_digest = bytesToHex(sha256(plaintext));
+  const audience_key_id = bytesToHex(sha256(input.audience_key));
+  const previous_key_id = input.previous?.envelope.audience_key_id ?? GENESIS_AUDIENCE_KEY_ID;
+  const hasCanonicalRemoval = input.authority_state.records.some((record) =>
+    record.record_type === "issuer-authority" && payloadObject(record.payload).action === "remove" &&
+    (input.authority_state.repository_confirmed_record_ids ?? []).includes(record.record_id));
+  let previousRecipients: string[] = [];
+  if (input.previous === undefined) {
+    if (input.epoch !== 1 || hasCanonicalRemoval) {
+      throw new Error("oidc-signing-key-unavailable: issuer genesis cannot follow authority removal or an existing epoch");
+    }
+  } else {
+    previousRecipients = validatePreviousIssuerKeyEnvelope({
+      previous: input.previous,
+      state: input.authority_state,
+      repository,
+      persona: input.persona,
+      repository_rid: input.repository_rid,
+      next_epoch: input.epoch,
+      next_audience_key_id: audience_key_id,
+      next_content_digest: content_digest,
+    });
+  }
+  if (input.previous !== undefined && (
+      input.epoch !== input.previous.envelope.epoch + 1 ||
+      bytesToHex(sha256(input.previous.audience_key)) !== input.previous.envelope.audience_key_id ||
+      previous_key_id === audience_key_id)) {
+    throw new Error("oidc-signing-key-unavailable: issuer audience key was not rotated");
+  }
+  const removed_issuer_nids = previousRecipients.filter((nid) => !activeIssuerNids.includes(nid)).sort();
+  const authority_record_ids = issuerAuthorityRecordIds(input.authority_state);
+  const authority_record_set_digest = digestJson(authority_record_ids);
   const context = {
     domain: "heterodyne-oidc-signing-key-object-v1",
     persona: input.persona,
     repository_rid: input.repository_rid,
-    checkpoint_commit_oid: input.checkpoint_commit_oid,
+    checkpoint_commit_oid,
     epoch: input.epoch,
     audience_key_id,
     previous_key_id,
     content_digest,
+    authority_record_set_digest,
   };
   const aad = utf8Bytes(jcsCanonicalize(context));
   const nonce = sha256(utf8Bytes(`heterodyne-oidc-signing-key-nonce-v1\0${jcsCanonicalize(context)}`)).slice(0, 24);
   const ciphertext = xchacha20poly1305(input.audience_key, nonce, aad).encrypt(plaintext);
-  const recipient_wraps = [...input.active_issuer_nids].sort().map((writer_nid) => {
+  const recipient_wraps = activeIssuerNids.map((writer_nid) => {
     const context_digest = digestJson({ ...context, writer_nid });
     const wrapBlock = (counter: number) => createHmac("sha256", input.audience_key)
       .update("heterodyne-oidc-issuer-key-wrap-v1\0", "utf8")
@@ -660,15 +705,17 @@ export function createIssuerKeyEnvelope(input: {
     object_type: "oidc-signing-jwk-v1",
     persona: input.persona,
     repository_rid: input.repository_rid,
-    checkpoint_commit_oid: input.checkpoint_commit_oid,
+    checkpoint_commit_oid,
     epoch: input.epoch,
     audience_key_id,
     previous_key_id,
     content_digest,
     nonce: bytesToHex(nonce),
     ciphertext: bytesToHex(ciphertext),
+    authority_record_ids,
+    authority_record_set_digest,
     recipient_wraps,
-    removed_issuer_nids: [...(input.removed_issuer_nids ?? [])].sort(),
+    removed_issuer_nids,
   };
 }
 
@@ -694,7 +741,11 @@ export function unwrapIssuerSigningJwk(
     audience_key_id: envelope.audience_key_id,
     previous_key_id: envelope.previous_key_id,
     content_digest: envelope.content_digest,
+    authority_record_set_digest: envelope.authority_record_set_digest,
   };
+  if (envelope.authority_record_set_digest !== digestJson(envelope.authority_record_ids)) {
+    throw new Error("oidc-issuer-authority-invalid: issuer authority record-set binding mismatch");
+  }
   if (wrap.context_digest !== digestJson({ ...context, writer_nid: writerNid })) {
     throw new Error("oidc-signing-key-unavailable: issuer recipient wrap binding mismatch");
   }
@@ -730,6 +781,102 @@ export function invalidationsForCompromisedSigningKey(
   }
   for (const issuance of existing) validateIssuanceRecordOrThrow(issuance);
   return [...new Set(existing.filter(({ signing_key_id }) => signing_key_id === compromisedKeyId).map(({ jti }) => jti))].sort();
+}
+
+export function createStatusInvalidationRecords(input: {
+  state: LedgerMergeResult;
+  writer_nid: string;
+  writer_secret_key: string;
+  created_at: number;
+  compromised_signing_key_ids: string[];
+}): LedgerRecord[] {
+  assertValidatedLedgerState(input.state);
+  if (!deriveActiveIssuerNids(input.state, input.created_at).includes(input.writer_nid)) {
+    throw new Error("oidc-issuer-authority-invalid: invalidation writer lacks active issuer authority");
+  }
+  const writerPublicKey = ed25519PublicKeyFromNid(input.writer_nid);
+  if (!HEX_32.test(input.writer_secret_key) ||
+      bytesToHex(ed25519.getPublicKey(hexToBytes(input.writer_secret_key))) !== bytesToHex(writerPublicKey)) {
+    throw new Error("claim-event-signature-invalid: invalidation writer key does not match NID");
+  }
+  if (!Number.isSafeInteger(input.created_at) || input.created_at < input.state.checkpoint.observed_at) {
+    throw new Error("claim-schema-invalid: invalid invalidation creation time");
+  }
+  const compromised = [...new Set(input.compromised_signing_key_ids)].sort();
+  if (compromised.some((keyId) => !HEX_32.test(keyId))) {
+    throw new Error("claim-schema-invalid: invalid compromised signing-key ID");
+  }
+  const existingCauses = new Set(input.state.records
+    .filter(({ record_type }) => record_type === "status-invalidation")
+    .map(({ payload }) => invalidationCauseKey(payloadObject(payload))));
+  const records: LedgerRecord[] = [];
+  const confirmed = new Set(input.state.repository_confirmed_record_ids ?? []);
+  const issuances = input.state.records
+    .filter(({ record_type, record_id }) => record_type === "issuance-reservation" && confirmed.has(record_id))
+    .sort((left, right) => left.record_id.localeCompare(right.record_id));
+  for (const issuanceRecord of issuances) {
+    const issuance = payloadObject(issuanceRecord.payload) as unknown as IssuanceRecord;
+    for (const sourceClaimId of [...issuance.source_claim_ids].sort()) {
+      if (resolveAuthoritativeClaimState(sourceClaimId, input.state, input.created_at) !== "revoked") continue;
+      const reduction = input.state.records
+        .filter((record) => isReduction(record) && recordClaimId(record) === sourceClaimId && revocationArtifactFromRecord(record) !== null)
+        .sort((left, right) => left.record_id.localeCompare(right.record_id))[0];
+      if (reduction === undefined) continue;
+      const payload = {
+        cause: "source-claim-revoked",
+        jti: issuance.jti,
+        source_claim_id: sourceClaimId,
+        revocation_artifact: revocationArtifactFromRecord(reduction)!,
+      } as unknown as JsonValue;
+      const causeKey = invalidationCauseKey(payloadObject(payload));
+      if (!existingCauses.has(causeKey)) {
+        records.push(createSignedLedgerRecord({
+          record_type: "status-invalidation",
+          persona: issuanceRecord.persona,
+          writer_nid: input.writer_nid,
+          created_at: input.created_at,
+          parents: [issuanceRecord.record_id, reduction.record_id].sort(),
+          payload,
+        }, input.writer_secret_key));
+        existingCauses.add(causeKey);
+      }
+    }
+    if (compromised.includes(issuance.signing_key_id)) {
+      const payload = {
+        cause: "signing-key-compromised",
+        jti: issuance.jti,
+        signing_key_id: issuance.signing_key_id,
+        compromise_evidence: {
+          detected_at: input.created_at,
+          evidence_digest: digestJson({
+            domain: "heterodyne-oidc-signing-key-compromise-v1",
+            signing_key_id: issuance.signing_key_id,
+            checkpoint: input.state.checkpoint,
+            detected_at: input.created_at,
+          }),
+        },
+      } as unknown as JsonValue;
+      const causeKey = invalidationCauseKey(payloadObject(payload));
+      if (!existingCauses.has(causeKey)) {
+        records.push(createSignedLedgerRecord({
+          record_type: "status-invalidation",
+          persona: issuanceRecord.persona,
+          writer_nid: input.writer_nid,
+          created_at: input.created_at,
+          parents: [issuanceRecord.record_id],
+          payload,
+        }, input.writer_secret_key));
+        existingCauses.add(causeKey);
+      }
+    }
+  }
+  return records.sort((left, right) => {
+    const leftPayload = payloadObject(left.payload);
+    const rightPayload = payloadObject(right.payload);
+    return String(leftPayload.jti).localeCompare(String(rightPayload.jti)) ||
+      String(leftPayload.cause).localeCompare(String(rightPayload.cause)) ||
+      left.record_id.localeCompare(right.record_id);
+  });
 }
 
 export function ledgerErrorReason(error: unknown): string {
@@ -873,6 +1020,136 @@ export function resolveIssuerAuthorityState(
       claimArtifactFromRecord(record)?.semantic.claim_id === claimIds[0];
   });
   return hasCanonicalGrant ? resolveAuthoritativeClaimState(claimIds[0], state, evaluationTime) : "invalid";
+}
+
+export function deriveActiveIssuerNids(
+  state: LedgerMergeResult,
+  evaluationTime = state.checkpoint.observed_at,
+): string[] {
+  assertValidatedLedgerState(state);
+  const candidates = new Set<string>();
+  for (const record of state.records) {
+    const claim = claimArtifactFromRecord(record)?.semantic;
+    if (claim?.claim_class === "authorization" && claim.namespace === "heterodyne.device" &&
+        claim.name === "oidc-token-issuer" && claim.value === true &&
+        claim.visibility === "repository-private" && claim.subject.type === "radicle-ed25519-nid") {
+      candidates.add(claim.subject.value);
+    }
+  }
+  return [...candidates]
+    .filter((nid) => resolveIssuerAuthorityState(nid, state, evaluationTime) === "active")
+    .sort();
+}
+
+export function evaluateMintingAttempt(input: {
+  now: number;
+  manifest_max_age_seconds: number;
+  writer_nid: string;
+  state: LedgerMergeResult;
+  envelope: IssuerKeyEnvelope;
+  audience_key: Uint8Array;
+}): MintingAttemptDecision {
+  assertValidatedLedgerState(input.state);
+  const active_issuer_nids = deriveActiveIssuerNids(input.state, input.now);
+  const authority_state = resolveIssuerAuthorityState(input.writer_nid, input.state, input.now);
+  const envelopeAuthorityIds = new Set(input.envelope.authority_record_ids);
+  const confirmed = new Set(input.state.repository_confirmed_record_ids ?? []);
+  const expectedAuthorityIds = issuerAuthorityRecordIds(input.state);
+  const personaMatches = input.state.records.every(({ persona }) => persona === input.envelope.persona);
+  const hasIssuerRemoval = input.state.records.some((record) =>
+    record.record_type === "issuer-authority" && payloadObject(record.payload).action === "remove");
+  const epochChainValid = input.envelope.epoch === 1
+    ? input.envelope.previous_key_id === GENESIS_AUDIENCE_KEY_ID && !hasIssuerRemoval
+    : input.envelope.epoch > 1 && input.envelope.previous_key_id !== GENESIS_AUDIENCE_KEY_ID &&
+      input.envelope.previous_key_id !== input.envelope.audience_key_id;
+  const envelopeBindingValid = epochChainValid &&
+    personaMatches && input.envelope.repository_rid === input.state.checkpoint.repository_rid &&
+    input.envelope.authority_record_set_digest === digestJson(input.envelope.authority_record_ids) &&
+    jcsCanonicalize(input.envelope.authority_record_ids) === jcsCanonicalize(expectedAuthorityIds) &&
+    input.envelope.authority_record_ids.every((recordId) => confirmed.has(recordId)) &&
+    isCanonicalAncestorForState(input.state, input.envelope.checkpoint_commit_oid);
+  const pendingRemoval = input.state.records.some((record) =>
+    record.record_type === "issuer-authority" && payloadObject(record.payload).action === "remove" &&
+    !envelopeAuthorityIds.has(record.record_id)
+  );
+  const envelopeRecipients = input.envelope.recipient_wraps.map(({ writer_nid }) => writer_nid).sort();
+  const pending_rotation = !envelopeBindingValid || pendingRemoval ||
+    jcsCanonicalize(envelopeRecipients) !== jcsCanonicalize(active_issuer_nids);
+  let hasSigningKey = false;
+  if (!pending_rotation) {
+    try {
+      unwrapIssuerSigningJwk(input.envelope, input.writer_nid, input.audience_key);
+      hasSigningKey = true;
+    } catch {
+      hasSigningKey = false;
+    }
+  }
+  const primitive = canMint(
+    input.now,
+    input.state.checkpoint,
+    input.manifest_max_age_seconds,
+    authority_state,
+    hasSigningKey,
+  );
+  const decision = pending_rotation ? {
+    allowed: false,
+    reason_code: "oidc-signing-key-unavailable",
+    checkpoint: { ...input.state.checkpoint },
+  } : primitive;
+  return {
+    ...decision,
+    authority_state,
+    active_issuer_nids,
+    key_epoch: input.envelope.epoch,
+    pending_rotation,
+  };
+}
+
+export function canReturnToken(
+  recordId: string,
+  state: LedgerMergeResult,
+  envelope: IssuerKeyEnvelope,
+  audienceKey: Uint8Array,
+): AuthorizationDecision {
+  try {
+    assertValidatedLedgerState(state);
+    const record = state.records.find((candidate) => candidate.record_id === recordId);
+    if (record?.record_type !== "issuance-reservation" ||
+        !(state.repository_confirmed_record_ids ?? []).includes(recordId)) {
+      return { allowed: false, state: "provisional", reason_code: "claim-repository-unconfirmed" };
+    }
+    const issuance = payloadObject(record.payload) as unknown as IssuanceRecord;
+    validateIssuanceRecordOrThrow(issuance);
+    if (!isCanonicalAncestorForState(state, issuance.checkpoint.commit_oid)) {
+      return { allowed: false, state: "invalid", reason_code: "claim-ledger-rollback" };
+    }
+    const confirmed = new Set(state.repository_confirmed_record_ids ?? []);
+    const everySourceCanonical = issuance.source_claim_ids.every((claimId) => state.records.some((candidate) =>
+      candidate.record_type === "claim" && confirmed.has(candidate.record_id) &&
+      claimArtifactFromRecord(candidate)?.semantic.claim_id === claimId &&
+      resolveAuthoritativeClaimState(claimId, state, state.checkpoint.observed_at) === "active"
+    ));
+    if (!everySourceCanonical) {
+      return { allowed: false, state: "provisional", reason_code: "claim-repository-unconfirmed" };
+    }
+    const mintBinding = evaluateMintingAttempt({
+      now: state.checkpoint.observed_at,
+      manifest_max_age_seconds: 300,
+      writer_nid: record.writer_nid,
+      state,
+      envelope,
+      audience_key: audienceKey,
+    });
+    if (!mintBinding.allowed) {
+      return { allowed: false, state: "invalid", reason_code: mintBinding.reason_code };
+    }
+    if (issuance.signing_key_id !== envelope.content_digest) {
+      return { allowed: false, state: "invalid", reason_code: "oidc-signing-key-unavailable" };
+    }
+    return { allowed: true, state: "active", reason_code: null };
+  } catch {
+    return { allowed: false, state: "invalid", reason_code: "claim-repository-conflict" };
+  }
 }
 
 export function buildReaderOnboardingBundle(
@@ -1135,6 +1412,12 @@ function isCommitAncestor(
   return false;
 }
 
+function canonicalAncestorCommits(repository: LedgerRepositoryEvidence): LedgerRepositoryCommit[] {
+  const commits = new Map(repository.commits.map((commit) => [commit.commit_oid, commit]));
+  return repository.commits.filter((commit) =>
+    isCommitAncestor(commit.commit_oid, repository.canonical_head, commits));
+}
+
 function validatePayload(type: LedgerRecordType, value: JsonValue): void {
   const payload = payloadObject(value);
   switch (type) {
@@ -1180,9 +1463,21 @@ function validatePayload(type: LedgerRecordType, value: JsonValue): void {
       validateIssuanceRecordOrThrow(payload as unknown as IssuanceRecord);
       return;
     case "status-invalidation":
-      assertExactKeys(payload, ["jti", "source_claim_id", "revocation_artifact"], "status invalidation payload");
       if (!/^[A-Za-z0-9_-]{16,128}$/.test(String(payload.jti))) throw new Error("claim-schema-invalid: invalid jti");
-      assertClaimId(payload.source_claim_id);
+      if (payload.cause === "source-claim-revoked") {
+        assertExactKeys(payload, ["cause", "jti", "source_claim_id", "revocation_artifact"], "source invalidation payload");
+        assertClaimId(payload.source_claim_id);
+      } else if (payload.cause === "signing-key-compromised") {
+        assertExactKeys(payload, ["cause", "jti", "signing_key_id", "compromise_evidence"], "key invalidation payload");
+        assertClaimId(payload.signing_key_id);
+        const compromise = payloadObject(payload.compromise_evidence);
+        assertExactKeys(compromise, ["detected_at", "evidence_digest"], "key compromise evidence");
+        if (!Number.isSafeInteger(compromise.detected_at)) throw new Error("claim-schema-invalid: invalid compromise time");
+        assertClaimId(compromise.evidence_digest);
+      } else {
+        throw new Error("claim-schema-invalid: invalid status-invalidation cause");
+      }
+      return;
   }
 }
 
@@ -1247,7 +1542,7 @@ function validateAuthenticatedArtifact(
       throw new Error("claim-revoker-unauthorized: issuer removal is not bound to the issuer claim");
     }
   }
-  if (record.record_type === "status-invalidation" && payload.source_claim_id !== verified.claim_id) {
+  if (record.record_type === "status-invalidation" && payload.cause === "source-claim-revoked" && payload.source_claim_id !== verified.claim_id) {
     throw new Error("claim-revoker-unauthorized: token invalidation source claim mismatch");
   }
   // recordsById is intentionally consulted through target artifacts so an
@@ -1269,7 +1564,7 @@ function claimArtifactFromRecord(record: LedgerRecord): ClaimArtifact | null {
 function revocationArtifactFromRecord(record: LedgerRecord): RevocationArtifact | null {
   const payload = payloadObject(record.payload);
   const value = record.record_type === "revocation" || record.record_type === "authority-reduction" ||
-    record.record_type === "status-invalidation" ||
+    (record.record_type === "status-invalidation" && payload.cause === "source-claim-revoked") ||
     ((record.record_type === "reader-change" || record.record_type === "issuer-authority") && payload.action === "remove")
     ? payload.revocation_artifact : undefined;
   if (value === undefined) return null;
@@ -1374,8 +1669,11 @@ function validateLedgerStateInvariants(
   for (const invalidationRecord of records.filter(({ record_type }) => record_type === "status-invalidation")) {
     const invalidation = payloadObject(invalidationRecord.payload);
     const issuance = issuanceRecords.find(({ issuance: candidate }) => candidate.jti === invalidation.jti)?.issuance;
-    if (issuance === undefined || !issuance.source_claim_ids.includes(String(invalidation.source_claim_id))) {
-      throw new Error("claim-repository-conflict: token invalidation is not bound to its durable issuance and source claim");
+    const bound = issuance !== undefined && (invalidation.cause === "source-claim-revoked"
+      ? issuance.source_claim_ids.includes(String(invalidation.source_claim_id))
+      : issuance.signing_key_id === invalidation.signing_key_id);
+    if (!bound) {
+      throw new Error("claim-repository-conflict: token invalidation is not bound to its durable issuance and cause");
     }
   }
   const stateForReaders: LedgerMergeResult = {
@@ -1392,6 +1690,11 @@ function validateLedgerStateInvariants(
       .map(({ event }) => validateClaimRevocationEnvelope(event)),
     token_invalidations: [],
   };
+  for (const invalidationRecord of records.filter(({ record_type }) => record_type === "status-invalidation")) {
+    if (resolveIssuerAuthorityState(invalidationRecord.writer_nid, stateForReaders, stateForReaders.checkpoint.observed_at) !== "active") {
+      throw new Error("oidc-issuer-authority-invalid: status invalidation writer lacks canonical active authority");
+    }
+  }
   const maximumEpoch = records
     .filter(({ record_type }) => record_type === "audience-key-epoch")
     .reduce((maximum, epochRecord) => Math.max(maximum, Number(payloadObject(epochRecord.payload).epoch)), 0);
@@ -1507,6 +1810,146 @@ function assertPlainObject(value: unknown, label: string): asserts value is Reco
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     throw new Error(`claim-schema-invalid: ${label} must be an object`);
   }
+}
+
+function assertValidatedLedgerState(state: LedgerMergeResult): void {
+  if (!VALIDATED_LEDGER_STATES.has(state)) {
+    throw new Error("claim-repository-unconfirmed: canonical merged ledger state is required");
+  }
+}
+
+function validatedRepositoryForState(state: LedgerMergeResult): LedgerRepositoryEvidence {
+  assertValidatedLedgerState(state);
+  const repository = VALIDATED_LEDGER_REPOSITORIES.get(state);
+  if (repository === undefined) {
+    throw new Error("claim-repository-unconfirmed: canonical repository evidence is required");
+  }
+  return repository;
+}
+
+function isCanonicalAncestorForState(state: LedgerMergeResult, commitOid: string): boolean {
+  const repository = validatedRepositoryForState(state);
+  const commits = new Map(repository.commits.map((commit) => [commit.commit_oid, commit]));
+  return isCommitAncestor(commitOid, repository.canonical_head, commits);
+}
+
+function issuerAuthorityRecordIds(
+  state: LedgerMergeResult,
+  confirmed = new Set(state.repository_confirmed_record_ids ?? []),
+): string[] {
+  return state.records.filter((record) => {
+    if (!confirmed.has(record.record_id)) return false;
+    if (record.record_type === "issuer-authority") return true;
+    if (record.record_type !== "claim") return false;
+    const claim = claimArtifactFromRecord(record)?.semantic;
+    return claim?.claim_class === "authorization" && claim.namespace === "heterodyne.device" &&
+      claim.name === "oidc-token-issuer" && claim.value === true &&
+      claim.visibility === "repository-private" && claim.subject.type === "radicle-ed25519-nid" &&
+      claim.audience?.includes(record.persona) === true &&
+      claim.resources?.includes(`${state.checkpoint.repository_rid}#oidc-issuer`) === true;
+  }).map(({ record_id }) => record_id).sort();
+}
+
+function activeIssuerNidsForRecordSet(state: LedgerMergeResult, recordIds: Set<string>): string[] {
+  const records = state.records.filter(({ record_id }) => recordIds.has(record_id));
+  const snapshot: LedgerMergeResult = {
+    records,
+    conflicted_claim_ids: findConflictedClaims(records),
+    checkpoint: state.checkpoint,
+    repository_confirmed_record_ids: [...recordIds],
+    delivered_record_ids: [],
+    authenticated_revocations: records
+      .filter((record) => isReduction(record))
+      .map(revocationArtifactFromRecord)
+      .filter((artifact): artifact is RevocationArtifact => artifact !== null)
+      .map(({ event }) => validateClaimRevocationEnvelope(event)),
+    token_invalidations: [],
+  };
+  const candidates = new Set(records
+    .filter(({ record_type }) => record_type === "claim")
+    .map(claimArtifactFromRecord)
+    .filter((artifact): artifact is ClaimArtifact => artifact !== null)
+    .filter(({ semantic }) => semantic.claim_class === "authorization" &&
+      semantic.namespace === "heterodyne.device" && semantic.name === "oidc-token-issuer" &&
+      semantic.value === true && semantic.visibility === "repository-private" &&
+      semantic.subject.type === "radicle-ed25519-nid")
+    .map(({ semantic }) => semantic.subject.value));
+  return [...candidates]
+    .filter((nid) => resolveIssuerAuthorityState(nid, snapshot, state.checkpoint.observed_at) === "active")
+    .sort();
+}
+
+function validatePreviousIssuerKeyEnvelope(input: {
+  previous: { envelope: IssuerKeyEnvelope; audience_key: Uint8Array };
+  state: LedgerMergeResult;
+  repository: LedgerRepositoryEvidence;
+  persona: string;
+  repository_rid: string;
+  next_epoch: number;
+  next_audience_key_id: string;
+  next_content_digest: string;
+}): string[] {
+  try {
+    const envelope = input.previous.envelope;
+    assertPlainObject(envelope, "previous issuer envelope");
+    assertExactKeys(envelope, [
+      "object_type", "persona", "repository_rid", "checkpoint_commit_oid", "epoch",
+      "audience_key_id", "previous_key_id", "content_digest", "nonce", "ciphertext",
+      "authority_record_ids", "authority_record_set_digest", "recipient_wraps", "removed_issuer_nids",
+    ], "previous issuer envelope");
+    if (envelope.object_type !== "oidc-signing-jwk-v1" || envelope.persona !== input.persona ||
+        envelope.repository_rid !== input.repository_rid || !Number.isSafeInteger(envelope.epoch) || envelope.epoch < 1 ||
+        input.next_epoch !== envelope.epoch + 1 || !HEX_32.test(envelope.audience_key_id) ||
+        !HEX_32.test(envelope.previous_key_id) || !HEX_32.test(envelope.content_digest) ||
+        !/^[0-9a-f]{48}$/.test(envelope.nonce) || !/^[0-9a-f]+$/.test(envelope.ciphertext) ||
+        envelope.ciphertext.length < 32 || envelope.ciphertext.length % 2 !== 0 ||
+        envelope.content_digest === input.next_content_digest ||
+        envelope.audience_key_id === input.next_audience_key_id ||
+        bytesToHex(sha256(input.previous.audience_key)) !== envelope.audience_key_id) {
+      throw new Error("binding");
+    }
+    const commits = new Map(input.repository.commits.map((commit) => [commit.commit_oid, commit]));
+    const priorCommit = commits.get(envelope.checkpoint_commit_oid);
+    if (priorCommit === undefined ||
+        !isCommitAncestor(envelope.checkpoint_commit_oid, input.repository.canonical_head, commits)) {
+      throw new Error("checkpoint");
+    }
+    if (!Array.isArray(envelope.authority_record_ids) || !Array.isArray(envelope.recipient_wraps) ||
+        !Array.isArray(envelope.removed_issuer_nids)) {
+      throw new Error("shape");
+    }
+    const priorRecordIds = new Set(priorCommit.record_ids);
+    const expectedAuthorityIds = issuerAuthorityRecordIds(input.state, priorRecordIds);
+    if (jcsCanonicalize(envelope.authority_record_ids) !== jcsCanonicalize(expectedAuthorityIds) ||
+        envelope.authority_record_set_digest !== digestJson(expectedAuthorityIds)) {
+      throw new Error("authority");
+    }
+    const recipients = envelope.recipient_wraps.map((wrap) => {
+      assertPlainObject(wrap, "previous issuer recipient wrap");
+      assertExactKeys(wrap, ["writer_nid", "context_digest", "wrapped_key"], "previous issuer recipient wrap");
+      if (!HEX_32.test(wrap.context_digest) || !/^[0-9a-f]{128}$/.test(wrap.wrapped_key)) throw new Error("wrap");
+      return wrap.writer_nid;
+    });
+    validateNidSet(recipients);
+    validateNidSet(envelope.removed_issuer_nids);
+    const expectedRecipients = activeIssuerNidsForRecordSet(input.state, priorRecordIds);
+    if (jcsCanonicalize([...recipients].sort()) !== jcsCanonicalize(expectedRecipients) ||
+        envelope.removed_issuer_nids.some((nid) => recipients.includes(nid))) {
+      throw new Error("recipients");
+    }
+    for (const recipient of recipients) {
+      unwrapIssuerSigningJwk(envelope, recipient, input.previous.audience_key);
+    }
+    return [...recipients].sort();
+  } catch {
+    throw new Error("oidc-signing-key-unavailable: previous issuer envelope/key binding is invalid or material was not rotated");
+  }
+}
+
+function invalidationCauseKey(payload: Record<string, JsonValue>): string {
+  return payload.cause === "source-claim-revoked"
+    ? `${String(payload.jti)}\0source\0${String(payload.source_claim_id)}`
+    : `${String(payload.jti)}\0key\0${String(payload.signing_key_id)}`;
 }
 
 function assertExactKeys(value: object, expected: readonly string[], label: string): void {

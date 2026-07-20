@@ -88,14 +88,18 @@ describe("canonical evaluation time and confirmation", () => {
   });
 
   it("never confirms or revokes a delivered source claim through status invalidation", () => {
-    const emptyRepository = buildLedgerRepositoryEvidence({
+    const authorityRecords = [
+      s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
+      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo,
+    ];
+    const authorityRepository = buildLedgerRepositoryEvidence({
       repository_rid: s.rid,
-      confirmed_records: [],
+      confirmed_records: authorityRecords,
       observed_at: s.now + 50,
     });
     const issuancePayload = {
       ...s.issuanceOne,
-      checkpoint: emptyRepository.checkpoint,
+      checkpoint: authorityRepository.checkpoint,
       issued_at: s.now + 65,
     };
     const issuance = createSignedLedgerRecord({
@@ -116,9 +120,9 @@ describe("canonical evaluation time and confirmation", () => {
     }, s.writerTwo.private_key);
     const repository = buildLedgerRepositoryEvidence({
       repository_rid: s.rid,
-      confirmed_records: [issuance, independentStatus],
+      confirmed_records: [...authorityRecords, issuance, independentStatus],
       observed_at: s.now + 80,
-      prior: emptyRepository.repository,
+      prior: authorityRepository.repository,
     });
     const context = s.makeTask5Context(repository.repository);
     context.record_evidence.set(issuance.record_id, {
@@ -132,7 +136,7 @@ describe("canonical evaluation time and confirmation", () => {
       sourceStatusEvidence,
     ));
     const state = mergeClaimLedger(
-      [issuance, independentStatus], [s.claimRecordOne], repository.checkpoint, context,
+      [...authorityRecords, issuance, independentStatus], [s.claimRecordOne], repository.checkpoint, context,
     );
     const request = cloneRequest(s.requestFor(s.claimRecordOne, s.claimOne));
     request.verification_context.now = repository.checkpoint.observed_at;

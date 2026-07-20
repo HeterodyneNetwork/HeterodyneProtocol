@@ -426,7 +426,7 @@
       "checkpoint": {
         "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
         "branch": "main",
-        "commit_oid": "8641beb3ae6e5a02215243fdcf2f77f04915b69516ecc2641969a40be6222c48",
+        "commit_oid": "5768492209ec466fa498bfc95c35bf49c5ba680d30a1631cc95c1ea68a7ec4ca",
         "observed_at": 1767245700
       },
       "context": {
@@ -3096,10 +3096,10 @@
               }
             ],
             [
-              "9b079ae55ebffc741a8b220e34a2e79a13e7538d2bd5d120bf4facf61436ff76",
+              "5ced428159a5f2d66214bf9e173e296a9d149de7e7f972f2988bf471488029f7",
               {
-                "record_id": "9b079ae55ebffc741a8b220e34a2e79a13e7538d2bd5d120bf4facf61436ff76",
-                "payload_digest": "12a858bd509f60ffffec34e6eedec55f5adb38c5e9bae20c6c484cc641a3f082",
+                "record_id": "5ced428159a5f2d66214bf9e173e296a9d149de7e7f972f2988bf471488029f7",
+                "payload_digest": "8bf12e11577016e89c060c4ddda3f98b9d1994195e40a3abe4623e5aa3526861",
                 "claims_by_id": {
                   "$heterodyne_replay_type": "map",
                   "entries": [
@@ -3272,10 +3272,10 @@
               }
             ],
             [
-              "410a4e41e3e8e0a6daa6491f0f53765708cd16dd159a0278896efa08d3dcca69",
+              "e5df4a7a52e98619824fd32edba0368fa5c047cd06aaaff993044b02222ee560",
               {
-                "record_id": "410a4e41e3e8e0a6daa6491f0f53765708cd16dd159a0278896efa08d3dcca69",
-                "payload_digest": "1f2379e4f2b38175eca7ba084f75d0f3d7362587bb22c54f0de298eefb4377a3",
+                "record_id": "e5df4a7a52e98619824fd32edba0368fa5c047cd06aaaff993044b02222ee560",
+                "payload_digest": "2edb47a9e004a2def3f6673439d9d82c8721b114d4d6ce474c38aee106f74714",
                 "claims_by_id": {
                   "$heterodyne_replay_type": "map",
                   "entries": [
@@ -3456,14 +3456,14 @@
           "prior_checkpoint": {
             "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
             "branch": "main",
-            "commit_oid": "dc92933df7ef45ab4be0073c8e0e28dc4be9a964650a0ecceaa00dc494234a36",
-            "observed_at": 1767245650
+            "commit_oid": "7c2e728468931e8e6ddcb2f545598a4cf424665afc00687013cf61865d9106dd",
+            "observed_at": 1767245664
           },
-          "canonical_head": "8641beb3ae6e5a02215243fdcf2f77f04915b69516ecc2641969a40be6222c48",
+          "canonical_head": "5768492209ec466fa498bfc95c35bf49c5ba680d30a1631cc95c1ea68a7ec4ca",
           "checkpoint": {
             "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
             "branch": "main",
-            "commit_oid": "8641beb3ae6e5a02215243fdcf2f77f04915b69516ecc2641969a40be6222c48",
+            "commit_oid": "5768492209ec466fa498bfc95c35bf49c5ba680d30a1631cc95c1ea68a7ec4ca",
             "observed_at": 1767245700
           },
           "commits": [
@@ -3478,10 +3478,26 @@
               "record_set_digest": "f109d10a5c45edf77c9986e660dcc81aebee561a34467e20c7423dddc325c851"
             },
             {
-              "commit_oid": "8641beb3ae6e5a02215243fdcf2f77f04915b69516ecc2641969a40be6222c48",
-              "tree_oid": "15306267b9169ebfb67639a987f1add27b9eddabfced4497a1bcf5b67258aea5",
+              "commit_oid": "7c2e728468931e8e6ddcb2f545598a4cf424665afc00687013cf61865d9106dd",
+              "tree_oid": "5d066a64d9d0e6b37b825a95d639be9a1a9fea56cf2be19e92d0f7a02f417d15",
               "parents": [
                 "dc92933df7ef45ab4be0073c8e0e28dc4be9a964650a0ecceaa00dc494234a36"
+              ],
+              "record_ids": [
+                "467c6c66ba1028f2fbfbe1bff725b5b885dd1ede56f017b1971ddf28545e1f61",
+                "52f962254dd0d79c4882b35173e18ab6cbcdbbcbb96d44e80e6834d9916d447d",
+                "5efb1a25f7d06ec8c7b7c79cc71058975c42cb22bffc06f7070c1ddaa86af064",
+                "b4f878749b62f883de2dadc0e1c44f7cbd46a7677e52591a7a4ea6e753402027",
+                "c9cc2000d160c80d8ec83f96072cc65c13760e9b58c78d41a3cd78ef99263827",
+                "fd10aa1a3f93f2e12d063c1a3748a11350225049fd63b4ff2e7add2fe1f34d68"
+              ],
+              "record_set_digest": "0af0092d12ba4d8bcca2a62095be1b44e32895a309be08fc73fd7f56906eee50"
+            },
+            {
+              "commit_oid": "5768492209ec466fa498bfc95c35bf49c5ba680d30a1631cc95c1ea68a7ec4ca",
+              "tree_oid": "15306267b9169ebfb67639a987f1add27b9eddabfced4497a1bcf5b67258aea5",
+              "parents": [
+                "7c2e728468931e8e6ddcb2f545598a4cf424665afc00687013cf61865d9106dd"
               ],
               "record_ids": [
                 "467c6c66ba1028f2fbfbe1bff725b5b885dd1ede56f017b1971ddf28545e1f61",
@@ -3900,23 +3916,30 @@
           "object_type": "oidc-signing-jwk-v1",
           "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
           "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-          "checkpoint_commit_oid": "dc92933df7ef45ab4be0073c8e0e28dc4be9a964650a0ecceaa00dc494234a36",
+          "checkpoint_commit_oid": "7c2e728468931e8e6ddcb2f545598a4cf424665afc00687013cf61865d9106dd",
           "epoch": 1,
           "audience_key_id": "3e441393404b2085e7a3090a47d377abb7a6db6ad6bbd006a2f92cc7f469e651",
           "previous_key_id": "0000000000000000000000000000000000000000000000000000000000000000",
           "content_digest": "a49bf88029fa94b613240b73d35994fc9c7ca5aa65f06dc9210b29cd7fd71c24",
-          "nonce": "155a41f42ad24ec342c564888db58a9df3760e5a6e22f5e7",
-          "ciphertext": "ef487b4c513192db9dbded80fd38220e7ab30fcda20264f6ffbea34164cde31ee78e57d598b5cc494abe6ff72b7a62cf4e52fcbc323e002ab98d65c4f1f2f2ca811926cc825140e08f87e09d9dc77b0490afd124b4f95d4af60798bb5cbafc669b595e07b0b2f86a8e18fa0472d2a21ba7d4316cbf2d966d2556729532",
+          "nonce": "2bf27c4c418645783f26e72a267ecbf3eb6fd3ec411f2cea",
+          "ciphertext": "98b4f05aed600e84d6530feeb5ba386a9607c7814d9b4d54365f4f422f77bbd5326759ee2cbf2acf23ccc5246b2690f1140b3b9d77c9653d7f33377680e5dbc8bdf8d1305a982103f5663c52ac8ee958de7624c16559fdd0c68078c29ed6eb6cb2a37a543394c62be7dcefe4a9f4b8f7d00669b95efa0ee2431db4ceaa",
+          "authority_record_ids": [
+            "467c6c66ba1028f2fbfbe1bff725b5b885dd1ede56f017b1971ddf28545e1f61",
+            "52f962254dd0d79c4882b35173e18ab6cbcdbbcbb96d44e80e6834d9916d447d",
+            "b4f878749b62f883de2dadc0e1c44f7cbd46a7677e52591a7a4ea6e753402027",
+            "c9cc2000d160c80d8ec83f96072cc65c13760e9b58c78d41a3cd78ef99263827"
+          ],
+          "authority_record_set_digest": "533fbcdb10d7bc3a3a2ea008fb14db4f2aeec7136a8bd77f967380385a8c8283",
           "recipient_wraps": [
             {
               "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-              "context_digest": "8badcc15a9f4f536b94624e64c96fa4af039d9d7d98693e0c768e461d0f22e5d",
-              "wrapped_key": "aa0d064ffb466fddc3dc8542eae3e1e656387c8f06af6e4bd47c0a223ae297ddfc406132763cb45f0f979d9fe4c0a89f21fc8d879571de77ac3c10ac72241344"
+              "context_digest": "819ad0fa4e038e7c048e69bfdaef85f0d87e7f4b35b4d26a6d53917964bb1928",
+              "wrapped_key": "f2155843898f444efd4b070cb1eeb43e00569925aca10cf71484e67af65ce5b90030d3dccb9cf77b79270152a15a7ef4717eaae31e9b60f23289643ff856c2e5"
             },
             {
               "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
-              "context_digest": "f9404b39444caf7711dd438ad3c0ffb393987ca2aab52f264e8cf7b2cd2db3b5",
-              "wrapped_key": "6cfe487d0d9e8bfbb6743dfbdb084b6351b3d7e603fed0af7e45fb7191d0a85a4256f45272e6ac2b455307fe16954b693fec4bb88aa517e36c340745a2d745fb"
+              "context_digest": "6e7839829bd47ee00bac63fe98f1e5c972e098ec3b8f5a0de751e0a0f94b26ae",
+              "wrapped_key": "de7ee66e2efdf5ec5888199312fc079ea0aadef3944c2f40516997b735348a8b30b7e56a6ebfc7a0202aa2631adf4eaf0fd2350c02c5e37915f288e449af2da7"
             }
           ],
           "removed_issuer_nids": []
@@ -3932,23 +3955,30 @@
           "object_type": "oidc-signing-jwk-v1",
           "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
           "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-          "checkpoint_commit_oid": "dc92933df7ef45ab4be0073c8e0e28dc4be9a964650a0ecceaa00dc494234a36",
+          "checkpoint_commit_oid": "7c2e728468931e8e6ddcb2f545598a4cf424665afc00687013cf61865d9106dd",
           "epoch": 1,
           "audience_key_id": "3e441393404b2085e7a3090a47d377abb7a6db6ad6bbd006a2f92cc7f469e651",
           "previous_key_id": "0000000000000000000000000000000000000000000000000000000000000000",
           "content_digest": "a49bf88029fa94b613240b73d35994fc9c7ca5aa65f06dc9210b29cd7fd71c24",
-          "nonce": "155a41f42ad24ec342c564888db58a9df3760e5a6e22f5e7",
-          "ciphertext": "ef487b4c513192db9dbded80fd38220e7ab30fcda20264f6ffbea34164cde31ee78e57d598b5cc494abe6ff72b7a62cf4e52fcbc323e002ab98d65c4f1f2f2ca811926cc825140e08f87e09d9dc77b0490afd124b4f95d4af60798bb5cbafc669b595e07b0b2f86a8e18fa0472d2a21ba7d4316cbf2d966d2556729532",
+          "nonce": "2bf27c4c418645783f26e72a267ecbf3eb6fd3ec411f2cea",
+          "ciphertext": "98b4f05aed600e84d6530feeb5ba386a9607c7814d9b4d54365f4f422f77bbd5326759ee2cbf2acf23ccc5246b2690f1140b3b9d77c9653d7f33377680e5dbc8bdf8d1305a982103f5663c52ac8ee958de7624c16559fdd0c68078c29ed6eb6cb2a37a543394c62be7dcefe4a9f4b8f7d00669b95efa0ee2431db4ceaa",
+          "authority_record_ids": [
+            "467c6c66ba1028f2fbfbe1bff725b5b885dd1ede56f017b1971ddf28545e1f61",
+            "52f962254dd0d79c4882b35173e18ab6cbcdbbcbb96d44e80e6834d9916d447d",
+            "b4f878749b62f883de2dadc0e1c44f7cbd46a7677e52591a7a4ea6e753402027",
+            "c9cc2000d160c80d8ec83f96072cc65c13760e9b58c78d41a3cd78ef99263827"
+          ],
+          "authority_record_set_digest": "533fbcdb10d7bc3a3a2ea008fb14db4f2aeec7136a8bd77f967380385a8c8283",
           "recipient_wraps": [
             {
               "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-              "context_digest": "8badcc15a9f4f536b94624e64c96fa4af039d9d7d98693e0c768e461d0f22e5d",
-              "wrapped_key": "aa0d064ffb466fddc3dc8542eae3e1e656387c8f06af6e4bd47c0a223ae297ddfc406132763cb45f0f979d9fe4c0a89f21fc8d879571de77ac3c10ac72241344"
+              "context_digest": "819ad0fa4e038e7c048e69bfdaef85f0d87e7f4b35b4d26a6d53917964bb1928",
+              "wrapped_key": "f2155843898f444efd4b070cb1eeb43e00569925aca10cf71484e67af65ce5b90030d3dccb9cf77b79270152a15a7ef4717eaae31e9b60f23289643ff856c2e5"
             },
             {
               "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
-              "context_digest": "f9404b39444caf7711dd438ad3c0ffb393987ca2aab52f264e8cf7b2cd2db3b5",
-              "wrapped_key": "6cfe487d0d9e8bfbb6743dfbdb084b6351b3d7e603fed0af7e45fb7191d0a85a4256f45272e6ac2b455307fe16954b693fec4bb88aa517e36c340745a2d745fb"
+              "context_digest": "6e7839829bd47ee00bac63fe98f1e5c972e098ec3b8f5a0de751e0a0f94b26ae",
+              "wrapped_key": "de7ee66e2efdf5ec5888199312fc079ea0aadef3944c2f40516997b735348a8b30b7e56a6ebfc7a0202aa2631adf4eaf0fd2350c02c5e37915f288e449af2da7"
             }
           ],
           "removed_issuer_nids": []
@@ -3967,7 +3997,7 @@
         "checkpoint": {
           "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
           "branch": "main",
-          "commit_oid": "8641beb3ae6e5a02215243fdcf2f77f04915b69516ecc2641969a40be6222c48",
+          "commit_oid": "5768492209ec466fa498bfc95c35bf49c5ba680d30a1631cc95c1ea68a7ec4ca",
           "observed_at": 1767245700
         },
         "canonical_record_ids": [
@@ -3984,7 +4014,6 @@
       "writers": [
         {
           "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-          "authority_state": "active",
           "signing_key_id": "a49bf88029fa94b613240b73d35994fc9c7ca5aa65f06dc9210b29cd7fd71c24",
           "eligibility": {
             "allowed": true,
@@ -3992,14 +4021,20 @@
             "checkpoint": {
               "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
               "branch": "main",
-              "commit_oid": "8641beb3ae6e5a02215243fdcf2f77f04915b69516ecc2641969a40be6222c48",
+              "commit_oid": "5768492209ec466fa498bfc95c35bf49c5ba680d30a1631cc95c1ea68a7ec4ca",
               "observed_at": 1767245700
-            }
+            },
+            "authority_state": "active",
+            "active_issuer_nids": [
+              "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+              "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
+            ],
+            "key_epoch": 1,
+            "pending_rotation": false
           }
         },
         {
           "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
-          "authority_state": "active",
           "signing_key_id": "a49bf88029fa94b613240b73d35994fc9c7ca5aa65f06dc9210b29cd7fd71c24",
           "eligibility": {
             "allowed": true,
@@ -4007,9 +4042,16 @@
             "checkpoint": {
               "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
               "branch": "main",
-              "commit_oid": "8641beb3ae6e5a02215243fdcf2f77f04915b69516ecc2641969a40be6222c48",
+              "commit_oid": "5768492209ec466fa498bfc95c35bf49c5ba680d30a1631cc95c1ea68a7ec4ca",
               "observed_at": 1767245700
-            }
+            },
+            "authority_state": "active",
+            "active_issuer_nids": [
+              "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+              "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
+            ],
+            "key_epoch": 1,
+            "pending_rotation": false
           }
         }
       ],
@@ -4064,6 +4106,24 @@
             ],
             "issued_at": 1767245665,
             "expires_at": 1767249200
+          }
+        }
+      ],
+      "finalization": [
+        {
+          "jti": "writer_two_token_0001",
+          "decision": {
+            "allowed": true,
+            "state": "active",
+            "reason_code": null
+          }
+        },
+        {
+          "jti": "writer_one_token_0001",
+          "decision": {
+            "allowed": true,
+            "state": "active",
+            "reason_code": null
           }
         }
       ],

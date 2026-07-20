@@ -150,14 +150,38 @@
       "then": {
         "properties": {
           "payload": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["jti", "source_claim_id", "revocation_artifact"],
-            "properties": {
-              "jti": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
-              "source_claim_id": { "$ref": "#/definitions/sha256" },
-              "revocation_artifact": { "$ref": "#/definitions/revocation_artifact" }
-            }
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["cause", "jti", "source_claim_id", "revocation_artifact"],
+                "properties": {
+                  "cause": { "const": "source-claim-revoked" },
+                  "jti": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
+                  "source_claim_id": { "$ref": "#/definitions/sha256" },
+                  "revocation_artifact": { "$ref": "#/definitions/revocation_artifact" }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["cause", "jti", "signing_key_id", "compromise_evidence"],
+                "properties": {
+                  "cause": { "const": "signing-key-compromised" },
+                  "jti": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
+                  "signing_key_id": { "$ref": "#/definitions/sha256" },
+                  "compromise_evidence": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["detected_at", "evidence_digest"],
+                    "properties": {
+                      "detected_at": { "$ref": "#/definitions/json_safe_integer" },
+                      "evidence_digest": { "$ref": "#/definitions/sha256" }
+                    }
+                  }
+                }
+              }
+            ]
           }
         }
       }
