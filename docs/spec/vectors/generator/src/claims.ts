@@ -92,11 +92,43 @@ export type ClaimState =
   | "revoked"
   | "conflicted";
 
+/**
+ * Task 3 needs this evidence in addition to the original plan's abbreviated
+ * context shape so the approved stage-2 Core/KEL check is explicit rather
+ * than being inferred from local trust policy.
+ */
+export type ClaimAuthorityEvidence = {
+  claim_id: string;
+  issuer: KeyRef;
+  event_id: string;
+  envelope_valid: boolean;
+  core_kel_authority_valid: boolean;
+  verified_at: number;
+  valid_until: number;
+};
+
+export type RevocationAuthorityEvidence = {
+  event_id: string;
+  claim_id: string;
+  signer: KeyRef;
+  authority: "active-ancestor-issuer" | "persona-epoch" | "persona-cold-root";
+  authority_claim_id?: string;
+  valid_from: number;
+  valid_until: number;
+  core_kel_authority_valid: boolean;
+};
+
 export type ClaimVerificationContext = {
   now: number;
   audience: string;
   resource: string;
+  requested_namespace: string;
+  requested_operation: string;
+  expected_nonce: string;
+  used_nonces: Set<string>;
   trusted_issuers: KeyRef[];
+  claim_authority_evidence: Map<string, ClaimAuthorityEvidence>;
+  revocation_authority_evidence: Map<string, RevocationAuthorityEvidence>;
   repository_confirmed: Set<string>;
   repository_conflicted: Set<string>;
   revocations: VerifiedRevocation[];
@@ -305,13 +337,12 @@ function evaluateClaim(
     return invalidEvaluation(error);
   }
 
-  // 2. Outer signatures and Core/KEL authority were established by the
-  // envelope validator. Rechecking typed issuer identity here prevents policy
-  // from masking malformed/stale inputs passed around that boundary.
-  try {
-    for (const claim of chain) validateKeyRef(claim.issuer);
-  } catch (error) {
-    return invalidEvaluation(error, "claim-issuer-authority-invalid");
+  // 2. Require explicit, current, claim-bound envelope and Core/KEL evidence.
+  for (const claim of chain) {
+    const evidence = context.claim_authority_evidence.get(claim.claim_id);
+    if (!validClaimAuthorityEvidence(claim, evidence, context.now)) {
+      return { state: "invalid", reason_code: "claim-issuer-authority-invalid" };
+    }
   }
 
   // 3-4. Resolve the issuance chain, then prove attenuation/depth.
@@ -327,6 +358,18 @@ function evaluateClaim(
   }
   if (chain.some((claim) => claim.expires_at !== undefined && context.now >= claim.expires_at)) {
     return { state: "expired", reason_code: "claim-expired" };
+  }
+  if (context.requested_namespace !== leaf.namespace) {
+    return { state: "invalid", reason_code: "claim-attenuation-violation" };
+  }
+  if (
+    leaf.claim_class === "authorization" &&
+    (
+      leaf.audience === undefined || leaf.audience.length === 0 ||
+      leaf.resources === undefined || leaf.resources.length === 0
+    )
+  ) {
+    return { state: "invalid", reason_code: "claim-attenuation-violation" };
   }
   if (!matchesRestriction(leaf.audience, context.audience) || !matchesRestriction(leaf.resources, context.resource)) {
     return { state: "invalid", reason_code: "claim-attenuation-violation" };
@@ -344,7 +387,10 @@ function evaluateClaim(
   if (chain.some((claim) => context.repository_conflicted.has(claim.claim_id))) {
     return { state: "conflicted", reason_code: "claim-repository-conflict" };
   }
-  if (leaf.claim_class === "authorization" && !context.repository_confirmed.has(leaf.claim_id)) {
+  if (
+    leaf.claim_class === "authorization" &&
+    chain.some((claim) => !context.repository_confirmed.has(claim.claim_id))
+  ) {
     return { state: "provisional", reason_code: "claim-repository-unconfirmed" };
   }
 
@@ -416,6 +462,12 @@ function assertAttenuated(parent: ClaimSemanticBody, child: ClaimSemanticBody): 
   ) {
     throw new Error("claim-attenuation-violation: child extended the expiry bound");
   }
+  if (
+    child.not_before === parent.not_before &&
+    child.expires_at === parent.expires_at
+  ) {
+    throw new Error("claim-attenuation-violation: delegated validity window must be strictly shortened");
+  }
   if (!isSubset(child.audience, parent.audience) || !isSubset(child.audience, constraints.audiences)) {
     throw new Error("claim-attenuation-violation: child widened audience scope");
   }
@@ -445,6 +497,9 @@ function verifySubjectProof(leaf: ClaimSemanticBody, context: ClaimVerificationC
     challenge.claim_id !== leaf.claim_id ||
     challenge.audience !== context.audience ||
     challenge.resource !== context.resource ||
+    challenge.operation !== context.requested_operation ||
+    challenge.nonce !== context.expected_nonce ||
+    context.used_nonces.has(context.expected_nonce) ||
     typeof challenge.operation !== "string" || challenge.operation.length === 0 ||
     !/^[0-9a-f]{32,128}$/.test(challenge.nonce) ||
     !Number.isSafeInteger(challenge.issued_at) ||
@@ -498,19 +553,72 @@ function isRevoked(chain: ClaimSemanticBody[], context: ClaimVerificationContext
         revocation.revoked_at < target.issued_at ||
         !sameKeyRef(revocation.revoker, revocation.signer)
       ) continue;
-      const superiorIssuers = chain.slice(0, targetIndex + 1).map((claim) => claim.issuer);
+      const directIssuer = sameKeyRef(target.issuer, revocation.signer);
+      const superiorClaims = chain.slice(0, targetIndex);
+      const superior = superiorClaims.find((claim) => sameKeyRef(claim.issuer, revocation.signer));
+      const external = context.revocation_authority_evidence.get(revocation.event_id);
+      const superiorAuthorized = superior !== undefined && validRevocationAuthorityEvidence(
+        revocation,
+        external,
+        "active-ancestor-issuer",
+        superior.claim_id,
+      );
+      const personaAuthorized = external !== undefined &&
+        (external.authority === "persona-epoch" || external.authority === "persona-cold-root") &&
+        validRevocationAuthorityEvidence(revocation, external, external.authority);
       if (target.claim_class === "authorization") {
         if (
           sameKeyRef(revocation.signer, target.subject) ||
-          superiorIssuers.some((issuer) => sameKeyRef(issuer, revocation.signer))
+          directIssuer ||
+          superiorAuthorized ||
+          personaAuthorized
         ) return true;
       } else if (
-        superiorIssuers.some((issuer) => sameKeyRef(issuer, revocation.signer)) ||
+        directIssuer ||
+        superiorAuthorized ||
         (target.revokers ?? []).some((revoker) => sameKeyRef(revoker, revocation.signer))
       ) return true;
     }
   }
   return false;
+}
+
+function validClaimAuthorityEvidence(
+  claim: ClaimSemanticBody,
+  evidence: ClaimAuthorityEvidence | undefined,
+  now: number,
+): evidence is ClaimAuthorityEvidence {
+  return evidence !== undefined &&
+    evidence.claim_id === claim.claim_id &&
+    sameKeyRef(evidence.issuer, claim.issuer) &&
+    CLAIM_ID_PATTERN.test(evidence.event_id) &&
+    evidence.envelope_valid &&
+    evidence.core_kel_authority_valid &&
+    Number.isSafeInteger(evidence.verified_at) &&
+    Number.isSafeInteger(evidence.valid_until) &&
+    evidence.verified_at <= now &&
+    now < evidence.valid_until;
+}
+
+function validRevocationAuthorityEvidence(
+  revocation: VerifiedRevocation,
+  evidence: RevocationAuthorityEvidence | undefined,
+  authority: RevocationAuthorityEvidence["authority"],
+  authorityClaimId?: string,
+): evidence is RevocationAuthorityEvidence {
+  return evidence !== undefined &&
+    evidence.event_id === revocation.event_id &&
+    evidence.claim_id === revocation.claim_id &&
+    sameKeyRef(evidence.signer, revocation.signer) &&
+    evidence.authority === authority &&
+    (authorityClaimId === undefined
+      ? evidence.authority_claim_id === undefined
+      : evidence.authority_claim_id === authorityClaimId) &&
+    evidence.core_kel_authority_valid &&
+    Number.isSafeInteger(evidence.valid_from) &&
+    Number.isSafeInteger(evidence.valid_until) &&
+    evidence.valid_from <= revocation.revoked_at &&
+    revocation.revoked_at < evidence.valid_until;
 }
 
 function matchesRestriction(restriction: string[] | undefined, value: string): boolean {

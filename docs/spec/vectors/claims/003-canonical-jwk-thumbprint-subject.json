@@ -6,12 +6,12 @@
     "core": "core/0.5.0"
   },
   "registry_revision": 2,
-  "profile": "heterodyne-comms-key-claim-jwk-jws-v1",
+  "profile": "heterodyne-comms-claim-revocation-jwk-jws-v1",
   "spec_refs": [
     "heterodyne:comms/0.5.0#comms-conformance"
   ],
   "vector_id": "claims/canonical-jwk-thumbprint-subject",
-  "description": "Canonical kind:31013 bytes use a typed jwk-thumbprint subject and a fresh jwk-jws-v1 subject proof.",
+  "description": "A canonical JWK-thumbprint subject claim and a positive native EdDSA JWK revocation fixture bind the embedded public JWK to the same RFC 7638 thumbprint.",
   "direction": "round-trip",
   "input": {
     "semantic_body": {
@@ -77,6 +77,20 @@
         "protected": "eyJhbGciOiJFZERTQSJ9",
         "signature": "qG6teCQl4QviiDIUFB16bfzl_UeA6P1wy1xS0IKp_5rHXscOjPc9NWqBodEyD2DfuolTOjmZZu62oHyBKY5ZCg"
       }
+    },
+    "positive_native_revocation_event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767227617,
+      "kind": 31014,
+      "tags": [
+        [
+          "d",
+          "8f70a763fbf81e87666d18c335cef92f596557f78340d4f61aa9004e6c93ce44"
+        ]
+      ],
+      "content": "{\"claim_id\":\"8f70a763fbf81e87666d18c335cef92f596557f78340d4f61aa9004e6c93ce44\",\"proof\":{\"jwk\":{\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"eyJhbGciOiJFZERTQSJ9\",\"signature\":\"tt2kIry1bPBG0MIAF8DicjekHsm0FbehQFXbjmRGZt_EGDB31Orsj7PBf0kngXJI12Z4jWz0Ip4twz2djktnBA\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"}}",
+      "id": "e2d1d240c013b48beb08b50634488cb33ed0e8cd305c8c50fdae458a1fd0b27c",
+      "sig": "5bef934c91626896fb089258aea30f2734bc5798ff9ff94538fdab1e2fa646fb751dc366c1ca94a3419bf8c388795fb9e45b7df4703e3f03f27feab21d571759"
     }
   },
   "expected_output": {
@@ -88,6 +102,11 @@
         "value": "eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y"
       },
       "proof_profile": "jwk-jws-v1",
+      "revocation_signer": {
+        "type": "jwk-thumbprint",
+        "value": "eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y"
+      },
+      "revocation_native_proof_valid": true,
       "registry_revision": 2
     }
   }

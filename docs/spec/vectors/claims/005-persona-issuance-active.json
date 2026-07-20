@@ -13,6 +13,20 @@
   "description": "A current persona epoch issuer, canonical repository confirmation, and fresh exact-subject proof produce active authorization.",
   "direction": "consume",
   "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767227600,
+      "kind": 31013,
+      "tags": [
+        [
+          "d",
+          "46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a"
+        ]
+      ],
+      "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a\",\"comms_version\":\"comms/0.5.0\",\"expires_at\":1767231200,\"issued_at\":1767227600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767227600,\"registry_revision\":2,\"resources\":[\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\"],\"subject\":{\"type\":\"nostr-secp256k1\",\"value\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\"},\"value\":true,\"visibility\":\"repository-private\"}",
+      "id": "d6522c038eb4e260c8f8f267b14a7fd5fc758bcf3c687e6458d2737f8b55fc92",
+      "sig": "0b6b316ee26c5090f230bcaf1849b2e1b9eb7b755da3f412051ad69a16e7856102f8e0558c255880d3d50a0146860dd7d1404cb04e50caa08a673db19a51ba12"
+    },
     "claim": {
       "claim_id": "46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a",
       "issuer": {
@@ -40,7 +54,24 @@
       "comms_version": "comms/0.5.0",
       "registry_revision": 2
     },
-    "issuer_core_authority": "current",
+    "claim_authority_evidence": [
+      {
+        "claim_id": "46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a",
+        "issuer": {
+          "type": "nostr-secp256k1",
+          "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+        },
+        "event_id": "d6522c038eb4e260c8f8f267b14a7fd5fc758bcf3c687e6458d2737f8b55fc92",
+        "envelope_valid": true,
+        "core_kel_authority_valid": true,
+        "verified_at": 1767227605,
+        "valid_until": 1767227900
+      }
+    ],
+    "requested_namespace": "heterodyne.device",
+    "requested_operation": "read",
+    "expected_nonce": "71717171717171717171717171717171",
+    "used_nonces": [],
     "repository_confirmed": true,
     "subject_proof": {
       "challenge": {

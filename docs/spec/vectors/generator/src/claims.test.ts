@@ -1,6 +1,7 @@
 import { createHash, generateKeyPairSync, sign as signNative } from "node:crypto";
 import { ed25519 } from "@noble/curves/ed25519";
 import { schnorr } from "@noble/curves/secp256k1";
+import { nip44 } from "nostr-tools";
 import { describe, expect, it } from "vitest";
 import {
   authorizeWithClaim,
@@ -16,17 +17,19 @@ import {
   verifyClaimChain,
   type ClaimVerificationContext,
   type ClaimRevocation,
+  type ClaimAuthorityEvidence,
   type ClaimSemanticBody,
   type JsonValue,
   type KeyProof,
   type KeyRef,
   type SubjectProofChallenge,
   type VerifiedRevocation,
+  type RevocationAuthorityEvidence,
 } from "./claims.js";
 import { buildFixtures } from "./fixtures.js";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
-import { getEventId, signEvent, type NostrSignedEvent, type NostrUnsignedEvent } from "./nostr.js";
+import { getEventId, signEvent, verifyEventSignature, type NostrSignedEvent, type NostrUnsignedEvent } from "./nostr.js";
 import { buildClaimVectors } from "./topics-claims.js";
 
 const fixtures = buildFixtures();
@@ -438,6 +441,7 @@ describe("claim trust, attenuation, and authorization state", () => {
     type: "nostr-secp256k1",
     value: fixtures.device_publishing_keys.alice_device_2.pubkey,
   };
+  const sameKey = (left: KeyRef, right: KeyRef) => left.type === right.type && left.value === right.value;
 
   function claim(overrides: Partial<Omit<ClaimSemanticBody, "claim_id">> = {}): ClaimSemanticBody {
     const bodyWithUndefined = {
@@ -490,16 +494,35 @@ describe("claim trust, attenuation, and authorization state", () => {
     };
   }
 
+  function authorityEvidence(forClaim: ClaimSemanticBody, eventByte = "31"): ClaimAuthorityEvidence {
+    return {
+      claim_id: forClaim.claim_id,
+      issuer: forClaim.issuer,
+      event_id: eventByte.repeat(32),
+      envelope_valid: true,
+      core_kel_authority_valid: true,
+      verified_at: issuedAt + 5,
+      valid_until: issuedAt + 300,
+    };
+  }
+
   function context(
     forClaim: ClaimSemanticBody,
     overrides: Partial<ClaimVerificationContext> = {},
   ): ClaimVerificationContext {
     const proofChallenge = challenge(forClaim);
+    const evidence = authorityEvidence(forClaim);
     return {
       now: issuedAt + 20,
       audience: fixtures.personas.alice.cold_root.pubkey,
       resource: "rad:claims/device",
+      requested_namespace: forClaim.namespace,
+      requested_operation: "read",
+      expected_nonce: proofChallenge.nonce,
+      used_nonces: new Set(),
       trusted_issuers: [rootIssuer],
+      claim_authority_evidence: new Map([[forClaim.claim_id, evidence]]),
+      revocation_authority_evidence: new Map(),
       repository_confirmed: new Set([forClaim.claim_id]),
       repository_conflicted: new Set(),
       revocations: [],
@@ -535,6 +558,16 @@ describe("claim trust, attenuation, and authorization state", () => {
     return { root, child };
   }
 
+  function delegatedContext(root: ClaimSemanticBody, child: ClaimSemanticBody): ClaimVerificationContext {
+    return context(child, {
+      claim_authority_evidence: new Map([
+        [root.claim_id, authorityEvidence(root, "32")],
+        [child.claim_id, authorityEvidence(child, "33")],
+      ]),
+      repository_confirmed: new Set([root.claim_id, child.claim_id]),
+    });
+  }
+
   it("resolves a deterministic root-to-leaf chain and rejects missing parents or cycles", () => {
     const { root, child } = delegatedPair();
     expect(verifyClaimChain(child, new Map([[root.claim_id, root], [child.claim_id, child]])))
@@ -546,6 +579,49 @@ describe("claim trust, attenuation, and authorization state", () => {
     const cyclicA = { ...a, parent_claim_id: b.claim_id };
     expect(() => verifyClaimChain(cyclicA, new Map([[cyclicA.claim_id, cyclicA], [b.claim_id, b]])))
       .toThrow(/claim-chain-cycle/);
+  });
+
+  it("requires current claim-bound envelope and Core/KEL authority evidence before policy", () => {
+    const active = claim();
+    const valid = context(active, { trusted_issuers: [] });
+    expect(authorizeWithClaim(active, [active], {
+      ...valid,
+      claim_authority_evidence: new Map(),
+    })).toEqual({ allowed: false, state: "invalid", reason_code: "claim-issuer-authority-invalid" });
+
+    const baseEvidence = valid.claim_authority_evidence.get(active.claim_id)!;
+    for (const evidence of [
+      { ...baseEvidence, envelope_valid: false },
+      { ...baseEvidence, core_kel_authority_valid: false },
+      { ...baseEvidence, claim_id: "01".repeat(32) },
+      { ...baseEvidence, issuer: subject },
+      { ...baseEvidence, valid_until: valid.now },
+      { ...baseEvidence, verified_at: valid.now + 1 },
+    ]) {
+      const decision = authorizeWithClaim(active, [active], {
+        ...valid,
+        claim_authority_evidence: new Map([[active.claim_id, evidence]]),
+      });
+      expect(decision).toEqual({ allowed: false, state: "invalid", reason_code: "claim-issuer-authority-invalid" });
+    }
+  });
+
+  it("binds requested namespace, operation, expected nonce, and caller-owned replay state", () => {
+    const active = claim();
+    const valid = context(active);
+    expect(authorizeWithClaim(active, [active], { ...valid, requested_namespace: "heterodyne.control" }).reason_code)
+      .toBe("claim-attenuation-violation");
+    expect(authorizeWithClaim(active, [active], { ...valid, requested_operation: "write" }).reason_code)
+      .toBe("claim-subject-proof-invalid");
+    expect(authorizeWithClaim(active, [active], { ...valid, expected_nonce: "cd".repeat(16) }).reason_code)
+      .toBe("claim-subject-proof-invalid");
+    const consumed = context(active);
+    consumed.used_nonces.add(consumed.expected_nonce);
+    expect(authorizeWithClaim(active, [active], consumed).reason_code).toBe("claim-subject-proof-invalid");
+    const callerState = context(active);
+    expect(authorizeWithClaim(active, [active], callerState).allowed).toBe(true);
+    callerState.used_nonces.add(callerState.expected_nonce);
+    expect(authorizeWithClaim(active, [active], callerState).reason_code).toBe("claim-subject-proof-invalid");
   });
 
   it("enforces the eight-edge limit and explicit depth decrement", () => {
@@ -567,6 +643,8 @@ describe("claim trust, attenuation, and authorization state", () => {
           value: bytesToHex(schnorr.getPublicKey((20 + edge).toString(16).padStart(64, "0"))),
         },
         parent_claim_id: parent.claim_id,
+        not_before: issuedAt + edge,
+        expires_at: issuedAt + 600 - edge,
         audience: [fixtures.personas.alice.cold_root.pubkey],
         resources: ["rad:claims/device"],
         constraints: {
@@ -601,6 +679,22 @@ describe("claim trust, attenuation, and authorization state", () => {
       expect(() => verifyClaimChain(invalid, new Map([[root.claim_id, root], [invalid.claim_id, invalid]])))
         .toThrow(/claim-(delegation-not-authorized|attenuation-violation)/);
     }
+    const equalWindow = reissue(child, {
+      not_before: root.not_before,
+      expires_at: root.expires_at,
+      parent_claim_id: root.claim_id,
+    });
+    expect(() => verifyClaimChain(equalWindow, new Map([[root.claim_id, root], [equalWindow.claim_id, equalWindow]])))
+      .toThrow(/claim-attenuation-violation.*validity window/);
+  });
+
+  it("requires explicit authorization audience and resource restrictions", () => {
+    const noAudience = claim({ audience: undefined });
+    expect(authorizeWithClaim(noAudience, [noAudience], context(noAudience)).reason_code)
+      .toBe("claim-attenuation-violation");
+    const noResource = claim({ resources: undefined });
+    expect(authorizeWithClaim(noResource, [noResource], context(noResource)).reason_code)
+      .toBe("claim-attenuation-violation");
   });
 
   it("exposes all seven states while keeping trust as the final policy stage", () => {
@@ -608,7 +702,13 @@ describe("claim trust, attenuation, and authorization state", () => {
     expect(resolveClaimState(active, [active], context(active))).toBe("active");
     expect(resolveClaimState(active, [active], context(active, { trusted_issuers: [] }))).toBe("untrusted");
     expect(resolveClaimState(active, [active], context(active, { repository_confirmed: new Set() }))).toBe("provisional");
-    expect(resolveClaimState(active, [active], context(active, { now: active.expires_at! }))).toBe("expired");
+    expect(resolveClaimState(active, [active], context(active, {
+      now: active.expires_at!,
+      claim_authority_evidence: new Map([[
+        active.claim_id,
+        { ...authorityEvidence(active), valid_until: active.expires_at! + 60 },
+      ]]),
+    }))).toBe("expired");
     expect(resolveClaimState(active, [active], context(active, { repository_conflicted: new Set([active.claim_id]) }))).toBe("conflicted");
     const directRevocation: VerifiedRevocation = {
       claim_id: active.claim_id,
@@ -628,6 +728,40 @@ describe("claim trust, attenuation, and authorization state", () => {
       .toEqual({ allowed: false, state: "invalid", reason_code: "claim-id-mismatch" });
   });
 
+  it("requires every authorization ancestor to remain confirmed and uncompromised", () => {
+    const { root, child } = delegatedPair();
+    const valid = delegatedContext(root, child);
+    expect(authorizeWithClaim(child, [root, child], valid).allowed).toBe(true);
+    expect(authorizeWithClaim(child, [root, child], {
+      ...valid,
+      repository_confirmed: new Set([child.claim_id]),
+    })).toEqual({ allowed: false, state: "provisional", reason_code: "claim-repository-unconfirmed" });
+    expect(authorizeWithClaim(child, [root, child], {
+      ...valid,
+      repository_conflicted: new Set([root.claim_id]),
+    })).toEqual({ allowed: false, state: "conflicted", reason_code: "claim-repository-conflict" });
+    const expiredRoot = reissue(root, { expires_at: valid.now });
+    const expiredChild = reissue(child, { parent_claim_id: expiredRoot.claim_id, expires_at: valid.now - 1 });
+    const expiredContext = delegatedContext(expiredRoot, expiredChild);
+    expiredContext.now = valid.now;
+    expect(authorizeWithClaim(expiredChild, [expiredRoot, expiredChild], expiredContext))
+      .toEqual({ allowed: false, state: "expired", reason_code: "claim-expired" });
+
+    const ancestorRevocation: VerifiedRevocation = {
+      claim_id: root.claim_id,
+      revoked_at: issuedAt + 10,
+      reason_code: "claim-revoked",
+      revoker: root.issuer,
+      signer: root.issuer,
+      event_id: "58".repeat(32),
+    };
+    expect(authorizeWithClaim(child, [root, child], {
+      ...valid,
+      repository_confirmed: new Set([child.claim_id]),
+      revocations: [ancestorRevocation],
+    })).toEqual({ allowed: false, state: "revoked", reason_code: "claim-revoked" });
+  });
+
   it("recognizes each authorization revoker and applies reduction before repository finality", () => {
     const { root, child } = delegatedPair();
     const authorities = [child.issuer, root.issuer, child.subject];
@@ -640,10 +774,27 @@ describe("claim trust, attenuation, and authorization state", () => {
         signer: authority,
         event_id: (50 + index).toString(16).padStart(64, "0"),
       };
-      const decision = authorizeWithClaim(child, [root, child], context(child, {
+      const base = delegatedContext(root, child);
+      const revocationAuthority: RevocationAuthorityEvidence | undefined = sameKey(authority, root.issuer)
+        ? {
+            event_id: revocation.event_id,
+            claim_id: child.claim_id,
+            signer: authority,
+            authority: "active-ancestor-issuer",
+            authority_claim_id: root.claim_id,
+            valid_from: root.not_before,
+            valid_until: root.expires_at!,
+            core_kel_authority_valid: true,
+          }
+        : undefined;
+      const decision = authorizeWithClaim(child, [root, child], {
+        ...base,
         repository_confirmed: new Set(),
         revocations: [revocation],
-      }));
+        revocation_authority_evidence: revocationAuthority === undefined
+          ? new Map()
+          : new Map([[revocation.event_id, revocationAuthority]]),
+      });
       expect(decision).toEqual({ allowed: false, state: "revoked", reason_code: "claim-revoked" });
     }
     const outsider: KeyRef = {
@@ -658,9 +809,10 @@ describe("claim trust, attenuation, and authorization state", () => {
       signer: outsider,
       event_id: "59".repeat(32),
     };
-    expect(authorizeWithClaim(child, [root, child], context(child, {
+    expect(authorizeWithClaim(child, [root, child], {
+      ...delegatedContext(root, child),
       revocations: [unauthorized],
-    })).allowed).toBe(true);
+    }).allowed).toBe(true);
   });
 
   it("limits descriptive revocation to issuer, named revoker, or superior issuer", () => {
@@ -680,6 +832,8 @@ describe("claim trust, attenuation, and authorization state", () => {
       issuer: delegatedIssuer,
       subject,
       parent_claim_id: descriptiveRoot.claim_id,
+      not_before: descriptiveRoot.not_before + 1,
+      expires_at: descriptiveRoot.expires_at! - 1,
       revokers: [namedRevoker],
     });
     for (const authority of [descriptive.issuer, descriptiveRoot.issuer, namedRevoker]) {
@@ -691,10 +845,29 @@ describe("claim trust, attenuation, and authorization state", () => {
         signer: authority,
         event_id: "55".repeat(32),
       };
+      const revocationAuthority: RevocationAuthorityEvidence | undefined = sameKey(authority, descriptiveRoot.issuer)
+        ? {
+            event_id: revocation.event_id,
+            claim_id: descriptive.claim_id,
+            signer: authority,
+            authority: "active-ancestor-issuer",
+            authority_claim_id: descriptiveRoot.claim_id,
+            valid_from: descriptiveRoot.not_before,
+            valid_until: descriptiveRoot.expires_at!,
+            core_kel_authority_valid: true,
+          }
+        : undefined;
       expect(resolveClaimState(descriptive, [descriptiveRoot, descriptive], context(descriptive, {
         trusted_issuers: [descriptiveRoot.issuer],
+        claim_authority_evidence: new Map([
+          [descriptiveRoot.claim_id, authorityEvidence(descriptiveRoot, "34")],
+          [descriptive.claim_id, authorityEvidence(descriptive, "35")],
+        ]),
         subject_proof: null,
         revocations: [revocation],
+        revocation_authority_evidence: revocationAuthority === undefined
+          ? new Map()
+          : new Map([[revocation.event_id, revocationAuthority]]),
       }))).toBe("revoked");
     }
     const subjectRejection: VerifiedRevocation = {
@@ -707,9 +880,79 @@ describe("claim trust, attenuation, and authorization state", () => {
     };
     expect(resolveClaimState(descriptive, [descriptiveRoot, descriptive], context(descriptive, {
       trusted_issuers: [descriptiveRoot.issuer],
+      claim_authority_evidence: new Map([
+        [descriptiveRoot.claim_id, authorityEvidence(descriptiveRoot, "34")],
+        [descriptive.claim_id, authorityEvidence(descriptive, "35")],
+      ]),
       subject_proof: null,
       revocations: [subjectRejection],
     }))).toBe("active");
+  });
+
+  it("requires revocation-event-bound Core evidence for persona and superior authorities", () => {
+    const active = claim();
+    const personaColdRoot: KeyRef = {
+      type: "nostr-secp256k1",
+      value: fixtures.personas.alice.cold_root.pubkey,
+    };
+    const revocation: VerifiedRevocation = {
+      claim_id: active.claim_id,
+      revoked_at: issuedAt + 10,
+      reason_code: "claim-revoked",
+      revoker: personaColdRoot,
+      signer: personaColdRoot,
+      event_id: "61".repeat(32),
+    };
+    const evidence: RevocationAuthorityEvidence = {
+      event_id: revocation.event_id,
+      claim_id: active.claim_id,
+      signer: personaColdRoot,
+      authority: "persona-cold-root",
+      valid_from: issuedAt,
+      valid_until: issuedAt + 600,
+      core_kel_authority_valid: true,
+    };
+    expect(authorizeWithClaim(active, [active], context(active, {
+      repository_confirmed: new Set(),
+      revocations: [revocation],
+      revocation_authority_evidence: new Map([[revocation.event_id, evidence]]),
+    }))).toEqual({ allowed: false, state: "revoked", reason_code: "claim-revoked" });
+
+    const personaEpoch: KeyRef = {
+      type: "nostr-secp256k1",
+      value: fixtures.personas.carol.epoch_keys.epoch_1.pubkey,
+    };
+    const epochRevocation: VerifiedRevocation = {
+      ...revocation,
+      revoker: personaEpoch,
+      signer: personaEpoch,
+      event_id: "64".repeat(32),
+    };
+    const epochEvidence: RevocationAuthorityEvidence = {
+      ...evidence,
+      event_id: epochRevocation.event_id,
+      signer: personaEpoch,
+      authority: "persona-epoch",
+    };
+    expect(authorizeWithClaim(active, [active], context(active, {
+      repository_confirmed: new Set(),
+      revocations: [epochRevocation],
+      revocation_authority_evidence: new Map([[epochRevocation.event_id, epochEvidence]]),
+    })).state).toBe("revoked");
+
+    for (const invalid of [
+      { ...evidence, event_id: "62".repeat(32) },
+      { ...evidence, claim_id: "63".repeat(32) },
+      { ...evidence, signer: subject },
+      { ...evidence, valid_until: revocation.revoked_at },
+      { ...evidence, core_kel_authority_valid: false },
+      { ...evidence, authority: "active-ancestor-issuer" as const, authority_claim_id: active.claim_id },
+    ]) {
+      expect(authorizeWithClaim(active, [active], context(active, {
+        revocations: [revocation],
+        revocation_authority_evidence: new Map([[revocation.event_id, invalid]]),
+      })).allowed).toBe(true);
+    }
   });
 
   it("verifies BIP-340, Ed25519, and JWS subject possession with exact challenge binding", () => {
@@ -832,16 +1075,71 @@ describe("normative claim vector authoring", () => {
 
     const byId = new Map(vectors.map(({ vector }) => [vector.vector_id, vector]));
     const pairwise = byId.get("claims/pairwise-private-dr-delivery")!;
-    const pairwiseOuter = JSON.stringify(pairwise.input.outer);
+    const pairwiseEvent = pairwise.input.outer_event as NostrSignedEvent;
+    const pairwiseOuter = JSON.stringify(pairwiseEvent);
+    expect(pairwiseEvent.kind).toBe(1060);
+    expect(verifyEventSignature(pairwiseEvent)).toBe(true);
     expect(pairwiseOuter).not.toContain("claim_id");
     expect(pairwiseOuter).not.toContain("heterodyne.device");
+    const pairwiseRumor = pairwise.input.inner_rumor as { content: string };
+    const carriedClaimEvent = JSON.parse(pairwiseRumor.content) as NostrSignedEvent;
+    expect(carriedClaimEvent.kind).toBe(31013);
+    expect(verifyEventSignature(carriedClaimEvent)).toBe(true);
     const repository = byId.get("claims/repository-private-encryption")!;
-    expect(JSON.stringify({
-      path: repository.input.keyed_path,
+    const repositoryClaimId = (repository.expected_output.normalized as { inner_claim_id: string }).inner_claim_id;
+    const repositoryMetadata = JSON.stringify({
+      commit: repository.input.commit,
+      tree: repository.input.tree,
       rid: repository.input.rid,
       branch: repository.input.branch,
-    })).not.toContain((repository.expected_output.normalized as { inner_claim_id: string }).inner_claim_id);
+    });
+    expect(repositoryMetadata).not.toContain(repositoryClaimId);
+    expect(repositoryMetadata).not.toContain("heterodyne.device");
+    expect(repositoryMetadata).not.toContain("claim-ledger-reader");
+    expect(JSON.stringify(repository.input.blobs)).not.toContain(repositoryClaimId);
+    const encryptedBlob = Object.values(repository.input.blobs as Record<string, string>)[0];
+    const repositoryEvent = JSON.parse(nip44.v2.decrypt(
+      encryptedBlob,
+      hexToBytes(repository.input.fixture_audience_key as string),
+    )) as NostrSignedEvent;
+    expect(repositoryEvent.kind).toBe(31013);
+    expect(verifyEventSignature(repositoryEvent)).toBe(true);
     expect((byId.get("claims/local-only-no-publication")!.expected_output.normalized as { transport_artifacts: unknown[] }).transport_artifacts).toEqual([]);
+    const localEvent = byId.get("claims/local-only-no-publication")!.input.valid_signed_event as NostrSignedEvent;
+    expect(localEvent.kind).toBe(31013);
+    expect(verifyEventSignature(localEvent)).toBe(true);
     expect((byId.get("claims/persona-issuance-active")!.input.vector_context as { decision_trace: string[] }).decision_trace).toHaveLength(8);
+    const personaVector = byId.get("claims/persona-issuance-active")!;
+    expect((personaVector.input.claim_authority_evidence as ClaimAuthorityEvidence[])[0].event_id)
+      .toBe((personaVector.input.event as NostrSignedEvent).id);
+
+    const cycleVector = byId.get("claims/chain-depth-exceeded")!;
+    const cycleCase = (cycleVector.input.cases as Array<{
+      name: string;
+      leaf_claim_id: string;
+      claims_by_id: Record<string, ClaimSemanticBody>;
+    }>).find(({ name }) => name === "cycle")!;
+    const cycleMap = new Map(Object.entries(cycleCase.claims_by_id));
+    expect(() => verifyClaimChain(cycleMap.get(cycleCase.leaf_claim_id)!, cycleMap))
+      .toThrow(/claim-chain-cycle/);
+
+    const jwkRevocation = byId.get("claims/canonical-jwk-thumbprint-subject")!
+      .input.positive_native_revocation_event as NostrSignedEvent;
+    expect(validateClaimRevocationEnvelope(jwkRevocation).signer.type).toBe("jwk-thumbprint");
+    const authorizationRoles = byId.get("claims/authorization-self-revocation")!
+      .input.role_cases as Array<{ event: NostrSignedEvent; expected_authorized: boolean }>;
+    expect(authorizationRoles).toHaveLength(6);
+    expect(authorizationRoles.filter(({ expected_authorized }) => expected_authorized)).toHaveLength(5);
+    expect(authorizationRoles.every(({ event }) => validateClaimRevocationEnvelope(event).event_id === event.id)).toBe(true);
+    expect(new Map([
+      ["claims/canonical-nostr-subject", "heterodyne-comms-key-claim-nostr-bip340-v1"],
+      ["claims/canonical-radicle-nid-subject", "heterodyne-comms-key-claim-radicle-ed25519-v1"],
+      ["claims/subject-proof-valid", "heterodyne-comms-key-claim-jwk-jws-v1"],
+      ["claims/canonical-jwk-thumbprint-subject", "heterodyne-comms-claim-revocation-jwk-jws-v1"],
+      ["claims/authorization-self-revocation", "heterodyne-comms-claim-revocation-nostr-bip340-v1"],
+      ["claims/descriptive-subject-rejection", "heterodyne-comms-claim-revocation-radicle-ed25519-v1"],
+    ])).toEqual(new Map(
+      [...byId.values()].filter(({ profile }) => profile !== undefined).map(({ vector_id, profile }) => [vector_id, profile!]),
+    ));
   });
 });

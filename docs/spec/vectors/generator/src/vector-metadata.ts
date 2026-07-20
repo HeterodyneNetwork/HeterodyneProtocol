@@ -310,10 +310,10 @@ const CONTROL_IDS = new Set<string>();
 const PROFILE_BY_VECTOR = new Map<string, string>([
   ["claims/canonical-nostr-subject", "heterodyne-comms-key-claim-nostr-bip340-v1"],
   ["claims/canonical-radicle-nid-subject", "heterodyne-comms-key-claim-radicle-ed25519-v1"],
-  ["claims/canonical-jwk-thumbprint-subject", "heterodyne-comms-key-claim-jwk-jws-v1"],
+  ["claims/subject-proof-valid", "heterodyne-comms-key-claim-jwk-jws-v1"],
   ["claims/authorization-self-revocation", "heterodyne-comms-claim-revocation-nostr-bip340-v1"],
   ["claims/descriptive-subject-rejection", "heterodyne-comms-claim-revocation-radicle-ed25519-v1"],
-  ["claims/copied-proof-rejected", "heterodyne-comms-claim-revocation-jwk-jws-v1"],
+  ["claims/canonical-jwk-thumbprint-subject", "heterodyne-comms-claim-revocation-jwk-jws-v1"],
   ["stamping/upstream-profile-owner", "heterodyne-social-mute-list-v1"],
   ["stamping/non-stamping-profile-unchanged", "heterodyne-core-rotation-breadcrumb-profile-v1"],
   ["stamping/dr-outer-unstamped", "heterodyne-comms-double-ratchet-message-v1"],

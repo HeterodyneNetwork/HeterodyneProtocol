@@ -348,7 +348,7 @@
       "core": "core/0.5.0"
     },
     "registry_revision": 2,
-    "profile": "heterodyne-comms-key-claim-jwk-jws-v1",
+    "profile": "heterodyne-comms-claim-revocation-jwk-jws-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-conformance"
     ]
@@ -435,7 +435,6 @@
       "core": "core/0.5.0"
     },
     "registry_revision": 2,
-    "profile": "heterodyne-comms-claim-revocation-jwk-jws-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-conformance"
     ]
@@ -557,6 +556,7 @@
       "core": "core/0.5.0"
     },
     "registry_revision": 2,
+    "profile": "heterodyne-comms-key-claim-jwk-jws-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-conformance"
     ]
