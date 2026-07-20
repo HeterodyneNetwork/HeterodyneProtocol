@@ -3,18 +3,24 @@ import { sha256 } from "@noble/hashes/sha2";
 import {
   buildLedgerRepositoryEvidence,
   createAudienceKeyEpochPayload,
+  createIssuerKeyEnvelope,
   createSignedLedgerRecord,
-  evaluateLedgerCheckpointEligibility,
+  canMint,
   evaluateReaderAccess,
   ledgerErrorReason,
   materializeLedgerLayout,
   mergeClaimLedger,
+  invalidationsForCompromisedSigningKey,
+  reserveStatusIndex,
   resolveAuthoritativeClaimState,
+  resolveIssuerAuthorityState,
+  unwrapIssuerSigningJwk,
   type ClaimArtifact,
   type LedgerRecord,
   type LedgerRecordValidationEvidence,
   type LedgerRepositoryEvidence,
   type LedgerValidationContext,
+  type IssuanceRecord,
   type ReaderAccessRequest,
   type RevocationArtifact,
 } from "./claim-ledger.js";
@@ -153,29 +159,92 @@ export function replayClaimLedgerVector(encodedInput: unknown): unknown {
       const nextEpoch = state.records.find(({ record_id }) => record_id === input.next_epoch_record_id);
       return { verdict: "accept", normalized: { removed_access: removedAccess, next_epoch: nextEpoch?.payload } };
     }
-    case "reservations": {
+    case "multiwriter-mint-and-reserve": {
       const state = replayMerge(input.merge);
+      const issuances = state.records
+        .filter(({ record_type }) => record_type === "issuance-reservation")
+        .map(({ record_id, writer_nid, payload }) => ({ record_id, writer_nid, issuance: payload as IssuanceRecord }));
+      const writers = input.writers.map((writer: any) => {
+        const authorityState = resolveIssuerAuthorityState(writer.writer_nid, state, input.now);
+        let signingJwk: JsonValue | null = null;
+        try {
+          signingJwk = unwrapIssuerSigningJwk(writer.envelope, writer.writer_nid, writer.audience_key);
+        } catch {
+          signingJwk = null;
+        }
+        return {
+          writer_nid: writer.writer_nid,
+          authority_state: authorityState,
+          signing_key_id: signingJwk === null ? null : writer.envelope.content_digest,
+          eligibility: canMint(input.now, state.checkpoint, input.maximum_age, authorityState, signingJwk !== null),
+        };
+      });
+      const allocationKeys = issuances.map(({ issuance }) => `${issuance.reservation.uri}\0${issuance.reservation.idx}`);
       return {
-        verdict: "accept",
+        verdict: writers.every(({ eligibility }: any) => eligibility.allowed) ? "accept" : "reject",
         normalized: {
-          reservation_record_ids: state.records
-            .filter(({ record_type }) => record_type === "issuance-reservation")
-            .map(({ record_id }) => record_id),
-          allocation_algorithm: "deferred-to-claims-task-5",
+          synchronization: { checkpoint: state.checkpoint, canonical_record_ids: state.repository_confirmed_record_ids },
+          writers,
+          issuances,
+          unique_allocation_count: new Set(allocationKeys).size,
+          durable_before_return: issuances.every(({ record_id }) => state.repository_confirmed_record_ids?.includes(record_id)),
         },
       };
     }
-    case "checkpoint-eligibility": {
-      const decision = evaluateLedgerCheckpointEligibility(input.now, input.checkpoint, input.maximum_age);
-      return { verdict: "reject", ...decisionReason(decision) };
+    case "mint-freshness-and-removal": {
+      const active = replayMerge(input.active_merge);
+      const removed = replayMerge(input.removed_merge);
+      const activeState = resolveIssuerAuthorityState(input.writer_nid, active, active.checkpoint.observed_at);
+      const removedState = resolveIssuerAuthorityState(input.writer_nid, removed, removed.checkpoint.observed_at);
+      const priorJwk = unwrapIssuerSigningJwk(input.prior_envelope, input.writer_nid, input.prior_audience_key);
+      let removedCanUnwrap = true;
+      try {
+        unwrapIssuerSigningJwk(input.rotated_envelope, input.writer_nid, input.rotated_audience_key);
+      } catch {
+        removedCanUnwrap = false;
+      }
+      return {
+        verdict: "reject",
+        reason_code: "oidc-issuer-authority-invalid",
+        normalized: {
+          immediate_sync_checkpoint: active.checkpoint,
+          boundary_300: canMint(active.checkpoint.observed_at + 300, active.checkpoint, input.maximum_age, activeState, priorJwk !== null),
+          boundary_301: canMint(active.checkpoint.observed_at + 301, active.checkpoint, input.maximum_age, activeState, priorJwk !== null),
+          removal: canMint(removed.checkpoint.observed_at, removed.checkpoint, input.maximum_age, removedState, priorJwk !== null),
+          removed_recipient_can_unwrap_rotated_key: removedCanUnwrap,
+          rotated_key: {
+            previous_key_id: input.rotated_envelope.previous_key_id,
+            audience_key_id: input.rotated_envelope.audience_key_id,
+            recipients: input.rotated_envelope.recipient_wraps.map(({ writer_nid }: any) => writer_nid),
+          },
+        },
+      };
     }
-    case "token-invalidation": {
-      const state = replayMerge(input.merge);
+    case "source-and-key-invalidation": {
+      const left = replayMerge(input.left_merge);
+      const right = replayMerge(input.right_merge);
+      const issuances = left.records
+        .filter(({ record_type }) => record_type === "issuance-reservation")
+        .map(({ payload }) => payload as IssuanceRecord);
+      const compromiseInvalidations = invalidationsForCompromisedSigningKey(
+        input.compromised_signing_key_id, input.replacement_envelope, issuances,
+      );
       return {
         verdict: "accept",
         normalized: {
-          source_claim_state: resolveAuthoritativeClaimState(input.claim_id, state, input.evaluation_time),
-          token_invalidations: state.token_invalidations,
+          source_claim_state: resolveAuthoritativeClaimState(input.claim_id, left, input.evaluation_time),
+          left_token_invalidations: left.token_invalidations,
+          right_token_invalidations: right.token_invalidations,
+          converged: jcsCanonicalize(left.token_invalidations) === jcsCanonicalize(right.token_invalidations),
+          invalidation_record_jtis: left.records
+            .filter(({ record_type }) => record_type === "status-invalidation")
+            .map(({ payload }) => String((payload as Record<string, unknown>).jti)).sort(),
+          signing_key_compromise: {
+            compromised_signing_key_id: input.compromised_signing_key_id,
+            replacement_signing_key_id: input.replacement_envelope.content_digest,
+            replacement_audience_key_id: input.replacement_envelope.audience_key_id,
+            invalidated_jtis: compromiseInvalidations,
+          },
           status_encoding: "deferred-to-claims-task-7",
         },
       };
@@ -195,6 +264,8 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   const resource = `${rid}#claim-ledger`;
   const audienceKeyOne = Uint8Array.from({ length: 32 }, () => 0x51);
   const audienceKeyTwo = Uint8Array.from({ length: 32 }, () => 0x52);
+  const issuerAudienceKeyOne = Uint8Array.from({ length: 32 }, () => 0x71);
+  const issuerAudienceKeyTwo = Uint8Array.from({ length: 32 }, () => 0x72);
   const audienceKeyOneId = bytesToHex(sha256(audienceKeyOne));
   const audienceKeyTwoId = bytesToHex(sha256(audienceKeyTwo));
 
@@ -233,6 +304,8 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
 
   const claimOne = await makeClaim(writerOne);
   const claimTwo = await makeClaim(writerTwo);
+  const issuerClaimOne = await makeClaim(writerOne, { name: "oidc-token-issuer", resources: [`${rid}#oidc-issuer`] });
+  const issuerClaimTwo = await makeClaim(writerTwo, { name: "oidc-token-issuer", resources: [`${rid}#oidc-issuer`] });
   const alternateClaimOne = await makeClaim(writerOne, { expires_at: now + 1_800 });
   const temporalClaim = await makeClaim(writerOne, { not_before: now + 55, expires_at: now + 65 });
   const allClaims = new Map([
@@ -240,18 +313,24 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     [claimTwo.artifact.semantic.claim_id, claimTwo.artifact.semantic],
     [alternateClaimOne.artifact.semantic.claim_id, alternateClaimOne.artifact.semantic],
   ]);
+  const issuerClaimsById = new Map([
+    ...allClaims,
+    [issuerClaimOne.artifact.semantic.claim_id, issuerClaimOne.artifact.semantic] as const,
+    [issuerClaimTwo.artifact.semantic.claim_id, issuerClaimTwo.artifact.semantic] as const,
+  ]);
 
   const makeVerification = (
     claim: typeof claimOne,
     confirmed = new Set<string>([claim.artifact.semantic.claim_id]),
   ): ClaimVerificationContext => {
     const semantic = claim.artifact.semantic;
+    const claimResource = semantic.resources?.[0] ?? resource;
     const challenge: SubjectProofChallenge = {
       domain: "heterodyne-claim-pop-v1",
       claim_id: semantic.claim_id,
       nonce: bytesToHex(Uint8Array.from({ length: 16 }, (_, index) => (index + (claim.reader === writerOne ? 1 : 33)) & 0xff)),
       audience: persona,
-      resource,
+      resource: claimResource,
       operation: "read",
       issued_at: now + 11,
       expires_at: now + 71,
@@ -272,7 +351,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     return {
       now: now + 20,
       audience: persona,
-      resource,
+      resource: claimResource,
       requested_namespace: semantic.namespace,
       requested_operation: "read",
       expected_nonce: challenge.nonce,
@@ -308,6 +387,14 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
 
   const claimRecordOne = signRecord("claim", { claim_artifact: claimOne.artifact });
   const claimRecordTwo = signRecord("claim", { claim_artifact: claimTwo.artifact }, writerTwo);
+  const issuerClaimRecordOne = signRecord("claim", { claim_artifact: issuerClaimOne.artifact });
+  const issuerClaimRecordTwo = signRecord("claim", { claim_artifact: issuerClaimTwo.artifact }, writerTwo);
+  const issuerAuthorityRecordOne = signRecord("issuer-authority", {
+    action: "grant", writer_nid: writerOne.did_key, claim_artifact: issuerClaimOne.artifact,
+  }, writerOne, [issuerClaimRecordOne.record_id], now + 2);
+  const issuerAuthorityRecordTwo = signRecord("issuer-authority", {
+    action: "grant", writer_nid: writerTwo.did_key, claim_artifact: issuerClaimTwo.artifact,
+  }, writerTwo, [issuerClaimRecordTwo.record_id], now + 2);
   const temporalClaimRecord = signRecord("claim", { claim_artifact: temporalClaim.artifact });
   const grantOne = signRecord("reader-change", {
     action: "grant", reader_nid: writerOne.did_key, claim_artifact: claimOne.artifact,
@@ -341,6 +428,27 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   const removalRecord = signRecord("reader-change", {
     action: "remove", reader_nid: writerOne.did_key, revocation_artifact: revocationArtifact,
   }, writerTwo, [claimRecordOne.record_id], now + 31);
+  const issuerRevocationSemantic: ClaimRevocation = {
+    claim_id: issuerClaimOne.artifact.semantic.claim_id,
+    revoked_at: now + 81,
+    reason_code: "claim-revoked",
+    revoker: issuerClaimOne.artifact.semantic.issuer,
+  };
+  const issuerRevocationEvent = await signEvent({
+    secretKey: issuer.private_key,
+    auxRand: AUX_RAND,
+    created_at: issuerRevocationSemantic.revoked_at,
+    kind: 31014,
+    tags: [["d", issuerRevocationSemantic.claim_id]],
+    content: jcsCanonicalize(issuerRevocationSemantic),
+  });
+  const issuerRevocationArtifact: RevocationArtifact = {
+    event: issuerRevocationEvent,
+    semantic: issuerRevocationSemantic as unknown as JsonValue,
+  };
+  const issuerRemovalRecord = signRecord("issuer-authority", {
+    action: "remove", writer_nid: writerOne.did_key, revocation_artifact: issuerRevocationArtifact,
+  }, writerTwo, [issuerAuthorityRecordOne.record_id], now + 82);
 
   const evidence = new Map<string, LedgerRecordValidationEvidence>();
   const addClaimEvidence = (record: LedgerRecord, claim: typeof claimOne) => evidence.set(record.record_id, {
@@ -407,22 +515,99 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     [epochOneRecord.record_id, removalRecord.record_id], now + 61);
   evidence.set(epochTwoRecord.record_id, { record_id: epochTwoRecord.record_id, payload_digest: epochTwoRecord.payload_digest });
 
-  const reservationOne = signRecord("issuance-reservation", {
-    jti: "writer_one_token_0001", writer_nid: writerOne.did_key,
-    source_claim_ids: [claimOne.artifact.semantic.claim_id], allocation_ref: "pending:writer-one:sequence-0",
-  }, writerOne, [claimRecordOne.record_id], now + 70);
-  const reservationTwo = signRecord("issuance-reservation", {
-    jti: "writer_two_token_0001", writer_nid: writerTwo.did_key,
-    source_claim_ids: [claimOne.artifact.semantic.claim_id], allocation_ref: "pending:writer-two:sequence-0",
-  }, writerTwo, [claimRecordOne.record_id], now + 70);
+  const signingJwk: JsonValue = {
+    kty: "RSA",
+    n: "uQ1F7hW9XKq43_Deterministic_Task5_Modulus",
+    e: "AQAB",
+    d: "private-task5-signing-material",
+  };
+  const issuerKeyEnvelopeOne = createIssuerKeyEnvelope({
+    persona, repository_rid: rid, checkpoint_commit_oid: baseRepository.checkpoint.commit_oid,
+    epoch: 1, audience_key: issuerAudienceKeyOne, signing_jwk: signingJwk,
+    active_issuer_nids: [writerOne.did_key, writerTwo.did_key],
+  });
+  const issuerKeyEnvelopeTwo = createIssuerKeyEnvelope({
+    persona, repository_rid: rid, checkpoint_commit_oid: epochOneRepository.checkpoint.commit_oid,
+    epoch: 2, previous_key_id: issuerKeyEnvelopeOne.audience_key_id,
+    audience_key: issuerAudienceKeyTwo, signing_jwk: signingJwk,
+    active_issuer_nids: [writerTwo.did_key], removed_issuer_nids: [writerOne.did_key],
+  });
+
+  const issuanceOne: IssuanceRecord = {
+    jti: "writer_one_token_0001",
+    reservation: reserveStatusIndex(writerOne.did_key, now + 3_600, 0, []),
+    checkpoint: baseRepository.checkpoint,
+    signing_key_id: issuerKeyEnvelopeOne.content_digest,
+    source_claim_ids: [claimOne.artifact.semantic.claim_id],
+    issued_at: now + 65,
+    expires_at: now + 3_600,
+  };
+  const issuanceTwo: IssuanceRecord = {
+    jti: "writer_two_token_0001",
+    reservation: reserveStatusIndex(writerTwo.did_key, now + 3_600, 0, [issuanceOne]),
+    checkpoint: baseRepository.checkpoint,
+    signing_key_id: issuerKeyEnvelopeOne.content_digest,
+    source_claim_ids: [claimOne.artifact.semantic.claim_id],
+    issued_at: now + 65,
+    expires_at: now + 3_600,
+  };
+  const reservationOne = signRecord("issuance-reservation", issuanceOne as unknown as JsonValue,
+    writerOne, [claimRecordOne.record_id], now + 70);
+  const reservationTwo = signRecord("issuance-reservation", issuanceTwo as unknown as JsonValue,
+    writerTwo, [claimRecordOne.record_id], now + 70);
   const statusInvalidation = signRecord("status-invalidation", {
     jti: "writer_one_token_0001", source_claim_id: claimOne.artifact.semantic.claim_id, revocation_artifact: revocationArtifact,
   }, writerTwo, [reservationOne.record_id], now + 71);
-  for (const record of [reservationOne, reservationTwo]) evidence.set(record.record_id, {
+  const statusInvalidationTwo = signRecord("status-invalidation", {
+    jti: "writer_two_token_0001", source_claim_id: claimOne.artifact.semantic.claim_id, revocation_artifact: revocationArtifact,
+  }, writerOne, [reservationTwo.record_id], now + 71);
+
+  // Preserve Task 4's unused replay-evidence map entries byte-for-byte so
+  // replacing vectors 011-013 does not rewrite vectors 001-010.
+  const legacyReservationOne = signRecord("issuance-reservation", {
+    jti: "writer_one_token_0001", writer_nid: writerOne.did_key,
+    source_claim_ids: [claimOne.artifact.semantic.claim_id], allocation_ref: "pending:writer-one:sequence-0",
+  }, writerOne, [claimRecordOne.record_id], now + 70);
+  const legacyReservationTwo = signRecord("issuance-reservation", {
+    jti: "writer_two_token_0001", writer_nid: writerTwo.did_key,
+    source_claim_ids: [claimOne.artifact.semantic.claim_id], allocation_ref: "pending:writer-two:sequence-0",
+  }, writerTwo, [claimRecordOne.record_id], now + 70);
+  const legacyStatusInvalidation = signRecord("status-invalidation", {
+    jti: "writer_one_token_0001", source_claim_id: claimOne.artifact.semantic.claim_id, revocation_artifact: revocationArtifact,
+  }, writerTwo, [legacyReservationOne.record_id], now + 71);
+  for (const record of [legacyReservationOne, legacyReservationTwo]) evidence.set(record.record_id, {
     record_id: record.record_id, payload_digest: record.payload_digest,
   });
-  evidence.set(statusInvalidation.record_id, {
-    record_id: statusInvalidation.record_id, payload_digest: statusInvalidation.payload_digest,
+  evidence.set(legacyStatusInvalidation.record_id, {
+    record_id: legacyStatusInvalidation.record_id, payload_digest: legacyStatusInvalidation.payload_digest,
+    claims_by_id: new Map(allClaims), claim_verification_context: revocationVerification,
+  });
+
+  const task5Evidence = new Map(evidence);
+  const addIssuerEvidence = (record: LedgerRecord, claim: typeof issuerClaimOne) => task5Evidence.set(record.record_id, {
+    record_id: record.record_id,
+    payload_digest: record.payload_digest,
+    claim_envelope_context: { issuer_authorized: true, registry_revision: 2 },
+    claims_by_id: new Map(issuerClaimsById),
+    claim_verification_context: makeVerification(claim),
+  });
+  addIssuerEvidence(issuerClaimRecordOne, issuerClaimOne);
+  addIssuerEvidence(issuerClaimRecordTwo, issuerClaimTwo);
+  addIssuerEvidence(issuerAuthorityRecordOne, issuerClaimOne);
+  addIssuerEvidence(issuerAuthorityRecordTwo, issuerClaimTwo);
+  const issuerRevocationVerification = makeVerification(issuerClaimOne);
+  issuerRevocationVerification.now = now + 90;
+  task5Evidence.set(issuerRemovalRecord.record_id, {
+    record_id: issuerRemovalRecord.record_id,
+    payload_digest: issuerRemovalRecord.payload_digest,
+    claims_by_id: new Map(issuerClaimsById),
+    claim_verification_context: issuerRevocationVerification,
+  });
+  for (const record of [reservationOne, reservationTwo]) task5Evidence.set(record.record_id, {
+    record_id: record.record_id, payload_digest: record.payload_digest,
+  });
+  for (const record of [statusInvalidation, statusInvalidationTwo]) task5Evidence.set(record.record_id, {
+    record_id: record.record_id, payload_digest: record.payload_digest,
     claims_by_id: new Map(allClaims), claim_verification_context: revocationVerification,
   });
 
@@ -441,12 +626,17 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
       audience_keys_by_epoch: new Map([[1, audienceKeyOne], [2, audienceKeyTwo]]),
     };
   };
+  const makeTask5Context = (repository: LedgerRepositoryEvidence): LedgerValidationContext => ({
+    ...makeContext(repository),
+    record_evidence: new Map(task5Evidence),
+  });
 
   return {
-    now, persona, issuer, writerOne, writerTwo, rid, resource, audienceKeyOne, audienceKeyTwo,
-    claimOne, claimTwo, alternateClaimOne, temporalClaim, allClaims, makeVerification, requestFor, evidence, temporalRecordEvidence, grantOnlyEvidence, makeContext,
+    now, persona, issuer, writerOne, writerTwo, rid, resource, audienceKeyOne, audienceKeyTwo, issuerAudienceKeyOne, issuerAudienceKeyTwo,
+    claimOne, claimTwo, issuerClaimOne, issuerClaimTwo, alternateClaimOne, temporalClaim, allClaims, makeVerification, requestFor, evidence, temporalRecordEvidence, grantOnlyEvidence, makeContext, makeTask5Context,
     claimRecordOne, claimRecordTwo, temporalClaimRecord, grantOne, grantDivergent, grantOnly, revocationRecord, reductionRecord, removalRecord,
-    epochOneRecord, epochTwoRecord, reservationOne, reservationTwo, statusInvalidation,
+    issuerClaimRecordOne, issuerClaimRecordTwo, issuerAuthorityRecordOne, issuerAuthorityRecordTwo, issuerRemovalRecord,
+    epochOneRecord, epochTwoRecord, signingJwk, issuerKeyEnvelopeOne, issuerKeyEnvelopeTwo, issuanceOne, issuanceTwo, reservationOne, reservationTwo, statusInvalidation, statusInvalidationTwo,
     baseRepository, epochOneRepository,
   };
 }
@@ -471,10 +661,29 @@ export async function buildClaimLedgerVectors(fixtures: Fixtures): Promise<Autho
   const conflictRecords = [...baseRecords, s.grantOne, s.grantDivergent];
   const finalRecords = [...epochOneRecords, s.removalRecord, s.epochTwoRecord];
   const finalRepo = buildLedgerRepositoryEvidence({ repository_rid: s.rid, confirmed_records: finalRecords, observed_at: s.now + 65, prior: s.epochOneRepository.repository });
-  const reservations = [...baseRecords, s.reservationOne, s.reservationTwo];
-  const reservationsRepo = buildLedgerRepositoryEvidence({ repository_rid: s.rid, confirmed_records: reservations, observed_at: s.now + 100 });
-  const tokenRecords = [...baseRecords, s.reservationOne, s.revocationRecord, s.statusInvalidation];
-  const tokenRepo = buildLedgerRepositoryEvidence({ repository_rid: s.rid, confirmed_records: tokenRecords, observed_at: s.now + 110 });
+  const issuerRecords = [
+    s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
+    s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo,
+  ];
+  const reservations = [...baseRecords, ...issuerRecords, s.reservationOne, s.reservationTwo];
+  const reservationsRepo = buildLedgerRepositoryEvidence({
+    repository_rid: s.rid, confirmed_records: reservations, observed_at: s.now + 100, prior: s.baseRepository.repository,
+  });
+  const tokenRecords = [
+    ...baseRecords, s.reservationOne, s.reservationTwo, s.revocationRecord,
+    s.statusInvalidation, s.statusInvalidationTwo,
+  ];
+  const tokenRepo = buildLedgerRepositoryEvidence({ repository_rid: s.rid, confirmed_records: tokenRecords, observed_at: s.now + 110, prior: s.baseRepository.repository });
+  const compromisedReplacementEnvelope = createIssuerKeyEnvelope({
+    persona: s.persona,
+    repository_rid: s.rid,
+    checkpoint_commit_oid: s.baseRepository.checkpoint.commit_oid,
+    epoch: 2,
+    previous_key_id: s.issuerKeyEnvelopeOne.audience_key_id,
+    audience_key: s.issuerAudienceKeyTwo,
+    signing_jwk: { kty: "RSA", n: "replacement_task5_modulus", e: "AQAB", d: "replacement-private-material" },
+    active_issuer_nids: [s.writerOne.did_key, s.writerTwo.did_key],
+  });
   const requestOne = s.requestFor(s.claimRecordOne, s.claimOne);
   requestOne.verification_context.now = s.baseRepository.checkpoint.observed_at;
   const finalRequestOne = s.requestFor(s.claimRecordOne, s.claimOne);
@@ -554,14 +763,35 @@ export async function buildClaimLedgerVectors(fixtures: Fixtures): Promise<Autho
     entry("010-reader-removal-key-rotation.json", "reader-removal-key-rotation", "Authenticated removal precedes a distinct monotonic key epoch wrapped only to active remaining NIDs.", {
       operation: "reader-removal", merge: mergeInput(finalRecords, [], finalRepo.checkpoint, s.makeContext(finalRepo.repository)), reader_nid: s.writerOne.did_key, request: finalRequestOne, next_epoch_record_id: s.epochTwoRecord.record_id,
     }),
-    entry("011-multiwriter-status-allocation.json", "multiwriter-status-allocation", "Task 4 merges opaque pending reservations without defining Task 5 allocation semantics.", {
-      operation: "reservations", merge: mergeInput(reservations, [], reservationsRepo.checkpoint, s.makeContext(reservationsRepo.repository)),
+    entry("011-multiwriter-status-allocation.json", "multiwriter-status-allocation", "Two synchronized authorized writers sharing one signing key mint from executable authority/key evidence and durably reserve collision-free NID-derived status indexes.", {
+      operation: "multiwriter-mint-and-reserve",
+      merge: mergeInput(reservations, [], reservationsRepo.checkpoint, s.makeTask5Context(reservationsRepo.repository)),
+      now: reservationsRepo.checkpoint.observed_at,
+      maximum_age: 300,
+      writers: [
+        { writer_nid: s.writerOne.did_key, envelope: s.issuerKeyEnvelopeOne, audience_key: s.issuerAudienceKeyOne },
+        { writer_nid: s.writerTwo.did_key, envelope: s.issuerKeyEnvelopeOne, audience_key: s.issuerAudienceKeyOne },
+      ],
     }),
-    entry("012-stale-minter-denied.json", "stale-minter-denied", "The ledger boundary rejects a checkpoint older than the 300-second maximum.", {
-      operation: "checkpoint-eligibility", checkpoint: s.baseRepository.checkpoint, now: s.baseRepository.checkpoint.observed_at + 301, maximum_age: 300,
+    entry("012-stale-minter-denied.json", "stale-minter-denied", "Freshness clamps a larger requested manifest age to 300 seconds, while authenticated issuer removal immediately denies minting and rotates recipient wraps before any next mint.", {
+      operation: "mint-freshness-and-removal",
+      active_merge: mergeInput(reservations, [], reservationsRepo.checkpoint, s.makeTask5Context(reservationsRepo.repository)),
+      removed_merge: mergeInput(reservations, [s.issuerRemovalRecord], reservationsRepo.checkpoint, s.makeTask5Context(reservationsRepo.repository)),
+      writer_nid: s.writerOne.did_key,
+      maximum_age: 600,
+      prior_envelope: s.issuerKeyEnvelopeOne,
+      prior_audience_key: s.issuerAudienceKeyOne,
+      rotated_envelope: s.issuerKeyEnvelopeTwo,
+      rotated_audience_key: s.issuerAudienceKeyTwo,
     }),
-    entry("013-source-claim-revokes-token.json", "source-claim-revokes-token", "Source revocation and token invalidation are separate executable effects; status encoding remains Task 7.", {
-      operation: "token-invalidation", merge: mergeInput(tokenRecords, [], tokenRepo.checkpoint, s.makeContext(tokenRepo.repository)), claim_id: s.claimOne.artifact.semantic.claim_id, evaluation_time: tokenRepo.checkpoint.observed_at,
+    entry("013-source-claim-revokes-token.json", "source-claim-revokes-token", "Every JWT mapped to a revoked source claim converges on identical invalidation records; signing-key compromise invalidates all tokens under the old key and requires distinct replacement key material.", {
+      operation: "source-and-key-invalidation",
+      left_merge: mergeInput(tokenRecords.slice(0, 3), tokenRecords.slice(3), tokenRepo.checkpoint, s.makeTask5Context(tokenRepo.repository)),
+      right_merge: mergeInput([...tokenRecords].reverse().slice(0, 3), [...tokenRecords].reverse().slice(3), tokenRepo.checkpoint, s.makeTask5Context(tokenRepo.repository)),
+      claim_id: s.claimOne.artifact.semantic.claim_id,
+      evaluation_time: tokenRepo.checkpoint.observed_at,
+      compromised_signing_key_id: s.issuerKeyEnvelopeOne.content_digest,
+      replacement_envelope: compromisedReplacementEnvelope,
     }),
   ];
 

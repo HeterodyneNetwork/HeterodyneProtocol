@@ -88,27 +88,51 @@ describe("canonical evaluation time and confirmation", () => {
   });
 
   it("never confirms or revokes a delivered source claim through status invalidation", () => {
+    const emptyRepository = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid,
+      confirmed_records: [],
+      observed_at: s.now + 50,
+    });
+    const issuancePayload = {
+      ...s.issuanceOne,
+      checkpoint: emptyRepository.checkpoint,
+      issued_at: s.now + 65,
+    };
+    const issuance = createSignedLedgerRecord({
+      record_type: "issuance-reservation",
+      persona: s.persona,
+      writer_nid: s.writerOne.did_key,
+      created_at: s.now + 70,
+      parents: [],
+      payload: issuancePayload,
+    }, s.writerOne.private_key);
     const independentStatus = createSignedLedgerRecord({
       record_type: "status-invalidation",
       persona: s.persona,
       writer_nid: s.writerTwo.did_key,
       created_at: s.now + 71,
-      parents: [],
+      parents: [issuance.record_id],
       payload: s.statusInvalidation.payload,
     }, s.writerTwo.private_key);
     const repository = buildLedgerRepositoryEvidence({
       repository_rid: s.rid,
-      confirmed_records: [independentStatus],
+      confirmed_records: [issuance, independentStatus],
       observed_at: s.now + 80,
+      prior: emptyRepository.repository,
     });
-    const context = s.makeContext(repository.repository);
+    const context = s.makeTask5Context(repository.repository);
+    context.record_evidence.set(issuance.record_id, {
+      record_id: issuance.record_id,
+      payload_digest: issuance.payload_digest,
+    });
+    const sourceStatusEvidence = context.record_evidence.get(s.statusInvalidation.record_id)!;
     context.record_evidence.set(independentStatus.record_id, boundEvidence(
       independentStatus.record_id,
       independentStatus.payload_digest,
-      s.evidence.get(s.statusInvalidation.record_id)!,
+      sourceStatusEvidence,
     ));
     const state = mergeClaimLedger(
-      [independentStatus], [s.claimRecordOne], repository.checkpoint, context,
+      [issuance, independentStatus], [s.claimRecordOne], repository.checkpoint, context,
     );
     const request = cloneRequest(s.requestFor(s.claimRecordOne, s.claimOne));
     request.verification_context.now = repository.checkpoint.observed_at;

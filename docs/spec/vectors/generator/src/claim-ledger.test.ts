@@ -2,12 +2,18 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   buildLedgerRepositoryEvidence,
   buildReaderOnboardingBundle,
+  canMint,
   createAudienceKeyEpochPayload,
+  createIssuerKeyEnvelope,
   createSignedLedgerRecord,
   evaluateReaderAccess,
   materializeLedgerLayout,
   mergeClaimLedger,
+  reserveStatusIndex,
   resolveAuthoritativeClaimState,
+  resolveIssuerAuthorityState,
+  unwrapIssuerSigningJwk,
+  validateIssuanceRecordOrThrow,
   validateLedgerRecordOrThrow,
   validateReaderOnboardingBundle,
   type LedgerRecord,
@@ -220,8 +226,8 @@ describe("reader authorization and effect precedence", () => {
     expect(resolveAuthoritativeClaimState(s.claimOne.artifact.semantic.claim_id, reduced)).toBe("revoked");
 
     const statusRecords = [s.claimRecordOne, s.claimRecordTwo, s.reservationOne, s.statusInvalidation];
-    const statusRepo = buildLedgerRepositoryEvidence({ repository_rid: s.rid, confirmed_records: statusRecords, observed_at: s.now + 80 });
-    const status = mergeClaimLedger(statusRecords, [], statusRepo.checkpoint, contextFor(statusRepo.repository));
+    const statusRepo = buildLedgerRepositoryEvidence({ repository_rid: s.rid, confirmed_records: statusRecords, observed_at: s.now + 80, prior: s.baseRepository.repository });
+    const status = mergeClaimLedger(statusRecords, [], statusRepo.checkpoint, s.makeTask5Context(statusRepo.repository));
     expect(status.token_invalidations).toEqual(["writer_one_token_0001"]);
     expect(resolveAuthoritativeClaimState(s.claimOne.artifact.semantic.claim_id, status)).toBe("active");
   });
@@ -334,6 +340,151 @@ describe("reader lifecycle and metadata privacy", () => {
   });
 });
 
+describe("multi-writer OIDC issuer authority", () => {
+  it("derives only exact canonical oidc-token-issuer grants as mint authority", () => {
+    const readerOnly = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo], [], s.baseRepository.checkpoint, contextFor(s.baseRepository.repository),
+    );
+    expect(resolveIssuerAuthorityState(s.writerOne.did_key, readerOnly)).toBe("invalid");
+    const records = [
+      s.claimRecordOne, s.claimRecordTwo,
+      s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
+      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo,
+    ];
+    const repository = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid,
+      confirmed_records: records,
+      observed_at: s.now + 100,
+      prior: s.baseRepository.repository,
+    });
+    const state = mergeClaimLedger(records, [], repository.checkpoint, s.makeTask5Context(repository.repository));
+    expect(resolveIssuerAuthorityState(s.writerOne.did_key, state)).toBe("active");
+    expect(resolveIssuerAuthorityState(s.writerTwo.did_key, state)).toBe("active");
+  });
+
+  it("enforces active authority, signing-key possession, and the 300-second freshness ceiling", () => {
+    const checkpoint = s.baseRepository.checkpoint;
+    expect(canMint(checkpoint.observed_at + 300, checkpoint, 600, "active", true)).toMatchObject({
+      allowed: true,
+      reason_code: null,
+      checkpoint,
+    });
+    expect(canMint(checkpoint.observed_at + 301, checkpoint, 600, "active", true).reason_code)
+      .toBe("oidc-checkpoint-stale");
+    expect(canMint(checkpoint.observed_at, checkpoint, 300, "revoked", true).reason_code)
+      .toBe("oidc-issuer-authority-invalid");
+    expect(canMint(checkpoint.observed_at, checkpoint, 300, "conflicted", true).reason_code)
+      .toBe("oidc-issuer-authority-invalid");
+    expect(canMint(checkpoint.observed_at, checkpoint, 300, "active", false).reason_code)
+      .toBe("oidc-signing-key-unavailable");
+    expect(canMint(checkpoint.observed_at, checkpoint, 0, "active", true).allowed).toBe(true);
+    expect(canMint(checkpoint.observed_at + 1, checkpoint, 0, "active", true).reason_code)
+      .toBe("oidc-checkpoint-stale");
+    expect(canMint(checkpoint.observed_at + 121, checkpoint, 120, "active", true).reason_code)
+      .toBe("oidc-checkpoint-stale");
+    expect(canMint(checkpoint.observed_at - 1, checkpoint, 300, "active", true).allowed).toBe(false);
+    expect(canMint(checkpoint.observed_at + 0.5, checkpoint, 300, "active", true).allowed).toBe(false);
+    expect(canMint(checkpoint.observed_at, checkpoint, -1, "active", true).allowed).toBe(false);
+    expect(canMint(checkpoint.observed_at, { ...checkpoint, branch: "dev" } as never, 300, "active", true).allowed)
+      .toBe(false);
+    for (const state of ["provisional", "expired", "invalid", "untrusted"] as const) {
+      expect(canMint(checkpoint.observed_at, checkpoint, 300, state, true).reason_code)
+        .toBe("oidc-issuer-authority-invalid");
+    }
+  });
+
+  it("confines a separately encrypted signing JWK to active issuer devices", () => {
+    const issuerKey = Uint8Array.from({ length: 32 }, () => 0x71);
+    const jwk = { kty: "RSA", kid: "issuer-key-1", d: "private-material" };
+    const envelope = createIssuerKeyEnvelope({
+      persona: s.persona,
+      repository_rid: s.rid,
+      checkpoint_commit_oid: s.baseRepository.checkpoint.commit_oid,
+      epoch: 1,
+      audience_key: issuerKey,
+      signing_jwk: jwk,
+      active_issuer_nids: [s.writerOne.did_key, s.writerTwo.did_key],
+    });
+    expect(unwrapIssuerSigningJwk(envelope, s.writerOne.did_key, issuerKey)).toEqual(jwk);
+    expect(unwrapIssuerSigningJwk(envelope, s.writerTwo.did_key, issuerKey)).toEqual(jwk);
+    expect(() => unwrapIssuerSigningJwk(envelope, s.writerOne.did_key, s.audienceKeyOne))
+      .toThrow(/signing key|audience key/);
+    const tamperedEnvelope = structuredClone(envelope);
+    tamperedEnvelope.recipient_wraps[0].wrapped_key = "00".repeat(64);
+    expect(() => unwrapIssuerSigningJwk(tamperedEnvelope, tamperedEnvelope.recipient_wraps[0].writer_nid, issuerKey))
+      .toThrow(/wrap/);
+
+    const rotated = createIssuerKeyEnvelope({
+      persona: s.persona,
+      repository_rid: s.rid,
+      checkpoint_commit_oid: s.epochOneRepository.checkpoint.commit_oid,
+      epoch: 2,
+      previous_key_id: envelope.audience_key_id,
+      audience_key: Uint8Array.from({ length: 32 }, () => 0x72),
+      signing_jwk: jwk,
+      active_issuer_nids: [s.writerTwo.did_key],
+      removed_issuer_nids: [s.writerOne.did_key],
+    });
+    expect(rotated.recipient_wraps.map(({ writer_nid }) => writer_nid)).toEqual([s.writerTwo.did_key]);
+    expect(() => unwrapIssuerSigningJwk(rotated, s.writerOne.did_key, Uint8Array.from({ length: 32 }, () => 0x72)))
+      .toThrow(/authority|recipient/);
+  });
+
+  it("allocates monotonic collision-free indexes in canonical writer/list namespaces", () => {
+    const first = reserveStatusIndex(s.writerOne.did_key, s.now + 172_800, 0, []);
+    const issuance = {
+      jti: "writer_one_token_0001",
+      reservation: first,
+      checkpoint: s.baseRepository.checkpoint,
+      signing_key_id: "11".repeat(32),
+      source_claim_ids: [s.claimOne.artifact.semantic.claim_id],
+      issued_at: s.now,
+      expires_at: s.now + 172_800,
+    };
+    expect(first.expiry_bucket).toBe(String(Math.floor((s.now + 172_800) / 86_400)));
+    expect(first.writer_nid_fingerprint).toMatch(/^[0-9a-f]{32}$/);
+    expect(first.uri).toBe(`status-lists/${first.expiry_bucket}/${first.writer_nid_fingerprint}/0.jwt`);
+    expect(reserveStatusIndex(s.writerOne.did_key, s.now + 172_800, 0, [issuance]).idx).toBe(1);
+    expect(reserveStatusIndex(s.writerTwo.did_key, s.now + 172_800, 0, [issuance])).toMatchObject({ idx: 0 });
+    expect(() => reserveStatusIndex(s.writerOne.did_key, s.now + 172_800, 0, [issuance, issuance]))
+      .toThrow(/duplicate/);
+    expect(() => reserveStatusIndex("did:key:zbad", s.now, 0, [])).toThrow(/NID|key/);
+    expect(() => reserveStatusIndex(s.writerOne.did_key, -1, 0, [])).toThrow(/reservation|schema/);
+    expect(() => reserveStatusIndex(s.writerOne.did_key, s.now, -1, [])).toThrow(/reservation|schema/);
+    expect(() => reserveStatusIndex(s.writerOne.did_key, s.now, 0.5, [])).toThrow(/reservation|schema/);
+
+    expect(() => validateIssuanceRecordOrThrow({ ...issuance, extra: true } as never)).toThrow(/additional/);
+    expect(() => validateIssuanceRecordOrThrow({ ...issuance, jti: "short" })).toThrow(/jti|pattern/);
+    expect(() => validateIssuanceRecordOrThrow({ ...issuance, signing_key_id: "11" })).toThrow(/signing_key_id|pattern/);
+    expect(() => validateIssuanceRecordOrThrow({ ...issuance, source_claim_ids: [] })).toThrow(/source_claim_ids|items/);
+    expect(() => validateIssuanceRecordOrThrow({
+      ...issuance,
+      reservation: { ...issuance.reservation, uri: `${issuance.reservation.uri}0` },
+    })).toThrow(/uri|reservation/);
+  });
+
+  it("rejects duplicate concurrent durable reservations during canonical merge", () => {
+    const duplicate = createSignedLedgerRecord({
+      record_type: "issuance-reservation",
+      persona: s.persona,
+      writer_nid: s.writerOne.did_key,
+      created_at: s.now + 71,
+      parents: [s.claimRecordOne.record_id],
+      payload: s.issuanceOne as never,
+    }, s.writerOne.private_key);
+    const records = [s.claimRecordOne, s.claimRecordTwo, s.reservationOne, duplicate];
+    const repository = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid,
+      confirmed_records: records,
+      observed_at: s.now + 100,
+      prior: s.baseRepository.repository,
+    });
+    const context = s.makeTask5Context(repository.repository);
+    context.record_evidence.set(duplicate.record_id, boundEvidence(duplicate));
+    expect(() => mergeClaimLedger(records, [], repository.checkpoint, context)).toThrow(/duplicate/);
+  });
+});
+
 describe("Task 4 vector closure", () => {
   it("authors the exact thirteen vectors from executable decisions", async () => {
     const vectors = await buildClaimLedgerVectors(fixtures);
@@ -350,5 +501,29 @@ describe("Task 4 vector closure", () => {
     expect(rollback.expected_output).toEqual({ verdict: "reject", reason_code: "claim-ledger-rollback" });
     const privacy = vectors.find(({ vector }) => vector.vector_id.endsWith("keyed-path-metadata-private"))!.vector;
     expect((privacy.expected_output.normalized as { changed_entries: number }).changed_entries).toBe(256);
+    const multiwriter = vectors.find(({ vector }) => vector.vector_id.endsWith("multiwriter-status-allocation"))!.vector;
+    const multiwriterOutput = multiwriter.expected_output.normalized as any;
+    expect(multiwriter.expected_output.verdict).toBe("accept");
+    expect(multiwriterOutput.writers.map(({ eligibility }: any) => eligibility.allowed)).toEqual([true, true]);
+    expect(new Set(multiwriterOutput.writers.map(({ signing_key_id }: any) => signing_key_id)).size).toBe(1);
+    expect(multiwriterOutput.unique_allocation_count).toBe(2);
+    expect(multiwriterOutput.durable_before_return).toBe(true);
+
+    const stale = vectors.find(({ vector }) => vector.vector_id.endsWith("stale-minter-denied"))!.vector;
+    const staleOutput = stale.expected_output.normalized as any;
+    expect(staleOutput.boundary_300.allowed).toBe(true);
+    expect(staleOutput.boundary_301.reason_code).toBe("oidc-checkpoint-stale");
+    expect(staleOutput.removal.reason_code).toBe("oidc-issuer-authority-invalid");
+    expect(staleOutput.removed_recipient_can_unwrap_rotated_key).toBe(false);
+    expect(staleOutput.rotated_key.audience_key_id).not.toBe(staleOutput.rotated_key.previous_key_id);
+
+    const invalidation = vectors.find(({ vector }) => vector.vector_id.endsWith("source-claim-revokes-token"))!.vector;
+    const invalidationOutput = invalidation.expected_output.normalized as any;
+    expect(invalidationOutput.converged).toBe(true);
+    expect(invalidationOutput.left_token_invalidations).toEqual(["writer_one_token_0001", "writer_two_token_0001"]);
+    expect(invalidationOutput.invalidation_record_jtis).toEqual(invalidationOutput.left_token_invalidations);
+    expect(invalidationOutput.signing_key_compromise.invalidated_jtis).toEqual(invalidationOutput.left_token_invalidations);
+    expect(invalidationOutput.signing_key_compromise.replacement_signing_key_id)
+      .not.toBe(invalidationOutput.signing_key_compromise.compromised_signing_key_id);
   });
 });

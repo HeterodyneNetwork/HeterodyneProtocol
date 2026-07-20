@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { xchacha20poly1305 } from "@noble/ciphers/chacha";
 import { ed25519 } from "@noble/curves/ed25519";
 import { sha256 } from "@noble/hashes/sha2";
 import { base58 } from "@scure/base";
@@ -20,6 +21,7 @@ import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import {
   validateClaimLedgerRecordSchemaOrThrow,
+  validateOidcIssuanceRecordSchemaOrThrow,
 } from "./schema.js";
 import type { NostrSignedEvent } from "./nostr.js";
 
@@ -50,6 +52,45 @@ export type LedgerCheckpoint = {
   branch: "main";
   commit_oid: string;
   observed_at: number;
+};
+
+export type MintingEligibility = {
+  allowed: boolean;
+  reason_code: string | null;
+  checkpoint: LedgerCheckpoint;
+};
+
+export type StatusReservation = {
+  uri: string;
+  idx: number;
+  expiry_bucket: string;
+  writer_nid_fingerprint: string;
+  list_sequence: number;
+};
+
+export type IssuanceRecord = {
+  jti: string;
+  reservation: StatusReservation;
+  checkpoint: LedgerCheckpoint;
+  signing_key_id: string;
+  source_claim_ids: string[];
+  issued_at: number;
+  expires_at: number;
+};
+
+export type IssuerKeyEnvelope = {
+  object_type: "oidc-signing-jwk-v1";
+  persona: string;
+  repository_rid: string;
+  checkpoint_commit_oid: string;
+  epoch: number;
+  audience_key_id: string;
+  previous_key_id: string;
+  content_digest: string;
+  nonce: string;
+  ciphertext: string;
+  recipient_wraps: Array<{ writer_nid: string; context_digest: string; wrapped_key: string }>;
+  removed_issuer_nids: string[];
 };
 
 export type LedgerMergeResult = {
@@ -268,10 +309,16 @@ export function mergeClaimLedger(
     .map(revocationArtifactFromRecord)
     .filter((artifact): artifact is RevocationArtifact => artifact !== null)
     .map(({ event }) => validateClaimRevocationEnvelope(event));
-  const tokenInvalidations = records
+  const explicitTokenInvalidations = records
     .filter(({ record_type }) => record_type === "status-invalidation")
-    .map((record) => String(payloadObject(record.payload).jti))
-    .sort();
+    .map((record) => String(payloadObject(record.payload).jti));
+  const reducedClaimIds = new Set(records.filter(isReduction).map(recordClaimId).filter((id): id is string => id !== null));
+  const derivedTokenInvalidations = records
+    .filter(({ record_type }) => record_type === "issuance-reservation")
+    .map(({ payload }) => payloadObject(payload) as unknown as IssuanceRecord)
+    .filter(({ source_claim_ids }) => source_claim_ids.some((claimId) => reducedClaimIds.has(claimId)))
+    .map(({ jti }) => jti);
+  const tokenInvalidations = [...new Set([...explicitTokenInvalidations, ...derivedTokenInvalidations])].sort();
   return {
     records,
     conflicted_claim_ids: findConflictedClaims(records),
@@ -484,6 +531,207 @@ export function evaluateLedgerCheckpointEligibility(
   return { allowed: true, state: "active", reason_code: null };
 }
 
+/**
+ * Evaluate a mint against the canonical checkpoint produced by the immediately
+ * preceding repository synchronization attempt. The caller derives
+ * issuerClaimState from the merged, conflict-aware ledger and hasSigningKey by
+ * successfully unwrapping the dedicated issuer-key object.
+ */
+export function canMint(
+  now: number,
+  checkpoint: LedgerCheckpoint,
+  manifestMaxAgeSeconds: number,
+  issuerClaimState: ClaimState,
+  hasSigningKey: boolean,
+): MintingEligibility {
+  const denied = (reason_code: string): MintingEligibility => ({
+    allowed: false,
+    reason_code,
+    checkpoint: { ...checkpoint },
+  });
+  try {
+    validateCheckpoint(checkpoint);
+  } catch {
+    return denied("oidc-checkpoint-stale");
+  }
+  if (issuerClaimState !== "active") return denied("oidc-issuer-authority-invalid");
+  if (!hasSigningKey) return denied("oidc-signing-key-unavailable");
+  if (!Number.isSafeInteger(now) || !Number.isSafeInteger(manifestMaxAgeSeconds) ||
+      manifestMaxAgeSeconds < 0 || now < checkpoint.observed_at) {
+    return denied("oidc-checkpoint-stale");
+  }
+  const effectiveMaximumAge = Math.min(manifestMaxAgeSeconds, 300);
+  if (now - checkpoint.observed_at > effectiveMaximumAge) return denied("oidc-checkpoint-stale");
+  return { allowed: true, reason_code: null, checkpoint: { ...checkpoint } };
+}
+
+export function reserveStatusIndex(
+  writerNid: string,
+  expiresAt: number,
+  listSequence: number,
+  existing: IssuanceRecord[],
+): StatusReservation {
+  ed25519PublicKeyFromNid(writerNid);
+  if (!Number.isSafeInteger(expiresAt) || expiresAt < 0 ||
+      !Number.isSafeInteger(listSequence) || listSequence < 0) {
+    throw new Error("claim-schema-invalid: invalid status reservation tuple");
+  }
+  for (const issuance of existing) validateIssuanceRecordOrThrow(issuance);
+  const seen = new Set<string>();
+  for (const issuance of existing) {
+    const tuple = `${issuance.reservation.uri}\0${issuance.reservation.idx}`;
+    if (seen.has(tuple)) throw new Error("claim-repository-conflict: duplicate status tuple/index reservation");
+    seen.add(tuple);
+  }
+  const expiry_bucket = String(Math.floor(expiresAt / 86_400));
+  const writer_nid_fingerprint = bytesToHex(sha256(utf8Bytes(writerNid))).slice(0, 32);
+  const uri = `status-lists/${expiry_bucket}/${writer_nid_fingerprint}/${String(listSequence)}.jwt`;
+  const indexes = existing
+    .filter(({ reservation }) => reservation.uri === uri)
+    .map(({ reservation }) => reservation.idx)
+    .sort((left, right) => left - right);
+  indexes.forEach((idx, position) => {
+    if (idx !== position) throw new Error("claim-repository-conflict: status indexes are not a monotonic allocation prefix");
+  });
+  return { uri, idx: indexes.length, expiry_bucket, writer_nid_fingerprint, list_sequence: listSequence };
+}
+
+export function validateIssuanceRecordOrThrow(record: IssuanceRecord): void {
+  validateOidcIssuanceRecordSchemaOrThrow(record);
+  if (record.expires_at <= record.issued_at ||
+      record.reservation.expiry_bucket !== String(Math.floor(record.expires_at / 86_400)) ||
+      record.reservation.uri !== `status-lists/${record.reservation.expiry_bucket}/${record.reservation.writer_nid_fingerprint}/${String(record.reservation.list_sequence)}.jwt`) {
+    throw new Error("claim-schema-invalid: issuance record reservation binding is invalid");
+  }
+  validateCheckpoint(record.checkpoint);
+}
+
+export function createIssuerKeyEnvelope(input: {
+  persona: string;
+  repository_rid: string;
+  checkpoint_commit_oid: string;
+  epoch: number;
+  previous_key_id?: string;
+  audience_key: Uint8Array;
+  signing_jwk: JsonValue;
+  active_issuer_nids: string[];
+  removed_issuer_nids?: string[];
+}): IssuerKeyEnvelope {
+  if (!PERSONA.test(input.persona) || !RID.test(input.repository_rid) || !COMMIT_OID.test(input.checkpoint_commit_oid) ||
+      !Number.isSafeInteger(input.epoch) || input.epoch < 1 || input.audience_key.length !== 32) {
+    throw new Error("claim-schema-invalid: invalid issuer signing-key envelope context");
+  }
+  validateNidSet(input.active_issuer_nids);
+  validateNidSet(input.removed_issuer_nids ?? []);
+  if ((input.removed_issuer_nids ?? []).some((nid) => input.active_issuer_nids.includes(nid))) {
+    throw new Error("oidc-issuer-authority-invalid: removed issuer retained in recipient wraps");
+  }
+  const audience_key_id = bytesToHex(sha256(input.audience_key));
+  const previous_key_id = input.previous_key_id ?? GENESIS_AUDIENCE_KEY_ID;
+  if (!HEX_32.test(previous_key_id) || (input.epoch > 1 && previous_key_id === audience_key_id) ||
+      (input.epoch === 1 && previous_key_id !== GENESIS_AUDIENCE_KEY_ID)) {
+    throw new Error("oidc-signing-key-unavailable: issuer audience key was not rotated");
+  }
+  const plaintext = utf8Bytes(jcsCanonicalize(input.signing_jwk));
+  const content_digest = bytesToHex(sha256(plaintext));
+  const context = {
+    domain: "heterodyne-oidc-signing-key-object-v1",
+    persona: input.persona,
+    repository_rid: input.repository_rid,
+    checkpoint_commit_oid: input.checkpoint_commit_oid,
+    epoch: input.epoch,
+    audience_key_id,
+    previous_key_id,
+    content_digest,
+  };
+  const aad = utf8Bytes(jcsCanonicalize(context));
+  const nonce = sha256(utf8Bytes(`heterodyne-oidc-signing-key-nonce-v1\0${jcsCanonicalize(context)}`)).slice(0, 24);
+  const ciphertext = xchacha20poly1305(input.audience_key, nonce, aad).encrypt(plaintext);
+  const recipient_wraps = [...input.active_issuer_nids].sort().map((writer_nid) => {
+    const context_digest = digestJson({ ...context, writer_nid });
+    const wrapBlock = (counter: number) => createHmac("sha256", input.audience_key)
+      .update("heterodyne-oidc-issuer-key-wrap-v1\0", "utf8")
+      .update(context_digest, "hex")
+      .update(Uint8Array.of(counter))
+      .digest("hex");
+    return { writer_nid, context_digest, wrapped_key: `${wrapBlock(0)}${wrapBlock(1)}` };
+  });
+  return {
+    object_type: "oidc-signing-jwk-v1",
+    persona: input.persona,
+    repository_rid: input.repository_rid,
+    checkpoint_commit_oid: input.checkpoint_commit_oid,
+    epoch: input.epoch,
+    audience_key_id,
+    previous_key_id,
+    content_digest,
+    nonce: bytesToHex(nonce),
+    ciphertext: bytesToHex(ciphertext),
+    recipient_wraps,
+    removed_issuer_nids: [...(input.removed_issuer_nids ?? [])].sort(),
+  };
+}
+
+export function unwrapIssuerSigningJwk(
+  envelope: IssuerKeyEnvelope,
+  writerNid: string,
+  audienceKey: Uint8Array,
+): JsonValue {
+  ed25519PublicKeyFromNid(writerNid);
+  if (audienceKey.length !== 32 || bytesToHex(sha256(audienceKey)) !== envelope.audience_key_id) {
+    throw new Error("oidc-signing-key-unavailable: incorrect dedicated issuer audience key");
+  }
+  const wrap = envelope.recipient_wraps.find(({ writer_nid }) => writer_nid === writerNid);
+  if (wrap === undefined || envelope.removed_issuer_nids.includes(writerNid)) {
+    throw new Error("oidc-issuer-authority-invalid: no active issuer recipient wrap");
+  }
+  const context = {
+    domain: "heterodyne-oidc-signing-key-object-v1",
+    persona: envelope.persona,
+    repository_rid: envelope.repository_rid,
+    checkpoint_commit_oid: envelope.checkpoint_commit_oid,
+    epoch: envelope.epoch,
+    audience_key_id: envelope.audience_key_id,
+    previous_key_id: envelope.previous_key_id,
+    content_digest: envelope.content_digest,
+  };
+  if (wrap.context_digest !== digestJson({ ...context, writer_nid: writerNid })) {
+    throw new Error("oidc-signing-key-unavailable: issuer recipient wrap binding mismatch");
+  }
+  const expectedWrapBlock = (counter: number) => createHmac("sha256", audienceKey)
+    .update("heterodyne-oidc-issuer-key-wrap-v1\0", "utf8")
+    .update(wrap.context_digest, "hex")
+    .update(Uint8Array.of(counter))
+    .digest("hex");
+  if (wrap.wrapped_key !== `${expectedWrapBlock(0)}${expectedWrapBlock(1)}`) {
+    throw new Error("oidc-signing-key-unavailable: issuer recipient key wrap is invalid");
+  }
+  try {
+    const plaintext = xchacha20poly1305(
+      audienceKey,
+      hexToBytes(envelope.nonce),
+      utf8Bytes(jcsCanonicalize(context)),
+    ).decrypt(hexToBytes(envelope.ciphertext));
+    if (bytesToHex(sha256(plaintext)) !== envelope.content_digest) throw new Error("digest");
+    return JSON.parse(new TextDecoder().decode(plaintext)) as JsonValue;
+  } catch {
+    throw new Error("oidc-signing-key-unavailable: issuer signing JWK decryption failed");
+  }
+}
+
+export function invalidationsForCompromisedSigningKey(
+  compromisedKeyId: string,
+  replacementEnvelope: IssuerKeyEnvelope,
+  existing: IssuanceRecord[],
+): string[] {
+  if (!HEX_32.test(compromisedKeyId) || replacementEnvelope.content_digest === compromisedKeyId ||
+      replacementEnvelope.audience_key_id === replacementEnvelope.previous_key_id || replacementEnvelope.epoch < 2) {
+    throw new Error("oidc-signing-key-unavailable: compromised key was not rotated before minting resumed");
+  }
+  for (const issuance of existing) validateIssuanceRecordOrThrow(issuance);
+  return [...new Set(existing.filter(({ signing_key_id }) => signing_key_id === compromisedKeyId).map(({ jti }) => jti))].sort();
+}
+
 export function ledgerErrorReason(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   for (const code of [
@@ -590,6 +838,41 @@ export function resolveAuthoritativeClaimState(
     return "expired";
   }
   return "active";
+}
+
+export function resolveIssuerAuthorityState(
+  writerNid: string,
+  state: LedgerMergeResult,
+  evaluationTime = state.checkpoint.observed_at,
+): ClaimState {
+  try {
+    ed25519PublicKeyFromNid(writerNid);
+  } catch {
+    return "invalid";
+  }
+  const confirmed = new Set(state.repository_confirmed_record_ids ?? []);
+  const candidateClaims = state.records.filter((record) => {
+    if (record.record_type !== "claim" || !confirmed.has(record.record_id)) return false;
+    const claim = claimArtifactFromRecord(record)?.semantic;
+    return claim?.claim_class === "authorization" &&
+      claim.namespace === "heterodyne.device" &&
+      claim.name === "oidc-token-issuer" &&
+      claim.value === true &&
+      claim.visibility === "repository-private" &&
+      claim.subject.type === "radicle-ed25519-nid" &&
+      claim.subject.value === writerNid &&
+      claim.audience?.includes(record.persona) === true &&
+      claim.resources?.includes(`${state.checkpoint.repository_rid}#oidc-issuer`) === true;
+  });
+  const claimIds = [...new Set(candidateClaims.map((record) => claimArtifactFromRecord(record)!.semantic.claim_id))];
+  if (claimIds.length !== 1) return claimIds.length === 0 ? "invalid" : "conflicted";
+  const hasCanonicalGrant = state.records.some((record) => {
+    if (record.record_type !== "issuer-authority" || !confirmed.has(record.record_id)) return false;
+    const payload = payloadObject(record.payload);
+    return payload.action === "grant" && payload.writer_nid === writerNid &&
+      claimArtifactFromRecord(record)?.semantic.claim_id === claimIds[0];
+  });
+  return hasCanonicalGrant ? resolveAuthoritativeClaimState(claimIds[0], state, evaluationTime) : "invalid";
 }
 
 export function buildReaderOnboardingBundle(
@@ -739,6 +1022,9 @@ function ed25519PublicKeyFromNid(nid: string): Uint8Array {
     throw new Error("claim-key-reference-invalid: writer NID is not canonical Ed25519 did:key");
   }
   const publicKey = decoded.slice(2);
+  if (base58.encode(decoded) !== nid.slice("did:key:z".length)) {
+    throw new Error("claim-key-reference-invalid: writer NID is not canonical base58btc");
+  }
   validateKeyRef({ type: "radicle-ed25519-nid", value: nid });
   return publicKey;
 }
@@ -891,13 +1177,7 @@ function validatePayload(type: LedgerRecordType, value: JsonValue): void {
       return;
     }
     case "issuance-reservation":
-      assertExactKeys(payload, ["jti", "writer_nid", "source_claim_ids", "allocation_ref"], "issuance reservation payload");
-      if (!/^[A-Za-z0-9_-]{16,128}$/.test(String(payload.jti))) throw new Error("claim-schema-invalid: invalid jti");
-      ed25519PublicKeyFromNid(String(payload.writer_nid));
-      validateClaimIdSet(payload.source_claim_ids);
-      if (!/^pending:[A-Za-z0-9._:-]{1,256}$/.test(String(payload.allocation_ref))) {
-        throw new Error("claim-schema-invalid: Task 4 requires an opaque pending allocation reference");
-      }
+      validateIssuanceRecordOrThrow(payload as unknown as IssuanceRecord);
       return;
     case "status-invalidation":
       assertExactKeys(payload, ["jti", "source_claim_id", "revocation_artifact"], "status invalidation payload");
@@ -1062,6 +1342,42 @@ function validateLedgerStateInvariants(
   context: LedgerValidationContext,
 ): void {
   const records = [...recordsById.values()];
+  const issuanceRecords = records
+    .filter(({ record_type }) => record_type === "issuance-reservation")
+    .map((record) => ({ record, issuance: payloadObject(record.payload) as unknown as IssuanceRecord }));
+  const seenJtis = new Set<string>();
+  const seenAllocations = new Set<string>();
+  const indexesByUri = new Map<string, number[]>();
+  for (const { record, issuance } of issuanceRecords) {
+    validateIssuanceRecordOrThrow(issuance);
+    if (seenJtis.has(issuance.jti)) throw new Error("claim-repository-conflict: duplicate issuance jti");
+    seenJtis.add(issuance.jti);
+    const allocation = `${issuance.reservation.uri}\0${issuance.reservation.idx}`;
+    if (seenAllocations.has(allocation)) throw new Error("claim-repository-conflict: duplicate status tuple/index reservation");
+    seenAllocations.add(allocation);
+    indexesByUri.set(issuance.reservation.uri, [...(indexesByUri.get(issuance.reservation.uri) ?? []), issuance.reservation.idx]);
+    const expectedFingerprint = bytesToHex(sha256(utf8Bytes(record.writer_nid))).slice(0, 32);
+    if (issuance.reservation.writer_nid_fingerprint !== expectedFingerprint ||
+        !context.repository.commits.some(({ commit_oid }) => commit_oid === issuance.checkpoint.commit_oid) ||
+        issuance.checkpoint.repository_rid !== context.repository.repository_rid ||
+        issuance.checkpoint.observed_at > issuance.issued_at || record.created_at < issuance.issued_at ||
+        issuance.source_claim_ids.some((claimId) => !records.some((candidate) =>
+          claimArtifactFromRecord(candidate)?.semantic.claim_id === claimId))) {
+      throw new Error("claim-repository-conflict: issuance record is not durably bound to writer, checkpoint, signing key, and sources");
+    }
+  }
+  for (const indexes of indexesByUri.values()) {
+    indexes.sort((left, right) => left - right).forEach((idx, position) => {
+      if (idx !== position) throw new Error("claim-repository-conflict: status indexes are not a monotonic allocation prefix");
+    });
+  }
+  for (const invalidationRecord of records.filter(({ record_type }) => record_type === "status-invalidation")) {
+    const invalidation = payloadObject(invalidationRecord.payload);
+    const issuance = issuanceRecords.find(({ issuance: candidate }) => candidate.jti === invalidation.jti)?.issuance;
+    if (issuance === undefined || !issuance.source_claim_ids.includes(String(invalidation.source_claim_id))) {
+      throw new Error("claim-repository-conflict: token invalidation is not bound to its durable issuance and source claim");
+    }
+  }
   const stateForReaders: LedgerMergeResult = {
     records,
     conflicted_claim_ids: findConflictedClaims(records),

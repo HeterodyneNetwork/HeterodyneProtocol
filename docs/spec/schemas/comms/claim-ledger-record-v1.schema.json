@@ -141,17 +141,7 @@
       "if": { "properties": { "record_type": { "const": "issuance-reservation" } }, "required": ["record_type"] },
       "then": {
         "properties": {
-          "payload": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["jti", "writer_nid", "source_claim_ids", "allocation_ref"],
-            "properties": {
-              "jti": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
-              "writer_nid": { "$ref": "#/definitions/nid" },
-              "source_claim_ids": { "type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": { "$ref": "#/definitions/sha256" } },
-              "allocation_ref": { "type": "string", "pattern": "^pending:[A-Za-z0-9._:-]{1,256}$" }
-            }
-          }
+          "payload": { "$ref": "https://heterodyne.network/schemas/comms/oidc-issuance-record-v1.schema.json" }
         }
       }
     },
