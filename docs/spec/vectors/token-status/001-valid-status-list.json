@@ -7,7 +7,7 @@
   },
   "registry_revision": 2,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-conformance"
+    "heterodyne:comms/0.5.0#comms-token-status"
   ],
   "vector_id": "token-status/valid-status-list",
   "description": "Draft-21 one-bit LSB-first ZLIB level-9 bytes and a valid signed status decision.",

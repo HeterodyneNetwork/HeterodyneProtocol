@@ -2,7 +2,7 @@
 
 Document ID: `social`<br>
 Version: `social/0.5.0`<br>
-Registry revision: `1`
+Registry revision: `2`
 
 Normative dependencies:
 
@@ -323,14 +323,14 @@ persona's curated feed.
 <a id="social-org-feed-profile"></a>
 ### 5.1 Registered Social org-feed profile
 
-Registry revision 1 defines the stamping profile
+Registry revision 2 defines the stamping profile
 `heterodyne-social-org-feed-v1` on the Comms-owned `kind:31007`, with immutable
 discriminator `content.profile=heterodyne.social.org-feed.v1`. An event opting
 into this profile MUST otherwise validate the complete Comms feed-index schema.
-Revision 1 permits it only in Tier 1 and Tier 2; Tier 3 use and ciphertext are
-forbidden. It replaces the ordinary Comms empty content with exactly this
-canonical compact JSON string, including member order and with no unknown
-members:
+The immutable profile permits it only in Tier 1 and Tier 2; Tier 3 use and
+ciphertext are forbidden. It replaces the ordinary Comms empty content with
+exactly this canonical compact JSON string, including member order and with no
+unknown members:
 
 ```json
 {
@@ -582,7 +582,7 @@ field. A client SHOULD preserve list order when appending.
 <a id="social-mute-profile"></a>
 ### 7.1 Registered Social mute-list profile
 
-Registry revision 1 defines `heterodyne-social-mute-list-v1` on upstream
+Registry revision 2 defines `heterodyne-social-mute-list-v1` on upstream
 replaceable `kind:10000`, with immutable discriminator
 `tag:heterodyne=social-mute-list-v1`. A Social-profiled mute list MUST carry
 exactly one of each profile tag:
@@ -1198,7 +1198,7 @@ still MUST reject an advertisement whose Core bootstrap is invalid.
   "state_key": "@alice:matrix.example",
   "sender": "@alice:matrix.example",
   "origin_server_ts": 1710000000000,
-  "content": {"descriptor":"heterodyne-capabilities-v1","bootstrap_version":"core/0.5.0","registry_revision":1,"supported_versions":{"core":["core/0.5.0"],"comms":["comms/0.5.0"],"control":[],"social":["social/0.5.0"]},"required_features":["core.identity.v1","core.repo-relay-client.v1","core.embedded-tor.v1"],"strict_profiles":[],"backends":["nostr_relay","repo_relay"],"node_roles":["light"],"matrix":true,"event_types":["m.heterodyne.encryption_version.v1","m.heterodyne.migration_intent.v1","m.heterodyne.migration_ack.v1","m.heterodyne.migration_abort.v1"],"nostr_kinds":[31004,31009],"encryption_algorithms_supported":["megolm","mls"],"advertised_at":1710000000}
+  "content": {"descriptor":"heterodyne-capabilities-v1","bootstrap_version":"core/0.5.0","registry_revision":2,"supported_versions":{"core":["core/0.5.0"],"comms":["comms/0.5.0"],"control":[],"social":["social/0.5.0"]},"required_features":["core.identity.v1","core.repo-relay-client.v1","core.embedded-tor.v1"],"strict_profiles":[],"backends":["nostr_relay","repo_relay"],"node_roles":["light"],"matrix":true,"event_types":["m.heterodyne.encryption_version.v1","m.heterodyne.migration_intent.v1","m.heterodyne.migration_ack.v1","m.heterodyne.migration_abort.v1"],"nostr_kinds":[31004,31009],"encryption_algorithms_supported":["megolm","mls"],"advertised_at":1710000000}
 }
 ```
 
@@ -1336,7 +1336,7 @@ that the Matrix wire rejected it.
 <!-- Monolith provenance: §9 Social/Matrix portions and §13 mixed invariants;
 namespaced by ADR-033. -->
 
-Registry revision 1 binds these exact Social invariants:
+Registry revision 2 binds these exact Social invariants:
 
 - **SOCIAL-I-MATRIX-E2EE:** Private Matrix discussion and configuration content, including protected state, remains end-to-end encrypted and downgrade-resistant from the homeserver.
 - **SOCIAL-I-MXID-DELEGATION-DUAL-PROOF:** A Matrix MXID delegation requires both the persona epoch-key signature and successful MXID self-publication through Matrix state authorization.
@@ -1378,6 +1378,17 @@ is advertised, so they are added by the separate Social+Matrix profile.
     "COMMS-I-CONFIG-AT-REST",
     "COMMS-I-CLIENT-SIDE-DELIVERY",
     "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+    "COMMS-I-CLAIM-AUTHENTICITY",
+    "COMMS-I-CLAIM-ATTENUATION",
+    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
+    "COMMS-I-CLAIM-REVOCATION",
+    "COMMS-I-LEDGER-CONFINEMENT",
+    "COMMS-I-ISSUER-KEY-CONFINEMENT",
+    "COMMS-I-MINT-FRESHNESS",
+    "COMMS-I-ISSUER-CONTINUITY",
+    "COMMS-I-CLAIM-RELEASE",
+    "COMMS-I-JWT-TYPE-AUDIENCE",
+    "COMMS-I-STATUS-INTEGRITY",
     "SOCIAL-I-PRIVATE-STATE-AT-REST",
     "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH"
   ]
@@ -1411,6 +1422,17 @@ Matrix-specific Social invariants and obligations:
     "COMMS-I-CONFIG-AT-REST",
     "COMMS-I-CLIENT-SIDE-DELIVERY",
     "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+    "COMMS-I-CLAIM-AUTHENTICITY",
+    "COMMS-I-CLAIM-ATTENUATION",
+    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
+    "COMMS-I-CLAIM-REVOCATION",
+    "COMMS-I-LEDGER-CONFINEMENT",
+    "COMMS-I-ISSUER-KEY-CONFINEMENT",
+    "COMMS-I-MINT-FRESHNESS",
+    "COMMS-I-ISSUER-CONTINUITY",
+    "COMMS-I-CLAIM-RELEASE",
+    "COMMS-I-JWT-TYPE-AUDIENCE",
+    "COMMS-I-STATUS-INTEGRITY",
     "SOCIAL-I-PRIVATE-STATE-AT-REST",
     "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
     "SOCIAL-I-MATRIX-E2EE",
@@ -1440,7 +1462,7 @@ invariant, obligation, feature, or vector is unmet.
 ADR-033 requirements 30-34. -->
 
 A `Social` report MUST name `social/0.5.0`, pin `core/0.5.0` and
-`comms/0.5.0`, pin registry revision 1 or its immutable digest, enumerate
+`comms/0.5.0`, pin registry revision 2 or its immutable digest, enumerate
 supported features and strict profiles, and implement §§1-8 and §13. It MUST
 include async replies/reactions, following and transitive discovery,
 cross-persona advertisements, reply inboxes, mixed-tier Social fan-out,

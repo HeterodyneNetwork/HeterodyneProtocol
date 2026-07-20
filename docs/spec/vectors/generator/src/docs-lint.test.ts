@@ -5,6 +5,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -465,7 +466,7 @@ function validateCapabilityBootstrap(content: Record<string, unknown>): string[]
   const supported = content.supported_versions as Record<string, unknown> | undefined;
   if (content.descriptor !== "heterodyne-capabilities-v1") errors.push("descriptor");
   if (content.bootstrap_version !== "core/0.5.0") errors.push("bootstrap-version");
-  if (content.registry_revision !== 1) errors.push("registry-revision");
+  if (content.registry_revision !== 2) errors.push("registry-revision");
   if (!supported || !exactKeys(supported, ["core", "comms", "control", "social"])) {
     errors.push("document-set");
   } else {
@@ -610,7 +611,7 @@ describe("protocol family documents", () => {
 
     expect(text).toContain("Document ID: `core`");
     expect(text).toContain("Version: `core/0.5.0`");
-    expect(text).toContain("Registry revision: `1`");
+    expect(text).toContain("Registry revision: `2`");
     expect(text).not.toMatch(
       /normative[^\n]*(heterodyne-comms|heterodyne-control|heterodyne-social)/i,
     );
@@ -683,7 +684,7 @@ describe("protocol family documents", () => {
 
     expect(text).toContain("Document ID: `comms`");
     expect(text).toContain("Version: `comms/0.5.0`");
-    expect(text).toContain("Registry revision: `1`");
+    expect(text).toContain("Registry revision: `2`");
     expect(text).toContain(
       "heterodyne:core/0.5.0#core-conformance",
     );
@@ -775,6 +776,17 @@ describe("protocol family documents", () => {
       "COMMS-I-CONFIG-AT-REST",
       "COMMS-I-CLIENT-SIDE-DELIVERY",
       "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+      "COMMS-I-CLAIM-AUTHENTICITY",
+      "COMMS-I-CLAIM-ATTENUATION",
+      "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
+      "COMMS-I-CLAIM-REVOCATION",
+      "COMMS-I-LEDGER-CONFINEMENT",
+      "COMMS-I-ISSUER-KEY-CONFINEMENT",
+      "COMMS-I-MINT-FRESHNESS",
+      "COMMS-I-ISSUER-CONTINUITY",
+      "COMMS-I-CLAIM-RELEASE",
+      "COMMS-I-JWT-TYPE-AUDIENCE",
+      "COMMS-I-STATUS-INTEGRITY",
     ]) {
       expect(text).toContain(invariant);
     }
@@ -1233,7 +1245,7 @@ describe("protocol family documents", () => {
 
     expect(text).toContain("Document ID: `social`");
     expect(text).toContain("Version: `social/0.5.0`");
-    expect(text).toContain("Registry revision: `1`");
+    expect(text).toContain("Registry revision: `2`");
     expect(declaredDependencies(text)).toEqual([
       "heterodyne:core/0.5.0#core-conformance",
       "heterodyne:comms/0.5.0#comms-conformance",
@@ -1520,7 +1532,7 @@ describe("protocol family documents", () => {
     expect(exactKeys(capabilities.content, ["descriptor", "bootstrap_version", "registry_revision", "supported_versions", "required_features", "strict_profiles", "backends", "node_roles", "matrix", "event_types", "nostr_kinds", "encryption_algorithms_supported", "advertised_at"])).toBe(true);
     expect(capabilities.content.encryption_algorithms_supported).toEqual(["megolm", "mls"]);
     expect(validateCapabilityBootstrap({ ...capabilities.content, descriptor: undefined })).toContain("descriptor");
-    expect(validateCapabilityBootstrap({ ...capabilities.content, registry_revision: 2 })).toContain("registry-revision");
+    expect(validateCapabilityBootstrap({ ...capabilities.content, registry_revision: 1 })).toContain("registry-revision");
     expect(
       validateCapabilityBootstrap({
         ...capabilities.content,
@@ -1652,6 +1664,17 @@ describe("protocol family documents", () => {
       "COMMS-I-CONFIG-AT-REST",
       "COMMS-I-CLIENT-SIDE-DELIVERY",
       "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+      "COMMS-I-CLAIM-AUTHENTICITY",
+      "COMMS-I-CLAIM-ATTENUATION",
+      "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
+      "COMMS-I-CLAIM-REVOCATION",
+      "COMMS-I-LEDGER-CONFINEMENT",
+      "COMMS-I-ISSUER-KEY-CONFINEMENT",
+      "COMMS-I-MINT-FRESHNESS",
+      "COMMS-I-ISSUER-CONTINUITY",
+      "COMMS-I-CLAIM-RELEASE",
+      "COMMS-I-JWT-TYPE-AUDIENCE",
+      "COMMS-I-STATUS-INTEGRITY",
     ];
     const controlInvariants = [
       ...commsInvariants,
@@ -1816,6 +1839,86 @@ describe("protocol family documents", () => {
       `${threatModel}\n- **${stale.id}:** ${stale.description}\n`,
       adr034,
     )).toContain(`stale pending invariant: ${stale.id}`);
+  });
+
+  it("assigns permanent Comms anchors to every claims, ledger, OIDC, status, minting, and continuity surface", () => {
+    const comms = readFileSync(commsPath, "utf8");
+    const requiredAnchors = [
+      "comms-key-claims", "comms-claim-verification", "comms-claim-chain",
+      "comms-claim-revocation", "comms-claim-ledger", "comms-oidc-endpoints",
+      "comms-oidc-authorization", "comms-jwt-projection", "comms-token-status",
+      "comms-multiwriter-minting", "comms-issuer-continuity",
+    ];
+    for (const anchor of requiredAnchors) expect(comms).toContain(`<a id="${anchor}"></a>`);
+    expect(comms).toMatch(/whole atomic signed claims[\s\S]*MUST NOT[\s\S]*SD-JWT/i);
+    expect(comms).toMatch(/MUST NOT[\s\S]*automatic(?:ally)?[\s\S]*multiple claim names/i);
+    for (const invariant of ADR034_PENDING_INVARIANT_IDS) expect(comms).toContain(`**${invariant}:**`);
+  });
+
+  it("keeps claim and OIDC authority out of Core and wire definitions out of Control and Social", () => {
+    const core = readFileSync(corePath, "utf8");
+    const comms = readFileSync(commsPath, "utf8");
+    const control = readFileSync(controlPath, "utf8");
+    const social = readFileSync(socialPath, "utf8");
+    for (const text of [core, comms, control, social]) expect(text).toContain("Registry revision: `2`");
+    for (const anchor of ["core-typed-key-references", "core-authority-interfaces"]) {
+      expect(core).toContain(`<a id="${anchor}"></a>`);
+    }
+    expect(core).toMatch(/does not define[\s\S]*claims[\s\S]*OIDC[\s\S]*JWT[\s\S]*status/i);
+    expect(core).not.toMatch(/kind:31013|kind:31014|statuslist\+jwt|typ: at\+jwt|\/oidc\/<cold-root/i);
+    expect(control).toContain('<a id="control-claim-consumption"></a>');
+    expect(control).toMatch(/only `active`[\s\S]*Comms claim/i);
+    expect(control).toMatch(/provisional[\s\S]*untrusted[\s\S]*conflicted[\s\S]*never[\s\S]*authority/i);
+    expect(control).toMatch(/NID-less session devices[\s\S]*filtered[\s\S]*never[\s\S]*(?:ledger|repository)[\s\S]*(?:key|decryption|direct)/i);
+    expect(control).not.toMatch(/kind:31013|kind:31014|statuslist\+jwt|claim_id.*SHA-256/i);
+    expect(social).not.toMatch(/kind:31013|kind:31014|statuslist\+jwt|\/oidc\/<cold-root|claim_id.*SHA-256/i);
+    expect(declaredDependencies(social)).toEqual([
+      "heterodyne:core/0.5.0#core-conformance",
+      "heterodyne:comms/0.5.0#comms-conformance",
+    ]);
+  });
+
+  it("resolves every revision-2 claims/OIDC registry and vector reference to a qualified permanent anchor", () => {
+    const comms = readFileSync(commsPath, "utf8");
+    const anchors = new Set([...comms.matchAll(/<a id="(comms-[a-z0-9-]+)"><\/a>/g)].map((match) => match[1]));
+    const revision1 = JSON.parse(readFileSync(resolve(repositoryRoot, "docs/spec/registry/history/1.json"), "utf8")) as {
+      reason_codes: Array<{ code: string }>;
+    };
+    const revision2 = JSON.parse(readFileSync(resolve(repositoryRoot, "docs/spec/registry/history/2.json"), "utf8")) as {
+      reason_codes: Array<{ code: string; spec_refs?: string[] }>;
+    };
+    const oldCodes = new Set(revision1.reason_codes.map(({ code }) => code));
+    for (const entry of revision2.reason_codes.filter(({ code }) => !oldCodes.has(code))) {
+      expect(entry.spec_refs, entry.code).toHaveLength(1);
+      const match = entry.spec_refs![0].match(/^heterodyne:comms\/0\.5\.0#(comms-[a-z0-9-]+)$/);
+      expect(match, entry.code).not.toBeNull();
+      expect(anchors.has(match![1]), entry.code).toBe(true);
+    }
+
+    const vectors = ["claims", "claim-ledger", "oidc", "token-status"].flatMap((topic) => {
+      const directory = resolve(repositoryRoot, "docs/spec/vectors", topic);
+      return readdirSync(directory)
+        .filter((name) => name.endsWith(".json"))
+        .map((name) => JSON.parse(readFileSync(resolve(directory, name), "utf8")) as {
+          vector_id: string;
+          owner_document: string;
+          registry_revision: number;
+          spec_refs: string[];
+        });
+    });
+    expect(vectors.length).toBeGreaterThan(0);
+    for (const vector of vectors) {
+      expect(vector.owner_document, vector.vector_id).toBe("comms");
+      expect(vector.registry_revision, vector.vector_id).toBe(2);
+      expect(vector.spec_refs.length, vector.vector_id).toBeGreaterThan(0);
+      for (const ref of vector.spec_refs) {
+        expect(ref, vector.vector_id).not.toContain("temporary:");
+        expect(ref, vector.vector_id).not.toMatch(/#comms-conformance$/);
+        const match = ref.match(/^heterodyne:comms\/0\.5\.0#(comms-[a-z0-9-]+)$/);
+        expect(match, vector.vector_id).not.toBeNull();
+        expect(anchors.has(match![1]), `${vector.vector_id}:${ref}`).toBe(true);
+      }
+    }
   });
 
   it("navigates every current companion through the four-document family", () => {

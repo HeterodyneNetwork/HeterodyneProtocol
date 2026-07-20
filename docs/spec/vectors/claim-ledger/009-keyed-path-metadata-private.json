@@ -7,7 +7,7 @@
   },
   "registry_revision": 2,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-conformance"
+    "heterodyne:comms/0.5.0#comms-claim-ledger"
   ],
   "vector_id": "claim-ledger/keyed-path-metadata-private",
   "description": "Fixed 256-bucket materialization re-encrypts every equal-size opaque object per commit.",

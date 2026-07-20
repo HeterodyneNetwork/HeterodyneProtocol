@@ -1113,7 +1113,11 @@ export async function buildClaimLedgerVectors(fixtures: Fixtures): Promise<Autho
 
   return entries.map(([file, id, description, input, expected_output]) => consumeVector(`claim-ledger/${file}`, {
     vector_id: `claim-ledger/${id}`,
-    spec_refs: ["temporary:claims-task-4"],
+    spec_refs: [id === "source-claim-revokes-token"
+      ? "heterodyne:comms/0.5.0#comms-claim-revocation"
+      : /multiwriter-status-allocation|stale-minter-denied/.test(id)
+        ? "heterodyne:comms/0.5.0#comms-multiwriter-minting"
+        : "heterodyne:comms/0.5.0#comms-claim-ledger"],
     description,
     input,
     expected_output,

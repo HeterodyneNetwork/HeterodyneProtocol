@@ -7,7 +7,7 @@
   },
   "registry_revision": 2,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-conformance"
+    "heterodyne:comms/0.5.0#comms-key-claims"
   ],
   "vector_id": "claims/local-only-no-publication",
   "description": "A local-only descriptive claim produces no relay, DR, repository, discovery, or OIDC publication artifact.",

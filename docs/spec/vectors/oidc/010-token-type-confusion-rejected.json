@@ -7,7 +7,7 @@
   },
   "registry_revision": 2,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-conformance"
+    "heterodyne:comms/0.5.0#comms-jwt-projection"
   ],
   "vector_id": "oidc/token-type-confusion-rejected",
   "description": "Access token rejected as ID Token.",

@@ -414,9 +414,34 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
 }
 
 function referenceFor(vectorId: string, owner: DocumentId): { document: DocumentId; anchor: string } {
-  if (vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/") || vectorId.startsWith("oidc/") ||
-      vectorId.startsWith("token-status/")) {
-    return { document: "comms", anchor: "comms-conformance" };
+  if (vectorId.startsWith("claims/")) {
+    const id = vectorId.slice("claims/".length);
+    if (/^chain-/.test(id)) return { document: "comms", anchor: "comms-claim-chain" };
+    if (/revocation|rejection/.test(id)) return { document: "comms", anchor: "comms-claim-revocation" };
+    if (/provisional|repository-confirmed/.test(id)) return { document: "comms", anchor: "comms-claim-ledger" };
+    if (/proof|issuance|issuer/.test(id)) return { document: "comms", anchor: "comms-claim-verification" };
+    return { document: "comms", anchor: "comms-key-claims" };
+  }
+  if (vectorId.startsWith("claim-ledger/")) {
+    const id = vectorId.slice("claim-ledger/".length);
+    if (id === "source-claim-revokes-token") return { document: "comms", anchor: "comms-claim-revocation" };
+    if (/multiwriter-status-allocation|stale-minter-denied/.test(id)) {
+      return { document: "comms", anchor: "comms-multiwriter-minting" };
+    }
+    return { document: "comms", anchor: "comms-claim-ledger" };
+  }
+  if (vectorId.startsWith("oidc/")) {
+    const id = vectorId.slice("oidc/".length);
+    if (/^discovery|^issuer-mismatch/.test(id)) return { document: "comms", anchor: "comms-oidc-endpoints" };
+    if (/authorization|grant|pairwise|consent/.test(id)) {
+      return { document: "comms", anchor: "comms-oidc-authorization" };
+    }
+    return { document: "comms", anchor: "comms-jwt-projection" };
+  }
+  if (vectorId.startsWith("token-status/")) {
+    const id = vectorId.slice("token-status/".length);
+    return { document: "comms", anchor: /https-outage|issuer-successor/.test(id)
+      ? "comms-issuer-continuity" : "comms-token-status" };
   }
   if (vectorId.startsWith("stamping/") || vectorId.startsWith("profiles/core-breadcrumb")) {
     return { document: "core", anchor: "core-version-stamps" };

@@ -426,7 +426,13 @@ export async function buildOidcVectors(fixtures: Fixtures): Promise<AuthoredVect
       continuity_chain: statusContinuityChain as unknown as JsonValue } : {}),
   });
   const authored = (path: string, id: string, description: string, input: ReplayInput): AuthoredVector =>
-    consumeVector(`oidc/${path}`, { vector_id: `oidc/${id}`, spec_refs: ["heterodyne:comms/0.5.0#comms-conformance"],
+    consumeVector(`oidc/${path}`, { vector_id: `oidc/${id}`, spec_refs: [
+      /^discovery|^issuer-mismatch/.test(id)
+        ? "heterodyne:comms/0.5.0#comms-oidc-endpoints"
+        : /authorization|grant|pairwise|consent/.test(id)
+          ? "heterodyne:comms/0.5.0#comms-oidc-authorization"
+          : "heterodyne:comms/0.5.0#comms-jwt-projection",
+    ],
       description, input, expected_output: replayOidcVector(input) as Record<string, unknown> });
   const common = { now: x.issuance.issued_at, client_id: CLIENT.client_id, permitted_audiences: [API] };
   const statusCommon = { ...common, now: statusToken.claims.iat };
@@ -896,7 +902,9 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
   const expectedBytes = (bytes_hex: string): MutationObservation => ({ kind: "status-bytes", bytes_hex });
   const authored = (path: string, vectorId: string, description: string, input: ReplayInput): AuthoredVector =>
     consumeVector(`token-status/${path}`, { vector_id: `token-status/${vectorId}`,
-      spec_refs: ["heterodyne:comms/0.5.0#comms-conformance"], description, input,
+      spec_refs: [/https-outage|issuer-successor/.test(vectorId)
+        ? "heterodyne:comms/0.5.0#comms-issuer-continuity"
+        : "heterodyne:comms/0.5.0#comms-token-status"], description, input,
       expected_output: replayTokenStatusVector(input) as Record<string, unknown> });
 
   const root = x.root;

@@ -2,7 +2,7 @@
 
 Document ID: `comms`<br>
 Version: `comms/0.5.0`<br>
-Registry revision: `1`
+Registry revision: `2`
 
 Normative dependencies: `heterodyne:core/0.5.0#core-conformance`.
 
@@ -160,7 +160,7 @@ index_key = HKDF-SHA256(audience_key, UTF8(key_id),
                         "heterodyne-index-key-v1", 32)
 ```
 
-Registry revision 1 permits Tier 3 wrapping only for this closed stamping
+Registry revision 2 permits Tier 3 wrapping only for this closed stamping
 profile set:
 
 | Nostr kind | Profile ID |
@@ -344,7 +344,7 @@ Comms declares which application events are indexed; absent such a profile,
 persistent authored content SHOULD be indexed and ephemeral metadata SHOULD
 not. An explicit `heterodyne_index=true|false` tag overrides that default.
 
-Registry revision 1 defines one narrow exception to the empty-content and
+Registry revision 2 defines one narrow exception to the empty-content and
 Comms-version-tag rules: the Social stamping profile whose immutable
 discriminator is
 `content.profile=heterodyne.social.org-feed.v1`. That profile is valid only
@@ -487,7 +487,7 @@ MUST be extracted and frozen before Comms can claim 1.0.
 <a id="comms-dm-wire"></a>
 ### 7.1 Invite, response, and message profiles
 
-Registry revision 1 binds these immutable, non-stamping profiles:
+Registry revision 2 binds these immutable, non-stamping profiles:
 
 - `heterodyne-comms-double-ratchet-invite-v1`: upstream `kind:30078`,
   discriminator `d-prefix:double-ratchet/invites/`;
@@ -915,18 +915,378 @@ string and is their sole encrypted wire stamp. A higher-layer protocol,
 including Control, MUST NOT add or own a wire stamp; the Comms stamp identifies
 only the carrier version and conveys no higher-layer conformance.
 
+<a id="comms-key-claims"></a>
+## 10. Atomic typed-key claims
+
+Comms defines an atomic assertion about one typed key. Registry revision 2
+assigns `kind:31013` to `heterodyne-comms-key-claim-v1` and `kind:31014` to
+`heterodyne-comms-key-claim-revocation-v1`. Both are addressable events. Their
+sole `d` tag is the lowercase 64-hex claim identifier, and their JSON content
+uses the single `comms/0.5.0` owner stamp. The outer Nostr signer MUST be the
+`nostr-secp256k1` issuer named by the claim. A verifier MUST reject missing,
+duplicate, unknown, or misordered members and tags, an event/content mismatch,
+an unknown profile discriminator, or an event whose BIP-340 signature fails.
+
+The registered non-stamping production profiles and discriminators are exact:
+
+| Use | Profile | Discriminator |
+|---|---|---|
+| claim Nostr proof | `heterodyne-comms-key-claim-nostr-bip340-v1` | `production-rule:claim-subject-pop;proof=nostr-bip340-v1` |
+| claim Radicle proof | `heterodyne-comms-key-claim-radicle-ed25519-v1` | `production-rule:claim-subject-pop;proof=radicle-ed25519-v1` |
+| claim JWK proof | `heterodyne-comms-key-claim-jwk-jws-v1` | `production-rule:claim-subject-pop;proof=jwk-jws-v1` |
+| revocation Nostr proof | `heterodyne-comms-claim-revocation-nostr-bip340-v1` | `production-rule:claim-revoker;proof=nostr-bip340-v1` |
+| revocation Radicle proof | `heterodyne-comms-claim-revocation-radicle-ed25519-v1` | `production-rule:claim-revoker;proof=radicle-ed25519-v1` |
+| revocation JWK proof | `heterodyne-comms-claim-revocation-jwk-jws-v1` | `production-rule:claim-revoker;proof=jwk-jws-v1` |
+
+These profiles change no signed event bytes and add no second version stamp.
+
+The `heterodyne-comms-key-claim-v1` content is the exact closed object defined
+by `schemas/comms/key-claim-v1.schema.json`. Its required members are
+`claim_id`, `issuer`, `subject`, `claim_class`, `namespace`, `name`, `value`,
+`issued_at`, `not_before`, `visibility`, `comms_version`, and
+`registry_revision`. Optional members are `expires_at`, `audience`,
+`resources`, `parent_claim_id`, `constraints`, and `revokers`. `claim_class`
+is `descriptive` or `authorization`; `visibility` is `public`,
+`pairwise-private`, `repository-private`, or `local-only`. `issuer`, `subject`,
+and every explicit revoker use Core's canonical `nostr-secp256k1`,
+`radicle-ed25519-nid`, or `jwk-thumbprint` reference. Sets are duplicate-free,
+lexicographically sorted arrays.
+
+Every claim contains exactly one `(namespace, name, value)` assertion, where
+`value` is one atomic JSON value. `claim_id` is lowercase hexadecimal SHA-256
+over RFC 8785 JCS bytes of the complete semantic object with only `claim_id`
+omitted. Tags, transport, event id, and signatures are excluded. Reusing an
+address is permitted only for a byte-identical canonical semantic object.
+Selective release selects whole atomic signed claims. Comms 0.5.0 MUST NOT
+perform SD-JWT disclosure. It MUST NOT automatically bundle multiple claim names
+into one signed claim.
+
+<a id="comms-claim-verification"></a>
+### 10.1 Verification, trust, proof of possession, and state
+
+Verification is ordered and fail-closed:
+
+1. validate the closed JSON schema, owner version, registry revision, typed
+   references, canonical claim ID, address, exact NIP-01 bytes, event ID, and
+   outer signature;
+2. require a `valid` Core/KEL authority result for the issuer at `issued_at`;
+3. resolve and validate the complete chain in §10.2;
+4. enforce time, audience, resource, namespace, operation, and subject-type
+   constraints;
+5. apply local trusted-issuer and trusted-namespace policy;
+6. replay canonical private-ledger state and all reductions in §§10.3 and 11;
+7. for authorization, verify a fresh native subject proof; and
+8. return exactly one state: `invalid`, `untrusted`, `provisional`, `active`,
+   `expired`, `revoked`, or `conflicted`.
+
+Cryptographic validity is not trust. `untrusted` content MAY be displayed with
+its provenance but MUST NOT authorize. A delivered persona-issued device grant
+is `provisional` until repository-confirmed. Only `active` authorizes.
+
+The proof-of-possession challenge is the canonical object with domain
+`heterodyne-claim-pop-v1`, claim ID, nonce, audience, resource, operation,
+`issued_at`, and `expires_at`. It MUST be fresh, single-use, audience- and
+operation-bound, and verified by Core's native suite for the subject type:
+BIP-340, Ed25519 with exact NID binding, or JWS with an RFC 7638-matching JWK.
+An authorization claim without valid fresh subject proof is inactive. An
+event signature or an earlier possession proof MUST NOT substitute for it.
+
+<a id="comms-claim-chain"></a>
+### 10.2 Issuance chains and attenuation
+
+A non-root claim names exactly one `parent_claim_id`. Its parent MUST be an
+active authorization claim giving the child issuer explicit claim-issuance
+authority. Resolution proceeds to an unparented trusted root, detects cycles,
+and permits at most eight issuance edges. An eighth-edge claim may authorize
+within its scope but its `remaining_depth` is zero and it cannot issue a ninth.
+
+At every edge the child MUST preserve or narrow all of: namespace prefixes,
+claim name, audiences, resources, purpose/operation, `not_before`,
+`expires_at`, subject type, visibility, and redelegation depth. It MUST NOT
+start earlier, expire later, add an audience or resource, broaden a namespace
+or purpose, change a descriptive assertion into authorization, or gain
+redelegation implicitly. Missing ancestors, ambiguity, cycles, depth overflow,
+or any non-strict attenuation makes the leaf `invalid`.
+
+<a id="comms-claim-revocation"></a>
+### 10.3 Irreversible revocation and reductions
+
+The revocation content is the exact closed object in
+`schemas/comms/key-claim-revocation-v1.schema.json`: `claim_id`, `revoked_at`,
+registered `reason_code`, typed `revoker`, and an optional native `proof`.
+`revoked_at` equals the event `created_at`; the sole address tag equals the
+claim ID. A Nostr revoker signs the outer event. A Radicle or JWK revoker also
+supplies its matching domain-separated proof over the revocation body.
+
+An authorization claim may be revoked by its issuer, an active superior issuer
+in its verified chain, current persona epoch or cold-root authority, or its
+subject. Subject revocation is self-reduction only. A descriptive claim may be
+revoked only by its issuer, an explicitly listed revoker, or a superior issuer;
+its subject may separately reject the assertion but cannot erase it.
+
+Valid direct revocation, ancestor or issuer-authority revocation, KEL/key
+revocation, reader or token-issuer reduction, signing-key compromise, and
+derived-token invalidation are cumulative. A valid reduction is permanent,
+takes effect immediately when authenticated, and is later made repository-
+final. Revocation wins concurrent merges. Renewal or correction creates a new
+claim ID; no later grant or `VALID` token bit resurrects the old authority.
+
+<a id="comms-claim-ledger"></a>
+## 11. Authoritative private persona claim ledger
+
+Each persona has one private Radicle repository shared by all authorized
+devices and nodes. Its canonical `main` is authoritative for persona-issued
+device claims, revocations, reader and issuer authority, consent, issuance
+reservations, status invalidations, and separately wrapped signing-key state.
+The repository is encrypted under the Comms repository-encryption profile and
+MUST NOT expose claim type, subject, or revocation count through path names or
+object sizes. Fixed-size encrypted entries and padded snapshots are used; keys,
+plaintext claims, consent, issuance mappings, and membership never appear in
+the public persona repository.
+
+The append-only plaintext record schema is
+`schemas/comms/claim-ledger-record-v1.schema.json`. It has exactly
+`record_id`, `record_type`, `persona`, `writer_nid`, `created_at`, `parents`,
+`payload`, `payload_digest`, and Ed25519 `signature`. Record types are `claim`,
+`revocation`, `authority-reduction`, `reader-change`, `audience-key-epoch`,
+`issuer-authority`, `issuance-reservation`, and `status-invalidation`.
+`payload_digest` and `record_id` are domain-separated JCS SHA-256 digests. The
+writer signature and current Core NID delegation MUST verify before replay.
+
+Canonical replay verifies commits and parents from genesis, rejects rollback
+or missing history, validates each embedded event and issuance object, and
+derives a checkpoint `(repository_rid, main, commit_oid, observed_at)`. Claims
+and reservations merge by immutable ID. Revocation and authority reduction are
+monotonic and win. Concurrent incompatible policy changes remain `conflicted`
+and fail closed; wall-clock or writer order MUST NOT resolve them.
+
+Direct fetch, replication, and decryption require an `active`, durable,
+NID-bearing `claim-ledger-reader` authorization. Onboarding is delivered over
+an authenticated Double Ratchet self-session and binds the claim record,
+repository RID, canonical checkpoint, current audience-key epoch and wrap,
+compact-state digest, and Radicle fetch-and-seed access. The recipient verifies
+all bindings before use. A delivered claim not reachable from canonical state
+remains provisional.
+
+Reader removal first records the reduction, removes Radicle access, rotates the
+dedicated ledger audience key, wraps the new key only for remaining active
+readers, advances the checkpoint, and retires prior ciphertext under the
+cooperative scrub profile. Old Git objects may remain observable to a former
+reader; rotation protects new state and the UI MUST describe this limit.
+
+<a id="comms-multiwriter-minting"></a>
+### 11.1 Multi-writer minting and issuer-key confinement
+
+The repository is multi-writer. An online node is not excluded because another
+authorized writer can mint. A node may mint for the persona only when it has
+all three of: a separately envelope-encrypted usable signing JWK, an `active`
+`oidc-token-issuer` claim, and a canonical checkpoint whose age is within the
+continuity manifest bound. That bound MUST be at most 300 seconds. Loss or
+reduction of any condition stops minting immediately.
+
+The signing key MUST NOT be encrypted by or released merely with the ledger
+audience key. Its envelope binds persona, repository, checkpoint, key epoch,
+JWK thumbprint, ciphertext digest, active issuer-authority record set, and
+per-recipient NID wraps. Removing an issuer rotates the envelope/key epoch and
+excludes that NID. A node MUST unwrap only after replaying the exact bound
+authority set and checkpoint.
+
+Before returning a JWT, a writer durably commits an issuance reservation with
+`jti`, client and request/release digests, signing-key ID, source claim IDs,
+checkpoint, expiration, and the status allocation defined in §14. Returning a
+token before that reservation is canonical is prohibited. Shared-key
+compromise invalidates outstanding tokens, rotates signing material, updates
+the public key set, and advances affected status lists.
+
+<a id="comms-oidc-endpoints"></a>
+## 12. OIDC/OAuth issuer and endpoints
+
+A persona has one exact HTTPS issuer:
+
+```text
+https://<host>/oidc/<cold-root-npub>
+```
+
+The final path component is the canonical NIP-19 encoding of the persona's raw
+cold-root key, not an epoch key. A host may serve many personas at disjoint
+cold-root paths. Every trusted serving node exposes current and retiring public
+keys for each persona it serves, including keys minted elsewhere.
+
+The OIDC configuration is at `<issuer>/.well-known/openid-configuration`, the
+RFC 8414 alias is
+`https://<host>/.well-known/oauth-authorization-server/oidc/<cold-root-npub>`,
+and JWKS is at `<issuer>/.well-known/jwks.json`. Metadata uses that exact issuer
+and advertises `<issuer>/authorize`, `<issuer>/token`, and
+`<issuer>/device_authorization`. Issuer comparison is exact. Redirects,
+aliases, case folding, a host change, or an epoch-key path do not silently
+change issuer identity.
+
+The closed metadata schema is
+`schemas/comms/oidc-issuer-metadata-v1.schema.json`: response type `code`, grant
+types `authorization_code` and the RFC 8628 device-code URN, PKCE method `S256`,
+pairwise subjects, and mandatory `RS256`. JWKS contains public JWKs only; each
+`kid` is its RFC 7638 thumbprint. Unknown required metadata or a mismatch with
+the canonical Radicle mirror fails closed.
+
+<a id="comms-oidc-authorization"></a>
+### 12.1 Authorization, clients, consent, and release
+
+Authorization Code with PKCE S256 and OAuth Device Authorization are REQUIRED.
+Clients MUST be explicitly registered with exact redirect URIs, allowed
+audiences, scopes, sender-constraint policy, and pairwise sector. Implicit,
+Resource Owner Password Credentials, and Client Credentials grants are
+prohibited. Client Credentials is reserved for a future sender-constrained
+workload profile and never authenticates a persona.
+
+Authorization codes are short-lived, single-use, client- and redirect-bound,
+and require an exact PKCE verifier. Device codes are client-bound, expire,
+enforce polling intervals and `slow_down`, require an explicit approve/deny
+decision, and are single-use. Authentication, consent, and repository state
+MUST be rechecked before token return; a reduction observed after initial
+approval wins.
+
+Release is the intersection of requested scope and audience, registered client
+policy, explicit consent, trusted namespaces, active canonical repository
+state, and current proof requirements. Any absent input denies the claim. `sub`
+is pairwise by default. Stable key release additionally requires scope
+`heterodyne:key-ref` and explicit consent, and appears only as
+`https://heterodyne.network/jwt/key-ref`. A client MUST NOT infer unreleased
+claims, correlate pairwise subjects across sectors, or treat a descriptive
+claim as authority.
+
+<a id="comms-jwt-projection"></a>
+### 12.2 Interoperable JWT projection
+
+Authorized nodes may issue OIDC ID Tokens, RFC 9068 JWT access tokens, and
+separately registered signed JWT assertions. RS256 support is REQUIRED so an
+ordinary third party can validate through HTTPS discovery and JWKS; ES256 or
+EdDSA MAY be separately advertised in a later compatible profile. The issuer,
+key, type, audience, signature, time, nonce when applicable, client, and sender
+constraint MUST all be checked before claim use.
+
+Every protected header in this profile has exactly `alg`, `kid`, and `typ`.
+`alg` is `RS256`; `kid` is the canonical RFC 7638 thumbprint of exactly one
+public RSA signing JWK in the issuer JWKS; and the RSA modulus is at least 2048
+bits. An ID Token has `typ` equal to `JWT`, requires a non-empty nonce from the
+signed authorization request, returns that exact `nonce` claim, and is valid
+only when it matches the verifier's expected nonce. A signed JWT assertion has
+`typ` equal to `heterodyne-assertion+jwt` and an `assertion_profile` claim whose
+exact non-empty value was allowed by the client's signed canonical registration
+and equals the verifier-selected registered profile. An unregistered profile,
+missing nonce, or type/profile/nonce confusion is rejected.
+
+An access-token protected header has `typ` equal to `at+jwt` and `alg` equal to
+`RS256`. Its claims include `iss`, pairwise `sub`, `aud`, `exp`, `iat`, `jti`,
+`client_id`, and normalized `scope`, plus:
+
+- `https://heterodyne.network/jwt/ledger-checkpoint`, binding the canonical
+  private RID, `main`, commit and observation time;
+- `https://heterodyne.network/jwt/status-mirror`, binding the public Radicle
+  RID, `main`, manifest path and SHA-256 digest; and
+- the draft-21 `status.status_list` reference from §14.
+
+An ID Token instead enforces OIDC token-type and nonce rules and MUST NOT be
+accepted where an access token is required. A projected JWT is an assertion
+derived from current active claims, not a canonical encoding of the source
+event. DPoP under RFC 9449 or mutual-TLS under RFC 8705 SHOULD bind access
+tokens when supported. A DPoP-bound token's `cnf` is an exact one-member object
+containing only canonical 32-byte base64url `jkt`; a mutual-TLS-bound token's
+`cnf` is an exact one-member object containing only canonical 32-byte base64url
+`x5t#S256`. A bearer token has no `cnf`. The verifier requires exact equality
+with its expected confirmation and rejects missing, extra, mixed, or method-
+confused members. A `cnf` claim MUST NOT be ignored by a bearer-only consumer.
+
+<a id="comms-issuer-continuity"></a>
+## 13. Radicle issuer continuity
+
+Canonical `main` in the public persona profile repository simultaneously
+publishes:
+
+```text
+.well-known/<cold-root-npub>/
+  issuer.json
+  openid-configuration
+  jwks.json
+  manifest.json
+  status-lists/<expiry-bucket>/<writer-nid-fingerprint>/<list-sequence>.jwt
+```
+
+The exact manifest schema is
+`schemas/comms/oidc-continuity-manifest-v1.schema.json`. It binds profile,
+public RID, `main`, cold-root npub and raw key, accepted KEL head, exact issuer,
+monotonic sequence and predecessor digest, checkpoint-age bound, current and
+retiring key IDs/JWK digests, all status paths/URIs/digests, optional successor,
+and an active NID writer/checkpoint. Its Ed25519 authority proof and that
+writer's current ledger authority MUST verify. HTTPS and repository metadata,
+JWKS, and Status List Token bytes MUST be identical.
+
+The Radicle manifest is authoritative for Heterodyne continuity when the HTTPS
+node is unavailable. A successor requires an unbroken predecessor chain plus
+current persona epoch authority or cold-root recovery and an exact binding to
+the new manifest. Heterodyne-aware resolution may then find the new URL through
+canonical `main`; ordinary OIDC clients still require normal trust or
+registration for the new issuer. A fork, rollback, stale KEL head, digest
+mismatch, unauthorized successor, or disagreement between HTTPS and Radicle
+fails closed. Public continuity contains no private claim, consent, reader,
+issuance mapping, or secret key.
+
+<a id="comms-token-status"></a>
+## 14. Token status profile
+
+Comms 0.5.0 freezes the complete behavior used from
+`draft-ietf-oauth-status-list-21`; later drafts do not change this profile.
+Each projected JWT contains `status.status_list` with an HTTPS `uri` and
+non-negative `idx`. That URI returns a distinct compact Status List Token with
+media type `application/statuslist+jwt`, protected `typ` `statuslist+jwt`,
+`alg` `RS256`, and current `kid`. Claims are `sub` equal to the URI, `iat`,
+`exp`, positive finite `ttl`, and `status_list` with `bits: 1` and `lst`.
+
+`lst` is the unpadded base64url encoding of the deterministic zlib-wrapped
+DEFLATE level-9 compression of the bit array. Bits are little-endian within each byte. Initial
+values are `0` (`VALID`) and `1` (`INVALID`). Indices are contiguous within a
+list, never reused, and allocated only in a durable issuance reservation at:
+
+```text
+status-lists/<expiry-bucket>/<writer-nid-fingerprint>/<list-sequence>.jwt
+```
+
+The fingerprint is the first 16 bytes of the writer NID's SHA-256 digest as 32
+lowercase hexadecimal characters. Writer namespaces avoid central allocation;
+concurrent writers cannot share a namespace. Canonical replay rejects duplicate
+`(uri, idx)` or `jti` allocation. Authorized writers regenerate merged lists
+with invalidation-wins semantics.
+
+A verifier validates the referenced JWT first, resolves the continuity chain,
+checks byte digest and URI against the current manifest, verifies the Status
+List Token with current/retiring JWKS, enforces `iat`, `exp`, `ttl`, checkpoint,
+media type, canonical compression, bit width, and index bounds, then reads the
+bit. Stale, missing, malformed, unverifiable, or mismatched status is failure,
+not evidence of validity. `VALID` cannot override expiration, audience/type
+failure, source-claim reduction, issuer compromise, or any other invalid state.
+
 <a id="comms-security"></a>
-## 10. Security invariants and forward-secrecy posture
+## 15. Security invariants and forward-secrecy posture
 
 <!-- Monolith provenance: §9.0-§9.1 and §9.5; namespaced by ADR-033. -->
 
-Registry revision 1 defines these Comms invariants:
+Registry revision 2 defines these Comms invariants:
 
 - **COMMS-I-TIER3-BLIND-CARRIER:** Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay.
 - **COMMS-I-TIER2-HONESTY:** Tier 2 private repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly.
 - **COMMS-I-CONFIG-AT-REST:** Comms-owned non-key private state and audience or ratchet material are encrypted under the Comms repository-encryption profile.
 - **COMMS-I-CLIENT-SIDE-DELIVERY:** Cross-backend Comms processing runs on user-controlled clients; full nodes, repository relays, routing nodes, and Nostr relays are blind carriers for protected plaintext.
 - **COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY:** Feed, outbox, and delivery discovery do not depend on a centralized delivery directory.
+- **COMMS-I-CLAIM-AUTHENTICITY:** Claim IDs, event signatures, issuer authority, typed references, and native proofs are verified before trust or authorization policy is applied.
+- **COMMS-I-CLAIM-ATTENUATION:** Every delegated claim strictly preserves or narrows all authority dimensions and issuance chains contain at most eight edges.
+- **COMMS-I-CLAIM-REPOSITORY-AUTHORITY:** Persona-issued device authorization is final only in canonical private claim-repository state, while authenticated reductions take effect immediately.
+- **COMMS-I-CLAIM-REVOCATION:** A valid revocation or authority reduction is irreversible, monotonic, and wins concurrent repository merges.
+- **COMMS-I-LEDGER-CONFINEMENT:** Private claim-ledger contents and decryption material are available only to active durable NID-bearing ledger readers.
+- **COMMS-I-ISSUER-KEY-CONFINEMENT:** Shared OIDC signing keys are separately encrypted and released only to nodes with active oidc-token-issuer authority.
+- **COMMS-I-MINT-FRESHNESS:** A node mints only from a synchronized canonical checkpoint no older than the manifest bound, which cannot exceed 300 seconds.
+- **COMMS-I-ISSUER-CONTINUITY:** HTTPS issuer metadata and the root-key-scoped Radicle continuity tree agree on the exact active issuer, keys, status digests, and authorized succession.
+- **COMMS-I-CLAIM-RELEASE:** OIDC projection releases only claims allowed by scope, audience, client policy, consent, active repository state, issuer trust, and proof requirements.
+- **COMMS-I-JWT-TYPE-AUDIENCE:** JWT consumers enforce exact issuer, intended audience, time, signature, nonce when applicable, and token-type separation including typ at+jwt for access tokens.
+- **COMMS-I-STATUS-INTEGRITY:** Draft-21 status lists are signed, fresh, digest-bound across HTTPS and Radicle mirrors, writer-namespaced without index reuse, and never let VALID override other token failures.
 
 Mechanism guarantees MUST remain distinct. Tier 3 has no forward secrecy: a
 compromised audience key decrypts every retained post and index under its
@@ -937,7 +1297,7 @@ static conversation key exposes past and future wraps. Clients MUST label a
 fallback and MUST NOT infer one mechanism's guarantee for another.
 
 <a id="comms-strict-profile"></a>
-### 10.1 Comms strict profile
+### 15.1 Comms strict profile
 
 The stable Comms strict profile composes the Core strict profile. Its flattened
 invariant membership is exact:
@@ -959,7 +1319,18 @@ invariant membership is exact:
     "COMMS-I-TIER2-HONESTY",
     "COMMS-I-CONFIG-AT-REST",
     "COMMS-I-CLIENT-SIDE-DELIVERY",
-    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY"
+    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+    "COMMS-I-CLAIM-AUTHENTICITY",
+    "COMMS-I-CLAIM-ATTENUATION",
+    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
+    "COMMS-I-CLAIM-REVOCATION",
+    "COMMS-I-LEDGER-CONFINEMENT",
+    "COMMS-I-ISSUER-KEY-CONFINEMENT",
+    "COMMS-I-MINT-FRESHNESS",
+    "COMMS-I-ISSUER-CONTINUITY",
+    "COMMS-I-CLAIM-RELEASE",
+    "COMMS-I-JWT-TYPE-AUDIENCE",
+    "COMMS-I-STATUS-INTEGRITY"
   ]
 }
 ```
@@ -971,15 +1342,15 @@ Comms deletion points. Its capability advertisement MUST contain both profile
 IDs. An implementation missing either condition MUST omit the Comms profile.
 
 <a id="comms-conformance"></a>
-## 11. Conformance
+## 16. Conformance
 
 <!-- Monolith provenance: §14; family conformance: ADR-033. -->
 
 A Comms conformance report MUST claim Core+Comms, name `comms/0.5.0`, pin
-`core/0.5.0`, registry revision 1 or its immutable digest, and enumerate
+`core/0.5.0`, registry revision 2 or its immutable digest, and enumerate
 supported features and strict profiles. A base implementation MUST implement
 the envelope, tiers, publishing, feed, retrieval, hook, negotiation carrier,
-and all five security invariants. It MAY omit the `double-ratchet` feature;
+and all sixteen security invariants. It MAY omit the `double-ratchet` feature;
 one that advertises DMs MUST implement all of §7 and §8.
 
 A report claiming `heterodyne-comms-strict-v1` MUST include the flattened

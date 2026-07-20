@@ -8,7 +8,7 @@
   "registry_revision": 2,
   "profile": "heterodyne-comms-claim-revocation-radicle-ed25519-v1",
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-conformance"
+    "heterodyne:comms/0.5.0#comms-claim-revocation"
   ],
   "vector_id": "claims/descriptive-subject-rejection",
   "description": "A named Radicle Ed25519 revoker can revoke a descriptive assertion; the subject's separately signed rejection preserves the original provenance rather than erasing it.",

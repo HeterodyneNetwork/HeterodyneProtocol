@@ -6,7 +6,7 @@ Version: `control/0.5.0`
 
 Status: **incomplete 0.5.0 draft**
 
-Registry revision: `1`
+Registry revision: `2`
 
 Normative dependencies:
 
@@ -87,10 +87,42 @@ method-specific state machines remain to be integrated from an accepted
 ADR-030. A generic Comms carrier does not itself establish Control semantics
 or conformance.
 
+<a id="control-claim-consumption"></a>
+### 2.1 Consumption of Comms authorization decisions
+
+Control is a policy consumer of the complete Comms verification result at
+`heterodyne:comms/0.5.0#comms-claim-verification` and canonical repository
+state at `heterodyne:comms/0.5.0#comms-claim-ledger`. Enrollment, RPC, agent,
+tool, resource, and side-effect checks may authorize with only `active` state
+from a Comms claim whose namespace, name, subject, audience, resource,
+operation, validity interval, chain, proof, and current repository state cover
+the exact request. Control MUST retain the source claim IDs, Comms checkpoint,
+decision state, and reason code in its encrypted audit record.
+
+`provisional`, `untrusted`, and `conflicted` claims never establish Control
+authority. The same is true of `invalid`, `expired`, and `revoked`. Control
+MUST NOT reinterpret one of those states, cache an earlier active result past
+its validity/checkpoint conditions, weaken a Comms proof or reduction, or infer
+permission from delivery, session establishment, or a projected JWT alone.
+Every privileged operation re-evaluates its applicable active decision or a
+bounded decision artifact tied to the current request and checkpoint.
+
+Durable NID devices may separately qualify as Comms claim-ledger readers.
+NID-less session devices receive only filtered authorization decisions and
+filtered session-device views; they never receive ledger decryption keys or
+direct repository access, claim-ledger audience keys, issuer signing keys, or
+unfiltered private claim records. A Control grant cannot turn such a session
+principal into a durable reader or issuer.
+
+This section defines no claim event, proof, repository-record, discovery, JWT,
+or token-status wire format. Those remain exclusively Comms-owned. Future
+Control schemas name qualified Comms anchors and carry only Control method
+inputs and decisions inside the existing Comms carriers.
+
 <a id="control-session-device-profile"></a>
 ## 3. Session-device delegation profile
 
-Registry revision 1 contains the draft reservation
+Registry revision 2 contains the draft reservation
 `heterodyne-control-session-device-v1` on Core `kind:31001`, with immutable
 discriminator
 `tags:heterodyne=delegation,binding_nonce,key_proof;radicle_nid=absent`.
@@ -174,7 +206,7 @@ wire behavior.
 <a id="control-security"></a>
 ## 6. Security invariants
 
-Registry revision 1 assigns exactly these Control invariants:
+Registry revision 2 assigns exactly these Control invariants:
 
 - **CONTROL-I-AUDIT-AT-REST:** Control audit records containing requests, grants, tokens, or side effects are encrypted at rest under Core, Comms, and Control-owned protection rules without a Social dependency.
 - **CONTROL-I-SESSION-KEY-CONFINEMENT:** A Control session device never receives persona epoch, NID, audience, repository-decryption, or ratchet secrets.
@@ -210,6 +242,17 @@ reserved and inactive with the rest of Control 0.5.0:
     "COMMS-I-CONFIG-AT-REST",
     "COMMS-I-CLIENT-SIDE-DELIVERY",
     "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+    "COMMS-I-CLAIM-AUTHENTICITY",
+    "COMMS-I-CLAIM-ATTENUATION",
+    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
+    "COMMS-I-CLAIM-REVOCATION",
+    "COMMS-I-LEDGER-CONFINEMENT",
+    "COMMS-I-ISSUER-KEY-CONFINEMENT",
+    "COMMS-I-MINT-FRESHNESS",
+    "COMMS-I-ISSUER-CONTINUITY",
+    "COMMS-I-CLAIM-RELEASE",
+    "COMMS-I-JWT-TYPE-AUDIENCE",
+    "COMMS-I-STATUS-INTEGRITY",
     "CONTROL-I-AUDIT-AT-REST",
     "CONTROL-I-SESSION-KEY-CONFINEMENT"
   ]

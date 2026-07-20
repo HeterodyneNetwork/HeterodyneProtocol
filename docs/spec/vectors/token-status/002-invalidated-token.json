@@ -7,7 +7,7 @@
   },
   "registry_revision": 2,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-conformance"
+    "heterodyne:comms/0.5.0#comms-token-status"
   ],
   "vector_id": "token-status/invalidated-token",
   "description": "A signed INVALID bit fails closed and cannot be overridden by the otherwise valid referenced JWT.",

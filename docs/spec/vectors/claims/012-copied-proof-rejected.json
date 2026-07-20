@@ -7,7 +7,7 @@
   },
   "registry_revision": 2,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-conformance"
+    "heterodyne:comms/0.5.0#comms-claim-verification"
   ],
   "vector_id": "claims/copied-proof-rejected",
   "description": "An actual JWK authorization subject proof copied from one verifier challenge to a challenge with a different nonce fails signature and exact expected-nonce binding before local trust.",

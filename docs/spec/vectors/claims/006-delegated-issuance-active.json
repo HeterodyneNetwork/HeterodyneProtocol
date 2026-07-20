@@ -7,7 +7,7 @@
   },
   "registry_revision": 2,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-conformance"
+    "heterodyne:comms/0.5.0#comms-claim-verification"
   ],
   "vector_id": "claims/delegated-issuance-active",
   "description": "A child signed by the parent subject preserves scope, shortens validity, decrements depth, and authorizes only after repository confirmation.",

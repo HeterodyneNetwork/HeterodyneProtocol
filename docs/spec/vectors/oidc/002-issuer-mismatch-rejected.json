@@ -7,7 +7,7 @@
   },
   "registry_revision": 2,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-conformance"
+    "heterodyne:comms/0.5.0#comms-oidc-endpoints"
   ],
   "vector_id": "oidc/issuer-mismatch-rejected",
   "description": "A valid epoch npub is rejected as an issuer.",

@@ -2,7 +2,7 @@
 
 Document ID: `core`<br>
 Version: `core/0.5.0`<br>
-Registry revision: `1`
+Registry revision: `2`
 
 Normative dependencies: None.
 
@@ -86,7 +86,7 @@ Implementations MUST NOT conflate these mechanisms.
 
 The separately revisioned Core-owned registry at `docs/spec/registry/` is the
 allocation authority for kind numbers, profile discriminators, reason codes,
-and security-invariant IDs. This release pins registry revision `1`; changing a
+and security-invariant IDs. This release pins registry revision `2`; changing a
 non-Core-owned registry entry does not change Core semver. A conformance claim
 MUST pin the registry revision or immutable entry-set digest.
 
@@ -130,7 +130,7 @@ the parsed object.
 <!-- Monolith provenance: §3.0 and §12; split rules: ADR-033. -->
 ### 3.2 Owner stamps and historical bytes
 
-An event carries at most one Heterodyne version stamp. Registry revision 1
+An event carries at most one Heterodyne version stamp. Registry revision 2
 defines these exhaustive classes:
 
 1. Heterodyne-defined JSON `content` MUST contain the qualified
@@ -198,6 +198,62 @@ event's `s` MUST equal `seq`. Applicability is:
 
 `['compromise_since', '<unix-seconds>']` occurs exactly once on a
 compromise-declaring rotation and MUST NOT occur on a routine rotation.
+
+<a id="core-typed-key-references"></a>
+### 3.4 Typed-key references and native proof hooks
+
+Core provides a closed syntax and registration hook for higher documents to
+name cryptographic keys without assigning policy meaning to those names. The
+initial reference types are:
+
+| Type | Canonical value | Native verifier |
+|---|---|---|
+| `nostr-secp256k1` | 32-byte x-only secp256k1 public key as 64 lowercase hexadecimal characters | BIP-340 |
+| `radicle-ed25519-nid` | canonical Ed25519 `did:key:z...` Radicle NID | Ed25519 |
+| `jwk-thumbprint` | unpadded base64url SHA-256 RFC 7638 thumbprint | JWS with a public JWK whose recomputed thumbprint is identical |
+
+A parser MUST reject an unknown type, a non-canonical value, private JWK
+members, remote JWK key references, or a proof whose suite does not match the
+reference type. A future type or proof suite requires a registry allocation;
+an implementation MUST NOT reinterpret an unknown discriminator.
+
+The generic native-proof input is a domain-separated canonical byte string
+binding the referenced key, purpose, fresh challenge, audience, resource,
+operation, verifier context, issue time, and expiry. The caller supplies the
+complete bytes and expected reference. Core returns only `valid` or `invalid`
+plus the verified key reference and suite. Freshness, replay, purpose, trust,
+and permission decisions remain the caller's responsibility. For a Radicle
+NID, Core additionally verifies that the public key in the proof encodes to
+the exact canonical NID. For a JWK proof it recomputes the RFC 7638 thumbprint
+before verifying the protected JWS.
+
+<a id="core-authority-interfaces"></a>
+### 3.5 Authority and repository interfaces
+
+Core exposes a point-in-time persona/KEL issuer-authority result containing:
+the cold-root persona, accepted KEL head, candidate signing key, authority
+interval, verification time, evidence source, and one state from `valid`,
+`provisional`, or `invalid`. `valid` means the cryptographic KEL and delegation
+rules authorize the key for the caller-supplied purpose at that instant;
+`provisional` records locally verified but not repository-final KEL evidence;
+`invalid` grants nothing. A higher document MUST preserve that distinction and
+MUST NOT convert provisional evidence to final authority.
+
+For NID-bearing callers Core also exposes the result of the dual-proof
+delegation check in §6, including the exact NID, binding, authority interval,
+and accepted KEL head. This interface verifies identity and possession only.
+
+Higher documents may reuse Core's generic protected-repository primitives:
+canonical `main` selection, commit/ref verification, encrypted private-tree
+storage, recipient-key wrapping, reader removal, key rotation, rollback
+detection, and cooperative ciphertext scrubbing. They may also reuse the
+public identity repository's canonical-`main` publication and digest-binding
+rules. Those primitives do not assign meaning to repository records or make a
+repository state authoritative for a higher-layer decision.
+
+Core does not define claims, trust policy, authorization state, OIDC, JWT, or
+token status. Registry hooks identify the owning document and immutable
+profile discriminator; they do not transfer semantic ownership into Core.
 
 <a id="core-identity-model"></a>
 <!-- Monolith provenance: §3.1 and §3.5. -->
@@ -463,7 +519,7 @@ MUST deactivate the delegation.
 
 A light-only device MAY have a publishing-key delegation without an NID. It
 cannot sign Radicle refs and submits its Nostr event to an authorized full
-node. Registry revision 1 reserves the non-stamping profile
+node. Registry revision 2 reserves the non-stamping profile
 `heterodyne-control-session-device-v1` with discriminator
 `tags:heterodyne=delegation,binding_nonce,key_proof;radicle_nid=absent`. That
 profile MUST NOT alter the Core base-schema stamp; its added semantics do not
@@ -1014,7 +1070,7 @@ Every capability advertisement uses this Core-parsable bootstrap object:
 {
   "descriptor": "heterodyne-capabilities-v1",
   "bootstrap_version": "core/0.5.0",
-  "registry_revision": 1,
+  "registry_revision": 2,
   "supported_versions": {
     "core": ["core/0.5.0"],
     "comms": [],
@@ -1086,7 +1142,7 @@ membership declaration:
 enabled for every supported network backend unless the user has explicitly
 disabled it, and requires invalid signatures or delegations to be rejected
 rather than rendered with a warning. A claim MUST satisfy every listed
-invariant at registry revision 1 and every applicable strict vector.
+invariant at registry revision 2 and every applicable strict vector.
 
 Higher-document strict profiles compose by naming prerequisite profile IDs and
 listing their complete flattened invariant membership. A conforming report
@@ -1110,7 +1166,7 @@ serving-node withholding, routing-query metadata, rollback, and key-extraction
 threats. Multiple serving nodes and ordinary-relay access improve availability;
 they never replace local verification.
 
-Registry revision 1 binds these exact normative invariants:
+Registry revision 2 binds these exact normative invariants:
 
 - **CORE-I-IDENTITY-INTEGRITY:** The cold-root npub and accepted KEL are authoritative for persona identity; downstream caches and delegated identifiers cannot override them.
 - **CORE-I-NID-DELEGATION-DUAL-PROOF:** A Radicle NID delegation is active only after both the persona epoch-key BIP-340 signature and the delegated NID Ed25519 proof verify over the same binding.

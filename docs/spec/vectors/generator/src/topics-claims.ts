@@ -41,7 +41,13 @@ type ClaimCase = {
   notes?: string;
 };
 
-const CLAIM_REF = "heterodyne:comms/0.5.0#comms-conformance";
+function claimSpecRef(vectorId: string): string {
+  if (/^chain-/.test(vectorId)) return "heterodyne:comms/0.5.0#comms-claim-chain";
+  if (/revocation|rejection/.test(vectorId)) return "heterodyne:comms/0.5.0#comms-claim-revocation";
+  if (/provisional|repository-confirmed/.test(vectorId)) return "heterodyne:comms/0.5.0#comms-claim-ledger";
+  if (/proof|issuance|issuer/.test(vectorId)) return "heterodyne:comms/0.5.0#comms-claim-verification";
+  return "heterodyne:comms/0.5.0#comms-key-claims";
+}
 
 export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVector[]> {
   const now = fixtures.test_epoch + 2_000;
@@ -669,7 +675,7 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
     relativePath: `claims/${testCase.path}`,
     vector: baseVector({
       vector_id: `claims/${testCase.vector_id}`,
-      spec_refs: [CLAIM_REF],
+      spec_refs: [claimSpecRef(testCase.vector_id)],
       description: testCase.description,
       direction: testCase.direction ?? "consume",
       input: testCase.input,

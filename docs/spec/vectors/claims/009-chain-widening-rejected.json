@@ -7,7 +7,7 @@
   },
   "registry_revision": 2,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-conformance"
+    "heterodyne:comms/0.5.0#comms-claim-chain"
   ],
   "vector_id": "claims/chain-widening-rejected",
   "description": "A child that changes the atomic namespace is rejected even when its issuer equals the parent subject.",
