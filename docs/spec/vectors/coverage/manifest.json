@@ -328,6 +328,252 @@
     ]
   },
   {
+    "vector_id": "claims/authorization-self-revocation",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "profile": "heterodyne-comms-claim-revocation-nostr-bip340-v1",
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/canonical-jwk-thumbprint-subject",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "profile": "heterodyne-comms-key-claim-jwk-jws-v1",
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/canonical-nostr-subject",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "profile": "heterodyne-comms-key-claim-nostr-bip340-v1",
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/canonical-radicle-nid-subject",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "profile": "heterodyne-comms-key-claim-radicle-ed25519-v1",
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/chain-attenuation-valid",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/chain-depth-exceeded",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/chain-widening-rejected",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/claim-id-mismatch",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/copied-proof-rejected",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "profile": "heterodyne-comms-claim-revocation-jwk-jws-v1",
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/delegated-issuance-active",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/descriptive-subject-rejection",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "profile": "heterodyne-comms-claim-revocation-radicle-ed25519-v1",
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/local-only-no-publication",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/pairwise-private-dr-delivery",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/persona-issuance-active",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/provisional-authorization-denied",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/public-claim-publication",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/repository-confirmed-active",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/repository-private-encryption",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/subject-proof-valid",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claims/third-party-issuer-untrusted",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
     "vector_id": "comms-envelope/nostr-native-event-valid",
     "owner_document": "comms",
     "owner_version": "comms/0.5.0",

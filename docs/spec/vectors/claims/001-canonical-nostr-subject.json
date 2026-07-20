@@ -1,0 +1,88 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "profile": "heterodyne-comms-key-claim-nostr-bip340-v1",
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "claims/canonical-nostr-subject",
+  "description": "Canonical kind:31013 bytes use a typed nostr-secp256k1 subject and a fresh nostr-bip340-v1 subject proof.",
+  "direction": "round-trip",
+  "input": {
+    "semantic_body": {
+      "claim_id": "46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a",
+      "issuer": {
+        "type": "nostr-secp256k1",
+        "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+      },
+      "subject": {
+        "type": "nostr-secp256k1",
+        "value": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+      },
+      "claim_class": "authorization",
+      "namespace": "heterodyne.device",
+      "name": "claim-ledger-reader",
+      "value": true,
+      "issued_at": 1767227600,
+      "not_before": 1767227600,
+      "expires_at": 1767231200,
+      "audience": [
+        "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+      ],
+      "resources": [
+        "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
+      ],
+      "visibility": "repository-private",
+      "comms_version": "comms/0.5.0",
+      "registry_revision": 2
+    },
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767227600,
+      "kind": 31013,
+      "tags": [
+        [
+          "d",
+          "46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a"
+        ]
+      ],
+      "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a\",\"comms_version\":\"comms/0.5.0\",\"expires_at\":1767231200,\"issued_at\":1767227600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767227600,\"registry_revision\":2,\"resources\":[\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\"],\"subject\":{\"type\":\"nostr-secp256k1\",\"value\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\"},\"value\":true,\"visibility\":\"repository-private\"}",
+      "id": "d6522c038eb4e260c8f8f267b14a7fd5fc758bcf3c687e6458d2737f8b55fc92",
+      "sig": "0b6b316ee26c5090f230bcaf1849b2e1b9eb7b755da3f412051ad69a16e7856102f8e0558c255880d3d50a0146860dd7d1404cb04e50caa08a673db19a51ba12"
+    },
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767227600,31013,[[\"d\",\"46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a\"]],\"{\\\"audience\\\":[\\\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\\\"],\\\"claim_class\\\":\\\"authorization\\\",\\\"claim_id\\\":\\\"46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a\\\",\\\"comms_version\\\":\\\"comms/0.5.0\\\",\\\"expires_at\\\":1767231200,\\\"issued_at\\\":1767227600,\\\"issuer\\\":{\\\"type\\\":\\\"nostr-secp256k1\\\",\\\"value\\\":\\\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\\\"},\\\"name\\\":\\\"claim-ledger-reader\\\",\\\"namespace\\\":\\\"heterodyne.device\\\",\\\"not_before\\\":1767227600,\\\"registry_revision\\\":2,\\\"resources\\\":[\\\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\\\"],\\\"subject\\\":{\\\"type\\\":\\\"nostr-secp256k1\\\",\\\"value\\\":\\\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\\\"},\\\"value\\\":true,\\\"visibility\\\":\\\"repository-private\\\"}\"]",
+    "subject_proof": {
+      "challenge": {
+        "domain": "heterodyne-claim-pop-v1",
+        "claim_id": "46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a",
+        "nonce": "71717171717171717171717171717171",
+        "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "resource": "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims",
+        "operation": "read",
+        "issued_at": 1767227610,
+        "expires_at": 1767227670
+      },
+      "proof": {
+        "type": "nostr-bip340",
+        "signature": "3f6d5e7422684b8ddba57b691891eefe28e07f7386dbe1fa5ac687db116556ccbffeed1df8d50a2086846190a87f43579b8bef618b4ef49f642b05c590e4b9f3"
+      }
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "claim_id": "46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a",
+      "subject": {
+        "type": "nostr-secp256k1",
+        "value": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+      },
+      "proof_profile": "nostr-bip340-v1",
+      "registry_revision": 2
+    }
+  }
+}

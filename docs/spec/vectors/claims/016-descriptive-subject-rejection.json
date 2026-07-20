@@ -1,0 +1,90 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "profile": "heterodyne-comms-claim-revocation-radicle-ed25519-v1",
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "claims/descriptive-subject-rejection",
+  "description": "A named Radicle Ed25519 revoker can revoke a descriptive assertion; the subject's separately signed rejection preserves the original provenance rather than erasing it.",
+  "direction": "consume",
+  "input": {
+    "assertion": {
+      "claim_id": "198ce9eb207b5ad867ae5ef05dbc58cd40473b1dec7050d2b089f10dbc72f68c",
+      "issuer": {
+        "type": "nostr-secp256k1",
+        "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+      },
+      "subject": {
+        "type": "nostr-secp256k1",
+        "value": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+      },
+      "claim_class": "descriptive",
+      "namespace": "heterodyne.device",
+      "name": "claim-ledger-reader",
+      "value": true,
+      "issued_at": 1767227600,
+      "not_before": 1767227600,
+      "audience": [
+        "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+      ],
+      "resources": [
+        "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
+      ],
+      "visibility": "repository-private",
+      "comms_version": "comms/0.5.0",
+      "registry_revision": 2,
+      "revokers": [
+        {
+          "type": "radicle-ed25519-nid",
+          "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+        }
+      ]
+    },
+    "named_revocation_event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767227616,
+      "kind": 31014,
+      "tags": [
+        [
+          "d",
+          "198ce9eb207b5ad867ae5ef05dbc58cd40473b1dec7050d2b089f10dbc72f68c"
+        ]
+      ],
+      "content": "{\"claim_id\":\"198ce9eb207b5ad867ae5ef05dbc58cd40473b1dec7050d2b089f10dbc72f68c\",\"proof\":{\"public_key\":\"a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff\",\"signature\":\"295c572c3040176676005cf45395aa54b80272f6428b28989752add298c40f40a729f913fb3b9c0dca05df315651e81f5fc127feb14cef8115f5efcc3ee0aa0b\",\"type\":\"radicle-ed25519\"},\"reason_code\":\"claim-revoked\",\"revoked_at\":1767227616,\"revoker\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"}}",
+      "id": "732ce3e478203070385ce3c8ab60bdca6eb8c1ead0c654b343638030b4dc9731",
+      "sig": "24a79907ae9e743677d469a693861eb1650bf55e91961bd34645bbe676d1e55b2c5b9f9d868facadbf5378c8cdc84b71bea3c2ee61c767aa545260f5544a74d4"
+    },
+    "subject_rejection_event": {
+      "pubkey": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556",
+      "created_at": 1767227600,
+      "kind": 31013,
+      "tags": [
+        [
+          "d",
+          "80fba00a2c12400c9459d7ce9e00fd5569d38f4b0c7d365fbd5c11c8da5f32c5"
+        ]
+      ],
+      "content": "{\"claim_class\":\"descriptive\",\"claim_id\":\"80fba00a2c12400c9459d7ce9e00fd5569d38f4b0c7d365fbd5c11c8da5f32c5\",\"comms_version\":\"comms/0.5.0\",\"issued_at\":1767227600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\"},\"name\":\"198ce9eb207b5ad867ae5ef05dbc58cd40473b1dec7050d2b089f10dbc72f68c\",\"namespace\":\"heterodyne.claim-rejection\",\"not_before\":1767227600,\"registry_revision\":2,\"subject\":{\"type\":\"nostr-secp256k1\",\"value\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\"},\"value\":false,\"visibility\":\"public\"}",
+      "id": "1eb09efda29a69b1ba13f9a7d52290687b0954f39caceced37100eef9ec22b6d",
+      "sig": "ed530f7026b471c80437a5186bf5bd0e5809518963ba519460da3bfd900596857fff3b7c4eb83119b468e618a73119b1d4e13122432ba7ff98f2122601fcb0d6"
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "named_revocation_authenticated": true,
+      "named_revocation_signer": {
+        "type": "radicle-ed25519-nid",
+        "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+      },
+      "subject_rejection_is_separate_claim": true,
+      "original_provenance_retained": true
+    }
+  }
+}

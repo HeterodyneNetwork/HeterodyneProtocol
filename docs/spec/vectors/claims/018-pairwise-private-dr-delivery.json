@@ -1,0 +1,32 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "claims/pairwise-private-dr-delivery",
+  "description": "A full signed claim is carried only inside pairwise DR ciphertext; outer metadata contains no claim ID, namespace, name, value, or visibility.",
+  "direction": "consume",
+  "input": {
+    "outer": {
+      "sender_device": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+      "recipient_tag": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556",
+      "ciphertext": "AoGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBXUsY1WtH080UCEZV4LsGoEDy/LE5XI6p7R7H9zTLGX9Wg8CRc4Wgqim03QDomzKsVNo3jMPn/i+PoUT5BroT2o5tdGn53PD97ViIJMc8fy09KNpQavxtiGSYjHftfD/ETDQmCu1//VSxIgdpsjKoZPAXB74hJ+dEdTcIMUTpInWfdd1m8hiD6YfXxLXdu9865HM4KKuIf/Q+qdHHiiTlsfQOWz9IVUlpsRTy/6DEufr2FssJ+ibn/cm2PUfQcSbOXzXlhKveSsKVVz15ZAepc7juv9fK3cis0QhwyLGkp71Ff9exZaxbmy8/Fz0AZ4+6nlJhetY43WDofkOvVZF1bfJFjYdrhkHkQ1qYhkBs92CmFSp4avZkBMFMnr4WaPD6vAFI0/qghxecJpMj2l6TzewYqAndp/3L/2kgsbdZn2cQ7yb9zq6+ewrhddPKUDK2Ijqe34T/ZzrrK0FAUVXmfvbanyFKuJ8I21xgoZSP/YE2+Q1ecDVoYAfWC4EBuhBIVm0F6AfcbLtQ8Sw9fgkHniy6J4/J6yIyTGhwv+0ujweJ9t+hlk50Zi5M6twDjSJAKeDk1JSMYobhASE/crMdZbQCWcNeCIeBBOqpMUK2tozIcrZw1pZrOIHCL8xU2f2YwC+JM3I+XcX/z0Tg8U5KuKaMqP0UatBLqujKRvarPCX+2CLwFX5T6+mHb9dz7uOUgvDPD9HAXF4eiLR8YX0hYOfOC9/r51cv8O/Jwbb6B6zKXTtO/Npz1JKIaJTwJMr3XLQXw9lytjEoJI5PoD2BpHnjCDnAdsr8DkvADmZgT7KsGx8rpRKWtEiIAbLjPf27XMGJmjN5nncqIjoI8FjAMYpGjQ+Lg+LRfbw2lEdwp40CbnJ+wif/UUdO69hv9vecO4tPEl0EZUqxanf/DHE3+Ew5rh4ZeOx693tUR8i0MQ8pmO2FHUHg0f60lTPGzmB3KbyFJ7RCon23qS+U9F034Bn/M6uSNOB/e2nOaR9fHQ6jAKNgHwcfUai1SodNReOxZtiBixud0r/4DTqcy/nMc3hNssMxH46jU52y6N+oDQx6RKoALT5i2QQMRn8CGaSpl8re/naKWaJV2gDPhrdEaD6LKo7UIa5PQ474F8H9Fgskim0z5UWQ2RR/V2I3uuUndjTo7WB/33dDJTOWfkjMRDDl5c8W0cwPo6X+wDXVRMDG55NhLSmdhvJQulNK1uF9M8IXxHXOtKnKUxpwEJHyJTCihY8FMbRCXs7Hw3g9WLzVN8nbHxUSgNrUsd/kPdHUan+9h58yXpW4sIo8BWsS2w7TEe7Z8l7+9rjAvwvlznuXMsHXDJlHm2B9NzYKDCcC/i/8xLv3kGo7OC4rP6jmb7E6wikUefSkM2I+0N0XhJFpviHpWlIzaz34GIk66ccBLOs="
+    },
+    "pinned_nonce": "8181818181818181818181818181818181818181818181818181818181818181"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "visibility": "pairwise-private",
+      "inner_claim_id": "3c25d5a51db09ff9fb8f2590d7f9b1bb07a11d6a46129d45be80cf82b03a9d54",
+      "outer_claim_metadata_fields": [],
+      "repository_backfill": false
+    }
+  }
+}

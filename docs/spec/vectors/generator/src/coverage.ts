@@ -9,12 +9,6 @@ import type { DocumentId, Vector } from "./types.js";
  * when its vector lands; no other uncovered active profile is permitted.
  */
 export const ADR034_PENDING_PROFILE_IDS = [
-  "heterodyne-comms-key-claim-nostr-bip340-v1",
-  "heterodyne-comms-key-claim-radicle-ed25519-v1",
-  "heterodyne-comms-key-claim-jwk-jws-v1",
-  "heterodyne-comms-claim-revocation-nostr-bip340-v1",
-  "heterodyne-comms-claim-revocation-radicle-ed25519-v1",
-  "heterodyne-comms-claim-revocation-jwk-jws-v1",
 ] as const;
 
 /** The only registry profile whose conformance gate is explicitly inactive. */

@@ -1,0 +1,55 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "claims/third-party-issuer-untrusted",
+  "description": "A cryptographically valid third-party descriptive assertion remains untrusted when its issuer is outside local policy.",
+  "direction": "consume",
+  "input": {
+    "event": {
+      "pubkey": "e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13",
+      "created_at": 1767227600,
+      "kind": 31013,
+      "tags": [
+        [
+          "d",
+          "b057f9c9ac2daad7b293c267d02512af8eb78d90b4d82f563ad8f3fa36da2f00"
+        ]
+      ],
+      "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"descriptive\",\"claim_id\":\"b057f9c9ac2daad7b293c267d02512af8eb78d90b4d82f563ad8f3fa36da2f00\",\"comms_version\":\"comms/0.5.0\",\"issued_at\":1767227600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767227600,\"registry_revision\":2,\"resources\":[\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\"],\"subject\":{\"type\":\"nostr-secp256k1\",\"value\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\"},\"value\":true,\"visibility\":\"public\"}",
+      "id": "85ca3ef41dbb63d3cf232c8ad51f0750314f9940e8098a90a7a17fc50899ae53",
+      "sig": "7c5813b64e7fe97851bbe9fcfe5dff432eda932886985b194c079d2337e043d3c48ba35bfb9a8afce637b6a5f83d3565628f5b75e3333eb1deaf6e6fe84a2f57"
+    },
+    "canonical_wire": "[0,\"e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13\",1767227600,31013,[[\"d\",\"b057f9c9ac2daad7b293c267d02512af8eb78d90b4d82f563ad8f3fa36da2f00\"]],\"{\\\"audience\\\":[\\\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\\\"],\\\"claim_class\\\":\\\"descriptive\\\",\\\"claim_id\\\":\\\"b057f9c9ac2daad7b293c267d02512af8eb78d90b4d82f563ad8f3fa36da2f00\\\",\\\"comms_version\\\":\\\"comms/0.5.0\\\",\\\"issued_at\\\":1767227600,\\\"issuer\\\":{\\\"type\\\":\\\"nostr-secp256k1\\\",\\\"value\\\":\\\"e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13\\\"},\\\"name\\\":\\\"claim-ledger-reader\\\",\\\"namespace\\\":\\\"heterodyne.device\\\",\\\"not_before\\\":1767227600,\\\"registry_revision\\\":2,\\\"resources\\\":[\\\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\\\"],\\\"subject\\\":{\\\"type\\\":\\\"nostr-secp256k1\\\",\\\"value\\\":\\\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\\\"},\\\"value\\\":true,\\\"visibility\\\":\\\"public\\\"}\"]",
+    "issuer_core_authority": "current",
+    "trusted_issuers": [],
+    "vector_context": {
+      "decision_trace": [
+        "parse_canonical_bytes_and_recompute_claim_id",
+        "verify_event_signature_and_core_kel_issuer_authority",
+        "resolve_claim_issuance_chain",
+        "prove_attenuation_and_depth",
+        "check_time_audience_namespace_subject_resource",
+        "resolve_repository_confirmation_and_revocation",
+        "require_fresh_subject_proof",
+        "apply_local_trust_policy_untrusted"
+      ]
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "cryptographically_valid": true,
+      "state": "untrusted",
+      "reason_code": "claim-issuer-untrusted",
+      "provenance_retained": true
+    }
+  }
+}

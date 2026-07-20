@@ -83,6 +83,32 @@ export type ClaimEnvelopeContext = {
   existing_semantic_body?: ClaimSemanticBody;
 };
 
+export type ClaimState =
+  | "invalid"
+  | "untrusted"
+  | "provisional"
+  | "active"
+  | "expired"
+  | "revoked"
+  | "conflicted";
+
+export type ClaimVerificationContext = {
+  now: number;
+  audience: string;
+  resource: string;
+  trusted_issuers: KeyRef[];
+  repository_confirmed: Set<string>;
+  repository_conflicted: Set<string>;
+  revocations: VerifiedRevocation[];
+  subject_proof: { key: KeyRef; challenge: SubjectProofChallenge; proof: KeyProof } | null;
+};
+
+export type AuthorizationDecision = {
+  allowed: boolean;
+  state: ClaimState;
+  reason_code: string | null;
+};
+
 type RevocationProofBody = Pick<ClaimRevocation, "claim_id" | "revoked_at" | "reason_code">;
 
 const CLAIM_KIND = 31013;
@@ -196,6 +222,320 @@ export function validateKeyRef(key: KeyRef): void {
     return;
   }
   throw new Error("claim-key-reference-invalid: unsupported typed key reference");
+}
+
+/**
+ * Resolves a claim chain deterministically from its leaf to its root and
+ * returns the canonical root-to-leaf order used by every later decision.
+ */
+export function verifyClaimChain(
+  leaf: ClaimSemanticBody,
+  claimsById: Map<string, ClaimSemanticBody>,
+): ClaimSemanticBody[] {
+  const reversed: ClaimSemanticBody[] = [];
+  const seen = new Set<string>();
+  let current = leaf;
+  let edges = 0;
+  while (true) {
+    if (seen.has(current.claim_id)) {
+      throw new Error(`claim-chain-cycle: repeated claim ${current.claim_id}`);
+    }
+    seen.add(current.claim_id);
+    reversed.push(current);
+    if (current.parent_claim_id === undefined) break;
+    edges += 1;
+    if (edges > 8) {
+      throw new Error("claim-chain-depth-exceeded: issuance chain exceeds eight edges");
+    }
+    const parent = claimsById.get(current.parent_claim_id);
+    if (parent === undefined) {
+      throw new Error(`claim-delegation-not-authorized: missing ancestor ${current.parent_claim_id}`);
+    }
+    current = parent;
+  }
+  const chain = reversed.reverse();
+  validateResolvedChain(leaf, chain);
+  return chain;
+}
+
+export function subjectProofPayload(challenge: SubjectProofChallenge): string {
+  return jcsCanonicalize(challenge);
+}
+
+export function resolveClaimState(
+  leaf: ClaimSemanticBody,
+  chain: ClaimSemanticBody[],
+  context: ClaimVerificationContext,
+): ClaimState {
+  return evaluateClaim(leaf, chain, context).state;
+}
+
+export function authorizeWithClaim(
+  leaf: ClaimSemanticBody,
+  chain: ClaimSemanticBody[],
+  context: ClaimVerificationContext,
+): AuthorizationDecision {
+  const result = evaluateClaim(leaf, chain, context);
+  return {
+    allowed: result.state === "active" && leaf.claim_class === "authorization",
+    state: result.state,
+    reason_code: result.reason_code,
+  };
+}
+
+type ClaimEvaluation = Pick<AuthorizationDecision, "state" | "reason_code">;
+
+/** Implements the approved eight-stage authentication-before-policy order. */
+function evaluateClaim(
+  leaf: ClaimSemanticBody,
+  chain: ClaimSemanticBody[],
+  context: ClaimVerificationContext,
+): ClaimEvaluation {
+  // 1. Canonical semantic content and claim identifiers.
+  try {
+    for (const claim of chain) {
+      validateClaimId(claim);
+      validateKeyRef(claim.issuer);
+      validateKeyRef(claim.subject);
+    }
+    if (chain.length === 0 || !sameClaim(chain[chain.length - 1], leaf)) {
+      throw new Error("claim-delegation-not-authorized: supplied chain does not terminate at leaf");
+    }
+  } catch (error) {
+    return invalidEvaluation(error);
+  }
+
+  // 2. Outer signatures and Core/KEL authority were established by the
+  // envelope validator. Rechecking typed issuer identity here prevents policy
+  // from masking malformed/stale inputs passed around that boundary.
+  try {
+    for (const claim of chain) validateKeyRef(claim.issuer);
+  } catch (error) {
+    return invalidEvaluation(error, "claim-issuer-authority-invalid");
+  }
+
+  // 3-4. Resolve the issuance chain, then prove attenuation/depth.
+  try {
+    validateResolvedChain(leaf, chain);
+  } catch (error) {
+    return invalidEvaluation(error);
+  }
+
+  // 5. Time, audience, namespace, resource, and subject type.
+  if (chain.some((claim) => context.now < claim.not_before)) {
+    return { state: "invalid", reason_code: "claim-issuer-authority-invalid" };
+  }
+  if (chain.some((claim) => claim.expires_at !== undefined && context.now >= claim.expires_at)) {
+    return { state: "expired", reason_code: "claim-expired" };
+  }
+  if (!matchesRestriction(leaf.audience, context.audience) || !matchesRestriction(leaf.resources, context.resource)) {
+    return { state: "invalid", reason_code: "claim-attenuation-violation" };
+  }
+  try {
+    validateKeyRef(leaf.subject);
+  } catch (error) {
+    return invalidEvaluation(error);
+  }
+
+  // 6. Authenticated monotonic reductions win before repository confirmation.
+  if (isRevoked(chain, context)) {
+    return { state: "revoked", reason_code: "claim-revoked" };
+  }
+  if (chain.some((claim) => context.repository_conflicted.has(claim.claim_id))) {
+    return { state: "conflicted", reason_code: "claim-repository-conflict" };
+  }
+  if (leaf.claim_class === "authorization" && !context.repository_confirmed.has(leaf.claim_id)) {
+    return { state: "provisional", reason_code: "claim-repository-unconfirmed" };
+  }
+
+  // 7. Authorization requires fresh proof by the exact subject key.
+  if (leaf.claim_class === "authorization") {
+    if (context.subject_proof === null) {
+      return { state: "invalid", reason_code: "claim-subject-proof-required" };
+    }
+    try {
+      verifySubjectProof(leaf, context);
+    } catch {
+      return { state: "invalid", reason_code: "claim-subject-proof-invalid" };
+    }
+  }
+
+  // 8. Local trust/release policy is deliberately last.
+  const trustAnchor = chain[0].issuer;
+  if (!context.trusted_issuers.some((candidate) => sameKeyRef(candidate, trustAnchor))) {
+    return { state: "untrusted", reason_code: "claim-issuer-untrusted" };
+  }
+  return { state: "active", reason_code: null };
+}
+
+function validateResolvedChain(leaf: ClaimSemanticBody, chain: ClaimSemanticBody[]): void {
+  if (chain.length === 0 || chain.length > 9) {
+    throw new Error("claim-chain-depth-exceeded: issuance chain exceeds eight edges");
+  }
+  if (!sameClaim(chain[chain.length - 1], leaf)) {
+    throw new Error("claim-delegation-not-authorized: supplied chain does not terminate at leaf");
+  }
+  const ids = new Set<string>();
+  for (let index = 0; index < chain.length; index += 1) {
+    const claim = chain[index];
+    if (ids.has(claim.claim_id)) throw new Error(`claim-chain-cycle: repeated claim ${claim.claim_id}`);
+    ids.add(claim.claim_id);
+    if (index === 0) {
+      if (claim.parent_claim_id !== undefined) {
+        throw new Error(`claim-delegation-not-authorized: missing ancestor ${claim.parent_claim_id}`);
+      }
+      continue;
+    }
+    const parent = chain[index - 1];
+    if (claim.parent_claim_id !== parent.claim_id || !sameKeyRef(claim.issuer, parent.subject)) {
+      throw new Error("claim-delegation-not-authorized: parent subject did not authorize the child issuer");
+    }
+    if (parent.claim_class !== "authorization" || parent.constraints === undefined || parent.constraints.remaining_depth < 1) {
+      throw new Error("claim-delegation-not-authorized: parent lacks an explicit claim-issuance capability");
+    }
+    assertAttenuated(parent, claim);
+  }
+}
+
+function assertAttenuated(parent: ClaimSemanticBody, child: ClaimSemanticBody): void {
+  const constraints = parent.constraints!;
+  if (
+    child.namespace !== parent.namespace ||
+    child.name !== parent.name ||
+    jcsCanonicalize(child.value) !== jcsCanonicalize(parent.value) ||
+    !constraints.namespaces.includes(child.namespace)
+  ) {
+    throw new Error("claim-attenuation-violation: child widened namespace, name, or atomic value scope");
+  }
+  if (child.issued_at < parent.issued_at || child.not_before < parent.not_before) {
+    throw new Error("claim-attenuation-violation: child extended the lower validity bound");
+  }
+  if (
+    parent.expires_at !== undefined &&
+    (child.expires_at === undefined || child.expires_at > parent.expires_at)
+  ) {
+    throw new Error("claim-attenuation-violation: child extended the expiry bound");
+  }
+  if (!isSubset(child.audience, parent.audience) || !isSubset(child.audience, constraints.audiences)) {
+    throw new Error("claim-attenuation-violation: child widened audience scope");
+  }
+  if (!isSubset(child.resources, parent.resources) || !isSubset(child.resources, constraints.resources)) {
+    throw new Error("claim-attenuation-violation: child widened resource scope");
+  }
+  if (child.constraints !== undefined) {
+    if (child.constraints.remaining_depth !== constraints.remaining_depth - 1) {
+      throw new Error("claim-attenuation-violation: child did not decrement remaining depth exactly once");
+    }
+    if (
+      !isSubset(child.constraints.namespaces, constraints.namespaces) ||
+      !isSubset(child.constraints.audiences, constraints.audiences) ||
+      !isSubset(child.constraints.resources, constraints.resources)
+    ) {
+      throw new Error("claim-attenuation-violation: child widened delegation constraints");
+    }
+  }
+}
+
+function verifySubjectProof(leaf: ClaimSemanticBody, context: ClaimVerificationContext): void {
+  const presented = context.subject_proof!;
+  const challenge = presented.challenge;
+  if (
+    !sameKeyRef(presented.key, leaf.subject) ||
+    challenge.domain !== "heterodyne-claim-pop-v1" ||
+    challenge.claim_id !== leaf.claim_id ||
+    challenge.audience !== context.audience ||
+    challenge.resource !== context.resource ||
+    typeof challenge.operation !== "string" || challenge.operation.length === 0 ||
+    !/^[0-9a-f]{32,128}$/.test(challenge.nonce) ||
+    !Number.isSafeInteger(challenge.issued_at) ||
+    !Number.isSafeInteger(challenge.expires_at) ||
+    challenge.expires_at <= challenge.issued_at ||
+    challenge.expires_at - challenge.issued_at > 60 ||
+    context.now < challenge.issued_at ||
+    context.now >= challenge.expires_at
+  ) {
+    throw new Error("claim-subject-proof-invalid: challenge binding or freshness failed");
+  }
+  const payload = subjectProofPayload(challenge);
+  if (leaf.subject.type === "nostr-secp256k1") {
+    if (presented.proof.type !== "nostr-bip340") throw new Error("proof suite mismatch");
+    const signature = parseLowerHex(presented.proof.signature, 64, "BIP-340 signature");
+    let valid = false;
+    try {
+      valid = schnorr.verify(signature, utf8Bytes(payload), leaf.subject.value);
+    } catch {
+      valid = false;
+    }
+    if (!valid) throw new Error("claim-subject-proof-invalid: BIP-340 proof is invalid");
+    return;
+  }
+  if (leaf.subject.type === "radicle-ed25519-nid") {
+    if (presented.proof.type !== "radicle-ed25519") throw new Error("proof suite mismatch");
+    const publicKey = parseLowerHex(presented.proof.public_key, 32, "Ed25519 public key");
+    if (didKeyFromEd25519(presented.proof.public_key) !== leaf.subject.value) {
+      throw new Error("claim-subject-proof-invalid: Ed25519 key does not derive subject NID");
+    }
+    const signature = parseLowerHex(presented.proof.signature, 64, "Ed25519 signature");
+    if (!ed25519.verify(signature, utf8Bytes(payload), publicKey)) {
+      throw new Error("claim-subject-proof-invalid: Ed25519 proof is invalid");
+    }
+    return;
+  }
+  if (presented.proof.type !== "jwk-jws") throw new Error("proof suite mismatch");
+  if (computeJwkThumbprint(presented.proof.jwk) !== leaf.subject.value) {
+    throw new Error("claim-subject-proof-invalid: JWK thumbprint does not match subject");
+  }
+  verifyDetachedJws(presented.proof, payload);
+}
+
+function isRevoked(chain: ClaimSemanticBody[], context: ClaimVerificationContext): boolean {
+  for (let targetIndex = 0; targetIndex < chain.length; targetIndex += 1) {
+    const target = chain[targetIndex];
+    for (const revocation of context.revocations) {
+      if (
+        revocation.claim_id !== target.claim_id ||
+        revocation.revoked_at > context.now ||
+        revocation.revoked_at < target.issued_at ||
+        !sameKeyRef(revocation.revoker, revocation.signer)
+      ) continue;
+      const superiorIssuers = chain.slice(0, targetIndex + 1).map((claim) => claim.issuer);
+      if (target.claim_class === "authorization") {
+        if (
+          sameKeyRef(revocation.signer, target.subject) ||
+          superiorIssuers.some((issuer) => sameKeyRef(issuer, revocation.signer))
+        ) return true;
+      } else if (
+        superiorIssuers.some((issuer) => sameKeyRef(issuer, revocation.signer)) ||
+        (target.revokers ?? []).some((revoker) => sameKeyRef(revoker, revocation.signer))
+      ) return true;
+    }
+  }
+  return false;
+}
+
+function matchesRestriction(restriction: string[] | undefined, value: string): boolean {
+  return restriction === undefined || restriction.includes(value);
+}
+
+function isSubset(child: string[] | undefined, parent: string[] | undefined): boolean {
+  if (parent === undefined) return true;
+  if (child === undefined) return false;
+  const allowed = new Set(parent);
+  return child.every((value) => allowed.has(value));
+}
+
+function sameKeyRef(left: KeyRef, right: KeyRef): boolean {
+  return left.type === right.type && left.value === right.value;
+}
+
+function sameClaim(left: ClaimSemanticBody, right: ClaimSemanticBody): boolean {
+  return left.claim_id === right.claim_id && jcsCanonicalize(left) === jcsCanonicalize(right);
+}
+
+function invalidEvaluation(error: unknown, fallback = "claim-schema-invalid"): ClaimEvaluation {
+  const message = error instanceof Error ? error.message : "";
+  const code = message.match(/\b(claim-[a-z-]+)\b/)?.[1] ?? fallback;
+  return { state: "invalid", reason_code: code };
 }
 
 export function computeJwkThumbprint(jwk: Record<string, JsonValue>): string {

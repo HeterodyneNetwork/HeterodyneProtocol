@@ -1,0 +1,52 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "claims/local-only-no-publication",
+  "description": "A local-only descriptive claim produces no relay, DR, repository, discovery, or OIDC publication artifact.",
+  "direction": "consume",
+  "input": {
+    "local_claim": {
+      "claim_id": "e99d3672ddad60b61927ad6fa6fe254aaa2c10eff3abd11627c4677588025075",
+      "issuer": {
+        "type": "nostr-secp256k1",
+        "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+      },
+      "subject": {
+        "type": "nostr-secp256k1",
+        "value": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+      },
+      "claim_class": "descriptive",
+      "namespace": "heterodyne.device",
+      "name": "claim-ledger-reader",
+      "value": true,
+      "issued_at": 1767227600,
+      "not_before": 1767227600,
+      "audience": [
+        "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+      ],
+      "resources": [
+        "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
+      ],
+      "visibility": "local-only",
+      "comms_version": "comms/0.5.0",
+      "registry_revision": 2
+    },
+    "requested_visibility": "local-only"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "visibility": "local-only",
+      "transport_artifacts": [],
+      "public_discovery_fields": []
+    }
+  }
+}

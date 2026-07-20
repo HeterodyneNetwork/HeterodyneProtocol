@@ -5,7 +5,7 @@ export type VectorMetadata = {
   owner_document: DocumentId;
   owner_version: string;
   dependency_versions: Partial<Record<DocumentId, string>>;
-  registry_revision: 1;
+  registry_revision: number;
   profile?: string;
   spec_refs: string[];
 };
@@ -141,6 +141,26 @@ registry/frozen-entry-immutable
 `);
 
 const COMMS_IDS = ids(`
+claims/canonical-nostr-subject
+claims/canonical-radicle-nid-subject
+claims/canonical-jwk-thumbprint-subject
+claims/claim-id-mismatch
+claims/persona-issuance-active
+claims/delegated-issuance-active
+claims/third-party-issuer-untrusted
+claims/chain-attenuation-valid
+claims/chain-widening-rejected
+claims/chain-depth-exceeded
+claims/subject-proof-valid
+claims/copied-proof-rejected
+claims/provisional-authorization-denied
+claims/repository-confirmed-active
+claims/authorization-self-revocation
+claims/descriptive-subject-rejection
+claims/public-claim-publication
+claims/pairwise-private-dr-delivery
+claims/repository-private-encryption
+claims/local-only-no-publication
 config-backup/config-blob-encrypt-decrypt
 config-backup/key-id-derivation
 config-backup/key-rotation-ref-delta
@@ -288,6 +308,12 @@ profiles/social-org-feed-kind31007
 const CONTROL_IDS = new Set<string>();
 
 const PROFILE_BY_VECTOR = new Map<string, string>([
+  ["claims/canonical-nostr-subject", "heterodyne-comms-key-claim-nostr-bip340-v1"],
+  ["claims/canonical-radicle-nid-subject", "heterodyne-comms-key-claim-radicle-ed25519-v1"],
+  ["claims/canonical-jwk-thumbprint-subject", "heterodyne-comms-key-claim-jwk-jws-v1"],
+  ["claims/authorization-self-revocation", "heterodyne-comms-claim-revocation-nostr-bip340-v1"],
+  ["claims/descriptive-subject-rejection", "heterodyne-comms-claim-revocation-radicle-ed25519-v1"],
+  ["claims/copied-proof-rejected", "heterodyne-comms-claim-revocation-jwk-jws-v1"],
   ["stamping/upstream-profile-owner", "heterodyne-social-mute-list-v1"],
   ["stamping/non-stamping-profile-unchanged", "heterodyne-core-rotation-breadcrumb-profile-v1"],
   ["stamping/dr-outer-unstamped", "heterodyne-comms-double-ratchet-message-v1"],
@@ -345,13 +371,16 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
     owner_document: owner,
     owner_version: `${owner}/${DOCUMENT_VERSIONS[owner]}`,
     dependency_versions: dependencies,
-    registry_revision: 1,
+    registry_revision: vectorId.startsWith("claims/") ? 2 : 1,
     ...(profile === undefined ? {} : { profile }),
     spec_refs: [`heterodyne:${reference.document}/${DOCUMENT_VERSIONS[reference.document]}#${reference.anchor}`],
   };
 }
 
 function referenceFor(vectorId: string, owner: DocumentId): { document: DocumentId; anchor: string } {
+  if (vectorId.startsWith("claims/")) {
+    return { document: "comms", anchor: "comms-conformance" };
+  }
   if (vectorId.startsWith("stamping/") || vectorId.startsWith("profiles/core-breadcrumb")) {
     return { document: "core", anchor: "core-version-stamps" };
   }

@@ -3,7 +3,7 @@
 Generated from [manifest.json](manifest.json); do not edit by hand.
 
 - core: 123
-- comms: 57
+- comms: 77
 - control: 0
 - social: 82
 
@@ -35,6 +35,26 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `broadcast/private-broadcast-wrapped` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-envelopes` |
 | `broadcast/private-broadcast-wrapped-v050` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | `heterodyne-comms-tier3-wrapped-content-kind-1-v1` | `heterodyne:comms/0.5.0#comms-tier-three-profile` |
 | `broadcast/reaction-reply-bare-not-indexed` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-envelopes` |
+| `claims/authorization-self-revocation` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | `heterodyne-comms-claim-revocation-nostr-bip340-v1` | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/canonical-jwk-thumbprint-subject` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | `heterodyne-comms-key-claim-jwk-jws-v1` | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/canonical-nostr-subject` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | `heterodyne-comms-key-claim-nostr-bip340-v1` | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/canonical-radicle-nid-subject` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | `heterodyne-comms-key-claim-radicle-ed25519-v1` | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/chain-attenuation-valid` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/chain-depth-exceeded` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/chain-widening-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/claim-id-mismatch` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/copied-proof-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | `heterodyne-comms-claim-revocation-jwk-jws-v1` | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/delegated-issuance-active` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/descriptive-subject-rejection` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | `heterodyne-comms-claim-revocation-radicle-ed25519-v1` | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/local-only-no-publication` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/pairwise-private-dr-delivery` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/persona-issuance-active` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/provisional-authorization-denied` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/public-claim-publication` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/repository-confirmed-active` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/repository-private-encryption` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/subject-proof-valid` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `claims/third-party-issuer-untrusted` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
 | `comms-envelope/nostr-native-event-valid` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-envelope` |
 | `comms-envelope/nostr-native-signature-mutation` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-envelope` |
 | `comms-envelope/owner-stamp-valid` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | `comms-subprotocol-payload-v1` | `heterodyne:comms/0.5.0#comms-subprotocol-negotiation` |

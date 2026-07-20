@@ -1,0 +1,82 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "claims/persona-issuance-active",
+  "description": "A current persona epoch issuer, canonical repository confirmation, and fresh exact-subject proof produce active authorization.",
+  "direction": "consume",
+  "input": {
+    "claim": {
+      "claim_id": "46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a",
+      "issuer": {
+        "type": "nostr-secp256k1",
+        "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+      },
+      "subject": {
+        "type": "nostr-secp256k1",
+        "value": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+      },
+      "claim_class": "authorization",
+      "namespace": "heterodyne.device",
+      "name": "claim-ledger-reader",
+      "value": true,
+      "issued_at": 1767227600,
+      "not_before": 1767227600,
+      "expires_at": 1767231200,
+      "audience": [
+        "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+      ],
+      "resources": [
+        "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
+      ],
+      "visibility": "repository-private",
+      "comms_version": "comms/0.5.0",
+      "registry_revision": 2
+    },
+    "issuer_core_authority": "current",
+    "repository_confirmed": true,
+    "subject_proof": {
+      "challenge": {
+        "domain": "heterodyne-claim-pop-v1",
+        "claim_id": "46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a",
+        "nonce": "71717171717171717171717171717171",
+        "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "resource": "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims",
+        "operation": "read",
+        "issued_at": 1767227610,
+        "expires_at": 1767227670
+      },
+      "proof": {
+        "type": "nostr-bip340",
+        "signature": "3f6d5e7422684b8ddba57b691891eefe28e07f7386dbe1fa5ac687db116556ccbffeed1df8d50a2086846190a87f43579b8bef618b4ef49f642b05c590e4b9f3"
+      }
+    },
+    "vector_context": {
+      "decision_trace": [
+        "parse_canonical_bytes_and_recompute_claim_id",
+        "verify_event_signature_and_core_kel_issuer_authority",
+        "resolve_claim_issuance_chain",
+        "prove_attenuation_and_depth",
+        "check_time_audience_namespace_subject_resource",
+        "resolve_repository_confirmation_and_revocation",
+        "require_fresh_subject_proof",
+        "apply_local_trust_and_release_policy"
+      ]
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "allowed": true,
+      "state": "active",
+      "reason_code": null
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "profile": "heterodyne-comms-claim-revocation-jwk-jws-v1",
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "claims/copied-proof-rejected",
+  "description": "A JWK/JWS native proof copied to another claim ID fails before local trust; the same rule binds authorization challenges to nonce and operation.",
+  "direction": "consume",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767227617,
+      "kind": 31014,
+      "tags": [
+        [
+          "d",
+          "9999999999999999999999999999999999999999999999999999999999999999"
+        ]
+      ],
+      "content": "{\"claim_id\":\"9999999999999999999999999999999999999999999999999999999999999999\",\"proof\":{\"jwk\":{\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"eyJhbGciOiJFZERTQSJ9\",\"signature\":\"tt2kIry1bPBG0MIAF8DicjekHsm0FbehQFXbjmRGZt_EGDB31Orsj7PBf0kngXJI12Z4jWz0Ip4twz2djktnBA\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"}}",
+      "id": "989499e6673ca7d13bd88d7fe0b7afd850beca96aa0f3493245a225633fc85d3",
+      "sig": "6f57566c1010c2a4ebc631ad047f9360f824fe2bc367963e0d7272eae10339dc7aff16405c175fae583cdd86ae9eb73a61cac0f60d529d7609c2190ca8fee61b"
+    },
+    "copied_from_claim_id": "8f70a763fbf81e87666d18c335cef92f596557f78340d4f61aa9004e6c93ce44",
+    "copied_to_claim_id": "9999999999999999999999999999999999999999999999999999999999999999",
+    "copied_proof": {
+      "type": "jwk-jws",
+      "jwk": {
+        "crv": "Ed25519",
+        "kty": "OKP",
+        "x": "pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8"
+      },
+      "protected": "eyJhbGciOiJFZERTQSJ9",
+      "signature": "tt2kIry1bPBG0MIAF8DicjekHsm0FbehQFXbjmRGZt_EGDB31Orsj7PBf0kngXJI12Z4jWz0Ip4twz2djktnBA"
+    },
+    "vector_context": {
+      "decision_trace": [
+        "authenticate_jwk_revoker",
+        "verify_exact_jcs_payload",
+        "reject_before_policy"
+      ]
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-subject-proof-invalid",
+    "normalized": {
+      "policy_hook_invoked": false,
+      "copied_authorization_proof_also_rejected": true
+    }
+  }
+}

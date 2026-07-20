@@ -65,14 +65,7 @@ describe("family coverage", () => {
 
     const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
     expect(findProfileCoverageIssues(registry, coverage)).toEqual([]);
-    expect(ADR034_PENDING_PROFILE_IDS).toEqual([
-      "heterodyne-comms-key-claim-nostr-bip340-v1",
-      "heterodyne-comms-key-claim-radicle-ed25519-v1",
-      "heterodyne-comms-key-claim-jwk-jws-v1",
-      "heterodyne-comms-claim-revocation-nostr-bip340-v1",
-      "heterodyne-comms-claim-revocation-radicle-ed25519-v1",
-      "heterodyne-comms-claim-revocation-jwk-jws-v1",
-    ]);
+    expect(ADR034_PENDING_PROFILE_IDS).toEqual([]);
     expect(INACTIVE_PROFILE_IDS).toEqual([
       "heterodyne-control-session-device-v1",
     ]);
@@ -123,21 +116,6 @@ describe("family coverage", () => {
 
     expect(findProfileCoverageIssues(registry, coverage)).toContain(
       "uncovered profile: unlisted-control-profile",
-    );
-  });
-
-  it("fails when a covered profile remains in the ADR-034 pending set", async () => {
-    const vectors = (await buildAllVectors(buildFixtures())).map(({ vector }) => vector);
-    const coverage = buildCoverage(vectors);
-    coverage.push({
-      ...coverage[0],
-      vector_id: "claims/pending-profile-now-covered",
-      profile: ADR034_PENDING_PROFILE_IDS[0],
-    });
-    const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
-
-    expect(findProfileCoverageIssues(registry, coverage)).toContain(
-      `stale pending profile: ${ADR034_PENDING_PROFILE_IDS[0]}`,
     );
   });
 

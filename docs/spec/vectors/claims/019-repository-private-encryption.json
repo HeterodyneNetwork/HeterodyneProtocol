@@ -1,0 +1,33 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "claims/repository-private-encryption",
+  "description": "Repository-private claim bytes and keyed path are opaque under a dedicated ledger audience key.",
+  "direction": "consume",
+  "input": {
+    "rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+    "branch": "main",
+    "keyed_path": "895285f12b4072986c7c5f8db86a448d8cdba399af514bef3ab2097042093907",
+    "ciphertext": "AoODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4OD1lQgQAsto4hJ2BdwqlJ3hs1Popx31zk2ZKkYjN7AQjnMhSpTKJjpsY2b5xo7dnDaX5L/qQDVOEd+2Csprox/d1dEwGgU75P1bSnXFAMmDtgb7Evirk9MRoM1bSqe5bkBuCA+OranbUafqC7bwuoRmbp5ILKgftzhkg5MiEQzm6PQVPjK06CjVCst1kWF6k6WEZ4Kvzv5DcZqaZHL4FydM+f4udrtYAUKW4Nt30jnrYuOhZjfKRLtgT5VgaJNcQOBe49l8OE6jJSIRHyFKaQ7z73ext4iJOjCEJ43Zav6eL1kHXj4lC2T5imPt3WyvR3C8WtvjEXIRubyJ8g4XfJWhKOLU4TDVIfrVQia8ZlG8EOmm4m6BgqnIqxWaAYSnecWQ4mrCTWYnaE/QB9IZ0kkTHe335Q0+8RlfsYLcpweIg2dPjgF983xsaC8XBYaFUpGw10tQuo0pta1TOizNN66gITkIbJQy8bQsjiIbNKVl19l3BPWWejNC0qJvz7sNrcSri0TGjqISEUlk78vKOPLid8Oe7B284v6BV4pWZAhr+kijYIigDr4P2eYIFeZ6LCyfKROMKdnLb8kgBlqydS2AbymV2Ww/8mPzG0VLcpMP7zkxJjoRXlDyIGkcVDA/2hs1jpXjD1ABUaG4nCHgUR8CYgqdM0aHdluzZAHFaWyugUcyjJ0FXKkjcMUuKmPkFYsT4JLx8nS45aLfU4tD4KURDfz7Pw82njMoDviKJo8mrbc6nGJsrP3D6Q52xui7+ASaiTfLdXBQU1o/9CDbDyEqxdqUMNrs4LgXo8yRIdcle3ST1fWtfd2W3iLyrsAeIN03CaJa4zwVGA0HP5OASktdKZYRF3rqotrBrij01djoan7I+8Br6BLwnSRwrfUFfZBQph5aexUc2E49XUQ0ublaBaVv75hAwFaSfPky7X6KJ3Huf5qvx4L4yy+NcPeYAPu5Di6ptVSXW6OG5J5kVdJ4uUMjTnR4atkxQV8pYIoSm8FIxIa9HT1+PQc6f8llruaa+HMxO98kXnCK1rKtAPlZ2EGnM6Kp4UmaPRfGRk3Lrnh7t/o+u3nWWdDtWPi7t+1snm9IgqpPkvQpP1KE2eOg0LE6ElHbk9J1nQSxWLgM/TFMgaIjxePF37RShrd5A03ikCvaUxj3yCM1ueTOUsIJr/1TnDTirDAKOAf4l+kxQolo/sQgbnrcS+trYECWv5gSad1NhjfUvYV4kO8PRg5ZyEnz8WdakRI8tbscEvMsWvi6XUc0dW7yaGEWKTOXq2rT4hiZpnzgTEtRbZDoHYggMsrsnvkDrk8AqbLTO/kZzGR5JUh7sKpeOHYD4BEukrOgMDSWaydSIsNz9H+Q3Cb8UJVWPRhi0UQAcDLtzDCzXfcemOt1cP1nod6uTuMIdXPuCc=",
+    "key_id": "claim-ledger-audience-v1",
+    "pinned_nonce": "8383838383838383838383838383838383838383838383838383838383838383"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "visibility": "repository-private",
+      "inner_claim_id": "1199f06b637e6910a94d433fb53e189ec6d90a6a6139e8efeb60734fbd923926",
+      "plaintext_metadata_in_path": false,
+      "plaintext_metadata_in_commit": false,
+      "encrypted_before_storage": true
+    }
+  }
+}
