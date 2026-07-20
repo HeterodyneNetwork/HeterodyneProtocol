@@ -3,6 +3,7 @@ import { nip19 } from "nostr-tools";
 import type { AuthorizationDecision, ClaimVerificationContext, JsonValue } from "./claims.js";
 import { jcsCanonicalize } from "./jcs.js";
 import {
+  activeCanonicalClaimSemanticsAt,
   canReturnToken,
   canonicalValidatedCheckpoint,
   evaluateMintingAttempt,
@@ -387,6 +388,28 @@ export function validateAuthorizationRequest(input: OidcAuthorizationRequest): O
     const consent = validateConsentValue(consentReplay.semantic.value);
     if (registration.client_id !== input.client_id || consent.client_id !== input.client_id) {
       return denied("oidc-client-unregistered");
+    }
+    const subject = jcsCanonicalize(registrationReplay.semantic.subject);
+    const activeOidcClaims = activeCanonicalClaimSemanticsAt(input.state, Math.max(
+      input.registration.verification_context.now,
+      input.consent.verification_context.now,
+    ))
+      .filter((claim) => claim.namespace === "heterodyne.oidc" &&
+        claim.visibility === "repository-private" && jcsCanonicalize(claim.subject) === subject);
+    const registrationValues = activeOidcClaims
+      .filter(({ name }) => name === "client-registration")
+      .map(({ value }) => validateRegisteredClientValue(value))
+      .filter(({ client_id }) => client_id === input.client_id)
+      .map((value) => jcsCanonicalize(value));
+    const consentValues = activeOidcClaims
+      .filter(({ name }) => name === "consent")
+      .map(({ value }) => validateConsentValue(value))
+      .filter(({ client_id }) => client_id === input.client_id)
+      .map((value) => jcsCanonicalize(value));
+    if (new Set(registrationValues).size !== 1 || new Set(consentValues).size !== 1 ||
+        registrationValues[0] !== jcsCanonicalize(registration) ||
+        consentValues[0] !== jcsCanonicalize(consent)) {
+      return denied("claim-repository-conflict");
     }
     if (!registration.grant_types.includes(input.grant_type) ||
         !((input.flow === "authorization_code" && input.grant_type === "authorization_code") ||

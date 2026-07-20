@@ -22,6 +22,7 @@ import {
 } from "./oidc.js";
 import { OIDC_RSA_ONE } from "./oidc-rsa-fixtures.js";
 import { buildOidcScenario, buildOidcVectors, replayOidcVector } from "./topics-oidc.js";
+import { buildLedgerRepositoryEvidence, mergeClaimLedger } from "./claim-ledger.js";
 
 const fixtures = buildFixtures();
 let x: Awaited<ReturnType<typeof buildOidcScenario>>;
@@ -95,6 +96,46 @@ describe("evidence-bound release and OAuth state machines", () => {
     const badContext = structuredClone(x.request.source_claims[0]);
     badContext.verification_context.resource = "https://other.example";
     expect(validateAuthorizationRequest({ ...x.request, source_claims: [badContext] })).toMatchObject({ allowed: false });
+  });
+
+  it("fails closed on concurrent non-identical registration or consent for one subject and client", async () => {
+    for (const [name, selectedRecord] of [
+      ["client-registration", x.registrationRecord],
+      ["consent", x.consentRecord],
+    ] as const) {
+      const existing = (selectedRecord.payload as unknown as {
+        claim_artifact: { semantic: { value: Record<string, unknown>; resources: string[] } };
+      }).claim_artifact.semantic;
+      const alternate = await x.s.makeClaim(x.s.writerOne, {
+        namespace: "heterodyne.oidc",
+        name,
+        value: { ...existing.value, scopes: ["openid"] } as never,
+        resources: existing.resources,
+      });
+      const alternateRecord = x.s.signRecord("claim", { claim_artifact: alternate.artifact });
+      x.allClaims.set(alternate.artifact.semantic.claim_id, alternate.artifact.semantic);
+      try {
+        const records = [...x.preMintRecords, alternateRecord];
+        const repository = buildLedgerRepositoryEvidence({
+          repository_rid: x.s.rid,
+          confirmed_records: records,
+          observed_at: x.preMintRepository.checkpoint.observed_at + 1,
+          prior: x.preMintRepository.repository,
+        });
+        const context = x.s.makeTask5Context(repository.repository);
+        for (const [recordId, evidence] of x.preMintContext.record_evidence) {
+          context.record_evidence.set(recordId, evidence);
+        }
+        context.record_evidence.set(alternateRecord.record_id, x.evidenceFor(alternateRecord, alternate));
+        const state = mergeClaimLedger(records, [], repository.checkpoint, context);
+        expect(validateAuthorizationRequest({ ...x.request, state }), name).toMatchObject({
+          allowed: false,
+          reason_code: "claim-repository-conflict",
+        });
+      } finally {
+        x.allClaims.delete(alternate.artifact.semantic.claim_id);
+      }
+    }
   });
 
   it("rejects post-merge injection into mutable record, confirmation, and evidence arrays", () => {

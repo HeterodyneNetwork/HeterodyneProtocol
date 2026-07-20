@@ -23,6 +23,11 @@ export type ClaimClass = "descriptive" | "authorization";
 export type ClaimVisibility = "public" | "pairwise-private" | "repository-private" | "local-only";
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
+export const CLAIM_REVOCATION_PROFILE = {
+  comms_version: "comms/0.5.0",
+  registry_revision: 2,
+} as const;
+
 export type DelegationConstraints = {
   namespaces: string[];
   audiences: string[];
@@ -62,6 +67,8 @@ export type ClaimRevocation = {
   reason_code: string;
   revoker: KeyRef;
   proof?: KeyProof;
+  comms_version: "comms/0.5.0";
+  registry_revision: 2;
 };
 
 export type VerifiedRevocation = ClaimRevocation & {
@@ -145,7 +152,10 @@ export type AuthorizationDecision = {
   reason_code: string | null;
 };
 
-type RevocationProofBody = Pick<ClaimRevocation, "claim_id" | "revoked_at" | "reason_code">;
+type RevocationProofBody = Pick<
+  ClaimRevocation,
+  "claim_id" | "revoked_at" | "reason_code" | "comms_version" | "registry_revision"
+>;
 
 const CLAIM_KIND = 31013;
 const REVOCATION_KIND = 31014;
@@ -212,6 +222,8 @@ export function revocationProofPayload(body: RevocationProofBody): string {
     claim_id: body.claim_id,
     revoked_at: body.revoked_at,
     reason_code: body.reason_code,
+    comms_version: body.comms_version,
+    registry_revision: body.registry_revision,
   });
 }
 
@@ -709,9 +721,13 @@ function assertNip01EventStructure(event: NostrSignedEvent): void {
 }
 
 function assertSingleAddress(event: NostrSignedEvent, expected: string): void {
-  const addresses = event.tags.filter((tag) => tag[0] === "d");
-  if (addresses.length !== 1 || addresses[0].length !== 2 || addresses[0][1] !== expected) {
-    throw new Error("claim-schema-invalid: event requires a single exact d=claim_id address tag");
+  if (
+    event.tags.length !== 1 ||
+    event.tags[0].length !== 2 ||
+    event.tags[0][0] !== "d" ||
+    event.tags[0][1] !== expected
+  ) {
+    throw new Error("claim-schema-invalid: event tags must be exactly [[\"d\",claim_id]]");
   }
 }
 

@@ -49,6 +49,7 @@ export const VECTOR_SCHEMA = {
     spec_refs: {
       type: "array",
       minItems: 1,
+      maxItems: 1,
       items: {
         type: "string",
         pattern: "^heterodyne:(core|comms|control|social)/0\\.5\\.0#[a-z0-9]+(?:-[a-z0-9]+)*$",

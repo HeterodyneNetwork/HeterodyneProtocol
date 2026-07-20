@@ -10,24 +10,14 @@
     "heterodyne:comms/0.5.0#comms-key-claims"
   ],
   "vector_id": "claims/local-only-no-publication",
-  "description": "A local-only descriptive claim produces no relay, DR, repository, discovery, or OIDC publication artifact.",
+  "description": "A local-only assertion remains application state and creates no signed claim, relay, DR, repository, discovery, or OIDC protocol artifact.",
   "direction": "consume",
   "input": {
-    "valid_signed_event": {
-      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-      "created_at": 1767227600,
-      "kind": 31013,
-      "tags": [
-        [
-          "d",
-          "e99d3672ddad60b61927ad6fa6fe254aaa2c10eff3abd11627c4677588025075"
-        ]
-      ],
-      "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"descriptive\",\"claim_id\":\"e99d3672ddad60b61927ad6fa6fe254aaa2c10eff3abd11627c4677588025075\",\"comms_version\":\"comms/0.5.0\",\"issued_at\":1767227600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767227600,\"registry_revision\":2,\"resources\":[\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\"],\"subject\":{\"type\":\"nostr-secp256k1\",\"value\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\"},\"value\":true,\"visibility\":\"local-only\"}",
-      "id": "beedaaddb7524c62bb63c3a9e505afac1ddb6c9ff55c83d55a2321ca76ccf4cc",
-      "sig": "a659d2312e14729d25d666aeeccc3291b2f4f6269e32ce14ed6baefafeae6c5953edb9edae48a8e74c737cf3781d25da78f51271f073f9cb2905301ba51a082c"
+    "local_state": {
+      "namespace": "heterodyne.local",
+      "name": "display-preference",
+      "value": true
     },
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767227600,31013,[[\"d\",\"e99d3672ddad60b61927ad6fa6fe254aaa2c10eff3abd11627c4677588025075\"]],\"{\\\"audience\\\":[\\\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\\\"],\\\"claim_class\\\":\\\"descriptive\\\",\\\"claim_id\\\":\\\"e99d3672ddad60b61927ad6fa6fe254aaa2c10eff3abd11627c4677588025075\\\",\\\"comms_version\\\":\\\"comms/0.5.0\\\",\\\"issued_at\\\":1767227600,\\\"issuer\\\":{\\\"type\\\":\\\"nostr-secp256k1\\\",\\\"value\\\":\\\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\\\"},\\\"name\\\":\\\"claim-ledger-reader\\\",\\\"namespace\\\":\\\"heterodyne.device\\\",\\\"not_before\\\":1767227600,\\\"registry_revision\\\":2,\\\"resources\\\":[\\\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\\\"],\\\"subject\\\":{\\\"type\\\":\\\"nostr-secp256k1\\\",\\\"value\\\":\\\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\\\"},\\\"value\\\":true,\\\"visibility\\\":\\\"local-only\\\"}\"]",
     "requested_visibility": "local-only"
   },
   "expected_output": {

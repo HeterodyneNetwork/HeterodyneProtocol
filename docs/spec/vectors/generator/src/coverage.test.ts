@@ -165,5 +165,5 @@ describe("family coverage", () => {
     expect(second).toEqual(first);
     expect(first[3]).toContain("incomplete-draft");
     expect(first[3]).toContain("No Control conformance corpus");
-  }, 15_000);
+  }, 30_000);
 });

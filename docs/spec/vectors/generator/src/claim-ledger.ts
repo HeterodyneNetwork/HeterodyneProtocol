@@ -418,6 +418,31 @@ export function canonicalValidatedCheckpoint(state: LedgerMergeResult): LedgerCh
   return structuredClone(snapshot.checkpoint);
 }
 
+export function activeCanonicalClaimSemanticsAt(
+  state: LedgerMergeResult,
+  evaluationTime = state.checkpoint.observed_at,
+): ClaimSemanticBody[] {
+  canonicalValidatedCheckpoint(state);
+  const snapshot = VALIDATED_LEDGER_SNAPSHOTS.get(state);
+  const repository = validatedRepositoryForState(state);
+  const canonicalHead = repository.commits.find(({ commit_oid }) => commit_oid === repository.canonical_head);
+  if (snapshot === undefined || canonicalHead === undefined) {
+    throw new Error("claim-repository-unconfirmed: canonical claim snapshot is absent");
+  }
+  const confirmed = new Set(repository.repository_confirmed_record_ids);
+  const atHead = new Set(canonicalHead.record_ids);
+  const active = new Map<string, ClaimSemanticBody>();
+  for (const record of snapshot.records) {
+    if (record.record_type !== "claim" || !confirmed.has(record.record_id) || !atHead.has(record.record_id)) continue;
+    const semantic = claimArtifactFromRecord(record)?.semantic;
+    if (semantic !== undefined &&
+        resolveAuthoritativeClaimState(semantic.claim_id, snapshot, evaluationTime) === "active") {
+      active.set(semantic.claim_id, structuredClone(semantic));
+    }
+  }
+  return [...active.values()].sort((left, right) => left.claim_id.localeCompare(right.claim_id));
+}
+
 export function activeIssuerWriterNidsAt(state: LedgerMergeResult, now: number): string[] {
   assertValidatedLedgerState(state);
   if (!Number.isSafeInteger(now) || now < state.checkpoint.observed_at) {

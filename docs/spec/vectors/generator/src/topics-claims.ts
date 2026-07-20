@@ -5,10 +5,12 @@ import { sha256 } from "@noble/hashes/sha2";
 import { nip44 } from "nostr-tools";
 import {
   authorizeWithClaim,
+  CLAIM_REVOCATION_PROFILE,
   computeClaimId,
   computeJwkThumbprint,
   revocationProofPayload,
   subjectProofPayload,
+  validateClaimEnvelope,
   validateClaimRevocationEnvelope,
   type ClaimRevocation,
   type ClaimAuthorityEvidence,
@@ -177,6 +179,31 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
   claimEventIds.set(nostrClaim.claim_id, nostrEvent.id);
   claimEventIds.set(radicleClaim.claim_id, radicleEvent.id);
   claimEventIds.set(jwkClaim.claim_id, jwkEvent.id);
+  const tagMutationCases = [
+    { name: "extra-tag-after", tags: [["d", nostrClaim.claim_id], ["p", epoch.pubkey]] },
+    { name: "extra-tag-before", tags: [["p", epoch.pubkey], ["d", nostrClaim.claim_id]] },
+    { name: "duplicate-d", tags: [["d", nostrClaim.claim_id], ["d", nostrClaim.claim_id]] },
+    { name: "malformed-d", tags: [["d", nostrClaim.claim_id, "extra"]] },
+    { name: "misordered-d", tags: [[nostrClaim.claim_id, "d"]] },
+  ];
+  const claimTagMutations = await Promise.all(tagMutationCases.map(async ({ name, tags }) => {
+    const event = await signEvent({
+      secretKey: epoch.private_key,
+      auxRand: AUX_RAND,
+      created_at: nostrClaim.issued_at,
+      kind: 31013,
+      tags,
+      content: jcsCanonicalize(nostrClaim),
+    });
+    return {
+      name,
+      event,
+      reason_code: rejectionReason(() => validateClaimEnvelope(event, {
+        issuer_authorized: true,
+        registry_revision: 2,
+      })),
+    };
+  }));
 
   const parent = makeClaim({
     subject: delegatedIssuer,
@@ -258,6 +285,7 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
   }
 
   const selfRevocation: ClaimRevocation = {
+    ...CLAIM_REVOCATION_PROFILE,
     claim_id: nostrClaim.claim_id,
     revoked_at: now + 15,
     reason_code: "claim-revoked",
@@ -272,6 +300,42 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
     content: jcsCanonicalize(selfRevocation),
   });
   const verifiedSelfRevocation = validateClaimRevocationEnvelope(selfRevocationEvent);
+  const { comms_version: _selfVersion, ...missingRevocationVersion } = selfRevocation;
+  const { registry_revision: _selfRevision, ...missingRevocationRevision } = selfRevocation;
+  const revocationContentMutations = [
+    { name: "missing-comms-version", semantic: missingRevocationVersion },
+    { name: "missing-registry-revision", semantic: missingRevocationRevision },
+    { name: "wrong-comms-version", semantic: { ...selfRevocation, comms_version: "comms/0.5.1" } },
+    { name: "wrong-registry-revision", semantic: { ...selfRevocation, registry_revision: 1 } },
+  ];
+  const revocationMutations = [
+    ...await Promise.all(tagMutationCases.map(async ({ name, tags }) => ({
+      name: `revocation-${name}`,
+      event: await signEvent({
+        secretKey: deviceTwoPublishing.private_key,
+        auxRand: AUX_RAND,
+        created_at: selfRevocation.revoked_at,
+        kind: 31014,
+        tags,
+        content: jcsCanonicalize(selfRevocation),
+      }),
+    }))),
+    ...await Promise.all(revocationContentMutations.map(async ({ name, semantic }) => ({
+      name,
+      event: await signEvent({
+        secretKey: deviceTwoPublishing.private_key,
+        auxRand: AUX_RAND,
+        created_at: selfRevocation.revoked_at,
+        kind: 31014,
+        tags: [["d", selfRevocation.claim_id]],
+        content: jcsCanonicalize(semantic),
+      }),
+    }))),
+  ].map(({ name, event }) => ({
+    name,
+    event,
+    reason_code: rejectionReason(() => validateClaimRevocationEnvelope(event)),
+  }));
   const roleSigners = [
     { role: "claim-issuer", key: child.issuer, secret: deviceOnePublishing.private_key, authorized: true },
     { role: "active-ancestor-issuer", key: parent.issuer, secret: epoch.private_key, authorized: true },
@@ -283,6 +347,7 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
   const authorizationRevocationCases = [];
   for (const [index, role] of roleSigners.entries()) {
     const semantic: ClaimRevocation = {
+      ...CLAIM_REVOCATION_PROFILE,
       claim_id: child.claim_id,
       revoked_at: now + 30 + index,
       reason_code: "claim-revoked",
@@ -340,6 +405,7 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
     revokers: [namedRevoker],
   });
   const edRevocationUnsigned = {
+    ...CLAIM_REVOCATION_PROFILE,
     claim_id: descriptive.claim_id,
     revoked_at: now + 16,
     reason_code: "claim-revoked",
@@ -379,6 +445,7 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
   const descriptiveRevocationCases = [];
   for (const [index, role] of descriptiveNostrRoles.entries()) {
     const semantic: ClaimRevocation = {
+      ...CLAIM_REVOCATION_PROFILE,
       claim_id: delegatedDescriptive.claim_id,
       revoked_at: now + 50 + index,
       reason_code: "claim-revoked",
@@ -428,6 +495,7 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
   const rejectionEvent = await signClaim(rejectionClaim, deviceTwoPublishing.private_key);
 
   const jwkRevocationUnsigned = {
+    ...CLAIM_REVOCATION_PROFILE,
     claim_id: jwkClaim.claim_id,
     revoked_at: now + 17,
     reason_code: "claim-revoked",
@@ -493,8 +561,6 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
   const ledgerAudienceKey = hexToBytes("82".repeat(32));
   const repositoryCiphertext = nip44.v2.encrypt(jcsCanonicalize(repositoryEvent), ledgerAudienceKey, hexToBytes("83".repeat(32)));
   const repositoryPath = bytesToHex(hmac(sha256, ledgerAudienceKey, utf8Bytes(repositoryClaim.claim_id)));
-  const localClaim = makeClaim({ claim_class: "descriptive", expires_at: undefined, visibility: "local-only" });
-  const localEvent = await signClaim(localClaim);
   const repositoryBlobDigest = bytesToHex(sha256(utf8Bytes(repositoryCiphertext)));
   const repositoryTree = [{
     mode: "100644",
@@ -510,7 +576,23 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
   };
 
   const cases: ClaimCase[] = [
-    canonicalCase("001-canonical-nostr-subject.json", "canonical-nostr-subject", nostrClaim, nostrEvent, nostrChallenge, nostrProof(nostrChallenge), "nostr-bip340-v1"),
+    {
+      ...canonicalCase("001-canonical-nostr-subject.json", "canonical-nostr-subject", nostrClaim, nostrEvent, nostrChallenge, nostrProof(nostrChallenge), "nostr-bip340-v1"),
+      input: {
+        ...canonicalCase("001-canonical-nostr-subject.json", "canonical-nostr-subject", nostrClaim, nostrEvent, nostrChallenge, nostrProof(nostrChallenge), "nostr-bip340-v1").input,
+        rejection_mutations: claimTagMutations,
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          claim_id: nostrClaim.claim_id,
+          subject: nostrClaim.subject,
+          proof_profile: "nostr-bip340-v1",
+          registry_revision: 2,
+          rejection_mutations: claimTagMutations.map(({ name, reason_code }) => ({ name, reason_code })),
+        },
+      },
+    },
     canonicalCase("002-canonical-radicle-nid-subject.json", "canonical-radicle-nid-subject", radicleClaim, radicleEvent, radicleChallenge, edProof(radicleChallenge), "radicle-ed25519-v1"),
     {
       ...canonicalCase("003-canonical-jwk-thumbprint-subject.json", "canonical-jwk-thumbprint-subject", jwkClaim, jwkEvent, jwkChallenge, jwkProof(jwkChallenge), "jwk-jws-v1"),
@@ -629,8 +711,8 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
       path: "015-authorization-self-revocation.json",
       vector_id: "authorization-self-revocation",
       description: "The exact authorization subject BIP-340 signer self-revokes immediately, before repository finality can leave the delivered grant provisional.",
-      input: { chain: [parent, child], role_cases: authorizationRevocationCases, self_revocation_event: selfRevocationEvent, repository_confirmed: false },
-      expected_output: { verdict: "reject", reason_code: "claim-revoked", normalized: { allowed: false, state: "revoked", repository_final: false, signer: verifiedSelfRevocation.signer, authorized_roles: ["claim-issuer", "active-ancestor-issuer", "persona-epoch", "persona-cold-root", "subject-self"], unauthorized_roles: ["unrelated-signer"] } },
+      input: { chain: [parent, child], role_cases: authorizationRevocationCases, self_revocation_event: selfRevocationEvent, rejection_mutations: revocationMutations, repository_confirmed: false },
+      expected_output: { verdict: "reject", reason_code: "claim-revoked", normalized: { allowed: false, state: "revoked", repository_final: false, signer: verifiedSelfRevocation.signer, authorized_roles: ["claim-issuer", "active-ancestor-issuer", "persona-epoch", "persona-cold-root", "subject-self"], unauthorized_roles: ["unrelated-signer"], rejection_mutations: revocationMutations.map(({ name, reason_code }) => ({ name, reason_code })) } },
       decision_trace: ["authenticate_revocation", "apply_irreversible_reduction", "skip_provisional_authorization"],
     },
     {
@@ -665,8 +747,8 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
     {
       path: "020-local-only-no-publication.json",
       vector_id: "local-only-no-publication",
-      description: "A local-only descriptive claim produces no relay, DR, repository, discovery, or OIDC publication artifact.",
-      input: { valid_signed_event: localEvent, canonical_wire: canonicalNip01(localEvent), requested_visibility: "local-only" },
+      description: "A local-only assertion remains application state and creates no signed claim, relay, DR, repository, discovery, or OIDC protocol artifact.",
+      input: { local_state: { namespace: "heterodyne.local", name: "display-preference", value: true }, requested_visibility: "local-only" },
       expected_output: { verdict: "accept", normalized: { visibility: "local-only", transport_artifacts: [], public_discovery_fields: [] } },
     },
   ];
@@ -716,4 +798,16 @@ function eightStages(): string[] {
     "require_fresh_subject_proof",
     "apply_local_trust_and_release_policy",
   ];
+}
+
+function rejectionReason(validate: () => unknown): string {
+  try {
+    validate();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const reason = /^([a-z0-9]+(?:-[a-z0-9]+)*):/.exec(message)?.[1];
+    if (reason !== undefined) return reason;
+    throw error;
+  }
+  throw new Error("negative claim vector mutation was unexpectedly accepted");
 }

@@ -167,7 +167,7 @@
           "signature": "ed609280edf22d52bb4ebeacc9a788f6d89c352f6afbcd0616062832f418d09ca599eb5b389b62dfb59f739046a48ddc92ab73ba650b09cec0b9b93a41b47405"
         },
         {
-          "record_id": "2f57b913b37c4216837320ce8dacab2fafbfd054de6a4de8f6f3b9dd700940a0",
+          "record_id": "ce02d844a2c191e88d144d3ce03a91052cb7489bfbf608c6db464347bd1797cd",
           "record_type": "reader-change",
           "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
           "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
@@ -189,11 +189,13 @@
                     "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c"
                   ]
                 ],
-                "content": "{\"claim_id\":\"243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c\",\"reason_code\":\"claim-revoked\",\"revoked_at\":1767245630,\"revoker\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"}}",
-                "id": "49d17243b14299a55a68e9898089ce1004d4b84e23925fd8bae710f7025e920f",
-                "sig": "fc7a97d771a4fe6770ee6bdbcab0bd732c2172ecb9c8c6ca7c4fa229ddc074e3573a6ef63d47fb402f6946d5c2af72bd28ec0aba19f02d9c27568ae4ab879c98"
+                "content": "{\"claim_id\":\"243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c\",\"comms_version\":\"comms/0.5.0\",\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767245630,\"revoker\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"}}",
+                "id": "47806fc3bd3a991ca47b207522c1d96cf79803b2e1ebb57e285b2e11a5f385f2",
+                "sig": "02ce4bcf43401d82ae9be55aeebbe19c9d01e458d97fad5ed361ff1ce93fb2fe815d014ed97165147c7b0c6c84bde8af2b5d07b56dbec85827636ea7a59c0194"
               },
               "semantic": {
+                "comms_version": "comms/0.5.0",
+                "registry_revision": 2,
                 "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
                 "revoked_at": 1767245630,
                 "reason_code": "claim-revoked",
@@ -204,18 +206,18 @@
               }
             }
           },
-          "payload_digest": "f8786e40a7179e221d100db0a30d36c2ace8888d555143acf9b7ad3ff53401e0",
-          "signature": "1d8eb4db8feeea82e4794e5749dc02ea400345d24734b66a7e0116bdfa9f1c568a47f604a92dfc7d6f43fce39273fd2d1e99f22f6f624e446b1c1e7c00217f0e"
+          "payload_digest": "4bb769b98fa4527631f73d322bd5e1b443f5da9a028f54f175cafff80b8b867d",
+          "signature": "08adf85edd3e967a66ce2a64338397e97bad43fe2ca9dc20e560c8db0f2f18b188f9e943bf4a8751d49392fec5eeb9a9387d9d4f8a0ea817f9e9d14d7d384502"
         },
         {
-          "record_id": "160d90d2e38cfcd1ee116513c41fb03e631e7a1183ff4c9c7d5e4363a6e7ff51",
+          "record_id": "9b3092d28b226924c9f37c538f349414cc22da1a2b78d0025c2f9928b04a87de",
           "record_type": "audience-key-epoch",
           "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
           "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
           "created_at": 1767245661,
           "parents": [
             "fd3344240d8392ba849a9a3c4ef6df561d0c89c6d4c2be3b833dc9949d8dae10",
-            "2f57b913b37c4216837320ce8dacab2fafbfd054de6a4de8f6f3b9dd700940a0"
+            "ce02d844a2c191e88d144d3ce03a91052cb7489bfbf608c6db464347bd1797cd"
           ],
           "payload": {
             "epoch": 2,
@@ -244,14 +246,14 @@
             "scrub_profile": "comms-encrypted-branch-cooperative-v1"
           },
           "payload_digest": "b298265f6632b0fd683f8845b7dfc79fbb5fa8c8b59d16cf934fbe420a4d55fb",
-          "signature": "e5bd0c53ab0e782c8841e146bbcc3f3f6220bcaae1e8b11f56a428c13d10c89aff6dee1506caf80dcd05bb658aa1de251048623b72d7a8e52c01071288c47902"
+          "signature": "cf7e0db7a3709ae41c2a14f2d8278e3eb5b16f9677daf8f4cd22ce54111d079ebc8d779b8b107d4d7566ee6853a7919d14dbd27a84a33ee66ab2850c0b92410b"
         }
       ],
       "right": [],
       "checkpoint": {
         "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
         "branch": "main",
-        "commit_oid": "9d762953dc0cafebba21124862052c19feb2a1342fa5689592d029056621649b",
+        "commit_oid": "84a19bab214fa6e12b83bdd318e18673947ae957f66361a8f1a16e472835a18d",
         "observed_at": 1767245665
       },
       "context": {
@@ -979,10 +981,10 @@
               }
             ],
             [
-              "70c6f93b2b4bc7baf6ae15425899b98745fd584c8d71531a375c843e2dbb4391",
+              "0dbb570f6d1154d76ba016dc61ed0846bf4867c8b07e2c21079e4041371131a4",
               {
-                "record_id": "70c6f93b2b4bc7baf6ae15425899b98745fd584c8d71531a375c843e2dbb4391",
-                "payload_digest": "e28b294038b269e0b3c2fd26adfab591175c9363473603bb8f5f84d589ebdda9",
+                "record_id": "0dbb570f6d1154d76ba016dc61ed0846bf4867c8b07e2c21079e4041371131a4",
+                "payload_digest": "ff9238bb298b20ae354ed335b30adf31619e6bb75fda1bd1487f497e7bf4a7c6",
                 "claims_by_id": {
                   "$heterodyne_replay_type": "map",
                   "entries": [
@@ -1155,10 +1157,10 @@
               }
             ],
             [
-              "bde4dfdeb432dadc8ee133ae98d0a9e2d5e6817f7c4305078bd5e128726a07b3",
+              "bc369f81e57ea0c99a9d2d22d211ecadba64bd43c9eada923ec82523b76cce0c",
               {
-                "record_id": "bde4dfdeb432dadc8ee133ae98d0a9e2d5e6817f7c4305078bd5e128726a07b3",
-                "payload_digest": "fc96095f602780b1a65d8aed368531aaa81b9ee8ef1eca772848aaa1e304119d",
+                "record_id": "bc369f81e57ea0c99a9d2d22d211ecadba64bd43c9eada923ec82523b76cce0c",
+                "payload_digest": "8948155d48e79c0ef4fec473c115c6bd4a6334e47ce20ffd8e0b10bebf95d849",
                 "claims_by_id": {
                   "$heterodyne_replay_type": "map",
                   "entries": [
@@ -1331,10 +1333,10 @@
               }
             ],
             [
-              "2f57b913b37c4216837320ce8dacab2fafbfd054de6a4de8f6f3b9dd700940a0",
+              "ce02d844a2c191e88d144d3ce03a91052cb7489bfbf608c6db464347bd1797cd",
               {
-                "record_id": "2f57b913b37c4216837320ce8dacab2fafbfd054de6a4de8f6f3b9dd700940a0",
-                "payload_digest": "f8786e40a7179e221d100db0a30d36c2ace8888d555143acf9b7ad3ff53401e0",
+                "record_id": "ce02d844a2c191e88d144d3ce03a91052cb7489bfbf608c6db464347bd1797cd",
+                "payload_digest": "4bb769b98fa4527631f73d322bd5e1b443f5da9a028f54f175cafff80b8b867d",
                 "claims_by_id": {
                   "$heterodyne_replay_type": "map",
                   "entries": [
@@ -1514,9 +1516,9 @@
               }
             ],
             [
-              "160d90d2e38cfcd1ee116513c41fb03e631e7a1183ff4c9c7d5e4363a6e7ff51",
+              "9b3092d28b226924c9f37c538f349414cc22da1a2b78d0025c2f9928b04a87de",
               {
-                "record_id": "160d90d2e38cfcd1ee116513c41fb03e631e7a1183ff4c9c7d5e4363a6e7ff51",
+                "record_id": "9b3092d28b226924c9f37c538f349414cc22da1a2b78d0025c2f9928b04a87de",
                 "payload_digest": "b298265f6632b0fd683f8845b7dfc79fbb5fa8c8b59d16cf934fbe420a4d55fb"
               }
             ],
@@ -1535,10 +1537,10 @@
               }
             ],
             [
-              "74e0a88b5c2d452d7a3768719a81a68e2098aa1356652554b52909f969c6abdb",
+              "7617705ba9058abf16d8065769afd6276af54e320adf3f1dad66b15fde2ea985",
               {
-                "record_id": "74e0a88b5c2d452d7a3768719a81a68e2098aa1356652554b52909f969c6abdb",
-                "payload_digest": "12a858bd509f60ffffec34e6eedec55f5adb38c5e9bae20c6c484cc641a3f082",
+                "record_id": "7617705ba9058abf16d8065769afd6276af54e320adf3f1dad66b15fde2ea985",
+                "payload_digest": "4f7b028d6e7b22913b29a1979674bb90bbd9a5e01f41bd320d8fef642a4ed757",
                 "claims_by_id": {
                   "$heterodyne_replay_type": "map",
                   "entries": [
@@ -1722,11 +1724,11 @@
             "commit_oid": "5648fed7c33c1a145ae0b8e21db80b166f44c15363b2f33dc3f7bbc56dab548d",
             "observed_at": 1767245660
           },
-          "canonical_head": "9d762953dc0cafebba21124862052c19feb2a1342fa5689592d029056621649b",
+          "canonical_head": "84a19bab214fa6e12b83bdd318e18673947ae957f66361a8f1a16e472835a18d",
           "checkpoint": {
             "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
             "branch": "main",
-            "commit_oid": "9d762953dc0cafebba21124862052c19feb2a1342fa5689592d029056621649b",
+            "commit_oid": "84a19bab214fa6e12b83bdd318e18673947ae957f66361a8f1a16e472835a18d",
             "observed_at": 1767245665
           },
           "commits": [
@@ -1754,25 +1756,25 @@
               "record_set_digest": "75efe47053c272619cd24420a83928a13df2c8f7b807354f4fe204780080b3f9"
             },
             {
-              "commit_oid": "9d762953dc0cafebba21124862052c19feb2a1342fa5689592d029056621649b",
-              "tree_oid": "9cc0c505ffb7ad827182beba1cc9bf40bda6cf5ab578e32bf77815125798c15b",
+              "commit_oid": "84a19bab214fa6e12b83bdd318e18673947ae957f66361a8f1a16e472835a18d",
+              "tree_oid": "1706c837a7907ce4dbb6a2abf0d67f112cddfe9573657d741ce51548c83e21dd",
               "parents": [
                 "5648fed7c33c1a145ae0b8e21db80b166f44c15363b2f33dc3f7bbc56dab548d"
               ],
               "record_ids": [
-                "160d90d2e38cfcd1ee116513c41fb03e631e7a1183ff4c9c7d5e4363a6e7ff51",
-                "2f57b913b37c4216837320ce8dacab2fafbfd054de6a4de8f6f3b9dd700940a0",
                 "5efb1a25f7d06ec8c7b7c79cc71058975c42cb22bffc06f7070c1ddaa86af064",
+                "9b3092d28b226924c9f37c538f349414cc22da1a2b78d0025c2f9928b04a87de",
+                "ce02d844a2c191e88d144d3ce03a91052cb7489bfbf608c6db464347bd1797cd",
                 "fd10aa1a3f93f2e12d063c1a3748a11350225049fd63b4ff2e7add2fe1f34d68",
                 "fd3344240d8392ba849a9a3c4ef6df561d0c89c6d4c2be3b833dc9949d8dae10"
               ],
-              "record_set_digest": "90bf4e9e5b8788679d172656ddc36d9436ce3aa1f4f27d04e162b60f05869fa2"
+              "record_set_digest": "48824d696b4b5111b764e8c6cf676f015dfa4f0bb5e74bf7bd74cb6015fe78d5"
             }
           ],
           "repository_confirmed_record_ids": [
-            "160d90d2e38cfcd1ee116513c41fb03e631e7a1183ff4c9c7d5e4363a6e7ff51",
-            "2f57b913b37c4216837320ce8dacab2fafbfd054de6a4de8f6f3b9dd700940a0",
             "5efb1a25f7d06ec8c7b7c79cc71058975c42cb22bffc06f7070c1ddaa86af064",
+            "9b3092d28b226924c9f37c538f349414cc22da1a2b78d0025c2f9928b04a87de",
+            "ce02d844a2c191e88d144d3ce03a91052cb7489bfbf608c6db464347bd1797cd",
             "fd10aa1a3f93f2e12d063c1a3748a11350225049fd63b4ff2e7add2fe1f34d68",
             "fd3344240d8392ba849a9a3c4ef6df561d0c89c6d4c2be3b833dc9949d8dae10"
           ]
@@ -2338,7 +2340,7 @@
         }
       }
     },
-    "next_epoch_record_id": "160d90d2e38cfcd1ee116513c41fb03e631e7a1183ff4c9c7d5e4363a6e7ff51"
+    "next_epoch_record_id": "9b3092d28b226924c9f37c538f349414cc22da1a2b78d0025c2f9928b04a87de"
   },
   "expected_output": {
     "verdict": "accept",

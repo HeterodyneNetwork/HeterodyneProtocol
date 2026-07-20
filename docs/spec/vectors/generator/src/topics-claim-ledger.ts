@@ -26,6 +26,7 @@ import {
   type RevocationArtifact,
 } from "./claim-ledger.js";
 import {
+  CLAIM_REVOCATION_PROFILE,
   computeClaimId,
   subjectProofPayload,
   type ClaimAuthorityEvidence,
@@ -529,6 +530,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   }, writerOne, [], now + 2);
 
   const revocationSemantic: ClaimRevocation = {
+    ...CLAIM_REVOCATION_PROFILE,
     claim_id: claimOne.artifact.semantic.claim_id,
     revoked_at: now + 30,
     reason_code: "claim-revoked",
@@ -551,6 +553,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     action: "remove", reader_nid: writerOne.did_key, revocation_artifact: revocationArtifact,
   }, writerTwo, [claimRecordOne.record_id], now + 31);
   const issuerRevocationSemantic: ClaimRevocation = {
+    ...CLAIM_REVOCATION_PROFILE,
     claim_id: issuerClaimOne.artifact.semantic.claim_id,
     revoked_at: now + 81,
     reason_code: "claim-revoked",

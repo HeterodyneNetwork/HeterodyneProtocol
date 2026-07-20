@@ -1855,6 +1855,53 @@ describe("protocol family documents", () => {
     for (const invariant of ADR034_PENDING_INVARIANT_IDS) expect(comms).toContain(`**${invariant}:**`);
   });
 
+  it("defines exact claim visibility and repository-backed OAuth claim semantics", () => {
+    const comms = readFileSync(commsPath, "utf8");
+    expect(comms).toMatch(/`public`[\s\S]*ordinary relays[\s\S]*public profile repository/i);
+    expect(comms).toMatch(/`pairwise-private`[\s\S]*full atomic signed claim[\s\S]*Double Ratchet[\s\S]*no backfill/i);
+    expect(comms).toMatch(/`repository-private`[\s\S]*encrypted private (?:claim )?ledger/i);
+    expect(comms).toMatch(/`local-only`[\s\S]*no protocol artifact/i);
+    expect(comms).toMatch(/MUST NOT[\s\S]*cross-visibility[\s\S]*(?:fallback|downgrade)/i);
+    expect(comms).toMatch(/unknown visibility[\s\S]*MUST[\s\S]*reject/i);
+
+    expect(comms).toContain("`heterodyne.oidc/client-registration`");
+    expect(comms).toContain("`heterodyne.oidc/consent`");
+    for (const member of [
+      "redirect_uris", "grant_types", "scopes", "audiences", "claims",
+      "assertion_profiles", "sector_identifier", "source_claim_ids",
+    ]) expect(comms).toContain(`\`${member}\``);
+    expect(comms).toMatch(/same exact typed-key subject[\s\S]*repository-private/i);
+    expect(comms).toMatch(/concurrent[\s\S]*(?:registration|consent)[\s\S]*conflict[\s\S]*fail closed/i);
+    expect(comms).toContain("heterodyne-oidc-pairwise-sub-v1\\0<exact-sector-origin>\\0<local-subject>");
+    expect(comms).toMatch(/HMAC-SHA-256[\s\S]*unpadded base64url[\s\S]*stable across/i);
+  });
+
+  it("fully specifies continuity authority, retained material, succession, and status freshness", () => {
+    const comms = readFileSync(commsPath, "utf8");
+    expect(comms).toMatch(/authority proof[\s\S]*`issued_at`[\s\S]*greater than or equal to[\s\S]*checkpoint/i);
+    expect(comms).toMatch(/writer[\s\S]*KEL authority[\s\S]*evaluated at[\s\S]*`issued_at`/i);
+    expect(comms).toMatch(/previous-to-current KEL[\s\S]*persona[\s\S]*previous head[\s\S]*current head[\s\S]*half-open/i);
+    expect(comms).toMatch(/candidate[\s\S]*exact current[\s\S]*KEL head/i);
+    expect(comms).toMatch(/raw closed JWKS bytes[\s\S]*SHA-256[\s\S]*current[\s\S]*retiring[\s\S]*`kid`/i);
+    expect(comms).toMatch(/every confirmed unexpired issuance[\s\S]*transitive[\s\S]*status path[\s\S]*usable bytes/i);
+    expect(comms).toMatch(/predecessor chain[\s\S]*original issuer[\s\S]*URI/i);
+    expect(comms).toMatch(/old issuer[\s\S]*MUST NOT[\s\S]*new issuance[\s\S]*successor/i);
+    expect(comms).toMatch(/routine rotation[\s\S]*compromise[\s\S]*INVALID replacement/i);
+    expect(comms).toMatch(/status `iat`[\s\S]*manifest checkpoint/i);
+    expect(comms).toMatch(/trusted `resolved_at`[\s\S]*`resolved_at \+ ttl < now`[\s\S]*equality[\s\S]*fresh/i);
+    expect(comms).toMatch(/`ttl`[\s\S]*finite positive JSON number[\s\S]*`exp`[\s\S]*separate/i);
+    expect(comms).toMatch(/retained Status List Token[\s\S]*retiring key[\s\S]*newly generated[\s\S]*current canonical issuer key/i);
+  });
+
+  it("keeps every family document unreleased only pending explicit release approval", () => {
+    for (const text of [corePath, commsPath, controlPath, socialPath].map((path) => readFileSync(path, "utf8"))) {
+      const header = text.split("\n").slice(0, 24).join("\n");
+      expect(header).toMatch(/remains unreleased pending explicit release approval/i);
+      expect(header).not.toMatch(/pending claims\/OIDC completion/i);
+      expect(header).not.toMatch(/\breleased\b|published release/i);
+    }
+  });
+
   it("keeps claim and OIDC authority out of Core and wire definitions out of Control and Social", () => {
     const core = readFileSync(corePath, "utf8");
     const comms = readFileSync(commsPath, "utf8");
@@ -1910,7 +1957,7 @@ describe("protocol family documents", () => {
     for (const vector of vectors) {
       expect(vector.owner_document, vector.vector_id).toBe("comms");
       expect(vector.registry_revision, vector.vector_id).toBe(2);
-      expect(vector.spec_refs.length, vector.vector_id).toBeGreaterThan(0);
+      expect(vector.spec_refs, vector.vector_id).toHaveLength(1);
       for (const ref of vector.spec_refs) {
         expect(ref, vector.vector_id).not.toContain("temporary:");
         expect(ref, vector.vector_id).not.toMatch(/#comms-conformance$/);

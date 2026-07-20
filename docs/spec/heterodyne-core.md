@@ -8,8 +8,7 @@ Normative dependencies: None.
 
 This document prepares Core's first 0.5.0 release, descended from the
 Heterodyne 0.4.x monolith. It is current normative authority at this repository
-path but remains unreleased pending claims/OIDC completion and explicit
-release approval.
+path but remains unreleased pending explicit release approval.
 `core/0.5.0` is not a synchronized family version. The key words MUST, MUST
 NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RECOMMENDED, NOT
 RECOMMENDED, MAY, and OPTIONAL are to be interpreted as described by BCP 14

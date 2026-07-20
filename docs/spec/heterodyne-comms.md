@@ -8,8 +8,7 @@ Normative dependencies: `heterodyne:core/0.5.0#core-conformance`.
 
 This document prepares Comms' first 0.5.0 release, descended from the
 Heterodyne 0.4.x monolith. It is current normative authority at this repository
-path but remains unreleased pending claims/OIDC completion and explicit
-release approval.
+path but remains unreleased pending explicit release approval.
 `comms/0.5.0` is not a synchronized family version. While Comms is 0.x, exact
 version matching is required. The key words MUST, MUST NOT, REQUIRED, SHALL,
 SHALL NOT, SHOULD, SHOULD NOT, RECOMMENDED, NOT RECOMMENDED, MAY, and OPTIONAL
@@ -961,6 +960,26 @@ Selective release selects whole atomic signed claims. Comms 0.5.0 MUST NOT
 perform SD-JWT disclosure. It MUST NOT automatically bundle multiple claim names
 into one signed claim.
 
+Visibility selects one exact carrier for the complete atomic object; a claim is
+never split between carriers:
+
+- `public` claims are complete signed events published through ordinary relays
+  and, when the persona republishes them, its public profile repository.
+- `pairwise-private` claims carry the full atomic signed claim only inside an
+  authenticated Double Ratchet message. The outer event exposes no claim ID,
+  namespace, name, value, or visibility metadata, and this carrier has no
+  repository publication and no backfill.
+- `repository-private` claims appear only in the encrypted private claim ledger
+  described by §11; repository paths, commit metadata, and object
+  sizes MUST NOT reveal their semantics.
+- `local-only` claims produce no protocol artifact: no Nostr event, Double
+  Ratchet message, repository object, OIDC release, or other network carrier.
+
+An implementation MUST NOT perform cross-visibility fallback or downgrade when
+the selected carrier is unavailable. An unknown visibility value MUST cause the
+whole claim to be rejected. Acceptance, storage, forwarding, and release are
+atomic for the whole signed claim; partial member delivery is prohibited.
+
 <a id="comms-claim-verification"></a>
 ### 10.1 Verification, trust, proof of possession, and state
 
@@ -1013,10 +1032,16 @@ or any non-strict attenuation makes the leaf `invalid`.
 
 The revocation content is the exact closed object in
 `schemas/comms/key-claim-revocation-v1.schema.json`: `claim_id`, `revoked_at`,
-registered `reason_code`, typed `revoker`, and an optional native `proof`.
-`revoked_at` equals the event `created_at`; the sole address tag equals the
-claim ID. A Nostr revoker signs the outer event. A Radicle or JWK revoker also
-supplies its matching domain-separated proof over the revocation body.
+registered `reason_code`, typed `revoker`, required `comms_version` equal to
+`comms/0.5.0`, required `registry_revision` equal to `2`, and an optional native
+`proof`. `revoked_at` equals the event `created_at`. For both `kind:31013` and
+`kind:31014`, the complete tag array MUST be exactly
+`[["d","<claim_id>"]]`; an extra, duplicate, malformed, or differently ordered
+tag is invalid. A Nostr revoker signs the outer event. A Radicle or JWK revoker
+also supplies its matching proof over the RFC 8785 canonical object containing
+exactly domain `heterodyne-claim-revocation-v1`, `claim_id`, `revoked_at`,
+`reason_code`, `comms_version`, and `registry_revision`. Thus the native proof
+binds the owning Comms profile and registry revision as well as the revocation.
 
 An authorization claim may be revoked by its issuer, an active superior issuer
 in its verified chain, current persona epoch or cold-root authority, or its
@@ -1133,10 +1158,34 @@ the canonical Radicle mirror fails closed.
 
 Authorization Code with PKCE S256 and OAuth Device Authorization are REQUIRED.
 Clients MUST be explicitly registered with exact redirect URIs, allowed
-audiences, scopes, sender-constraint policy, and pairwise sector. Implicit,
+audiences, scopes, assertion profiles, and pairwise sector. Implicit,
 Resource Owner Password Credentials, and Client Credentials grants are
 prohibited. Client Credentials is reserved for a future sender-constrained
 workload profile and never authenticates a persona.
+
+Registration and consent are active authorization claims in the private
+ledger, not mutable server-local records. A registration uses namespace
+`heterodyne.oidc`, name `client-registration` (the combined claim name is
+`heterodyne.oidc/client-registration`), visibility `repository-private`, and a
+closed object value with exactly `client_id`, `redirect_uris`, `grant_types`,
+`scopes`, `audiences`, `claims`, `assertion_profiles`, and `sector_identifier`.
+Every array is a duplicate-free array of non-empty strings. Every redirect URI
+and audience is an exact HTTPS resource with no query or fragment. The
+`sector_identifier` is an exact serialized HTTPS origin: it has no credentials,
+path, query, fragment, case-folded alias, or alternate default-port spelling.
+
+A consent claim uses namespace `heterodyne.oidc`, name `consent` (the combined
+claim name is `heterodyne.oidc/consent`), visibility `repository-private`, and a
+closed object value with exactly `client_id`, `scopes`, `audiences`, `claims`,
+and `source_claim_ids`. Its arrays are duplicate-free and contain non-empty
+strings; each source claim ID is lowercase 64-hex. Registration, consent, and
+every released source claim MUST use the same exact typed-key subject and be
+repository-private. Registration and consent are keyed for replay by the exact
+typed-key subject plus `client_id`; their immutable claim IDs and signed ledger
+record IDs provide canonical identity. In the multi-writer repository,
+concurrent non-identical registration or consent values for that key conflict
+and fail closed. Neither wall-clock order nor writer preference selects one;
+only canonical state containing one compatible active value authorizes.
 
 Authorization codes are short-lived, single-use, client- and redirect-bound,
 and require an exact PKCE verifier. Device codes are client-bound, expire,
@@ -1153,6 +1202,17 @@ is pairwise by default. Stable key release additionally requires scope
 `https://heterodyne.network/jwt/key-ref`. A client MUST NOT infer unreleased
 claims, correlate pairwise subjects across sectors, or treat a descriptive
 claim as authority.
+
+The pairwise local subject input is lowercase SHA-256 over RFC 8785 bytes of the
+exact typed-key subject. The pairwise identifier uses HMAC-SHA-256 under the
+persona's repository-private pairwise secret over the UTF-8 string
+`heterodyne-oidc-pairwise-sub-v1\0<exact-sector-origin>\0<local-subject>`, where
+each `\0` is one NUL octet, and encodes the 32-byte output as unpadded base64url.
+The sector is the registration's exact HTTPS origin under the rules above.
+Nodes sharing the same authoritative private repository state and pairwise
+secret therefore produce an identifier stable across nodes
+for the same subject and sector, while different sectors remain unlinkable by
+the relying parties.
 
 <a id="comms-jwt-projection"></a>
 ### 12.2 Interoperable JWT projection
@@ -1220,6 +1280,45 @@ and an active NID writer/checkpoint. Its Ed25519 authority proof and that
 writer's current ledger authority MUST verify. HTTPS and repository metadata,
 JWKS, and Status List Token bytes MUST be identical.
 
+The manifest authority proof `issued_at` MUST be greater than or equal to its
+exact canonical ledger checkpoint's `observed_at` and MUST NOT be later than
+the verification time. The named writer authorization and its Core KEL
+authority are evaluated at that `issued_at`, not at fetch time. The verifier
+requires Core-authenticated previous-to-current KEL transition evidence that
+binds the same persona cold-root npub, the exact predecessor manifest's
+previous head (or null at genesis), the candidate's current head, and a half-open
+`valid_from <= issued_at < valid_until` interval. The candidate manifest MUST
+also carry the exact current KEL head expected by the verifier.
+
+The `jwks.json` input is hashed as raw closed JWKS bytes, and that SHA-256 MUST
+equal `current_jwks_sha256`; parsing or reserialization does not substitute for
+the raw-byte check. The object has exactly `keys`. Each member is a closed
+public RS256 signing JWK whose `kid` is its RFC 7638 thumbprint and whose role is
+bound exactly by the manifest: one `current_signing_key_id` and the complete
+duplicate-free `retiring_signing_key_ids` set, with matching current and
+retiring JWK digests. Extra keys, missing keys, role swaps, or digest mismatch
+fail closed.
+
+Every confirmed unexpired issuance in canonical private-ledger state requires
+transitive retention through the continuity chain of its uncompromised signing
+key and status path. The current manifest MUST name that key as current or
+retiring and MUST name the status path; the current public tree MUST contain
+digest-matching, signature-valid, currently usable bytes for that path. Each
+retained entry in a predecessor chain preserves its original issuer and URI;
+changing either destroys provenance. Once a predecessor announces and binds a
+successor, the old issuer MUST NOT make a new issuance or publish a later
+same-issuer candidate. The successor is accepted only through the exact
+sequence, predecessor digest, successor issuer, successor manifest commitment,
+and persona-authority proof.
+
+Routine rotation promotes a new current key while retaining the old public key
+and its status bytes until every token it signed expires. Compromise handling
+is different: the compromised key is removed from current and retiring trust,
+all outstanding affected tokens receive `INVALID` status, and each affected
+list is published as an INVALID replacement signed by the new current key.
+Retention MUST NOT keep a compromised key trusted merely to verify the old
+list.
+
 The Radicle manifest is authoritative for Heterodyne continuity when the HTTPS
 node is unavailable. A successor requires an unbroken predecessor chain plus
 current persona epoch authority or cold-root recovery and an exact binding to
@@ -1238,7 +1337,7 @@ Comms 0.5.0 freezes the complete behavior used from
 Each projected JWT contains `status.status_list` with an HTTPS `uri` and
 non-negative `idx`. That URI returns a distinct compact Status List Token with
 media type `application/statuslist+jwt`, protected `typ` `statuslist+jwt`,
-`alg` `RS256`, and current `kid`. Claims are `sub` equal to the URI, `iat`,
+`alg` `RS256`, and an authenticated `kid`. Claims are `sub` equal to the URI, `iat`,
 `exp`, positive finite `ttl`, and `status_list` with `bits: 1` and `lst`.
 
 `lst` is the unpadded base64url encoding of the deterministic zlib-wrapped
@@ -1263,6 +1362,20 @@ media type, canonical compression, bit width, and index bounds, then reads the
 bit. Stale, missing, malformed, unverifiable, or mismatched status is failure,
 not evidence of validity. `VALID` cannot override expiration, audience/type
 failure, source-claim reduction, issuer compromise, or any other invalid state.
+
+Status `iat` MUST be a safe integer no earlier than the current manifest checkpoint's
+`observed_at` and no later than `now`. The verifier records a
+trusted `resolved_at` for the authenticated fetch; it rejects a future
+resolution time and defines staleness exactly as `resolved_at + ttl < now`, so
+equality is fresh. `ttl` is a finite positive JSON number. `exp` is a separate
+safe-integer token-lifetime condition and MUST be later than `now`; satisfying
+one freshness condition never satisfies the other.
+
+A retained Status List Token may authenticate with an exact retiring key from
+the raw JWKS bound by the current manifest. Newly generated Status List Tokens
+MUST use the current canonical issuer key from validated private-ledger state.
+This permits routine historical verification without allowing a retired writer
+to produce new status bytes.
 
 <a id="comms-security"></a>
 ## 15. Security invariants and forward-secrecy posture

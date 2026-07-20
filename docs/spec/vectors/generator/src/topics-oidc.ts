@@ -16,7 +16,7 @@ import {
   type LedgerValidationContext,
   type RevocationArtifact,
 } from "./claim-ledger.js";
-import { subjectProofPayload, type ClaimRevocation, type JsonValue } from "./claims.js";
+import { CLAIM_REVOCATION_PROFILE, subjectProofPayload, type ClaimRevocation, type JsonValue } from "./claims.js";
 import type { Fixtures } from "./fixtures.js";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
@@ -806,7 +806,7 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
   const validStatus = generateStatusListToken({ state: x.issuedState, uri,
     private_jwk: OIDC_RSA_ONE.private_jwk, iat: x.issuedState.checkpoint.observed_at,
     exp: x.issuedState.checkpoint.observed_at + 300, ttl: 120 });
-  const revocationSemantic: ClaimRevocation = { claim_id: x.dataClaim.artifact.semantic.claim_id,
+  const revocationSemantic: ClaimRevocation = { ...CLAIM_REVOCATION_PROFILE, claim_id: x.dataClaim.artifact.semantic.claim_id,
     revoked_at: x.issuedState.checkpoint.observed_at + 1, reason_code: "claim-revoked",
     revoker: x.dataClaim.artifact.semantic.issuer };
   const revocationEvent = await signEvent({ secretKey: x.s.issuer.private_key, auxRand: "00".repeat(32),

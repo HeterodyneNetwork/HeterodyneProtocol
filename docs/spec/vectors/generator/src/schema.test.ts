@@ -33,10 +33,7 @@ describe("vector schema", () => {
         owner_version: "core/0.5.0",
         dependency_versions: {},
         registry_revision: 1,
-        spec_refs: [
-          "heterodyne:core/0.5.0#core-root-attestation",
-          "heterodyne:core/0.5.0#core-conformance",
-        ],
+        spec_refs: ["heterodyne:core/0.5.0#core-root-attestation"],
         description: "root attestation is reproduced byte-identically",
         direction: "produce",
         input: { hello: "world" },
@@ -123,14 +120,26 @@ describe("vector schema", () => {
     })).toThrow(/spec_ref/);
   });
 
-  it("allows Control references to both exact direct dependencies", () => {
+  it("requires exactly one qualified permanent spec reference", () => {
     expect(() => validateVectorOrThrow({
-      ...valid("control"),
+      ...valid("core"),
       spec_refs: [
-        "heterodyne:core/0.5.0#core-version-stamps",
-        "heterodyne:comms/0.5.0#comms-subprotocol-negotiation",
+        "heterodyne:core/0.5.0#core-versioning",
+        "heterodyne:core/0.5.0#core-conformance",
       ],
-    })).not.toThrow();
+    })).toThrow(/spec_refs|one|item/i);
+  });
+
+  it("allows one Control reference to either exact direct dependency", () => {
+    for (const specRef of [
+      "heterodyne:core/0.5.0#core-version-stamps",
+      "heterodyne:comms/0.5.0#comms-subprotocol-negotiation",
+    ]) {
+      expect(() => validateVectorOrThrow({
+        ...valid("control"),
+        spec_refs: [specRef],
+      })).not.toThrow();
+    }
   });
 
   it("rejects null for the optional profile field", () => {
@@ -226,8 +235,16 @@ describe("Comms claim schemas", () => {
       revoked_at: 1784390500,
       reason_code: "claim-revoked",
       revoker: key,
+      comms_version: "comms/0.5.0",
+      registry_revision: 2,
     };
     expect(() => validateClaimRevocationSchemaOrThrow(revocation)).not.toThrow();
+    const { comms_version: _version, ...missingVersion } = revocation;
+    const { registry_revision: _revision, ...missingRevision } = revocation;
+    expect(() => validateClaimRevocationSchemaOrThrow(missingVersion)).toThrow(/comms_version|required/);
+    expect(() => validateClaimRevocationSchemaOrThrow(missingRevision)).toThrow(/registry_revision|required/);
+    expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, comms_version: "comms/0.5.1" })).toThrow(/comms_version|const/);
+    expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, registry_revision: 1 })).toThrow(/registry_revision|const/);
     expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, reason_code: "not-registered" })).toThrow(/reason_code/);
     expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, extra: true })).toThrow(/additional/);
     expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, revoked_at: Number.NEGATIVE_INFINITY })).toThrow();

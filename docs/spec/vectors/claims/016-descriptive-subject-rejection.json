@@ -102,9 +102,9 @@
               "36d5a8dc9ceeb44e68f5adfdcd22f448490fdba75e382d13a26b6a0aa6396b93"
             ]
           ],
-          "content": "{\"claim_id\":\"36d5a8dc9ceeb44e68f5adfdcd22f448490fdba75e382d13a26b6a0aa6396b93\",\"reason_code\":\"claim-revoked\",\"revoked_at\":1767227650,\"revoker\":{\"type\":\"nostr-secp256k1\",\"value\":\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\"}}",
-          "id": "52800c475287f1dbf093572b06ad3923884fadff9195f51d09c1a697ab23e290",
-          "sig": "23d3db5dc1f1266b0517e15d61c1c80c4b46663cb337a7a201172bb122eb560c798aee52eed2dd2af0b2e12946cb4fe3af6433171fb339f7151036f843ea0c30"
+          "content": "{\"claim_id\":\"36d5a8dc9ceeb44e68f5adfdcd22f448490fdba75e382d13a26b6a0aa6396b93\",\"comms_version\":\"comms/0.5.0\",\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767227650,\"revoker\":{\"type\":\"nostr-secp256k1\",\"value\":\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\"}}",
+          "id": "ca9af9f5c196401156481bd6307a07ed9e7155a86f4de0862c4be3ba28f0dc09",
+          "sig": "2a22852cd149d61d44d2ed5c2304d5c44f1fde30defe1c76e5639d2fb78551e2f11cc23c5e617b3d0ad7f42b7581c2b7ed81bd21e683921680f396da83dff9fc"
         },
         "verified_signer": {
           "type": "nostr-secp256k1",
@@ -125,16 +125,16 @@
               "36d5a8dc9ceeb44e68f5adfdcd22f448490fdba75e382d13a26b6a0aa6396b93"
             ]
           ],
-          "content": "{\"claim_id\":\"36d5a8dc9ceeb44e68f5adfdcd22f448490fdba75e382d13a26b6a0aa6396b93\",\"reason_code\":\"claim-revoked\",\"revoked_at\":1767227651,\"revoker\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"}}",
-          "id": "f39e9b58307c864dab67cf617a4fd98ccb731252ff63bd348fcd327f67d112ac",
-          "sig": "33cbb4bfdc319c27797eaff78b8daba096d5ebe63e625a394fb59e449017da814eea45df3fabd0703238528c4a14889a0099ed0c31c0485637ede43407eee1ba"
+          "content": "{\"claim_id\":\"36d5a8dc9ceeb44e68f5adfdcd22f448490fdba75e382d13a26b6a0aa6396b93\",\"comms_version\":\"comms/0.5.0\",\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767227651,\"revoker\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"}}",
+          "id": "b42a55c138a9c26a4367a6a3dc51cd92ba122423d38f134a4793667efeaa5d1d",
+          "sig": "77fe133cf5c29de075347320fcc7b3eae0ae7de5757e9cec19f384a5c23e04605c63a51ef39c1cf16d0651304e096024efa4f5cef9529403f43b08385e21444f"
         },
         "verified_signer": {
           "type": "nostr-secp256k1",
           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
         },
         "authority_evidence": {
-          "event_id": "f39e9b58307c864dab67cf617a4fd98ccb731252ff63bd348fcd327f67d112ac",
+          "event_id": "b42a55c138a9c26a4367a6a3dc51cd92ba122423d38f134a4793667efeaa5d1d",
           "claim_id": "36d5a8dc9ceeb44e68f5adfdcd22f448490fdba75e382d13a26b6a0aa6396b93",
           "signer": {
             "type": "nostr-secp256k1",
@@ -160,9 +160,9 @@
               "36d5a8dc9ceeb44e68f5adfdcd22f448490fdba75e382d13a26b6a0aa6396b93"
             ]
           ],
-          "content": "{\"claim_id\":\"36d5a8dc9ceeb44e68f5adfdcd22f448490fdba75e382d13a26b6a0aa6396b93\",\"reason_code\":\"claim-revoked\",\"revoked_at\":1767227652,\"revoker\":{\"type\":\"nostr-secp256k1\",\"value\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\"}}",
-          "id": "be204aa0ec2622a3a4aeea29b110353952358d6399c4aaa4a8b1f5d745c9838b",
-          "sig": "53470280fc5701c23effd4736ece77dab0a051483b9c224e11edc1c5bb8a62e075fdfde11787475c56b3768939e0f166fe98fc68bd22f283288a2dd5763f8854"
+          "content": "{\"claim_id\":\"36d5a8dc9ceeb44e68f5adfdcd22f448490fdba75e382d13a26b6a0aa6396b93\",\"comms_version\":\"comms/0.5.0\",\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767227652,\"revoker\":{\"type\":\"nostr-secp256k1\",\"value\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\"}}",
+          "id": "e291c1fb12c3865038c75c3b4ba5917f3bd12c66f205c76e3aba8880969f0f65",
+          "sig": "a6a14c8595cf67b1c8002d0350057fc64ca51dd24e47d59d8ad3492b925ace6d04194ec0b0904e87ecdfa4300b3e625f7f7642eacb0bf81186efb1465f1a4329"
         },
         "verified_signer": {
           "type": "nostr-secp256k1",
@@ -182,9 +182,9 @@
           "198ce9eb207b5ad867ae5ef05dbc58cd40473b1dec7050d2b089f10dbc72f68c"
         ]
       ],
-      "content": "{\"claim_id\":\"198ce9eb207b5ad867ae5ef05dbc58cd40473b1dec7050d2b089f10dbc72f68c\",\"proof\":{\"public_key\":\"a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff\",\"signature\":\"295c572c3040176676005cf45395aa54b80272f6428b28989752add298c40f40a729f913fb3b9c0dca05df315651e81f5fc127feb14cef8115f5efcc3ee0aa0b\",\"type\":\"radicle-ed25519\"},\"reason_code\":\"claim-revoked\",\"revoked_at\":1767227616,\"revoker\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"}}",
-      "id": "732ce3e478203070385ce3c8ab60bdca6eb8c1ead0c654b343638030b4dc9731",
-      "sig": "24a79907ae9e743677d469a693861eb1650bf55e91961bd34645bbe676d1e55b2c5b9f9d868facadbf5378c8cdc84b71bea3c2ee61c767aa545260f5544a74d4"
+      "content": "{\"claim_id\":\"198ce9eb207b5ad867ae5ef05dbc58cd40473b1dec7050d2b089f10dbc72f68c\",\"comms_version\":\"comms/0.5.0\",\"proof\":{\"public_key\":\"a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff\",\"signature\":\"8f3beb404c59c2760ac30bf0833070d8ed147180d7d770330d9bfabd1c32ca3d5f236a020b16900a41e50585a549a13c0fcb33f01ca8af1517f139a934054d0f\",\"type\":\"radicle-ed25519\"},\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767227616,\"revoker\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"}}",
+      "id": "81a7a513949ae4d7de57f708da5b0dd74c2624de06a91fd7f0928b0d681d83b7",
+      "sig": "5b650da79290861aca09af4606464e51cf814f1d442beec61cc45517e3754831e4ad017d834ecb74af04aab4799212dd276970eb2ae15876112fa4b9c421be56"
     },
     "subject_rejection_event": {
       "pubkey": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556",

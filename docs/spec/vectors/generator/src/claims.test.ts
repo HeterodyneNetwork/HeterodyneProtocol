@@ -5,6 +5,7 @@ import { nip44 } from "nostr-tools";
 import { describe, expect, it } from "vitest";
 import {
   authorizeWithClaim,
+  CLAIM_REVOCATION_PROFILE,
   computeClaimId,
   computeJwkThumbprint,
   resolveClaimState,
@@ -116,7 +117,7 @@ describe("canonical key claims", () => {
       content: jcsCanonicalize(body),
     });
     expect(() => validateClaimEnvelope(nonCanonical, { issuer_authorized: true, registry_revision: 2 })).toThrow(/canonical/);
-    expect(() => validateClaimEnvelope(duplicate, { issuer_authorized: true, registry_revision: 2 })).toThrow(/single.*d/i);
+    expect(() => validateClaimEnvelope(duplicate, { issuer_authorized: true, registry_revision: 2 })).toThrow(/exactly.*d/i);
     const badSignature = `${valid.sig[0] === "0" ? "1" : "0"}${valid.sig.slice(1)}`;
     expect(() => validateClaimEnvelope({ ...valid, sig: badSignature }, { issuer_authorized: true, registry_revision: 2 })).toThrow(/signature/);
     expect(() => validateClaimEnvelope(valid, { issuer_authorized: false, registry_revision: 2 })).toThrow(/authority/);
@@ -190,8 +191,91 @@ describe("claim revocation envelopes", () => {
     });
   }
 
+  it("requires the Comms owner stamp and binds it into native revocation proofs", async () => {
+    const stamped = {
+      claim_id: semanticBody().claim_id,
+      revoked_at: issuedAt + 9,
+      reason_code: "claim-revoked",
+      revoker: { type: "nostr-secp256k1", value: epoch.pubkey },
+      comms_version: "comms/0.5.0",
+      registry_revision: 2,
+    } as unknown as ClaimRevocation;
+    expect(revocationProofPayload(stamped)).toBe(jcsCanonicalize({
+      domain: "heterodyne-claim-revocation-v1",
+      claim_id: stamped.claim_id,
+      revoked_at: stamped.revoked_at,
+      reason_code: stamped.reason_code,
+      comms_version: "comms/0.5.0",
+      registry_revision: 2,
+    }));
+    const stampedEvent = await revocationEvent(stamped);
+    expect(() => validateClaimRevocationEnvelope(stampedEvent)).not.toThrow();
+
+    const { comms_version: _version, ...missingVersion } = stamped as ClaimRevocation & { comms_version: string };
+    const { registry_revision: _revision, ...missingRevision } = stamped as ClaimRevocation & { registry_revision: number };
+    const missingVersionEvent = await revocationEvent(missingVersion as ClaimRevocation);
+    const missingRevisionEvent = await revocationEvent(missingRevision as ClaimRevocation);
+    const wrongVersionEvent = await revocationEvent({ ...stamped, comms_version: "comms/0.5.1" } as unknown as ClaimRevocation);
+    const wrongRevisionEvent = await revocationEvent({ ...stamped, registry_revision: 1 } as unknown as ClaimRevocation);
+    expect(() => validateClaimRevocationEnvelope(missingVersionEvent))
+      .toThrow(/comms_version|required/);
+    expect(() => validateClaimRevocationEnvelope(missingRevisionEvent))
+      .toThrow(/registry_revision|required/);
+    expect(() => validateClaimRevocationEnvelope(wrongVersionEvent)).toThrow(/comms_version|const/);
+    expect(() => validateClaimRevocationEnvelope(wrongRevisionEvent)).toThrow(/registry_revision|const/);
+  });
+
+  it("requires exactly one ordered d=claim_id tag and rejects every re-signed alternative", async () => {
+    const claim = semanticBody();
+    const revocation = {
+      claim_id: claim.claim_id,
+      revoked_at: issuedAt + 9,
+      reason_code: "claim-revoked",
+      revoker: { type: "nostr-secp256k1", value: epoch.pubkey },
+      comms_version: "comms/0.5.0",
+      registry_revision: 2,
+    } as unknown as ClaimRevocation;
+    const cases = [
+      {
+        kind: 31013,
+        created_at: issuedAt,
+        content: jcsCanonicalize(claim),
+        validate: (event: NostrSignedEvent) => validateClaimEnvelope(event, {
+          issuer_authorized: true, registry_revision: 2,
+        }),
+      },
+      {
+        kind: 31014,
+        created_at: revocation.revoked_at,
+        content: jcsCanonicalize(revocation),
+        validate: validateClaimRevocationEnvelope,
+      },
+    ];
+    const variants = [
+      [["d", claim.claim_id], ["p", epoch.pubkey]],
+      [["p", epoch.pubkey], ["d", claim.claim_id]],
+      [["d", claim.claim_id], ["d", claim.claim_id]],
+      [["d", claim.claim_id, "extra"]],
+      [[claim.claim_id, "d"]],
+    ];
+    for (const fixture of cases) {
+      for (const tags of variants) {
+        const event = await signEvent({
+          secretKey: epoch.private_key,
+          auxRand,
+          created_at: fixture.created_at,
+          kind: fixture.kind,
+          tags,
+          content: fixture.content,
+        });
+        expect(() => fixture.validate(event)).toThrow(/exactly.*d|exact.*tag|address tag/i);
+      }
+    }
+  });
+
   it("uses a matching outer Nostr signer as the revoker proof", async () => {
     const revocation: ClaimRevocation = {
+      ...CLAIM_REVOCATION_PROFILE,
       claim_id: semanticBody().claim_id,
       revoked_at: issuedAt + 10,
       reason_code: "claim-revoked",
@@ -208,6 +292,7 @@ describe("claim revocation envelopes", () => {
 
   it("binds revocation semantic time exactly to the signed outer event", async () => {
     const revocation: ClaimRevocation = {
+      ...CLAIM_REVOCATION_PROFILE,
       claim_id: semanticBody().claim_id,
       revoked_at: issuedAt + 11,
       reason_code: "claim-revoked",
@@ -225,6 +310,7 @@ describe("claim revocation envelopes", () => {
 
   it("verifies a native Ed25519 proof and derives the named NID", async () => {
     const unsigned = {
+      ...CLAIM_REVOCATION_PROFILE,
       claim_id: semanticBody().claim_id,
       revoked_at: issuedAt + 20,
       reason_code: "claim-revoked",
@@ -253,6 +339,7 @@ describe("claim revocation envelopes", () => {
     };
     const thumbprint = computeJwkThumbprint(jwk);
     const unsigned = {
+      ...CLAIM_REVOCATION_PROFILE,
       claim_id: semanticBody().claim_id,
       revoked_at: issuedAt + 30,
       reason_code: "claim-revoked",
@@ -332,6 +419,7 @@ describe("claim revocation envelopes", () => {
         alg,
       } as Record<string, JsonValue>;
       const unsigned = {
+        ...CLAIM_REVOCATION_PROFILE,
         claim_id: semanticBody().claim_id,
         revoked_at: issuedAt + (alg === "RS256" ? 31 : 32),
         reason_code: "claim-revoked",
@@ -360,7 +448,7 @@ describe("claim revocation envelopes", () => {
 
   it("rejects ambiguous JWS headers, private JWKs, unsupported algorithms, and noncanonical base64url", async () => {
     const jwk = { kty: "OKP", crv: "Ed25519", x: Buffer.from(hexToBytes(device.public_key)).toString("base64url") };
-    const unsigned = { claim_id: semanticBody().claim_id, revoked_at: issuedAt + 40, reason_code: "claim-revoked" };
+    const unsigned = { ...CLAIM_REVOCATION_PROFILE, claim_id: semanticBody().claim_id, revoked_at: issuedAt + 40, reason_code: "claim-revoked" };
     const proof = { type: "jwk-jws" as const, jwk, protected: Buffer.from('{"alg":"EdDSA"}').toString("base64url"), signature: "AA" };
     const base: ClaimRevocation = { ...unsigned, revoker: { type: "jwk-thumbprint", value: computeJwkThumbprint(jwk) }, proof };
 
@@ -394,6 +482,7 @@ describe("closed NIP-01 claim and revocation event structure", () => {
   it("rejects malformed structure before cryptography for both allocated kinds", async () => {
     const claim = semanticBody();
     const revocation: ClaimRevocation = {
+      ...CLAIM_REVOCATION_PROFILE,
       claim_id: claim.claim_id,
       revoked_at: issuedAt + 90,
       reason_code: "claim-revoked",
@@ -737,6 +826,7 @@ describe("claim trust, attenuation, and authorization state", () => {
     }))).toBe("expired");
     expect(resolveClaimState(active, [active], context(active, { repository_conflicted: new Set([active.claim_id]) }))).toBe("conflicted");
     const directRevocation: VerifiedRevocation = {
+      ...CLAIM_REVOCATION_PROFILE,
       claim_id: active.claim_id,
       revoked_at: issuedAt + 11,
       reason_code: "claim-revoked",
@@ -775,6 +865,7 @@ describe("claim trust, attenuation, and authorization state", () => {
       .toEqual({ allowed: false, state: "expired", reason_code: "claim-expired" });
 
     const ancestorRevocation: VerifiedRevocation = {
+      ...CLAIM_REVOCATION_PROFILE,
       claim_id: root.claim_id,
       revoked_at: issuedAt + 10,
       reason_code: "claim-revoked",
@@ -833,6 +924,7 @@ describe("claim trust, attenuation, and authorization state", () => {
     const authorities = [child.issuer, root.issuer, child.subject];
     for (const [index, authority] of authorities.entries()) {
       const revocation: VerifiedRevocation = {
+        ...CLAIM_REVOCATION_PROFILE,
         claim_id: child.claim_id,
         revoked_at: issuedAt + 10,
         reason_code: "claim-revoked",
@@ -869,6 +961,7 @@ describe("claim trust, attenuation, and authorization state", () => {
       value: fixtures.personas.bob.epoch_keys.epoch_1.pubkey,
     };
     const unauthorized: VerifiedRevocation = {
+      ...CLAIM_REVOCATION_PROFILE,
       claim_id: child.claim_id,
       revoked_at: issuedAt + 10,
       reason_code: "claim-revoked",
@@ -906,6 +999,7 @@ describe("claim trust, attenuation, and authorization state", () => {
     });
     for (const authority of [descriptive.issuer, descriptiveRoot.issuer, namedRevoker]) {
       const revocation: VerifiedRevocation = {
+        ...CLAIM_REVOCATION_PROFILE,
         claim_id: descriptive.claim_id,
         revoked_at: issuedAt + 10,
         reason_code: "claim-revoked",
@@ -940,6 +1034,7 @@ describe("claim trust, attenuation, and authorization state", () => {
       }))).toBe("revoked");
     }
     const subjectRejection: VerifiedRevocation = {
+      ...CLAIM_REVOCATION_PROFILE,
       claim_id: descriptive.claim_id,
       revoked_at: issuedAt + 10,
       reason_code: "claim-revoked",
@@ -967,6 +1062,7 @@ describe("claim trust, attenuation, and authorization state", () => {
       value: fixtures.personas.alice.cold_root.pubkey,
     };
     const revocation: VerifiedRevocation = {
+      ...CLAIM_REVOCATION_PROFILE,
       claim_id: active.claim_id,
       revoked_at: issuedAt + 10,
       reason_code: "claim-revoked",
@@ -1155,6 +1251,30 @@ describe("normative claim vector authoring", () => {
     )).toBe(true);
 
     const byId = new Map(vectors.map(({ vector }) => [vector.vector_id, vector]));
+    const claimMutations = byId.get("claims/canonical-nostr-subject")!
+      .input.rejection_mutations as Array<{ name: string; event: NostrSignedEvent; reason_code: string }>;
+    expect(claimMutations).toHaveLength(5);
+    for (const mutation of claimMutations) {
+      expect(verifyEventSignature(mutation.event)).toBe(true);
+      expect(mutation.reason_code).toBe("claim-schema-invalid");
+      expect(() => validateClaimEnvelope(mutation.event, {
+        issuer_authorized: true,
+        registry_revision: 2,
+      })).toThrow(/claim-schema-invalid/);
+    }
+    const revocationMutations = byId.get("claims/authorization-self-revocation")!
+      .input.rejection_mutations as Array<{ name: string; event: NostrSignedEvent; reason_code: string }>;
+    expect(revocationMutations).toHaveLength(9);
+    expect(revocationMutations.map(({ name }) => name)).toEqual([
+      "revocation-extra-tag-after", "revocation-extra-tag-before", "revocation-duplicate-d",
+      "revocation-malformed-d", "revocation-misordered-d", "missing-comms-version",
+      "missing-registry-revision", "wrong-comms-version", "wrong-registry-revision",
+    ]);
+    for (const mutation of revocationMutations) {
+      expect(verifyEventSignature(mutation.event)).toBe(true);
+      expect(mutation.reason_code).toBe("claim-schema-invalid");
+      expect(() => validateClaimRevocationEnvelope(mutation.event)).toThrow(/claim-schema-invalid/);
+    }
     const pairwise = byId.get("claims/pairwise-private-dr-delivery")!;
     const pairwiseEvent = pairwise.input.outer_event as NostrSignedEvent;
     const pairwiseOuter = JSON.stringify(pairwiseEvent);
@@ -1186,9 +1306,9 @@ describe("normative claim vector authoring", () => {
     expect(repositoryEvent.kind).toBe(31013);
     expect(verifyEventSignature(repositoryEvent)).toBe(true);
     expect((byId.get("claims/local-only-no-publication")!.expected_output.normalized as { transport_artifacts: unknown[] }).transport_artifacts).toEqual([]);
-    const localEvent = byId.get("claims/local-only-no-publication")!.input.valid_signed_event as NostrSignedEvent;
-    expect(localEvent.kind).toBe(31013);
-    expect(verifyEventSignature(localEvent)).toBe(true);
+    const localInput = byId.get("claims/local-only-no-publication")!.input;
+    expect(localInput).not.toHaveProperty("valid_signed_event");
+    expect(localInput).not.toHaveProperty("canonical_wire");
     expect((byId.get("claims/persona-issuance-active")!.input.vector_context as { decision_trace: string[] }).decision_trace).toHaveLength(8);
     const personaVector = byId.get("claims/persona-issuance-active")!;
     expect((personaVector.input.claim_authority_evidence as ClaimAuthorityEvidence[])[0].event_id)
