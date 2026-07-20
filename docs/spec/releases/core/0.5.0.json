@@ -1,10 +1,1 @@
-{
-  "document": "core",
-  "version": "0.5.0",
-  "qualified_version": "core/0.5.0",
-  "registry_revision": 1,
-  "registry_sha256": "4de436e3c1be75fd1155eea21e2511517f7aab8c468c81fd6f9f8da83d83d2fb",
-  "dependencies": {},
-  "features": [],
-  "conformance_status": "conformant"
-}
+{"conformance_status":"conformant","dependencies":{},"document":"core","features":[],"qualified_version":"core/0.5.0","registry_revision":1,"registry_sha256":"4de436e3c1be75fd1155eea21e2511517f7aab8c468c81fd6f9f8da83d83d2fb","version":"0.5.0"}

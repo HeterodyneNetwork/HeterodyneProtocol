@@ -16,6 +16,10 @@ versioned documents below. The 0.4.0 monolith is frozen under
 
 ## 0.5.0 family
 
+The prepared 0.5.0 documents are current normative authority in the repository
+but remain unreleased until the claims/OIDC work is complete and explicit
+release approval is given.
+
 | Document | Owns |
 |---|---|
 | [`docs/spec/heterodyne-core.md`](docs/spec/heterodyne-core.md) | Identity, KEL, canonical bytes, delegations, node roles, repositories, registry, versioning, and base conformance |

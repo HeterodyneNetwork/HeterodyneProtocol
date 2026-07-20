@@ -418,6 +418,17 @@ function exactKeys(value: Record<string, unknown>, keys: string[]): boolean {
   return JSON.stringify(Object.keys(value)) === JSON.stringify(keys);
 }
 
+function canonicalJsonProbe(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJsonProbe).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+      .map(([key, member]) => `${JSON.stringify(key)}:${canonicalJsonProbe(member)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
 function githubHeadingAnchors(markdown: string): string[] {
   const anchors: string[] = [];
   const counts = new Map<string, number>();
@@ -1757,6 +1768,11 @@ describe("protocol family documents", () => {
     expect(text).toMatch(/non-normative family overview/i);
     expect(text).toContain("Core <- Comms <- Control");
     expect(text).toContain("Core <- Comms <- Social");
+    expect(text).toMatch(/prepared 0\.5\.0 documents/i);
+    expect(text).toMatch(
+      /unreleased.*claims\/OIDC.*explicit\s+release\s+approval/is,
+    );
+    expect(text).not.toMatch(/current release|release records/i);
     for (const document of ["core", "comms", "control", "social"]) {
       expect(text).toContain(`heterodyne-${document}.md`);
       expect(text).toContain(`${document}/0.5.0`);
@@ -1779,11 +1795,14 @@ describe("protocol family documents", () => {
     const expected = expectedReleaseManifests(repositoryRoot);
 
     for (const [document, manifest] of Object.entries(expected)) {
-      const actual = JSON.parse(
-        readFileSync(resolve(releasesPath, document, "0.5.0.json"), "utf8"),
+      const bytes = readFileSync(
+        resolve(releasesPath, document, "0.5.0.json"),
+        "utf8",
       );
+      const actual = JSON.parse(bytes);
       expect(actual).toEqual(manifest);
       expect(validate(actual), JSON.stringify(validate.errors)).toBe(true);
+      expect(bytes).toBe(`${canonicalJsonProbe(manifest)}\n`);
     }
   });
 
@@ -1797,7 +1816,7 @@ describe("protocol family documents", () => {
     }
     const control = readFileSync(controlPath, "utf8");
     expect(control).toMatch(/incomplete 0\.5\.0 draft/i);
-    expect(control).toMatch(/makes no Control conformance claim/);
+    expect(control).toMatch(/makes no Control\s+conformance claim/);
 
     for (const relativePath of preCutoverCompanionPaths) {
       const text = readFileSync(resolve(repositoryRoot, relativePath), "utf8");
@@ -1805,6 +1824,14 @@ describe("protocol family documents", () => {
         /pre-cutover authority|current normative 0\.4\.0 monolith|until the Task 9 cutover/i,
       );
     }
+
+    const changelog = readFileSync(resolve(repositoryRoot, "CHANGELOG.md"), "utf8");
+    const unreleased = sectionUnderHeading(changelog, "## [Unreleased]");
+    expect(unreleased).toMatch(/prepared[\s\S]*0\.5\.0/i);
+    for (const document of ["Core", "Comms", "Control", "Social"]) {
+      expect(unreleased).toContain(`### ${document} 0.5.0`);
+    }
+    expect(changelog).not.toMatch(/## 0\.5\.0 document releases|\bPublished\b/);
   });
 
   it("passes the executable family-cutover lint", () => {

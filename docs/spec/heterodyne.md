@@ -20,9 +20,9 @@ Core <- Comms <- Social
 Control and Social are siblings above Comms. Social has no dependency on
 Control; clients can compose their independently stated claims.
 
-## Documents and releases
+## Prepared 0.5.0 documents
 
-| Document | Current release | Scope | Status |
+| Document | Prepared version | Scope | Status |
 |---|---|---|---|
 | [Core](heterodyne-core.md) | `core/0.5.0` | Identity, KEL verification, node roles, repositories, registry, versioning, and base conformance | Normative |
 | [Comms](heterodyne-comms.md) | `comms/0.5.0` | Privacy tiers, publishing, feeds, direct messages, credential sync, and subprotocol carriage | Normative |
@@ -30,8 +30,11 @@ Control; clients can compose their independently stated claims.
 | [Social](heterodyne-social.md) | `social/0.5.0` | Social graph, interactions, moderation, lists, ATProto attachment, and the Matrix feature | Normative 0.x |
 
 These are four independent version lineages descended from the 0.4.x
-monolith, not a synchronized family version. Machine-readable release records
-are under [`releases/`](releases/).
+monolith, not a synchronized family version. Their contents are current
+normative authority at these repository paths. The 0.5.0 artifacts remain
+unreleased pending claims/OIDC completion and explicit release approval.
+Machine-readable prepared-release manifests are under
+[`releases/`](releases/).
 
 ## Conformance classes
 

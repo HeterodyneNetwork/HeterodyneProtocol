@@ -8,18 +8,17 @@ compatibility contract takes effect independently when a document reaches
 
 ## [Unreleased]
 
-No unreleased protocol changes.
-
-## 0.5.0 document releases - 2026-07-19
-
-ADR-033 split the 0.4.0 monolith into four independently versioned first
-releases. [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is now the
-non-normative family map. Release combinations and the exact registry digest
-are recorded in [machine-readable manifests](docs/spec/releases/).
+ADR-033 split the 0.4.0 monolith and prepared four independently versioned
+0.5.0 documents. Their contents are current normative authority at their
+repository paths, but the versions remain unreleased until the claims/OIDC
+work is complete and explicit release approval is given.
+[`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is now the non-normative
+family map. Prepared release combinations and the exact registry digest are
+recorded in [machine-readable manifests](docs/spec/releases/).
 
 ### Core 0.5.0
 
-- Published [Core](docs/spec/heterodyne-core.md) `core/0.5.0`, owning identity,
+- Prepared [Core](docs/spec/heterodyne-core.md) `core/0.5.0`, owning identity,
   KEL verification, canonical bytes, Radicle delegation and repository
   substrate, registry, versioning, and base conformance.
 - Added the Core-owned, separately revisioned registry for kind allocations,
@@ -28,19 +27,19 @@ are recorded in [machine-readable manifests](docs/spec/releases/).
 
 ### Comms 0.5.0
 
-- Published [Comms](docs/spec/heterodyne-comms.md) `comms/0.5.0`, depending on
+- Prepared [Comms](docs/spec/heterodyne-comms.md) `comms/0.5.0`, depending on
   `core/0.5.0` and owning privacy tiers, publishing, feeds, direct messages,
   credential sync, and generic subprotocol carriage.
 
 ### Control 0.5.0
 
-- Published [Control](docs/spec/heterodyne-control.md) `control/0.5.0` as an
+- Prepared [Control](docs/spec/heterodyne-control.md) `control/0.5.0` as an
   incomplete Comms profile requiring Core, Comms, and `double-ratchet`.
   Control remains non-claimable until its integration and vector gates close.
 
 ### Social 0.5.0
 
-- Published [Social](docs/spec/heterodyne-social.md) `social/0.5.0`, depending
+- Prepared [Social](docs/spec/heterodyne-social.md) `social/0.5.0`, depending
   on Core and Comms and owning social behavior plus the optional Matrix
   feature.
 
@@ -53,7 +52,7 @@ are recorded in [machine-readable manifests](docs/spec/releases/).
   identifier is reserved-inactive with its baseline conformance gate.
 - Preserved all pre-split normative bytes in
   [`docs/spec/archive/heterodyne-0.4.0.md`](docs/spec/archive/heterodyne-0.4.0.md)
-  unchanged and published the complete
+  unchanged and added the complete
   [old-section anchor map](docs/spec/archive/heterodyne-0.4.0-anchor-map.md).
   The 0.4.0 notes below are historical archive descriptions, not current
   ownership guidance.

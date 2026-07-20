@@ -27,6 +27,7 @@ export type FamilyDocIssue = {
     | "archive-map-mismatch"
     | "overview-normative-language"
     | "extraction-banner"
+    | "premature-release-claim"
     | "release-manifest-mismatch";
   message: string;
 };
@@ -309,7 +310,7 @@ function githubHeadingAnchors(markdown: string): string[] {
   return anchors;
 }
 
-type ReleaseManifest = {
+export type ReleaseManifest = {
   document: DocumentId;
   version: "0.5.0";
   qualified_version: `${DocumentId}/0.5.0`;
@@ -324,11 +325,15 @@ function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
   if (value !== null && typeof value === "object") {
     return `{${Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right, "en"))
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
       .map(([key, member]) => `${JSON.stringify(key)}:${canonicalJson(member)}`)
       .join(",")}}`;
   }
   return JSON.stringify(value);
+}
+
+export function releaseManifestBytes(manifest: ReleaseManifest): string {
+  return `${canonicalJson(manifest)}\n`;
 }
 
 export function expectedReleaseManifests(repoRoot: string): Record<DocumentId, ReleaseManifest> {
@@ -386,7 +391,7 @@ export function writeReleaseManifests(repoRoot: string): string[] {
     const directory = resolve(repoRoot, "docs/spec/releases", document);
     const path = resolve(directory, "0.5.0.json");
     mkdirSync(directory, { recursive: true });
-    writeFileSync(path, `${JSON.stringify(expected[document], null, 2)}\n`, "utf8");
+    writeFileSync(path, releaseManifestBytes(expected[document]), "utf8");
     written.push(path);
   }
   return written;
@@ -467,6 +472,38 @@ export function lintFamilyCutover(repoRoot: string): FamilyDocIssue[] {
       message: "the non-normative family overview contains an uppercase BCP 14 keyword",
     });
   }
+  if (
+    !/prepared 0\.5\.0 documents/i.test(overview) ||
+    !/unreleased[\s\S]*claims\/OIDC[\s\S]*explicit\s+release\s+approval/i.test(
+      overview,
+    ) ||
+    /current release|release records/i.test(overview)
+  ) {
+    issues.push({
+      path: displayPath(repoRoot, overviewPath),
+      line: 1,
+      code: "premature-release-claim",
+      message: "overview must distinguish current normative authority from the prepared, unreleased 0.5.0 artifacts",
+    });
+  }
+
+  const changelogPath = resolve(repoRoot, "CHANGELOG.md");
+  if (existsSync(changelogPath)) {
+    const changelog = readFileSync(changelogPath, "utf8");
+    const current = changelog.split("### Historical 0.4.0", 1)[0];
+    if (
+      !/^## \[Unreleased\]$/m.test(current) ||
+      !/prepared[\s\S]*0\.5\.0/i.test(current) ||
+      /## 0\.5\.0 document releases|\bPublished\b/.test(current)
+    ) {
+      issues.push({
+        path: displayPath(repoRoot, changelogPath),
+        line: 1,
+        code: "premature-release-claim",
+        message: "0.5.0 must remain in Unreleased pending claims/OIDC completion and explicit approval",
+      });
+    }
+  }
   for (const document of familyDocs) {
     if (/pre-release extraction draft/i.test(document.lines.join("\n"))) {
       issues.push({
@@ -511,8 +548,8 @@ export function lintFamilyCutover(repoRoot: string): FamilyDocIssue[] {
       });
       continue;
     }
-    const actual = JSON.parse(readFileSync(path, "utf8"));
-    if (canonicalJson(actual) !== canonicalJson(expected[document])) {
+    const actualBytes = readFileSync(path, "utf8");
+    if (actualBytes !== releaseManifestBytes(expected[document])) {
       issues.push({
         path: displayPath(repoRoot, path),
         line: 1,

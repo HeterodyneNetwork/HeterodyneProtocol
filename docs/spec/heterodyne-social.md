@@ -9,8 +9,11 @@ Normative dependencies:
 - `heterodyne:core/0.5.0#core-conformance`
 - `heterodyne:comms/0.5.0#comms-conformance`
 
-This is Social's first 0.5.0 release, descended from the Heterodyne 0.4.x
-monolith. It is not a synchronized family version. While Social is 0.x, a
+This document prepares Social's first 0.5.0 release, descended from the
+Heterodyne 0.4.x monolith. It is current normative authority at this repository
+path but remains unreleased pending claims/OIDC completion and explicit
+release approval. It is not a synchronized family version. While Social is
+0.x, a
 conformance claim MUST pin the exact Social, Core, and Comms versions; any 0.x
 release MAY break an earlier one. The key words MUST, MUST NOT, REQUIRED,
 SHALL, SHALL NOT, SHOULD, SHOULD NOT, RECOMMENDED, NOT RECOMMENDED, MAY, and

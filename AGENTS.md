@@ -10,6 +10,8 @@ agent-specific working conventions.
 family map. Normative authority is divided among the four independently
 versioned 0.5.0 documents below. The former 0.4.0 monolith and its anchor
 migration map live under [`docs/spec/archive/`](docs/spec/archive/).
+The prepared 0.5.0 documents remain unreleased until claims/OIDC work is
+complete and explicit release approval is given.
 
 ## Where to look first
 

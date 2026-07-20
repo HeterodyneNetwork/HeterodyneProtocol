@@ -6,8 +6,10 @@ Registry revision: `1`
 
 Normative dependencies: `heterodyne:core/0.5.0#core-conformance`.
 
-This is Comms' first 0.5.0 release, descended from the Heterodyne 0.4.x
-monolith.
+This document prepares Comms' first 0.5.0 release, descended from the
+Heterodyne 0.4.x monolith. It is current normative authority at this repository
+path but remains unreleased pending claims/OIDC completion and explicit
+release approval.
 `comms/0.5.0` is not a synchronized family version. While Comms is 0.x, exact
 version matching is required. The key words MUST, MUST NOT, REQUIRED, SHALL,
 SHALL NOT, SHOULD, SHOULD NOT, RECOMMENDED, NOT RECOMMENDED, MAY, and OPTIONAL

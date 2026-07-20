@@ -16,7 +16,7 @@ below; the former 0.4.0 monolith is frozen in the archive.
 
 The family has four independently versioned documents:
 
-| Document | Current lineage | Responsibility |
+| Document | Prepared version | Responsibility |
 |---|---:|---|
 | [Heterodyne Core](docs/spec/heterodyne-core.md) | `core/0.5.0` | Persona identity, KEL verification, canonical Nostr bytes, Radicle delegation, node roles, repository substrate, registry, versioning, and base conformance. |
 | [Heterodyne Comms](docs/spec/heterodyne-comms.md) | `comms/0.5.0` | Nostr-native envelopes, privacy tiers, publishing, retrieval, feeds, double-ratchet direct messages, credential sync, and encrypted subprotocol carriage. |
@@ -29,6 +29,10 @@ The dependency graph is exactly:
 Core <- Comms <- Control
 Core <- Comms <- Social
 ```
+
+These prepared 0.5.0 documents are current normative authority in the
+repository, but remain unreleased until the claims/OIDC work is complete and
+explicit release approval is given.
 
 Versions are qualified per document. `core/0.5.0` and `social/0.5.0`, for
 example, are independent releases rather than one synchronized family version.
