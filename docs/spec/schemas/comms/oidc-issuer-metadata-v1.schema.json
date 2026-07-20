@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/comms/oidc-issuer-metadata-v1.schema.json",
+  "title": "Heterodyne Comms OIDC issuer metadata v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "issuer",
+    "authorization_endpoint",
+    "token_endpoint",
+    "device_authorization_endpoint",
+    "jwks_uri",
+    "response_types_supported",
+    "grant_types_supported",
+    "code_challenge_methods_supported",
+    "subject_types_supported",
+    "id_token_signing_alg_values_supported",
+    "token_endpoint_auth_signing_alg_values_supported"
+  ],
+  "properties": {
+    "issuer": { "$ref": "#/definitions/issuer" },
+    "authorization_endpoint": { "type": "string", "pattern": "^https://.+/authorize$" },
+    "token_endpoint": { "type": "string", "pattern": "^https://.+/token$" },
+    "device_authorization_endpoint": { "type": "string", "pattern": "^https://.+/device_authorization$" },
+    "jwks_uri": { "type": "string", "pattern": "^https://.+/\\.well-known/jwks\\.json$" },
+    "response_types_supported": { "const": ["code"] },
+    "grant_types_supported": { "const": ["authorization_code", "urn:ietf:params:oauth:grant-type:device_code"] },
+    "code_challenge_methods_supported": { "const": ["S256"] },
+    "subject_types_supported": { "const": ["pairwise"] },
+    "id_token_signing_alg_values_supported": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "contains": { "const": "RS256" },
+      "items": { "enum": ["RS256", "ES256", "EdDSA"] }
+    },
+    "token_endpoint_auth_signing_alg_values_supported": { "const": ["RS256"] }
+  },
+  "definitions": {
+    "issuer": {
+      "type": "string",
+      "pattern": "^https://[^/?#]+/oidc/npub1[023456789acdefghjklmnpqrstuvwxyz]+$"
+    }
+  }
+}

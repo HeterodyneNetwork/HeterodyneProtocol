@@ -1,0 +1,61 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "oidc/discovery-exact-issuer",
+  "description": "The immutable lowercase cold-root npub produces the exact issuer, OIDC discovery path, RFC 8414 alias, and RS256 metadata.",
+  "input": {
+    "operation": "discovery",
+    "origin": "https://node.example",
+    "cold_root_npub": "npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "paths": {
+        "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+        "oidc_discovery": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/.well-known/openid-configuration",
+        "rfc8414_alias": "https://node.example/.well-known/oauth-authorization-server/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d"
+      },
+      "metadata": {
+        "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+        "authorization_endpoint": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/authorize",
+        "token_endpoint": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/token",
+        "device_authorization_endpoint": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/device_authorization",
+        "jwks_uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/.well-known/jwks.json",
+        "response_types_supported": [
+          "code"
+        ],
+        "grant_types_supported": [
+          "authorization_code",
+          "urn:ietf:params:oauth:grant-type:device_code"
+        ],
+        "code_challenge_methods_supported": [
+          "S256"
+        ],
+        "subject_types_supported": [
+          "pairwise"
+        ],
+        "id_token_signing_alg_values_supported": [
+          "RS256"
+        ],
+        "token_endpoint_auth_signing_alg_values_supported": [
+          "RS256"
+        ]
+      },
+      "metadata_validation": {
+        "allowed": true,
+        "state": "active",
+        "reason_code": null
+      }
+    }
+  },
+  "direction": "consume"
+}

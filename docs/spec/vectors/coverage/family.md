@@ -3,7 +3,7 @@
 Generated from [manifest.json](manifest.json); do not edit by hand.
 
 - core: 123
-- comms: 90
+- comms: 103
 - control: 0
 - social: 82
 
@@ -206,6 +206,19 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `node-advert/outer-sig-invalid-rejected` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
 | `node-advert/valid-dual-signed` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
 | `node-advert/valid-dual-signed-v050` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
+| `oidc/authorization-code-pkce` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `oidc/device-authorization` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `oidc/discovery-exact-issuer` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `oidc/dpop-confirmation-bound` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `oidc/id-token-valid` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `oidc/issuer-mismatch-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `oidc/mtls-confirmation-bound` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `oidc/pairwise-subject` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `oidc/prohibited-grants` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `oidc/registered-jwt-assertion` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `oidc/rfc9068-access-token-valid` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `oidc/stable-key-consent-gated` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `oidc/token-type-confusion-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
 | `org/canonical-branch-reachability` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-org-authorization` |
 | `org/member-add-dual-authorized` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-threshold-authority` |
 | `org/member-add-single-authorization-insufficient` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-threshold-authority` |

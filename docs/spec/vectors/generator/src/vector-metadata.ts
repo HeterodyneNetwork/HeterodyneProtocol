@@ -174,6 +174,19 @@ claim-ledger/reader-removal-key-rotation
 claim-ledger/multiwriter-status-allocation
 claim-ledger/stale-minter-denied
 claim-ledger/source-claim-revokes-token
+oidc/discovery-exact-issuer
+oidc/issuer-mismatch-rejected
+oidc/authorization-code-pkce
+oidc/device-authorization
+oidc/prohibited-grants
+oidc/pairwise-subject
+oidc/stable-key-consent-gated
+oidc/id-token-valid
+oidc/rfc9068-access-token-valid
+oidc/token-type-confusion-rejected
+oidc/dpop-confirmation-bound
+oidc/registered-jwt-assertion
+oidc/mtls-confirmation-bound
 config-backup/config-blob-encrypt-decrypt
 config-backup/key-id-derivation
 config-backup/key-rotation-ref-delta
@@ -384,14 +397,14 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
     owner_document: owner,
     owner_version: `${owner}/${DOCUMENT_VERSIONS[owner]}`,
     dependency_versions: dependencies,
-    registry_revision: vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/") ? 2 : 1,
+    registry_revision: vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/") || vectorId.startsWith("oidc/") ? 2 : 1,
     ...(profile === undefined ? {} : { profile }),
     spec_refs: [`heterodyne:${reference.document}/${DOCUMENT_VERSIONS[reference.document]}#${reference.anchor}`],
   };
 }
 
 function referenceFor(vectorId: string, owner: DocumentId): { document: DocumentId; anchor: string } {
-  if (vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/")) {
+  if (vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/") || vectorId.startsWith("oidc/")) {
     return { document: "comms", anchor: "comms-conformance" };
   }
   if (vectorId.startsWith("stamping/") || vectorId.startsWith("profiles/core-breadcrumb")) {

@@ -1,0 +1,119 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "oidc/id-token-valid",
+  "description": "A deterministic RS256 OIDC ID Token validates from exact HTTPS discovery and public JWKS with nonce, time, audience, client, checkpoint, and status bindings.",
+  "input": {
+    "operation": "jwt-validation",
+    "metadata": {
+      "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+      "authorization_endpoint": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/authorize",
+      "token_endpoint": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/token",
+      "device_authorization_endpoint": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/device_authorization",
+      "jwks_uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/.well-known/jwks.json",
+      "response_types_supported": [
+        "code"
+      ],
+      "grant_types_supported": [
+        "authorization_code",
+        "urn:ietf:params:oauth:grant-type:device_code"
+      ],
+      "code_challenge_methods_supported": [
+        "S256"
+      ],
+      "subject_types_supported": [
+        "pairwise"
+      ],
+      "id_token_signing_alg_values_supported": [
+        "RS256"
+      ],
+      "token_endpoint_auth_signing_alg_values_supported": [
+        "RS256"
+      ]
+    },
+    "jwks": {
+      "keys": [
+        {
+          "kty": "RSA",
+          "n": "zvh2fntchh51kVXPblIG2eeggjb0bya6jHF5xOsHTUhr8bi01jmbNjP29oPeFyoztGGKpndDxqt9qHvOL5x3euFKrm6kZywZ_XDVfdZVm7icnpybEmNdammqZcf97EIwOr_mczhRZ9QYK7SsSnBEQW1-BAs9dEHxNT39VqHjCq81uhzLKeemrpW4Kim_s4iYmoRoVkiPHghPhGo9CKXNXj2tGyDmj5hwuXa_gv5sZu5C7u0L9y4T25a-VHFVyUnCoa1yhyiT3teW3256KPmA6rBz1YhdLOCnwWDqIaBGOe4J6gkIODNCuCHwtI8JnX3gcRni_Pz19f3SNqtEJMvWjw",
+          "e": "AQAB",
+          "kid": "1111111111111111111111111111111111111111111111111111111111111111",
+          "alg": "RS256",
+          "use": "sig"
+        }
+      ]
+    },
+    "compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZCIsInN1YiI6InMtdmJROWpZREFVRV9IcnFhblJmX1NRNmdER3BickVVWjBKdWJsdk1zcWciLCJhdWQiOlsicmVnaXN0ZXJlZC1jbGllbnQiXSwiZXhwIjoxNzY3MjMxMjAwLCJpYXQiOjE3NjcyMzA2MDAsImp0aSI6Im9pZGMtdmVjdG9yLWp0aS0wMDAxIiwiY2xpZW50X2lkIjoicmVnaXN0ZXJlZC1jbGllbnQiLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIiwibmFtZSI6IkFsaWNlIiwibm9uY2UiOiJvaWRjLXZlY3Rvci1ub25jZSIsImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9sZWRnZXItY2hlY2twb2ludCI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJjb21taXRfb2lkIjoiMTIxMjEyMTIxMjEyMTIxMjEyMTIxMjEyMTIxMjEyMTIxMjEyMTIxMiIsIm9ic2VydmVkX2F0IjoxNzY3MjMwNTk5fSwic3RhdHVzIjp7InN0YXR1c19saXN0Ijp7InVyaSI6Imh0dHBzOi8vbm9kZS5leGFtcGxlL29pZGMvbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC8wMDExMjIzMzQ0NTU2Njc3ODg5OWFhYmJjY2RkZWVmZi8wLmp3dCIsImlkeCI6N319LCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qvc3RhdHVzLW1pcnJvciI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJwYXRoIjoiLndlbGwta25vd24vbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC8wMDExMjIzMzQ0NTU2Njc3ODg5OWFhYmJjY2RkZWVmZi8wLmp3dCIsInNoYTI1NiI6IjMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMifX0.FU0ncIJ0h5oNRodwZ_y6jdjX_HaEUR8jApBXMEdQpkVA6VVi1Ql-r7aItzJGu_yfZoQnSQE80lncDsWMpoCYtKSivdbENbikdIfcJAW4GssBqRPSzoJyA2KL-7RBkONpAQ1U8DzDH5sPNcv1j0Yqv00ky-VUYOlP5bwPTBYJJzZFUDXMBOtRKeXGuFVpU28jatjeB2d5rsx9KdlfS-WA2NvCmp8tRveNXKNyrF6tsELonpIEo6grLtPC_b7NNq89WXpGfNvPlTMYgLBDpUAiQESAoFZlgR99Eg45H0bBuHVjBav9h_aiODSwfPEIuQ_9hJ8t_Krc4kp52Z6ZGxvpDQ",
+    "expected_audience": "registered-client",
+    "expected_issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+    "expected_jwks_uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/.well-known/jwks.json",
+    "options": {
+      "now": 1767230600,
+      "client_id": "registered-client",
+      "token_use": "id_token",
+      "nonce": "oidc-vector-nonce",
+      "sender_constraint": "none"
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "metadata_validation": {
+        "allowed": true,
+        "state": "active",
+        "reason_code": null
+      },
+      "jwt_validation": {
+        "allowed": true,
+        "state": "active",
+        "reason_code": null
+      },
+      "protected_header": {
+        "alg": "RS256",
+        "kid": "1111111111111111111111111111111111111111111111111111111111111111",
+        "typ": "JWT"
+      },
+      "claims": {
+        "iss": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+        "sub": "s-vbQ9jYDAUE_HrqanRf_SQ6gDGpbrEUZ0JublvMsqg",
+        "aud": [
+          "registered-client"
+        ],
+        "exp": 1767231200,
+        "iat": 1767230600,
+        "jti": "oidc-vector-jti-0001",
+        "client_id": "registered-client",
+        "scope": "openid profile",
+        "name": "Alice",
+        "nonce": "oidc-vector-nonce",
+        "https://heterodyne.network/jwt/ledger-checkpoint": {
+          "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+          "branch": "main",
+          "commit_oid": "1212121212121212121212121212121212121212",
+          "observed_at": 1767230599
+        },
+        "status": {
+          "status_list": {
+            "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/00112233445566778899aabbccddeeff/0.jwt",
+            "idx": 7
+          }
+        },
+        "https://heterodyne.network/jwt/status-mirror": {
+          "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+          "branch": "main",
+          "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/00112233445566778899aabbccddeeff/0.jwt",
+          "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+        }
+      }
+    }
+  },
+  "direction": "consume"
+}

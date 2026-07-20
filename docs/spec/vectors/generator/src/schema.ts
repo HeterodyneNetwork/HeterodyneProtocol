@@ -121,6 +121,7 @@ export const KEY_CLAIM_SCHEMA = readSchema("key-claim-v1.schema.json");
 export const KEY_CLAIM_REVOCATION_SCHEMA = readSchema("key-claim-revocation-v1.schema.json");
 export const CLAIM_LEDGER_RECORD_SCHEMA = readSchema("claim-ledger-record-v1.schema.json");
 export const OIDC_ISSUANCE_RECORD_SCHEMA = readSchema("oidc-issuance-record-v1.schema.json");
+export const OIDC_ISSUER_METADATA_SCHEMA = readSchema("oidc-issuer-metadata-v1.schema.json");
 
 const commsSchemaAjv = new Ajv({ allErrors: true, strict: false });
 commsSchemaAjv.addSchema(KEY_CLAIM_SCHEMA);
@@ -130,6 +131,7 @@ const validateKeyClaim = commsSchemaAjv.getSchema("https://heterodyne.network/sc
 const validateClaimRevocation = commsSchemaAjv.getSchema("https://heterodyne.network/schemas/comms/key-claim-revocation-v1.schema.json")!;
 const validateClaimLedgerRecord = commsSchemaAjv.compile(CLAIM_LEDGER_RECORD_SCHEMA);
 const validateOidcIssuanceRecord = commsSchemaAjv.getSchema("https://heterodyne.network/schemas/comms/oidc-issuance-record-v1.schema.json")!;
+const validateOidcIssuerMetadata = commsSchemaAjv.compile(OIDC_ISSUER_METADATA_SCHEMA);
 
 export function validateVectorOrThrow(value: unknown): asserts value is Vector {
   if (!validate(value)) {
@@ -174,6 +176,13 @@ export function validateOidcIssuanceRecordSchemaOrThrow(value: unknown): void {
   assertJcsInput(value);
   if (!validateOidcIssuanceRecord(value)) {
     throw new Error(`claim-schema-invalid: ${formatErrors(validateOidcIssuanceRecord.errors ?? [])}`);
+  }
+}
+
+export function validateOidcIssuerMetadataSchemaOrThrow(value: unknown): void {
+  assertJcsInput(value);
+  if (!validateOidcIssuerMetadata(value)) {
+    throw new Error(`claim-schema-invalid: ${formatErrors(validateOidcIssuerMetadata.errors ?? [])}`);
   }
 }
 

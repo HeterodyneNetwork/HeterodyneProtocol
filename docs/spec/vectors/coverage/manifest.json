@@ -2311,6 +2311,162 @@
     ]
   },
   {
+    "vector_id": "oidc/authorization-code-pkce",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "oidc/device-authorization",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "oidc/discovery-exact-issuer",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "oidc/dpop-confirmation-bound",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "oidc/id-token-valid",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "oidc/issuer-mismatch-rejected",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "oidc/mtls-confirmation-bound",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "oidc/pairwise-subject",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "oidc/prohibited-grants",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "oidc/registered-jwt-assertion",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "oidc/rfc9068-access-token-valid",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "oidc/stable-key-consent-gated",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "oidc/token-type-confusion-rejected",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
     "vector_id": "org/canonical-branch-reachability",
     "owner_document": "comms",
     "owner_version": "comms/0.5.0",

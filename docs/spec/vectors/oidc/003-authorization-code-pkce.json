@@ -1,0 +1,134 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "oidc/authorization-code-pkce",
+  "description": "A registered Authorization Code client with exact redirect URI and S256 PKCE receives only the consented intersection.",
+  "input": {
+    "operation": "authorization",
+    "request": {
+      "flow": "authorization_code",
+      "grant_type": "authorization_code",
+      "response_type": "code",
+      "client_id": "registered-client",
+      "registration": {
+        "client_id": "registered-client",
+        "redirect_uris": [
+          "https://client.example/cb"
+        ],
+        "grant_types": [
+          "authorization_code",
+          "urn:ietf:params:oauth:grant-type:device_code"
+        ],
+        "scopes": [
+          "heterodyne:key-ref",
+          "openid",
+          "profile"
+        ],
+        "audiences": [
+          "https://api.example"
+        ],
+        "assertion_profiles": [
+          "urn:example:jwt-assertion:v1"
+        ],
+        "sector_identifier": "https://client.example"
+      },
+      "registration_status": "active",
+      "redirect_uri": "https://client.example/cb",
+      "code_challenge": "Wz4aL3h4c3Nad0JzV2k1NVJiUU1JQjRXM1c4SjJVUGV5TQ",
+      "code_challenge_method": "S256",
+      "requested_scopes": [
+        "openid",
+        "profile",
+        "heterodyne:key-ref"
+      ],
+      "requested_audiences": [
+        "https://api.example"
+      ],
+      "consented_scopes": [
+        "openid",
+        "profile"
+      ],
+      "consented_audiences": [
+        "https://api.example"
+      ],
+      "consented_claims": [
+        "name"
+      ],
+      "trusted_namespaces": [
+        "profile"
+      ],
+      "pairwise_subject_context": {
+        "local_subject": "persona-local-subject",
+        "sector_identifier": "https://client.example",
+        "secret": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "pairwise_sub": "s-vbQ9jYDAUE_HrqanRf_SQ6gDGpbrEUZ0JublvMsqg",
+      "canonical_claim_state": true,
+      "ledger_checkpoint": {
+        "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+        "branch": "main",
+        "commit_oid": "1212121212121212121212121212121212121212",
+        "observed_at": 1767230599
+      },
+      "active_claims": [
+        {
+          "claim_id": "2222222222222222222222222222222222222222222222222222222222222222",
+          "namespace": "profile",
+          "name": "name",
+          "value": "Alice",
+          "state": "active",
+          "repository_confirmed": true,
+          "issuer_trusted": true,
+          "subject_proof_valid": true
+        },
+        {
+          "claim_id": "2323232323232323232323232323232323232323232323232323232323232323",
+          "namespace": "internal",
+          "name": "private-provenance",
+          "value": "never-release",
+          "state": "active",
+          "repository_confirmed": true,
+          "issuer_trusted": true,
+          "subject_proof_valid": true
+        }
+      ]
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "allowed": true,
+      "state": "active",
+      "reason_code": null,
+      "pairwise_sub": "s-vbQ9jYDAUE_HrqanRf_SQ6gDGpbrEUZ0JublvMsqg",
+      "scopes": [
+        "openid",
+        "profile"
+      ],
+      "audience": [
+        "https://api.example"
+      ],
+      "released_claims": {
+        "name": "Alice"
+      },
+      "source_claim_ids": [
+        "2222222222222222222222222222222222222222222222222222222222222222"
+      ],
+      "checkpoint": {
+        "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+        "branch": "main",
+        "commit_oid": "1212121212121212121212121212121212121212",
+        "observed_at": 1767230599
+      }
+    }
+  },
+  "direction": "consume"
+}
