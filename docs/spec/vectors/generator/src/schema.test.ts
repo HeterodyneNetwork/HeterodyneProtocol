@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { validateVectorOrThrow } from "./schema.js";
+import {
+  validateClaimRevocationSchemaOrThrow,
+  validateKeyClaimSchemaOrThrow,
+  validateVectorOrThrow,
+} from "./schema.js";
 
 describe("vector schema", () => {
   const valid = (owner: "core" | "comms" | "social" | "control") => ({
@@ -166,5 +170,55 @@ describe("vector schema", () => {
         },
       }),
     ).toThrow(/reason_code/);
+  });
+});
+
+describe("Comms claim schemas", () => {
+  const key = { type: "nostr-secp256k1", value: "12".repeat(32) };
+  const base = {
+    claim_id: "ab".repeat(32),
+    issuer: key,
+    subject: { type: "radicle-ed25519-nid", value: "did:key:z6MkhM7qBMzbpZbpQeMVQW1H4KAKz7GgzGzHwGKYvEyt84qC" },
+    claim_class: "authorization",
+    namespace: "heterodyne.device",
+    name: "claim-ledger-reader",
+    value: true,
+    issued_at: 1784390400,
+    not_before: 1784390400,
+    expires_at: 1784476800,
+    visibility: "repository-private",
+    comms_version: "comms/0.5.0",
+    registry_revision: 2,
+  };
+
+  it("accepts exact claims and rejects extra properties", () => {
+    expect(() => validateKeyClaimSchemaOrThrow(base)).not.toThrow();
+    expect(() => validateKeyClaimSchemaOrThrow({ ...base, extra: true })).toThrow(/additional/);
+  });
+
+  it("requires bounded authorization expiry and caps delegation depth at eight", () => {
+    const { expires_at: _, ...withoutExpiry } = base;
+    expect(() => validateKeyClaimSchemaOrThrow(withoutExpiry)).toThrow(/expires_at/);
+    expect(() => validateKeyClaimSchemaOrThrow({
+      ...base,
+      constraints: { namespaces: [], audiences: [], resources: [], remaining_depth: 9 },
+    })).toThrow(/remaining_depth|8/);
+  });
+
+  it("enforces time ordering beyond structural JSON Schema", () => {
+    expect(() => validateKeyClaimSchemaOrThrow({ ...base, not_before: base.issued_at - 1 })).toThrow(/not_before/);
+    expect(() => validateKeyClaimSchemaOrThrow({ ...base, expires_at: base.not_before - 1 })).toThrow(/expires_at/);
+  });
+
+  it("accepts exact revocations and rejects unregistered reasons and extras", () => {
+    const revocation = {
+      claim_id: base.claim_id,
+      revoked_at: 1784390500,
+      reason_code: "claim-revoked",
+      revoker: key,
+    };
+    expect(() => validateClaimRevocationSchemaOrThrow(revocation)).not.toThrow();
+    expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, reason_code: "not-registered" })).toThrow(/reason_code/);
+    expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, extra: true })).toThrow(/additional/);
   });
 });

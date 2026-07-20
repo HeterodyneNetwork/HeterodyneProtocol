@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/comms/key-claim-revocation-v1.schema.json",
+  "title": "Heterodyne Comms irreversible key-claim revocation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["claim_id", "revoked_at", "reason_code", "revoker"],
+  "properties": {
+    "claim_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "revoked_at": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "reason_code": { "type": "string", "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$", "minLength": 1, "maxLength": 128 },
+    "revoker": { "$ref": "#/definitions/key_ref" },
+    "proof": { "$ref": "#/definitions/key_proof" }
+  },
+  "definitions": {
+    "key_ref": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false, "required": ["type", "value"],
+          "properties": { "type": { "const": "nostr-secp256k1" }, "value": { "type": "string", "pattern": "^[0-9a-f]{64}$" } }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["type", "value"],
+          "properties": { "type": { "const": "radicle-ed25519-nid" }, "value": { "type": "string", "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$", "maxLength": 128 } }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["type", "value"],
+          "properties": { "type": { "const": "jwk-thumbprint" }, "value": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" } }
+        }
+      ]
+    },
+    "key_proof": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false, "required": ["type", "signature"],
+          "properties": { "type": { "const": "nostr-bip340" }, "signature": { "type": "string", "pattern": "^[0-9a-f]{128}$" } }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["type", "public_key", "signature"],
+          "properties": {
+            "type": { "const": "radicle-ed25519" },
+            "public_key": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "signature": { "type": "string", "pattern": "^[0-9a-f]{128}$" }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["type", "jwk", "protected", "signature"],
+          "properties": {
+            "type": { "const": "jwk-jws" },
+            "jwk": { "type": "object", "minProperties": 1, "additionalProperties": true },
+            "protected": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+            "signature": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/comms/key-claim-v1.schema.json",
+  "title": "Heterodyne Comms atomic key claim v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "claim_id",
+    "issuer",
+    "subject",
+    "claim_class",
+    "namespace",
+    "name",
+    "value",
+    "issued_at",
+    "not_before",
+    "visibility",
+    "comms_version",
+    "registry_revision"
+  ],
+  "properties": {
+    "claim_id": { "$ref": "#/definitions/claim_id" },
+    "issuer": { "$ref": "#/definitions/key_ref" },
+    "subject": { "$ref": "#/definitions/key_ref" },
+    "claim_class": { "type": "string", "enum": ["descriptive", "authorization"] },
+    "namespace": { "type": "string", "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$", "minLength": 1, "maxLength": 255 },
+    "name": { "type": "string", "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$", "minLength": 1, "maxLength": 255 },
+    "value": { "$ref": "#/definitions/json_value" },
+    "issued_at": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "not_before": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "expires_at": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "audience": { "$ref": "#/definitions/string_set" },
+    "resources": { "$ref": "#/definitions/string_set" },
+    "visibility": { "type": "string", "enum": ["public", "pairwise-private", "repository-private", "local-only"] },
+    "parent_claim_id": { "$ref": "#/definitions/claim_id" },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["namespaces", "audiences", "resources", "remaining_depth"],
+      "properties": {
+        "namespaces": { "$ref": "#/definitions/string_set" },
+        "audiences": { "$ref": "#/definitions/string_set" },
+        "resources": { "$ref": "#/definitions/string_set" },
+        "remaining_depth": { "type": "integer", "minimum": 0, "maximum": 8 }
+      }
+    },
+    "revokers": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": { "$ref": "#/definitions/key_ref" }
+    },
+    "comms_version": { "const": "comms/0.5.0" },
+    "registry_revision": { "const": 2 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "claim_class": { "const": "authorization" } }, "required": ["claim_class"] },
+      "then": { "required": ["expires_at"] }
+    }
+  ],
+  "definitions": {
+    "claim_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "string_set": {
+      "type": "array",
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 2048 }
+    },
+    "key_ref": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "const": "nostr-secp256k1" },
+            "value": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "const": "radicle-ed25519-nid" },
+            "value": { "type": "string", "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$", "maxLength": 128 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "const": "jwk-thumbprint" },
+            "value": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" }
+          }
+        }
+      ]
+    },
+    "json_value": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "number" },
+        { "type": "string" },
+        { "type": "array", "items": { "$ref": "#/definitions/json_value" } },
+        { "type": "object", "additionalProperties": { "$ref": "#/definitions/json_value" } }
+      ]
+    }
+  }
+}

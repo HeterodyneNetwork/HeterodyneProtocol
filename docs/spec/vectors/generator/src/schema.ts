@@ -1,4 +1,7 @@
-import { Ajv, type ErrorObject, type JSONSchemaType } from "ajv";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { Ajv, type AnySchema, type ErrorObject, type JSONSchemaType } from "ajv";
 import { reasonCodeValues } from "./reason-codes.js";
 import { parseQualifiedVersion } from "./family.js";
 import type { DocumentId, Vector } from "./types.js";
@@ -104,11 +107,50 @@ export const VECTOR_SCHEMA = {
 const ajv = new Ajv({ allErrors: true });
 const validate = ajv.compile(VECTOR_SCHEMA);
 
+const schemasRoot = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../schemas/comms",
+);
+
+function readSchema(name: string): AnySchema {
+  return JSON.parse(readFileSync(resolve(schemasRoot, name), "utf8")) as AnySchema;
+}
+
+export const KEY_CLAIM_SCHEMA = readSchema("key-claim-v1.schema.json");
+export const KEY_CLAIM_REVOCATION_SCHEMA = readSchema("key-claim-revocation-v1.schema.json");
+
+const commsSchemaAjv = new Ajv({ allErrors: true, strict: false });
+const validateKeyClaim = commsSchemaAjv.compile(KEY_CLAIM_SCHEMA);
+const validateClaimRevocation = commsSchemaAjv.compile(KEY_CLAIM_REVOCATION_SCHEMA);
+
 export function validateVectorOrThrow(value: unknown): asserts value is Vector {
   if (!validate(value)) {
     throw new Error(formatErrors(validate.errors ?? []));
   }
   validateFamilyMetadata(value);
+}
+
+export function validateKeyClaimSchemaOrThrow(value: unknown): void {
+  if (!validateKeyClaim(value)) {
+    throw new Error(`claim-schema-invalid: ${formatErrors(validateKeyClaim.errors ?? [])}`);
+  }
+  const claim = value as { issued_at: number; not_before: number; expires_at?: number };
+  if (claim.not_before < claim.issued_at) {
+    throw new Error("claim-schema-invalid: not_before must be greater than or equal to issued_at");
+  }
+  if (claim.expires_at !== undefined && claim.expires_at <= claim.not_before) {
+    throw new Error("claim-schema-invalid: expires_at must be greater than not_before");
+  }
+}
+
+export function validateClaimRevocationSchemaOrThrow(value: unknown): void {
+  if (!validateClaimRevocation(value)) {
+    throw new Error(`claim-schema-invalid: ${formatErrors(validateClaimRevocation.errors ?? [])}`);
+  }
+  const reasonCode = (value as { reason_code: string }).reason_code;
+  if (!REGISTRY_REASON_CODES.includes(reasonCode)) {
+    throw new Error(`claim-schema-invalid: reason_code is not registered: ${reasonCode}`);
+  }
 }
 
 function validateFamilyMetadata(vector: Vector): void {

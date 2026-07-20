@@ -1,5 +1,6 @@
 import { sha1 } from "@noble/hashes/legacy";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
+import { jcsCanonicalize } from "./jcs.js";
 
 // OID-level derivation of the OPTIONAL materialized-KEL ref profile
 // (spec §10.1.2, ADR-032): refs/xyz.heterodyne.keri/log and
@@ -47,37 +48,6 @@ export function gitCommitOid(treeOid: string, parents: string[], createdAt: numb
   lines.push(`committer ${GIT_ACTOR} ${createdAt} +0000`);
   const text = `${lines.join("\n")}\n\n${eventId}\n`;
   return gitObjectOid("commit", utf8Bytes(text));
-}
-
-// RFC 8785 (JCS) canonicalization, constrained to the value types the
-// §10.1.2 state.json schema permits: objects (keys sorted by UTF-16 code
-// units), arrays, strings, and non-negative integers.
-export function jcsCanonicalize(value: unknown): string {
-  if (value === null) {
-    return "null";
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(jcsCanonicalize).join(",")}]`;
-  }
-  if (typeof value === "object") {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-      .map(([key, val]) => `${JSON.stringify(key)}:${jcsCanonicalize(val)}`);
-    return `{${entries.join(",")}}`;
-  }
-  if (typeof value === "string") {
-    return JSON.stringify(value);
-  }
-  if (typeof value === "number") {
-    if (!Number.isInteger(value)) {
-      throw new Error(`state.json JCS supports integers only, got ${value}`);
-    }
-    return String(value);
-  }
-  if (typeof value === "boolean") {
-    return value ? "true" : "false";
-  }
-  throw new Error(`unsupported JCS value type: ${typeof value}`);
 }
 
 // The materialized key state after applying one KEL event (§10.1.2 schema).
