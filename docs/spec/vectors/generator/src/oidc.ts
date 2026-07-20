@@ -336,7 +336,7 @@ export function validateColdRootBinding(
 }
 
 export function derivePairwiseSubject(localSubject: string, sectorIdentifier: string, secretHex: string): string {
-  if (!/^[A-Za-z0-9._~-]{1,255}$/.test(localSubject) || !/^[0-9a-f]{64}$/.test(secretHex)) {
+  if (!/^[0-9a-f]{64}$/.test(localSubject) || !/^[0-9a-f]{64}$/.test(secretHex)) {
     throw new Error("oidc-claim-release-denied: invalid pairwise subject derivation input");
   }
   const sector = exactHttpsOrigin(sectorIdentifier);

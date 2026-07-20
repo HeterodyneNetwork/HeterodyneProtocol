@@ -1873,6 +1873,8 @@ describe("protocol family documents", () => {
     expect(comms).toMatch(/same exact typed-key subject[\s\S]*repository-private/i);
     expect(comms).toMatch(/concurrent[\s\S]*(?:registration|consent)[\s\S]*conflict[\s\S]*fail closed/i);
     expect(comms).toContain("heterodyne-oidc-pairwise-sub-v1\\0<exact-sector-origin>\\0<local-subject>");
+    expect(comms).toMatch(/`local-subject`[\s\S]*exactly 64 lowercase hexadecimal[\s\S]*SHA-256[\s\S]*RFC 8785 JCS[\s\S]*exact typed-key subject/i);
+    expect(comms).toMatch(/HMAC[\s\S]*NUL[\s\S]*exact 64 UTF-8 hex\s+characters[\s\S]*unpadded base64url/i);
     expect(comms).toMatch(/HMAC-SHA-256[\s\S]*unpadded base64url[\s\S]*stable across/i);
   });
 

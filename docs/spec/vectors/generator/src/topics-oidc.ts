@@ -309,9 +309,32 @@ export function replayOidcVector(input: unknown): unknown {
     return { verdict: "reject", reason_code: "oidc-grant-prohibited", normalized: { decisions } };
   }
   if (operation === "pairwise-sectors") {
+    const typedSubject = spec.typed_subject;
+    const localSubject = createHash("sha256").update(jcsCanonicalize(typedSubject)).digest("hex");
+    if (localSubject !== spec.local_subject) {
+      return { verdict: "reject", reason_code: "oidc-claim-release-denied", normalized: {
+        computed_local_subject: localSubject,
+      } };
+    }
+    const firstSector = String(spec.first_sector);
+    const secret = String(spec.secret);
+    const mutationResults = (spec.local_subject_mutations as JsonValue[]).map((raw) => {
+      const mutation = raw as Record<string, JsonValue>;
+      try {
+        return { name: String(mutation.name), verdict: "accept",
+          value: derivePairwiseSubject(String(mutation.value), firstSector, secret) };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return { name: String(mutation.name), verdict: "reject",
+          reason_code: /^([a-z0-9]+(?:-[a-z0-9]+)*):/.exec(message)?.[1] ?? "oidc-claim-release-denied" };
+      }
+    });
     return { verdict: "accept", normalized: {
-      first: derivePairwiseSubject(String(spec.local_subject), String(spec.first_sector), String(spec.secret)),
-      second: derivePairwiseSubject(String(spec.local_subject), String(spec.second_sector), String(spec.secret)),
+      local_subject: localSubject,
+      hmac_input: `heterodyne-oidc-pairwise-sub-v1\0${firstSector}\0${localSubject}`,
+      first: derivePairwiseSubject(localSubject, firstSector, secret),
+      second: derivePairwiseSubject(localSubject, String(spec.second_sector), secret),
+      mutation_results: mutationResults,
     } };
   }
   if (operation === "key-gating") {
@@ -443,6 +466,9 @@ export async function buildOidcVectors(fixtures: Fixtures): Promise<AuthoredVect
   });
   const wrongDpop = { jkt: createHash("sha256").update("wrong-dpop-key").digest("base64url") };
   const wrongMtls = { "x5t#S256": createHash("sha256").update("wrong-mtls-cert").digest("base64url") };
+  const pairwiseTypedSubject = { type: "radicle-ed25519-nid", value: x.s.writerOne.did_key };
+  const pairwiseLocalSubject = createHash("sha256")
+    .update(jcsCanonicalize(pairwiseTypedSubject)).digest("hex");
   return [
     authored("001-discovery-exact-issuer.json", "discovery-exact-issuer", "Exact cold-root-bound issuer discovery.", { operation: "discovery", origin: "https://node.example", cold_root_npub: x.root, identity: x.identity as unknown as JsonValue }),
     authored("002-issuer-mismatch-rejected.json", "issuer-mismatch-rejected", "A valid epoch npub is rejected as an issuer.", { operation: "jwt-validation", ...jwtInput(legacyId, { ...common, token_use: "id_token", nonce: "oidc-vector-nonce", sender_constraint: "none" }), expected_issuer: `https://node.example/oidc/${x.epoch}` }),
@@ -452,9 +478,17 @@ export async function buildOidcVectors(fixtures: Fixtures): Promise<AuthoredVect
       operation: "authorization-cases", replay: authorizationReplay,
       grant_types: ["implicit", "password", "client_credentials"],
     }),
-    authored("006-pairwise-subject.json", "pairwise-subject", "The same authenticated local subject derives distinct pairwise subjects for distinct sectors.", {
-      operation: "pairwise-sectors", local_subject: createHash("sha256").update(x.s.writerOne.did_key).digest("hex"),
+    authored("006-pairwise-subject.json", "pairwise-subject", "The exact typed-subject JCS digest derives distinct pairwise subjects for distinct sectors and rejects every non-canonical local-subject encoding.", {
+      operation: "pairwise-sectors", typed_subject: pairwiseTypedSubject,
+      local_subject: pairwiseLocalSubject,
       first_sector: "https://client.example", second_sector: "https://other-client.example", secret: x.pairwiseSecret,
+      local_subject_mutations: [
+        { name: "short-abc", value: "abc" },
+        { name: "uppercase-hex", value: "A".repeat(64) },
+        { name: "nonhex-underscore", value: "_".repeat(64) },
+        { name: "wrong-length-short", value: "a".repeat(63) },
+        { name: "wrong-length-long", value: "a".repeat(65) },
+      ],
     }),
     authored("007-stable-key-consent-gated.json", "stable-key-consent-gated", "Key-ref release is removed without scope or claim consent and fails when the signed source is omitted.", { operation: "key-gating", replay: authorizationReplay }),
     authored("008-id-token-valid.json", "id-token-valid", "Strict RS256 ID Token and pinned draft-21 status validation.", jwtInput(id, { ...statusCommon, token_use: "id_token", nonce: "oidc-vector-nonce", sender_constraint: "none" }, true)),

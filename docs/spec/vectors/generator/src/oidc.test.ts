@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { buildFixtures } from "./fixtures.js";
 import {
   decideDeviceAuthorization,
+  derivePairwiseSubject,
   discoveryPaths,
   issueAuthorizationCode,
   issueDeviceAuthorization,
@@ -23,6 +24,7 @@ import {
 import { OIDC_RSA_ONE } from "./oidc-rsa-fixtures.js";
 import { buildOidcScenario, buildOidcVectors, replayOidcVector } from "./topics-oidc.js";
 import { buildLedgerRepositoryEvidence, mergeClaimLedger } from "./claim-ledger.js";
+import { jcsCanonicalize } from "./jcs.js";
 
 const fixtures = buildFixtures();
 let x: Awaited<ReturnType<typeof buildOidcScenario>>;
@@ -70,6 +72,18 @@ describe("cold-root issuer and exact origin identity", () => {
 });
 
 describe("evidence-bound release and OAuth state machines", () => {
+  it("derives pairwise subjects only from the exact lowercase typed-subject JCS digest", () => {
+    const typedSubject = { type: "radicle-ed25519-nid", value: x.s.writerOne.did_key };
+    const localSubject = createHash("sha256").update(jcsCanonicalize(typedSubject)).digest("hex");
+    expect(localSubject).toMatch(/^[0-9a-f]{64}$/);
+    expect(derivePairwiseSubject(localSubject, "https://client.example", x.pairwiseSecret))
+      .toBe(x.release.pairwise_sub);
+    for (const invalid of ["abc", "A".repeat(64), "_".repeat(64), "a".repeat(63), "a".repeat(65)]) {
+      expect(() => derivePairwiseSubject(invalid, "https://client.example", x.pairwiseSecret), invalid)
+        .toThrow(/pairwise subject derivation input/);
+    }
+  });
+
   it("replays signed registration, consent and source claims and binds the full checkpoint", () => {
     const release = validateAuthorizationRequest(x.request);
     expect(release).toMatchObject({
@@ -278,5 +292,11 @@ describe("authored OIDC corpus", () => {
       expect(replayOidcVector(vector.input)).toEqual(vector.expected_output);
       expect(JSON.stringify(vector)).not.toContain('"d":"');
     }
+    const pairwise = vectors.find(({ vector }) => vector.vector_id === "oidc/pairwise-subject")!.vector;
+    expect(pairwise.input.local_subject).toBe(createHash("sha256")
+      .update(jcsCanonicalize(pairwise.input.typed_subject)).digest("hex"));
+    expect((pairwise.input.local_subject_mutations as unknown[])).toHaveLength(5);
+    expect((pairwise.expected_output.normalized as { mutation_results: Array<{ verdict: string }> })
+      .mutation_results.every(({ verdict }) => verdict === "reject")).toBe(true);
   });
 });

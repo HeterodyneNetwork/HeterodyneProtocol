@@ -1203,14 +1203,16 @@ is pairwise by default. Stable key release additionally requires scope
 claims, correlate pairwise subjects across sectors, or treat a descriptive
 claim as authority.
 
-The pairwise local subject input is lowercase SHA-256 over RFC 8785 bytes of the
-exact typed-key subject. The pairwise identifier uses HMAC-SHA-256 under the
-persona's repository-private pairwise secret over the UTF-8 string
+`local-subject` is exactly 64 lowercase hexadecimal characters encoding
+SHA-256 over the RFC 8785 JCS bytes of the exact typed-key subject. The
+pairwise identifier uses HMAC-SHA-256 under the persona's repository-private
+pairwise secret over the UTF-8 string
 `heterodyne-oidc-pairwise-sub-v1\0<exact-sector-origin>\0<local-subject>`, where
-each `\0` is one NUL octet, and encodes the 32-byte output as unpadded base64url.
-The sector is the registration's exact HTTPS origin under the rules above.
-Nodes sharing the same authoritative private repository state and pairwise
-secret therefore produce an identifier stable across nodes
+each `\0` is one NUL octet and `<local-subject>` is those exact 64 UTF-8 hex
+characters between the separators. The 32-byte HMAC output is encoded as
+unpadded base64url. The sector is the registration's exact HTTPS origin under
+the rules above. Nodes sharing the same authoritative private repository state
+and pairwise secret therefore produce an identifier stable across nodes
 for the same subject and sector, while different sectors remain unlinkable by
 the relying parties.
 
