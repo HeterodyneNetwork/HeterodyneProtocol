@@ -35,14 +35,14 @@
       "status_lists": [
         {
           "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
-          "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46",
+          "sha256": "6a193d9f8bc2b849cd8610e44f8de9cf6f6d4c57777ae450a9b7bea4b6ae3fc5",
           "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
           "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
         }
       ],
       "successor": {
         "issuer": "https://successor.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
-        "manifest_sha256": "7f6473e7e0ee2d367e261b4c99dbad30edeabf185a7e843c9c8e56f1131645b6"
+        "manifest_sha256": "ce0294edfe75b61416d6327ca3564cacfc2385b8e8d227d62baaecd0ab72647d"
       },
       "authority": {
         "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
@@ -57,7 +57,7 @@
       "authority_proof": {
         "type": "radicle-ed25519",
         "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-        "signature": "80341aa5242f03a8eeff767513a976328a323ab60bb72b5fd4752e9bcf5406348a7bbfdd3a61d0ac4bd6ffa7d495eb9f9546dfd91c32e1672ba87d9706b0f207"
+        "signature": "05f8fe5697eadc34587d3b95afdeccb9be04be341fc3e0c401990bd72146202fd37a11064f1ea064143429bc2e53a280b2eee31cf40c283b60279eacf9a2a10d"
       }
     },
     "candidate": {
@@ -72,7 +72,7 @@
       },
       "issuer": "https://successor.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
       "sequence": 1,
-      "predecessor_digest": "119143e857c1f0a9e6f8a3e35c3ef5269c5c91ecb81c4a18ee4cd940069272d8",
+      "predecessor_digest": "20db30f3b3a0141d6a6b02590bdf8d99767d4c03393ef4204341277793a54ca4",
       "max_checkpoint_age_seconds": 300,
       "current_jwks_sha256": "634d732b0c9249e80fde72997e17f051ac2b1828ff1f67010b70b5d6d7acd2ec",
       "current_signing_key_id": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
@@ -82,7 +82,7 @@
       "status_lists": [
         {
           "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
-          "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46",
+          "sha256": "6a193d9f8bc2b849cd8610e44f8de9cf6f6d4c57777ae450a9b7bea4b6ae3fc5",
           "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
           "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
         }
@@ -101,7 +101,7 @@
       "authority_proof": {
         "type": "radicle-ed25519",
         "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-        "signature": "c528f8a72174dcf83dc3bd47f3a10d73b740a9c783cba7dad6153cfbc653159c2350ff01a46869e9256c1c8c44d6ed5eab5787fba2619059f3137af8b698750d"
+        "signature": "4d88ff67f96c60c91c88fd06f40662f71a5581984249b365045c37846e5e11e453b21c9c57ebbacf1b35696614aba74518fa57581ad4c8158e65d5f70a6a700c"
       }
     },
     "ledger_replay": {
@@ -5851,7 +5851,7 @@
       "succession_authority": {
         "authority": "current-persona-epoch",
         "signer_pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-        "signature": "2fa97ad50b65143472ec12a182a2d2903b2f521f4e0a6dce5ea38fd0b072db19fe0d9ecac86999be8d989a610998e39970d62cb3d0fb142c3c881e3efcae21ec"
+        "signature": "36dd0354ee834beeb46540b56ea567b2671a918dae2baa4116e614deab87315fd4a05f42e6a7213f275be5b3e1581cc918fb21a60805dc01320ac4ee57d109a5"
       },
       "kel_transition": {
         "persona_root_npub": "npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
@@ -5879,11 +5879,172 @@
       }
     },
     "standard_oidc_action": "register-successor",
+    "mutation_material": {
+      "predecessor_nibble": {
+        "candidate": {
+          "profile": "heterodyne-oidc-continuity-v1",
+          "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+          "branch": "main",
+          "cold_root_npub": "npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+          "cold_root_hex": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+          "persona_kel_head": {
+            "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "seq": 0
+          },
+          "issuer": "https://successor.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+          "sequence": 1,
+          "predecessor_digest": "20db30f3b3a0141d6a6b02590bdf8d99767d4c03393ef4204341277793a54ca0",
+          "max_checkpoint_age_seconds": 300,
+          "current_jwks_sha256": "634d732b0c9249e80fde72997e17f051ac2b1828ff1f67010b70b5d6d7acd2ec",
+          "current_signing_key_id": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
+          "current_signing_jwk_sha256": "51c299ebc8acd74bfeae66dddbfc05adf0e8d2abd2a162c2e29d77865a7a3f3b",
+          "retiring_signing_key_ids": [],
+          "retiring_jwks_sha256": [],
+          "status_lists": [
+            {
+              "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
+              "sha256": "6a193d9f8bc2b849cd8610e44f8de9cf6f6d4c57777ae450a9b7bea4b6ae3fc5",
+              "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+              "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
+            }
+          ],
+          "successor": null,
+          "authority": {
+            "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+            "issued_at": 1767245671,
+            "checkpoint": {
+              "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+              "branch": "main",
+              "commit_oid": "b948cdc6c55c81e69465e8a71226da306c06fe5ceda9531cc76a563935ef77e0",
+              "observed_at": 1767245671
+            }
+          },
+          "authority_proof": {
+            "type": "radicle-ed25519",
+            "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
+            "signature": "646b74094b394bdb07034a5f4c55c1eedfe92e9fcd7b2a9a32ce36f30401ffab8ae13603445f2210984247bd6a0eb158f50da127d059d1d847b345c57805c401"
+          }
+        }
+      },
+      "wrong_successor_url": {
+        "candidate": {
+          "profile": "heterodyne-oidc-continuity-v1",
+          "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+          "branch": "main",
+          "cold_root_npub": "npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+          "cold_root_hex": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+          "persona_kel_head": {
+            "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "seq": 0
+          },
+          "issuer": "https://wrong.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+          "sequence": 1,
+          "predecessor_digest": "20db30f3b3a0141d6a6b02590bdf8d99767d4c03393ef4204341277793a54ca4",
+          "max_checkpoint_age_seconds": 300,
+          "current_jwks_sha256": "634d732b0c9249e80fde72997e17f051ac2b1828ff1f67010b70b5d6d7acd2ec",
+          "current_signing_key_id": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
+          "current_signing_jwk_sha256": "51c299ebc8acd74bfeae66dddbfc05adf0e8d2abd2a162c2e29d77865a7a3f3b",
+          "retiring_signing_key_ids": [],
+          "retiring_jwks_sha256": [],
+          "status_lists": [
+            {
+              "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
+              "sha256": "6a193d9f8bc2b849cd8610e44f8de9cf6f6d4c57777ae450a9b7bea4b6ae3fc5",
+              "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+              "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
+            }
+          ],
+          "successor": null,
+          "authority": {
+            "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+            "issued_at": 1767245671,
+            "checkpoint": {
+              "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+              "branch": "main",
+              "commit_oid": "b948cdc6c55c81e69465e8a71226da306c06fe5ceda9531cc76a563935ef77e0",
+              "observed_at": 1767245671
+            }
+          },
+          "authority_proof": {
+            "type": "radicle-ed25519",
+            "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
+            "signature": "2e4eb62adf8ba7da6ce801f4f3dc169c7a3b918760c828ee804582697e270523ef4d1811fde28fcae41d73130170c284ca478e028dd2d153a1397ebf50407a0f"
+          }
+        },
+        "succession_authority": {
+          "authority": "current-persona-epoch",
+          "signer_pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+          "signature": "afd06a38a84b0dd2bcf83f15d599a65c2668dfc97bdd1c8e5485e323b222da38aa04adc1832700e06a4cc7f555cf85ce2b2afb6d9788ecffdb07563648d6fc02"
+        }
+      },
+      "old_https_issuer": {
+        "candidate": {
+          "profile": "heterodyne-oidc-continuity-v1",
+          "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+          "branch": "main",
+          "cold_root_npub": "npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+          "cold_root_hex": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+          "persona_kel_head": {
+            "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "seq": 0
+          },
+          "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+          "sequence": 1,
+          "predecessor_digest": "20db30f3b3a0141d6a6b02590bdf8d99767d4c03393ef4204341277793a54ca4",
+          "max_checkpoint_age_seconds": 300,
+          "current_jwks_sha256": "634d732b0c9249e80fde72997e17f051ac2b1828ff1f67010b70b5d6d7acd2ec",
+          "current_signing_key_id": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
+          "current_signing_jwk_sha256": "51c299ebc8acd74bfeae66dddbfc05adf0e8d2abd2a162c2e29d77865a7a3f3b",
+          "retiring_signing_key_ids": [],
+          "retiring_jwks_sha256": [],
+          "status_lists": [
+            {
+              "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
+              "sha256": "6a193d9f8bc2b849cd8610e44f8de9cf6f6d4c57777ae450a9b7bea4b6ae3fc5",
+              "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+              "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
+            }
+          ],
+          "successor": null,
+          "authority": {
+            "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+            "issued_at": 1767245671,
+            "checkpoint": {
+              "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+              "branch": "main",
+              "commit_oid": "b948cdc6c55c81e69465e8a71226da306c06fe5ceda9531cc76a563935ef77e0",
+              "observed_at": 1767245671
+            }
+          },
+          "authority_proof": {
+            "type": "radicle-ed25519",
+            "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
+            "signature": "9fe3e97beafbdefeb19d0812f72342f38358c5c090091c4e5ec7caf7c5ca7fd35220343ba3b399d4641e8489e420a5c37e79c4b07e3756ba904be95edca7f305"
+          }
+        }
+      }
+    },
     "mutation_table": {
-      "missing_persona_proof": "reject",
-      "predecessor_nibble": "reject",
-      "wrong_successor_url": "reject",
-      "old_https_issuer": "stops-new-issuance"
+      "missing_persona_proof": {
+        "kind": "decision",
+        "verdict": "reject",
+        "reason_code": "oidc-issuer-authority-invalid"
+      },
+      "predecessor_nibble": {
+        "kind": "decision",
+        "verdict": "reject",
+        "reason_code": "oidc-status-digest-mismatch"
+      },
+      "wrong_successor_url": {
+        "kind": "decision",
+        "verdict": "reject",
+        "reason_code": "oidc-issuer-authority-invalid"
+      },
+      "old_https_issuer": {
+        "kind": "decision",
+        "verdict": "reject",
+        "reason_code": "oidc-issuer-authority-invalid"
+      }
     }
   },
   "expected_output": {
@@ -5897,20 +6058,56 @@
       "heterodyne_fallback": "radicle-canonical-main",
       "mutation_results": {
         "missing_persona_proof": {
-          "verdict": "reject",
-          "reason_code": "oidc-issuer-authority-invalid"
+          "expected": {
+            "kind": "decision",
+            "verdict": "reject",
+            "reason_code": "oidc-issuer-authority-invalid"
+          },
+          "actual": {
+            "kind": "decision",
+            "verdict": "reject",
+            "reason_code": "oidc-issuer-authority-invalid"
+          },
+          "matched": true
         },
         "predecessor_nibble": {
-          "verdict": "reject",
-          "reason_code": "oidc-issuer-authority-invalid"
+          "expected": {
+            "kind": "decision",
+            "verdict": "reject",
+            "reason_code": "oidc-status-digest-mismatch"
+          },
+          "actual": {
+            "kind": "decision",
+            "verdict": "reject",
+            "reason_code": "oidc-status-digest-mismatch"
+          },
+          "matched": true
         },
         "wrong_successor_url": {
-          "verdict": "reject",
-          "reason_code": "oidc-issuer-authority-invalid"
+          "expected": {
+            "kind": "decision",
+            "verdict": "reject",
+            "reason_code": "oidc-issuer-authority-invalid"
+          },
+          "actual": {
+            "kind": "decision",
+            "verdict": "reject",
+            "reason_code": "oidc-issuer-authority-invalid"
+          },
+          "matched": true
         },
         "old_https_issuer": {
-          "verdict": "reject",
-          "reason_code": "oidc-issuer-authority-invalid"
+          "expected": {
+            "kind": "decision",
+            "verdict": "reject",
+            "reason_code": "oidc-issuer-authority-invalid"
+          },
+          "actual": {
+            "kind": "decision",
+            "verdict": "reject",
+            "reason_code": "oidc-issuer-authority-invalid"
+          },
+          "matched": true
         }
       }
     }

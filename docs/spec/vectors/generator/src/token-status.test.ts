@@ -10,7 +10,8 @@ import {
   projectAccessToken,
   type JwtValidationOptions,
 } from "./oidc.js";
-import { buildOidcScenario, buildTokenStatusVectors, replayTokenStatusMutationTable } from "./topics-oidc.js";
+import { buildOidcScenario, buildTokenStatusVectors, replayTokenStatusMutationTable,
+  replayTokenStatusVector } from "./topics-oidc.js";
 import {
   STATUS_LIST_MEDIA_TYPE,
   buildContinuityTree,
@@ -489,14 +490,43 @@ describe("root-scoped Radicle issuer continuity", () => {
       return Object.entries(replayed).map(([name, outcome]) => ({ name, outcome }));
     });
     expect(outcomes).toHaveLength(33);
-    expect(outcomes.map(({ name }) => name)).toEqual(expect.arrayContaining([
-      "ttl_boundary", "jwks_byte", "status_byte", "stale_kel_head", "missing_persona_proof",
-      "retain_compromised_key", "drop_status_before_expiry",
-    ]));
-    expect(outcomes.every(({ outcome }) => outcome.verdict === "accept" || outcome.verdict === "reject")).toBe(true);
-    expect(outcomes.find(({ name }) => name === "ttl_boundary")!.outcome).toMatchObject({ verdict: "accept" });
-    expect(outcomes.find(({ name }) => name === "jwks_byte")!.outcome).toMatchObject({ verdict: "reject" });
-    expect(outcomes.find(({ name }) => name === "distinct_writer_namespace")!.outcome).toMatchObject({ verdict: "accept" });
-    expect(outcomes.find(({ name }) => name === "missing_persona_proof")!.outcome).toMatchObject({ verdict: "reject" });
+    expect(outcomes.map(({ name }) => name)).toEqual([
+      "bit_0", "bit_7", "bit_8", "padding", "valid_to_invalid", "invalid_to_valid_without_resign",
+      "ttl_boundary", "expired", "bad_signature", "malformed_zlib", "out_of_range",
+      "same_writer_same_index", "distinct_writer_namespace", "noncontiguous_prefix",
+      "jwks_byte", "status_byte", "path_case", "branch_not_main",
+      "digest_nibble", "byte_mismatch", "extra_status_path",
+      "https_outage", "stale_kel_head", "unauthorized_writer", "standard_oidc",
+      "missing_persona_proof", "predecessor_nibble", "wrong_successor_url", "old_https_issuer",
+      "compromised_key_bit", "shared_key_only_successor", "retain_compromised_key", "drop_status_before_expiry",
+    ]);
+    expect(outcomes.every(({ outcome }) => outcome.matched === true &&
+      JSON.stringify(outcome.expected) === JSON.stringify(outcome.actual))).toBe(true);
+    expect(outcomes.find(({ name }) => name === "bit_0")!.outcome.actual)
+      .toEqual({ kind: "status-bytes", bytes_hex: "01" });
+    expect(outcomes.find(({ name }) => name === "bit_7")!.outcome.actual)
+      .toEqual({ kind: "status-bytes", bytes_hex: "80" });
+    expect(outcomes.find(({ name }) => name === "bit_8")!.outcome.actual)
+      .toEqual({ kind: "status-bytes", bytes_hex: "0001" });
+  });
+
+  it("fails replay when a declared mutation expectation is changed or is not closed and typed", async () => {
+    const stale = structuredClone((await buildTokenStatusVectors(fixtures))
+      .find(({ vector }) => vector.vector_id === "token-status/stale-status-list-rejected")!.vector.input) as any;
+    stale.mutation_table.ttl_boundary = { kind: "decision", verdict: "reject", reason_code: "oidc-status-stale" };
+    expect(replayTokenStatusVector(stale)).toMatchObject({
+      verdict: "reject", reason_code: "mutation-expectation-mismatch", normalized: { mutation_results: {
+        ttl_boundary: { matched: false },
+      } },
+    });
+    stale.mutation_table.ttl_boundary = { kind: "decision", verdict: "accept", reason_code: null };
+    stale.mutation_table.expired = { kind: "decision", verdict: "accept", reason_code: null };
+    expect(replayTokenStatusVector(stale)).toMatchObject({
+      verdict: "reject", reason_code: "mutation-expectation-mismatch", normalized: { mutation_results: {
+        expired: { matched: false },
+      } },
+    });
+    stale.mutation_table.ttl_boundary = "fresh-at-equality";
+    expect(() => replayTokenStatusMutationTable(stale)).toThrow(/mutation expectation/);
   });
 });

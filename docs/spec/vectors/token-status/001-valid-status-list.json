@@ -33,7 +33,7 @@
     ],
     "signed_validation": {
       "operation": "status-validation",
-      "referenced_compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkpGeE0xN1FwU01HcDRtMm80bGtkMDNzY0hfeEFyTWVTM2pxeHFvYVdoZW8iLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZCIsInN1YiI6IjVsbmJ2bEtEVG9ZM01FakMydzFYZGtWU01kY3VNUF9QUGFpVE9iRUNzQmciLCJhdWQiOlsiaHR0cHM6Ly9hcGkuZXhhbXBsZSJdLCJleHAiOjE3NjcyNDYyNjksImlhdCI6MTc2NzI0NTY2OSwianRpIjoib2lkYy1ldmlkZW5jZS1qdGktMDAwMSIsImNsaWVudF9pZCI6InJlZ2lzdGVyZWQtY2xpZW50Iiwic2NvcGUiOiJoZXRlcm9keW5lOmtleS1yZWYgb3BlbmlkIHByb2ZpbGUiLCJuYW1lIjoiQWxpY2UiLCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qva2V5LXJlZiI6eyJ0eXBlIjoibm9zdHItc2VjcDI1NmsxIiwidmFsdWUiOiJjNjA0N2Y5NDQxZWQ3ZDZkMzA0NTQwNmU5NWMwN2NkODVjNzc4ZTRiOGNlZjNjYTdhYmFjMDliOTVjNzA5ZWU1In0sImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9sZWRnZXItY2hlY2twb2ludCI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJjb21taXRfb2lkIjoiZjRmMjE2OTQ4ZTFhOTQwN2ZiNDZkM2ZhYzY0MzZlYjRkZDczMTRiNjBhNjYxMzJmZTVkNjlkODU5OTc3NTdkYSIsIm9ic2VydmVkX2F0IjoxNzY3MjQ1NjY4fSwic3RhdHVzIjp7InN0YXR1c19saXN0Ijp7InVyaSI6Imh0dHBzOi8vbm9kZS5leGFtcGxlL29pZGMvbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsImlkeCI6MH19LCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qvc3RhdHVzLW1pcnJvciI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJwYXRoIjoiLndlbGwta25vd24vbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsInNoYTI1NiI6IjA5ZGVlYTEzMDc5OTJlZDY3OTdhM2U2M2YzNmExMWQwYTBhZDkwYmY0MmE4ZDMwNTdlMjE3ZDI3NDJlMWQ5NTgifX0.N4cPClSaiUj4PKW4kethweATdKPxC3VAXWEGZgLINYCFqbL6v-63aoy8BByDNBlJINfl6UypeQkSiLJNp76Updr_icFE9LKtWe2j2AZ6MkhN9uU5FkrtFugUzTmGUKNDicM2BhVTCb8sh1cKsYIt1dFL6qerPpFERGGQmjpqtCAIYvlGHVl31C7bMt6cFU0-3JIA831Nl0NijX1wjKJEeb_5LX3jWdQ9mZ7ztnMWug7ypMuypeYQrf-gWuH1i9YHeiIMxlTvDUNXWyMPFeeGxYKlzIerULHN0dsElCM2Zpgwy-sOa_P5JeajuoJgpPbWXB5ptKznBS9bkEZNoDLHag",
+      "referenced_compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkpGeE0xN1FwU01HcDRtMm80bGtkMDNzY0hfeEFyTWVTM2pxeHFvYVdoZW8iLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZCIsInN1YiI6IjVsbmJ2bEtEVG9ZM01FakMydzFYZGtWU01kY3VNUF9QUGFpVE9iRUNzQmciLCJhdWQiOlsiaHR0cHM6Ly9hcGkuZXhhbXBsZSJdLCJleHAiOjE3NjcyNDYyNjksImlhdCI6MTc2NzI0NTY2OSwianRpIjoib2lkYy1ldmlkZW5jZS1qdGktMDAwMSIsImNsaWVudF9pZCI6InJlZ2lzdGVyZWQtY2xpZW50Iiwic2NvcGUiOiJoZXRlcm9keW5lOmtleS1yZWYgb3BlbmlkIHByb2ZpbGUiLCJuYW1lIjoiQWxpY2UiLCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qva2V5LXJlZiI6eyJ0eXBlIjoibm9zdHItc2VjcDI1NmsxIiwidmFsdWUiOiJjNjA0N2Y5NDQxZWQ3ZDZkMzA0NTQwNmU5NWMwN2NkODVjNzc4ZTRiOGNlZjNjYTdhYmFjMDliOTVjNzA5ZWU1In0sImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9sZWRnZXItY2hlY2twb2ludCI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJjb21taXRfb2lkIjoiZjRmMjE2OTQ4ZTFhOTQwN2ZiNDZkM2ZhYzY0MzZlYjRkZDczMTRiNjBhNjYxMzJmZTVkNjlkODU5OTc3NTdkYSIsIm9ic2VydmVkX2F0IjoxNzY3MjQ1NjY4fSwic3RhdHVzIjp7InN0YXR1c19saXN0Ijp7InVyaSI6Imh0dHBzOi8vbm9kZS5leGFtcGxlL29pZGMvbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsImlkeCI6MH19LCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qvc3RhdHVzLW1pcnJvciI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJwYXRoIjoiLndlbGwta25vd24vbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsInNoYTI1NiI6IjJhYTQzNjRkZWUxNTlkYzA1NTA3NmU0YzY2NWEwZWZhNjQwNTRlMGZmMmY0YzVjZjJjZjU5MjMzMDNlOWY3OGIifX0.zdBUeU_69_KrQi5xW8fkwQj9jnFIYmTGu4FHBGTQmL8gEDl9b6Px8UV7w7_2jFdO1tOpTCS2-mNCOACjgLaMshivAUfUkmde0n0KcMw0YkHJ22DSXu1AXq090VlKJVCQLIGo2pL_nkrtLD42X_DKYs0bG4hfYWcThFu72G6YuLXuG5X0inPpI21M9sO8BA1vK2dZBv4VHifsqZM86VvXVBCgrFqKktiS9AyOFWBjJZ6hjIJjbB33Y4mIWem2qA-ivE_q0S9rjuhfCiq-KkTZSUylOPPuVpdfvb9rAQHfj1YH1LgWiPi1JVuZ40PXrFEp-6cAOp2brT6v_Sewq99ZMw",
       "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
       "audience": "https://api.example",
       "referenced_jwks": {
@@ -69,7 +69,7 @@
         "claims": {
           "sub": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
           "iat": 1767245671,
-          "exp": 1767246269,
+          "exp": 1767245971,
           "ttl": 120,
           "status_list": {
             "bits": 1,
@@ -77,7 +77,7 @@
           }
         },
         "media_type": "application/statuslist+jwt",
-        "compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkpGeE0xN1FwU01HcDRtMm80bGtkMDNzY0hfeEFyTWVTM2pxeHFvYVdoZW8iLCJ0eXAiOiJzdGF0dXNsaXN0K2p3dCJ9.eyJzdWIiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZC9zdGF0dXMtbGlzdHMvMjA0NTQvOWUyZDhmOTY5NjYyZmQ3YzY4YzljYzY4YzdiMjA1YzgvMC5qd3QiLCJpYXQiOjE3NjcyNDU2NzEsImV4cCI6MTc2NzI0NjI2OSwidHRsIjoxMjAsInN0YXR1c19saXN0Ijp7ImJpdHMiOjEsImxzdCI6ImVOcGpBQUFBQVFBQiJ9fQ.kK9ohrGJ0DNN1kE5Li95E359KXjJR_6Ri7QoWoSn7Dyl8UhaZtCmjdk8i0J4qZJDySUtJXgdcPSHpGvT1bmBXHdhsFkdFl2cpxbkY0GdZYQig2smDDIkH-eqL7KwmdDcXehUbcTlJQ4Qfu9ncjvy0FpzTbDxMDXdxbgtrvkvSogcc9GPywUrtNxZheouBgiq49ohqBIM3K-29OWlkyur1yyAnoUtzTR3CpH_CAus7uuiKOfu-1Xs1X2F4l2JWrsRFF1joxLB9OUVX3wlv7IQfLIis2FGf-mARhu-9GSlbYZO5YeXNoU5IbrQy5aQHPANJulbvdEXbPBPbxILnnRtUQ"
+        "compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkpGeE0xN1FwU01HcDRtMm80bGtkMDNzY0hfeEFyTWVTM2pxeHFvYVdoZW8iLCJ0eXAiOiJzdGF0dXNsaXN0K2p3dCJ9.eyJzdWIiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZC9zdGF0dXMtbGlzdHMvMjA0NTQvOWUyZDhmOTY5NjYyZmQ3YzY4YzljYzY4YzdiMjA1YzgvMC5qd3QiLCJpYXQiOjE3NjcyNDU2NzEsImV4cCI6MTc2NzI0NTk3MSwidHRsIjoxMjAsInN0YXR1c19saXN0Ijp7ImJpdHMiOjEsImxzdCI6ImVOcGpBQUFBQVFBQiJ9fQ.mCF5PyG_-v07J0Lb2u90ZFDrpfuXDnaTQMXJ1fiV8qH96_A6KoihyvZPLJz-a8T5NeYtJC4kP0d2dJAgj7uOE0vyxcbtfKymqIfiKjy7UgdrH8uPboLbARuZdaQDR6sQyrKQnzqtSeFU7hvF3r59Mr8uvQDDR4CbaXcCUsvKZ7wFzcz9m2kQhrBU59IgkJVTC2ixpcLJATlaTt8IhtTtUMcKkfOjzI9Avnjic9qZ7hPcswI7VT0a-eujx5YtlQwWyUwJQqSDg1R3ybMhqAs62NkvBqugN2JOjTvcNC3s38lfYoN8ie6iZ9fMYvKbrIiXQ4QtgbRSajjHjmLSJC3k2g"
       },
       "status_jwks_hex": "7b226b657973223a5b7b226b7479223a22525341222c226e223a227a766832666e7463686835316b565850626c494732656567676a6230627961366a484635784f73485455687238626930316a6d624e6a5032396f506546796f7a7447474b706e6444787174397148764f4c3578336575464b726d366b5a79775a5f58445666645a566d3769636e707962456d4e64616d6d715a636639374549774f725f6d637a68525a3951594b375373536e42455157312d42417339644548784e5433395671486a4371383175687a4c4b65656d727057344b696d5f733469596d6f526f566b69504867685068476f39434b584e586a32744779446d6a3568777558615f677635735a7535433775304c397934543235612d5648465679556e436f6131796879695433746557333235364b506d413672427a315968644c4f436e77574471496142474f65344a36676b494f444e43754348777449384a6e58336763526e695f507a31396633534e7174454a4d76576a77222c2265223a2241514142222c226b6964223a224a46784d31375170534d4770346d326f346c6b6430337363485f7841724d6553336a7178716f615768656f222c22616c67223a225253323536222c22757365223a22736967222c226b65795f6f7073223a5b22766572696679225d7d5d7d",
       "status_resolved_at": 1767245671,
@@ -105,7 +105,7 @@
             "status_lists": [
               {
                 "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
-                "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46",
+                "sha256": "6a193d9f8bc2b849cd8610e44f8de9cf6f6d4c57777ae450a9b7bea4b6ae3fc5",
                 "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
                 "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
               }
@@ -124,7 +124,7 @@
             "authority_proof": {
               "type": "radicle-ed25519",
               "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-              "signature": "bc18b51436ed6974f6948ad67904b8c31e677ff2dac80059a02054833a65cd6a713288808418d7e65b3ced0ec5ebbff98d568a0ef06b04dc8395451776d06d07"
+              "signature": "ff5d47d6022871d353d938624c3b9a078ff7d5d227fa2edf13f9237dc0a90ff976031730d99178678135351bea11b02966440961b6112fe6f15952d184886a0a"
             }
           },
           "ledger_replay": {
@@ -5900,10 +5900,22 @@
       "now": 1767245671
     },
     "mutation_table": {
-      "bit_0": "0x01",
-      "bit_7": "0x80",
-      "bit_8": "next-byte-0x01",
-      "padding": "whole-byte-valid-decoys"
+      "bit_0": {
+        "kind": "status-bytes",
+        "bytes_hex": "01"
+      },
+      "bit_7": {
+        "kind": "status-bytes",
+        "bytes_hex": "80"
+      },
+      "bit_8": {
+        "kind": "status-bytes",
+        "bytes_hex": "0001"
+      },
+      "padding": {
+        "kind": "status-bytes",
+        "bytes_hex": "01"
+      }
     }
   },
   "expected_output": {
@@ -5925,16 +5937,48 @@
       },
       "mutation_results": {
         "bit_0": {
-          "verdict": "accept"
+          "expected": {
+            "kind": "status-bytes",
+            "bytes_hex": "01"
+          },
+          "actual": {
+            "kind": "status-bytes",
+            "bytes_hex": "01"
+          },
+          "matched": true
         },
         "bit_7": {
-          "verdict": "accept"
+          "expected": {
+            "kind": "status-bytes",
+            "bytes_hex": "80"
+          },
+          "actual": {
+            "kind": "status-bytes",
+            "bytes_hex": "80"
+          },
+          "matched": true
         },
         "bit_8": {
-          "verdict": "accept"
+          "expected": {
+            "kind": "status-bytes",
+            "bytes_hex": "0001"
+          },
+          "actual": {
+            "kind": "status-bytes",
+            "bytes_hex": "0001"
+          },
+          "matched": true
         },
         "padding": {
-          "verdict": "accept"
+          "expected": {
+            "kind": "status-bytes",
+            "bytes_hex": "01"
+          },
+          "actual": {
+            "kind": "status-bytes",
+            "bytes_hex": "01"
+          },
+          "matched": true
         }
       }
     }

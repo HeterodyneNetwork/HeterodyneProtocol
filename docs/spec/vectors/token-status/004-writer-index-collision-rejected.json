@@ -77,9 +77,21 @@
       }
     ],
     "mutation_table": {
-      "same_writer_same_index": "reject",
-      "distinct_writer_namespace": "accept",
-      "noncontiguous_prefix": "reject"
+      "same_writer_same_index": {
+        "kind": "decision",
+        "verdict": "reject",
+        "reason_code": "claim-repository-conflict"
+      },
+      "distinct_writer_namespace": {
+        "kind": "decision",
+        "verdict": "accept",
+        "reason_code": null
+      },
+      "noncontiguous_prefix": {
+        "kind": "decision",
+        "verdict": "reject",
+        "reason_code": "claim-repository-conflict"
+      }
     }
   },
   "expected_output": {
@@ -88,15 +100,43 @@
     "normalized": {
       "mutation_results": {
         "same_writer_same_index": {
-          "verdict": "reject",
-          "reason_code": "claim-repository-conflict"
+          "expected": {
+            "kind": "decision",
+            "verdict": "reject",
+            "reason_code": "claim-repository-conflict"
+          },
+          "actual": {
+            "kind": "decision",
+            "verdict": "reject",
+            "reason_code": "claim-repository-conflict"
+          },
+          "matched": true
         },
         "distinct_writer_namespace": {
-          "verdict": "accept"
+          "expected": {
+            "kind": "decision",
+            "verdict": "accept",
+            "reason_code": null
+          },
+          "actual": {
+            "kind": "decision",
+            "verdict": "accept",
+            "reason_code": null
+          },
+          "matched": true
         },
         "noncontiguous_prefix": {
-          "verdict": "reject",
-          "reason_code": "oidc-status-invalid"
+          "expected": {
+            "kind": "decision",
+            "verdict": "reject",
+            "reason_code": "claim-repository-conflict"
+          },
+          "actual": {
+            "kind": "decision",
+            "verdict": "reject",
+            "reason_code": "claim-repository-conflict"
+          },
+          "matched": true
         }
       }
     }

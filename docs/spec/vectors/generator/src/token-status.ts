@@ -355,6 +355,9 @@ export function resolveIssuerContinuity(
         !verifyPersonaSuccessionProof(candidate, context)) {
       return deniedContinuity("oidc-issuer-authority-invalid");
     }
+    if (previous.successor !== null && candidate.issuer === previous.issuer) {
+      return deniedContinuity("oidc-issuer-authority-invalid");
+    }
     if (candidate.issuer !== previous.issuer) {
       if (previous.successor === null || previous.successor.issuer !== candidate.issuer ||
           previous.successor.manifest_sha256 !== continuitySuccessorDigest(candidate) ||

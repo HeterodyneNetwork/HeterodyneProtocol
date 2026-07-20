@@ -1,4 +1,5 @@
 import { createHash, createPrivateKey, sign, type JsonWebKey } from "node:crypto";
+import { inflateSync } from "node:zlib";
 import { ed25519 } from "@noble/curves/ed25519";
 import { nip19 } from "nostr-tools";
 import {
@@ -471,14 +472,45 @@ export async function buildOidcVectors(fixtures: Fixtures): Promise<AuthoredVect
   ];
 }
 
-type MutationOutcome = { verdict: "accept" | "reject"; reason_code?: string | null };
+type MutationObservation =
+  | { kind: "decision"; verdict: "accept" | "reject"; reason_code: string | null }
+  | { kind: "status-bytes"; bytes_hex: string };
+type MutationOutcome = {
+  expected: MutationObservation;
+  actual: MutationObservation;
+  matched: boolean;
+};
+type TokenStatusMutationName =
+  | "bit_0" | "bit_7" | "bit_8" | "padding"
+  | "valid_to_invalid" | "invalid_to_valid_without_resign"
+  | "ttl_boundary" | "expired" | "bad_signature" | "malformed_zlib" | "out_of_range"
+  | "same_writer_same_index" | "distinct_writer_namespace" | "noncontiguous_prefix"
+  | "jwks_byte" | "status_byte" | "path_case" | "branch_not_main"
+  | "digest_nibble" | "byte_mismatch" | "extra_status_path"
+  | "https_outage" | "stale_kel_head" | "unauthorized_writer" | "standard_oidc"
+  | "missing_persona_proof" | "predecessor_nibble" | "wrong_successor_url" | "old_https_issuer"
+  | "compromised_key_bit" | "shared_key_only_successor" | "retain_compromised_key" | "drop_status_before_expiry";
+const TOKEN_STATUS_MUTATION_NAMES = new Set<TokenStatusMutationName>([
+  "bit_0", "bit_7", "bit_8", "padding", "valid_to_invalid", "invalid_to_valid_without_resign",
+  "ttl_boundary", "expired", "bad_signature", "malformed_zlib", "out_of_range", "same_writer_same_index",
+  "distinct_writer_namespace", "noncontiguous_prefix", "jwks_byte", "status_byte", "path_case", "branch_not_main",
+  "digest_nibble", "byte_mismatch", "extra_status_path", "https_outage", "stale_kel_head", "unauthorized_writer",
+  "standard_oidc", "missing_persona_proof", "predecessor_nibble", "wrong_successor_url", "old_https_issuer",
+  "compromised_key_bit", "shared_key_only_successor", "retain_compromised_key", "drop_status_before_expiry",
+]);
+
+function mutationTable(value: Partial<Record<TokenStatusMutationName, MutationObservation>>): JsonValue {
+  return value as unknown as JsonValue;
+}
 
 export function replayTokenStatusVector(input: unknown): unknown {
   const result = replayTokenStatusVectorCore(input) as Record<string, unknown>;
   const mutationResults = replayTokenStatusMutationTable(input);
   if (Object.keys(mutationResults).length === 0) return result;
-  return { ...result, normalized: { ...((result.normalized as Record<string, unknown> | undefined) ?? {}),
-    mutation_results: mutationResults } };
+  const matched = Object.values(mutationResults).every((outcome) => outcome.matched);
+  return { ...result, ...(matched ? {} : { verdict: "reject", reason_code: "mutation-expectation-mismatch" }),
+    normalized: { ...((result.normalized as Record<string, unknown> | undefined) ?? {}),
+      mutation_results: mutationResults } };
 }
 
 export function replayTokenStatusMutationTable(input: unknown): Record<string, MutationOutcome> {
@@ -487,8 +519,32 @@ export function replayTokenStatusMutationTable(input: unknown): Record<string, M
   if (table === undefined || table === null || typeof table !== "object" || Array.isArray(table)) return {};
   delete spec.mutation_table;
   const results: Record<string, MutationOutcome> = {};
-  for (const name of Object.keys(table as Record<string, JsonValue>)) results[name] = replayNamedTokenStatusMutation(name, spec);
+  for (const [name, declaration] of Object.entries(table as Record<string, JsonValue>)) {
+    if (!TOKEN_STATUS_MUTATION_NAMES.has(name as TokenStatusMutationName)) {
+      throw new Error(`unknown token-status mutation expectation: ${name}`);
+    }
+    const expected = parseMutationExpectation(declaration);
+    const actual = replayNamedTokenStatusMutation(name as TokenStatusMutationName, spec);
+    results[name] = { expected, actual, matched: jcsCanonicalize(expected) === jcsCanonicalize(actual) };
+  }
   return results;
+}
+
+function parseMutationExpectation(value: JsonValue): MutationObservation {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("mutation expectation must be a closed object");
+  }
+  const keys = Object.keys(value).sort();
+  if (value.kind === "decision" && jcsCanonicalize(keys) === jcsCanonicalize(["kind", "reason_code", "verdict"]) &&
+      (value.verdict === "accept" || value.verdict === "reject") &&
+      (value.reason_code === null || typeof value.reason_code === "string")) {
+    return { kind: "decision", verdict: value.verdict, reason_code: value.reason_code };
+  }
+  if (value.kind === "status-bytes" && jcsCanonicalize(keys) === jcsCanonicalize(["bytes_hex", "kind"]) &&
+      typeof value.bytes_hex === "string" && /^(?:[0-9a-f]{2})+$/.test(value.bytes_hex)) {
+    return { kind: "status-bytes", bytes_hex: value.bytes_hex };
+  }
+  throw new Error("mutation expectation is not a closed typed result");
 }
 
 function replayTokenStatusVectorCore(input: unknown): unknown {
@@ -562,18 +618,20 @@ function replayTokenStatusVectorCore(input: unknown): unknown {
     throw new Error("unknown token-status operation");
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    const reason = message.includes("collision") || message.includes("duplicate") ? "claim-repository-conflict" :
+    const reason = message.includes("claim-repository-conflict") || message.includes("collision") || message.includes("duplicate") ? "claim-repository-conflict" :
       message.includes("digest") ? "oidc-status-digest-mismatch" : "oidc-status-invalid";
     return { verdict: "reject", reason_code: reason };
   }
 }
 
-function replayNamedTokenStatusMutation(name: string, base: ReplayInput): MutationOutcome {
-  const replay = (candidate: ReplayInput): MutationOutcome => {
+function replayNamedTokenStatusMutation(name: TokenStatusMutationName, base: ReplayInput): MutationObservation {
+  const replay = (candidate: ReplayInput): MutationObservation => {
     const output = replayTokenStatusVectorCore(candidate) as Record<string, unknown>;
-    return { verdict: output.verdict === "accept" ? "accept" : "reject",
-      ...(typeof output.reason_code === "string" ? { reason_code: output.reason_code } : {}) };
+    return { kind: "decision", verdict: output.verdict === "accept" ? "accept" : "reject",
+      reason_code: typeof output.reason_code === "string" ? output.reason_code : null };
   };
+  const encoded = (statuses: Array<0 | 1>): MutationObservation => ({ kind: "status-bytes",
+    bytes_hex: inflateSync(Buffer.from(encodeStatusList(statuses).lst, "base64url")).toString("hex") });
   const clone = <T>(value: T): T => structuredClone(value);
   const flippedHex = (value: JsonValue): string => {
     const source = String(value);
@@ -581,13 +639,27 @@ function replayNamedTokenStatusMutation(name: string, base: ReplayInput): Mutati
   };
   const status = () => clone(base.status_token as unknown as StatusListToken);
   const manifest = () => clone(base.manifest as unknown as ContinuityManifest);
-  const candidate = () => clone(base.candidate as unknown as ContinuityManifest);
   const context = () => clone(base.context as unknown as Record<string, JsonValue>);
+  const material = (caseName: string): Record<string, JsonValue> => {
+    const all = base.mutation_material as unknown as Record<string, JsonValue>;
+    const selected = all?.[caseName];
+    if (selected === null || typeof selected !== "object" || Array.isArray(selected)) {
+      throw new Error(`mutation material is absent for ${caseName}`);
+    }
+    return selected as Record<string, JsonValue>;
+  };
+  const replayAuthenticatedStatusMaterial = (caseName: string): MutationObservation => {
+    const selected = material(caseName);
+    const chain = clone(base.continuity_chain as unknown as ReplayInput[]);
+    chain[0].manifest = selected.manifest;
+    return replay({ ...base, status_token: selected.status_token,
+      referenced_compact: selected.referenced_compact, continuity_chain: chain as unknown as JsonValue });
+  };
   switch (name) {
-    case "bit_0": return replay({ operation: "status-encoding", statuses: [1, 0, 0, 0, 0, 0, 0, 0] });
-    case "bit_7": return replay({ operation: "status-encoding", statuses: [0, 0, 0, 0, 0, 0, 0, 1] });
-    case "bit_8": return replay({ operation: "status-encoding", statuses: [0, 0, 0, 0, 0, 0, 0, 0, 1] });
-    case "padding": return replay({ operation: "status-encoding", statuses: [1] });
+    case "bit_0": return encoded([1, 0, 0, 0, 0, 0, 0, 0]);
+    case "bit_7": return encoded([0, 0, 0, 0, 0, 0, 0, 1]);
+    case "bit_8": return encoded([0, 0, 0, 0, 0, 0, 0, 0, 1]);
+    case "padding": return encoded([1]);
     case "valid_to_invalid": return replay(base);
     case "invalid_to_valid_without_resign": {
       const token = status(); token.claims.status_list = encodeStatusList([0]);
@@ -596,13 +668,10 @@ function replayNamedTokenStatusMutation(name: string, base: ReplayInput): Mutati
     case "ttl_boundary": return replay(base);
     case "expired": return replay({ ...base, now: (base.status_token as unknown as StatusListToken).claims.exp });
     case "bad_signature": {
-      const token = status(); token.compact = `${token.compact}x`;
-      return replay({ ...base, status_token: token as unknown as JsonValue });
+      return replayAuthenticatedStatusMaterial(name);
     }
     case "malformed_zlib": {
-      const token = status(); token.claims.status_list = { bits: 1, lst: "eA" };
-      token.compact = resignCompact(token.compact, token.claims, token.protected_header.kid);
-      return replay({ ...base, status_token: token as unknown as JsonValue });
+      return replayAuthenticatedStatusMaterial(name);
     }
     case "out_of_range": {
       const compact = mutateAndResignCompact(String(base.referenced_compact), (claims) => {
@@ -635,10 +704,7 @@ function replayNamedTokenStatusMutation(name: string, base: ReplayInput): Mutati
       const changed = manifest(); changed.branch = "dev" as never;
       return replay({ ...base, manifest: changed as unknown as JsonValue });
     }
-    case "digest_nibble": {
-      const changed = manifest(); changed.current_jwks_sha256 = flippedHex(changed.current_jwks_sha256);
-      return replay({ ...base, manifest: changed as unknown as JsonValue });
-    }
+    case "digest_nibble": return replay(base);
     case "byte_mismatch": return replay({ ...base, jwks_hex: flippedHex(base.jwks_hex) });
     case "extra_status_path": {
       const tokens = clone(base.status_tokens as unknown as Array<{ path: string; hex: string }>);
@@ -660,15 +726,16 @@ function replayNamedTokenStatusMutation(name: string, base: ReplayInput): Mutati
       return replay({ ...base, context: changed as unknown as JsonValue });
     }
     case "predecessor_nibble": {
-      const changed = candidate(); changed.predecessor_digest = flippedHex(changed.predecessor_digest!);
+      const changed = material(name).candidate as unknown as ContinuityManifest;
       return replay({ ...base, candidate: changed as unknown as JsonValue });
     }
     case "wrong_successor_url": {
-      const changed = candidate(); changed.issuer = changed.issuer.replace("successor.example", "wrong.example");
-      return replay({ ...base, candidate: changed as unknown as JsonValue });
+      const selected = material(name);
+      const changedContext = context(); changedContext.succession_authority = selected.succession_authority;
+      return replay({ ...base, candidate: selected.candidate, context: changedContext as unknown as JsonValue });
     }
     case "old_https_issuer": {
-      const changed = candidate(); changed.issuer = (base.previous as unknown as ContinuityManifest).issuer;
+      const changed = material(name).candidate as unknown as ContinuityManifest;
       return replay({ ...base, candidate: changed as unknown as JsonValue });
     }
     case "compromised_key_bit": return replay(base);
@@ -685,7 +752,7 @@ function replayNamedTokenStatusMutation(name: string, base: ReplayInput): Mutati
     case "drop_status_before_expiry": {
       const evidence = clone(base.evidence_cases as unknown as ReplayInput[])[0];
       if (evidence.ledger_replay_ref === "current") evidence.ledger_replay = base.ledger_replay;
-      const changed = clone(evidence.candidate as unknown as ContinuityManifest); changed.status_lists = [];
+      const changed = material(name).candidate as unknown as ContinuityManifest;
       return replay({ ...evidence, candidate: changed as unknown as JsonValue });
     }
     default: throw new Error(`unimplemented token-status mutation case: ${name}`);
@@ -732,7 +799,7 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
   const uri = `${x.metadata.issuer}/${x.issuance.reservation.uri}`;
   const validStatus = generateStatusListToken({ state: x.issuedState, uri,
     private_jwk: OIDC_RSA_ONE.private_jwk, iat: x.issuedState.checkpoint.observed_at,
-    exp: x.issuance.expires_at, ttl: 120 });
+    exp: x.issuedState.checkpoint.observed_at + 300, ttl: 120 });
   const revocationSemantic: ClaimRevocation = { claim_id: x.dataClaim.artifact.semantic.claim_id,
     revoked_at: x.issuedState.checkpoint.observed_at + 1, reason_code: "claim-revoked",
     revoker: x.dataClaim.artifact.semantic.issuer };
@@ -824,6 +891,9 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
     exp: x.issuance.expires_at, ttl: 120 });
   const options: JwtValidationOptions = { now: x.issuance.issued_at, token_use: "access_token",
     client_id: CLIENT.client_id, sender_constraint: "none", permitted_audiences: [API] };
+  const expectedDecision = (verdict: "accept" | "reject", reason_code: string | null): MutationObservation =>
+    ({ kind: "decision", verdict, reason_code });
+  const expectedBytes = (bytes_hex: string): MutationObservation => ({ kind: "status-bytes", bytes_hex });
   const authored = (path: string, vectorId: string, description: string, input: ReplayInput): AuthoredVector =>
     consumeVector(`token-status/${path}`, { vector_id: `token-status/${vectorId}`,
       spec_refs: ["heterodyne:comms/0.5.0#comms-conformance"], description, input,
@@ -902,6 +972,25 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
   const successionInput: ReplayInput = { operation: "continuity", previous: boundPrevious as unknown as JsonValue,
     candidate: successor as unknown as JsonValue, ledger_replay: ledgerReplay,
     context: successionContext as unknown as JsonValue, standard_oidc_action: "register-successor" };
+  const predecessorNibbleBody = { ...successorBody,
+    predecessor_digest: `${successorBody.predecessor_digest.slice(0, -1)}${successorBody.predecessor_digest.endsWith("0") ? "1" : "0"}` };
+  const predecessorNibbleCandidate: ContinuityManifest = { ...predecessorNibbleBody,
+    authority_proof: createContinuityAuthorityProof(predecessorNibbleBody, x.s.writerOne.private_key) };
+  const wrongSuccessorBody = { ...successorBody,
+    issuer: successorBody.issuer.replace("successor.example", "wrong.example") };
+  const wrongSuccessorCandidate: ContinuityManifest = { ...wrongSuccessorBody,
+    authority_proof: createContinuityAuthorityProof(wrongSuccessorBody, x.s.writerOne.private_key) };
+  const wrongSuccessorProof = createPersonaSuccessionProof(wrongSuccessorCandidate, "current-persona-epoch",
+    fixtures.personas.alice.epoch_keys.epoch_1.private_key);
+  const oldIssuerBody = { ...successorBody, issuer: boundPrevious.issuer };
+  const oldIssuerCandidate: ContinuityManifest = { ...oldIssuerBody,
+    authority_proof: createContinuityAuthorityProof(oldIssuerBody, x.s.writerOne.private_key) };
+  const successionMutationMaterial = {
+    predecessor_nibble: { candidate: predecessorNibbleCandidate as unknown as JsonValue },
+    wrong_successor_url: { candidate: wrongSuccessorCandidate as unknown as JsonValue,
+      succession_authority: wrongSuccessorProof as unknown as JsonValue },
+    old_https_issuer: { candidate: oldIssuerCandidate as unknown as JsonValue },
+  } as unknown as JsonValue;
   const sharedKeyInsufficient: ReplayInput = { ...successionInput,
     context: { ...successionContext, succession_authority: null } as unknown as JsonValue };
 
@@ -941,6 +1030,30 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
     status_mirror: { ...x.projection.status_mirror, sha256: continuityManifestDigest(manifest) } };
   const validReferenced = projectAccessToken(anchoredProjection);
   const invalidReferenced = validReferenced;
+  const authenticatedStatusMutation = (token: StatusListToken): JsonValue => {
+    const body = { ...manifestBody, status_lists: [{ path: statusPath,
+      sha256: createHash("sha256").update(token.compact).digest("hex"), issuer: x.metadata.issuer, uri }] };
+    const authenticatedManifest: ContinuityManifest = { ...body,
+      authority_proof: createContinuityAuthorityProof(body, x.s.writerOne.private_key) };
+    const projection = { ...x.projection, status_mirror: { ...x.projection.status_mirror,
+      sha256: continuityManifestDigest(authenticatedManifest) } };
+    return { status_token: token as unknown as JsonValue,
+      manifest: authenticatedManifest as unknown as JsonValue,
+      referenced_compact: projectAccessToken(projection).compact };
+  };
+  const badSignatureStatus = structuredClone(validStatus);
+  const signatureSegments = badSignatureStatus.compact.split(".");
+  const signature = signatureSegments[2];
+  signatureSegments[2] = `${signature.slice(0, -1)}${signature.endsWith("A") ? "B" : "A"}`;
+  badSignatureStatus.compact = signatureSegments.join(".");
+  const malformedStatus = structuredClone(validStatus);
+  malformedStatus.claims.status_list = { bits: 1, lst: "eA" };
+  malformedStatus.compact = resignCompact(malformedStatus.compact, malformedStatus.claims,
+    malformedStatus.protected_header.kid);
+  const staleMutationMaterial = {
+    bad_signature: authenticatedStatusMutation(badSignatureStatus),
+    malformed_zlib: authenticatedStatusMutation(malformedStatus),
+  } as unknown as JsonValue;
   const statusInput = (status: StatusListToken, referenced: typeof validReferenced,
     chain: JsonValue, now = status.claims.iat, statusJwksBytes: Uint8Array = jwksBytes,
     statusResolvedAt = status.claims.iat): ReplayInput => ({
@@ -961,6 +1074,9 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
     retiring_signing_key_ids: [], retiring_jwks_sha256: [] };
   const rotatedManifest: ContinuityManifest = { ...rotatedBody,
     authority_proof: createContinuityAuthorityProof(rotatedBody, x.s.writerTwo.private_key) };
+  const rotatedNoStatusBody = { ...rotatedBody, status_lists: [] };
+  const rotatedNoStatusManifest: ContinuityManifest = { ...rotatedNoStatusBody,
+    authority_proof: createContinuityAuthorityProof(rotatedNoStatusBody, x.s.writerTwo.private_key) };
   const rotatedContinuityContext = { ...continuityContext, writer_nid: x.s.writerTwo.did_key,
     now: rotatedState.checkpoint.observed_at,
     kel_transition: { ...continuityContext.kel_transition, previous_head: manifest.persona_kel_head,
@@ -997,7 +1113,8 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
     authored("001-valid-status-list.json", "valid-status-list", "Draft-21 one-bit LSB-first ZLIB level-9 bytes and a valid signed status decision.", {
       operation: "status-encoding", statuses: [1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1],
       signed_validation: statusInput(validStatus, validReferenced, validChain) as unknown as JsonValue,
-      mutation_table: { bit_0: "0x01", bit_7: "0x80", bit_8: "next-byte-0x01", padding: "whole-byte-valid-decoys" },
+      mutation_table: mutationTable({ bit_0: expectedBytes("01"), bit_7: expectedBytes("80"),
+        bit_8: expectedBytes("0001"), padding: expectedBytes("01") }),
     }),
     authored("002-invalidated-token.json", "invalidated-token", "A signed INVALID bit fails closed and cannot be overridden by the otherwise valid referenced JWT.", {
       ...statusInput(invalidStatus, invalidReferenced, refreshedChain), operation: "status-generation",
@@ -1007,35 +1124,53 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
       authoritative_source: { issuance_record: x.issuance as unknown as JsonValue,
         invalidation_records: generatedInvalidations as unknown as JsonValue,
         invalidated_jti: x.issuance.jti, convergence: "revocation-wins" },
-      mutation_table: { valid_to_invalid: "reject", invalid_to_valid_without_resign: "bad-signature" },
+      mutation_table: mutationTable({ valid_to_invalid: expectedDecision("reject", "oidc-status-invalid"),
+        invalid_to_valid_without_resign: expectedDecision("reject", "oidc-status-invalid") }),
     }),
     authored("003-stale-status-list-rejected.json", "stale-status-list-rejected", "TTL equality, expiration, bad signature, malformed ZLIB, and out-of-range indexes fail closed.", {
       ...statusInput(validStatus, validReferenced, validChain, validStatus.claims.iat + validStatus.claims.ttl),
-      mutation_table: { ttl_boundary: "fresh-at-equality", expired: "oidc-status-stale",
-        bad_signature: "oidc-status-invalid", malformed_zlib: "oidc-status-invalid", out_of_range: "oidc-status-index-invalid" },
+      mutation_material: staleMutationMaterial,
+      mutation_table: mutationTable({ ttl_boundary: expectedDecision("accept", null),
+        expired: expectedDecision("reject", "oidc-status-stale"),
+        bad_signature: expectedDecision("reject", "oidc-status-invalid"),
+        malformed_zlib: expectedDecision("reject", "oidc-status-invalid"),
+        out_of_range: expectedDecision("reject", "oidc-status-index-invalid") }),
     }),
     authored("004-writer-index-collision-rejected.json", "writer-index-collision-rejected", "Duplicate writer-namespaced URI/index allocation is rejected before token return.", {
-      ...collisionInput, mutation_table: { same_writer_same_index: "reject", distinct_writer_namespace: "accept",
-        noncontiguous_prefix: "reject" },
+      ...collisionInput, mutation_table: mutationTable({
+        same_writer_same_index: expectedDecision("reject", "claim-repository-conflict"),
+        distinct_writer_namespace: expectedDecision("accept", null),
+        noncontiguous_prefix: expectedDecision("reject", "claim-repository-conflict") }),
     }),
     authored("005-https-radicle-byte-identity.json", "https-radicle-byte-identity", "Canonical-main discovery, JWKS, status and manifest tree is byte-identical to supplied HTTPS entities.", {
       operation: "mirror", manifest: manifest as unknown as JsonValue, discovery,
       jwks_hex: jwksBytes.toString("hex"), status_tokens: [{ path: statusPath, hex: Buffer.from(validStatus.compact).toString("hex") }],
-      https_bytes: treeBytes, mutation_table: { jwks_byte: "digest-mismatch", status_byte: "digest-mismatch",
-        path_case: "reject", branch_not_main: "reject" },
+      https_bytes: treeBytes, mutation_table: mutationTable({
+        jwks_byte: expectedDecision("reject", "oidc-status-digest-mismatch"),
+        status_byte: expectedDecision("reject", "oidc-status-digest-mismatch"),
+        path_case: expectedDecision("reject", "oidc-status-digest-mismatch"),
+        branch_not_main: expectedDecision("reject", "oidc-status-invalid") }),
     }),
     authored("006-radicle-digest-mismatch.json", "radicle-digest-mismatch", "A manifest/JWKS SHA-256 mismatch fails closed even when the public key itself is usable.", {
       operation: "mirror", manifest: corruptedManifest as unknown as JsonValue, discovery,
       jwks_hex: jwksBytes.toString("hex"), status_tokens: [{ path: statusPath, hex: Buffer.from(validStatus.compact).toString("hex") }],
-      https_bytes: treeBytes, mutation_table: { digest_nibble: "reject", byte_mismatch: "reject", extra_status_path: "reject" },
+      https_bytes: treeBytes, mutation_table: mutationTable({
+        digest_nibble: expectedDecision("reject", "oidc-status-digest-mismatch"),
+        byte_mismatch: expectedDecision("reject", "oidc-status-digest-mismatch"),
+        extra_status_path: expectedDecision("reject", "oidc-status-digest-mismatch") }),
     }),
     authored("007-https-outage-radicle-fallback.json", "https-outage-radicle-fallback", "A Heterodyne verifier may use validated canonical-main continuity during HTTPS outage; ordinary OIDC does not auto-follow it.", {
-      ...outageInput, mutation_table: { https_outage: "heterodyne-fallback", stale_kel_head: "reject",
-        unauthorized_writer: "reject", standard_oidc: "retain-exact-issuer" },
+      ...outageInput, mutation_table: mutationTable({ https_outage: expectedDecision("accept", null),
+        stale_kel_head: expectedDecision("reject", "oidc-issuer-authority-invalid"),
+        unauthorized_writer: expectedDecision("reject", "oidc-issuer-authority-invalid"),
+        standard_oidc: expectedDecision("accept", null) }),
     }),
     authored("008-issuer-successor.json", "issuer-successor", "Issuer succession binds predecessor and successor commitments and separately proves persona authority.", {
-      ...successionInput, mutation_table: { missing_persona_proof: "reject", predecessor_nibble: "reject",
-        wrong_successor_url: "reject", old_https_issuer: "stops-new-issuance" },
+      ...successionInput, mutation_material: successionMutationMaterial, mutation_table: mutationTable({
+        missing_persona_proof: expectedDecision("reject", "oidc-issuer-authority-invalid"),
+        predecessor_nibble: expectedDecision("reject", "oidc-status-digest-mismatch"),
+        wrong_successor_url: expectedDecision("reject", "oidc-issuer-authority-invalid"),
+        old_https_issuer: expectedDecision("reject", "oidc-issuer-authority-invalid") }),
     }),
     authored("009-signing-key-compromise.json", "signing-key-compromise", "Signing-key compromise invalidates the referenced token; shared-key possession cannot authorize issuer succession.", {
       ...statusInput(compromiseStatus, invalidReferenced, compromiseChain, compromiseStatus.claims.iat,
@@ -1047,8 +1182,14 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
       retention: { retiring_jwks_sha256: rotatedManifest.retiring_jwks_sha256,
         status_paths: rotatedManifest.status_lists.map(({ path }) => path),
         retain_through: x.issuance.expires_at },
-      mutation_table: { compromised_key_bit: "INVALID", shared_key_only_successor: "reject",
-        retain_compromised_key: "reject", drop_status_before_expiry: "reject" },
+      mutation_material: { drop_status_before_expiry: {
+        candidate: rotatedNoStatusManifest as unknown as JsonValue,
+      } } as unknown as JsonValue,
+      mutation_table: mutationTable({
+        compromised_key_bit: expectedDecision("reject", "oidc-status-invalid"),
+        shared_key_only_successor: expectedDecision("reject", "oidc-issuer-authority-invalid"),
+        retain_compromised_key: expectedDecision("reject", "oidc-issuer-authority-invalid"),
+        drop_status_before_expiry: expectedDecision("reject", "oidc-status-digest-mismatch") }),
     }),
   ];
 }

@@ -36,7 +36,7 @@
       "status_lists": [
         {
           "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
-          "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46",
+          "sha256": "6a193d9f8bc2b849cd8610e44f8de9cf6f6d4c57777ae450a9b7bea4b6ae3fc5",
           "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
           "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
         }
@@ -55,7 +55,7 @@
       "authority_proof": {
         "type": "radicle-ed25519",
         "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-        "signature": "bc18b51436ed6974f6948ad67904b8c31e677ff2dac80059a02054833a65cd6a713288808418d7e65b3ced0ec5ebbff98d568a0ef06b04dc8395451776d06d07"
+        "signature": "ff5d47d6022871d353d938624c3b9a078ff7d5d227fa2edf13f9237dc0a90ff976031730d99178678135351bea11b02966440961b6112fe6f15952d184886a0a"
       }
     },
     "ledger_replay": {
@@ -5829,10 +5829,26 @@
     "standard_oidc_behavior": "does-not-follow-radicle",
     "heterodyne_behavior": "validated-radicle-fallback",
     "mutation_table": {
-      "https_outage": "heterodyne-fallback",
-      "stale_kel_head": "reject",
-      "unauthorized_writer": "reject",
-      "standard_oidc": "retain-exact-issuer"
+      "https_outage": {
+        "kind": "decision",
+        "verdict": "accept",
+        "reason_code": null
+      },
+      "stale_kel_head": {
+        "kind": "decision",
+        "verdict": "reject",
+        "reason_code": "oidc-issuer-authority-invalid"
+      },
+      "unauthorized_writer": {
+        "kind": "decision",
+        "verdict": "reject",
+        "reason_code": "oidc-issuer-authority-invalid"
+      },
+      "standard_oidc": {
+        "kind": "decision",
+        "verdict": "accept",
+        "reason_code": null
+      }
     }
   },
   "expected_output": {
@@ -5846,18 +5862,56 @@
       "heterodyne_fallback": "radicle-canonical-main",
       "mutation_results": {
         "https_outage": {
-          "verdict": "accept"
+          "expected": {
+            "kind": "decision",
+            "verdict": "accept",
+            "reason_code": null
+          },
+          "actual": {
+            "kind": "decision",
+            "verdict": "accept",
+            "reason_code": null
+          },
+          "matched": true
         },
         "stale_kel_head": {
-          "verdict": "reject",
-          "reason_code": "oidc-issuer-authority-invalid"
+          "expected": {
+            "kind": "decision",
+            "verdict": "reject",
+            "reason_code": "oidc-issuer-authority-invalid"
+          },
+          "actual": {
+            "kind": "decision",
+            "verdict": "reject",
+            "reason_code": "oidc-issuer-authority-invalid"
+          },
+          "matched": true
         },
         "unauthorized_writer": {
-          "verdict": "reject",
-          "reason_code": "oidc-issuer-authority-invalid"
+          "expected": {
+            "kind": "decision",
+            "verdict": "reject",
+            "reason_code": "oidc-issuer-authority-invalid"
+          },
+          "actual": {
+            "kind": "decision",
+            "verdict": "reject",
+            "reason_code": "oidc-issuer-authority-invalid"
+          },
+          "matched": true
         },
         "standard_oidc": {
-          "verdict": "accept"
+          "expected": {
+            "kind": "decision",
+            "verdict": "accept",
+            "reason_code": null
+          },
+          "actual": {
+            "kind": "decision",
+            "verdict": "accept",
+            "reason_code": null
+          },
+          "matched": true
         }
       }
     }
