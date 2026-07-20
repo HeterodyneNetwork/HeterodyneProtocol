@@ -175,11 +175,15 @@ describe("canonical key claims", () => {
 });
 
 describe("claim revocation envelopes", () => {
-  async function revocationEvent(revocation: ClaimRevocation, secretKey = epoch.private_key) {
+  async function revocationEvent(
+    revocation: ClaimRevocation,
+    secretKey = epoch.private_key,
+    createdAt = revocation.revoked_at,
+  ) {
     return signEvent({
       secretKey,
       auxRand,
-      created_at: revocation.revoked_at,
+      created_at: createdAt,
       kind: 31014,
       tags: addressTags(revocation.claim_id),
       content: jcsCanonicalize(revocation),
@@ -194,7 +198,29 @@ describe("claim revocation envelopes", () => {
       revoker: { type: "nostr-secp256k1", value: epoch.pubkey },
     };
     const event = await revocationEvent(revocation);
-    expect(validateClaimRevocationEnvelope(event)).toEqual({ ...revocation, signer: revocation.revoker, event_id: event.id });
+    expect(validateClaimRevocationEnvelope(event)).toEqual({
+      ...revocation,
+      signer: revocation.revoker,
+      event_id: event.id,
+      event_created_at: event.created_at,
+    });
+  });
+
+  it("binds revocation semantic time exactly to the signed outer event", async () => {
+    const revocation: ClaimRevocation = {
+      claim_id: semanticBody().claim_id,
+      revoked_at: issuedAt + 11,
+      reason_code: "claim-revoked",
+      revoker: { type: "nostr-secp256k1", value: epoch.pubkey },
+    };
+    expect(validateClaimRevocationEnvelope(await revocationEvent(revocation)).event_created_at)
+      .toBe(revocation.revoked_at);
+    const oneSecondLate = await revocationEvent(revocation, epoch.private_key, revocation.revoked_at + 1);
+    const backdatedByTenMinutes = await revocationEvent(revocation, epoch.private_key, revocation.revoked_at + 600);
+    expect(() => validateClaimRevocationEnvelope(oneSecondLate))
+      .toThrow(/claim-schema-invalid.*revoked_at.*created_at/);
+    expect(() => validateClaimRevocationEnvelope(backdatedByTenMinutes))
+      .toThrow(/claim-schema-invalid.*revoked_at.*created_at/);
   });
 
   it("verifies a native Ed25519 proof and derives the named NID", async () => {
@@ -717,6 +743,7 @@ describe("claim trust, attenuation, and authorization state", () => {
       revoker: rootIssuer,
       signer: rootIssuer,
       event_id: "44".repeat(32),
+      event_created_at: issuedAt + 11,
     };
     expect(resolveClaimState(active, [active], context(active, { revocations: [directRevocation] }))).toBe("revoked");
     const copied = context(active, { trusted_issuers: [] });
@@ -754,12 +781,51 @@ describe("claim trust, attenuation, and authorization state", () => {
       revoker: root.issuer,
       signer: root.issuer,
       event_id: "58".repeat(32),
+      event_created_at: issuedAt + 10,
     };
     expect(authorizeWithClaim(child, [root, child], {
       ...valid,
       repository_confirmed: new Set([child.claim_id]),
       revocations: [ancestorRevocation],
     })).toEqual({ allowed: false, state: "revoked", reason_code: "claim-revoked" });
+  });
+
+  it("applies repository finality to authorization claims above a descriptive leaf", () => {
+    const { root } = delegatedPair();
+    const descriptive = claim({
+      claim_class: "descriptive",
+      issuer: root.subject,
+      subject,
+      parent_claim_id: root.claim_id,
+      not_before: root.not_before + 1,
+      expires_at: root.expires_at! - 1,
+    });
+    const chain = [root, descriptive];
+    const base = context(descriptive, {
+      trusted_issuers: [root.issuer],
+      subject_proof: null,
+      claim_authority_evidence: new Map([
+        [root.claim_id, authorityEvidence(root, "72")],
+        [descriptive.claim_id, authorityEvidence(descriptive, "73")],
+      ]),
+      repository_confirmed: new Set([descriptive.claim_id]),
+    });
+    expect(resolveClaimState(descriptive, chain, base)).toBe("provisional");
+    expect(authorizeWithClaim(descriptive, chain, base)).toEqual({
+      allowed: false,
+      state: "provisional",
+      reason_code: "claim-repository-unconfirmed",
+    });
+
+    const standalone = claim({
+      claim_class: "descriptive",
+      parent_claim_id: undefined,
+      expires_at: undefined,
+    });
+    expect(resolveClaimState(standalone, [standalone], context(standalone, {
+      subject_proof: null,
+      repository_confirmed: new Set(),
+    }))).toBe("active");
   });
 
   it("recognizes each authorization revoker and applies reduction before repository finality", () => {
@@ -773,6 +839,7 @@ describe("claim trust, attenuation, and authorization state", () => {
         revoker: authority,
         signer: authority,
         event_id: (50 + index).toString(16).padStart(64, "0"),
+        event_created_at: issuedAt + 10,
       };
       const base = delegatedContext(root, child);
       const revocationAuthority: RevocationAuthorityEvidence | undefined = sameKey(authority, root.issuer)
@@ -808,6 +875,7 @@ describe("claim trust, attenuation, and authorization state", () => {
       revoker: outsider,
       signer: outsider,
       event_id: "59".repeat(32),
+      event_created_at: issuedAt + 10,
     };
     expect(authorizeWithClaim(child, [root, child], {
       ...delegatedContext(root, child),
@@ -844,6 +912,7 @@ describe("claim trust, attenuation, and authorization state", () => {
         revoker: authority,
         signer: authority,
         event_id: "55".repeat(32),
+        event_created_at: issuedAt + 10,
       };
       const revocationAuthority: RevocationAuthorityEvidence | undefined = sameKey(authority, descriptiveRoot.issuer)
         ? {
@@ -877,6 +946,7 @@ describe("claim trust, attenuation, and authorization state", () => {
       revoker: descriptive.subject,
       signer: descriptive.subject,
       event_id: "56".repeat(32),
+      event_created_at: issuedAt + 10,
     };
     expect(resolveClaimState(descriptive, [descriptiveRoot, descriptive], context(descriptive, {
       trusted_issuers: [descriptiveRoot.issuer],
@@ -884,6 +954,7 @@ describe("claim trust, attenuation, and authorization state", () => {
         [descriptiveRoot.claim_id, authorityEvidence(descriptiveRoot, "34")],
         [descriptive.claim_id, authorityEvidence(descriptive, "35")],
       ]),
+      repository_confirmed: new Set([descriptiveRoot.claim_id, descriptive.claim_id]),
       subject_proof: null,
       revocations: [subjectRejection],
     }))).toBe("active");
@@ -902,6 +973,7 @@ describe("claim trust, attenuation, and authorization state", () => {
       revoker: personaColdRoot,
       signer: personaColdRoot,
       event_id: "61".repeat(32),
+      event_created_at: issuedAt + 10,
     };
     const evidence: RevocationAuthorityEvidence = {
       event_id: revocation.event_id,
@@ -917,6 +989,15 @@ describe("claim trust, attenuation, and authorization state", () => {
       revocations: [revocation],
       revocation_authority_evidence: new Map([[revocation.event_id, evidence]]),
     }))).toEqual({ allowed: false, state: "revoked", reason_code: "claim-revoked" });
+
+    const backdatedRevocation: VerifiedRevocation = {
+      ...revocation,
+      event_created_at: evidence.valid_until + 1,
+    };
+    expect(authorizeWithClaim(active, [active], context(active, {
+      revocations: [backdatedRevocation],
+      revocation_authority_evidence: new Map([[backdatedRevocation.event_id, evidence]]),
+    })).state).toBe("active");
 
     const personaEpoch: KeyRef = {
       type: "nostr-secp256k1",
@@ -1127,10 +1208,23 @@ describe("normative claim vector authoring", () => {
       .input.positive_native_revocation_event as NostrSignedEvent;
     expect(validateClaimRevocationEnvelope(jwkRevocation).signer.type).toBe("jwk-thumbprint");
     const authorizationRoles = byId.get("claims/authorization-self-revocation")!
-      .input.role_cases as Array<{ event: NostrSignedEvent; expected_authorized: boolean }>;
+      .input.role_cases as Array<{
+        role: string;
+        event: NostrSignedEvent;
+        authority_evidence: RevocationAuthorityEvidence | null;
+        persona_cold_root: string | null;
+        expected_authorized: boolean;
+      }>;
     expect(authorizationRoles).toHaveLength(6);
     expect(authorizationRoles.filter(({ expected_authorized }) => expected_authorized)).toHaveLength(5);
     expect(authorizationRoles.every(({ event }) => validateClaimRevocationEnvelope(event).event_id === event.id)).toBe(true);
+    const personaEpochRole = authorizationRoles.find(({ role }) => role === "persona-epoch")!;
+    expect(personaEpochRole.event.pubkey).toBe(fixtures.personas.alice.epoch_keys.epoch_1.pubkey);
+    expect(personaEpochRole.authority_evidence).toMatchObject({
+      signer: { type: "nostr-secp256k1", value: fixtures.personas.alice.epoch_keys.epoch_1.pubkey },
+      authority: "persona-epoch",
+    });
+    expect(personaEpochRole.persona_cold_root).toBe(fixtures.personas.alice.cold_root.pubkey);
     expect(new Map([
       ["claims/canonical-nostr-subject", "heterodyne-comms-key-claim-nostr-bip340-v1"],
       ["claims/canonical-radicle-nid-subject", "heterodyne-comms-key-claim-radicle-ed25519-v1"],

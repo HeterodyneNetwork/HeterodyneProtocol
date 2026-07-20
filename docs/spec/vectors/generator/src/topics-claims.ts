@@ -269,7 +269,7 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
   const roleSigners = [
     { role: "claim-issuer", key: child.issuer, secret: deviceOnePublishing.private_key, authorized: true },
     { role: "active-ancestor-issuer", key: parent.issuer, secret: epoch.private_key, authorized: true },
-    { role: "persona-epoch", key: { type: "nostr-secp256k1" as const, value: fixtures.personas.carol.epoch_keys.epoch_1.pubkey }, secret: fixtures.personas.carol.epoch_keys.epoch_1.private_key, authorized: true },
+    { role: "persona-epoch", key: { type: "nostr-secp256k1" as const, value: epoch.pubkey }, secret: epoch.private_key, authorized: true },
     { role: "persona-cold-root", key: { type: "nostr-secp256k1" as const, value: fixtures.personas.alice.cold_root.pubkey }, secret: fixtures.personas.alice.cold_root.private_key, authorized: true },
     { role: "subject-self", key: child.subject, secret: deviceTwoPublishing.private_key, authorized: true },
     { role: "unrelated-signer", key: { type: "nostr-secp256k1" as const, value: thirdParty.pubkey }, secret: thirdParty.private_key, authorized: false },
@@ -319,6 +319,9 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
       event,
       verified_signer: verified.signer,
       authority_evidence,
+      persona_cold_root: role.role === "persona-epoch" || role.role === "persona-cold-root"
+        ? audience
+        : null,
       expected_authorized: role.authorized,
     });
   }

@@ -64,7 +64,11 @@ export type ClaimRevocation = {
   proof?: KeyProof;
 };
 
-export type VerifiedRevocation = ClaimRevocation & { signer: KeyRef; event_id: string };
+export type VerifiedRevocation = ClaimRevocation & {
+  signer: KeyRef;
+  event_id: string;
+  event_created_at: number;
+};
 
 export type SubjectProofChallenge = {
   domain: "heterodyne-claim-pop-v1";
@@ -222,9 +226,17 @@ export function validateClaimRevocationEnvelope(event: NostrSignedEvent): Verifi
   if (!REGISTERED_REASON_CODES.has(revocation.reason_code)) {
     throw new Error(`claim-schema-invalid: unregistered reason_code ${revocation.reason_code}`);
   }
+  if (revocation.revoked_at !== event.created_at) {
+    throw new Error("claim-schema-invalid: revoked_at must equal signed event created_at");
+  }
   assertOuterSignature(event);
   verifyRevocationProof(event, revocation);
-  return { ...revocation, signer: revocation.revoker, event_id: event.id };
+  return {
+    ...revocation,
+    signer: revocation.revoker,
+    event_id: event.id,
+    event_created_at: event.created_at,
+  };
 }
 
 export function validateKeyRef(key: KeyRef): void {
@@ -387,10 +399,10 @@ function evaluateClaim(
   if (chain.some((claim) => context.repository_conflicted.has(claim.claim_id))) {
     return { state: "conflicted", reason_code: "claim-repository-conflict" };
   }
-  if (
-    leaf.claim_class === "authorization" &&
-    chain.some((claim) => !context.repository_confirmed.has(claim.claim_id))
-  ) {
+  if (chain.some((claim) =>
+    claim.claim_class === "authorization" &&
+    !context.repository_confirmed.has(claim.claim_id)
+  )) {
     return { state: "provisional", reason_code: "claim-repository-unconfirmed" };
   }
 
@@ -549,6 +561,7 @@ function isRevoked(chain: ClaimSemanticBody[], context: ClaimVerificationContext
     for (const revocation of context.revocations) {
       if (
         revocation.claim_id !== target.claim_id ||
+        revocation.event_created_at !== revocation.revoked_at ||
         revocation.revoked_at > context.now ||
         revocation.revoked_at < target.issued_at ||
         !sameKeyRef(revocation.revoker, revocation.signer)
@@ -617,8 +630,9 @@ function validRevocationAuthorityEvidence(
     evidence.core_kel_authority_valid &&
     Number.isSafeInteger(evidence.valid_from) &&
     Number.isSafeInteger(evidence.valid_until) &&
-    evidence.valid_from <= revocation.revoked_at &&
-    revocation.revoked_at < evidence.valid_until;
+    revocation.event_created_at === revocation.revoked_at &&
+    evidence.valid_from <= revocation.event_created_at &&
+    revocation.event_created_at < evidence.valid_until;
 }
 
 function matchesRestriction(restriction: string[] | undefined, value: string): boolean {
