@@ -3387,6 +3387,114 @@
     ]
   },
   {
+    "vector_id": "token-status/https-outage-radicle-fallback",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "token-status/https-radicle-byte-identity",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "token-status/invalidated-token",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "token-status/issuer-successor",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "token-status/radicle-digest-mismatch",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "token-status/signing-key-compromise",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "token-status/stale-status-list-rejected",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "token-status/valid-status-list",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "token-status/writer-index-collision-rejected",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
     "vector_id": "transport/egress-tor-off-default-indicator",
     "owner_document": "core",
     "owner_version": "core/0.5.0",

@@ -187,6 +187,15 @@ oidc/token-type-confusion-rejected
 oidc/dpop-confirmation-bound
 oidc/registered-jwt-assertion
 oidc/mtls-confirmation-bound
+token-status/valid-status-list
+token-status/invalidated-token
+token-status/stale-status-list-rejected
+token-status/writer-index-collision-rejected
+token-status/https-radicle-byte-identity
+token-status/radicle-digest-mismatch
+token-status/https-outage-radicle-fallback
+token-status/issuer-successor
+token-status/signing-key-compromise
 config-backup/config-blob-encrypt-decrypt
 config-backup/key-id-derivation
 config-backup/key-rotation-ref-delta
@@ -397,14 +406,16 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
     owner_document: owner,
     owner_version: `${owner}/${DOCUMENT_VERSIONS[owner]}`,
     dependency_versions: dependencies,
-    registry_revision: vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/") || vectorId.startsWith("oidc/") ? 2 : 1,
+    registry_revision: vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/") ||
+      vectorId.startsWith("oidc/") || vectorId.startsWith("token-status/") ? 2 : 1,
     ...(profile === undefined ? {} : { profile }),
     spec_refs: [`heterodyne:${reference.document}/${DOCUMENT_VERSIONS[reference.document]}#${reference.anchor}`],
   };
 }
 
 function referenceFor(vectorId: string, owner: DocumentId): { document: DocumentId; anchor: string } {
-  if (vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/") || vectorId.startsWith("oidc/")) {
+  if (vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/") || vectorId.startsWith("oidc/") ||
+      vectorId.startsWith("token-status/")) {
     return { document: "comms", anchor: "comms-conformance" };
   }
   if (vectorId.startsWith("stamping/") || vectorId.startsWith("profiles/core-breadcrumb")) {

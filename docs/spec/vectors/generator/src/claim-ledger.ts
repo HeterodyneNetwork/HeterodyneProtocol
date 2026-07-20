@@ -418,6 +418,24 @@ export function canonicalValidatedCheckpoint(state: LedgerMergeResult): LedgerCh
   return structuredClone(snapshot.checkpoint);
 }
 
+export function activeIssuerWriterNidsAt(state: LedgerMergeResult, now: number): string[] {
+  assertValidatedLedgerState(state);
+  if (!Number.isSafeInteger(now) || now < state.checkpoint.observed_at) {
+    throw new Error("oidc-issuer-authority-invalid: invalid issuer-authority evaluation time");
+  }
+  return deriveActiveIssuerNids(state, now);
+}
+
+export function currentIssuerSigningKeyId(state: LedgerMergeResult): string {
+  assertValidatedLedgerState(state);
+  canonicalValidatedCheckpoint(state);
+  const record = currentIssuerKeyEpochRecord(state);
+  if (record === null) throw new Error("oidc-signing-key-unavailable: current issuer-key epoch is absent");
+  const keyId = payloadObject(record.payload).key_digest;
+  assertCanonicalSigningKeyId(keyId, "current issuer signing-key ID");
+  return keyId;
+}
+
 export function replayConfirmedClaimForAuthorization(input: {
   state: LedgerMergeResult;
   claim_record_id: string;

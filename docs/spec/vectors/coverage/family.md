@@ -3,7 +3,7 @@
 Generated from [manifest.json](manifest.json); do not edit by hand.
 
 - core: 123
-- comms: 103
+- comms: 112
 - control: 0
 - social: 82
 
@@ -299,6 +299,15 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `stamping/tier3-profile-owner` | core | `core/0.5.0` | — | 1 | `heterodyne-comms-tier3-wrapped-content-kind-1-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/upstream-profile-owner` | core | `core/0.5.0` | — | 1 | `heterodyne-social-mute-list-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/upstream-unstamped` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-version-stamps` |
+| `token-status/https-outage-radicle-fallback` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `token-status/https-radicle-byte-identity` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `token-status/invalidated-token` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `token-status/issuer-successor` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `token-status/radicle-digest-mismatch` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `token-status/signing-key-compromise` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `token-status/stale-status-list-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `token-status/valid-status-list` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `token-status/writer-index-collision-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
 | `transport/egress-tor-off-default-indicator` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-tor-reachability` |
 | `transport/onion-no-clearnet-dns-leak` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-tor-reachability` |
 | `transport/onion-reachable-via-tor` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-tor-reachability` |

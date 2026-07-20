@@ -9,37 +9,14 @@
   "spec_refs": [
     "heterodyne:comms/0.5.0#comms-conformance"
   ],
-  "vector_id": "oidc/rfc9068-access-token-valid",
-  "description": "Strict RFC 9068 access-token and pinned draft-21 status validation.",
+  "vector_id": "token-status/stale-status-list-rejected",
+  "description": "TTL equality, expiration, bad signature, malformed ZLIB, and out-of-range indexes fail closed.",
   "input": {
-    "operation": "jwt-validation",
-    "metadata": {
-      "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
-      "authorization_endpoint": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/authorize",
-      "token_endpoint": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/token",
-      "device_authorization_endpoint": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/device_authorization",
-      "jwks_uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/.well-known/jwks.json",
-      "response_types_supported": [
-        "code"
-      ],
-      "grant_types_supported": [
-        "authorization_code",
-        "urn:ietf:params:oauth:grant-type:device_code"
-      ],
-      "code_challenge_methods_supported": [
-        "S256"
-      ],
-      "subject_types_supported": [
-        "pairwise"
-      ],
-      "id_token_signing_alg_values_supported": [
-        "RS256"
-      ],
-      "token_endpoint_auth_signing_alg_values_supported": [
-        "RS256"
-      ]
-    },
-    "jwks": {
+    "operation": "status-validation",
+    "referenced_compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkpGeE0xN1FwU01HcDRtMm80bGtkMDNzY0hfeEFyTWVTM2pxeHFvYVdoZW8iLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZCIsInN1YiI6IjVsbmJ2bEtEVG9ZM01FakMydzFYZGtWU01kY3VNUF9QUGFpVE9iRUNzQmciLCJhdWQiOlsiaHR0cHM6Ly9hcGkuZXhhbXBsZSJdLCJleHAiOjE3NjcyNDYyNjksImlhdCI6MTc2NzI0NTY2OSwianRpIjoib2lkYy1ldmlkZW5jZS1qdGktMDAwMSIsImNsaWVudF9pZCI6InJlZ2lzdGVyZWQtY2xpZW50Iiwic2NvcGUiOiJoZXRlcm9keW5lOmtleS1yZWYgb3BlbmlkIHByb2ZpbGUiLCJuYW1lIjoiQWxpY2UiLCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qva2V5LXJlZiI6eyJ0eXBlIjoibm9zdHItc2VjcDI1NmsxIiwidmFsdWUiOiJjNjA0N2Y5NDQxZWQ3ZDZkMzA0NTQwNmU5NWMwN2NkODVjNzc4ZTRiOGNlZjNjYTdhYmFjMDliOTVjNzA5ZWU1In0sImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9sZWRnZXItY2hlY2twb2ludCI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJjb21taXRfb2lkIjoiZjRmMjE2OTQ4ZTFhOTQwN2ZiNDZkM2ZhYzY0MzZlYjRkZDczMTRiNjBhNjYxMzJmZTVkNjlkODU5OTc3NTdkYSIsIm9ic2VydmVkX2F0IjoxNzY3MjQ1NjY4fSwic3RhdHVzIjp7InN0YXR1c19saXN0Ijp7InVyaSI6Imh0dHBzOi8vbm9kZS5leGFtcGxlL29pZGMvbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsImlkeCI6MH19LCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qvc3RhdHVzLW1pcnJvciI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJwYXRoIjoiLndlbGwta25vd24vbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsInNoYTI1NiI6Ijc0OTBmNzg4MTljYThkMmY0ODU0YzQwZGQ3M2I0NjhmOTlmYTRkOGE5YmY4YzAxZjUyMWI0Yjg5NzA4MjE5MmYifX0.NAEdbFMTV3NKFMzo_O1c5qfnYnTh99qXlrruagdy_xj7iaJHX-GSkKk0w9XZoEiF5fwzVGH9t51hOIcDzdnM5sG5B58lLBxD5bDGvPCw6cbtTamRoEVvHCedMjgLicaEe5MWZvYanFnLeHq5BPeSxeSEC0XEe1en-GfQID5O65tz7bxvf77OiSV-lwLiMSJ6fWTCuR0HYmdTTLGtAxOUhSVxOezocKVRZFknxfJ66CIzqsTLcbZboi1_kdtf_bO4c6fHY-oRcq0icnWhmbOkePDwY8IPtIkxezniAC11dMTxJBeWPH69vE2NkoIHDmLauc1y6h9_RO-EajflMPJjjQ",
+    "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+    "audience": "https://api.example",
+    "referenced_jwks": {
       "keys": [
         {
           "kty": "RSA",
@@ -54,18 +31,14 @@
         }
       ]
     },
-    "compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkpGeE0xN1FwU01HcDRtMm80bGtkMDNzY0hfeEFyTWVTM2pxeHFvYVdoZW8iLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZCIsInN1YiI6IjVsbmJ2bEtEVG9ZM01FakMydzFYZGtWU01kY3VNUF9QUGFpVE9iRUNzQmciLCJhdWQiOlsiaHR0cHM6Ly9hcGkuZXhhbXBsZSJdLCJleHAiOjE3NjcyNDYyNjksImlhdCI6MTc2NzI0NTY2OSwianRpIjoib2lkYy1ldmlkZW5jZS1qdGktMDAwMSIsImNsaWVudF9pZCI6InJlZ2lzdGVyZWQtY2xpZW50Iiwic2NvcGUiOiJoZXRlcm9keW5lOmtleS1yZWYgb3BlbmlkIHByb2ZpbGUiLCJuYW1lIjoiQWxpY2UiLCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qva2V5LXJlZiI6eyJ0eXBlIjoibm9zdHItc2VjcDI1NmsxIiwidmFsdWUiOiJjNjA0N2Y5NDQxZWQ3ZDZkMzA0NTQwNmU5NWMwN2NkODVjNzc4ZTRiOGNlZjNjYTdhYmFjMDliOTVjNzA5ZWU1In0sImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9sZWRnZXItY2hlY2twb2ludCI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJjb21taXRfb2lkIjoiZjRmMjE2OTQ4ZTFhOTQwN2ZiNDZkM2ZhYzY0MzZlYjRkZDczMTRiNjBhNjYxMzJmZTVkNjlkODU5OTc3NTdkYSIsIm9ic2VydmVkX2F0IjoxNzY3MjQ1NjY4fSwic3RhdHVzIjp7InN0YXR1c19saXN0Ijp7InVyaSI6Imh0dHBzOi8vbm9kZS5leGFtcGxlL29pZGMvbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsImlkeCI6MH19LCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qvc3RhdHVzLW1pcnJvciI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJwYXRoIjoiLndlbGwta25vd24vbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsInNoYTI1NiI6Ijc0OTBmNzg4MTljYThkMmY0ODU0YzQwZGQ3M2I0NjhmOTlmYTRkOGE5YmY4YzAxZjUyMWI0Yjg5NzA4MjE5MmYifX0.NAEdbFMTV3NKFMzo_O1c5qfnYnTh99qXlrruagdy_xj7iaJHX-GSkKk0w9XZoEiF5fwzVGH9t51hOIcDzdnM5sG5B58lLBxD5bDGvPCw6cbtTamRoEVvHCedMjgLicaEe5MWZvYanFnLeHq5BPeSxeSEC0XEe1en-GfQID5O65tz7bxvf77OiSV-lwLiMSJ6fWTCuR0HYmdTTLGtAxOUhSVxOezocKVRZFknxfJ66CIzqsTLcbZboi1_kdtf_bO4c6fHY-oRcq0icnWhmbOkePDwY8IPtIkxezniAC11dMTxJBeWPH69vE2NkoIHDmLauc1y6h9_RO-EajflMPJjjQ",
-    "expected_audience": "https://api.example",
-    "expected_issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
-    "expected_jwks_uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/.well-known/jwks.json",
     "options": {
-      "now": 1767245671,
+      "now": 1767245669,
+      "token_use": "access_token",
       "client_id": "registered-client",
+      "sender_constraint": "none",
       "permitted_audiences": [
         "https://api.example"
-      ],
-      "token_use": "access_token",
-      "sender_constraint": "none"
+      ]
     },
     "status_token": {
       "protected_header": {
@@ -101,7 +74,6 @@
         }
       ]
     },
-    "status_media_type": "application/statuslist+jwt",
     "continuity_chain": [
       {
         "manifest": {
@@ -5897,14 +5869,26 @@
           }
         }
       }
-    ]
+    ],
+    "media_type": "application/statuslist+jwt",
+    "now": 1767245791,
+    "mutation_table": {
+      "ttl_boundary": "oidc-status-stale",
+      "expired": "oidc-status-stale",
+      "bad_signature": "oidc-status-invalid",
+      "malformed_zlib": "oidc-status-invalid",
+      "out_of_range": "oidc-status-index-invalid"
+    }
   },
   "expected_output": {
-    "verdict": "accept",
+    "verdict": "reject",
+    "reason_code": "oidc-status-stale",
     "normalized": {
-      "allowed": true,
-      "state": "active",
-      "reason_code": null
+      "status": {
+        "allowed": false,
+        "state": "invalid",
+        "reason_code": "oidc-status-stale"
+      }
     }
   },
   "direction": "consume"

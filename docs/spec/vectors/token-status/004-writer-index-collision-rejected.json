@@ -1,0 +1,90 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "token-status/writer-index-collision-rejected",
+  "description": "Duplicate writer-namespaced URI/index allocation is rejected before token return.",
+  "input": {
+    "operation": "allocation-collision",
+    "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+    "expires_at": 1767246269,
+    "list_sequence": 0,
+    "existing": [
+      {
+        "jti": "oidc-evidence-jti-0001",
+        "reservation": {
+          "uri": "status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
+          "idx": 0,
+          "expiry_bucket": "20454",
+          "writer_nid_fingerprint": "9e2d8f969662fd7c68c9cc68c7b205c8",
+          "list_sequence": 0
+        },
+        "checkpoint": {
+          "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+          "branch": "main",
+          "commit_oid": "f4f216948e1a9407fb46d3fac6436eb4dd7314b60a66132fe5d69d85997757da",
+          "observed_at": 1767245668
+        },
+        "manifest_max_age_seconds": 300,
+        "signing_key_id": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
+        "client_id": "registered-client",
+        "authorization_request_digest": "770a4e71e041906f41090fe01c438009e760e883bcb4c7004d5d36278ad677f7",
+        "release_digest": "2831580f7883dc7d96800df32059897437564e42c27d69cdcab98d1b73214d7c",
+        "source_claim_ids": [
+          "06d8393868ffbb589a4912ee56a469b7a9a6bd1c6dac5906f0edea69d04091e5",
+          "12c16ea86fff2cfce0eb25dea9f793289ae4ebeceb8ac37fa7e93c00f8392a40",
+          "28b6fec3eb4d92e3106d121e7372aacaec2f5dcd8bc63dba9b7d5629f6725a93",
+          "d7591299c4d52d8b9c11dad9d705004dfca202d0942cab757869ec6c9238a36b"
+        ],
+        "issued_at": 1767245669,
+        "expires_at": 1767246269
+      },
+      {
+        "jti": "oidc-evidence-jti-0001",
+        "reservation": {
+          "uri": "status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
+          "idx": 0,
+          "expiry_bucket": "20454",
+          "writer_nid_fingerprint": "9e2d8f969662fd7c68c9cc68c7b205c8",
+          "list_sequence": 0
+        },
+        "checkpoint": {
+          "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+          "branch": "main",
+          "commit_oid": "f4f216948e1a9407fb46d3fac6436eb4dd7314b60a66132fe5d69d85997757da",
+          "observed_at": 1767245668
+        },
+        "manifest_max_age_seconds": 300,
+        "signing_key_id": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
+        "client_id": "registered-client",
+        "authorization_request_digest": "770a4e71e041906f41090fe01c438009e760e883bcb4c7004d5d36278ad677f7",
+        "release_digest": "2831580f7883dc7d96800df32059897437564e42c27d69cdcab98d1b73214d7c",
+        "source_claim_ids": [
+          "06d8393868ffbb589a4912ee56a469b7a9a6bd1c6dac5906f0edea69d04091e5",
+          "12c16ea86fff2cfce0eb25dea9f793289ae4ebeceb8ac37fa7e93c00f8392a40",
+          "28b6fec3eb4d92e3106d121e7372aacaec2f5dcd8bc63dba9b7d5629f6725a93",
+          "d7591299c4d52d8b9c11dad9d705004dfca202d0942cab757869ec6c9238a36b"
+        ],
+        "issued_at": 1767245669,
+        "expires_at": 1767246269
+      }
+    ],
+    "mutation_table": {
+      "same_writer_same_index": "reject",
+      "distinct_writer_namespace": "accept",
+      "noncontiguous_prefix": "reject"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-repository-conflict"
+  },
+  "direction": "consume"
+}

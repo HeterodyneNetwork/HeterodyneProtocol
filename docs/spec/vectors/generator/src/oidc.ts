@@ -75,6 +75,15 @@ export type ProjectedJwt = {
   compact: string;
 };
 
+export type ValidatedProjectedJwtContext = {
+  compact: string;
+  claims: Record<string, JsonValue>;
+  validated_at: number;
+  token_use: JwtValidationOptions["token_use"];
+};
+
+const VALIDATED_PROJECTED_JWTS = new WeakMap<object, string>();
+
 export type RegisteredClient = {
   client_id: string;
   redirect_uris: string[];
@@ -564,6 +573,45 @@ export function validateProjectedJwt(
   } catch {
     return denied("oidc-token-type-invalid");
   }
+}
+
+export function createValidatedProjectedJwtContext(
+  jwt: string,
+  expectedIssuer: string,
+  expectedAudience: string,
+  jwks: JsonValue,
+  options: JwtValidationOptions,
+): ValidatedProjectedJwtContext {
+  const decision = validateProjectedJwt(jwt, expectedIssuer, expectedAudience, jwks, options);
+  if (!decision.allowed) {
+    throw new Error(`${decision.reason_code ?? "oidc-token-type-invalid"}: referenced JWT validation failed`);
+  }
+  const segments = jwt.split(".");
+  const context: ValidatedProjectedJwtContext = Object.freeze({
+    compact: jwt,
+    claims: Object.freeze(parseSegment(segments[1])),
+    validated_at: options.now,
+    token_use: options.token_use,
+  });
+  VALIDATED_PROJECTED_JWTS.set(context, validatedContextFingerprint(context));
+  return context;
+}
+
+export function assertValidatedProjectedJwtContext(
+  context: ValidatedProjectedJwtContext,
+): asserts context is ValidatedProjectedJwtContext {
+  if (VALIDATED_PROJECTED_JWTS.get(context) !== validatedContextFingerprint(context)) {
+    throw new Error("oidc-token-type-invalid: referenced JWT context was not fully validated");
+  }
+}
+
+function validatedContextFingerprint(context: ValidatedProjectedJwtContext): string {
+  return createHash("sha256").update(jcsCanonicalize({
+    compact: context.compact,
+    claims: context.claims,
+    validated_at: context.validated_at,
+    token_use: context.token_use,
+  })).digest("hex");
 }
 
 function project(

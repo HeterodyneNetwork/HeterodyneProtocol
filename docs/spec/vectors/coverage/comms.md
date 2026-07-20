@@ -107,3 +107,12 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `relay-interop/auth-rejection-permanent` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-publishing` |
 | `relay-interop/keri-rotation-auth-new-key` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-publishing` |
 | `relay-interop/nip42-auth-current-epoch-key` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-publishing` |
+| `token-status/https-outage-radicle-fallback` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `token-status/https-radicle-byte-identity` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `token-status/invalidated-token` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `token-status/issuer-successor` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `token-status/radicle-digest-mismatch` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `token-status/signing-key-compromise` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `token-status/stale-status-list-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `token-status/valid-status-list` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
+| `token-status/writer-index-collision-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-conformance` |
