@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { sha256 } from "@noble/hashes/sha2";
 import {
   buildLedgerRepositoryEvidence,
   buildReaderOnboardingBundle,
@@ -6,9 +7,11 @@ import {
   canReturnToken,
   createAudienceKeyEpochPayload,
   createIssuerKeyEnvelope,
+  createIssuerKeyEpochPayload,
   createSignedLedgerRecord,
   createStatusInvalidationRecords,
   deriveActiveIssuerNids,
+  determineHistoricalTokenReturnability,
   evaluateMintingAttempt,
   evaluateReaderAccess,
   materializeLedgerLayout,
@@ -32,6 +35,8 @@ import {
   replayClaimLedgerVector,
   type ClaimLedgerScenario,
 } from "./topics-claim-ledger.js";
+import { bytesToHex, utf8Bytes } from "./hex.js";
+import { jcsCanonicalize } from "./jcs.js";
 
 const fixtures = buildFixtures();
 let s: ClaimLedgerScenario;
@@ -65,6 +70,10 @@ function boundEvidence(record: LedgerRecord, source?: LedgerRecordValidationEvid
     record_id: record.record_id,
     payload_digest: record.payload_digest,
   };
+}
+
+function digestJson(value: unknown): string {
+  return bytesToHex(sha256(utf8Bytes(jcsCanonicalize(value))));
 }
 
 describe("signed ledger artifact validation", () => {
@@ -236,9 +245,10 @@ describe("reader authorization and effect precedence", () => {
 
     const statusRecords = [
       s.claimRecordOne, s.claimRecordTwo, s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
-      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo, s.reservationOne, s.statusInvalidation,
+      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo, s.issuerKeyEpochRecordOne,
+      s.reservationOne, s.statusInvalidation,
     ];
-    const statusRepo = buildLedgerRepositoryEvidence({ repository_rid: s.rid, confirmed_records: statusRecords, observed_at: s.now + 80, prior: s.baseRepository.repository });
+    const statusRepo = buildLedgerRepositoryEvidence({ repository_rid: s.rid, confirmed_records: statusRecords, observed_at: s.now + 80, prior: s.issuerKeyEpochOneRepository.repository });
     const status = mergeClaimLedger(statusRecords, [], statusRepo.checkpoint, s.makeTask5Context(statusRepo.repository));
     expect(status.token_invalidations).toEqual(["writer_one_token_0001"]);
     expect(resolveAuthoritativeClaimState(s.claimOne.artifact.semantic.claim_id, status)).toBe("active");
@@ -353,6 +363,190 @@ describe("reader lifecycle and metadata privacy", () => {
 });
 
 describe("multi-writer OIDC issuer authority", () => {
+  it("creates a closed issuer-key genesis epoch bound to canonical authority", () => {
+    expect(createIssuerKeyEpochPayload({
+      authority_state: s.authorityState,
+      envelope: s.issuerKeyEnvelopeOne,
+      previous_record: null,
+    })).toMatchObject({
+      scope: "oidc-issuer-key",
+      epoch: 1,
+      previous_epoch: 0,
+      previous_envelope_digest: "00".repeat(32),
+      previous_key_digest: "00".repeat(32),
+      recipient_nids: [s.writerOne.did_key, s.writerTwo.did_key].sort(),
+      checkpoint: s.authorityState.checkpoint,
+    });
+  });
+
+  it("requires one unique canonical issuer-key genesis before minting", () => {
+    const authorityRecords = [
+      s.claimRecordOne, s.claimRecordTwo, s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
+      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo, s.issuerKeyEpochRecordOne,
+    ];
+    const payload = createIssuerKeyEpochPayload({
+      authority_state: s.authorityState,
+      envelope: s.issuerKeyEnvelopeOne,
+      previous_record: null,
+    });
+    const epochRecord = createSignedLedgerRecord({
+      record_type: "audience-key-epoch",
+      persona: s.persona,
+      writer_nid: s.writerTwo.did_key,
+      created_at: s.now + 65,
+      parents: [s.issuerAuthorityRecordOne.record_id, s.issuerAuthorityRecordTwo.record_id].sort(),
+      payload: payload as never,
+    }, s.writerTwo.private_key);
+    const repository = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid,
+      confirmed_records: [...authorityRecords, epochRecord],
+      observed_at: s.now + 66,
+      prior: s.authorityRepository.repository,
+    });
+    const context = s.makeTask5Context(repository.repository);
+    context.record_evidence.set(epochRecord.record_id, boundEvidence(epochRecord));
+    (context as any).issuer_key_material_by_record_id = new Map([[
+      epochRecord.record_id,
+      { envelope: s.issuerKeyEnvelopeOne, audience_key: s.issuerAudienceKeyOne },
+    ]]);
+    const state = mergeClaimLedger([...authorityRecords, epochRecord], [], repository.checkpoint, context);
+    expect(evaluateMintingAttempt({
+      now: state.checkpoint.observed_at,
+      manifest_max_age_seconds: 300,
+      writer_nid: s.writerOne.did_key,
+      state,
+      envelope: s.issuerKeyEnvelopeOne,
+      audience_key: s.issuerAudienceKeyOne,
+    })).toMatchObject({ allowed: true, key_epoch: 1 });
+
+    const noEpoch = evaluateMintingAttempt({
+      now: s.authorityState.checkpoint.observed_at,
+      manifest_max_age_seconds: 300,
+      writer_nid: s.writerOne.did_key,
+      state: s.authorityState,
+      envelope: s.issuerKeyEnvelopeOne,
+      audience_key: s.issuerAudienceKeyOne,
+    });
+    expect(noEpoch).toMatchObject({ allowed: false, pending_rotation: true });
+  });
+
+  it("rejects canonical issuer envelopes with inconsistent internal context", () => {
+    const authorityRecords = [
+      s.claimRecordOne, s.claimRecordTwo, s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
+      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo,
+    ];
+    const mutations = [
+      (envelope: any) => { envelope.object_type = "not-an-issuer-key"; },
+      (envelope: any) => { envelope.authority_record_ids.reverse(); },
+      (envelope: any) => { envelope.removed_issuer_nids = [fixtures.ed25519_nids.bob_device_1.did_key]; },
+      (envelope: any) => { envelope.unknown_member = true; },
+      (envelope: any) => { envelope.recipient_wraps[0].unknown_member = true; },
+    ];
+    for (const mutate of mutations) {
+      const envelope = structuredClone(s.issuerKeyEnvelopeOne);
+      mutate(envelope);
+      expect(() => {
+        const payload = createIssuerKeyEpochPayload({
+          authority_state: s.authorityState,
+          envelope,
+          previous_record: null,
+        });
+        const record = createSignedLedgerRecord({
+          record_type: "audience-key-epoch",
+          persona: s.persona,
+          writer_nid: s.writerTwo.did_key,
+          created_at: s.now + 65,
+          parents: [s.issuerAuthorityRecordOne.record_id, s.issuerAuthorityRecordTwo.record_id].sort(),
+          payload: payload as never,
+        }, s.writerTwo.private_key);
+        const repository = buildLedgerRepositoryEvidence({
+          repository_rid: s.rid,
+          confirmed_records: [...authorityRecords, record],
+          observed_at: s.now + 66,
+          prior: s.authorityRepository.repository,
+        });
+        const context = s.makeTask5Context(repository.repository);
+        context.record_evidence.set(record.record_id, boundEvidence(record));
+        context.issuer_key_material_by_record_id!.set(record.record_id, {
+          envelope,
+          audience_key: s.issuerAudienceKeyOne,
+        });
+        mergeClaimLedger([...authorityRecords, record], [], repository.checkpoint, context);
+      }).toThrow(/issuer|authority|envelope|key/);
+    }
+  });
+
+  it("blocks concurrent issuer-key genesis and rotation forks", () => {
+    const authorityRecords = [
+      s.claimRecordOne, s.claimRecordTwo, s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
+      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo,
+    ];
+    const alternateGenesisKey = Uint8Array.from({ length: 32 }, () => 0x76);
+    const alternateGenesisEnvelope = createIssuerKeyEnvelope({
+      persona: s.persona, repository_rid: s.rid, epoch: 1,
+      audience_key: alternateGenesisKey,
+      signing_jwk: { kty: "RSA", d: "alternate-genesis-material" },
+      authority_state: s.authorityState,
+      recipient_nids: [s.writerOne.did_key, s.writerTwo.did_key],
+    });
+    const alternateGenesisPayload = createIssuerKeyEpochPayload({
+      authority_state: s.authorityState, envelope: alternateGenesisEnvelope, previous_record: null,
+    });
+    const alternateGenesisRecord = createSignedLedgerRecord({
+      record_type: "audience-key-epoch", persona: s.persona, writer_nid: s.writerOne.did_key,
+      created_at: s.now + 65,
+      parents: [s.issuerAuthorityRecordOne.record_id, s.issuerAuthorityRecordTwo.record_id].sort(),
+      payload: alternateGenesisPayload as never,
+    }, s.writerOne.private_key);
+    const genesisRecords = [...authorityRecords, s.issuerKeyEpochRecordOne, alternateGenesisRecord];
+    const genesisRepo = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid, confirmed_records: genesisRecords, observed_at: s.now + 67,
+      prior: s.authorityRepository.repository,
+    });
+    const genesisContext = s.makeTask5Context(genesisRepo.repository);
+    genesisContext.record_evidence.set(alternateGenesisRecord.record_id, boundEvidence(alternateGenesisRecord));
+    genesisContext.issuer_key_material_by_record_id!.set(alternateGenesisRecord.record_id, {
+      envelope: alternateGenesisEnvelope, audience_key: alternateGenesisKey,
+    });
+    expect(() => mergeClaimLedger(genesisRecords, [], genesisRepo.checkpoint, genesisContext))
+      .toThrow(/divergent|conflict/);
+
+    const alternateRotationKey = Uint8Array.from({ length: 32 }, () => 0x77);
+    const alternateRotationEnvelope = createIssuerKeyEnvelope({
+      persona: s.persona, repository_rid: s.rid, epoch: 2,
+      audience_key: alternateRotationKey,
+      signing_jwk: { kty: "RSA", d: "alternate-rotation-material" },
+      authority_state: s.removedAuthorityState,
+      recipient_nids: [s.writerTwo.did_key],
+      previous: { envelope: s.issuerKeyEnvelopeOne, audience_key: s.issuerAudienceKeyOne },
+    });
+    const alternateRotationPayload = createIssuerKeyEpochPayload({
+      authority_state: s.removedAuthorityState, envelope: alternateRotationEnvelope,
+      previous_record: s.issuerKeyEpochRecordOne,
+    });
+    const alternateRotationRecord = createSignedLedgerRecord({
+      record_type: "audience-key-epoch", persona: s.persona, writer_nid: s.writerTwo.did_key,
+      created_at: s.now + 101,
+      parents: [s.issuerKeyEpochRecordOne.record_id, s.issuerRemovalRecord.record_id].sort(),
+      payload: alternateRotationPayload as never,
+    }, s.writerTwo.private_key);
+    const rotationRecords = [
+      ...authorityRecords, s.issuerKeyEpochRecordOne, s.issuerRemovalRecord,
+      s.issuerKeyEpochRecordTwo, alternateRotationRecord,
+    ];
+    const rotationRepo = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid, confirmed_records: rotationRecords, observed_at: s.now + 103,
+      prior: s.removedAuthorityRepository.repository,
+    });
+    const rotationContext = s.makeTask5Context(rotationRepo.repository);
+    rotationContext.record_evidence.set(alternateRotationRecord.record_id, boundEvidence(alternateRotationRecord));
+    rotationContext.issuer_key_material_by_record_id!.set(alternateRotationRecord.record_id, {
+      envelope: alternateRotationEnvelope, audience_key: alternateRotationKey,
+    });
+    expect(() => mergeClaimLedger(rotationRecords, [], rotationRepo.checkpoint, rotationContext))
+      .toThrow(/divergent|conflict/);
+  });
+
   it("derives only exact canonical oidc-token-issuer grants as mint authority", () => {
     const readerOnly = mergeClaimLedger(
       [s.claimRecordOne, s.claimRecordTwo], [], s.baseRepository.checkpoint, contextFor(s.baseRepository.repository),
@@ -367,7 +561,7 @@ describe("multi-writer OIDC issuer authority", () => {
       repository_rid: s.rid,
       confirmed_records: records,
       observed_at: s.now + 100,
-      prior: s.baseRepository.repository,
+      prior: s.authorityRepository.repository,
     });
     const state = mergeClaimLedger(records, [], repository.checkpoint, s.makeTask5Context(repository.repository));
     expect(resolveIssuerAuthorityState(s.writerOne.did_key, state)).toBe("active");
@@ -390,7 +584,7 @@ describe("multi-writer OIDC issuer authority", () => {
       .toBe("oidc-issuer-authority-invalid");
     expect(canMint(checkpoint.observed_at, checkpoint, 300, "active", false).reason_code)
       .toBe("oidc-signing-key-unavailable");
-    expect(canMint(checkpoint.observed_at, checkpoint, 0, "active", true).allowed).toBe(false);
+    expect(canMint(checkpoint.observed_at, checkpoint, 0, "active", true).allowed).toBe(true);
     expect(canMint(checkpoint.observed_at, checkpoint, 300.5, "active", true).allowed).toBe(false);
     expect(canMint(checkpoint.observed_at + 121, checkpoint, 120, "active", true).reason_code)
       .toBe("oidc-checkpoint-stale");
@@ -405,14 +599,41 @@ describe("multi-writer OIDC issuer authority", () => {
     }
   });
 
+  it("persists the exact mint bound and permits zero only at the checkpoint instant", () => {
+    const checkpoint = s.baseRepository.checkpoint;
+    expect(canMint(checkpoint.observed_at, checkpoint, 0, "active", true)).toMatchObject({ allowed: true });
+    expect(canMint(checkpoint.observed_at + 1, checkpoint, 0, "active", true)).toMatchObject({ allowed: false });
+
+    expect(() => validateIssuanceRecordOrThrow({
+      ...s.issuanceOne,
+      manifest_max_age_seconds: 5,
+      checkpoint,
+      issued_at: checkpoint.observed_at + 5,
+    } as never)).not.toThrow();
+    expect(() => validateIssuanceRecordOrThrow({
+      ...s.issuanceOne,
+      manifest_max_age_seconds: 5,
+      checkpoint,
+      issued_at: checkpoint.observed_at + 6,
+    } as never)).toThrow(/fresh|manifest|checkpoint/);
+    expect(() => validateIssuanceRecordOrThrow({
+      ...s.issuanceOne,
+      manifest_max_age_seconds: 301,
+    } as never)).toThrow(/manifest|maximum|schema/);
+    expect(() => validateIssuanceRecordOrThrow({
+      ...s.issuanceOne,
+      manifest_max_age_seconds: 0.5,
+    } as never)).toThrow(/manifest|integer|schema/);
+  });
+
   it("derives exhaustive issuer recipients, gates pending rotation, and requires canonical issuance finality", () => {
     const records = [
       s.claimRecordOne, s.claimRecordTwo, s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
-      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo,
+      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo, s.issuerKeyEpochRecordOne,
     ];
     const repository = buildLedgerRepositoryEvidence({
       repository_rid: s.rid, confirmed_records: records, observed_at: s.now + 100,
-      prior: s.baseRepository.repository,
+      prior: s.issuerKeyEpochOneRepository.repository,
     });
     const state = mergeClaimLedger(records, [], repository.checkpoint, s.makeTask5Context(repository.repository));
     expect(deriveActiveIssuerNids(state)).toEqual([s.writerOne.did_key, s.writerTwo.did_key].sort());
@@ -496,15 +717,15 @@ describe("multi-writer OIDC issuer authority", () => {
     const bob = fixtures.ed25519_nids.bob_device_1;
     const authorityRecords = [
       s.claimRecordOne, s.claimRecordTwo, s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
-      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo,
+      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo, s.issuerKeyEpochRecordOne,
     ];
     const issuance = {
       ...s.issuanceOne,
       jti: "unauthorized_bob_token_0001",
       reservation: reserveStatusIndex(bob.did_key, s.now + 3_600, 0, []),
-      checkpoint: s.authorityRepository.checkpoint,
+      checkpoint: s.issuerKeyEpochOneRepository.checkpoint,
       signing_key_id: "ff".repeat(32),
-      issued_at: s.now + 65,
+      issued_at: s.now + 66,
     };
     const record = createSignedLedgerRecord({
       record_type: "issuance-reservation",
@@ -518,7 +739,7 @@ describe("multi-writer OIDC issuer authority", () => {
       repository_rid: s.rid,
       confirmed_records: [...authorityRecords, record],
       observed_at: s.now + 100,
-      prior: s.authorityRepository.repository,
+      prior: s.issuerKeyEpochOneRepository.repository,
     });
     const context = s.makeTask5Context(repository.repository);
     context.record_evidence.set(record.record_id, boundEvidence(record));
@@ -526,17 +747,138 @@ describe("multi-writer OIDC issuer authority", () => {
     expect(canReturnToken(
       record.record_id, state, s.issuerKeyEnvelopeOne, s.issuerAudienceKeyOne,
     )).toMatchObject({ allowed: false, reason_code: "oidc-issuer-authority-invalid" });
+    expect(createStatusInvalidationRecords({
+      state,
+      writer_nid: s.writerTwo.did_key,
+      writer_secret_key: s.writerTwo.private_key,
+      created_at: repository.checkpoint.observed_at + 1,
+      compromised_signing_key_ids: [issuance.signing_key_id],
+    })).toEqual([]);
+  });
+
+  it("preserves historical returnability after later issuer removal and source revocation", () => {
+    const issuedRecords = [
+      s.claimRecordOne, s.claimRecordTwo, s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
+      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo, s.issuerKeyEpochRecordOne,
+      s.reservationOne, s.reservationTwo,
+    ];
+    const issuedRepo = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid, confirmed_records: issuedRecords, observed_at: s.now + 100,
+      prior: s.issuerKeyEpochOneRepository.repository,
+    });
+    const removedRecords = [...issuedRecords, s.issuerRemovalRecord];
+    const removedRepo = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid, confirmed_records: removedRecords, observed_at: s.now + 110,
+      prior: issuedRepo.repository,
+    });
+    const removedState = mergeClaimLedger(
+      removedRecords, [], removedRepo.checkpoint, s.makeTask5Context(removedRepo.repository),
+    );
+    expect(canReturnToken(
+      s.reservationOne.record_id, removedState, s.issuerKeyEnvelopeOne, s.issuerAudienceKeyOne,
+    )).toMatchObject({
+      allowed: false,
+      state: "invalid",
+      reason_code: "oidc-issuer-authority-invalid",
+    });
+    const revokedRecords = [...removedRecords, s.revocationRecord];
+    const revokedRepo = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid, confirmed_records: revokedRecords, observed_at: s.now + 111,
+      prior: removedRepo.repository,
+    });
+    const state = mergeClaimLedger(
+      revokedRecords, [], revokedRepo.checkpoint, s.makeTask5Context(revokedRepo.repository),
+    );
+    expect(resolveIssuerAuthorityState(s.writerOne.did_key, state)).toBe("revoked");
+    expect(resolveAuthoritativeClaimState(s.claimOne.artifact.semantic.claim_id, state)).toBe("revoked");
+    expect(determineHistoricalTokenReturnability(s.reservationOne.record_id, state)).toMatchObject({
+      allowed: true,
+      state: "active",
+    });
+    expect(canReturnToken(
+      s.reservationOne.record_id, state, s.issuerKeyEnvelopeOne, s.issuerAudienceKeyOne,
+    )).toMatchObject({ allowed: false, state: "revoked", reason_code: "claim-revoked" });
+  });
+
+  it("rejects ambiguous sibling introductions of one canonical issuance", () => {
+    const baseRecords = [
+      s.claimRecordOne, s.claimRecordTwo, s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
+      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo, s.issuerKeyEpochRecordOne,
+    ];
+    const leftRecords = [...baseRecords, s.reservationOne];
+    const rightRecords = [...baseRecords, s.reservationOne, s.reservationTwo];
+    const left = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid, confirmed_records: leftRecords, observed_at: s.now + 100,
+      prior: s.issuerKeyEpochOneRepository.repository,
+    });
+    const right = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid, confirmed_records: rightRecords, observed_at: s.now + 100,
+      prior: s.issuerKeyEpochOneRepository.repository,
+    });
+    const recordIds = rightRecords.map(({ record_id }) => record_id).sort();
+    const recordSetDigest = digestJson(recordIds);
+    const treeOid = digestJson({
+      domain: "heterodyne-claim-ledger-tree-v1",
+      record_ids: recordIds,
+      record_set_digest: recordSetDigest,
+    });
+    const parents = [left.repository.canonical_head, right.repository.canonical_head].sort();
+    const commitOid = digestJson({
+      domain: "heterodyne-claim-ledger-commit-v1",
+      repository_rid: s.rid,
+      branch: "main",
+      tree_oid: treeOid,
+      parents,
+      record_set_digest: recordSetDigest,
+    });
+    const checkpoint = {
+      repository_rid: s.rid, branch: "main" as const, commit_oid: commitOid, observed_at: s.now + 101,
+    };
+    const priorCommits = s.issuerKeyEpochOneRepository.repository.commits;
+    const repository = {
+      repository_rid: s.rid,
+      branch: "main" as const,
+      genesis: false,
+      prior_checkpoint: s.issuerKeyEpochOneRepository.checkpoint,
+      canonical_head: commitOid,
+      checkpoint,
+      commits: [
+        ...priorCommits,
+        left.repository.commits.at(-1)!,
+        right.repository.commits.at(-1)!,
+        {
+          commit_oid: commitOid,
+          tree_oid: treeOid,
+          parents,
+          record_ids: recordIds,
+          record_set_digest: recordSetDigest,
+        },
+      ],
+      repository_confirmed_record_ids: recordIds,
+    };
+    const state = mergeClaimLedger(
+      rightRecords, [], checkpoint, s.makeTask5Context(repository),
+    );
+    expect(determineHistoricalTokenReturnability(s.reservationOne.record_id, state)).toMatchObject({
+      allowed: false,
+      reason_code: "claim-repository-conflict",
+    });
   });
 
   it("exposes deterministic signed invalidation record creation", () => {
-    const records = [
+    const issuedRecords = [
       s.claimRecordOne, s.claimRecordTwo, s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
-      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo,
-      s.reservationOne, s.reservationTwo, s.revocationRecord,
+      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo, s.issuerKeyEpochRecordOne,
+      s.reservationOne, s.reservationTwo,
     ];
+    const issuedRepository = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid, confirmed_records: issuedRecords, observed_at: s.now + 100,
+      prior: s.issuerKeyEpochOneRepository.repository,
+    });
+    const records = [...issuedRecords, s.revocationRecord];
     const repository = buildLedgerRepositoryEvidence({
       repository_rid: s.rid, confirmed_records: records, observed_at: s.now + 110,
-      prior: s.baseRepository.repository,
+      prior: issuedRepository.repository,
     });
     const state = mergeClaimLedger(records, [], repository.checkpoint, s.makeTask5Context(repository.repository));
     const input = {
@@ -552,15 +894,22 @@ describe("multi-writer OIDC issuer authority", () => {
     expect(new Set(first.map(({ payload }) => (payload as any).cause))).toEqual(
       new Set(["source-claim-revoked", "signing-key-compromised"]),
     );
+    expect(first.every(({ payload }) => {
+      const value = payload as any;
+      return value.writer_authority_claim_id === s.issuerClaimTwo.artifact.semantic.claim_id &&
+        value.authority_checkpoint.commit_oid === state.checkpoint.commit_oid &&
+        value.issuer_key_epoch === 1 &&
+        value.issuer_key_digest === s.issuerKeyEnvelopeOne.content_digest;
+    })).toBe(true);
 
     const deliveredOnly = mergeClaimLedger(
       [
         s.claimRecordOne, s.claimRecordTwo, s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
-        s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo,
+        s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo, s.issuerKeyEpochRecordOne,
       ],
       [s.reservationOne, s.revocationRecord],
-      s.authorityRepository.checkpoint,
-      s.makeTask5Context(s.authorityRepository.repository),
+      s.issuerKeyEpochOneRepository.checkpoint,
+      s.makeTask5Context(s.issuerKeyEpochOneRepository.repository),
     );
     expect(deliveredOnly.token_invalidations).toEqual([]);
     expect(createStatusInvalidationRecords({
@@ -568,6 +917,165 @@ describe("multi-writer OIDC issuer authority", () => {
       state: deliveredOnly,
       created_at: deliveredOnly.checkpoint.observed_at + 1,
     })).toEqual([]);
+  });
+
+  it("keeps a historically authorized canonical invalidation valid after writer removal", () => {
+    const issuedRecords = [
+      s.claimRecordOne, s.claimRecordTwo, s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
+      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo, s.issuerKeyEpochRecordOne,
+      s.reservationOne, s.reservationTwo,
+    ];
+    const issuedRepository = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid, confirmed_records: issuedRecords, observed_at: s.now + 100,
+      prior: s.issuerKeyEpochOneRepository.repository,
+    });
+    const records = [...issuedRecords, s.revocationRecord];
+    const repository = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid, confirmed_records: records, observed_at: s.now + 110,
+      prior: issuedRepository.repository,
+    });
+    const state = mergeClaimLedger(records, [], repository.checkpoint, s.makeTask5Context(repository.repository));
+    const invalidations = createStatusInvalidationRecords({
+      state, writer_nid: s.writerOne.did_key, writer_secret_key: s.writerOne.private_key,
+      created_at: repository.checkpoint.observed_at + 1,
+      compromised_signing_key_ids: [s.issuanceOne.signing_key_id],
+    });
+    const invalidationRecords = [...records, ...invalidations];
+    const invalidationRepo = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid, confirmed_records: invalidationRecords, observed_at: s.now + 112,
+      prior: repository.repository,
+    });
+    const removedRecords = [...invalidationRecords, s.issuerRemovalRecord];
+    const removedRepo = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid, confirmed_records: removedRecords, observed_at: s.now + 113,
+      prior: invalidationRepo.repository,
+    });
+    const context = s.makeTask5Context(removedRepo.repository);
+    const sourceEvidence = context.record_evidence.get(s.statusInvalidation.record_id)!;
+    for (const record of invalidations) {
+      const payload = record.payload as any;
+      context.record_evidence.set(record.record_id, {
+        ...(payload.cause === "source-claim-revoked" ? sourceEvidence : {}),
+        record_id: record.record_id,
+        payload_digest: record.payload_digest,
+      });
+    }
+    expect(() => mergeClaimLedger(removedRecords, [], removedRepo.checkpoint, context)).not.toThrow();
+  });
+
+  it("rejects an invalidation authored after the bound writer authority expires", () => {
+    const issuedRecords = [
+      s.claimRecordOne, s.claimRecordTwo, s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
+      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo, s.issuerKeyEpochRecordOne,
+      s.reservationOne,
+    ];
+    const issuedRepo = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid, confirmed_records: issuedRecords, observed_at: s.now + 100,
+      prior: s.issuerKeyEpochOneRepository.repository,
+    });
+    const createdAt = s.issuerClaimTwo.artifact.semantic.expires_at! + 1;
+    const invalidation = createSignedLedgerRecord({
+      record_type: "status-invalidation",
+      persona: s.persona,
+      writer_nid: s.writerTwo.did_key,
+      created_at: createdAt,
+      parents: [s.reservationOne.record_id],
+      payload: {
+        ...(s.statusInvalidation.payload as Record<string, unknown>),
+        authority_checkpoint: issuedRepo.checkpoint,
+        issuer_key_epoch: 1,
+        issuer_key_digest: s.issuerKeyEnvelopeOne.content_digest,
+      } as never,
+    }, s.writerTwo.private_key);
+    const records = [...issuedRecords, invalidation];
+    const repository = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid, confirmed_records: records, observed_at: createdAt + 1,
+      prior: issuedRepo.repository,
+    });
+    const context = s.makeTask5Context(repository.repository);
+    context.record_evidence.set(invalidation.record_id, {
+      ...context.record_evidence.get(s.statusInvalidation.record_id)!,
+      record_id: invalidation.record_id,
+      payload_digest: invalidation.payload_digest,
+    });
+    expect(() => mergeClaimLedger(records, [], repository.checkpoint, context))
+      .toThrow(/authority|expired/);
+  });
+
+  it("creates invalidations for historical tokens after issuer removal, rotation, and later compromise", () => {
+    const issuedRecords = [
+      s.claimRecordOne, s.claimRecordTwo, s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
+      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo, s.issuerKeyEpochRecordOne,
+      s.reservationOne, s.reservationTwo,
+    ];
+    const issuedRepo = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid, confirmed_records: issuedRecords, observed_at: s.now + 100,
+      prior: s.issuerKeyEpochOneRepository.repository,
+    });
+    const removedRecords = [...issuedRecords, s.issuerRemovalRecord];
+    const removedRepo = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid, confirmed_records: removedRecords, observed_at: s.now + 110,
+      prior: issuedRepo.repository,
+    });
+    const removedState = mergeClaimLedger(
+      removedRecords, [], removedRepo.checkpoint, s.makeTask5Context(removedRepo.repository),
+    );
+    const rotatedAudienceKey = Uint8Array.from({ length: 32 }, () => 0x79);
+    const rotatedEnvelope = createIssuerKeyEnvelope({
+      persona: s.persona,
+      repository_rid: s.rid,
+      epoch: 2,
+      audience_key: rotatedAudienceKey,
+      signing_jwk: { kty: "RSA", d: "historical-invalidation-rotation" },
+      authority_state: removedState,
+      recipient_nids: [s.writerTwo.did_key],
+      previous: { envelope: s.issuerKeyEnvelopeOne, audience_key: s.issuerAudienceKeyOne },
+    });
+    const rotatedPayload = createIssuerKeyEpochPayload({
+      authority_state: removedState,
+      envelope: rotatedEnvelope,
+      previous_record: s.issuerKeyEpochRecordOne,
+    });
+    const rotatedRecord = createSignedLedgerRecord({
+      record_type: "audience-key-epoch",
+      persona: s.persona,
+      writer_nid: s.writerTwo.did_key,
+      created_at: s.now + 111,
+      parents: [s.issuerKeyEpochRecordOne.record_id, s.issuerRemovalRecord.record_id].sort(),
+      payload: rotatedPayload as never,
+    }, s.writerTwo.private_key);
+    const rotatedRecords = [...removedRecords, rotatedRecord];
+    const rotatedRepo = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid, confirmed_records: rotatedRecords, observed_at: s.now + 112,
+      prior: removedRepo.repository,
+    });
+    const revokedRecords = [...rotatedRecords, s.revocationRecord];
+    const revokedRepo = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid, confirmed_records: revokedRecords, observed_at: s.now + 113,
+      prior: rotatedRepo.repository,
+    });
+    const context = s.makeTask5Context(revokedRepo.repository);
+    context.record_evidence.set(rotatedRecord.record_id, boundEvidence(rotatedRecord));
+    context.issuer_key_material_by_record_id!.set(rotatedRecord.record_id, {
+      envelope: rotatedEnvelope,
+      audience_key: rotatedAudienceKey,
+    });
+    const state = mergeClaimLedger(revokedRecords, [], revokedRepo.checkpoint, context);
+    const invalidations = createStatusInvalidationRecords({
+      state,
+      writer_nid: s.writerTwo.did_key,
+      writer_secret_key: s.writerTwo.private_key,
+      created_at: state.checkpoint.observed_at + 1,
+      compromised_signing_key_ids: [s.issuerKeyEnvelopeOne.content_digest],
+    });
+    expect(invalidations).toHaveLength(4);
+    expect(new Set(invalidations.map(({ payload }) => (payload as any).jti))).toEqual(
+      new Set([s.issuanceOne.jti, s.issuanceTwo.jti]),
+    );
+    expect(new Set(invalidations.map(({ payload }) => (payload as any).cause))).toEqual(
+      new Set(["source-claim-revoked", "signing-key-compromised"]),
+    );
+    expect(invalidations.every(({ payload }) => (payload as any).issuer_key_epoch === 2)).toBe(true);
   });
 
   it("confines a separately encrypted signing JWK to active issuer devices", () => {
@@ -674,9 +1182,10 @@ describe("multi-writer OIDC issuer authority", () => {
       jti: "writer_one_token_0001",
       reservation: first,
       checkpoint: s.baseRepository.checkpoint,
+      manifest_max_age_seconds: 300,
       signing_key_id: "11".repeat(32),
       source_claim_ids: [s.claimOne.artifact.semantic.claim_id],
-      issued_at: s.now,
+      issued_at: s.baseRepository.checkpoint.observed_at,
       expires_at: s.now + 172_800,
     };
     expect(first.expiry_bucket).toBe(String(Math.floor((s.now + 172_800) / 86_400)));
@@ -710,12 +1219,16 @@ describe("multi-writer OIDC issuer authority", () => {
       parents: [s.claimRecordOne.record_id],
       payload: s.issuanceOne as never,
     }, s.writerOne.private_key);
-    const records = [s.claimRecordOne, s.claimRecordTwo, s.reservationOne, duplicate];
+    const records = [
+      s.claimRecordOne, s.claimRecordTwo, s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
+      s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo, s.issuerKeyEpochRecordOne,
+      s.reservationOne, duplicate,
+    ];
     const repository = buildLedgerRepositoryEvidence({
       repository_rid: s.rid,
       confirmed_records: records,
       observed_at: s.now + 100,
-      prior: s.baseRepository.repository,
+      prior: s.issuerKeyEpochOneRepository.repository,
     });
     const context = s.makeTask5Context(repository.repository);
     context.record_evidence.set(duplicate.record_id, boundEvidence(duplicate));
@@ -751,9 +1264,14 @@ describe("Task 4 vector closure", () => {
     const staleOutput = stale.expected_output.normalized as any;
     expect(staleOutput.boundary_300.allowed).toBe(true);
     expect(staleOutput.boundary_301.reason_code).toBe("oidc-checkpoint-stale");
+    expect(staleOutput.zero_bound_exact.allowed).toBe(true);
+    expect(staleOutput.zero_bound_after_one.reason_code).toBe("oidc-checkpoint-stale");
     expect(staleOutput.removal).toMatchObject({ allowed: false, pending_rotation: true, reason_code: "oidc-signing-key-unavailable" });
     expect(staleOutput.post_rotation).toMatchObject({ allowed: true, pending_rotation: false });
     expect(staleOutput.rotated_key.audience_key_id).not.toBe(staleOutput.rotated_key.previous_key_id);
+    expect(staleOutput.issuer_epoch_fork).toEqual({
+      verdict: "reject", reason_code: "claim-repository-conflict",
+    });
 
     const invalidation = vectors.find(({ vector }) => vector.vector_id.endsWith("source-claim-revokes-token"))!.vector;
     const invalidationOutput = invalidation.expected_output.normalized as any;

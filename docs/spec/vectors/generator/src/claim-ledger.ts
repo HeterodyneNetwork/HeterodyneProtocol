@@ -72,6 +72,7 @@ export type IssuanceRecord = {
   jti: string;
   reservation: StatusReservation;
   checkpoint: LedgerCheckpoint;
+  manifest_max_age_seconds: number;
   signing_key_id: string;
   source_claim_ids: string[];
   issued_at: number;
@@ -155,6 +156,7 @@ export type LedgerValidationContext = {
   repository: LedgerRepositoryEvidence;
   reader_requests: Map<string, ReaderAccessRequest>;
   audience_keys_by_epoch: Map<number, Uint8Array>;
+  issuer_key_material_by_record_id?: Map<string, { envelope: IssuerKeyEnvelope; audience_key: Uint8Array }>;
 };
 
 export type LedgerLayout = {
@@ -183,6 +185,18 @@ export type AudienceKeyEpochPayload = {
   checkpoint_commit_oid: string;
   retire_previous_state: true;
   scrub_profile: "comms-encrypted-branch-cooperative-v1";
+};
+
+export type IssuerKeyEpochPayload = {
+  scope: "oidc-issuer-key";
+  epoch: number;
+  envelope_digest: string;
+  key_digest: string;
+  previous_epoch: number;
+  previous_envelope_digest: string;
+  previous_key_digest: string;
+  recipient_nids: string[];
+  checkpoint: LedgerCheckpoint;
 };
 
 export type LedgerOnboardingBundle = {
@@ -231,6 +245,19 @@ const RECORD_TYPES = new Set<LedgerRecordType>([
 ]);
 const VALIDATED_LEDGER_STATES = new WeakSet<object>();
 const VALIDATED_LEDGER_REPOSITORIES = new WeakMap<object, LedgerRepositoryEvidence>();
+const REPLAY_VALIDATED_RECORDS = new WeakMap<LedgerValidationContext, WeakSet<LedgerRecord>>();
+
+export function prepareLedgerReplayValidationContext(
+  context: LedgerValidationContext,
+  source?: LedgerValidationContext,
+): void {
+  if (REPLAY_VALIDATED_RECORDS.has(context)) return;
+  REPLAY_VALIDATED_RECORDS.set(
+    context,
+    source === undefined ? new WeakSet<LedgerRecord>() :
+      (REPLAY_VALIDATED_RECORDS.get(source) ?? new WeakSet<LedgerRecord>()),
+  );
+}
 
 export function createSignedLedgerRecord(input: UnsignedLedgerRecord, writerSecretKey: string): LedgerRecord {
   const payload_digest = digestJson(input.payload);
@@ -306,8 +333,16 @@ export function mergeClaimLedger(
   }
   const records = [...recordsById.values()];
   validateRepositoryEvidence(checkpoint, recordsById, context.repository);
+  const replayValidatedRecords = REPLAY_VALIDATED_RECORDS.get(context);
   for (const record of records) {
-    validateLedgerRecordOrThrow(record, recordsById, context.record_evidence.get(record.record_id));
+    if (replayValidatedRecords === undefined) {
+      validateLedgerRecordOrThrow(record, recordsById, context.record_evidence.get(record.record_id));
+      continue;
+    }
+    if (!replayValidatedRecords.has(record)) {
+      validateLedgerRecordOrThrow(record, recordsById, context.record_evidence.get(record.record_id));
+      replayValidatedRecords.add(record);
+    }
   }
   assertAcyclic(recordsById);
   validateLedgerStateInvariants(recordsById, context);
@@ -484,6 +519,56 @@ export function createAudienceKeyEpochPayload(input: {
   };
 }
 
+export function createIssuerKeyEpochPayload(input: {
+  authority_state: LedgerMergeResult;
+  envelope: IssuerKeyEnvelope;
+  previous_record: LedgerRecord | null;
+}): IssuerKeyEpochPayload {
+  assertValidatedLedgerState(input.authority_state);
+  const recipients = input.envelope.recipient_wraps.map(({ writer_nid }) => writer_nid).sort();
+  const activeIssuers = deriveActiveIssuerNids(input.authority_state);
+  const expectedAuthorityIds = issuerAuthorityRecordIds(input.authority_state);
+  if (input.envelope.repository_rid !== input.authority_state.checkpoint.repository_rid ||
+      input.envelope.checkpoint_commit_oid !== input.authority_state.checkpoint.commit_oid ||
+      !input.authority_state.records.every(({ persona }) => persona === input.envelope.persona) ||
+      jcsCanonicalize(recipients) !== jcsCanonicalize(activeIssuers) ||
+      jcsCanonicalize(input.envelope.authority_record_ids) !== jcsCanonicalize(expectedAuthorityIds) ||
+      input.envelope.authority_record_set_digest !== digestJson(expectedAuthorityIds)) {
+    throw new Error("oidc-signing-key-unavailable: issuer envelope is not bound to canonical authority state");
+  }
+  let previousEpoch = 0;
+  let previousEnvelopeDigest = GENESIS_AUDIENCE_KEY_ID;
+  let previousKeyDigest = GENESIS_AUDIENCE_KEY_ID;
+  if (input.previous_record !== null) {
+    if (input.previous_record.record_type !== "audience-key-epoch") {
+      throw new Error("claim-repository-conflict: issuer-key predecessor has wrong record type");
+    }
+    const previous = payloadObject(input.previous_record.payload);
+    if (previous.scope !== "oidc-issuer-key") {
+      throw new Error("claim-repository-conflict: issuer-key predecessor has wrong scope");
+    }
+    previousEpoch = Number(previous.epoch);
+    previousEnvelopeDigest = String(previous.envelope_digest);
+    previousKeyDigest = String(previous.key_digest);
+  }
+  if (input.envelope.epoch !== previousEpoch + 1 ||
+      (previousEpoch === 0 ? input.envelope.previous_key_id !== GENESIS_AUDIENCE_KEY_ID :
+        input.envelope.previous_key_id === GENESIS_AUDIENCE_KEY_ID)) {
+    throw new Error("claim-repository-conflict: issuer-key epoch does not extend its predecessor");
+  }
+  return {
+    scope: "oidc-issuer-key",
+    epoch: input.envelope.epoch,
+    envelope_digest: digestJson(input.envelope),
+    key_digest: input.envelope.content_digest,
+    previous_epoch: previousEpoch,
+    previous_envelope_digest: previousEnvelopeDigest,
+    previous_key_digest: previousKeyDigest,
+    recipient_nids: recipients,
+    checkpoint: { ...input.authority_state.checkpoint },
+  };
+}
+
 export function buildLedgerRepositoryEvidence(input: {
   repository_rid: string;
   confirmed_records: LedgerRecord[];
@@ -569,7 +654,7 @@ export function canMint(
   if (issuerClaimState !== "active") return denied("oidc-issuer-authority-invalid");
   if (!hasSigningKey) return denied("oidc-signing-key-unavailable");
   if (!Number.isSafeInteger(now) || !Number.isSafeInteger(manifestMaxAgeSeconds) ||
-      manifestMaxAgeSeconds <= 0 || manifestMaxAgeSeconds > 300 || now < checkpoint.observed_at) {
+      manifestMaxAgeSeconds < 0 || manifestMaxAgeSeconds > 300 || now < checkpoint.observed_at) {
     return denied("oidc-checkpoint-stale");
   }
   if (now - checkpoint.observed_at > manifestMaxAgeSeconds) return denied("oidc-checkpoint-stale");
@@ -610,9 +695,11 @@ export function reserveStatusIndex(
 export function validateIssuanceRecordOrThrow(record: IssuanceRecord): void {
   validateOidcIssuanceRecordSchemaOrThrow(record);
   if (record.expires_at <= record.issued_at ||
+      record.issued_at < record.checkpoint.observed_at ||
+      record.issued_at - record.checkpoint.observed_at > record.manifest_max_age_seconds ||
       record.reservation.expiry_bucket !== String(Math.floor(record.expires_at / 86_400)) ||
       record.reservation.uri !== `status-lists/${record.reservation.expiry_bucket}/${record.reservation.writer_nid_fingerprint}/${String(record.reservation.list_sequence)}.jwt`) {
-    throw new Error("claim-schema-invalid: issuance record reservation binding is invalid");
+    throw new Error("claim-schema-invalid: issuance record freshness or reservation binding is invalid");
   }
   validateCheckpoint(record.checkpoint);
 }
@@ -806,6 +893,23 @@ export function createStatusInvalidationRecords(input: {
   if (compromised.some((keyId) => !HEX_32.test(keyId))) {
     throw new Error("claim-schema-invalid: invalid compromised signing-key ID");
   }
+  const authorityClaimId = canonicalIssuerAuthorityClaimId(input.writer_nid, input.state, input.created_at);
+  const issuerEpochRecord = currentIssuerKeyEpochRecord(input.state);
+  const issuerEpoch = issuerEpochRecord === null
+    ? null
+    : payloadObject(issuerEpochRecord.payload) as unknown as IssuerKeyEpochPayload;
+  const activeIssuers = deriveActiveIssuerNids(input.state, input.created_at);
+  if (authorityClaimId === null || issuerEpoch === null ||
+      !issuerEpoch.recipient_nids.includes(input.writer_nid) ||
+      jcsCanonicalize(issuerEpoch.recipient_nids) !== jcsCanonicalize(activeIssuers)) {
+    throw new Error("oidc-signing-key-unavailable: invalidation creation requires the current canonical issuer-key epoch");
+  }
+  const authorityBinding = {
+    writer_authority_claim_id: authorityClaimId,
+    authority_checkpoint: { ...input.state.checkpoint },
+    issuer_key_epoch: issuerEpoch.epoch,
+    issuer_key_digest: issuerEpoch.key_digest,
+  };
   const existingCauses = new Set(input.state.records
     .filter(({ record_type }) => record_type === "status-invalidation")
     .map(({ payload }) => invalidationCauseKey(payloadObject(payload))));
@@ -813,6 +917,7 @@ export function createStatusInvalidationRecords(input: {
   const confirmed = new Set(input.state.repository_confirmed_record_ids ?? []);
   const issuances = input.state.records
     .filter(({ record_type, record_id }) => record_type === "issuance-reservation" && confirmed.has(record_id))
+    .filter(({ record_id }) => determineHistoricalTokenReturnability(record_id, input.state).allowed)
     .sort((left, right) => left.record_id.localeCompare(right.record_id));
   for (const issuanceRecord of issuances) {
     const issuance = payloadObject(issuanceRecord.payload) as unknown as IssuanceRecord;
@@ -827,6 +932,7 @@ export function createStatusInvalidationRecords(input: {
         jti: issuance.jti,
         source_claim_id: sourceClaimId,
         revocation_artifact: revocationArtifactFromRecord(reduction)!,
+        ...authorityBinding,
       } as unknown as JsonValue;
       const causeKey = invalidationCauseKey(payloadObject(payload));
       if (!existingCauses.has(causeKey)) {
@@ -855,6 +961,7 @@ export function createStatusInvalidationRecords(input: {
             detected_at: input.created_at,
           }),
         },
+        ...authorityBinding,
       } as unknown as JsonValue;
       const causeKey = invalidationCauseKey(payloadObject(payload));
       if (!existingCauses.has(causeKey)) {
@@ -1022,6 +1129,28 @@ export function resolveIssuerAuthorityState(
   return hasCanonicalGrant ? resolveAuthoritativeClaimState(claimIds[0], state, evaluationTime) : "invalid";
 }
 
+function canonicalIssuerAuthorityClaimId(
+  writerNid: string,
+  state: LedgerMergeResult,
+  evaluationTime: number,
+): string | null {
+  if (resolveIssuerAuthorityState(writerNid, state, evaluationTime) !== "active") return null;
+  const confirmed = new Set(state.repository_confirmed_record_ids ?? []);
+  const claimIds = state.records
+    .filter((record) => record.record_type === "claim" && confirmed.has(record.record_id))
+    .map(claimArtifactFromRecord)
+    .filter((artifact): artifact is ClaimArtifact => artifact !== null)
+    .map(({ semantic }) => semantic)
+    .filter((claim) => claim.claim_class === "authorization" && claim.namespace === "heterodyne.device" &&
+      claim.name === "oidc-token-issuer" && claim.value === true &&
+      claim.visibility === "repository-private" && claim.subject.type === "radicle-ed25519-nid" &&
+      claim.subject.value === writerNid && claim.audience?.includes(state.records[0]?.persona ?? "") === true &&
+      claim.resources?.includes(`${state.checkpoint.repository_rid}#oidc-issuer`) === true)
+    .map(({ claim_id }) => claim_id);
+  const unique = [...new Set(claimIds)];
+  return unique.length === 1 ? unique[0] : null;
+}
+
 export function deriveActiveIssuerNids(
   state: LedgerMergeResult,
   evaluationTime = state.checkpoint.observed_at,
@@ -1056,13 +1185,23 @@ export function evaluateMintingAttempt(input: {
   const confirmed = new Set(input.state.repository_confirmed_record_ids ?? []);
   const expectedAuthorityIds = issuerAuthorityRecordIds(input.state);
   const personaMatches = input.state.records.every(({ persona }) => persona === input.envelope.persona);
+  const currentIssuerEpoch = currentIssuerKeyEpochRecord(input.state);
+  const currentIssuerEpochPayload = currentIssuerEpoch === null
+    ? null
+    : payloadObject(currentIssuerEpoch.payload) as unknown as IssuerKeyEpochPayload;
+  const issuerEpochBindingValid = currentIssuerEpochPayload !== null &&
+    currentIssuerEpochPayload.epoch === input.envelope.epoch &&
+    currentIssuerEpochPayload.envelope_digest === digestJson(input.envelope) &&
+    currentIssuerEpochPayload.key_digest === input.envelope.content_digest &&
+    jcsCanonicalize(currentIssuerEpochPayload.recipient_nids) ===
+      jcsCanonicalize(input.envelope.recipient_wraps.map(({ writer_nid }) => writer_nid).sort());
   const hasIssuerRemoval = input.state.records.some((record) =>
     record.record_type === "issuer-authority" && payloadObject(record.payload).action === "remove");
   const epochChainValid = input.envelope.epoch === 1
     ? input.envelope.previous_key_id === GENESIS_AUDIENCE_KEY_ID && !hasIssuerRemoval
     : input.envelope.epoch > 1 && input.envelope.previous_key_id !== GENESIS_AUDIENCE_KEY_ID &&
       input.envelope.previous_key_id !== input.envelope.audience_key_id;
-  const envelopeBindingValid = epochChainValid &&
+  const envelopeBindingValid = issuerEpochBindingValid && epochChainValid &&
     personaMatches && input.envelope.repository_rid === input.state.checkpoint.repository_rid &&
     input.envelope.authority_record_set_digest === digestJson(input.envelope.authority_record_ids) &&
     jcsCanonicalize(input.envelope.authority_record_ids) === jcsCanonicalize(expectedAuthorityIds) &&
@@ -1124,17 +1263,28 @@ export function canReturnToken(
       return { allowed: false, state: "invalid", reason_code: "claim-ledger-rollback" };
     }
     const confirmed = new Set(state.repository_confirmed_record_ids ?? []);
-    const everySourceCanonical = issuance.source_claim_ids.every((claimId) => state.records.some((candidate) =>
-      candidate.record_type === "claim" && confirmed.has(candidate.record_id) &&
-      claimArtifactFromRecord(candidate)?.semantic.claim_id === claimId &&
-      resolveAuthoritativeClaimState(claimId, state, state.checkpoint.observed_at) === "active"
-    ));
-    if (!everySourceCanonical) {
-      return { allowed: false, state: "provisional", reason_code: "claim-repository-unconfirmed" };
+    for (const claimId of issuance.source_claim_ids) {
+      const canonical = state.records.some((candidate) =>
+        candidate.record_type === "claim" && confirmed.has(candidate.record_id) &&
+        claimArtifactFromRecord(candidate)?.semantic.claim_id === claimId
+      );
+      if (!canonical) {
+        return { allowed: false, state: "provisional", reason_code: "claim-repository-unconfirmed" };
+      }
+      const sourceState = resolveAuthoritativeClaimState(claimId, state, state.checkpoint.observed_at);
+      if (sourceState === "revoked") {
+        return { allowed: false, state: "revoked", reason_code: "claim-revoked" };
+      }
+      if (sourceState !== "active") {
+        return { allowed: false, state: "provisional", reason_code: "claim-repository-unconfirmed" };
+      }
+    }
+    if (resolveIssuerAuthorityState(record.writer_nid, state, state.checkpoint.observed_at) !== "active") {
+      return { allowed: false, state: "invalid", reason_code: "oidc-issuer-authority-invalid" };
     }
     const mintBinding = evaluateMintingAttempt({
       now: state.checkpoint.observed_at,
-      manifest_max_age_seconds: 300,
+      manifest_max_age_seconds: issuance.manifest_max_age_seconds,
       writer_nid: record.writer_nid,
       state,
       envelope,
@@ -1144,6 +1294,65 @@ export function canReturnToken(
       return { allowed: false, state: "invalid", reason_code: mintBinding.reason_code };
     }
     if (issuance.signing_key_id !== envelope.content_digest) {
+      return { allowed: false, state: "invalid", reason_code: "oidc-signing-key-unavailable" };
+    }
+    return { allowed: true, state: "active", reason_code: null };
+  } catch {
+    return { allowed: false, state: "invalid", reason_code: "claim-repository-conflict" };
+  }
+}
+
+export function determineHistoricalTokenReturnability(
+  recordId: string,
+  state: LedgerMergeResult,
+): AuthorizationDecision {
+  try {
+    assertValidatedLedgerState(state);
+    const record = state.records.find((candidate) => candidate.record_id === recordId);
+    if (record?.record_type !== "issuance-reservation" ||
+        !(state.repository_confirmed_record_ids ?? []).includes(recordId)) {
+      return { allowed: false, state: "provisional", reason_code: "claim-repository-unconfirmed" };
+    }
+    const issuance = payloadObject(record.payload) as unknown as IssuanceRecord;
+    validateIssuanceRecordOrThrow(issuance);
+    const repository = validatedRepositoryForState(state);
+    const commits = new Map(repository.commits.map((commit) => [commit.commit_oid, commit]));
+    const firstCommit = uniqueCanonicalIntroductionCommit(repository, recordId);
+    if (firstCommit === undefined ||
+        !isCommitAncestor(issuance.checkpoint.commit_oid, firstCommit.commit_oid, commits)) {
+      return { allowed: false, state: "invalid", reason_code: "claim-ledger-rollback" };
+    }
+    const firstRecordIds = new Set(firstCommit.record_ids);
+    const historicalCheckpoint: LedgerCheckpoint = {
+      repository_rid: repository.repository_rid,
+      branch: "main",
+      commit_oid: firstCommit.commit_oid,
+      observed_at: issuance.issued_at,
+    };
+    const historical = ledgerSnapshotForRecordSet(
+      state, firstRecordIds, issuance.issued_at, historicalCheckpoint,
+    );
+    if (resolveIssuerAuthorityState(record.writer_nid, historical, issuance.issued_at) !== "active") {
+      return { allowed: false, state: "invalid", reason_code: "oidc-issuer-authority-invalid" };
+    }
+    const sourcesValid = issuance.source_claim_ids.every((claimId) => historical.records.some((candidate) =>
+      candidate.record_type === "claim" &&
+      claimArtifactFromRecord(candidate)?.semantic.claim_id === claimId) &&
+      resolveAuthoritativeClaimState(claimId, historical, issuance.issued_at) === "active");
+    if (!sourcesValid) {
+      return { allowed: false, state: "invalid", reason_code: "claim-repository-unconfirmed" };
+    }
+    const preMintCommit = commits.get(issuance.checkpoint.commit_oid);
+    const epochRecords = historical.records
+      .filter((candidate) => candidate.record_type === "audience-key-epoch" &&
+        payloadObject(candidate.payload).scope === "oidc-issuer-key")
+      .sort((left, right) => Number(payloadObject(right.payload).epoch) - Number(payloadObject(left.payload).epoch));
+    const epochRecord = epochRecords[0];
+    const epoch = epochRecord === undefined ? null : payloadObject(epochRecord.payload) as unknown as IssuerKeyEpochPayload;
+    if (preMintCommit === undefined || epochRecord === undefined || epoch === null ||
+        !preMintCommit.record_ids.includes(epochRecord.record_id) ||
+        epoch.key_digest !== issuance.signing_key_id || !epoch.recipient_nids.includes(record.writer_nid) ||
+        !isCommitAncestor(epoch.checkpoint.commit_oid, issuance.checkpoint.commit_oid, commits)) {
       return { allowed: false, state: "invalid", reason_code: "oidc-signing-key-unavailable" };
     }
     return { allowed: true, state: "active", reason_code: null };
@@ -1418,6 +1627,23 @@ function canonicalAncestorCommits(repository: LedgerRepositoryEvidence): LedgerR
     isCommitAncestor(commit.commit_oid, repository.canonical_head, commits));
 }
 
+function uniqueCanonicalIntroductionCommit(
+  repository: LedgerRepositoryEvidence,
+  recordId: string,
+): LedgerRepositoryCommit | undefined {
+  const commits = new Map(repository.commits.map((commit) => [commit.commit_oid, commit]));
+  const containing = canonicalAncestorCommits(repository)
+    .filter((commit) => commit.record_ids.includes(recordId));
+  const minimal = containing.filter((candidate) => !containing.some((other) =>
+    other.commit_oid !== candidate.commit_oid &&
+    isCommitAncestor(other.commit_oid, candidate.commit_oid, commits)
+  ));
+  if (minimal.length > 1) {
+    throw new Error("claim-repository-conflict: record has ambiguous canonical introduction commits");
+  }
+  return minimal[0];
+}
+
 function validatePayload(type: LedgerRecordType, value: JsonValue): void {
   const payload = payloadObject(value);
   switch (type) {
@@ -1442,6 +1668,23 @@ function validatePayload(type: LedgerRecordType, value: JsonValue): void {
       return;
     }
     case "audience-key-epoch":
+      if (payload.scope === "oidc-issuer-key") {
+        assertExactKeys(payload, [
+          "scope", "epoch", "envelope_digest", "key_digest", "previous_epoch",
+          "previous_envelope_digest", "previous_key_digest", "recipient_nids", "checkpoint",
+        ], "issuer key epoch payload");
+        if (!Number.isSafeInteger(payload.epoch) || Number(payload.epoch) < 1 ||
+            !Number.isSafeInteger(payload.previous_epoch) || Number(payload.previous_epoch) < 0) {
+          throw new Error("claim-schema-invalid: invalid issuer key epoch");
+        }
+        assertClaimId(payload.envelope_digest);
+        assertClaimId(payload.key_digest);
+        assertClaimId(payload.previous_envelope_digest);
+        assertClaimId(payload.previous_key_digest);
+        validateNidSet(payload.recipient_nids);
+        validateCheckpoint(payload.checkpoint as unknown as LedgerCheckpoint);
+        return;
+      }
       assertExactKeys(payload, ["epoch", "key_id", "key_digest", "previous_epoch", "previous_key_id", "reader_nids", "removed_reader_nids", "recipient_wraps", "radicle_access_removed", "checkpoint_commit_oid", "retire_previous_state", "scrub_profile"], "audience key epoch payload");
       if (!Number.isSafeInteger(payload.epoch) || !Number.isSafeInteger(payload.previous_epoch) ||
           !/^[A-Za-z0-9._-]{1,128}$/.test(String(payload.key_id)) || payload.retire_previous_state !== true ||
@@ -1464,11 +1707,23 @@ function validatePayload(type: LedgerRecordType, value: JsonValue): void {
       return;
     case "status-invalidation":
       if (!/^[A-Za-z0-9_-]{16,128}$/.test(String(payload.jti))) throw new Error("claim-schema-invalid: invalid jti");
+      assertClaimId(payload.writer_authority_claim_id);
+      validateCheckpoint(payload.authority_checkpoint as unknown as LedgerCheckpoint);
+      if (!Number.isSafeInteger(payload.issuer_key_epoch) || Number(payload.issuer_key_epoch) < 1) {
+        throw new Error("claim-schema-invalid: invalid invalidation issuer-key epoch");
+      }
+      assertClaimId(payload.issuer_key_digest);
       if (payload.cause === "source-claim-revoked") {
-        assertExactKeys(payload, ["cause", "jti", "source_claim_id", "revocation_artifact"], "source invalidation payload");
+        assertExactKeys(payload, [
+          "cause", "jti", "source_claim_id", "revocation_artifact", "writer_authority_claim_id",
+          "authority_checkpoint", "issuer_key_epoch", "issuer_key_digest",
+        ], "source invalidation payload");
         assertClaimId(payload.source_claim_id);
       } else if (payload.cause === "signing-key-compromised") {
-        assertExactKeys(payload, ["cause", "jti", "signing_key_id", "compromise_evidence"], "key invalidation payload");
+        assertExactKeys(payload, [
+          "cause", "jti", "signing_key_id", "compromise_evidence", "writer_authority_claim_id",
+          "authority_checkpoint", "issuer_key_epoch", "issuer_key_digest",
+        ], "key invalidation payload");
         assertClaimId(payload.signing_key_id);
         const compromise = payloadObject(payload.compromise_evidence);
         assertExactKeys(compromise, ["detected_at", "evidence_digest"], "key compromise evidence");
@@ -1691,12 +1946,100 @@ function validateLedgerStateInvariants(
     token_invalidations: [],
   };
   for (const invalidationRecord of records.filter(({ record_type }) => record_type === "status-invalidation")) {
-    if (resolveIssuerAuthorityState(invalidationRecord.writer_nid, stateForReaders, stateForReaders.checkpoint.observed_at) !== "active") {
-      throw new Error("oidc-issuer-authority-invalid: status invalidation writer lacks canonical active authority");
+    validateHistoricalInvalidationAuthority(invalidationRecord, stateForReaders, context.repository);
+  }
+  const issuerEpochRecords = records
+    .filter((record) => record.record_type === "audience-key-epoch" &&
+      payloadObject(record.payload).scope === "oidc-issuer-key")
+    .sort((left, right) => Number(payloadObject(left.payload).epoch) - Number(payloadObject(right.payload).epoch));
+  const issuerEpochs = new Map<number, LedgerRecord>();
+  const repositoryCommits = new Map(context.repository.commits.map((commit) => [commit.commit_oid, commit]));
+  for (const record of issuerEpochRecords) {
+    const payload = payloadObject(record.payload) as unknown as IssuerKeyEpochPayload;
+    if (issuerEpochs.has(payload.epoch)) {
+      throw new Error("claim-repository-conflict: divergent canonical issuer-key epoch");
     }
+    const checkpointCommit = repositoryCommits.get(payload.checkpoint.commit_oid);
+    if (checkpointCommit === undefined || payload.checkpoint.repository_rid !== context.repository.repository_rid ||
+        payload.checkpoint.branch !== "main" || payload.checkpoint.observed_at > record.created_at ||
+        !isCommitAncestor(payload.checkpoint.commit_oid, context.repository.canonical_head, repositoryCommits)) {
+      throw new Error("claim-ledger-rollback: issuer-key epoch checkpoint is not canonical history");
+    }
+    const checkpointRecordIds = new Set(checkpointCommit.record_ids);
+    const activeAtCheckpoint = activeIssuerNidsForRecordSet(
+      stateForReaders, checkpointRecordIds, payload.checkpoint.observed_at, payload.checkpoint,
+    );
+    if (jcsCanonicalize(payload.recipient_nids) !== jcsCanonicalize(activeAtCheckpoint) ||
+        !activeAtCheckpoint.includes(record.writer_nid)) {
+      throw new Error("oidc-issuer-authority-invalid: issuer-key epoch recipients/writer do not match checkpoint authority");
+    }
+    const material = context.issuer_key_material_by_record_id?.get(record.record_id);
+    if (material !== undefined) {
+      assertPlainObject(material.envelope, "canonical issuer envelope");
+      assertExactKeys(material.envelope, [
+        "object_type", "persona", "repository_rid", "checkpoint_commit_oid", "epoch",
+        "audience_key_id", "previous_key_id", "content_digest", "nonce", "ciphertext",
+        "authority_record_ids", "authority_record_set_digest", "recipient_wraps", "removed_issuer_nids",
+      ], "canonical issuer envelope");
+      if (!Array.isArray(material.envelope.recipient_wraps) ||
+          !Array.isArray(material.envelope.authority_record_ids) ||
+          !Array.isArray(material.envelope.removed_issuer_nids)) {
+        throw new Error("claim-schema-invalid: canonical issuer envelope arrays are invalid");
+      }
+      for (const wrap of material.envelope.recipient_wraps) {
+        assertPlainObject(wrap, "canonical issuer recipient wrap");
+        assertExactKeys(wrap, ["writer_nid", "context_digest", "wrapped_key"], "canonical issuer recipient wrap");
+      }
+    }
+    const expectedAuthorityIds = issuerAuthorityRecordIds(stateForReaders, checkpointRecordIds);
+    if (material === undefined || digestJson(material.envelope) !== payload.envelope_digest ||
+        material.envelope.object_type !== "oidc-signing-jwk-v1" ||
+        material.envelope.persona !== record.persona ||
+        material.envelope.repository_rid !== context.repository.repository_rid ||
+        material.envelope.content_digest !== payload.key_digest || material.envelope.epoch !== payload.epoch ||
+        material.envelope.checkpoint_commit_oid !== payload.checkpoint.commit_oid ||
+        jcsCanonicalize(material.envelope.authority_record_ids) !== jcsCanonicalize(expectedAuthorityIds) ||
+        material.envelope.authority_record_set_digest !== digestJson(expectedAuthorityIds) ||
+        jcsCanonicalize(material.envelope.recipient_wraps.map(({ writer_nid }) => writer_nid).sort()) !==
+          jcsCanonicalize(payload.recipient_nids) ||
+        bytesToHex(sha256(material.audience_key)) !== material.envelope.audience_key_id) {
+      throw new Error("oidc-signing-key-unavailable: issuer-key epoch material/envelope binding is absent");
+    }
+    validateNidSet(material.envelope.removed_issuer_nids);
+    for (const recipient of payload.recipient_nids) {
+      unwrapIssuerSigningJwk(material.envelope, recipient, material.audience_key);
+    }
+    if (payload.epoch === 1) {
+      if (payload.previous_epoch !== 0 || payload.previous_envelope_digest !== GENESIS_AUDIENCE_KEY_ID ||
+          payload.previous_key_digest !== GENESIS_AUDIENCE_KEY_ID ||
+          material.envelope.previous_key_id !== GENESIS_AUDIENCE_KEY_ID ||
+          material.envelope.removed_issuer_nids.length !== 0) {
+        throw new Error("claim-repository-conflict: invalid issuer-key genesis epoch");
+      }
+    } else {
+      const previousRecord = issuerEpochs.get(payload.epoch - 1);
+      const previous = previousRecord === undefined ? null : payloadObject(previousRecord.payload) as unknown as IssuerKeyEpochPayload;
+      const previousMaterial = previousRecord === undefined
+        ? undefined
+        : context.issuer_key_material_by_record_id?.get(previousRecord.record_id);
+      const expectedRemoved = previous === null
+        ? []
+        : previous.recipient_nids.filter((nid) => !payload.recipient_nids.includes(nid)).sort();
+      if (previousRecord === undefined || previous === null || payload.previous_epoch !== previous.epoch ||
+          previousMaterial === undefined ||
+          payload.previous_envelope_digest !== previous.envelope_digest ||
+          payload.previous_key_digest !== previous.key_digest || !record.parents.includes(previousRecord.record_id) ||
+          payload.envelope_digest === previous.envelope_digest || payload.key_digest === previous.key_digest ||
+          material.envelope.previous_key_id !== previousMaterial.envelope.audience_key_id ||
+          jcsCanonicalize([...material.envelope.removed_issuer_nids].sort()) !== jcsCanonicalize(expectedRemoved)) {
+        throw new Error("claim-repository-conflict: issuer-key epoch does not extend the exact canonical predecessor");
+      }
+    }
+    issuerEpochs.set(payload.epoch, record);
   }
   const maximumEpoch = records
-    .filter(({ record_type }) => record_type === "audience-key-epoch")
+    .filter((record) => record.record_type === "audience-key-epoch" &&
+      payloadObject(record.payload).scope !== "oidc-issuer-key")
     .reduce((maximum, epochRecord) => Math.max(maximum, Number(payloadObject(epochRecord.payload).epoch)), 0);
   const canonicalReaderClaims = records.filter((record) => {
     if (record.record_type !== "claim" || !context.repository.repository_confirmed_record_ids.includes(record.record_id)) {
@@ -1723,6 +2066,7 @@ function validateLedgerStateInvariants(
   }
   for (const record of recordsById.values()) {
     if (record.record_type !== "audience-key-epoch") continue;
+    if (payloadObject(record.payload).scope === "oidc-issuer-key") continue;
     const payload = payloadObject(record.payload) as unknown as AudienceKeyEpochPayload;
     const readers = payload.reader_nids as string[];
     const removed = payload.removed_reader_nids as string[];
@@ -1788,6 +2132,47 @@ function validateLedgerStateInvariants(
   }
 }
 
+function validateHistoricalInvalidationAuthority(
+  record: LedgerRecord,
+  state: LedgerMergeResult,
+  repository: LedgerRepositoryEvidence,
+): void {
+  const payload = payloadObject(record.payload);
+  const authorityCheckpoint = payload.authority_checkpoint as unknown as LedgerCheckpoint;
+  const commits = new Map(repository.commits.map((commit) => [commit.commit_oid, commit]));
+  const authorityCommit = commits.get(authorityCheckpoint.commit_oid);
+  if (authorityCommit === undefined || authorityCheckpoint.repository_rid !== repository.repository_rid ||
+      authorityCheckpoint.branch !== "main" || authorityCheckpoint.observed_at > record.created_at ||
+      !isCommitAncestor(authorityCheckpoint.commit_oid, repository.canonical_head, commits)) {
+    throw new Error("oidc-issuer-authority-invalid: invalidation authority checkpoint is not canonical history");
+  }
+  const firstCommit = uniqueCanonicalIntroductionCommit(repository, record.record_id);
+  if (firstCommit === undefined
+    ? authorityCheckpoint.commit_oid !== repository.canonical_head
+    : !firstCommit.parents.includes(authorityCheckpoint.commit_oid)) {
+    throw new Error("oidc-issuer-authority-invalid: invalidation was not created from its immediate canonical checkpoint");
+  }
+  const recordIds = new Set(authorityCommit.record_ids);
+  const creationCheckpoint = { ...authorityCheckpoint, observed_at: record.created_at };
+  const historical = ledgerSnapshotForRecordSet(
+    state, recordIds, record.created_at, creationCheckpoint,
+  );
+  const authorityClaimId = canonicalIssuerAuthorityClaimId(
+    record.writer_nid, historical, record.created_at,
+  );
+  const epochRecord = currentIssuerKeyEpochRecord(historical);
+  const epoch = epochRecord === null ? null : payloadObject(epochRecord.payload) as unknown as IssuerKeyEpochPayload;
+  const activeIssuers = activeIssuerNidsForRecordSet(
+    state, recordIds, record.created_at, creationCheckpoint,
+  );
+  if (authorityClaimId === null || authorityClaimId !== payload.writer_authority_claim_id || epoch === null ||
+      epoch.epoch !== payload.issuer_key_epoch || epoch.key_digest !== payload.issuer_key_digest ||
+      !epoch.recipient_nids.includes(record.writer_nid) ||
+      jcsCanonicalize(epoch.recipient_nids) !== jcsCanonicalize(activeIssuers)) {
+    throw new Error("oidc-issuer-authority-invalid: invalidation writer/key was not authorized at creation checkpoint");
+  }
+}
+
 function reductionRemovesReader(record: LedgerRecord, readerNid: string): boolean {
   const payload = payloadObject(record.payload);
   return (
@@ -1850,12 +2235,17 @@ function issuerAuthorityRecordIds(
   }).map(({ record_id }) => record_id).sort();
 }
 
-function activeIssuerNidsForRecordSet(state: LedgerMergeResult, recordIds: Set<string>): string[] {
+function ledgerSnapshotForRecordSet(
+  state: LedgerMergeResult,
+  recordIds: Set<string>,
+  evaluationTime = state.checkpoint.observed_at,
+  checkpoint = state.checkpoint,
+): LedgerMergeResult {
   const records = state.records.filter(({ record_id }) => recordIds.has(record_id));
-  const snapshot: LedgerMergeResult = {
+  return {
     records,
     conflicted_claim_ids: findConflictedClaims(records),
-    checkpoint: state.checkpoint,
+    checkpoint: { ...checkpoint, observed_at: evaluationTime },
     repository_confirmed_record_ids: [...recordIds],
     delivered_record_ids: [],
     authenticated_revocations: records
@@ -1865,6 +2255,16 @@ function activeIssuerNidsForRecordSet(state: LedgerMergeResult, recordIds: Set<s
       .map(({ event }) => validateClaimRevocationEnvelope(event)),
     token_invalidations: [],
   };
+}
+
+function activeIssuerNidsForRecordSet(
+  state: LedgerMergeResult,
+  recordIds: Set<string>,
+  evaluationTime = state.checkpoint.observed_at,
+  checkpoint = state.checkpoint,
+): string[] {
+  const snapshot = ledgerSnapshotForRecordSet(state, recordIds, evaluationTime, checkpoint);
+  const records = snapshot.records;
   const candidates = new Set(records
     .filter(({ record_type }) => record_type === "claim")
     .map(claimArtifactFromRecord)
@@ -1875,7 +2275,7 @@ function activeIssuerNidsForRecordSet(state: LedgerMergeResult, recordIds: Set<s
       semantic.subject.type === "radicle-ed25519-nid")
     .map(({ semantic }) => semantic.subject.value));
   return [...candidates]
-    .filter((nid) => resolveIssuerAuthorityState(nid, snapshot, state.checkpoint.observed_at) === "active")
+    .filter((nid) => resolveIssuerAuthorityState(nid, snapshot, evaluationTime) === "active")
     .sort();
 }
 
@@ -1997,5 +2397,13 @@ function currentAudienceEpochRecord(state: LedgerMergeResult): LedgerRecord | nu
   const confirmed = new Set(state.repository_confirmed_record_ids ?? []);
   return state.records
     .filter((record) => record.record_type === "audience-key-epoch" && confirmed.has(record.record_id))
+    .sort((left, right) => Number(payloadObject(right.payload).epoch) - Number(payloadObject(left.payload).epoch))[0] ?? null;
+}
+
+function currentIssuerKeyEpochRecord(state: LedgerMergeResult): LedgerRecord | null {
+  const confirmed = new Set(state.repository_confirmed_record_ids ?? []);
+  return state.records
+    .filter((record) => record.record_type === "audience-key-epoch" && confirmed.has(record.record_id) &&
+      payloadObject(record.payload).scope === "oidc-issuer-key")
     .sort((left, right) => Number(payloadObject(right.payload).epoch) - Number(payloadObject(left.payload).epoch))[0] ?? null;
 }

@@ -5,6 +5,7 @@ import {
   canReturnToken,
   createAudienceKeyEpochPayload,
   createIssuerKeyEnvelope,
+  createIssuerKeyEpochPayload,
   createSignedLedgerRecord,
   createStatusInvalidationRecords,
   evaluateReaderAccess,
@@ -12,6 +13,7 @@ import {
   ledgerErrorReason,
   materializeLedgerLayout,
   mergeClaimLedger,
+  prepareLedgerReplayValidationContext,
   reserveStatusIndex,
   resolveAuthoritativeClaimState,
   type ClaimArtifact,
@@ -90,6 +92,7 @@ function decodeClaimLedgerReplayValue(value: unknown): any {
 }
 
 function replayMerge(spec: any) {
+  prepareLedgerReplayValidationContext(spec.context);
   return mergeClaimLedger(spec.left, spec.right, spec.checkpoint, spec.context);
 }
 
@@ -203,8 +206,50 @@ export function replayClaimLedgerVector(encodedInput: unknown): unknown {
     }
     case "mint-freshness-and-removal": {
       const active = replayMerge(input.active_merge);
-      const removed = replayMerge(input.removed_merge);
-      const rotated = replayMerge(input.rotated_merge);
+      const activeRecords = [...new Map(
+        [...input.active_merge.left, ...input.active_merge.right]
+          .map((record: LedgerRecord) => [record.record_id, record]),
+      ).values()];
+      const removed = mergeClaimLedger(
+        activeRecords, [input.issuer_removal_record], input.active_merge.checkpoint, input.active_merge.context,
+      );
+      const removedRecords = [...activeRecords, input.issuer_removal_record];
+      const removedRepository = buildLedgerRepositoryEvidence({
+        repository_rid: input.active_merge.context.repository.repository_rid,
+        confirmed_records: removedRecords,
+        observed_at: input.removal_observed_at,
+        prior: input.active_merge.context.repository,
+      });
+      const removedContext: LedgerValidationContext = {
+        ...input.active_merge.context,
+        repository: removedRepository.repository,
+        record_evidence: new Map(input.active_merge.context.record_evidence),
+        issuer_key_material_by_record_id: new Map(input.active_merge.context.issuer_key_material_by_record_id),
+      };
+      prepareLedgerReplayValidationContext(removedContext, input.active_merge.context);
+      const rotatedRecords = [...removedRecords, input.rotated_epoch.record];
+      const rotatedRepository = buildLedgerRepositoryEvidence({
+        repository_rid: removedRepository.repository.repository_rid,
+        confirmed_records: rotatedRecords,
+        observed_at: input.rotation_observed_at,
+        prior: removedRepository.repository,
+      });
+      const rotatedContext: LedgerValidationContext = {
+        ...removedContext,
+        repository: rotatedRepository.repository,
+        record_evidence: new Map(removedContext.record_evidence),
+        issuer_key_material_by_record_id: new Map(removedContext.issuer_key_material_by_record_id),
+      };
+      prepareLedgerReplayValidationContext(rotatedContext, removedContext);
+      rotatedContext.record_evidence.set(input.rotated_epoch.record.record_id, {
+        record_id: input.rotated_epoch.record.record_id,
+        payload_digest: input.rotated_epoch.record.payload_digest,
+      });
+      rotatedContext.issuer_key_material_by_record_id!.set(input.rotated_epoch.record.record_id, {
+        envelope: input.rotated_epoch.envelope,
+        audience_key: input.rotated_epoch.audience_key,
+      });
+      const rotated = mergeClaimLedger(rotatedRecords, [], rotatedRepository.checkpoint, rotatedContext);
       const attempt = (state: any, envelope: any, audienceKey: any, writerNid: string, age: number) =>
         evaluateMintingAttempt({
           now: state.checkpoint.observed_at + age,
@@ -213,8 +258,54 @@ export function replayClaimLedgerVector(encodedInput: unknown): unknown {
         });
       const primary = attempt(active, input.prior_envelope, input.prior_audience_key, input.writer_nid, input.evaluation_age);
       const boundary300 = attempt(active, input.prior_envelope, input.prior_audience_key, input.writer_nid, 300);
+      const zeroBoundExact = evaluateMintingAttempt({
+        now: active.checkpoint.observed_at,
+        manifest_max_age_seconds: 0,
+        writer_nid: input.writer_nid,
+        state: active,
+        envelope: input.prior_envelope,
+        audience_key: input.prior_audience_key,
+      });
+      const zeroBoundAfterOne = evaluateMintingAttempt({
+        now: active.checkpoint.observed_at + 1,
+        manifest_max_age_seconds: 0,
+        writer_nid: input.writer_nid,
+        state: active,
+        envelope: input.prior_envelope,
+        audience_key: input.prior_audience_key,
+      });
       const removal = attempt(removed, input.prior_envelope, input.prior_audience_key, input.remaining_writer_nid, 0);
-      const postRotation = attempt(rotated, input.rotated_envelope, input.rotated_audience_key, input.remaining_writer_nid, 0);
+      const postRotation = attempt(
+        rotated, input.rotated_epoch.envelope, input.rotated_epoch.audience_key, input.remaining_writer_nid, 0,
+      );
+      const replayGenesisFork = (base: any, fork: any) => mergeDecision(() => {
+        const records = [...new Map(
+          [...base.left, ...base.right, fork.record].map((record: LedgerRecord) => [record.record_id, record]),
+        ).values()];
+        const repository = buildLedgerRepositoryEvidence({
+          repository_rid: base.context.repository.repository_rid,
+          confirmed_records: records,
+          observed_at: base.checkpoint.observed_at + 1,
+          prior: base.context.repository,
+        });
+        const context: LedgerValidationContext = {
+          ...base.context,
+          repository: repository.repository,
+          record_evidence: new Map(base.context.record_evidence),
+          issuer_key_material_by_record_id: new Map(base.context.issuer_key_material_by_record_id),
+        };
+        prepareLedgerReplayValidationContext(context, base.context);
+        context.record_evidence.set(fork.record.record_id, {
+          record_id: fork.record.record_id,
+          payload_digest: fork.record.payload_digest,
+        });
+        context.issuer_key_material_by_record_id!.set(fork.record.record_id, {
+          envelope: fork.envelope,
+          audience_key: fork.audience_key,
+        });
+        mergeClaimLedger(records, [], repository.checkpoint, context);
+      });
+      const issuerEpochFork = replayGenesisFork(input.active_merge, input.genesis_fork);
       return {
         verdict: primary.allowed ? "accept" : "reject",
         ...(primary.allowed ? {} : { reason_code: primary.reason_code }),
@@ -222,12 +313,15 @@ export function replayClaimLedgerVector(encodedInput: unknown): unknown {
           immediate_sync_checkpoint: active.checkpoint,
           boundary_300: boundary300,
           boundary_301: primary,
+          zero_bound_exact: zeroBoundExact,
+          zero_bound_after_one: zeroBoundAfterOne,
           removal,
           post_rotation: postRotation,
+          issuer_epoch_fork: issuerEpochFork,
           rotated_key: {
-            previous_key_id: input.rotated_envelope.previous_key_id,
-            audience_key_id: input.rotated_envelope.audience_key_id,
-            recipients: input.rotated_envelope.recipient_wraps.map(({ writer_nid }: any) => writer_nid),
+            previous_key_id: input.rotated_epoch.envelope.previous_key_id,
+            audience_key_id: input.rotated_epoch.envelope.audience_key_id,
+            recipients: input.rotated_epoch.envelope.recipient_wraps.map(({ writer_nid }: any) => writer_nid),
           },
         },
       };
@@ -601,37 +695,91 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     persona, repository_rid: rid, epoch: 1, audience_key: issuerAudienceKeyOne, signing_jwk: signingJwk,
     authority_state: authorityState, recipient_nids: [writerOne.did_key, writerTwo.did_key],
   });
-  const removedAuthorityRecords = [...authorityRecords, issuerRemovalRecord];
+  const issuerKeyEpochPayloadOne = createIssuerKeyEpochPayload({
+    authority_state: authorityState, envelope: issuerKeyEnvelopeOne, previous_record: null,
+  });
+  const issuerKeyEpochRecordOne = signRecord(
+    "audience-key-epoch", issuerKeyEpochPayloadOne as unknown as JsonValue, writerTwo,
+    [issuerAuthorityRecordOne.record_id, issuerAuthorityRecordTwo.record_id].sort(), now + 65,
+  );
+  issuerEvidence.set(issuerKeyEpochRecordOne.record_id, {
+    record_id: issuerKeyEpochRecordOne.record_id, payload_digest: issuerKeyEpochRecordOne.payload_digest,
+  });
+  const issuerKeyEpochOneRecords = [...authorityRecords, issuerKeyEpochRecordOne];
+  const issuerKeyEpochOneRepository = buildLedgerRepositoryEvidence({
+    repository_rid: rid, confirmed_records: issuerKeyEpochOneRecords, observed_at: now + 66,
+    prior: authorityRepository.repository,
+  });
+  const issuerEpochOneContext = contextForAuthority(issuerKeyEpochOneRepository.repository);
+  issuerEpochOneContext.issuer_key_material_by_record_id = new Map([[
+    issuerKeyEpochRecordOne.record_id, { envelope: issuerKeyEnvelopeOne, audience_key: issuerAudienceKeyOne },
+  ]]);
+  const issuerKeyEpochOneState = mergeClaimLedger(
+    issuerKeyEpochOneRecords, [], issuerKeyEpochOneRepository.checkpoint, issuerEpochOneContext,
+  );
+  const removedAuthorityRecords = [...issuerKeyEpochOneRecords, issuerRemovalRecord];
   const removedAuthorityRepository = buildLedgerRepositoryEvidence({
     repository_rid: rid, confirmed_records: removedAuthorityRecords, observed_at: now + 100,
-    prior: authorityRepository.repository,
+    prior: issuerKeyEpochOneRepository.repository,
   });
   const removedAuthorityState = mergeClaimLedger(
     removedAuthorityRecords, [], removedAuthorityRepository.checkpoint,
-    contextForAuthority(removedAuthorityRepository.repository),
+    (() => {
+      const context = contextForAuthority(removedAuthorityRepository.repository);
+      context.issuer_key_material_by_record_id = new Map([[
+        issuerKeyEpochRecordOne.record_id, { envelope: issuerKeyEnvelopeOne, audience_key: issuerAudienceKeyOne },
+      ]]);
+      return context;
+    })(),
   );
   const issuerKeyEnvelopeTwo = createIssuerKeyEnvelope({
     persona, repository_rid: rid, epoch: 2, audience_key: issuerAudienceKeyTwo, signing_jwk: rotatedSigningJwk,
     authority_state: removedAuthorityState, recipient_nids: [writerTwo.did_key],
     previous: { envelope: issuerKeyEnvelopeOne, audience_key: issuerAudienceKeyOne },
   });
+  const issuerKeyEpochPayloadTwo = createIssuerKeyEpochPayload({
+    authority_state: removedAuthorityState, envelope: issuerKeyEnvelopeTwo,
+    previous_record: issuerKeyEpochRecordOne,
+  });
+  const issuerKeyEpochRecordTwo = signRecord(
+    "audience-key-epoch", issuerKeyEpochPayloadTwo as unknown as JsonValue, writerTwo,
+    [issuerKeyEpochRecordOne.record_id, issuerRemovalRecord.record_id].sort(), now + 101,
+  );
+  issuerEvidence.set(issuerKeyEpochRecordTwo.record_id, {
+    record_id: issuerKeyEpochRecordTwo.record_id, payload_digest: issuerKeyEpochRecordTwo.payload_digest,
+  });
+  const issuerKeyEpochTwoRecords = [...removedAuthorityRecords, issuerKeyEpochRecordTwo];
+  const issuerKeyEpochTwoRepository = buildLedgerRepositoryEvidence({
+    repository_rid: rid, confirmed_records: issuerKeyEpochTwoRecords, observed_at: now + 102,
+    prior: removedAuthorityRepository.repository,
+  });
+  const issuerEpochTwoContext = contextForAuthority(issuerKeyEpochTwoRepository.repository);
+  issuerEpochTwoContext.issuer_key_material_by_record_id = new Map([
+    [issuerKeyEpochRecordOne.record_id, { envelope: issuerKeyEnvelopeOne, audience_key: issuerAudienceKeyOne }],
+    [issuerKeyEpochRecordTwo.record_id, { envelope: issuerKeyEnvelopeTwo, audience_key: issuerAudienceKeyTwo }],
+  ]);
+  const issuerKeyEpochTwoState = mergeClaimLedger(
+    issuerKeyEpochTwoRecords, [], issuerKeyEpochTwoRepository.checkpoint, issuerEpochTwoContext,
+  );
 
   const issuanceOne: IssuanceRecord = {
     jti: "writer_one_token_0001",
     reservation: reserveStatusIndex(writerOne.did_key, now + 3_600, 0, []),
-    checkpoint: baseRepository.checkpoint,
+    checkpoint: issuerKeyEpochOneRepository.checkpoint,
+    manifest_max_age_seconds: 300,
     signing_key_id: issuerKeyEnvelopeOne.content_digest,
     source_claim_ids: [claimOne.artifact.semantic.claim_id],
-    issued_at: now + 65,
+    issued_at: now + 66,
     expires_at: now + 3_600,
   };
   const issuanceTwo: IssuanceRecord = {
     jti: "writer_two_token_0001",
     reservation: reserveStatusIndex(writerTwo.did_key, now + 3_600, 0, [issuanceOne]),
-    checkpoint: baseRepository.checkpoint,
+    checkpoint: issuerKeyEpochOneRepository.checkpoint,
+    manifest_max_age_seconds: 300,
     signing_key_id: issuerKeyEnvelopeOne.content_digest,
     source_claim_ids: [claimOne.artifact.semantic.claim_id],
-    issued_at: now + 65,
+    issued_at: now + 66,
     expires_at: now + 3_600,
   };
   const reservationOne = signRecord("issuance-reservation", issuanceOne as unknown as JsonValue,
@@ -640,9 +788,15 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     writerTwo, [claimRecordOne.record_id], now + 70);
   const statusInvalidation = signRecord("status-invalidation", {
     cause: "source-claim-revoked", jti: "writer_one_token_0001", source_claim_id: claimOne.artifact.semantic.claim_id, revocation_artifact: revocationArtifact,
+    writer_authority_claim_id: issuerClaimTwo.artifact.semantic.claim_id,
+    authority_checkpoint: issuerKeyEpochOneRepository.checkpoint,
+    issuer_key_epoch: 1, issuer_key_digest: issuerKeyEnvelopeOne.content_digest,
   }, writerTwo, [reservationOne.record_id], now + 71);
   const statusInvalidationTwo = signRecord("status-invalidation", {
     cause: "source-claim-revoked", jti: "writer_two_token_0001", source_claim_id: claimOne.artifact.semantic.claim_id, revocation_artifact: revocationArtifact,
+    writer_authority_claim_id: issuerClaimOne.artifact.semantic.claim_id,
+    authority_checkpoint: issuerKeyEpochOneRepository.checkpoint,
+    issuer_key_epoch: 1, issuer_key_digest: issuerKeyEnvelopeOne.content_digest,
   }, writerOne, [reservationTwo.record_id], now + 71);
 
   // Preserve Task 4's unused replay-evidence map entries byte-for-byte so
@@ -694,6 +848,10 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   const makeTask5Context = (repository: LedgerRepositoryEvidence): LedgerValidationContext => ({
     ...makeContext(repository),
     record_evidence: new Map(task5Evidence),
+    issuer_key_material_by_record_id: new Map([
+      [issuerKeyEpochRecordOne.record_id, { envelope: issuerKeyEnvelopeOne, audience_key: issuerAudienceKeyOne }],
+      [issuerKeyEpochRecordTwo.record_id, { envelope: issuerKeyEnvelopeTwo, audience_key: issuerAudienceKeyTwo }],
+    ]),
   });
 
   return {
@@ -701,8 +859,11 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     claimOne, claimTwo, issuerClaimOne, issuerClaimTwo, alternateClaimOne, temporalClaim, allClaims, makeVerification, requestFor, evidence, temporalRecordEvidence, grantOnlyEvidence, makeContext, makeTask5Context,
     claimRecordOne, claimRecordTwo, temporalClaimRecord, grantOne, grantDivergent, grantOnly, revocationRecord, reductionRecord, removalRecord,
     issuerClaimRecordOne, issuerClaimRecordTwo, issuerAuthorityRecordOne, issuerAuthorityRecordTwo, issuerRemovalRecord,
-    epochOneRecord, epochTwoRecord, signingJwk, issuerKeyEnvelopeOne, issuerKeyEnvelopeTwo, issuanceOne, issuanceTwo, reservationOne, reservationTwo, statusInvalidation, statusInvalidationTwo,
+    epochOneRecord, epochTwoRecord, signingJwk, issuerKeyEnvelopeOne, issuerKeyEnvelopeTwo,
+    issuerKeyEpochRecordOne, issuerKeyEpochRecordTwo, issuerKeyEpochOneState, issuerKeyEpochTwoState,
+    issuanceOne, issuanceTwo, reservationOne, reservationTwo, statusInvalidation, statusInvalidationTwo,
     baseRepository, epochOneRepository, authorityState, authorityRepository, removedAuthorityState, removedAuthorityRepository,
+    issuerKeyEpochOneRepository, issuerKeyEpochTwoRepository,
   };
 }
 
@@ -728,26 +889,39 @@ export async function buildClaimLedgerVectors(fixtures: Fixtures): Promise<Autho
   const finalRepo = buildLedgerRepositoryEvidence({ repository_rid: s.rid, confirmed_records: finalRecords, observed_at: s.now + 65, prior: s.epochOneRepository.repository });
   const issuerRecords = [
     s.issuerClaimRecordOne, s.issuerClaimRecordTwo,
-    s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo,
+    s.issuerAuthorityRecordOne, s.issuerAuthorityRecordTwo, s.issuerKeyEpochRecordOne,
   ];
+  const activeIssuerRecords = [...baseRecords, ...issuerRecords];
   const reservations = [...baseRecords, ...issuerRecords, s.reservationOne, s.reservationTwo];
   const reservationsRepo = buildLedgerRepositoryEvidence({
-    repository_rid: s.rid, confirmed_records: reservations, observed_at: s.now + 100, prior: s.authorityRepository.repository,
+    repository_rid: s.rid, confirmed_records: reservations, observed_at: s.now + 100, prior: s.issuerKeyEpochOneRepository.repository,
   });
-  const rotatedRecords = [...reservations, s.issuerRemovalRecord];
-  const rotatedRepo = buildLedgerRepositoryEvidence({
-    repository_rid: s.rid, confirmed_records: rotatedRecords, observed_at: s.now + 120,
-    prior: s.removedAuthorityRepository.repository,
-  });
+  const task5ContextForRecords = (
+    repository: LedgerRepositoryEvidence,
+    records: LedgerRecord[],
+    additionalEvidenceRecords: LedgerRecord[] = [],
+  ): LedgerValidationContext => {
+    const context = s.makeTask5Context(repository);
+    const permitted = new Set([...records, ...additionalEvidenceRecords].map(({ record_id }) => record_id));
+    context.record_evidence = new Map(
+      [...context.record_evidence].filter(([recordId]) => permitted.has(recordId)),
+    );
+    context.issuer_key_material_by_record_id = new Map(
+      [...(context.issuer_key_material_by_record_id ?? [])]
+        .filter(([recordId]) => permitted.has(recordId)),
+    );
+    return context;
+  };
   const preInvalidationRecords = [
     ...baseRecords, ...issuerRecords, s.reservationOne, s.reservationTwo, s.revocationRecord,
   ];
   const preInvalidationRepo = buildLedgerRepositoryEvidence({
     repository_rid: s.rid, confirmed_records: preInvalidationRecords, observed_at: s.now + 110,
-    prior: s.authorityRepository.repository,
+    prior: reservationsRepo.repository,
   });
   const preInvalidationState = mergeClaimLedger(
-    preInvalidationRecords, [], preInvalidationRepo.checkpoint, s.makeTask5Context(preInvalidationRepo.repository),
+    preInvalidationRecords, [], preInvalidationRepo.checkpoint,
+    task5ContextForRecords(preInvalidationRepo.repository, preInvalidationRecords),
   );
   const invalidationCreatedAt = preInvalidationRepo.checkpoint.observed_at + 1;
   const generatedInvalidations = createStatusInvalidationRecords({
@@ -763,8 +937,9 @@ export async function buildClaimLedgerVectors(fixtures: Fixtures): Promise<Autho
     prior: preInvalidationRepo.repository,
   });
   const tokenContext = () => {
-    const context = s.makeTask5Context(tokenRepo.repository);
-    const sourceEvidence = context.record_evidence.get(s.statusInvalidation.record_id)!;
+    const sourceEvidence = s.makeTask5Context(tokenRepo.repository)
+      .record_evidence.get(s.statusInvalidation.record_id)!;
+    const context = task5ContextForRecords(tokenRepo.repository, tokenRecords);
     for (const record of generatedInvalidations) {
       const payload = record.payload as Record<string, unknown>;
       context.record_evidence.set(record.record_id, {
@@ -775,6 +950,28 @@ export async function buildClaimLedgerVectors(fixtures: Fixtures): Promise<Autho
     }
     return context;
   };
+  const alternateGenesisAudienceKey = Uint8Array.from({ length: 32 }, () => 0x76);
+  const alternateGenesisEnvelope = createIssuerKeyEnvelope({
+    persona: s.persona,
+    repository_rid: s.rid,
+    epoch: 1,
+    audience_key: alternateGenesisAudienceKey,
+    signing_jwk: { kty: "RSA", d: "vector-alternate-genesis-material" },
+    authority_state: s.authorityState,
+    recipient_nids: [s.writerOne.did_key, s.writerTwo.did_key],
+  });
+  const alternateGenesisRecord = createSignedLedgerRecord({
+    record_type: "audience-key-epoch",
+    persona: s.persona,
+    writer_nid: s.writerOne.did_key,
+    created_at: s.now + 65,
+    parents: [s.issuerAuthorityRecordOne.record_id, s.issuerAuthorityRecordTwo.record_id].sort(),
+    payload: createIssuerKeyEpochPayload({
+      authority_state: s.authorityState,
+      envelope: alternateGenesisEnvelope,
+      previous_record: null,
+    }) as unknown as JsonValue,
+  }, s.writerOne.private_key);
   const requestOne = s.requestFor(s.claimRecordOne, s.claimOne);
   requestOne.verification_context.now = s.baseRepository.checkpoint.observed_at;
   const finalRequestOne = s.requestFor(s.claimRecordOne, s.claimOne);
@@ -856,7 +1053,10 @@ export async function buildClaimLedgerVectors(fixtures: Fixtures): Promise<Autho
     }),
     entry("011-multiwriter-status-allocation.json", "multiwriter-status-allocation", "Two synchronized authorized writers sharing one signing key mint from executable authority/key evidence and durably reserve collision-free NID-derived status indexes.", {
       operation: "multiwriter-mint-and-reserve",
-      merge: mergeInput(reservations, [], reservationsRepo.checkpoint, s.makeTask5Context(reservationsRepo.repository)),
+      merge: mergeInput(
+        reservations, [], reservationsRepo.checkpoint,
+        task5ContextForRecords(reservationsRepo.repository, reservations),
+      ),
       now: reservationsRepo.checkpoint.observed_at,
       maximum_age: 300,
       writers: [
@@ -866,22 +1066,41 @@ export async function buildClaimLedgerVectors(fixtures: Fixtures): Promise<Autho
     }),
     entry("012-stale-minter-denied.json", "stale-minter-denied", "A 301-second checkpoint age fails the exact at-most-300-second manifest bound; any later issuer removal blocks every remaining writer until a canonical exact-recipient key rotation.", {
       operation: "mint-freshness-and-removal",
-      active_merge: mergeInput(reservations, [], reservationsRepo.checkpoint, s.makeTask5Context(reservationsRepo.repository)),
-      removed_merge: mergeInput(reservations, [s.issuerRemovalRecord], reservationsRepo.checkpoint, s.makeTask5Context(reservationsRepo.repository)),
-      rotated_merge: mergeInput(rotatedRecords, [], rotatedRepo.checkpoint, s.makeTask5Context(rotatedRepo.repository)),
+      active_merge: mergeInput(
+        activeIssuerRecords, [], s.issuerKeyEpochOneRepository.checkpoint,
+        task5ContextForRecords(
+          s.issuerKeyEpochOneRepository.repository,
+          activeIssuerRecords,
+          [s.issuerRemovalRecord, s.issuerKeyEpochRecordTwo],
+        ),
+      ),
+      issuer_removal_record: s.issuerRemovalRecord,
+      removal_observed_at: s.removedAuthorityRepository.checkpoint.observed_at,
+      rotation_observed_at: s.issuerKeyEpochTwoRepository.checkpoint.observed_at,
       writer_nid: s.writerOne.did_key,
       remaining_writer_nid: s.writerTwo.did_key,
       maximum_age: 300,
       evaluation_age: 301,
       prior_envelope: s.issuerKeyEnvelopeOne,
       prior_audience_key: s.issuerAudienceKeyOne,
-      rotated_envelope: s.issuerKeyEnvelopeTwo,
-      rotated_audience_key: s.issuerAudienceKeyTwo,
+      rotated_epoch: {
+        record: s.issuerKeyEpochRecordTwo,
+        envelope: s.issuerKeyEnvelopeTwo,
+        audience_key: s.issuerAudienceKeyTwo,
+      },
+      genesis_fork: {
+        record: alternateGenesisRecord,
+        envelope: alternateGenesisEnvelope,
+        audience_key: alternateGenesisAudienceKey,
+      },
     }),
     entry("013-source-claim-revokes-token.json", "source-claim-revokes-token", "An authorized writer deterministically creates signed source-revocation and signing-key-compromise invalidation records; both merge orders converge only after the exact records become canonical.", {
       operation: "source-and-key-invalidation",
       generation: {
-        pre_merge: mergeInput(preInvalidationRecords, [], preInvalidationRepo.checkpoint, s.makeTask5Context(preInvalidationRepo.repository)),
+        pre_merge: mergeInput(
+          preInvalidationRecords, [], preInvalidationRepo.checkpoint,
+          task5ContextForRecords(preInvalidationRepo.repository, preInvalidationRecords),
+        ),
         writer_nid: s.writerTwo.did_key,
         writer_secret_key: s.writerTwo.private_key,
         created_at: invalidationCreatedAt,

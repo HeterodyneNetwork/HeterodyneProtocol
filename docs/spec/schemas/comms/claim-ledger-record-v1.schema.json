@@ -80,10 +80,12 @@
       "then": {
         "properties": {
           "payload": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["epoch", "key_id", "key_digest", "previous_epoch", "previous_key_id", "reader_nids", "removed_reader_nids", "recipient_wraps", "radicle_access_removed", "checkpoint_commit_oid", "retire_previous_state", "scrub_profile"],
-            "properties": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["epoch", "key_id", "key_digest", "previous_epoch", "previous_key_id", "reader_nids", "removed_reader_nids", "recipient_wraps", "radicle_access_removed", "checkpoint_commit_oid", "retire_previous_state", "scrub_profile"],
+                "properties": {
               "epoch": { "$ref": "#/definitions/json_safe_integer" },
               "key_id": { "$ref": "#/definitions/sha256" },
               "key_digest": { "$ref": "#/definitions/sha256" },
@@ -108,8 +110,36 @@
               "radicle_access_removed": { "$ref": "#/definitions/nids" },
               "checkpoint_commit_oid": { "$ref": "#/definitions/sha256" },
               "retire_previous_state": { "const": true },
-              "scrub_profile": { "const": "comms-encrypted-branch-cooperative-v1" }
-            }
+                  "scrub_profile": { "const": "comms-encrypted-branch-cooperative-v1" }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["scope", "epoch", "envelope_digest", "key_digest", "previous_epoch", "previous_envelope_digest", "previous_key_digest", "recipient_nids", "checkpoint"],
+                "properties": {
+                  "scope": { "const": "oidc-issuer-key" },
+                  "epoch": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                  "envelope_digest": { "$ref": "#/definitions/sha256" },
+                  "key_digest": { "$ref": "#/definitions/sha256" },
+                  "previous_epoch": { "$ref": "#/definitions/json_safe_integer" },
+                  "previous_envelope_digest": { "$ref": "#/definitions/sha256" },
+                  "previous_key_digest": { "$ref": "#/definitions/sha256" },
+                  "recipient_nids": { "$ref": "#/definitions/nids" },
+                  "checkpoint": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["repository_rid", "branch", "commit_oid", "observed_at"],
+                    "properties": {
+                      "repository_rid": { "type": "string", "pattern": "^rad:z[1-9A-HJ-NP-Za-km-z]+$" },
+                      "branch": { "const": "main" },
+                      "commit_oid": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
+                      "observed_at": { "$ref": "#/definitions/json_safe_integer" }
+                    }
+                  }
+                }
+              }
+            ]
           }
         }
       }
@@ -154,18 +184,22 @@
               {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["cause", "jti", "source_claim_id", "revocation_artifact"],
+                "required": ["cause", "jti", "source_claim_id", "revocation_artifact", "writer_authority_claim_id", "authority_checkpoint", "issuer_key_epoch", "issuer_key_digest"],
                 "properties": {
                   "cause": { "const": "source-claim-revoked" },
                   "jti": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
                   "source_claim_id": { "$ref": "#/definitions/sha256" },
-                  "revocation_artifact": { "$ref": "#/definitions/revocation_artifact" }
+                  "revocation_artifact": { "$ref": "#/definitions/revocation_artifact" },
+                  "writer_authority_claim_id": { "$ref": "#/definitions/sha256" },
+                  "authority_checkpoint": { "$ref": "#/definitions/ledger_checkpoint" },
+                  "issuer_key_epoch": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                  "issuer_key_digest": { "$ref": "#/definitions/sha256" }
                 }
               },
               {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["cause", "jti", "signing_key_id", "compromise_evidence"],
+                "required": ["cause", "jti", "signing_key_id", "compromise_evidence", "writer_authority_claim_id", "authority_checkpoint", "issuer_key_epoch", "issuer_key_digest"],
                 "properties": {
                   "cause": { "const": "signing-key-compromised" },
                   "jti": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
@@ -178,7 +212,11 @@
                       "detected_at": { "$ref": "#/definitions/json_safe_integer" },
                       "evidence_digest": { "$ref": "#/definitions/sha256" }
                     }
-                  }
+                  },
+                  "writer_authority_claim_id": { "$ref": "#/definitions/sha256" },
+                  "authority_checkpoint": { "$ref": "#/definitions/ledger_checkpoint" },
+                  "issuer_key_epoch": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                  "issuer_key_digest": { "$ref": "#/definitions/sha256" }
                 }
               }
             ]
@@ -192,6 +230,17 @@
     "nid": { "type": "string", "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$", "maxLength": 128 },
     "nids": { "type": "array", "maxItems": 256, "uniqueItems": true, "items": { "$ref": "#/definitions/nid" } },
     "json_safe_integer": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "ledger_checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository_rid", "branch", "commit_oid", "observed_at"],
+      "properties": {
+        "repository_rid": { "type": "string", "pattern": "^rad:z[1-9A-HJ-NP-Za-km-z]+$" },
+        "branch": { "const": "main" },
+        "commit_oid": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
+        "observed_at": { "$ref": "#/definitions/json_safe_integer" }
+      }
+    },
     "nostr_signed_event": {
       "type": "object",
       "additionalProperties": false,

@@ -6,6 +6,8 @@ import {
   buildLedgerRepositoryEvidence,
   buildReaderOnboardingBundle,
   createAudienceKeyEpochPayload,
+  createIssuerKeyEnvelope,
+  createIssuerKeyEpochPayload,
   createSignedLedgerRecord,
   evaluateReaderAccess,
   materializeLedgerLayout,
@@ -97,34 +99,88 @@ describe("canonical evaluation time and confirmation", () => {
       confirmed_records: authorityRecords,
       observed_at: s.now + 50,
     });
+    const authorityState = mergeClaimLedger(
+      authorityRecords, [], authorityRepository.checkpoint, s.makeTask5Context(authorityRepository.repository),
+    );
+    const issuerAudienceKey = Uint8Array.from({ length: 32 }, () => 0x7a);
+    const issuerEnvelope = createIssuerKeyEnvelope({
+      persona: s.persona,
+      repository_rid: s.rid,
+      epoch: 1,
+      audience_key: issuerAudienceKey,
+      signing_jwk: s.signingJwk,
+      authority_state: authorityState,
+      recipient_nids: [s.writerOne.did_key, s.writerTwo.did_key],
+    });
+    const epochPayload = createIssuerKeyEpochPayload({
+      authority_state: authorityState,
+      envelope: issuerEnvelope,
+      previous_record: null,
+    });
+    const epochRecord = createSignedLedgerRecord({
+      record_type: "audience-key-epoch",
+      persona: s.persona,
+      writer_nid: s.writerTwo.did_key,
+      created_at: s.now + 51,
+      parents: [s.issuerAuthorityRecordOne.record_id, s.issuerAuthorityRecordTwo.record_id].sort(),
+      payload: epochPayload,
+    }, s.writerTwo.private_key);
+    const epochRecords = [...authorityRecords, epochRecord];
+    const epochRepository = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid,
+      confirmed_records: epochRecords,
+      observed_at: s.now + 52,
+      prior: authorityRepository.repository,
+    });
     const issuancePayload = {
       ...s.issuanceOne,
-      checkpoint: authorityRepository.checkpoint,
-      issued_at: s.now + 65,
+      checkpoint: epochRepository.checkpoint,
+      signing_key_id: issuerEnvelope.content_digest,
+      issued_at: s.now + 52,
     };
     const issuance = createSignedLedgerRecord({
       record_type: "issuance-reservation",
       persona: s.persona,
       writer_nid: s.writerOne.did_key,
-      created_at: s.now + 70,
+      created_at: s.now + 60,
       parents: [],
       payload: issuancePayload,
     }, s.writerOne.private_key);
+    const issuedRecords = [...epochRecords, issuance];
+    const issuedRepository = buildLedgerRepositoryEvidence({
+      repository_rid: s.rid,
+      confirmed_records: issuedRecords,
+      observed_at: s.now + 65,
+      prior: epochRepository.repository,
+    });
     const independentStatus = createSignedLedgerRecord({
       record_type: "status-invalidation",
       persona: s.persona,
       writer_nid: s.writerTwo.did_key,
       created_at: s.now + 71,
       parents: [issuance.record_id],
-      payload: s.statusInvalidation.payload,
+      payload: {
+        ...(s.statusInvalidation.payload as Record<string, unknown>),
+        authority_checkpoint: issuedRepository.checkpoint,
+        issuer_key_epoch: 1,
+        issuer_key_digest: issuerEnvelope.content_digest,
+      },
     }, s.writerTwo.private_key);
     const repository = buildLedgerRepositoryEvidence({
       repository_rid: s.rid,
-      confirmed_records: [...authorityRecords, issuance, independentStatus],
+      confirmed_records: [...issuedRecords, independentStatus],
       observed_at: s.now + 80,
-      prior: authorityRepository.repository,
+      prior: issuedRepository.repository,
     });
     const context = s.makeTask5Context(repository.repository);
+    context.record_evidence.set(epochRecord.record_id, {
+      record_id: epochRecord.record_id,
+      payload_digest: epochRecord.payload_digest,
+    });
+    context.issuer_key_material_by_record_id!.set(epochRecord.record_id, {
+      envelope: issuerEnvelope,
+      audience_key: issuerAudienceKey,
+    });
     context.record_evidence.set(issuance.record_id, {
       record_id: issuance.record_id,
       payload_digest: issuance.payload_digest,
@@ -136,7 +192,7 @@ describe("canonical evaluation time and confirmation", () => {
       sourceStatusEvidence,
     ));
     const state = mergeClaimLedger(
-      [...authorityRecords, issuance, independentStatus], [s.claimRecordOne], repository.checkpoint, context,
+      [...issuedRecords, independentStatus], [s.claimRecordOne], repository.checkpoint, context,
     );
     const request = cloneRequest(s.requestFor(s.claimRecordOne, s.claimOne));
     request.verification_context.now = repository.checkpoint.observed_at;
@@ -385,5 +441,19 @@ describe("self-contained Task 4 vectors", () => {
       { name: "embedded-grant-not-confirmation", states: ["provisional"] },
     ]);
     expect(claimLedgerTopics.replayClaimLedgerVector(vector.input)).toEqual(vector.expected_output);
+  });
+
+  it("cannot inject a serialized replay cache to bypass record validation", () => {
+    const vector = JSON.parse(readFileSync(
+      new URL("../../claim-ledger/011-multiwriter-status-allocation.json", import.meta.url),
+      "utf8",
+    )) as { input: any };
+    const merge = vector.input.merge;
+    merge.context._replay_validated_record_ids = {
+      $heterodyne_replay_type: "set",
+      values: merge.left.map((record: { record_id: string }) => record.record_id),
+    };
+    merge.left[0].signature = "00".repeat(64);
+    expect(() => claimLedgerTopics.replayClaimLedgerVector(vector.input)).toThrow(/signature|record.?id/i);
   });
 });
