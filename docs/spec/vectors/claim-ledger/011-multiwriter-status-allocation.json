@@ -1,0 +1,73 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "claim-ledger/multiwriter-status-allocation",
+  "description": "Two writers append distinct opaque issuance-reservation records; Task 5 owns final writer namespace and index allocation.",
+  "input": {
+    "writer_one": {
+      "record_id": "e4320e268f976ab5d7b4d20c90fe9028b053fdd346082420bd0431ebb8ca9ea9",
+      "record_type": "issuance-reservation",
+      "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+      "created_at": 1767245605,
+      "parents": [
+        "33fa4406d27eeafe71aa1e0cf3475e865ce6051f53fd572938c112f277ced6f5"
+      ],
+      "payload": {
+        "jti": "writer_one_token_0001",
+        "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+        "source_claim_ids": [
+          "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c"
+        ],
+        "allocation_ref": "pending:writer-one:sequence-0"
+      },
+      "payload_digest": "991bd8f5811b58d0afad4133a1ac7f00ca30c89339dbb1ca77f0017f6cebf962",
+      "signature": "8aaab7ad1ec6c1011d23dd67165730b1fa8d685d1128436a7999cce685d596bcba49bf1cc865ab2d0d705697fc20767230c7ceee713e2580ecc0a4640340da05"
+    },
+    "writer_two": {
+      "record_id": "ea9fc1f173a535a1553caf18b86d84babb605165c432b6dc52792c0dbfbbe33a",
+      "record_type": "issuance-reservation",
+      "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
+      "created_at": 1767245605,
+      "parents": [
+        "33fa4406d27eeafe71aa1e0cf3475e865ce6051f53fd572938c112f277ced6f5"
+      ],
+      "payload": {
+        "jti": "writer_two_token_0001",
+        "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
+        "source_claim_ids": [
+          "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c"
+        ],
+        "allocation_ref": "pending:writer-two:sequence-0"
+      },
+      "payload_digest": "5d9305bd5f5de066d830e3c42ab7daaa4dab2566855d095328d1f8c7e5c6ddff",
+      "signature": "52716b30c7d05b1993a03d553a5ccdc0c3267f7468766477a699c0b11f22d5c567dd2a090bb527a857bd3bde40b68ac92b344023b001da6061bad1dfb18f8d0c"
+    },
+    "checkpoint": {
+      "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+      "branch": "main",
+      "commit_oid": "abababababababababababababababababababab",
+      "observed_at": 1767245700
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "reservation_record_ids": [
+        "e4320e268f976ab5d7b4d20c90fe9028b053fdd346082420bd0431ebb8ca9ea9",
+        "ea9fc1f173a535a1553caf18b86d84babb605165c432b6dc52792c0dbfbbe33a"
+      ],
+      "allocation_algorithm": "deferred-to-claims-task-5"
+    }
+  },
+  "direction": "consume"
+}

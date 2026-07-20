@@ -119,10 +119,12 @@ function readSchema(name: string): AnySchema {
 
 export const KEY_CLAIM_SCHEMA = readSchema("key-claim-v1.schema.json");
 export const KEY_CLAIM_REVOCATION_SCHEMA = readSchema("key-claim-revocation-v1.schema.json");
+export const CLAIM_LEDGER_RECORD_SCHEMA = readSchema("claim-ledger-record-v1.schema.json");
 
 const commsSchemaAjv = new Ajv({ allErrors: true, strict: false });
 const validateKeyClaim = commsSchemaAjv.compile(KEY_CLAIM_SCHEMA);
 const validateClaimRevocation = commsSchemaAjv.compile(KEY_CLAIM_REVOCATION_SCHEMA);
+const validateClaimLedgerRecord = commsSchemaAjv.compile(CLAIM_LEDGER_RECORD_SCHEMA);
 
 export function validateVectorOrThrow(value: unknown): asserts value is Vector {
   if (!validate(value)) {
@@ -153,6 +155,13 @@ export function validateClaimRevocationSchemaOrThrow(value: unknown): void {
   const reasonCode = (value as { reason_code: string }).reason_code;
   if (!REGISTRY_REASON_CODES.includes(reasonCode)) {
     throw new Error(`claim-schema-invalid: reason_code is not registered: ${reasonCode}`);
+  }
+}
+
+export function validateClaimLedgerRecordSchemaOrThrow(value: unknown): void {
+  assertJcsInput(value);
+  if (!validateClaimLedgerRecord(value)) {
+    throw new Error(`claim-schema-invalid: ${formatErrors(validateClaimLedgerRecord.errors ?? [])}`);
   }
 }
 

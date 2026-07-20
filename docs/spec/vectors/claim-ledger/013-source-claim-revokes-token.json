@@ -1,0 +1,100 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "claim-ledger/source-claim-revokes-token",
+  "description": "A source-claim revocation makes its issuance mapping invalid in ledger state; Task 7 owns token-status encoding.",
+  "input": {
+    "issuance_reservation": {
+      "record_id": "e4320e268f976ab5d7b4d20c90fe9028b053fdd346082420bd0431ebb8ca9ea9",
+      "record_type": "issuance-reservation",
+      "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+      "created_at": 1767245605,
+      "parents": [
+        "33fa4406d27eeafe71aa1e0cf3475e865ce6051f53fd572938c112f277ced6f5"
+      ],
+      "payload": {
+        "jti": "writer_one_token_0001",
+        "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+        "source_claim_ids": [
+          "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c"
+        ],
+        "allocation_ref": "pending:writer-one:sequence-0"
+      },
+      "payload_digest": "991bd8f5811b58d0afad4133a1ac7f00ca30c89339dbb1ca77f0017f6cebf962",
+      "signature": "8aaab7ad1ec6c1011d23dd67165730b1fa8d685d1128436a7999cce685d596bcba49bf1cc865ab2d0d705697fc20767230c7ceee713e2580ecc0a4640340da05"
+    },
+    "source_revocation": {
+      "record_id": "4a5c737db8ed3a6a7925309caa43c3da6a0f96b3c2fd12c24d68cdeb8b0a0812",
+      "record_type": "revocation",
+      "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
+      "created_at": 1767245602,
+      "parents": [
+        "33fa4406d27eeafe71aa1e0cf3475e865ce6051f53fd572938c112f277ced6f5"
+      ],
+      "payload": {
+        "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+        "reason_code": "claim-revoked",
+        "evidence": {
+          "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+          "event_id": "3131313131313131313131313131313131313131313131313131313131313131",
+          "authority": "claim-revocation",
+          "validated_at": 1767245602,
+          "core_kel_authority_valid": true,
+          "evidence_digest": "1fcbcf0ff6a7a06d3884b208cc0c180acfafb97c6b170695c83881d6575cc68a"
+        }
+      },
+      "payload_digest": "30d53a9c2d6d935031a3904a7911f59d2883dd4fde9687f6aa8e2654c49fb990",
+      "signature": "82d8b7b782875ff280e5bfc1733bf15241757e8eb8ee410e3200454dca80e841bc26c00f67f2c7820959d5f62f0b4b9bb19e854e301625d92071d6b137e24707"
+    },
+    "status_invalidation": {
+      "record_id": "c24dec0386034bcb14f4044d17641b99b326f912eb79b1a201073e9b4e3002c4",
+      "record_type": "status-invalidation",
+      "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
+      "created_at": 1767245606,
+      "parents": [
+        "e4320e268f976ab5d7b4d20c90fe9028b053fdd346082420bd0431ebb8ca9ea9"
+      ],
+      "payload": {
+        "jti": "writer_one_token_0001",
+        "source_claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+        "evidence": {
+          "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+          "event_id": "3434343434343434343434343434343434343434343434343434343434343434",
+          "authority": "source-claim",
+          "validated_at": 1767245606,
+          "core_kel_authority_valid": true,
+          "evidence_digest": "01bf11fde6c1da5d8b8442553549a014e261cd030fccdef2370e953a57b7aa70"
+        }
+      },
+      "payload_digest": "04719628c220d9b8e1199e0a2001f95cfbbf73974301166618ab012595ffb6b4",
+      "signature": "95b0b9a2940c5eb1a25facb271e8c751c4f2cc294e39a507547e00b74c2b1cb19081d06b3a493b2e1f229f3db113c7fc363c3e134cd1066fa678467502065508"
+    },
+    "checkpoint": {
+      "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+      "branch": "main",
+      "commit_oid": "abababababababababababababababababababab",
+      "observed_at": 1767245700
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-revoked",
+    "normalized": {
+      "source_claim_state": "revoked",
+      "token_state": "invalid",
+      "status_encoding": "deferred-to-claims-task-7"
+    }
+  },
+  "direction": "consume"
+}

@@ -1,0 +1,34 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "claim-ledger/checkpoint-rollback-rejected",
+  "description": "A main-branch checkpoint that does not descend from the finalized checkpoint is rejected as rollback.",
+  "input": {
+    "previous_checkpoint": {
+      "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+      "branch": "main",
+      "commit_oid": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      "observed_at": 1767245650
+    },
+    "candidate_checkpoint": {
+      "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+      "branch": "main",
+      "commit_oid": "abababababababababababababababababababab",
+      "observed_at": 1767245700
+    },
+    "canonical_ancestors": []
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-ledger-rollback"
+  },
+  "direction": "consume"
+}

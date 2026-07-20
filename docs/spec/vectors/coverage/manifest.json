@@ -328,6 +328,162 @@
     ]
   },
   {
+    "vector_id": "claim-ledger/authority-reduction-wins",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claim-ledger/checkpoint-rollback-rejected",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claim-ledger/delivered-grant-provisional",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claim-ledger/immediate-revocation",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claim-ledger/keyed-path-metadata-private",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claim-ledger/multiwriter-revocation-wins",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claim-ledger/multiwriter-status-allocation",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claim-ledger/nidless-reader-denied",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claim-ledger/nonmonotonic-conflict-blocks",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claim-ledger/reader-nid-authorized",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claim-ledger/reader-removal-key-rotation",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claim-ledger/source-claim-revokes-token",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
+    "vector_id": "claim-ledger/stale-minter-denied",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 2,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-conformance"
+    ]
+  },
+  {
     "vector_id": "claims/authorization-self-revocation",
     "owner_document": "comms",
     "owner_version": "comms/0.5.0",

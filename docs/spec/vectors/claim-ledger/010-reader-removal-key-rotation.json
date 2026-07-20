@@ -1,0 +1,129 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "claim-ledger/reader-removal-key-rotation",
+  "description": "Reader removal denies immediately, rotates the dedicated audience key to remaining NIDs, removes access, and retires prior ciphertext.",
+  "input": {
+    "prior_records": [
+      {
+        "record_id": "33fa4406d27eeafe71aa1e0cf3475e865ce6051f53fd572938c112f277ced6f5",
+        "record_type": "claim",
+        "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+        "created_at": 1767245601,
+        "parents": [],
+        "payload": {
+          "claim": {
+            "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+            "issuer": {
+              "type": "nostr-secp256k1",
+              "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+            },
+            "subject": {
+              "type": "radicle-ed25519-nid",
+              "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+            },
+            "claim_class": "authorization",
+            "namespace": "heterodyne.device",
+            "name": "claim-ledger-reader",
+            "value": true,
+            "issued_at": 1767245600,
+            "not_before": 1767245600,
+            "expires_at": 1767249200,
+            "audience": [
+              "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+            ],
+            "resources": [
+              "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger"
+            ],
+            "visibility": "repository-private",
+            "comms_version": "comms/0.5.0",
+            "registry_revision": 2
+          }
+        },
+        "payload_digest": "341f0c0a935c867a566aa51725a614d1731f9a0af6889180698ccf4c943fa9de",
+        "signature": "06cdc2aff7bc3b6acf5fceeedc7e8a02c70af1bdba3033df7bd685d506d2c68482f4797ca7e2aadf7cec767836455f4e5ccf3e68b7a680eab8dcc751ecb9860b"
+      }
+    ],
+    "reduction": {
+      "record_id": "563247d6be8f1e1d95b6716242cf260d795d09e7932ab0d5848e90ef5ead3027",
+      "record_type": "authority-reduction",
+      "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
+      "created_at": 1767245603,
+      "parents": [
+        "33fa4406d27eeafe71aa1e0cf3475e865ce6051f53fd572938c112f277ced6f5"
+      ],
+      "payload": {
+        "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+        "subject_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+        "authority": "claim-ledger-reader",
+        "evidence": {
+          "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+          "event_id": "3232323232323232323232323232323232323232323232323232323232323232",
+          "authority": "claim-ledger-reader",
+          "validated_at": 1767245603,
+          "core_kel_authority_valid": true,
+          "evidence_digest": "b13b64cefc2210de23261d9408deb04d68ed1d77dc6b90f1d85016ebb5e6983b"
+        }
+      },
+      "payload_digest": "5accad507fad74cbd00b9a231e0eca3c4f405e78a3cf2e1068ea71705272fdca",
+      "signature": "8f9af18b04601a398cd468e9c6d92049b4fc13a97d52ca32a83ef9f932ad9b2cf04912122aa86ad45afbf3b50f8cc2542058ff98c3c72f9b9f39791945334a04"
+    },
+    "audience_key_epoch": {
+      "record_id": "b4c330b54a3e0139f5916814b3701bea4dfde66c2b40f22ed2278a976b53ea75",
+      "record_type": "audience-key-epoch",
+      "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
+      "created_at": 1767245604,
+      "parents": [
+        "563247d6be8f1e1d95b6716242cf260d795d09e7932ab0d5848e90ef5ead3027"
+      ],
+      "payload": {
+        "key_id": "ledger-epoch-b",
+        "previous_key_id": "ledger-epoch-a",
+        "reader_nids": [
+          "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
+        ],
+        "removed_reader_nids": [
+          "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+        ],
+        "radicle_access_removed": [
+          "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+        ],
+        "retire_previous_state": true,
+        "scrub_profile": "comms-encrypted-branch-cooperative-v1"
+      },
+      "payload_digest": "1d8a4e8518b32f85275178666d51665c46369fddf4302d13eb32d07bade72159",
+      "signature": "fecca92b2f6c2e1edcde2492d57792d984e1a93284f9b0b8d1d6ecbcf8870d7d5be805a7273780d42cf1bbac82a7c870521c76fcccd94943cdd820e7e2bbde07"
+    },
+    "checkpoint": {
+      "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+      "branch": "main",
+      "commit_oid": "abababababababababababababababababababab",
+      "observed_at": 1767245700
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "removed_reader_allowed": false,
+      "remaining_readers": [
+        "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
+      ],
+      "radicle_access_removed": [
+        "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+      ],
+      "retired_state_scrub": "cooperative-no-erasure-claim"
+    }
+  },
+  "direction": "consume"
+}

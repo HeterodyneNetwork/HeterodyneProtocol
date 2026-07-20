@@ -1,0 +1,100 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "claim-ledger/multiwriter-revocation-wins",
+  "description": "Concurrent writer branches converge by record ID and a valid revocation wins over a grant.",
+  "input": {
+    "writer_one_records": [
+      {
+        "record_id": "33fa4406d27eeafe71aa1e0cf3475e865ce6051f53fd572938c112f277ced6f5",
+        "record_type": "claim",
+        "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+        "created_at": 1767245601,
+        "parents": [],
+        "payload": {
+          "claim": {
+            "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+            "issuer": {
+              "type": "nostr-secp256k1",
+              "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+            },
+            "subject": {
+              "type": "radicle-ed25519-nid",
+              "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+            },
+            "claim_class": "authorization",
+            "namespace": "heterodyne.device",
+            "name": "claim-ledger-reader",
+            "value": true,
+            "issued_at": 1767245600,
+            "not_before": 1767245600,
+            "expires_at": 1767249200,
+            "audience": [
+              "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+            ],
+            "resources": [
+              "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger"
+            ],
+            "visibility": "repository-private",
+            "comms_version": "comms/0.5.0",
+            "registry_revision": 2
+          }
+        },
+        "payload_digest": "341f0c0a935c867a566aa51725a614d1731f9a0af6889180698ccf4c943fa9de",
+        "signature": "06cdc2aff7bc3b6acf5fceeedc7e8a02c70af1bdba3033df7bd685d506d2c68482f4797ca7e2aadf7cec767836455f4e5ccf3e68b7a680eab8dcc751ecb9860b"
+      }
+    ],
+    "writer_two_records": [
+      {
+        "record_id": "4a5c737db8ed3a6a7925309caa43c3da6a0f96b3c2fd12c24d68cdeb8b0a0812",
+        "record_type": "revocation",
+        "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
+        "created_at": 1767245602,
+        "parents": [
+          "33fa4406d27eeafe71aa1e0cf3475e865ce6051f53fd572938c112f277ced6f5"
+        ],
+        "payload": {
+          "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+          "reason_code": "claim-revoked",
+          "evidence": {
+            "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+            "event_id": "3131313131313131313131313131313131313131313131313131313131313131",
+            "authority": "claim-revocation",
+            "validated_at": 1767245602,
+            "core_kel_authority_valid": true,
+            "evidence_digest": "1fcbcf0ff6a7a06d3884b208cc0c180acfafb97c6b170695c83881d6575cc68a"
+          }
+        },
+        "payload_digest": "30d53a9c2d6d935031a3904a7911f59d2883dd4fde9687f6aa8e2654c49fb990",
+        "signature": "82d8b7b782875ff280e5bfc1733bf15241757e8eb8ee410e3200454dca80e841bc26c00f67f2c7820959d5f62f0b4b9bb19e854e301625d92071d6b137e24707"
+      }
+    ],
+    "checkpoint": {
+      "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+      "branch": "main",
+      "commit_oid": "abababababababababababababababababababab",
+      "observed_at": 1767245700
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "record_ids": [
+        "33fa4406d27eeafe71aa1e0cf3475e865ce6051f53fd572938c112f277ced6f5",
+        "4a5c737db8ed3a6a7925309caa43c3da6a0f96b3c2fd12c24d68cdeb8b0a0812"
+      ],
+      "claim_state": "revoked"
+    }
+  },
+  "direction": "consume"
+}

@@ -1,0 +1,31 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "claim-ledger/stale-minter-denied",
+  "description": "The ledger state boundary marks a checkpoint 301 seconds old ineligible; Task 5 owns complete mint eligibility.",
+  "input": {
+    "canonical_checkpoint": {
+      "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+      "branch": "main",
+      "commit_oid": "abababababababababababababababababababab",
+      "observed_at": 1767245700
+    },
+    "mint_evaluation_time": 1767246001,
+    "manifest_max_age_seconds": 300
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "oidc-checkpoint-stale",
+    "minting": false,
+    "evaluation_owner": "claims-task-5"
+  },
+  "direction": "consume"
+}

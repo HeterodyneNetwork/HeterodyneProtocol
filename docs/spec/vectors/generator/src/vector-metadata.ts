@@ -161,6 +161,19 @@ claims/public-claim-publication
 claims/pairwise-private-dr-delivery
 claims/repository-private-encryption
 claims/local-only-no-publication
+claim-ledger/reader-nid-authorized
+claim-ledger/nidless-reader-denied
+claim-ledger/delivered-grant-provisional
+claim-ledger/immediate-revocation
+claim-ledger/multiwriter-revocation-wins
+claim-ledger/authority-reduction-wins
+claim-ledger/nonmonotonic-conflict-blocks
+claim-ledger/checkpoint-rollback-rejected
+claim-ledger/keyed-path-metadata-private
+claim-ledger/reader-removal-key-rotation
+claim-ledger/multiwriter-status-allocation
+claim-ledger/stale-minter-denied
+claim-ledger/source-claim-revokes-token
 config-backup/config-blob-encrypt-decrypt
 config-backup/key-id-derivation
 config-backup/key-rotation-ref-delta
@@ -371,14 +384,14 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
     owner_document: owner,
     owner_version: `${owner}/${DOCUMENT_VERSIONS[owner]}`,
     dependency_versions: dependencies,
-    registry_revision: vectorId.startsWith("claims/") ? 2 : 1,
+    registry_revision: vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/") ? 2 : 1,
     ...(profile === undefined ? {} : { profile }),
     spec_refs: [`heterodyne:${reference.document}/${DOCUMENT_VERSIONS[reference.document]}#${reference.anchor}`],
   };
 }
 
 function referenceFor(vectorId: string, owner: DocumentId): { document: DocumentId; anchor: string } {
-  if (vectorId.startsWith("claims/")) {
+  if (vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/")) {
     return { document: "comms", anchor: "comms-conformance" };
   }
   if (vectorId.startsWith("stamping/") || vectorId.startsWith("profiles/core-breadcrumb")) {

@@ -1,0 +1,57 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "claim-ledger/nidless-reader-denied",
+  "description": "A NID-less session device cannot replicate or decrypt the private claim ledger.",
+  "input": {
+    "reader_nid": null,
+    "claims": [
+      {
+        "claim_id": "243c3f8c71c071fb62d41660bdb8f00daeca7c9e4fcdac488b229476bce3157c",
+        "issuer": {
+          "type": "nostr-secp256k1",
+          "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+        },
+        "subject": {
+          "type": "radicle-ed25519-nid",
+          "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+        },
+        "claim_class": "authorization",
+        "namespace": "heterodyne.device",
+        "name": "claim-ledger-reader",
+        "value": true,
+        "issued_at": 1767245600,
+        "not_before": 1767245600,
+        "expires_at": 1767249200,
+        "audience": [
+          "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        ],
+        "resources": [
+          "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger"
+        ],
+        "visibility": "repository-private",
+        "comms_version": "comms/0.5.0",
+        "registry_revision": 2
+      }
+    ],
+    "checkpoint": {
+      "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+      "branch": "main",
+      "commit_oid": "abababababababababababababababababababab",
+      "observed_at": 1767245700
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "claim-ledger-reader-unauthorized"
+  },
+  "direction": "consume"
+}

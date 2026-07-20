@@ -1,0 +1,28 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-conformance"
+  ],
+  "vector_id": "claim-ledger/keyed-path-metadata-private",
+  "description": "A dedicated audience key derives an opaque Git path and fixed commit label with no semantic or membership metadata.",
+  "input": {
+    "audience_key": "5151515151515151515151515151515151515151515151515151515151515151",
+    "record_id": "33fa4406d27eeafe71aa1e0cf3475e865ce6051f53fd572938c112f277ced6f5"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "path": "objects/06.bin",
+      "commit_message": "heterodyne private ledger update",
+      "exposed_semantic_fields": [],
+      "padding_policy": "fixed-profile-buckets"
+    }
+  },
+  "direction": "consume"
+}
