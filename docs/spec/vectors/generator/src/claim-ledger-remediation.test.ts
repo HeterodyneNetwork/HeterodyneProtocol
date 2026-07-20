@@ -20,8 +20,8 @@ describe("claim-ledger remediation security contexts", () => {
 
   it("materializes a fixed 256-entry re-encrypted layout", () => {
     const key = Uint8Array.from({ length: 32 }, () => 0x51);
-    const first = materializeLedgerLayout(key, 1, "11".repeat(32), []);
-    const second = materializeLedgerLayout(key, 1, "12".repeat(32), []);
+    const first = materializeLedgerLayout(key, 1, "aa".repeat(32), "11".repeat(32), []);
+    const second = materializeLedgerLayout(key, 1, "bb".repeat(32), "12".repeat(32), []);
     expect(first.entries).toHaveLength(256);
     expect(new Set(first.entries.map(({ size }) => size))).toEqual(new Set([64]));
     expect(first.entries.map(({ path }) => path)).toEqual(

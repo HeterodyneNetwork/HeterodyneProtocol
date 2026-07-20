@@ -4,7 +4,6 @@ import {
   buildLedgerRepositoryEvidence,
   createAudienceKeyEpochPayload,
   createSignedLedgerRecord,
-  deriveLedgerPath,
   evaluateLedgerCheckpointEligibility,
   evaluateReaderAccess,
   ledgerErrorReason,
@@ -38,6 +37,142 @@ import { AUX_RAND, consumeVector } from "./vector-helpers.js";
 
 export type ClaimLedgerScenario = Awaited<ReturnType<typeof buildClaimLedgerScenario>>;
 
+const REPLAY_TAG = "$heterodyne_replay_type";
+
+export function encodeClaimLedgerReplayValue(value: unknown): JsonValue {
+  if (value === null || typeof value === "string" || typeof value === "boolean" || typeof value === "number") {
+    return value;
+  }
+  if (value instanceof Uint8Array) {
+    return { [REPLAY_TAG]: "bytes", hex: bytesToHex(value) };
+  }
+  if (value instanceof Map) {
+    return {
+      [REPLAY_TAG]: "map",
+      entries: [...value.entries()].map(([key, entry]) => [
+        encodeClaimLedgerReplayValue(key), encodeClaimLedgerReplayValue(entry),
+      ]),
+    };
+  }
+  if (value instanceof Set) {
+    return { [REPLAY_TAG]: "set", values: [...value].map(encodeClaimLedgerReplayValue) };
+  }
+  if (Array.isArray(value)) return value.map(encodeClaimLedgerReplayValue);
+  if (typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([, entry]) => entry !== undefined)
+        .map(([key, entry]) => [key, encodeClaimLedgerReplayValue(entry)]),
+    );
+  }
+  throw new Error("claim-schema-invalid: unsupported replay input value");
+}
+
+function decodeClaimLedgerReplayValue(value: unknown): any {
+  if (value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(decodeClaimLedgerReplayValue);
+  const object = value as Record<string, unknown>;
+  if (object[REPLAY_TAG] === "bytes") return hexToBytes(String(object.hex));
+  if (object[REPLAY_TAG] === "map") {
+    return new Map((object.entries as unknown[][]).map(([key, entry]) => [
+      decodeClaimLedgerReplayValue(key), decodeClaimLedgerReplayValue(entry),
+    ]));
+  }
+  if (object[REPLAY_TAG] === "set") {
+    return new Set((object.values as unknown[]).map(decodeClaimLedgerReplayValue));
+  }
+  return Object.fromEntries(Object.entries(object).map(([key, entry]) => [key, decodeClaimLedgerReplayValue(entry)]));
+}
+
+function replayMerge(spec: any) {
+  return mergeClaimLedger(spec.left, spec.right, spec.checkpoint, spec.context);
+}
+
+export function replayClaimLedgerVector(encodedInput: unknown): unknown {
+  const input = decodeClaimLedgerReplayValue(encodedInput) as any;
+  switch (input.operation) {
+    case "reader-authorized": {
+      const decision = evaluateReaderAccess(input.reader_nid, replayMerge(input.merge), input.request);
+      return { verdict: decision.allowed ? "accept" : "reject", authorization: decision };
+    }
+    case "reader-denied": {
+      const decision = evaluateReaderAccess(input.reader_nid, replayMerge(input.merge), input.request);
+      return { verdict: "reject", ...decisionReason(decision) };
+    }
+    case "authoritative-state": {
+      const state = resolveAuthoritativeClaimState(input.claim_id, replayMerge(input.merge), input.evaluation_time);
+      return { verdict: "reject", reason_code: input.reason_code, state };
+    }
+    case "reduction-precedence": {
+      const state = replayMerge(input.merge);
+      return {
+        verdict: "accept",
+        normalized: {
+          conflicted_claim_ids: state.conflicted_claim_ids,
+          target_state: resolveAuthoritativeClaimState(input.claim_id, state, input.evaluation_time),
+        },
+      };
+    }
+    case "conflict": {
+      const state = replayMerge(input.merge);
+      return { verdict: "reject", reason_code: "claim-repository-conflict", conflicted_claim_ids: state.conflicted_claim_ids };
+    }
+    case "merge-rejection":
+      return mergeDecision(() => replayMerge(input.merge));
+    case "layout-compare": {
+      const first = materializeLedgerLayout(
+        input.first.audience_key, input.first.epoch, input.first.commit_oid, input.first.nonce, input.first.records,
+      );
+      const second = materializeLedgerLayout(
+        input.second.audience_key, input.second.epoch, input.second.commit_oid, input.second.nonce, input.second.records,
+      );
+      return {
+        verdict: "accept",
+        normalized: {
+          first: layoutProjection(first),
+          second: layoutProjection(second),
+          changed_entries: first.entries.filter((entry, index) => entry.ciphertext !== second.entries[index].ciphertext).length,
+        },
+      };
+    }
+    case "reader-removal": {
+      const state = replayMerge(input.merge);
+      const removedAccess = evaluateReaderAccess(input.reader_nid, state, input.request);
+      const nextEpoch = state.records.find(({ record_id }) => record_id === input.next_epoch_record_id);
+      return { verdict: "accept", normalized: { removed_access: removedAccess, next_epoch: nextEpoch?.payload } };
+    }
+    case "reservations": {
+      const state = replayMerge(input.merge);
+      return {
+        verdict: "accept",
+        normalized: {
+          reservation_record_ids: state.records
+            .filter(({ record_type }) => record_type === "issuance-reservation")
+            .map(({ record_id }) => record_id),
+          allocation_algorithm: "deferred-to-claims-task-5",
+        },
+      };
+    }
+    case "checkpoint-eligibility": {
+      const decision = evaluateLedgerCheckpointEligibility(input.now, input.checkpoint, input.maximum_age);
+      return { verdict: "reject", ...decisionReason(decision) };
+    }
+    case "token-invalidation": {
+      const state = replayMerge(input.merge);
+      return {
+        verdict: "accept",
+        normalized: {
+          source_claim_state: resolveAuthoritativeClaimState(input.claim_id, state, input.evaluation_time),
+          token_invalidations: state.token_invalidations,
+          status_encoding: "deferred-to-claims-task-7",
+        },
+      };
+    }
+    default:
+      throw new Error("claim-schema-invalid: unknown Task 4 vector replay operation");
+  }
+}
+
 export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   const now = fixtures.test_epoch + 20_000;
   const persona = fixtures.personas.alice.cold_root.pubkey;
@@ -48,6 +183,8 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   const resource = `${rid}#claim-ledger`;
   const audienceKeyOne = Uint8Array.from({ length: 32 }, () => 0x51);
   const audienceKeyTwo = Uint8Array.from({ length: 32 }, () => 0x52);
+  const audienceKeyOneId = bytesToHex(sha256(audienceKeyOne));
+  const audienceKeyTwoId = bytesToHex(sha256(audienceKeyTwo));
 
   const makeClaim = async (
     reader: typeof writerOne,
@@ -103,8 +240,8 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
       audience: persona,
       resource,
       operation: "read",
-      issued_at: now + 10,
-      expires_at: now + 70,
+      issued_at: now + 11,
+      expires_at: now + 71,
     };
     const signature = bytesToHex(ed25519.sign(
       utf8Bytes(subjectProofPayload(challenge)),
@@ -216,8 +353,8 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   });
   const epochOnePayload = createAudienceKeyEpochPayload({
     persona, repository_rid: rid, checkpoint_commit_oid: baseRepository.checkpoint.commit_oid,
-    epoch: 1, key_id: "ledger-epoch-1", audience_key: audienceKeyOne,
-    previous_epoch: 0, previous_key_id: "ledger-genesis", reader_nids: [writerOne.did_key, writerTwo.did_key], removed_reader_nids: [],
+    epoch: 1, key_id: audienceKeyOneId, audience_key: audienceKeyOne,
+    previous_epoch: 0, previous_key_id: "00".repeat(32), reader_nids: [writerOne.did_key, writerTwo.did_key], removed_reader_nids: [],
   });
   const epochOneRecord = signRecord("audience-key-epoch", epochOnePayload as unknown as JsonValue, writerTwo,
     [claimRecordOne.record_id, claimRecordTwo.record_id], now + 51);
@@ -230,8 +367,8 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   });
   const epochTwoPayload = createAudienceKeyEpochPayload({
     persona, repository_rid: rid, checkpoint_commit_oid: epochOneRepository.checkpoint.commit_oid,
-    epoch: 2, key_id: "ledger-epoch-2", audience_key: audienceKeyTwo,
-    previous_epoch: 1, previous_key_id: "ledger-epoch-1", reader_nids: [writerTwo.did_key], removed_reader_nids: [writerOne.did_key],
+    epoch: 2, key_id: audienceKeyTwoId, audience_key: audienceKeyTwo,
+    previous_epoch: 1, previous_key_id: audienceKeyOneId, reader_nids: [writerTwo.did_key], removed_reader_nids: [writerOne.did_key],
   });
   const epochTwoRecord = signRecord("audience-key-epoch", epochTwoPayload as unknown as JsonValue, writerTwo,
     [epochOneRecord.record_id, removalRecord.record_id], now + 61);
@@ -259,14 +396,14 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   const makeContext = (repository: LedgerRepositoryEvidence): LedgerValidationContext => {
     const requestOne = requestFor(claimRecordOne, claimOne);
     const requestTwo = requestFor(claimRecordTwo, claimTwo);
-    requestOne.verification_context.now = Math.min(repository.checkpoint.observed_at, now + 69);
-    requestTwo.verification_context.now = Math.min(repository.checkpoint.observed_at, now + 69);
+    requestOne.verification_context.now = repository.checkpoint.observed_at;
+    requestTwo.verification_context.now = repository.checkpoint.observed_at;
     return {
       record_evidence: new Map(evidence),
       repository,
       reader_requests: new Map([
-        [writerOne.did_key, requestOne],
-        [writerTwo.did_key, requestTwo],
+        [claimRecordOne.record_id, requestOne],
+        [claimRecordTwo.record_id, requestTwo],
       ]),
       audience_keys_by_epoch: new Map([[1, audienceKeyOne], [2, audienceKeyTwo]]),
     };
@@ -293,75 +430,79 @@ function mergeDecision(run: () => unknown) {
 export async function buildClaimLedgerVectors(fixtures: Fixtures): Promise<AuthoredVector[]> {
   const s = await buildClaimLedgerScenario(fixtures);
   const baseRecords = [s.claimRecordOne, s.claimRecordTwo];
-  const baseState = mergeClaimLedger(baseRecords, [], s.baseRepository.checkpoint, s.makeContext(s.baseRepository.repository));
   const epochOneRecords = [...baseRecords, s.epochOneRecord];
-  const epochOneState = mergeClaimLedger(epochOneRecords, [], s.epochOneRepository.checkpoint, s.makeContext(s.epochOneRepository.repository));
-  const deliveredState = mergeClaimLedger(baseRecords, [s.revocationRecord], s.baseRepository.checkpoint, s.makeContext(s.baseRepository.repository));
   const conflictRepo = buildLedgerRepositoryEvidence({
     repository_rid: s.rid,
     confirmed_records: [...baseRecords, s.grantOne, s.grantDivergent], observed_at: s.now + 80,
   });
   const conflictRecords = [...baseRecords, s.grantOne, s.grantDivergent];
-  const conflictState = mergeClaimLedger(conflictRecords, [], conflictRepo.checkpoint, s.makeContext(conflictRepo.repository));
-  const conflictRevokedState = mergeClaimLedger(conflictRecords, [s.revocationRecord], conflictRepo.checkpoint, s.makeContext(conflictRepo.repository));
-  const conflictReducedState = mergeClaimLedger(conflictRecords, [s.reductionRecord], conflictRepo.checkpoint, s.makeContext(conflictRepo.repository));
   const finalRecords = [...epochOneRecords, s.removalRecord, s.epochTwoRecord];
   const finalRepo = buildLedgerRepositoryEvidence({ repository_rid: s.rid, confirmed_records: finalRecords, observed_at: s.now + 65, prior: s.epochOneRepository.repository });
-  const finalState = mergeClaimLedger(finalRecords, [], finalRepo.checkpoint, s.makeContext(finalRepo.repository));
   const reservations = [...baseRecords, s.reservationOne, s.reservationTwo];
   const reservationsRepo = buildLedgerRepositoryEvidence({ repository_rid: s.rid, confirmed_records: reservations, observed_at: s.now + 100 });
-  const reservationState = mergeClaimLedger(reservations, [], reservationsRepo.checkpoint, s.makeContext(reservationsRepo.repository));
   const tokenRecords = [...baseRecords, s.reservationOne, s.revocationRecord, s.statusInvalidation];
   const tokenRepo = buildLedgerRepositoryEvidence({ repository_rid: s.rid, confirmed_records: tokenRecords, observed_at: s.now + 110 });
-  const tokenState = mergeClaimLedger(tokenRecords, [], tokenRepo.checkpoint, s.makeContext(tokenRepo.repository));
-  const layoutA = materializeLedgerLayout(s.audienceKeyOne, 1, "11".repeat(32), baseRecords);
-  const layoutB = materializeLedgerLayout(s.audienceKeyOne, 1, "12".repeat(32), baseRecords);
   const requestOne = s.requestFor(s.claimRecordOne, s.claimOne);
+  requestOne.verification_context.now = s.baseRepository.checkpoint.observed_at;
+  const finalRequestOne = s.requestFor(s.claimRecordOne, s.claimOne);
+  finalRequestOne.verification_context.now = finalRepo.checkpoint.observed_at;
+  const emptyRepo = buildLedgerRepositoryEvidence({ repository_rid: s.rid, confirmed_records: [], observed_at: s.now + 50 });
+  const rollbackRepository = structuredClone(s.epochOneRepository.repository);
+  rollbackRepository.commits[rollbackRepository.commits.length - 1].parents = [];
+
+  const mergeInput = (
+    left: LedgerRecord[], right: LedgerRecord[], checkpoint: unknown, context: unknown,
+  ) => ({ left, right, checkpoint, context });
+  const encoded = (value: unknown) => encodeClaimLedgerReplayValue(value) as Record<string, unknown>;
+  const entry = (
+    file: string, id: string, description: string, rawInput: unknown,
+  ): [string, string, string, Record<string, unknown>, Record<string, unknown>] => {
+    const input = encoded(rawInput);
+    return [file, id, description, input, replayClaimLedgerVector(input) as Record<string, unknown>];
+  };
 
   const entries: Array<[string, string, string, Record<string, unknown>, Record<string, unknown>]> = [
-    ["001-reader-nid-authorized.json", "reader-nid-authorized", "A signed, repository-final reader claim with fresh NID proof authorizes private-ledger access.",
-      { reader_nid: s.writerOne.did_key, request: requestProjection(requestOne), checkpoint: baseState.checkpoint },
-      { verdict: "accept", authorization: evaluateReaderAccess(s.writerOne.did_key, baseState, requestOne) }],
-    ["002-nidless-reader-denied.json", "nidless-reader-denied", "NID-less readers fail before repository replication or decryption.",
-      { reader_nid: null, request: requestProjection(requestOne) },
-      { verdict: "reject", ...decisionReason(evaluateReaderAccess(null, baseState, requestOne)) }],
-    ["003-delivered-grant-provisional.json", "delivered-grant-provisional", "A delivered signed claim outside the canonical tree remains provisional.",
-      { delivered_record: s.claimRecordOne, repository_confirmed_record_ids: [] },
-      { verdict: "reject", reason_code: "claim-repository-unconfirmed", state: resolveAuthoritativeClaimState(s.claimOne.artifact.semantic.claim_id, { ...baseState, repository_confirmed_record_ids: [] }) }],
-    ["004-immediate-revocation.json", "immediate-revocation", "A Task-3-authenticated delivered revocation applies before repository finality.",
-      { canonical_record_ids: baseState.repository_confirmed_record_ids, delivered_revocation: s.revocationRecord },
-      { verdict: "reject", reason_code: "claim-revoked", state: resolveAuthoritativeClaimState(s.claimOne.artifact.semantic.claim_id, deliveredState) }],
-    ["005-multiwriter-revocation-wins.json", "multiwriter-revocation-wins", "Concurrent divergent grants remain conflicted, but an authenticated revocation is absorbing.",
-      { writer_one_grant: s.grantOne, writer_two_grant: s.grantDivergent, delivered_revocation: s.revocationRecord },
-      { verdict: "accept", normalized: { conflicted_claim_ids: conflictState.conflicted_claim_ids, target_state: resolveAuthoritativeClaimState(s.claimOne.artifact.semantic.claim_id, conflictRevokedState) } }],
-    ["006-authority-reduction-wins.json", "authority-reduction-wins", "An authenticated role reduction is absorbing over concurrent divergent grants.",
-      { writer_one_grant: s.grantOne, writer_two_grant: s.grantDivergent, delivered_reduction: s.reductionRecord },
-      { verdict: "accept", normalized: { conflicted_claim_ids: conflictState.conflicted_claim_ids, target_state: resolveAuthoritativeClaimState(s.claimOne.artifact.semantic.claim_id, conflictReducedState) } }],
-    ["007-nonmonotonic-conflict-blocks.json", "nonmonotonic-conflict-blocks", "Divergent widening changes fail closed without last-writer-wins.",
-      { writer_one_grant: s.grantOne, writer_two_grant: s.grantDivergent },
-      { verdict: "reject", reason_code: "claim-repository-conflict", conflicted_claim_ids: conflictState.conflicted_claim_ids }],
-    ["008-checkpoint-rollback-rejected.json", "checkpoint-rollback-rejected", "A mutated canonical head lacking the finalized ancestor fails executable commit-DAG validation.",
-      { prior_checkpoint: s.baseRepository.checkpoint, candidate_checkpoint: s.epochOneRepository.checkpoint, mutation: "drop-parent" },
-      mergeDecision(() => {
-        const mutated = structuredClone(s.epochOneRepository.repository);
-        mutated.commits[mutated.commits.length - 1].parents = [];
-        mergeClaimLedger(epochOneRecords, [], s.epochOneRepository.checkpoint, s.makeContext(mutated));
-      })],
-    ["009-keyed-path-metadata-private.json", "keyed-path-metadata-private", "Fixed 256-bucket materialization re-encrypts every equal-size opaque object per commit.",
-      { derived_path: deriveLedgerPath(s.audienceKeyOne, s.claimRecordOne.record_id), epoch: 1, first_nonce: "11".repeat(32), second_nonce: "12".repeat(32) },
-      { verdict: "accept", normalized: { first: layoutProjection(layoutA), second: layoutProjection(layoutB), changed_entries: layoutA.entries.filter((entry, index) => entry.ciphertext !== layoutB.entries[index].ciphertext).length } }],
-    ["010-reader-removal-key-rotation.json", "reader-removal-key-rotation", "Authenticated removal precedes a distinct monotonic key epoch wrapped only to active remaining NIDs.",
-      { removal_record: s.removalRecord, prior_epoch_record: s.epochOneRecord, next_epoch_record: s.epochTwoRecord },
-      { verdict: "accept", normalized: { removed_access: evaluateReaderAccess(s.writerOne.did_key, finalState, requestOne), next_epoch: s.epochTwoRecord.payload } }],
-    ["011-multiwriter-status-allocation.json", "multiwriter-status-allocation", "Task 4 merges opaque pending reservations without defining Task 5 allocation semantics.",
-      { writer_one: s.reservationOne, writer_two: s.reservationTwo },
-      { verdict: "accept", normalized: { reservation_record_ids: reservationState.records.filter(({ record_type }) => record_type === "issuance-reservation").map(({ record_id }) => record_id), allocation_algorithm: "deferred-to-claims-task-5" } }],
-    ["012-stale-minter-denied.json", "stale-minter-denied", "The ledger boundary rejects a checkpoint older than the 300-second maximum.",
-      { checkpoint: baseState.checkpoint, evaluation_time: baseState.checkpoint.observed_at + 301, maximum_age: 300 },
-      { verdict: "reject", ...decisionReason(evaluateLedgerCheckpointEligibility(baseState.checkpoint.observed_at + 301, baseState.checkpoint, 300)) }],
-    ["013-source-claim-revokes-token.json", "source-claim-revokes-token", "Source revocation and token invalidation are separate executable effects; status encoding remains Task 7.",
-      { claim_revocation: s.revocationRecord, token_invalidation: s.statusInvalidation },
-      { verdict: "accept", normalized: { source_claim_state: resolveAuthoritativeClaimState(s.claimOne.artifact.semantic.claim_id, tokenState), token_invalidations: tokenState.token_invalidations, status_encoding: "deferred-to-claims-task-7" } }],
+    entry("001-reader-nid-authorized.json", "reader-nid-authorized", "A signed, repository-final reader claim with fresh NID proof authorizes private-ledger access.", {
+      operation: "reader-authorized", merge: mergeInput(baseRecords, [], s.baseRepository.checkpoint, s.makeContext(s.baseRepository.repository)), reader_nid: s.writerOne.did_key, request: requestOne,
+    }),
+    entry("002-nidless-reader-denied.json", "nidless-reader-denied", "NID-less readers fail before repository replication or decryption.", {
+      operation: "reader-denied", merge: mergeInput(baseRecords, [], s.baseRepository.checkpoint, s.makeContext(s.baseRepository.repository)), reader_nid: null, request: requestOne,
+    }),
+    entry("003-delivered-grant-provisional.json", "delivered-grant-provisional", "A delivered signed claim outside the canonical tree remains provisional.", {
+      operation: "authoritative-state", merge: mergeInput([], [s.claimRecordOne], emptyRepo.checkpoint, s.makeContext(emptyRepo.repository)), claim_id: s.claimOne.artifact.semantic.claim_id, evaluation_time: emptyRepo.checkpoint.observed_at, reason_code: "claim-repository-unconfirmed",
+    }),
+    entry("004-immediate-revocation.json", "immediate-revocation", "A Task-3-authenticated delivered revocation applies before repository finality.", {
+      operation: "authoritative-state", merge: mergeInput(baseRecords, [s.revocationRecord], s.baseRepository.checkpoint, s.makeContext(s.baseRepository.repository)), claim_id: s.claimOne.artifact.semantic.claim_id, evaluation_time: s.baseRepository.checkpoint.observed_at, reason_code: "claim-revoked",
+    }),
+    entry("005-multiwriter-revocation-wins.json", "multiwriter-revocation-wins", "Concurrent divergent grants remain conflicted, but an authenticated revocation is absorbing.", {
+      operation: "reduction-precedence", merge: mergeInput(conflictRecords, [s.revocationRecord], conflictRepo.checkpoint, s.makeContext(conflictRepo.repository)), claim_id: s.claimOne.artifact.semantic.claim_id, evaluation_time: conflictRepo.checkpoint.observed_at,
+    }),
+    entry("006-authority-reduction-wins.json", "authority-reduction-wins", "An authenticated role reduction is absorbing over concurrent divergent grants.", {
+      operation: "reduction-precedence", merge: mergeInput(conflictRecords, [s.reductionRecord], conflictRepo.checkpoint, s.makeContext(conflictRepo.repository)), claim_id: s.claimOne.artifact.semantic.claim_id, evaluation_time: conflictRepo.checkpoint.observed_at,
+    }),
+    entry("007-nonmonotonic-conflict-blocks.json", "nonmonotonic-conflict-blocks", "Divergent widening changes fail closed without last-writer-wins.", {
+      operation: "conflict", merge: mergeInput(conflictRecords, [], conflictRepo.checkpoint, s.makeContext(conflictRepo.repository)),
+    }),
+    entry("008-checkpoint-rollback-rejected.json", "checkpoint-rollback-rejected", "A mutated canonical head lacking the finalized ancestor fails executable commit-DAG validation.", {
+      operation: "merge-rejection", merge: mergeInput(epochOneRecords, [], s.epochOneRepository.checkpoint, s.makeContext(rollbackRepository)),
+    }),
+    entry("009-keyed-path-metadata-private.json", "keyed-path-metadata-private", "Fixed 256-bucket materialization re-encrypts every equal-size opaque object per commit.", {
+      operation: "layout-compare",
+      first: { audience_key: s.audienceKeyOne, epoch: 1, commit_oid: s.baseRepository.checkpoint.commit_oid, nonce: "11".repeat(32), records: baseRecords },
+      second: { audience_key: s.audienceKeyOne, epoch: 1, commit_oid: s.baseRepository.checkpoint.commit_oid, nonce: "11".repeat(32), records: [...baseRecords, s.grantOne] },
+    }),
+    entry("010-reader-removal-key-rotation.json", "reader-removal-key-rotation", "Authenticated removal precedes a distinct monotonic key epoch wrapped only to active remaining NIDs.", {
+      operation: "reader-removal", merge: mergeInput(finalRecords, [], finalRepo.checkpoint, s.makeContext(finalRepo.repository)), reader_nid: s.writerOne.did_key, request: finalRequestOne, next_epoch_record_id: s.epochTwoRecord.record_id,
+    }),
+    entry("011-multiwriter-status-allocation.json", "multiwriter-status-allocation", "Task 4 merges opaque pending reservations without defining Task 5 allocation semantics.", {
+      operation: "reservations", merge: mergeInput(reservations, [], reservationsRepo.checkpoint, s.makeContext(reservationsRepo.repository)),
+    }),
+    entry("012-stale-minter-denied.json", "stale-minter-denied", "The ledger boundary rejects a checkpoint older than the 300-second maximum.", {
+      operation: "checkpoint-eligibility", checkpoint: s.baseRepository.checkpoint, now: s.baseRepository.checkpoint.observed_at + 301, maximum_age: 300,
+    }),
+    entry("013-source-claim-revokes-token.json", "source-claim-revokes-token", "Source revocation and token invalidation are separate executable effects; status encoding remains Task 7.", {
+      operation: "token-invalidation", merge: mergeInput(tokenRecords, [], tokenRepo.checkpoint, s.makeContext(tokenRepo.repository)), claim_id: s.claimOne.artifact.semantic.claim_id, evaluation_time: tokenRepo.checkpoint.observed_at,
+    }),
   ];
 
   return entries.map(([file, id, description, input, expected_output]) => consumeVector(`claim-ledger/${file}`, {
@@ -375,19 +516,6 @@ export async function buildClaimLedgerVectors(fixtures: Fixtures): Promise<Autho
 
 function decisionReason(decision: { reason_code: string | null }) {
   return { reason_code: decision.reason_code ?? "claim-ledger-reader-unauthorized" };
-}
-
-function requestProjection(request: ReaderAccessRequest) {
-  return {
-    claim_record_id: request.claim_record_id,
-    event_id: request.verification_context.claim_authority_evidence.get(
-      request.verification_context.subject_proof?.challenge.claim_id ?? "",
-    )?.event_id,
-    audience: request.verification_context.audience,
-    resource: request.verification_context.resource,
-    nonce: request.verification_context.expected_nonce,
-    subject_proof: request.verification_context.subject_proof,
-  };
 }
 
 function layoutProjection(layout: ReturnType<typeof materializeLedgerLayout>) {

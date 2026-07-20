@@ -166,6 +166,7 @@ describe("reader authorization and effect precedence", () => {
     const records = [s.claimRecordOne, s.claimRecordTwo];
     const state = mergeClaimLedger(records, [], s.baseRepository.checkpoint, contextFor(s.baseRepository.repository));
     const request = s.requestFor(s.claimRecordOne, s.claimOne);
+    request.verification_context.now = s.baseRepository.checkpoint.observed_at;
     expect(evaluateReaderAccess(s.writerOne.did_key, state, request).allowed).toBe(true);
     expect(evaluateReaderAccess(null, state, request).reason_code).toBe("claim-ledger-reader-unauthorized");
     expect(evaluateReaderAccess(s.writerTwo.did_key, state, request).allowed).toBe(false);
@@ -186,6 +187,7 @@ describe("reader authorization and effect precedence", () => {
     const emptyRepo = buildLedgerRepositoryEvidence({ repository_rid: s.rid, confirmed_records: [], observed_at: s.now + 50 });
     const provisional = mergeClaimLedger([s.claimRecordOne], [], emptyRepo.checkpoint, contextFor(emptyRepo.repository));
     const request = s.requestFor(s.claimRecordOne, s.claimOne);
+    request.verification_context.now = emptyRepo.checkpoint.observed_at;
     expect(evaluateReaderAccess(s.writerOne.did_key, provisional, request).state).toBe("provisional");
 
     const conflictRecords = [s.claimRecordOne, s.claimRecordTwo, s.grantOne, s.grantDivergent];
@@ -197,7 +199,7 @@ describe("reader authorization and effect precedence", () => {
       [s.claimRecordOne, s.claimRecordTwo], [s.revocationRecord], s.baseRepository.checkpoint, contextFor(s.baseRepository.repository),
     );
     const revokedRequest = cloneRequest(request);
-    revokedRequest.verification_context.now = s.now + 40;
+    revokedRequest.verification_context.now = s.baseRepository.checkpoint.observed_at;
     expect(evaluateReaderAccess(s.writerOne.did_key, revoked, revokedRequest).state).toBe("revoked");
 
     const expiredRequest = cloneRequest(request);
@@ -231,11 +233,11 @@ describe("reader lifecycle and metadata privacy", () => {
       persona: s.persona, repository_rid: s.rid, checkpoint_commit_oid: s.epochOneRepository.checkpoint.commit_oid,
       epoch: 1, key_id: "bad", audience_key: s.audienceKeyOne,
       previous_epoch: 1, previous_key_id: "same", reader_nids: [s.writerOne.did_key], removed_reader_nids: [],
-    })).toThrow(/rotation|epoch/);
+    })).toThrow(/rotation|epoch|key/);
     expect(() => createAudienceKeyEpochPayload({
       persona: s.persona, repository_rid: s.rid, checkpoint_commit_oid: s.epochOneRepository.checkpoint.commit_oid,
-      epoch: 2, key_id: "bad", audience_key: s.audienceKeyTwo,
-      previous_epoch: 1, previous_key_id: "old", reader_nids: [s.writerOne.did_key], removed_reader_nids: [s.writerOne.did_key],
+      epoch: 2, key_id: String((s.epochTwoRecord.payload as Record<string, unknown>).key_id), audience_key: s.audienceKeyTwo,
+      previous_epoch: 1, previous_key_id: String((s.epochOneRecord.payload as Record<string, unknown>).key_id), reader_nids: [s.writerOne.did_key], removed_reader_nids: [s.writerOne.did_key],
     })).toThrow(/removed reader/);
 
     const finalRecords = [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord, s.removalRecord, s.epochTwoRecord];
@@ -266,14 +268,13 @@ describe("reader lifecycle and metadata privacy", () => {
       expect(() => mergeClaimLedger(records, [], repository.checkpoint, context)).toThrow(/rotation|reader|key|conflict/);
     };
 
-    const sameKeyPayload = createAudienceKeyEpochPayload({
+    expect(() => createAudienceKeyEpochPayload({
       persona: s.persona, repository_rid: s.rid,
       checkpoint_commit_oid: s.epochOneRepository.checkpoint.commit_oid,
-      epoch: 2, key_id: "ledger-epoch-2", audience_key: s.audienceKeyOne,
-      previous_epoch: 1, previous_key_id: "ledger-epoch-1",
+      epoch: 2, key_id: String((s.epochOneRecord.payload as Record<string, unknown>).key_id), audience_key: s.audienceKeyOne,
+      previous_epoch: 1, previous_key_id: String((s.epochOneRecord.payload as Record<string, unknown>).key_id),
       reader_nids: [s.writerTwo.did_key], removed_reader_nids: [s.writerOne.did_key],
-    });
-    expectInvalidRotation(resign(s.epochTwoRecord, sameKeyPayload as never), s.audienceKeyOne);
+    })).toThrow(/key|rotation/);
 
     expectInvalidRotation(createSignedLedgerRecord({
       record_type: "audience-key-epoch", persona: s.persona, writer_nid: s.writerTwo.did_key,
@@ -284,8 +285,8 @@ describe("reader lifecycle and metadata privacy", () => {
     const staleReadersPayload = createAudienceKeyEpochPayload({
       persona: s.persona, repository_rid: s.rid,
       checkpoint_commit_oid: s.epochOneRepository.checkpoint.commit_oid,
-      epoch: 2, key_id: "ledger-epoch-2", audience_key: s.audienceKeyTwo,
-      previous_epoch: 1, previous_key_id: "ledger-epoch-1",
+      epoch: 2, key_id: String((s.epochTwoRecord.payload as Record<string, unknown>).key_id), audience_key: s.audienceKeyTwo,
+      previous_epoch: 1, previous_key_id: String((s.epochOneRecord.payload as Record<string, unknown>).key_id),
       reader_nids: [s.writerOne.did_key, s.writerTwo.did_key], removed_reader_nids: [],
     });
     expectInvalidRotation(resign(s.epochTwoRecord, staleReadersPayload as never));
@@ -319,8 +320,8 @@ describe("reader lifecycle and metadata privacy", () => {
   });
 
   it("materializes all fixed-size opaque buckets and changes every bucket per commit", () => {
-    const one = materializeLedgerLayout(s.audienceKeyOne, 1, "11".repeat(32), [s.claimRecordOne]);
-    const many = materializeLedgerLayout(s.audienceKeyOne, 1, "12".repeat(32), [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord]);
+    const one = materializeLedgerLayout(s.audienceKeyOne, 1, s.baseRepository.checkpoint.commit_oid, "11".repeat(32), [s.claimRecordOne]);
+    const many = materializeLedgerLayout(s.audienceKeyOne, 1, s.baseRepository.checkpoint.commit_oid, "12".repeat(32), [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord]);
     expect(one.entries).toHaveLength(256);
     expect(many.entries).toHaveLength(256);
     expect(new Set(one.entries.map(({ size }) => size))).toEqual(new Set([64]));

@@ -113,7 +113,9 @@ export type LedgerLayout = {
     entry_count: 256;
     entry_size: 64;
     epoch: number;
+    commit_oid: string;
     nonce: string;
+    snapshot_digest: string;
   };
 };
 
@@ -153,6 +155,7 @@ const PERSONA = HEX_32;
 const COMMIT_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const RID = /^rad:z[1-9A-HJ-NP-Za-km-z]+$/;
 const ED25519_PREFIX = Uint8Array.from([0xed, 0x01]);
+export const GENESIS_AUDIENCE_KEY_ID = "00".repeat(32);
 const MAX_SAFE = 9_007_199_254_740_991;
 const RECORD_KEYS = [
   "record_id",
@@ -296,12 +299,18 @@ export function deriveLedgerPath(audienceKey: Uint8Array, recordId: string): str
 export function materializeLedgerLayout(
   audienceKey: Uint8Array,
   epoch: number,
+  commitOid: string,
   commitNonce: string,
   records: LedgerRecord[],
 ): LedgerLayout {
   if (audienceKey.length !== 32) throw new Error("ledger audience key must be exactly 32 bytes");
   if (!Number.isSafeInteger(epoch) || epoch < 0) throw new Error("claim-schema-invalid: invalid ledger key epoch");
+  if (!HEX_32.test(commitOid)) throw new Error("claim-schema-invalid: commit OID must be 32-byte lowercase hex");
   if (!HEX_32.test(commitNonce)) throw new Error("claim-schema-invalid: commit nonce must be 32-byte lowercase hex");
+  const snapshot_digest = digestJson({
+    domain: "heterodyne-claim-ledger-snapshot-v1",
+    records: [...records].sort((left, right) => left.record_id.localeCompare(right.record_id)),
+  });
   const buckets = Array.from({ length: 256 }, () => [] as string[]);
   for (const record of records) {
     if (!HEX_32.test(record.record_id)) throw new Error("claim-id-mismatch: invalid ledger record ID");
@@ -313,12 +322,16 @@ export function materializeLedgerLayout(
     const plaintextDigest = digestJson({
       domain: "heterodyne-claim-ledger-bucket-v1",
       epoch,
+      commit_oid: commitOid,
+      snapshot_digest,
       bucket: bucketHex,
       record_ids: recordIds.sort(),
     });
     const block = (counter: number) => createHmac("sha256", audienceKey)
       .update("heterodyne-claim-ledger-fixed-layout-v1\0", "utf8")
       .update(commitNonce, "hex")
+      .update(commitOid, "hex")
+      .update(snapshot_digest, "hex")
       .update(utf8Bytes(`${epoch}|${bucketHex}|${counter}|${plaintextDigest}`))
       .digest("hex");
     return {
@@ -334,9 +347,19 @@ export function materializeLedgerLayout(
       entry_count: 256,
       entry_size: 64,
       epoch,
+      commit_oid: commitOid,
       nonce: commitNonce,
+      snapshot_digest,
     },
   };
+}
+
+export function validateLedgerLayoutTransition(previous: LedgerLayout, next: LedgerLayout): void {
+  if (next.commit_metadata.epoch < previous.commit_metadata.epoch ||
+      next.commit_metadata.commit_oid === previous.commit_metadata.commit_oid ||
+      next.commit_metadata.nonce === previous.commit_metadata.nonce) {
+    throw new Error("claim-repository-conflict: ledger commit, epoch, and nonce transition is not unique");
+  }
 }
 
 export function createAudienceKeyEpochPayload(input: {
@@ -351,17 +374,22 @@ export function createAudienceKeyEpochPayload(input: {
   reader_nids: string[];
   removed_reader_nids: string[];
 }): AudienceKeyEpochPayload {
+  const key_digest = bytesToHex(sha256(input.audience_key));
   if (!PERSONA.test(input.persona) || !RID.test(input.repository_rid) || !HEX_32.test(input.checkpoint_commit_oid) ||
       input.audience_key.length !== 32 || !Number.isSafeInteger(input.epoch) || !Number.isSafeInteger(input.previous_epoch) ||
       input.epoch !== input.previous_epoch + 1 || input.epoch < 1) {
     throw new Error("claim-schema-invalid: invalid audience-key rotation context");
+  }
+  if (input.key_id !== key_digest || !HEX_32.test(input.previous_key_id) ||
+      input.key_id === input.previous_key_id ||
+      (input.previous_epoch === 0 && input.previous_key_id !== GENESIS_AUDIENCE_KEY_ID)) {
+    throw new Error("claim-schema-invalid: audience key ID must be the canonical key-material digest");
   }
   validateNidSet(input.reader_nids);
   validateNidSet(input.removed_reader_nids);
   if (input.removed_reader_nids.some((nid) => input.reader_nids.includes(nid))) {
     throw new Error("claim-ledger-reader-unauthorized: removed reader retained in new key epoch");
   }
-  const key_digest = bytesToHex(sha256(input.audience_key));
   const recipient_wraps = [...input.reader_nids].sort().map((reader_nid) => {
     const context = {
       domain: "heterodyne-claim-ledger-recipient-wrap-v1",
@@ -485,6 +513,9 @@ export function evaluateReaderAccess(
     return readerDenied("invalid", "claim-ledger-reader-unauthorized");
   }
   if (request === undefined) return readerDenied("invalid", "claim-ledger-reader-unauthorized");
+  if (request.verification_context.now < state.checkpoint.observed_at) {
+    return readerDenied("invalid", "claim-ledger-reader-unauthorized");
+  }
   const record = state.records.find(({ record_id }) => record_id === request.claim_record_id);
   if (record === undefined) return readerDenied("provisional", "claim-repository-unconfirmed");
   const artifact = claimArtifactFromRecord(record);
@@ -513,6 +544,13 @@ export function evaluateReaderAccess(
     request.verification_context.requested_namespace !== claim.namespace
   ) return readerDenied("invalid", "claim-ledger-reader-unauthorized");
 
+  const futureApplicableReduction = state.records.some((candidate) =>
+    isReduction(candidate) &&
+    recordClaimId(candidate) === claim.claim_id &&
+    candidate.created_at > request.verification_context.now
+  );
+  if (futureApplicableReduction) return readerDenied("invalid", "claim-ledger-reader-unauthorized");
+
   const repositoryConfirmed = confirmedClaimIds(state);
   const verification: ClaimVerificationContext = {
     ...request.verification_context,
@@ -527,9 +565,14 @@ export function evaluateReaderAccess(
   };
 }
 
-export function resolveAuthoritativeClaimState(claimId: string, state: LedgerMergeResult): ClaimState {
+export function resolveAuthoritativeClaimState(
+  claimId: string,
+  state: LedgerMergeResult,
+  evaluationTime = state.checkpoint.observed_at,
+): ClaimState {
   if (!HEX_32.test(claimId)) return "invalid";
   const related = state.records.filter((record) => recordClaimId(record) === claimId);
+  if (related.some((record) => isReduction(record) && record.created_at > evaluationTime)) return "invalid";
   if (related.some(isReduction)) return "revoked";
   if (state.conflicted_claim_ids.includes(claimId)) return "conflicted";
   const claimRecords = related.filter((record) => claimArtifactFromRecord(record) !== null);
@@ -594,7 +637,7 @@ export function buildReaderOnboardingBundle(
     compact_state_digest,
     radicle_access: { nid: input.reader_nid, role: "fetch-and-seed", context_digest: digestJson(accessContext) },
   };
-  return { ...withoutDigest, bundle_digest: digestJson(withoutDigest) };
+  return { ...withoutDigest, bundle_digest: onboardingBundleMac(input.audience_key, withoutDigest) };
 }
 
 export function validateReaderOnboardingBundle(
@@ -606,6 +649,12 @@ export function validateReaderOnboardingBundle(
     throw new Error("claim-ledger-reader-unauthorized: onboarding authorization failed replay");
   }
   const { bundle_digest, ...withoutDigest } = bundle;
+  let audienceKey: Uint8Array;
+  try {
+    audienceKey = hexToBytes(bundle.audience_key);
+  } catch {
+    throw new Error("claim-ledger-reader-unauthorized: invalid onboarding audience key encoding");
+  }
   const epochRecord = currentAudienceEpochRecord(state);
   const epoch = epochRecord === null ? null : payloadObject(epochRecord.payload) as unknown as AudienceKeyEpochPayload;
   const compactDigest = digestJson(bundle.compact_state);
@@ -619,7 +668,9 @@ export function validateReaderOnboardingBundle(
     key_digest: bundle.key_epoch.key_digest,
     compact_state_digest: compactDigest,
   };
-  if (bundle.transport !== "dr-self-dm" || bundle.bundle_digest !== digestJson(withoutDigest) ||
+  const authorizationRecord = state.records.find(({ record_id }) => record_id === bundle.authorization.claim_record_id);
+  const authorizationArtifact = authorizationRecord === undefined ? null : claimArtifactFromRecord(authorizationRecord);
+  if (bundle.transport !== "dr-self-dm" || bundle.bundle_digest !== onboardingBundleMac(audienceKey, withoutDigest) ||
       bundle.repository.rid !== state.checkpoint.repository_rid || bundle.repository.branch !== "main" ||
       jcsCanonicalize(bundle.checkpoint) !== jcsCanonicalize(state.checkpoint) || epoch === null ||
       bundle.key_epoch.epoch !== epoch.epoch || bundle.key_epoch.key_id !== epoch.key_id ||
@@ -627,9 +678,24 @@ export function validateReaderOnboardingBundle(
       !epoch.recipient_wraps.some(({ reader_nid, wrapped_key }) => reader_nid === bundle.radicle_access.nid && wrapped_key === bundle.key_epoch.recipient_wrap) ||
       bundle.compact_state_digest !== compactDigest || bundle.radicle_access.role !== "fetch-and-seed" ||
       accessContext === null || bundle.radicle_access.context_digest !== digestJson(accessContext) ||
-      bundle.authorization.claim_record_id !== request.claim_record_id) {
+      bundle.authorization.claim_record_id !== request.claim_record_id || authorizationArtifact === null ||
+      bundle.authorization.event_id !== authorizationArtifact.event.id ||
+      bundle.authorization.claim_id !== authorizationArtifact.semantic.claim_id ||
+      authorizationArtifact.semantic.subject.type !== "radicle-ed25519-nid" ||
+      authorizationArtifact.semantic.subject.value !== bundle.radicle_access.nid) {
     throw new Error("claim-ledger-reader-unauthorized: invalid reader onboarding bundle binding");
   }
+}
+
+function onboardingBundleMac(
+  audienceKey: Uint8Array,
+  bundle: Omit<LedgerOnboardingBundle, "bundle_digest">,
+): string {
+  if (audienceKey.length !== 32) throw new Error("claim-ledger-reader-unauthorized: invalid onboarding audience key");
+  return createHmac("sha256", audienceKey)
+    .update("heterodyne-claim-ledger-onboarding-mac-v1\0", "utf8")
+    .update(utf8Bytes(jcsCanonicalize(bundle)))
+    .digest("hex");
 }
 
 function recordSigningPayload(record: Pick<
@@ -675,7 +741,6 @@ function ed25519PublicKeyFromNid(nid: string): Uint8Array {
 
 function validateCheckpoint(
   checkpoint: LedgerCheckpoint,
-  records: LedgerRecord[],
 ): void {
   assertPlainObject(checkpoint, "checkpoint");
   assertExactKeys(checkpoint, ["repository_rid", "branch", "commit_oid", "observed_at"], "checkpoint");
@@ -685,8 +750,6 @@ function validateCheckpoint(
   if (!Number.isSafeInteger(checkpoint.observed_at) || checkpoint.observed_at < 0) {
     throw new Error("claim-schema-invalid: invalid checkpoint observation time");
   }
-  const newestRecord = records.reduce((latest, record) => Math.max(latest, record.created_at), 0);
-  if (checkpoint.observed_at < newestRecord) throw new Error("claim-ledger-rollback: stale checkpoint predates ledger records");
 }
 
 function validateRepositoryEvidence(
@@ -694,7 +757,7 @@ function validateRepositoryEvidence(
   recordsById: ReadonlyMap<string, LedgerRecord>,
   repository: LedgerRepositoryEvidence,
 ): void {
-  validateCheckpoint(checkpoint, [...recordsById.values()]);
+  validateCheckpoint(checkpoint);
   if (repository.repository_rid !== checkpoint.repository_rid || repository.branch !== "main" ||
       repository.canonical_head !== checkpoint.commit_oid ||
       jcsCanonicalize(repository.checkpoint) !== jcsCanonicalize(checkpoint)) {
@@ -737,6 +800,13 @@ function validateRepositoryEvidence(
   if (head === undefined ||
       jcsCanonicalize([...repository.repository_confirmed_record_ids].sort()) !== jcsCanonicalize(head.record_ids)) {
     throw new Error("claim-ledger-rollback: canonical head does not bind the confirmed record IDs");
+  }
+  const newestConfirmedRecord = head.record_ids.reduce(
+    (latest, id) => Math.max(latest, recordsById.get(id)?.created_at ?? 0),
+    0,
+  );
+  if (checkpoint.observed_at < newestConfirmedRecord) {
+    throw new Error("claim-ledger-rollback: stale checkpoint predates canonical ledger records");
   }
   for (const id of head.record_ids) {
     const record = recordsById.get(id);
@@ -1005,6 +1075,29 @@ function validateLedgerStateInvariants(
   const maximumEpoch = records
     .filter(({ record_type }) => record_type === "audience-key-epoch")
     .reduce((maximum, epochRecord) => Math.max(maximum, Number(payloadObject(epochRecord.payload).epoch)), 0);
+  const canonicalReaderClaims = records.filter((record) => {
+    if (record.record_type !== "claim" || !context.repository.repository_confirmed_record_ids.includes(record.record_id)) {
+      return false;
+    }
+    const claim = claimArtifactFromRecord(record)?.semantic;
+    return claim?.claim_class === "authorization" &&
+      claim.namespace === "heterodyne.device" &&
+      claim.name === "claim-ledger-reader" &&
+      claim.value === true &&
+      claim.visibility === "repository-private" &&
+      claim.subject.type === "radicle-ed25519-nid";
+  });
+  const activeReaders = new Set<string>();
+  for (const candidate of canonicalReaderClaims) {
+    const claim = claimArtifactFromRecord(candidate)!.semantic;
+    const request = context.reader_requests.get(candidate.record_id);
+    if (request === undefined || request.claim_record_id !== candidate.record_id) {
+      throw new Error("claim-ledger-reader-unauthorized: validation context is required for every canonical reader candidate");
+    }
+    if (evaluateReaderAccess(claim.subject.value, stateForReaders, request).allowed) {
+      activeReaders.add(claim.subject.value);
+    }
+  }
   for (const record of recordsById.values()) {
     if (record.record_type !== "audience-key-epoch") continue;
     const payload = payloadObject(record.payload) as unknown as AudienceKeyEpochPayload;
@@ -1018,11 +1111,7 @@ function validateLedgerStateInvariants(
       throw new Error("claim-ledger-reader-unauthorized: reader removal must remove matching Radicle access");
     }
     if (payload.epoch === maximumEpoch) {
-      const activeReaders = [...context.reader_requests.entries()]
-        .filter(([nid, request]) => evaluateReaderAccess(nid, stateForReaders, request).allowed)
-        .map(([nid]) => nid)
-        .sort();
-      if (jcsCanonicalize(activeReaders) !== jcsCanonicalize([...readers].sort())) {
+      if (jcsCanonicalize([...activeReaders].sort()) !== jcsCanonicalize([...readers].sort())) {
         throw new Error("claim-ledger-reader-unauthorized: recipient wraps do not equal the active durable reader set");
       }
     }
@@ -1055,9 +1144,15 @@ function validateLedgerStateInvariants(
       if (removed.length !== 0 || previousEpochRecord !== undefined) {
         throw new Error("claim-repository-conflict: invalid audience-key genesis epoch");
       }
-    } else if (previousEpochRecord === undefined || !record.parents.includes(previousEpochRecord.record_id) ||
-        payload.key_digest === payloadObject(previousEpochRecord.payload).key_digest) {
-      throw new Error("claim-repository-conflict: audience-key epoch did not rotate monotonically from a distinct prior key");
+    } else {
+      const previousAudienceKey = context.audience_keys_by_epoch.get(payload.previous_epoch);
+      const previousKeyDigest = previousAudienceKey === undefined ? null : bytesToHex(sha256(previousAudienceKey));
+      if (previousEpochRecord === undefined || previousAudienceKey === undefined ||
+          !record.parents.includes(previousEpochRecord.record_id) ||
+          payload.previous_key_id !== previousKeyDigest || payload.key_id !== payload.key_digest ||
+          payload.key_id === payload.previous_key_id || payload.key_digest === previousKeyDigest) {
+        throw new Error("claim-repository-conflict: audience-key epoch did not rotate monotonically from distinct key material and identifiers");
+      }
     }
     for (const removedNid of removed) {
       const orderedReduction = record.parents
@@ -1129,7 +1224,7 @@ function confirmedClaimIds(state: LedgerMergeResult): Set<string> {
   const confirmedRecords = new Set(state.repository_confirmed_record_ids ?? []);
   return new Set(
     state.records
-      .filter(({ record_id }) => confirmedRecords.has(record_id))
+      .filter(({ record_id, record_type }) => record_type === "claim" && confirmedRecords.has(record_id))
       .map(recordClaimId)
       .filter((claimId): claimId is string => claimId !== null),
   );
