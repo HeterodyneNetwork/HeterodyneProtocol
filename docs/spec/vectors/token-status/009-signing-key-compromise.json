@@ -13,7 +13,7 @@
   "description": "Signing-key compromise invalidates the referenced token; shared-key possession cannot authorize issuer succession.",
   "input": {
     "operation": "status-generation",
-    "referenced_compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkpGeE0xN1FwU01HcDRtMm80bGtkMDNzY0hfeEFyTWVTM2pxeHFvYVdoZW8iLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZCIsInN1YiI6IjVsbmJ2bEtEVG9ZM01FakMydzFYZGtWU01kY3VNUF9QUGFpVE9iRUNzQmciLCJhdWQiOlsiaHR0cHM6Ly9hcGkuZXhhbXBsZSJdLCJleHAiOjE3NjcyNDYyNjksImlhdCI6MTc2NzI0NTY2OSwianRpIjoib2lkYy1ldmlkZW5jZS1qdGktMDAwMSIsImNsaWVudF9pZCI6InJlZ2lzdGVyZWQtY2xpZW50Iiwic2NvcGUiOiJoZXRlcm9keW5lOmtleS1yZWYgb3BlbmlkIHByb2ZpbGUiLCJuYW1lIjoiQWxpY2UiLCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qva2V5LXJlZiI6eyJ0eXBlIjoibm9zdHItc2VjcDI1NmsxIiwidmFsdWUiOiJjNjA0N2Y5NDQxZWQ3ZDZkMzA0NTQwNmU5NWMwN2NkODVjNzc4ZTRiOGNlZjNjYTdhYmFjMDliOTVjNzA5ZWU1In0sImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9sZWRnZXItY2hlY2twb2ludCI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJjb21taXRfb2lkIjoiZjRmMjE2OTQ4ZTFhOTQwN2ZiNDZkM2ZhYzY0MzZlYjRkZDczMTRiNjBhNjYxMzJmZTVkNjlkODU5OTc3NTdkYSIsIm9ic2VydmVkX2F0IjoxNzY3MjQ1NjY4fSwic3RhdHVzIjp7InN0YXR1c19saXN0Ijp7InVyaSI6Imh0dHBzOi8vbm9kZS5leGFtcGxlL29pZGMvbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsImlkeCI6MH19LCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qvc3RhdHVzLW1pcnJvciI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJwYXRoIjoiLndlbGwta25vd24vbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsInNoYTI1NiI6Ijc0OTBmNzg4MTljYThkMmY0ODU0YzQwZGQ3M2I0NjhmOTlmYTRkOGE5YmY4YzAxZjUyMWI0Yjg5NzA4MjE5MmYifX0.NAEdbFMTV3NKFMzo_O1c5qfnYnTh99qXlrruagdy_xj7iaJHX-GSkKk0w9XZoEiF5fwzVGH9t51hOIcDzdnM5sG5B58lLBxD5bDGvPCw6cbtTamRoEVvHCedMjgLicaEe5MWZvYanFnLeHq5BPeSxeSEC0XEe1en-GfQID5O65tz7bxvf77OiSV-lwLiMSJ6fWTCuR0HYmdTTLGtAxOUhSVxOezocKVRZFknxfJ66CIzqsTLcbZboi1_kdtf_bO4c6fHY-oRcq0icnWhmbOkePDwY8IPtIkxezniAC11dMTxJBeWPH69vE2NkoIHDmLauc1y6h9_RO-EajflMPJjjQ",
+    "referenced_compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkpGeE0xN1FwU01HcDRtMm80bGtkMDNzY0hfeEFyTWVTM2pxeHFvYVdoZW8iLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZCIsInN1YiI6IjVsbmJ2bEtEVG9ZM01FakMydzFYZGtWU01kY3VNUF9QUGFpVE9iRUNzQmciLCJhdWQiOlsiaHR0cHM6Ly9hcGkuZXhhbXBsZSJdLCJleHAiOjE3NjcyNDYyNjksImlhdCI6MTc2NzI0NTY2OSwianRpIjoib2lkYy1ldmlkZW5jZS1qdGktMDAwMSIsImNsaWVudF9pZCI6InJlZ2lzdGVyZWQtY2xpZW50Iiwic2NvcGUiOiJoZXRlcm9keW5lOmtleS1yZWYgb3BlbmlkIHByb2ZpbGUiLCJuYW1lIjoiQWxpY2UiLCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qva2V5LXJlZiI6eyJ0eXBlIjoibm9zdHItc2VjcDI1NmsxIiwidmFsdWUiOiJjNjA0N2Y5NDQxZWQ3ZDZkMzA0NTQwNmU5NWMwN2NkODVjNzc4ZTRiOGNlZjNjYTdhYmFjMDliOTVjNzA5ZWU1In0sImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9sZWRnZXItY2hlY2twb2ludCI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJjb21taXRfb2lkIjoiZjRmMjE2OTQ4ZTFhOTQwN2ZiNDZkM2ZhYzY0MzZlYjRkZDczMTRiNjBhNjYxMzJmZTVkNjlkODU5OTc3NTdkYSIsIm9ic2VydmVkX2F0IjoxNzY3MjQ1NjY4fSwic3RhdHVzIjp7InN0YXR1c19saXN0Ijp7InVyaSI6Imh0dHBzOi8vbm9kZS5leGFtcGxlL29pZGMvbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsImlkeCI6MH19LCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qvc3RhdHVzLW1pcnJvciI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJwYXRoIjoiLndlbGwta25vd24vbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsInNoYTI1NiI6IjA5ZGVlYTEzMDc5OTJlZDY3OTdhM2U2M2YzNmExMWQwYTBhZDkwYmY0MmE4ZDMwNTdlMjE3ZDI3NDJlMWQ5NTgifX0.N4cPClSaiUj4PKW4kethweATdKPxC3VAXWEGZgLINYCFqbL6v-63aoy8BByDNBlJINfl6UypeQkSiLJNp76Updr_icFE9LKtWe2j2AZ6MkhN9uU5FkrtFugUzTmGUKNDicM2BhVTCb8sh1cKsYIt1dFL6qerPpFERGGQmjpqtCAIYvlGHVl31C7bMt6cFU0-3JIA831Nl0NijX1wjKJEeb_5LX3jWdQ9mZ7ztnMWug7ypMuypeYQrf-gWuH1i9YHeiIMxlTvDUNXWyMPFeeGxYKlzIerULHN0dsElCM2Zpgwy-sOa_P5JeajuoJgpPbWXB5ptKznBS9bkEZNoDLHag",
     "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
     "audience": "https://api.example",
     "referenced_jwks": {
@@ -59,21 +59,8 @@
       "media_type": "application/statuslist+jwt",
       "compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6InhoZDdtN2U3U3A3OTlOUmdwdDZfa3NoZUhDc0ZGMUJmc0hPM05xeUZfekEiLCJ0eXAiOiJzdGF0dXNsaXN0K2p3dCJ9.eyJzdWIiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZC9zdGF0dXMtbGlzdHMvMjA0NTQvOWUyZDhmOTY5NjYyZmQ3YzY4YzljYzY4YzdiMjA1YzgvMC5qd3QiLCJpYXQiOjE3NjcyNDU2ODQsImV4cCI6MTc2NzI0NjI2OSwidHRsIjoxMjAsInN0YXR1c19saXN0Ijp7ImJpdHMiOjEsImxzdCI6ImVOcGpCQUFBQWdBQyJ9fQ.nnnA9y-WrKK_QSYBT5WWJIqqQL0KCH8d5PEzw7SJ_E2eVNSq7z33heBHRpalUkv_5vrtV8gjkiMYPflKtIwtqlT8Xfs1oMgQmlES-xn7l9vQTBF3tzEdLbpD_PIWV2V0DWSu7z6aTobU_8ktQEM2xJyPQYgm9-8dj1R9FqhOb6ZDAXFNhSyJD292ti33TrmdmOBu3nU55kV7U383oh2AVTef740gDrFqoQO_mSxkrDC7NMuWGOPht7GmVCC79xSt2SGWMYd2L9ORQADaa1GsMVeA25KTx5vMhNn1iuygnpCOaegeAE1UtppKnNcW7p-KWzwfLAcXLLVM4CeT_2rhbQ"
     },
-    "status_jwks": {
-      "keys": [
-        {
-          "kty": "RSA",
-          "n": "ug8ZrjW_GrLuEl86Vp0nvyyS8HlbGjhrNhzps9sWoTeCs-xUFx7MDRobDx2DEgdvsDmothFYHUTCYaYEeUUiJaCxt1YjAif4uIDwTCG_gySLyMwnvnn3v4ZNuUJvD5_6u6Myx-fs7lo9HXCQh7KkvlFXj0kI5zh9ukatZzRc3ajIVCEvpJdB5oO0QkDmO-RgAcQyz2ZMxNNCdraeR2PN_0XPiEeDy_FX1gDZebftHAB1W0DB0puytYtPzgdGaVVqerYRaEeuHXhH7KH0XfZa6nxILMZ5oMcPJ7VnIgmpOtVw-NOeYjnfHdEDqnm05CG7d2Wm292lpBL0lm8_mJkodw",
-          "e": "AQAB",
-          "kid": "xhd7m7e7Sp799NRgpt6_ksheHCsFF1BfsHO3NqyF_zA",
-          "alg": "RS256",
-          "use": "sig",
-          "key_ops": [
-            "verify"
-          ]
-        }
-      ]
-    },
+    "status_jwks_hex": "7b226b657973223a5b7b226b7479223a22525341222c226e223a227567385a726a575f47724c75456c38365670306e7679795338486c62476a68724e687a70733973576f546543732d78554678374d44526f62447832444567647673446d6f746846594855544359615945655555694a6143787431596a41696634754944775443475f6779534c794d776e766e6e3376345a4e75554a7644355f3675364d79782d6673376c6f394858435168374b6b766c46586a306b49357a6839756b61745a7a526333616a4956434576704a6442356f4f30516b446d4f2d5267416351797a325a4d784e4e43647261655232504e5f30585069456544795f46583167445a65626674484142315730444230707579745974507a67644761565671657259526145657548586848374b483058665a61366e78494c4d5a356f4d63504a37566e49676d704f7456772d4e4f65596a6e6648644544716e6d30354347376432576d3239326c70424c306c6d385f6d4a6b6f6477222c2265223a2241514142222c226b6964223a22786864376d37653753703739394e52677074365f6b736865484373464631426673484f334e7179465f7a41222c22616c67223a225253323536222c22757365223a22736967222c226b65795f6f7073223a5b22766572696679225d7d5d7d",
+    "status_resolved_at": 1767245684,
     "continuity_chain": [
       {
         "manifest": {
@@ -98,18 +85,26 @@
           "status_lists": [
             {
               "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
-              "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46"
+              "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46",
+              "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+              "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
             }
           ],
           "successor": null,
           "authority": {
             "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-            "issued_at": 1767245669
+            "issued_at": 1767245671,
+            "checkpoint": {
+              "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+              "branch": "main",
+              "commit_oid": "b948cdc6c55c81e69465e8a71226da306c06fe5ceda9531cc76a563935ef77e0",
+              "observed_at": 1767245671
+            }
           },
           "authority_proof": {
             "type": "radicle-ed25519",
             "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-            "signature": "b43e38856c4a1ebed05f0c685a2454f567359bf8e4423dc0626952942cc20e0bafa4f6428be998ce43dc267a1fc9e5a1251373cdbe91e20770faa9772521ed05"
+            "signature": "bc18b51436ed6974f6948ad67904b8c31e677ff2dac80059a02054833a65cd6a713288808418d7e65b3ced0ec5ebbff98d568a0ef06b04dc8395451776d06d07"
           }
         },
         "ledger_replay": {
@@ -5857,6 +5852,17 @@
           "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
           "now": 1767245671,
           "succession_authority": null,
+          "kel_transition": {
+            "persona_root_npub": "npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+            "previous_head": null,
+            "current_head": {
+              "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+              "seq": 0
+            },
+            "valid_from": 1767245671,
+            "valid_until": 1767247269,
+            "core_kel_authority_valid": true
+          },
           "current_epoch_authority": {
             "npub": "npub1ccz8l9zpa47k6vz9gphftsrumpw80rjt3nhnefat4symjhrsnmjs38mnyd",
             "kel_head": {
@@ -5882,7 +5888,7 @@
           },
           "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
           "sequence": 1,
-          "predecessor_digest": "7490f78819ca8d2f4854c40dd73b468f99fa4d8a9bf8c01f521b4b897082192f",
+          "predecessor_digest": "09deea1307992ed6797a3e63f36a11d0a0ad90bf42a8d3057e217d2742e1d958",
           "max_checkpoint_age_seconds": 300,
           "current_jwks_sha256": "e6f14489b0d11e77445b504834d67790e1a829200c12850c9fc7a55a1702b9b9",
           "current_signing_key_id": "xhd7m7e7Sp799NRgpt6_ksheHCsFF1BfsHO3NqyF_zA",
@@ -5892,18 +5898,26 @@
           "status_lists": [
             {
               "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
-              "sha256": "47094403a5367beb6f5f85f08eab00a2b7737289d9459f06b23d954e2b13d680"
+              "sha256": "47094403a5367beb6f5f85f08eab00a2b7737289d9459f06b23d954e2b13d680",
+              "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+              "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
             }
           ],
           "successor": null,
           "authority": {
             "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
-            "issued_at": 1767245684
+            "issued_at": 1767245684,
+            "checkpoint": {
+              "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+              "branch": "main",
+              "commit_oid": "17c9356b39bd3e8126028ffc3500ad60b4f7bbf31c6508cec73697c78601ef58",
+              "observed_at": 1767245684
+            }
           },
           "authority_proof": {
             "type": "radicle-ed25519",
             "public_key": "b9b9dd3a31d5a028924c624a82840f1752cb7c99946851b04ed51ed8e4a9825f",
-            "signature": "48375e340c29fb079b9e3c34cf95ec5458d6fb017b6ee639757daf9ad5d2333caa265195fa8e3039ee4d5b4827ab3ee6df8399b5408b48e7cc9d670dc6833506"
+            "signature": "534017a6cffd0cf86c9ff436614f28201df7ae25b21979263f0a5443fe3a0c9bd57298390fb974ef72c75bacf6e9e72de3e4ef3703a133a72a96855b2ef62c06"
           }
         },
         "ledger_replay_ref": "current",
@@ -5923,6 +5937,20 @@
           "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
           "now": 1767245684,
           "succession_authority": null,
+          "kel_transition": {
+            "persona_root_npub": "npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+            "previous_head": {
+              "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+              "seq": 0
+            },
+            "current_head": {
+              "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+              "seq": 0
+            },
+            "valid_from": 1767245684,
+            "valid_until": 1767247269,
+            "core_kel_authority_valid": true
+          },
           "current_epoch_authority": {
             "npub": "npub1ccz8l9zpa47k6vz9gphftsrumpw80rjt3nhnefat4symjhrsnmjs38mnyd",
             "kel_head": {
@@ -11926,21 +11954,29 @@
         "status_lists": [
           {
             "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
-            "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46"
+            "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46",
+            "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+            "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
           }
         ],
         "successor": {
           "issuer": "https://successor.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
-          "manifest_sha256": "beeedb43cd7b735a8327a5df8aa5084e7c2346c63131219b9d1c0c78b2ebd8c4"
+          "manifest_sha256": "7f6473e7e0ee2d367e261b4c99dbad30edeabf185a7e843c9c8e56f1131645b6"
         },
         "authority": {
           "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-          "issued_at": 1767245669
+          "issued_at": 1767245671,
+          "checkpoint": {
+            "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+            "branch": "main",
+            "commit_oid": "b948cdc6c55c81e69465e8a71226da306c06fe5ceda9531cc76a563935ef77e0",
+            "observed_at": 1767245671
+          }
         },
         "authority_proof": {
           "type": "radicle-ed25519",
           "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-          "signature": "bc27cd7a0d11c8955f296759d7fd289be37f9e7208f3991644a19538f54910c7ab5bf687fd182c6fb203b4c4d369ae593aabd95f8e202fd0722a32eb1d5fe50d"
+          "signature": "80341aa5242f03a8eeff767513a976328a323ab60bb72b5fd4752e9bcf5406348a7bbfdd3a61d0ac4bd6ffa7d495eb9f9546dfd91c32e1672ba87d9706b0f207"
         }
       },
       "candidate": {
@@ -11955,7 +11991,7 @@
         },
         "issuer": "https://successor.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
         "sequence": 1,
-        "predecessor_digest": "57c575772f9a9dd78297fa47cac0bf33e41cf58f14d9ba8df15ec3046371b485",
+        "predecessor_digest": "119143e857c1f0a9e6f8a3e35c3ef5269c5c91ecb81c4a18ee4cd940069272d8",
         "max_checkpoint_age_seconds": 300,
         "current_jwks_sha256": "634d732b0c9249e80fde72997e17f051ac2b1828ff1f67010b70b5d6d7acd2ec",
         "current_signing_key_id": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
@@ -11965,18 +12001,26 @@
         "status_lists": [
           {
             "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
-            "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46"
+            "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46",
+            "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+            "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
           }
         ],
         "successor": null,
         "authority": {
           "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-          "issued_at": 1767245669
+          "issued_at": 1767245671,
+          "checkpoint": {
+            "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+            "branch": "main",
+            "commit_oid": "b948cdc6c55c81e69465e8a71226da306c06fe5ceda9531cc76a563935ef77e0",
+            "observed_at": 1767245671
+          }
         },
         "authority_proof": {
           "type": "radicle-ed25519",
           "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-          "signature": "91cc594e6637406f45c7e2a0a5802f716d23699ab2844b69faa14f3170f8f4e2dccc71ffb6e2a8039f3da837ec1ec8e786106d0a52c8be0e01df4e80f211f90b"
+          "signature": "c528f8a72174dcf83dc3bd47f3a10d73b740a9c783cba7dad6153cfbc653159c2350ff01a46869e9256c1c8c44d6ed5eab5787fba2619059f3137af8b698750d"
         }
       },
       "ledger_replay": {
@@ -17724,6 +17768,20 @@
         "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
         "now": 1767246269,
         "succession_authority": null,
+        "kel_transition": {
+          "persona_root_npub": "npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+          "previous_head": {
+            "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "seq": 0
+          },
+          "current_head": {
+            "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "seq": 0
+          },
+          "valid_from": 1767245671,
+          "valid_until": 1767247269,
+          "core_kel_authority_valid": true
+        },
         "current_epoch_authority": {
           "npub": "npub1ccz8l9zpa47k6vz9gphftsrumpw80rjt3nhnefat4symjhrsnmjs38mnyd",
           "kel_head": {
@@ -17762,18 +17820,26 @@
           "status_lists": [
             {
               "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
-              "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46"
+              "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46",
+              "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+              "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
             }
           ],
           "successor": null,
           "authority": {
             "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-            "issued_at": 1767245669
+            "issued_at": 1767245671,
+            "checkpoint": {
+              "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+              "branch": "main",
+              "commit_oid": "b948cdc6c55c81e69465e8a71226da306c06fe5ceda9531cc76a563935ef77e0",
+              "observed_at": 1767245671
+            }
           },
           "authority_proof": {
             "type": "radicle-ed25519",
             "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-            "signature": "b43e38856c4a1ebed05f0c685a2454f567359bf8e4423dc0626952942cc20e0bafa4f6428be998ce43dc267a1fc9e5a1251373cdbe91e20770faa9772521ed05"
+            "signature": "bc18b51436ed6974f6948ad67904b8c31e677ff2dac80059a02054833a65cd6a713288808418d7e65b3ced0ec5ebbff98d568a0ef06b04dc8395451776d06d07"
           }
         },
         "candidate": {
@@ -17788,7 +17854,7 @@
           },
           "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
           "sequence": 1,
-          "predecessor_digest": "7490f78819ca8d2f4854c40dd73b468f99fa4d8a9bf8c01f521b4b897082192f",
+          "predecessor_digest": "09deea1307992ed6797a3e63f36a11d0a0ad90bf42a8d3057e217d2742e1d958",
           "max_checkpoint_age_seconds": 300,
           "current_jwks_sha256": "e6f14489b0d11e77445b504834d67790e1a829200c12850c9fc7a55a1702b9b9",
           "current_signing_key_id": "xhd7m7e7Sp799NRgpt6_ksheHCsFF1BfsHO3NqyF_zA",
@@ -17798,18 +17864,26 @@
           "status_lists": [
             {
               "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
-              "sha256": "47094403a5367beb6f5f85f08eab00a2b7737289d9459f06b23d954e2b13d680"
+              "sha256": "47094403a5367beb6f5f85f08eab00a2b7737289d9459f06b23d954e2b13d680",
+              "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+              "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
             }
           ],
           "successor": null,
           "authority": {
             "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
-            "issued_at": 1767245684
+            "issued_at": 1767245684,
+            "checkpoint": {
+              "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+              "branch": "main",
+              "commit_oid": "17c9356b39bd3e8126028ffc3500ad60b4f7bbf31c6508cec73697c78601ef58",
+              "observed_at": 1767245684
+            }
           },
           "authority_proof": {
             "type": "radicle-ed25519",
             "public_key": "b9b9dd3a31d5a028924c624a82840f1752cb7c99946851b04ed51ed8e4a9825f",
-            "signature": "48375e340c29fb079b9e3c34cf95ec5458d6fb017b6ee639757daf9ad5d2333caa265195fa8e3039ee4d5b4827ab3ee6df8399b5408b48e7cc9d670dc6833506"
+            "signature": "534017a6cffd0cf86c9ff436614f28201df7ae25b21979263f0a5443fe3a0c9bd57298390fb974ef72c75bacf6e9e72de3e4ef3703a133a72a96855b2ef62c06"
           }
         },
         "ledger_replay_ref": "current",
@@ -17829,6 +17903,20 @@
           "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
           "now": 1767245684,
           "succession_authority": null,
+          "kel_transition": {
+            "persona_root_npub": "npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+            "previous_head": {
+              "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+              "seq": 0
+            },
+            "current_head": {
+              "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+              "seq": 0
+            },
+            "valid_from": 1767245684,
+            "valid_until": 1767247269,
+            "core_kel_authority_valid": true
+          },
           "current_epoch_authority": {
             "npub": "npub1ccz8l9zpa47k6vz9gphftsrumpw80rjt3nhnefat4symjhrsnmjs38mnyd",
             "kel_head": {
@@ -17865,18 +17953,26 @@
           "status_lists": [
             {
               "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
-              "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46"
+              "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46",
+              "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+              "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
             }
           ],
           "successor": null,
           "authority": {
             "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-            "issued_at": 1767245669
+            "issued_at": 1767245671,
+            "checkpoint": {
+              "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+              "branch": "main",
+              "commit_oid": "b948cdc6c55c81e69465e8a71226da306c06fe5ceda9531cc76a563935ef77e0",
+              "observed_at": 1767245671
+            }
           },
           "authority_proof": {
             "type": "radicle-ed25519",
             "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-            "signature": "b43e38856c4a1ebed05f0c685a2454f567359bf8e4423dc0626952942cc20e0bafa4f6428be998ce43dc267a1fc9e5a1251373cdbe91e20770faa9772521ed05"
+            "signature": "bc18b51436ed6974f6948ad67904b8c31e677ff2dac80059a02054833a65cd6a713288808418d7e65b3ced0ec5ebbff98d568a0ef06b04dc8395451776d06d07"
           }
         },
         "candidate": {
@@ -17891,7 +17987,7 @@
           },
           "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
           "sequence": 1,
-          "predecessor_digest": "7490f78819ca8d2f4854c40dd73b468f99fa4d8a9bf8c01f521b4b897082192f",
+          "predecessor_digest": "09deea1307992ed6797a3e63f36a11d0a0ad90bf42a8d3057e217d2742e1d958",
           "max_checkpoint_age_seconds": 300,
           "current_jwks_sha256": "b7ed01e200acce519fddf03e1e4fe200a8caf2f25538f8f909f52151ae2fb8ac",
           "current_signing_key_id": "xhd7m7e7Sp799NRgpt6_ksheHCsFF1BfsHO3NqyF_zA",
@@ -17905,18 +18001,26 @@
           "status_lists": [
             {
               "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
-              "sha256": "47094403a5367beb6f5f85f08eab00a2b7737289d9459f06b23d954e2b13d680"
+              "sha256": "47094403a5367beb6f5f85f08eab00a2b7737289d9459f06b23d954e2b13d680",
+              "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+              "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
             }
           ],
           "successor": null,
           "authority": {
             "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
-            "issued_at": 1767245684
+            "issued_at": 1767245684,
+            "checkpoint": {
+              "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+              "branch": "main",
+              "commit_oid": "17c9356b39bd3e8126028ffc3500ad60b4f7bbf31c6508cec73697c78601ef58",
+              "observed_at": 1767245684
+            }
           },
           "authority_proof": {
             "type": "radicle-ed25519",
             "public_key": "b9b9dd3a31d5a028924c624a82840f1752cb7c99946851b04ed51ed8e4a9825f",
-            "signature": "98326b5fbcd7b34996f12d6264620407b117b839875fca6672a7654b98276179f12bcc3d1d240631bec4766d7b10f4d2d63ef1d7d2d0be62a3fdb24dfdcbf50b"
+            "signature": "97ee3e4f586e111d946f36995756e288bb04e65aa43d05e1aebcd9cf3d6d980924e489e787624d3446615645475766cad1e7bfd18ef1e179b15fb15e9f37da07"
           }
         },
         "ledger_replay_ref": "current",
@@ -17936,6 +18040,20 @@
           "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
           "now": 1767245684,
           "succession_authority": null,
+          "kel_transition": {
+            "persona_root_npub": "npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+            "previous_head": {
+              "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+              "seq": 0
+            },
+            "current_head": {
+              "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+              "seq": 0
+            },
+            "valid_from": 1767245684,
+            "valid_until": 1767247269,
+            "core_kel_authority_valid": true
+          },
           "current_epoch_authority": {
             "npub": "npub1ccz8l9zpa47k6vz9gphftsrumpw80rjt3nhnefat4symjhrsnmjs38mnyd",
             "kel_head": {
@@ -17962,7 +18080,7 @@
           },
           "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
           "sequence": 1,
-          "predecessor_digest": "7490f78819ca8d2f4854c40dd73b468f99fa4d8a9bf8c01f521b4b897082192f",
+          "predecessor_digest": "09deea1307992ed6797a3e63f36a11d0a0ad90bf42a8d3057e217d2742e1d958",
           "max_checkpoint_age_seconds": 300,
           "current_jwks_sha256": "e6f14489b0d11e77445b504834d67790e1a829200c12850c9fc7a55a1702b9b9",
           "current_signing_key_id": "xhd7m7e7Sp799NRgpt6_ksheHCsFF1BfsHO3NqyF_zA",
@@ -17972,18 +18090,26 @@
           "status_lists": [
             {
               "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
-              "sha256": "47094403a5367beb6f5f85f08eab00a2b7737289d9459f06b23d954e2b13d680"
+              "sha256": "47094403a5367beb6f5f85f08eab00a2b7737289d9459f06b23d954e2b13d680",
+              "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+              "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
             }
           ],
           "successor": null,
           "authority": {
             "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
-            "issued_at": 1767245684
+            "issued_at": 1767245684,
+            "checkpoint": {
+              "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+              "branch": "main",
+              "commit_oid": "17c9356b39bd3e8126028ffc3500ad60b4f7bbf31c6508cec73697c78601ef58",
+              "observed_at": 1767245684
+            }
           },
           "authority_proof": {
             "type": "radicle-ed25519",
             "public_key": "b9b9dd3a31d5a028924c624a82840f1752cb7c99946851b04ed51ed8e4a9825f",
-            "signature": "48375e340c29fb079b9e3c34cf95ec5458d6fb017b6ee639757daf9ad5d2333caa265195fa8e3039ee4d5b4827ab3ee6df8399b5408b48e7cc9d670dc6833506"
+            "signature": "534017a6cffd0cf86c9ff436614f28201df7ae25b21979263f0a5443fe3a0c9bd57298390fb974ef72c75bacf6e9e72de3e4ef3703a133a72a96855b2ef62c06"
           }
         },
         "discovery": {
@@ -18034,7 +18160,7 @@
           },
           {
             "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/manifest.json",
-            "hex": "7b22617574686f72697479223a7b226973737565645f6174223a313736373234353638342c227772697465725f6e6964223a226469643a6b65793a7a364d6b7278467242596175747a794d79377078364367625556506b4164797a52336b41534451506550687841795278227d2c22617574686f726974795f70726f6f66223a7b227075626c69635f6b6579223a2262396239646433613331643561303238393234633632346138323834306631373532636237633939393436383531623034656435316564386534613938323566222c227369676e6174757265223a223438333735653334306332396662303739623965336333346366393565633534353864366662303137623665653633393735376461663961643564323333336361613236353139356661386533303339656534643562343832376162336565366466383339396235343038623438653763633964363730646336383333353036222c2274797065223a2272616469636c652d65643235353139227d2c226272616e6368223a226d61696e222c22636f6c645f726f6f745f686578223a2237396265363637656639646362626163353561303632393563653837306230373032396266636462326463653238643935396632383135623136663831373938222c22636f6c645f726f6f745f6e707562223a226e7075623130786c78766c68656d6a613663346471763232756170637471757066686c786d3968387a336b3265373271346b3968637a377671706b67653664222c2263757272656e745f6a776b735f736861323536223a2265366631343438396230643131653737343435623530343833346436373739306531613832393230306331323835306339666337613535613137303262396239222c2263757272656e745f7369676e696e675f6a776b5f736861323536223a2233366231646364376365356335636665623934353366653130393632626465363234393330366632333139373332323462643233346235376561333931666563222c2263757272656e745f7369676e696e675f6b65795f6964223a22786864376d37653753703739394e52677074365f6b736865484373464631426673484f334e7179465f7a41222c22697373756572223a2268747470733a2f2f6e6f64652e6578616d706c652f6f6964632f6e7075623130786c78766c68656d6a613663346471763232756170637471757066686c786d3968387a336b3265373271346b3968637a377671706b67653664222c226d61785f636865636b706f696e745f6167655f7365636f6e6473223a3330302c22706572736f6e615f6b656c5f68656164223a7b226964223a2232613138326464333131393431666131626336613938343764373030633236316434646331656633313136386238363335616165613864336430313731646566222c22736571223a307d2c227072656465636573736f725f646967657374223a2237343930663738383139636138643266343835346334306464373362343638663939666134643861396266386330316635323162346238393730383231393266222c2270726f66696c65223a2268657465726f64796e652d6f6964632d636f6e74696e756974792d7631222c227265706f7369746f72795f726964223a227261643a7a32544a6f4441684b3570546d4c7a716d4b395734464d64746a797931222c227265746972696e675f6a776b735f736861323536223a5b5d2c227265746972696e675f7369676e696e675f6b65795f696473223a5b5d2c2273657175656e6365223a312c227374617475735f6c69737473223a5b7b2270617468223a222e77656c6c2d6b6e6f776e2f6e7075623130786c78766c68656d6a613663346471763232756170637471757066686c786d3968387a336b3265373271346b3968637a377671706b676536642f7374617475732d6c697374732f32303435342f39653264386639363936363266643763363863396363363863376232303563382f302e6a7774222c22736861323536223a2234373039343430336135333637626562366635663835663038656162303061326237373337323839643934353966303662323364393534653262313364363830227d5d2c22737563636573736f72223a6e756c6c7d"
+            "hex": "7b22617574686f72697479223a7b22636865636b706f696e74223a7b226272616e6368223a226d61696e222c22636f6d6d69745f6f6964223a2231376339333536623339626433653831323630323866666333353030616436306234663762626633316336353038636563373336393763373836303165663538222c226f627365727665645f6174223a313736373234353638342c227265706f7369746f72795f726964223a227261643a7a32544a6f4441684b3570546d4c7a716d4b395734464d64746a797931227d2c226973737565645f6174223a313736373234353638342c227772697465725f6e6964223a226469643a6b65793a7a364d6b7278467242596175747a794d79377078364367625556506b4164797a52336b41534451506550687841795278227d2c22617574686f726974795f70726f6f66223a7b227075626c69635f6b6579223a2262396239646433613331643561303238393234633632346138323834306631373532636237633939393436383531623034656435316564386534613938323566222c227369676e6174757265223a223533343031376136636666643063663836633966663433363631346632383230316466376165323562323139373932363366306135343433666533613063396264353732393833393066623937346566373263373562616366366539653732646533653465663337303361313333613732613936383535623265663632633036222c2274797065223a2272616469636c652d65643235353139227d2c226272616e6368223a226d61696e222c22636f6c645f726f6f745f686578223a2237396265363637656639646362626163353561303632393563653837306230373032396266636462326463653238643935396632383135623136663831373938222c22636f6c645f726f6f745f6e707562223a226e7075623130786c78766c68656d6a613663346471763232756170637471757066686c786d3968387a336b3265373271346b3968637a377671706b67653664222c2263757272656e745f6a776b735f736861323536223a2265366631343438396230643131653737343435623530343833346436373739306531613832393230306331323835306339666337613535613137303262396239222c2263757272656e745f7369676e696e675f6a776b5f736861323536223a2233366231646364376365356335636665623934353366653130393632626465363234393330366632333139373332323462643233346235376561333931666563222c2263757272656e745f7369676e696e675f6b65795f6964223a22786864376d37653753703739394e52677074365f6b736865484373464631426673484f334e7179465f7a41222c22697373756572223a2268747470733a2f2f6e6f64652e6578616d706c652f6f6964632f6e7075623130786c78766c68656d6a613663346471763232756170637471757066686c786d3968387a336b3265373271346b3968637a377671706b67653664222c226d61785f636865636b706f696e745f6167655f7365636f6e6473223a3330302c22706572736f6e615f6b656c5f68656164223a7b226964223a2232613138326464333131393431666131626336613938343764373030633236316434646331656633313136386238363335616165613864336430313731646566222c22736571223a307d2c227072656465636573736f725f646967657374223a2230396465656131333037393932656436373937613365363366333661313164306130616439306266343261386433303537653231376432373432653164393538222c2270726f66696c65223a2268657465726f64796e652d6f6964632d636f6e74696e756974792d7631222c227265706f7369746f72795f726964223a227261643a7a32544a6f4441684b3570546d4c7a716d4b395734464d64746a797931222c227265746972696e675f6a776b735f736861323536223a5b5d2c227265746972696e675f7369676e696e675f6b65795f696473223a5b5d2c2273657175656e6365223a312c227374617475735f6c69737473223a5b7b22697373756572223a2268747470733a2f2f6e6f64652e6578616d706c652f6f6964632f6e7075623130786c78766c68656d6a613663346471763232756170637471757066686c786d3968387a336b3265373271346b3968637a377671706b67653664222c2270617468223a222e77656c6c2d6b6e6f776e2f6e7075623130786c78766c68656d6a613663346471763232756170637471757066686c786d3968387a336b3265373271346b3968637a377671706b676536642f7374617475732d6c697374732f32303435342f39653264386639363936363266643763363863396363363863376232303563382f302e6a7774222c22736861323536223a2234373039343430336135333637626562366635663835663038656162303061326237373337323839643934353966303662323364393534653262313364363830222c22757269223a2268747470733a2f2f6e6f64652e6578616d706c652f6f6964632f6e7075623130786c78766c68656d6a613663346471763232756170637471757066686c786d3968387a336b3265373271346b3968637a377671706b676536642f7374617475732d6c697374732f32303435342f39653264386639363936363266643763363863396363363863376232303563382f302e6a7774227d5d2c22737563636573736f72223a6e756c6c7d"
           },
           {
             "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
@@ -18072,6 +18198,24 @@
         "normalized": {
           "allowed": false,
           "state": "invalid",
+          "reason_code": "oidc-issuer-authority-invalid"
+        }
+      },
+      "mutation_results": {
+        "compromised_key_bit": {
+          "verdict": "reject",
+          "reason_code": "oidc-status-invalid"
+        },
+        "shared_key_only_successor": {
+          "verdict": "reject",
+          "reason_code": "oidc-issuer-authority-invalid"
+        },
+        "retain_compromised_key": {
+          "verdict": "reject",
+          "reason_code": "oidc-issuer-authority-invalid"
+        },
+        "drop_status_before_expiry": {
+          "verdict": "reject",
           "reason_code": "oidc-issuer-authority-invalid"
         }
       },

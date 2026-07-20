@@ -10,7 +10,7 @@ import {
   projectAccessToken,
   type JwtValidationOptions,
 } from "./oidc.js";
-import { buildOidcScenario, buildTokenStatusVectors } from "./topics-oidc.js";
+import { buildOidcScenario, buildTokenStatusVectors, replayTokenStatusMutationTable } from "./topics-oidc.js";
 import {
   STATUS_LIST_MEDIA_TYPE,
   buildContinuityTree,
@@ -32,6 +32,7 @@ let x: Awaited<ReturnType<typeof buildOidcScenario>>;
 
 beforeAll(async () => { x = await buildOidcScenario(fixtures); });
 const statusIat = () => x.issuedState.checkpoint.observed_at;
+const statusJwksBytes = () => Buffer.from(JSON.stringify({ keys: [OIDC_RSA_ONE.public_jwk] }));
 
 function resignStatusToken(token: ReturnType<typeof generateStatusListToken>, lst: string) {
   const claims = { ...token.claims, status_list: { bits: 1 as const, lst } };
@@ -65,8 +66,10 @@ function statusManifestFor(token: ReturnType<typeof generateStatusListToken>): C
     current_signing_jwk_sha256: createHash("sha256").update(jcsCanonicalize(OIDC_RSA_ONE.public_jwk)).digest("hex"),
     retiring_signing_key_ids: [], retiring_jwks_sha256: [],
     status_lists: [{ path: x.projection.status_mirror.path,
-      sha256: createHash("sha256").update(token.compact).digest("hex") }],
-    successor: null, authority: { writer_nid: x.s.writerOne.did_key, issued_at: x.issuance.issued_at } };
+      sha256: createHash("sha256").update(token.compact).digest("hex"), issuer: token.claims.sub.replace(/\/status-lists\/.*/, ""),
+      uri: token.claims.sub }],
+    successor: null, authority: { writer_nid: x.s.writerOne.did_key,
+      issued_at: x.issuedState.checkpoint.observed_at, checkpoint: x.issuedState.checkpoint } };
   return { ...body, authority_proof: createContinuityAuthorityProof(body, x.s.writerOne.private_key) };
 }
 
@@ -75,7 +78,9 @@ function validationChain(token: ReturnType<typeof generateStatusListToken>) {
   return validateIssuerContinuityChain([{ manifest, context: {
     identity: x.identity, expected_kel_head: fixtures.kel.alice.head, repository_rid: x.s.rid,
     canonical_branch: "main", writer_nid: x.s.writerOne.did_key, now: statusIat(), ledger_state: x.issuedState,
-    succession_authority: null, current_epoch_authority: { npub: x.epoch, kel_head: fixtures.kel.alice.head,
+    succession_authority: null, kel_transition: { persona_root_npub: x.root, previous_head: null,
+      current_head: fixtures.kel.alice.head, valid_from: statusIat(), valid_until: x.issuance.expires_at + 1_000,
+      core_kel_authority_valid: true }, current_epoch_authority: { npub: x.epoch, kel_head: fixtures.kel.alice.head,
       valid_from: x.issuance.issued_at, valid_until: x.issuance.expires_at + 1_000, core_kel_authority_valid: true },
   } }]);
 }
@@ -90,6 +95,17 @@ function validatedAccessContext(token: ReturnType<typeof generateStatusListToken
       now: x.issuance.issued_at, token_use: "access_token", client_id: "registered-client",
       sender_constraint: "none", permitted_audiences: ["https://api.example"],
     });
+}
+
+function updateKelContext(
+  context: ContinuityValidationContext,
+  previous: ContinuityManifest,
+  candidate: ContinuityManifest,
+): ContinuityValidationContext {
+  return { ...context, kel_transition: { persona_root_npub: candidate.cold_root_npub,
+    previous_head: previous.persona_kel_head, current_head: candidate.persona_kel_head,
+    valid_from: candidate.authority.issued_at, valid_until: candidate.authority.issued_at + 1_000,
+    core_kel_authority_valid: true } };
 }
 
 describe("draft-ietf-oauth-status-list-21 exact one-bit profile", () => {
@@ -119,6 +135,9 @@ describe("draft-ietf-oauth-status-list-21 exact one-bit profile", () => {
       state: x.issuedState, uri, private_jwk: OIDC_RSA_ONE.private_jwk,
       iat: x.issuedState.checkpoint.observed_at - 1, exp: statusIat() + 60, ttl: 30,
     })).toThrow(/predates|checkpoint|stale/i);
+    expect(() => generateStatusListToken({ state: x.issuedState, uri,
+      private_jwk: OIDC_RSA_ONE.private_jwk, iat: statusIat(), exp: statusIat() + 60, ttl: 0.5 }))
+      .not.toThrow();
   });
 
   it("requires an unforgeable fully validated referenced JWT and never lets VALID override base failures", () => {
@@ -128,10 +147,10 @@ describe("draft-ietf-oauth-status-list-21 exact one-bit profile", () => {
       iat: statusIat(), exp: statusIat() + 60, ttl: 30,
     });
     const validated = validatedAccessContext(statusToken);
-    expect(validateTokenStatus(validated, statusToken, { keys: [OIDC_RSA_ONE.public_jwk] }, statusIat(), validationChain(statusToken)))
+    expect(validateTokenStatus(validated, statusToken, statusJwksBytes(), statusIat(), statusIat(), validationChain(statusToken)))
       .toMatchObject({ allowed: true });
     expect(validateTokenStatus({ ...validated } as never, statusToken,
-      { keys: [OIDC_RSA_ONE.public_jwk] }, statusIat(), validationChain(statusToken))).toMatchObject({ allowed: false });
+      statusJwksBytes(), statusIat(), statusIat(), validationChain(statusToken))).toMatchObject({ allowed: false });
     const projected = projectAccessToken({ ...x.projection, status_mirror: { ...x.projection.status_mirror,
       sha256: createHash("sha256").update(statusToken.compact).digest("hex") } });
     const options: JwtValidationOptions = { now: x.issuance.issued_at, token_use: "access_token",
@@ -152,17 +171,39 @@ describe("draft-ietf-oauth-status-list-21 exact one-bit profile", () => {
     const context: ContinuityValidationContext = { identity: x.identity,
       expected_kel_head: fixtures.kel.alice.head, repository_rid: x.s.rid, canonical_branch: "main",
       writer_nid: x.s.writerOne.did_key, now: statusIat(), ledger_state: x.issuedState,
-      succession_authority: null, current_epoch_authority: { npub: x.epoch, kel_head: fixtures.kel.alice.head,
+      succession_authority: null, kel_transition: { persona_root_npub: x.root, previous_head: null,
+        current_head: fixtures.kel.alice.head, valid_from: statusIat(), valid_until: x.issuance.expires_at + 1_000,
+        core_kel_authority_valid: true }, current_epoch_authority: { npub: x.epoch, kel_head: fixtures.kel.alice.head,
         valid_from: x.issuance.issued_at, valid_until: x.issuance.expires_at + 1_000,
         core_kel_authority_valid: true } };
-    const chain = validateIssuerContinuityChain([{ manifest: anchor, context }, { manifest: refreshed, context }]);
+    const refreshedContext = updateKelContext(context, anchor, refreshed);
+    const chain = validateIssuerContinuityChain([{ manifest: anchor, context }, { manifest: refreshed, context: refreshedContext }]);
     expect(validateTokenStatus(validatedAccessContext(statusToken), statusToken,
-      { keys: [OIDC_RSA_ONE.public_jwk] }, statusIat(), chain)).toMatchObject({ allowed: true });
+      statusJwksBytes(), statusIat(), statusIat(), chain)).toMatchObject({ allowed: true });
     const brokenBody = { ...refreshedBody, predecessor_digest: "00".repeat(32) };
     const broken: ContinuityManifest = { ...brokenBody,
       authority_proof: createContinuityAuthorityProof(brokenBody, x.s.writerOne.private_key) };
-    expect(() => validateIssuerContinuityChain([{ manifest: anchor, context }, { manifest: broken, context }]))
+    expect(() => validateIssuerContinuityChain([{ manifest: anchor, context }, { manifest: broken,
+      context: updateKelContext(context, anchor, broken) }]))
       .toThrow(/digest|chain/);
+  });
+
+  it("uses raw manifest-bound JWKS bytes and trusted resolution time for fractional TTL", () => {
+    const uri = `${x.metadata.issuer}/${x.issuance.reservation.uri}`;
+    const statusToken = generateStatusListToken({ state: x.issuedState, uri,
+      private_jwk: OIDC_RSA_ONE.private_jwk, iat: statusIat(), exp: statusIat() + 60, ttl: 0.5 });
+    const referenced = validatedAccessContext(statusToken);
+    const chain = validationChain(statusToken);
+    const rawJwks = Buffer.from(JSON.stringify({ keys: [OIDC_RSA_ONE.public_jwk] }));
+    expect((validateTokenStatus as any)(referenced, statusToken, rawJwks,
+      statusIat() + 1, statusIat() + 0.5, chain)).toMatchObject({ allowed: true });
+    expect((validateTokenStatus as any)(referenced, statusToken, rawJwks,
+      statusIat() + 1, statusIat(), chain)).toMatchObject({ allowed: false, reason_code: "oidc-status-stale" });
+    expect(validateTokenStatus(referenced, statusToken, rawJwks,
+      statusIat(), statusIat() + 1, chain)).toMatchObject({ allowed: false, reason_code: "oidc-status-stale" });
+    expect((validateTokenStatus as any)(referenced, statusToken,
+      { keys: [OIDC_RSA_ONE.public_jwk] }, statusIat(), statusIat(), chain))
+      .toMatchObject({ allowed: false });
   });
 
   it("fails closed for INVALID, stale, malformed, unverifiable, and out-of-range status", () => {
@@ -172,14 +213,14 @@ describe("draft-ietf-oauth-status-list-21 exact one-bit profile", () => {
       exp: statusIat() + 60, ttl: 30 });
     const statusToken = resignStatusToken(validToken, encodeStatusList([1]).lst);
     const validated = validatedAccessContext(statusToken);
-    expect(validateTokenStatus(validated, statusToken, { keys: [OIDC_RSA_ONE.public_jwk] }, statusIat(), validationChain(statusToken)))
+    expect(validateTokenStatus(validated, statusToken, statusJwksBytes(), statusIat(), statusIat(), validationChain(statusToken)))
       .toMatchObject({ allowed: false, reason_code: "oidc-status-invalid" });
     expect(validateTokenStatus(validated, { ...statusToken, compact: `${statusToken.compact}x` },
-      { keys: [OIDC_RSA_ONE.public_jwk] }, statusIat(), validationChain(statusToken))).toMatchObject({ allowed: false });
+      statusJwksBytes(), statusIat(), statusIat(), validationChain(statusToken))).toMatchObject({ allowed: false });
     const valid = generateStatusListToken({ state: x.issuedState, uri, private_jwk: OIDC_RSA_ONE.private_jwk,
       iat: statusIat(), exp: statusIat() + 60, ttl: 1 });
     const validContext = validatedAccessContext(valid);
-    expect(validateTokenStatus(validContext, valid, { keys: [OIDC_RSA_ONE.public_jwk] }, statusIat() + 1, validationChain(valid)))
+    expect(validateTokenStatus(validContext, valid, statusJwksBytes(), statusIat() + 2, statusIat(), validationChain(valid)))
       .toMatchObject({ allowed: false, reason_code: "oidc-status-stale" });
 
     const projection = { ...x.projection, status_mirror: { ...x.projection.status_mirror,
@@ -191,15 +232,15 @@ describe("draft-ietf-oauth-status-list-21 exact one-bit profile", () => {
         now: x.issuance.issued_at, token_use: "access_token", client_id: "registered-client",
         sender_constraint: "none", permitted_audiences: ["https://api.example"],
       });
-    expect(validateTokenStatus(outOfRangeContext, valid, { keys: [OIDC_RSA_ONE.public_jwk] }, statusIat(), validationChain(valid)))
+    expect(validateTokenStatus(outOfRangeContext, valid, statusJwksBytes(), statusIat(), statusIat(), validationChain(valid)))
       .toMatchObject({ allowed: false, reason_code: "oidc-status-index-invalid" });
     const malformed = resignStatusToken(valid, "eA");
     expect(validateTokenStatus(validatedAccessContext(malformed), malformed,
-      { keys: [OIDC_RSA_ONE.public_jwk] }, statusIat(), validationChain(malformed))).toMatchObject({ allowed: false });
+      statusJwksBytes(), statusIat(), statusIat(), validationChain(malformed))).toMatchObject({ allowed: false });
     expect(validateTokenStatus(validatedAccessContext(valid), { ...valid, media_type: "application/jwt" as never },
-      { keys: [OIDC_RSA_ONE.public_jwk] }, statusIat(), validationChain(valid))).toMatchObject({ allowed: false });
+      statusJwksBytes(), statusIat(), statusIat(), validationChain(valid))).toMatchObject({ allowed: false });
     expect(validateTokenStatus(validatedAccessContext(valid), valid,
-      { keys: [OIDC_RSA_ONE.public_jwk] }, x.issuance.expires_at, validationChain(valid))).toMatchObject({
+      statusJwksBytes(), x.issuance.expires_at, statusIat(), validationChain(valid))).toMatchObject({
         allowed: false, reason_code: "oidc-token-type-invalid",
       });
   });
@@ -210,6 +251,10 @@ describe("root-scoped Radicle issuer continuity", () => {
     const rootHex = fixtures.personas.alice.cold_root.pubkey;
     const root = nip19.npubEncode(rootHex);
     const jwksBytes = Buffer.from(JSON.stringify({ keys: [OIDC_RSA_ONE.public_jwk] }));
+    const statusUri = `${x.metadata.issuer}/${x.issuance.reservation.uri}`;
+    const statusToken = generateStatusListToken({ state: x.issuedState, uri: statusUri,
+      private_jwk: OIDC_RSA_ONE.private_jwk, iat: statusIat(), exp: x.issuance.expires_at, ttl: 30 });
+    const statusPath = `.well-known/${root}/${x.issuance.reservation.uri}`;
     const unsigned = {
       profile: "heterodyne-oidc-continuity-v1" as const,
       repository_rid: x.s.rid, branch: "main" as const,
@@ -219,14 +264,20 @@ describe("root-scoped Radicle issuer continuity", () => {
       current_jwks_sha256: createHash("sha256").update(jwksBytes).digest("hex"),
       current_signing_key_id: OIDC_RSA_ONE.key_id,
       current_signing_jwk_sha256: createHash("sha256").update(jcsCanonicalize(OIDC_RSA_ONE.public_jwk)).digest("hex"),
-      retiring_signing_key_ids: [], retiring_jwks_sha256: [], status_lists: [], successor: null,
-      authority: { writer_nid: x.s.writerOne.did_key, issued_at: x.issuance.issued_at },
+      retiring_signing_key_ids: [], retiring_jwks_sha256: [], status_lists: [{ path: statusPath,
+        sha256: createHash("sha256").update(statusToken.compact).digest("hex"), issuer: x.metadata.issuer,
+        uri: statusUri }], successor: null,
+      authority: { writer_nid: x.s.writerOne.did_key, issued_at: x.issuedState.checkpoint.observed_at,
+        checkpoint: x.issuedState.checkpoint },
     };
     const manifest = { ...unsigned, authority_proof: createContinuityAuthorityProof(unsigned, x.s.writerOne.private_key) };
     return { manifest, context: {
       identity: x.identity, expected_kel_head: fixtures.kel.alice.head,
       repository_rid: x.s.rid, canonical_branch: "main", writer_nid: x.s.writerOne.did_key,
       now: x.issuedState.checkpoint.observed_at, ledger_state: x.issuedState, succession_authority: null,
+      kel_transition: { persona_root_npub: root, previous_head: null, current_head: fixtures.kel.alice.head,
+        valid_from: x.issuedState.checkpoint.observed_at, valid_until: x.issuance.expires_at + 1_000,
+        core_kel_authority_valid: true },
       current_epoch_authority: { npub: x.epoch, kel_head: fixtures.kel.alice.head,
         valid_from: x.issuance.issued_at, valid_until: x.issuance.expires_at + 1_000,
         core_kel_authority_valid: true as const },
@@ -237,13 +288,18 @@ describe("root-scoped Radicle issuer continuity", () => {
     const { manifest } = fixtureManifest();
     const discovery = { issuer: manifest.issuer };
     const jwks = Buffer.from(JSON.stringify({ keys: [OIDC_RSA_ONE.public_jwk] }));
-    const tree = buildContinuityTree(manifest, discovery, jwks, new Map());
+    const statusUri = `${x.metadata.issuer}/${x.issuance.reservation.uri}`;
+    const statusToken = generateStatusListToken({ state: x.issuedState, uri: statusUri,
+      private_jwk: OIDC_RSA_ONE.private_jwk, iat: statusIat(), exp: x.issuance.expires_at, ttl: 30 });
+    const statusMap = new Map([[manifest.status_lists[0].path, Buffer.from(statusToken.compact)]]);
+    const tree = buildContinuityTree(manifest, discovery, jwks, statusMap);
     const root = `.well-known/${manifest.cold_root_npub}`;
     expect([...tree.keys()].sort()).toEqual([
       `${root}/issuer.json`, `${root}/jwks.json`, `${root}/manifest.json`, `${root}/openid-configuration`,
+      manifest.status_lists[0].path,
     ]);
     expect(Buffer.from(tree.get(`${root}/jwks.json`)!)).toEqual(jwks);
-    expect(() => buildContinuityTree(manifest, discovery, Buffer.concat([jwks, Buffer.from("\n")]), new Map()))
+    expect(() => buildContinuityTree(manifest, discovery, Buffer.concat([jwks, Buffer.from("\n")]), statusMap))
       .toThrow(/exact JWKS bytes/);
   });
 
@@ -262,6 +318,49 @@ describe("root-scoped Radicle issuer continuity", () => {
     expect(resolveIssuerContinuity(null, wrongCurrent, context)).toMatchObject({ allowed: false });
   });
 
+  it("requires every confirmed unexpired issuance path even in an initial manifest", () => {
+    const { manifest, context } = fixtureManifest();
+    const { authority_proof: _proof, ...body } = manifest;
+    const missingBody = { ...body, status_lists: [] };
+    const missing: ContinuityManifest = { ...missingBody,
+      authority_proof: createContinuityAuthorityProof(missingBody, x.s.writerOne.private_key) };
+    expect(resolveIssuerContinuity(null, missing, context)).toMatchObject({
+      allowed: false, reason_code: "oidc-status-digest-mismatch",
+    });
+  });
+
+  it("rejects a manifest proof issued before its authoritative ledger checkpoint", () => {
+    const { manifest, context } = fixtureManifest();
+    const { authority_proof: _proof, ...body } = manifest;
+    const backdatedBody = { ...body, authority: { ...body.authority,
+      issued_at: body.authority.checkpoint.observed_at - 1 } };
+    const backdated: ContinuityManifest = { ...backdatedBody,
+      authority_proof: createContinuityAuthorityProof(backdatedBody, x.s.writerOne.private_key) };
+    expect(resolveIssuerContinuity(null, backdated, context)).toMatchObject({
+      allowed: false, reason_code: "oidc-issuer-authority-invalid",
+    });
+  });
+
+  it("accepts only an exact Core-produced previous-to-current KEL transition", () => {
+    const { manifest: previous, context } = fixtureManifest();
+    const nextHead = { id: "44".repeat(32), seq: previous.persona_kel_head.seq + 1 };
+    const { authority_proof: _proof, ...previousBody } = previous;
+    const candidateBody = { ...previousBody, persona_kel_head: nextHead, sequence: 1,
+      predecessor_digest: continuityManifestDigest(previous),
+      authority: { ...previous.authority, issued_at: context.ledger_state!.checkpoint.observed_at } };
+    const candidate: ContinuityManifest = { ...candidateBody,
+      authority_proof: createContinuityAuthorityProof(candidateBody, x.s.writerOne.private_key) };
+    const transitionContext = { ...context, expected_kel_head: nextHead,
+      kel_transition: { persona_root_npub: previous.cold_root_npub,
+        previous_head: previous.persona_kel_head, current_head: nextHead,
+        valid_from: candidate.authority.issued_at, valid_until: candidate.authority.issued_at + 60,
+        core_kel_authority_valid: true } } as ContinuityValidationContext;
+    expect(resolveIssuerContinuity(previous, candidate, transitionContext)).toMatchObject({ allowed: true });
+    expect(resolveIssuerContinuity(previous, candidate, { ...transitionContext,
+      kel_transition: { ...transitionContext.kel_transition!, persona_root_npub: x.epoch } } as never))
+      .toMatchObject({ allowed: false });
+  });
+
   it("requires persona epoch or cold-root/recovery authority for succession; the shared issuer key is insufficient", () => {
     const { manifest: previous, context } = fixtureManifest();
     const { authority_proof: _proof, ...previousBody } = previous;
@@ -276,23 +375,30 @@ describe("root-scoped Radicle issuer continuity", () => {
       predecessor_digest: continuityManifestDigest(boundPrevious) };
     const candidate = { ...nextUnsigned,
       authority_proof: createContinuityAuthorityProof(nextUnsigned, x.s.writerOne.private_key) } as ContinuityManifest;
-    const updateContext = { ...context, now: x.issuance.expires_at, ledger_state: x.issuedState };
+    const updateContext = updateKelContext({ ...context, now: x.issuance.expires_at,
+      ledger_state: x.issuedState }, boundPrevious, candidate);
     expect(resolveIssuerContinuity(boundPrevious, candidate, updateContext)).toMatchObject({ allowed: false });
     const epochAuthority = createPersonaSuccessionProof(candidate, "current-persona-epoch",
       fixtures.personas.alice.epoch_keys.epoch_1.private_key);
     expect(resolveIssuerContinuity(boundPrevious, candidate, { ...updateContext,
       succession_authority: epochAuthority,
-      current_epoch_authority: { ...context.current_epoch_authority!, valid_until: updateContext.now },
+      current_epoch_authority: { ...context.current_epoch_authority!, valid_until: candidate.authority.issued_at },
     })).toMatchObject({ allowed: false });
     expect(resolveIssuerContinuity(boundPrevious, candidate, { ...updateContext, succession_authority: epochAuthority }))
       .toMatchObject({ allowed: true });
+    const retainedStatus = generateStatusListToken({ state: x.issuedState,
+      uri: `${previous.issuer}/${x.issuance.reservation.uri}`, private_jwk: OIDC_RSA_ONE.private_jwk,
+      iat: statusIat(), exp: x.issuance.expires_at, ttl: 30 });
+    expect(() => buildContinuityTree(candidate, { issuer: successorIssuer }, statusJwksBytes(),
+      new Map([[candidate.status_lists[0].path, Buffer.from(retainedStatus.compact)]]))).not.toThrow();
   });
 
   it("accepts same-key byte refresh and retains status paths through maximum token expiry", () => {
     const { manifest: initial, context } = fixtureManifest();
     const statusPath = `.well-known/${initial.cold_root_npub}/${x.issuance.reservation.uri}`;
     const { authority_proof: _initialProof, ...initialBody } = initial;
-    const previousBody = { ...initialBody, status_lists: [{ path: statusPath, sha256: "11".repeat(32) }] };
+    const previousBody = { ...initialBody, status_lists: [{ path: statusPath, sha256: "11".repeat(32),
+      issuer: initial.issuer, uri: `${initial.issuer}/${x.issuance.reservation.uri}` }] };
     const previous = { ...previousBody,
       authority_proof: createContinuityAuthorityProof(previousBody, x.s.writerOne.private_key) } as ContinuityManifest;
     const candidateBody = { ...previousBody, sequence: 1, predecessor_digest: continuityManifestDigest(previous),
@@ -301,15 +407,18 @@ describe("root-scoped Radicle issuer continuity", () => {
       retiring_jwks_sha256: previous.retiring_jwks_sha256 };
     const candidate = { ...candidateBody,
       authority_proof: createContinuityAuthorityProof(candidateBody, x.s.writerOne.private_key) } as ContinuityManifest;
-    expect(resolveIssuerContinuity(previous, candidate, context)).toMatchObject({ allowed: true });
+    expect(resolveIssuerContinuity(previous, candidate, updateKelContext(context, previous, candidate)))
+      .toMatchObject({ allowed: true });
     const noStatusBody = { ...candidateBody, status_lists: [] };
     const noStatus = { ...noStatusBody,
       authority_proof: createContinuityAuthorityProof(noStatusBody, x.s.writerOne.private_key) } as ContinuityManifest;
-    expect(resolveIssuerContinuity(previous, noStatus, context)).toMatchObject({ allowed: false });
+    expect(resolveIssuerContinuity(previous, noStatus, updateKelContext(context, previous, noStatus)))
+      .toMatchObject({ allowed: false });
     const sameKeyBody = { ...previousBody, sequence: 1, predecessor_digest: continuityManifestDigest(previous) };
     const sameKey = { ...sameKeyBody,
       authority_proof: createContinuityAuthorityProof(sameKeyBody, x.s.writerOne.private_key) } as ContinuityManifest;
-    expect(resolveIssuerContinuity(previous, sameKey, context)).toMatchObject({ allowed: true });
+    expect(resolveIssuerContinuity(previous, sameKey, updateKelContext(context, previous, sameKey)))
+      .toMatchObject({ allowed: true });
   });
 
   it("retains every transitively retiring key required by an unexpired issuance", () => {
@@ -326,8 +435,10 @@ describe("root-scoped Radicle issuer continuity", () => {
       current_signing_jwk_sha256: createHash("sha256").update(jcsCanonicalize(OIDC_RSA_TWO.public_jwk)).digest("hex"),
       retiring_signing_key_ids: [OIDC_RSA_ONE.key_id],
       retiring_jwks_sha256: [createHash("sha256").update(jcsCanonicalize(OIDC_RSA_ONE.public_jwk)).digest("hex")],
-      status_lists: [{ path: statusPath, sha256: "33".repeat(32) }],
-      authority: { writer_nid: x.s.writerTwo.did_key, issued_at: repository.checkpoint.observed_at } };
+      status_lists: [{ path: statusPath, sha256: "33".repeat(32), issuer: base.issuer,
+        uri: `${base.issuer}/${x.s.issuanceOne.reservation.uri}` }],
+      authority: { writer_nid: x.s.writerTwo.did_key, issued_at: repository.checkpoint.observed_at,
+        checkpoint: repository.checkpoint } };
     const previous: ContinuityManifest = { ...previousBody,
       authority_proof: createContinuityAuthorityProof(previousBody, x.s.writerTwo.private_key) };
     const candidateBody = { ...previousBody, sequence: 2, predecessor_digest: continuityManifestDigest(previous),
@@ -336,7 +447,7 @@ describe("root-scoped Radicle issuer continuity", () => {
       authority_proof: createContinuityAuthorityProof(candidateBody, x.s.writerTwo.private_key) };
     const context: ContinuityValidationContext = { ...baseContext, writer_nid: x.s.writerTwo.did_key,
       now: repository.checkpoint.observed_at, ledger_state: state };
-    expect(resolveIssuerContinuity(previous, candidate, context)).toMatchObject({ allowed: false,
+    expect(resolveIssuerContinuity(previous, candidate, updateKelContext(context, previous, candidate))).toMatchObject({ allowed: false,
       reason_code: "oidc-status-digest-mismatch" });
   });
 
@@ -345,7 +456,10 @@ describe("root-scoped Radicle issuer continuity", () => {
     const statusPath = `.well-known/${manifest.cold_root_npub}/${x.issuance.reservation.uri}`;
     const { authority_proof: _authorityProof, ...manifestBody } = manifest;
     const duplicateBody = { ...manifestBody,
-      status_lists: [{ path: statusPath, sha256: "11".repeat(32) }, { path: statusPath, sha256: "22".repeat(32) }],
+      status_lists: [{ path: statusPath, sha256: "11".repeat(32), issuer: manifest.issuer,
+        uri: `${manifest.issuer}/${x.issuance.reservation.uri}` },
+      { path: statusPath, sha256: "22".repeat(32), issuer: manifest.issuer,
+        uri: `${manifest.issuer}/${x.issuance.reservation.uri}` }],
     };
     const duplicate = { ...duplicateBody,
       authority_proof: createContinuityAuthorityProof(duplicateBody, x.s.writerOne.private_key) } as ContinuityManifest;
@@ -366,5 +480,23 @@ describe("root-scoped Radicle issuer continuity", () => {
         { verdict: "accept" }, { verdict: "reject" }, { verdict: "accept" },
       ],
     } });
+  });
+
+  it("executes all 33 named mutation-table cases and records their outcomes", async () => {
+    const vectors = await buildTokenStatusVectors(fixtures);
+    const outcomes = vectors.flatMap(({ vector }) => {
+      const replayed = replayTokenStatusMutationTable(vector.input);
+      return Object.entries(replayed).map(([name, outcome]) => ({ name, outcome }));
+    });
+    expect(outcomes).toHaveLength(33);
+    expect(outcomes.map(({ name }) => name)).toEqual(expect.arrayContaining([
+      "ttl_boundary", "jwks_byte", "status_byte", "stale_kel_head", "missing_persona_proof",
+      "retain_compromised_key", "drop_status_before_expiry",
+    ]));
+    expect(outcomes.every(({ outcome }) => outcome.verdict === "accept" || outcome.verdict === "reject")).toBe(true);
+    expect(outcomes.find(({ name }) => name === "ttl_boundary")!.outcome).toMatchObject({ verdict: "accept" });
+    expect(outcomes.find(({ name }) => name === "jwks_byte")!.outcome).toMatchObject({ verdict: "reject" });
+    expect(outcomes.find(({ name }) => name === "distinct_writer_namespace")!.outcome).toMatchObject({ verdict: "accept" });
+    expect(outcomes.find(({ name }) => name === "missing_persona_proof")!.outcome).toMatchObject({ verdict: "reject" });
   });
 });

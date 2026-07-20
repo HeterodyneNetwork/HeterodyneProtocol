@@ -13,7 +13,7 @@
   "description": "TTL equality, expiration, bad signature, malformed ZLIB, and out-of-range indexes fail closed.",
   "input": {
     "operation": "status-validation",
-    "referenced_compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkpGeE0xN1FwU01HcDRtMm80bGtkMDNzY0hfeEFyTWVTM2pxeHFvYVdoZW8iLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZCIsInN1YiI6IjVsbmJ2bEtEVG9ZM01FakMydzFYZGtWU01kY3VNUF9QUGFpVE9iRUNzQmciLCJhdWQiOlsiaHR0cHM6Ly9hcGkuZXhhbXBsZSJdLCJleHAiOjE3NjcyNDYyNjksImlhdCI6MTc2NzI0NTY2OSwianRpIjoib2lkYy1ldmlkZW5jZS1qdGktMDAwMSIsImNsaWVudF9pZCI6InJlZ2lzdGVyZWQtY2xpZW50Iiwic2NvcGUiOiJoZXRlcm9keW5lOmtleS1yZWYgb3BlbmlkIHByb2ZpbGUiLCJuYW1lIjoiQWxpY2UiLCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qva2V5LXJlZiI6eyJ0eXBlIjoibm9zdHItc2VjcDI1NmsxIiwidmFsdWUiOiJjNjA0N2Y5NDQxZWQ3ZDZkMzA0NTQwNmU5NWMwN2NkODVjNzc4ZTRiOGNlZjNjYTdhYmFjMDliOTVjNzA5ZWU1In0sImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9sZWRnZXItY2hlY2twb2ludCI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJjb21taXRfb2lkIjoiZjRmMjE2OTQ4ZTFhOTQwN2ZiNDZkM2ZhYzY0MzZlYjRkZDczMTRiNjBhNjYxMzJmZTVkNjlkODU5OTc3NTdkYSIsIm9ic2VydmVkX2F0IjoxNzY3MjQ1NjY4fSwic3RhdHVzIjp7InN0YXR1c19saXN0Ijp7InVyaSI6Imh0dHBzOi8vbm9kZS5leGFtcGxlL29pZGMvbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsImlkeCI6MH19LCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qvc3RhdHVzLW1pcnJvciI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJwYXRoIjoiLndlbGwta25vd24vbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsInNoYTI1NiI6Ijc0OTBmNzg4MTljYThkMmY0ODU0YzQwZGQ3M2I0NjhmOTlmYTRkOGE5YmY4YzAxZjUyMWI0Yjg5NzA4MjE5MmYifX0.NAEdbFMTV3NKFMzo_O1c5qfnYnTh99qXlrruagdy_xj7iaJHX-GSkKk0w9XZoEiF5fwzVGH9t51hOIcDzdnM5sG5B58lLBxD5bDGvPCw6cbtTamRoEVvHCedMjgLicaEe5MWZvYanFnLeHq5BPeSxeSEC0XEe1en-GfQID5O65tz7bxvf77OiSV-lwLiMSJ6fWTCuR0HYmdTTLGtAxOUhSVxOezocKVRZFknxfJ66CIzqsTLcbZboi1_kdtf_bO4c6fHY-oRcq0icnWhmbOkePDwY8IPtIkxezniAC11dMTxJBeWPH69vE2NkoIHDmLauc1y6h9_RO-EajflMPJjjQ",
+    "referenced_compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkpGeE0xN1FwU01HcDRtMm80bGtkMDNzY0hfeEFyTWVTM2pxeHFvYVdoZW8iLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZCIsInN1YiI6IjVsbmJ2bEtEVG9ZM01FakMydzFYZGtWU01kY3VNUF9QUGFpVE9iRUNzQmciLCJhdWQiOlsiaHR0cHM6Ly9hcGkuZXhhbXBsZSJdLCJleHAiOjE3NjcyNDYyNjksImlhdCI6MTc2NzI0NTY2OSwianRpIjoib2lkYy1ldmlkZW5jZS1qdGktMDAwMSIsImNsaWVudF9pZCI6InJlZ2lzdGVyZWQtY2xpZW50Iiwic2NvcGUiOiJoZXRlcm9keW5lOmtleS1yZWYgb3BlbmlkIHByb2ZpbGUiLCJuYW1lIjoiQWxpY2UiLCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qva2V5LXJlZiI6eyJ0eXBlIjoibm9zdHItc2VjcDI1NmsxIiwidmFsdWUiOiJjNjA0N2Y5NDQxZWQ3ZDZkMzA0NTQwNmU5NWMwN2NkODVjNzc4ZTRiOGNlZjNjYTdhYmFjMDliOTVjNzA5ZWU1In0sImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9sZWRnZXItY2hlY2twb2ludCI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJjb21taXRfb2lkIjoiZjRmMjE2OTQ4ZTFhOTQwN2ZiNDZkM2ZhYzY0MzZlYjRkZDczMTRiNjBhNjYxMzJmZTVkNjlkODU5OTc3NTdkYSIsIm9ic2VydmVkX2F0IjoxNzY3MjQ1NjY4fSwic3RhdHVzIjp7InN0YXR1c19saXN0Ijp7InVyaSI6Imh0dHBzOi8vbm9kZS5leGFtcGxlL29pZGMvbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsImlkeCI6MH19LCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qvc3RhdHVzLW1pcnJvciI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJwYXRoIjoiLndlbGwta25vd24vbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsInNoYTI1NiI6IjA5ZGVlYTEzMDc5OTJlZDY3OTdhM2U2M2YzNmExMWQwYTBhZDkwYmY0MmE4ZDMwNTdlMjE3ZDI3NDJlMWQ5NTgifX0.N4cPClSaiUj4PKW4kethweATdKPxC3VAXWEGZgLINYCFqbL6v-63aoy8BByDNBlJINfl6UypeQkSiLJNp76Updr_icFE9LKtWe2j2AZ6MkhN9uU5FkrtFugUzTmGUKNDicM2BhVTCb8sh1cKsYIt1dFL6qerPpFERGGQmjpqtCAIYvlGHVl31C7bMt6cFU0-3JIA831Nl0NijX1wjKJEeb_5LX3jWdQ9mZ7ztnMWug7ypMuypeYQrf-gWuH1i9YHeiIMxlTvDUNXWyMPFeeGxYKlzIerULHN0dsElCM2Zpgwy-sOa_P5JeajuoJgpPbWXB5ptKznBS9bkEZNoDLHag",
     "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
     "audience": "https://api.example",
     "referenced_jwks": {
@@ -59,21 +59,8 @@
       "media_type": "application/statuslist+jwt",
       "compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkpGeE0xN1FwU01HcDRtMm80bGtkMDNzY0hfeEFyTWVTM2pxeHFvYVdoZW8iLCJ0eXAiOiJzdGF0dXNsaXN0K2p3dCJ9.eyJzdWIiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZC9zdGF0dXMtbGlzdHMvMjA0NTQvOWUyZDhmOTY5NjYyZmQ3YzY4YzljYzY4YzdiMjA1YzgvMC5qd3QiLCJpYXQiOjE3NjcyNDU2NzEsImV4cCI6MTc2NzI0NjI2OSwidHRsIjoxMjAsInN0YXR1c19saXN0Ijp7ImJpdHMiOjEsImxzdCI6ImVOcGpBQUFBQVFBQiJ9fQ.kK9ohrGJ0DNN1kE5Li95E359KXjJR_6Ri7QoWoSn7Dyl8UhaZtCmjdk8i0J4qZJDySUtJXgdcPSHpGvT1bmBXHdhsFkdFl2cpxbkY0GdZYQig2smDDIkH-eqL7KwmdDcXehUbcTlJQ4Qfu9ncjvy0FpzTbDxMDXdxbgtrvkvSogcc9GPywUrtNxZheouBgiq49ohqBIM3K-29OWlkyur1yyAnoUtzTR3CpH_CAus7uuiKOfu-1Xs1X2F4l2JWrsRFF1joxLB9OUVX3wlv7IQfLIis2FGf-mARhu-9GSlbYZO5YeXNoU5IbrQy5aQHPANJulbvdEXbPBPbxILnnRtUQ"
     },
-    "status_jwks": {
-      "keys": [
-        {
-          "kty": "RSA",
-          "n": "zvh2fntchh51kVXPblIG2eeggjb0bya6jHF5xOsHTUhr8bi01jmbNjP29oPeFyoztGGKpndDxqt9qHvOL5x3euFKrm6kZywZ_XDVfdZVm7icnpybEmNdammqZcf97EIwOr_mczhRZ9QYK7SsSnBEQW1-BAs9dEHxNT39VqHjCq81uhzLKeemrpW4Kim_s4iYmoRoVkiPHghPhGo9CKXNXj2tGyDmj5hwuXa_gv5sZu5C7u0L9y4T25a-VHFVyUnCoa1yhyiT3teW3256KPmA6rBz1YhdLOCnwWDqIaBGOe4J6gkIODNCuCHwtI8JnX3gcRni_Pz19f3SNqtEJMvWjw",
-          "e": "AQAB",
-          "kid": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
-          "alg": "RS256",
-          "use": "sig",
-          "key_ops": [
-            "verify"
-          ]
-        }
-      ]
-    },
+    "status_jwks_hex": "7b226b657973223a5b7b226b7479223a22525341222c226e223a227a766832666e7463686835316b565850626c494732656567676a6230627961366a484635784f73485455687238626930316a6d624e6a5032396f506546796f7a7447474b706e6444787174397148764f4c3578336575464b726d366b5a79775a5f58445666645a566d3769636e707962456d4e64616d6d715a636639374549774f725f6d637a68525a3951594b375373536e42455157312d42417339644548784e5433395671486a4371383175687a4c4b65656d727057344b696d5f733469596d6f526f566b69504867685068476f39434b584e586a32744779446d6a3568777558615f677635735a7535433775304c397934543235612d5648465679556e436f6131796879695433746557333235364b506d413672427a315968644c4f436e77574471496142474f65344a36676b494f444e43754348777449384a6e58336763526e695f507a31396633534e7174454a4d76576a77222c2265223a2241514142222c226b6964223a224a46784d31375170534d4770346d326f346c6b6430337363485f7841724d6553336a7178716f615768656f222c22616c67223a225253323536222c22757365223a22736967222c226b65795f6f7073223a5b22766572696679225d7d5d7d",
+    "status_resolved_at": 1767245671,
     "continuity_chain": [
       {
         "manifest": {
@@ -98,18 +85,26 @@
           "status_lists": [
             {
               "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
-              "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46"
+              "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46",
+              "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+              "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
             }
           ],
           "successor": null,
           "authority": {
             "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-            "issued_at": 1767245669
+            "issued_at": 1767245671,
+            "checkpoint": {
+              "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+              "branch": "main",
+              "commit_oid": "b948cdc6c55c81e69465e8a71226da306c06fe5ceda9531cc76a563935ef77e0",
+              "observed_at": 1767245671
+            }
           },
           "authority_proof": {
             "type": "radicle-ed25519",
             "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-            "signature": "b43e38856c4a1ebed05f0c685a2454f567359bf8e4423dc0626952942cc20e0bafa4f6428be998ce43dc267a1fc9e5a1251373cdbe91e20770faa9772521ed05"
+            "signature": "bc18b51436ed6974f6948ad67904b8c31e677ff2dac80059a02054833a65cd6a713288808418d7e65b3ced0ec5ebbff98d568a0ef06b04dc8395451776d06d07"
           }
         },
         "ledger_replay": {
@@ -5857,6 +5852,17 @@
           "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
           "now": 1767245671,
           "succession_authority": null,
+          "kel_transition": {
+            "persona_root_npub": "npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+            "previous_head": null,
+            "current_head": {
+              "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+              "seq": 0
+            },
+            "valid_from": 1767245671,
+            "valid_until": 1767247269,
+            "core_kel_authority_valid": true
+          },
           "current_epoch_authority": {
             "npub": "npub1ccz8l9zpa47k6vz9gphftsrumpw80rjt3nhnefat4symjhrsnmjs38mnyd",
             "kel_head": {
@@ -5873,7 +5879,7 @@
     "media_type": "application/statuslist+jwt",
     "now": 1767245791,
     "mutation_table": {
-      "ttl_boundary": "oidc-status-stale",
+      "ttl_boundary": "fresh-at-equality",
       "expired": "oidc-status-stale",
       "bad_signature": "oidc-status-invalid",
       "malformed_zlib": "oidc-status-invalid",
@@ -5881,13 +5887,33 @@
     }
   },
   "expected_output": {
-    "verdict": "reject",
-    "reason_code": "oidc-status-stale",
+    "verdict": "accept",
     "normalized": {
       "status": {
-        "allowed": false,
-        "state": "invalid",
-        "reason_code": "oidc-status-stale"
+        "allowed": true,
+        "state": "active",
+        "reason_code": null
+      },
+      "mutation_results": {
+        "ttl_boundary": {
+          "verdict": "accept"
+        },
+        "expired": {
+          "verdict": "reject",
+          "reason_code": "oidc-token-type-invalid"
+        },
+        "bad_signature": {
+          "verdict": "reject",
+          "reason_code": "oidc-status-digest-mismatch"
+        },
+        "malformed_zlib": {
+          "verdict": "reject",
+          "reason_code": "oidc-status-digest-mismatch"
+        },
+        "out_of_range": {
+          "verdict": "reject",
+          "reason_code": "oidc-status-index-invalid"
+        }
       }
     }
   },

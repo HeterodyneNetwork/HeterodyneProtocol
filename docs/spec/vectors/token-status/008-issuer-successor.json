@@ -35,21 +35,29 @@
       "status_lists": [
         {
           "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
-          "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46"
+          "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46",
+          "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+          "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
         }
       ],
       "successor": {
         "issuer": "https://successor.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
-        "manifest_sha256": "beeedb43cd7b735a8327a5df8aa5084e7c2346c63131219b9d1c0c78b2ebd8c4"
+        "manifest_sha256": "7f6473e7e0ee2d367e261b4c99dbad30edeabf185a7e843c9c8e56f1131645b6"
       },
       "authority": {
         "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-        "issued_at": 1767245669
+        "issued_at": 1767245671,
+        "checkpoint": {
+          "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+          "branch": "main",
+          "commit_oid": "b948cdc6c55c81e69465e8a71226da306c06fe5ceda9531cc76a563935ef77e0",
+          "observed_at": 1767245671
+        }
       },
       "authority_proof": {
         "type": "radicle-ed25519",
         "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-        "signature": "bc27cd7a0d11c8955f296759d7fd289be37f9e7208f3991644a19538f54910c7ab5bf687fd182c6fb203b4c4d369ae593aabd95f8e202fd0722a32eb1d5fe50d"
+        "signature": "80341aa5242f03a8eeff767513a976328a323ab60bb72b5fd4752e9bcf5406348a7bbfdd3a61d0ac4bd6ffa7d495eb9f9546dfd91c32e1672ba87d9706b0f207"
       }
     },
     "candidate": {
@@ -64,7 +72,7 @@
       },
       "issuer": "https://successor.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
       "sequence": 1,
-      "predecessor_digest": "57c575772f9a9dd78297fa47cac0bf33e41cf58f14d9ba8df15ec3046371b485",
+      "predecessor_digest": "119143e857c1f0a9e6f8a3e35c3ef5269c5c91ecb81c4a18ee4cd940069272d8",
       "max_checkpoint_age_seconds": 300,
       "current_jwks_sha256": "634d732b0c9249e80fde72997e17f051ac2b1828ff1f67010b70b5d6d7acd2ec",
       "current_signing_key_id": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
@@ -74,18 +82,26 @@
       "status_lists": [
         {
           "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
-          "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46"
+          "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46",
+          "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+          "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
         }
       ],
       "successor": null,
       "authority": {
         "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-        "issued_at": 1767245669
+        "issued_at": 1767245671,
+        "checkpoint": {
+          "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+          "branch": "main",
+          "commit_oid": "b948cdc6c55c81e69465e8a71226da306c06fe5ceda9531cc76a563935ef77e0",
+          "observed_at": 1767245671
+        }
       },
       "authority_proof": {
         "type": "radicle-ed25519",
         "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-        "signature": "91cc594e6637406f45c7e2a0a5802f716d23699ab2844b69faa14f3170f8f4e2dccc71ffb6e2a8039f3da837ec1ec8e786106d0a52c8be0e01df4e80f211f90b"
+        "signature": "c528f8a72174dcf83dc3bd47f3a10d73b740a9c783cba7dad6153cfbc653159c2350ff01a46869e9256c1c8c44d6ed5eab5787fba2619059f3137af8b698750d"
       }
     },
     "ledger_replay": {
@@ -5835,7 +5851,21 @@
       "succession_authority": {
         "authority": "current-persona-epoch",
         "signer_pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-        "signature": "0f1589c97c6d750ba39362e65194b85e51d93c5e845f44bb54e10abeced79bd7d581f41328247c73cd01fcd3b9f1b148bf57e767a83aa8c2af8c8a675bea63bb"
+        "signature": "2fa97ad50b65143472ec12a182a2d2903b2f521f4e0a6dce5ea38fd0b072db19fe0d9ecac86999be8d989a610998e39970d62cb3d0fb142c3c881e3efcae21ec"
+      },
+      "kel_transition": {
+        "persona_root_npub": "npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+        "previous_head": {
+          "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "seq": 0
+        },
+        "current_head": {
+          "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "seq": 0
+        },
+        "valid_from": 1767245671,
+        "valid_until": 1767247269,
+        "core_kel_authority_valid": true
       },
       "current_epoch_authority": {
         "npub": "npub1ccz8l9zpa47k6vz9gphftsrumpw80rjt3nhnefat4symjhrsnmjs38mnyd",
@@ -5864,7 +5894,25 @@
       "reason_code": null,
       "active_issuer": "https://successor.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
       "standard_oidc_action": "register-successor",
-      "heterodyne_fallback": "radicle-canonical-main"
+      "heterodyne_fallback": "radicle-canonical-main",
+      "mutation_results": {
+        "missing_persona_proof": {
+          "verdict": "reject",
+          "reason_code": "oidc-issuer-authority-invalid"
+        },
+        "predecessor_nibble": {
+          "verdict": "reject",
+          "reason_code": "oidc-issuer-authority-invalid"
+        },
+        "wrong_successor_url": {
+          "verdict": "reject",
+          "reason_code": "oidc-issuer-authority-invalid"
+        },
+        "old_https_issuer": {
+          "verdict": "reject",
+          "reason_code": "oidc-issuer-authority-invalid"
+        }
+      }
     }
   },
   "direction": "consume"

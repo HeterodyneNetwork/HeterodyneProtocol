@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createPrivateKey, sign, type JsonWebKey } from "node:crypto";
 import { ed25519 } from "@noble/curves/ed25519";
 import { nip19 } from "nostr-tools";
 import {
@@ -339,7 +339,8 @@ export function replayOidcVector(input: unknown): unknown {
         );
         const continuity = validatedContinuityChainFromReplay(spec.continuity_chain, spec.ledger_replay);
         decision = validateTokenStatus(referenced, spec.status_token as unknown as StatusListToken,
-          spec.status_jwks!, options.now, continuity);
+          Buffer.from(String(spec.status_jwks_hex), "hex"), options.now,
+          Number(spec.status_resolved_at), continuity);
       } catch {
         decision = { allowed: false, state: "invalid", reason_code: "oidc-status-invalid" };
       }
@@ -386,8 +387,10 @@ export async function buildOidcVectors(fixtures: Fixtures): Promise<AuthoredVect
     current_signing_key_id: OIDC_RSA_ONE.key_id,
     current_signing_jwk_sha256: createHash("sha256").update(jcsCanonicalize(OIDC_RSA_ONE.public_jwk)).digest("hex"),
     retiring_signing_key_ids: [], retiring_jwks_sha256: [],
-    status_lists: [{ path: x.projection.status_mirror.path, sha256: statusDigest }], successor: null,
-    authority: { writer_nid: x.s.writerOne.did_key, issued_at: x.issuance.issued_at },
+    status_lists: [{ path: x.projection.status_mirror.path, sha256: statusDigest,
+      issuer: x.metadata.issuer, uri: statusUri }], successor: null,
+    authority: { writer_nid: x.s.writerOne.did_key, issued_at: x.issuedState.checkpoint.observed_at,
+      checkpoint: x.issuedState.checkpoint },
   };
   const statusManifest: ContinuityManifest = { ...statusManifestBody,
     authority_proof: createContinuityAuthorityProof(statusManifestBody, x.s.writerOne.private_key) };
@@ -396,7 +399,10 @@ export async function buildOidcVectors(fixtures: Fixtures): Promise<AuthoredVect
   const statusContinuityContext = {
     identity: x.identity, expected_kel_head: fixtures.kel.alice.head, repository_rid: x.s.rid,
     canonical_branch: "main", writer_nid: x.s.writerOne.did_key, now: x.issuedState.checkpoint.observed_at,
-    succession_authority: null, current_epoch_authority: { npub: x.epoch, kel_head: fixtures.kel.alice.head,
+    succession_authority: null, kel_transition: { persona_root_npub: x.root, previous_head: null,
+      current_head: fixtures.kel.alice.head, valid_from: x.issuedState.checkpoint.observed_at,
+      valid_until: x.issuance.expires_at + 1_000, core_kel_authority_valid: true },
+    current_epoch_authority: { npub: x.epoch, kel_head: fixtures.kel.alice.head,
       valid_from: x.issuance.issued_at, valid_until: x.issuance.expires_at + 1_000, core_kel_authority_valid: true },
   };
   const statusContinuityChain = [{ manifest: statusManifest as unknown as JsonValue,
@@ -414,7 +420,8 @@ export async function buildOidcVectors(fixtures: Fixtures): Promise<AuthoredVect
     compact: token.compact, expected_audience: options.token_use === "id_token" ? CLIENT.client_id : API,
     expected_issuer: x.metadata.issuer, expected_jwks_uri: x.metadata.jwks_uri, options: options as unknown as JsonValue,
     ...(withStatus ? { status_token: statusToken as unknown as JsonValue,
-      status_jwks: jwks as unknown as JsonValue, status_media_type: STATUS_LIST_MEDIA_TYPE,
+      status_jwks_hex: jwksBytes.toString("hex"), status_resolved_at: statusToken.claims.iat,
+      status_media_type: STATUS_LIST_MEDIA_TYPE,
       continuity_chain: statusContinuityChain as unknown as JsonValue } : {}),
   });
   const authored = (path: string, id: string, description: string, input: ReplayInput): AuthoredVector =>
@@ -464,7 +471,27 @@ export async function buildOidcVectors(fixtures: Fixtures): Promise<AuthoredVect
   ];
 }
 
+type MutationOutcome = { verdict: "accept" | "reject"; reason_code?: string | null };
+
 export function replayTokenStatusVector(input: unknown): unknown {
+  const result = replayTokenStatusVectorCore(input) as Record<string, unknown>;
+  const mutationResults = replayTokenStatusMutationTable(input);
+  if (Object.keys(mutationResults).length === 0) return result;
+  return { ...result, normalized: { ...((result.normalized as Record<string, unknown> | undefined) ?? {}),
+    mutation_results: mutationResults } };
+}
+
+export function replayTokenStatusMutationTable(input: unknown): Record<string, MutationOutcome> {
+  const spec = structuredClone(input) as ReplayInput;
+  const table = spec.mutation_table;
+  if (table === undefined || table === null || typeof table !== "object" || Array.isArray(table)) return {};
+  delete spec.mutation_table;
+  const results: Record<string, MutationOutcome> = {};
+  for (const name of Object.keys(table as Record<string, JsonValue>)) results[name] = replayNamedTokenStatusMutation(name, spec);
+  return results;
+}
+
+function replayTokenStatusVectorCore(input: unknown): unknown {
   const spec = input as ReplayInput;
   try {
     if (spec.operation === "status-encoding") {
@@ -477,7 +504,8 @@ export function replayTokenStatusVector(input: unknown): unknown {
         String(spec.audience), spec.referenced_jwks!, spec.options as unknown as JwtValidationOptions);
       const continuity = validatedContinuityChainFromReplay(spec.continuity_chain, spec.ledger_replay);
       const decision = validateTokenStatus(context, spec.status_token as unknown as StatusListToken,
-        spec.status_jwks!, Number(spec.now), continuity);
+        Buffer.from(String(spec.status_jwks_hex), "hex"), Number(spec.now),
+        Number(spec.status_resolved_at), continuity);
       const sharedKeyAttempt = spec.shared_key_succession_attempt === undefined ? undefined :
         replayTokenStatusVector(spec.shared_key_succession_attempt);
       const normalized = { status: decision,
@@ -538,6 +566,153 @@ export function replayTokenStatusVector(input: unknown): unknown {
       message.includes("digest") ? "oidc-status-digest-mismatch" : "oidc-status-invalid";
     return { verdict: "reject", reason_code: reason };
   }
+}
+
+function replayNamedTokenStatusMutation(name: string, base: ReplayInput): MutationOutcome {
+  const replay = (candidate: ReplayInput): MutationOutcome => {
+    const output = replayTokenStatusVectorCore(candidate) as Record<string, unknown>;
+    return { verdict: output.verdict === "accept" ? "accept" : "reject",
+      ...(typeof output.reason_code === "string" ? { reason_code: output.reason_code } : {}) };
+  };
+  const clone = <T>(value: T): T => structuredClone(value);
+  const flippedHex = (value: JsonValue): string => {
+    const source = String(value);
+    return `${source.slice(0, -1)}${source.endsWith("0") ? "1" : "0"}`;
+  };
+  const status = () => clone(base.status_token as unknown as StatusListToken);
+  const manifest = () => clone(base.manifest as unknown as ContinuityManifest);
+  const candidate = () => clone(base.candidate as unknown as ContinuityManifest);
+  const context = () => clone(base.context as unknown as Record<string, JsonValue>);
+  switch (name) {
+    case "bit_0": return replay({ operation: "status-encoding", statuses: [1, 0, 0, 0, 0, 0, 0, 0] });
+    case "bit_7": return replay({ operation: "status-encoding", statuses: [0, 0, 0, 0, 0, 0, 0, 1] });
+    case "bit_8": return replay({ operation: "status-encoding", statuses: [0, 0, 0, 0, 0, 0, 0, 0, 1] });
+    case "padding": return replay({ operation: "status-encoding", statuses: [1] });
+    case "valid_to_invalid": return replay(base);
+    case "invalid_to_valid_without_resign": {
+      const token = status(); token.claims.status_list = encodeStatusList([0]);
+      return replay({ ...base, operation: "status-validation", status_token: token as unknown as JsonValue });
+    }
+    case "ttl_boundary": return replay(base);
+    case "expired": return replay({ ...base, now: (base.status_token as unknown as StatusListToken).claims.exp });
+    case "bad_signature": {
+      const token = status(); token.compact = `${token.compact}x`;
+      return replay({ ...base, status_token: token as unknown as JsonValue });
+    }
+    case "malformed_zlib": {
+      const token = status(); token.claims.status_list = { bits: 1, lst: "eA" };
+      token.compact = resignCompact(token.compact, token.claims, token.protected_header.kid);
+      return replay({ ...base, status_token: token as unknown as JsonValue });
+    }
+    case "out_of_range": {
+      const compact = mutateAndResignCompact(String(base.referenced_compact), (claims) => {
+        const statusClaim = claims.status as Record<string, JsonValue>;
+        const reference = statusClaim.status_list as Record<string, JsonValue>;
+        reference.idx = 8;
+      }, OIDC_RSA_ONE.private_jwk);
+      return replay({ ...base, referenced_compact: compact });
+    }
+    case "same_writer_same_index": return replay(base);
+    case "distinct_writer_namespace": return replay({ ...base, list_sequence: Number(base.list_sequence) + 1,
+      existing: clone(base.existing as unknown as IssuanceRecord[]).slice(0, 1) as unknown as JsonValue });
+    case "noncontiguous_prefix": {
+      const existing = clone(base.existing as unknown as IssuanceRecord[]);
+      existing.splice(1); existing[0].reservation.idx = 1;
+      return replay({ ...base, existing: existing as unknown as JsonValue });
+    }
+    case "jwks_byte": return replay({ ...base, jwks_hex: flippedHex(base.jwks_hex) });
+    case "status_byte": {
+      const tokens = clone(base.status_tokens as unknown as Array<{ path: string; hex: string }>);
+      tokens[0].hex = flippedHex(tokens[0].hex);
+      return replay({ ...base, status_tokens: tokens as unknown as JsonValue });
+    }
+    case "path_case": {
+      const tokens = clone(base.status_tokens as unknown as Array<{ path: string; hex: string }>);
+      tokens[0].path = tokens[0].path.replace(".well-known", ".WELL-known");
+      return replay({ ...base, status_tokens: tokens as unknown as JsonValue });
+    }
+    case "branch_not_main": {
+      const changed = manifest(); changed.branch = "dev" as never;
+      return replay({ ...base, manifest: changed as unknown as JsonValue });
+    }
+    case "digest_nibble": {
+      const changed = manifest(); changed.current_jwks_sha256 = flippedHex(changed.current_jwks_sha256);
+      return replay({ ...base, manifest: changed as unknown as JsonValue });
+    }
+    case "byte_mismatch": return replay({ ...base, jwks_hex: flippedHex(base.jwks_hex) });
+    case "extra_status_path": {
+      const tokens = clone(base.status_tokens as unknown as Array<{ path: string; hex: string }>);
+      tokens.push({ path: `${tokens[0].path}.extra`, hex: tokens[0].hex });
+      return replay({ ...base, status_tokens: tokens as unknown as JsonValue });
+    }
+    case "https_outage": return replay(base);
+    case "stale_kel_head": {
+      const changed = context(); changed.expected_kel_head = { id: "00".repeat(32), seq: 0 };
+      return replay({ ...base, context: changed as unknown as JsonValue });
+    }
+    case "unauthorized_writer": {
+      const changed = context(); changed.writer_nid = "did:key:z6MkiTBz1yYdFZKmU8w4ASzQmY9vVgrJ8q8YwP9QZV5jB9aa";
+      return replay({ ...base, context: changed as unknown as JsonValue });
+    }
+    case "standard_oidc": return replay(base);
+    case "missing_persona_proof": {
+      const changed = context(); changed.succession_authority = null;
+      return replay({ ...base, context: changed as unknown as JsonValue });
+    }
+    case "predecessor_nibble": {
+      const changed = candidate(); changed.predecessor_digest = flippedHex(changed.predecessor_digest!);
+      return replay({ ...base, candidate: changed as unknown as JsonValue });
+    }
+    case "wrong_successor_url": {
+      const changed = candidate(); changed.issuer = changed.issuer.replace("successor.example", "wrong.example");
+      return replay({ ...base, candidate: changed as unknown as JsonValue });
+    }
+    case "old_https_issuer": {
+      const changed = candidate(); changed.issuer = (base.previous as unknown as ContinuityManifest).issuer;
+      return replay({ ...base, candidate: changed as unknown as JsonValue });
+    }
+    case "compromised_key_bit": return replay(base);
+    case "shared_key_only_successor": {
+      const attempt = clone(base.shared_key_succession_attempt as unknown as ReplayInput);
+      if (attempt.ledger_replay_ref === "current") attempt.ledger_replay = base.ledger_replay;
+      return replay(attempt);
+    }
+    case "retain_compromised_key": {
+      const evidence = clone(base.evidence_cases as unknown as ReplayInput[])[1];
+      if (evidence.ledger_replay_ref === "current") evidence.ledger_replay = base.ledger_replay;
+      return replay(evidence);
+    }
+    case "drop_status_before_expiry": {
+      const evidence = clone(base.evidence_cases as unknown as ReplayInput[])[0];
+      if (evidence.ledger_replay_ref === "current") evidence.ledger_replay = base.ledger_replay;
+      const changed = clone(evidence.candidate as unknown as ContinuityManifest); changed.status_lists = [];
+      return replay({ ...evidence, candidate: changed as unknown as JsonValue });
+    }
+    default: throw new Error(`unimplemented token-status mutation case: ${name}`);
+  }
+}
+
+function resignCompact(compact: string, claims: JsonValue, kid: string): string {
+  const fixture = kid === OIDC_RSA_TWO.key_id ? OIDC_RSA_TWO : OIDC_RSA_ONE;
+  const [header] = compact.split(".");
+  const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
+  const signingInput = `${header}.${payload}`;
+  const key = createPrivateKey({ key: fixture.private_jwk as JsonWebKey, format: "jwk" });
+  return `${signingInput}.${sign("RSA-SHA256", Buffer.from(signingInput), key).toString("base64url")}`;
+}
+
+function mutateAndResignCompact(
+  compact: string,
+  mutate: (claims: Record<string, JsonValue>) => void,
+  privateJwk: JsonValue,
+): string {
+  const [header, payload] = compact.split(".");
+  const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as Record<string, JsonValue>;
+  mutate(claims);
+  const encoded = Buffer.from(JSON.stringify(claims)).toString("base64url");
+  const signingInput = `${header}.${encoded}`;
+  const key = createPrivateKey({ key: privateJwk as JsonWebKey, format: "jwk" });
+  return `${signingInput}.${sign("RSA-SHA256", Buffer.from(signingInput), key).toString("base64url")}`;
 }
 
 function validatedContinuityChainFromReplay(value: JsonValue | undefined, currentLedgerReplay?: JsonValue) {
@@ -669,8 +844,10 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
     current_signing_key_id: OIDC_RSA_ONE.key_id,
     current_signing_jwk_sha256: currentSigningJwkDigest,
     retiring_signing_key_ids: [], retiring_jwks_sha256: [],
-    status_lists: [{ path: statusPath, sha256: createHash("sha256").update(validStatus.compact).digest("hex") }],
-    successor: null, authority: { writer_nid: x.s.writerOne.did_key, issued_at: x.issuance.issued_at },
+    status_lists: [{ path: statusPath, sha256: createHash("sha256").update(validStatus.compact).digest("hex"),
+      issuer: x.metadata.issuer, uri }],
+    successor: null, authority: { writer_nid: x.s.writerOne.did_key,
+      issued_at: x.issuedState.checkpoint.observed_at, checkpoint: x.issuedState.checkpoint },
   };
   const manifest: ContinuityManifest = { ...manifestBody,
     authority_proof: createContinuityAuthorityProof(manifestBody, x.s.writerOne.private_key) };
@@ -688,6 +865,9 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
     identity: x.identity, expected_kel_head: fixtures.kel.alice.head, repository_rid: x.s.rid,
     canonical_branch: "main", writer_nid: x.s.writerOne.did_key,
     now: x.issuedState.checkpoint.observed_at, succession_authority: null,
+    kel_transition: { persona_root_npub: root, previous_head: null, current_head: fixtures.kel.alice.head,
+      valid_from: x.issuedState.checkpoint.observed_at, valid_until: x.issuance.expires_at + 1_000,
+      core_kel_authority_valid: true },
     current_epoch_authority: { npub: x.epoch, kel_head: fixtures.kel.alice.head,
       valid_from: x.issuance.issued_at, valid_until: x.issuance.expires_at + 1_000,
       core_kel_authority_valid: true },
@@ -716,7 +896,9 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
   const successionProof = createPersonaSuccessionProof(successor, "current-persona-epoch",
     fixtures.personas.alice.epoch_keys.epoch_1.private_key);
   const successionContext = { ...continuityContext, now: x.issuance.expires_at,
-    succession_authority: successionProof };
+    succession_authority: successionProof,
+    kel_transition: { ...continuityContext.kel_transition, previous_head: boundPrevious.persona_kel_head,
+      current_head: successor.persona_kel_head, valid_from: successor.authority.issued_at } };
   const successionInput: ReplayInput = { operation: "continuity", previous: boundPrevious as unknown as JsonValue,
     candidate: successor as unknown as JsonValue, ledger_replay: ledgerReplay,
     context: successionContext as unknown as JsonValue, standard_oidc_action: "register-successor" };
@@ -724,10 +906,15 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
     context: { ...successionContext, succession_authority: null } as unknown as JsonValue };
 
   const refreshedBody = { ...manifestBody, sequence: 1, predecessor_digest: continuityManifestDigest(manifest),
-    status_lists: [{ path: statusPath, sha256: createHash("sha256").update(invalidStatus.compact).digest("hex") }] };
+    status_lists: [{ path: statusPath, sha256: createHash("sha256").update(invalidStatus.compact).digest("hex"),
+      issuer: x.metadata.issuer, uri }],
+    authority: { writer_nid: x.s.writerOne.did_key, issued_at: invalidatedState.checkpoint.observed_at,
+      checkpoint: invalidatedState.checkpoint } };
   const refreshedManifest: ContinuityManifest = { ...refreshedBody,
     authority_proof: createContinuityAuthorityProof(refreshedBody, x.s.writerOne.private_key) };
-  const refreshedContext = { ...continuityContext, now: invalidatedState.checkpoint.observed_at };
+  const refreshedContext = { ...continuityContext, now: invalidatedState.checkpoint.observed_at,
+    kel_transition: { ...continuityContext.kel_transition, previous_head: manifest.persona_kel_head,
+      current_head: refreshedManifest.persona_kel_head, valid_from: refreshedManifest.authority.issued_at } };
   const refreshAccepted: ReplayInput = { operation: "continuity", previous: manifest as unknown as JsonValue,
     candidate: refreshedManifest as unknown as JsonValue, ledger_replay: invalidatedReplay,
     context: refreshedContext as unknown as JsonValue };
@@ -755,15 +942,19 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
   const validReferenced = projectAccessToken(anchoredProjection);
   const invalidReferenced = validReferenced;
   const statusInput = (status: StatusListToken, referenced: typeof validReferenced,
-    chain: JsonValue, now = status.claims.iat, statusJwks: JsonValue = jwks as unknown as JsonValue): ReplayInput => ({
+    chain: JsonValue, now = status.claims.iat, statusJwksBytes: Uint8Array = jwksBytes,
+    statusResolvedAt = status.claims.iat): ReplayInput => ({
     operation: "status-validation", referenced_compact: referenced.compact, issuer: x.metadata.issuer,
     audience: API, referenced_jwks: jwks as unknown as JsonValue, options: options as unknown as JsonValue,
-    status_token: status as unknown as JsonValue, status_jwks: statusJwks,
+    status_token: status as unknown as JsonValue,
+    status_jwks_hex: Buffer.from(statusJwksBytes).toString("hex"), status_resolved_at: statusResolvedAt,
     continuity_chain: chain, media_type: STATUS_LIST_MEDIA_TYPE, now,
   });
   const rotatedBody = { ...manifestBody, sequence: 1, predecessor_digest: continuityManifestDigest(manifest),
-    status_lists: [{ path: statusPath, sha256: createHash("sha256").update(compromiseStatus.compact).digest("hex") }],
-    authority: { writer_nid: x.s.writerTwo.did_key, issued_at: rotatedState.checkpoint.observed_at },
+    status_lists: [{ path: statusPath, sha256: createHash("sha256").update(compromiseStatus.compact).digest("hex"),
+      issuer: x.metadata.issuer, uri }],
+    authority: { writer_nid: x.s.writerTwo.did_key, issued_at: rotatedState.checkpoint.observed_at,
+      checkpoint: rotatedState.checkpoint },
     current_jwks_sha256: rotatedJwksDigest,
     current_signing_key_id: OIDC_RSA_TWO.key_id,
     current_signing_jwk_sha256: rotatedSigningJwkDigest,
@@ -771,7 +962,9 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
   const rotatedManifest: ContinuityManifest = { ...rotatedBody,
     authority_proof: createContinuityAuthorityProof(rotatedBody, x.s.writerTwo.private_key) };
   const rotatedContinuityContext = { ...continuityContext, writer_nid: x.s.writerTwo.did_key,
-    now: rotatedState.checkpoint.observed_at };
+    now: rotatedState.checkpoint.observed_at,
+    kel_transition: { ...continuityContext.kel_transition, previous_head: manifest.persona_kel_head,
+      current_head: rotatedManifest.persona_kel_head, valid_from: rotatedManifest.authority.issued_at } };
   const rotatedContinuity: ReplayInput = { operation: "continuity", previous: manifest as unknown as JsonValue,
     candidate: rotatedManifest as unknown as JsonValue, ledger_replay_ref: "current",
     context: rotatedContinuityContext as unknown as JsonValue };
@@ -818,7 +1011,7 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
     }),
     authored("003-stale-status-list-rejected.json", "stale-status-list-rejected", "TTL equality, expiration, bad signature, malformed ZLIB, and out-of-range indexes fail closed.", {
       ...statusInput(validStatus, validReferenced, validChain, validStatus.claims.iat + validStatus.claims.ttl),
-      mutation_table: { ttl_boundary: "oidc-status-stale", expired: "oidc-status-stale",
+      mutation_table: { ttl_boundary: "fresh-at-equality", expired: "oidc-status-stale",
         bad_signature: "oidc-status-invalid", malformed_zlib: "oidc-status-invalid", out_of_range: "oidc-status-index-invalid" },
     }),
     authored("004-writer-index-collision-rejected.json", "writer-index-collision-rejected", "Duplicate writer-namespaced URI/index allocation is rejected before token return.", {
@@ -846,7 +1039,7 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
     }),
     authored("009-signing-key-compromise.json", "signing-key-compromise", "Signing-key compromise invalidates the referenced token; shared-key possession cannot authorize issuer succession.", {
       ...statusInput(compromiseStatus, invalidReferenced, compromiseChain, compromiseStatus.claims.iat,
-        { keys: [OIDC_RSA_TWO.public_jwk] } as unknown as JsonValue), operation: "status-generation",
+        rotatedJwksBytes), operation: "status-generation",
       ledger_replay: rotatedReplay, uri, iat: compromiseStatus.claims.iat,
       exp: compromiseStatus.claims.exp, ttl: compromiseStatus.claims.ttl,
       shared_key_succession_attempt: sharedKeyInsufficient as unknown as JsonValue,

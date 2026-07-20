@@ -84,7 +84,22 @@
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "claim-repository-conflict"
+    "reason_code": "claim-repository-conflict",
+    "normalized": {
+      "mutation_results": {
+        "same_writer_same_index": {
+          "verdict": "reject",
+          "reason_code": "claim-repository-conflict"
+        },
+        "distinct_writer_namespace": {
+          "verdict": "accept"
+        },
+        "noncontiguous_prefix": {
+          "verdict": "reject",
+          "reason_code": "oidc-status-invalid"
+        }
+      }
+    }
   },
   "direction": "consume"
 }

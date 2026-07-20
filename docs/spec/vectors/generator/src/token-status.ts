@@ -16,6 +16,7 @@ import {
   currentIssuerSigningKeyId,
   validateIssuanceRecordOrThrow,
   type IssuanceRecord,
+  type LedgerCheckpoint,
   type LedgerMergeResult,
 } from "./claim-ledger.js";
 import { type AuthorizationDecision, type JsonValue, type KeyProof } from "./claims.js";
@@ -62,9 +63,9 @@ export type ContinuityManifestBody = {
   current_signing_jwk_sha256: string;
   retiring_signing_key_ids: string[];
   retiring_jwks_sha256: string[];
-  status_lists: Array<{ path: string; sha256: string }>;
+  status_lists: Array<{ path: string; sha256: string; issuer: string; uri: string }>;
   successor: { issuer: string; manifest_sha256: string } | null;
-  authority: { writer_nid: string; issued_at: number };
+  authority: { writer_nid: string; issued_at: number; checkpoint: LedgerCheckpoint };
 };
 
 export type ContinuityManifest = ContinuityManifestBody & { authority_proof: KeyProof };
@@ -78,6 +79,14 @@ export type ContinuityValidationContext = {
   now: number;
   ledger_state: LedgerMergeResult | null;
   succession_authority: PersonaSuccessionProof | null;
+  kel_transition: {
+    persona_root_npub: string;
+    previous_head: { id: string; seq: number } | null;
+    current_head: { id: string; seq: number };
+    valid_from: number;
+    valid_until: number;
+    core_kel_authority_valid: true;
+  } | null;
   current_epoch_authority: {
     npub: string;
     kel_head: { id: string; seq: number };
@@ -131,8 +140,8 @@ export function generateStatusListToken(input: {
   requireExactStatusUri(input.uri);
   requireSafeTime(input.iat, "iat");
   requireSafeTime(input.exp, "exp");
-  if (input.exp <= input.iat || !Number.isSafeInteger(input.ttl) || input.ttl <= 0) {
-    throw new Error("oidc-status-stale: exp and positive integer ttl are required");
+  if (input.exp <= input.iat || !Number.isFinite(input.ttl) || input.ttl <= 0) {
+    throw new Error("oidc-status-stale: exp and positive finite ttl are required");
   }
   if (input.iat < input.state.checkpoint.observed_at) {
     throw new Error("oidc-status-stale: status iat predates its authoritative ledger checkpoint");
@@ -175,14 +184,16 @@ export function generateStatusListToken(input: {
 export function validateTokenStatus(
   referencedJwt: ValidatedProjectedJwtContext,
   statusListJwt: StatusListToken,
-  jwks: JsonValue,
+  jwksBytes: Uint8Array,
   now: number,
+  resolvedAt: number,
   continuity: ValidatedContinuityChainContext,
 ): AuthorizationDecision {
   try {
     assertValidatedProjectedJwtContext(referencedJwt);
     assertValidatedContinuityChain(continuity);
     requireSafeTime(now, "validation time");
+    requireFiniteTime(resolvedAt, "status resolution time");
     if (!Number.isSafeInteger(referencedJwt.claims.iat) || !Number.isSafeInteger(referencedJwt.claims.exp) ||
         Number(referencedJwt.claims.iat) > now || Number(referencedJwt.claims.exp) <= now) {
       return denied("oidc-token-type-invalid");
@@ -197,19 +208,21 @@ export function validateTokenStatus(
         mirror.repository_rid !== anchor.repository_rid || mirror.branch !== "main" ||
         continuityManifestDigest(anchor) !== mirror.sha256 || current.repository_rid !== mirror.repository_rid ||
         current.branch !== mirror.branch || typeof mirror.path !== "string" || currentStatus === undefined ||
+        currentStatus.uri !== reference.uri ||
         sha256Hex(utf8Bytes(statusListJwt.compact)) !== currentStatus.sha256) {
       return denied("oidc-status-digest-mismatch");
     }
+    const jwks = validateManifestJwks(current, jwksBytes);
     const parsed = verifyStatusListCompact(statusListJwt.compact, jwks);
     if (jcsCanonicalize(parsed.header) !== jcsCanonicalize(statusListJwt.protected_header) ||
         jcsCanonicalize(parsed.claims) !== jcsCanonicalize(statusListJwt.claims) ||
         statusListJwt.media_type !== STATUS_LIST_MEDIA_TYPE) return denied("oidc-status-invalid");
     const claims = parsed.claims;
-    const relativeStatusPath = String(mirror.path).slice(`.well-known/${current.cold_root_npub}/`.length);
-    if (claims.sub !== reference.uri || claims.sub !== `${current.issuer}/${relativeStatusPath}` ||
+    if (claims.sub !== reference.uri || claims.sub !== currentStatus.uri ||
         !Number.isSafeInteger(claims.iat) || !Number.isSafeInteger(claims.exp) ||
-        !Number.isSafeInteger(claims.ttl) || Number(claims.ttl) <= 0 || Number(claims.iat) > now ||
-        Number(claims.exp) <= now || Number(claims.iat) + Number(claims.ttl) <= now) {
+        typeof claims.ttl !== "number" || !Number.isFinite(claims.ttl) || claims.ttl <= 0 || resolvedAt > now ||
+        Number(claims.iat) < current.authority.checkpoint.observed_at || Number(claims.iat) > now ||
+        Number(claims.exp) <= now || resolvedAt + claims.ttl < now) {
       return denied("oidc-status-stale");
     }
     const list = objectValue(claims.status_list);
@@ -263,36 +276,17 @@ export function buildContinuityTree(
   const root = `.well-known/${manifest.cold_root_npub}`;
   const expectedStatus = new Map(manifest.status_lists.map((entry) => [entry.path, entry.sha256]));
   if (statusTokens.size !== expectedStatus.size) throw new Error("oidc-status-digest-mismatch: status set differs from manifest");
-  let publicJwks: JsonValue;
-  try { publicJwks = JSON.parse(Buffer.from(jwksBytes).toString("utf8")) as JsonValue; }
-  catch { throw new Error("oidc-status-digest-mismatch: JWKS bytes are not JSON"); }
-  const jwksObject = objectValue(publicJwks);
-  if (jwksObject === null || Object.keys(jwksObject).length !== 1 || !Array.isArray(jwksObject.keys)) {
-    throw new Error("oidc-status-digest-mismatch: JWKS bytes are not the closed public set");
-  }
-  if (sha256Hex(jwksBytes) !== manifest.current_jwks_sha256) {
-    throw new Error("oidc-status-digest-mismatch: exact JWKS bytes differ from manifest");
-  }
-  const keys = jwksObject.keys.map((value) => exactPublicRsaJwk(objectValue(value)!));
-  const keyDigests = keys.map((value) => sha256Hex(utf8Bytes(jcsCanonicalize(value)))).sort();
-  const keyIds = keys.map(({ kid }) => kid).sort();
-  const expectedKeyDigests = [manifest.current_signing_jwk_sha256, ...manifest.retiring_jwks_sha256].sort();
-  const expectedKeyIds = [manifest.current_signing_key_id, ...manifest.retiring_signing_key_ids].sort();
-  const currentKey = keys.find(({ kid }) => kid === manifest.current_signing_key_id);
-  if (currentKey === undefined ||
-      sha256Hex(utf8Bytes(jcsCanonicalize(currentKey))) !== manifest.current_signing_jwk_sha256 ||
-      jcsCanonicalize(keyDigests) !== jcsCanonicalize(expectedKeyDigests) ||
-      jcsCanonicalize(keyIds) !== jcsCanonicalize(expectedKeyIds)) {
-    throw new Error("oidc-status-digest-mismatch: current/retiring JWKS keys differ from manifest");
-  }
+  const publicJwks = validateManifestJwks(manifest, jwksBytes);
   for (const [path, bytes] of statusTokens) {
     if (!path.startsWith(`${root}/status-lists/`) || expectedStatus.get(path) !== sha256Hex(bytes)) {
       throw new Error("oidc-status-digest-mismatch: status bytes differ from manifest");
     }
     const compact = Buffer.from(bytes).toString("utf8");
     const parsedStatus = verifyStatusListCompact(compact, publicJwks);
-    const expectedSub = `${manifest.issuer}/${path.slice(`${root}/`.length)}`;
-    if (parsedStatus.claims.sub !== expectedSub) {
+    const expectedEntry = manifest.status_lists.find((entry) => entry.path === path);
+    if (expectedEntry === undefined || parsedStatus.claims.sub !== expectedEntry.uri ||
+        !Number.isSafeInteger(parsedStatus.claims.iat) ||
+        Number(parsedStatus.claims.iat) < manifest.authority.checkpoint.observed_at) {
       throw new Error("oidc-status-digest-mismatch: status subject/path differs from manifest");
     }
   }
@@ -318,20 +312,25 @@ export function resolveIssuerContinuity(
   try {
     validateOidcContinuityManifestSchemaOrThrow(candidate);
     validateManifestIntrinsic(candidate);
+    const checkpoint = context.ledger_state === null ? null : canonicalValidatedCheckpoint(context.ledger_state);
     if (context.canonical_branch !== "main" || candidate.branch !== "main" ||
         candidate.repository_rid !== context.repository_rid || candidate.repository_rid !== context.repository_rid ||
         jcsCanonicalize(candidate.persona_kel_head) !== jcsCanonicalize(context.expected_kel_head) ||
+        !validKelTransition(previous, candidate, context) ||
         !validateColdRootBinding(candidate.cold_root_npub, context.identity).allowed ||
         candidate.cold_root_npub !== context.identity.cold_root_npub ||
-        candidate.authority.writer_nid !== context.writer_nid || context.ledger_state === null ||
-        canonicalValidatedCheckpoint(context.ledger_state).repository_rid !== candidate.repository_rid ||
+        candidate.authority.writer_nid !== context.writer_nid || context.ledger_state === null || checkpoint === null ||
+        checkpoint.repository_rid !== candidate.repository_rid ||
+        jcsCanonicalize(candidate.authority.checkpoint) !== jcsCanonicalize(checkpoint) ||
         currentIssuerSigningKeyId(context.ledger_state) !== candidate.current_signing_key_id ||
         [...compromisedSigningKeyIds(context.ledger_state)]
           .some((keyId) => keyId === candidate.current_signing_key_id || candidate.retiring_signing_key_ids.includes(keyId)) ||
-        !activeIssuerWriterNidsAt(context.ledger_state, context.now).includes(context.writer_nid) ||
-        candidate.authority.issued_at > context.now || !verifyContinuityProof(candidate)) {
+        !activeIssuerWriterNidsAt(context.ledger_state, candidate.authority.issued_at).includes(context.writer_nid) ||
+        candidate.authority.issued_at < checkpoint.observed_at || candidate.authority.issued_at > context.now ||
+        !verifyContinuityProof(candidate)) {
       return deniedContinuity("oidc-issuer-authority-invalid");
     }
+    retainUnexpiredMaterial(candidate, context);
     if (previous === null) {
       if (candidate.sequence !== 0 || candidate.predecessor_digest !== null) {
         return deniedContinuity("oidc-issuer-mismatch");
@@ -344,15 +343,14 @@ export function resolveIssuerContinuity(
     validateOidcContinuityManifestSchemaOrThrow(previous);
     validateManifestIntrinsic(previous);
     if (!verifyContinuityProof(previous) || previous.repository_rid !== candidate.repository_rid ||
-        previous.cold_root_npub !== candidate.cold_root_npub || previous.cold_root_hex !== candidate.cold_root_hex ||
-        jcsCanonicalize(previous.persona_kel_head) !== jcsCanonicalize(candidate.persona_kel_head)) {
+        previous.cold_root_npub !== candidate.cold_root_npub || previous.cold_root_hex !== candidate.cold_root_hex) {
       return deniedContinuity("oidc-issuer-authority-invalid");
     }
     if (candidate.sequence !== previous.sequence + 1 ||
         candidate.predecessor_digest !== continuityManifestDigest(previous)) {
       return deniedContinuity("oidc-status-digest-mismatch");
     }
-    retainUnexpiredMaterial(previous, candidate, context);
+    validateRetainedStatusProvenance(previous, candidate);
     if (candidate.successor !== null && jcsCanonicalize(candidate.successor) !== jcsCanonicalize(previous.successor) &&
         !verifyPersonaSuccessionProof(candidate, context)) {
       return deniedContinuity("oidc-issuer-authority-invalid");
@@ -371,6 +369,19 @@ export function resolveIssuerContinuity(
     if (message.includes("digest") || message.includes("retained")) return deniedContinuity("oidc-status-digest-mismatch");
     return deniedContinuity("oidc-issuer-authority-invalid");
   }
+}
+
+function validKelTransition(
+  previous: ContinuityManifest | null,
+  candidate: ContinuityManifest,
+  context: ContinuityValidationContext,
+): boolean {
+  const evidence = context.kel_transition;
+  return evidence !== null && evidence.core_kel_authority_valid &&
+    evidence.persona_root_npub === candidate.cold_root_npub &&
+    jcsCanonicalize(evidence.previous_head) === jcsCanonicalize(previous?.persona_kel_head ?? null) &&
+    jcsCanonicalize(evidence.current_head) === jcsCanonicalize(candidate.persona_kel_head) &&
+    evidence.valid_from <= candidate.authority.issued_at && candidate.authority.issued_at < evidence.valid_until;
 }
 
 export function validateIssuerContinuityChain(
@@ -410,7 +421,7 @@ function verifyPersonaSuccessionProof(candidate: ContinuityManifest, context: Co
     const authority = context.current_epoch_authority;
     authorized = authority !== null && authority.core_kel_authority_valid &&
       jcsCanonicalize(authority.kel_head) === jcsCanonicalize(candidate.persona_kel_head) &&
-      authority.valid_from <= context.now && context.now < authority.valid_until &&
+      authority.valid_from <= candidate.authority.issued_at && candidate.authority.issued_at < authority.valid_until &&
       context.identity.epoch_npubs.includes(authority.npub) && (() => {
         try { const decoded = nip19.decode(authority.npub); return decoded.type === "npub" && decoded.data === proof.signer_pubkey; }
         catch { return false; }
@@ -435,7 +446,6 @@ export function continuitySuccessorDigest(manifest: ContinuityManifest): string 
 }
 
 function retainUnexpiredMaterial(
-  previous: ContinuityManifest,
   candidate: ContinuityManifest,
   context: ContinuityValidationContext,
 ): void {
@@ -460,9 +470,19 @@ function retainUnexpiredMaterial(
   const candidatePaths = new Set(candidate.status_lists.map(({ path }) => path));
   const requiredPaths = new Set(unexpired.map(({ reservation }) =>
     `.well-known/${candidate.cold_root_npub}/${reservation.uri}`));
-  const previousPaths = new Set(previous.status_lists.map(({ path }) => path));
   for (const path of requiredPaths) {
-    if (previousPaths.has(path) && !candidatePaths.has(path)) throw new Error("prior status list not retained through token expiry");
+    if (!candidatePaths.has(path)) throw new Error("prior status list not retained through token expiry");
+  }
+}
+
+function validateRetainedStatusProvenance(previous: ContinuityManifest, candidate: ContinuityManifest): void {
+  const prior = new Map(previous.status_lists.map((entry) => [entry.path, entry]));
+  for (const entry of candidate.status_lists) {
+    if (entry.issuer === candidate.issuer) continue;
+    const predecessor = prior.get(entry.path);
+    if (predecessor === undefined || predecessor.issuer !== entry.issuer || predecessor.uri !== entry.uri) {
+      throw new Error("retained status list issuer/URI lacks predecessor provenance");
+    }
   }
 }
 
@@ -504,9 +524,57 @@ function validateManifestIntrinsic(manifest: ContinuityManifest): void {
       jcsCanonicalize(manifest.retiring_jwks_sha256) !== jcsCanonicalize([...manifest.retiring_jwks_sha256].sort()) ||
       jcsCanonicalize(manifest.status_lists) !== jcsCanonicalize([...manifest.status_lists].sort((a, b) => a.path.localeCompare(b.path))) ||
       manifest.status_lists.some(({ path }) => !path.startsWith(`.well-known/${manifest.cold_root_npub}/status-lists/`)) ||
+      manifest.status_lists.some((entry) => !validStatusEntry(entry, manifest.cold_root_npub)) ||
+      (manifest.sequence === 0 && manifest.status_lists.some((entry) => entry.issuer !== manifest.issuer)) ||
       new Set(manifest.status_lists.map(({ path }) => path)).size !== manifest.status_lists.length) {
     throw new Error("oidc-status-digest-mismatch: manifest set is noncanonical");
   }
+}
+
+function validStatusEntry(
+  entry: ContinuityManifest["status_lists"][number],
+  coldRootNpub: string,
+): boolean {
+  try {
+    const issuer = new URL(entry.issuer);
+    return issuer.protocol === "https:" && issuer.username === "" && issuer.password === "" &&
+      issuer.search === "" && issuer.hash === "" && `${issuer.origin}${issuer.pathname}` === entry.issuer &&
+      issuer.pathname === `/oidc/${coldRootNpub}` &&
+      entry.uri === `${entry.issuer}/${entry.path.slice(`.well-known/${coldRootNpub}/`.length)}`;
+  } catch { return false; }
+}
+
+function validateManifestJwks(manifest: ContinuityManifest, jwksBytes: Uint8Array): JsonValue {
+  if (!(jwksBytes instanceof Uint8Array)) {
+    throw new Error("oidc-status-digest-mismatch: exact raw JWKS bytes are required");
+  }
+  let publicJwks: JsonValue;
+  try { publicJwks = JSON.parse(Buffer.from(jwksBytes).toString("utf8")) as JsonValue; }
+  catch { throw new Error("oidc-status-digest-mismatch: JWKS bytes are not JSON"); }
+  const jwksObject = objectValue(publicJwks);
+  if (jwksObject === null || Object.keys(jwksObject).length !== 1 || !Array.isArray(jwksObject.keys)) {
+    throw new Error("oidc-status-digest-mismatch: JWKS bytes are not the closed public set");
+  }
+  if (sha256Hex(jwksBytes) !== manifest.current_jwks_sha256) {
+    throw new Error("oidc-status-digest-mismatch: exact JWKS bytes differ from manifest");
+  }
+  const keys = jwksObject.keys.map((value) => {
+    const key = objectValue(value);
+    if (key === null) throw new Error("oidc-status-digest-mismatch: invalid public JWK");
+    return exactPublicRsaJwk(key);
+  });
+  const keyDigests = keys.map((value) => sha256Hex(utf8Bytes(jcsCanonicalize(value)))).sort();
+  const keyIds = keys.map(({ kid }) => String(kid)).sort();
+  const expectedKeyDigests = [manifest.current_signing_jwk_sha256, ...manifest.retiring_jwks_sha256].sort();
+  const expectedKeyIds = [manifest.current_signing_key_id, ...manifest.retiring_signing_key_ids].sort();
+  const currentKey = keys.find(({ kid }) => kid === manifest.current_signing_key_id);
+  if (currentKey === undefined ||
+      sha256Hex(utf8Bytes(jcsCanonicalize(currentKey))) !== manifest.current_signing_jwk_sha256 ||
+      jcsCanonicalize(keyDigests) !== jcsCanonicalize(expectedKeyDigests) ||
+      jcsCanonicalize(keyIds) !== jcsCanonicalize(expectedKeyIds)) {
+    throw new Error("oidc-status-digest-mismatch: current/retiring JWKS keys differ from manifest");
+  }
+  return publicJwks;
 }
 
 function verifyStatusListCompact(compact: string, jwks: JsonValue): {
@@ -600,6 +668,9 @@ function objectValue(value: unknown): Record<string, JsonValue> | null {
 function sha256Hex(value: Uint8Array): string { return createHash("sha256").update(value).digest("hex"); }
 function requireSafeTime(value: number, label: string): void {
   if (!Number.isSafeInteger(value) || value < 0) throw new Error(`oidc-status-stale: invalid ${label}`);
+}
+function requireFiniteTime(value: number, label: string): void {
+  if (!Number.isFinite(value) || value < 0) throw new Error(`oidc-status-stale: invalid ${label}`);
 }
 function accepted(): AuthorizationDecision { return { allowed: true, state: "active", reason_code: null }; }
 function denied(reason_code: string): AuthorizationDecision { return { allowed: false, state: "invalid", reason_code }; }

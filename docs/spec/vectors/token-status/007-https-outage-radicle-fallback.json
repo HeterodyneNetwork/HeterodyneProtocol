@@ -36,18 +36,26 @@
       "status_lists": [
         {
           "path": ".well-known/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
-          "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46"
+          "sha256": "e6e9a8fb55786b074efe7aef6800994635563972999fa00b4b0d91ba6e5fef46",
+          "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+          "uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt"
         }
       ],
       "successor": null,
       "authority": {
         "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-        "issued_at": 1767245669
+        "issued_at": 1767245671,
+        "checkpoint": {
+          "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+          "branch": "main",
+          "commit_oid": "b948cdc6c55c81e69465e8a71226da306c06fe5ceda9531cc76a563935ef77e0",
+          "observed_at": 1767245671
+        }
       },
       "authority_proof": {
         "type": "radicle-ed25519",
         "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-        "signature": "b43e38856c4a1ebed05f0c685a2454f567359bf8e4423dc0626952942cc20e0bafa4f6428be998ce43dc267a1fc9e5a1251373cdbe91e20770faa9772521ed05"
+        "signature": "bc18b51436ed6974f6948ad67904b8c31e677ff2dac80059a02054833a65cd6a713288808418d7e65b3ced0ec5ebbff98d568a0ef06b04dc8395451776d06d07"
       }
     },
     "ledger_replay": {
@@ -5795,6 +5803,17 @@
       "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
       "now": 1767245671,
       "succession_authority": null,
+      "kel_transition": {
+        "persona_root_npub": "npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+        "previous_head": null,
+        "current_head": {
+          "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "seq": 0
+        },
+        "valid_from": 1767245671,
+        "valid_until": 1767247269,
+        "core_kel_authority_valid": true
+      },
       "current_epoch_authority": {
         "npub": "npub1ccz8l9zpa47k6vz9gphftsrumpw80rjt3nhnefat4symjhrsnmjs38mnyd",
         "kel_head": {
@@ -5824,7 +5843,23 @@
       "reason_code": null,
       "active_issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
       "standard_oidc_action": "retain-exact-issuer",
-      "heterodyne_fallback": "radicle-canonical-main"
+      "heterodyne_fallback": "radicle-canonical-main",
+      "mutation_results": {
+        "https_outage": {
+          "verdict": "accept"
+        },
+        "stale_kel_head": {
+          "verdict": "reject",
+          "reason_code": "oidc-issuer-authority-invalid"
+        },
+        "unauthorized_writer": {
+          "verdict": "reject",
+          "reason_code": "oidc-issuer-authority-invalid"
+        },
+        "standard_oidc": {
+          "verdict": "accept"
+        }
+      }
     }
   },
   "direction": "consume"

@@ -44,10 +44,12 @@
       "type": "array", "uniqueItems": true,
       "items": {
         "type": "object", "additionalProperties": false,
-        "required": ["path", "sha256"],
+        "required": ["path", "sha256", "issuer", "uri"],
         "properties": {
           "path": { "type": "string", "pattern": "^\\.well-known/npub1[^/]+/status-lists/(0|[1-9][0-9]*)/[0-9a-f]{32}/(0|[1-9][0-9]*)\\.jwt$" },
-          "sha256": { "$ref": "#/definitions/sha256" }
+          "sha256": { "$ref": "#/definitions/sha256" },
+          "issuer": { "type": "string", "pattern": "^https://[^/?#]+/oidc/npub1[023456789acdefghjklmnpqrstuvwxyz]+$" },
+          "uri": { "type": "string", "pattern": "^https://[^/?#]+/oidc/npub1[023456789acdefghjklmnpqrstuvwxyz]+/status-lists/(0|[1-9][0-9]*)/[0-9a-f]{32}/(0|[1-9][0-9]*)\\.jwt$" }
         }
       }
     },
@@ -66,10 +68,20 @@
     },
     "authority": {
       "type": "object", "additionalProperties": false,
-      "required": ["writer_nid", "issued_at"],
+      "required": ["writer_nid", "issued_at", "checkpoint"],
       "properties": {
         "writer_nid": { "type": "string", "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$" },
-        "issued_at": { "$ref": "#/definitions/json_safe_integer" }
+        "issued_at": { "$ref": "#/definitions/json_safe_integer" },
+        "checkpoint": {
+          "type": "object", "additionalProperties": false,
+          "required": ["repository_rid", "branch", "commit_oid", "observed_at"],
+          "properties": {
+            "repository_rid": { "type": "string", "pattern": "^rad:z[1-9A-HJ-NP-Za-km-z]+$" },
+            "branch": { "const": "main" },
+            "commit_oid": { "$ref": "#/definitions/sha256" },
+            "observed_at": { "$ref": "#/definitions/json_safe_integer" }
+          }
+        }
       }
     },
     "authority_proof": {
