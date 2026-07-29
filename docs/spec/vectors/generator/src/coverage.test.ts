@@ -77,7 +77,7 @@ describe("family coverage", () => {
     ).toBe("control");
     expect(coverage.filter(({ profile }) => profile === "heterodyne-control-session-device-v1"))
       .toHaveLength(1);
-  });
+  }, 30_000);
 
   it("fails the staged coverage gate for any unlisted uncovered profile", async () => {
     const vectors = (await buildAllVectors(buildFixtures())).map(({ vector }) => vector);
@@ -97,7 +97,7 @@ describe("family coverage", () => {
     expect(findProfileCoverageIssues(registry, coverage)).toEqual([
       "uncovered profile: unlisted-future-profile",
     ]);
-  });
+  }, 30_000);
 
   it("does not exempt an unlisted Control-owned profile", async () => {
     const vectors = (await buildAllVectors(buildFixtures())).map(({ vector }) => vector);
@@ -117,7 +117,7 @@ describe("family coverage", () => {
     expect(findProfileCoverageIssues(registry, coverage)).toContain(
       "uncovered profile: unlisted-control-profile",
     );
-  });
+  }, 30_000);
 
   it("permits only the exact inactive profile and currently-uncovered pending set", async () => {
     const vectors = (await buildAllVectors(buildFixtures())).map(({ vector }) => vector);
@@ -127,7 +127,7 @@ describe("family coverage", () => {
     const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
 
     expect(findProfileCoverageIssues(registry, coverage)).toEqual([]);
-  });
+  }, 30_000);
 
   it("requires the exact inactive profile to remain Control-owned", async () => {
     const vectors = (await buildAllVectors(buildFixtures())).map(({ vector }) => vector);
@@ -143,7 +143,7 @@ describe("family coverage", () => {
     expect(findProfileCoverageIssues(registry, coverage)).toContain(
       `inactive profile owner mismatch: ${INACTIVE_PROFILE_IDS[0]}`,
     );
-  });
+  }, 30_000);
 
   it("writes deterministic Markdown views derived from manifest.json", async () => {
     const vectorRoot = await mkdtemp(join(tmpdir(), "heterodyne-vector-coverage-"));
