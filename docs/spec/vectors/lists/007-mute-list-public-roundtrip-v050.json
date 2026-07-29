@@ -1,0 +1,104 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
+  "profile": "heterodyne-social-mute-list-v1",
+  "spec_refs": [
+    "heterodyne:social/0.5.0#social-mute-profile"
+  ],
+  "vector_id": "lists/mute-list-public-roundtrip-v050",
+  "description": "Current 0.5 production form replacing archived lists/mute-list-public-roundtrip bytes without relabeling them.",
+  "input": {
+    "migrated_from": "lists/mute-list-public-roundtrip",
+    "event_template": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767225700,
+      "kind": 10000,
+      "tags": [
+        [
+          "p",
+          "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+        ],
+        [
+          "t",
+          "spam"
+        ],
+        [
+          "word",
+          "airdrop"
+        ],
+        [
+          "e",
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
+        ],
+        [
+          "heterodyne",
+          "social-mute-list-v1"
+        ],
+        [
+          "spec_version",
+          "social/0.5.0"
+        ]
+      ],
+      "content": ""
+    },
+    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "expected_output": {
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225700,10000,[[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"t\",\"spam\"],[\"word\",\"airdrop\"],[\"e\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"],[\"heterodyne\",\"social-mute-list-v1\"],[\"spec_version\",\"social/0.5.0\"]],\"\"]",
+    "decoded": {
+      "event": {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767225700,
+        "kind": 10000,
+        "tags": [
+          [
+            "p",
+            "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+          ],
+          [
+            "t",
+            "spam"
+          ],
+          [
+            "word",
+            "airdrop"
+          ],
+          [
+            "e",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          [
+            "kel_head",
+            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "0"
+          ],
+          [
+            "heterodyne",
+            "social-mute-list-v1"
+          ],
+          [
+            "spec_version",
+            "social/0.5.0"
+          ]
+        ],
+        "content": "",
+        "id": "0e810f72a4f28373f2029d5c3eabd0f0ca10d03cb68e0d03ab46d404447e9750",
+        "sig": "89e6adafdd62c60361853a4c9e8a1bdcb5f1d30cb86b08057e14fa79dbae704dcb7e959f525fa5ad657dd624a1137deb414ed8f7082168cd57ac5753a8d84f4e"
+      }
+    },
+    "id": "0e810f72a4f28373f2029d5c3eabd0f0ca10d03cb68e0d03ab46d404447e9750",
+    "sig": "89e6adafdd62c60361853a4c9e8a1bdcb5f1d30cb86b08057e14fa79dbae704dcb7e959f525fa5ad657dd624a1137deb414ed8f7082168cd57ac5753a8d84f4e"
+  },
+  "direction": "produce"
+}

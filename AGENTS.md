@@ -6,12 +6,23 @@ project mission and the in-repo map; AGENTS.md focuses on **externally-anchored
 ground truth** (the standards Heterodyne composes on top of) and a few
 agent-specific working conventions.
 
+[`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is the non-normative
+family map. Normative authority is divided among the four independently
+versioned 0.5.0 documents below. The former 0.4.0 monolith and its anchor
+migration map live under [`docs/spec/archive/`](docs/spec/archive/).
+The prepared 0.5.0 documents remain unreleased pending explicit release
+approval.
+
 ## Where to look first
 
 | If you need… | Go to |
 |---|---|
 | Project mission, room taxonomy summary, full repo map | [`CLAUDE.md`](CLAUDE.md) |
-| The normative protocol document | [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) |
+| Family overview and migration links | [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) |
+| Identity, registry, versions, base conformance | [`docs/spec/heterodyne-core.md`](docs/spec/heterodyne-core.md) |
+| Publishing, privacy, DMs, claims, private ledger, OIDC/JWT | [`docs/spec/heterodyne-comms.md`](docs/spec/heterodyne-comms.md) |
+| Own-device control profile | [`docs/spec/heterodyne-control.md`](docs/spec/heterodyne-control.md) |
+| Social behavior and optional Matrix | [`docs/spec/heterodyne-social.md`](docs/spec/heterodyne-social.md) |
 | Why a decision was made the way it was | [`docs/adr/`](docs/adr/) |
 | Conformance test vector format and current corpus | [`docs/spec/vectors/`](docs/spec/vectors/) |
 | Non-normative architecture rationale | [`docs/architecture.md`](docs/architecture.md) |
@@ -25,8 +36,8 @@ Every link below was verified to resolve to its canonical current source on
 fetch one of these — do not rely on training-data recall alone, because the
 ecosystem moves and several otherwise-plausible URLs are stale.
 
-Entries tagged *(0.x draft)* were added for the v0.4.0 substrate pivot
-(ADR-026 through ADR-029) and are referenced by the current 0.x spec draft;
+Entries tagged *(0.x draft)* were added during the historical 0.4.0 substrate
+pivot (ADR-026 through ADR-029) and remain relevant to the 0.5.x family;
 they follow the same canonical-source rule - fetch them rather than relying
 on recall.
 
@@ -44,47 +55,54 @@ on recall.
 - **[NIP-09](https://github.com/nostr-protocol/nips/blob/master/09.md)**
   *(0.x draft)* - event deletion (`kind:5` deletion requests). *Use when:*
   implementing post-hoc removal for any tier or moderation flow - deletion
-  signals intent, not erasure (spec §6.10.3, §8.4).
+  signals intent, not erasure ([Social revocation](docs/spec/heterodyne-social.md#social-revocation);
+  [Comms encrypted branches](docs/spec/heterodyne-comms.md#comms-encrypted-branches)).
 - **[NIP-19](https://github.com/nostr-protocol/nips/blob/master/19.md)** —
   bech32-encoded entities (`npub`, `nsec`, `note`, `nevent`, …). *Use when:*
   parsing or producing human-shareable identifiers.
 - **[NIP-32](https://github.com/nostr-protocol/nips/blob/master/32.md)**
   *(0.x draft)* - labeling (`kind:1985` label events, `L`/`l` namespace and
   label tags). *Use when:* implementing Heterodyne's advisory moderation
-  labels - a graded signal that gates nothing on its own (spec §8.9).
+  labels - a graded signal that gates nothing on its own
+  ([Social labels](docs/spec/heterodyne-social.md#social-labels)).
 - **[NIP-49](https://github.com/nostr-protocol/nips/blob/master/49.md)**
   *(0.x draft)* - private-key encryption (scrypt-wrapped `nsec` export).
   *Use when:* implementing the keys repository's at-rest `nsec` wrap or any
-  wrapped-nsec backup (spec §3.8.7, §9.6, I6).
+  wrapped-nsec backup ([Core keys repository](docs/spec/heterodyne-core.md#core-keys-repository);
+  CORE-I-KEY-MATERIAL-AT-REST).
 - **[NIP-51](https://github.com/nostr-protocol/nips/blob/master/51.md)**
   *(0.x draft)* - lists and sets (mute lists `kind:10000`, standard lists
   `kind:10000-10102`, sets `kind:30000-39092`, private items
-  NIP-44-encrypted to self). *Use when:* implementing Heterodyne's core
-  mute-list / sets-file carrier, community policy lists, or subscribable
-  curation (spec §8.5, §8.6, §3.0).
+  NIP-44-encrypted to self). *Use when:* implementing Social's mute-list and
+  sets profiles, community policy lists, or subscribable curation
+  ([Social lists](docs/spec/heterodyne-social.md#social-lists)).
 - **[NIP-65](https://github.com/nostr-protocol/nips/blob/master/65.md)** —
   relay list metadata (the "outbox" model). *Use when:* reasoning about where
   a user's events should be published or fetched from.
 - **[NIP-72](https://github.com/nostr-protocol/nips/blob/master/72.md)** —
   moderated communities (`kind:34550` community definition, `kind:4550`
-  approval). *Use when:* working on Heterodyne's core moderation flow - the
+  approval). *Use when:* working on Heterodyne Social moderation - the
   `kind:34550` moderator declaration with the `approvals_required` extension
-  tag and anchored `kind:4550` approvals (spec §8.1, §8.2); the
+  tag and anchored `kind:4550` approvals
+  ([Social moderation](docs/spec/heterodyne-social.md#social-moderation)); the
   `m.heterodyne.moderators.v1` state event is the OPTIONAL Matrix carrier of
   the same declaration.
 - **[NIP-78](https://github.com/nostr-protocol/nips/blob/master/78.md)**
   *(0.x draft)* - arbitrary application-specific data (addressable
-  `kind:30078`). *Use when:* implementing CORE DM double-ratchet device
-  invites (`d` = `double-ratchet/invites/<device>`, spec §5.7.1).
+  `kind:30078`). *Use when:* implementing Comms double-ratchet device
+  invites (`d` = `double-ratchet/invites/<device>`,
+  [Comms DM wire](docs/spec/heterodyne-comms.md#comms-dm-wire)).
 - **[NIP-EE](https://github.com/nostr-protocol/nips/blob/master/EE.md)** —
   MLS-based end-to-end encryption for Nostr. *Use when:* implementing or
   reasoning about the MLS migration path or Marmot-style flows.
 - **[nostr-double-ratchet](https://github.com/irislib/nostr-double-ratchet)**
   *(0.x draft)* - the Signal-style Double Ratchet wire over Nostr events
   (NIP-44 v2 payloads, outer events signed by the current ratchet key,
-  rotated per DH ratchet step) that Heterodyne adopts for CORE DMs. *Use when:* implementing the `kind:1060` ratchet
+  rotated per DH ratchet step) that Heterodyne adopts for Comms DMs. *Use when:* implementing the `kind:1060` ratchet
   message / `kind:1059` invite response / `kind:30078` invite flow or
-  reasoning about DM forward secrecy (spec §5.7). The 0.x spec treats this
+  reasoning about DM forward secrecy
+  ([Comms direct messages](docs/spec/heterodyne-comms.md#comms-direct-messages)).
+  The 0.x Comms document treats this
   as the normative reference until a frozen wire spec is extracted pre-1.0.
 
 ### Matrix (transport, state & encryption layer)
@@ -120,8 +138,9 @@ on recall.
   *(0.x draft)* - the canonical Double Ratchet algorithm (DH ratchet +
   symmetric-key ratchet, message-key deletion). *Use when:* reasoning about
   the forward-secrecy and post-compromise-security guarantees of Heterodyne's
-  CORE DMs, whose nostr-double-ratchet wire is this construction over Nostr
-  events (spec §5.7, §9.5).
+  Comms DMs, whose nostr-double-ratchet wire is this construction over Nostr
+  events ([Comms direct messages](docs/spec/heterodyne-comms.md#comms-direct-messages)
+  and [security](docs/spec/heterodyne-comms.md#comms-security)).
 - **[KERI (arXiv 1907.02143)](https://arxiv.org/abs/1907.02143)** — Smith,
   *Key Event Receipt Infrastructure*. **Primary citation** for the
   cold-root / epoch-key identity model — the user explicitly prefers this
@@ -140,6 +159,57 @@ on recall.
   Useful for discoverability; *less authoritative* than the arXiv paper or
   the KSWG spec.
 
+### Claims and OAuth/OIDC interoperability
+
+The sources in this section were verified at their canonical pages on
+2026-07-20. Fetch the named source whenever changing the corresponding Comms
+wire, validation, discovery, or security behavior; do not implement from
+memory.
+
+- **[OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html)**
+  — OpenID Connect Core 1.0 incorporating errata set 2. *Use when:* defining
+  or validating ID Tokens, nonce, exact issuer/audience checks, pairwise
+  subjects, authentication flows, consent, or OIDC claim release.
+- **[OpenID Connect Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html)**
+  — OpenID Connect Discovery 1.0 incorporating errata set 2. *Use when:*
+  implementing the issuer-relative `openid-configuration` endpoint, exact
+  issuer matching, advertised endpoints, JWKS discovery, or discovery
+  validation.
+- **[RFC 7517](https://www.rfc-editor.org/rfc/rfc7517.html)** — JSON Web Key
+  (JWK). *Use when:* producing or consuming `jwks.json`, selecting a key by
+  `kid`, or validating required public-key members.
+- **[RFC 7519](https://www.rfc-editor.org/rfc/rfc7519.html)** — JSON Web Token
+  (JWT). *Use when:* implementing JWT claims, numeric dates, audience
+  processing, `jti`, or signature-validation inputs.
+- **[RFC 7636](https://www.rfc-editor.org/rfc/rfc7636.html)** — Proof Key for
+  Code Exchange (PKCE). *Use when:* implementing the required Authorization
+  Code flow, `S256` challenges, or one-time verifier validation.
+- **[RFC 7638](https://www.rfc-editor.org/rfc/rfc7638.html)** — JSON Web Key
+  thumbprints. *Use when:* canonicalizing JWK-thumbprint typed keys, deriving
+  signing-key `kid`, or validating `cnf.jkt`.
+- **[RFC 8414](https://www.rfc-editor.org/rfc/rfc8414.html)** — OAuth 2.0
+  Authorization Server Metadata. *Use when:* implementing the host-level
+  metadata alias, issuer/path insertion rules, or authorization-server
+  metadata validation.
+- **[RFC 8628](https://www.rfc-editor.org/rfc/rfc8628.html)** — OAuth 2.0
+  Device Authorization Grant. *Use when:* implementing device codes, user
+  codes, polling intervals, `slow_down`, expiry, approval, or denial.
+- **[RFC 8705](https://www.rfc-editor.org/rfc/rfc8705.html)** — OAuth 2.0
+  mutual-TLS client authentication and certificate-bound access tokens. *Use when:*
+  implementing or validating mutual-TLS sender constraints and
+  `cnf.x5t#S256`.
+- **[RFC 9068](https://www.rfc-editor.org/rfc/rfc9068.html)** — JWT Profile
+  for OAuth 2.0 Access Tokens. *Use when:* minting or validating the required
+  `at+jwt` token type, access-token claims, audience, client, or scope.
+- **[RFC 9449](https://www.rfc-editor.org/rfc/rfc9449.html)** — OAuth 2.0
+  Demonstrating Proof of Possession (DPoP). *Use when:* implementing DPoP
+  proofs, replay defenses, or `cnf.jkt` sender constraints.
+- **[draft-ietf-oauth-status-list-21](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-21)**
+  *(exact Comms 0.5.0 pin)* — Token Status List draft revision 21. *Use when:*
+  implementing status references, Status List Tokens, bit ordering,
+  compression, `ttl`, or status media types. This exact revision MUST NOT be
+  replaced by a floating draft URL or silently updated to a later draft.
+
 ### Agentic clients
 
 - **[Model Context Protocol (MCP) - specification revision 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25)**
@@ -148,7 +218,9 @@ on recall.
   protocol: JSON-RPC 2.0 framing, an initialize lifecycle with
   bidirectional capability negotiation, tools with JSON schemas, and
   notifications. Heterodyne adopts the **data layer only**, carried as
-  §5.7 DR inner rumors (a custom transport, which MCP permits); MCP's
+  Comms DR inner rumors
+  ([Comms direct messages](docs/spec/heterodyne-comms.md#comms-direct-messages),
+  a custom transport that MCP permits); MCP's
   stdio and Streamable HTTP/SSE transports are not used. *Use when:*
   working on the ADR-030 agentic RPC profile - the capabilities exchange,
   tool schemas as the grant-enforcement surface, and driving ongoing
@@ -169,48 +241,56 @@ on recall.
   Radicle team's early KERI-for-Radicle exploration. Code NOT reusable
   (KEL write path unimplemented; vendored keriox 0.8.2 carries
   RUSTSEC-2022-0093). Cited as prior art for ADR-032: git-anchored
-  KELs, the dual log/state commit-chain layout (spec §10.1.2
-  materialized-KEL profile), and point-in-time key-state binding
-  (spec §4.5.1 `kel_head`). *Use when:* consulting the design README
+  KELs, the dual log/state
+  [materialized-KEL profile](docs/spec/heterodyne-core.md#core-materialized-kel),
+  and point-in-time key-state binding
+  ([Core `kel_head`](docs/spec/heterodyne-core.md#core-kel-head)). *Use when:* consulting the design README
   behind those constructs; never as a dependency.
 - **[keripy](https://github.com/WebOfTrust/keripy)** *(current stable;
   verified 2026-07-08)* - the canonical KERI reference implementation;
-  the consumer the §11.8 did:webs export targets.
+  the consumer the [Core KERI export](docs/spec/heterodyne-core.md#core-keri-export)
+  targets.
   **[keriox (THCLab fork)](https://github.com/THCLab/keriox)**
   *(keri-core 0.17.x, EUPL-1.2; verified 2026-07-08)* - the maintained
   Rust KERI core, candidate for the first-party client; do NOT use
   radicle-keri's vendored 0.8.2.
   **[did:webs](https://trustoverip.github.io/tswg-did-method-webs-specification/)**
   *(ToIP draft v0.9.x; verified 2026-07-08)* - the DID method the
-  §11.8 export produces artifacts for; the export AID is derived and
+  [Core KERI export](docs/spec/heterodyne-core.md#core-keri-export) produces
+  artifacts for; the export AID is derived and
   never authoritative over the npub.
 - **[iris-client](https://github.com/irislib/iris-client)** *(0.x draft)* -
   a production Nostr client. Several Heterodyne mechanisms adopt patterns
   proven here and adapt them with Heterodyne's delegation binding:
-  double-ratchet DMs over the nostr-double-ratchet wire (spec §5.7), the
-  NIP-51 private-item pattern for mute lists (§8.5), and web-of-trust
-  overmuted-ratio filtering (§8.10). *Use when:* you want a working
+  double-ratchet DMs over the nostr-double-ratchet wire
+  ([Comms DMs](docs/spec/heterodyne-comms.md#comms-direct-messages)), the
+  NIP-51 private-item pattern for mute lists
+  ([Social lists](docs/spec/heterodyne-social.md#social-lists)), and web-of-trust
+  filtering ([Social admission policy](docs/spec/heterodyne-social.md#social-admission-policy)).
+  *Use when:* you want a working
   reference for any of those before pinning Heterodyne's normative
   variation. It is prior art, not a dependency or a conformance target.
 
 ## Working conventions
 
-- **Decisions go through ADRs.** Material changes to the spec or architecture
+- **Decisions go through ADRs.** Material changes to a family document or architecture
   MUST be recorded as an ADR in [`docs/adr/`](docs/adr/). Numbering is
   globally sequential — check the highest existing `NNN` before authoring a
   new file (current naming: `YYYY-MM-DD-NNN-<slug>.md`).
 - **Conformance vectors are normative.** When changing a wire-level behaviour
   in the spec, update or add the corresponding vector in
   [`docs/spec/vectors/`](docs/spec/vectors/). "Close enough" semantic
-  equivalence is explicitly not conformance (spec §14.2).
-- **The protocol is in its 0.x phase — in flux until 1.0.** Per the semver
-  0.x rule (spec §12.1), any `0.x` release MAY break the previous one. Do not
+  equivalence is explicitly not conformance
+  ([Core conformance](docs/spec/heterodyne-core.md#core-conformance)).
+- **The protocol family is in its 0.x phase — in flux until 1.0.** Per the
+  [Core version rule](docs/spec/heterodyne-core.md#core-versioning), any `0.x`
+  document release MAY break the previous one. Do not
   assume backward compatibility within 0.x; do not promise it in code,
   comments, or docs.
 - **Research is read-only.** Files under [`research/sources/`](research/sources/)
   are raw deep-research output stored verbatim with citations — do not edit
   them. Use [`research/INDEX.md`](research/INDEX.md) to navigate.
-- **The spec is implementation-agnostic.** No language or runtime is
+- **The family is implementation-agnostic.** No language or runtime is
   prescribed; do not introduce one without an ADR. Heterodyne is a pure
   client-side bridge — vanilla Matrix homeservers and Nostr relays must
   carry traffic without protocol-specific modifications.

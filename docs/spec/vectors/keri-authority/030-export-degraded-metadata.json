@@ -1,15 +1,24 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "keri-authority/export-degraded-metadata",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§11.8",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-keri-export"
   ],
+  "vector_id": "keri-authority/export-degraded-metadata",
   "description": "A non-security metadata omission is emitted with status degraded plus an explicit warning code and MUST NOT be labeled complete; security-relevant state is intact.",
   "input": {
     "omitted_field": "non_security_display_metadata",
-    "security_relevant_state_intact": true
+    "security_relevant_state_intact": true,
+    "vector_context": {
+      "decision_trace": [
+        "export_security_state",
+        "omit_non_security_metadata",
+        "mark_status_degraded"
+      ]
+    }
   },
   "expected_output": {
     "verdict": "accept",
@@ -22,10 +31,5 @@
       "export_degraded_metadata"
     ]
   },
-  "decision_trace": [
-    "export_security_state",
-    "omit_non_security_metadata",
-    "mark_status_degraded"
-  ],
   "direction": "consume"
 }

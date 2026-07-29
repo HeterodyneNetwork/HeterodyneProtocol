@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-versioning"
+  ],
+  "vector_id": "versioning/unknown-asynchronous-stamp-rejected",
+  "description": "An unsupported asynchronous owner stamp is rejected without presumed negotiation.",
+  "direction": "consume",
+  "input": {
+    "received_stamp": "comms/9.0.0",
+    "negotiated_session": false,
+    "degraded_mode_declared": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "unknown_major_version"
+  }
+}

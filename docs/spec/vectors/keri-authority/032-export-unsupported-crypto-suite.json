@@ -1,24 +1,28 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "keri-authority/export-unsupported-crypto-suite",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§11.8",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-keri-export"
   ],
+  "vector_id": "keri-authority/export-unsupported-crypto-suite",
   "description": "did:webs export fails when a mapping exists but the target crypto suite is unavailable locally (UNSUPPORTED_CRYPTO_SUITE).",
   "input": {
     "mapping_exists": true,
-    "crypto_suite_available_locally": false
+    "crypto_suite_available_locally": false,
+    "vector_context": {
+      "decision_trace": [
+        "resolve_mapping",
+        "crypto_suite_unavailable",
+        "fail_unsupported_crypto_suite"
+      ]
+    }
   },
   "expected_output": {
     "verdict": "reject",
     "reason_code": "export_unsupported_crypto_suite"
   },
-  "decision_trace": [
-    "resolve_mapping",
-    "crypto_suite_unavailable",
-    "fail_unsupported_crypto_suite"
-  ],
   "direction": "consume"
 }

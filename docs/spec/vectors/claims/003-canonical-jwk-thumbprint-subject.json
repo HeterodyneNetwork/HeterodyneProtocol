@@ -1,0 +1,113 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "profile": "heterodyne-comms-claim-revocation-jwk-jws-v1",
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-key-claims"
+  ],
+  "vector_id": "claims/canonical-jwk-thumbprint-subject",
+  "description": "A canonical JWK-thumbprint subject claim and a positive native EdDSA JWK revocation fixture bind the embedded public JWK to the same RFC 7638 thumbprint.",
+  "direction": "round-trip",
+  "input": {
+    "semantic_body": {
+      "claim_id": "8f70a763fbf81e87666d18c335cef92f596557f78340d4f61aa9004e6c93ce44",
+      "issuer": {
+        "type": "nostr-secp256k1",
+        "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+      },
+      "subject": {
+        "type": "jwk-thumbprint",
+        "value": "eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y"
+      },
+      "claim_class": "authorization",
+      "namespace": "heterodyne.device",
+      "name": "claim-ledger-reader",
+      "value": true,
+      "issued_at": 1767227600,
+      "not_before": 1767227600,
+      "expires_at": 1767231200,
+      "audience": [
+        "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+      ],
+      "resources": [
+        "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
+      ],
+      "visibility": "repository-private",
+      "comms_version": "comms/0.5.0",
+      "registry_revision": 2
+    },
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767227600,
+      "kind": 31013,
+      "tags": [
+        [
+          "d",
+          "8f70a763fbf81e87666d18c335cef92f596557f78340d4f61aa9004e6c93ce44"
+        ]
+      ],
+      "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"8f70a763fbf81e87666d18c335cef92f596557f78340d4f61aa9004e6c93ce44\",\"comms_version\":\"comms/0.5.0\",\"expires_at\":1767231200,\"issued_at\":1767227600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767227600,\"registry_revision\":2,\"resources\":[\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\"],\"subject\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"value\":true,\"visibility\":\"repository-private\"}",
+      "id": "beb86a4133b144d167430b593b5f9a5264cd8ab4577cbdfd8d434ee14d842422",
+      "sig": "c797139e6255fab6914913ce0f9ce4c670639693c4046b50255f190633599a12527ee2b2a87da6db06f6afae3b07a173756e3ab890df5d4e43666b014f584a52"
+    },
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767227600,31013,[[\"d\",\"8f70a763fbf81e87666d18c335cef92f596557f78340d4f61aa9004e6c93ce44\"]],\"{\\\"audience\\\":[\\\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\\\"],\\\"claim_class\\\":\\\"authorization\\\",\\\"claim_id\\\":\\\"8f70a763fbf81e87666d18c335cef92f596557f78340d4f61aa9004e6c93ce44\\\",\\\"comms_version\\\":\\\"comms/0.5.0\\\",\\\"expires_at\\\":1767231200,\\\"issued_at\\\":1767227600,\\\"issuer\\\":{\\\"type\\\":\\\"nostr-secp256k1\\\",\\\"value\\\":\\\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\\\"},\\\"name\\\":\\\"claim-ledger-reader\\\",\\\"namespace\\\":\\\"heterodyne.device\\\",\\\"not_before\\\":1767227600,\\\"registry_revision\\\":2,\\\"resources\\\":[\\\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\\\"],\\\"subject\\\":{\\\"type\\\":\\\"jwk-thumbprint\\\",\\\"value\\\":\\\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\\\"},\\\"value\\\":true,\\\"visibility\\\":\\\"repository-private\\\"}\"]",
+    "subject_proof": {
+      "challenge": {
+        "domain": "heterodyne-claim-pop-v1",
+        "claim_id": "8f70a763fbf81e87666d18c335cef92f596557f78340d4f61aa9004e6c93ce44",
+        "nonce": "73737373737373737373737373737373",
+        "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "resource": "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims",
+        "operation": "read",
+        "issued_at": 1767227610,
+        "expires_at": 1767227670
+      },
+      "proof": {
+        "type": "jwk-jws",
+        "jwk": {
+          "crv": "Ed25519",
+          "kty": "OKP",
+          "x": "pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8"
+        },
+        "protected": "eyJhbGciOiJFZERTQSJ9",
+        "signature": "qG6teCQl4QviiDIUFB16bfzl_UeA6P1wy1xS0IKp_5rHXscOjPc9NWqBodEyD2DfuolTOjmZZu62oHyBKY5ZCg"
+      }
+    },
+    "positive_native_revocation_event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767227617,
+      "kind": 31014,
+      "tags": [
+        [
+          "d",
+          "8f70a763fbf81e87666d18c335cef92f596557f78340d4f61aa9004e6c93ce44"
+        ]
+      ],
+      "content": "{\"claim_id\":\"8f70a763fbf81e87666d18c335cef92f596557f78340d4f61aa9004e6c93ce44\",\"comms_version\":\"comms/0.5.0\",\"proof\":{\"jwk\":{\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"eyJhbGciOiJFZERTQSJ9\",\"signature\":\"vanQnHxrEkSW6cSt5v3vkxR9jaDwcs16d0cvn7416PlqckK6mk47I8jugtqYWuM_6P3Eo7ztYd-NyHH7FbKBDw\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"}}",
+      "id": "9e9d0779e75154201016473052749c10aefacd42ffcd3c02963c13a700d7f629",
+      "sig": "15b20df6c92860a6bf3276ad509d0a5c5f47a296287003dedbbd99d12aa9418b764c1c88647b6b08fbcb28e4ca40079def30bebae74e1e26a40ad1e365bdaaaa"
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "claim_id": "8f70a763fbf81e87666d18c335cef92f596557f78340d4f61aa9004e6c93ce44",
+      "subject": {
+        "type": "jwk-thumbprint",
+        "value": "eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y"
+      },
+      "proof_profile": "jwk-jws-v1",
+      "revocation_signer": {
+        "type": "jwk-thumbprint",
+        "value": "eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y"
+      },
+      "revocation_native_proof_valid": true,
+      "registry_revision": 2
+    }
+  }
+}

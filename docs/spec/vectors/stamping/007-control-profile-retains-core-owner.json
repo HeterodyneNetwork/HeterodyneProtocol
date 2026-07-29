@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
+  "profile": "heterodyne-control-session-device-v1",
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-version-stamps"
+  ],
+  "vector_id": "stamping/control-profile-retains-core-owner",
+  "description": "Owner-stamp conformance class: control profile retains core owner.",
+  "direction": "round-trip",
+  "input": {
+    "kind": 31001,
+    "profile_id": "heterodyne-control-session-device-v1"
+  },
+  "expected_output": {
+    "owner": "core",
+    "control_stamp_count": 0
+  }
+}

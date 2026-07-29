@@ -1,14 +1,16 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "dm/invite-delegated-device-valid",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
+  "profile": "heterodyne-comms-double-ratchet-invite-v1",
   "spec_refs": [
-    "§5.7.1",
-    "§5.7.2",
-    "§3.3.1",
-    "§14.1",
-    "§14.3"
+    "heterodyne:comms/0.5.0#comms-dm-wire"
   ],
+  "vector_id": "dm/invite-delegated-device-valid",
   "description": "A kind:30078 double-ratchet invite (d = double-ratchet/invites/<device>) signed by a device secp256k1 publishing key that is currently kind:31001-delegated to the persona.",
   "input": {
     "fixture_device": "alice_device_1",
@@ -16,9 +18,11 @@
     "delegated_via_kind31001": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
     "delegation_vector": "nid-binding/001-bidirectional-valid",
     "ephemeral_key": "d32f4da54ade74abb81b815ad1fb3b263d82d6c692714bcff87d29bd5ee9f08f",
-    "d_tag_device_segment": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
+    "d_tag_device_segment": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+    "vector_context": {
+      "notes": "Signed by alice_device_1's publishing key (fixtures.device_publishing_keys.alice_device_1), which nid-binding/001 binds to alice via a valid kind:31001 delegation (§5.7.2). Byte-level choices: the <device> segment of the d tag is the device publishing pubkey, and the invite's ephemeral key / shared-secret bootstrap payload are deferred per §5.7.1 (frozen wire extracted before 1.0), so only the addressable shape and delegation binding are asserted here."
+    }
   },
-  "notes": "Signed by alice_device_1's publishing key (fixtures.device_publishing_keys.alice_device_1), which nid-binding/001 binds to alice via a valid kind:31001 delegation (§5.7.2). Byte-level choices: the <device> segment of the d tag is the device publishing pubkey, and the invite's ephemeral key / shared-secret bootstrap payload are deferred per §5.7.1 (frozen wire extracted before 1.0), so only the addressable shape and delegation binding are asserted here.",
   "expected_output": {
     "canonical_wire": "[0,\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\",1767225710,30078,[[\"d\",\"double-ratchet/invites/2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\"],[\"heterodyne\",\"dm_invite\"],[\"ephemeral_key\",\"d32f4da54ade74abb81b815ad1fb3b263d82d6c692714bcff87d29bd5ee9f08f\"]],\"\"]",
     "decoded": {

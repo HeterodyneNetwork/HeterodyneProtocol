@@ -1,12 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "node-advert/expired-rejected",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§7.0",
-    "§10.1.1",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-node-advertisement"
   ],
+  "vector_id": "node-advert/expired-rejected",
   "description": "A kind:31010 advertisement whose expiry is in the past is rejected even though both signatures verify.",
   "input": {
     "event": {
@@ -53,17 +54,19 @@
       "sig": "0f4c91fa4e0e6337c9ccd6e1f82c208d57cd7aba1e2e63d7b4f9d968505c753cf2e52f1d93ae33003ae464d479777463696295cfb38cf210cc804b7394c52d90"
     },
     "advertised_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-    "nid_proof_payload": "heterodyne-node-advert-v1|rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|wss://node-a.example/relay|1767225599|4a19af7f069f3c32d4235c726f666fc8cd0175fa"
+    "nid_proof_payload": "heterodyne-node-advert-v1|rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|wss://node-a.example/relay|1767225599|4a19af7f069f3c32d4235c726f666fc8cd0175fa",
+    "vector_context": {
+      "simulated_clock": 1767225700,
+      "decision_trace": [
+        "verify_outer_bip340_signature",
+        "verify_inner_ed25519_nid_proof",
+        "check_expiry"
+      ]
+    }
   },
   "expected_output": {
     "verdict": "reject",
     "reason_code": "node_advert_expired"
   },
-  "simulated_clock": 1767225700,
-  "decision_trace": [
-    "verify_outer_bip340_signature",
-    "verify_inner_ed25519_nid_proof",
-    "check_expiry"
-  ],
   "direction": "consume"
 }

@@ -1,12 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "light-node/verifies-signature-locally",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§7.3",
-    "§10.1.1",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-client-responsibilities"
   ],
+  "vector_id": "light-node/verifies-signature-locally",
   "description": "A light node verifies a fetched event's Nostr signature locally and accepts it on a valid signature regardless of which (untrusted) host served it.",
   "input": {
     "fetched_event": {
@@ -24,7 +25,14 @@
       "sig": "6250334a10dbcbb127fd99fed1858b589da68c229d8c1462a9742d67648cfe05281d969f5c6fdd59eddbd787e756b51a35bac5697e9e08f6b11024d0c5a4c6ff"
     },
     "served_by": "wss://untrusted.example/relay",
-    "host_trusted": false
+    "host_trusted": false,
+    "vector_context": {
+      "decision_trace": [
+        "fetch_event",
+        "verify_bip340_locally",
+        "accept_on_valid_signature"
+      ]
+    }
   },
   "expected_output": {
     "verdict": "accept",
@@ -33,10 +41,5 @@
       "trusted_host": false
     }
   },
-  "decision_trace": [
-    "fetch_event",
-    "verify_bip340_locally",
-    "accept_on_valid_signature"
-  ],
   "direction": "consume"
 }

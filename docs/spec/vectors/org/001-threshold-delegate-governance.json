@@ -1,12 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "org/threshold-delegate-governance",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§3.9.10",
-    "§6.7.0",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-threshold-authority"
   ],
+  "vector_id": "org/threshold-delegate-governance",
   "description": "An org persona has threshold>1 delegates; an identity-document revision is adopted once a majority of the live delegate set signs it.",
   "input": {
     "org_rid": "rad:zFrWt9XjrvmW8vkFDXcL82YiFDsi",
@@ -19,7 +20,10 @@
     "id_doc_revision_signed_by": [
       "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
       "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
-    ]
+    ],
+    "vector_context": {
+      "notes": "Identity-document revisions adopt by majority of live delegates; the threshold field governs canonical-branch acceptance, not its own revisions (§3.9.10, verified against Heartwood 1.9.1)."
+    }
   },
   "expected_output": {
     "verdict": "accept",
@@ -30,6 +34,5 @@
       "adopted_by": "delegate_majority"
     }
   },
-  "notes": "Identity-document revisions adopt by majority of live delegates; the threshold field governs canonical-branch acceptance, not its own revisions (§3.9.10, verified against Heartwood 1.9.1).",
   "direction": "consume"
 }

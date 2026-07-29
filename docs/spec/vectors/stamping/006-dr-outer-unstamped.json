@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
+  "profile": "heterodyne-comms-double-ratchet-message-v1",
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-version-stamps"
+  ],
+  "vector_id": "stamping/dr-outer-unstamped",
+  "description": "Owner-stamp conformance class: dr outer unstamped.",
+  "direction": "round-trip",
+  "input": {
+    "kind": 1060,
+    "is_dr_outer": true
+  },
+  "expected_output": {
+    "owner": null,
+    "marker_count": 0
+  }
+}

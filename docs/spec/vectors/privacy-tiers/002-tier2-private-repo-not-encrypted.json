@@ -1,13 +1,15 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "privacy-tiers/tier2-private-repo-not-encrypted",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§5.2.2",
-    "§6.10.2",
-    "§9.0",
-    "§14.3"
+    "heterodyne:comms/0.5.0#comms-privacy-tiers"
   ],
+  "vector_id": "privacy-tiers/tier2-private-repo-not-encrypted",
   "description": "Tier 2 private repo grants plaintext read via visibility.allow, is not published to public relays, and MUST NOT be described as encrypted or confidential against members.",
   "input": {
     "tier": 2,
@@ -16,7 +18,10 @@
       "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
     ],
     "published_to_public_relays": false,
-    "described_as_encrypted": false
+    "described_as_encrypted": false,
+    "vector_context": {
+      "notes": "Tier 2 boundary is Radicle selective replication, not encryption (§9.0)."
+    }
   },
   "expected_output": {
     "verdict": "accept",
@@ -30,6 +35,5 @@
       "tier2_plaintext_on_allowed_seeders"
     ]
   },
-  "notes": "Tier 2 boundary is Radicle selective replication, not encryption (§9.0).",
   "direction": "consume"
 }

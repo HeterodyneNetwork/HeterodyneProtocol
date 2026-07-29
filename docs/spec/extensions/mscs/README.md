@@ -1,38 +1,38 @@
 # Future MSC extractions
 
-This directory tracks which sections of the Heterodyne specification
-could eventually be proposed as Matrix Spec Changes (MSCs) for adoption
-by the broader Matrix ecosystem. It is a forward-reference index; the
-proposals themselves do not exist yet.
+This is an upstream-facing, non-normative extraction index for Matrix Spec
+Changes. It is not a container for sibling Heterodyne protocols.
+
+[`docs/spec/heterodyne.md`](../../heterodyne.md) is the non-normative family
+map. The qualified owner anchors below are the current normative references.
+
+Family documents are [Core](../../heterodyne-core.md),
+[Comms](../../heterodyne-comms.md), [Control](../../heterodyne-control.md), and
+[Social](../../heterodyne-social.md).
+
+Matrix behavior is optional and owned entirely by Social. The qualified source
+and permanent anchor in each row replace stale monolith references.
 
 ## Candidate extractions
 
-| Spec section | Working title | Generalized scope |
+| Qualified family source | Working title | Generalized scope |
 |---|---|---|
-| §3.2 Identity room | "Identity rooms with external cryptographic anchors" | A conventional Matrix room cryptographically bound to an external identity (Nostr `secp256k1`, or any other algorithm). Could generalize MSC1769 (extensible profiles as rooms) and complement MSC2313 (policy rooms). |
-| §3.3 Delegation | "Cross-identity delegation state events" | A Matrix-native way to express "this MXID acts on behalf of external identity X with cryptographic proof." Useful well beyond Heterodyne (e.g., for any federated identity system that wants to use Matrix as a publish substrate). |
-| §4.2 Wrapped event | (probably no MSC) | The `m.heterodyne.note.v1` event type stays vendor-specific; not a candidate for upstream MSC. |
-| §4.3 Wrap-mode signaling | "Optional external authenticity attachments on `m.room.message`" | A generic `external_signature` field for any external signature scheme on standard Matrix messages. Useful for any system that wants to add cryptographic authenticity to Matrix messages without minting a new event type. |
-| §8 Moderation | (no MSC needed) | Reuses MSC2313 policy rooms verbatim. |
-| §9 Encryption guarantees | (already MSC4362) | Encrypted state events are already in the Matrix MSC pipeline. We track and consume. |
+| `heterodyne:social/0.5.0#social-identity-room` | Matrix coordination rooms with external cryptographic anchors | A Matrix room bound downstream to an external identity such as a Nostr npub. |
+| `heterodyne:social/0.5.0#social-mxid-delegation` | Cross-identity delegation state | An MXID self-publication plus an external authority proof. |
+| `heterodyne:social/0.5.0#social-wrapped-envelope` | Optional external authenticity attachment | A generic attachment for exact externally signed bytes on standard Matrix messages. |
+| `heterodyne:social/0.5.0#social-encrypted-state` | Encrypted private state and downgrade handling | Primarily tracks MSC4362 rather than defining a competing mechanism. |
+| `heterodyne:social/0.5.0#social-megolm-mls` | Coordinated Megolm-to-MLS migration | General drain, acknowledgement, flip, and downgrade semantics if Matrix lacks them. |
+| `heterodyne:social/0.5.0#social-moderation` | Anchored cross-system moderation evidence | Candidate only where behavior cannot be expressed with existing policy-room work. |
 
-Each row should grow into its own subdirectory (`<NNNN>-<slug>/`) with
-an MSC draft when the corresponding spec section stabilizes. The draft
-should target the [`matrix-org/matrix-spec-proposals`](https://github.com/matrix-org/matrix-spec-proposals)
-contribution model: a single markdown file with proposal, alternatives,
-security considerations, unstable prefix, and dependencies.
+Core, Comms, and Control define no Matrix behavior. Their filenames are listed
+above only to make the family boundary explicit; an MSC must not create an
+upward dependency from any of them to Social.
 
-## Coordination notes
+## Coordination
 
-- Track upstream MSC4362 (encrypted state events) — Heterodyne depends
-  on it for §9.
-- Track upstream MSC1769 (profile rooms) — partial overlap with §3.2;
-  Heterodyne's identity room is a more specific use of the same idea.
-- Track upstream MSC2313 (moderation policy rooms) — Heterodyne uses it
-  unmodified in §8.
-- Track upstream MSC2836 (free-form threading) — relevant if §5 / §6
-  adopts arbitrary-depth thread modeling for social-media-style
-  conversations.
-- Any MSC we author should mark itself "in flight" here with a link to
-  the upstream PR so the spec body can reference the unstable prefix
-  until stable adoption.
+- Track MSC4362 for encrypted state, MSC1769 for profile-room overlap, MSC2313
+  for policy rooms, and MSC2836 for threading.
+- Each draft records its source Social version and registry revision.
+- Matrix event names keep unstable prefixes until the upstream proposal lands.
+- Historical 0.4.0 section numbers are archive-only and are not current MSC
+  extraction anchors.

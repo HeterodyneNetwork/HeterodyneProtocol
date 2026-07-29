@@ -1,8 +1,40 @@
 # ADR-030: Light-client device enrollment and RPC over double-ratchet DMs
 
 **Date:** 2026-07-07
-**Status:** Proposed (codex review complete: accept-with-fixes items applied; awaiting acceptance). Amended by ADR-032: relay observation of the device's `kind:31001` confirms provisional enrollment only; final enrollment requires repo confirmation (spec §3.3.1, §4.5.2)
+**Status:** Proposed (codex review complete: accept-with-fixes items applied; awaiting acceptance). Amended by ADR-032: relay observation of the device's `kind:31001` confirms provisional enrollment only; final enrollment requires repository confirmation, now allocated to `heterodyne:core/0.5.0#core-key-authority`
 **Decision makers:** user (design direction); codex review integrated
+
+## Family-allocation amendment (2026-07-19)
+
+ADR-033 split the former monolith before this proposed ADR was accepted. This
+amendment allocates the proposal across the independently versioned family;
+it does not accept ADR-030 or complete the Control profile.
+
+| Family document | Allocation |
+|---|---|
+| `Core` | Session-device base extensibility for `kind:31001`: Core retains the base schema, delegation verification, registry allocation, finality, and owner stamp. |
+| `Comms` | Epoch-key invite, undelegated initiator carve-out, distinct DR contexts, authenticated `control-enrollment` acceptance, subprotocol negotiation, and encrypted carriers. |
+| `Control` | Enrollment, RPC framing and methods, grants, tokens, replay and lifecycle rules, audit semantics, and the MCP/agentic profile. |
+
+The qualified integration targets are
+`heterodyne:core/0.5.0#core-nid-delegation`,
+`heterodyne:comms/0.5.0#comms-direct-messages`,
+`heterodyne:comms/0.5.0#comms-acceptance-hook`,
+`heterodyne:comms/0.5.0#comms-subprotocol-negotiation`, and the incomplete
+`heterodyne:control/0.5.0#control-reserved-scope`. These replace the candidate
+monolith integration targets in the original proposal.
+
+The no-key-export rule is scoped to session devices: session devices MUST NOT
+receive persona epoch secrets, NID secrets, audience keys, repository-
+decryption keys, or ratchet secrets. Authorized durable NID devices continue
+to use Comms credential-plane synchronization when they hold its explicit,
+KEL-validated, revocable authorization. That credential path does not grant
+Control authority and does not weaken session-device confinement.
+
+**Historical monolith reference label.** Every unqualified `§...` reference
+below names a section of the frozen 0.4.0 monolith and is not a current
+integration target. This label applies only to those reference destinations;
+live proposal statements are corrected in place by this amendment.
 
 ## Context
 
@@ -36,7 +68,8 @@ governance flow (see Requirements).
 
 Design goals set by the user: no direct light-to-full-node
 connectivity (relays mediate everything); onboarding by QR scan or
-provisioning token; private keys never leave the full node; the light
+provisioning token; Control session devices receive no persona, NID,
+audience, repository-decryption, or ratchet secrets; the light
 client receives the full configuration so its UI matches any other
 device; light-device keys are session-scoped and disposable; oracle
 power is configurable.
@@ -59,9 +92,11 @@ support automated and agentic enrollment.**
    persona's keys on its behalf. It coexists with §10.1.2's
    **delegated publishing device** class (durable delegation, authors
    its own events); §10.1.2's "light node MUST author with its own
-   key" rule is scoped to that class at spec integration. A session
-   device's key signs only channel-level material: DR session events,
-   RPC requests, and the enrollment `key_proof`.
+   key" rule is scoped to that class at spec integration. The session device
+   key signs the enrollment `key_proof` and participates in Comms DR wire
+   authentication as defined by Comms. Control RPC inner rumors are unsigned;
+   they are authenticated by the accepted DR session, transcript, and carrier
+   validation.
 
 2. **Session-device delegation schema.** Enrollment produces a
    NID-less `kind:31001` mirroring the §3.3.1 bidirectional pattern:
@@ -128,8 +163,9 @@ support automated and agentic enrollment.**
    direct connection to the full node is ever required.
 
 6. **RPC protocol.** Requests and responses are NIP-46-shaped payloads
-   (`{id, method, params}` / `{id, result, error}`) carried as new
-   inner rumor kinds inside the DR session (kinds assigned in §3.0).
+   (`{id, method, params}` / `{id, result, error}`) carried inside the
+   Comms generic subprotocol-payload rumor after negotiation. Control allocates
+   no inner rumor kind and adds no wire stamp.
    Key-operation methods live on the epoch-key endpoint; all others
    run on the device-key session with the enrolling full node. The
    method vocabulary is the NIP-46
@@ -143,9 +179,11 @@ support automated and agentic enrollment.**
    opted-in with its own grants, never an automatic fallback for
    enrolled devices (no forward secrecy, no expiry/grant machinery).
 
-7. **Keys never leave the full node.** Epoch keys, audience keys, and
-   NID secrets stay on the full node, which decrypts, signs, commits,
-   and publishes on the light client's behalf.
+7. **Session-device secrets stay on the full node.** On the Control path,
+   epoch keys, audience keys, NID secrets, repository-decryption keys, and
+   ratchet secrets stay on the full node, which decrypts, signs, commits, and
+   publishes on the session device's behalf. This does not prohibit the
+   separately authorized Comms credential-sync path for durable NID devices.
 
 8. **Per-device permission grants (configurable oracle power).**
    - *Baseline (all grants include this):* DM read/write/sign,
@@ -197,8 +235,8 @@ support automated and agentic enrollment.**
     pattern:
     - The handshake is identical, but enrollment uses a token
       (item 11) so provisioning is automated; agentic traffic uses a
-      separate pair of inner rumor kinds for clarity and separate
-      policy handling.
+      distinct negotiated protocol id/profile for clarity and separate policy
+      handling over the same Comms carrier kinds.
     - Agentic payloads follow the **MCP data layer** (JSON-RPC 2.0
       framing, initialize/capability lifecycle, notifications; pinned
       in `AGENTS.md`) carried as DR inner rumors - a custom transport
@@ -225,7 +263,8 @@ support automated and agentic enrollment.**
 14. **Retention.** RPC traffic is ordinary §5.7 traffic:
     relay-carried only, never repo-committed, no backfill (§5.7.3) -
     so command transcripts are never archived, though full nodes keep
-    a local I6-encrypted audit record of side-effecting RPC.
+    a local `CONTROL-I-AUDIT-AT-REST`-compliant encrypted audit record of
+    side-effecting RPC.
 
 ## Requirements (RFC 2119)
 
@@ -332,7 +371,7 @@ Grants and RPC:
   repos, config namespaces, or sessions it covers), SHOULD confirm
   destructive or exfiltrating operations explicitly, and SHOULD
   rate-limit and surface anomalous bulk decrypt-on-behalf activity.
-- The full node MUST keep a local I6-encrypted audit record of
+- The full node MUST keep a local `CONTROL-I-AUDIT-AT-REST`-compliant encrypted audit record of
   executed side-effecting requests.
 - Vanilla NIP-46 service, if offered, MUST be separately opted into
   with its own grants and MUST NOT be an automatic fallback for an
@@ -342,8 +381,8 @@ Grants and RPC:
 
 Agentic profile:
 
-- Agentic RPC MUST use its own inner rumor kinds, distinct from the
-  human RPC kinds. Neither agentic peer may invoke a method before
+- Agentic RPC MUST use its own negotiated protocol id/profile, distinct from
+  the human RPC profile, over the same Comms carrier kinds. Neither agentic peer may invoke a method before
   the bidirectional MCP initialize/capability exchange completes, and
   each side MUST refuse methods and tools it did not advertise.
 - Inbound execution on the light client (incl. commands into an
@@ -367,13 +406,15 @@ with expiry-backed timeouts make the browser the disposable component,
 so the system can revoke eagerly. Tokens move the ceremony in time
 rather than removing it, and issuer-bound redemption gives single-use
 semantics one point of atomicity instead of a replication race.
-Splitting security-policy state from configuration keeps the grant
-system non-self-modifying. The agentic split (separate kinds, explicit
-bidirectional capabilities) keeps remote execution in both directions
-from ever being confusable with, or silently reachable from, the human
-client path. Framing agentic payloads as MCP keeps both rumor families
-JSON-RPC-shaped, reuses a proven capability-negotiation lifecycle, and
-- unlike a state-sync protocol - tolerates the no-backfill DR carrier.
+Splitting security-policy state from configuration keeps the grant system
+non-self-modifying. Human and agentic traffic share the single generic Comms
+carrier family: `kind:31015` negotiation and `kind:31016` payload. They are
+differentiated inside encrypted canonical content by the negotiated Control
+protocol, method, direction, and capabilities, keeping remote execution in
+both directions from being confusable with, or silently reachable from, the
+human client path. Framing agentic payloads as MCP keeps the payloads
+JSON-RPC-shaped, reuses a proven capability-negotiation lifecycle, and -
+unlike a state-sync protocol - tolerates the no-backfill DR carrier.
 
 ## Alternatives Considered
 
@@ -460,22 +501,19 @@ sequenceDiagram
 
 ## Consequences
 
-- A new spec section (candidate §5.8 or §10.6) defines enrollment,
-  RPC payloads, grants, tokens, and the agentic profile; §3.0 assigns
-  the rumor kinds (human and agentic pairs) and the epoch-key invite
-  d-tag.
-- §5.7.2 gains the two carve-outs (epoch-key invite signer;
-  undelegated initiators on the epoch-key endpoint); §5.7.4 gains
-  enrollment-request gating.
-- §10.1.2's "light node MUST author with its own key" is rescoped to
-  delegated publishing devices; §4.5 notes the session-device schema;
-  §3.3 gains the session-device class.
-- §3.8 gains config-delivery over the sync channel plus the grant
-  table and token registry as security-policy state distinct from
-  ordinary configuration.
-- §13 adds signing-oracle, enrollment-phishing/flooding, stolen-token,
-  stolen-session bulk-decrypt, and agentic inbound-execution threats.
-- New conformance vectors (§14): session-device delegation binding,
+- The incomplete Control profile at
+  `heterodyne:control/0.5.0#control-reserved-scope` receives enrollment,
+  RPC payloads, grants, tokens, and MCP/agentic semantics.
+- Core session-device extensibility and the immutable non-stamping profile
+  bind at `heterodyne:core/0.5.0#core-nid-delegation`.
+- Comms receives the invite and initiator carve-outs, the distinct
+  `control-enrollment` context, and negotiation/carrier behavior at
+  `heterodyne:comms/0.5.0#comms-direct-messages`,
+  `heterodyne:comms/0.5.0#comms-acceptance-hook`, and
+  `heterodyne:comms/0.5.0#comms-subprotocol-negotiation`.
+- Control security work binds to `CONTROL-I-AUDIT-AT-REST` and
+  `CONTROL-I-SESSION-KEY-CONFINEMENT` without a Social dependency.
+- The minimum Control conformance-vector corpus must cover session-device delegation binding,
   epoch-key invite staleness rejection, enrollment carve-out, pending
   and request-id expiry (cached-response replay), grant enforcement
   incl. security-policy write refusal, token single-use / expiry /

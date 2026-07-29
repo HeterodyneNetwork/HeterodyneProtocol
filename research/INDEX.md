@@ -3,6 +3,24 @@
 Topic-keyed map into [`sources/`](sources/). Use it to jump to the exact file
 and line range that covers a given topic.
 
+[`docs/spec/heterodyne.md`](../docs/spec/heterodyne.md) is the non-normative
+family map. The four versioned documents provide current normative ownership.
+
+Research sources are non-normative background. Classify new work through the
+four-document family boundary:
+
+| Family document | Research themes |
+|---|---|
+| [Heterodyne Core](../docs/spec/heterodyne-core.md) | Nostr identity and signatures, KERI, Radicle identity/storage, decentralized bootstrap |
+| [Heterodyne Comms](../docs/spec/heterodyne-comms.md) | Nostr delivery, outbox location, privacy tiers, NIP-44, double-ratchet communication |
+| [Heterodyne Control](../docs/spec/heterodyne-control.md) | MCP data layer and agent-session prior art; Control 0.5.0 remains incomplete |
+| [Heterodyne Social](../docs/spec/heterodyne-social.md) | Social graph, moderation, lists, Matrix, MLS, and ATProto attachment |
+
+The family dependency graph is `Core <- Comms <- Control` and
+`Core <- Comms <- Social`. A source's historical framing does not change
+current ownership. In particular, pre-split 0.4.0 source annotations are
+archive context, not current section or conformance references.
+
 ## Sources
 
 | ID | File | Title | Lines |

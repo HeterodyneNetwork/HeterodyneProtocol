@@ -1,13 +1,15 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "config-backup/config-blob-encrypt-decrypt",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§3.8.6",
-    "§6.10",
-    "§6.10.4",
-    "§14.3"
+    "heterodyne:comms/0.5.0#comms-config-repository"
   ],
+  "vector_id": "config-backup/config-blob-encrypt-decrypt",
   "description": "A config-repository blob is Tier 3 content: encrypted under post_key = HKDF-SHA256(config_audience_key, salt=key_id, info=heterodyne-post-key-v1, 32) using the NIP-44 v2 symmetric layer, committed on the enc/<key_id> branch.",
   "input": {
     "fixture_config_audience_key": "4242424242424242424242424242424242424242424242424242424242424242",
@@ -18,7 +20,10 @@
       "output_len": 32
     },
     "nip44_nonce": "6060606060606060606060606060606060606060606060606060606060606060",
-    "plaintext": "{\"blob\":\"persona_config\",\"private_mutes\":[[\"p\",\"2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01\"]],\"feed_prefs\":{\"default_tier\":1}}"
+    "plaintext": "{\"blob\":\"persona_config\",\"private_mutes\":[[\"p\",\"2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01\"]],\"feed_prefs\":{\"default_tier\":1}}",
+    "vector_context": {
+      "notes": "Byte-level choice: config blobs are treated as Tier 3 content (not index), so the post_key label heterodyne-post-key-v1 applies with the derived key_id as the HKDF salt (§6.10, §3.8.6). The NIP-44 v2 symmetric layer takes post_key directly as the conversation key (no ECDH)."
+    }
   },
   "expected_output": {
     "canonical_wire": "AmBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgHdf4N9+vdxuJ57vt+LgMde4zjqZijASXR2CUZlR32y31iWumHou+SGCbvq/AaIuHSMq3ck+xHOh7NX6AgIjtoiMhSRFby+zGtQYzm1lHvTD+G1ENcloB0G+TrL2cJp+6DcBCie1/6CX6qR1yCXXsUrWkGp2/HwyL8CyHEcjiTRAx1UvgK8iu4cuV7qN60tlx5Vn0/sDpLGrPXICrdU2jH6Jrmk8nrb8/P0OniEDlvqOSBCSx5xpkfXGYoYe6Wm6GYd8=",
@@ -42,6 +47,5 @@
       "nip44_payload": "AmBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgHdf4N9+vdxuJ57vt+LgMde4zjqZijASXR2CUZlR32y31iWumHou+SGCbvq/AaIuHSMq3ck+xHOh7NX6AgIjtoiMhSRFby+zGtQYzm1lHvTD+G1ENcloB0G+TrL2cJp+6DcBCie1/6CX6qR1yCXXsUrWkGp2/HwyL8CyHEcjiTRAx1UvgK8iu4cuV7qN60tlx5Vn0/sDpLGrPXICrdU2jH6Jrmk8nrb8/P0OniEDlvqOSBCSx5xpkfXGYoYe6Wm6GYd8="
     }
   },
-  "notes": "Byte-level choice: config blobs are treated as Tier 3 content (not index), so the post_key label heterodyne-post-key-v1 applies with the derived key_id as the HKDF salt (§6.10, §3.8.6). The NIP-44 v2 symmetric layer takes post_key directly as the conversation key (no ECDH).",
   "direction": "produce"
 }

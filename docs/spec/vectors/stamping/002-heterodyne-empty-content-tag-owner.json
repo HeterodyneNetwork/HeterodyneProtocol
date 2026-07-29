@@ -1,0 +1,21 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-version-stamps"
+  ],
+  "vector_id": "stamping/heterodyne-empty-content-tag-owner",
+  "description": "Owner-stamp conformance class: heterodyne empty content tag owner.",
+  "direction": "round-trip",
+  "input": {
+    "kind": 31001,
+    "content_is_heterodyne_json": false
+  },
+  "expected_output": {
+    "owner": "core",
+    "placement": "tag"
+  }
+}

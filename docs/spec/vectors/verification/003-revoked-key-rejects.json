@@ -1,11 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "verification/revoked-key-rejects",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§4.5",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-verification"
   ],
+  "vector_id": "verification/revoked-key-rejects",
   "description": "Events created after epoch-key revocation are rejected.",
   "input": {
     "revoked_at": 1767225600,

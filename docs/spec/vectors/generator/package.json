@@ -7,6 +7,9 @@
     "test": "vitest run",
     "author": "tsx src/cli.ts author",
     "verify": "tsx src/cli.ts verify",
+    "family:check": "tsx src/cli.ts family-check",
+    "release-manifests": "tsx src/cli.ts release-manifests",
+    "coverage": "tsx src/cli.ts coverage",
     "check": "npm run build && npm test && npm run verify"
   },
   "dependencies": {

@@ -1,12 +1,17 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "broadcast/member-decrypts",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
+  "profile": "heterodyne-comms-tier3-wrapped-content-kind-1-v1",
   "spec_refs": [
-    "§5.3",
-    "§6.10",
-    "§14.3"
+    "heterodyne:comms/0.5.0#comms-tier-three-profile"
   ],
+  "vector_id": "broadcast/member-decrypts",
   "description": "Room member with the active room secret decrypts the private broadcast body.",
   "input": {
     "member_has_room_secret": true,

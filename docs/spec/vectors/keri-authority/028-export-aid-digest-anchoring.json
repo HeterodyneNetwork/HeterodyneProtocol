@@ -1,11 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "keri-authority/export-aid-digest-anchoring",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§11.8",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-keri-export"
   ],
+  "vector_id": "keri-authority/export-aid-digest-anchoring",
   "description": "The derived export AID's KEL anchors digests of the persona's accepted Heterodyne KEL events in order, and its DID document names the persona npub as the canonical Heterodyne subject. Persona authority remains solely the Heterodyne KEL; the export AID/DID is never an alternate authoritative identity.",
   "input": {
     "accepted_kel_event_ids": [
@@ -13,7 +15,15 @@
       "5087532c7f6cb9e276b4499dd55f29a346f742785cd26abdd7db0fb60562fb52"
     ],
     "export_aid_present": true,
-    "operator_consent": true
+    "operator_consent": true,
+    "vector_context": {
+      "decision_trace": [
+        "require_operator_consent",
+        "anchor_kel_event_digests_in_order",
+        "name_npub_as_subject",
+        "export_not_authoritative"
+      ]
+    }
   },
   "expected_output": {
     "verdict": "accept",
@@ -26,11 +36,5 @@
       "export_identity_authoritative": false
     }
   },
-  "decision_trace": [
-    "require_operator_consent",
-    "anchor_kel_event_digests_in_order",
-    "name_npub_as_subject",
-    "export_not_authoritative"
-  ],
   "direction": "consume"
 }

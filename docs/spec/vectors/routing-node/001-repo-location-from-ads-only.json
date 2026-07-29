@@ -1,12 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "routing-node/repo-location-from-ads-only",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§7.0",
-    "§10.1.1",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-node-roles"
   ],
+  "vector_id": "routing-node/repo-location-from-ads-only",
   "description": "A routing node answers a repo-location query from kind:31005 and kind:31010 advertisements only, returns host hints, and serves no content.",
   "input": {
     "npub": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
@@ -24,7 +25,16 @@
         "expiry": 1767312000,
         "nid_proof_valid": true
       }
-    ]
+    ],
+    "vector_context": {
+      "simulated_clock": 1767225700,
+      "decision_trace": [
+        "resolve_kind31005_rid",
+        "collect_kind31010_for_rid",
+        "verify_and_filter",
+        "return_hints_only"
+      ]
+    }
   },
   "expected_output": {
     "verdict": "accept",
@@ -36,12 +46,5 @@
       "content_served": false
     }
   },
-  "simulated_clock": 1767225700,
-  "decision_trace": [
-    "resolve_kind31005_rid",
-    "collect_kind31010_for_rid",
-    "verify_and_filter",
-    "return_hints_only"
-  ],
   "direction": "consume"
 }

@@ -1,12 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "keri-authority/equivocation-flagged",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§4.5.1",
-    "§13",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-kel-verification"
   ],
+  "vector_id": "keri-authority/equivocation-flagged",
   "description": "A structurally valid kel_head names an event that is not on the persona's accepted KEL; the verifier produces the equivocation-flagged outcome and surfaces it through the §13 security-warning interface.",
   "input": {
     "event": {
@@ -36,7 +37,16 @@
         "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
       }
     ],
-    "kel_head_names": "abababababababababababababababababababababababababababababababab"
+    "kel_head_names": "abababababababababababababababababababababababababababababababab",
+    "vector_context": {
+      "decision_trace": [
+        "verify_bip340_signature",
+        "resolve_kel_head_on_accepted_kel",
+        "kel_head_not_on_accepted_kel",
+        "flag_equivocation_surface_warning"
+      ],
+      "notes": "equivocation_flagged is a distinct verification outcome (not a plain reject): the event is not silently accepted, and the duplicity is surfaced per §13."
+    }
   },
   "expected_output": {
     "verdict": "equivocation_flagged",
@@ -48,12 +58,5 @@
       "equivocation_flagged"
     ]
   },
-  "decision_trace": [
-    "verify_bip340_signature",
-    "resolve_kel_head_on_accepted_kel",
-    "kel_head_not_on_accepted_kel",
-    "flag_equivocation_surface_warning"
-  ],
-  "notes": "equivocation_flagged is a distinct verification outcome (not a plain reject): the event is not silently accepted, and the duplicity is surfaced per §13.",
   "direction": "consume"
 }

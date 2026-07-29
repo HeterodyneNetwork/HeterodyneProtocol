@@ -1,0 +1,36 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-envelope"
+  ],
+  "vector_id": "comms-envelope/nostr-native-signature-mutation",
+  "description": "Changing signed NIP-01 content while retaining the deterministic id and signature is rejected.",
+  "direction": "consume",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767226100,
+      "kind": 1,
+      "tags": [
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
+        ]
+      ],
+      "content": "deterministic Comms-native envelope tampered",
+      "id": "f67105e854ffaad1e3c1fa10f7d3c2c2908efc0b1f3d45b8480ae8bde5e8eb28",
+      "sig": "36852f67df1324409e65c34f1bfa15d3523fb7c02d67a8c3ebb8bdbe7b67eabf26880ed8235e3b07b929936e8b69445903095e4b31974ea618bd1300e318f540"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "bad_signature"
+  }
+}

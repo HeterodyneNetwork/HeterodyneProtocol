@@ -1,13 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "keri-authority/kel-head-mandatory-on-delegation",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§3.0",
-    "§3.3.1",
-    "§4.5.1",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-kel-head"
   ],
+  "vector_id": "keri-authority/kel-head-mandatory-on-delegation",
   "description": "A kind:31001 NID delegation carrying a well-formed kel_head (bidirectional binding otherwise valid, cf. nid-binding/) is accepted.",
   "input": {
     "event": {
@@ -61,7 +61,17 @@
         "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
       }
     ],
-    "nid_binding_payload": "heterodyne-nid-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx|radicle-nid-delegation"
+    "nid_binding_payload": "heterodyne-nid-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx|radicle-nid-delegation",
+    "vector_context": {
+      "decision_trace": [
+        "verify_bip340_signature",
+        "verify_nid_proof",
+        "require_kel_head_present",
+        "resolve_on_accepted_kel",
+        "accept"
+      ],
+      "notes": "The bidirectional NID binding is exercised in nid-binding/; this vector isolates the mandatory kel_head on a delegation."
+    }
   },
   "expected_output": {
     "verdict": "accept",
@@ -71,13 +81,5 @@
       "kel_head_on_accepted_kel": true
     }
   },
-  "decision_trace": [
-    "verify_bip340_signature",
-    "verify_nid_proof",
-    "require_kel_head_present",
-    "resolve_on_accepted_kel",
-    "accept"
-  ],
-  "notes": "The bidirectional NID binding is exercised in nid-binding/; this vector isolates the mandatory kel_head on a delegation.",
   "direction": "consume"
 }

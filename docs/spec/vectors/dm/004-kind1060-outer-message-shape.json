@@ -1,12 +1,16 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "dm/kind1060-outer-message-shape",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
+  "profile": "heterodyne-comms-double-ratchet-message-v1",
   "spec_refs": [
-    "§5.7.1",
-    "§14.1",
-    "§14.3"
+    "heterodyne:comms/0.5.0#comms-dm-wire"
   ],
+  "vector_id": "dm/kind1060-outer-message-shape",
   "description": "A kind:1060 double-ratchet outer message: signed by the sender's current ratchet key (a fresh key per DH ratchet step, NOT the sender's epoch key), carrying the encrypted ratchet header in a tag and the NIP-44 v2 ciphertext in content; the plaintext is an unsigned kind:14 NIP-17 rumor.",
   "input": {
     "signer": "current_ratchet_key",
@@ -25,9 +29,11 @@
         ]
       ],
       "content": "hi over the ratchet"
+    },
+    "vector_context": {
+      "notes": "SHAPE/parse vector only. Byte-level choices: the message key (used directly as the NIP-44 v2 conversation key) and the ratchet header blob are fixture placeholders, and the ratchet-key signer is a fixture key. dm/006 carries the full ratchet transcript generated with the pinned upstream wire library. The inner rumor is an unsigned kind:14 (no id/sig), attributable to the peer only via the session binding (§5.7.2)."
     }
   },
-  "notes": "SHAPE/parse vector only. Byte-level choices: the message key (used directly as the NIP-44 v2 conversation key) and the ratchet header blob are fixture placeholders, and the ratchet-key signer is a fixture key. dm/006 carries the full ratchet transcript generated with the pinned upstream wire library. The inner rumor is an unsigned kind:14 (no id/sig), attributable to the peer only via the session binding (§5.7.2).",
   "expected_output": {
     "canonical_wire": "[0,\"7f30ea2476b399b4957509c88f77d0191afa2ff5cb7b14fd6d8e7d65aaab1193\",1767225720,1060,[[\"header\",\"a8c43fea3d2df9e94fe5e1acac2d1e830e77dffca6eafad05ef48a55b1ba1a54\"]],\"AmNjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjX9mY3m/I1eZAkIcVhKZLq01FWNZoTt1UI4xqN6VaTFILRim1ZGnLlgbOl+lzkBNzjgSl5ixO/boJVUeZe2YqkjqTRG8JPPnGn5ESua8fzDfDKyEnIdf/rGU40/OmHxLwzLqCsK4I0OULoJAYO8xghKFRlqHhSHcOrIZCjjQ/x5jCpYysRYx7kfQP6CpsrxZtMzAFfP0DKhr4Tu1vaJoqBVxjrC/72T968lZi2S15o2laKphSBoiW9fxtVrNv5gnyr2m3+BKBHsnxpOhEcvYfn5eBHcLhgIE1GY2+CPbA+X9tgMLjRXVP5VL/uZLp7Db9VU0N94BDGaiQ+TKZS/bGoTCba5s36vfze2fdn79mg18XXY6DSjOzixITwcKKvrDMamU=\"]",
     "decoded": {

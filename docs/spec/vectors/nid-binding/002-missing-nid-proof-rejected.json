@@ -1,11 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "nid-binding/missing-nid-proof-rejected",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§3.3.1",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-nid-delegation"
   ],
+  "vector_id": "nid-binding/missing-nid-proof-rejected",
   "description": "A kind:31001 NID delegation that lacks the NID Ed25519 nid_proof is rejected: the binding MUST carry both signatures.",
   "input": {
     "event": {
@@ -46,15 +48,17 @@
       "content": "",
       "id": "d425f471bbe81cdb8bd2f8fee4463eb74fdad5bf6e9f20b0a791474cd09ae8c9",
       "sig": "b24abd1b775060a1341415af07183840126a54d477fe4c8a8420aaa4ffc1f113f690e4abada5679bb9a437790bd986f8e08d30aad7c5d4f426c53eb13d5ce98f"
+    },
+    "vector_context": {
+      "decision_trace": [
+        "verify_outer_bip340_signature",
+        "require_nid_proof_tag"
+      ]
     }
   },
   "expected_output": {
     "verdict": "reject",
     "reason_code": "nid_binding_missing_signature"
   },
-  "decision_trace": [
-    "verify_outer_bip340_signature",
-    "require_nid_proof_tag"
-  ],
   "direction": "consume"
 }

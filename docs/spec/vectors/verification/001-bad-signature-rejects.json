@@ -1,11 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "verification/bad-signature-rejects",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§4.5",
-    "§14.2"
+    "heterodyne:core/0.5.0#core-verification"
   ],
+  "vector_id": "verification/bad-signature-rejects",
   "description": "A Nostr event with a mismatched signature is rejected before delegation checks.",
   "input": {
     "event": {
@@ -16,15 +18,17 @@
       "tags": [],
       "content": "tampered",
       "sig": "22222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "vector_context": {
+      "decision_trace": [
+        "validate_nip01_id",
+        "verify_bip340_signature"
+      ]
     }
   },
   "expected_output": {
     "verdict": "reject",
     "reason_code": "bad_signature"
   },
-  "decision_trace": [
-    "validate_nip01_id",
-    "verify_bip340_signature"
-  ],
   "direction": "consume"
 }

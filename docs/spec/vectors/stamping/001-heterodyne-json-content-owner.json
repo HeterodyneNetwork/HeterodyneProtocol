@@ -1,0 +1,24 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-version-stamps"
+  ],
+  "vector_id": "stamping/heterodyne-json-content-owner",
+  "description": "Owner-stamp conformance class: heterodyne json content owner.",
+  "direction": "round-trip",
+  "input": {
+    "kind": 31003,
+    "content_is_heterodyne_json": true,
+    "content": {
+      "spec_version": "core/0.5.0"
+    }
+  },
+  "expected_output": {
+    "owner": "core",
+    "placement": "content.spec_version"
+  }
+}

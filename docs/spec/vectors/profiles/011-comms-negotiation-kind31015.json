@@ -1,0 +1,39 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
+  "profile": "comms-subprotocol-negotiation-v1",
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-subprotocol-negotiation"
+  ],
+  "vector_id": "profiles/comms-negotiation-kind31015",
+  "description": "The active Comms negotiation profile is a complete canonical unsigned rumor with one recipient tag.",
+  "direction": "round-trip",
+  "input": {
+    "rumor": {
+      "id": "fa363a69f41ee1d3b961a43705a57c9eb49c28dc007bdd78ba907f7d983157c5",
+      "pubkey": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+      "created_at": 1767226102,
+      "kind": 31015,
+      "tags": [
+        [
+          "p",
+          "5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc"
+        ]
+      ],
+      "content": "{\"spec_version\":\"comms/0.5.0\",\"protocol_type\":\"negotiation\",\"phase\":\"offer\",\"negotiation_id\":\"cccccccccccccccccccccccccccccccc\",\"protocol_id\":\"heterodyne-device-rpc\",\"supported_versions\":[\"1.0.0\"],\"required_features\":[\"claims\"]}"
+    },
+    "canonical_wire": "[0,\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\",1767226102,31015,[[\"p\",\"5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc\"]],\"{\\\"spec_version\\\":\\\"comms/0.5.0\\\",\\\"protocol_type\\\":\\\"negotiation\\\",\\\"phase\\\":\\\"offer\\\",\\\"negotiation_id\\\":\\\"cccccccccccccccccccccccccccccccc\\\",\\\"protocol_id\\\":\\\"heterodyne-device-rpc\\\",\\\"supported_versions\\\":[\\\"1.0.0\\\"],\\\"required_features\\\":[\\\"claims\\\"]}\"]"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "owner": "comms",
+      "outer_signature_present": false
+    }
+  }
+}

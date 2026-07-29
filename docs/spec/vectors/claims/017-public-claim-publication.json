@@ -1,0 +1,44 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-key-claims"
+  ],
+  "vector_id": "claims/public-claim-publication",
+  "description": "A public descriptive claim is a complete signed kind:31013 event suitable for ordinary and repository relays.",
+  "direction": "round-trip",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767227600,
+      "kind": 31013,
+      "tags": [
+        [
+          "d",
+          "3556f7ab5ba4a316d260775b37163c8eec04d0e184a5846937ad21d8753638cd"
+        ]
+      ],
+      "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"descriptive\",\"claim_id\":\"3556f7ab5ba4a316d260775b37163c8eec04d0e184a5846937ad21d8753638cd\",\"comms_version\":\"comms/0.5.0\",\"issued_at\":1767227600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767227600,\"registry_revision\":2,\"resources\":[\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\"],\"subject\":{\"type\":\"nostr-secp256k1\",\"value\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\"},\"value\":true,\"visibility\":\"public\"}",
+      "id": "5afd6cc0b40c947d621212b76192028c809a12b46f9a5be1c10cdb9a052339a3",
+      "sig": "b875cfbcdc59e22399100bfc160b19c96715be78cb8586ce6d1830d58fbc8a0d3fa576095120c14414c3869b9064b3e1c5d09f5fb0bc3a100de3828f5d781506"
+    },
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767227600,31013,[[\"d\",\"3556f7ab5ba4a316d260775b37163c8eec04d0e184a5846937ad21d8753638cd\"]],\"{\\\"audience\\\":[\\\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\\\"],\\\"claim_class\\\":\\\"descriptive\\\",\\\"claim_id\\\":\\\"3556f7ab5ba4a316d260775b37163c8eec04d0e184a5846937ad21d8753638cd\\\",\\\"comms_version\\\":\\\"comms/0.5.0\\\",\\\"issued_at\\\":1767227600,\\\"issuer\\\":{\\\"type\\\":\\\"nostr-secp256k1\\\",\\\"value\\\":\\\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\\\"},\\\"name\\\":\\\"claim-ledger-reader\\\",\\\"namespace\\\":\\\"heterodyne.device\\\",\\\"not_before\\\":1767227600,\\\"registry_revision\\\":2,\\\"resources\\\":[\\\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\\\"],\\\"subject\\\":{\\\"type\\\":\\\"nostr-secp256k1\\\",\\\"value\\\":\\\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\\\"},\\\"value\\\":true,\\\"visibility\\\":\\\"public\\\"}\"]",
+    "carriers": [
+      "nostr_relay",
+      "repo_relay"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "visibility": "public",
+      "claim_metadata_public": true,
+      "signed_event_complete": true
+    }
+  }
+}

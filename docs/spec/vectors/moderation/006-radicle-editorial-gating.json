@@ -1,19 +1,30 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "moderation/radicle-editorial-gating",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§8.8",
-    "§6.7.0",
-    "§14.3"
+    "heterodyne:social/0.5.0#social-moderation"
   ],
+  "vector_id": "moderation/radicle-editorial-gating",
   "description": "A post is editorially approved in Radicle mode iff it is reachable from the delegate-threshold-approved canonical feed branch, evaluated independently of any kind:4550 approval.",
   "input": {
     "mode": "radicle_editorial",
     "post_event_id": "efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
     "reachable_from_canonical_branch": true,
     "delegate_threshold": 2,
-    "kind_4550_present": false
+    "kind_4550_present": false,
+    "vector_context": {
+      "decision_trace": [
+        "resolve_canonical_defaultBranch",
+        "check_reachability_of_post_and_index",
+        "approved_without_kind_4550"
+      ]
+    }
   },
   "expected_output": {
     "verdict": "accept",
@@ -24,10 +35,5 @@
       "reachable_from_canonical_branch": true
     }
   },
-  "decision_trace": [
-    "resolve_canonical_defaultBranch",
-    "check_reachability_of_post_and_index",
-    "approved_without_kind_4550"
-  ],
   "direction": "consume"
 }

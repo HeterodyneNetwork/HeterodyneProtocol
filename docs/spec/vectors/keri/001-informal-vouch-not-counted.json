@@ -1,12 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "keri/informal-vouch-not-counted",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§3.5",
-    "§3.12",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-kel-primitives"
   ],
+  "vector_id": "keri/informal-vouch-not-counted",
   "description": "A rotation that reaches threshold only by counting kind:31008 informal vouches is rejected.",
   "input": {
     "kel": [

@@ -1,12 +1,16 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "broadcast/reaction-reply-bare-not-indexed",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§5.3",
-    "§6.10",
-    "§14.3"
+    "heterodyne:social/0.5.0#social-matrix-envelopes"
   ],
+  "vector_id": "broadcast/reaction-reply-bare-not-indexed",
   "description": "Reaction/reply remains bare in-room and is not added to the relay feed index.",
   "input": {
     "event_kind": 7,

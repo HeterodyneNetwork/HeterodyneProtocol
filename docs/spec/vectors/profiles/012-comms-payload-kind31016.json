@@ -1,0 +1,39 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
+  "profile": "comms-subprotocol-payload-v1",
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-subprotocol-negotiation"
+  ],
+  "vector_id": "profiles/comms-payload-kind31016",
+  "description": "The active Comms payload profile is a complete canonical unsigned rumor whose string content carries the Comms stamp.",
+  "direction": "round-trip",
+  "input": {
+    "rumor": {
+      "id": "5687bd58ab03b5789e64621c7cac85ba8fecfa72fadccefd33e6ea8ffbb38c5e",
+      "pubkey": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+      "created_at": 1767226101,
+      "kind": 31016,
+      "tags": [
+        [
+          "p",
+          "5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc"
+        ]
+      ],
+      "content": "{\"spec_version\":\"comms/0.5.0\",\"protocol_type\":\"payload\",\"negotiation_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"protocol_id\":\"heterodyne-device-rpc\",\"protocol_version\":\"1.0.0\",\"responder_confirmation_hash\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"payload\":{\"method\":\"claims.list\",\"request_id\":\"fixture-1\"}}"
+    },
+    "canonical_wire": "[0,\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\",1767226101,31016,[[\"p\",\"5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc\"]],\"{\\\"spec_version\\\":\\\"comms/0.5.0\\\",\\\"protocol_type\\\":\\\"payload\\\",\\\"negotiation_id\\\":\\\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\",\\\"protocol_id\\\":\\\"heterodyne-device-rpc\\\",\\\"protocol_version\\\":\\\"1.0.0\\\",\\\"responder_confirmation_hash\\\":\\\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\\\",\\\"payload\\\":{\\\"method\\\":\\\"claims.list\\\",\\\"request_id\\\":\\\"fixture-1\\\"}}\"]"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "owner": "comms",
+      "outer_signature_present": false
+    }
+  }
+}

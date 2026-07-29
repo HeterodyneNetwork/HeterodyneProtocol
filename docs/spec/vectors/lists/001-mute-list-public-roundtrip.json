@@ -1,57 +1,75 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "lists/mute-list-public-roundtrip",
-  "spec_refs": [
-    "§8.5",
-    "§3.0",
-    "§14.1",
-    "§14.3"
-  ],
-  "description": "NIP-51 kind:10000 mute list: public entries as clear p/t/word/e tags, epoch-key-signed, publishable to both core backends.",
-  "input": {
-    "fixture_persona": "alice",
-    "signer": "epoch_1",
-    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
   },
-  "notes": "kind:10000 is a standard NIP-51 replaceable list (10000-10102 range), replaced by (pubkey, kind) with no d tag. The identical event is publishable to ordinary Nostr relays and repo relays; a repo relay MUST accept it like any other replaceable event (§3.0, §8.5).",
-  "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225700,10000,[[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"t\",\"spam\"],[\"word\",\"airdrop\"],[\"e\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"\"]",
-    "decoded": {
-      "event": {
-        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-        "created_at": 1767225700,
-        "kind": 10000,
-        "tags": [
-          [
-            "p",
-            "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
-          ],
-          [
-            "t",
-            "spam"
-          ],
-          [
-            "word",
-            "airdrop"
-          ],
-          [
-            "e",
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-          ],
-          [
-            "kel_head",
-            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
-            "0"
-          ]
-        ],
-        "content": "",
-        "id": "4115b738d56d2b199d4406490525be8bfb5b1f68e2af59e5655a787381437624",
-        "sig": "393d6fb725e1b5d9b317014a0cfdaccca3db9620563f36a67bb135389e7eb22ee530ea5cb931dd7dddf8509e964bb232395c2b4638cd7def0e65e412b43e566b"
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:social/0.5.0#social-lists"
+  ],
+  "vector_id": "lists/mute-list-public-roundtrip",
+  "description": "Verify preserved lists/mute-list-public-roundtrip bytes as an archived monolith/0.4.0 form; never restamp or resign them.",
+  "direction": "consume",
+  "input": {
+    "source_schema": "monolith/0.4.0",
+    "archived_form_valid": true,
+    "historical_input": {
+      "fixture_persona": "alice",
+      "signer": "epoch_1",
+      "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",
+      "vector_context": {
+        "notes": "kind:10000 is a standard NIP-51 replaceable list (10000-10102 range), replaced by (pubkey, kind) with no d tag. The identical event is publishable to ordinary Nostr relays and repo relays; a repo relay MUST accept it like any other replaceable event (§3.0, §8.5)."
       }
     },
-    "id": "4115b738d56d2b199d4406490525be8bfb5b1f68e2af59e5655a787381437624",
-    "sig": "393d6fb725e1b5d9b317014a0cfdaccca3db9620563f36a67bb135389e7eb22ee530ea5cb931dd7dddf8509e964bb232395c2b4638cd7def0e65e412b43e566b"
+    "historical_expected_output": {
+      "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225700,10000,[[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"t\",\"spam\"],[\"word\",\"airdrop\"],[\"e\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"\"]",
+      "decoded": {
+        "event": {
+          "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+          "created_at": 1767225700,
+          "kind": 10000,
+          "tags": [
+            [
+              "p",
+              "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+            ],
+            [
+              "t",
+              "spam"
+            ],
+            [
+              "word",
+              "airdrop"
+            ],
+            [
+              "e",
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ],
+            [
+              "kel_head",
+              "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+              "0"
+            ]
+          ],
+          "content": "",
+          "id": "4115b738d56d2b199d4406490525be8bfb5b1f68e2af59e5655a787381437624",
+          "sig": "393d6fb725e1b5d9b317014a0cfdaccca3db9620563f36a67bb135389e7eb22ee530ea5cb931dd7dddf8509e964bb232395c2b4638cd7def0e65e412b43e566b"
+        }
+      },
+      "id": "4115b738d56d2b199d4406490525be8bfb5b1f68e2af59e5655a787381437624",
+      "sig": "393d6fb725e1b5d9b317014a0cfdaccca3db9620563f36a67bb135389e7eb22ee530ea5cb931dd7dddf8509e964bb232395c2b4638cd7def0e65e412b43e566b"
+    }
   },
-  "direction": "produce"
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "owner": "monolith/0.4.0",
+      "direction": "verify",
+      "historical_bytes_preserved": true,
+      "restamped": false
+    }
+  }
 }

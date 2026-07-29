@@ -1,11 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "relay-profile/nip11-capability-advert",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§10.6",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-nostr-relay-interop"
   ],
+  "vector_id": "relay-profile/nip11-capability-advert",
   "description": "Heterodyne-aware relay advertises capabilities through NIP-11.",
   "input": {
     "nip11": {

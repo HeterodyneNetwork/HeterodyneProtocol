@@ -1,12 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "repo-relay/light-node-submit-write-path",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§3.3.1",
-    "§10.1.2",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-repo-relay"
   ],
+  "vector_id": "repo-relay/light-node-submit-write-path",
   "description": "A light node authors a Nostr event with its secp256k1 publishing key and submits it to a repo relay; the full node commits it under its delegate NID. Event authenticity is the Nostr signature, not the git-ref signature.",
   "input": {
     "author_publishing_key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",

@@ -1,19 +1,29 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "keri-authority/refresh-failed-not-condition-d",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§4.5.1",
-    "§4.5.2",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-kel-verification"
   ],
+  "vector_id": "keri-authority/refresh-failed-not-condition-d",
   "description": "A kel_head seq ahead of the verifier's accepted head triggers a KEL refresh that FAILS. An attempted-but-failed refresh does not satisfy condition (d), so the accelerator MUST NOT be used; under provisional-accept the event is held provisional and MUST NOT be reported final.",
   "input": {
     "kel_head_seq": 1,
     "verifier_accepted_head_seq": 0,
     "refresh_attempted": true,
     "refresh_succeeded": false,
-    "policy": "provisional-accept"
+    "policy": "provisional-accept",
+    "vector_context": {
+      "decision_trace": [
+        "kel_head_ahead_of_accepted",
+        "attempt_refresh",
+        "refresh_failed",
+        "condition_d_unsatisfied",
+        "hold_provisional"
+      ]
+    }
   },
   "expected_output": {
     "verdict": "accept_provisional",
@@ -26,12 +36,5 @@
       "provisional_not_final"
     ]
   },
-  "decision_trace": [
-    "kel_head_ahead_of_accepted",
-    "attempt_refresh",
-    "refresh_failed",
-    "condition_d_unsatisfied",
-    "hold_provisional"
-  ],
   "direction": "consume"
 }

@@ -105,7 +105,13 @@ export function buildFixtures() {
 
   return {
     vector_schema_version: "1.0.0",
-    spec_version: "0.4.0",
+    document_versions: {
+      core: "0.5.0",
+      comms: "0.5.0",
+      control: "0.5.0",
+      social: "0.5.0",
+    },
+    registry_revision: 1,
     test_epoch: TEST_EPOCH,
     pinned_randomness: {
       schnorr_aux_rand: "00".repeat(32),

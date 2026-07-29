@@ -1,12 +1,16 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "bridge/nostr-permanent-failure-index-not-updated",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§6.4",
-    "§10.5",
-    "§14.3"
+    "heterodyne:social/0.5.0#social-headless-bridge"
   ],
+  "vector_id": "bridge/nostr-permanent-failure-index-not-updated",
   "description": "A permanent relay write failure prevents updating the kind:31007 feed index.",
   "input": {
     "nostr_write": {

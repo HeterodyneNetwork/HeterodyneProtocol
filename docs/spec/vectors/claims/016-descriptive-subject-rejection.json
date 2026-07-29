@@ -1,0 +1,224 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "profile": "heterodyne-comms-claim-revocation-radicle-ed25519-v1",
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-claim-revocation"
+  ],
+  "vector_id": "claims/descriptive-subject-rejection",
+  "description": "A named Radicle Ed25519 revoker can revoke a descriptive assertion; the subject's separately signed rejection preserves the original provenance rather than erasing it.",
+  "direction": "consume",
+  "input": {
+    "assertion_chain": [
+      {
+        "claim_id": "75926ddc07b3d5897b299e43e1097dbaf18e63ad3ccdc8e749809890fa7168f2",
+        "issuer": {
+          "type": "nostr-secp256k1",
+          "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+        },
+        "subject": {
+          "type": "nostr-secp256k1",
+          "value": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
+        },
+        "claim_class": "authorization",
+        "namespace": "heterodyne.device",
+        "name": "claim-ledger-reader",
+        "value": true,
+        "issued_at": 1767227600,
+        "not_before": 1767227600,
+        "expires_at": 1767231200,
+        "audience": [
+          "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        ],
+        "resources": [
+          "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
+        ],
+        "visibility": "repository-private",
+        "comms_version": "comms/0.5.0",
+        "registry_revision": 2,
+        "constraints": {
+          "namespaces": [
+            "heterodyne.device"
+          ],
+          "audiences": [
+            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+          ],
+          "resources": [
+            "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
+          ],
+          "remaining_depth": 2
+        }
+      },
+      {
+        "claim_id": "36d5a8dc9ceeb44e68f5adfdcd22f448490fdba75e382d13a26b6a0aa6396b93",
+        "issuer": {
+          "type": "nostr-secp256k1",
+          "value": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
+        },
+        "subject": {
+          "type": "nostr-secp256k1",
+          "value": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+        },
+        "claim_class": "descriptive",
+        "namespace": "heterodyne.device",
+        "name": "claim-ledger-reader",
+        "value": true,
+        "issued_at": 1767227600,
+        "not_before": 1767227601,
+        "expires_at": 1767229400,
+        "audience": [
+          "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        ],
+        "resources": [
+          "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
+        ],
+        "visibility": "repository-private",
+        "comms_version": "comms/0.5.0",
+        "registry_revision": 2,
+        "parent_claim_id": "75926ddc07b3d5897b299e43e1097dbaf18e63ad3ccdc8e749809890fa7168f2",
+        "revokers": [
+          {
+            "type": "radicle-ed25519-nid",
+            "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+          }
+        ]
+      }
+    ],
+    "nostr_role_cases": [
+      {
+        "role": "descriptive-issuer",
+        "event": {
+          "pubkey": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+          "created_at": 1767227650,
+          "kind": 31014,
+          "tags": [
+            [
+              "d",
+              "36d5a8dc9ceeb44e68f5adfdcd22f448490fdba75e382d13a26b6a0aa6396b93"
+            ]
+          ],
+          "content": "{\"claim_id\":\"36d5a8dc9ceeb44e68f5adfdcd22f448490fdba75e382d13a26b6a0aa6396b93\",\"comms_version\":\"comms/0.5.0\",\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767227650,\"revoker\":{\"type\":\"nostr-secp256k1\",\"value\":\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\"}}",
+          "id": "ca9af9f5c196401156481bd6307a07ed9e7155a86f4de0862c4be3ba28f0dc09",
+          "sig": "2a22852cd149d61d44d2ed5c2304d5c44f1fde30defe1c76e5639d2fb78551e2f11cc23c5e617b3d0ad7f42b7581c2b7ed81bd21e683921680f396da83dff9fc"
+        },
+        "verified_signer": {
+          "type": "nostr-secp256k1",
+          "value": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
+        },
+        "authority_evidence": null,
+        "expected_authorized": true
+      },
+      {
+        "role": "superior-active-issuer",
+        "event": {
+          "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+          "created_at": 1767227651,
+          "kind": 31014,
+          "tags": [
+            [
+              "d",
+              "36d5a8dc9ceeb44e68f5adfdcd22f448490fdba75e382d13a26b6a0aa6396b93"
+            ]
+          ],
+          "content": "{\"claim_id\":\"36d5a8dc9ceeb44e68f5adfdcd22f448490fdba75e382d13a26b6a0aa6396b93\",\"comms_version\":\"comms/0.5.0\",\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767227651,\"revoker\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"}}",
+          "id": "b42a55c138a9c26a4367a6a3dc51cd92ba122423d38f134a4793667efeaa5d1d",
+          "sig": "77fe133cf5c29de075347320fcc7b3eae0ae7de5757e9cec19f384a5c23e04605c63a51ef39c1cf16d0651304e096024efa4f5cef9529403f43b08385e21444f"
+        },
+        "verified_signer": {
+          "type": "nostr-secp256k1",
+          "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+        },
+        "authority_evidence": {
+          "event_id": "b42a55c138a9c26a4367a6a3dc51cd92ba122423d38f134a4793667efeaa5d1d",
+          "claim_id": "36d5a8dc9ceeb44e68f5adfdcd22f448490fdba75e382d13a26b6a0aa6396b93",
+          "signer": {
+            "type": "nostr-secp256k1",
+            "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+          },
+          "authority": "active-ancestor-issuer",
+          "authority_claim_id": "75926ddc07b3d5897b299e43e1097dbaf18e63ad3ccdc8e749809890fa7168f2",
+          "valid_from": 1767227600,
+          "valid_until": 1767231200,
+          "core_kel_authority_valid": true
+        },
+        "expected_authorized": true
+      },
+      {
+        "role": "descriptive-subject",
+        "event": {
+          "pubkey": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556",
+          "created_at": 1767227652,
+          "kind": 31014,
+          "tags": [
+            [
+              "d",
+              "36d5a8dc9ceeb44e68f5adfdcd22f448490fdba75e382d13a26b6a0aa6396b93"
+            ]
+          ],
+          "content": "{\"claim_id\":\"36d5a8dc9ceeb44e68f5adfdcd22f448490fdba75e382d13a26b6a0aa6396b93\",\"comms_version\":\"comms/0.5.0\",\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767227652,\"revoker\":{\"type\":\"nostr-secp256k1\",\"value\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\"}}",
+          "id": "e291c1fb12c3865038c75c3b4ba5917f3bd12c66f205c76e3aba8880969f0f65",
+          "sig": "a6a14c8595cf67b1c8002d0350057fc64ca51dd24e47d59d8ad3492b925ace6d04194ec0b0904e87ecdfa4300b3e625f7f7642eacb0bf81186efb1465f1a4329"
+        },
+        "verified_signer": {
+          "type": "nostr-secp256k1",
+          "value": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+        },
+        "authority_evidence": null,
+        "expected_authorized": false
+      }
+    ],
+    "named_radicle_revocation_event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767227616,
+      "kind": 31014,
+      "tags": [
+        [
+          "d",
+          "198ce9eb207b5ad867ae5ef05dbc58cd40473b1dec7050d2b089f10dbc72f68c"
+        ]
+      ],
+      "content": "{\"claim_id\":\"198ce9eb207b5ad867ae5ef05dbc58cd40473b1dec7050d2b089f10dbc72f68c\",\"comms_version\":\"comms/0.5.0\",\"proof\":{\"public_key\":\"a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff\",\"signature\":\"8f3beb404c59c2760ac30bf0833070d8ed147180d7d770330d9bfabd1c32ca3d5f236a020b16900a41e50585a549a13c0fcb33f01ca8af1517f139a934054d0f\",\"type\":\"radicle-ed25519\"},\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767227616,\"revoker\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"}}",
+      "id": "81a7a513949ae4d7de57f708da5b0dd74c2624de06a91fd7f0928b0d681d83b7",
+      "sig": "5b650da79290861aca09af4606464e51cf814f1d442beec61cc45517e3754831e4ad017d834ecb74af04aab4799212dd276970eb2ae15876112fa4b9c421be56"
+    },
+    "subject_rejection_event": {
+      "pubkey": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556",
+      "created_at": 1767227600,
+      "kind": 31013,
+      "tags": [
+        [
+          "d",
+          "80fba00a2c12400c9459d7ce9e00fd5569d38f4b0c7d365fbd5c11c8da5f32c5"
+        ]
+      ],
+      "content": "{\"claim_class\":\"descriptive\",\"claim_id\":\"80fba00a2c12400c9459d7ce9e00fd5569d38f4b0c7d365fbd5c11c8da5f32c5\",\"comms_version\":\"comms/0.5.0\",\"issued_at\":1767227600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\"},\"name\":\"198ce9eb207b5ad867ae5ef05dbc58cd40473b1dec7050d2b089f10dbc72f68c\",\"namespace\":\"heterodyne.claim-rejection\",\"not_before\":1767227600,\"registry_revision\":2,\"subject\":{\"type\":\"nostr-secp256k1\",\"value\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\"},\"value\":false,\"visibility\":\"public\"}",
+      "id": "1eb09efda29a69b1ba13f9a7d52290687b0954f39caceced37100eef9ec22b6d",
+      "sig": "ed530f7026b471c80437a5186bf5bd0e5809518963ba519460da3bfd900596857fff3b7c4eb83119b468e618a73119b1d4e13122432ba7ff98f2122601fcb0d6"
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "named_revocation_authenticated": true,
+      "named_revocation_signer": {
+        "type": "radicle-ed25519-nid",
+        "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+      },
+      "authorized_roles": [
+        "descriptive-issuer",
+        "superior-active-issuer",
+        "named-revoker"
+      ],
+      "unauthorized_revocation_roles": [
+        "descriptive-subject"
+      ],
+      "subject_rejection_is_separate_claim": true,
+      "original_provenance_retained": true
+    }
+  }
+}

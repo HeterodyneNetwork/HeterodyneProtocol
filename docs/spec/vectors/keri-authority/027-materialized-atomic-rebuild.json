@@ -1,12 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "keri-authority/materialized-atomic-rebuild",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§10.1.2",
-    "§3.9.10.1",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-materialized-kel"
   ],
+  "vector_id": "keri-authority/materialized-atomic-rebuild",
   "description": "On divergence the materialized refs are re-derived by a FULL atomic rebuild (compare-and-swap on both refs together), never an incremental patch; the repo-carried KEL events win and the node re-derives. A backend without multi-ref atomicity MUST NOT claim the profile.",
   "input": {
     "divergence_detected": true,
@@ -14,7 +15,15 @@
     "stale_refs": [
       "refs/xyz.heterodyne.keri/log",
       "refs/xyz.heterodyne.keri/state"
-    ]
+    ],
+    "vector_context": {
+      "decision_trace": [
+        "detect_divergence",
+        "re_derive_from_accepted_kel",
+        "compare_and_swap_both_refs",
+        "reject_incremental_patch"
+      ]
+    }
   },
   "expected_output": {
     "verdict": "accept",
@@ -25,11 +34,5 @@
       "derived_from": "repo_carried_kel"
     }
   },
-  "decision_trace": [
-    "detect_divergence",
-    "re_derive_from_accepted_kel",
-    "compare_and_swap_both_refs",
-    "reject_incremental_patch"
-  ],
   "direction": "consume"
 }

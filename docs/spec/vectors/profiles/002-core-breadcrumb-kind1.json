@@ -1,0 +1,33 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
+  "profile": "heterodyne-core-rotation-breadcrumb-note-v1",
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-version-stamps"
+  ],
+  "vector_id": "profiles/core-breadcrumb-kind1",
+  "description": "A complete signed ADR-031 final kind:1 continuation note remains unstamped.",
+  "direction": "round-trip",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767226104,
+      "kind": 1,
+      "tags": [],
+      "content": "This account continues at npub e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13",
+      "id": "ceba425e33abcf2a5922d129c8cf7d7cbc583a297f737ed81ce9b72c1133899f",
+      "sig": "0e069cc53637d993ec0b85c1fbd9f0b605c292499224f6780d91faae9f7f810c91b003bc0b64ee005abffc876f9a0725ef69383a1f8ae0f0c00da8ce646f805c"
+    },
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767226104,1,[],\"This account continues at npub e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13\"]"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "signature_valid": true,
+      "stamp_count": 0
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { deriveMaterializedRefs, gitBlobOid, gitTreeOidSingle, jcsCanonicalize, type KelEntry } from "./keri-materialized.js";
+import { jcsCanonicalize } from "./jcs.js";
+import { deriveMaterializedRefs, gitBlobOid, gitTreeOidSingle, type KelEntry } from "./keri-materialized.js";
 import { utf8Bytes } from "./hex.js";
 
 // Reference OIDs produced by real git (git hash-object / mktree / commit-tree)

@@ -1,12 +1,79 @@
 # Changelog
 
-All notable changes to the Heterodyne specification are recorded here.
-The spec is in its **0.x phase**: per the semver 0.x rule (§12.1),
-everything is subject to change and any `0.x` release MAY break the
-previous one. The strict PATCH/MINOR/MAJOR compatibility contract
-takes effect only at `1.0.0`.
+All notable changes to the Heterodyne protocol family are recorded here.
+Each document is in its **0.x phase**: under Core's version rules, any `0.x`
+document release may break its predecessor. The strict PATCH/MINOR/MAJOR
+compatibility contract takes effect independently when a document reaches
+`1.0.0`.
 
 ## [Unreleased]
+
+ADR-033 split the 0.4.0 monolith and prepared four independently versioned
+0.5.0 documents. Their contents are current normative authority at their
+repository paths, but the versions remain untagged and unreleased pending
+explicit release approval.
+[`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is now the non-normative
+family map. Prepared release combinations and the exact registry digest are
+recorded in [machine-readable manifests](docs/spec/releases/).
+
+### Core 0.5.0
+
+- Prepared [Core](docs/spec/heterodyne-core.md) `core/0.5.0`, owning identity,
+  KEL verification, canonical bytes, Radicle delegation and repository
+  substrate, registry, versioning, and base conformance.
+- Added the Core-owned, separately revisioned registry for kind allocations,
+  immutable profile discriminators, reason codes, and namespaced security
+  invariants.
+
+### Comms 0.5.0
+
+- Prepared [Comms](docs/spec/heterodyne-comms.md) `comms/0.5.0`, depending on
+  `core/0.5.0` and owning privacy tiers, publishing, feeds, direct messages,
+  credential sync, and generic subprotocol carriage.
+- Added ADR-034 atomic `kind:31013` typed-key claims and irreversible
+  `kind:31014` revocations, strict attenuation and native possession proofs,
+  and an encrypted private multi-writer claim ledger as the authority for
+  persona-issued device claims.
+- Added the one-persona OIDC/OAuth issuer, interoperable RS256 ID Tokens and
+  RFC 9068 access tokens, consent-gated pairwise release, the public Radicle
+  continuity mirror, and the exactly pinned
+  `draft-ietf-oauth-status-list-21` profile. These JWTs are projections, not
+  canonical Heterodyne authorization.
+
+### Control 0.5.0
+
+- Prepared [Control](docs/spec/heterodyne-control.md) `control/0.5.0` as an
+  incomplete Comms profile requiring Core, Comms, and `double-ratchet`.
+  Control remains non-claimable until its integration and vector gates close.
+- Control consumes only `active` Comms claim decisions for enrollment and RPC;
+  it defines no independent claim wire profile and gives NID-less session
+  devices neither ledger access nor ledger keys.
+
+### Social 0.5.0
+
+- Prepared [Social](docs/spec/heterodyne-social.md) `social/0.5.0`, depending
+  on Core and Comms and owning social behavior plus the optional Matrix
+  feature.
+
+### Family migration and conformance
+
+- Established the family's only normative dependency edges as
+  `Core <- Comms <- Control` and `Core <- Comms <- Social`.
+- Advanced all four untagged 0.5.0 release manifests to registry revision 2.
+  Only Comms advertises `key-claims`, `private-claim-ledger`,
+  `oidc-jwt-projection`, and `token-status-list-draft-21`; Core and Social add
+  no claims/OIDC feature, and Control retains its exact Comms dependency.
+- Replaced the historical monolith strict mode with composable stable profile
+  IDs for Core, Comms, Control, Social, and Social+Matrix. The Control strict
+  identifier is reserved-inactive with its baseline conformance gate.
+- Preserved all pre-split normative bytes in
+  [`docs/spec/archive/heterodyne-0.4.0.md`](docs/spec/archive/heterodyne-0.4.0.md)
+  unchanged and added the complete
+  [old-section anchor map](docs/spec/archive/heterodyne-0.4.0-anchor-map.md).
+  The 0.4.0 notes below are historical archive descriptions, not current
+  ownership guidance.
+
+### Historical 0.4.0 work recorded before the family split
 
 Empirical verification pass against `rad`/`radicle-node` 1.9.1 and the
 Heartwood source at tag `releases/1.9.1`, closing several items the

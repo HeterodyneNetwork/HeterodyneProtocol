@@ -1,0 +1,129 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-jwt-projection"
+  ],
+  "vector_id": "oidc/mtls-confirmation-bound",
+  "description": "mTLS accepts only the exact canonical certificate thumbprint and rejects wrong or method-confused confirmation.",
+  "input": {
+    "operation": "jwt-validation-cases",
+    "metadata": {
+      "issuer": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d",
+      "authorization_endpoint": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/authorize",
+      "token_endpoint": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/token",
+      "device_authorization_endpoint": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/device_authorization",
+      "jwks_uri": "https://node.example/oidc/npub10xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqpkge6d/.well-known/jwks.json",
+      "response_types_supported": [
+        "code"
+      ],
+      "grant_types_supported": [
+        "authorization_code",
+        "urn:ietf:params:oauth:grant-type:device_code"
+      ],
+      "code_challenge_methods_supported": [
+        "S256"
+      ],
+      "subject_types_supported": [
+        "pairwise"
+      ],
+      "id_token_signing_alg_values_supported": [
+        "RS256"
+      ],
+      "token_endpoint_auth_signing_alg_values_supported": [
+        "RS256"
+      ]
+    },
+    "jwks": {
+      "keys": [
+        {
+          "kty": "RSA",
+          "n": "zvh2fntchh51kVXPblIG2eeggjb0bya6jHF5xOsHTUhr8bi01jmbNjP29oPeFyoztGGKpndDxqt9qHvOL5x3euFKrm6kZywZ_XDVfdZVm7icnpybEmNdammqZcf97EIwOr_mczhRZ9QYK7SsSnBEQW1-BAs9dEHxNT39VqHjCq81uhzLKeemrpW4Kim_s4iYmoRoVkiPHghPhGo9CKXNXj2tGyDmj5hwuXa_gv5sZu5C7u0L9y4T25a-VHFVyUnCoa1yhyiT3teW3256KPmA6rBz1YhdLOCnwWDqIaBGOe4J6gkIODNCuCHwtI8JnX3gcRni_Pz19f3SNqtEJMvWjw",
+          "e": "AQAB",
+          "kid": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
+          "alg": "RS256",
+          "use": "sig",
+          "key_ops": [
+            "verify"
+          ]
+        }
+      ]
+    },
+    "compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkpGeE0xN1FwU01HcDRtMm80bGtkMDNzY0hfeEFyTWVTM2pxeHFvYVdoZW8iLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZCIsInN1YiI6IjVsbmJ2bEtEVG9ZM01FakMydzFYZGtWU01kY3VNUF9QUGFpVE9iRUNzQmciLCJhdWQiOlsiaHR0cHM6Ly9hcGkuZXhhbXBsZSJdLCJleHAiOjE3NjcyNDYyNjksImlhdCI6MTc2NzI0NTY2OSwianRpIjoib2lkYy1ldmlkZW5jZS1qdGktMDAwMSIsImNsaWVudF9pZCI6InJlZ2lzdGVyZWQtY2xpZW50Iiwic2NvcGUiOiJoZXRlcm9keW5lOmtleS1yZWYgb3BlbmlkIHByb2ZpbGUiLCJuYW1lIjoiQWxpY2UiLCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qva2V5LXJlZiI6eyJ0eXBlIjoibm9zdHItc2VjcDI1NmsxIiwidmFsdWUiOiJjNjA0N2Y5NDQxZWQ3ZDZkMzA0NTQwNmU5NWMwN2NkODVjNzc4ZTRiOGNlZjNjYTdhYmFjMDliOTVjNzA5ZWU1In0sImNuZiI6eyJ4NXQjUzI1NiI6InRCNUM1RFBveFdjakJ5LU9IdXJXaHNGc0xJNi1TQzBjeDcwUkxGNWZVZGMifSwiaHR0cHM6Ly9oZXRlcm9keW5lLm5ldHdvcmsvand0L2xlZGdlci1jaGVja3BvaW50Ijp7InJlcG9zaXRvcnlfcmlkIjoicmFkOnoyVEpvREFoSzVwVG1MenFtSzlXNEZNZHRqeXkxIiwiYnJhbmNoIjoibWFpbiIsImNvbW1pdF9vaWQiOiJmNGYyMTY5NDhlMWE5NDA3ZmI0NmQzZmFjNjQzNmViNGRkNzMxNGI2MGE2NjEzMmZlNWQ2OWQ4NTk5Nzc1N2RhIiwib2JzZXJ2ZWRfYXQiOjE3NjcyNDU2Njh9LCJzdGF0dXMiOnsic3RhdHVzX2xpc3QiOnsidXJpIjoiaHR0cHM6Ly9ub2RlLmV4YW1wbGUvb2lkYy9ucHViMTB4bHh2bGhlbWphNmM0ZHF2MjJ1YXBjdHF1cGZobHhtOWg4ejNrMmU3MnE0azloY3o3dnFwa2dlNmQvc3RhdHVzLWxpc3RzLzIwNDU0LzllMmQ4Zjk2OTY2MmZkN2M2OGM5Y2M2OGM3YjIwNWM4LzAuand0IiwiaWR4IjowfX0sImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9zdGF0dXMtbWlycm9yIjp7InJlcG9zaXRvcnlfcmlkIjoicmFkOnoyVEpvREFoSzVwVG1MenFtSzlXNEZNZHRqeXkxIiwiYnJhbmNoIjoibWFpbiIsInBhdGgiOiIud2VsbC1rbm93bi9ucHViMTB4bHh2bGhlbWphNmM0ZHF2MjJ1YXBjdHF1cGZobHhtOWg4ejNrMmU3MnE0azloY3o3dnFwa2dlNmQvc3RhdHVzLWxpc3RzLzIwNDU0LzllMmQ4Zjk2OTY2MmZkN2M2OGM5Y2M2OGM3YjIwNWM4LzAuand0Iiwic2hhMjU2IjoiMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMyJ9fQ.nxybMW1Qjn8HLT5MHKEnqg8sMOyQotYcKBnwk48-VySE16BfSvOddyuRHWgbMsg9B5QrB3_Dx_FkC6XLR3BTF_2Q8UcxjGaTrMxltbMPhNclyc-fxK0iF12Gr7fq_s0F5ptIJLyaBIipAYoEZUGW7BJ7QjSgywiKf-qTtjKHtQb78sXsXMKIE4WT2820FgR5SriVDZB8VbktNuBouaElG-LaEjyNdS4PPPTPY4TG2392cyJOi3NHYWFIimvnJEBd5Jyw52E1VXLGrxHBcohiHDQAYOgqimySfm3_XX2XXAFczqCByKMikxteFCk8Qgarb9KJOB9n3km-enFpmWy4VQ",
+    "cases": [
+      {
+        "expected_audience": "https://api.example",
+        "options": {
+          "now": 1767245669,
+          "client_id": "registered-client",
+          "permitted_audiences": [
+            "https://api.example"
+          ],
+          "token_use": "access_token",
+          "cnf": {
+            "x5t#S256": "tB5C5DPoxWcjBy-OHurWhsFsLI6-SC0cx70RLF5fUdc"
+          },
+          "sender_constraint": "mtls"
+        }
+      },
+      {
+        "expected_audience": "https://api.example",
+        "options": {
+          "now": 1767245669,
+          "client_id": "registered-client",
+          "permitted_audiences": [
+            "https://api.example"
+          ],
+          "token_use": "access_token",
+          "cnf": {
+            "x5t#S256": "IlSXDpdF1Brm9-BrroEmOFb6At5UfnndoC4Dm91kEbs"
+          },
+          "sender_constraint": "mtls"
+        }
+      },
+      {
+        "expected_audience": "https://api.example",
+        "options": {
+          "now": 1767245669,
+          "client_id": "registered-client",
+          "permitted_audiences": [
+            "https://api.example"
+          ],
+          "token_use": "access_token",
+          "cnf": {
+            "jkt": "B4oqTIBVE1Dh9vaCfbG7DbHH5IIxSi8RgV8Wpu1154g"
+          },
+          "sender_constraint": "dpop"
+        }
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "decisions": [
+        {
+          "allowed": true,
+          "state": "active",
+          "reason_code": null
+        },
+        {
+          "allowed": false,
+          "state": "invalid",
+          "reason_code": "oidc-token-type-invalid"
+        },
+        {
+          "allowed": false,
+          "state": "invalid",
+          "reason_code": "oidc-token-type-invalid"
+        }
+      ]
+    }
+  },
+  "direction": "consume"
+}

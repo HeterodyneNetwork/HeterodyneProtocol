@@ -1,0 +1,31 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 2,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-key-claims"
+  ],
+  "vector_id": "claims/local-only-no-publication",
+  "description": "A local-only assertion remains application state and creates no signed claim, relay, DR, repository, discovery, or OIDC protocol artifact.",
+  "direction": "consume",
+  "input": {
+    "local_state": {
+      "namespace": "heterodyne.local",
+      "name": "display-preference",
+      "value": true
+    },
+    "requested_visibility": "local-only"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "visibility": "local-only",
+      "transport_artifacts": [],
+      "public_discovery_fields": []
+    }
+  }
+}

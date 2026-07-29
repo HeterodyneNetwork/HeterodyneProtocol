@@ -1,12 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "routing-node/unverifiable-advert-discarded",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§7.0",
-    "§10.1.1",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-node-roles"
   ],
+  "vector_id": "routing-node/unverifiable-advert-discarded",
   "description": "A routing node discards a kind:31010 advertisement whose nid_proof does not verify and returns only the verifiable host hints.",
   "input": {
     "rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
@@ -23,7 +24,10 @@
         "expiry": 1767312000,
         "nid_proof_valid": false
       }
-    ]
+    ],
+    "vector_context": {
+      "simulated_clock": 1767225700
+    }
   },
   "expected_output": {
     "verdict": "accept",
@@ -36,6 +40,5 @@
       ]
     }
   },
-  "simulated_clock": 1767225700,
   "direction": "consume"
 }

@@ -1,19 +1,54 @@
 import type { Fixtures } from "./fixtures.js";
 import type { AuthoredVector, Vector } from "./types.js";
+import { vectorMetadata } from "./vector-metadata.js";
 
 export const SCHEMA_VERSION = "1.0.0";
-export const SPEC_VERSION = "0.4.0";
 export const AUX_RAND = "00".repeat(32);
 
 export type VectorFactory = (fixtures: Fixtures) => Promise<AuthoredVector> | AuthoredVector;
 
-type VectorBody = Omit<Vector, "vector_schema_version" | "spec_version" | "direction">;
+type LegacyTopLevelMetadata = {
+  fixtures?: Record<string, unknown>;
+  simulated_clock?: number;
+  decision_trace?: string[];
+  transport_context?: Record<string, unknown>;
+  notes?: string;
+};
 
-export function baseVector(vector: Omit<Vector, "vector_schema_version" | "spec_version">): Vector {
+export type VectorBody = Pick<
+  Vector,
+  "vector_id" | "spec_refs" | "description" | "input" | "expected_output"
+> & LegacyTopLevelMetadata;
+
+type DirectionalVectorBody = VectorBody & { direction: Vector["direction"] };
+
+export function baseVector(vector: DirectionalVectorBody): Vector {
+  const {
+    fixtures,
+    simulated_clock,
+    decision_trace,
+    transport_context,
+    notes,
+    spec_refs: _legacySpecRefs,
+    ...body
+  } = vector;
+  const metadata = vectorMetadata(vector.vector_id);
+  const vectorContext = {
+    ...(fixtures === undefined ? {} : { fixtures }),
+    ...(simulated_clock === undefined ? {} : { simulated_clock }),
+    ...(decision_trace === undefined ? {} : { decision_trace }),
+    ...(transport_context === undefined ? {} : { transport_context }),
+    ...(notes === undefined ? {} : { notes }),
+  };
+  const normalizedInput = {
+    ...body.input,
+    ...(Object.keys(vectorContext).length === 0 ? {} : { vector_context: vectorContext }),
+  };
   return {
     vector_schema_version: SCHEMA_VERSION,
-    spec_version: SPEC_VERSION,
-    ...vector,
+    ...metadata,
+    ...body,
+    input: normalizedInput,
   };
 }
 

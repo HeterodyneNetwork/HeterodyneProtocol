@@ -1,11 +1,16 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "moderation/approvals-required-absent-default-one",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§8.2",
-    "§14.3"
+    "heterodyne:social/0.5.0#social-moderation"
   ],
+  "vector_id": "moderation/approvals-required-absent-default-one",
   "description": "A kind:34550 community definition with no approvals_required tag defaults the threshold to 1.",
   "input": {
     "community_definition": {
@@ -22,6 +27,9 @@
           "moderator"
         ]
       ]
+    },
+    "vector_context": {
+      "notes": "Absent approvals_required means 1, keeping vanilla-NIP-72 compatibility (§8.2)."
     }
   },
   "expected_output": {
@@ -31,6 +39,5 @@
       "threshold_source": "default_absent"
     }
   },
-  "notes": "Absent approvals_required means 1, keeping vanilla-NIP-72 compatibility (§8.2).",
   "direction": "consume"
 }

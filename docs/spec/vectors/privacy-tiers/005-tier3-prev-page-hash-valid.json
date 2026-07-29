@@ -1,12 +1,15 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "privacy-tiers/tier3-prev-page-hash-valid",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§6.7.2",
-    "§6.7.4",
-    "§14.3"
+    "heterodyne:comms/0.5.0#comms-privacy-tiers"
   ],
+  "vector_id": "privacy-tiers/tier3-prev-page-hash-valid",
   "description": "A Tier 3 index page chains to its predecessor: the decrypted previous_index.prev_page_hash equals the SHA-256 of the prior page's canonical NIP-01 serialization.",
   "input": {
     "prior_page_id": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28",
@@ -14,6 +17,13 @@
     "current_page_previous_index": {
       "event_id": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28",
       "prev_page_hash": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28"
+    },
+    "vector_context": {
+      "decision_trace": [
+        "verify_prior_page_signature",
+        "sha256_prior_page_canonical",
+        "compare_to_prev_page_hash"
+      ]
     }
   },
   "expected_output": {
@@ -22,10 +32,5 @@
       "page_chain_valid": true
     }
   },
-  "decision_trace": [
-    "verify_prior_page_signature",
-    "sha256_prior_page_canonical",
-    "compare_to_prev_page_hash"
-  ],
   "direction": "consume"
 }

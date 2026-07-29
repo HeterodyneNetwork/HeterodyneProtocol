@@ -1,0 +1,28 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-multi-host-seeding"
+  ],
+  "vector_id": "core-redundancy/radicle-multihost-replication",
+  "description": "Two independent Radicle seeds replicate the same signed canonical repository head.",
+  "direction": "consume",
+  "input": {
+    "rid": "rad:zFixture",
+    "hosts": [
+      "node-a",
+      "node-b"
+    ],
+    "canonical_head": "2222222222222222222222222222222222222222"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "independent_host_count": 2,
+      "canonical_head_agrees": true
+    }
+  }
+}

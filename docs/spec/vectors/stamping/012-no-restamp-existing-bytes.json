@@ -1,0 +1,22 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-version-stamps"
+  ],
+  "vector_id": "stamping/no-restamp-existing-bytes",
+  "description": "Owner-stamp conformance class: no restamp existing bytes.",
+  "direction": "round-trip",
+  "input": {
+    "historical_stamp": "0.4.0",
+    "migration_target": "core/0.5.0"
+  },
+  "expected_output": {
+    "historical_stamp": "0.4.0",
+    "resign": false,
+    "bytes_changed": false
+  }
+}

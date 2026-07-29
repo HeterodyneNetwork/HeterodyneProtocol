@@ -1,0 +1,605 @@
+{
+  "kinds": [
+    {
+      "kind": 0,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-core-rotation-breadcrumb-profile-v1",
+          "owner": "core",
+          "discriminator": "production-rule:adr-031-kind0-v1",
+          "stamping": false,
+          "first_version": "core/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 1,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-core-rotation-breadcrumb-note-v1",
+          "owner": "core",
+          "discriminator": "production-rule:adr-031-kind1-v1",
+          "stamping": false,
+          "first_version": "core/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-1-v1",
+          "owner": "comms",
+          "discriminator": "tag:heterodyne_wrap=room_key.v2",
+          "stamping": true,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 3,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 5,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 6,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-6-v1",
+          "owner": "comms",
+          "discriminator": "tag:heterodyne_wrap=room_key.v2",
+          "stamping": true,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 7,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 13,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 14,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 15,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 16,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-16-v1",
+          "owner": "comms",
+          "discriminator": "tag:heterodyne_wrap=room_key.v2",
+          "stamping": true,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 1059,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-double-ratchet-invite-response-v1",
+          "owner": "comms",
+          "discriminator": "wire:nostr-double-ratchet@0.0.138;kind=1059",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 1060,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-double-ratchet-message-v1",
+          "owner": "comms",
+          "discriminator": "wire:nostr-double-ratchet@0.0.138;kind=1060",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 1063,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-1063-v1",
+          "owner": "comms",
+          "discriminator": "tag:heterodyne_wrap=room_key.v2",
+          "stamping": true,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 1984,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 1985,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 4550,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 9734,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 9735,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 10000,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-social-mute-list-v1",
+          "owner": "social",
+          "discriminator": "tag:heterodyne=social-mute-list-v1",
+          "stamping": true,
+          "first_version": "social/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 10001,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 10002,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 10003,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 10004,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 10050,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30000,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30002,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30003,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30007,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30015,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30023,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-30023-v1",
+          "owner": "comms",
+          "discriminator": "tag:heterodyne_wrap=room_key.v2",
+          "stamping": true,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 30024,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30078,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-double-ratchet-invite-v1",
+          "owner": "comms",
+          "discriminator": "d-prefix:double-ratchet/invites/",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 30402,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-30402-v1",
+          "owner": "comms",
+          "discriminator": "tag:heterodyne_wrap=room_key.v2",
+          "stamping": true,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 31000,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31001,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-control-session-device-v1",
+          "owner": "control",
+          "discriminator": "tags:heterodyne=delegation,binding_nonce,key_proof;radicle_nid=absent",
+          "stamping": false,
+          "first_version": "control/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 31002,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31003,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31004,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31005,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31007,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-social-org-feed-v1",
+          "owner": "social",
+          "discriminator": "content.profile=heterodyne.social.org-feed.v1",
+          "stamping": true,
+          "first_version": "social/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 31008,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31009,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31010,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31011,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31012,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31013,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-key-claim-nostr-bip340-v1",
+          "owner": "comms",
+          "discriminator": "production-rule:claim-subject-pop;proof=nostr-bip340-v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-key-claim-radicle-ed25519-v1",
+          "owner": "comms",
+          "discriminator": "production-rule:claim-subject-pop;proof=radicle-ed25519-v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-key-claim-jwk-jws-v1",
+          "owner": "comms",
+          "discriminator": "production-rule:claim-subject-pop;proof=jwk-jws-v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 31014,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-claim-revocation-nostr-bip340-v1",
+          "owner": "comms",
+          "discriminator": "production-rule:claim-revoker;proof=nostr-bip340-v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-claim-revocation-radicle-ed25519-v1",
+          "owner": "comms",
+          "discriminator": "production-rule:claim-revoker;proof=radicle-ed25519-v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-claim-revocation-jwk-jws-v1",
+          "owner": "comms",
+          "discriminator": "production-rule:claim-revoker;proof=jwk-jws-v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 31015,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "comms-subprotocol-negotiation-v1",
+          "owner": "comms",
+          "discriminator": "content.protocol_type=negotiation",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 31016,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "comms-subprotocol-payload-v1",
+          "owner": "comms",
+          "discriminator": "content.protocol_type=payload",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 34550,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 39089,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    }
+  ]
+}

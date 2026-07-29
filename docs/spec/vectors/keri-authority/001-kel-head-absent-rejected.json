@@ -1,12 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "keri-authority/kel-head-absent-rejected",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§3.0",
-    "§4.5.1",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-kel-head"
   ],
+  "vector_id": "keri-authority/kel-head-absent-rejected",
   "description": "An epoch-key-signed kind:1 post with no kel_head tag fails verification: the tag is mandatory per the §3.0 matrix.",
   "input": {
     "event": {
@@ -23,16 +24,18 @@
       "id": "e4a82e1f941cabd09e55f03d7886bfa13faf7d2f5ddc5e37960f224e02e27696",
       "sig": "0136078d2f05878f52c42bf4d70d09e80ed2847f73bba6d7a6346c4b0bbeea81e62b19c948f0bf15c37dd5992329221313fd77e5f7d945569d4106cec6814cca"
     },
-    "signer": "epoch_1"
+    "signer": "epoch_1",
+    "vector_context": {
+      "decision_trace": [
+        "verify_bip340_signature",
+        "require_kel_head",
+        "kel_head_absent"
+      ]
+    }
   },
   "expected_output": {
     "verdict": "reject",
     "reason_code": "kel_head_missing"
   },
-  "decision_trace": [
-    "verify_bip340_signature",
-    "require_kel_head",
-    "kel_head_absent"
-  ],
   "direction": "consume"
 }

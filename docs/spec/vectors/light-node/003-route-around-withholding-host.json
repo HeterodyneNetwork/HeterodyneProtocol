@@ -1,13 +1,13 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "light-node/route-around-withholding-host",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
   "spec_refs": [
-    "§7.0",
-    "§7.3",
-    "§10.1.1",
-    "§14.3"
+    "heterodyne:core/0.5.0#core-client-responsibilities"
   ],
+  "vector_id": "light-node/route-around-withholding-host",
   "description": "A light node routes around a full node that withholds an event by retrying an alternate host from the routing node's list, then verifies the obtained event locally.",
   "input": {
     "target_event_id": "abababababababababababababababababababababababababababababababab",
@@ -20,7 +20,16 @@
     ],
     "nostr_relay_fallback": [
       "wss://relay.example"
-    ]
+    ],
+    "vector_context": {
+      "decision_trace": [
+        "query_routing_node",
+        "fetch_primary_host_withheld",
+        "retry_alternate_host",
+        "obtained",
+        "verify_signature_locally"
+      ]
+    }
   },
   "expected_output": {
     "verdict": "accept",
@@ -32,12 +41,5 @@
       ]
     }
   },
-  "decision_trace": [
-    "query_routing_node",
-    "fetch_primary_host_withheld",
-    "retry_alternate_host",
-    "obtained",
-    "verify_signature_locally"
-  ],
   "direction": "consume"
 }

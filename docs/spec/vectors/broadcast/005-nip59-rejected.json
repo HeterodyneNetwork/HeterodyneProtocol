@@ -1,12 +1,16 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "broadcast/nip59-rejected",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
   "spec_refs": [
-    "§5.3",
-    "§6.10",
-    "§14.3"
+    "heterodyne:social/0.5.0#social-matrix-envelopes"
   ],
+  "vector_id": "broadcast/nip59-rejected",
   "description": "NIP-59 gift-wrapped broadcast posts are rejected.",
   "input": {
     "event_kind": 1059,

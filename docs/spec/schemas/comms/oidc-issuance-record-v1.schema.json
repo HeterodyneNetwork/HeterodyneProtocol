@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/comms/oidc-issuance-record-v1.schema.json",
+  "title": "Heterodyne Comms OIDC issuance record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["jti", "reservation", "checkpoint", "manifest_max_age_seconds", "signing_key_id", "client_id", "authorization_request_digest", "release_digest", "source_claim_ids", "issued_at", "expires_at"],
+  "properties": {
+    "jti": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
+    "reservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri", "idx", "expiry_bucket", "writer_nid_fingerprint", "list_sequence"],
+      "properties": {
+        "uri": { "type": "string", "pattern": "^status-lists/(0|[1-9][0-9]*)/[0-9a-f]{32}/(0|[1-9][0-9]*)\\.jwt$", "maxLength": 256 },
+        "idx": { "$ref": "#/definitions/json_safe_integer" },
+        "expiry_bucket": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" },
+        "writer_nid_fingerprint": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+        "list_sequence": { "$ref": "#/definitions/json_safe_integer" }
+      }
+    },
+    "checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository_rid", "branch", "commit_oid", "observed_at"],
+      "properties": {
+        "repository_rid": { "type": "string", "pattern": "^rad:z[1-9A-HJ-NP-Za-km-z]+$" },
+        "branch": { "const": "main" },
+        "commit_oid": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
+        "observed_at": { "$ref": "#/definitions/json_safe_integer" }
+      }
+    },
+    "manifest_max_age_seconds": { "type": "integer", "minimum": 0, "maximum": 300 },
+    "signing_key_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+    "client_id": { "type": "string", "pattern": "^[A-Za-z0-9._~-]{1,255}$" },
+    "authorization_request_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "release_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "source_claim_ids": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+    },
+    "issued_at": { "$ref": "#/definitions/json_safe_integer" },
+    "expires_at": { "$ref": "#/definitions/json_safe_integer" }
+  },
+  "definitions": {
+    "json_safe_integer": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+  }
+}

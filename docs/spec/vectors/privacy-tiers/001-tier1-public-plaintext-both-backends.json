@@ -1,68 +1,84 @@
 {
   "vector_schema_version": "1.0.0",
-  "spec_version": "0.4.0",
-  "vector_id": "privacy-tiers/tier1-public-plaintext-both-backends",
-  "spec_refs": [
-    "§5.2.1",
-    "§6.7.1",
-    "§6.7.3",
-    "§9.0",
-    "§14.3"
-  ],
-  "description": "Tier 1 (public repo) kind:31007 feed index is plaintext (content empty, e tags in the clear) and published to both core backends.",
-  "input": {
-    "fixture_persona": "alice",
-    "signer": "epoch_1",
-    "rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
   },
-  "notes": "Trust boundary: confidential against no one. The same event is published to the persona's Nostr write relays and its repo relay.",
-  "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225680,31007,[[\"d\",\"tech:2026-q2\"],[\"heterodyne\",\"feed_index\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"rid\",\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1\"],[\"feed_label\",\"Tech\"],[\"e\",\"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",\"wss://relay.example\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"\"]",
-    "decoded": {
-      "event": {
-        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-        "created_at": 1767225680,
-        "kind": 31007,
-        "tags": [
-          [
-            "d",
-            "tech:2026-q2"
-          ],
-          [
-            "heterodyne",
-            "feed_index"
-          ],
-          [
-            "cold_root",
-            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-          ],
-          [
-            "rid",
-            "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1"
-          ],
-          [
-            "feed_label",
-            "Tech"
-          ],
-          [
-            "e",
-            "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
-            "wss://relay.example"
-          ],
-          [
-            "kel_head",
-            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
-            "0"
-          ]
-        ],
-        "content": "",
-        "id": "2f31170f2397dfc914ee3b3756ed678312438f90e6ef611e09d78df20c466568",
-        "sig": "821735212567f1abfcd09d6f31b4c3db76a71e0c6fc556aeab2cef25c514e78268e20b32b4ff3791e7c8dc53d435b1801a1a9707fcf3f7263dd725997f61a754"
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-privacy-tiers"
+  ],
+  "vector_id": "privacy-tiers/tier1-public-plaintext-both-backends",
+  "description": "Verify preserved privacy-tiers/tier1-public-plaintext-both-backends bytes as an archived monolith/0.4.0 form; never restamp or resign them.",
+  "direction": "consume",
+  "input": {
+    "source_schema": "monolith/0.4.0",
+    "archived_form_valid": true,
+    "historical_input": {
+      "fixture_persona": "alice",
+      "signer": "epoch_1",
+      "rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+      "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",
+      "vector_context": {
+        "notes": "Trust boundary: confidential against no one. The same event is published to the persona's Nostr write relays and its repo relay."
       }
     },
-    "id": "2f31170f2397dfc914ee3b3756ed678312438f90e6ef611e09d78df20c466568",
-    "sig": "821735212567f1abfcd09d6f31b4c3db76a71e0c6fc556aeab2cef25c514e78268e20b32b4ff3791e7c8dc53d435b1801a1a9707fcf3f7263dd725997f61a754"
+    "historical_expected_output": {
+      "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225680,31007,[[\"d\",\"tech:2026-q2\"],[\"heterodyne\",\"feed_index\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"rid\",\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1\"],[\"feed_label\",\"Tech\"],[\"e\",\"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",\"wss://relay.example\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"\"]",
+      "decoded": {
+        "event": {
+          "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+          "created_at": 1767225680,
+          "kind": 31007,
+          "tags": [
+            [
+              "d",
+              "tech:2026-q2"
+            ],
+            [
+              "heterodyne",
+              "feed_index"
+            ],
+            [
+              "cold_root",
+              "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+            ],
+            [
+              "rid",
+              "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1"
+            ],
+            [
+              "feed_label",
+              "Tech"
+            ],
+            [
+              "e",
+              "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+              "wss://relay.example"
+            ],
+            [
+              "kel_head",
+              "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+              "0"
+            ]
+          ],
+          "content": "",
+          "id": "2f31170f2397dfc914ee3b3756ed678312438f90e6ef611e09d78df20c466568",
+          "sig": "821735212567f1abfcd09d6f31b4c3db76a71e0c6fc556aeab2cef25c514e78268e20b32b4ff3791e7c8dc53d435b1801a1a9707fcf3f7263dd725997f61a754"
+        }
+      },
+      "id": "2f31170f2397dfc914ee3b3756ed678312438f90e6ef611e09d78df20c466568",
+      "sig": "821735212567f1abfcd09d6f31b4c3db76a71e0c6fc556aeab2cef25c514e78268e20b32b4ff3791e7c8dc53d435b1801a1a9707fcf3f7263dd725997f61a754"
+    }
   },
-  "direction": "produce"
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "owner": "monolith/0.4.0",
+      "direction": "verify",
+      "historical_bytes_preserved": true,
+      "restamped": false
+    }
+  }
 }
