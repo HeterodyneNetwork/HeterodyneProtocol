@@ -2,7 +2,7 @@
 
 Document ID: `core`<br>
 Version: `core/0.5.0`<br>
-Registry revision: `2`
+Registry revision: `3`
 
 Normative dependencies: None.
 
@@ -85,7 +85,7 @@ Implementations MUST NOT conflate these mechanisms.
 
 The separately revisioned Core-owned registry at `docs/spec/registry/` is the
 allocation authority for kind numbers, profile discriminators, reason codes,
-and security-invariant IDs. This release pins registry revision `2`; changing a
+and security-invariant IDs. This release pins registry revision `3`; changing a
 non-Core-owned registry entry does not change Core semver. A conformance claim
 MUST pin the registry revision or immutable entry-set digest.
 
@@ -129,7 +129,7 @@ the parsed object.
 <!-- Monolith provenance: §3.0 and §12; split rules: ADR-033. -->
 ### 3.2 Owner stamps and historical bytes
 
-An event carries at most one Heterodyne version stamp. Registry revision 2
+An event carries at most one Heterodyne version stamp. Registry revision 3
 defines these exhaustive classes:
 
 1. Heterodyne-defined JSON `content` MUST contain the qualified
@@ -518,7 +518,7 @@ MUST deactivate the delegation.
 
 A light-only device MAY have a publishing-key delegation without an NID. It
 cannot sign Radicle refs and submits its Nostr event to an authorized full
-node. Registry revision 2 reserves the non-stamping profile
+node. Registry revision 3 reserves the non-stamping profile
 `heterodyne-control-session-device-v1` with discriminator
 `tags:heterodyne=delegation,binding_nonce,key_proof;radicle_nid=absent`. That
 profile MUST NOT alter the Core base-schema stamp; its added semantics do not
@@ -1069,7 +1069,7 @@ Every capability advertisement uses this Core-parsable bootstrap object:
 {
   "descriptor": "heterodyne-capabilities-v1",
   "bootstrap_version": "core/0.5.0",
-  "registry_revision": 2,
+  "registry_revision": 3,
   "supported_versions": {
     "core": ["core/0.5.0"],
     "comms": [],
@@ -1141,7 +1141,7 @@ membership declaration:
 enabled for every supported network backend unless the user has explicitly
 disabled it, and requires invalid signatures or delegations to be rejected
 rather than rendered with a warning. A claim MUST satisfy every listed
-invariant at registry revision 2 and every applicable strict vector.
+invariant at registry revision 3 and every applicable strict vector.
 
 Higher-document strict profiles compose by naming prerequisite profile IDs and
 listing their complete flattened invariant membership. A conforming report
@@ -1165,7 +1165,7 @@ serving-node withholding, routing-query metadata, rollback, and key-extraction
 threats. Multiple serving nodes and ordinary-relay access improve availability;
 they never replace local verification.
 
-Registry revision 2 binds these exact normative invariants:
+Registry revision 3 binds these exact normative invariants:
 
 - **CORE-I-IDENTITY-INTEGRITY:** The cold-root npub and accepted KEL are authoritative for persona identity; downstream caches and delegated identifiers cannot override them.
 - **CORE-I-NID-DELEGATION-DUAL-PROOF:** A Radicle NID delegation is active only after both the persona epoch-key BIP-340 signature and the delegated NID Ed25519 proof verify over the same binding.

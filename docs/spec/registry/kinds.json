@@ -39,6 +39,14 @@
           "stamping": true,
           "first_version": "comms/0.5.0",
           "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-agent-attribution-kind-1-v1",
+          "owner": "comms",
+          "discriminator": "tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
         }
       ]
     },
@@ -72,6 +80,14 @@
           "stamping": true,
           "first_version": "comms/0.5.0",
           "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-agent-attribution-kind-6-v1",
+          "owner": "comms",
+          "discriminator": "tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
         }
       ]
     },
@@ -81,7 +97,16 @@
       "base_schema_owner": "nostr",
       "status": "draft",
       "first_version": "social/0.5.0",
-      "profiles": []
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-agent-attribution-kind-7-v1",
+          "owner": "comms",
+          "discriminator": "tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
     },
     {
       "kind": 13,
@@ -119,6 +144,14 @@
           "owner": "comms",
           "discriminator": "tag:heterodyne_wrap=room_key.v2",
           "stamping": true,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-agent-attribution-kind-16-v1",
+          "owner": "comms",
+          "discriminator": "tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1",
+          "stamping": false,
           "first_version": "comms/0.5.0",
           "status": "draft"
         }
@@ -172,6 +205,14 @@
           "stamping": true,
           "first_version": "comms/0.5.0",
           "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-agent-attribution-kind-1063-v1",
+          "owner": "comms",
+          "discriminator": "tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
         }
       ]
     },
@@ -189,7 +230,24 @@
       "base_schema_owner": "nostr",
       "status": "draft",
       "first_version": "social/0.5.0",
-      "profiles": []
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-agent-attribution-kind-1985-v1",
+          "owner": "comms",
+          "discriminator": "tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-social-agent-policy-receipt-v1",
+          "owner": "social",
+          "discriminator": "tags:L=network.heterodyne.agent-policy,l=<reason>@network.heterodyne.agent-policy",
+          "stamping": true,
+          "first_version": "social/0.5.0",
+          "status": "draft"
+        }
+      ]
     },
     {
       "kind": 4550,
@@ -197,7 +255,16 @@
       "base_schema_owner": "nostr",
       "status": "draft",
       "first_version": "social/0.5.0",
-      "profiles": []
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-agent-attribution-kind-4550-v1",
+          "owner": "comms",
+          "discriminator": "tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
     },
     {
       "kind": 9734,
@@ -226,6 +293,14 @@
           "profile_id": "heterodyne-social-mute-list-v1",
           "owner": "social",
           "discriminator": "tag:heterodyne=social-mute-list-v1",
+          "stamping": true,
+          "first_version": "social/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-social-agent-policy-list-v1",
+          "owner": "social",
+          "discriminator": "tag:heterodyne=social-agent-policy-list-v1",
           "stamping": true,
           "first_version": "social/0.5.0",
           "status": "draft"
@@ -326,6 +401,14 @@
           "stamping": true,
           "first_version": "comms/0.5.0",
           "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-agent-attribution-kind-30023-v1",
+          "owner": "comms",
+          "discriminator": "tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
         }
       ]
     },
@@ -392,6 +475,14 @@
           "discriminator": "tags:heterodyne=delegation,binding_nonce,key_proof;radicle_nid=absent",
           "stamping": false,
           "first_version": "control/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-agent-signing-delegation-v1",
+          "owner": "comms",
+          "discriminator": "tag:d=agent:<role-id>;tags:key_proof,radicle_nid,nid_proof",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
           "status": "draft"
         }
       ]

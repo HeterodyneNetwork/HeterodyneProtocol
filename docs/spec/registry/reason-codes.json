@@ -683,6 +683,262 @@
       "first_version": "comms/0.5.0",
       "description": "The token status is INVALID or cannot provide valid evidence of VALID.",
       "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+    },
+    {
+      "code": "role-delegation-address-invalid",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A role-addressed delegation does not use the exact registered namespace and role identifier syntax.",
+      "spec_refs": ["heterodyne:core/0.5.0#core-nid-delegation"]
+    },
+    {
+      "code": "role-delegation-key-proof-invalid",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "The registered role-key proof is missing, malformed, or invalid over the profile binding.",
+      "spec_refs": ["heterodyne:core/0.5.0#core-nid-delegation"]
+    },
+    {
+      "code": "public-reader-route-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A universal-launcher fragment is unknown, malformed, oversized, or contains an invalid NIP-19 entity.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-retrieval"]
+    },
+    {
+      "code": "public-reader-relay-hint-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A public-reader bootstrap hint violates the normalized relay URL or local-network exclusion rules.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-retrieval"]
+    },
+    {
+      "code": "public-reader-private-content",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Public-reader mode was asked to render Tier 2 plaintext or interpret Tier 3 ciphertext as public content.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-retrieval"]
+    },
+    {
+      "code": "agent-workload-registration-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The agent workload registration is malformed, incompatible, non-final, or grants unbounded automated publication.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-key-claims"]
+    },
+    {
+      "code": "agent-token-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The workload access token fails signature, type, issuer, client, identity, ledger, or structural validation.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-jwt-projection"]
+    },
+    {
+      "code": "agent-token-expired",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The workload token is expired or exceeds the five-minute or source-authorization lifetime ceiling.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-jwt-projection"]
+    },
+    {
+      "code": "agent-token-revoked",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Token status or a source authorization marks the workload token invalid.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-token-status"]
+    },
+    {
+      "code": "agent-token-stale",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The workload token decision relies on a stale status, ledger checkpoint, or authorization view.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-jwt-projection"]
+    },
+    {
+      "code": "agent-token-audience-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The workload token does not name the one exact Control publication audience.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-jwt-projection"]
+    },
+    {
+      "code": "agent-token-scope-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The workload token lacks the exact registered scope and resource for the requested publication.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-jwt-projection"]
+    },
+    {
+      "code": "agent-sender-proof-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The per-use workload JWK proof is missing, replayed, malformed, or mismatched with cnf.jkt.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-jwt-projection"]
+    },
+    {
+      "code": "agent-role-mismatch",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The token, registration, delegation role, or event signer names a different agent role.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-publishing"]
+    },
+    {
+      "code": "agent-attribution-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "An agent-authored event has missing, malformed, reordered, or identity-mismatched canonical attribution.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-publishing"]
+    },
+    {
+      "code": "agent-attribution-profile-unavailable",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The requested authored event kind has no active revision-3 agent-attribution profile.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-publishing"]
+    },
+    {
+      "code": "control-request-expired",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The authenticated Control request expired before reservation or execution.",
+      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+    },
+    {
+      "code": "control-request-id-conflict",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A request identifier was reused with a different session, method, or payload digest.",
+      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+    },
+    {
+      "code": "control-ingress-relay-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A response route is not the authenticated canonical ingress relay for the accepted request or retry.",
+      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+    },
+    {
+      "code": "agent-method-prohibited",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An automated principal requested a method outside its closed agentic Control surface.",
+      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+    },
+    {
+      "code": "agent-key-access-prohibited",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An automated principal requested private key material or raw signing authority.",
+      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+    },
+    {
+      "code": "agent-human-profile-prohibited",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An automated principal attempted to route publication through a human-device profile.",
+      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+    },
+    {
+      "code": "agent-attribution-bypass-prohibited",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An automated principal attempted to omit, alter, or falsify canonical agent attribution.",
+      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+    },
+    {
+      "code": "agent-resource-denied",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The requested event kind, feed, destination, or resource is outside the active workload grant.",
+      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+    },
+    {
+      "code": "agent-size-exceeded",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The canonical publication intent exceeds its finite content-byte ceiling.",
+      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+    },
+    {
+      "code": "agent-rate-limited",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The publication intent exceeds the active finite rate-window, count, or burst limit.",
+      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+    },
+    {
+      "code": "agent-attribution-missing",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "Evidence indicates an automated publication omitted mandatory agent attribution.",
+      "spec_refs": ["heterodyne:social/0.5.0#social-labels"]
+    },
+    {
+      "code": "agent-attribution-falsified",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "Evidence indicates an automated publication falsified mandatory agent attribution.",
+      "spec_refs": ["heterodyne:social/0.5.0#social-labels"]
+    },
+    {
+      "code": "agent-publication-bypass",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "Evidence indicates an automated principal bypassed the required token and intent-level publication path.",
+      "spec_refs": ["heterodyne:social/0.5.0#social-labels"]
+    },
+    {
+      "code": "agent-policy-receipt-invalid",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "An agent-policy receipt is malformed, unverifiable, secret-bearing, or does not target exactly one event and device key.",
+      "spec_refs": ["heterodyne:social/0.5.0#social-labels"]
+    },
+    {
+      "code": "agent-policy-binding-invalid",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "A policy-list entry does not bind the same device key, receipt identifier, and reason code.",
+      "spec_refs": ["heterodyne:social/0.5.0#social-mute-profile"]
+    },
+    {
+      "code": "agent-role-key-rotation-required",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "The subscribed policy requires replacement of the exact offending role key before restored visibility.",
+      "spec_refs": ["heterodyne:social/0.5.0#social-mute-profile"]
     }
   ]
 }

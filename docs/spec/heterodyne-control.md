@@ -6,7 +6,7 @@ Version: `control/0.5.0`
 
 Status: **incomplete 0.5.0 draft**
 
-Registry revision: `2`
+Registry revision: `3`
 
 Normative dependencies:
 
@@ -122,7 +122,7 @@ inputs and decisions inside the existing Comms carriers.
 <a id="control-session-device-profile"></a>
 ## 3. Session-device delegation profile
 
-Registry revision 2 contains the draft reservation
+Registry revision 3 contains the draft reservation
 `heterodyne-control-session-device-v1` on Core `kind:31001`, with immutable
 discriminator
 `tags:heterodyne=delegation,binding_nonce,key_proof;radicle_nid=absent`.
@@ -206,10 +206,14 @@ wire behavior.
 <a id="control-security"></a>
 ## 6. Security invariants
 
-Registry revision 2 assigns exactly these Control invariants:
+Registry revision 3 assigns exactly these Control invariants:
 
 - **CONTROL-I-AUDIT-AT-REST:** Control audit records containing requests, grants, tokens, or side effects are encrypted at rest under Core, Comms, and Control-owned protection rules without a Social dependency.
 - **CONTROL-I-SESSION-KEY-CONFINEMENT:** A Control session device never receives persona epoch, NID, audience, repository-decryption, or ratchet secrets.
+- **CONTROL-I-INGRESS-RELAY-AFFINITY:** A Control response is published first and only to the authenticated request ingress relay, while identical cross-relay retries reuse one restart-safe execution result.
+- **CONTROL-I-AGENT-NO-KEY-RELEASE:** An automated principal never receives or directly exercises a persona, epoch, NID, human-device, or agent-role private key.
+- **CONTROL-I-AGENT-INTENT-ONLY:** An automated principal publishes only through the intent-level agent method, and raw signing, human-profile fallback, and attribution bypass fail closed.
+- **CONTROL-I-AGENT-AUTHORIZATION-FRESHNESS:** Every automated side effect requires a current scoped token, sender proof, canonical authorization state, and finite kind, resource, size, rate, and burst limits.
 
 These invariants allocate the security boundary. Full conformance tests for
 them are part of the integration gate below.

@@ -195,6 +195,76 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "Draft-21 status lists are signed, fresh, digest-bound across HTTPS and Radicle mirrors, writer-namespaced without index reuse, and never let VALID override other token failures."
+    },
+    {
+      "id": "COMMS-I-PUBLIC-READER-TIER1-ONLY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A public-reader implementation consumes only verified Tier 1 content and never renders Tier 2 plaintext or interprets Tier 3 ciphertext as public content."
+    },
+    {
+      "id": "COMMS-I-AGENT-ROLE-BINDING",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Every agent-authored event signer, workload registration, token role claim, and active role-addressed delegation identify the same dedicated full-node-held role key."
+    },
+    {
+      "id": "COMMS-I-AGENT-ATTRIBUTION",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Every agent-authored application event carries the canonical automation attribution block at its tier-appropriate protected location."
+    },
+    {
+      "id": "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Workload tokens, token identifiers, private source claims, and sender proofs remain confined to the protected authorization and audit boundary."
+    },
+    {
+      "id": "CONTROL-I-INGRESS-RELAY-AFFINITY",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A Control response is published first and only to the authenticated request ingress relay, while identical cross-relay retries reuse one restart-safe execution result."
+    },
+    {
+      "id": "CONTROL-I-AGENT-NO-KEY-RELEASE",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An automated principal never receives or directly exercises a persona, epoch, NID, human-device, or agent-role private key."
+    },
+    {
+      "id": "CONTROL-I-AGENT-INTENT-ONLY",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An automated principal publishes only through the intent-level agent method, and raw signing, human-profile fallback, and attribution bypass fail closed."
+    },
+    {
+      "id": "CONTROL-I-AGENT-AUTHORIZATION-FRESHNESS",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Every automated side effect requires a current scoped token, sender proof, canonical authorization state, and finite kind, resource, size, rate, and burst limits."
+    },
+    {
+      "id": "SOCIAL-I-AGENT-POLICY-LOCAL",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "Agent-policy receipts inform publicly, but only an explicitly subscribed and verified current policy list changes a client's local visibility."
+    },
+    {
+      "id": "SOCIAL-I-AGENT-REMEDIATION-SCOPED",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "Agent-policy enforcement and remediation target only the offending role device key; replacement at the same role address never requires epoch-key rotation."
     }
   ]
 }

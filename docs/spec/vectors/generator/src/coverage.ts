@@ -3,12 +3,19 @@ import { join } from "node:path";
 import type { Registry } from "./registry.js";
 import type { DocumentId, Vector } from "./types.js";
 
-/**
- * ADR-034 phase gate. These registry allocations intentionally precede their
- * normative vectors in the claims/OIDC implementation plan. Remove each entry
- * when its vector lands; no other uncovered active profile is permitted.
- */
-export const ADR034_PENDING_PROFILE_IDS = [
+/** Revision-3 allocations awaiting their normative ADR-035/036 vectors. */
+export const PENDING_PROFILE_IDS = [
+  "heterodyne-comms-agent-attribution-kind-1-v1",
+  "heterodyne-comms-agent-attribution-kind-6-v1",
+  "heterodyne-comms-agent-attribution-kind-7-v1",
+  "heterodyne-comms-agent-attribution-kind-16-v1",
+  "heterodyne-comms-agent-attribution-kind-1063-v1",
+  "heterodyne-comms-agent-attribution-kind-1985-v1",
+  "heterodyne-comms-agent-attribution-kind-4550-v1",
+  "heterodyne-comms-agent-attribution-kind-30023-v1",
+  "heterodyne-comms-agent-signing-delegation-v1",
+  "heterodyne-social-agent-policy-list-v1",
+  "heterodyne-social-agent-policy-receipt-v1",
 ] as const;
 
 /** The only registry profile whose conformance gate is explicitly inactive. */
@@ -56,7 +63,7 @@ export function findProfileCoverageIssues(
   const covered = new Set(
     coverage.flatMap(({ profile }) => profile === undefined ? [] : [profile]),
   );
-  const pending = new Set<string>(ADR034_PENDING_PROFILE_IDS);
+  const pending = new Set<string>(PENDING_PROFILE_IDS);
   const inactive = new Set<string>(INACTIVE_PROFILE_IDS);
   const profiles = registry.kinds.flatMap(({ profiles }) => profiles);
   const issues: string[] = [];

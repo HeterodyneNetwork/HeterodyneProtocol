@@ -2,7 +2,7 @@
 
 Document ID: `social`<br>
 Version: `social/0.5.0`<br>
-Registry revision: `2`
+Registry revision: `3`
 
 Normative dependencies:
 
@@ -323,7 +323,7 @@ persona's curated feed.
 <a id="social-org-feed-profile"></a>
 ### 5.1 Registered Social org-feed profile
 
-Registry revision 2 defines the stamping profile
+Registry revision 3 defines the stamping profile
 `heterodyne-social-org-feed-v1` on the Comms-owned `kind:31007`, with immutable
 discriminator `content.profile=heterodyne.social.org-feed.v1`. An event opting
 into this profile MUST otherwise validate the complete Comms feed-index schema.
@@ -582,7 +582,7 @@ field. A client SHOULD preserve list order when appending.
 <a id="social-mute-profile"></a>
 ### 7.1 Registered Social mute-list profile
 
-Registry revision 2 defines `heterodyne-social-mute-list-v1` on upstream
+Registry revision 3 defines `heterodyne-social-mute-list-v1` on upstream
 replaceable `kind:10000`, with immutable discriminator
 `tag:heterodyne=social-mute-list-v1`. A Social-profiled mute list MUST carry
 exactly one of each profile tag:
@@ -1336,13 +1336,15 @@ that the Matrix wire rejected it.
 <!-- Monolith provenance: §9 Social/Matrix portions and §13 mixed invariants;
 namespaced by ADR-033. -->
 
-Registry revision 2 binds these exact Social invariants:
+Registry revision 3 binds these exact Social invariants:
 
 - **SOCIAL-I-MATRIX-E2EE:** Private Matrix discussion and configuration content, including protected state, remains end-to-end encrypted and downgrade-resistant from the homeserver.
 - **SOCIAL-I-MXID-DELEGATION-DUAL-PROOF:** A Matrix MXID delegation requires both the persona epoch-key signature and successful MXID self-publication through Matrix state authorization.
 - **SOCIAL-I-PRIVATE-STATE-AT-REST:** Private mute, feed-preference, followed-repository, and other Social state are encrypted at rest using the owning Social or bound Comms profile.
 - **SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE:** Matrix and cross-protocol Social bridging runs on user-controlled clients; no homeserver or relay bridge receives protected plaintext.
 - **SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH:** Following, transitive discovery, and social-graph evaluation do not depend on a centralized follow-graph oracle.
+- **SOCIAL-I-AGENT-POLICY-LOCAL:** Agent-policy receipts inform publicly, but only an explicitly subscribed and verified current policy list changes a client's local visibility.
+- **SOCIAL-I-AGENT-REMEDIATION-SCOPED:** Agent-policy enforcement and remediation target only the offending role device key; replacement at the same role address never requires epoch-key rotation.
 
 The mechanism boundaries MUST remain honest. Tier 2 and Tier 3 guarantees
 come from Comms, not Matrix. A Matrix private room uses its Megolm/MLS session;
@@ -1462,7 +1464,7 @@ invariant, obligation, feature, or vector is unmet.
 ADR-033 requirements 30-34. -->
 
 A `Social` report MUST name `social/0.5.0`, pin `core/0.5.0` and
-`comms/0.5.0`, pin registry revision 2 or its immutable digest, enumerate
+`comms/0.5.0`, pin registry revision 3 or its immutable digest, enumerate
 supported features and strict profiles, and implement §§1-8 and §13. It MUST
 include async replies/reactions, following and transitive discovery,
 cross-persona advertisements, reply inboxes, mixed-tier Social fan-out,

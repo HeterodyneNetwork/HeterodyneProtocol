@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { authorAllVectors } from "./author.js";
 import {
-  ADR034_PENDING_PROFILE_IDS,
+  PENDING_PROFILE_IDS,
   INACTIVE_PROFILE_IDS,
   buildCoverage,
   findProfileCoverageIssues,
@@ -65,7 +65,19 @@ describe("family coverage", () => {
 
     const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
     expect(findProfileCoverageIssues(registry, coverage)).toEqual([]);
-    expect(ADR034_PENDING_PROFILE_IDS).toEqual([]);
+    expect(PENDING_PROFILE_IDS).toEqual([
+      "heterodyne-comms-agent-attribution-kind-1-v1",
+      "heterodyne-comms-agent-attribution-kind-6-v1",
+      "heterodyne-comms-agent-attribution-kind-7-v1",
+      "heterodyne-comms-agent-attribution-kind-16-v1",
+      "heterodyne-comms-agent-attribution-kind-1063-v1",
+      "heterodyne-comms-agent-attribution-kind-1985-v1",
+      "heterodyne-comms-agent-attribution-kind-4550-v1",
+      "heterodyne-comms-agent-attribution-kind-30023-v1",
+      "heterodyne-comms-agent-signing-delegation-v1",
+      "heterodyne-social-agent-policy-list-v1",
+      "heterodyne-social-agent-policy-receipt-v1",
+    ]);
     expect(INACTIVE_PROFILE_IDS).toEqual([
       "heterodyne-control-session-device-v1",
     ]);

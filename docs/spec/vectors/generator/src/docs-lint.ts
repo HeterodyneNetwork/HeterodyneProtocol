@@ -456,7 +456,13 @@ export function expectedReleaseManifests(
       registry_revision: registryRevision,
       registry_sha256: registrySha256,
       dependencies: {},
-      features: [],
+      features: [
+        "core.nostr-relay-read.v1",
+        "core.outbound-tor.v1",
+        "core.repo-relay-client.v1",
+        "core.onion-service-host.v1",
+        "core.browser-shared-relay.v1",
+      ],
       conformance_status: "conformant",
     },
     comms: {
@@ -471,6 +477,8 @@ export function expectedReleaseManifests(
         "private-claim-ledger",
         "oidc-jwt-projection",
         "token-status-list-draft-21",
+        "comms.public-reader.v1",
+        "comms.agent-authorship.v1",
       ],
       conformance_status: "conformant",
     },
@@ -481,7 +489,11 @@ export function expectedReleaseManifests(
       registry_revision: registryRevision,
       registry_sha256: registrySha256,
       dependencies: { core: "core/0.5.0", comms: "comms/0.5.0" },
-      features: ["double-ratchet"],
+      features: [
+        "double-ratchet",
+        "control.relay-affinity.v1",
+        "control.agent-workload-publication.v1",
+      ],
       conformance_status: "incomplete-draft",
     },
     social: {
@@ -491,7 +503,7 @@ export function expectedReleaseManifests(
       registry_revision: registryRevision,
       registry_sha256: registrySha256,
       dependencies: { core: "core/0.5.0", comms: "comms/0.5.0" },
-      features: [],
+      features: ["social.agent-policy-moderation.v1"],
       conformance_status: "conformant",
     },
   };

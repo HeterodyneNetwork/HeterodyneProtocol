@@ -48,10 +48,11 @@ function registryWithHistory(
 describe("revisioned protocol registry", () => {
   const registry = loadRegistry(repositoryRoot);
 
-  it("loads revision 2 while retaining the immutable revision 1 snapshot", () => {
-    expect(registry.manifest.revision).toBe(2);
-    expect(registry.history.get(2)).toEqual(registry.currentEntrySet);
+  it("loads revision 3 while retaining immutable revision 1 and 2 snapshots", () => {
+    expect(registry.manifest.revision).toBe(3);
+    expect(registry.history.get(3)).toEqual(registry.currentEntrySet);
     expect(registry.history.has(1)).toBe(true);
+    expect(registry.history.has(2)).toBe(true);
     expect(
       registry.kinds.find((entry) => entry.kind === 31001)
         ?.base_schema_owner,
@@ -114,6 +115,34 @@ describe("revisioned protocol registry", () => {
       first_version: "comms/0.5.0",
       stamping: false,
     });
+  });
+
+  it("allocates the revision 3 agent delegation, attribution, receipt, and policy-list profiles", () => {
+    const expected = [
+      [31001, "heterodyne-comms-agent-signing-delegation-v1", "comms", false],
+      [1, "heterodyne-comms-agent-attribution-kind-1-v1", "comms", false],
+      [6, "heterodyne-comms-agent-attribution-kind-6-v1", "comms", false],
+      [7, "heterodyne-comms-agent-attribution-kind-7-v1", "comms", false],
+      [16, "heterodyne-comms-agent-attribution-kind-16-v1", "comms", false],
+      [1063, "heterodyne-comms-agent-attribution-kind-1063-v1", "comms", false],
+      [1985, "heterodyne-comms-agent-attribution-kind-1985-v1", "comms", false],
+      [4550, "heterodyne-comms-agent-attribution-kind-4550-v1", "comms", false],
+      [30023, "heterodyne-comms-agent-attribution-kind-30023-v1", "comms", false],
+      [1985, "heterodyne-social-agent-policy-receipt-v1", "social", true],
+      [10000, "heterodyne-social-agent-policy-list-v1", "social", true],
+    ] as const;
+
+    for (const [kind, profileId, owner, stamping] of expected) {
+      expect(
+        registry.kinds.find((entry) => entry.kind === kind)?.profiles
+          .find((profile) => profile.profile_id === profileId),
+      ).toMatchObject({
+        owner,
+        stamping,
+        status: "draft",
+        first_version: `${owner}/0.5.0`,
+      });
+    }
   });
 
   it("allocates distinct immutable native-proof discriminators for claims and revocations", () => {
@@ -215,13 +244,17 @@ describe("revisioned protocol registry", () => {
     ]));
   });
 
-  it("preserves revision 1 entries byte-identically and snapshots revision 2", () => {
+  it("preserves revisions 1 and 2 byte-identically and snapshots revision 3", () => {
     const history1 = JSON.parse(readFileSync(
       resolve(repositoryRoot, "docs/spec/registry/history/1.json"),
       "utf8",
     )) as RegistryEntrySet;
     const history2 = JSON.parse(readFileSync(
       resolve(repositoryRoot, "docs/spec/registry/history/2.json"),
+      "utf8",
+    )) as RegistryEntrySet;
+    const history3 = JSON.parse(readFileSync(
+      resolve(repositoryRoot, "docs/spec/registry/history/3.json"),
       "utf8",
     )) as RegistryEntrySet;
 
@@ -238,8 +271,29 @@ describe("revisioned protocol registry", () => {
       expect(JSON.stringify(current)).toBe(JSON.stringify(previous));
     }
 
-    expect(history2).toEqual(registry.currentEntrySet);
-    expect(registry.manifest.entry_set_sha256).toBe(computeRegistryDigest(history2));
+    for (const previous of history2.kinds) {
+      const current = history3.kinds.find((entry) => entry.kind === previous.kind);
+      expect(current).toBeDefined();
+      const { profiles: previousProfiles, ...previousBase } = previous;
+      const { profiles: currentProfiles, ...currentBase } = current!;
+      expect(currentBase).toEqual(previousBase);
+      for (const previousProfile of previousProfiles) {
+        expect(
+          currentProfiles.find((profile) => profile.profile_id === previousProfile.profile_id),
+        ).toEqual(previousProfile);
+      }
+    }
+    for (const previous of history2.reason_codes) {
+      const current = history3.reason_codes.find((entry) => entry.code === previous.code);
+      expect(current).toEqual(previous);
+    }
+    for (const previous of history2.security_invariants) {
+      const current = history3.security_invariants.find((entry) => entry.id === previous.id);
+      expect(current).toEqual(previous);
+    }
+
+    expect(history3).toEqual(registry.currentEntrySet);
+    expect(registry.manifest.entry_set_sha256).toBe(computeRegistryDigest(history3));
   });
 
   it("commits the canonical digest of the current entry set", () => {

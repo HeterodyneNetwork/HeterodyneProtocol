@@ -29,7 +29,11 @@ import {
 } from "./docs-lint.js";
 import { hexToBytes, utf8Bytes } from "./hex.js";
 import { verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
-import { loadRegistry, resolveStampingProfile } from "./registry.js";
+import {
+  computeRegistryDigest,
+  loadRegistry,
+  resolveStampingProfile,
+} from "./registry.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(here, "../../../../../");
@@ -707,7 +711,7 @@ describe("protocol family documents", () => {
 
     expect(text).toContain("Document ID: `core`");
     expect(text).toContain("Version: `core/0.5.0`");
-    expect(text).toContain("Registry revision: `2`");
+    expect(text).toContain("Registry revision: `3`");
     expect(text).not.toMatch(
       /normative[^\n]*(heterodyne-comms|heterodyne-control|heterodyne-social)/i,
     );
@@ -780,7 +784,7 @@ describe("protocol family documents", () => {
 
     expect(text).toContain("Document ID: `comms`");
     expect(text).toContain("Version: `comms/0.5.0`");
-    expect(text).toContain("Registry revision: `2`");
+    expect(text).toContain("Registry revision: `3`");
     expect(text).toContain(
       "heterodyne:core/0.5.0#core-conformance",
     );
@@ -883,6 +887,10 @@ describe("protocol family documents", () => {
       "COMMS-I-CLAIM-RELEASE",
       "COMMS-I-JWT-TYPE-AUDIENCE",
       "COMMS-I-STATUS-INTEGRITY",
+      "COMMS-I-PUBLIC-READER-TIER1-ONLY",
+      "COMMS-I-AGENT-ROLE-BINDING",
+      "COMMS-I-AGENT-ATTRIBUTION",
+      "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT",
     ]) {
       expect(text).toContain(invariant);
     }
@@ -1264,6 +1272,10 @@ describe("protocol family documents", () => {
     for (const invariant of [
       "CONTROL-I-AUDIT-AT-REST",
       "CONTROL-I-SESSION-KEY-CONFINEMENT",
+      "CONTROL-I-INGRESS-RELAY-AFFINITY",
+      "CONTROL-I-AGENT-NO-KEY-RELEASE",
+      "CONTROL-I-AGENT-INTENT-ONLY",
+      "CONTROL-I-AGENT-AUTHORIZATION-FRESHNESS",
     ]) {
       expect(text).toContain(invariant);
     }
@@ -1341,7 +1353,7 @@ describe("protocol family documents", () => {
 
     expect(text).toContain("Document ID: `social`");
     expect(text).toContain("Version: `social/0.5.0`");
-    expect(text).toContain("Registry revision: `2`");
+    expect(text).toContain("Registry revision: `3`");
     expect(declaredDependencies(text)).toEqual([
       "heterodyne:core/0.5.0#core-conformance",
       "heterodyne:comms/0.5.0#comms-conformance",
@@ -1736,6 +1748,8 @@ describe("protocol family documents", () => {
       "SOCIAL-I-PRIVATE-STATE-AT-REST",
       "SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE",
       "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
+      "SOCIAL-I-AGENT-POLICY-LOCAL",
+      "SOCIAL-I-AGENT-REMEDIATION-SCOPED",
     ]) {
       expect(text).toContain(invariant);
     }
@@ -2028,6 +2042,8 @@ describe("protocol family documents", () => {
     );
     const comms = readFileSync(commsPath, "utf8");
     const registry = loadRegistry(repositoryRoot);
+    const revision2 = registry.history.get(2)!;
+    const revision2Digest = computeRegistryDigest(revision2);
     const invariantIds = new Set(registry.currentEntrySet.security_invariants.map(({ id }) => id));
     for (const row of rows) {
       for (const adrRef of row.adr) {
@@ -2042,9 +2058,9 @@ describe("protocol family documents", () => {
         if (/^kind:[0-9]+$/.test(registryEntry)) {
           expect(registry.currentEntrySet.kinds.map(({ kind }) => kind)).toContain(Number(registryEntry.slice(5)));
         } else if (registryEntry === "registry revision 2") {
-          expect(registry.manifest.revision).toBe(2);
+          expect(registry.history.has(2)).toBe(true);
         } else if (registryEntry.startsWith("registry digest ")) {
-          expect(registry.manifest.entry_set_sha256).toBe(registryEntry.slice("registry digest ".length));
+          expect(revision2Digest).toBe(registryEntry.slice("registry digest ".length));
         } else {
           expect(invariantIds).toContain(registryEntry);
         }
@@ -2122,12 +2138,24 @@ describe("protocol family documents", () => {
       "private-claim-ledger",
       "oidc-jwt-projection",
       "token-status-list-draft-21",
+      "comms.public-reader.v1",
+      "comms.agent-authorship.v1",
     ];
-    for (const manifest of Object.values(manifests)) expect(manifest.registry_revision).toBe(2);
+    for (const manifest of Object.values(manifests)) expect(manifest.registry_revision).toBe(3);
     expect(manifests.comms.features).toEqual(features);
-    expect(manifests.core.features).toEqual([]);
-    expect(manifests.social.features).toEqual([]);
-    expect(manifests.control.features).toEqual(["double-ratchet"]);
+    expect(manifests.core.features).toEqual([
+      "core.nostr-relay-read.v1",
+      "core.outbound-tor.v1",
+      "core.repo-relay-client.v1",
+      "core.onion-service-host.v1",
+      "core.browser-shared-relay.v1",
+    ]);
+    expect(manifests.social.features).toEqual(["social.agent-policy-moderation.v1"]);
+    expect(manifests.control.features).toEqual([
+      "double-ratchet",
+      "control.relay-affinity.v1",
+      "control.agent-workload-publication.v1",
+    ]);
     expect(manifests.control.dependencies.comms).toBe("comms/0.5.0");
     const control = readFileSync(controlPath, "utf8");
     expect(control).toMatch(/authorize with only `active` state[\s\S]*Comms claim/i);
@@ -2202,7 +2230,7 @@ describe("protocol family documents", () => {
     const comms = readFileSync(commsPath, "utf8");
     const control = readFileSync(controlPath, "utf8");
     const social = readFileSync(socialPath, "utf8");
-    for (const text of [core, comms, control, social]) expect(text).toContain("Registry revision: `2`");
+    for (const text of [core, comms, control, social]) expect(text).toContain("Registry revision: `3`");
     for (const anchor of ["core-typed-key-references", "core-authority-interfaces"]) {
       expect(core).toContain(`<a id="${anchor}"></a>`);
     }
@@ -2364,8 +2392,10 @@ describe("protocol family documents", () => {
 
   it("validates historical and current release pins and rejects unknown or mismatched pins", () => {
     const historical = expectedReleaseManifests(repositoryRoot, 1).core;
-    const current = expectedReleaseManifests(repositoryRoot, 2).core;
+    const revision2 = expectedReleaseManifests(repositoryRoot, 2).core;
+    const current = expectedReleaseManifests(repositoryRoot, 3).core;
     expect(() => validateReleaseManifestRegistryPin(repositoryRoot, historical)).not.toThrow();
+    expect(() => validateReleaseManifestRegistryPin(repositoryRoot, revision2)).not.toThrow();
     expect(() => validateReleaseManifestRegistryPin(repositoryRoot, current)).not.toThrow();
     expect(() => validateReleaseManifestRegistryPin(repositoryRoot, {
       ...historical,
@@ -2376,7 +2406,7 @@ describe("protocol family documents", () => {
       registry_sha256: "0".repeat(64),
     })).toThrow(/registry digest mismatch/);
     expect(loadReleaseSchemaRegistryPin(repositoryRoot)).toEqual({
-      registry_revision: 2,
+      registry_revision: 3,
       registry_sha256: current.registry_sha256,
     });
     expect(() => validateReleaseManifestSchemaPin(repositoryRoot, historical)).toThrow(

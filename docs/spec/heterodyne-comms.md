@@ -2,7 +2,7 @@
 
 Document ID: `comms`<br>
 Version: `comms/0.5.0`<br>
-Registry revision: `2`
+Registry revision: `3`
 
 Normative dependencies: `heterodyne:core/0.5.0#core-conformance`.
 
@@ -159,7 +159,7 @@ index_key = HKDF-SHA256(audience_key, UTF8(key_id),
                         "heterodyne-index-key-v1", 32)
 ```
 
-Registry revision 2 permits Tier 3 wrapping only for this closed stamping
+Registry revision 3 permits Tier 3 wrapping only for this closed stamping
 profile set:
 
 | Nostr kind | Profile ID |
@@ -343,7 +343,7 @@ Comms declares which application events are indexed; absent such a profile,
 persistent authored content SHOULD be indexed and ephemeral metadata SHOULD
 not. An explicit `heterodyne_index=true|false` tag overrides that default.
 
-Registry revision 2 defines one narrow exception to the empty-content and
+Registry revision 3 defines one narrow exception to the empty-content and
 Comms-version-tag rules: the Social stamping profile whose immutable
 discriminator is
 `content.profile=heterodyne.social.org-feed.v1`. That profile is valid only
@@ -486,7 +486,7 @@ MUST be extracted and frozen before Comms can claim 1.0.
 <a id="comms-dm-wire"></a>
 ### 7.1 Invite, response, and message profiles
 
-Registry revision 2 binds these immutable, non-stamping profiles:
+Registry revision 3 binds these immutable, non-stamping profiles:
 
 - `heterodyne-comms-double-ratchet-invite-v1`: upstream `kind:30078`,
   discriminator `d-prefix:double-ratchet/invites/`;
@@ -917,7 +917,7 @@ only the carrier version and conveys no higher-layer conformance.
 <a id="comms-key-claims"></a>
 ## 10. Atomic typed-key claims
 
-Comms defines an atomic assertion about one typed key. Registry revision 2
+Comms defines an atomic assertion about one typed key. Registry revision 3
 assigns `kind:31013` to `heterodyne-comms-key-claim-v1` and `kind:31014` to
 `heterodyne-comms-key-claim-revocation-v1`. Both are addressable events. Their
 sole `d` tag is the lowercase 64-hex claim identifier, and their JSON content
@@ -1384,7 +1384,7 @@ to produce new status bytes.
 
 <!-- Monolith provenance: §9.0-§9.1 and §9.5; namespaced by ADR-033. -->
 
-Registry revision 2 defines these Comms invariants:
+Registry revision 3 defines these Comms invariants:
 
 - **COMMS-I-TIER3-BLIND-CARRIER:** Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay.
 - **COMMS-I-TIER2-HONESTY:** Tier 2 private repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly.
@@ -1402,6 +1402,10 @@ Registry revision 2 defines these Comms invariants:
 - **COMMS-I-CLAIM-RELEASE:** OIDC projection releases only claims allowed by scope, audience, client policy, consent, active repository state, issuer trust, and proof requirements.
 - **COMMS-I-JWT-TYPE-AUDIENCE:** JWT consumers enforce exact issuer, intended audience, time, signature, nonce when applicable, and token-type separation including typ at+jwt for access tokens.
 - **COMMS-I-STATUS-INTEGRITY:** Draft-21 status lists are signed, fresh, digest-bound across HTTPS and Radicle mirrors, writer-namespaced without index reuse, and never let VALID override other token failures.
+- **COMMS-I-PUBLIC-READER-TIER1-ONLY:** A public-reader implementation consumes only verified Tier 1 content and never renders Tier 2 plaintext or interprets Tier 3 ciphertext as public content.
+- **COMMS-I-AGENT-ROLE-BINDING:** Every agent-authored event signer, workload registration, token role claim, and active role-addressed delegation identify the same dedicated full-node-held role key.
+- **COMMS-I-AGENT-ATTRIBUTION:** Every agent-authored application event carries the canonical automation attribution block at its tier-appropriate protected location.
+- **COMMS-I-WORKLOAD-TOKEN-CONFINEMENT:** Workload tokens, token identifiers, private source claims, and sender proofs remain confined to the protected authorization and audit boundary.
 
 Mechanism guarantees MUST remain distinct. Tier 3 has no forward secrecy: a
 compromised audience key decrypts every retained post and index under its
@@ -1462,7 +1466,7 @@ IDs. An implementation missing either condition MUST omit the Comms profile.
 <!-- Monolith provenance: §14; family conformance: ADR-033. -->
 
 A Comms conformance report MUST claim Core+Comms, name `comms/0.5.0`, pin
-`core/0.5.0`, registry revision 2 or its immutable digest, and enumerate
+`core/0.5.0`, registry revision 3 or its immutable digest, and enumerate
 supported features and strict profiles. A base implementation MUST implement
 the envelope, tiers, publishing, feed, retrieval, hook, negotiation carrier,
 and all sixteen security invariants. It MAY omit the `double-ratchet` feature;

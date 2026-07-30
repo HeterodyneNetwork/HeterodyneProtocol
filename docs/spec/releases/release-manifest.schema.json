@@ -28,12 +28,12 @@
       "enum": ["core/0.5.0", "comms/0.5.0", "control/0.5.0", "social/0.5.0"]
     },
     "registry_revision": {
-      "const": 2
+      "const": 3
     },
     "registry_sha256": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$",
-      "const": "b52c0a6f99fdb8a34fa761a74c8374a5a55bd3b0e0494e9d973589e00febccf9"
+      "const": "593c5f029c25fd4b3f019f5d332a24e424448aacce7c86ac199909a020ecd4cd"
     },
     "dependencies": {
       "type": "object",
@@ -59,7 +59,15 @@
         "document": { "const": "core" },
         "qualified_version": { "const": "core/0.5.0" },
         "dependencies": { "maxProperties": 0 },
-        "features": { "maxItems": 0 },
+        "features": {
+          "const": [
+            "core.nostr-relay-read.v1",
+            "core.outbound-tor.v1",
+            "core.repo-relay-client.v1",
+            "core.onion-service-host.v1",
+            "core.browser-shared-relay.v1"
+          ]
+        },
         "conformance_status": { "const": "conformant" }
       }
     },
@@ -68,7 +76,16 @@
         "document": { "const": "comms" },
         "qualified_version": { "const": "comms/0.5.0" },
         "dependencies": { "required": ["core"], "minProperties": 1, "maxProperties": 1 },
-        "features": { "const": ["key-claims", "private-claim-ledger", "oidc-jwt-projection", "token-status-list-draft-21"] },
+        "features": {
+          "const": [
+            "key-claims",
+            "private-claim-ledger",
+            "oidc-jwt-projection",
+            "token-status-list-draft-21",
+            "comms.public-reader.v1",
+            "comms.agent-authorship.v1"
+          ]
+        },
         "conformance_status": { "const": "conformant" }
       }
     },
@@ -77,7 +94,13 @@
         "document": { "const": "control" },
         "qualified_version": { "const": "control/0.5.0" },
         "dependencies": { "required": ["core", "comms"], "minProperties": 2, "maxProperties": 2 },
-        "features": { "const": ["double-ratchet"] },
+        "features": {
+          "const": [
+            "double-ratchet",
+            "control.relay-affinity.v1",
+            "control.agent-workload-publication.v1"
+          ]
+        },
         "conformance_status": { "const": "incomplete-draft" }
       }
     },
@@ -86,7 +109,7 @@
         "document": { "const": "social" },
         "qualified_version": { "const": "social/0.5.0" },
         "dependencies": { "required": ["core", "comms"], "minProperties": 2, "maxProperties": 2 },
-        "features": { "maxItems": 0 },
+        "features": { "const": ["social.agent-policy-moderation.v1"] },
         "conformance_status": { "const": "conformant" }
       }
     }
