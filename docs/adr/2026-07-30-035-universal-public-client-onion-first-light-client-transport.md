@@ -1,7 +1,7 @@
 # ADR-035: Universal public client and onion-first light-client transport
 
 **Date:** 2026-07-30
-**Status:** Proposed (design approved; written review pending)
+**Status:** Accepted
 **Decision makers:** user and protocol maintainers
 **Spec targets:** `heterodyne:core/0.5.0#core-key-authority`,
 `heterodyne:core/0.5.0#core-node-roles`,
