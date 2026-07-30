@@ -1,0 +1,51 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:social/0.5.0#social-agent-policy-receipts"
+  ],
+  "vector_id": "agent-moderation/receipt-private-leakage",
+  "description": "A public policy receipt that leaks a raw workload token fails its closed schema.",
+  "direction": "consume",
+  "input": {
+    "event": {
+      "pubkey": "2f1b310f4c065331bc0d79ba4661bb9822d67d7c4a1b0a1892e1fd0cd23aa68d",
+      "created_at": 1002,
+      "kind": 1985,
+      "tags": [
+        [
+          "L",
+          "network.heterodyne.agent-policy"
+        ],
+        [
+          "l",
+          "agent-attribution-missing",
+          "network.heterodyne.agent-policy"
+        ],
+        [
+          "e",
+          "3333333333333333333333333333333333333333333333333333333333333333",
+          "wss://relay.example/"
+        ],
+        [
+          "p",
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "wss://relay.example/"
+        ]
+      ],
+      "content": "{\"profile\":\"heterodyne.social.agent-policy-receipt.v1\",\"spec_version\":\"social/0.5.0\",\"event_id\":\"3333333333333333333333333333333333333333333333333333333333333333\",\"device_key\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"cold_root\":\"4444444444444444444444444444444444444444444444444444444444444444\",\"reason\":\"agent-attribution-missing\",\"observed_at\":1000,\"evidence\":[\"sha256:abcd\"],\"explanation\":\"Automated publication omitted mandatory attribution.\",\"remediation\":\"rotate-device-key\",\"raw_token\":\"forbidden\"}",
+      "id": "ef02a01ed44de2e596ff19e4d4a83f75e8170a3e94fa05150a3d19fe542a3a6f",
+      "sig": "f4ea1d6fff964468faf3e827bb0375b3dab5cc4d1b53a0323fab7e0917440457e1d0a5370365efd31f83a9793f7adf304a95e46be95e6d4a8199b500e72d0108"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "agent-policy-receipt-invalid"
+  }
+}

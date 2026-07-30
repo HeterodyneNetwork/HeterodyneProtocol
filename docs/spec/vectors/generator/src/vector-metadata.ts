@@ -314,6 +314,20 @@ profiles/comms-payload-kind31016
 `);
 
 const SOCIAL_IDS = ids(`
+agent-moderation/receipt-valid
+agent-moderation/receipt-malformed
+agent-moderation/receipt-private-leakage
+agent-moderation/policy-list-valid
+agent-moderation/policy-binding-mismatch
+agent-moderation/subscribed-canonical-mutes
+agent-moderation/unsubscribed-no-effect
+agent-moderation/relay-only-no-effect
+agent-moderation/unmerged-pr-no-effect
+agent-moderation/default-visible-removable
+agent-moderation/replacement-key-independent
+agent-moderation/correction-valid
+agent-moderation/correction-list-retained
+agent-moderation/correction-list-removed
 bridge/idempotent-republication
 bridge/matrix-permanent-failure-index-updated
 bridge/nostr-permanent-failure-index-not-updated
@@ -425,6 +439,8 @@ control/audit-omits-raw-token
 `);
 
 const PROFILE_BY_VECTOR = new Map<string, string>([
+  ["agent-moderation/receipt-valid", "heterodyne-social-agent-policy-receipt-v1"],
+  ["agent-moderation/policy-list-valid", "heterodyne-social-agent-policy-list-v1"],
   ["agent-authorship/delegation-valid", "heterodyne-comms-agent-signing-delegation-v1"],
   ["agent-authorship/attribution-kind-1", "heterodyne-comms-agent-attribution-kind-1-v1"],
   ["agent-authorship/attribution-kind-6", "heterodyne-comms-agent-attribution-kind-6-v1"],
@@ -500,6 +516,7 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
     registry_revision: vectorId.startsWith("role-capabilities/")
       || vectorId.startsWith("public-reader/")
       || vectorId.startsWith("agent-authorship/")
+      || vectorId.startsWith("agent-moderation/")
       || vectorId.startsWith("control/") ? 3
       : vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/") ||
         vectorId.startsWith("oidc/") || vectorId.startsWith("token-status/") ? 2
@@ -628,6 +645,10 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
       "acceptance-gating": "comms-acceptance-hook",
     },
     social: {
+      "agent-moderation": vectorId.includes("receipt")
+        || vectorId.includes("correction")
+        ? "social-agent-policy-receipts"
+        : "social-agent-policy-list",
       bridge: "social-headless-bridge",
       broadcast: "social-matrix-envelopes",
       config_room: "social-config-room",

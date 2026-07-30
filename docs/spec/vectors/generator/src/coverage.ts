@@ -3,11 +3,8 @@ import { join } from "node:path";
 import type { Registry } from "./registry.js";
 import type { DocumentId, Vector } from "./types.js";
 
-/** Revision-3 allocations awaiting their normative ADR-035/036 vectors. */
-export const PENDING_PROFILE_IDS = [
-  "heterodyne-social-agent-policy-list-v1",
-  "heterodyne-social-agent-policy-receipt-v1",
-] as const;
+/** Registry allocations awaiting normative vectors. */
+export const PENDING_PROFILE_IDS = [] as const;
 
 /** The only registry profile whose conformance gate is explicitly inactive. */
 export const INACTIVE_PROFILE_IDS = [

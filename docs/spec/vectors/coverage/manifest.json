@@ -541,6 +541,190 @@
     ]
   },
   {
+    "vector_id": "agent-moderation/correction-list-removed",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-agent-policy-receipts"
+    ]
+  },
+  {
+    "vector_id": "agent-moderation/correction-list-retained",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-agent-policy-receipts"
+    ]
+  },
+  {
+    "vector_id": "agent-moderation/correction-valid",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-agent-policy-receipts"
+    ]
+  },
+  {
+    "vector_id": "agent-moderation/default-visible-removable",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-agent-policy-list"
+    ]
+  },
+  {
+    "vector_id": "agent-moderation/policy-binding-mismatch",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-agent-policy-list"
+    ]
+  },
+  {
+    "vector_id": "agent-moderation/policy-list-valid",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "profile": "heterodyne-social-agent-policy-list-v1",
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-agent-policy-list"
+    ]
+  },
+  {
+    "vector_id": "agent-moderation/receipt-malformed",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-agent-policy-receipts"
+    ]
+  },
+  {
+    "vector_id": "agent-moderation/receipt-private-leakage",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-agent-policy-receipts"
+    ]
+  },
+  {
+    "vector_id": "agent-moderation/receipt-valid",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "profile": "heterodyne-social-agent-policy-receipt-v1",
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-agent-policy-receipts"
+    ]
+  },
+  {
+    "vector_id": "agent-moderation/relay-only-no-effect",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-agent-policy-list"
+    ]
+  },
+  {
+    "vector_id": "agent-moderation/replacement-key-independent",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-agent-policy-list"
+    ]
+  },
+  {
+    "vector_id": "agent-moderation/subscribed-canonical-mutes",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-agent-policy-list"
+    ]
+  },
+  {
+    "vector_id": "agent-moderation/unmerged-pr-no-effect",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-agent-policy-list"
+    ]
+  },
+  {
+    "vector_id": "agent-moderation/unsubscribed-no-effect",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-agent-policy-list"
+    ]
+  },
+  {
     "vector_id": "bridge/idempotent-republication",
     "owner_document": "social",
     "owner_version": "social/0.5.0",

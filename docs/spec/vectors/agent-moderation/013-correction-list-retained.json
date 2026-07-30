@@ -1,0 +1,28 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:social/0.5.0#social-agent-policy-receipts"
+  ],
+  "vector_id": "agent-moderation/correction-list-retained",
+  "description": "A valid correction alone does not restore visibility while the canonical list retains the binding.",
+  "direction": "consume",
+  "input": {
+    "correction_valid": true,
+    "canonical_list_binding_removed": false,
+    "device_key": "1111111111111111111111111111111111111111111111111111111111111111",
+    "muted_device_keys": [
+      "1111111111111111111111111111111111111111111111111111111111111111"
+    ]
+  },
+  "expected_output": {
+    "visible": false,
+    "muted": true
+  }
+}

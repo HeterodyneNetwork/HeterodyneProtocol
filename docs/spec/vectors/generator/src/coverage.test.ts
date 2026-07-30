@@ -66,10 +66,7 @@ describe("family coverage", () => {
 
     const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
     expect(findProfileCoverageIssues(registry, coverage)).toEqual([]);
-    expect(PENDING_PROFILE_IDS).toEqual([
-      "heterodyne-social-agent-policy-list-v1",
-      "heterodyne-social-agent-policy-receipt-v1",
-    ]);
+    expect(PENDING_PROFILE_IDS).toEqual([]);
     expect(INACTIVE_PROFILE_IDS).toEqual([
       "heterodyne-control-session-device-v1",
     ]);

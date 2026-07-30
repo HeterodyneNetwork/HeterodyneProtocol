@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heterodyne.network/schemas/social/agent-policy-correction-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profile", "spec_version", "receipt_id", "device_key", "corrected_at", "explanation", "action"],
+  "properties": {
+    "profile": {"const": "heterodyne.social.agent-policy-correction.v1"},
+    "spec_version": {"const": "social/0.5.0"},
+    "receipt_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "device_key": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "corrected_at": {"type": "integer", "minimum": 0},
+    "explanation": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "action": {"const": "retract"}
+  }
+}

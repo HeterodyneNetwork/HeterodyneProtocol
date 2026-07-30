@@ -1,0 +1,96 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 3,
+  "profile": "heterodyne-social-agent-policy-list-v1",
+  "spec_refs": [
+    "heterodyne:social/0.5.0#social-agent-policy-list"
+  ],
+  "vector_id": "agent-moderation/policy-list-valid",
+  "description": "A current NIP-51 agent policy list binds each device-key mute to one verified receipt and reason.",
+  "direction": "round-trip",
+  "input": {
+    "event": {
+      "pubkey": "2f1b310f4c065331bc0d79ba4661bb9822d67d7c4a1b0a1892e1fd0cd23aa68d",
+      "created_at": 1003,
+      "kind": 10000,
+      "tags": [
+        [
+          "heterodyne",
+          "social-agent-policy-list-v1"
+        ],
+        [
+          "spec_version",
+          "social/0.5.0"
+        ],
+        [
+          "p",
+          "1111111111111111111111111111111111111111111111111111111111111111"
+        ],
+        [
+          "e",
+          "2dd3853611b420a9d4d4609ee4d4db802ef2310c2dc3f33b2e19264ae16a2223"
+        ],
+        [
+          "agent_violation",
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "2dd3853611b420a9d4d4609ee4d4db802ef2310c2dc3f33b2e19264ae16a2223",
+          "agent-attribution-missing"
+        ]
+      ],
+      "content": "",
+      "id": "076eb5cdbb4f7fde16457a71158b6dfd1b327902b878b09f4a84627c0dbd1c6d",
+      "sig": "c3651f6f0e93ab20ba479dd605b32b3ac94900a3f3d8035269d32cdfb0757abc80d62ae74b901373e9a53914e0d684389076ff5f0ead15556c12476f19c6b572"
+    },
+    "receipts": [
+      {
+        "pubkey": "2f1b310f4c065331bc0d79ba4661bb9822d67d7c4a1b0a1892e1fd0cd23aa68d",
+        "created_at": 1000,
+        "kind": 1985,
+        "tags": [
+          [
+            "L",
+            "network.heterodyne.agent-policy"
+          ],
+          [
+            "l",
+            "agent-attribution-missing",
+            "network.heterodyne.agent-policy"
+          ],
+          [
+            "e",
+            "3333333333333333333333333333333333333333333333333333333333333333",
+            "wss://relay.example/"
+          ],
+          [
+            "p",
+            "1111111111111111111111111111111111111111111111111111111111111111",
+            "wss://relay.example/"
+          ]
+        ],
+        "content": "{\"profile\":\"heterodyne.social.agent-policy-receipt.v1\",\"spec_version\":\"social/0.5.0\",\"event_id\":\"3333333333333333333333333333333333333333333333333333333333333333\",\"device_key\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"cold_root\":\"4444444444444444444444444444444444444444444444444444444444444444\",\"reason\":\"agent-attribution-missing\",\"observed_at\":1000,\"evidence\":[\"sha256:abcd\"],\"explanation\":\"Automated publication omitted mandatory attribution.\",\"remediation\":\"rotate-device-key\"}",
+        "id": "2dd3853611b420a9d4d4609ee4d4db802ef2310c2dc3f33b2e19264ae16a2223",
+        "sig": "af03f8e9f437b0c4743ab13c86a834083477702a98df38adc0a422ee61783e585b29b8b719a421ad9296b8843a66fd6dffa95938ff45b5626c7f244f0156035d"
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "policy_persona": "2f1b310f4c065331bc0d79ba4661bb9822d67d7c4a1b0a1892e1fd0cd23aa68d",
+      "event_id": "076eb5cdbb4f7fde16457a71158b6dfd1b327902b878b09f4a84627c0dbd1c6d",
+      "entries": [
+        {
+          "device_key": "1111111111111111111111111111111111111111111111111111111111111111",
+          "receipt_id": "2dd3853611b420a9d4d4609ee4d4db802ef2310c2dc3f33b2e19264ae16a2223",
+          "reason": "agent-attribution-missing"
+        }
+      ]
+    }
+  }
+}

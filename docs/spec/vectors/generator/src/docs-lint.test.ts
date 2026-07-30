@@ -1947,6 +1947,84 @@ describe("protocol family documents", () => {
     });
   });
 
+  it("adds subscriber-local Social strict v2 profiles without changing v1 or depending on Control", () => {
+    const comms = readFileSync(commsPath, "utf8");
+    const social = readFileSync(socialPath, "utf8");
+    const commsV2 = fixtureFromMarkdown<StrictProfileFixture>(
+      comms,
+      "comms-strict-profile-v2",
+    );
+    const socialV1 = fixtureFromMarkdown<StrictProfileFixture>(
+      social,
+      "social-strict-profile",
+    );
+    const socialV2 = fixtureFromMarkdown<StrictProfileFixture>(
+      social,
+      "social-strict-profile-v2",
+    );
+    const matrixV1 = fixtureFromMarkdown<StrictProfileFixture>(
+      social,
+      "social-matrix-strict-profile",
+    );
+    const matrixV2 = fixtureFromMarkdown<StrictProfileFixture>(
+      social,
+      "social-matrix-strict-profile-v2",
+    );
+    const socialV2Invariants = [
+      ...commsV2.required_invariants,
+      "SOCIAL-I-PRIVATE-STATE-AT-REST",
+      "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
+      "SOCIAL-I-AGENT-POLICY-LOCAL",
+      "SOCIAL-I-AGENT-REMEDIATION-SCOPED",
+    ];
+
+    expect(socialV1.required_invariants).not.toContain("SOCIAL-I-AGENT-POLICY-LOCAL");
+    expect(matrixV1.required_invariants).not.toContain("SOCIAL-I-AGENT-POLICY-LOCAL");
+    expect(socialV2).toEqual({
+      profile_id: "heterodyne-social-strict-v2",
+      conformance_class: "Social",
+      state: "active",
+      requires_profiles: ["heterodyne-comms-strict-v2"],
+      required_invariants: socialV2Invariants,
+    });
+    expect(matrixV2).toEqual({
+      profile_id: "heterodyne-social-matrix-strict-v2",
+      conformance_class: "Social+Matrix",
+      state: "active",
+      requires_profiles: ["heterodyne-social-strict-v2"],
+      required_invariants: [
+        ...socialV2Invariants,
+        "SOCIAL-I-MATRIX-E2EE",
+        "SOCIAL-I-MXID-DELEGATION-DUAL-PROOF",
+        "SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE",
+      ],
+      matrix_obligations: [
+        "encrypted-private-content-and-state",
+        "mxid-dual-proof",
+        "downgrade-warning",
+        "bare-message-visibility",
+      ],
+    });
+    expect(social).toMatch(
+      /Normative dependencies:[\s\S]*- `heterodyne:core\/0\.5\.0#core-conformance`[\s\S]*- `heterodyne:comms\/0\.5\.0#comms-conformance`/,
+    );
+    expect(social.slice(0, social.indexOf("<a id=\"social-scope\"></a>")))
+      .not.toMatch(/control/i);
+  });
+
+  it("makes agent-policy moderation advisory, subscriber-local, and device-key scoped", () => {
+    const social = readFileSync(socialPath, "utf8");
+
+    expect(social).toMatch(/A valid receipt publicly informs[\s\S]*does not mute/i);
+    expect(social).toMatch(/Only an explicitly subscribed policy list affects a client/i);
+    expect(social).toMatch(/No moderator,[\s\S]*has global power/i);
+    expect(social).toMatch(/Enforcement mutes exactly the listed device-publishing key/i);
+    expect(social).toMatch(/MUST NOT mute[\s\S]*epoch key[\s\S]*human devices/i);
+    expect(social).toMatch(/Epoch-key\s+rotation is neither required nor permitted/i);
+    expect(social).toMatch(/relay-only list candidate or[\s\S]*unmerged Radicle PR has no policy effect/i);
+    expect(social).toMatch(/let the user inspect, disable, or\s+replace it/i);
+  });
+
   it("defines the mandatory agent path without a Comms-to-Control dependency", () => {
     const comms = readFileSync(commsPath, "utf8");
     for (const anchor of [

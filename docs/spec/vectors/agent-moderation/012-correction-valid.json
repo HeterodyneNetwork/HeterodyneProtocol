@@ -1,0 +1,57 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:social/0.5.0#social-agent-policy-receipts"
+  ],
+  "vector_id": "agent-moderation/correction-valid",
+  "description": "A correction receipt exactly binds the original receipt and offending device key.",
+  "direction": "round-trip",
+  "input": {
+    "event": {
+      "pubkey": "2f1b310f4c065331bc0d79ba4661bb9822d67d7c4a1b0a1892e1fd0cd23aa68d",
+      "created_at": 1005,
+      "kind": 1985,
+      "tags": [
+        [
+          "L",
+          "network.heterodyne.agent-policy"
+        ],
+        [
+          "l",
+          "correction",
+          "network.heterodyne.agent-policy"
+        ],
+        [
+          "e",
+          "2dd3853611b420a9d4d4609ee4d4db802ef2310c2dc3f33b2e19264ae16a2223"
+        ],
+        [
+          "p",
+          "1111111111111111111111111111111111111111111111111111111111111111"
+        ]
+      ],
+      "content": "{\"profile\":\"heterodyne.social.agent-policy-correction.v1\",\"spec_version\":\"social/0.5.0\",\"receipt_id\":\"2dd3853611b420a9d4d4609ee4d4db802ef2310c2dc3f33b2e19264ae16a2223\",\"device_key\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"corrected_at\":1005,\"explanation\":\"The original evidence was misclassified.\",\"action\":\"retract\"}",
+      "id": "e39d6d3ed44b2ace8c1b233ff0227b14078a0eea78c1a09be9e32fd84575d790",
+      "sig": "690d1625b13702eb57c6f42af944ae1427ac6d8cf936f1910cb5483c5893fd219473f90337cc72bbb438860e4a2d46b566b42861ced43b313331b709e46073c7"
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "profile": "heterodyne.social.agent-policy-correction.v1",
+      "spec_version": "social/0.5.0",
+      "receipt_id": "2dd3853611b420a9d4d4609ee4d4db802ef2310c2dc3f33b2e19264ae16a2223",
+      "device_key": "1111111111111111111111111111111111111111111111111111111111111111",
+      "corrected_at": 1005,
+      "explanation": "The original evidence was misclassified.",
+      "action": "retract"
+    }
+  }
+}

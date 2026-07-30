@@ -5,7 +5,7 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 - core: 131
 - comms: 162
 - control: 23
-- social: 82
+- social: 96
 
 | Vector | Owner | Version | Dependencies | Registry | Profile | Spec references |
 |---|---|---|---|---:|---|---|
@@ -53,6 +53,20 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `agent-authorship/token-valid` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-token` |
 | `agent-authorship/workload-registration-unbounded-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-workload` |
 | `agent-authorship/workload-registration-valid` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-workload` |
+| `agent-moderation/correction-list-removed` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:social/0.5.0#social-agent-policy-receipts` |
+| `agent-moderation/correction-list-retained` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:social/0.5.0#social-agent-policy-receipts` |
+| `agent-moderation/correction-valid` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:social/0.5.0#social-agent-policy-receipts` |
+| `agent-moderation/default-visible-removable` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:social/0.5.0#social-agent-policy-list` |
+| `agent-moderation/policy-binding-mismatch` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:social/0.5.0#social-agent-policy-list` |
+| `agent-moderation/policy-list-valid` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | `heterodyne-social-agent-policy-list-v1` | `heterodyne:social/0.5.0#social-agent-policy-list` |
+| `agent-moderation/receipt-malformed` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:social/0.5.0#social-agent-policy-receipts` |
+| `agent-moderation/receipt-private-leakage` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:social/0.5.0#social-agent-policy-receipts` |
+| `agent-moderation/receipt-valid` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | `heterodyne-social-agent-policy-receipt-v1` | `heterodyne:social/0.5.0#social-agent-policy-receipts` |
+| `agent-moderation/relay-only-no-effect` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:social/0.5.0#social-agent-policy-list` |
+| `agent-moderation/replacement-key-independent` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:social/0.5.0#social-agent-policy-list` |
+| `agent-moderation/subscribed-canonical-mutes` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:social/0.5.0#social-agent-policy-list` |
+| `agent-moderation/unmerged-pr-no-effect` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:social/0.5.0#social-agent-policy-list` |
+| `agent-moderation/unsubscribed-no-effect` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:social/0.5.0#social-agent-policy-list` |
 | `bridge/idempotent-republication` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-headless-bridge` |
 | `bridge/matrix-permanent-failure-index-updated` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-headless-bridge` |
 | `bridge/nostr-permanent-failure-index-not-updated` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-headless-bridge` |

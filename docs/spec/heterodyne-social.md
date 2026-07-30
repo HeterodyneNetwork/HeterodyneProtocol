@@ -567,6 +567,44 @@ or `t` tag. When it uses an `L` namespace, each `l` tag MUST mark a matching
 namespace. Labels are advisory: they MAY influence local warnings/ranking but
 MUST NOT constitute either editorial approval mechanism.
 
+<a id="social-agent-policy-receipts"></a>
+### 6.7 Agent-policy receipts and corrections
+
+Registry revision 3 defines the stamping
+`heterodyne-social-agent-policy-receipt-v1` profile on NIP-32 `kind:1985`.
+A receipt MUST have exactly:
+
+```text
+["L", "network.heterodyne.agent-policy"]
+["l", "agent-attribution-missing" |
+      "agent-attribution-falsified" |
+      "agent-publication-bypass", "network.heterodyne.agent-policy"]
+["e", "<offending-event-id>", "<optional relay hint>"]
+["p", "<offending device-publishing-key>", "<optional relay hint>"]
+```
+
+It MUST target exactly one event and exactly its signing device key. Its
+content MUST validate against
+`docs/spec/schemas/social/agent-policy-receipt-v1.schema.json`, whose closed
+Social JSON binds profile/version, offending event, device key, resolved
+cold-root persona, reason, observation time, evidence references or digests,
+explanation, and remediation `rotate-device-key`. It MUST NOT expose a token,
+secret, private claim, raw sender proof, or protected audit record.
+
+A valid receipt publicly informs. It does not mute, hide, establish editorial
+authority, or prove a private token failure by itself. A recipient MUST verify
+the event signature, exact tag/body binding, offending event signature,
+device-to-role delegation, and point-in-time persona resolution before showing
+it as verified.
+
+A false-positive correction is a signed `kind:1985` receipt from the correcting
+policy authority with `L` namespace `network.heterodyne.agent-policy`,
+`l` value `correction`, one `e` tag naming the original receipt, and one `p`
+tag naming the device key. Its content MUST validate against
+`docs/spec/schemas/social/agent-policy-correction-v1.schema.json`. A correction
+does not restore visibility until the current canonical policy list also
+removes the original binding.
+
 <a id="social-lists"></a>
 ## 7. Personal lists, community policy, and web of trust
 
@@ -603,8 +641,53 @@ A plain upstream NIP-51 event without the exact Social discriminator MUST remain
 It is an interoperability input and MUST NOT be legacy-
 inferred, stamped during ingestion, or represented as this Social profile.
 
+<a id="social-agent-policy-list"></a>
+### 7.2 Subscriber-local agent policy
+
+Registry revision 3 defines the stamping
+`heterodyne-social-agent-policy-list-v1` profile on NIP-51 replaceable
+`kind:10000`, with the exact profile tags:
+
+```text
+["heterodyne", "social-agent-policy-list-v1"]
+["spec_version", "social/0.5.0"]
+```
+
+For each adopted receipt, the list contains one upstream
+`["p","<device-key>"]` mute, one `["e","<receipt-id>"]` reference, and one
+closed binding:
+
+```text
+["agent_violation", "<device-key>", "<receipt-id>", "<reason-code>"]
+```
+
+The client MUST verify the receipt, exact `p`/`e`/`agent_violation` binding,
+policy persona, current replaceable event, and canonical repository history
+before the entry can affect visibility. A relay-only list candidate or
+unmerged Radicle PR has no policy effect.
+
+Only an explicitly subscribed policy list affects a client. An unsubscribed
+receipt or list remains visible information and MUST NOT silently change
+ranking or visibility. A reference client MAY ship a visible global
+moderator-persona subscription enabled by default, but MUST identify that
+source for each filtering decision and let the user inspect, disable, or
+replace it. No moderator, registry entry, default client, repository, or relay
+has global power.
+
+Enforcement mutes exactly the listed device-publishing key. It MUST NOT mute
+the persona, epoch key, human devices, hosting NID, or other agent-role keys.
+Remediation replaces the offending role key at the same `agent:<role-id>`
+address and finalizes that Core/Comms delegation. The old key MAY remain muted
+indefinitely; the replacement key is evaluated independently. Epoch-key
+rotation is neither required nor permitted as a substitute for the
+device-scoped remediation.
+
+Correction requires both a valid signed correction receipt and a current
+canonical list revision removing the original binding. Either one alone leaves
+the current subscribed mute unchanged.
+
 <a id="social-sets"></a>
-### 7.2 Sets and private configuration
+### 7.3 Sets and private configuration
 
 Social supports upstream NIP-51 standard lists and addressable sets, including
 follow sets `30000`, relay sets `30002`, bookmark sets `30003`, kind-mute sets
@@ -629,7 +712,7 @@ Social-owned private payload in the encrypted config repository instead of a
 NIP-51 event.
 
 <a id="social-community-policy"></a>
-### 7.3 Community policy lists
+### 7.4 Community policy lists
 
 A policy persona MAY publish community block/allow policy using `kind:10000`,
 `kind:30007`, and `kind:30000`. A community adopts it through `a` tags for
@@ -644,7 +727,7 @@ Matrix-server policy has no Nostr equivalent and MUST NOT alter the verified
 NIP-72 or Radicle editorial record.
 
 <a id="social-admission-policy"></a>
-### 7.4 Web-of-trust and the Comms acceptance hook
+### 7.5 Web-of-trust and the Comms acceptance hook
 
 Social implements mute and web-of-trust admission only through
 `heterodyne:comms/0.5.0#comms-acceptance-hook`. Authentication and all Comms
@@ -1457,6 +1540,104 @@ being bare. Capability advertisements MUST include every prerequisite profile
 actually met and MUST omit either Social profile when any corresponding
 invariant, obligation, feature, or vector is unmet.
 
+The revision-3 agent-policy invariants require new profile IDs. Both v1
+declarations above remain unchanged.
+
+<!-- fixture:social-strict-profile-v2 -->
+```json
+{
+  "profile_id": "heterodyne-social-strict-v2",
+  "conformance_class": "Social",
+  "state": "active",
+  "requires_profiles": ["heterodyne-comms-strict-v2"],
+  "required_invariants": [
+    "CORE-I-IDENTITY-INTEGRITY",
+    "CORE-I-NID-DELEGATION-DUAL-PROOF",
+    "CORE-I-VERIFY-BEFORE-USE",
+    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
+    "CORE-I-KEY-MATERIAL-AT-REST",
+    "COMMS-I-TIER3-BLIND-CARRIER",
+    "COMMS-I-TIER2-HONESTY",
+    "COMMS-I-CONFIG-AT-REST",
+    "COMMS-I-CLIENT-SIDE-DELIVERY",
+    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+    "COMMS-I-CLAIM-AUTHENTICITY",
+    "COMMS-I-CLAIM-ATTENUATION",
+    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
+    "COMMS-I-CLAIM-REVOCATION",
+    "COMMS-I-LEDGER-CONFINEMENT",
+    "COMMS-I-ISSUER-KEY-CONFINEMENT",
+    "COMMS-I-MINT-FRESHNESS",
+    "COMMS-I-ISSUER-CONTINUITY",
+    "COMMS-I-CLAIM-RELEASE",
+    "COMMS-I-JWT-TYPE-AUDIENCE",
+    "COMMS-I-STATUS-INTEGRITY",
+    "COMMS-I-PUBLIC-READER-TIER1-ONLY",
+    "COMMS-I-AGENT-ROLE-BINDING",
+    "COMMS-I-AGENT-ATTRIBUTION",
+    "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT",
+    "SOCIAL-I-PRIVATE-STATE-AT-REST",
+    "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
+    "SOCIAL-I-AGENT-POLICY-LOCAL",
+    "SOCIAL-I-AGENT-REMEDIATION-SCOPED"
+  ]
+}
+```
+
+`heterodyne-social-strict-v2` inherits the v1 operational obligations and
+additionally requires exact receipt/list binding, subscribed-policy
+transparency, and device-key-scoped remediation.
+
+<!-- fixture:social-matrix-strict-profile-v2 -->
+```json
+{
+  "profile_id": "heterodyne-social-matrix-strict-v2",
+  "conformance_class": "Social+Matrix",
+  "state": "active",
+  "requires_profiles": ["heterodyne-social-strict-v2"],
+  "required_invariants": [
+    "CORE-I-IDENTITY-INTEGRITY",
+    "CORE-I-NID-DELEGATION-DUAL-PROOF",
+    "CORE-I-VERIFY-BEFORE-USE",
+    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
+    "CORE-I-KEY-MATERIAL-AT-REST",
+    "COMMS-I-TIER3-BLIND-CARRIER",
+    "COMMS-I-TIER2-HONESTY",
+    "COMMS-I-CONFIG-AT-REST",
+    "COMMS-I-CLIENT-SIDE-DELIVERY",
+    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+    "COMMS-I-CLAIM-AUTHENTICITY",
+    "COMMS-I-CLAIM-ATTENUATION",
+    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
+    "COMMS-I-CLAIM-REVOCATION",
+    "COMMS-I-LEDGER-CONFINEMENT",
+    "COMMS-I-ISSUER-KEY-CONFINEMENT",
+    "COMMS-I-MINT-FRESHNESS",
+    "COMMS-I-ISSUER-CONTINUITY",
+    "COMMS-I-CLAIM-RELEASE",
+    "COMMS-I-JWT-TYPE-AUDIENCE",
+    "COMMS-I-STATUS-INTEGRITY",
+    "COMMS-I-PUBLIC-READER-TIER1-ONLY",
+    "COMMS-I-AGENT-ROLE-BINDING",
+    "COMMS-I-AGENT-ATTRIBUTION",
+    "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT",
+    "SOCIAL-I-PRIVATE-STATE-AT-REST",
+    "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
+    "SOCIAL-I-AGENT-POLICY-LOCAL",
+    "SOCIAL-I-AGENT-REMEDIATION-SCOPED",
+    "SOCIAL-I-MATRIX-E2EE",
+    "SOCIAL-I-MXID-DELEGATION-DUAL-PROOF",
+    "SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE"
+  ],
+  "matrix_obligations": [
+    "encrypted-private-content-and-state",
+    "mxid-dual-proof",
+    "downgrade-warning",
+    "bare-message-visibility"
+  ]
+}
+```
+
 <a id="social-conformance"></a>
 ## 14. Conformance
 
@@ -1470,7 +1651,9 @@ include async replies/reactions, following and transitive discovery,
 cross-persona advertisements, reply inboxes, mixed-tier Social fan-out,
 moderation, NIP-51 Social profiles, community policy, Social recovery binding,
 feed/org presentation, ATProto behavior when advertised, the acceptance-hook
-policy, and all non-Matrix Social invariants.
+policy, subscriber-local agent-policy moderation when
+`social.agent-policy-moderation.v1` is advertised, and all non-Matrix Social
+invariants.
 
 A `Social+Matrix` report MUST include a complete `Social` claim and every
 Matrix requirement in §§9-12: MXID delegation, election/leases/failover,
