@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heterodyne.network/schemas/control/control-audit-record-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["spec_version", "session_id", "request_id", "method", "payload_digest", "agent_identity", "token_jti", "role_id", "role_key", "decision", "created_at"],
+  "properties": {
+    "spec_version": {"const": "control/0.5.0"},
+    "session_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "request_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "method": {"type": "string", "minLength": 1, "maxLength": 128},
+    "payload_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "agent_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["issuer", "sub", "client_id", "class"],
+      "properties": {
+        "issuer": {"type": "string", "minLength": 1},
+        "sub": {"type": "string", "minLength": 1},
+        "client_id": {"type": "string", "minLength": 1},
+        "class": {"enum": ["ai", "programmatic"]}
+      }
+    },
+    "token_jti": {"type": "string", "minLength": 1},
+    "source_claim_ids": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "ledger_checkpoint": {"type": "object"},
+    "role_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "role_key": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "decision": {"enum": ["accept", "reject"]},
+    "event_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "created_at": {"type": "integer", "minimum": 0}
+  }
+}

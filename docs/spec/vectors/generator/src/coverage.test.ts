@@ -31,7 +31,8 @@ describe("family coverage", () => {
       [...coverage.map(({ vector_id }) => vector_id)].sort(),
     );
     expect(new Set(coverage.map(({ vector_id }) => vector_id)).size).toBe(vectors.length);
-    expect(coverage.filter(({ owner_document }) => owner_document === "control")).toEqual([]);
+    expect(coverage.filter(({ owner_document }) => owner_document === "control"))
+      .toHaveLength(23);
     expect(coverage).toContainEqual(expect.objectContaining({
       vector_id: "stamping/control-profile-retains-core-owner",
       owner_document: "core",
@@ -167,6 +168,8 @@ describe("family coverage", () => {
 
     expect(second).toEqual(first);
     expect(first[3]).toContain("incomplete-draft");
-    expect(first[3]).toContain("No Control conformance corpus");
+    expect(first[3]).toContain("normative partial evidence");
+    expect(first[3]).toContain("control/first-arrival-reserved");
+    expect(first[3]).toContain("profile remains non-claimable");
   }, 30_000);
 });

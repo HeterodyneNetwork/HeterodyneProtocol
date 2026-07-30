@@ -1218,6 +1218,305 @@
     ]
   },
   {
+    "vector_id": "control/agent-publish-authorized",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-requirements"
+    ]
+  },
+  {
+    "vector_id": "control/agent-publish-schema-intent-only",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-publish"
+    ]
+  },
+  {
+    "vector_id": "control/attribution-bypass-refused",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-requirements"
+    ]
+  },
+  {
+    "vector_id": "control/audit-omits-raw-token",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-audit"
+    ]
+  },
+  {
+    "vector_id": "control/burst-refused",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-requirements"
+    ]
+  },
+  {
+    "vector_id": "control/changed-method-rejected",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-relay-affinity"
+    ]
+  },
+  {
+    "vector_id": "control/changed-payload-rejected",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-relay-affinity"
+    ]
+  },
+  {
+    "vector_id": "control/complete-without-response-rejected",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-relay-affinity"
+    ]
+  },
+  {
+    "vector_id": "control/concurrent-identical-joins",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-requirements"
+    ]
+  },
+  {
+    "vector_id": "control/content-size-refused",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-requirements"
+    ]
+  },
+  {
+    "vector_id": "control/cross-relay-final-response-replay",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-relay-affinity"
+    ]
+  },
+  {
+    "vector_id": "control/expired-request-rejected",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-relay-affinity"
+    ]
+  },
+  {
+    "vector_id": "control/expired-token-refused",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-requirements"
+    ]
+  },
+  {
+    "vector_id": "control/first-arrival-reserved",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-relay-affinity"
+    ]
+  },
+  {
+    "vector_id": "control/human-profile-refused",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-requirements"
+    ]
+  },
+  {
+    "vector_id": "control/key-access-refused",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-requirements"
+    ]
+  },
+  {
+    "vector_id": "control/kind-resource-refused",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-requirements"
+    ]
+  },
+  {
+    "vector_id": "control/rate-refused",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-requirements"
+    ]
+  },
+  {
+    "vector_id": "control/raw-signing-refused",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-requirements"
+    ]
+  },
+  {
+    "vector_id": "control/reply-relay-rejected",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-relay-affinity"
+    ]
+  },
+  {
+    "vector_id": "control/restart-reserved-operation-joins",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-relay-affinity"
+    ]
+  },
+  {
+    "vector_id": "control/sender-proof-refused",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-requirements"
+    ]
+  },
+  {
+    "vector_id": "control/token-request-bounded",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-token"
+    ]
+  },
+  {
     "vector_id": "core-redundancy/radicle-multihost-replication",
     "owner_document": "core",
     "owner_version": "core/0.5.0",

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heterodyne.network/schemas/control/control-rpc-response-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["spec_version", "session_id", "request_id", "payload_digest", "status", "created_at"],
+  "properties": {
+    "spec_version": {"const": "control/0.5.0"},
+    "session_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "request_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "payload_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "status": {"enum": ["ok", "error", "in-progress"]},
+    "result": {},
+    "error": {"type": "object"},
+    "created_at": {"type": "integer", "minimum": 0}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "ok"}}},
+      "then": {"required": ["result"], "not": {"required": ["error"]}}
+    },
+    {
+      "if": {"properties": {"status": {"const": "error"}}},
+      "then": {"required": ["error"], "not": {"required": ["result"]}}
+    }
+  ]
+}

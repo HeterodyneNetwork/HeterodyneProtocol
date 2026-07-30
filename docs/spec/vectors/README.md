@@ -41,7 +41,7 @@ wire format and is not the vector envelope version.
 The schema requires each actual vector's `registry_revision` to be an integer;
 the placeholder above means that every vector pins the revision governing its
 behavior. The current coverage manifest contains 262 immutable registry-revision-1 vectors,
-55 ADR-034 registry-revision-2 vectors, and 58 ADR-035/ADR-036 registry-revision-3 vectors.
+55 ADR-034 registry-revision-2 vectors, and 81 ADR-035/ADR-036 registry-revision-3 vectors.
 Historical vectors and the signed
 behavior they describe MUST NOT be rewritten to the latest registry revision.
 Changed behavior receives a new vector ID.

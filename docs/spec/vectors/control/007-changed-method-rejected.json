@@ -1,0 +1,44 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-relay-affinity"
+  ],
+  "vector_id": "control/changed-method-rejected",
+  "description": "The relay-affine restart-safe request decision is changed-method-rejected.",
+  "direction": "consume",
+  "input": {
+    "request": {
+      "authenticated": true,
+      "session_id": "1111111111111111111111111111111111111111111111111111111111111111",
+      "request_id": "request-1",
+      "method": "heterodyne.agent.token",
+      "payload": {
+        "content": "hello",
+        "kind": 1
+      },
+      "payload_digest": "4931af6a828018995ec2b86d908deeaad4788cb436144808366757383de805b5",
+      "ingress_relay": "wss://relay-a.example/",
+      "expires_at": 1200,
+      "now": 1000
+    },
+    "prior": {
+      "session_id": "1111111111111111111111111111111111111111111111111111111111111111",
+      "request_id": "request-1",
+      "method": "heterodyne.agent.publish",
+      "payload_digest": "4931af6a828018995ec2b86d908deeaad4788cb436144808366757383de805b5",
+      "first_ingress_relay": "wss://relay-a.example/",
+      "state": "reserved"
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-request-id-conflict"
+  }
+}

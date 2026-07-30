@@ -398,7 +398,31 @@ acceptance-gating/social-wot-cannot-loosen
 profiles/social-org-feed-kind31007
 `);
 
-const CONTROL_IDS = new Set<string>();
+const CONTROL_IDS = ids(`
+control/first-arrival-reserved
+control/concurrent-identical-joins
+control/cross-relay-final-response-replay
+control/restart-reserved-operation-joins
+control/expired-request-rejected
+control/reply-relay-rejected
+control/changed-method-rejected
+control/changed-payload-rejected
+control/complete-without-response-rejected
+control/agent-publish-authorized
+control/raw-signing-refused
+control/key-access-refused
+control/human-profile-refused
+control/attribution-bypass-refused
+control/expired-token-refused
+control/sender-proof-refused
+control/kind-resource-refused
+control/content-size-refused
+control/rate-refused
+control/burst-refused
+control/token-request-bounded
+control/agent-publish-schema-intent-only
+control/audit-omits-raw-token
+`);
 
 const PROFILE_BY_VECTOR = new Map<string, string>([
   ["agent-authorship/delegation-valid", "heterodyne-comms-agent-signing-delegation-v1"],
@@ -475,7 +499,8 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
     dependency_versions: dependencies,
     registry_revision: vectorId.startsWith("role-capabilities/")
       || vectorId.startsWith("public-reader/")
-      || vectorId.startsWith("agent-authorship/") ? 3
+      || vectorId.startsWith("agent-authorship/")
+      || vectorId.startsWith("control/") ? 3
       : vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/") ||
         vectorId.startsWith("oidc/") || vectorId.startsWith("token-status/") ? 2
       : 1,
@@ -621,6 +646,22 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
       "social-recovery": "social-recovery-binding",
       versioning: "social-discussion-rooms",
       "acceptance-gating": "social-admission-policy",
+    },
+    control: {
+      control: vectorId.includes("arrival")
+        || vectorId.includes("relay")
+        || vectorId.includes("restart")
+        || vectorId.includes("expired-request")
+        || vectorId.includes("changed-")
+        || vectorId.includes("complete-without")
+        ? "control-relay-affinity"
+        : vectorId.includes("token-request")
+          ? "control-agent-token"
+          : vectorId.includes("audit")
+            ? "control-agent-audit"
+            : vectorId.includes("schema-intent")
+              ? "control-agent-publish"
+              : "control-agent-requirements",
     },
   };
   return anchors[owner]?.[prefix] ?? `${owner}-conformance`;

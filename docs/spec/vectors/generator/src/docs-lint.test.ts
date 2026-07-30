@@ -1257,14 +1257,20 @@ describe("protocol family documents", () => {
     const gate = fixtureFromMarkdown<{
       can_claim_control_conformance: boolean;
       blockers: string[];
+      integrated_normative_subsets: string[];
     }>(text, "control-conformance-gate");
 
     expect(gate).toEqual({
       can_claim_control_conformance: false,
       blockers: [
         "adr-030-accepted",
-        "adr-030-integrated",
-        "minimum-control-vectors",
+        "adr-030-session-device-and-enrollment-integrated",
+        "adr-030-grants-and-mcp-lifecycle-integrated",
+        "adr-030-minimum-general-control-vectors",
+      ],
+      integrated_normative_subsets: [
+        "adr-035-relay-affinity",
+        "adr-036-agent-workload-publication",
       ],
     });
     expect(text).toContain("no Control conformance claim");
@@ -1279,6 +1285,40 @@ describe("protocol family documents", () => {
     ]) {
       expect(text).toContain(invariant);
     }
+  });
+
+  it("keeps Control strict v2 reserved while composing the integrated subsets", () => {
+    const control = readFileSync(controlPath, "utf8");
+    const comms = readFileSync(commsPath, "utf8");
+    const commsV2 = fixtureFromMarkdown<StrictProfileFixture>(
+      comms,
+      "comms-strict-profile-v2",
+    );
+    const controlV2 = fixtureFromMarkdown<StrictProfileFixture>(
+      control,
+      "control-strict-profile-v2",
+    );
+    expect(controlV2).toEqual({
+      profile_id: "heterodyne-control-strict-v2",
+      conformance_class: "Core+Comms+Control profile",
+      state: "reserved-inactive",
+      requires_profiles: ["heterodyne-comms-strict-v2"],
+      required_invariants: [
+        ...commsV2.required_invariants,
+        "CONTROL-I-AUDIT-AT-REST",
+        "CONTROL-I-SESSION-KEY-CONFINEMENT",
+        "CONTROL-I-INGRESS-RELAY-AFFINITY",
+        "CONTROL-I-AGENT-NO-KEY-RELEASE",
+        "CONTROL-I-AGENT-INTENT-ONLY",
+        "CONTROL-I-AGENT-AUTHORIZATION-FRESHNESS",
+      ],
+    });
+    expect(control).toMatch(
+      /Requirements for automated agents[\s\S]*MUST refuse[\s\S]*sign_event/i,
+    );
+    expect(control).toMatch(
+      /ADR-035 relay-affinity subset[\s\S]*ADR-036 automated-agent subset[\s\S]*normative[\s\S]*do not/i,
+    );
   });
 
   it("amends ADR-030 with the exact Core, Comms, and Control allocation", () => {

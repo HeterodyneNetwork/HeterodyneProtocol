@@ -1,0 +1,45 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-agent-requirements"
+  ],
+  "vector_id": "control/human-profile-refused",
+  "description": "The automated-agent method boundary is human-profile-refused.",
+  "direction": "consume",
+  "input": {
+    "method": "heterodyne.agent.publish",
+    "token_decision": {
+      "verdict": "accept"
+    },
+    "sender_proof_valid": true,
+    "kind": 1,
+    "allowed_kinds": [
+      1,
+      30023
+    ],
+    "resource": "feed:main",
+    "allowed_resources": [
+      "feed:main"
+    ],
+    "content_bytes": 100,
+    "max_content_bytes": 4096,
+    "rate_count": 1,
+    "rate_limit": 20,
+    "burst_count": 1,
+    "burst_limit": 5,
+    "requests_key_access": false,
+    "requests_human_profile": true,
+    "requests_attribution_bypass": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "agent-human-profile-prohibited"
+  }
+}

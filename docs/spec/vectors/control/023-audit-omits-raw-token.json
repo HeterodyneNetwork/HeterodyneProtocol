@@ -1,0 +1,36 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-agent-audit"
+  ],
+  "vector_id": "control/audit-omits-raw-token",
+  "description": "The encrypted agent audit retains token jti and authorization evidence but not raw access-token bytes.",
+  "direction": "consume",
+  "input": {
+    "token_jti": "token-1",
+    "raw_token_presented": true,
+    "source_claim_ids": [
+      "claim-1"
+    ],
+    "payload_digest": "4931af6a828018995ec2b86d908deeaad4788cb436144808366757383de805b5"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "retained_fields": [
+        "token_jti",
+        "source_claim_ids",
+        "payload_digest"
+      ],
+      "raw_token_retained": false,
+      "encrypted_at_rest": true
+    }
+  }
+}

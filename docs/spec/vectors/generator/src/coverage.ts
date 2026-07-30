@@ -115,7 +115,7 @@ export async function writeCoverage(vectorRoot: string): Promise<void> {
 function renderDocumentView(document: DocumentId, entries: CoverageEntry[]): string {
   const title = document[0].toUpperCase() + document.slice(1);
   if (document === "control") {
-    return `# ${title} vector coverage\n\nStatus: \`incomplete-draft\`.\n\nNo Control conformance corpus is published. The Control profile remains non-claimable until the ADR-030 minimum corpus exists.\n`;
+    return `# ${title} vector coverage\n\nStatus: \`incomplete-draft\`.\n\nThe integrated ADR-035 relay-affinity and ADR-036 automated-agent subset vectors are listed below. They are normative partial evidence but do not open Control conformance; the profile remains non-claimable until the remaining ADR-030 blockers are resolved.\n\nGenerated from [manifest.json](manifest.json); do not edit by hand.\n\n${renderTable(entries)}`;
   }
   return `# ${title} vector coverage\n\nGenerated from [manifest.json](manifest.json); do not edit by hand.\n\n${renderTable(entries)}`;
 }
