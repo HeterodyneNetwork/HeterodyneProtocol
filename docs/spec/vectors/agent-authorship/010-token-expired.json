@@ -1,0 +1,52 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-agent-token"
+  ],
+  "vector_id": "agent-authorship/token-expired",
+  "description": "The sender-constrained workload-token decision is token-expired.",
+  "direction": "consume",
+  "input": {
+    "typ": "at+jwt",
+    "iss": "https://issuer.example/oidc/npub1persona",
+    "sub": "stable-pairwise-agent-subject",
+    "aud": [
+      "https://node.example/control/agent-publication"
+    ],
+    "exp": 1767225850,
+    "iat": 1767225600,
+    "jti": "token-1",
+    "client_id": "agent-client",
+    "scope": "heterodyne:agent:publish",
+    "cnf_jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "sender_proof_jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "sender_proof_valid": true,
+    "agent_role_id": "abababababababababababababababababababababababababababababababab",
+    "expected_issuer": "https://issuer.example/oidc/npub1persona",
+    "expected_subject": "stable-pairwise-agent-subject",
+    "expected_audience": "https://node.example/control/agent-publication",
+    "expected_client_id": "agent-client",
+    "expected_scope": "heterodyne:agent:publish",
+    "expected_role_id": "abababababababababababababababababababababababababababababababab",
+    "now": 1767225850,
+    "status": "VALID",
+    "ledger_active": true,
+    "ledger_binding_valid": true,
+    "status_binding_valid": true,
+    "session_expires_at": 1767225900,
+    "delegation_expires_at": 1767225900,
+    "registration_expires_at": 1767225900,
+    "consent_expires_at": 1767225900,
+    "source_authorization_expires_at": 1767225900
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "agent-token-expired"
+  }
+}

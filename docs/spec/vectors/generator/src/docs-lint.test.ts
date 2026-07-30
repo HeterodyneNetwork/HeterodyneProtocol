@@ -1864,6 +1864,75 @@ describe("protocol family documents", () => {
     expect(core).toMatch(/composed profile[\s\S]*prerequisite profile/i);
   });
 
+  it("adds Comms strict v2 without changing strict v1 membership", () => {
+    const comms = readFileSync(commsPath, "utf8");
+    const v1 = fixtureFromMarkdown<StrictProfileFixture>(comms, "comms-strict-profile");
+    const v2 = fixtureFromMarkdown<StrictProfileFixture>(comms, "comms-strict-profile-v2");
+
+    expect(v1.profile_id).toBe("heterodyne-comms-strict-v1");
+    expect(v1.required_invariants).not.toContain("COMMS-I-PUBLIC-READER-TIER1-ONLY");
+    expect(v1.required_invariants).not.toContain("COMMS-I-AGENT-ATTRIBUTION");
+    expect(v2).toEqual({
+      profile_id: "heterodyne-comms-strict-v2",
+      conformance_class: "Core+Comms",
+      state: "active",
+      requires_profiles: ["heterodyne-core-strict-v1"],
+      required_invariants: [
+        "CORE-I-IDENTITY-INTEGRITY",
+        "CORE-I-NID-DELEGATION-DUAL-PROOF",
+        "CORE-I-VERIFY-BEFORE-USE",
+        "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
+        "CORE-I-KEY-MATERIAL-AT-REST",
+        "COMMS-I-TIER3-BLIND-CARRIER",
+        "COMMS-I-TIER2-HONESTY",
+        "COMMS-I-CONFIG-AT-REST",
+        "COMMS-I-CLIENT-SIDE-DELIVERY",
+        "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+        "COMMS-I-CLAIM-AUTHENTICITY",
+        "COMMS-I-CLAIM-ATTENUATION",
+        "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
+        "COMMS-I-CLAIM-REVOCATION",
+        "COMMS-I-LEDGER-CONFINEMENT",
+        "COMMS-I-ISSUER-KEY-CONFINEMENT",
+        "COMMS-I-MINT-FRESHNESS",
+        "COMMS-I-ISSUER-CONTINUITY",
+        "COMMS-I-CLAIM-RELEASE",
+        "COMMS-I-JWT-TYPE-AUDIENCE",
+        "COMMS-I-STATUS-INTEGRITY",
+        "COMMS-I-PUBLIC-READER-TIER1-ONLY",
+        "COMMS-I-AGENT-ROLE-BINDING",
+        "COMMS-I-AGENT-ATTRIBUTION",
+        "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT",
+      ],
+    });
+  });
+
+  it("defines the mandatory agent path without a Comms-to-Control dependency", () => {
+    const comms = readFileSync(commsPath, "utf8");
+    for (const anchor of [
+      "comms-agent-authorship",
+      "comms-agent-delegation",
+      "comms-agent-workload",
+      "comms-agent-token",
+      "comms-agent-attribution",
+      "comms-agent-fail-closed",
+    ]) {
+      expect(comms).toContain(`<a id="${anchor}"></a>`);
+    }
+    expect(comms).toContain(
+      "Normative dependencies: `heterodyne:core/0.5.0#core-conformance`.",
+    );
+    expect(comms).not.toMatch(/Normative dependencies:[^\n]*control/i);
+    expect(comms).toContain(
+      "heterodyne-agent-signing-binding-v1|<cold-root-hex>|<nid>|<role-id>|<publishing-key>",
+    );
+    expect(comms).toMatch(
+      /\["L", "network\.heterodyne\.agent"\][\s\S]*\["l", "ai" \| "programmatic", "network\.heterodyne\.agent"\][\s\S]*\["heterodyne_agent", "v1"/,
+    );
+    expect(comms).toMatch(/raw token[\s\S]*MUST NOT[\s\S]*public event/i);
+    expect(comms).toMatch(/There is no[\s\S]*fallback[\s\S]*unlabeled event/i);
+  });
+
   it("uses only namespaced current invariants and exact registry descriptions", () => {
     const threatModel = readFileSync(threatModelPath, "utf8");
     const registry = JSON.parse(

@@ -208,6 +208,339 @@
     ]
   },
   {
+    "vector_id": "agent-authorship/attribution-kind-1",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "profile": "heterodyne-comms-agent-attribution-kind-1-v1",
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-attribution"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/attribution-kind-1063",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "profile": "heterodyne-comms-agent-attribution-kind-1063-v1",
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-attribution"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/attribution-kind-16",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "profile": "heterodyne-comms-agent-attribution-kind-16-v1",
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-attribution"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/attribution-kind-1985",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "profile": "heterodyne-comms-agent-attribution-kind-1985-v1",
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-attribution"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/attribution-kind-30023",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "profile": "heterodyne-comms-agent-attribution-kind-30023-v1",
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-attribution"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/attribution-kind-4550",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "profile": "heterodyne-comms-agent-attribution-kind-4550-v1",
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-attribution"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/attribution-kind-6",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "profile": "heterodyne-comms-agent-attribution-kind-6-v1",
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-attribution"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/attribution-kind-7",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "profile": "heterodyne-comms-agent-attribution-kind-7-v1",
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-attribution"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/caller-forgery-replaced",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-attribution"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/cross-persona-unlinkable",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-attribution"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/delegation-key-proof-invalid",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-delegation"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/delegation-valid",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "profile": "heterodyne-comms-agent-signing-delegation-v1",
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-delegation"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/human-review-preserves-agent-label",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-attribution"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/idempotent-retry-reuses-event",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-attribution"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/multiple-roles-one-nid",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-delegation"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/profile-unavailable-rejected",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-fail-closed"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/role-key-replacement",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-delegation"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/stable-identity-renewal",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-workload"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/tier3-inner-only",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-attribution"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/token-audience-invalid",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-token"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/token-expired",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-token"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/token-revoked",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-token"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/token-role-mismatch",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-token"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/token-sender-proof-invalid",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-token"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/token-valid",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-token"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/workload-registration-unbounded-rejected",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-workload"
+    ]
+  },
+  {
+    "vector_id": "agent-authorship/workload-registration-valid",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-workload"
+    ]
+  },
+  {
     "vector_id": "bridge/idempotent-republication",
     "owner_document": "social",
     "owner_version": "social/0.5.0",

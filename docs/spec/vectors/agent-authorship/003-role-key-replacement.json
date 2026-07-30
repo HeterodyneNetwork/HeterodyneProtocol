@@ -1,0 +1,29 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-agent-delegation"
+  ],
+  "vector_id": "agent-authorship/role-key-replacement",
+  "description": "Replacing the current key at one stable agent role address deauthorizes only the prior role key.",
+  "direction": "consume",
+  "input": {
+    "address": "agent:abababababababababababababababababababababababababababababababab",
+    "prior_key": "f76a39d05686e34a4420897e359371836145dd3973e3982568b60f8433adde6e",
+    "replacement_key": "552c630b64b54bf50210c9e253d38bd4949c72e22873500f6285c2bede312a84",
+    "repository_final": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "prior_key_authorizes_new_events": false,
+      "replacement_key_authorizes_new_events": true,
+      "epoch_key_rotated": false
+    }
+  }
+}

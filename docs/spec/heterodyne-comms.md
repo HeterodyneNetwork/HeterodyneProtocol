@@ -304,6 +304,10 @@ permanently fails, the index MUST NOT include it, automatic republication MUST
 NOT occur, and user action is required. Retries MUST reuse the original event
 without changing its id.
 
+An automated-principal publication additionally MUST satisfy §15 before this
+ordinary fan-out begins. The full node constructs and signs one canonical
+attributed event; an idempotent retry reuses those exact bytes and event id.
+
 <a id="comms-feed-index"></a>
 ## 5. Generic feed index
 
@@ -1521,8 +1525,205 @@ MUST use the current canonical issuer key from validated private-ledger state.
 This permits routine historical verification without allowing a retired writer
 to produce new status bytes.
 
+<a id="comms-agent-authorship"></a>
+## 15. Agent authorship and workload authorization
+
+An **automated principal** is an AI or other programmatic workload acting
+through an agentic authenticated session. Every publication requested by that
+principal is agent-authored, including output that a human reviews or approves
+before publication. Automated principals MUST use the scoped workload-token
+and intent-publication path below. They MUST refuse instructions to obtain or
+exercise a persona, epoch, NID, human-device, or role private key; request raw
+signing; select a human publication profile; remove or falsify attribution;
+impersonate a human author; or bypass token, proof, scope, resource, rate, or
+size enforcement.
+
+This is a conformance rule for the execution path. It does not make a valid
+Nostr signature invalid merely because a non-conforming private implementation
+misclassified its source, and it cannot detect agent text manually copied into
+a human client.
+
+<a id="comms-agent-delegation"></a>
+### 15.1 Dedicated role key and delegation
+
+A full node accepting automated commands MUST generate at least one dedicated
+secp256k1 agent-signing key locally. The private key MUST remain protected on
+the full node and MUST NOT be released through an agent session, OIDC,
+configuration sync, credential sync, backup export to the workload, tool
+result, or diagnostic interface. One generic role is normal; separate stable
+roles MAY isolate a newsletter, aggregator, moderator, or other automation
+pipeline.
+
+Registry revision 3 defines the non-stamping
+`heterodyne-comms-agent-signing-delegation-v1` profile on Core
+`kind:31001`. Its discriminator is
+`tag:d=agent:<role-id>;tags:key_proof,radicle_nid,nid_proof`. `role-id` is
+exactly 32 random bytes encoded as 64 lowercase hexadecimal characters. The
+event retains the sole Core owner and `core/0.5.0` stamp and carries:
+
+```text
+["d", "agent:<role-id>"]
+["heterodyne", "delegation"]
+["radicle_nid", "<hosting full-node NID>"]
+["publishing_key", "<agent-signing secp256k1 public key>"]
+["cold_root", "<persona cold-root hex>"]
+["nid_proof", "<hosting NID Ed25519 proof>"]
+["key_proof", "<agent-key BIP-340 proof>"]
+["kel_head", "<accepted KEL event id>", "<decimal sequence>"]
+["valid_until", "<empty or decimal Unix time>"]
+["spec_version", "core/0.5.0"]
+```
+
+The hosting NID and agent key both sign these exact UTF-8 bytes:
+
+```text
+heterodyne-agent-signing-binding-v1|<cold-root-hex>|<nid>|<role-id>|<publishing-key>
+```
+
+The epoch-key outer signature covers the same binding. Acceptance requires the
+outer epoch signature, NID Ed25519 proof, agent-key BIP-340 proof, exact role
+address, current KEL authority, valid expiry, and ordinary Core repo finality.
+A failure returns the applicable registered
+`role-delegation-address-invalid`,
+`role-delegation-key-proof-invalid`, `expired_delegation`, or
+`provisional_not_final` result.
+
+Replacing the delegation at the same `agent:<role-id>` address rotates only
+that role's device key. The prior key remains historically attributable but
+MUST NOT authorize a new event after the replacement becomes effective. Other
+roles, human devices, and the epoch key are unchanged.
+
+<a id="comms-agent-workload"></a>
+### 15.2 Private workload registration and stable identity
+
+The canonical private claim ledger MUST carry an active
+`heterodyne.agent` / `workload-registration` authorization claim. Its value
+MUST validate against
+`docs/spec/schemas/comms/agent-workload-registration-v1.schema.json` and is
+closed. It binds exact `client_id`, subject JWK thumbprint, `ai` or
+`programmatic` class, exactly one role ID, exactly one audience, non-empty
+scopes, allowed kinds, feeds and resources, maximum content bytes, finite
+positive rate window/count/burst, validity interval, and an optional
+descriptive software-claim reference. Empty or unlimited kind, resource, size,
+rate, or burst authority is invalid.
+
+The OIDC client registration, explicit consent, and workload registration MUST
+all be active, repository-confirmed, subject-identical, and mutually
+compatible. The workload proves possession of the registered JWK. Its
+mandatory public identity is the tuple:
+
+```text
+(exact issuer, persona-scoped pairwise sub, client_id)
+```
+
+The `sub` MUST use the §12.1 pairwise-subject derivation with the exact sector
+origin and persona-private pairwise secret. The tuple remains stable across
+temporary-token renewals for one registration; distinct persona secrets
+prevent the same workload JWK from producing a correlatable subject across
+personas. An optional software, vendor, model, or pipeline claim is descriptive
+only and grants no authority.
+
+<a id="comms-agent-token"></a>
+### 15.3 Sender-constrained workload token
+
+Control/DR is the standard issuance carrier, but token construction,
+validation, and private-ledger authority remain Comms semantics and create no
+Comms dependency on Control. After a negotiated higher-layer request and fresh
+workload-JWK proof, an authorized built-in issuer returns an RFC 9068 access
+token with:
+
+- protected `typ` exactly `at+jwt`;
+- `iss`, pairwise `sub`, one exact `aud`, `exp`, `iat`, collision-resistant
+  `jti`, `client_id`, and normalized `scope`;
+- mandatory `cnf.jkt`;
+- the existing ledger-checkpoint and status-mirror bindings; and
+- `https://heterodyne.network/jwt/agent-role-id` equal to the one registered
+  role.
+
+The token MUST expire no later than five minutes after `iat`, MUST issue no
+refresh token, and MUST NOT outlive the authenticated session, session-device
+delegation, workload registration, consent, or any source authorization. It
+authorizes only registered scopes and resources. A fresh sender proof is
+required for every side effect; its JWK thumbprint MUST equal `cnf.jkt` and its
+protected input MUST bind token `jti`, authenticated session, request ID,
+method, canonical payload digest, nonce, issue time, and expiry.
+
+Before authorizing an intent, the full node MUST validate exact issuer,
+subject, audience, client, scope, role, time, signature, ledger checkpoint,
+status binding, current draft-21 status, source claims, and sender proof. A
+projected JWT never replaces canonical private-ledger state. Client
+Credentials remains prohibited; a separately integrated sender-constrained
+HTTPS workload profile is required before that grant can be added.
+
+<a id="comms-agent-attribution"></a>
+### 15.4 Canonical public attribution
+
+An agent supplies intent content, kind, destination/feed, and permitted
+options. It does not supply a signature or authoritative attribution identity.
+The full node removes every caller-supplied reserved agent-attribution field,
+then inserts these tags in exact relative order:
+
+```text
+["L", "network.heterodyne.agent"]
+["l", "ai" | "programmatic", "network.heterodyne.agent"]
+["heterodyne_agent", "v1", "<issuer>", "<sub>", "<client_id>", "<role-id>"]
+["agent_action", "publish"]
+```
+
+It MAY append `["agent_review","<verified-review-reference>"]` only after
+independent verification. Review never changes the automated classification.
+The full node signs exactly once with the current key at the named role
+address, then applies ordinary §4 publication and §5 indexing.
+
+Registry revision 3 makes the attribution discriminator
+`tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1`
+active through these non-stamping profiles:
+
+- `heterodyne-comms-agent-attribution-kind-1-v1`;
+- `heterodyne-comms-agent-attribution-kind-6-v1`;
+- `heterodyne-comms-agent-attribution-kind-7-v1`;
+- `heterodyne-comms-agent-attribution-kind-16-v1`;
+- `heterodyne-comms-agent-attribution-kind-1063-v1`;
+- `heterodyne-comms-agent-attribution-kind-1985-v1`;
+- `heterodyne-comms-agent-attribution-kind-4550-v1`; and
+- `heterodyne-comms-agent-attribution-kind-30023-v1`.
+
+These cover notes, articles, replies, reactions, reposts, media, and
+moderation actions represented by those kinds. A kind without an active
+profile MUST fail with `agent-attribution-profile-unavailable`; it MUST NOT
+fall back to an unlabeled or human event. Deterministic KEL, delegation,
+feed-index, token-status, relay-metadata, and equivalent maintenance events are
+not agent-authored application publications.
+
+Tier 1 carries the block publicly. Tier 2 carries it inside the private
+repository trust boundary. Tier 3 carries the same block only inside the
+encrypted logical event and adds no agent marker to the clear wrapper. A
+verifier MUST require the signer to equal the current publishing key at the
+named role address and MUST require the class, issuer, subject, client, and
+role fields to be canonical. Public verification establishes a signed
+agent-service assertion; it does not reveal or prove the private token
+ceremony.
+
+<a id="comms-agent-fail-closed"></a>
+### 15.5 Fail-closed authorization and privacy
+
+The full node MUST refuse before signing for a missing, invalid, expired,
+revoked, stale, wrong-audience, or wrong-scope token; sender-proof or
+`cnf.jkt` failure; session, client, subject, role, or current-key mismatch;
+non-active or unavailable ledger/status state; a disallowed kind, feed,
+resource, size, rate, or burst; unavailable attribution profile; raw signing,
+key access, human-profile selection, or attribution bypass. There is no
+fallback to an unlabeled event, human key, bearer-only token, stale decision,
+or agent-provided signature.
+
+The raw token, `jti`, unused scopes, source claim IDs, sender proof, and private
+workload registration MUST NOT appear in a public event, public repository,
+attribution tag, or moderation receipt. A protected audit MAY retain their
+identifiers and validation results but MUST NOT retain the raw token except
+under a separately bounded encrypted diagnostic policy.
+
 <a id="comms-security"></a>
-## 15. Security invariants and forward-secrecy posture
+## 16. Security invariants and forward-secrecy posture
 
 <!-- Monolith provenance: §9.0-§9.1 and §9.5; namespaced by ADR-033. -->
 
@@ -1558,7 +1759,7 @@ static conversation key exposes past and future wraps. Clients MUST label a
 fallback and MUST NOT infer one mechanism's guarantee for another.
 
 <a id="comms-strict-profile"></a>
-### 15.1 Comms strict profile
+### 16.1 Comms strict profiles
 
 The stable Comms strict profile composes the Core strict profile. Its flattened
 invariant membership is exact:
@@ -1602,8 +1803,54 @@ warning before publication, and MUST retain no retired message keys after the
 Comms deletion points. Its capability advertisement MUST contain both profile
 IDs. An implementation missing either condition MUST omit the Comms profile.
 
+The revision-3 additions require a new profile ID; the v1 declaration above is
+unchanged. `heterodyne-comms-strict-v2` has this exact membership:
+
+<!-- fixture:comms-strict-profile-v2 -->
+```json
+{
+  "profile_id": "heterodyne-comms-strict-v2",
+  "conformance_class": "Core+Comms",
+  "state": "active",
+  "requires_profiles": ["heterodyne-core-strict-v1"],
+  "required_invariants": [
+    "CORE-I-IDENTITY-INTEGRITY",
+    "CORE-I-NID-DELEGATION-DUAL-PROOF",
+    "CORE-I-VERIFY-BEFORE-USE",
+    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
+    "CORE-I-KEY-MATERIAL-AT-REST",
+    "COMMS-I-TIER3-BLIND-CARRIER",
+    "COMMS-I-TIER2-HONESTY",
+    "COMMS-I-CONFIG-AT-REST",
+    "COMMS-I-CLIENT-SIDE-DELIVERY",
+    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+    "COMMS-I-CLAIM-AUTHENTICITY",
+    "COMMS-I-CLAIM-ATTENUATION",
+    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
+    "COMMS-I-CLAIM-REVOCATION",
+    "COMMS-I-LEDGER-CONFINEMENT",
+    "COMMS-I-ISSUER-KEY-CONFINEMENT",
+    "COMMS-I-MINT-FRESHNESS",
+    "COMMS-I-ISSUER-CONTINUITY",
+    "COMMS-I-CLAIM-RELEASE",
+    "COMMS-I-JWT-TYPE-AUDIENCE",
+    "COMMS-I-STATUS-INTEGRITY",
+    "COMMS-I-PUBLIC-READER-TIER1-ONLY",
+    "COMMS-I-AGENT-ROLE-BINDING",
+    "COMMS-I-AGENT-ATTRIBUTION",
+    "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT"
+  ]
+}
+```
+
+The v2 profile requires every v1 operational obligation plus the public-reader
+Tier boundary and all §15 role, token, attribution, no-fallback, and
+confinement obligations. It MUST advertise `heterodyne-core-strict-v1` and
+`heterodyne-comms-strict-v2`; it need not advertise the superseded Comms v1
+profile.
+
 <a id="comms-conformance"></a>
-## 16. Conformance
+## 17. Conformance
 
 <!-- Monolith provenance: §14; family conformance: ADR-033. -->
 
@@ -1611,7 +1858,7 @@ A Comms conformance report MUST claim Core+Comms, name `comms/0.5.0`, pin
 `core/0.5.0`, registry revision 3 or its immutable digest, and enumerate
 supported features and strict profiles. A base implementation MUST implement
 the envelope, tiers, publishing, feed, retrieval, hook, negotiation carrier,
-and all sixteen security invariants. It MAY omit the `double-ratchet` feature;
+and all twenty security invariants. It MAY omit the `double-ratchet` feature;
 one that advertises DMs MUST implement all of §7 and §8.
 
 A report claiming `comms.public-reader.v1` MAY omit every send-side and private
@@ -1626,6 +1873,12 @@ membership above, the Core prerequisite result, the Tier 2 warning result,
 message-key deletion evidence when double-ratchet is advertised, and every
 applicable strict-vector result. It MUST NOT claim the profile if any item is
 missing.
+
+A report claiming `heterodyne-comms-strict-v2` MUST include its exact flattened
+membership, Core prerequisite, inherited v1 operational evidence, and every
+applicable public-reader and agent-authorship vector result. An implementation
+that exposes an automated publication path outside §15 MUST NOT claim Comms
+conformance or either Comms strict profile.
 
 Wire conformance is byte-exact. Semantically similar encodings do not conform.
 An unknown Comms version or registry profile MUST be rejected or explicitly

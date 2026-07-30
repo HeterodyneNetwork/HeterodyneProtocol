@@ -149,6 +149,33 @@ role-capabilities/role-address-invalid
 `);
 
 const COMMS_IDS = ids(`
+agent-authorship/delegation-valid
+agent-authorship/delegation-key-proof-invalid
+agent-authorship/role-key-replacement
+agent-authorship/multiple-roles-one-nid
+agent-authorship/stable-identity-renewal
+agent-authorship/cross-persona-unlinkable
+agent-authorship/workload-registration-valid
+agent-authorship/workload-registration-unbounded-rejected
+agent-authorship/token-valid
+agent-authorship/token-expired
+agent-authorship/token-revoked
+agent-authorship/token-audience-invalid
+agent-authorship/token-sender-proof-invalid
+agent-authorship/token-role-mismatch
+agent-authorship/attribution-kind-1
+agent-authorship/attribution-kind-6
+agent-authorship/attribution-kind-7
+agent-authorship/attribution-kind-16
+agent-authorship/attribution-kind-1063
+agent-authorship/attribution-kind-1985
+agent-authorship/attribution-kind-4550
+agent-authorship/attribution-kind-30023
+agent-authorship/caller-forgery-replaced
+agent-authorship/human-review-preserves-agent-label
+agent-authorship/tier3-inner-only
+agent-authorship/profile-unavailable-rejected
+agent-authorship/idempotent-retry-reuses-event
 public-reader/launcher-persona-roundtrip
 public-reader/launcher-event-roundtrip
 public-reader/launcher-address-roundtrip
@@ -374,6 +401,15 @@ profiles/social-org-feed-kind31007
 const CONTROL_IDS = new Set<string>();
 
 const PROFILE_BY_VECTOR = new Map<string, string>([
+  ["agent-authorship/delegation-valid", "heterodyne-comms-agent-signing-delegation-v1"],
+  ["agent-authorship/attribution-kind-1", "heterodyne-comms-agent-attribution-kind-1-v1"],
+  ["agent-authorship/attribution-kind-6", "heterodyne-comms-agent-attribution-kind-6-v1"],
+  ["agent-authorship/attribution-kind-7", "heterodyne-comms-agent-attribution-kind-7-v1"],
+  ["agent-authorship/attribution-kind-16", "heterodyne-comms-agent-attribution-kind-16-v1"],
+  ["agent-authorship/attribution-kind-1063", "heterodyne-comms-agent-attribution-kind-1063-v1"],
+  ["agent-authorship/attribution-kind-1985", "heterodyne-comms-agent-attribution-kind-1985-v1"],
+  ["agent-authorship/attribution-kind-4550", "heterodyne-comms-agent-attribution-kind-4550-v1"],
+  ["agent-authorship/attribution-kind-30023", "heterodyne-comms-agent-attribution-kind-30023-v1"],
   ["claims/canonical-nostr-subject", "heterodyne-comms-key-claim-nostr-bip340-v1"],
   ["claims/canonical-radicle-nid-subject", "heterodyne-comms-key-claim-radicle-ed25519-v1"],
   ["claims/subject-proof-valid", "heterodyne-comms-key-claim-jwk-jws-v1"],
@@ -438,7 +474,8 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
     owner_version: `${owner}/${DOCUMENT_VERSIONS[owner]}`,
     dependency_versions: dependencies,
     registry_revision: vectorId.startsWith("role-capabilities/")
-      || vectorId.startsWith("public-reader/") ? 3
+      || vectorId.startsWith("public-reader/")
+      || vectorId.startsWith("agent-authorship/") ? 3
       : vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/") ||
         vectorId.startsWith("oidc/") || vectorId.startsWith("token-status/") ? 2
       : 1,
@@ -531,6 +568,18 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
         : "core-node-roles",
     },
     comms: {
+      "agent-authorship": vectorId.includes("delegation")
+        || vectorId.includes("role-key")
+        || vectorId.includes("multiple-roles")
+        ? "comms-agent-delegation"
+        : vectorId.includes("identity")
+          || vectorId.includes("workload-registration")
+          ? "comms-agent-workload"
+          : vectorId.includes("token-")
+            ? "comms-agent-token"
+            : vectorId.includes("profile-unavailable")
+              ? "comms-agent-fail-closed"
+              : "comms-agent-attribution",
       "public-reader": vectorId.includes("launcher")
         || vectorId.includes("http-path")
         || vectorId.includes("relay-hint")

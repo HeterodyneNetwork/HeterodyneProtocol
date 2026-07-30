@@ -1,0 +1,53 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-agent-attribution"
+  ],
+  "vector_id": "agent-authorship/human-review-preserves-agent-label",
+  "description": "Verified human review appends evidence without removing or reclassifying the canonical agent block.",
+  "direction": "consume",
+  "input": {
+    "review": "approved-by-human"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "tags": [
+      [
+        "client",
+        "heterodyne"
+      ],
+      [
+        "L",
+        "network.heterodyne.agent"
+      ],
+      [
+        "l",
+        "ai",
+        "network.heterodyne.agent"
+      ],
+      [
+        "heterodyne_agent",
+        "v1",
+        "https://issuer.example/oidc/npub1persona",
+        "stable-pairwise-agent-subject",
+        "agent-client",
+        "abababababababababababababababababababababababababababababababab"
+      ],
+      [
+        "agent_action",
+        "publish"
+      ],
+      [
+        "agent_review",
+        "approved-by-human"
+      ]
+    ],
+    "placement": "public"
+  }
+}

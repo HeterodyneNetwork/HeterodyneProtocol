@@ -1,0 +1,84 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 3,
+  "profile": "heterodyne-comms-agent-attribution-kind-1063-v1",
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-agent-attribution"
+  ],
+  "vector_id": "agent-authorship/attribution-kind-1063",
+  "description": "A deterministic kind:1063 role-key-signed event carries the exact ordered canonical agent attribution profile.",
+  "direction": "round-trip",
+  "input": {
+    "event": {
+      "pubkey": "f76a39d05686e34a4420897e359371836145dd3973e3982568b60f8433adde6e",
+      "created_at": 1767226319,
+      "kind": 1063,
+      "tags": [
+        [
+          "client",
+          "heterodyne"
+        ],
+        [
+          "L",
+          "network.heterodyne.agent"
+        ],
+        [
+          "l",
+          "ai",
+          "network.heterodyne.agent"
+        ],
+        [
+          "heterodyne_agent",
+          "v1",
+          "https://issuer.example/oidc/npub1persona",
+          "stable-pairwise-agent-subject",
+          "agent-client",
+          "abababababababababababababababababababababababababababababababab"
+        ],
+        [
+          "agent_action",
+          "publish"
+        ]
+      ],
+      "content": "agent publication kind 1063",
+      "id": "a7b22384e191f4f169fbab4806b7039e43550f0872f9d4bfbf3d932deac93181",
+      "sig": "a830f78f9d9e0f1c989f5bc8a5a57b6699d082663f05f0eee0eec5e0e4808159aed84e93950532bb23dbc124272790119ccd4782e7187384b79f298c87983d04"
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "signature_valid": true,
+      "signer": "f76a39d05686e34a4420897e359371836145dd3973e3982568b60f8433adde6e",
+      "role_id": "abababababababababababababababababababababababababababababababab",
+      "attribution_tags": [
+        [
+          "L",
+          "network.heterodyne.agent"
+        ],
+        [
+          "l",
+          "ai",
+          "network.heterodyne.agent"
+        ],
+        [
+          "heterodyne_agent",
+          "v1",
+          "https://issuer.example/oidc/npub1persona",
+          "stable-pairwise-agent-subject",
+          "agent-client",
+          "abababababababababababababababababababababababababababababababab"
+        ],
+        [
+          "agent_action",
+          "publish"
+        ]
+      ]
+    }
+  }
+}

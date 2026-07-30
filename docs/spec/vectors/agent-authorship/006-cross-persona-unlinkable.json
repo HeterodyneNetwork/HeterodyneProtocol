@@ -1,0 +1,27 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-agent-attribution"
+  ],
+  "vector_id": "agent-authorship/cross-persona-unlinkable",
+  "description": "Distinct persona pairwise secrets prevent one workload from receiving a correlatable subject across personas.",
+  "direction": "consume",
+  "input": {
+    "first_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "second_persona": "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "first_sub": "tuQ0bwfhlVnZdQcb0OGtWZ-TBUmx8s9ER-EOhSPDHKI",
+      "second_sub": "GenvYAUAGYsfrSbvvrHtCYrQT4j-xVK-WIggyjxV-oc",
+      "equal": false
+    }
+  }
+}

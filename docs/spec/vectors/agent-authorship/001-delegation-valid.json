@@ -1,0 +1,78 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 3,
+  "profile": "heterodyne-comms-agent-signing-delegation-v1",
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-agent-delegation"
+  ],
+  "vector_id": "agent-authorship/delegation-valid",
+  "description": "A complete Core-stamped agent role delegation verifies the epoch, NID, and dedicated role-key proofs over one exact binding.",
+  "direction": "round-trip",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767226300,
+      "kind": 31001,
+      "tags": [
+        [
+          "d",
+          "agent:abababababababababababababababababababababababababababababababab"
+        ],
+        [
+          "heterodyne",
+          "delegation"
+        ],
+        [
+          "radicle_nid",
+          "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+        ],
+        [
+          "publishing_key",
+          "f76a39d05686e34a4420897e359371836145dd3973e3982568b60f8433adde6e"
+        ],
+        [
+          "cold_root",
+          "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        ],
+        [
+          "nid_proof",
+          "5295dab1d7e0518095a0952587ce80b74c84c4ce86b0a9db4628137e99811a8d45a91c915ffd834d96d2f5e3e4d0343f35dc65c3de6c07e52ca0f54f42f7d804"
+        ],
+        [
+          "key_proof",
+          "35ee0aa0e685d862065101edf13679418e599638bff8f6b5092705fb0333de22e60f9b8cedadac8a546b3f1f704641810dc0b151585201d4b6a07ffc79e6c952"
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
+        ],
+        [
+          "valid_until",
+          "1767229200"
+        ],
+        [
+          "spec_version",
+          "core/0.5.0"
+        ]
+      ],
+      "content": "",
+      "id": "d0e3fa0c64eec7baf8b4d509d04c96f1d18fe41db2e0d707b8aca5b78c68ee7d",
+      "sig": "adc8466fc277525d39979bc258b5d25202747fbc0e004edc6a70a5286e61e8c18fe1f050203cbc2b7c8401f8d41ae13414b5af360b743b619a2672bb2d115f0e"
+    },
+    "proof_bytes": "heterodyne-agent-signing-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|abababababababababababababababababababababababababababababababab|f76a39d05686e34a4420897e359371836145dd3973e3982568b60f8433adde6e",
+    "nid_proof": "5295dab1d7e0518095a0952587ce80b74c84c4ce86b0a9db4628137e99811a8d45a91c915ffd834d96d2f5e3e4d0343f35dc65c3de6c07e52ca0f54f42f7d804",
+    "key_proof": "35ee0aa0e685d862065101edf13679418e599638bff8f6b5092705fb0333de22e60f9b8cedadac8a546b3f1f704641810dc0b151585201d4b6a07ffc79e6c952"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "role_id": "abababababababababababababababababababababababababababababababab",
+    "publishing_key": "f76a39d05686e34a4420897e359371836145dd3973e3982568b60f8433adde6e",
+    "repo_final": true
+  }
+}

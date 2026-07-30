@@ -1,0 +1,33 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-agent-delegation"
+  ],
+  "vector_id": "agent-authorship/delegation-key-proof-invalid",
+  "description": "A role delegation with a failed agent-key proof is rejected.",
+  "direction": "consume",
+  "input": {
+    "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+    "role_id": "abababababababababababababababababababababababababababababababab",
+    "publishing_key": "f76a39d05686e34a4420897e359371836145dd3973e3982568b60f8433adde6e",
+    "address": "agent:abababababababababababababababababababababababababababababababab",
+    "proof_bytes": "heterodyne-agent-signing-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|abababababababababababababababababababababababababababababababab|f76a39d05686e34a4420897e359371836145dd3973e3982568b60f8433adde6e",
+    "outer_epoch_signature_valid": true,
+    "nid_proof_valid": true,
+    "key_proof_valid": false,
+    "kel_authority_current": true,
+    "unexpired": true,
+    "repo_final": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "role-delegation-key-proof-invalid"
+  }
+}

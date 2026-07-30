@@ -3,7 +3,7 @@
 Generated from [manifest.json](manifest.json); do not edit by hand.
 
 - core: 131
-- comms: 135
+- comms: 162
 - control: 0
 - social: 82
 
@@ -26,6 +26,33 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `acceptance-gating/social-policy-cannot-loosen` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-admission-policy` |
 | `acceptance-gating/social-wot-cannot-loosen` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-admission-policy` |
 | `acceptance-gating/social-wot-tightens-only` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-admission-policy` |
+| `agent-authorship/attribution-kind-1` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | `heterodyne-comms-agent-attribution-kind-1-v1` | `heterodyne:comms/0.5.0#comms-agent-attribution` |
+| `agent-authorship/attribution-kind-1063` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | `heterodyne-comms-agent-attribution-kind-1063-v1` | `heterodyne:comms/0.5.0#comms-agent-attribution` |
+| `agent-authorship/attribution-kind-16` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | `heterodyne-comms-agent-attribution-kind-16-v1` | `heterodyne:comms/0.5.0#comms-agent-attribution` |
+| `agent-authorship/attribution-kind-1985` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | `heterodyne-comms-agent-attribution-kind-1985-v1` | `heterodyne:comms/0.5.0#comms-agent-attribution` |
+| `agent-authorship/attribution-kind-30023` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | `heterodyne-comms-agent-attribution-kind-30023-v1` | `heterodyne:comms/0.5.0#comms-agent-attribution` |
+| `agent-authorship/attribution-kind-4550` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | `heterodyne-comms-agent-attribution-kind-4550-v1` | `heterodyne:comms/0.5.0#comms-agent-attribution` |
+| `agent-authorship/attribution-kind-6` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | `heterodyne-comms-agent-attribution-kind-6-v1` | `heterodyne:comms/0.5.0#comms-agent-attribution` |
+| `agent-authorship/attribution-kind-7` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | `heterodyne-comms-agent-attribution-kind-7-v1` | `heterodyne:comms/0.5.0#comms-agent-attribution` |
+| `agent-authorship/caller-forgery-replaced` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-attribution` |
+| `agent-authorship/cross-persona-unlinkable` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-attribution` |
+| `agent-authorship/delegation-key-proof-invalid` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-delegation` |
+| `agent-authorship/delegation-valid` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | `heterodyne-comms-agent-signing-delegation-v1` | `heterodyne:comms/0.5.0#comms-agent-delegation` |
+| `agent-authorship/human-review-preserves-agent-label` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-attribution` |
+| `agent-authorship/idempotent-retry-reuses-event` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-attribution` |
+| `agent-authorship/multiple-roles-one-nid` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-delegation` |
+| `agent-authorship/profile-unavailable-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-fail-closed` |
+| `agent-authorship/role-key-replacement` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-delegation` |
+| `agent-authorship/stable-identity-renewal` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-workload` |
+| `agent-authorship/tier3-inner-only` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-attribution` |
+| `agent-authorship/token-audience-invalid` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-token` |
+| `agent-authorship/token-expired` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-token` |
+| `agent-authorship/token-revoked` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-token` |
+| `agent-authorship/token-role-mismatch` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-token` |
+| `agent-authorship/token-sender-proof-invalid` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-token` |
+| `agent-authorship/token-valid` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-token` |
+| `agent-authorship/workload-registration-unbounded-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-workload` |
+| `agent-authorship/workload-registration-valid` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-agent-workload` |
 | `bridge/idempotent-republication` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-headless-bridge` |
 | `bridge/matrix-permanent-failure-index-updated` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-headless-bridge` |
 | `bridge/nostr-permanent-failure-index-not-updated` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-headless-bridge` |
