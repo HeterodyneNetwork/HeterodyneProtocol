@@ -17,7 +17,7 @@ This document analyzes the four independently versioned documents:
 - [Heterodyne Social](../spec/heterodyne-social.md) — social behavior,
   moderation, and the optional Matrix feature.
 
-The owner sections below reproduce registry revision 2 and security boundaries
+The owner sections below reproduce registry revision 3 and security boundaries
 without creating or relaxing requirements. The family's only normative
 dependency edges are:
 
@@ -46,7 +46,7 @@ any carrier authoritative for persona identity.
 
 ## 2. Registry-bound invariants
 
-The descriptions below reproduce candidate registry revision 2 exactly.
+The descriptions below reproduce registry revision 3 exactly.
 Registry-bound rows cite an invariant where that invariant directly governs
 the mitigation. Metadata residuals, operational consequences, out-of-scope
 limitations, and open work may instead be cross-cutting and are not assigned a
@@ -127,8 +127,12 @@ social-graph invariants.
 | OIDC signing keys and mint authority | Separately authorized, fresh synchronized issuer nodes | COMMS-I-ISSUER-KEY-CONFINEMENT, COMMS-I-MINT-FRESHNESS |
 | Public OIDC metadata, JWKS, and status | HTTPS plus byte-identical public Radicle continuity tree | COMMS-I-ISSUER-CONTINUITY, COMMS-I-JWT-TYPE-AUDIENCE, COMMS-I-STATUS-INTEGRITY |
 | Consent and projected claim release | Canonical private ledger plus explicit relying-party policy | COMMS-I-CLAIM-RELEASE |
+| Public-reader target and resolved content | Fragment-local target; verified Tier 1 rendering only | COMMS-I-PUBLIC-READER-TIER1-ONLY, CORE-I-VERIFY-BEFORE-USE |
+| Agent role key | Full-node key store; never released to the automated principal | COMMS-I-AGENT-ROLE-BINDING, CONTROL-I-AGENT-NO-KEY-RELEASE |
+| Workload token, sender proof, and agent audit | Protected authorization/audit boundary; never public event content | COMMS-I-WORKLOAD-TOKEN-CONFINEMENT, CONTROL-I-AUDIT-AT-REST |
 | Control audit and session authority | User-controlled Control endpoint | CONTROL-I-AUDIT-AT-REST, CONTROL-I-SESSION-KEY-CONFINEMENT |
 | Social private configuration | Protected local/config storage | SOCIAL-I-PRIVATE-STATE-AT-REST |
+| Agent-policy receipts and subscribed lists | Public signed evidence; subscriber-local effect from verified canonical history | SOCIAL-I-AGENT-POLICY-LOCAL, SOCIAL-I-AGENT-REMEDIATION-SCOPED |
 | Private Matrix content and state | Matrix participant endpoints | SOCIAL-I-MATRIX-E2EE, SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE |
 
 Tier 3 broadcast has no forward secrecy: compromise of an audience key exposes
@@ -153,6 +157,8 @@ one mechanism's guarantee as another's.
 | Compromised ledger reader | Reads ledger state and ciphertext already available to it; removal, access withdrawal, and audience-key rotation protect later generations but cannot erase old Git objects. |
 | Compromised token issuer | Can mint while it holds both the separately wrapped signing key and active issuer authority; immediate reduction and the at-most-300-second checkpoint-age bound limit continued minting. |
 | Ordinary OIDC relying party | Validates HTTPS discovery, JWKS, JWT, and draft-21 status without Heterodyne software. It receives only consented projections and has no authority over the private claim ledger. |
+| Public browser reader | Runs downloaded client code without authentication, resolves a fragment-local target, and may lack outbound Tor. It can consume verified Tier 1 only and must show reduced assurance when using clearnet/shared relays. |
+| Automated principal | Supplies publication intent and sender proof under a scoped temporary token. It receives no persona, device, NID, or agent-role private key and cannot select a human profile or suppress attribution. |
 | Control session device | Has only negotiated, granted Control authority. It is never a credential-plane device and receives none of the secrets prohibited by CONTROL-I-SESSION-KEY-CONFINEMENT. |
 | Colluding delegated MXID | Applies only to Social+Matrix. It can read rooms it legitimately joined, race coordination state, and exploit a partition window, but cannot forge the persona's epoch-key proof. |
 | Old or mirror homeserver | Applies only to Social+Matrix. It may retain stale room state, equivocate, or continue writing during a migration overlap; signed migration and delegation state wins over server location. |
@@ -172,6 +178,9 @@ one mechanism's guarantee as another's.
 | Stale revocation or backdated event is accepted | Resolve the event time inside the accepted KEL authority window and apply `compromise_since` before authorization (CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
 | Lying or stale `kel_head` accelerates verification | Treat it only as a checked cache hint; replay whenever its event, sequence, authority window, or compromise state is not already accepted (CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
 | Hostile full node selectively withholds a persona | Try other advertised serving nodes and ordinary relays, then verify every result identically (CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY, CORE-I-VERIFY-BEFORE-USE). |
+| Browser claims Tor assurance it cannot provide | Treat missing outbound Tor as explicit reduced-assurance operation, disclose the shared/clearnet carrier, and never advertise a strict light-client profile without `core.outbound-tor.v1`. |
+| Direct WebRTC reveals a full node's network location | Keep direct client-to-node WebRTC/TURN outside the base profile; reach the persistent v3 onion service through Tor or an authenticated shared relay so the node does not expose a clearnet candidate. |
+| Shared relay forges content or authority | Treat it only as a transport carrier, verify every signed object locally, and route around it when other relays are available (CORE-I-VERIFY-BEFORE-USE, CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY). |
 | Local key-store theft | Use the keys-repository protection profile, NIP-49 wrapping, and OS-keystore integration where available (CORE-I-KEY-MATERIAL-AT-REST). |
 | Keys repository is lost or copied | Offline backup limits loss; wrapping and local-only storage limit disclosure. Rotation and re-anchor address compromised authority but cannot recover an unavailable secret (CORE-I-KEY-MATERIAL-AT-REST, CORE-I-IDENTITY-INTEGRITY). |
 | Derived export AID is mistaken for persona authority | Label it derived/degraded as applicable and always resolve the npub/KEL on divergence (CORE-I-IDENTITY-INTEGRITY). |
@@ -192,6 +201,14 @@ one mechanism's guarantee as another's.
 | DM replay, ratchet-state loss, or metadata correlation | Enforce session replay checks and key deletion; keep outer DR events out of repositories and provide no backfill. Within a ratchet epoch, messages share an outer signer and are linkable to each other until the next DH step. Lost or corrupted ratchet state makes local history unrecoverable because Comms intentionally provides no backfill. |
 | Org epoch-key holder bypasses delegate threshold through a relay | Require threshold-authorized canonical history for every org-owned Comms post and feed index, regardless of carrier (CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE, COMMS-I-CLIENT-SIDE-DELIVERY). |
 | Policy bypasses cryptography | Run the authenticated acceptance hook only after cryptographic checks; policy can tighten but never loosen a rejection. |
+| Launcher origin learns the public target | Keep persona/event/address and relay hints in the URL fragment, serve target-independent static bytes, and perform parsing and resolution locally. |
+| Malicious launcher relay hint reaches local or credentialed resources | Reject credentials, localhost, link-local, private/special resolved addresses, excessive hints, and onion hints without a Tor-capable path before any network request. |
+| Public reader crosses a privacy tier | Render only verified Tier 1; refuse Tier 2 and treat Tier 3 ciphertext as unavailable rather than public content (COMMS-I-PUBLIC-READER-TIER1-ONLY). |
+| Automated principal impersonates a human or signs directly | Require the full-node intent path, dedicated role-key delegation, current sender-constrained workload token, and canonical automation attribution. Human-device keys and raw signing are never fallback paths (COMMS-I-AGENT-ROLE-BINDING, COMMS-I-AGENT-ATTRIBUTION). |
+| Caller forges or strips agent attribution | Remove caller-controlled attribution fields, inject the exact canonical block at the tier-appropriate protected location, and fail closed when that profile cannot be emitted (COMMS-I-AGENT-ATTRIBUTION). |
+| Stolen, replayed, stale, or overbroad workload token | Enforce exact issuer, audience, client, role, sender proof, time, status, canonical source authority, and finite kind/resource/size/rate/burst bounds for every operation (COMMS-I-AGENT-ROLE-BINDING, COMMS-I-WORKLOAD-TOKEN-CONFINEMENT). |
+| Agent token or private claim leaks into public evidence | Keep raw tokens, `jti` mappings, sender proofs, private claims, and protected audit records inside the authorization/audit boundary; public events carry only the canonical attribution identity (COMMS-I-WORKLOAD-TOKEN-CONFINEMENT). |
+| Agent role key compromise contaminates human authority | Give each automation role a dedicated full-node-held key and stable role address; replace only that key, leaving persona epoch and human-device keys untouched (COMMS-I-AGENT-ROLE-BINDING). |
 | Claim forgery or semantic malleation | Recompute the RFC 8785/JCS `claim_id`, verify the exact event, issuer authority, typed key and native proof, and reject address reuse unless the semantic object is byte-identical. A `kind:31014` reduction additionally requires `comms/0.5.0`, registry revision 2, the exact single `[["d","<claim_id>"]]` tag, and a native proof that binds the owning Comms profile and registry revision. See `heterodyne:comms/0.5.0#comms-key-claims`, `claims/004-claim-id-mismatch`, and `claims/015-authorization-self-revocation`; COMMS-I-CLAIM-AUTHENTICITY. |
 | Compromised or stale claim issuer | Evaluate the issuer's Core/KEL authority at the claim's `issued_at`, apply compromise and revocation state, and keep a cryptographically valid but untrusted third-party issuer non-authorizing; compromised OIDC signing keys invalidate affected tokens and status. See `heterodyne:comms/0.5.0#comms-claim-verification`, `claims/007-third-party-issuer-untrusted`, and `token-status/009-signing-key-compromise`; COMMS-I-CLAIM-AUTHENTICITY and COMMS-I-STATUS-INTEGRITY. |
 | Delegation-chain amplification | Require explicit issuance authority, strict narrowing of every scope dimension, cycle detection, and no more than eight issuance edges. See `heterodyne:comms/0.5.0#comms-claim-chain` and `claims/010-chain-depth-exceeded`; COMMS-I-CLAIM-ATTENUATION. |
@@ -217,7 +234,10 @@ one mechanism's guarantee as another's.
 |---|---|
 | Audit disclosure or tampering | Encrypt durable audit records and bind them to negotiated Core/Comms/Control context (CONTROL-I-AUDIT-AT-REST). |
 | Session device escalates into persona or credential authority | Never deliver epoch, NID, audience, repository-decryption, or ratchet secrets; require explicit object-level grants (CONTROL-I-SESSION-KEY-CONFINEMENT). |
-| Experimental implementation claims conformance | Keep baseline and strict Control claims inactive until ADR-030 integration and the minimum vector gate. |
+| Cross-relay retry executes twice or leaks a response | Reserve one request digest restart-safely, join identical retries to that result, reject changed method/payload, and publish the response first and only to the authenticated ingress relay (CONTROL-I-INGRESS-RELAY-AFFINITY). |
+| Automated caller requests a private key, raw signature, human profile, or attribution bypass | Expose only bounded token and intent-level publish methods; refuse every key-access and bypass shape without fallback (CONTROL-I-AGENT-NO-KEY-RELEASE, CONTROL-I-AGENT-INTENT-ONLY). |
+| Automated side effect outlives or exceeds its grant | Revalidate the scoped token, sender proof, canonical authority, and finite kind/resource/size/rate/burst bounds for each operation (CONTROL-I-AGENT-AUTHORIZATION-FRESHNESS). |
+| Experimental implementation claims conformance | Keep baseline and strict Control claims inactive until the remaining ADR-030 enrollment/session blockers and vector gate are complete. |
 
 ### 5.4 Social threats
 
@@ -233,6 +253,10 @@ one mechanism's guarantee as another's.
 | Relay serves a stale mute, moderator, or policy list | Compare replaceable-event authority and timestamps, use anchored history where required, and retain encrypted local state (SOCIAL-I-PRIVATE-STATE-AT-REST, SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH, CORE-I-VERIFY-BEFORE-USE). |
 | Listed-then-removed moderator backdates an approval | A relay-only anchor relies on author-controlled `created_at`, so a listed-then-removed moderator can attempt backdating and the residual cannot be eliminated there. A repository anchor binds the approval to an introducing commit and resolves the moderator declaration from canonical ancestor history; communities needing strong as-of integrity should use that repo anchor. |
 | Advisory label becomes authority | Treat NIP-32 labels and web-of-trust scoring as local policy, never identity or editorial authority. |
+| Agent-policy receipt silently becomes a global mute | Show the receipt as public evidence only; change visibility solely when the reader explicitly subscribes to a verified current canonical policy list, and disclose the policy source for each decision (SOCIAL-I-AGENT-POLICY-LOCAL). |
+| Default moderator persona gains undeclared global power | Keep a default subscription visible, inspectable, disableable, and replaceable. A relay event or unmerged policy-repository PR has no filtering effect (SOCIAL-I-AGENT-POLICY-LOCAL). |
+| Agent violation mutes the persona or forces epoch rotation | Bind enforcement to the exact offending device-publishing key. Replacement at the same stable role is evaluated independently; persona, epoch, human-device, NID, and other role keys remain unaffected (SOCIAL-I-AGENT-REMEDIATION-SCOPED). |
+| False receipt remains effective after correction | Require both a valid signed correction and removal of the receipt binding from the current canonical policy list before restoring local visibility (SOCIAL-I-AGENT-POLICY-LOCAL, SOCIAL-I-AGENT-REMEDIATION-SCOPED). |
 | Sybil vouchers or poisoned friend caches drive recovery | Treat Social recovery bindings as advisory inputs only; accepted KEL and declared Core witness rules retain authority (SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH, CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
 
 ## 6. Metadata, availability, and residual risk
@@ -245,6 +269,20 @@ event-graph metadata to relevant servers and their federation peer set. Hosting
 identity/config rooms with a deliberately trusted peer set limits, but cannot
 eliminate, this exposure. Tor reduces direct network-linkability but does not
 prevent global timing analysis.
+
+A browser in reduced-assurance mode exposes its relay or shared-gateway
+destination to the network and that carrier observes timing, volume, and
+lookup patterns. Fragment-only launcher targets stay out of the static
+origin's HTTP request, but relay queries can still reveal the target to the
+selected relays. An authenticated shared relay can correlate a session with
+its onion destination even though it cannot forge verified content.
+
+Canonical agent attribution is intentionally linkable within a stable role:
+issuer, pairwise subject, client ID, role ID, and signing key let recipients
+filter and audit that automation. Pairwise subjects limit cross-persona
+correlation, but role continuity is not an anonymity mechanism. Raw workload
+tokens, token identifiers, sender proofs, source claims, and audit contents
+must not be used as additional public correlation handles.
 
 Within a ratchet epoch, multiple Comms DM messages use the same outer signer
 and are linkable to one another until the next DH ratchet step, even though the
@@ -318,11 +356,17 @@ Strict profiles are additive and composable:
 - `heterodyne-core-strict-v1` covers the Core invariant set and strict Core
   obligations;
 - `heterodyne-comms-strict-v1` composes Core strict plus Comms invariants;
+- `heterodyne-comms-strict-v2` adds public-reader and automated-authorship
+  invariants without changing v1;
 - `heterodyne-control-strict-v1` is reserved-inactive with Control;
 - `heterodyne-social-strict-v1` composes Core, Comms, and Matrix-free Social
   obligations; and
 - `heterodyne-social-matrix-strict-v1` adds the Matrix-specific Social
-  invariants and exact `Social+Matrix` conformance class.
+  invariants and exact `Social+Matrix` conformance class;
+- `heterodyne-social-strict-v2` adds subscriber-local agent-policy and
+  device-key-scoped remediation invariants; and
+- `heterodyne-social-matrix-strict-v2` composes that v2 Social profile with
+  the Matrix-specific invariant set.
 
 A capability advertisement lists only profiles actually met. Unknown profile
 IDs confer no authority or compatibility. Conformance reports reproduce exact
@@ -353,7 +397,8 @@ signature semantics rather than claiming present quantum resistance.
 Before relevant 1.0 claims, work remains to freeze the Comms double-ratchet
 wire profile, finish the repo-relay server/storage contract, exercise KERI fork
 and recovery behavior across independent implementations, validate Matrix MLS
-migration, integrate Control with its required vector corpus, and expand
+migration, complete the remaining Control enrollment/session vector corpus,
+and expand
 negative vectors for rollback, metadata, and recovery-policy attacks. Each
 item belongs to its named document and must not create a forbidden dependency.
 The repo-relay server/storage contract must also close storage-exhaustion,

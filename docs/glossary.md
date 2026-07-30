@@ -98,13 +98,38 @@ Nostr signature verification.
 history. Heterodyne may use reverse-DNS custom types.
 
 **Full node.** A Radicle node plus NIP-01 repo-relay adapter. It stores and
-replicates repositories.
+replicates repositories, provides a persistent v3 onion service, and uses Tor
+for backend egress by default.
 
 **Routing node.** A content-free service that derives serving-node answers
 from verified advertisements. Its answers are hints.
 
-**Light node.** A client that fetches from full-node or ordinary relay
-interfaces and verifies signed objects locally.
+**Public reader.** A non-authenticated light-client role that resolves and
+renders verified Tier 1 only. A browser reader may operate without Tor only in
+explicit reduced-assurance mode.
+
+**Universal public launcher.** A static browser-client URL whose persona,
+event, address, and bounded relay hints appear only in the fragment. The web
+origin receives no target path; the downloaded client validates and resolves
+the target locally.
+
+**Authenticated light client.** A light-client role authenticated to a full
+node for granted non-public capabilities. It still verifies received signed
+objects locally.
+
+**Light node.** A public-reader or authenticated-light client that fetches
+from full-node or ordinary relay interfaces and verifies signed objects
+locally. Outbound Tor is recommended; strict light profiles require it.
+
+**Outbound-only Tor client.** A Tor implementation that initiates circuits but
+does not accept inbound service traffic. Suitable non-browser WASM clients
+should embed one; a browser tab must instead use reachable clearnet relays or
+an authenticated shared relay.
+
+**Authenticated shared relay.** A provider-independent websocket or WebRTC
+service that authenticates a light client and relays its traffic to a full
+node's onion service. It is a carrier, not authority, and browser use is
+reduced assurance.
 
 **Repo relay.** A NIP-01 websocket endpoint whose durable store is a Radicle
 repository.
@@ -219,6 +244,24 @@ membership, audience keys, or signing secrets.
 authority and a separately wrapped signing key. Ordinary ledger-reader status
 does not grant mint authority.
 
+**Agent role.** A stable `agent:<role-id>` Core/Comms delegation whose
+dedicated publishing private key stays on the full node. One node usually has
+one generic role; separately governed automation may use additional roles.
+
+**Workload token.** A temporary, sender-constrained OIDC access token for an AI
+or programmatic principal. Its role, audience, scope, resource, kind, size,
+rate, burst, and time bounds are intersected with current private-ledger
+authority before every side effect.
+
+**Agent attribution.** The canonical NIP-32 namespace/label and
+`heterodyne_agent` identity block added by the full node to every
+agent-authored application event. Human review does not turn automated
+authorship into human authorship.
+
+**Intent-level publication.** The only automated publishing interface. The
+caller supplies content intent and authorization proof but no private key,
+signature, authoritative pubkey, human profile, or attribution override.
+
 **Status List Token.** The separate signed draft-21 JWT referenced by a
 projected token. A fresh `VALID` bit is necessary but never overrides another
 token validation failure.
@@ -275,6 +318,19 @@ curation and policy.
 
 **Policy persona.** A persona whose signed lists are adopted as community or
 reader policy. Adoption remains local Social policy.
+
+**Agent-policy receipt.** A signed public NIP-32 record describing an
+attribution or publication-path violation by one agent device key. It informs
+but does not mute by itself and exposes no workload token or protected audit
+material.
+
+**Agent-policy list.** A signed NIP-51 list binding device-key mutes to verified
+agent-policy receipts. It affects only clients explicitly subscribed to that
+policy persona and only after current canonical repository history verifies.
+
+**Agent-role remediation.** Replacement of the offending device-publishing key
+at the same stable agent role address. It does not rotate the persona epoch key
+or mute other persona, device, NID, or agent-role keys.
 
 **Social mute profile.** The registered stamping profile on NIP-51
 `kind:10000`. A plain upstream NIP-51 event remains unstamped.

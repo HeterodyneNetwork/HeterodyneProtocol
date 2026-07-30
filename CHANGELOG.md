@@ -24,6 +24,9 @@ recorded in [machine-readable manifests](docs/spec/releases/).
 - Added the Core-owned, separately revisioned registry for kind allocations,
   immutable profile discriminators, reason codes, and namespaced security
   invariants.
+- Added ADR-035 role-scoped transport: persistent v3 onion full nodes with
+  Tor-default backend egress, outbound-Tor light clients, and explicit
+  reduced-assurance browser operation through shared clearnet relays.
 
 ### Comms 0.5.0
 
@@ -39,6 +42,13 @@ recorded in [machine-readable manifests](docs/spec/releases/).
   continuity mirror, and the exactly pinned
   `draft-ietf-oauth-status-list-21` profile. These JWTs are projections, not
   canonical Heterodyne authorization.
+- Added the fragment-only universal public launcher and local Tier-1 reader,
+  including bounded relay hints, SSRF defenses, and in-place transition to an
+  authenticated light-client session.
+- Added ADR-036 automated authorship: stable full-node-held agent role keys,
+  scoped temporary sender-constrained OIDC workload tokens, canonical
+  automation attribution, and fail-closed refusal of user-key or unlabeled
+  fallback.
 
 ### Control 0.5.0
 
@@ -48,21 +58,30 @@ recorded in [machine-readable manifests](docs/spec/releases/).
 - Control consumes only `active` Comms claim decisions for enrollment and RPC;
   it defines no independent claim wire profile and gives NID-less session
   devices neither ledger access nor ledger keys.
+- Integrated the relay-affine restart-safe request subset and the bounded
+  agent token/publication/audit subset with normative partial vectors. Control
+  remains non-claimable until the remaining ADR-030 enrollment/session gates
+  close.
 
 ### Social 0.5.0
 
 - Prepared [Social](docs/spec/heterodyne-social.md) `social/0.5.0`, depending
   on Core and Comms and owning social behavior plus the optional Matrix
   feature.
+- Added public agent-policy receipts, subscriber-local canonical policy lists,
+  visible/removable default subscriptions, and remediation scoped to the
+  offending role device key. No moderator or policy list has global power.
 
 ### Family migration and conformance
 
 - Established the family's only normative dependency edges as
   `Core <- Comms <- Control` and `Core <- Comms <- Social`.
-- Advanced all four untagged 0.5.0 release manifests to registry revision 2.
+- Advanced all four untagged 0.5.0 release manifests to registry revision 3.
   Only Comms advertises `key-claims`, `private-claim-ledger`,
   `oidc-jwt-projection`, and `token-status-list-draft-21`; Core and Social add
   no claims/OIDC feature, and Control retains its exact Comms dependency.
+- Added immutable strict-v2 Comms and Social profiles for the ADR-035/036
+  invariants while leaving every strict-v1 membership unchanged.
 - Replaced the historical monolith strict mode with composable stable profile
   IDs for Core, Comms, Control, Social, and Social+Matrix. The Control strict
   identifier is reserved-inactive with its baseline conformance gate.

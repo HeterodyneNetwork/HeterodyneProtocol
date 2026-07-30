@@ -47,6 +47,11 @@ redirects old monolith section links to permanent family anchors.
   attestations.
 - Ordinary Nostr relays and Radicle-backed repo relays are co-equal Comms
   carriers. Light clients verify locally.
+- Full nodes are persistent v3 onion services by default and route backend
+  egress through Tor. Light clients should provide outbound Tor; browser tabs
+  may use an authenticated shared relay in explicit reduced-assurance mode.
+- A public browser reader resolves a persona or public event locally from a
+  fragment-only universal launcher link and is limited to verified Tier 1.
 - Tier 1 is public, Tier 2 is selectively replicated plaintext, and Tier 3 is
   encrypted before storage.
 - Double-ratchet direct messages are Comms behavior and have no repository
@@ -54,6 +59,9 @@ redirects old monolith section links to permanent family anchors.
 - Persona-issued device authority is resolved from the encrypted private claim
   ledger. OIDC and JWT are interoperable projections, not canonical
   authorization.
+- Automated publishers use scoped temporary OIDC workload tokens and a stable,
+  dedicated full-node-held agent-role key. They never receive user or agent
+  private keys and every application event is labeled as automated.
 - Matrix is optional inside Social and never supplies persona authority.
 - Control is a Comms profile, not another transport.
 

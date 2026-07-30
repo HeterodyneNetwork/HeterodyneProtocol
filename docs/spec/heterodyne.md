@@ -49,6 +49,18 @@ Machine-readable prepared-release manifests are under
 Exact versions, registry revision or digest, feature IDs, and strict-profile
 IDs belong in each conformance claim.
 
+Core distinguishes public-reader, authenticated-light, and full-node roles.
+Full nodes are persistent v3 onion services with Tor-default backend egress.
+Light clients should implement outbound Tor; a browser tab without it may use
+an authenticated shared relay only as explicit reduced-assurance operation.
+
+Comms defines a universal fragment-only public launcher for locally resolving
+verified Tier-1 persona content. It also requires every AI or programmatic
+publisher to use a scoped temporary OIDC workload token and a dedicated,
+full-node-held agent role key; automation cannot fall back to user device keys
+or unlabeled publication. Social policy receipts are public information, while
+only subscribed verified canonical policy lists affect local visibility.
+
 ## Migration and machine-readable material
 
 - Frozen 0.4.0 bytes: [`archive/heterodyne-0.4.0.md`](archive/heterodyne-0.4.0.md)

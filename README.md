@@ -46,8 +46,14 @@ redirects historical section links.
   an accepted KERI key-event log. Rotating epoch keys handle routine signing;
   Radicle node identities are dual-proof delegated.
 - **Plural storage and delivery.** Ordinary Nostr relays and Radicle-backed
-  repo relays carry signed content. Browsers and phones can remain light
-  clients and verify locally.
+  repo relays carry signed content. Full nodes are onion services by default;
+  light clients should use outbound Tor and verify locally. Browser tabs may
+  use an authenticated shared relay with an explicit reduced-assurance
+  indicator.
+- **Universal public reading.** A centrally hosted static browser client can
+  open one fragment-only persona/event link, resolve public content locally
+  from supplied and discovered clearnet relays, and render verified Tier 1
+  without learning the target at the web origin.
 - **Honest privacy boundaries.** Tier 1 is public. Tier 2 is selectively
   replicated plaintext on allowed seeders. Tier 3 is encrypted before any
   repository or carrier receives it.
@@ -59,6 +65,10 @@ redirects historical section links.
   surface is a consent-limited projection for third-party interoperability,
   never the canonical authorization source; canonical device authority stays
   in verified private-ledger state.
+- **Accountable automation.** AI and programmatic publishers receive only
+  scoped, temporary, sender-constrained workload tokens. A full node adds
+  canonical agent attribution and signs with a stable dedicated role key that
+  is never released to the agent; direct user-device signing is forbidden.
 - **Independent feature growth.** Control and Social both build on Comms but do
   not depend on each other. Matrix remains optional inside Social.
 - **Client-side trust.** Relays, full nodes, routing nodes, and Matrix
@@ -77,9 +87,12 @@ digest, and any strict profiles. The stable strict IDs are:
 
 - `heterodyne-core-strict-v1`
 - `heterodyne-comms-strict-v1`
+- `heterodyne-comms-strict-v2`
 - `heterodyne-control-strict-v1` (reserved-inactive)
 - `heterodyne-social-strict-v1`
 - `heterodyne-social-matrix-strict-v1`
+- `heterodyne-social-strict-v2`
+- `heterodyne-social-matrix-strict-v2`
 
 Conformance vectors in [docs/spec/vectors](docs/spec/vectors/) are normative
 for the behavior they cover. Canonical bytes and expected verdicts must match

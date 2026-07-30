@@ -212,6 +212,36 @@ memory.
 
 ### Agentic clients
 
+#### Mandatory automated publishing path
+
+This rule applies to every AI or programmatic principal, including an agent
+acting at a user's request:
+
+- An automated principal **MUST NOT** request, receive, use, or simulate direct
+  access to a persona epoch key, human-device key, NID key, or agent-role
+  private key. It **MUST NOT** publish through a human-device profile or remove,
+  forge, or bypass automation attribution.
+- It **MUST** submit publication intent through
+  [`heterodyne:comms/0.5.0#comms-agent-authorship`](docs/spec/heterodyne-comms.md#comms-agent-authorship),
+  using the node's built-in OIDC issuer to obtain a scoped, temporary,
+  sender-constrained workload token. The full node validates the token and
+  active private-ledger authority, adds the canonical automation attribution,
+  and signs with its full-node-held `agent:<role-id>` key.
+- A generic node normally has one stable agent role. Separately governed
+  automation such as a newsletter or news aggregator MAY have its own stable
+  role and key. The private key remains on the full node in every case.
+- If the scoped token path is unavailable, expired, revoked, or refuses the
+  requested kind/resource/size/rate, the automated principal **MUST fail
+  closed**. There is no permission to fall back to a user device key,
+  human-authored profile, raw-signing method, or unlabeled event.
+
+When implementing or operating agent publication, read the normative Comms
+agent-authorship section first, then the integrated but still non-claimable
+[Control agent subset](docs/spec/heterodyne-control.md#control-agent-requirements).
+Social enforcement is advisory and subscriber-local: public receipts inform,
+but only an explicitly subscribed, verified canonical policy list affects
+visibility, and remediation rotates only the offending agent role key.
+
 - **[Model Context Protocol (MCP) - specification revision 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25)**
   ([repo](https://github.com/modelcontextprotocol/modelcontextprotocol))
   *(0.x draft, ADR-030; verified 2026-07-07)* - the open agent-capability

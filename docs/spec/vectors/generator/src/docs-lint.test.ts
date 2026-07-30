@@ -2051,6 +2051,65 @@ describe("protocol family documents", () => {
     expect(comms).toMatch(/There is no[\s\S]*fallback[\s\S]*unlabeled event/i);
   });
 
+  it("tells coding agents to refuse impersonation and use the scoped node path", () => {
+    const agents = readFileSync(resolve(repositoryRoot, "AGENTS.md"), "utf8");
+
+    expect(agents).toContain("#### Mandatory automated publishing path");
+    expect(agents).toMatch(/automated principal \*\*MUST NOT\*\*[\s\S]*persona epoch key/i);
+    expect(agents).toMatch(/built-in OIDC issuer[\s\S]*scoped, temporary,[\s\S]*workload token/i);
+    expect(agents).toMatch(/private key remains on the full node/i);
+    expect(agents).toMatch(/MUST fail[\s\S]*closed/i);
+    expect(agents).toMatch(/no permission to fall back[\s\S]*user device key/i);
+    expect(agents).toContain(
+      "docs/spec/heterodyne-comms.md#comms-agent-authorship",
+    );
+  });
+
+  it("aligns companion architecture with role-scoped Tor, public reading, and agent authorship", () => {
+    const readme = readFileSync(resolve(repositoryRoot, "README.md"), "utf8");
+    const claude = readFileSync(resolve(repositoryRoot, "CLAUDE.md"), "utf8");
+    const architecture = readFileSync(
+      resolve(repositoryRoot, "docs/architecture.md"),
+      "utf8",
+    );
+    const glossary = readFileSync(resolve(repositoryRoot, "docs/glossary.md"), "utf8");
+    const overview = readFileSync(overviewPath, "utf8");
+
+    for (const text of [readme, claude, architecture, overview]) {
+      expect(text).toMatch(/full nodes?[\s\S]*onion/i);
+      expect(text).toMatch(/browser[\s\S]*reduced-assurance/i);
+      expect(text).toMatch(/agent[\s\S]*(scoped|workload token)/i);
+    }
+    expect(architecture).not.toContain(
+      "Every Core client includes self-contained onion reachability.",
+    );
+    for (const term of [
+      "**Public reader.**",
+      "**Universal public launcher.**",
+      "**Outbound-only Tor client.**",
+      "**Agent role.**",
+      "**Workload token.**",
+      "**Agent-policy receipt.**",
+      "**Agent-policy list.**",
+    ]) {
+      expect(glossary).toContain(term);
+    }
+  });
+
+  it("models public-reader, agent, relay-affinity, and subscriber-local policy threats", () => {
+    const threatModel = readFileSync(threatModelPath, "utf8");
+
+    expect(threatModel).toContain(
+      "| Agent role key | Full-node key store; never released to the automated principal |",
+    );
+    expect(threatModel).toMatch(/Browser claims Tor assurance[\s\S]*reduced-assurance/i);
+    expect(threatModel).toMatch(/Public reader crosses a privacy tier[\s\S]*Tier 1/i);
+    expect(threatModel).toMatch(/Automated principal impersonates a human[\s\S]*never fallback/i);
+    expect(threatModel).toMatch(/Cross-relay retry executes twice[\s\S]*ingress relay/i);
+    expect(threatModel).toMatch(/receipt silently becomes a global mute[\s\S]*explicitly subscribes/i);
+    expect(threatModel).toMatch(/violation mutes the persona[\s\S]*exact offending device-publishing key/i);
+  });
+
   it("uses only namespaced current invariants and exact registry descriptions", () => {
     const threatModel = readFileSync(threatModelPath, "utf8");
     const registry = JSON.parse(

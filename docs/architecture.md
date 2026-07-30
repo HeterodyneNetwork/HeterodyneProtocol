@@ -53,11 +53,21 @@ Ed25519 principal and becomes a persona delegate only through a binding signed
 by both the epoch key and the NID. Neither a repository, an MXID, nor an export
 DID replaces the npub.
 
-Core defines full, routing, and light node roles. A full node runs Radicle and
-a NIP-01 repo-relay adapter. A routing node holds no content and returns only
-verified location hints. A light node fetches from ordinary or repository
-relays and verifies locally. Radicle replication stays behind full nodes;
-browsers and phones use ordinary websocket-facing interfaces.
+Core defines public-reader, authenticated-light, full-node, and supporting
+routing roles. A full node runs Radicle and a NIP-01 repo-relay adapter,
+publishes one or more clearnet Nostr relays when it wants to support every
+browser client, and is a persistent v3 onion service by default. Its backend
+egress uses Tor by default. A routing node holds no content and returns only
+verified location hints.
+
+Light clients fetch from ordinary or repository relays and verify locally.
+Non-browser WASM clients should embed an outbound-only Tor client. Browser
+tabs cannot open arbitrary Tor circuits; they either reach clearnet relays or
+use an authenticated shared websocket/WebRTC relay whose server side reaches
+the full node's onion service. That relay is provider-independent, is not an
+authority, and makes the browser's reduced assurance visible. Direct
+client-to-node WebRTC/TURN is outside the base profile because it can expose a
+Tor node's network location and is unnecessary for NAT traversal through Tor.
 
 Core also owns exact NIP-01 bytes, `nip01_raw`, the revisioned registry,
 qualified version grammar, capability bootstrap, protected-repository
@@ -127,6 +137,30 @@ secrets never enter that tree. Signing keys are separately wrapped only to
 active issuer nodes, which must mint from a canonical checkpoint no more than
 300 seconds old.
 
+### 3.4 Universal public reader
+
+A shareable launcher URL carries its persona or event target only in the
+fragment. The static web origin therefore serves the same client bytes without
+receiving the target in an HTTP request. The downloaded client parses and
+validates the target locally, applies bounded SSRF-safe relay hints, resolves
+the persona and signed public indexes, and renders verified Tier 1 only. The
+same browser client may later authenticate to a full node without reloading,
+but public and authenticated state remain separate and logout clears the
+authenticated state.
+
+### 3.5 Automated authorship
+
+An AI or programmatic principal never signs as a human device. A full node
+holds one or more stable `agent:<role-id>` private keys and exposes only an
+intent-level publication operation. The workload obtains a temporary,
+sender-constrained token from the persona's built-in OIDC issuer. The node
+intersects that token with current private-ledger authorization and finite
+kind, feed, resource, size, rate, and burst limits; it then replaces caller
+attribution, adds the canonical automation label, and signs with the selected
+role key. Any missing or stale binding fails closed. A generic node usually
+uses one agent role, while independently governed pipelines may use separate
+stable roles.
+
 ## 4. Control: a profile, not a transport
 
 Control rides accepted Comms double-ratchet sessions and generic Comms
@@ -134,10 +168,10 @@ subprotocol carriers. It owns enrollment, grants, RPC framing, side-effect
 audit, session devices, and agentic/MCP semantics. It owns no wire stamp and
 defines no transport.
 
-The current Control 0.5.0 document is incomplete. Its registry allocation and
-strict-profile identifier reserve future meaning but do not permit a
-conformance claim. Activation requires accepted ADR-030 integration and a
-minimum positive and negative vector corpus.
+The current Control 0.5.0 document is incomplete. Its relay-affinity and
+automated-agent subsets now have schemas and positive/negative vectors, but the
+remaining ADR-030 enrollment and session requirements still prevent a
+conformance claim. The strict-profile identifier remains reserved-inactive.
 
 Control audit protection depends only on Core, Comms, and Control rules. A
 Social or Matrix implementation is never required to protect Control audit
@@ -161,6 +195,14 @@ relay anchor. Radicle editorial gating instead requires reachability from the
 delegate-threshold canonical history. NIP-32 labels and web-of-trust scores are
 advisory client policy and never a third authority mechanism.
 
+Agent-policy receipts follow the same no-global-authority rule. A receipt is
+public evidence, not a mute. Only a policy list the reader explicitly
+subscribes to—and whose current canonical repository history verifies—changes
+that reader's local visibility. A reference client may enable a visible
+default list, but the user can inspect, disable, or replace it. Remediation
+mutes and rotates only the offending agent role key, never the persona or epoch
+key.
+
 Matrix is an optional feature inside Social. It supplies real-time public and
 private discussion, encrypted state, MXID delegation, room coordination,
 Megolm/MLS, and client-side bridging. A Matrix-free client can be fully Social
@@ -175,12 +217,15 @@ flowchart TB
     Publish[Comms publishing and decryption]
     Claims[Comms claim verification + private ledger]
     OIDC[OIDC/JWT projection]
+    Agent[Scoped agent publication]
     Policy[Social policy]
     RPC[Control session logic]
     Keys[Protected local stores]
     Verify --> Publish
     Verify --> Claims
     Claims --> OIDC
+    Claims --> Agent
+    Agent --> Publish
     Publish --> Policy
     Publish --> RPC
     Verify --> Keys
@@ -249,9 +294,12 @@ the same downward direction:
 
 - `heterodyne-core-strict-v1`
 - `heterodyne-comms-strict-v1` → Core strict
+- `heterodyne-comms-strict-v2` → Core strict, plus public-reader and agent invariants
 - `heterodyne-control-strict-v1` → Core strict + Comms strict
 - `heterodyne-social-strict-v1` → Core strict + Comms strict
 - `heterodyne-social-matrix-strict-v1` → Social strict
+- `heterodyne-social-strict-v2` → Comms strict v2 plus agent-policy invariants
+- `heterodyne-social-matrix-strict-v2` → Social strict v2
 
 The Control profile remains reserved-inactive. Capabilities advertise only
 profiles actually met; unknown IDs provide no inferred capability. Reports pin
@@ -267,10 +315,13 @@ Security invariant IDs follow document ownership:
 - `COMMS-I-*` covers Tier 3 confidentiality, Tier 2 honesty, Comms private
   state, client-side delivery, decentralized delivery discovery, claim
   authenticity/attenuation, private-ledger authority, issuer confinement and
-  continuity, minimized release, JWT separation, and token-status integrity.
-- `CONTROL-I-*` covers audit protection and session-device key confinement.
+  continuity, minimized release, JWT separation, token-status integrity,
+  Tier-1-only public reading, and bound/attributed automated authorship.
+- `CONTROL-I-*` covers audit protection, session-device key confinement,
+  ingress-relay affinity, and the intent-only scoped agent boundary.
 - `SOCIAL-I-*` covers private Social state, decentralized graph evaluation,
-  and optional Matrix identity/encryption/bridging.
+  subscriber-local agent policy, scoped remediation, and optional Matrix
+  identity/encryption/bridging.
 
 See [the threat model](security/threat-model.md) for actors, residual metadata,
 and threat-to-invariant mapping.
@@ -282,10 +333,13 @@ profiles. Adopted upstream events remain upstream-compatible unless an explicit
 registered profile opts in. Repo relays are NIP-01-facing strict supersets;
 light clients never need Radicle or git on the wire.
 
-Every Core client includes self-contained onion reachability. Clearnet egress
-remains a user choice; Core strict starts egress-over-Tor enabled unless the
-user explicitly disables it. Tor reduces destination and location leakage but
-does not eliminate timing or volume analysis.
+Full nodes provide persistent v3 onion reachability and use Tor for backend
+egress by default. Public-reader and authenticated-light clients should provide
+outbound Tor, including an outbound-only embedded Tor client in suitable
+non-browser WASM hosts. A browser without Tor can operate through shared
+clearnet relays or an authenticated onion-reaching relay only in explicit
+reduced-assurance mode. Tor reduces destination and location leakage but does
+not eliminate timing or volume analysis.
 
 Matrix homeservers remain vanilla. Social+Matrix encryption, wrapped-event
 verification, state protection, and bridging run in clients. Bare messages
@@ -310,5 +364,5 @@ schema owner and one version stamp.
 The principal architecture work still open is the complete repo-relay
 server/storage contract, a frozen Comms double-ratchet wire profile, broader
 cross-implementation KERI recovery testing, Social Matrix/MLS validation, and
-accepted integration of the Control schemas and vector corpus. These are owned
-work items rather than reasons to blur the family boundaries.
+completion of the remaining Control enrollment/session schemas and vectors.
+These are owned work items rather than reasons to blur the family boundaries.
