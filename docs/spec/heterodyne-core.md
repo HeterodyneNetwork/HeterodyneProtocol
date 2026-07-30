@@ -1067,20 +1067,24 @@ profile.
 <!-- Monolith provenance: §7.7. -->
 ### 10.5 Onion reachability
 
-A conforming client MUST include self-contained capability to reach `.onion`
-relay, repo-relay, routing-node, and full-node endpoints. It MUST NOT require a
-separately installed daemon or externally configured SOCKS proxy, and MUST NOT
-send an onion hostname to clearnet DNS. Browser/WASM clients MUST implement an
-embedded-Tor WebSocket bridge path and visibly report when no bridge is usable.
-A temporary bridge outage is an operational condition rather than a
-conformance failure. Full-node Radicle replication SHOULD support onion peers.
-An external system proxy MAY be honored but MUST NOT substitute for the
-self-contained capability.
+An implementation advertising `core.outbound-tor.v1` MUST include
+self-contained outbound capability to reach `.onion` relay, repo-relay,
+routing-node, and full-node endpoints. It MUST NOT require a separately
+installed daemon or externally configured SOCKS proxy and MUST NOT send an
+onion hostname to clearnet DNS. An external system proxy MAY be honored as an
+operator choice but MUST NOT be counted as the self-contained feature.
 
-The client MUST also offer prominent user-controlled egress-over-Tor, default
-OFF, with an active indicator. A selected strict profile MAY make it default
-ON only when selection itself is explicit enablement and the behavior is
-disclosed.
+A non-browser WASM implementation of this feature SHOULD embed an outbound-only
+Tor client; it need not expose a local proxy or accept inbound connections. A
+browser tab that cannot open arbitrary Tor sockets MAY omit the feature and use
+accepted clearnet `wss://` relays in declared reduced-assurance mode. Core does
+not require an experimental browser-to-Tor WebSocket bridge.
+
+A full node MUST implement the feature, persist its v3 onion service, and start
+supported outbound Heterodyne backends Tor-routed. An operator MAY explicitly
+disable Tor for a backend only with a visible downgrade, and the node then MUST
+NOT claim strict conformance while that bypass is active. Full-node Radicle
+replication SHOULD support onion peers.
 
 <a id="core-keri-export"></a>
 <!-- Monolith provenance: §11.8. -->

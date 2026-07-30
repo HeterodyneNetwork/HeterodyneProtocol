@@ -1,0 +1,169 @@
+import { describe, expect, it } from "vitest";
+import { nip19 } from "nostr-tools";
+import {
+  parseLauncherFragment,
+  resolvePublicAsset,
+  validateBootstrapRelay,
+  type PublicResolutionInput,
+} from "./public-reader.js";
+
+const personaKey = "11".repeat(32);
+const eventId = "22".repeat(32);
+const nprofile = nip19.nprofileEncode({
+  pubkey: personaKey,
+  relays: [
+    "wss://relay.example/",
+    "wss://relay-two.example/",
+  ],
+});
+const nevent = nip19.neventEncode({
+  id: eventId,
+  author: personaKey,
+  relays: ["wss://relay.example/"],
+});
+const naddr = nip19.naddrEncode({
+  identifier: "article",
+  pubkey: personaKey,
+  kind: 30023,
+  relays: ["wss://relay-two.example/"],
+});
+
+describe("universal launcher fragment", () => {
+  it("round-trips persona, immutable-event, and addressable-event routes", () => {
+    expect(parseLauncherFragment(`#/v1/p/${nprofile}`)).toMatchObject({
+      verdict: "accept",
+      route: { type: "persona", nprofile },
+      relay_hints: ["wss://relay.example/", "wss://relay-two.example/"],
+      network_activity: false,
+    });
+    expect(parseLauncherFragment(`#/v1/p/${nprofile}/e/${nevent}`)).toMatchObject({
+      verdict: "accept",
+      route: { type: "event", nprofile, nevent },
+      network_activity: false,
+    });
+    expect(parseLauncherFragment(`#/v1/p/${nprofile}/a/${naddr}`)).toMatchObject({
+      verdict: "accept",
+      route: { type: "address", nprofile, naddr },
+      network_activity: false,
+    });
+  });
+
+  it("rejects unknown, malformed, and oversized routes before network activity", () => {
+    for (const fragment of [
+      `#/v2/p/${nprofile}`,
+      "#/v1/p/not-an-nprofile",
+      `#/v1/p/${"x".repeat(5_001)}`,
+      `#${"x".repeat(16_384)}`,
+    ]) {
+      expect(parseLauncherFragment(fragment)).toEqual({
+        verdict: "reject",
+        reason_code: "public-reader-route-invalid",
+        network_activity: false,
+      });
+    }
+  });
+
+  it("limits normalized relay hints to the first eight distinct accepted values", () => {
+    const relays = Array.from({ length: 10 }, (_, index) =>
+      `wss://relay-${index}.example/`);
+    const many = nip19.nprofileEncode({ pubkey: personaKey, relays });
+    const result = parseLauncherFragment(`#/v1/p/${many}`);
+    expect(result).toMatchObject({
+      verdict: "accept",
+      relay_hints: relays.slice(0, 8),
+    });
+  });
+
+  it("keeps target identifiers out of the launcher HTTP request path", () => {
+    const link = new URL(`https://heterodyne.network/client/#/v1/p/${nprofile}/e/${nevent}`);
+    expect(link.pathname).toBe("/client/");
+    expect(link.pathname).not.toContain(nprofile);
+    expect(link.pathname).not.toContain(nevent);
+    expect(parseLauncherFragment(link.hash)).toMatchObject({ verdict: "accept" });
+  });
+});
+
+describe("bootstrap relay validation", () => {
+  it("accepts normalized public wss and marks onion hints as Tor-only", () => {
+    expect(validateBootstrapRelay("wss://relay.example/")).toEqual({
+      verdict: "accept",
+      normalized: "wss://relay.example/",
+      requires_tor: false,
+    });
+    expect(validateBootstrapRelay(`wss://${"a".repeat(56)}.onion/`)).toEqual({
+      verdict: "accept",
+      normalized: `wss://${"a".repeat(56)}.onion/`,
+      requires_tor: true,
+    });
+  });
+
+  it("rejects credentials, query, fragment, insecure schemes, and local names", () => {
+    for (const url of [
+      "wss://user:pass@relay.example/",
+      "wss://relay.example/?token=x",
+      "wss://relay.example/#fragment",
+      "ws://relay.example/",
+      "wss://localhost/",
+      "wss://a.local/",
+      "wss://a.internal/",
+      "wss://singlelabel/",
+    ]) {
+      expect(validateBootstrapRelay(url)).toEqual({
+        verdict: "reject",
+        reason_code: "public-reader-relay-hint-invalid",
+      });
+    }
+  });
+
+  it("rejects special-use literal and resolved destinations", () => {
+    for (const address of [
+      "127.0.0.1",
+      "10.0.0.1",
+      "169.254.1.1",
+      "192.0.2.1",
+      "198.18.0.1",
+      "224.0.0.1",
+      "::1",
+      "fe80::1",
+      "2001:db8::1",
+    ]) {
+      const literal = address.includes(":") ? `wss://[${address}]/` : `wss://${address}/`;
+      expect(validateBootstrapRelay(literal)).toMatchObject({ verdict: "reject" });
+      expect(validateBootstrapRelay("wss://relay.example/", address))
+        .toMatchObject({ verdict: "reject" });
+    }
+  });
+});
+
+describe("public asset resolution", () => {
+  const canonical: PublicResolutionInput = {
+    tier: 1,
+    available: true,
+    signature_valid: true,
+    complete_fetch: true,
+    nip65_refreshed: true,
+    canonical_feed_reachable: true,
+    indexed: true,
+    repo_confirmed: true,
+    conflict: false,
+  };
+
+  it("returns all six terminal outcomes with deterministic precedence", () => {
+    expect(resolvePublicAsset(canonical)).toBe("canonical");
+    expect(resolvePublicAsset({ ...canonical, repo_confirmed: false }))
+      .toBe("provisional-canonical");
+    expect(resolvePublicAsset({ ...canonical, indexed: false }))
+      .toBe("unindexed-signed-event");
+    expect(resolvePublicAsset({ ...canonical, conflict: true })).toBe("conflicted");
+    expect(resolvePublicAsset({ ...canonical, available: false })).toBe("unavailable");
+    expect(resolvePublicAsset({ ...canonical, tier: 2 })).toBe("private");
+    expect(resolvePublicAsset({ ...canonical, tier: 3 })).toBe("private");
+  });
+
+  it("does not call an unreachable or incomplete canonical feed empty", () => {
+    expect(resolvePublicAsset({ ...canonical, nip65_refreshed: false })).toBe("unavailable");
+    expect(resolvePublicAsset({ ...canonical, complete_fetch: false })).toBe("unavailable");
+    expect(resolvePublicAsset({ ...canonical, canonical_feed_reachable: false }))
+      .toBe("unavailable");
+  });
+});

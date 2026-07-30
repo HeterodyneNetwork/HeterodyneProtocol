@@ -1,0 +1,27 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-public-launcher"
+  ],
+  "vector_id": "public-reader/target-absent-from-http-path",
+  "description": "The reference launcher HTTP request path contains no persona, event, or relay identifier from the fragment.",
+  "direction": "consume",
+  "input": {
+    "full_link": "https://heterodyne.network/client/#/v1/p/nprofile1qyv8wumn8ghj7cn0da68xarjv9czuetcv9khqmr99uqzqyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg34ka4g4/e/nevent1qgspzyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygprfmhxue69uhk2an9de6z6un9d3shjtn90psk6urvv5hsqgpzyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3q6hlm"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "request_origin": "https://heterodyne.network",
+      "request_path": "/client/",
+      "fragment_parsed_locally": true,
+      "target_in_request_path": false
+    }
+  }
+}

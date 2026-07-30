@@ -149,6 +149,29 @@ role-capabilities/role-address-invalid
 `);
 
 const COMMS_IDS = ids(`
+public-reader/launcher-persona-roundtrip
+public-reader/launcher-event-roundtrip
+public-reader/launcher-address-roundtrip
+public-reader/target-absent-from-http-path
+public-reader/unknown-version-no-network
+public-reader/malformed-entity-no-network
+public-reader/oversized-fragment-no-network
+public-reader/credential-relay-hint-rejected
+public-reader/localhost-relay-hint-rejected
+public-reader/private-resolved-relay-hint-rejected
+public-reader/onion-hint-tor-required
+public-reader/nip65-refresh-replaces-stale-hint
+public-reader/resolution-canonical
+public-reader/resolution-provisional-canonical
+public-reader/resolution-unindexed-signed-event
+public-reader/resolution-conflicted
+public-reader/resolution-unavailable
+public-reader/resolution-private
+public-reader/tier3-refused
+public-reader/external-media-disclosure
+public-reader/transition-without-reload
+public-reader/logout-cleanup
+public-reader/failed-revocation-expiry
 claims/canonical-nostr-subject
 claims/canonical-radicle-nid-subject
 claims/canonical-jwk-thumbprint-subject
@@ -414,7 +437,8 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
     owner_document: owner,
     owner_version: `${owner}/${DOCUMENT_VERSIONS[owner]}`,
     dependency_versions: dependencies,
-    registry_revision: vectorId.startsWith("role-capabilities/") ? 3
+    registry_revision: vectorId.startsWith("role-capabilities/")
+      || vectorId.startsWith("public-reader/") ? 3
       : vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/") ||
         vectorId.startsWith("oidc/") || vectorId.startsWith("token-status/") ? 2
       : 1,
@@ -507,6 +531,18 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
         : "core-node-roles",
     },
     comms: {
+      "public-reader": vectorId.includes("launcher")
+        || vectorId.includes("http-path")
+        || vectorId.includes("relay-hint")
+        || vectorId.includes("onion-hint")
+        ? "comms-public-launcher"
+        : vectorId.includes("transition")
+          || vectorId.includes("logout")
+          || vectorId.includes("revocation-expiry")
+          ? "comms-public-transition"
+          : vectorId.includes("external-media")
+            ? "comms-public-reader-security"
+            : "comms-public-resolution",
       "config-backup": "comms-config-repository",
       dm: "comms-direct-messages",
       index: "comms-feed-index",

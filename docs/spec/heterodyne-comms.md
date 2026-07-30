@@ -28,7 +28,8 @@ Comms defines secure persona speech over the Core substrate: a Nostr-native
 event envelope, public/private/encrypted repository tiers, publishing and
 fan-out, generic feed ordering and location, Double Ratchet direct messages,
 credential-plane synchronization, an authenticated acceptance-policy hook,
-and an encrypted generic subprotocol carrier.
+an encrypted generic subprotocol carrier, and a receive-only public-reader
+profile with a provider-independent fragment launcher.
 
 Comms does not define following, replies or reactions as social relationships,
 threading, moderation, personal lists, community policy, social-graph
@@ -39,6 +40,10 @@ cryptographic checks.
 An implementation claiming Core+Comms is a **Heterodyne persona**. DM support
 is a RECOMMENDED feature; a client that offers Heterodyne-to-Heterodyne DMs
 MUST implement the complete DM feature in §7.
+
+`comms.public-reader.v1` is a narrower receive-only feature claim. It does not
+require a persona key, publishing, private tiers, claims, OIDC, direct
+messages, or a Control implementation.
 
 <a id="comms-envelope"></a>
 ## 2. Nostr-native event envelope and verification
@@ -473,6 +478,143 @@ relay list; clients use it to locate the persona's
 Comms discovery ends at generic feed/outbox location and does not define who
 subscribes or a social-graph traversal. No centralized delivery directory may
 be required.
+
+<a id="comms-public-reader"></a>
+### 6.1 Public-reader feature
+
+`comms.public-reader.v1` consumes only verified Tier 1 Comms envelopes, public
+feed indexes, and retrieval state. It MUST implement
+`core.nostr-relay-read.v1`, local NIP-01/BIP-340 and KEL verification, §5
+receive-side feed integrity, §6 retrieval, and
+`COMMS-I-PUBLIC-READER-TIER1-ONLY`. It MUST NOT require a Heterodyne account,
+persona key, repository write path, publishing feature, claim ledger, OIDC
+issuer, DM session, or Control session merely to render public content.
+
+A public reader without `core.outbound-tor.v1` MAY contact accepted clearnet
+`wss://` relays and remains conforming for this declared feature. It MUST
+report reduced assurance and MUST NOT claim onion reachability or network
+anonymity. It is account-anonymous because it presents no Heterodyne persona;
+the launcher host sees the application download, and relays and external media
+hosts may still observe its network address.
+
+<a id="comms-public-launcher"></a>
+### 6.2 Universal public launcher
+
+The provider-independent version-1 fragment grammar is exactly:
+
+```text
+#/v1/p/<nprofile>
+#/v1/p/<nprofile>/e/<nevent>
+#/v1/p/<nprofile>/a/<naddr>
+```
+
+The first form selects a persona, the second an immutable event, and the third
+an addressable or replaceable event. `nprofile` MUST decode under NIP-19 and
+its public key MUST be the persona's canonical cold-root npub. An `nevent`
+author, when present, and an `naddr` public key MUST equal that cold root.
+`did:key`, Radicle NID, derived export AID, OIDC subject, or launcher origin
+MUST NOT substitute for the cold-root identity.
+
+A compatible static host appends the complete fragment to its application
+origin. The reference form is:
+
+```text
+https://heterodyne.network/client/#/v1/p/<nprofile>[/e/<nevent>|/a/<naddr>]
+```
+
+The origin and HTTP request path are not semantic inputs. A launcher MUST
+download the same static application for every target, parse only the fragment
+locally, and MUST NOT transmit the persona, asset, or relay identifiers in the
+application request path. `heterodyne.network` is a reference host, never
+identity, content, repository, or delivery authority. The identical artifact
+and grammar MUST remain self-hostable.
+
+Before any network activity, the client MUST parse the complete fragment,
+reject an unknown route version or entity type, reject a fragment longer than
+16,384 characters, and reject any individual NIP-19 entity longer than 5,000
+characters. A parse failure returns `public-reader-route-invalid` and yields no
+network plan.
+
+NIP-19 relay entries are untrusted bootstrap hints. Across all route entities,
+the client MUST use at most the first eight distinct normalized accepted hints
+and ignore later hints. A public clearnet hint MUST use `wss://`; it MUST NOT
+contain credentials, query, or fragment components. The client MUST reject
+localhost, single-label, `.localhost`, `.local`, `.internal`, and any literal
+or resolved private, link-local, loopback, unspecified, documentation,
+benchmarking, multicast, or other special-use address with
+`public-reader-relay-hint-invalid`. A `.onion` hint MUST be a v3 onion hostname
+and MUST be used only through Tor. When a browser does not expose DNS results,
+the client MUST rely on platform private-network protections and minimize the
+connection to the NIP-01 exchange; successful connection is never authority.
+
+<a id="comms-public-resolution"></a>
+### 6.3 Local public resolution
+
+After complete local parsing, the client:
+
+1. contacts accepted usable hints;
+2. resolves and verifies the cold-root identity pointer and available KEL;
+3. refreshes the persona's current NIP-65 relay list;
+4. locates public `kind:31007` feed indexes;
+5. fetches the target from entry hints and the refreshed relay set;
+6. verifies its NIP-01 bytes, signature, KEL authority, page integrity, and
+   complete-fetch state; and
+7. requires reachability from the persona's canonical Tier 1 feed before
+   calling the result canonical.
+
+Resolution MUST terminate in exactly one visible state:
+
+- `canonical` when every check succeeds and repository confirmation is final;
+- `provisional-canonical` when the same checks succeed but repository
+  confirmation is unavailable;
+- `unindexed-signed-event` for a valid Tier 1 signed event absent from the
+  canonical public index;
+- `conflicted` when the applicable Core, page, or addressable-event rules
+  identify a conflict;
+- `unavailable` when the complete-fetch, NIP-65 refresh, predecessor, or
+  required relay evidence cannot be completed; or
+- `private` for Tier 2 plaintext or Tier 3 ciphertext.
+
+The client MUST NOT turn a failed complete fetch into an empty feed. It MUST
+NOT render Tier 2 plaintext in public-reader mode and MUST NOT interpret,
+probe, or label Tier 3 ciphertext as public content. An unindexed signed event
+MUST carry that exact visible qualification and MUST NOT be presented as a
+canonical Heterodyne publication.
+
+<a id="comms-public-transition"></a>
+### 6.4 Anonymous-to-authenticated transition
+
+The static application starts with no identity or device key. At explicit user
+request it MAY, without reloading the application or creating a hosted server
+session, generate a disposable session-device key, locate a full-node invite
+on an accepted shared relay, establish a Comms DR session, and invoke the
+separately negotiated Control enrollment profile. The transition MUST NOT
+change the already verified public-reader identity or content results.
+
+The session device receives no persona epoch secret, NID secret, audience key,
+repository-decryption key, credential-ledger key, or ratchet secret. Logout
+MUST attempt self-revocation when available, delete the local session-device
+key and ratchet state, clear private configuration and decrypted caches, and
+return to public-reader mode without a reload. Local deletion MUST proceed
+when revocation delivery fails; the bounded remote inactivity expiry remains
+the backstop.
+
+<a id="comms-public-reader-security"></a>
+### 6.5 Launcher and content security
+
+Fetched content is data, never application code. A launcher MUST sanitize
+markup and MUST NOT execute publication-provided scripts, event handlers,
+frames, or active content. External media requests MUST omit credentials and
+referrer information. Without Tor, the client MUST warn before loading
+external media that the request reveals its network address to the media host.
+
+The reference client MUST load no third-party executable script, MUST apply a
+restrictive Content Security Policy, and SHOULD publish reproducible signed
+artifacts and a public release-transparency record. Hosted JavaScript remains
+inside the authenticated browser's trusted computing base. Reproducibility
+improves detection; it does not make mutable web delivery equivalent to an
+independently installed client. Centrally hosted authenticated sessions SHOULD
+receive short-lived constrained grants by default.
 
 <a id="comms-direct-messages"></a>
 ## 7. Double-ratchet direct messages
@@ -1471,6 +1613,13 @@ supported features and strict profiles. A base implementation MUST implement
 the envelope, tiers, publishing, feed, retrieval, hook, negotiation carrier,
 and all sixteen security invariants. It MAY omit the `double-ratchet` feature;
 one that advertises DMs MUST implement all of §7 and §8.
+
+A report claiming `comms.public-reader.v1` MAY omit every send-side and private
+feature, but MUST name the `public-reader` Core role, implement
+`core.nostr-relay-read.v1`, list whether `core.outbound-tor.v1` is present,
+pass every public-reader and applicable Core vector, and report reduced
+assurance when Tor or repo confirmation is unavailable. It MUST NOT claim this
+feature after rendering Tier 2 or Tier 3 as public content.
 
 A report claiming `heterodyne-comms-strict-v1` MUST include the flattened
 membership above, the Core prerequisite result, the Tier 2 warning result,

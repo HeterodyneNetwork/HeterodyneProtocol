@@ -2905,6 +2905,282 @@
     ]
   },
   {
+    "vector_id": "public-reader/credential-relay-hint-rejected",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-launcher"
+    ]
+  },
+  {
+    "vector_id": "public-reader/external-media-disclosure",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-reader-security"
+    ]
+  },
+  {
+    "vector_id": "public-reader/failed-revocation-expiry",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-transition"
+    ]
+  },
+  {
+    "vector_id": "public-reader/launcher-address-roundtrip",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-launcher"
+    ]
+  },
+  {
+    "vector_id": "public-reader/launcher-event-roundtrip",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-launcher"
+    ]
+  },
+  {
+    "vector_id": "public-reader/launcher-persona-roundtrip",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-launcher"
+    ]
+  },
+  {
+    "vector_id": "public-reader/localhost-relay-hint-rejected",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-launcher"
+    ]
+  },
+  {
+    "vector_id": "public-reader/logout-cleanup",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-transition"
+    ]
+  },
+  {
+    "vector_id": "public-reader/malformed-entity-no-network",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-resolution"
+    ]
+  },
+  {
+    "vector_id": "public-reader/nip65-refresh-replaces-stale-hint",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-resolution"
+    ]
+  },
+  {
+    "vector_id": "public-reader/onion-hint-tor-required",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-launcher"
+    ]
+  },
+  {
+    "vector_id": "public-reader/oversized-fragment-no-network",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-resolution"
+    ]
+  },
+  {
+    "vector_id": "public-reader/private-resolved-relay-hint-rejected",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-launcher"
+    ]
+  },
+  {
+    "vector_id": "public-reader/resolution-canonical",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-resolution"
+    ]
+  },
+  {
+    "vector_id": "public-reader/resolution-conflicted",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-resolution"
+    ]
+  },
+  {
+    "vector_id": "public-reader/resolution-private",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-resolution"
+    ]
+  },
+  {
+    "vector_id": "public-reader/resolution-provisional-canonical",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-resolution"
+    ]
+  },
+  {
+    "vector_id": "public-reader/resolution-unavailable",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-resolution"
+    ]
+  },
+  {
+    "vector_id": "public-reader/resolution-unindexed-signed-event",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-resolution"
+    ]
+  },
+  {
+    "vector_id": "public-reader/target-absent-from-http-path",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-launcher"
+    ]
+  },
+  {
+    "vector_id": "public-reader/tier3-refused",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-resolution"
+    ]
+  },
+  {
+    "vector_id": "public-reader/transition-without-reload",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-transition"
+    ]
+  },
+  {
+    "vector_id": "public-reader/unknown-version-no-network",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-public-resolution"
+    ]
+  },
+  {
     "vector_id": "redundancy/dedupe-across-replicas",
     "owner_document": "social",
     "owner_version": "social/0.5.0",

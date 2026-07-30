@@ -1,0 +1,32 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-public-resolution"
+  ],
+  "vector_id": "public-reader/resolution-canonical",
+  "description": "Public resolution terminates visibly as canonical.",
+  "direction": "consume",
+  "input": {
+    "tier": 1,
+    "available": true,
+    "signature_valid": true,
+    "complete_fetch": true,
+    "nip65_refreshed": true,
+    "canonical_feed_reachable": true,
+    "indexed": true,
+    "repo_confirmed": true,
+    "conflict": false
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "outcome": "canonical"
+    }
+  }
+}

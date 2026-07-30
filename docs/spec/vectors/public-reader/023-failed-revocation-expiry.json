@@ -1,0 +1,28 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-public-transition"
+  ],
+  "vector_id": "public-reader/failed-revocation-expiry",
+  "description": "Local logout completes even when self-revocation delivery fails, with bounded full-node inactivity expiry as the remote backstop.",
+  "direction": "consume",
+  "input": {
+    "authenticated": true,
+    "revocation_delivery": "failed",
+    "inactivity_expiry_seconds": 300
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "local_cleanup_completed": true,
+      "final_role": "public-reader",
+      "remote_authority_expires_by": 300
+    }
+  }
+}

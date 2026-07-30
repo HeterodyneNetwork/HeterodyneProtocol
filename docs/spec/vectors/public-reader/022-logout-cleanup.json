@@ -1,0 +1,29 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-public-transition"
+  ],
+  "vector_id": "public-reader/logout-cleanup",
+  "description": "Logout deletes session and private local state before returning the running application to public-reader mode.",
+  "direction": "consume",
+  "input": {
+    "authenticated": true,
+    "revocation_delivery": "accepted"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "final_role": "public-reader",
+      "application_reload": false,
+      "session_key_deleted": true,
+      "ratchet_state_deleted": true,
+      "private_cache_cleared": true
+    }
+  }
+}

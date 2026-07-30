@@ -1,0 +1,23 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-public-resolution"
+  ],
+  "vector_id": "public-reader/unknown-version-no-network",
+  "description": "An invalid launcher fragment fails before any relay or other network activity.",
+  "direction": "consume",
+  "input": {
+    "fragment": "#/v2/p/nprofile1qyv8wumn8ghj7cn0da68xarjv9czuetcv9khqmr99uqzqyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg34ka4g4"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "public-reader-route-invalid",
+    "network_activity": false
+  }
+}
