@@ -1,7 +1,7 @@
 # ADR-036: Agent authorship, OIDC workload tokens, and moderation
 
 **Date:** 2026-07-30
-**Status:** Proposed
+**Status:** Accepted
 **Decision makers:** user and protocol maintainers
 **Design record:**
 [`docs/superpowers/specs/2026-07-30-agent-authorship-oidc-moderation-design.md`](../superpowers/specs/2026-07-30-agent-authorship-oidc-moderation-design.md)
