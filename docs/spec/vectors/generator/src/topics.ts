@@ -14,6 +14,7 @@ import { buildSplitVectors } from "./topics-split.js";
 import { buildClaimVectors } from "./topics-claims.js";
 import { buildClaimLedgerVectors } from "./topics-claim-ledger.js";
 import { buildOidcVectors, buildTokenStatusVectors } from "./topics-oidc.js";
+import { buildRoleCapabilityVectors } from "./topics-role-capabilities.js";
 import { remediateHistoricalProduction } from "./legacy-remediation.js";
 import {
   AUX_RAND,
@@ -84,6 +85,7 @@ export async function buildAllVectors(fixtures: Fixtures): Promise<AuthoredVecto
   vectors.push(...(await buildClaimLedgerVectors(fixtures)));
   vectors.push(...(await buildOidcVectors(fixtures)));
   vectors.push(...(await buildTokenStatusVectors(fixtures)));
+  vectors.push(...buildRoleCapabilityVectors());
   return remediateHistoricalProduction(vectors, fixtures);
 }
 

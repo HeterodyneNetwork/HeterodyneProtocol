@@ -1,0 +1,34 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-node-roles"
+  ],
+  "vector_id": "role-capabilities/full-node-tor-default",
+  "description": "A full node routes every declared outbound backend through Tor by default.",
+  "direction": "consume",
+  "input": {
+    "features": [
+      "core.outbound-tor.v1",
+      "core.repo-relay-client.v1",
+      "core.onion-service-host.v1",
+      "core.browser-shared-relay.v1"
+    ],
+    "onion_service": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.onion",
+    "onion_version": 3,
+    "onion_persistent": true,
+    "outbound_backends_via_tor": true,
+    "browser_compatible": true,
+    "shared_relays": [
+      "wss://relay.example/"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "reduced_assurance": false,
+    "warnings": []
+  }
+}

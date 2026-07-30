@@ -1,0 +1,20 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-role-delegation"
+  ],
+  "vector_id": "role-capabilities/role-address-valid",
+  "description": "A registered agent role address uses the exact lowercase 64-hex identifier syntax.",
+  "direction": "consume",
+  "input": {
+    "address": "agent:abababababababababababababababababababababababababababababababab"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "role_id": "abababababababababababababababababababababababababababababababab"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-node-roles"
+  ],
+  "vector_id": "role-capabilities/public-reader-reduced-assurance",
+  "description": "A browser public reader with relay read but no outbound Tor is accepted only in explicitly reported reduced-assurance mode.",
+  "direction": "consume",
+  "input": {
+    "role": "public-reader",
+    "features": [
+      "core.nostr-relay-read.v1"
+    ],
+    "strict": false
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "reduced_assurance": true,
+    "warnings": [
+      "tor-unavailable"
+    ]
+  }
+}

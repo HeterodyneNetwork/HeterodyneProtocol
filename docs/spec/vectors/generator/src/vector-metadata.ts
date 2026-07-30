@@ -138,6 +138,14 @@ profiles/core-breadcrumb-kind0
 profiles/core-breadcrumb-kind1
 registry/downref-nonfrozen-rejected
 registry/frozen-entry-immutable
+role-capabilities/public-reader-reduced-assurance
+role-capabilities/strict-missing-tor-rejected
+role-capabilities/full-node-feature-set-required
+role-capabilities/full-node-onion-advertised
+role-capabilities/full-node-tor-default
+role-capabilities/browser-shared-relay-required
+role-capabilities/role-address-valid
+role-capabilities/role-address-invalid
 `);
 
 const COMMS_IDS = ids(`
@@ -406,8 +414,10 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
     owner_document: owner,
     owner_version: `${owner}/${DOCUMENT_VERSIONS[owner]}`,
     dependency_versions: dependencies,
-    registry_revision: vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/") ||
-      vectorId.startsWith("oidc/") || vectorId.startsWith("token-status/") ? 2 : 1,
+    registry_revision: vectorId.startsWith("role-capabilities/") ? 3
+      : vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/") ||
+        vectorId.startsWith("oidc/") || vectorId.startsWith("token-status/") ? 2
+      : 1,
     ...(profile === undefined ? {} : { profile }),
     spec_refs: [`heterodyne:${reference.document}/${DOCUMENT_VERSIONS[reference.document]}#${reference.anchor}`],
   };
@@ -492,6 +502,9 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
       "core-redundancy": "core-multi-host-seeding",
       stamping: "core-version-stamps",
       registry: "core-registry",
+      "role-capabilities": vectorId.includes("role-address")
+        ? "core-role-delegation"
+        : "core-node-roles",
     },
     comms: {
       "config-backup": "comms-config-repository",

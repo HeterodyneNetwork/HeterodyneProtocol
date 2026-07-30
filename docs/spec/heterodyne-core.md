@@ -524,6 +524,32 @@ node. Registry revision 3 reserves the non-stamping profile
 profile MUST NOT alter the Core base-schema stamp; its added semantics do not
 change Core NID authority.
 
+<a id="core-role-delegation"></a>
+#### 6.1.1 Role-addressed delegation extension
+
+Core also permits a registered higher-layer profile to address a durable role
+at `kind:31001` without creating a Radicle NID. Such an extension MUST retain
+the epoch-key outer signature, `["heterodyne", "delegation"]`,
+`publishing_key`, `cold_root`, `kel_head`, `valid_until`, empty content, and
+the Core version stamp. It MUST set `d` to a registered
+`<namespace>:<role-id>` address and provide a `key_proof` made by the declared
+`publishing_key`. The registered profile MUST define:
+
+1. the namespace and closed syntax of `role-id`;
+2. the exact proof-domain bytes signed by `publishing_key`;
+3. any additional binding tags and their uniqueness rules; and
+4. the higher-layer authority and lifecycle semantics of the role.
+
+A verifier MUST resolve the registered profile before interpreting the role.
+An unknown namespace, malformed address, or profile/discriminator mismatch
+MUST return `role-delegation-address-invalid`. A missing, malformed, or invalid
+proof MUST return `role-delegation-key-proof-invalid`. The outer epoch
+signature and `key_proof` are both REQUIRED and MUST bind the same
+`publishing_key`, persona, and role address. A role-addressed delegation is
+non-stamping: it does not change the Core owner or base schema of `kind:31001`.
+Core assigns no automation, publication, moderation, or other application
+meaning to a role namespace.
+
 <a id="core-key-authority"></a>
 <!-- Monolith provenance: §3.9.10.1 and §4.5.2. -->
 ### 6.2 Key-material authority and finality
@@ -644,6 +670,12 @@ Ed25519 `nid`, one `endpoint`, `expiry`, `nid_proof`, the appropriate Core
 version tag, and `kel_head` when epoch-signed. Its outer event is BIP-340-signed
 by a dedicated node key or a current epoch key. The proof input also carries
 the current canonical repo head as pinned by the conformance vectors.
+
+A full node MUST publish at least one current advertisement whose `endpoint`
+is its persistent v3 onion service. It MAY publish additional onion endpoints
+and, when it claims browser compatibility, shared clearnet Nostr relay hints.
+A clearnet hint is a transport rendezvous and never authorizes direct
+clearnet access to the full node.
 
 The NID proof signs these exact UTF-8 bytes:
 
@@ -844,16 +876,50 @@ the independently accepted KEL.
 ## 10. Node and repo-relay substrate
 
 A full node stores repositories, performs Radicle Noise XK/TCP replication,
-and serves NIP-01 websocket access. A routing node stores no content and
-answers only from verified `31005`/`31010` advertisements. A light node
-connects directly to the returned full node and verifies locally. Routing
-answers are untrusted hints; no routing node is on the integrity path.
+serves NIP-01 websocket access through a persistent v3 onion service, and
+routes outbound repository, relay, and application backend connections through
+Tor by default. It is an onion service, not a public Tor relay, exit, or
+general-purpose proxy. A routing node stores no content and answers only from
+verified `31005`/`31010` advertisements. A light client fetches from the
+returned endpoint or shared relay and verifies locally. Routing answers are
+untrusted hints; no routing node or shared relay is on the integrity path.
 
 A routing node MUST discard expired or unverifiable advertisements, MUST NOT
 be required to proxy content, and MAY expose a cache only when that cache is
-outside the integrity path. A light node MUST fetch content directly from a
-repo relay or ordinary relay, MUST NOT be required to fetch it through a
-routing node, and MUST verify every event locally before display or storage.
+outside the integrity path. A light client MUST fetch content from a repo
+relay or ordinary relay, MUST NOT be required to fetch it through a routing
+node, and MUST verify every event locally before display or storage. A
+browser-based client MAY use a shared clearnet relay because a browser tab
+cannot open arbitrary Tor sockets. That path is reduced assurance and does
+not expose the full node's onion service as a clearnet endpoint.
+
+Core declares three implementation roles and five exact feature IDs:
+
+| Role | Required behavior | Tor requirement |
+|---|---|---|
+| `public-reader` | Implement `core.nostr-relay-read.v1`; verify signed public events locally; hold no persona authority | `core.outbound-tor.v1` is RECOMMENDED; omission is reduced assurance and forbidden by strict mode |
+| `authenticated-light` | Implement ordinary-relay read/write, local verification, and the authenticated higher-layer session selected by the user | `core.outbound-tor.v1` is RECOMMENDED; omission is reduced assurance and forbidden by strict mode |
+| `full-node` | Implement `core.outbound-tor.v1`, `core.repo-relay-client.v1`, and `core.onion-service-host.v1`; store and serve the repositories it accepts | REQUIRED and MUST be the default for outbound backends |
+
+`core.browser-shared-relay.v1` means that a full node has at least one
+normalized clearnet `wss://` shared Nostr relay through which browser clients
+can exchange protocol traffic. A full node claiming browser compatibility
+MUST implement and advertise that feature and at least one such relay. A full
+node not claiming browser compatibility MAY omit it.
+
+Feature advertisements are exact capability claims. An implementation MUST
+advertise only features it implements and MUST reject an unknown claimed Core
+feature rather than silently inferring support. A non-strict public or
+authenticated-light client without outbound Tor MUST display and report
+reduced-assurance operation. Strict mode MUST reject that configuration.
+
+A full node MUST keep one stable v3 onion service identity across ordinary
+restarts, advertise it through verified node-advertisement state, and use Tor
+for outbound repository, Nostr, and other network backends by default. It MUST
+NOT silently replace the onion path with direct WebRTC, a direct clearnet
+socket, or a provider-specific realtime path. Any future direct-connect mode
+requires a separately negotiated expansion and an explicit security downgrade;
+it is not part of Core 0.5.0.
 
 <a id="core-repo-relay"></a>
 <!-- Monolith provenance: §10.1.2. -->
@@ -876,22 +942,32 @@ persona-owned events. Heartwood 1.9.x fixes fetch limits at 5 MiB for special
 `rad/id` and `rad/sigrefs` refs and 5 GiB for data refs; an implementation MUST
 NOT present these as Heterodyne-tunable limits.
 
-Client conformance requires reading and writing NIP-01 events over a repo
-relay. Server/storage conformance remains unavailable until the complete ref
-namespace, filter-to-git mapping, retention, garbage-collection, and quota
-contract is frozen. An implementation MUST NOT claim server/storage
-conformance before that contract exists.
+`core.repo-relay-client.v1` conformance requires reading and writing NIP-01
+events over a repo relay. It is REQUIRED for a full node and OPTIONAL for
+public-reader and authenticated-light roles. Server/storage conformance
+remains unavailable until the complete ref namespace, filter-to-git mapping,
+retention, garbage-collection, and quota contract is frozen. An implementation
+MUST NOT claim server/storage conformance before that contract exists.
 
 <a id="core-client-responsibilities"></a>
 <!-- Monolith provenance: §10.2. -->
 ### 10.2 Client responsibilities
 
-A Core client MUST create and verify NIP-01/BIP-340 events; read and write both
-ordinary and repo relays; resolve the three node roles; manage root, KEL, and
-delegation state; apply repo authority and provisional finality; enforce
-version and registry pins; protect the keys repository; and provide onion
-reachability. A full-node build SHOULD provide the derived export-AID
-capability. Internal language, runtime, and packaging are unrestricted.
+A Core implementation MUST meet the requirements of every role and feature it
+claims. Every role MUST verify NIP-01/BIP-340 events locally, enforce version
+and registry pins, and reject capabilities it does not understand.
+Authenticated-light and full-node roles MUST create signed events and manage
+the root, KEL, delegation, repo-authority, provisional-finality, and protected
+key state applicable to their authority. Only
+`core.repo-relay-client.v1` requires direct repo-relay read/write.
+
+An outbound-Tor implementation embedded in a non-browser WASM runtime SHOULD
+be an outbound-only client and MUST NOT expose a listening proxy or relay
+merely to satisfy Core. A browser tab MAY instead use its browser networking
+APIs to a shared `wss://` relay and operate in reduced-assurance mode. It MUST
+NOT claim embedded Tor merely because a host-local proxy, gateway, or relay is
+available. A full-node build SHOULD provide the derived export-AID capability.
+Internal language, runtime, and packaging are unrestricted.
 
 A repo relay SHOULD expose a monotonic ingestion watermark over its canonical
 event-storage head. The watermark MUST strictly increase as submissions are
@@ -1070,6 +1146,7 @@ Every capability advertisement uses this Core-parsable bootstrap object:
   "descriptor": "heterodyne-capabilities-v1",
   "bootstrap_version": "core/0.5.0",
   "registry_revision": 3,
+  "implementation_role": "public-reader",
   "supported_versions": {
     "core": ["core/0.5.0"],
     "comms": [],
@@ -1077,32 +1154,37 @@ Every capability advertisement uses this Core-parsable bootstrap object:
     "social": []
   },
   "required_features": [
-    "core.identity.v1",
-    "core.repo-relay-client.v1",
-    "core.embedded-tor.v1"
+    "core.nostr-relay-read.v1"
   ],
   "strict_profiles": []
 }
 ```
 
-`descriptor`, `bootstrap_version`, `registry_revision`, and `core` support are
-REQUIRED. Each supported-version set contains qualified versions for that
-document only. `required_features` uses stable feature IDs; document names
-alone do not establish feature conformance. `strict_profiles` contains stable
-profile IDs. It MUST contain only profiles whose complete invariant,
-obligation, feature, vector, and prerequisite-profile sets are actually met by
-the advertiser. A composed profile MUST advertise every prerequisite profile
-in the same object and MUST advertise the document versions and required
-features on which those profiles depend. An unknown strict-profile ID MUST be
-retained or ignored safely and MUST NOT be used to infer conformance, grant a
-capability, or satisfy a known profile. Unknown fields and other unknown
-optional IDs use the same fail-closed rule.
+`descriptor`, `bootstrap_version`, `registry_revision`,
+`implementation_role`, and `core` support are REQUIRED.
+`implementation_role` MUST be exactly `public-reader`, `authenticated-light`,
+or `full-node`. Each supported-version set contains qualified versions for
+that document only. `required_features` uses the exact feature IDs allocated
+in §10; document names alone do not establish feature conformance. A claimed
+role and its required feature set MUST agree.
+
+`strict_profiles` contains stable profile IDs. It MUST contain only profiles
+whose complete invariant, obligation, feature, vector, and
+prerequisite-profile sets are actually met by the advertiser. A composed profile
+MUST advertise every prerequisite profile in the same object and MUST
+advertise the document versions and required features on which those profiles
+depend. An unknown strict-profile ID MUST be retained or ignored safely and
+MUST NOT be used to infer conformance, grant a capability, or satisfy a known
+profile. An unknown claimed Core feature MUST fail capability negotiation;
+unknown optional fields use the ordinary fail-closed rule.
 
 The descriptor SHOULD be committed to the identity repo so a peer can discover
 it without a higher protocol. A Core-only implementation MUST use this carrier;
-absence of any higher carrier MUST NOT imply non-conformance. A read/write
-client MUST advertise both `nostr_relay` and `repo_relay` features; a read-only
-client MAY state a reduced set with rationale.
+absence of any higher carrier MUST NOT imply non-conformance. A public reader
+MUST advertise `core.nostr-relay-read.v1`. A full node MUST advertise
+`core.outbound-tor.v1`, `core.repo-relay-client.v1`, and
+`core.onion-service-host.v1`; it MUST additionally advertise
+`core.browser-shared-relay.v1` when it claims browser compatibility.
 
 A peer-bound session MUST exchange advertisements and select a mutually
 supported qualified version before either peer sends an event stamped with
@@ -1137,11 +1219,13 @@ membership declaration:
 }
 ```
 
-`heterodyne-core-strict-v1` additionally requires egress-over-Tor to start
-enabled for every supported network backend unless the user has explicitly
-disabled it, and requires invalid signatures or delegations to be rejected
-rather than rendered with a warning. A claim MUST satisfy every listed
-invariant at registry revision 3 and every applicable strict vector.
+`heterodyne-core-strict-v1` additionally requires
+`core.outbound-tor.v1`, requires egress over Tor to be enabled for every
+supported network backend, and requires invalid signatures or delegations to
+be rejected rather than rendered with a warning. Disabling or bypassing Tor
+makes the strict profile unmet; it does not silently downgrade a strict claim.
+A claim MUST satisfy every listed invariant at registry revision 3 and every
+applicable strict vector.
 
 Higher-document strict profiles compose by naming prerequisite profile IDs and
 listing their complete flattened invariant membership. A conforming report

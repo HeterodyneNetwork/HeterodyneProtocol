@@ -2101,6 +2101,7 @@ describe("protocol family documents", () => {
     expect(readme).toContain('"registry_revision": "<pinned-registry-revision>"');
     expect(readme).toContain(`${counts.get(1)} immutable registry-revision-1 vectors`);
     expect(readme).toContain(`${counts.get(2)} ADR-034 registry-revision-2 vectors`);
+    expect(readme).toContain(`${counts.get(3)} ADR-035/ADR-036 registry-revision-3 vectors`);
     expect(readme).toMatch(/historical vectors[\s\S]*MUST NOT[\s\S]*rewritten/i);
   });
 

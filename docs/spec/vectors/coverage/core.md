@@ -88,6 +88,14 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `repo-relay/invalid-signature-rejected` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-repo-relay` |
 | `repo-relay/light-node-submit-write-path` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-repo-relay` |
 | `repo-relay/nip01-read-write-roundtrip` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-repo-relay` |
+| `role-capabilities/browser-shared-relay-required` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-node-roles` |
+| `role-capabilities/full-node-feature-set-required` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-node-roles` |
+| `role-capabilities/full-node-onion-advertised` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-node-roles` |
+| `role-capabilities/full-node-tor-default` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-node-roles` |
+| `role-capabilities/public-reader-reduced-assurance` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-node-roles` |
+| `role-capabilities/role-address-invalid` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-role-delegation` |
+| `role-capabilities/role-address-valid` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-role-delegation` |
+| `role-capabilities/strict-missing-tor-rejected` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-node-roles` |
 | `routing-node/expired-advert-discarded` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-node-roles` |
 | `routing-node/repo-location-from-ads-only` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-node-roles` |
 | `routing-node/unverifiable-advert-discarded` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-node-roles` |

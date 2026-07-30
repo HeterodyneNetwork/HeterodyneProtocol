@@ -3096,6 +3096,86 @@
     ]
   },
   {
+    "vector_id": "role-capabilities/browser-shared-relay-required",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-node-roles"
+    ]
+  },
+  {
+    "vector_id": "role-capabilities/full-node-feature-set-required",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-node-roles"
+    ]
+  },
+  {
+    "vector_id": "role-capabilities/full-node-onion-advertised",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-node-roles"
+    ]
+  },
+  {
+    "vector_id": "role-capabilities/full-node-tor-default",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-node-roles"
+    ]
+  },
+  {
+    "vector_id": "role-capabilities/public-reader-reduced-assurance",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-node-roles"
+    ]
+  },
+  {
+    "vector_id": "role-capabilities/role-address-invalid",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-role-delegation"
+    ]
+  },
+  {
+    "vector_id": "role-capabilities/role-address-valid",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-role-delegation"
+    ]
+  },
+  {
+    "vector_id": "role-capabilities/strict-missing-tor-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-node-roles"
+    ]
+  },
+  {
     "vector_id": "room-kind/current-kinds-roundtrip",
     "owner_document": "social",
     "owner_version": "social/0.5.0",
