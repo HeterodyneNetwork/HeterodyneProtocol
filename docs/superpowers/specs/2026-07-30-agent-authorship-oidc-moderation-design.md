@@ -1,7 +1,7 @@
 # Agent Authorship, OIDC Workload Tokens, and Moderation Design
 
 **Date:** 2026-07-30
-**Status:** Approved for ADR review
+**Status:** Approved and integrated
 **Protocol owners:** Heterodyne Comms, Control, and Social, with a bounded Core
 delegation extension
 
@@ -20,6 +20,41 @@ receipt and adopt the exact offending device key into a policy list. The
 receipt informs everyone; only clients subscribed to the list enforce the
 mute. Regaining visibility under that policy requires replacement of the
 agent-service device key, never rotation of the persona epoch key.
+
+## Integration acceptance evidence
+
+These tables are audit indexes, not a second source of requirements. The
+accepted ADR sections and permanent normative anchors remain authoritative;
+the cited vector IDs provide executable evidence for the integrated behavior.
+
+### ADR-035
+
+| Decision | ADR evidence | Normative evidence | Registry/vector evidence | Invariant or boundary |
+|---:|---|---|---|---|
+| 1 | `docs/adr/2026-07-30-035-universal-public-client-onion-first-light-client-transport.md#1-role-scoped-client-model` | `heterodyne:core/0.5.0#core-node-roles` | `role-capabilities/public-reader-reduced-assurance` | `CORE-I-VERIFY-BEFORE-USE` |
+| 2 | `docs/adr/2026-07-30-035-universal-public-client-onion-first-light-client-transport.md#2-tor-requirements-by-role` | `heterodyne:core/0.5.0#core-tor-reachability` | `role-capabilities/full-node-tor-default` | visible reduced assurance outside strict mode |
+| 3 | `docs/adr/2026-07-30-035-universal-public-client-onion-first-light-client-transport.md#3-clearnet-shared-relay-compatibility` | `heterodyne:core/0.5.0#core-node-roles` | `role-capabilities/browser-shared-relay-required` | shared relay is a locator/carrier, not authority |
+| 4 | `docs/adr/2026-07-30-035-universal-public-client-onion-first-light-client-transport.md#4-ingress-relay-response-affinity` | `heterodyne:control/0.5.0#control-relay-affinity` | `control/cross-relay-final-response-replay` | `CONTROL-I-INGRESS-RELAY-AFFINITY` |
+| 5 | `docs/adr/2026-07-30-035-universal-public-client-onion-first-light-client-transport.md#5-universal-public-launcher` | `heterodyne:comms/0.5.0#comms-public-launcher` | `public-reader/launcher-persona-roundtrip` | target stays in the URL fragment |
+| 6 | `docs/adr/2026-07-30-035-universal-public-client-onion-first-light-client-transport.md#6-local-public-resolution` | `heterodyne:comms/0.5.0#comms-public-resolution` | `public-reader/resolution-canonical` | `COMMS-I-PUBLIC-READER-TIER1-ONLY` |
+| 7 | `docs/adr/2026-07-30-035-universal-public-client-onion-first-light-client-transport.md#7-anonymous-to-authenticated-transition` | `heterodyne:comms/0.5.0#comms-public-transition` | `public-reader/transition-without-reload` | public and authenticated state remain separated |
+| 8 | `docs/adr/2026-07-30-035-universal-public-client-onion-first-light-client-transport.md#8-launcher-and-content-security` | `heterodyne:comms/0.5.0#comms-public-reader-security` | `public-reader/localhost-relay-hint-rejected` | no local-network hint injection or active-content execution |
+| 9 | `docs/adr/2026-07-30-035-universal-public-client-onion-first-light-client-transport.md#9-conformance-allocation` | `heterodyne:core/0.5.0#core-conformance`<br>`heterodyne:comms/0.5.0#comms-conformance` | registry revision `3`; `comms.public-reader.v1` | role-scoped feature honesty |
+| 10 | `docs/adr/2026-07-30-035-universal-public-client-onion-first-light-client-transport.md#10-required-conformance-vectors` | `heterodyne:core/0.5.0#core-conformance` | `role-capabilities/*`<br>`public-reader/*`<br>`control/first-arrival-reserved` | normative partial Control evidence does not open Control conformance |
+
+### ADR-036
+
+| Decision | ADR evidence | Normative evidence | Registry/vector evidence | Invariant or boundary |
+|---:|---|---|---|---|
+| 1 | `docs/adr/2026-07-30-036-agent-authorship-oidc-workload-tokens-and-moderation.md#1-automated-principals-use-one-mandatory-path` | `heterodyne:comms/0.5.0#comms-agent-authorship`<br>`heterodyne:control/0.5.0#control-agent-requirements` | `control/raw-signing-refused` | `CONTROL-I-AGENT-INTENT-ONLY` |
+| 2 | `docs/adr/2026-07-30-036-agent-authorship-oidc-workload-tokens-and-moderation.md#2-family-ownership-remains-acyclic` | `heterodyne:comms/0.5.0#comms-scope`<br>`heterodyne:social/0.5.0#social-conformance` | family DAG validation | Social has no Control dependency |
+| 3 | `docs/adr/2026-07-30-036-agent-authorship-oidc-workload-tokens-and-moderation.md#3-every-agent-publication-uses-a-dedicated-full-node-held-key` | `heterodyne:comms/0.5.0#comms-agent-delegation` | `agent-authorship/delegation-valid` | `COMMS-I-AGENT-ROLE-BINDING` |
+| 4 | `docs/adr/2026-07-30-036-agent-authorship-oidc-workload-tokens-and-moderation.md#4-workload-identity-is-stable-within-one-persona` | `heterodyne:comms/0.5.0#comms-agent-workload` | `agent-authorship/stable-identity-renewal` | persona-scoped pairwise subject |
+| 5 | `docs/adr/2026-07-30-036-agent-authorship-oidc-workload-tokens-and-moderation.md#5-controldr-is-the-standard-token-issuance-path` | `heterodyne:comms/0.5.0#comms-agent-token`<br>`heterodyne:control/0.5.0#control-agent-token` | `agent-authorship/token-valid` | `COMMS-I-WORKLOAD-TOKEN-CONFINEMENT` |
+| 6 | `docs/adr/2026-07-30-036-agent-authorship-oidc-workload-tokens-and-moderation.md#6-the-full-node-constructs-canonical-attribution` | `heterodyne:comms/0.5.0#comms-agent-attribution` | `agent-authorship/attribution-kind-1` | `COMMS-I-AGENT-ATTRIBUTION` |
+| 7 | `docs/adr/2026-07-30-036-agent-authorship-oidc-workload-tokens-and-moderation.md#7-agent-publication-fails-closed` | `heterodyne:comms/0.5.0#comms-agent-fail-closed` | `agent-authorship/profile-unavailable-rejected`<br>`control/attribution-bypass-refused` | no user-key, raw-signing, human-profile, or unlabeled fallback |
+| 8 | `docs/adr/2026-07-30-036-agent-authorship-oidc-workload-tokens-and-moderation.md#8-social-publishes-receipts-and-subscribers-choose-enforcement` | `heterodyne:social/0.5.0#social-agent-policy-receipts`<br>`heterodyne:social/0.5.0#social-agent-policy-list` | `agent-moderation/receipt-valid`<br>`agent-moderation/policy-list-valid` | `SOCIAL-I-AGENT-POLICY-LOCAL`<br>`SOCIAL-I-AGENT-REMEDIATION-SCOPED` |
+| 9 | `docs/adr/2026-07-30-036-agent-authorship-oidc-workload-tokens-and-moderation.md#9-registry-revision-and-conformance` | `heterodyne:core/0.5.0#core-registry` | registry revision `3`; `agent-authorship/*`; `agent-moderation/*` | immutable v1 profiles; additive strict v2 |
 
 ## Non-goals
 

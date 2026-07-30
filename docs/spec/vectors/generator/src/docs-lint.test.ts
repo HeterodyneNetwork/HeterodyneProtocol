@@ -2110,6 +2110,73 @@ describe("protocol family documents", () => {
     expect(threatModel).toMatch(/violation mutes the persona[\s\S]*exact offending device-publishing key/i);
   });
 
+  it("records complete ADR-035 and ADR-036 integration evidence", () => {
+    const design = readFileSync(
+      resolve(
+        repositoryRoot,
+        "docs/superpowers/specs/2026-07-30-agent-authorship-oidc-moderation-design.md",
+      ),
+      "utf8",
+    );
+    const coverage = JSON.parse(
+      readFileSync(
+        resolve(repositoryRoot, "docs/spec/vectors/coverage/manifest.json"),
+        "utf8",
+      ),
+    ) as Array<{ vector_id: string }>;
+    const vectorIds = new Set(coverage.map(({ vector_id }) => vector_id));
+    const evidence = sectionUnderHeading(
+      design,
+      "## Integration acceptance evidence",
+    );
+    const adr036Start = evidence.indexOf("### ADR-036");
+    const adr035 = evidence.slice(0, adr036Start);
+    const adr036 = evidence.slice(adr036Start);
+
+    expect(design).toContain("**Status:** Approved and integrated");
+    expect(adr035.split("\n").filter((line) => /^\| (?:[1-9]|10) \|/.test(line)))
+      .toHaveLength(10);
+    expect(adr036.split("\n").filter((line) => /^\| [1-9] \|/.test(line)))
+      .toHaveLength(9);
+    for (const vectorId of [
+      "role-capabilities/public-reader-reduced-assurance",
+      "role-capabilities/full-node-tor-default",
+      "control/cross-relay-final-response-replay",
+      "public-reader/launcher-persona-roundtrip",
+      "public-reader/resolution-canonical",
+      "public-reader/transition-without-reload",
+      "public-reader/localhost-relay-hint-rejected",
+      "control/raw-signing-refused",
+      "agent-authorship/delegation-valid",
+      "agent-authorship/stable-identity-renewal",
+      "agent-authorship/token-valid",
+      "agent-authorship/attribution-kind-1",
+      "agent-authorship/profile-unavailable-rejected",
+      "control/attribution-bypass-refused",
+      "agent-moderation/receipt-valid",
+      "agent-moderation/policy-list-valid",
+    ]) {
+      expect(design).toContain(`\`${vectorId}\``);
+      expect(vectorIds).toContain(vectorId);
+    }
+    for (const anchor of [
+      "core-node-roles",
+      "core-tor-reachability",
+      "comms-public-launcher",
+      "comms-public-resolution",
+      "comms-agent-authorship",
+      "comms-agent-delegation",
+      "comms-agent-token",
+      "comms-agent-attribution",
+      "social-agent-policy-receipts",
+      "social-agent-policy-list",
+    ]) {
+      expect(
+        `${readFileSync(corePath, "utf8")}\n${readFileSync(commsPath, "utf8")}\n${readFileSync(socialPath, "utf8")}`,
+      ).toContain(`<a id="${anchor}"></a>`);
+    }
+  });
+
   it("uses only namespaced current invariants and exact registry descriptions", () => {
     const threatModel = readFileSync(threatModelPath, "utf8");
     const registry = JSON.parse(
