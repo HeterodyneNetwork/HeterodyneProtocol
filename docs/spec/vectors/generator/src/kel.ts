@@ -7,12 +7,13 @@ import type { NostrUnsignedEvent } from "./nostr.js";
 // epoch-key-signed Heterodyne event per the §3.0 applicability matrix.
 export type KelHead = { id: string; seq: number };
 
-// A minimal well-formed KERI inception (kind:31002) template per §3.5.1: cold-
-// root-authored, s=0, committing the initial epoch key, with no witnesses (so
-// no threshold tag). Its id is the KEL head every kel_head references for a
-// persona whose KEL has only its inception. The id is over the unsigned NIP-01
-// serialization (§3.0.1), so the signature is not needed to compute it.
-export function inceptionTemplate(
+export type RotationReceipt = {
+  witness_id: string;
+  scheme: "bip340" | "did:key" | "atproto";
+  sig: string;
+};
+
+function bareInceptionTemplate(
   coldRootPubkey: string,
   epochPubkey: string,
   createdAt: number,
@@ -30,6 +31,56 @@ export function inceptionTemplate(
     ],
     content: "",
   };
+}
+
+// Archived 0.4 vectors predate the Core owner stamp. Keep their exact signing
+// bytes available under an explicitly legacy name; current vectors must use
+// inceptionTemplate instead.
+export function legacyInceptionTemplate(
+  coldRootPubkey: string,
+  epochPubkey: string,
+  createdAt: number,
+): NostrUnsignedEvent {
+  return bareInceptionTemplate(coldRootPubkey, epochPubkey, createdAt);
+}
+
+// A minimal current Core 0.5.0 KERI inception (kind:31002): cold-root-authored,
+// s=0, committing the initial epoch key, with no witnesses and the required
+// Core owner stamp. The authoritative ceremony timestamp is retained exactly.
+export function inceptionTemplate(
+  coldRootPubkey: string,
+  epochPubkey: string,
+  createdAt: number,
+): NostrUnsignedEvent {
+  const event = bareInceptionTemplate(coldRootPubkey, epochPubkey, createdAt);
+  return {
+    ...event,
+    tags: [...event.tags, ["spec_version", "core/0.5.0"]],
+  };
+}
+
+// Exact Core 0.5.0 rotation content. Receipt order is semantically relevant:
+// callers must supply the actual wire receipts in ascending witness_id order.
+export function rotationContent(receipts: RotationReceipt[]): string {
+  let previousWitnessId: string | undefined;
+  for (const receipt of receipts) {
+    if (
+      typeof receipt.witness_id !== "string"
+      || receipt.witness_id.length === 0
+      || !["bip340", "did:key", "atproto"].includes(receipt.scheme)
+      || !/^[0-9a-f]{128}$/u.test(receipt.sig)
+    ) {
+      throw new Error("invalid KEL rotation receipt");
+    }
+    if (
+      previousWitnessId !== undefined
+      && Buffer.compare(Buffer.from(previousWitnessId, "utf8"), Buffer.from(receipt.witness_id, "utf8")) > 0
+    ) {
+      throw new Error("KEL rotation receipts are not ordered by witness_id");
+    }
+    previousWitnessId = receipt.witness_id;
+  }
+  return JSON.stringify({ spec_version: "core/0.5.0", receipts });
 }
 
 export function inceptionHead(

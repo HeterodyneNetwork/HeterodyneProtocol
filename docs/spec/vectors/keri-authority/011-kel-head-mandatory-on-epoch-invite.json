@@ -29,20 +29,29 @@
         ],
         [
           "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
           "0"
         ]
       ],
       "content": "",
-      "id": "59e22fad30928e9023802aefa92cfbdd42db03665f7421db7fb599a291439894",
-      "sig": "6448b51c69fc0d88bcfc8e62b66e0773d2ce8eb15a53adb86e593cb4044131b1fb07a34c4a83e9ce4165ef254b43be65ef26bb1899615d6fe181c4a9c47eab51"
+      "id": "634f53271f49b67b55bc3d77184d3caa98a47150740c1b24783062e0d84b9f23",
+      "sig": "ff0d219490cc73eecbb80032c5b1692984a7086ddb6901a640bab048a9a48184e4ffcdb9562615bdefa8a72fd9ea15b93afdc2283601bef455c4fa9fa19936d0"
     },
     "accepted_kel": [
       {
         "kind": 31002,
-        "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+        "id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
         "s": 0,
-        "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+        "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "nip01_raw": "[0,\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",1767225600,31002,[[\"d\",\"\"],[\"heterodyne\",\"keri_inception\"],[\"p\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"s\",\"0\"],[\"epoch_key\",\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"],[\"spec_version\",\"core/0.5.0\"]],\"\"]",
+        "materialized_state": {
+          "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+          "s": 0,
+          "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+          "witnesses": [],
+          "threshold": 0,
+          "producing_event_id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0"
+        }
       }
     ],
     "signer": "epoch_key",

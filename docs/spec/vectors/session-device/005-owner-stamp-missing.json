@@ -42,7 +42,7 @@
         ],
         [
           "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
           "0"
         ],
         [
@@ -51,8 +51,8 @@
         ]
       ],
       "content": "",
-      "id": "e8a26f5009a5fda493b84e1146005ac4ef6ac4db5a7ec596323880f6cd1e3001",
-      "sig": "9d3dbffd3010bf46b64475241259aac55f21453b1853630dc61f328526fdfdd05defe3fed3cf1bdfd8fdd9315bbe7430f8e0d1615075c84fcb5b9d1e4b4e9f94"
+      "id": "c07fd9ebf0cbcb9c8a2aac0b9e26fdac249a9380446ce3626c70143d038a65bd",
+      "sig": "97eae5caa376e23ba2119088302284a0f57cac37351d2daa16c01fd7fdeacfd0430760f1785c9db2ebfe3d17e517eb5349e3e3274d9702fe81b718f582edb4f4"
     },
     "binding_payload": "heterodyne-light-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556|session-device|7070707070707070707070707070707070707070707070707070707070707070"
   },

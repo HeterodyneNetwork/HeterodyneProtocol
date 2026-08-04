@@ -33,7 +33,7 @@
         ],
         [
           "prior_digest",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def"
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0"
         ],
         [
           "strategy",
@@ -45,13 +45,13 @@
         ],
         [
           "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
           "0"
         ]
       ],
-      "content": "[]",
-      "id": "9cc49e287fcdf70347d3fa6876bcb9c56b7284771c31b6298138b0ebf0e7782a",
-      "sig": "3d8fba6ee0f43b40bb6b22e1a6949390bc23cad6202fcdeca71a0c56cc0597a4a2e4a739126d9df5455e8cb213abac4765bb7fd86ecdcdacbc1dd50ccc0673ac"
+      "content": "{\"spec_version\":\"core/0.5.0\",\"receipts\":[]}",
+      "id": "b1594b40feedd34429f5ec77ba49f43d5bb213b13e1c8ba6534ddd9a5b0ed462",
+      "sig": "2d92fefb1bbb05387564cb37944291273e6bf66d13a42585eb3d041afdea4fe26ca2c07fc45efebb76b0f7d60cde368cdc66910ea278c32755fd4a0a2681d408"
     },
     "vector_context": {
       "decision_trace": [

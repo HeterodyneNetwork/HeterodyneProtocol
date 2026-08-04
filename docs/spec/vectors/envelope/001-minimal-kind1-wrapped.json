@@ -25,7 +25,7 @@
         ],
         [
           "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
           "0"
         ]
       ],
@@ -34,16 +34,16 @@
     "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
   },
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225610,1,[[\"client\",\"heterodyne\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"hello from a wrapped Heterodyne post\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225610,1,[[\"client\",\"heterodyne\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"]],\"hello from a wrapped Heterodyne post\"]",
     "decoded": {
       "matrix_content": {
         "msgtype": "m.text",
         "body": "hello from a wrapped Heterodyne post",
         "m.heterodyne.nostr": {
-          "id": "adbf9653111de0b38889a182b4f5cd845953a488c6ae1849f35a1ef0560992cc",
+          "id": "7db07becb11725c11a326841b465636f57feaec9e652432124dc54872f5685da",
           "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-          "sig": "d742fb458dc55e03171cf45ca2eb259005160f072b7066dcc9753e6c65d878d2acabb2079327e3fc0c12fddec92555c0b90222dcb777e2e4b72a9c9c2c383e6c",
-          "nip01_raw": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225610,1,[[\"client\",\"heterodyne\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"hello from a wrapped Heterodyne post\"]"
+          "sig": "d3793e02b23a69664ed5296cc5e63521a6ccd2b51fffde8a25f8d359ac7f39670b736ac5bd4ddafb65c0b645e23033f584285785a11e4ceebcea7ca475860584",
+          "nip01_raw": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225610,1,[[\"client\",\"heterodyne\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"]],\"hello from a wrapped Heterodyne post\"]"
         }
       },
       "event": {
@@ -57,17 +57,17 @@
           ],
           [
             "kel_head",
-            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
             "0"
           ]
         ],
         "content": "hello from a wrapped Heterodyne post",
-        "id": "adbf9653111de0b38889a182b4f5cd845953a488c6ae1849f35a1ef0560992cc",
-        "sig": "d742fb458dc55e03171cf45ca2eb259005160f072b7066dcc9753e6c65d878d2acabb2079327e3fc0c12fddec92555c0b90222dcb777e2e4b72a9c9c2c383e6c"
+        "id": "7db07becb11725c11a326841b465636f57feaec9e652432124dc54872f5685da",
+        "sig": "d3793e02b23a69664ed5296cc5e63521a6ccd2b51fffde8a25f8d359ac7f39670b736ac5bd4ddafb65c0b645e23033f584285785a11e4ceebcea7ca475860584"
       }
     },
-    "id": "adbf9653111de0b38889a182b4f5cd845953a488c6ae1849f35a1ef0560992cc",
-    "sig": "d742fb458dc55e03171cf45ca2eb259005160f072b7066dcc9753e6c65d878d2acabb2079327e3fc0c12fddec92555c0b90222dcb777e2e4b72a9c9c2c383e6c"
+    "id": "7db07becb11725c11a326841b465636f57feaec9e652432124dc54872f5685da",
+    "sig": "d3793e02b23a69664ed5296cc5e63521a6ccd2b51fffde8a25f8d359ac7f39670b736ac5bd4ddafb65c0b645e23033f584285785a11e4ceebcea7ca475860584"
   },
   "direction": "produce"
 }

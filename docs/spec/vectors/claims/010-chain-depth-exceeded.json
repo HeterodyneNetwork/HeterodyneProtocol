@@ -16,10 +16,10 @@
     "cases": [
       {
         "name": "ninth-edge",
-        "leaf_claim_id": "f2a32e9529b24bda67d7dc280c685dc18d2b74e6a0310aa758a222bf6a888a71",
+        "leaf_claim_id": "99a7a43f34081fbcc80579c76e7d65e9768b54c78aa16f64736b4e84fd40fc5a",
         "claims_by_id": {
-          "5c8b3d58e7a5990c5f9c1ce22296c319c9330381bbc59ef4f887dbddc954cfea": {
-            "claim_id": "5c8b3d58e7a5990c5f9c1ce22296c319c9330381bbc59ef4f887dbddc954cfea",
+          "a19d5362a9f93148ecf0dccee2c250fa088ce7d0fbb5fe6a6f84f7dd4d945249": {
+            "claim_id": "a19d5362a9f93148ecf0dccee2c250fa088ce7d0fbb5fe6a6f84f7dd4d945249",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -42,7 +42,7 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "comms_version": "comms/0.5.0",
+            "spec_version": "comms/0.5.0",
             "registry_revision": 2,
             "constraints": {
               "namespaces": [
@@ -57,8 +57,8 @@
               "remaining_depth": 8
             }
           },
-          "ddaf676b9233e6be2f694f1015c60293544df822eb717ea87b6ae7b801755377": {
-            "claim_id": "ddaf676b9233e6be2f694f1015c60293544df822eb717ea87b6ae7b801755377",
+          "41eb5a97d353ce18ca3bf22b2a9ece3b4ae73e29ceb52f06bff5f3151dcc7ab8": {
+            "claim_id": "41eb5a97d353ce18ca3bf22b2a9ece3b4ae73e29ceb52f06bff5f3151dcc7ab8",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
@@ -81,9 +81,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "comms_version": "comms/0.5.0",
+            "spec_version": "comms/0.5.0",
             "registry_revision": 2,
-            "parent_claim_id": "5c8b3d58e7a5990c5f9c1ce22296c319c9330381bbc59ef4f887dbddc954cfea",
+            "parent_claim_id": "a19d5362a9f93148ecf0dccee2c250fa088ce7d0fbb5fe6a6f84f7dd4d945249",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -97,8 +97,8 @@
               "remaining_depth": 7
             }
           },
-          "f1287b84152a49a2f572ad5bba3662d5debb75448c29545d720e8e3cccee456a": {
-            "claim_id": "f1287b84152a49a2f572ad5bba3662d5debb75448c29545d720e8e3cccee456a",
+          "d69a000c522379d97b043cd5890383d33ebed86ca5aa9506b97f619907bd96b1": {
+            "claim_id": "d69a000c522379d97b043cd5890383d33ebed86ca5aa9506b97f619907bd96b1",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "7a9375ad6167ad54aa74c6348cc54d344cc5dc9487d847049d5eabb0fa03c8fb"
@@ -121,9 +121,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "comms_version": "comms/0.5.0",
+            "spec_version": "comms/0.5.0",
             "registry_revision": 2,
-            "parent_claim_id": "ddaf676b9233e6be2f694f1015c60293544df822eb717ea87b6ae7b801755377",
+            "parent_claim_id": "41eb5a97d353ce18ca3bf22b2a9ece3b4ae73e29ceb52f06bff5f3151dcc7ab8",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -137,8 +137,8 @@
               "remaining_depth": 6
             }
           },
-          "628813d39360ea08ae45c3cf3e779462e73670cf5cc3339eb91dbb4034d008a2": {
-            "claim_id": "628813d39360ea08ae45c3cf3e779462e73670cf5cc3339eb91dbb4034d008a2",
+          "b947cd4439da49e4fd79009dac8ee582cfc130aca7ce5446dc5a81d3afdf8920": {
+            "claim_id": "b947cd4439da49e4fd79009dac8ee582cfc130aca7ce5446dc5a81d3afdf8920",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "fe8d1eb1bcb3432b1db5833ff5f2226d9cb5e65cee430558c18ed3a3c86ce1af"
@@ -161,9 +161,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "comms_version": "comms/0.5.0",
+            "spec_version": "comms/0.5.0",
             "registry_revision": 2,
-            "parent_claim_id": "f1287b84152a49a2f572ad5bba3662d5debb75448c29545d720e8e3cccee456a",
+            "parent_claim_id": "d69a000c522379d97b043cd5890383d33ebed86ca5aa9506b97f619907bd96b1",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -177,8 +177,8 @@
               "remaining_depth": 5
             }
           },
-          "d20cc5638bca7702b83a813b90844c572c8ca10bb2194b756cf58274ae814062": {
-            "claim_id": "d20cc5638bca7702b83a813b90844c572c8ca10bb2194b756cf58274ae814062",
+          "e1dde4f00eab755b3623a2e4a9c0a5f016fdceb2ab784df399a6239db50e07fe": {
+            "claim_id": "e1dde4f00eab755b3623a2e4a9c0a5f016fdceb2ab784df399a6239db50e07fe",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "d528ecd9b696b54c907a9ed045447a79bb408ec39b68df504bb51f459bc3ffc9"
@@ -201,9 +201,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "comms_version": "comms/0.5.0",
+            "spec_version": "comms/0.5.0",
             "registry_revision": 2,
-            "parent_claim_id": "628813d39360ea08ae45c3cf3e779462e73670cf5cc3339eb91dbb4034d008a2",
+            "parent_claim_id": "b947cd4439da49e4fd79009dac8ee582cfc130aca7ce5446dc5a81d3afdf8920",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -217,8 +217,8 @@
               "remaining_depth": 4
             }
           },
-          "d1835ab7835dc25111480cf719a5a9de50e35b7fefb0a35a2626441a3a6180d4": {
-            "claim_id": "d1835ab7835dc25111480cf719a5a9de50e35b7fefb0a35a2626441a3a6180d4",
+          "98d26d9f1076413aa832862caf09d74d338073d63bdf956c03e22413b1c4463e": {
+            "claim_id": "98d26d9f1076413aa832862caf09d74d338073d63bdf956c03e22413b1c4463e",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "5d045857332d5b9e541514731622af8d60c180165d971a61e06b70a9b3834765"
@@ -241,9 +241,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "comms_version": "comms/0.5.0",
+            "spec_version": "comms/0.5.0",
             "registry_revision": 2,
-            "parent_claim_id": "d20cc5638bca7702b83a813b90844c572c8ca10bb2194b756cf58274ae814062",
+            "parent_claim_id": "e1dde4f00eab755b3623a2e4a9c0a5f016fdceb2ab784df399a6239db50e07fe",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -257,8 +257,8 @@
               "remaining_depth": 3
             }
           },
-          "8fa460d561fd22ccf3c64167f0a158f87c07c4f02b950ba2f401fe001d38aa44": {
-            "claim_id": "8fa460d561fd22ccf3c64167f0a158f87c07c4f02b950ba2f401fe001d38aa44",
+          "cc8c4dda6c61a127604d5bd75990943f1e5a376d92034f9b7c1a4a1503abc070": {
+            "claim_id": "cc8c4dda6c61a127604d5bd75990943f1e5a376d92034f9b7c1a4a1503abc070",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "049370a4b5f43412ea25f514e8ecdad05266115e4a7ecb1387231808f8b45963"
@@ -281,9 +281,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "comms_version": "comms/0.5.0",
+            "spec_version": "comms/0.5.0",
             "registry_revision": 2,
-            "parent_claim_id": "d1835ab7835dc25111480cf719a5a9de50e35b7fefb0a35a2626441a3a6180d4",
+            "parent_claim_id": "98d26d9f1076413aa832862caf09d74d338073d63bdf956c03e22413b1c4463e",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -297,8 +297,8 @@
               "remaining_depth": 2
             }
           },
-          "b58b25b35ec6035b357b4cb018da2cc46e9f7a4511eda696f83fede356f9faf4": {
-            "claim_id": "b58b25b35ec6035b357b4cb018da2cc46e9f7a4511eda696f83fede356f9faf4",
+          "8c7b026500004d9d5d49648f732625ca29a0b9f3d2cd94580ea901c1d2ee8238": {
+            "claim_id": "8c7b026500004d9d5d49648f732625ca29a0b9f3d2cd94580ea901c1d2ee8238",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "f8b0b03d44112259f903b3d100e3950d980fdde9c7e85701c16baedc90235717"
@@ -321,9 +321,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "comms_version": "comms/0.5.0",
+            "spec_version": "comms/0.5.0",
             "registry_revision": 2,
-            "parent_claim_id": "8fa460d561fd22ccf3c64167f0a158f87c07c4f02b950ba2f401fe001d38aa44",
+            "parent_claim_id": "cc8c4dda6c61a127604d5bd75990943f1e5a376d92034f9b7c1a4a1503abc070",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -337,8 +337,8 @@
               "remaining_depth": 1
             }
           },
-          "47f8cf67d456daf7fe98cc93ec3f06a80ca3d87d7fe53fa90483386e89fd2e40": {
-            "claim_id": "47f8cf67d456daf7fe98cc93ec3f06a80ca3d87d7fe53fa90483386e89fd2e40",
+          "ea23f6072fb3618a695c6ff1d10f6ecae839ac81d240b1e72ad34ef72b3db12a": {
+            "claim_id": "ea23f6072fb3618a695c6ff1d10f6ecae839ac81d240b1e72ad34ef72b3db12a",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "77f230936ee88cbbd73df930d64702ef881d811e0e1498e2f1c13eb1fc345d74"
@@ -361,9 +361,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "comms_version": "comms/0.5.0",
+            "spec_version": "comms/0.5.0",
             "registry_revision": 2,
-            "parent_claim_id": "b58b25b35ec6035b357b4cb018da2cc46e9f7a4511eda696f83fede356f9faf4",
+            "parent_claim_id": "8c7b026500004d9d5d49648f732625ca29a0b9f3d2cd94580ea901c1d2ee8238",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -377,8 +377,8 @@
               "remaining_depth": 0
             }
           },
-          "f2a32e9529b24bda67d7dc280c685dc18d2b74e6a0310aa758a222bf6a888a71": {
-            "claim_id": "f2a32e9529b24bda67d7dc280c685dc18d2b74e6a0310aa758a222bf6a888a71",
+          "99a7a43f34081fbcc80579c76e7d65e9768b54c78aa16f64736b4e84fd40fc5a": {
+            "claim_id": "99a7a43f34081fbcc80579c76e7d65e9768b54c78aa16f64736b4e84fd40fc5a",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "6eca335d9645307db441656ef4e65b4bfc579b27452bebc19bd870aa1118e5c3"
@@ -401,9 +401,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "comms_version": "comms/0.5.0",
+            "spec_version": "comms/0.5.0",
             "registry_revision": 2,
-            "parent_claim_id": "47f8cf67d456daf7fe98cc93ec3f06a80ca3d87d7fe53fa90483386e89fd2e40",
+            "parent_claim_id": "ea23f6072fb3618a695c6ff1d10f6ecae839ac81d240b1e72ad34ef72b3db12a",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -422,10 +422,10 @@
       },
       {
         "name": "cycle",
-        "leaf_claim_id": "08b9c26c860f57cadd5d5492537695c9c1ccea29b5bb5dcfb51cde3847ba0dd2",
+        "leaf_claim_id": "ee1b23015339fd5c5561ff0ddd2c082d98d2d620d717e70339101b3a9a452445",
         "claims_by_id": {
-          "08b9c26c860f57cadd5d5492537695c9c1ccea29b5bb5dcfb51cde3847ba0dd2": {
-            "claim_id": "08b9c26c860f57cadd5d5492537695c9c1ccea29b5bb5dcfb51cde3847ba0dd2",
+          "ee1b23015339fd5c5561ff0ddd2c082d98d2d620d717e70339101b3a9a452445": {
+            "claim_id": "ee1b23015339fd5c5561ff0ddd2c082d98d2d620d717e70339101b3a9a452445",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
@@ -448,9 +448,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "comms_version": "comms/0.5.0",
+            "spec_version": "comms/0.5.0",
             "registry_revision": 2,
-            "parent_claim_id": "75926ddc07b3d5897b299e43e1097dbaf18e63ad3ccdc8e749809890fa7168f2",
+            "parent_claim_id": "395c07ef010f0d9697a6e82739bc3c51ff24da5a2f985d26a4c81641b07f04cc",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -464,8 +464,8 @@
               "remaining_depth": 1
             }
           },
-          "75926ddc07b3d5897b299e43e1097dbaf18e63ad3ccdc8e749809890fa7168f2": {
-            "claim_id": "08b9c26c860f57cadd5d5492537695c9c1ccea29b5bb5dcfb51cde3847ba0dd2",
+          "395c07ef010f0d9697a6e82739bc3c51ff24da5a2f985d26a4c81641b07f04cc": {
+            "claim_id": "ee1b23015339fd5c5561ff0ddd2c082d98d2d620d717e70339101b3a9a452445",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
@@ -488,9 +488,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "comms_version": "comms/0.5.0",
+            "spec_version": "comms/0.5.0",
             "registry_revision": 2,
-            "parent_claim_id": "75926ddc07b3d5897b299e43e1097dbaf18e63ad3ccdc8e749809890fa7168f2",
+            "parent_claim_id": "395c07ef010f0d9697a6e82739bc3c51ff24da5a2f985d26a4c81641b07f04cc",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -516,8 +516,8 @@
     "normalized": {
       "cycle_reason_code": "claim-chain-cycle",
       "cycle_path": [
-        "08b9c26c860f57cadd5d5492537695c9c1ccea29b5bb5dcfb51cde3847ba0dd2",
-        "08b9c26c860f57cadd5d5492537695c9c1ccea29b5bb5dcfb51cde3847ba0dd2"
+        "ee1b23015339fd5c5561ff0ddd2c082d98d2d620d717e70339101b3a9a452445",
+        "ee1b23015339fd5c5561ff0ddd2c082d98d2d620d717e70339101b3a9a452445"
       ],
       "maximum_edges": 8
     }

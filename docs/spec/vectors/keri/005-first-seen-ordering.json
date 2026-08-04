@@ -10,6 +10,7 @@
   "vector_id": "keri/first-seen-ordering",
   "description": "First-seen ordering picks the rotation first observed by each witness.",
   "input": {
+    "evidence_classification": "non-wire-behavioral-scenario",
     "witness_observations": [
       {
         "witness": "w1",

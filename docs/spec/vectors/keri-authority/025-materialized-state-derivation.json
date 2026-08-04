@@ -18,7 +18,7 @@
         "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
         "witnesses": [],
         "threshold": 0,
-        "producing_event_id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def"
+        "producing_event_id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0"
       },
       {
         "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
@@ -26,7 +26,7 @@
         "epoch_key": "1be68a5a028f2601d0e80d468c344ba331d611b96c358b6032e8b4da0547fc11",
         "witnesses": [],
         "threshold": 0,
-        "producing_event_id": "5087532c7f6cb9e276b4499dd55f29a346f742785cd26abdd7db0fb60562fb52"
+        "producing_event_id": "a1cf4cc9a146b9c2f92defd8d5c9bc816bc321f9adde108d0e26fe0c825a1e52"
       }
     ],
     "jcs": "RFC 8785: keys sorted by UTF-16 code units; s/threshold/weight are JSON integers; hex lowercase; empty witness set is [].",
@@ -35,37 +35,37 @@
     }
   },
   "expected_output": {
-    "canonical_wire": "1456fe106098191c8ac06df3d92d985ea51b3cc8",
+    "canonical_wire": "226b5ea88217b6bb9478c195f7e7c26e148b2ede",
     "decoded": {
       "ref": "refs/xyz.heterodyne.keri/state",
-      "state_tip": "1456fe106098191c8ac06df3d92d985ea51b3cc8",
-      "log_tip": "c1b8b81cc4262bbac4282290292baee2bbb9c400",
+      "state_tip": "226b5ea88217b6bb9478c195f7e7c26e148b2ede",
+      "log_tip": "f5560bc313a2aff1f54e6c4f2c06fc67963ece53",
       "commits": [
         {
           "s": 0,
-          "producing_event_id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "producing_event_id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
           "path": "state.json",
           "mode": "100644",
-          "state_json": "{\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"epoch_key\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"producing_event_id\":\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"s\":0,\"threshold\":0,\"witnesses\":[]}",
-          "blob_oid": "76b5d478b704eca50833a0245ead25ec25c20faa",
-          "tree_oid": "116c6e43d9aa60fbc8ecd60a4fb2b2f5e772240e",
-          "commit_oid": "6bdff9460228cc32bf7818f8c6310b6812368ad6",
+          "state_json": "{\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"epoch_key\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"producing_event_id\":\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"s\":0,\"threshold\":0,\"witnesses\":[]}",
+          "blob_oid": "392627d9c791377e50f169c5a9e14ed6662f989e",
+          "tree_oid": "5e54ca5321fbf3a032873480daca9a4efe57e45f",
+          "commit_oid": "e277cbfbf6ae6e095a077be56363d8a3838436a0",
           "parents": [
-            "d3c49e5bf945410bca205c7a7bc0f57fa67b57ac"
+            "79263458c882b087d18454c78cb00c9784d887ce"
           ]
         },
         {
           "s": 1,
-          "producing_event_id": "5087532c7f6cb9e276b4499dd55f29a346f742785cd26abdd7db0fb60562fb52",
+          "producing_event_id": "a1cf4cc9a146b9c2f92defd8d5c9bc816bc321f9adde108d0e26fe0c825a1e52",
           "path": "state.json",
           "mode": "100644",
-          "state_json": "{\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"epoch_key\":\"1be68a5a028f2601d0e80d468c344ba331d611b96c358b6032e8b4da0547fc11\",\"producing_event_id\":\"5087532c7f6cb9e276b4499dd55f29a346f742785cd26abdd7db0fb60562fb52\",\"s\":1,\"threshold\":0,\"witnesses\":[]}",
-          "blob_oid": "e23d150b1d0014dce7f21a62135f8deffbd7ca42",
-          "tree_oid": "961b2ad81f1ab4fa8c7d0db97412d4318ae2f493",
-          "commit_oid": "1456fe106098191c8ac06df3d92d985ea51b3cc8",
+          "state_json": "{\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"epoch_key\":\"1be68a5a028f2601d0e80d468c344ba331d611b96c358b6032e8b4da0547fc11\",\"producing_event_id\":\"a1cf4cc9a146b9c2f92defd8d5c9bc816bc321f9adde108d0e26fe0c825a1e52\",\"s\":1,\"threshold\":0,\"witnesses\":[]}",
+          "blob_oid": "d42c51057cb5bf879516ef4cabd1449c25f4398b",
+          "tree_oid": "920001c3a494c320674123bc0c143ee4ba9ca50c",
+          "commit_oid": "226b5ea88217b6bb9478c195f7e7c26e148b2ede",
           "parents": [
-            "6bdff9460228cc32bf7818f8c6310b6812368ad6",
-            "c1b8b81cc4262bbac4282290292baee2bbb9c400"
+            "e277cbfbf6ae6e095a077be56363d8a3838436a0",
+            "f5560bc313a2aff1f54e6c4f2c06fc67963ece53"
           ]
         }
       ]

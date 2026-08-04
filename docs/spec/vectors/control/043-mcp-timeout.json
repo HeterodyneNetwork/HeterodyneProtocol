@@ -23,6 +23,7 @@
     "inbound_execution_advertised": false,
     "cancellation_supported": true,
     "cancel_requested": false,
+    "side_effect_state": "in-progress",
     "started_at": 1000,
     "timeout_ms": 1000,
     "now": 2000

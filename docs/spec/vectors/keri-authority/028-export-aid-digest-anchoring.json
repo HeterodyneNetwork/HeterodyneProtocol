@@ -11,8 +11,8 @@
   "description": "The derived export AID's KEL anchors digests of the persona's accepted Heterodyne KEL events in order, and its DID document names the persona npub as the canonical Heterodyne subject. Persona authority remains solely the Heterodyne KEL; the export AID/DID is never an alternate authoritative identity.",
   "input": {
     "accepted_kel_event_ids": [
-      "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
-      "5087532c7f6cb9e276b4499dd55f29a346f742785cd26abdd7db0fb60562fb52"
+      "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+      "a1cf4cc9a146b9c2f92defd8d5c9bc816bc321f9adde108d0e26fe0c825a1e52"
     ],
     "export_aid_present": true,
     "operator_consent": true,
@@ -29,8 +29,8 @@
     "verdict": "accept",
     "normalized": {
       "anchored_digests_in_order": {
-        "0": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
-        "1": "5087532c7f6cb9e276b4499dd55f29a346f742785cd26abdd7db0fb60562fb52"
+        "0": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+        "1": "a1cf4cc9a146b9c2f92defd8d5c9bc816bc321f9adde108d0e26fe0c825a1e52"
       },
       "canonical_subject_npub": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
       "export_identity_authoritative": false

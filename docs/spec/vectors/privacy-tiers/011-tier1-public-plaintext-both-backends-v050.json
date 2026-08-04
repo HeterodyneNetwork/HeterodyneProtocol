@@ -45,7 +45,7 @@
         ],
         [
           "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
           "0"
         ],
         [
@@ -58,7 +58,7 @@
     "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
   },
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225680,31007,[[\"d\",\"tech:2026-q2\"],[\"heterodyne\",\"feed_index\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"rid\",\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1\"],[\"feed_label\",\"Tech\"],[\"e\",\"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",\"wss://relay.example\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"],[\"spec_version\",\"comms/0.5.0\"]],\"\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225680,31007,[[\"d\",\"tech:2026-q2\"],[\"heterodyne\",\"feed_index\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"rid\",\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1\"],[\"feed_label\",\"Tech\"],[\"e\",\"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",\"wss://relay.example\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"],[\"spec_version\",\"comms/0.5.0\"]],\"\"]",
     "decoded": {
       "event": {
         "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
@@ -92,7 +92,7 @@
           ],
           [
             "kel_head",
-            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
             "0"
           ],
           [
@@ -101,12 +101,12 @@
           ]
         ],
         "content": "",
-        "id": "d02e2edbd3e894716943b6b08789aa43152a43b5faf3b6ea94c68931315d2bfe",
-        "sig": "ae6559ed04ad97ce4148424aedeceea5e395d1b52079f3813a870cbc4f5150c8b44f9b2a63396e8a5b357ec42462641397cc01235af560d0120519ef9d63234d"
+        "id": "7a3f3e370eb394c2895c1bc97342e9a4e0eb8d8d4d65da9d1e02b3c81e23dc94",
+        "sig": "7b556bbee91b77910d312797b5eca2cb36f5ce63e0d9c837f41641aad67a6cd0622078078ec81311b104b3bcbc1b1fff55d43db1280b50b9f147a8daacc94942"
       }
     },
-    "id": "d02e2edbd3e894716943b6b08789aa43152a43b5faf3b6ea94c68931315d2bfe",
-    "sig": "ae6559ed04ad97ce4148424aedeceea5e395d1b52079f3813a870cbc4f5150c8b44f9b2a63396e8a5b357ec42462641397cc01235af560d0120519ef9d63234d"
+    "id": "7a3f3e370eb394c2895c1bc97342e9a4e0eb8d8d4d65da9d1e02b3c81e23dc94",
+    "sig": "7b556bbee91b77910d312797b5eca2cb36f5ce63e0d9c837f41641aad67a6cd0622078078ec81311b104b3bcbc1b1fff55d43db1280b50b9f147a8daacc94942"
   },
   "direction": "produce"
 }

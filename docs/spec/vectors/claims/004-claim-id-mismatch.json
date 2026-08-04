@@ -14,7 +14,7 @@
   "direction": "consume",
   "input": {
     "semantic_body": {
-      "claim_id": "46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a",
+      "claim_id": "e70e59f8cac5a5f889f016f6765fcbc364131c0916997a286664c8958dac81b2",
       "issuer": {
         "type": "nostr-secp256k1",
         "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -37,10 +37,10 @@
         "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
       ],
       "visibility": "repository-private",
-      "comms_version": "comms/0.5.0",
+      "spec_version": "comms/0.5.0",
       "registry_revision": 2
     },
-    "retained_claim_id": "46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a",
+    "retained_claim_id": "e70e59f8cac5a5f889f016f6765fcbc364131c0916997a286664c8958dac81b2",
     "vector_context": {
       "decision_trace": [
         "parse_canonical_bytes",

@@ -10,6 +10,7 @@
   "vector_id": "keri/fork-resolution-conflicting-rotations",
   "description": "Conflicting rotations resolve according to witness first-seen evidence.",
   "input": {
+    "evidence_classification": "non-wire-behavioral-scenario",
     "rotations": [
       "rotation-a",
       "rotation-b"

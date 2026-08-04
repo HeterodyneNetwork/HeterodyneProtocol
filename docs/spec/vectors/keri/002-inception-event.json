@@ -10,6 +10,7 @@
   "vector_id": "keri/inception-event",
   "description": "KERI inception establishes sequence 0 and the initial witness threshold.",
   "input": {
+    "evidence_classification": "non-wire-behavioral-scenario",
     "event_type": "inception",
     "sequence": 0,
     "witness_threshold": 1,

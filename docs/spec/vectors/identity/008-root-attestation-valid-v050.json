@@ -30,7 +30,7 @@
         ],
         [
           "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
           "0"
         ],
         [
@@ -43,7 +43,7 @@
     "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
   },
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225600,31000,[[\"d\",\"\"],[\"heterodyne\",\"root\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"],[\"spec_version\",\"core/0.5.0\"]],\"\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225600,31000,[[\"d\",\"\"],[\"heterodyne\",\"root\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"],[\"spec_version\",\"core/0.5.0\"]],\"\"]",
     "decoded": {
       "event": {
         "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
@@ -64,7 +64,7 @@
           ],
           [
             "kel_head",
-            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
             "0"
           ],
           [
@@ -73,12 +73,12 @@
           ]
         ],
         "content": "",
-        "id": "70fd2f8727061a9cabd42a1ea518f8a5334b99b4a595c8066e192e5afdbc6435",
-        "sig": "a96b3fb38ae5c5a068445e29a9bd5cdd29d6d8aa3d19ad320d7f277f0b9972f4dae5fce6de09d567011715c5bc402a61b90b903249c171e2f2c69ae14db64160"
+        "id": "402f5d9027f54812f19ce19700aa72307886df415795aa64bc0791725e6fca13",
+        "sig": "c375af4308d029f83f8a01043a26e7c6095181470faa53d6560757674e0e7e1100d87465aa6e0aa18ff342dd1b1ea72dc2fe2a215f544245e18116bc5819e150"
       }
     },
-    "id": "70fd2f8727061a9cabd42a1ea518f8a5334b99b4a595c8066e192e5afdbc6435",
-    "sig": "a96b3fb38ae5c5a068445e29a9bd5cdd29d6d8aa3d19ad320d7f277f0b9972f4dae5fce6de09d567011715c5bc402a61b90b903249c171e2f2c69ae14db64160"
+    "id": "402f5d9027f54812f19ce19700aa72307886df415795aa64bc0791725e6fca13",
+    "sig": "c375af4308d029f83f8a01043a26e7c6095181470faa53d6560757674e0e7e1100d87465aa6e0aa18ff342dd1b1ea72dc2fe2a215f544245e18116bc5819e150"
   },
   "direction": "produce"
 }

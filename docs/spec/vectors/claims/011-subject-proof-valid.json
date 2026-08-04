@@ -22,7 +22,7 @@
         },
         "challenge": {
           "domain": "heterodyne-claim-pop-v1",
-          "claim_id": "46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a",
+          "claim_id": "e70e59f8cac5a5f889f016f6765fcbc364131c0916997a286664c8958dac81b2",
           "nonce": "71717171717171717171717171717171",
           "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
           "resource": "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims",
@@ -32,7 +32,7 @@
         },
         "proof": {
           "type": "nostr-bip340",
-          "signature": "3f6d5e7422684b8ddba57b691891eefe28e07f7386dbe1fa5ac687db116556ccbffeed1df8d50a2086846190a87f43579b8bef618b4ef49f642b05c590e4b9f3"
+          "signature": "8b91439152420208478acd19d8b781b26acb8226067d3d5f7d25d212510cb75518c5be52f1be982321537413b20e6b35198ff0206303cb4679fa895c5cadf7e3"
         }
       },
       {
@@ -42,7 +42,7 @@
         },
         "challenge": {
           "domain": "heterodyne-claim-pop-v1",
-          "claim_id": "1199f06b637e6910a94d433fb53e189ec6d90a6a6139e8efeb60734fbd923926",
+          "claim_id": "a3e9cf7ecda0af1b0725b8adb0cb671ac83f74919c3281a7ed52d645a5738d9b",
           "nonce": "72727272727272727272727272727272",
           "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
           "resource": "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims",
@@ -53,7 +53,7 @@
         "proof": {
           "type": "radicle-ed25519",
           "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-          "signature": "ea3f6cd39caf22893539dcc6209162f65095b95eedb3f9bec03e7252ef99ba85698758b1acb63b3f7f250ef88d51c547782a5d3286a8ce04f5fe944f963b7b02"
+          "signature": "e002828514ecd6baac3a2bcecdc6d38c71df37938b5be4182f9f3674ec2cc85b9f078bd83d0f4b85083a046ef64417816c1f27baab0baa95a85137cf3e959008"
         }
       },
       {
@@ -63,7 +63,7 @@
         },
         "challenge": {
           "domain": "heterodyne-claim-pop-v1",
-          "claim_id": "8f70a763fbf81e87666d18c335cef92f596557f78340d4f61aa9004e6c93ce44",
+          "claim_id": "3a52f399f2905d489713d7f26733dc74ef52969b1d5f011d1c0f6b3423fe8309",
           "nonce": "73737373737373737373737373737373",
           "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
           "resource": "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims",
@@ -79,7 +79,7 @@
             "x": "pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8"
           },
           "protected": "eyJhbGciOiJFZERTQSJ9",
-          "signature": "qG6teCQl4QviiDIUFB16bfzl_UeA6P1wy1xS0IKp_5rHXscOjPc9NWqBodEyD2DfuolTOjmZZu62oHyBKY5ZCg"
+          "signature": "Rb2P0DyO4nIXiSH_-XllKCE-QnYGtyHtkket_7Dgtypx7zjDRExukCb_SKNdZ_3EHr2df9SmcNz8bLDw1C9TAQ"
         }
       }
     ]

@@ -36,6 +36,10 @@
           "wss://node-a.example/relay"
         ],
         [
+          "repo_head",
+          "4a19af7f069f3c32d4235c726f666fc8cd0175fa"
+        ],
+        [
           "expiry",
           "1767312000"
         ],
@@ -45,12 +49,16 @@
         ],
         [
           "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
           "0"
+        ],
+        [
+          "spec_version",
+          "core/0.5.0"
         ]
       ],
       "content": "",
-      "id": "e75b9e6fe516bd5a1143a11180bc5dc54f50b55386077906c7a93f685fa9e4df",
+      "id": "f784833db76d79d2ef74c58a7b72fdcd90f2427093381cf0d48c192039ee3a78",
       "sig": "22222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222"
     },
     "vector_context": {

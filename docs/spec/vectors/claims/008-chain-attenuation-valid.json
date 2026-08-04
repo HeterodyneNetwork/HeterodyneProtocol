@@ -15,7 +15,7 @@
   "input": {
     "chain": [
       {
-        "claim_id": "75926ddc07b3d5897b299e43e1097dbaf18e63ad3ccdc8e749809890fa7168f2",
+        "claim_id": "395c07ef010f0d9697a6e82739bc3c51ff24da5a2f985d26a4c81641b07f04cc",
         "issuer": {
           "type": "nostr-secp256k1",
           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -38,7 +38,7 @@
           "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
         ],
         "visibility": "repository-private",
-        "comms_version": "comms/0.5.0",
+        "spec_version": "comms/0.5.0",
         "registry_revision": 2,
         "constraints": {
           "namespaces": [
@@ -54,7 +54,7 @@
         }
       },
       {
-        "claim_id": "08b9c26c860f57cadd5d5492537695c9c1ccea29b5bb5dcfb51cde3847ba0dd2",
+        "claim_id": "ee1b23015339fd5c5561ff0ddd2c082d98d2d620d717e70339101b3a9a452445",
         "issuer": {
           "type": "nostr-secp256k1",
           "value": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
@@ -77,9 +77,9 @@
           "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
         ],
         "visibility": "repository-private",
-        "comms_version": "comms/0.5.0",
+        "spec_version": "comms/0.5.0",
         "registry_revision": 2,
-        "parent_claim_id": "75926ddc07b3d5897b299e43e1097dbaf18e63ad3ccdc8e749809890fa7168f2",
+        "parent_claim_id": "395c07ef010f0d9697a6e82739bc3c51ff24da5a2f985d26a4c81641b07f04cc",
         "constraints": {
           "namespaces": [
             "heterodyne.device"

@@ -135,7 +135,7 @@ export type OidcAuthorizationRequest = {
   registration: OidcClaimEvidence;
   consent: OidcClaimEvidence;
   source_claims: OidcClaimEvidence[];
-  nonce?: string;
+  nonce: string;
   cnf?: Record<string, JsonValue>;
   sender_constraint: "none" | "dpop" | "mtls";
 };
@@ -347,6 +347,9 @@ export function derivePairwiseSubject(localSubject: string, sectorIdentifier: st
 
 export function validateAuthorizationRequest(input: OidcAuthorizationRequest): OidcAuthorizationDecision {
   try {
+    if (typeof input.nonce !== "string" || input.nonce.length === 0) {
+      return denied("oidc-claim-release-denied");
+    }
     const canonicalCheckpoint = canonicalValidatedCheckpoint(input.state);
     const requestCore = {
       flow: input.flow, grant_type: input.grant_type,
@@ -358,7 +361,7 @@ export function validateAuthorizationRequest(input: OidcAuthorizationRequest): O
       requested_scopes: uniqueSorted(input.requested_scopes),
       requested_audiences: uniqueSorted(input.requested_audiences),
       requested_claims: uniqueSorted(input.requested_claims),
-      ...(input.nonce === undefined ? {} : { nonce: input.nonce }),
+      nonce: input.nonce,
       ...(input.cnf === undefined ? {} : { cnf: input.cnf }),
       sender_constraint: input.sender_constraint,
       registration_record_id: input.registration.claim_record_id,
@@ -469,7 +472,7 @@ export function validateAuthorizationRequest(input: OidcAuthorizationRequest): O
       source_record_ids: uniqueSorted(sourceRecordIds), source_claim_ids: uniqueSorted(sourceClaimIds),
       pairwise_sub, scopes, audience, released_claims,
       assertion_profiles: [...(registration.assertion_profiles ?? [])].sort(),
-      ...(input.nonce === undefined ? {} : { nonce: input.nonce }),
+      nonce: input.nonce,
       ...(input.cnf === undefined ? {} : { cnf: input.cnf }),
       sender_constraint: input.sender_constraint,
       checkpoint: canonicalCheckpoint,
@@ -567,7 +570,14 @@ export function validateProjectedJwt(
     if (claims.client_id !== options.client_id) return denied("oidc-token-type-invalid");
     const expectedUse = options.token_use;
     if (expectedUse === "access_token" && header.typ !== "at+jwt") return denied("oidc-token-type-invalid");
-    if (expectedUse === "id_token" && (header.typ !== "JWT" || claims.nonce !== options.nonce || typeof options.nonce !== "string")) {
+    if (expectedUse === "id_token" && (
+      header.typ !== "JWT"
+      || typeof claims.nonce !== "string"
+      || claims.nonce.length === 0
+      || typeof options.nonce !== "string"
+      || options.nonce.length === 0
+      || claims.nonce !== options.nonce
+    )) {
       return denied("oidc-token-type-invalid");
     }
     if (expectedUse === "jwt_assertion" && (header.typ !== "heterodyne-assertion+jwt" ||

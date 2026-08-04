@@ -18,14 +18,47 @@
     "binding_proof_valid": true,
     "binding_nonce_matches_bootstrap": true,
     "active_invite": true,
-    "bootstrap_authorized": true,
-    "bootstrap_mode": "challenge",
-    "fresh_ceremony": true,
     "pending_expires_at": 1200,
     "now": 1000,
     "organization_persona": false,
     "delegation_state": "repository-final",
-    "authorization_state": "expired"
+    "authorization_state": "expired",
+    "identity_join": {
+      "expected": {
+        "invite_event_id": "3131313131313131313131313131313131313131313131313131313131313131",
+        "enrollee_key": "3232323232323232323232323232323232323232323232323232323232323232",
+        "dr_transcript_hash": "3333333333333333333333333333333333333333333333333333333333333333",
+        "dr_session_id": "1111111111111111111111111111111111111111111111111111111111111111",
+        "delegation_address": "pubkey:3232323232323232323232323232323232323232323232323232323232323232",
+        "delegation_event_id": "3434343434343434343434343434343434343434343434343434343434343434",
+        "grant_subject": "3232323232323232323232323232323232323232323232323232323232323232",
+        "executor_nid": "did:key:z6MkhExecutor",
+        "executor_device_key": "3535353535353535353535353535353535353535353535353535353535353535",
+        "negotiated_protocol": "heterodyne-control-human-v1",
+        "negotiated_version": "control/0.5.0"
+      },
+      "presented": {
+        "invite_event_id": "3131313131313131313131313131313131313131313131313131313131313131",
+        "enrollee_key": "3232323232323232323232323232323232323232323232323232323232323232",
+        "dr_transcript_hash": "3333333333333333333333333333333333333333333333333333333333333333",
+        "dr_session_id": "1111111111111111111111111111111111111111111111111111111111111111",
+        "delegation_address": "pubkey:3232323232323232323232323232323232323232323232323232323232323232",
+        "delegation_event_id": "3434343434343434343434343434343434343434343434343434343434343434",
+        "grant_subject": "3232323232323232323232323232323232323232323232323232323232323232",
+        "executor_nid": "did:key:z6MkhExecutor",
+        "executor_device_key": "3535353535353535353535353535353535353535353535353535353535353535",
+        "negotiated_protocol": "heterodyne-control-human-v1",
+        "negotiated_version": "control/0.5.0"
+      }
+    },
+    "bootstrap_evidence": {
+      "mode": "challenge",
+      "credential_valid": true,
+      "credential_validated_at": 900,
+      "ceremony_prompted_at": 910,
+      "ceremony_completed_at": 920,
+      "ceremony_authorized": true
+    }
   },
   "expected_output": {
     "verdict": "accept",

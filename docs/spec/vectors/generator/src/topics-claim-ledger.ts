@@ -409,7 +409,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
       audience: [persona],
       resources: [resource],
       visibility: "repository-private",
-      comms_version: "comms/0.5.0",
+      spec_version: "comms/0.5.0",
       registry_revision: 2,
       ...overrides,
     };

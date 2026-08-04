@@ -10,6 +10,7 @@
   "vector_id": "keri/didkey-witness-no-network",
   "description": "did:key witness verification uses the embedded key and performs no network resolution.",
   "input": {
+    "evidence_classification": "non-wire-behavioral-scenario",
     "witness": "did:key:z6Mkwitness",
     "network_resolution_attempts": 0
   },

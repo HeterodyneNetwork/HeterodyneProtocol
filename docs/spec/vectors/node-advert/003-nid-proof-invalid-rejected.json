@@ -36,6 +36,10 @@
           "wss://node-a.example/relay"
         ],
         [
+          "repo_head",
+          "4a19af7f069f3c32d4235c726f666fc8cd0175fa"
+        ],
+        [
           "expiry",
           "1767312000"
         ],
@@ -45,13 +49,17 @@
         ],
         [
           "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
           "0"
+        ],
+        [
+          "spec_version",
+          "core/0.5.0"
         ]
       ],
       "content": "",
-      "id": "68664ec54a2201ab79dcfcd0b702739d98d8ef345ba34d122fdd1a1de78da4c1",
-      "sig": "442056516727006c9d0a44731dc13ce796da23ab123b738259bcec702d3f9679c0ec2b432cb79e5362fb8a238d0077b8d33d0930dc006ac8cc0a88b6c42fac2b"
+      "id": "a30e715ade2f9fcf5d6c033011dac19b800f0256ac731b3273d3515bc7265051",
+      "sig": "7218178a96956a209c859ed0a131f45ca7506e9ab6c888c1e0812e739557910c8c98207c79f5c89691f42818460368f7b41927ad79f50710594618af15c209a7"
     },
     "advertised_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
     "nid_proof_payload": "heterodyne-node-advert-v1|rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|wss://node-a.example/relay|1767312000|4a19af7f069f3c32d4235c726f666fc8cd0175fa",

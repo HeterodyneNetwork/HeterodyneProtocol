@@ -11,26 +11,46 @@
     "heterodyne:control/0.5.0#control-enrollment"
   ],
   "vector_id": "control/enrollment-identity-join-valid",
-  "description": "Enrollment activation binds the complete peer, executor, session, delegation, grant, and negotiated-profile join.",
+  "description": "The executable enrollment join compares the complete peer, executor, session, delegation, grant, and negotiated-profile identity.",
   "direction": "consume",
   "input": {
-    "invite_event_id": "3131313131313131313131313131313131313131313131313131313131313131",
-    "enrollee_key": "3232323232323232323232323232323232323232323232323232323232323232",
-    "dr_transcript_hash": "3333333333333333333333333333333333333333333333333333333333333333",
-    "dr_session_id": "1111111111111111111111111111111111111111111111111111111111111111",
-    "delegation_address": "pubkey:3232323232323232323232323232323232323232323232323232323232323232",
-    "delegation_event_id": "3434343434343434343434343434343434343434343434343434343434343434",
-    "grant_subject": "3232323232323232323232323232323232323232323232323232323232323232",
-    "executor_nid": "did:key:z6MkhExecutor",
-    "executor_device_key": "3535353535353535353535353535353535353535353535353535353535353535",
-    "negotiated_protocol": "heterodyne-control-human-v1",
-    "negotiated_version": "control/0.5.0"
+    "expected": {
+      "invite_event_id": "3131313131313131313131313131313131313131313131313131313131313131",
+      "enrollee_key": "3232323232323232323232323232323232323232323232323232323232323232",
+      "dr_transcript_hash": "3333333333333333333333333333333333333333333333333333333333333333",
+      "dr_session_id": "1111111111111111111111111111111111111111111111111111111111111111",
+      "delegation_address": "pubkey:3232323232323232323232323232323232323232323232323232323232323232",
+      "delegation_event_id": "3434343434343434343434343434343434343434343434343434343434343434",
+      "grant_subject": "3232323232323232323232323232323232323232323232323232323232323232",
+      "executor_nid": "did:key:z6MkhExecutor",
+      "executor_device_key": "3535353535353535353535353535353535353535353535353535353535353535",
+      "negotiated_protocol": "heterodyne-control-human-v1",
+      "negotiated_version": "control/0.5.0"
+    },
+    "presented": {
+      "invite_event_id": "3131313131313131313131313131313131313131313131313131313131313131",
+      "enrollee_key": "3232323232323232323232323232323232323232323232323232323232323232",
+      "dr_transcript_hash": "3333333333333333333333333333333333333333333333333333333333333333",
+      "dr_session_id": "1111111111111111111111111111111111111111111111111111111111111111",
+      "delegation_address": "pubkey:3232323232323232323232323232323232323232323232323232323232323232",
+      "delegation_event_id": "3434343434343434343434343434343434343434343434343434343434343434",
+      "grant_subject": "3232323232323232323232323232323232323232323232323232323232323232",
+      "executor_nid": "did:key:z6MkhExecutor",
+      "executor_device_key": "3535353535353535353535353535353535353535353535353535353535353535",
+      "negotiated_protocol": "heterodyne-control-human-v1",
+      "negotiated_version": "control/0.5.0"
+    }
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "all_identity_joins_match": true,
-      "authority": "repository-final-active-only"
+      "draft_control_decision": {
+        "verdict": "accept",
+        "normalized": {
+          "all_identity_joins_match": true
+        }
+      },
+      "conformance_claimable": false
     }
   }
 }

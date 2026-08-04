@@ -158,11 +158,26 @@ not perform NIP-44 ECDH for a post or index body; the per-recipient ECDH occurs
 only in `kind:31011`. Keys are domain-separated:
 
 ```text
-post_key  = HKDF-SHA256(audience_key, UTF8(key_id),
-                        "heterodyne-post-key-v1", 32)
-index_key = HKDF-SHA256(audience_key, UTF8(key_id),
-                        "heterodyne-index-key-v1", 32)
+post_key = HKDF-SHA256(
+  IKM=audience_key,
+  salt=UTF8(key_id),
+  info=UTF8("heterodyne-post-key-v1"),
+  L=32
+)
+index_key = HKDF-SHA256(
+  IKM=audience_key,
+  salt=UTF8(key_id),
+  info=UTF8("heterodyne-index-key-v1"),
+  L=32
+)
 ```
+
+`audience_key` is the raw 32-byte key, not its hexadecimal text; `key_id` and
+the domain label are encoded exactly as UTF-8. The resulting raw 32 bytes are
+passed directly as the NIP-44 v2 symmetric layer's `conversation_key`; no
+ECDH or additional KDF is applied. Every encryption under a derived key MUST
+use a fresh 32-byte NIP-44 nonce, and a producer MUST NOT reuse a nonce with
+the same derived key.
 
 Registry revision 3 permits Tier 3 wrapping only for this closed stamping
 profile set:
@@ -728,6 +743,15 @@ reuse the consumed key. Lost ratchet state means unrecoverable history and
 clients MUST say so. Compromise of current state does not reveal deleted past
 keys; a fresh DH step restores security after compromise.
 
+Here `delete` requires cryptographic unavailability from the committed ratchet
+state; it does not claim physical erasure from every storage medium. Valid
+unconsumed skipped-message keys retained for out-of-order delivery are part of
+the same durable state transaction and remain separately identified until
+consumed or removed by the profile's bounded skipped-key policy. A receiver
+MUST NOT erase such a skipped key merely because a later message arrived, and
+MUST NOT release plaintext while advancement, persisted skipped-key state, and
+consumed-key deletion disagree.
+
 Every durable delegated device owns separate invites and sessions. A sender
 SHOULD establish a session with each active recipient device. Self-DMs between
 devices of the same persona carry authorized credential sync. Group sender-key
@@ -1142,7 +1166,7 @@ These profiles change no signed event bytes and add no second version stamp.
 The `heterodyne-comms-key-claim-v1` content is the exact closed object defined
 by `schemas/comms/key-claim-v1.schema.json`. Its required members are
 `claim_id`, `issuer`, `subject`, `claim_class`, `namespace`, `name`, `value`,
-`issued_at`, `not_before`, `visibility`, `comms_version`, and
+`issued_at`, `not_before`, `visibility`, `spec_version`, and
 `registry_revision`. Optional members are `expires_at`, `audience`,
 `resources`, `parent_claim_id`, `constraints`, and `revokers`. `claim_class`
 is `descriptive` or `authorization`; `visibility` is `public`,
@@ -1192,9 +1216,11 @@ Verification is ordered and fail-closed:
 3. resolve and validate the complete chain in §10.2;
 4. enforce time, audience, resource, namespace, operation, and subject-type
    constraints;
-5. apply local trusted-issuer and trusted-namespace policy;
-6. replay canonical private-ledger state and all reductions in §§10.3 and 11;
-7. for authorization, verify a fresh native subject proof; and
+5. replay repository-confirmed canonical private-ledger state, revocations,
+   and all reductions in §§10.3 and 11;
+6. for authorization, verify a fresh native subject proof;
+7. only after those checks, apply local trusted-issuer, trusted-namespace, and
+   release policy; and
 8. return exactly one state: `invalid`, `untrusted`, `provisional`, `active`,
    `expired`, `revoked`, or `conflicted`.
 
@@ -1221,18 +1247,22 @@ within its scope but its `remaining_depth` is zero and it cannot issue a ninth.
 
 At every edge the child MUST preserve or narrow all of: namespace prefixes,
 claim name, audiences, resources, purpose/operation, `not_before`,
-`expires_at`, subject type, visibility, and redelegation depth. It MUST NOT
-start earlier, expire later, add an audience or resource, broaden a namespace
-or purpose, change a descriptive assertion into authorization, or gain
-redelegation implicitly. Missing ancestors, ambiguity, cycles, depth overflow,
-or any non-strict attenuation makes the leaf `invalid`.
+`expires_at`, subject type, and visibility. `remaining_depth` MUST equal its
+parent's value minus one. It MUST NOT start earlier, expire later, add an
+audience or resource, broaden a namespace or purpose, change a descriptive
+assertion into authorization, or gain redelegation implicitly. A child MAY
+preserve both temporal bounds when every other authority dimension is
+preserved or narrowed and the required depth decrement occurs; strict change
+to a time bound is not independently required. Missing ancestors, ambiguity,
+cycles, depth overflow, broadening, or an incorrect depth transition makes the
+leaf `invalid`.
 
 <a id="comms-claim-revocation"></a>
 ### 10.3 Irreversible revocation and reductions
 
 The revocation content is the exact closed object in
 `schemas/comms/key-claim-revocation-v1.schema.json`: `claim_id`, `revoked_at`,
-registered `reason_code`, typed `revoker`, required `comms_version` equal to
+registered `reason_code`, typed `revoker`, required `spec_version` equal to
 `comms/0.5.0`, required `registry_revision` equal to `2`, and an optional native
 `proof`. `revoked_at` equals the event `created_at`. For both `kind:31013` and
 `kind:31014`, the complete tag array MUST be exactly
@@ -1240,7 +1270,7 @@ registered `reason_code`, typed `revoker`, required `comms_version` equal to
 tag is invalid. A Nostr revoker signs the outer event. A Radicle or JWK revoker
 also supplies its matching proof over the RFC 8785 canonical object containing
 exactly domain `heterodyne-claim-revocation-v1`, `claim_id`, `revoked_at`,
-`reason_code`, `comms_version`, and `registry_revision`. Thus the native proof
+`reason_code`, `spec_version`, and `registry_revision`. Thus the native proof
 binds the owning Comms profile and registry revision as well as the revocation.
 
 An authorization claim may be revoked by its issuer, an active superior issuer
@@ -1431,11 +1461,14 @@ Every protected header in this profile has exactly `alg`, `kid`, and `typ`.
 public RSA signing JWK in the issuer JWKS; and the RSA modulus is at least 2048
 bits. An ID Token has `typ` equal to `JWT`, requires a non-empty nonce from the
 signed authorization request, returns that exact `nonce` claim, and is valid
-only when it matches the verifier's expected nonce. A signed JWT assertion has
-`typ` equal to `heterodyne-assertion+jwt` and an `assertion_profile` claim whose
-exact non-empty value was allowed by the client's signed canonical registration
-and equals the verifier-selected registered profile. An unregistered profile,
-missing nonce, or type/profile/nonce confusion is rejected.
+only when both the presented claim and the verifier's expected nonce are
+non-empty and exactly equal. An absent or empty request nonce MUST prevent ID
+Token issuance rather than producing a token without one. A signed JWT
+assertion has `typ` equal to `heterodyne-assertion+jwt` and an
+`assertion_profile` claim whose exact non-empty value was allowed by the
+client's signed canonical registration and equals the verifier-selected
+registered profile. An unregistered profile, absent or empty nonce, or
+type/profile/nonce confusion is rejected.
 
 An access-token protected header has `typ` equal to `at+jwt` and `alg` equal to
 `RS256`. Its claims include `iss`, pairwise `sub`, `aud`, `exp`, `iat`, `jti`,
@@ -1542,10 +1575,16 @@ media type `application/statuslist+jwt`, protected `typ` `statuslist+jwt`,
 `alg` `RS256`, and an authenticated `kid`. Claims are `sub` equal to the URI, `iat`,
 `exp`, positive finite `ttl`, and `status_list` with `bits: 1` and `lst`.
 
-`lst` is the unpadded base64url encoding of the deterministic zlib-wrapped
-DEFLATE level-9 compression of the bit array. Bits are little-endian within each byte. Initial
-values are `0` (`VALID`) and `1` (`INVALID`). Indices are contiguous within a
-list, never reused, and allocated only in a durable issuance reservation at:
+`lst` is the unpadded base64url encoding of a valid zlib-wrapped DEFLATE
+representation of the bit array. Producers SHOULD use deterministic level-9
+compression as the stable recommended encoding. Consumers MUST accept any
+valid signed zlib-wrapped DEFLATE representation that inflates to the
+authenticated bit array and MUST NOT require local recompression to reproduce
+the received bytes. The inflated bit array MUST NOT exceed 1,048,576 bytes
+(8,388,608 statuses); a larger result MUST be rejected. Bits are little-endian
+within each byte. Initial values are `0` (`VALID`) and `1` (`INVALID`). Indices
+are contiguous within a list, never reused, and allocated only in a durable
+issuance reservation at:
 
 ```text
 status-lists/<expiry-bucket>/<writer-nid-fingerprint>/<list-sequence>.jwt
@@ -1560,10 +1599,11 @@ with invalidation-wins semantics.
 A verifier validates the referenced JWT first, resolves the continuity chain,
 checks byte digest and URI against the current manifest, verifies the Status
 List Token with current/retiring JWKS, enforces `iat`, `exp`, `ttl`, checkpoint,
-media type, canonical compression, bit width, and index bounds, then reads the
-bit. Stale, missing, malformed, unverifiable, or mismatched status is failure,
-not evidence of validity. `VALID` cannot override expiration, audience/type
-failure, source-claim reduction, issuer compromise, or any other invalid state.
+media type, valid bounded zlib decompression, bit width, and index bounds, then
+reads the bit. Stale, missing, malformed, unverifiable, or mismatched status is
+failure, not evidence of validity. `VALID` cannot override expiration,
+audience/type failure, source-claim reduction, issuer compromise, or any other
+invalid state.
 
 Status `iat` MUST be a safe integer no earlier than the current manifest checkpoint's
 `observed_at` and no later than `now`. The verifier records a

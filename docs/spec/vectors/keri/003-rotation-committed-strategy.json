@@ -10,6 +10,7 @@
   "vector_id": "keri/rotation-committed-strategy",
   "description": "Committed-strategy rotation is accepted when it advances sequence and satisfies witnesses.",
   "input": {
+    "evidence_classification": "non-wire-behavioral-scenario",
     "event_type": "rotation",
     "sequence": 1,
     "strategy": "committed",

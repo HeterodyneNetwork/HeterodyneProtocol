@@ -15,8 +15,10 @@
     "fixture_config_audience_key": "4242424242424242424242424242424242424242424242424242424242424242",
     "key_id": "c5120a3891ce2129a423416f405d8d49",
     "hkdf": {
-      "salt": "c5120a3891ce2129a423416f405d8d49",
-      "info": "heterodyne-post-key-v1",
+      "hash": "SHA-256",
+      "ikm_hex": "4242424242424242424242424242424242424242424242424242424242424242",
+      "salt_utf8": "c5120a3891ce2129a423416f405d8d49",
+      "info_utf8": "heterodyne-post-key-v1",
       "output_len": 32
     },
     "nip44_nonce": "6060606060606060606060606060606060606060606060606060606060606060",
@@ -32,6 +34,7 @@
       "key_id": "c5120a3891ce2129a423416f405d8d49",
       "enc_branch": "refs/heads/enc/c5120a3891ce2129a423416f405d8d49",
       "post_key": "1716e262bf6f31fbf4736347947ce142c71fbb9c3f55f0d4c71d130a8a8be3fc",
+      "nip44_conversation_key": "1716e262bf6f31fbf4736347947ce142c71fbb9c3f55f0d4c71d130a8a8be3fc",
       "plaintext": {
         "blob": "persona_config",
         "private_mutes": [

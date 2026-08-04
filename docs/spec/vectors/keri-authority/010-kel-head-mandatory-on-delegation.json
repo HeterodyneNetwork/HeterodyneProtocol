@@ -45,20 +45,29 @@
         ],
         [
           "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
           "0"
         ]
       ],
       "content": "",
-      "id": "3ad87adf24db3ca9f0212beab6be6a7f9eaa64c27d2b73f32cc78dda1b2d07be",
-      "sig": "290221d336fb63ad764728fa3292f118d82ded6af0941543a6c48de21de285860f23b470dcb8ae78920ba15e15762e7f2582e5468bc523af5ef7607f80b6d8cd"
+      "id": "0116919b9f3d9dc82f0b3d4d41d7a8e77be4597264befec8e14a40c32773d1e2",
+      "sig": "b2002e0ec90b3b9d7afd67917e9d1e2884c8a1ce11ae8edfda1608d5423c04fc30ba6723eccc02c84c70ac619060e7e6e920bf719eb50a00f8288ac2ff2064a3"
     },
     "accepted_kel": [
       {
         "kind": 31002,
-        "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+        "id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
         "s": 0,
-        "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+        "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "nip01_raw": "[0,\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",1767225600,31002,[[\"d\",\"\"],[\"heterodyne\",\"keri_inception\"],[\"p\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"s\",\"0\"],[\"epoch_key\",\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"],[\"spec_version\",\"core/0.5.0\"]],\"\"]",
+        "materialized_state": {
+          "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+          "s": 0,
+          "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+          "witnesses": [],
+          "threshold": 0,
+          "producing_event_id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0"
+        }
       }
     ],
     "nid_binding_payload": "heterodyne-nid-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx|radicle-nid-delegation",

@@ -14,7 +14,7 @@
   "direction": "consume",
   "input": {
     "claim": {
-      "claim_id": "8f70a763fbf81e87666d18c335cef92f596557f78340d4f61aa9004e6c93ce44",
+      "claim_id": "3a52f399f2905d489713d7f26733dc74ef52969b1d5f011d1c0f6b3423fe8309",
       "issuer": {
         "type": "nostr-secp256k1",
         "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -37,13 +37,13 @@
         "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
       ],
       "visibility": "repository-private",
-      "comms_version": "comms/0.5.0",
+      "spec_version": "comms/0.5.0",
       "registry_revision": 2
     },
     "source": {
       "challenge": {
         "domain": "heterodyne-claim-pop-v1",
-        "claim_id": "8f70a763fbf81e87666d18c335cef92f596557f78340d4f61aa9004e6c93ce44",
+        "claim_id": "3a52f399f2905d489713d7f26733dc74ef52969b1d5f011d1c0f6b3423fe8309",
         "nonce": "73737373737373737373737373737373",
         "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
         "resource": "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims",
@@ -59,13 +59,13 @@
           "x": "pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8"
         },
         "protected": "eyJhbGciOiJFZERTQSJ9",
-        "signature": "qG6teCQl4QviiDIUFB16bfzl_UeA6P1wy1xS0IKp_5rHXscOjPc9NWqBodEyD2DfuolTOjmZZu62oHyBKY5ZCg"
+        "signature": "Rb2P0DyO4nIXiSH_-XllKCE-QnYGtyHtkket_7Dgtypx7zjDRExukCb_SKNdZ_3EHr2df9SmcNz8bLDw1C9TAQ"
       }
     },
     "copied_request": {
       "challenge": {
         "domain": "heterodyne-claim-pop-v1",
-        "claim_id": "8f70a763fbf81e87666d18c335cef92f596557f78340d4f61aa9004e6c93ce44",
+        "claim_id": "3a52f399f2905d489713d7f26733dc74ef52969b1d5f011d1c0f6b3423fe8309",
         "nonce": "79797979797979797979797979797979",
         "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
         "resource": "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims",
@@ -81,18 +81,18 @@
           "x": "pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8"
         },
         "protected": "eyJhbGciOiJFZERTQSJ9",
-        "signature": "qG6teCQl4QviiDIUFB16bfzl_UeA6P1wy1xS0IKp_5rHXscOjPc9NWqBodEyD2DfuolTOjmZZu62oHyBKY5ZCg"
+        "signature": "Rb2P0DyO4nIXiSH_-XllKCE-QnYGtyHtkket_7Dgtypx7zjDRExukCb_SKNdZ_3EHr2df9SmcNz8bLDw1C9TAQ"
       },
       "expected_nonce": "79797979797979797979797979797979"
     },
     "claim_authority_evidence": [
       {
-        "claim_id": "8f70a763fbf81e87666d18c335cef92f596557f78340d4f61aa9004e6c93ce44",
+        "claim_id": "3a52f399f2905d489713d7f26733dc74ef52969b1d5f011d1c0f6b3423fe8309",
         "issuer": {
           "type": "nostr-secp256k1",
           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
         },
-        "event_id": "beb86a4133b144d167430b593b5f9a5264cd8ab4577cbdfd8d434ee14d842422",
+        "event_id": "15e4f22989c3cd1fa5da7032654a73311d7acbb6bc6f4685804d1c32b6a060d2",
         "envelope_valid": true,
         "core_kel_authority_valid": true,
         "verified_at": 1767227605,

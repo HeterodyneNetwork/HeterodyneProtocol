@@ -2,6 +2,7 @@ import { ed25519 } from "@noble/curves/ed25519";
 import { sha256 } from "@noble/hashes/sha2";
 import { base58 } from "@scure/base";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
+import { verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
 
 // Multicodec prefix for an Ed25519 public key (varint 0xed 0x01), per the
 // did:key method and the multicodec table.
@@ -56,4 +57,141 @@ export function nodeAdvertPayload(
   repoHead: string,
 ): string {
   return `heterodyne-node-advert-v1|${rid}|${nidDidKey}|${endpoint}|${expiry}|${repoHead}`;
+}
+
+export type RepositoryGraphFetch =
+  | { status: "available"; reachable_oids: string[] }
+  | { status: "transport_unavailable" };
+
+export type NodeAdvertisementValidation =
+  | {
+      status: "accepted";
+      rid: string;
+      endpoint: string;
+      repo_head: string;
+      expiry: number;
+    }
+  | {
+      status: "rejected";
+      failure:
+        | "bad_signature"
+        | "node_advert_shape_invalid"
+        | "repo_head_invalid"
+        | "nid_proof_invalid"
+        | "expired"
+        | "repo_head_unserved";
+    }
+  | {
+      status: "provisional";
+      failure: "transport_unavailable";
+      retryable: true;
+    };
+
+export function validateNodeAdvertisement(
+  event: NostrSignedEvent,
+  context: { now: number; graph_fetch: RepositoryGraphFetch },
+): NodeAdvertisementValidation {
+  if (!verifyEventSignature(event)) {
+    return { status: "rejected", failure: "bad_signature" };
+  }
+  if (event.kind !== 31010 || event.content !== "") {
+    return { status: "rejected", failure: "node_advert_shape_invalid" };
+  }
+
+  const single = (name: string): string[] | null => {
+    const matches = event.tags.filter((tag) => tag[0] === name);
+    return matches.length === 1 && matches[0].length === 2 ? matches[0] : null;
+  };
+  const d = single("d");
+  const heterodyne = single("heterodyne");
+  const rid = single("rid");
+  const nid = single("nid");
+  const endpoint = single("endpoint");
+  const expiryTag = single("expiry");
+  const proof = single("nid_proof");
+  const repoHead = single("repo_head");
+  if (
+    d === null ||
+    heterodyne?.[1] !== "node_advert" ||
+    rid === null ||
+    nid === null ||
+    endpoint === null ||
+    expiryTag === null ||
+    proof === null
+  ) {
+    return { status: "rejected", failure: "node_advert_shape_invalid" };
+  }
+  if (repoHead === null || !/^[0-9a-f]{40}$/.test(repoHead[1])) {
+    return { status: "rejected", failure: "repo_head_invalid" };
+  }
+  if (d[1] !== rid[1] || endpoint[1].length === 0) {
+    return { status: "rejected", failure: "node_advert_shape_invalid" };
+  }
+
+  const expiry = Number(expiryTag[1]);
+  if (
+    !Number.isSafeInteger(expiry) ||
+    expiry < 0 ||
+    String(expiry) !== expiryTag[1]
+  ) {
+    return { status: "rejected", failure: "node_advert_shape_invalid" };
+  }
+
+  const nidPublicKey = ed25519KeyFromDidKey(nid[1]);
+  if (
+    nidPublicKey === null ||
+    !/^[0-9a-f]{128}$/.test(proof[1]) ||
+    !safeEd25519Verify(
+      proof[1],
+      nodeAdvertPayload(rid[1], nid[1], endpoint[1], expiry, repoHead[1]),
+      nidPublicKey,
+    )
+  ) {
+    return { status: "rejected", failure: "nid_proof_invalid" };
+  }
+  if (expiry <= context.now) {
+    return { status: "rejected", failure: "expired" };
+  }
+  if (context.graph_fetch.status === "transport_unavailable") {
+    return {
+      status: "provisional",
+      failure: "transport_unavailable",
+      retryable: true,
+    };
+  }
+  if (!context.graph_fetch.reachable_oids.includes(repoHead[1])) {
+    return { status: "rejected", failure: "repo_head_unserved" };
+  }
+  return {
+    status: "accepted",
+    rid: rid[1],
+    endpoint: endpoint[1],
+    repo_head: repoHead[1],
+    expiry,
+  };
+}
+
+function ed25519KeyFromDidKey(value: string): string | null {
+  if (!value.startsWith("did:key:z")) return null;
+  try {
+    const decoded = base58.decode(value.slice("did:key:z".length));
+    if (
+      decoded.length !== ED25519_MULTICODEC.length + 32 ||
+      decoded[0] !== ED25519_MULTICODEC[0] ||
+      decoded[1] !== ED25519_MULTICODEC[1]
+    ) {
+      return null;
+    }
+    return bytesToHex(decoded.slice(ED25519_MULTICODEC.length));
+  } catch {
+    return null;
+  }
+}
+
+function safeEd25519Verify(sigHex: string, message: string, pubHex: string): boolean {
+  try {
+    return ed25519Verify(sigHex, message, pubHex);
+  } catch {
+    return false;
+  }
 }

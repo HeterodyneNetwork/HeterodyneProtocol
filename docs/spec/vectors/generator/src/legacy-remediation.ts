@@ -70,14 +70,45 @@ export async function remediateHistoricalProduction(
     const oldEvent = findSignedEvent(source.expected_output);
     if (oldEvent === undefined) throw new Error(`historical production vector has no signed event: ${sourceId}`);
     let content = oldEvent.content;
+    let currentCryptoInput: Record<string, unknown> = {};
+    let currentDecoded: Record<string, unknown> = {};
     if (sourceId === "privacy-tiers/tier3-index-key-derivation-and-encryption") {
-      const plaintext = { ...(source.expected_output.decoded as Record<string, unknown>).plaintext as Record<string, unknown>, spec_version: "comms/0.5.0" };
-      const indexKey = (source.expected_output.decoded as Record<string, unknown>).index_key as string;
+      const sourceDecoded = source.expected_output.decoded as Record<string, unknown>;
+      const plaintext = {
+        ...(sourceDecoded.plaintext as Record<string, unknown>),
+        spec_version: "comms/0.5.0",
+      };
+      const indexKey = sourceDecoded.index_key as string;
       content = nip44.v2.encrypt(JSON.stringify(plaintext), hexToBytes(indexKey), hexToBytes(source.input.nip44_nonce as string));
+      currentCryptoInput = {
+        hkdf: {
+          hash: "SHA-256",
+          ikm_hex: fixtures.audience_keys.alice_tier3_gen_a.key,
+          salt_utf8: source.input.key_id,
+          info_utf8: (source.input.hkdf as Record<string, unknown>).info,
+          output_len: 32,
+        },
+        nip44_nonce: source.input.nip44_nonce,
+        plaintext: JSON.stringify(plaintext),
+      };
+      currentDecoded = {
+        index_key: indexKey,
+        nip44_conversation_key: indexKey,
+        plaintext,
+        nip44_payload: content,
+      };
     }
     let tags = oldEvent.tags
       .filter((tag) => tag[0] !== "spec_version")
-      .map((tag) => [...tag]);
+      .map((tag) => tag[0] === "kel_head"
+        ? ["kel_head", fixtures.kel.alice.head.id, String(fixtures.kel.alice.head.seq)]
+        : [...tag]);
+    if (sourceId === "node-advert/valid-dual-signed") {
+      const repoHead = source.input.repo_head as string;
+      const endpointIndex = tags.findIndex((tag) => tag[0] === "endpoint");
+      if (endpointIndex < 0) throw new Error("historical node advertisement has no endpoint tag");
+      tags.splice(endpointIndex + 1, 0, ["repo_head", repoHead]);
+    }
     if (replacement.profile === "tier3") {
       tags = tags.filter((tag) => tag[0] !== "matrix_room_id");
     }
@@ -94,8 +125,25 @@ export async function remediateHistoricalProduction(
       migrated_from: sourceId,
       event_template: withoutSig(event),
       aux_rand: AUX_RAND,
+      ...currentCryptoInput,
+      ...(sourceId === "node-advert/valid-dual-signed"
+        ? {
+            validation_context: {
+              now: (source.input.expiry as number) - 1,
+              graph_fetch: {
+                status: "available",
+                reachable_oids: [source.input.repo_head as string],
+              },
+            },
+          }
+        : {}),
     };
-    item.vector.expected_output = { canonical_wire: canonicalNip01(event), decoded: { event }, id: event.id, sig: event.sig };
+    item.vector.expected_output = {
+      canonical_wire: canonicalNip01(event),
+      decoded: { event, ...currentDecoded },
+      id: event.id,
+      sig: event.sig,
+    };
   }
   return [...historical, ...current];
 }

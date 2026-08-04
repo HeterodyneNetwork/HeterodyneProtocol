@@ -1,4 +1,5 @@
 import { createHash, createPrivateKey, sign, type JsonWebKey } from "node:crypto";
+import { deflateSync, inflateSync } from "node:zlib";
 import { beforeAll, describe, expect, it } from "vitest";
 import { nip19 } from "nostr-tools";
 import { buildFixtures } from "./fixtures.js";
@@ -13,6 +14,7 @@ import {
 import { buildOidcScenario, buildTokenStatusVectors, replayTokenStatusMutationTable,
   replayTokenStatusVector } from "./topics-oidc.js";
 import {
+  MAX_STATUS_LIST_BYTES,
   STATUS_LIST_MEDIA_TYPE,
   buildContinuityTree,
   continuityManifestDigest,
@@ -117,6 +119,54 @@ describe("draft-ietf-oauth-status-list-21 exact one-bit profile", () => {
     });
     expect(encodeStatusList([1, 0, 0, 0, 0, 0, 0, 0]).lst).not.toContain("=");
     expect(STATUS_LIST_MEDIA_TYPE).toBe("application/statuslist+jwt");
+  });
+
+  it("accepts any signed valid ZLIB-wrapped DEFLATE representation", () => {
+    const uri = `${x.metadata.issuer}/${x.issuance.reservation.uri}`;
+    const canonical = generateStatusListToken({
+      state: x.issuedState,
+      uri,
+      private_jwk: OIDC_RSA_ONE.private_jwk,
+      iat: statusIat(),
+      exp: statusIat() + 60,
+      ttl: 30,
+    });
+    const raw = inflateSync(Buffer.from(canonical.claims.status_list.lst, "base64url"));
+    const alternativeLst = deflateSync(raw, { level: 1 }).toString("base64url");
+    expect(alternativeLst).not.toBe(canonical.claims.status_list.lst);
+    const alternative = resignStatusToken(canonical, alternativeLst);
+    expect(validateTokenStatus(
+      validatedAccessContext(alternative),
+      alternative,
+      statusJwksBytes(),
+      statusIat(),
+      statusIat(),
+      validationChain(alternative),
+    )).toMatchObject({ allowed: true });
+  });
+
+  it("rejects an authenticated DEFLATE stream above the bounded status-list output", () => {
+    const uri = `${x.metadata.issuer}/${x.issuance.reservation.uri}`;
+    const canonical = generateStatusListToken({
+      state: x.issuedState,
+      uri,
+      private_jwk: OIDC_RSA_ONE.private_jwk,
+      iat: statusIat(),
+      exp: statusIat() + 60,
+      ttl: 30,
+    });
+    const oversized = resignStatusToken(
+      canonical,
+      deflateSync(Buffer.alloc(MAX_STATUS_LIST_BYTES + 1)).toString("base64url"),
+    );
+    expect(validateTokenStatus(
+      validatedAccessContext(oversized),
+      oversized,
+      statusJwksBytes(),
+      statusIat(),
+      statusIat(),
+      validationChain(oversized),
+    )).toMatchObject({ allowed: false, reason_code: "oidc-status-invalid" });
   });
 
   it("signs a strict deterministic statuslist+jwt from validated canonical ledger state", () => {
@@ -483,16 +533,16 @@ describe("root-scoped Radicle issuer continuity", () => {
     } });
   });
 
-  it("executes all 33 named mutation-table cases and records their outcomes", async () => {
+  it("executes all 34 named mutation-table cases and records their outcomes", async () => {
     const vectors = await buildTokenStatusVectors(fixtures);
     const outcomes = vectors.flatMap(({ vector }) => {
       const replayed = replayTokenStatusMutationTable(vector.input);
       return Object.entries(replayed).map(([name, outcome]) => ({ name, outcome }));
     });
-    expect(outcomes).toHaveLength(33);
+    expect(outcomes).toHaveLength(34);
     expect(outcomes.map(({ name }) => name)).toEqual([
       "bit_0", "bit_7", "bit_8", "padding", "valid_to_invalid", "invalid_to_valid_without_resign",
-      "ttl_boundary", "expired", "bad_signature", "malformed_zlib", "out_of_range",
+      "ttl_boundary", "expired", "bad_signature", "malformed_zlib", "alternative_zlib", "out_of_range",
       "same_writer_same_index", "distinct_writer_namespace", "noncontiguous_prefix",
       "jwks_byte", "status_byte", "path_case", "branch_not_main",
       "digest_nibble", "byte_mismatch", "extra_status_path",
@@ -508,6 +558,8 @@ describe("root-scoped Radicle issuer continuity", () => {
       .toEqual({ kind: "status-bytes", bytes_hex: "80" });
     expect(outcomes.find(({ name }) => name === "bit_8")!.outcome.actual)
       .toEqual({ kind: "status-bytes", bytes_hex: "0001" });
+    expect(outcomes.find(({ name }) => name === "alternative_zlib")!.outcome.actual)
+      .toEqual({ kind: "decision", verdict: "accept", reason_code: null });
   });
 
   it("fails replay when a declared mutation expectation is changed or is not closed and typed", async () => {

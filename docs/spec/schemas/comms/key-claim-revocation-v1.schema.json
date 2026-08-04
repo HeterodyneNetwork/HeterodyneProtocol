@@ -4,13 +4,13 @@
   "title": "Heterodyne Comms irreversible key-claim revocation v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["claim_id", "revoked_at", "reason_code", "revoker", "comms_version", "registry_revision"],
+  "required": ["claim_id", "revoked_at", "reason_code", "revoker", "spec_version", "registry_revision"],
   "properties": {
     "claim_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "revoked_at": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
     "reason_code": { "type": "string", "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$", "minLength": 1, "maxLength": 128 },
     "revoker": { "$ref": "#/definitions/key_ref" },
-    "comms_version": { "const": "comms/0.5.0" },
+    "spec_version": { "const": "comms/0.5.0" },
     "registry_revision": { "const": 2 },
     "proof": { "$ref": "#/definitions/key_proof" }
   },
@@ -49,9 +49,74 @@
           "type": "object", "additionalProperties": false, "required": ["type", "jwk", "protected", "signature"],
           "properties": {
             "type": { "const": "jwk-jws" },
-            "jwk": { "type": "object", "minProperties": 1, "additionalProperties": true },
+            "jwk": { "$ref": "#/definitions/public_jwk" },
             "protected": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
             "signature": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" }
+          }
+        }
+      ]
+    },
+    "public_jwk": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kty", "crv", "x"],
+          "properties": {
+            "kty": { "const": "OKP" },
+            "crv": { "const": "Ed25519" },
+            "x": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+            "alg": { "const": "EdDSA" },
+            "use": { "const": "sig" },
+            "key_ops": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "uniqueItems": true,
+              "items": { "const": "verify" }
+            },
+            "kid": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kty", "crv", "x", "y"],
+          "properties": {
+            "kty": { "const": "EC" },
+            "crv": { "const": "P-256" },
+            "x": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+            "y": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+            "alg": { "const": "ES256" },
+            "use": { "const": "sig" },
+            "key_ops": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "uniqueItems": true,
+              "items": { "const": "verify" }
+            },
+            "kid": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kty", "n", "e"],
+          "properties": {
+            "kty": { "const": "RSA" },
+            "n": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+            "e": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+            "alg": { "const": "RS256" },
+            "use": { "const": "sig" },
+            "key_ops": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "uniqueItems": true,
+              "items": { "const": "verify" }
+            },
+            "kid": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" }
           }
         }
       ]

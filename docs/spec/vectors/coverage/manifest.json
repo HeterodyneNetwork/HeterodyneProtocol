@@ -1526,6 +1526,19 @@
     ]
   },
   {
+    "vector_id": "control/agent-feed-authorization-rejected",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-claim-consumption"
+    ]
+  },
+  {
     "vector_id": "control/agent-generation-reset",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
@@ -1536,6 +1549,32 @@
     "registry_revision": 3,
     "spec_refs": [
       "heterodyne:control/0.5.0#control-agent-token"
+    ]
+  },
+  {
+    "vector_id": "control/agent-missing-scope-rejected",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-requirements"
+    ]
+  },
+  {
+    "vector_id": "control/agent-proof-jti-mismatch-rejected",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-requirements"
     ]
   },
   {
@@ -1565,6 +1604,45 @@
     ]
   },
   {
+    "vector_id": "control/agent-source-claim-inactive-rejected",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-requirements"
+    ]
+  },
+  {
+    "vector_id": "control/agent-source-claim-substitution-rejected",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-requirements"
+    ]
+  },
+  {
+    "vector_id": "control/agent-stale-role-key-rejected",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-requirements"
+    ]
+  },
+  {
     "vector_id": "control/agent-token-per-use-binding",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
@@ -1575,6 +1653,19 @@
     "registry_revision": 3,
     "spec_refs": [
       "heterodyne:control/0.5.0#control-agent-token"
+    ]
+  },
+  {
+    "vector_id": "control/agent-wrong-audience-rejected",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-requirements"
     ]
   },
   {

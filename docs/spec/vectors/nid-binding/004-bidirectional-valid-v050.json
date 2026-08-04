@@ -46,7 +46,7 @@
         ],
         [
           "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
           "0"
         ],
         [
@@ -59,7 +59,7 @@
     "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
   },
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225605,31001,[[\"d\",\"nid:did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"],[\"heterodyne\",\"delegation\"],[\"radicle_nid\",\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"],[\"publishing_key\",\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"nid_proof\",\"2ccd2f7fc0b1fd1c7f823285e352ee3de25b771ba0c52ebd573dba97ce195e48fbbf3aee5be64e82b2d6fe6a33a58ad6592719a865b04cb66bbfd16fad30d70a\"],[\"valid_until\",\"\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"],[\"spec_version\",\"core/0.5.0\"]],\"\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225605,31001,[[\"d\",\"nid:did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"],[\"heterodyne\",\"delegation\"],[\"radicle_nid\",\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"],[\"publishing_key\",\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"nid_proof\",\"2ccd2f7fc0b1fd1c7f823285e352ee3de25b771ba0c52ebd573dba97ce195e48fbbf3aee5be64e82b2d6fe6a33a58ad6592719a865b04cb66bbfd16fad30d70a\"],[\"valid_until\",\"\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"],[\"spec_version\",\"core/0.5.0\"]],\"\"]",
     "decoded": {
       "event": {
         "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
@@ -96,7 +96,7 @@
           ],
           [
             "kel_head",
-            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
             "0"
           ],
           [
@@ -105,12 +105,12 @@
           ]
         ],
         "content": "",
-        "id": "b2041dbecbb546c2ffb55b4d4959b8811ab9b8bc5f9336de92bbe28c490b8b77",
-        "sig": "25fcd6e817385bc0280eae2f634c5ac25ccfc333e7d869584bc92ee357ec442b9e77c51bd880eed438270931d4f67e6608bed0531c7e5d472d25e1ee688d475e"
+        "id": "ce60a87ba673653e82a89a072cb4214c113d5d295c5652e9bc42d9d402b55837",
+        "sig": "26eb56122402ba9b1420849e8b55022d1e700b2f6721b973b2e8fce872794b19906a661a23da983aba51290849bdd5038e8540e831e0da259bffcf815b43de0b"
       }
     },
-    "id": "b2041dbecbb546c2ffb55b4d4959b8811ab9b8bc5f9336de92bbe28c490b8b77",
-    "sig": "25fcd6e817385bc0280eae2f634c5ac25ccfc333e7d869584bc92ee357ec442b9e77c51bd880eed438270931d4f67e6608bed0531c7e5d472d25e1ee688d475e"
+    "id": "ce60a87ba673653e82a89a072cb4214c113d5d295c5652e9bc42d9d402b55837",
+    "sig": "26eb56122402ba9b1420849e8b55022d1e700b2f6721b973b2e8fce872794b19906a661a23da983aba51290849bdd5038e8540e831e0da259bffcf815b43de0b"
   },
   "direction": "produce"
 }

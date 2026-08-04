@@ -14,7 +14,7 @@
     "trusted_rotation_context": {
       "prior_kel_accepted": true,
       "prior_kel_head": {
-        "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+        "id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
         "seq": 0
       },
       "routine_rotation_accepted": true,

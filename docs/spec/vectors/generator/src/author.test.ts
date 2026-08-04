@@ -7,6 +7,8 @@ import { TOPIC_SPECS } from "./topics.js";
 import { verifyVectorTree } from "./verify.js";
 import { verifyEventSignature } from "./nostr.js";
 import { writeCoverage } from "./coverage.js";
+import { buildFixtures } from "./fixtures.js";
+import { validateNodeAdvertisement } from "./radicle.js";
 
 let tempDirs: string[] = [];
 
@@ -31,6 +33,11 @@ describe("author mode", () => {
     const result = await verifyVectorTree(outputDir);
     expect(result.validFiles).toBe(written.length);
     expect(result.errors).toEqual([]);
+
+    for (const path of written.filter((candidate) => candidate.startsWith("keri/"))) {
+      const scenario = JSON.parse(await readFile(join(outputDir, ...path.split("/")), "utf8"));
+      expect(scenario.input.evidence_classification).toBe("non-wire-behavioral-scenario");
+    }
 
     const identity = JSON.parse(
       await readFile(join(outputDir, "identity", "001-root-attestation-valid.json"), "utf8"),
@@ -102,5 +109,43 @@ describe("author mode", () => {
       expect(current.expected_output.canonical_wire).toContain(stamp);
       expect(verifyEventSignature(current.expected_output.decoded.event)).toBe(true);
     }
+
+    const fixtures = buildFixtures();
+    expect(fixtures.legacy_kel.alice.head.id).toBe(
+      "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+    );
+    expect(fixtures.kel.alice.head.id).not.toBe(fixtures.legacy_kel.alice.head.id);
+
+    const archivedIdentity = JSON.parse(
+      await readFile(join(outputDir, "identity", "001-root-attestation-valid.json"), "utf8"),
+    );
+    expect(archivedIdentity.input.historical_expected_output.id).toBe(
+      "7d9c544d18a4c820060d2425f9e4ee74256c960fa26b76dee7cabcd3017fd4d6",
+    );
+    expect(
+      archivedIdentity.input.historical_expected_output.decoded.tags.find(
+        (tag: string[]) => tag[0] === "kel_head",
+      ),
+    ).toEqual(["kel_head", fixtures.legacy_kel.alice.head.id, "0"]);
+
+    const currentIdentity = JSON.parse(
+      await readFile(join(outputDir, "identity", "008-root-attestation-valid-v050.json"), "utf8"),
+    );
+    expect(
+      currentIdentity.expected_output.decoded.event.tags.find(
+        (tag: string[]) => tag[0] === "kel_head",
+      ),
+    ).toEqual(["kel_head", fixtures.kel.alice.head.id, "0"]);
+
+    const currentNodeAdvertisement = JSON.parse(
+      await readFile(join(outputDir, "node-advert", "005-valid-dual-signed-v050.json"), "utf8"),
+    );
+    expect(validateNodeAdvertisement(
+      currentNodeAdvertisement.expected_output.decoded.event,
+      currentNodeAdvertisement.input.validation_context,
+    )).toMatchObject({
+      status: "accepted",
+      repo_head: currentNodeAdvertisement.input.validation_context.graph_fetch.reachable_oids[0],
+    });
   });
 });

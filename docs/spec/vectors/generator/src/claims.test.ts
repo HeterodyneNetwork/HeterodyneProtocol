@@ -51,7 +51,7 @@ const semanticWithoutId = () => ({
   expires_at: issuedAt + 86400,
   audience: [fixtures.personas.alice.cold_root.pubkey],
   visibility: "repository-private" as const,
-  comms_version: "comms/0.5.0" as const,
+  spec_version: "comms/0.5.0" as const,
   registry_revision: 2 as const,
 });
 
@@ -197,7 +197,7 @@ describe("claim revocation envelopes", () => {
       revoked_at: issuedAt + 9,
       reason_code: "claim-revoked",
       revoker: { type: "nostr-secp256k1", value: epoch.pubkey },
-      comms_version: "comms/0.5.0",
+      spec_version: "comms/0.5.0",
       registry_revision: 2,
     } as unknown as ClaimRevocation;
     expect(revocationProofPayload(stamped)).toBe(jcsCanonicalize({
@@ -205,23 +205,28 @@ describe("claim revocation envelopes", () => {
       claim_id: stamped.claim_id,
       revoked_at: stamped.revoked_at,
       reason_code: stamped.reason_code,
-      comms_version: "comms/0.5.0",
+      spec_version: "comms/0.5.0",
       registry_revision: 2,
     }));
     const stampedEvent = await revocationEvent(stamped);
     expect(() => validateClaimRevocationEnvelope(stampedEvent)).not.toThrow();
 
-    const { comms_version: _version, ...missingVersion } = stamped as ClaimRevocation & { comms_version: string };
+    const { spec_version: _version, ...missingVersion } = stamped as ClaimRevocation & { spec_version: string };
     const { registry_revision: _revision, ...missingRevision } = stamped as ClaimRevocation & { registry_revision: number };
     const missingVersionEvent = await revocationEvent(missingVersion as ClaimRevocation);
     const missingRevisionEvent = await revocationEvent(missingRevision as ClaimRevocation);
-    const wrongVersionEvent = await revocationEvent({ ...stamped, comms_version: "comms/0.5.1" } as unknown as ClaimRevocation);
+    const wrongVersionEvent = await revocationEvent({ ...stamped, spec_version: "comms/0.5.1" } as unknown as ClaimRevocation);
+    const legacyVersionEvent = await revocationEvent({
+      ...missingVersion,
+      comms_version: "comms/0.5.0",
+    } as unknown as ClaimRevocation);
     const wrongRevisionEvent = await revocationEvent({ ...stamped, registry_revision: 1 } as unknown as ClaimRevocation);
     expect(() => validateClaimRevocationEnvelope(missingVersionEvent))
-      .toThrow(/comms_version|required/);
+      .toThrow(/spec_version|required/);
     expect(() => validateClaimRevocationEnvelope(missingRevisionEvent))
       .toThrow(/registry_revision|required/);
-    expect(() => validateClaimRevocationEnvelope(wrongVersionEvent)).toThrow(/comms_version|const/);
+    expect(() => validateClaimRevocationEnvelope(wrongVersionEvent)).toThrow(/spec_version|const/);
+    expect(() => validateClaimRevocationEnvelope(legacyVersionEvent)).toThrow(/spec_version|required|additional/);
     expect(() => validateClaimRevocationEnvelope(wrongRevisionEvent)).toThrow(/registry_revision|const/);
   });
 
@@ -232,7 +237,7 @@ describe("claim revocation envelopes", () => {
       revoked_at: issuedAt + 9,
       reason_code: "claim-revoked",
       revoker: { type: "nostr-secp256k1", value: epoch.pubkey },
-      comms_version: "comms/0.5.0",
+      spec_version: "comms/0.5.0",
       registry_revision: 2,
     } as unknown as ClaimRevocation;
     const cases = [
@@ -403,6 +408,35 @@ describe("claim revocation envelopes", () => {
     expect(() => computeJwkThumbprint({ ...p256Jwk, x: Buffer.alloc(32).toString("base64url") } as Record<string, string>)).toThrow(/public|point|curve/);
   });
 
+  it("enforces closed public JWK members and exact optional metadata", () => {
+    const bare = {
+      kty: "OKP",
+      crv: "Ed25519",
+      x: Buffer.from(hexToBytes(device.public_key)).toString("base64url"),
+    };
+    const thumbprint = computeJwkThumbprint(bare);
+    expect(computeJwkThumbprint({
+      ...bare,
+      alg: "EdDSA",
+      use: "sig",
+      key_ops: ["verify"],
+      kid: thumbprint,
+    })).toBe(thumbprint);
+
+    for (const invalid of [
+      { ...bare, arbitrary: "accepted-by-open-object" },
+      { ...bare, x5c: ["certificate"] },
+      { ...bare, x5t: "thumbprint" },
+      { ...bare, kid: "wrong-kid" },
+      { ...bare, alg: "RS256" },
+      { ...bare, use: "enc" },
+      { ...bare, key_ops: ["sign"] },
+      { kty: "oct", k: "AA" },
+    ] as Array<Record<string, JsonValue>>) {
+      expect(() => computeJwkThumbprint(invalid)).toThrow(/JWK|member|kid|alg|use|key_ops|public|unsupported/);
+    }
+  });
+
   it("supports only the explicit EdDSA, RS256, and ES256 native JWS suites", async () => {
     const cases = [
       { alg: "RS256", keyType: "rsa" as const },
@@ -458,10 +492,22 @@ describe("claim revocation envelopes", () => {
 
     const privateJwk = { ...jwk, d: Buffer.from(hexToBytes(device.private_key)).toString("base64url") };
     const privateEvent = await revocationEvent({ ...base, proof: { ...proof, jwk: privateJwk } });
-    expect(() => validateClaimRevocationEnvelope(privateEvent)).toThrow(/private/);
+    expect(() => validateClaimRevocationEnvelope(privateEvent)).toThrow(/private|schema|additional/);
 
     const unsupportedEvent = await revocationEvent({ ...base, proof: { ...proof, protected: Buffer.from('{"alg":"none"}').toString("base64url") } });
     expect(() => validateClaimRevocationEnvelope(unsupportedEvent)).toThrow(/alg|algorithm/);
+
+    const missingAlgEvent = await revocationEvent({
+      ...base,
+      proof: { ...proof, protected: Buffer.from("{}").toString("base64url") },
+    });
+    expect(() => validateClaimRevocationEnvelope(missingAlgEvent)).toThrow(/protected|header|alg/);
+
+    const hmacEvent = await revocationEvent({
+      ...base,
+      proof: { ...proof, protected: Buffer.from('{"alg":"HS256"}').toString("base64url") },
+    });
+    expect(() => validateClaimRevocationEnvelope(hmacEvent)).toThrow(/alg|algorithm/);
 
     const duplicateAlg = Buffer.from('{"alg":"none","alg":"EdDSA"}').toString("base64url");
     const duplicateAlgEvent = await revocationEvent({ ...base, proof: { ...proof, protected: duplicateAlg } });
@@ -572,7 +618,7 @@ describe("claim trust, attenuation, and authorization state", () => {
       audience: [fixtures.personas.alice.cold_root.pubkey, "https://rp.example"],
       resources: ["rad:claims", "rad:claims/device"],
       visibility: "repository-private",
-      comms_version: "comms/0.5.0",
+      spec_version: "comms/0.5.0",
       registry_revision: 2,
       ...overrides,
     };
@@ -799,8 +845,10 @@ describe("claim trust, attenuation, and authorization state", () => {
       expires_at: root.expires_at,
       parent_claim_id: root.claim_id,
     });
-    expect(() => verifyClaimChain(equalWindow, new Map([[root.claim_id, root], [equalWindow.claim_id, equalWindow]])))
-      .toThrow(/claim-attenuation-violation.*validity window/);
+    expect(verifyClaimChain(
+      equalWindow,
+      new Map([[root.claim_id, root], [equalWindow.claim_id, equalWindow]]),
+    )).toEqual([root, equalWindow]);
   });
 
   it("requires explicit authorization audience and resource restrictions", () => {
@@ -836,6 +884,11 @@ describe("claim trust, attenuation, and authorization state", () => {
       event_created_at: issuedAt + 11,
     };
     expect(resolveClaimState(active, [active], context(active, { revocations: [directRevocation] }))).toBe("revoked");
+    expect(authorizeWithClaim(active, [active], context(active, {
+      trusted_issuers: [],
+      repository_confirmed: new Set(),
+      revocations: [directRevocation],
+    }))).toEqual({ allowed: false, state: "revoked", reason_code: "claim-revoked" });
     const copied = context(active, { trusted_issuers: [] });
     copied.subject_proof = { ...copied.subject_proof!, challenge: { ...copied.subject_proof!.challenge, operation: "write" } };
     expect(resolveClaimState(active, [active], copied)).toBe("invalid");
@@ -1253,7 +1306,10 @@ describe("normative claim vector authoring", () => {
     const byId = new Map(vectors.map(({ vector }) => [vector.vector_id, vector]));
     const claimMutations = byId.get("claims/canonical-nostr-subject")!
       .input.rejection_mutations as Array<{ name: string; event: NostrSignedEvent; reason_code: string }>;
-    expect(claimMutations).toHaveLength(5);
+    expect(claimMutations.map(({ name }) => name)).toEqual([
+      "extra-tag-after", "extra-tag-before", "duplicate-d", "malformed-d", "misordered-d",
+      "missing-spec-version", "legacy-comms-version", "wrong-spec-version",
+    ]);
     for (const mutation of claimMutations) {
       expect(verifyEventSignature(mutation.event)).toBe(true);
       expect(mutation.reason_code).toBe("claim-schema-invalid");
@@ -1264,12 +1320,34 @@ describe("normative claim vector authoring", () => {
     }
     const revocationMutations = byId.get("claims/authorization-self-revocation")!
       .input.rejection_mutations as Array<{ name: string; event: NostrSignedEvent; reason_code: string }>;
-    expect(revocationMutations).toHaveLength(9);
+    expect(revocationMutations).toHaveLength(10);
     expect(revocationMutations.map(({ name }) => name)).toEqual([
       "revocation-extra-tag-after", "revocation-extra-tag-before", "revocation-duplicate-d",
-      "revocation-malformed-d", "revocation-misordered-d", "missing-comms-version",
-      "missing-registry-revision", "wrong-comms-version", "wrong-registry-revision",
+      "revocation-malformed-d", "revocation-misordered-d", "missing-spec-version",
+      "legacy-comms-version", "missing-registry-revision", "wrong-spec-version",
+      "wrong-registry-revision",
     ]);
+    const jwkMutations = byId.get("claims/canonical-jwk-thumbprint-subject")!
+      .input.jwk_rejection_mutations as Array<{
+        name: string;
+        event: NostrSignedEvent;
+        reason_code: string;
+      }>;
+    expect(jwkMutations.map(({ name }) => name)).toEqual([
+      "missing-protected-alg",
+      "extra-protected-member",
+      "none-protected-alg",
+      "hmac-protected-alg",
+      "extra-jwk-member",
+      "wrong-jwk-alg",
+      "wrong-jwk-kid",
+    ]);
+    for (const mutation of jwkMutations) {
+      expect(verifyEventSignature(mutation.event)).toBe(true);
+      expect(() => validateClaimRevocationEnvelope(mutation.event)).toThrow();
+      expect(["claim-schema-invalid", "claim-key-reference-invalid", "claim-subject-proof-invalid"])
+        .toContain(mutation.reason_code);
+    }
     for (const mutation of revocationMutations) {
       expect(verifyEventSignature(mutation.event)).toBe(true);
       expect(mutation.reason_code).toBe("claim-schema-invalid");

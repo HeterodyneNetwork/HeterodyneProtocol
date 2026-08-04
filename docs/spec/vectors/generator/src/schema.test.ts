@@ -196,13 +196,23 @@ describe("Comms claim schemas", () => {
     not_before: 1784390400,
     expires_at: 1784476800,
     visibility: "repository-private",
-    comms_version: "comms/0.5.0",
+    spec_version: "comms/0.5.0",
     registry_revision: 2,
   };
 
   it("accepts exact claims and rejects extra properties", () => {
     expect(() => validateKeyClaimSchemaOrThrow(base)).not.toThrow();
     expect(() => validateKeyClaimSchemaOrThrow({ ...base, extra: true })).toThrow(/additional/);
+    const { spec_version: _version, ...missingVersion } = base;
+    expect(() => validateKeyClaimSchemaOrThrow(missingVersion)).toThrow(/spec_version|required/);
+    expect(() => validateKeyClaimSchemaOrThrow({
+      ...missingVersion,
+      comms_version: "comms/0.5.0",
+    })).toThrow(/spec_version|required|additional/);
+    expect(() => validateKeyClaimSchemaOrThrow({
+      ...base,
+      spec_version: "comms/0.5.1",
+    })).toThrow(/spec_version|const/);
   });
 
   it("requires bounded authorization expiry and caps delegation depth at eight", () => {
@@ -235,18 +245,61 @@ describe("Comms claim schemas", () => {
       revoked_at: 1784390500,
       reason_code: "claim-revoked",
       revoker: key,
-      comms_version: "comms/0.5.0",
+      spec_version: "comms/0.5.0",
       registry_revision: 2,
     };
     expect(() => validateClaimRevocationSchemaOrThrow(revocation)).not.toThrow();
-    const { comms_version: _version, ...missingVersion } = revocation;
+    const { spec_version: _version, ...missingVersion } = revocation;
     const { registry_revision: _revision, ...missingRevision } = revocation;
-    expect(() => validateClaimRevocationSchemaOrThrow(missingVersion)).toThrow(/comms_version|required/);
+    expect(() => validateClaimRevocationSchemaOrThrow(missingVersion)).toThrow(/spec_version|required/);
+    expect(() => validateClaimRevocationSchemaOrThrow({
+      ...missingVersion,
+      comms_version: "comms/0.5.0",
+    })).toThrow(/spec_version|required|additional/);
     expect(() => validateClaimRevocationSchemaOrThrow(missingRevision)).toThrow(/registry_revision|required/);
-    expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, comms_version: "comms/0.5.1" })).toThrow(/comms_version|const/);
+    expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, spec_version: "comms/0.5.1" })).toThrow(/spec_version|const/);
     expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, registry_revision: 1 })).toThrow(/registry_revision|const/);
     expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, reason_code: "not-registered" })).toThrow(/reason_code/);
     expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, extra: true })).toThrow(/additional/);
     expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, revoked_at: Number.NEGATIVE_INFINITY })).toThrow();
+  });
+
+  it("closes embedded public JWK profiles at the revocation schema boundary", () => {
+    const jwk = {
+      kty: "OKP",
+      crv: "Ed25519",
+      x: "A".repeat(43),
+      alg: "EdDSA",
+      use: "sig",
+      key_ops: ["verify"],
+      kid: "B".repeat(43),
+    };
+    const revocation = {
+      claim_id: base.claim_id,
+      revoked_at: 1784390500,
+      reason_code: "claim-revoked",
+      revoker: { type: "jwk-thumbprint", value: "B".repeat(43) },
+      spec_version: "comms/0.5.0",
+      registry_revision: 2,
+      proof: {
+        type: "jwk-jws",
+        jwk,
+        protected: "AA",
+        signature: "AA",
+      },
+    };
+    expect(() => validateClaimRevocationSchemaOrThrow(revocation)).not.toThrow();
+    expect(() => validateClaimRevocationSchemaOrThrow({
+      ...revocation,
+      proof: { ...revocation.proof, jwk: { ...jwk, arbitrary: true } },
+    })).toThrow(/additional|oneOf/);
+    expect(() => validateClaimRevocationSchemaOrThrow({
+      ...revocation,
+      proof: { ...revocation.proof, jwk: { ...jwk, alg: "RS256" } },
+    })).toThrow(/alg|const|oneOf/);
+    expect(() => validateClaimRevocationSchemaOrThrow({
+      ...revocation,
+      proof: { ...revocation.proof, jwk: { ...jwk, d: "A".repeat(43) } },
+    })).toThrow(/additional|oneOf/);
   });
 });

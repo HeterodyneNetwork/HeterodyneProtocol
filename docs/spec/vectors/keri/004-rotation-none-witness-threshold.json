@@ -10,6 +10,7 @@
   "vector_id": "keri/rotation-none-witness-threshold",
   "description": "None-strategy rotation is accepted only with the configured witness threshold.",
   "input": {
+    "evidence_classification": "non-wire-behavioral-scenario",
     "event_type": "rotation",
     "sequence": 1,
     "strategy": "none",

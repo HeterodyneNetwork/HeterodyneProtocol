@@ -1,5 +1,6 @@
-import { deriveMaterializedRefs, type KelEntry, type MaterializedState } from "./keri-materialized.js";
-import { inceptionTemplate } from "./kel.js";
+import { deriveMaterializedRefs, type KelEntry } from "./keri-materialized.js";
+import { inceptionTemplate, rotationContent } from "./kel.js";
+import { replayKel } from "./kel-replay.js";
 import { canonicalNip01, getPublicKey, signEvent } from "./nostr.js";
 import { AUX_RAND, consumeVector, produceAuthored } from "./vector-helpers.js";
 import type { Fixtures } from "./fixtures.js";
@@ -42,16 +43,30 @@ export async function buildKeriAuthorityMaterializedVectors(fixtures: Fixtures):
       ["strategy", "committed"],
       ["epoch_key", e2],
     ],
-    content: "[]",
+    content: rotationContent([]),
     auxRand: AUX_RAND,
   });
 
-  const state0: MaterializedState = { cold_root: cold.pubkey, s: 0, epoch_key: e1, witnesses: [], threshold: 0, producing_event_id: inception.id };
-  const state1: MaterializedState = { cold_root: cold.pubkey, s: 1, epoch_key: e2, witnesses: [], threshold: 0, producing_event_id: rotation.id };
-  const kel: KelEntry[] = [
-    { event_id: inception.id, created_at: T, nip01_raw: canonicalNip01(inception), state: state0 },
-    { event_id: rotation.id, created_at: T + 3600, nip01_raw: canonicalNip01(rotation), state: state1 },
-  ];
+  const replay = replayKel([
+    {
+      nip01_raw: canonicalNip01(inception),
+      id: inception.id,
+      sig: inception.sig,
+      source: "repo",
+      observed_order: 0,
+    },
+    {
+      nip01_raw: canonicalNip01(rotation),
+      id: rotation.id,
+      sig: rotation.sig,
+      source: "repo",
+      observed_order: 1,
+    },
+  ]);
+  if (replay.status !== "accepted" || replay.head?.id !== rotation.id || replay.rejected.length > 0) {
+    throw new Error(`current materialized-KEL fixture failed independent replay: ${JSON.stringify(replay)}`);
+  }
+  const kel: KelEntry[] = replay.entries;
   const refs = deriveMaterializedRefs(kel);
 
   const exportDigestMap = { [String(0)]: inception.id, [String(1)]: rotation.id };

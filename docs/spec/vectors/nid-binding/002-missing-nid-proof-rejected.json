@@ -36,18 +36,22 @@
           "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
         ],
         [
+          "kel_head",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+          "0"
+        ],
+        [
           "valid_until",
           ""
         ],
         [
-          "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
-          "0"
+          "spec_version",
+          "core/0.5.0"
         ]
       ],
       "content": "",
-      "id": "d425f471bbe81cdb8bd2f8fee4463eb74fdad5bf6e9f20b0a791474cd09ae8c9",
-      "sig": "b24abd1b775060a1341415af07183840126a54d477fe4c8a8420aaa4ffc1f113f690e4abada5679bb9a437790bd986f8e08d30aad7c5d4f426c53eb13d5ce98f"
+      "id": "d31bc5ae5cfae0aacd37999639fca23fa6a82a7d76bd3f95de6521a82a228bd1",
+      "sig": "7b9c5ae032e5cbc6ccd29596b88db9696f6d2d2da86d88807bf3f9dacd05523e1fb6eebdd2099c769a8396a54c86ff338234fcbd159bbe12366ac11db5e9f79d"
     },
     "vector_context": {
       "decision_trace": [

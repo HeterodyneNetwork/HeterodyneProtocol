@@ -85,7 +85,7 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
       audience: [audience],
       resources: [resource],
       visibility: "repository-private" as const,
-      comms_version: "comms/0.5.0" as const,
+      spec_version: "comms/0.5.0" as const,
       registry_revision: 2 as const,
       ...overrides,
     };
@@ -204,6 +204,39 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
       })),
     };
   }));
+  const { spec_version: _claimSpecVersion, ...claimWithoutSpecVersion } = nostrClaim;
+  const claimContentMutationCases = [
+    { name: "missing-spec-version", semantic: claimWithoutSpecVersion },
+    {
+      name: "legacy-comms-version",
+      semantic: { ...claimWithoutSpecVersion, comms_version: "comms/0.5.0" },
+    },
+    {
+      name: "wrong-spec-version",
+      semantic: { ...nostrClaim, spec_version: "comms/0.5.1" },
+    },
+  ];
+  const claimContentMutations = await Promise.all(
+    claimContentMutationCases.map(async ({ name, semantic }) => {
+      const event = await signEvent({
+        secretKey: epoch.private_key,
+        auxRand: AUX_RAND,
+        created_at: nostrClaim.issued_at,
+        kind: 31013,
+        tags: [["d", nostrClaim.claim_id]],
+        content: jcsCanonicalize(semantic),
+      });
+      return {
+        name,
+        event,
+        reason_code: rejectionReason(() => validateClaimEnvelope(event, {
+          issuer_authorized: true,
+          registry_revision: 2,
+        })),
+      };
+    }),
+  );
+  const claimMutations = [...claimTagMutations, ...claimContentMutations];
 
   const parent = makeClaim({
     subject: delegatedIssuer,
@@ -300,12 +333,16 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
     content: jcsCanonicalize(selfRevocation),
   });
   const verifiedSelfRevocation = validateClaimRevocationEnvelope(selfRevocationEvent);
-  const { comms_version: _selfVersion, ...missingRevocationVersion } = selfRevocation;
+  const { spec_version: _selfVersion, ...missingRevocationVersion } = selfRevocation;
   const { registry_revision: _selfRevision, ...missingRevocationRevision } = selfRevocation;
   const revocationContentMutations = [
-    { name: "missing-comms-version", semantic: missingRevocationVersion },
+    { name: "missing-spec-version", semantic: missingRevocationVersion },
+    {
+      name: "legacy-comms-version",
+      semantic: { ...missingRevocationVersion, comms_version: "comms/0.5.0" },
+    },
     { name: "missing-registry-revision", semantic: missingRevocationRevision },
-    { name: "wrong-comms-version", semantic: { ...selfRevocation, comms_version: "comms/0.5.1" } },
+    { name: "wrong-spec-version", semantic: { ...selfRevocation, spec_version: "comms/0.5.1" } },
     { name: "wrong-registry-revision", semantic: { ...selfRevocation, registry_revision: 1 } },
   ];
   const revocationMutations = [
@@ -521,6 +558,77 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
     content: jcsCanonicalize(validJwkRevocation),
   });
   const verifiedJwkRevocation = validateClaimRevocationEnvelope(validJwkRevocationEvent);
+  const protectedHeader = (header: Record<string, JsonValue>) =>
+    Buffer.from(jcsCanonicalize(header), "utf8").toString("base64url");
+  const baseJwkProof = validJwkRevocation.proof as Extract<KeyProof, { type: "jwk-jws" }>;
+  const jwkMutationSemantics: Array<{ name: string; semantic: ClaimRevocation }> = [
+    {
+      name: "missing-protected-alg",
+      semantic: {
+        ...validJwkRevocation,
+        proof: { ...baseJwkProof, protected: protectedHeader({}) },
+      },
+    },
+    {
+      name: "extra-protected-member",
+      semantic: {
+        ...validJwkRevocation,
+        proof: { ...baseJwkProof, protected: protectedHeader({ alg: "EdDSA", typ: "JWT" }) },
+      },
+    },
+    {
+      name: "none-protected-alg",
+      semantic: {
+        ...validJwkRevocation,
+        proof: { ...baseJwkProof, protected: protectedHeader({ alg: "none" }) },
+      },
+    },
+    {
+      name: "hmac-protected-alg",
+      semantic: {
+        ...validJwkRevocation,
+        proof: { ...baseJwkProof, protected: protectedHeader({ alg: "HS256" }) },
+      },
+    },
+    {
+      name: "extra-jwk-member",
+      semantic: {
+        ...validJwkRevocation,
+        proof: { ...baseJwkProof, jwk: { ...publicJwk, arbitrary: true } },
+      },
+    },
+    {
+      name: "wrong-jwk-alg",
+      semantic: {
+        ...validJwkRevocation,
+        proof: { ...baseJwkProof, jwk: { ...publicJwk, alg: "RS256" } },
+      },
+    },
+    {
+      name: "wrong-jwk-kid",
+      semantic: {
+        ...validJwkRevocation,
+        proof: { ...baseJwkProof, jwk: { ...publicJwk, kid: "A".repeat(43) } },
+      },
+    },
+  ];
+  const jwkRejectionMutations = (await Promise.all(
+    jwkMutationSemantics.map(async ({ name, semantic }) => ({
+      name,
+      event: await signEvent({
+        secretKey: epoch.private_key,
+        auxRand: AUX_RAND,
+        created_at: semantic.revoked_at,
+        kind: 31014,
+        tags: [["d", semantic.claim_id]],
+        content: jcsCanonicalize(semantic),
+      }),
+    })),
+  )).map(({ name, event }) => ({
+    name,
+    event,
+    reason_code: rejectionReason(() => validateClaimRevocationEnvelope(event)),
+  }));
   const copiedChallenge = { ...jwkChallenge, nonce: "79".repeat(16) };
   const copiedProofDecision = authorizeWithClaim(
     jwkClaim,
@@ -580,7 +688,7 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
       ...canonicalCase("001-canonical-nostr-subject.json", "canonical-nostr-subject", nostrClaim, nostrEvent, nostrChallenge, nostrProof(nostrChallenge), "nostr-bip340-v1"),
       input: {
         ...canonicalCase("001-canonical-nostr-subject.json", "canonical-nostr-subject", nostrClaim, nostrEvent, nostrChallenge, nostrProof(nostrChallenge), "nostr-bip340-v1").input,
-        rejection_mutations: claimTagMutations,
+        rejection_mutations: claimMutations,
       },
       expected_output: {
         verdict: "accept",
@@ -589,7 +697,7 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
           subject: nostrClaim.subject,
           proof_profile: "nostr-bip340-v1",
           registry_revision: 2,
-          rejection_mutations: claimTagMutations.map(({ name, reason_code }) => ({ name, reason_code })),
+          rejection_mutations: claimMutations.map(({ name, reason_code }) => ({ name, reason_code })),
         },
       },
     },
@@ -600,6 +708,7 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
       input: {
         ...canonicalCase("003-canonical-jwk-thumbprint-subject.json", "canonical-jwk-thumbprint-subject", jwkClaim, jwkEvent, jwkChallenge, jwkProof(jwkChallenge), "jwk-jws-v1").input,
         positive_native_revocation_event: validJwkRevocationEvent,
+        jwk_rejection_mutations: jwkRejectionMutations,
       },
       expected_output: {
         verdict: "accept",
@@ -610,6 +719,10 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
           revocation_signer: verifiedJwkRevocation.signer,
           revocation_native_proof_valid: true,
           registry_revision: 2,
+          jwk_rejection_mutations: jwkRejectionMutations.map(({ name, reason_code }) => ({
+            name,
+            reason_code,
+          })),
         },
       },
     },

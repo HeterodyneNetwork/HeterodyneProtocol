@@ -32,6 +32,7 @@ import { didKeyFromEd25519 } from "./radicle.js";
 import { validateOidcContinuityManifestSchemaOrThrow } from "./schema.js";
 
 export const STATUS_LIST_MEDIA_TYPE = "application/statuslist+jwt" as const;
+export const MAX_STATUS_LIST_BYTES = 1_048_576;
 export type TokenStatus = 0 | 1;
 
 export type StatusListToken = {
@@ -230,8 +231,7 @@ export function validateTokenStatus(
       return denied("oidc-status-invalid");
     }
     const compressed = Buffer.from(list.lst, "base64url");
-    const bytes = inflateSync(compressed);
-    if (deflateSync(bytes, { level: 9 }).toString("base64url") !== list.lst) return denied("oidc-status-invalid");
+    const bytes = inflateSync(compressed, { maxOutputLength: MAX_STATUS_LIST_BYTES });
     const idx = Number(reference.idx);
     if (idx >= bytes.length * 8) return denied("oidc-status-index-invalid");
     const status = (bytes[Math.floor(idx / 8)] >> (idx % 8)) & 1;

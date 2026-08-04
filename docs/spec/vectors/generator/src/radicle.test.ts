@@ -9,7 +9,45 @@ import {
   ed25519Verify,
   nidBindingPayload,
   nodeAdvertPayload,
+  validateNodeAdvertisement,
 } from "./radicle.js";
+import { signEvent } from "./nostr.js";
+
+const AUX_RAND = "00".repeat(32);
+const NODE_SECRET = "21".padStart(64, "0");
+const NID_SECRET = "22".padStart(64, "0");
+const RID = "rad:zFixtureRid";
+const ENDPOINT = "wss://node.example/relay";
+const EXPIRY = 1_800_000_000;
+const REPO_HEAD = "ab".repeat(20);
+
+async function nodeAdvertisement(
+  mutateTags: (tags: string[][]) => string[][] = (tags) => tags,
+) {
+  const nid = didKeyFromEd25519(ed25519PublicKey(NID_SECRET));
+  const proof = ed25519Sign(
+    nodeAdvertPayload(RID, nid, ENDPOINT, EXPIRY, REPO_HEAD),
+    NID_SECRET,
+  );
+  return signEvent({
+    secretKey: NODE_SECRET,
+    created_at: EXPIRY - 100,
+    kind: 31010,
+    tags: mutateTags([
+      ["d", RID],
+      ["heterodyne", "node_advert"],
+      ["rid", RID],
+      ["nid", nid],
+      ["endpoint", ENDPOINT],
+      ["repo_head", REPO_HEAD],
+      ["expiry", String(EXPIRY)],
+      ["nid_proof", proof],
+      ["spec_version", "core/0.5.0"],
+    ]),
+    content: "",
+    auxRand: AUX_RAND,
+  });
+}
 
 describe("Radicle / NID helpers", () => {
   it("encodes an Ed25519 did:key as multibase base58btc of the multicodec-prefixed key", () => {
@@ -43,5 +81,57 @@ describe("Radicle / NID helpers", () => {
     expect(nodeAdvertPayload("rad:zRID", "did:key:z6MkNid", "wss://n.example/relay", 1767312000, "abcd")).toBe(
       "heterodyne-node-advert-v1|rad:zRID|did:key:z6MkNid|wss://n.example/relay|1767312000|abcd",
     );
+  });
+
+  it("accepts a dual-signed advertisement only when a successful graph fetch contains its exact head", async () => {
+    const event = await nodeAdvertisement();
+    expect(validateNodeAdvertisement(event, {
+      now: EXPIRY - 1,
+      graph_fetch: { status: "available", reachable_oids: [REPO_HEAD, "cd".repeat(20)] },
+    })).toEqual({
+      status: "accepted",
+      rid: RID,
+      endpoint: ENDPOINT,
+      repo_head: REPO_HEAD,
+      expiry: EXPIRY,
+    });
+    expect(validateNodeAdvertisement(event, {
+      now: EXPIRY - 1,
+      graph_fetch: { status: "available", reachable_oids: ["cd".repeat(20)] },
+    })).toEqual({ status: "rejected", failure: "repo_head_unserved" });
+  });
+
+  it("treats transport unavailability as provisional instead of proving exclusion", async () => {
+    const event = await nodeAdvertisement();
+    expect(validateNodeAdvertisement(event, {
+      now: EXPIRY - 1,
+      graph_fetch: { status: "transport_unavailable" },
+    })).toEqual({
+      status: "provisional",
+      failure: "transport_unavailable",
+      retryable: true,
+    });
+  });
+
+  it.each([
+    ["missing", (tags: string[][]) => tags.filter(([name]) => name !== "repo_head")],
+    ["duplicate", (tags: string[][]) => [...tags, ["repo_head", REPO_HEAD]]],
+    ["malformed", (tags: string[][]) => tags.map((tag) =>
+      tag[0] === "repo_head" ? ["repo_head", REPO_HEAD.toUpperCase()] : tag)],
+  ])("rejects a %s canonical repo_head tag before graph lookup", async (_name, mutateTags) => {
+    const event = await nodeAdvertisement(mutateTags);
+    expect(validateNodeAdvertisement(event, {
+      now: EXPIRY - 1,
+      graph_fetch: { status: "available", reachable_oids: [REPO_HEAD] },
+    })).toEqual({ status: "rejected", failure: "repo_head_invalid" });
+  });
+
+  it("rejects a head-tag substitution because the NID proof binds the exact head", async () => {
+    const event = await nodeAdvertisement((tags) => tags.map((tag) =>
+      tag[0] === "repo_head" ? ["repo_head", "cd".repeat(20)] : tag));
+    expect(validateNodeAdvertisement(event, {
+      now: EXPIRY - 1,
+      graph_fetch: { status: "available", reachable_oids: ["cd".repeat(20)] },
+    })).toEqual({ status: "rejected", failure: "nid_proof_invalid" });
   });
 });

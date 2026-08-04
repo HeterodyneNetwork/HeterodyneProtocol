@@ -17,15 +17,32 @@
     "token": {
       "token_class": "control-enrollment",
       "token_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "issuer_device": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "persona": "1111111111111111111111111111111111111111111111111111111111111111",
+      "epoch_key": "2222222222222222222222222222222222222222222222222222222222222222",
+      "minting_device": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "kel_head": {
+        "event_id": "3333333333333333333333333333333333333333333333333333333333333333",
+        "sequence": 4
+      },
+      "issued_at": 900,
       "expires_at": 1200,
       "grant_tier": "regular",
       "state": "spent",
       "signature_valid": true,
-      "enrolling_key": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      "ledger_finality": "repository-final",
+      "ledger_decision": "active",
+      "enrolling_key": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "recorded_delegation_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
     },
     "redeeming_device": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "enrolling_key": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "delegation_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "current_persona": "1111111111111111111111111111111111111111111111111111111111111111",
+    "current_epoch_key": "2222222222222222222222222222222222222222222222222222222222222222",
+    "current_kel_head": {
+      "event_id": "3333333333333333333333333333333333333333333333333333333333333333",
+      "sequence": 4
+    },
     "now": 1000
   },
   "expected_output": {

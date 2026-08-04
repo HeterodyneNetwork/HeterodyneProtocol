@@ -24,7 +24,7 @@ export type ClaimVisibility = "public" | "pairwise-private" | "repository-privat
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
 export const CLAIM_REVOCATION_PROFILE = {
-  comms_version: "comms/0.5.0",
+  spec_version: "comms/0.5.0",
   registry_revision: 2,
 } as const;
 
@@ -52,7 +52,7 @@ export type ClaimSemanticBody = {
   parent_claim_id?: string;
   constraints?: DelegationConstraints;
   revokers?: KeyRef[];
-  comms_version: "comms/0.5.0";
+  spec_version: "comms/0.5.0";
   registry_revision: 2;
 };
 
@@ -67,7 +67,7 @@ export type ClaimRevocation = {
   reason_code: string;
   revoker: KeyRef;
   proof?: KeyProof;
-  comms_version: "comms/0.5.0";
+  spec_version: "comms/0.5.0";
   registry_revision: 2;
 };
 
@@ -154,7 +154,7 @@ export type AuthorizationDecision = {
 
 type RevocationProofBody = Pick<
   ClaimRevocation,
-  "claim_id" | "revoked_at" | "reason_code" | "comms_version" | "registry_revision"
+  "claim_id" | "revoked_at" | "reason_code" | "spec_version" | "registry_revision"
 >;
 
 const CLAIM_KIND = 31013;
@@ -222,7 +222,7 @@ export function revocationProofPayload(body: RevocationProofBody): string {
     claim_id: body.claim_id,
     revoked_at: body.revoked_at,
     reason_code: body.reason_code,
-    comms_version: body.comms_version,
+    spec_version: body.spec_version,
     registry_revision: body.registry_revision,
   });
 }
@@ -486,12 +486,6 @@ function assertAttenuated(parent: ClaimSemanticBody, child: ClaimSemanticBody): 
   ) {
     throw new Error("claim-attenuation-violation: child extended the expiry bound");
   }
-  if (
-    child.not_before === parent.not_before &&
-    child.expires_at === parent.expires_at
-  ) {
-    throw new Error("claim-attenuation-violation: delegated validity window must be strictly shortened");
-  }
   if (!isSubset(child.audience, parent.audience) || !isSubset(child.audience, constraints.audiences)) {
     throw new Error("claim-attenuation-violation: child widened audience scope");
   }
@@ -673,9 +667,7 @@ function invalidEvaluation(error: unknown, fallback = "claim-schema-invalid"): C
 }
 
 export function computeJwkThumbprint(jwk: Record<string, JsonValue>): string {
-  assertPublicJwk(jwk);
-  const required = thumbprintMembers(jwk);
-  return Buffer.from(sha256(utf8Bytes(jcsCanonicalize(required)))).toString("base64url");
+  return inspectPublicJwk(jwk).thumbprint;
 }
 
 function assertAddressedCommsEvent(event: NostrSignedEvent, expectedKind: number): void {
@@ -887,7 +879,12 @@ function thumbprintMembers(jwk: Record<string, JsonValue>): Record<string, strin
   throw new Error(`claim-key-reference-invalid: unsupported public JWK kty ${kty}`);
 }
 
-function assertPublicJwk(jwk: Record<string, JsonValue>): void {
+type PublicJwkProfile = {
+  algorithm: "EdDSA" | "RS256" | "ES256";
+  thumbprint: string;
+};
+
+function inspectPublicJwk(jwk: Record<string, JsonValue>): PublicJwkProfile {
   if (jwk === null || Array.isArray(jwk) || typeof jwk !== "object") {
     throw new Error("claim-key-reference-invalid: JWK must be an object");
   }
@@ -899,6 +896,15 @@ function assertPublicJwk(jwk: Record<string, JsonValue>): void {
   for (const member of REMOTE_JWK_MEMBERS) {
     if (Object.prototype.hasOwnProperty.call(jwk, member)) {
       throw new Error(`claim-key-reference-invalid: embedded JWK contains prohibited remote-key metadata ${member}`);
+    }
+  }
+  const required = thumbprintMembers(jwk);
+  const kty = required.kty;
+  const algorithm = kty === "OKP" ? "EdDSA" : kty === "EC" ? "ES256" : "RS256";
+  const allowed = new Set([...Object.keys(required), "alg", "use", "key_ops", "kid"]);
+  for (const member of Object.keys(jwk)) {
+    if (!allowed.has(member)) {
+      throw new Error(`claim-key-reference-invalid: embedded JWK contains unrecognized member ${member}`);
     }
   }
   if (Object.prototype.hasOwnProperty.call(jwk, "use") && jwk.use !== "sig") {
@@ -916,9 +922,16 @@ function assertPublicJwk(jwk: Record<string, JsonValue>): void {
       throw new Error("claim-key-reference-invalid: JWK key_ops must contain exactly one unique verify operation");
     }
   }
-  if (Object.prototype.hasOwnProperty.call(jwk, "alg") && typeof jwk.alg !== "string") {
-    throw new Error("claim-key-reference-invalid: JWK alg metadata must be a string");
+  if (Object.prototype.hasOwnProperty.call(jwk, "alg") && jwk.alg !== algorithm) {
+    throw new Error(`claim-key-reference-invalid: JWK alg metadata must be exactly ${algorithm}`);
   }
+  const thumbprint = Buffer.from(
+    sha256(utf8Bytes(jcsCanonicalize(required))),
+  ).toString("base64url");
+  if (Object.prototype.hasOwnProperty.call(jwk, "kid") && jwk.kid !== thumbprint) {
+    throw new Error("claim-key-reference-invalid: JWK kid must equal its RFC 7638 thumbprint");
+  }
+  return { algorithm, thumbprint };
 }
 
 function requireJwkString(jwk: Record<string, JsonValue>, member: string): string {
@@ -1028,17 +1041,5 @@ function verifyDetachedJws(proof: Extract<KeyProof, { type: "jwk-jws" }>, payloa
 }
 
 function algorithmForJwk(jwk: Record<string, JsonValue>): "EdDSA" | "RS256" | "ES256" {
-  assertPublicJwk(jwk);
-  thumbprintMembers(jwk);
-  const kty = requireJwkString(jwk, "kty");
-  if (kty === "OKP" && requireJwkString(jwk, "crv") === "Ed25519") {
-    return "EdDSA";
-  }
-  if (kty === "RSA") {
-    return "RS256";
-  }
-  if (kty === "EC" && requireJwkString(jwk, "crv") === "P-256") {
-    return "ES256";
-  }
-  throw new Error(`claim-subject-proof-invalid: unsupported JWS key or algorithm for ${kty}`);
+  return inspectPublicJwk(jwk).algorithm;
 }

@@ -102,6 +102,17 @@ describe("evidence-bound release and OAuth state machines", () => {
     expect(release.release_digest).toMatch(/^[0-9a-f]{64}$/);
   });
 
+  it("requires a nonempty nonce on every authorization request", () => {
+    expect(validateAuthorizationRequest({
+      ...x.request,
+      nonce: "",
+    })).toMatchObject({ allowed: false, reason_code: "oidc-claim-release-denied" });
+    expect(validateAuthorizationRequest({
+      ...x.request,
+      nonce: undefined,
+    } as never)).toMatchObject({ allowed: false, reason_code: "oidc-claim-release-denied" });
+  });
+
   it("rejects evidence/request substitution and does not accept caller booleans", () => {
     expect(validateAuthorizationRequest({ ...x.request, client_id: "other-client" })).toMatchObject({ allowed: false });
     expect(validateAuthorizationRequest({ ...x.request, registration: x.request.consent })).toMatchObject({ allowed: false });
@@ -215,6 +226,20 @@ describe("evidence-derived strict JOSE projection", () => {
     expect(token.claims.aud).toEqual(["registered-client"]);
     expect(validateProjectedJwt(token.compact, x.metadata.issuer, "registered-client", { keys: [OIDC_RSA_ONE.public_jwk] },
       options("id_token", { nonce: "oidc-vector-nonce" }))).toMatchObject({ allowed: true });
+  });
+
+  it("rejects an empty expected or presented ID Token nonce even when they match", () => {
+    const token = projectIdToken(x.projection);
+    const emptyNonce = resignJwt(token.compact, (claims) => {
+      claims.nonce = "";
+    });
+    expect(validateProjectedJwt(
+      emptyNonce,
+      x.metadata.issuer,
+      "registered-client",
+      { keys: [OIDC_RSA_ONE.public_jwk] },
+      options("id_token", { nonce: "" }),
+    )).toMatchObject({ allowed: false, reason_code: "oidc-token-type-invalid" });
   });
 
   it("recomputes release, mint eligibility, returnability and full checkpoint", () => {

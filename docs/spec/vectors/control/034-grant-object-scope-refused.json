@@ -28,9 +28,9 @@
       ]
     },
     "authorization_state": "active",
-    "method": "repo.write",
-    "object_type": "repository",
-    "object_id": "rad:z-other",
+    "method": "config.put",
+    "object_type": "none",
+    "object_id": "",
     "fresh_ceremony": false
   },
   "expected_output": {

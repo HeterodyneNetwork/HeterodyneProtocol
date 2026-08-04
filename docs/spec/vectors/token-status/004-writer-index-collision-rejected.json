@@ -29,19 +29,19 @@
         "checkpoint": {
           "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
           "branch": "main",
-          "commit_oid": "f4f216948e1a9407fb46d3fac6436eb4dd7314b60a66132fe5d69d85997757da",
+          "commit_oid": "34d856fd10218a105d4f39114d8e7ba5c64fca2b6c4158139c6622275aa74aec",
           "observed_at": 1767245668
         },
         "manifest_max_age_seconds": 300,
         "signing_key_id": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
         "client_id": "registered-client",
-        "authorization_request_digest": "770a4e71e041906f41090fe01c438009e760e883bcb4c7004d5d36278ad677f7",
-        "release_digest": "2831580f7883dc7d96800df32059897437564e42c27d69cdcab98d1b73214d7c",
+        "authorization_request_digest": "10b2c9eae2f18c371e2af2f72baba3c514424acec5e6b4e7b31ef1d83e2c7978",
+        "release_digest": "f1c093adfe1865514b6dda4fb7e6fa7ad3238f4c162c646aff6b8bdc32bb15cd",
         "source_claim_ids": [
-          "06d8393868ffbb589a4912ee56a469b7a9a6bd1c6dac5906f0edea69d04091e5",
-          "12c16ea86fff2cfce0eb25dea9f793289ae4ebeceb8ac37fa7e93c00f8392a40",
-          "28b6fec3eb4d92e3106d121e7372aacaec2f5dcd8bc63dba9b7d5629f6725a93",
-          "d7591299c4d52d8b9c11dad9d705004dfca202d0942cab757869ec6c9238a36b"
+          "4ea73b4873aea25160080d5bd864f6b59ff48dadea0da85745cca728b64dcc7b",
+          "59cd96652a9b9093a0586fc461fcb90c65c901f4b8e1ef7a408b0c574d1d970d",
+          "70dfdf0c27342d99ed20b6b1bd148de172952cfd4a9fbe2a7aa0e729af7d4ef7",
+          "9693d6dd3a202173135cc8535180185bfc1e011334960bbdfb23a0c1fe5f0503"
         ],
         "issued_at": 1767245669,
         "expires_at": 1767246269
@@ -58,19 +58,19 @@
         "checkpoint": {
           "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
           "branch": "main",
-          "commit_oid": "f4f216948e1a9407fb46d3fac6436eb4dd7314b60a66132fe5d69d85997757da",
+          "commit_oid": "34d856fd10218a105d4f39114d8e7ba5c64fca2b6c4158139c6622275aa74aec",
           "observed_at": 1767245668
         },
         "manifest_max_age_seconds": 300,
         "signing_key_id": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
         "client_id": "registered-client",
-        "authorization_request_digest": "770a4e71e041906f41090fe01c438009e760e883bcb4c7004d5d36278ad677f7",
-        "release_digest": "2831580f7883dc7d96800df32059897437564e42c27d69cdcab98d1b73214d7c",
+        "authorization_request_digest": "10b2c9eae2f18c371e2af2f72baba3c514424acec5e6b4e7b31ef1d83e2c7978",
+        "release_digest": "f1c093adfe1865514b6dda4fb7e6fa7ad3238f4c162c646aff6b8bdc32bb15cd",
         "source_claim_ids": [
-          "06d8393868ffbb589a4912ee56a469b7a9a6bd1c6dac5906f0edea69d04091e5",
-          "12c16ea86fff2cfce0eb25dea9f793289ae4ebeceb8ac37fa7e93c00f8392a40",
-          "28b6fec3eb4d92e3106d121e7372aacaec2f5dcd8bc63dba9b7d5629f6725a93",
-          "d7591299c4d52d8b9c11dad9d705004dfca202d0942cab757869ec6c9238a36b"
+          "4ea73b4873aea25160080d5bd864f6b59ff48dadea0da85745cca728b64dcc7b",
+          "59cd96652a9b9093a0586fc461fcb90c65c901f4b8e1ef7a408b0c574d1d970d",
+          "70dfdf0c27342d99ed20b6b1bd148de172952cfd4a9fbe2a7aa0e729af7d4ef7",
+          "9693d6dd3a202173135cc8535180185bfc1e011334960bbdfb23a0c1fe5f0503"
         ],
         "issued_at": 1767245669,
         "expires_at": 1767246269

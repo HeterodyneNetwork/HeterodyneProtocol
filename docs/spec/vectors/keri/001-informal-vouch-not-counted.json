@@ -10,6 +10,7 @@
   "vector_id": "keri/informal-vouch-not-counted",
   "description": "A rotation that reaches threshold only by counting kind:31008 informal vouches is rejected.",
   "input": {
+    "evidence_classification": "non-wire-behavioral-scenario",
     "kel": [
       {
         "type": "inception",

@@ -47,15 +47,15 @@
         ],
         [
           "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
           "0"
         ]
       ],
       "content": "{\"profile\":\"heterodyne.social.org-feed.v1\",\"spec_version\":\"social/0.5.0\"}",
-      "id": "9335dcc7f98162b05d799485506984cf2118fec0f8f113bc0d2ca694c65a245e",
-      "sig": "ecce01c4d11260b39b848767cd4bcf68546dd23688ad27ee966891e4e54c42798d4694cc7896d1207a08f4170aed3b12580697d21a0303c3560415c66a59cc07"
+      "id": "090aaa6ad287c10384a2a2945eae4932ae48a82b3dde908b4b8fb3c891a41e29",
+      "sig": "b62f32f6ca37666b48d2ba156e20319c0c5778397aeb6073ad679df6a63819a8013c8875307d07c62b1fba6edb140bcbe578fd271d912509c60f41dd25a6ac16"
     },
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767226105,31007,[[\"d\",\"org-news:page-1\"],[\"heterodyne\",\"feed_index\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"rid\",\"rad:zFrWt9XjrvmW8vkFDXcL82YiFDsi\"],[\"feed_label\",\"Org news\"],[\"e\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"wss://relay.example\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"{\\\"profile\\\":\\\"heterodyne.social.org-feed.v1\\\",\\\"spec_version\\\":\\\"social/0.5.0\\\"}\"]"
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767226105,31007,[[\"d\",\"org-news:page-1\"],[\"heterodyne\",\"feed_index\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"rid\",\"rad:zFrWt9XjrvmW8vkFDXcL82YiFDsi\"],[\"feed_label\",\"Org news\"],[\"e\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"wss://relay.example\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"]],\"{\\\"profile\\\":\\\"heterodyne.social.org-feed.v1\\\",\\\"spec_version\\\":\\\"social/0.5.0\\\"}\"]"
   },
   "expected_output": {
     "verdict": "accept",

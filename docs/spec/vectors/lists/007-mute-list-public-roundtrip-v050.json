@@ -38,7 +38,7 @@
         ],
         [
           "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
           "0"
         ],
         [
@@ -55,7 +55,7 @@
     "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
   },
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225700,10000,[[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"t\",\"spam\"],[\"word\",\"airdrop\"],[\"e\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"],[\"heterodyne\",\"social-mute-list-v1\"],[\"spec_version\",\"social/0.5.0\"]],\"\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225700,10000,[[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"t\",\"spam\"],[\"word\",\"airdrop\"],[\"e\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"],[\"heterodyne\",\"social-mute-list-v1\"],[\"spec_version\",\"social/0.5.0\"]],\"\"]",
     "decoded": {
       "event": {
         "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
@@ -80,7 +80,7 @@
           ],
           [
             "kel_head",
-            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
             "0"
           ],
           [
@@ -93,12 +93,12 @@
           ]
         ],
         "content": "",
-        "id": "0e810f72a4f28373f2029d5c3eabd0f0ca10d03cb68e0d03ab46d404447e9750",
-        "sig": "89e6adafdd62c60361853a4c9e8a1bdcb5f1d30cb86b08057e14fa79dbae704dcb7e959f525fa5ad657dd624a1137deb414ed8f7082168cd57ac5753a8d84f4e"
+        "id": "02debd00a0901bf1ab55e6fe85e378e5abb0a582dcb6cc2b68eda9e94f9de096",
+        "sig": "a0751f45a5a772fd7592cf09ffb79323bd6b6637cfce0faffbde8cbdedbf7d95ba80c438fed59d06cbb5b28d23eea5dbcba76949f1cf8143a894b0c425fb3eee"
       }
     },
-    "id": "0e810f72a4f28373f2029d5c3eabd0f0ca10d03cb68e0d03ab46d404447e9750",
-    "sig": "89e6adafdd62c60361853a4c9e8a1bdcb5f1d30cb86b08057e14fa79dbae704dcb7e959f525fa5ad657dd624a1137deb414ed8f7082168cd57ac5753a8d84f4e"
+    "id": "02debd00a0901bf1ab55e6fe85e378e5abb0a582dcb6cc2b68eda9e94f9de096",
+    "sig": "a0751f45a5a772fd7592cf09ffb79323bd6b6637cfce0faffbde8cbdedbf7d95ba80c438fed59d06cbb5b28d23eea5dbcba76949f1cf8143a894b0c425fb3eee"
   },
   "direction": "produce"
 }

@@ -20,15 +20,15 @@
       "tags": [
         [
           "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
           "0"
         ]
       ],
       "content": "deterministic Comms-native envelope",
-      "id": "f67105e854ffaad1e3c1fa10f7d3c2c2908efc0b1f3d45b8480ae8bde5e8eb28",
-      "sig": "36852f67df1324409e65c34f1bfa15d3523fb7c02d67a8c3ebb8bdbe7b67eabf26880ed8235e3b07b929936e8b69445903095e4b31974ea618bd1300e318f540"
+      "id": "ee6f238c132b36e04134418ee48a571b8960e385341a4cccf4dda216da04e1c8",
+      "sig": "e8a799ba507f9dc26994046cfbef334146ce1a5d316abfd602fb3f957a95beac77d5f228d153cd47fd788ccb6368a19a44ee83c8e899b82347fd323a9ab0be6d"
     },
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767226100,1,[[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"deterministic Comms-native envelope\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767226100,1,[[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"]],\"deterministic Comms-native envelope\"]",
     "carriers": [
       "nostr_relay",
       "repo_relay"
@@ -37,7 +37,7 @@
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "deduplication_key": "f67105e854ffaad1e3c1fa10f7d3c2c2908efc0b1f3d45b8480ae8bde5e8eb28",
+      "deduplication_key": "ee6f238c132b36e04134418ee48a571b8960e385341a4cccf4dda216da04e1c8",
       "carrier_bytes_equal": true,
       "id_valid": true,
       "signature_valid": true

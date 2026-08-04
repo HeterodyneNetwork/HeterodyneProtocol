@@ -334,7 +334,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
   const advExpiry = T + 86400;
   const advPayload = nodeAdvertPayload(rid, nid1.did_key, endpoint, advExpiry, repoHead);
   const nidProof = ed25519Sign(advPayload, nid1.private_key);
-  const advTags = (proof: string, expiry: number): string[][] =>
+  const legacyAdvTags = (proof: string, expiry: number): string[][] =>
     withKelHead(
       [
         ["d", rid],
@@ -345,13 +345,33 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
         ["expiry", String(expiry)],
         ["nid_proof", proof],
       ],
-      fixtures.kel.alice.head,
+      fixtures.legacy_kel.alice.head,
     );
+  const currentAdvTags = (proof: string, expiry: number): string[][] => [
+    ["d", rid],
+    ["heterodyne", "node_advert"],
+    ["rid", rid],
+    ["nid", nid1.did_key],
+    ["endpoint", endpoint],
+    ["repo_head", repoHead],
+    ["expiry", String(expiry)],
+    ["nid_proof", proof],
+    ["kel_head", fixtures.kel.alice.head.id, String(fixtures.kel.alice.head.seq)],
+    ["spec_version", "core/0.5.0"],
+  ];
   const advEvent = await signEvent({
     secretKey: epoch.private_key,
     created_at: T + 50,
     kind: 31010,
-    tags: advTags(nidProof, advExpiry),
+    tags: legacyAdvTags(nidProof, advExpiry),
+    content: "",
+    auxRand: AUX_RAND,
+  });
+  const currentAdvEvent = await signEvent({
+    secretKey: epoch.private_key,
+    created_at: T + 50,
+    kind: 31010,
+    tags: currentAdvTags(nidProof, advExpiry),
     content: "",
     auxRand: AUX_RAND,
   });
@@ -381,7 +401,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
       vector_id: "node-advert/outer-sig-invalid-rejected",
       spec_refs: ["§7.0", "§14.3"],
       description: "A kind:31010 advertisement whose outer BIP-340 Nostr signature does not verify is rejected.",
-      input: { event: { ...advEvent, sig: "22".repeat(64) } },
+      input: { event: { ...currentAdvEvent, sig: "22".repeat(64) } },
       expected_output: { verdict: "reject", reason_code: "bad_signature" },
       decision_trace: ["validate_nip01_id", "verify_outer_bip340_signature"],
     }),
@@ -392,7 +412,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     secretKey: epoch.private_key,
     created_at: T + 50,
     kind: 31010,
-    tags: advTags(wrongNidProof, advExpiry),
+    tags: currentAdvTags(wrongNidProof, advExpiry),
     content: "",
     auxRand: AUX_RAND,
   });
@@ -403,7 +423,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     secretKey: epoch.private_key,
     created_at: T + 50,
     kind: 31010,
-    tags: advTags(expProof, expExpiry),
+    tags: currentAdvTags(expProof, expExpiry),
     content: "",
     auxRand: AUX_RAND,
   });
@@ -497,7 +517,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
 
   const bindPayload = nidBindingPayload(cold.pubkey, nid1.did_key);
   const bindProof = ed25519Sign(bindPayload, nid1.private_key);
-  const nidDelegationTags = (proof: string | null): string[][] => {
+  const nidDelegationTags = (proof: string | null, current: boolean): string[][] => {
     const tags: string[][] = [
       ["d", `nid:${nid1.did_key}`],
       ["heterodyne", "delegation"],
@@ -508,14 +528,22 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     if (proof !== null) {
       tags.push(["nid_proof", proof]);
     }
-    tags.push(["valid_until", ""]);
-    return withKelHead(tags, fixtures.kel.alice.head);
+    if (!current) {
+      tags.push(["valid_until", ""]);
+      return withKelHead(tags, fixtures.legacy_kel.alice.head);
+    }
+    tags.push(
+      ["kel_head", fixtures.kel.alice.head.id, String(fixtures.kel.alice.head.seq)],
+      ["valid_until", ""],
+      ["spec_version", "core/0.5.0"],
+    );
+    return tags;
   };
   const nidDelegation = await signEvent({
     secretKey: epoch.private_key,
     created_at: T + 5,
     kind: 31001,
-    tags: nidDelegationTags(bindProof),
+    tags: nidDelegationTags(bindProof, false),
     content: "",
     auxRand: AUX_RAND,
   });
@@ -523,7 +551,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     secretKey: epoch.private_key,
     created_at: T + 5,
     kind: 31001,
-    tags: nidDelegationTags(null),
+    tags: nidDelegationTags(null, true),
     content: "",
     auxRand: AUX_RAND,
   });
@@ -532,7 +560,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     secretKey: epoch.private_key,
     created_at: T + 5,
     kind: 31001,
-    tags: nidDelegationTags(wrongBindProof),
+    tags: nidDelegationTags(wrongBindProof, true),
     content: "",
     auxRand: AUX_RAND,
   });
@@ -709,7 +737,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
         ["feed_label", "Tech"],
         ["e", "cd".repeat(32), "wss://relay.example"],
       ],
-      fixtures.kel.alice.head,
+      fixtures.legacy_kel.alice.head,
     ),
     content: "",
     auxRand: AUX_RAND,
@@ -731,7 +759,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
         ["p", recipientNpub],
         ["cold_root", cold.pubkey],
       ],
-      fixtures.kel.alice.head,
+      fixtures.legacy_kel.alice.head,
     ),
     content: wrapContent,
     auxRand: AUX_RAND,
@@ -760,7 +788,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
         ["heterodyne_wrap", "room_key.v2"],
         ["key_id", audA.key_id],
       ],
-      fixtures.kel.alice.head,
+      fixtures.legacy_kel.alice.head,
     ),
     content: idxCipher,
     auxRand: AUX_RAND,
@@ -780,7 +808,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
         ["p", bob.cold_root.pubkey],
         ["p", carol.cold_root.pubkey],
       ],
-      fixtures.kel.alice.head,
+      fixtures.legacy_kel.alice.head,
     ),
     content: "",
     auxRand: AUX_RAND,

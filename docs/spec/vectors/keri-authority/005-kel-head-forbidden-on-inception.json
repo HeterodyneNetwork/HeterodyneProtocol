@@ -36,14 +36,18 @@
           "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
         ],
         [
+          "spec_version",
+          "core/0.5.0"
+        ],
+        [
           "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
           "0"
         ]
       ],
       "content": "",
-      "id": "3ef544a1ef12613ba3169e403bc94cd595d5f1d07c5d2c6d7d1926dea19eab6f",
-      "sig": "db69e3bd01bf15f7f362b8fd4f39fcd0ab9329eaad423704b8b2b511321bf9329ff2069b83609c03fb132298d37748e225c44ac722b09db5bfdaa6685e184021"
+      "id": "022002a9c46711060414f7c7183f754dc9331f815cb36ce37f96ed222a665892",
+      "sig": "52c0c7fe77ccaa099f3a42f96d4269f8e7ae35d26300b9b7fb20e010f4a6533c2bc3f1dfa261467f171eee1c54b83a30895ada9bd861b2a0661bcb17b58652fa"
     },
     "vector_context": {
       "decision_trace": [

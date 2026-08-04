@@ -441,6 +441,13 @@ control/changed-method-rejected
 control/changed-payload-rejected
 control/complete-without-response-rejected
 control/agent-publish-authorized
+control/agent-wrong-audience-rejected
+control/agent-missing-scope-rejected
+control/agent-proof-jti-mismatch-rejected
+control/agent-stale-role-key-rejected
+control/agent-source-claim-inactive-rejected
+control/agent-source-claim-substitution-rejected
+control/agent-feed-authorization-rejected
 control/raw-signing-refused
 control/key-access-refused
 control/human-profile-refused

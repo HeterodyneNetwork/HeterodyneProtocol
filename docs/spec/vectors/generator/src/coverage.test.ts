@@ -32,7 +32,7 @@ describe("family coverage", () => {
     );
     expect(new Set(coverage.map(({ vector_id }) => vector_id)).size).toBe(vectors.length);
     expect(coverage.filter(({ owner_document }) => owner_document === "control"))
-      .toHaveLength(65);
+      .toHaveLength(72);
     expect(coverage).toContainEqual(expect.objectContaining({
       vector_id: "stamping/control-profile-retains-core-owner",
       owner_document: "core",
@@ -47,6 +47,7 @@ describe("family coverage", () => {
       ["control/authorization-revoked", "control-claim-consumption"],
       ["control/mcp-inbound-execution-default-deny", "control-mcp"],
       ["control/agent-generation-reset", "control-agent-token"],
+      ["control/agent-source-claim-substitution-rejected", "control-agent-requirements"],
       ["control/transition-peer-tombstone", "control-session-lifecycle"],
       ["control/retention-no-backfill", "control-audit-retention"],
     ]) {

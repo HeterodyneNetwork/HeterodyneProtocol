@@ -1,6 +1,7 @@
 import { hexToBytes } from "./hex.js";
-import { inceptionTemplate, kelHeadTag, withKelHead } from "./kel.js";
-import { getPublicKey, signEvent } from "./nostr.js";
+import { inceptionTemplate, kelHeadTag, rotationContent, withKelHead } from "./kel.js";
+import { replayKel } from "./kel-replay.js";
+import { canonicalNip01, getPublicKey, signEvent } from "./nostr.js";
 import { ed25519Sign, nidBindingPayload } from "./radicle.js";
 import { AUX_RAND, consumeVector } from "./vector-helpers.js";
 import type { Fixtures } from "./fixtures.js";
@@ -22,7 +23,35 @@ export async function buildKeriAuthorityWireVectors(fixtures: Fixtures): Promise
   const pub2 = fixtures.device_publishing_keys.alice_device_2;
   const T = fixtures.test_epoch;
 
-  const acceptedKel = [{ kind: 31002, id: head.id, s: 0, epoch_key: epoch.pubkey }];
+  const acceptedInception = await signEvent({
+    secretKey: cold.private_key,
+    created_at: T,
+    kind: 31002,
+    tags: inceptionTemplate(cold.pubkey, epoch.pubkey, T).tags,
+    content: "",
+    auxRand: AUX_RAND,
+  });
+  const acceptedReplay = replayKel([{
+    nip01_raw: canonicalNip01(acceptedInception),
+    id: acceptedInception.id,
+    sig: acceptedInception.sig,
+    source: "repo",
+  }]);
+  if (
+    acceptedReplay.status !== "accepted"
+    || acceptedReplay.head?.id !== head.id
+    || acceptedReplay.rejected.length > 0
+  ) {
+    throw new Error(`current KEL fixture failed independent replay: ${JSON.stringify(acceptedReplay)}`);
+  }
+  const acceptedKel = acceptedReplay.entries.map((entry) => ({
+    kind: 31002,
+    id: entry.event_id,
+    s: entry.state.s,
+    epoch_key: entry.state.epoch_key,
+    nip01_raw: entry.nip01_raw,
+    materialized_state: entry.state,
+  }));
 
   // W1: a kind:1 post signed by the epoch key with NO kel_head tag.
   const absentEvent = await signEvent({
@@ -89,7 +118,7 @@ export async function buildKeriAuthorityWireVectors(fixtures: Fixtures): Promise
       ["epoch_key", getPublicKey("22".padStart(64, "0"))],
       kelHeadTag(head),
     ],
-    content: "[]",
+    content: rotationContent([]),
     auxRand: AUX_RAND,
   });
 

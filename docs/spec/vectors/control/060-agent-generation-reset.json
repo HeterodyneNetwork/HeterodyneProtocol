@@ -14,16 +14,54 @@
   "description": "A credential-ledger generation reset purges pending issuance and invalidates prior-generation authority.",
   "direction": "consume",
   "input": {
-    "token_generation": 4,
-    "current_generation": 5,
+    "request_binding": {
+      "issuer": "https://issuer.example/persona",
+      "pairwise_sub": "pairwise-agent-7",
+      "client_id": "heterodyne-agent-client",
+      "role_id": "4444444444444444444444444444444444444444444444444444444444444444",
+      "role_key": "8888888888888888888888888888888888888888888888888888888888888888",
+      "source_claim_ids": [
+        "claim-role-1",
+        "claim-registration-1"
+      ],
+      "audience": "https://issuer.example/persona/agent",
+      "scope": "heterodyne:agent:publish",
+      "token_jti": "agent-token-1",
+      "control_session": "1111111111111111111111111111111111111111111111111111111111111111",
+      "request_id": "agent-request-1",
+      "method": "heterodyne.agent.publish",
+      "payload_digest": "4931af6a828018995ec2b86d908deeaad4788cb436144808366757383de805b5",
+      "feed": "main",
+      "resource": "feed:main",
+      "ledger_persona": "5555555555555555555555555555555555555555555555555555555555555555",
+      "ledger_generation": 4,
+      "ledger_checkpoint": {
+        "event_id": "6666666666666666666666666666666666666666666666666666666666666666",
+        "sequence": 12
+      },
+      "ledger_status": "active"
+    },
+    "current_ledger": {
+      "persona": "5555555555555555555555555555555555555555555555555555555555555555",
+      "generation": 5,
+      "checkpoint": {
+        "event_id": "6666666666666666666666666666666666666666666666666666666666666666",
+        "sequence": 12
+      },
+      "status": "active"
+    },
     "pending_issuance_generation": 4
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "prior_token_authority": "invalid",
-      "pending_issuance": "purged",
-      "requires_current_generation_reissuance": true
+      "draft_control_decision": {
+        "verdict": "reject",
+        "reason_code": "agent-token-stale-credential",
+        "purge_pending_issuance": true,
+        "requires_current_generation_reissuance": true
+      },
+      "conformance_claimable": false
     }
   }
 }

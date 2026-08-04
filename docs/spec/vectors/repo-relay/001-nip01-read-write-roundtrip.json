@@ -26,13 +26,13 @@
           ],
           [
             "kel_head",
-            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
             "0"
           ]
         ],
         "content": "posted over a repo relay's NIP-01 wire",
-        "id": "d8c4e3efddb743987cfe9c78e68fa7d8d17c99d0f3ceffddf1021839a4936ea5",
-        "sig": "275b57ed1ae0194162b6c721df734c2056e45594ce58ce9f2e7e52a00b4a1511e7ea1ee6553f040673376d9f428858ea3f81902a0268c5f0e5738bf875c439a8"
+        "id": "778ed4dd1063851ce5cbfb3fe098934557dbedbb23b68062388d77be783dd428",
+        "sig": "ab112bfd6321706ba4511eb7d046926a03cad18e894d3e45ee9f67e9eec4dc47b963865b088f091627fb3f635d2e44e971c0d410908a10efc9f2448242c53623"
       }
     ],
     "plain_relay_frame": [
@@ -49,13 +49,13 @@
           ],
           [
             "kel_head",
-            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
             "0"
           ]
         ],
         "content": "posted over a repo relay's NIP-01 wire",
-        "id": "d8c4e3efddb743987cfe9c78e68fa7d8d17c99d0f3ceffddf1021839a4936ea5",
-        "sig": "275b57ed1ae0194162b6c721df734c2056e45594ce58ce9f2e7e52a00b4a1511e7ea1ee6553f040673376d9f428858ea3f81902a0268c5f0e5738bf875c439a8"
+        "id": "778ed4dd1063851ce5cbfb3fe098934557dbedbb23b68062388d77be783dd428",
+        "sig": "ab112bfd6321706ba4511eb7d046926a03cad18e894d3e45ee9f67e9eec4dc47b963865b088f091627fb3f635d2e44e971c0d410908a10efc9f2448242c53623"
       }
     ],
     "vector_context": {
@@ -64,7 +64,7 @@
   },
   "expected_output": {
     "comparison_surface": "nip01_canonical_event_serialization",
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225640,1,[[\"client\",\"heterodyne\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"posted over a repo relay's NIP-01 wire\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225640,1,[[\"client\",\"heterodyne\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"]],\"posted over a repo relay's NIP-01 wire\"]",
     "decoded": {
       "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
       "created_at": 1767225640,
@@ -76,15 +76,15 @@
         ],
         [
           "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
           "0"
         ]
       ],
       "content": "posted over a repo relay's NIP-01 wire",
-      "id": "d8c4e3efddb743987cfe9c78e68fa7d8d17c99d0f3ceffddf1021839a4936ea5",
-      "sig": "275b57ed1ae0194162b6c721df734c2056e45594ce58ce9f2e7e52a00b4a1511e7ea1ee6553f040673376d9f428858ea3f81902a0268c5f0e5738bf875c439a8"
+      "id": "778ed4dd1063851ce5cbfb3fe098934557dbedbb23b68062388d77be783dd428",
+      "sig": "ab112bfd6321706ba4511eb7d046926a03cad18e894d3e45ee9f67e9eec4dc47b963865b088f091627fb3f635d2e44e971c0d410908a10efc9f2448242c53623"
     },
-    "id": "d8c4e3efddb743987cfe9c78e68fa7d8d17c99d0f3ceffddf1021839a4936ea5",
-    "sig": "275b57ed1ae0194162b6c721df734c2056e45594ce58ce9f2e7e52a00b4a1511e7ea1ee6553f040673376d9f428858ea3f81902a0268c5f0e5738bf875c439a8"
+    "id": "778ed4dd1063851ce5cbfb3fe098934557dbedbb23b68062388d77be783dd428",
+    "sig": "ab112bfd6321706ba4511eb7d046926a03cad18e894d3e45ee9f67e9eec4dc47b963865b088f091627fb3f635d2e44e971c0d410908a10efc9f2448242c53623"
   }
 }

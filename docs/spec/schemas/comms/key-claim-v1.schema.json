@@ -15,7 +15,7 @@
     "issued_at",
     "not_before",
     "visibility",
-    "comms_version",
+    "spec_version",
     "registry_revision"
   ],
   "properties": {
@@ -50,7 +50,7 @@
       "uniqueItems": true,
       "items": { "$ref": "#/definitions/key_ref" }
     },
-    "comms_version": { "const": "comms/0.5.0" },
+    "spec_version": { "const": "comms/0.5.0" },
     "registry_revision": { "const": 2 }
   },
   "allOf": [

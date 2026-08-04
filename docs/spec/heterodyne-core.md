@@ -218,6 +218,25 @@ members, remote JWK key references, or a proof whose suite does not match the
 reference type. A future type or proof suite requires a registry allocation;
 an implementation MUST NOT reinterpret an unknown discriminator.
 
+The public JWK supplied for a `jwk-thumbprint` proof is one of these three
+closed profiles:
+
+- Ed25519 has `kty:"OKP"`, `crv:"Ed25519"`, and canonical `x`, and uses
+  `alg:"EdDSA"`;
+- P-256 has `kty:"EC"`, `crv:"P-256"`, and canonical `x` and `y`, and uses
+  `alg:"ES256"`; or
+- RSA has `kty:"RSA"`, canonical `n` and `e`, an unsigned modulus of at least
+  2048 bits, and uses `alg:"RS256"`.
+
+Each profile permits only its RFC 7638 thumbprint members plus optional
+`alg`, `use`, `key_ops`, and `kid`. When present, those four members MUST
+equal the profile algorithm, `"sig"`, `["verify"]`, and the recomputed
+RFC 7638 thumbprint respectively. The protected JWS header is the exact
+closed object `{"alg":"<profile algorithm>"}`: `alg` is required and is its
+sole member. Unknown, private, or remote-reference JWK members, an extra
+protected-header member, `none`, an HMAC/HS or `oct` key, a wrong curve, a
+weak RSA modulus, or any algorithm/key-type mismatch MUST be rejected.
+
 The generic native-proof input is a domain-separated canonical byte string
 binding the referenced key, purpose, fresh challenge, audience, resource,
 operation, verifier context, issue time, and expiry. The caller supplies the
@@ -290,7 +309,7 @@ locally. It MUST NOT perform network resolution for `did:key`.
 ```json
 {
   "pubkey": "<cold-root hex>",
-  "created_at": 0,
+  "created_at": "<ceremony unix seconds>",
   "kind": 31002,
   "tags": [
     ["d", ""],
@@ -309,7 +328,11 @@ locally. It MUST NOT perform network resolution for `did:key`.
 
 `pubkey` and `p` MUST equal the cold root, `s` MUST equal `0`, and `d`
 MUST be empty. `threshold` MUST be present when witnesses exist and MUST NOT
-exceed the sum of configured weights. The event MUST NOT carry `kel_head`.
+exceed the sum of configured weights. `created_at` is the canonical ceremony
+timestamp selected by the producer. Its exact integer is part of the signed
+NIP-01 bytes and MUST be retained through storage, replay, and materialization;
+a verifier MUST NOT replace it with zero, an ingestion time, a rounded value,
+or another normalized timestamp. The event MUST NOT carry `kel_head`.
 
 <a id="core-kel-rotation"></a>
 <!-- Monolith provenance: §3.5.2. -->
@@ -349,7 +372,18 @@ The `p` tag MUST equal the cold root. `s` MUST advance from the prior accepted
 event and `d` MUST equal `s`. `prior_digest` MUST equal the prior accepted
 event id. `committed` requires the cold-root signature; `none` requires the
 prior epoch-key signature and witness threshold. The event MUST NOT carry
-`kel_head`.
+`kel_head`. Its exact signed `created_at` is the authority-window transition
+timestamp and MUST be retained without normalization.
+
+`strategy:none` additionally requires the threshold in the prior accepted
+state to be at least one and enough distinct valid receipts to satisfy it. A
+threshold-zero `none` candidate is invalid before candidate selection: it
+cannot win, compete with, or stall a valid `committed` successor, though an
+implementation MAY retain it as non-authoritative attempted-fork evidence. A
+witness-free or threshold-zero persona therefore rotates only with
+`strategy:committed`. A threshold-zero committed successor remains valid when
+its other requirements hold. Two valid committed successors of the same prior
+event are duplicity and stall continuity under §4.4.
 
 Each receipt has exactly `witness_id`, `scheme`, and lowercase-hex `sig`.
 `witness_id` MUST occur in the witness configuration from the prior accepted
@@ -443,6 +477,12 @@ v1 bytes.
 <!-- Monolith provenance: §3.5.3. -->
 ### 4.4 KEL verification
 
+A verifier MUST parse and replay independently from the exact raw NIP-01 event
+bytes. It MUST parse the array shape and tag/content bytes, reproduce the exact
+canonical serialization, recompute the event id, verify the controller
+signature, and derive state from accepted events. Regenerating a candidate
+with the producer's fixture helper is not a conformance oracle.
+
 A verifier MUST:
 
 1. Fetch repo-carried candidates first and query ordinary relays with
@@ -454,23 +494,29 @@ A verifier MUST:
 2. Accept one inception only after its cold-root BIP-340 signature, `p`, `s`,
    and schema validate.
 3. Process each sequence in ascending order. Verify controller signature,
-   `prior_digest`, receipt schemes and signatures exactly as specified above,
-   and cumulative distinct witness weight against the threshold in force at
-   the prior accepted event. An unlisted or invalid receipt has zero weight.
+   `prior_digest`, and any carried receipt schemes and signatures exactly as
+   specified above. For `strategy:none`, require cumulative distinct valid
+   witness weight against the threshold in force at the prior accepted event
+   and reject threshold zero before candidate selection. A valid
+   `strategy:committed` successor is authorized by its cold-root signature and
+   does not require receipts, even when the prior state has a positive witness
+   threshold. An unlisted or invalid receipt has zero weight.
 4. On same-sequence forks, apply KERI first-seen witness behavior: each witness
    honors the first valid rotation it observed at that sequence. A branch is
    accepted only if attestations from witnesses that first saw that branch
    reach threshold. If none does, the KEL stalls and the implementation MUST
-   expose stalled continuity. After signature and threshold validation, a
-   repo-carried candidate is canonical over a conflicting relay-only candidate;
-   the relay-only branch remains provisional and MUST NOT displace it.
-   Duplicity MUST be surfaced.
+   expose stalled continuity. Competing valid committed successors always
+   stall and surface duplicity; a verifier MUST NOT schema-reject the fork or
+   select one merely because it arrived from the repository. Otherwise, after
+   signature and threshold validation, a repo-carried candidate is canonical
+   over a conflicting relay-only candidate; the relay-only branch remains
+   provisional and MUST NOT displace it. Duplicity MUST be surfaced.
 5. Return the current epoch key, witness configuration, and half-open authority
    windows derived from accepted event timestamps and compromise declarations.
 
 Only declared witness weight counts. Unregistered advisory attestations MUST
 NOT move a rotation toward acceptance. A cached or exported KEL projection
-MUST NOT displace replay of accepted source events.
+MUST NOT displace independent exact-byte replay of accepted source events.
 
 <a id="core-pre-keri-migration"></a>
 <!-- Monolith provenance: §3.5.4. -->
@@ -765,11 +811,13 @@ authoritative.
 <!-- Monolith provenance: §7.0. -->
 ### 7.3 Node advertisement (`kind:31010`)
 
-A node advertisement has `d` equal to RID and tags for `node_advert`, `rid`,
-Ed25519 `nid`, one `endpoint`, `expiry`, `nid_proof`, the appropriate Core
-version tag, and `kel_head` when epoch-signed. Its outer event is BIP-340-signed
-by a dedicated node key or a current epoch key. The proof input also carries
-the current canonical repo head as pinned by the conformance vectors.
+A node advertisement has `d` equal to RID and exactly one tag each for
+`node_advert`, `rid`, Ed25519 `nid`, `endpoint`, `repo_head`, `expiry`, and
+`nid_proof`, plus the appropriate Core version tag and `kel_head` when
+epoch-signed. `repo_head` is exactly one canonical lowercase 40-hex Git object
+ID. Multiple endpoints require separate advertisements so that each proof
+binds one endpoint. Its outer event is BIP-340-signed by a dedicated node key
+or a current epoch key.
 
 A full node MUST publish at least one current advertisement whose `endpoint`
 is its persistent v3 onion service. It MAY publish additional onion endpoints
@@ -784,7 +832,15 @@ heterodyne-node-advert-v1|<rid>|<nid>|<endpoint>|<expiry>|<repo_head>
 ```
 
 A verifier MUST validate the outer signature, inner Ed25519 proof, equality of
-all bound fields, and expiry. Invalid or expired ads MUST be discarded.
+all bound fields, canonical tag cardinality and shapes, and expiry. The
+advertised `repo_head` is the repository's canonical head at issuance: it is a
+possession snapshot, not a promise that no later push occurs. Until expiry the
+advertised endpoint MUST successfully serve an object graph that contains that
+exact head. A missing, malformed, duplicate, proof-mismatched, or successfully
+fetched-but-unserved head MUST be rejected. Transport unavailability is a
+retryable provisional outcome, not proof that the endpoint does not serve the
+head; an unserved rejection requires a successful graph fetch whose reachable
+object set excludes it. Invalid or expired ads MUST be discarded.
 
 <a id="core-radicle-reconciliation"></a>
 <!-- Monolith provenance: §3.9.10. -->
@@ -1077,6 +1133,11 @@ is used as an absence proof for a delegation.
 <a id="core-materialized-kel"></a>
 <!-- Monolith provenance: §10.1.2. -->
 ### 10.3 Materialized-KEL storage profile
+
+This profile is a cache output of the independent exact-byte replay in §4.4.
+An implementation MUST NOT populate either ref directly from generator
+expectations, parsed convenience objects, or the refs' prior contents. Only
+events accepted by that replay contribute log or state commits.
 
 An implementation MAY derive two linear refs:
 

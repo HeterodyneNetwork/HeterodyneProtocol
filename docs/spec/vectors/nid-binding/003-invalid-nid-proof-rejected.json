@@ -40,18 +40,22 @@
           "228eccd939a7c02c645e63b0574529d328ea0c3ef30cf48da17008095fd95b8309044d8586a09dc6b6ef8cfc58a79f9b1c1659e108591095277326baa120a805"
         ],
         [
+          "kel_head",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+          "0"
+        ],
+        [
           "valid_until",
           ""
         ],
         [
-          "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
-          "0"
+          "spec_version",
+          "core/0.5.0"
         ]
       ],
       "content": "",
-      "id": "19563c92747c82adc6c6cbef6fee79d5e7e7d9c8fad3fb0538a0ed5df88d617c",
-      "sig": "85a2e9bc48d91f1f0369eed5842d4567962a0da5c86f97649a7843032d40b81990ce5863aa6445b72e6c954630693cf0851efb6ee44cf9f7a12c51d5f0472eef"
+      "id": "47091f3527ae2dd87e5f998cc8c20f1896470df71a3ee1591cfefef30745b716",
+      "sig": "0c7e7a96fe2b572833bdbd93a0c149107c7e9330ae9988ff767ffef398e246cbbaa1009e52db47ac15e267ffb6ba75932a0438db292078ca45440e5903f716ce"
     },
     "radicle_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
     "nid_binding_payload": "heterodyne-nid-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|radicle-nid-delegation",

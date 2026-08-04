@@ -21,20 +21,29 @@
         ],
         [
           "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
           "1"
         ]
       ],
       "content": "post whose kel_head seq disagrees with the named event's s",
-      "id": "5f0c23ba79431d5224f7476fad2e661bf12a867c44cf6cb2ee8cceded26a1842",
-      "sig": "056d7b1d8b4af6bf7c42f2c880461887f3816e389a8f30b354415b17140d94cd0e22575882e2e18623d79f61b89bde7af12f29c2b096d4d20eb259e02408a3a7"
+      "id": "9f3e4a3ba5db02bfcb92bbdb54974107cfc48c266f4ac038c6bc41533f43b7cf",
+      "sig": "0ef4f89e0fec95208f9fba65bfe56ac3b59a4c723d768f15cb6eec25d2a9f13919a0c08e864370cf3ef7ac9212f6a416d59217c0b77f84fe4bc9f4cefaab5a61"
     },
     "accepted_kel": [
       {
         "kind": 31002,
-        "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+        "id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
         "s": 0,
-        "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+        "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "nip01_raw": "[0,\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",1767225600,31002,[[\"d\",\"\"],[\"heterodyne\",\"keri_inception\"],[\"p\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"s\",\"0\"],[\"epoch_key\",\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"],[\"spec_version\",\"core/0.5.0\"]],\"\"]",
+        "materialized_state": {
+          "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+          "s": 0,
+          "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+          "witnesses": [],
+          "threshold": 0,
+          "producing_event_id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0"
+        }
       }
     ],
     "resolved_event_s": 0,

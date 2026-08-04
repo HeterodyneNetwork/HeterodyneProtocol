@@ -22,7 +22,7 @@
     }
   },
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225730,34550,[[\"d\",\"acme-town-square\"],[\"name\",\"Acme Town Square\"],[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\",\"wss://relay.example\",\"moderator\"],[\"p\",\"2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01\",\"wss://relay.example\",\"moderator\"],[\"approvals_required\",\"2\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225730,34550,[[\"d\",\"acme-town-square\"],[\"name\",\"Acme Town Square\"],[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\",\"wss://relay.example\",\"moderator\"],[\"p\",\"2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01\",\"wss://relay.example\",\"moderator\"],[\"approvals_required\",\"2\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"]],\"\"]",
     "decoded": {
       "event": {
         "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
@@ -55,17 +55,17 @@
           ],
           [
             "kel_head",
-            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+            "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
             "0"
           ]
         ],
         "content": "",
-        "id": "9a8f1135b46ca5e6abeceb49e044d7c750c4f0cfec4453eb0dbcbdd4cd9c7658",
-        "sig": "c11dc5122d6923352155c2bf28d0f5db655028bff5041d1c2820770224b3491ef0871609d491e23680eb659c2c18ed5833f731b60c8e70aa21acfdf39c8bbb5f"
+        "id": "80af207c1d524c8161537fbbfd761db1dda9c0743ad4192f7b62686a9300796b",
+        "sig": "fb7b98d6e7a1c3318f758720029ea811d1babe9468ed07a291078af21dc8ea50521b59dbd50447b38881241198fe102a81512cfe41dc432c55396b8784d67e74"
       }
     },
-    "id": "9a8f1135b46ca5e6abeceb49e044d7c750c4f0cfec4453eb0dbcbdd4cd9c7658",
-    "sig": "c11dc5122d6923352155c2bf28d0f5db655028bff5041d1c2820770224b3491ef0871609d491e23680eb659c2c18ed5833f731b60c8e70aa21acfdf39c8bbb5f"
+    "id": "80af207c1d524c8161537fbbfd761db1dda9c0743ad4192f7b62686a9300796b",
+    "sig": "fb7b98d6e7a1c3318f758720029ea811d1babe9468ed07a291078af21dc8ea50521b59dbd50447b38881241198fe102a81512cfe41dc432c55396b8784d67e74"
   },
   "direction": "produce"
 }

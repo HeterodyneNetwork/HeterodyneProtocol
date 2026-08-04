@@ -20,15 +20,15 @@
       "tags": [
         [
           "d",
-          "46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a"
+          "e70e59f8cac5a5f889f016f6765fcbc364131c0916997a286664c8958dac81b2"
         ]
       ],
-      "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a\",\"comms_version\":\"comms/0.5.0\",\"expires_at\":1767231200,\"issued_at\":1767227600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767227600,\"registry_revision\":2,\"resources\":[\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\"],\"subject\":{\"type\":\"nostr-secp256k1\",\"value\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\"},\"value\":true,\"visibility\":\"repository-private\"}",
-      "id": "d6522c038eb4e260c8f8f267b14a7fd5fc758bcf3c687e6458d2737f8b55fc92",
-      "sig": "0b6b316ee26c5090f230bcaf1849b2e1b9eb7b755da3f412051ad69a16e7856102f8e0558c255880d3d50a0146860dd7d1404cb04e50caa08a673db19a51ba12"
+      "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"e70e59f8cac5a5f889f016f6765fcbc364131c0916997a286664c8958dac81b2\",\"expires_at\":1767231200,\"issued_at\":1767227600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767227600,\"registry_revision\":2,\"resources\":[\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\"],\"spec_version\":\"comms/0.5.0\",\"subject\":{\"type\":\"nostr-secp256k1\",\"value\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\"},\"value\":true,\"visibility\":\"repository-private\"}",
+      "id": "869fff2bd6f874374604eae774cfa73204e7147f43bfe24325ea89edd523c120",
+      "sig": "e331c12bc0937abd1f4f570372537b54e3cfec6b6b8b1b15723574a19d2dc6135aca8afc0f6bba719a11a9c36b51ebf86ef9d36e68cf7f1c487d281f24eef116"
     },
     "claim": {
-      "claim_id": "46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a",
+      "claim_id": "e70e59f8cac5a5f889f016f6765fcbc364131c0916997a286664c8958dac81b2",
       "issuer": {
         "type": "nostr-secp256k1",
         "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -51,17 +51,17 @@
         "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
       ],
       "visibility": "repository-private",
-      "comms_version": "comms/0.5.0",
+      "spec_version": "comms/0.5.0",
       "registry_revision": 2
     },
     "claim_authority_evidence": [
       {
-        "claim_id": "46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a",
+        "claim_id": "e70e59f8cac5a5f889f016f6765fcbc364131c0916997a286664c8958dac81b2",
         "issuer": {
           "type": "nostr-secp256k1",
           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
         },
-        "event_id": "d6522c038eb4e260c8f8f267b14a7fd5fc758bcf3c687e6458d2737f8b55fc92",
+        "event_id": "869fff2bd6f874374604eae774cfa73204e7147f43bfe24325ea89edd523c120",
         "envelope_valid": true,
         "core_kel_authority_valid": true,
         "verified_at": 1767227605,
@@ -76,7 +76,7 @@
     "subject_proof": {
       "challenge": {
         "domain": "heterodyne-claim-pop-v1",
-        "claim_id": "46955ba5c10ddbeaaad6b2238204c60b2052bc16cae77aa19e578734d990997a",
+        "claim_id": "e70e59f8cac5a5f889f016f6765fcbc364131c0916997a286664c8958dac81b2",
         "nonce": "71717171717171717171717171717171",
         "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
         "resource": "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims",
@@ -86,7 +86,7 @@
       },
       "proof": {
         "type": "nostr-bip340",
-        "signature": "3f6d5e7422684b8ddba57b691891eefe28e07f7386dbe1fa5ac687db116556ccbffeed1df8d50a2086846190a87f43579b8bef618b4ef49f642b05c590e4b9f3"
+        "signature": "8b91439152420208478acd19d8b781b26acb8226067d3d5f7d25d212510cb75518c5be52f1be982321537413b20e6b35198ff0206303cb4679fa895c5cadf7e3"
       }
     },
     "vector_context": {

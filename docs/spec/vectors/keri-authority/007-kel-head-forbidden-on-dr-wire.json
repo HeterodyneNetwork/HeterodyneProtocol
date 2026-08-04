@@ -21,13 +21,13 @@
         ],
         [
           "kel_head",
-          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
           "0"
         ]
       ],
       "content": "ratchet-ciphertext-placeholder",
-      "id": "db1cb4fa535b646fb1e96b994848a32177acc7d2b668fe73c3a8b8ba84adc6e8",
-      "sig": "62710811a1415adb004c9e2d9cc4f1224d61da998930f335bbdb832611e41ee215db8bf93903e9c26f260b202f9c86d25840b011aa3620e63ce60de11cd27b86"
+      "id": "483b047efa3471eec2fb80b6cd36203b5d2bb349e47d6844c44977dfdbce4192",
+      "sig": "3ad3af169d712d927918f53710054852548d5f8167dba02e2f07a6cdbfb0e9e0aad5f3c2b9654037f3f399cd62eba5baa2fe7d0badba0e9fd912ca42300a20aa"
     },
     "signer_kind": "current_ratchet_key",
     "vector_context": {

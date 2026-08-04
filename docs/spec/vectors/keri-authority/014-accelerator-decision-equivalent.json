@@ -12,7 +12,7 @@
   "input": {
     "signing_epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
     "kel_head": {
-      "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+      "id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
       "seq": 0
     },
     "condition_a_referenced_event_on_accepted_kel": true,

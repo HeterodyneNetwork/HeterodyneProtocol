@@ -8,10 +8,17 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 
 | Vector | Owner | Version | Dependencies | Registry | Profile | Spec references |
 |---|---|---|---|---:|---|---|
+| `control/agent-feed-authorization-rejected` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-claim-consumption` |
 | `control/agent-generation-reset` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-agent-token` |
+| `control/agent-missing-scope-rejected` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-agent-requirements` |
+| `control/agent-proof-jti-mismatch-rejected` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-agent-requirements` |
 | `control/agent-publish-authorized` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-agent-requirements` |
 | `control/agent-publish-schema-intent-only` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-agent-publish` |
+| `control/agent-source-claim-inactive-rejected` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-agent-requirements` |
+| `control/agent-source-claim-substitution-rejected` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-agent-requirements` |
+| `control/agent-stale-role-key-rejected` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-agent-requirements` |
 | `control/agent-token-per-use-binding` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-agent-token` |
+| `control/agent-wrong-audience-rejected` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-agent-requirements` |
 | `control/attribution-bypass-refused` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-agent-requirements` |
 | `control/audit-omits-raw-token` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-agent-audit` |
 | `control/authorization-conflicted` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-claim-consumption` |

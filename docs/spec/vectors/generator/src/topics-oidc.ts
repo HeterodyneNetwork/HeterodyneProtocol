@@ -1,5 +1,5 @@
 import { createHash, createPrivateKey, sign, type JsonWebKey } from "node:crypto";
-import { inflateSync } from "node:zlib";
+import { deflateSync, inflateSync } from "node:zlib";
 import { ed25519 } from "@noble/curves/ed25519";
 import { nip19 } from "nostr-tools";
 import {
@@ -297,9 +297,22 @@ export function replayOidcVector(input: unknown): unknown {
     const denied = redeemDeviceCode(deniedRecord, { device_code: deniedRecord.device_code, client_id: deniedRecord.client_id, now: replay.now + 2 });
     const expiring = issueDeviceAuthorization(deviceRequest, replay.now, 1);
     const expired = redeemDeviceCode(expiring, { device_code: expiring.device_code, client_id: expiring.client_id, now: replay.now + 1 });
+    const { nonce: _nonce, ...requestWithoutNonce } = request;
+    const nonceMutations = {
+      missing: validateAuthorizationRequest(requestWithoutNonce as OidcAuthorizationRequest),
+      empty: validateAuthorizationRequest({ ...request, nonce: "" }),
+    };
     return spec.mode === "authorization-code"
-      ? { verdict: "accept", normalized: { code_first: first, code_reuse: second, code_mutations: codeMutations } }
-      : { verdict: "accept", normalized: { device: [pending.result, slow.result, denied.result, expired.result, success.result] } };
+      ? { verdict: "accept", normalized: {
+          code_first: first,
+          code_reuse: second,
+          code_mutations: codeMutations,
+          nonce_mutations: nonceMutations,
+        } }
+      : { verdict: "accept", normalized: {
+          device: [pending.result, slow.result, denied.result, expired.result, success.result],
+          nonce_mutations: nonceMutations,
+        } };
   }
   if (operation === "authorization-cases") {
     const replay = decodeClaimLedgerReplayValue(spec.replay);
@@ -369,8 +382,21 @@ export function replayOidcVector(input: unknown): unknown {
         decision = { allowed: false, state: "invalid", reason_code: "oidc-status-invalid" };
       }
     }
-    return decision.allowed ? { verdict: "accept", normalized: decision } :
-      { verdict: "reject", reason_code: decision.reason_code, normalized: decision };
+    const emptyNonceDecision = spec.empty_nonce_compact === undefined
+      ? undefined
+      : validateProjectedJwt(
+          String(spec.empty_nonce_compact),
+          metadata.issuer,
+          String(spec.expected_audience),
+          spec.jwks!,
+          { ...options, nonce: "" },
+        );
+    const normalized = {
+      ...decision,
+      ...(emptyNonceDecision === undefined ? {} : { empty_nonce_mutation: emptyNonceDecision }),
+    };
+    return decision.allowed ? { verdict: "accept", normalized } :
+      { verdict: "reject", reason_code: decision.reason_code, normalized };
   }
   if (operation === "jwt-validation-cases") {
     const metadata = spec.metadata as unknown as ReturnType<typeof issuerMetadata>;
@@ -469,10 +495,13 @@ export async function buildOidcVectors(fixtures: Fixtures): Promise<AuthoredVect
   const pairwiseTypedSubject = { type: "radicle-ed25519-nid", value: x.s.writerOne.did_key };
   const pairwiseLocalSubject = createHash("sha256")
     .update(jcsCanonicalize(pairwiseTypedSubject)).digest("hex");
+  const emptyNonceId = mutateAndResignCompact(id.compact, (claims) => {
+    claims.nonce = "";
+  }, OIDC_RSA_ONE.private_jwk);
   return [
     authored("001-discovery-exact-issuer.json", "discovery-exact-issuer", "Exact cold-root-bound issuer discovery.", { operation: "discovery", origin: "https://node.example", cold_root_npub: x.root, identity: x.identity as unknown as JsonValue }),
     authored("002-issuer-mismatch-rejected.json", "issuer-mismatch-rejected", "A valid epoch npub is rejected as an issuer.", { operation: "jwt-validation", ...jwtInput(legacyId, { ...common, token_use: "id_token", nonce: "oidc-vector-nonce", sender_constraint: "none" }), expected_issuer: `https://node.example/oidc/${x.epoch}` }),
-    authored("003-authorization-code-pkce.json", "authorization-code-pkce", "Signed registration, consent, source replay, S256 and single-use code redemption.", { operation: "oauth-flows", mode: "authorization-code", replay: authorizationReplay }),
+    authored("003-authorization-code-pkce.json", "authorization-code-pkce", "Signed registration, consent, nonempty nonce, source replay, S256 and single-use code redemption.", { operation: "oauth-flows", mode: "authorization-code", replay: authorizationReplay }),
     authored("004-device-authorization.json", "device-authorization", "RFC 8628 pending, slow_down, denial, expiry, and successful redemption transitions.", { operation: "oauth-flows", mode: "device-authorization", replay: authorizationReplay }),
     authored("005-prohibited-grants.json", "prohibited-grants", "Implicit, password, and client-credentials grants are rejected from canonical evidence.", {
       operation: "authorization-cases", replay: authorizationReplay,
@@ -491,7 +520,10 @@ export async function buildOidcVectors(fixtures: Fixtures): Promise<AuthoredVect
       ],
     }),
     authored("007-stable-key-consent-gated.json", "stable-key-consent-gated", "Key-ref release is removed without scope or claim consent and fails when the signed source is omitted.", { operation: "key-gating", replay: authorizationReplay }),
-    authored("008-id-token-valid.json", "id-token-valid", "Strict RS256 ID Token and pinned draft-21 status validation.", jwtInput(id, { ...statusCommon, token_use: "id_token", nonce: "oidc-vector-nonce", sender_constraint: "none" }, true)),
+    authored("008-id-token-valid.json", "id-token-valid", "Strict RS256 ID Token with a nonempty request/token nonce and pinned draft-21 status validation.", {
+      ...jwtInput(id, { ...statusCommon, token_use: "id_token", nonce: "oidc-vector-nonce", sender_constraint: "none" }, true),
+      empty_nonce_compact: emptyNonceId,
+    }),
     authored("009-rfc9068-access-token-valid.json", "rfc9068-access-token-valid", "Strict RFC 9068 access-token and pinned draft-21 status validation.", jwtInput(access, { ...statusCommon, token_use: "access_token", sender_constraint: "none" }, true)),
     authored("010-token-type-confusion-rejected.json", "token-type-confusion-rejected", "Access token rejected as ID Token.", accessAsId),
     authored("011-dpop-confirmation-bound.json", "dpop-confirmation-bound", "DPoP accepts only the exact canonical thumbprint and rejects wrong, mixed, and method-confused confirmation.", jwtCases(dpop, [
@@ -523,7 +555,7 @@ type MutationOutcome = {
 type TokenStatusMutationName =
   | "bit_0" | "bit_7" | "bit_8" | "padding"
   | "valid_to_invalid" | "invalid_to_valid_without_resign"
-  | "ttl_boundary" | "expired" | "bad_signature" | "malformed_zlib" | "out_of_range"
+  | "ttl_boundary" | "expired" | "bad_signature" | "malformed_zlib" | "alternative_zlib" | "out_of_range"
   | "same_writer_same_index" | "distinct_writer_namespace" | "noncontiguous_prefix"
   | "jwks_byte" | "status_byte" | "path_case" | "branch_not_main"
   | "digest_nibble" | "byte_mismatch" | "extra_status_path"
@@ -532,7 +564,7 @@ type TokenStatusMutationName =
   | "compromised_key_bit" | "shared_key_only_successor" | "retain_compromised_key" | "drop_status_before_expiry";
 const TOKEN_STATUS_MUTATION_NAMES = new Set<TokenStatusMutationName>([
   "bit_0", "bit_7", "bit_8", "padding", "valid_to_invalid", "invalid_to_valid_without_resign",
-  "ttl_boundary", "expired", "bad_signature", "malformed_zlib", "out_of_range", "same_writer_same_index",
+  "ttl_boundary", "expired", "bad_signature", "malformed_zlib", "alternative_zlib", "out_of_range", "same_writer_same_index",
   "distinct_writer_namespace", "noncontiguous_prefix", "jwks_byte", "status_byte", "path_case", "branch_not_main",
   "digest_nibble", "byte_mismatch", "extra_status_path", "https_outage", "stale_kel_head", "unauthorized_writer",
   "standard_oidc", "missing_persona_proof", "predecessor_nibble", "wrong_successor_url", "old_https_issuer",
@@ -711,6 +743,9 @@ function replayNamedTokenStatusMutation(name: TokenStatusMutationName, base: Rep
       return replayAuthenticatedStatusMaterial(name);
     }
     case "malformed_zlib": {
+      return replayAuthenticatedStatusMaterial(name);
+    }
+    case "alternative_zlib": {
       return replayAuthenticatedStatusMaterial(name);
     }
     case "out_of_range": {
@@ -1092,9 +1127,21 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
   malformedStatus.claims.status_list = { bits: 1, lst: "eA" };
   malformedStatus.compact = resignCompact(malformedStatus.compact, malformedStatus.claims,
     malformedStatus.protected_header.kid);
+  const alternativeStatus = structuredClone(validStatus);
+  const statusBytes = inflateSync(Buffer.from(validStatus.claims.status_list.lst, "base64url"));
+  alternativeStatus.claims.status_list = {
+    bits: 1,
+    lst: deflateSync(statusBytes, { level: 1 }).toString("base64url"),
+  };
+  alternativeStatus.compact = resignCompact(
+    alternativeStatus.compact,
+    alternativeStatus.claims,
+    alternativeStatus.protected_header.kid,
+  );
   const staleMutationMaterial = {
     bad_signature: authenticatedStatusMutation(badSignatureStatus),
     malformed_zlib: authenticatedStatusMutation(malformedStatus),
+    alternative_zlib: authenticatedStatusMutation(alternativeStatus),
   } as unknown as JsonValue;
   const statusInput = (status: StatusListToken, referenced: typeof validReferenced,
     chain: JsonValue, now = status.claims.iat, statusJwksBytes: Uint8Array = jwksBytes,
@@ -1176,6 +1223,7 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
         expired: expectedDecision("reject", "oidc-status-stale"),
         bad_signature: expectedDecision("reject", "oidc-status-invalid"),
         malformed_zlib: expectedDecision("reject", "oidc-status-invalid"),
+        alternative_zlib: expectedDecision("accept", null),
         out_of_range: expectedDecision("reject", "oidc-status-index-invalid") }),
     }),
     authored("004-writer-index-collision-rejected.json", "writer-index-collision-rejected", "Duplicate writer-namespaced URI/index allocation is rejected before token return.", {
