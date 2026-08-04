@@ -1,7 +1,7 @@
 # Portable Recovery and Large-Object Design
 
 **Date:** 2026-07-31
-**Status:** Approved for written ADR review
+**Status:** Approved for implementation planning
 **Protocol owners:** Core and Comms
 **Registry target:** revision 4
 **Decision record:** ADR-038

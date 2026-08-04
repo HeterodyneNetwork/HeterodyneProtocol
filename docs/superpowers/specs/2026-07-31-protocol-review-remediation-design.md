@@ -1,7 +1,7 @@
 # Protocol Review Remediation Design
 
 **Date:** 2026-07-31
-**Status:** Approved for written ADR review
+**Status:** Approved for implementation planning
 **Protocol owners:** Core, Comms, Control, and Social
 **Registry target:** revision 4
 **Decision record:** ADR-037

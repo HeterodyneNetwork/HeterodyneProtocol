@@ -1,7 +1,7 @@
 # ADR-038: Portable recovery, recovery nodes, and large-object sync
 
 **Date:** 2026-07-31
-**Status:** Proposed
+**Status:** Accepted
 **Decision makers:** user and protocol maintainers
 **Design record:**
 [`docs/superpowers/specs/2026-07-31-portable-recovery-and-large-object-design.md`](../superpowers/specs/2026-07-31-portable-recovery-and-large-object-design.md)
