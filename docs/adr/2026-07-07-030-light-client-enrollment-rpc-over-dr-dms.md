@@ -443,30 +443,39 @@ Enrollment and delegation:
 
 - A light device MUST generate its own publishing keypair; a full node
   MUST NOT generate or receive a light device's private key.
-- A session-device `kind:31001` MUST use the Decision-2 schema
+- A session-device `kind:31001` MUST use profile
+  `heterodyne-control-session-device-v1`, MUST carry the sole base-owner
+  stamp `["spec_version","core/0.5.0"]`, and MUST use the Decision-2 schema
   including the on-wire `binding_nonce` tag; a verifier MUST
   reconstruct the binding payload from the event's tags alone and
   MUST reject a delegation lacking either signature or whose
   `key_proof` fails over that reconstructed payload. The issuing full
   node MUST additionally verify the nonce matches the challenge or
   token id of the live enrollment exchange.
-- The epoch-key DR invite MUST be signed by the KERI-authoritative
-  epoch key and republished (prior invite tombstoned) on rotation; a
-  client MUST reject an epoch-key invite whose signer the KEL shows
-  superseded. An enrollment request MUST reference the invite event
-  id it used, and a full node MUST process it only if that id is its
-  currently-active epoch-key invite: a tombstoned or superseded
-  invite id - even one signed by the current epoch key - MUST be
-  rejected.
+- The epoch-key DR invite MUST have `kind:30078`, exact
+  `d = double-ratchet/invites/epoch`, a mandatory `kel_head` for the
+  latest accepted KEL state, and a signature by that state's
+  KERI-authoritative epoch key. On rotation the successor invite MUST
+  be published before the prior invite is tombstoned. An enrollment
+  request MUST reference the exact invite event id it used, and a
+  full node MUST process it only if that id is its currently active
+  epoch-key invite; a stale, tombstoned, superseded, wrong-`kel_head`,
+  or wrong-signer invite MUST be rejected.
 - For an organization persona (ADR-027), a full node MUST reject
   session-device enrollment, activation, and grant changes outright
   until a later revision specifies the delegate-threshold approval
   artifact and its verification rule; epoch-key possession alone MUST
   NOT suffice.
-- Sessions initiated to the epoch-key endpoint MAY originate from
-  not-yet-delegated keys - this and the invite signer rule are the
-  sole carve-outs to §5.7.2 - and MUST be restricted to key-operation
-  methods.
+- A session initiated to the epoch-key endpoint MAY originate from a
+  not-yet-delegated key only in the authenticated
+  `control-enrollment` acceptance context. Comms MUST authenticate the
+  carrier and transcript before Control policy runs; the default
+  decision is `hold` without a sender-visible policy signal, and only
+  the Control QR-secret, challenge-response, or enrollment-token
+  decision may produce `accept` or `reject`. The undelegated
+  initiator exception MUST NOT be accepted for ordinary DMs,
+  credential operations, activation, revocation, unlock, or any other
+  context.
 - A pending enrollment request MUST expire after a configurable window
   (RECOMMENDED default: 2 minutes); a full node MUST NOT act on an
   expired request.
@@ -492,9 +501,18 @@ Session lifecycle:
 - A full node MUST honor a device's self-revocation without ceremony,
   from any grant tier, and MUST revoke immediately on the light
   client's logout.
-- A client acting as the light side MUST verify its enrollment by
-  observing its publishing key in a valid `kind:31001` (per the §4.5
-  checks) before treating itself as enrolled.
+- A client acting as the light side MAY treat a relay-valid
+  `kind:31001` containing its publishing key only as visibly labeled
+  provisional evidence under Core's `provisional-accept` policy. It
+  MUST NOT treat itself as finally enrolled until that exact
+  delegation is canonical-repository-final and every applicable
+  Comms authorization decision is `active`; `deny-until-repo` MUST
+  grant no provisional authority.
+- Enrollment state MUST bind the epoch invite id, enrollee device key,
+  accepted DR transcript and session, session-device delegation
+  address and event id, grant subject, enrolling full-node NID and
+  device key, and negotiated protocol/version tuple. A substitution
+  at any of those joins MUST fail closed.
 
 Tokens:
 
@@ -510,6 +528,9 @@ Tokens:
   presenting a different key MUST be rejected. Token-redeemed
   enrollments MUST be surfaced in the persona's device inventory. A
   token MUST NOT confer the full (cross-signing) grant.
+- A Control enrollment token MUST NOT be accepted as a Comms/OIDC
+  workload access token or as an ADR-038 recovery transfer/bootstrap
+  grant. Those three token classes are distinct and non-substitutable.
 
 Grants and RPC:
 
@@ -526,17 +547,30 @@ Grants and RPC:
   fresh authorization. No other RPC method may touch it regardless
   of grant; a configuration write that reaches security-policy state
   MUST be refused.
+- Control grant, enrollment-token, inventory, and revocation semantics
+  MUST derive authority solely from the Comms private claim ledger.
+  Positive authority requires repository-final `active` state;
+  delivery, delegation, a DR session, a filtered session view, or a
+  projected JWT MUST NOT grant it. An authenticated reduction or
+  revocation MUST take effect immediately and MUST subsequently be
+  committed for repository finality.
 - Cross-signing / device-activation requests arriving over RPC MUST
   themselves trigger the fresh-authorization ceremony; a full grant
   authorizes the device to *request* activation, never to bypass the
   ceremony.
-- RPC requests MUST carry a request id (unique per device session)
-  and an expiry; the replay-cache key is `(device publishing key,
-  request id)` and the cached entry binds the method. A full node
-  MUST reject expired requests, MUST NOT execute the same cache key
-  twice, MUST return the cached final response for a retried id
-  until its expiry, and MUST reject a retried id whose method
-  differs.
+- RPC requests MUST carry a request id unique within the accepted DR
+  session and an expiry. Before execution, a full node MUST atomically
+  reserve the accepted DR session id, request id, method, canonical
+  payload digest, expiry, and first server-observed normalized
+  authenticated ingress relay. Ingress relay is transport context and
+  MUST NOT be a caller-supplied request member. Concurrent
+  byte-identical logical requests MAY join one execution; a retry with
+  a changed session, method, payload, or expiry MUST conflict. The
+  final response MUST be durably persisted before publication and
+  MUST be sent first and only through the actual ingress relay for
+  that arrival. A later identical retry MUST replay the persisted
+  response only through that retry's actual ingress relay and MUST NOT
+  re-execute or fan out.
 - A full node MUST validate RPC and tool-call arguments against their
   schemas, MUST apply object-level authorization (a grant names the
   repos, config namespaces, or sessions it covers), SHOULD confirm
@@ -549,6 +583,9 @@ Grants and RPC:
   enrolled device; clients MUST surface its reduced guarantees.
 - RPC request and response rumors MUST NOT be committed to any repo or
   accepted by a repo relay for storage (§5.7.3 applies).
+- Before releasing received plaintext, an implementation MUST complete
+  DR receive-state advancement, durable persistence, and consumed
+  message-key erasure as one atomic action.
 
 Agentic profile:
 
@@ -556,6 +593,22 @@ Agentic profile:
   the human RPC profile, over the same Comms carrier kinds. Neither agentic peer may invoke a method before
   the bidirectional MCP initialize/capability exchange completes, and
   each side MUST refuse methods and tools it did not advertise.
+- An agentic profile MUST NOT advertise or accept raw signing,
+  private-key access, a human publication method, or fallback to a
+  persona, epoch, NID, human-device, or unlabeled key. After mutual
+  initialization, agent publication MUST use only
+  `heterodyne.agent.publish` with a current at-most-five-minute
+  sender-constrained Comms/OIDC workload access token and a fresh
+  per-publication proof. The full node MUST construct mandatory
+  attribution and sign only with the current full-node-held
+  `agent:<role-id>` key; that key MUST NOT be released to the agent.
+- Workload-token issuance and each publication side effect MUST bind
+  exact issuer, pairwise subject, `client_id`, role id, accepted
+  Control session, request id, method, canonical payload digest, and
+  current credential-ledger persona, generation, checkpoint, and
+  status. A credential-ledger reset MUST invalidate prior-generation
+  pending issuance and authority; further publication requires
+  current-generation reissuance.
 - Inbound execution on the light client (incl. commands into an
   ongoing AI or terminal session) MUST be advertised in the
   enrollment request and capabilities message, MUST default to
@@ -564,6 +617,33 @@ Agentic profile:
   the light client MUST visibly surface an active inbound-control
   session and SHOULD require local consent per newly exercised tool.
 - Agentic tool calls MUST support cancellation and timeouts.
+
+Transport, termination, recovery, and retention:
+
+- A strict light client MUST use outbound Tor. A browser without Tor
+  MAY use an authenticated clearnet shared relay only in visibly
+  declared reduced-assurance mode. Optional direct application-layer
+  access through Tor to an advertised onion repo relay MAY be used for
+  retrieval or repository-finality evidence, but MUST NOT be treated
+  as a Control transport.
+- Revocation or an applicable credential transition MUST invalidate
+  affected DR sessions locally and stop Control immediately. The
+  authenticated persistent NIP-59 peer tombstone MUST bind the old
+  session and both delivery identities and MUST be broadcast after
+  transition acceptance; peer acknowledgement MUST NOT delay local
+  invalidation, and the tombstone MUST NOT be treated as a Control
+  response or replayable transcript.
+- Recovery approval, transfer, admission, and authority activation
+  MUST remain separate Core/Comms compositions and MUST NOT open
+  Control. Recovery MUST NOT restore active DR state, message keys,
+  temporary workload tokens, sender proofs, or a live Control
+  session; restored peers establish fresh sessions.
+- Relay-carried Control request/response traffic and active ratchet
+  state MUST NOT be repository-committed or backfilled. A bounded,
+  encrypted side-effect audit MAY be included in protected recovery
+  material, but it MUST NOT be a replayable RPC transcript and MUST
+  NOT include message keys or raw workload tokens except under a
+  separately bounded protected diagnostic policy.
 
 ## Rationale
 
@@ -578,14 +658,20 @@ so the system can revoke eagerly. Tokens move the ceremony in time
 rather than removing it, and issuer-bound redemption gives single-use
 semantics one point of atomicity instead of a replication race.
 Splitting security-policy state from configuration keeps the grant system
-non-self-modifying. Human and agentic traffic share the single generic Comms
-carrier family: `kind:31015` negotiation and `kind:31016` payload. They are
+non-self-modifying, while the Comms private claim ledger supplies one
+repository-final authorization authority across devices. Human and agentic
+traffic share the single generic Comms carrier family: `kind:31015`
+negotiation and `kind:31016` payload, inside DR `kind:1060` messages. They are
 differentiated inside encrypted canonical content by the negotiated Control
 protocol, method, direction, and capabilities, keeping remote execution in
 both directions from being confusable with, or silently reachable from, the
 human client path. Framing agentic payloads as MCP keeps the payloads
 JSON-RPC-shaped, reuses a proven capability-negotiation lifecycle, and -
-unlike a state-sync protocol - tolerates the no-backfill DR carrier.
+unlike a state-sync protocol - tolerates the no-backfill DR carrier. Relay
+affinity and durable request reservations provide restart-safe exactly-once
+side effects without letting a caller choose the response route. Atomic
+ratchet persistence prevents plaintext release from outrunning the state that
+makes a consumed message key unusable after a crash.
 
 ## Alternatives Considered
 
@@ -618,8 +704,11 @@ unlike a state-sync protocol - tolerates the no-backfill DR carrier.
 
 ### Direct device-to-device channel (WebRTC / websocket)
 - Pros: lower latency. Cons: needs reachability/NAT traversal or a
-  rendezvous server.
-- Why rejected: relays-mediate-everything is the point of the design.
+  rendezvous server and can expose a Tor full node's network identity.
+- Why rejected for Control: relay mediation preserves the intended topology
+  and works for every light-client class. A separately authorized
+  application-layer connection through Tor to an onion repo relay remains
+  permitted for repository retrieval and finality.
 
 ### Ship the epoch key to the light device
 - Pros: no RPC layer. Cons: key custody in the weakest environment;
@@ -659,13 +748,16 @@ sequenceDiagram
     L->>R: DR enrollment request to the epoch-key endpoint<br/>(QR secret, challenge-response, or enrollment token)<br/>references invite event id; carries key_proof
     R->>F: deliver kind:1060
     Note over F: interactive: challenge, then ceremony<br/>(passphrase + fingerprint)<br/>token: verify sig, expiry, unspent id (issuer-only)
-    F->>R: publish kind:31001 (pubkey d-tag, key_proof, short valid_until)
-    R->>L: kind:31001 observed -> enrolled
+    F->>R: publish kind:31001 (Core stamp, pubkey d-tag, key_proof, short valid_until)
+    R->>L: relay-valid kind:31001 -> provisional only
+    Note over L,F: canonical repository reachability + active Comms authorization -> finally enrolled
     Note over L,F: agentic only: MCP initialize capability exchange
-    L->>F: RPC request rumor via relays (sign/publish/config/decrypt)
-    Note over F: grant table + object-level authz; keys never leave
-    F->>L: RPC response rumor via relays
-    Note over L,F: logout -> self-revocation; idle 15 min -> valid_until lapses
+    L->>R: RPC request rumor on authenticated ingress relay
+    R->>F: accepted DR session + observed ingress
+    Note over F: reserve session/id/method/digest/expiry/ingress<br/>active ledger grant + object authz; keys never leave
+    F->>R: persist response, then publish only to actual ingress
+    R->>L: RPC response rumor
+    Note over L,F: logout/revocation/credential transition -> local invalidation + peer tombstone
 ```
 
 </details>
@@ -685,11 +777,23 @@ sequenceDiagram
 - Control security work binds to `CONTROL-I-AUDIT-AT-REST` and
   `CONTROL-I-SESSION-KEY-CONFINEMENT` without a Social dependency.
 - The minimum Control conformance-vector corpus must cover session-device delegation binding,
-  epoch-key invite staleness rejection, enrollment carve-out, pending
-  and request-id expiry (cached-response replay), grant enforcement
-  incl. security-policy write refusal, token single-use / expiry /
-  issuer-binding / grant-ceiling, self-revocation and inactivity
-  lapse, and capabilities-exchange-before-invocation.
+  Core stamp/profile ownership, exact epoch invite and KEL currency,
+  stale/tombstoned invite rejection, authentication-before-policy and
+  enrollment-only undelegated initiation, provisional versus
+  repository-final/active state, complete peer/executor identity joins,
+  pending expiry, changed-expiry and cross-session replay conflicts,
+  actual-ingress-only responses and crash-safe persisted replay, each Comms
+  claim-ledger decision class, grant enforcement including security-policy
+  write refusal, enrollment-token single use/expiry/issuer binding/grant
+  ceiling, token-class non-substitution, self-revocation and inactivity lapse,
+  MCP initialization before invocation, integrated agent token issuance and
+  per-use proof, generation reset, atomic DR receive persistence, transition
+  tombstones, Tor/reduced-assurance behavior, and recovery/no-backfill
+  boundaries.
+- Acceptance does not make Control claimable. The registry-revision-4,
+  closed-schema, feature-prerequisite, release-manifest, and minimum-vector
+  gates remain closed until the complete ADR-037/ADR-038 atomic batch is
+  issued.
 
 ## Council Input
 
@@ -704,5 +808,8 @@ atomic and idempotently-retryable token redemption, closed
 security-policy mutation paths, §10.1.2 scoping, replay-cache
 scoping, S1-S6 hardening). Round 3 verdict: accept with fixes -
 resolved by rejecting org session-device mutations outright pending
-the deferred org governance flow, plus a line-count trim. Review
-complete; awaiting acceptance.
+the deferred org governance flow, plus a line-count trim. The 2026-08-03
+acceptance reconciliation incorporated ADRs 032-038, including repository
+finality, relay-affine replay, Comms-ledger authority, agent authorship,
+credential generations, ratchet durability/termination, and the recovery
+boundary. Review complete; accepted with the Control gate retained.
