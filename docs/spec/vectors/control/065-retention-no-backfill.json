@@ -1,0 +1,37 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-audit-retention"
+  ],
+  "vector_id": "control/retention-no-backfill",
+  "description": "Control traffic is relay-only and non-backfillable while a bounded encrypted side-effect audit remains non-replayable.",
+  "direction": "consume",
+  "input": {
+    "artifacts": [
+      "rpc_request",
+      "rpc_response",
+      "dr_state",
+      "side_effect_audit"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "repository_committed": [],
+      "backfilled": [],
+      "recovery_optional": [
+        "bounded-encrypted-side-effect-audit"
+      ],
+      "replayable_transcript": false,
+      "retained_message_keys": false,
+      "retained_raw_workload_tokens": false
+    }
+  }
+}

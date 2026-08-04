@@ -1526,6 +1526,19 @@
     ]
   },
   {
+    "vector_id": "control/agent-generation-reset",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-token"
+    ]
+  },
+  {
     "vector_id": "control/agent-publish-authorized",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
@@ -1552,6 +1565,19 @@
     ]
   },
   {
+    "vector_id": "control/agent-token-per-use-binding",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-agent-token"
+    ]
+  },
+  {
     "vector_id": "control/attribution-bypass-refused",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
@@ -1575,6 +1601,84 @@
     "registry_revision": 3,
     "spec_refs": [
       "heterodyne:control/0.5.0#control-agent-audit"
+    ]
+  },
+  {
+    "vector_id": "control/authorization-conflicted",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-claim-consumption"
+    ]
+  },
+  {
+    "vector_id": "control/authorization-expired",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-claim-consumption"
+    ]
+  },
+  {
+    "vector_id": "control/authorization-invalid",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-claim-consumption"
+    ]
+  },
+  {
+    "vector_id": "control/authorization-provisional",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-claim-consumption"
+    ]
+  },
+  {
+    "vector_id": "control/authorization-revoked",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-claim-consumption"
+    ]
+  },
+  {
+    "vector_id": "control/authorization-untrusted",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-claim-consumption"
     ]
   },
   {
@@ -1643,6 +1747,19 @@
     ]
   },
   {
+    "vector_id": "control/configuration-filter-excludes-policy",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-configuration"
+    ]
+  },
+  {
     "vector_id": "control/content-size-refused",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
@@ -1666,6 +1783,175 @@
     "registry_revision": 3,
     "spec_refs": [
       "heterodyne:control/0.5.0#control-relay-affinity"
+    ]
+  },
+  {
+    "vector_id": "control/enrollment-binding-proof-rejected",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-enrollment"
+    ]
+  },
+  {
+    "vector_id": "control/enrollment-challenge-ceremony-required",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-enrollment"
+    ]
+  },
+  {
+    "vector_id": "control/enrollment-identity-join-valid",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-enrollment"
+    ]
+  },
+  {
+    "vector_id": "control/enrollment-identity-substitution-rejected",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-enrollment"
+    ]
+  },
+  {
+    "vector_id": "control/enrollment-pending-expired",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-enrollment"
+    ]
+  },
+  {
+    "vector_id": "control/enrollment-qr-ceremony-required",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-enrollment"
+    ]
+  },
+  {
+    "vector_id": "control/enrollment-relay-provisional",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-enrollment"
+    ]
+  },
+  {
+    "vector_id": "control/enrollment-repository-final-active",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-enrollment"
+    ]
+  },
+  {
+    "vector_id": "control/enrollment-token-different-key-conflict",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-enrollment-token"
+    ]
+  },
+  {
+    "vector_id": "control/enrollment-token-full-grant-rejected",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-enrollment-token"
+    ]
+  },
+  {
+    "vector_id": "control/enrollment-token-redeemed",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-enrollment-token"
+    ]
+  },
+  {
+    "vector_id": "control/enrollment-token-same-key-replay",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-enrollment-token"
+    ]
+  },
+  {
+    "vector_id": "control/enrollment-token-workload-class-rejected",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-enrollment-token"
     ]
   },
   {
@@ -1708,6 +1994,71 @@
     ]
   },
   {
+    "vector_id": "control/grant-full-ceremony-authorized",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-grants"
+    ]
+  },
+  {
+    "vector_id": "control/grant-full-ceremony-required",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-grants"
+    ]
+  },
+  {
+    "vector_id": "control/grant-object-scope-refused",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-grants"
+    ]
+  },
+  {
+    "vector_id": "control/grant-policy-state-write-refused",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-grants"
+    ]
+  },
+  {
+    "vector_id": "control/grant-regular-object-authorized",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-grants"
+    ]
+  },
+  {
     "vector_id": "control/human-profile-refused",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
@@ -1747,6 +2098,97 @@
     ]
   },
   {
+    "vector_id": "control/lifecycle-inactivity-lapse",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-session-lifecycle"
+    ]
+  },
+  {
+    "vector_id": "control/lifecycle-self-revocation",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-session-lifecycle"
+    ]
+  },
+  {
+    "vector_id": "control/mcp-cancellation",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-mcp"
+    ]
+  },
+  {
+    "vector_id": "control/mcp-inbound-execution-default-deny",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-mcp"
+    ]
+  },
+  {
+    "vector_id": "control/mcp-initialize-required",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-mcp"
+    ]
+  },
+  {
+    "vector_id": "control/mcp-timeout",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-mcp"
+    ]
+  },
+  {
+    "vector_id": "control/mcp-unadvertised-tool-refused",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-mcp"
+    ]
+  },
+  {
     "vector_id": "control/rate-refused",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
@@ -1770,6 +2212,19 @@
     "registry_revision": 3,
     "spec_refs": [
       "heterodyne:control/0.5.0#control-agent-requirements"
+    ]
+  },
+  {
+    "vector_id": "control/recovery-no-session-restore",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-audit-retention"
     ]
   },
   {
@@ -1799,6 +2254,58 @@
     ]
   },
   {
+    "vector_id": "control/retention-no-backfill",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-audit-retention"
+    ]
+  },
+  {
+    "vector_id": "control/rpc-changed-expiry-conflict",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-relay-affinity"
+    ]
+  },
+  {
+    "vector_id": "control/rpc-cross-session-conflict",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-relay-affinity"
+    ]
+  },
+  {
+    "vector_id": "control/rpc-schema-transport-context-excluded",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-enrollment"
+    ]
+  },
+  {
     "vector_id": "control/sender-proof-refused",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
@@ -1822,6 +2329,45 @@
     "registry_revision": 3,
     "spec_refs": [
       "heterodyne:control/0.5.0#control-agent-token"
+    ]
+  },
+  {
+    "vector_id": "control/transition-peer-tombstone",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-session-lifecycle"
+    ]
+  },
+  {
+    "vector_id": "control/transport-browser-reduced-assurance",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-enrollment"
+    ]
+  },
+  {
+    "vector_id": "control/transport-strict-tor",
+    "owner_document": "control",
+    "owner_version": "control/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:control/0.5.0#control-enrollment"
     ]
   },
   {

@@ -1,0 +1,52 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-enrollment-token"
+  ],
+  "vector_id": "control/enrollment-token-same-key-replay",
+  "description": "The issuer-bound enrollment-token ledger yields enrollment-token-same-key-replay.",
+  "direction": "consume",
+  "input": {
+    "token": {
+      "token_class": "control-enrollment",
+      "token_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "issuer_device": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expires_at": 1200,
+      "grant_tier": "regular",
+      "state": "spent",
+      "signature_valid": true,
+      "enrolling_key": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "redeeming_device": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "enrolling_key": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "now": 1000
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "draft_control_decision": {
+        "verdict": "accept",
+        "action": "replay",
+        "grant_tier": "regular",
+        "next": {
+          "token_class": "control-enrollment",
+          "token_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "issuer_device": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "expires_at": 1200,
+          "grant_tier": "regular",
+          "state": "spent",
+          "signature_valid": true,
+          "enrolling_key": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        }
+      },
+      "conformance_claimable": false
+    }
+  }
+}

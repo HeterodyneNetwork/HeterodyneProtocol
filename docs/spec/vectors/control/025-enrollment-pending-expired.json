@@ -1,0 +1,40 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-enrollment"
+  ],
+  "vector_id": "control/enrollment-pending-expired",
+  "description": "The closed draft enrollment state machine yields enrollment-pending-expired.",
+  "direction": "consume",
+  "input": {
+    "profile_id": "heterodyne-control-session-device-v1",
+    "binding_proof_valid": true,
+    "binding_nonce_matches_bootstrap": true,
+    "active_invite": true,
+    "bootstrap_authorized": true,
+    "bootstrap_mode": "challenge",
+    "fresh_ceremony": true,
+    "pending_expires_at": 1200,
+    "now": 1200,
+    "organization_persona": false,
+    "delegation_state": "repository-final",
+    "authorization_state": "active"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "draft_control_decision": {
+        "verdict": "reject",
+        "reason_code": "control-request-expired"
+      },
+      "conformance_claimable": false
+    }
+  }
+}

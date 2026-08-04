@@ -1,0 +1,32 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-session-lifecycle"
+  ],
+  "vector_id": "control/transition-peer-tombstone",
+  "description": "A revocation transition invalidates locally before broadcasting a separately authenticated peer tombstone.",
+  "direction": "consume",
+  "input": {
+    "transition_accepted": true,
+    "old_session_id": "1111111111111111111111111111111111111111111111111111111111111111",
+    "old_sender_delivery_key": "4141414141414141414141414141414141414141414141414141414141414141",
+    "old_recipient_delivery_key": "4242424242424242424242424242424242424242424242424242424242424242",
+    "peer_acknowledged": false
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "local_authority": "invalidated",
+      "peer_tombstone": "nip59-persistent-authenticated",
+      "acknowledgement_blocks_invalidation": false,
+      "control_response": false
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-grants"
+  ],
+  "vector_id": "control/grant-policy-state-write-refused",
+  "description": "The closed grant and protected-policy decision yields grant-policy-state-write-refused.",
+  "direction": "consume",
+  "input": {
+    "grant": {
+      "tier": "regular",
+      "media_upload": false,
+      "repositories": [
+        "rad:z3repo"
+      ],
+      "config_namespaces": [
+        "ui"
+      ],
+      "sessions": [
+        "1111111111111111111111111111111111111111111111111111111111111111"
+      ]
+    },
+    "authorization_state": "active",
+    "method": "config.put",
+    "object_type": "security_policy",
+    "object_id": "grant-table",
+    "fresh_ceremony": false
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "draft_control_decision": {
+        "verdict": "reject",
+        "reason_code": "control-policy-state-protected"
+      },
+      "conformance_claimable": false
+    }
+  }
+}

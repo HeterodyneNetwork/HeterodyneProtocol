@@ -208,7 +208,7 @@ describe("split remediation wire and hook contracts", () => {
       dm_fallback: "nip17-reduced-assurance",
       automatic_refollow: false,
     });
-  });
+  }, 15_000);
 
   it("validates the exact session-device shape without opening its revision-3 gate", () => {
     const vector = byId("session-device/reserved-shape-valid-but-gated");

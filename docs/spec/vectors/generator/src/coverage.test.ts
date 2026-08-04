@@ -32,7 +32,7 @@ describe("family coverage", () => {
     );
     expect(new Set(coverage.map(({ vector_id }) => vector_id)).size).toBe(vectors.length);
     expect(coverage.filter(({ owner_document }) => owner_document === "control"))
-      .toHaveLength(23);
+      .toHaveLength(65);
     expect(coverage).toContainEqual(expect.objectContaining({
       vector_id: "stamping/control-profile-retains-core-owner",
       owner_document: "core",
@@ -40,6 +40,22 @@ describe("family coverage", () => {
       profile: "heterodyne-control-session-device-v1",
       spec_refs: ["heterodyne:core/0.5.0#core-version-stamps"],
     }));
+    for (const [vector_id, anchor] of [
+      ["control/enrollment-repository-final-active", "control-enrollment"],
+      ["control/enrollment-token-different-key-conflict", "control-enrollment-token"],
+      ["control/grant-policy-state-write-refused", "control-grants"],
+      ["control/authorization-revoked", "control-claim-consumption"],
+      ["control/mcp-inbound-execution-default-deny", "control-mcp"],
+      ["control/agent-generation-reset", "control-agent-token"],
+      ["control/transition-peer-tombstone", "control-session-lifecycle"],
+      ["control/retention-no-backfill", "control-audit-retention"],
+    ]) {
+      expect(coverage).toContainEqual(expect.objectContaining({
+        vector_id,
+        owner_document: "control",
+        spec_refs: [`heterodyne:control/0.5.0#${anchor}`],
+      }));
+    }
     expect(coverage).toContainEqual(
       expect.objectContaining({
         vector_id: "stamping/tier3-profile-owner",

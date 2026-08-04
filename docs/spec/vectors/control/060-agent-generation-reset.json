@@ -1,0 +1,29 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-agent-token"
+  ],
+  "vector_id": "control/agent-generation-reset",
+  "description": "A credential-ledger generation reset purges pending issuance and invalidates prior-generation authority.",
+  "direction": "consume",
+  "input": {
+    "token_generation": 4,
+    "current_generation": 5,
+    "pending_issuance_generation": 4
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "prior_token_authority": "invalid",
+      "pending_issuance": "purged",
+      "requires_current_generation_reissuance": true
+    }
+  }
+}

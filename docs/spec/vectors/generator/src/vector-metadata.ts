@@ -454,6 +454,48 @@ control/burst-refused
 control/token-request-bounded
 control/agent-publish-schema-intent-only
 control/audit-omits-raw-token
+control/enrollment-binding-proof-rejected
+control/enrollment-pending-expired
+control/enrollment-relay-provisional
+control/enrollment-repository-final-active
+control/enrollment-qr-ceremony-required
+control/enrollment-challenge-ceremony-required
+control/enrollment-token-redeemed
+control/enrollment-token-same-key-replay
+control/enrollment-token-different-key-conflict
+control/enrollment-token-full-grant-rejected
+control/enrollment-token-workload-class-rejected
+control/grant-regular-object-authorized
+control/grant-object-scope-refused
+control/grant-policy-state-write-refused
+control/grant-full-ceremony-required
+control/grant-full-ceremony-authorized
+control/lifecycle-self-revocation
+control/lifecycle-inactivity-lapse
+control/mcp-initialize-required
+control/mcp-unadvertised-tool-refused
+control/mcp-cancellation
+control/mcp-timeout
+control/mcp-inbound-execution-default-deny
+control/rpc-schema-transport-context-excluded
+control/rpc-changed-expiry-conflict
+control/rpc-cross-session-conflict
+control/configuration-filter-excludes-policy
+control/enrollment-identity-join-valid
+control/enrollment-identity-substitution-rejected
+control/authorization-provisional
+control/authorization-untrusted
+control/authorization-conflicted
+control/authorization-invalid
+control/authorization-expired
+control/authorization-revoked
+control/agent-token-per-use-binding
+control/agent-generation-reset
+control/transition-peer-tombstone
+control/transport-strict-tor
+control/transport-browser-reduced-assurance
+control/recovery-no-session-restore
+control/retention-no-backfill
 `);
 
 const PROFILE_BY_VECTOR = new Map<string, string>([
@@ -707,20 +749,46 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
       "acceptance-gating": "social-admission-policy",
     },
     control: {
-      control: vectorId.includes("arrival")
+      control: vectorId.includes("enrollment-token")
+        ? "control-enrollment-token"
+        : vectorId.includes("enrollment-")
+          ? "control-enrollment"
+          : vectorId.includes("authorization-")
+            ? "control-claim-consumption"
+          : vectorId.includes("grant-")
+            ? "control-grants"
+            : vectorId.includes("lifecycle-")
+              ? "control-session-lifecycle"
+              : vectorId.includes("transition-")
+                ? "control-session-lifecycle"
+              : vectorId.includes("mcp-")
+                ? "control-mcp"
+                : vectorId.includes("configuration-")
+                  ? "control-configuration"
+                  : vectorId.includes("transport-")
+                    ? "control-enrollment"
+                    : vectorId.includes("recovery-")
+                      || vectorId.includes("retention-")
+                      ? "control-audit-retention"
+                  : vectorId.includes("rpc-schema")
+                    ? "control-rpc"
+                    : vectorId.includes("arrival")
         || vectorId.includes("relay")
         || vectorId.includes("restart")
-        || vectorId.includes("expired-request")
-        || vectorId.includes("changed-")
-        || vectorId.includes("complete-without")
-        ? "control-relay-affinity"
-        : vectorId.includes("token-request")
-          ? "control-agent-token"
-          : vectorId.includes("audit")
-            ? "control-agent-audit"
-            : vectorId.includes("schema-intent")
-              ? "control-agent-publish"
-              : "control-agent-requirements",
+                      || vectorId.includes("expired-request")
+                      || vectorId.includes("changed-")
+                      || vectorId.includes("cross-session")
+                      || vectorId.includes("complete-without")
+                      ? "control-relay-affinity"
+                      : vectorId.includes("token-request")
+                        || vectorId.includes("agent-token-")
+                        || vectorId.includes("agent-generation-")
+                        ? "control-agent-token"
+                        : vectorId.includes("audit")
+                          ? "control-agent-audit"
+                          : vectorId.includes("schema-intent")
+                            ? "control-agent-publish"
+                            : "control-agent-requirements",
     },
   };
   return anchors[owner]?.[prefix] ?? `${owner}-conformance`;

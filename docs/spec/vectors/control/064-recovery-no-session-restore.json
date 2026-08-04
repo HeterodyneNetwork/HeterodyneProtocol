@@ -1,0 +1,34 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-audit-retention"
+  ],
+  "vector_id": "control/recovery-no-session-restore",
+  "description": "Recovery restores no active Control or double-ratchet execution authority.",
+  "direction": "consume",
+  "input": {
+    "protected_recovery_material_available": true,
+    "requested_restore": [
+      "dr_state",
+      "message_keys",
+      "workload_tokens",
+      "sender_proofs",
+      "control_session"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "restored": [],
+      "fresh_session_required": true,
+      "recovery_opens_control": false
+    }
+  }
+}

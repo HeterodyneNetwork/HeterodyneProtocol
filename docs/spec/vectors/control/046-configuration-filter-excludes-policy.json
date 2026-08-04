@@ -1,0 +1,49 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-configuration"
+  ],
+  "vector_id": "control/configuration-filter-excludes-policy",
+  "description": "The live configuration view contains granted UI state but excludes policy, ledger, key, and ratchet secrets.",
+  "direction": "consume",
+  "input": {
+    "grant": {
+      "tier": "regular",
+      "media_upload": false,
+      "repositories": [
+        "rad:z3repo"
+      ],
+      "config_namespaces": [
+        "ui"
+      ],
+      "sessions": [
+        "1111111111111111111111111111111111111111111111111111111111111111"
+      ]
+    },
+    "requested_namespaces": [
+      "ui",
+      "security-policy",
+      "claim-ledger"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "included_namespaces": [
+        "ui"
+      ],
+      "excluded_namespaces": [
+        "security-policy",
+        "claim-ledger"
+      ],
+      "secret_classes_released": []
+    }
+  }
+}

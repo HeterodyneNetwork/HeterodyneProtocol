@@ -39,6 +39,7 @@
       "request_id": "request-1",
       "method": "heterodyne.agent.publish",
       "payload_digest": "4931af6a828018995ec2b86d908deeaad4788cb436144808366757383de805b5",
+      "expires_at": 1200,
       "first_ingress_relay": "wss://relay-a.example/",
       "state": "reserved"
     }

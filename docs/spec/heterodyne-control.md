@@ -45,14 +45,14 @@ the Model Context Protocol (MCP) data-layer profile described by ADR-030.
 It also reserves session lifecycle, revocation, replay protection,
 object-level authorization, side-effect audit, and inbound-execution policy.
 
-Those areas are enumerated so ownership is unambiguous; their complete wire
-schemas, state machines, rejection rules, vector corpus, and conformance
-requirements have not yet been integrated from ADR-030. The relay-affinity and
-automated-agent subsets defined in §§5-6 are normative and vectored under
-accepted ADR-035 and ADR-036, but they do not by themselves activate the
-incomplete session-device, enrollment, grant, or MCP profile. An
-implementation MUST NOT infer missing ADR-030 behavior from ADR prose or
-advertise Control conformance from this document.
+The closed draft schemas, state machines, rejection rules, and draft vector
+corpus in §§5-7 integrate ADR-030 while preserving the relay-affinity and
+automated-agent requirements of ADR-035 and ADR-036. This is an interoperable
+draft definition, but not an active conformance feature: registry revision 3
+still marks the session-device profile reserved-inactive, and the atomic
+ADR-037/ADR-038 revision-4 artifact batch has not been issued. An
+implementation MAY exercise these rules only as visibly non-conformant draft
+behavior and MUST NOT advertise Control conformance.
 
 Control has no transport and no wire-stamp authority. Session-carried Control
 payloads use accepted Comms double-ratchet sessions, Comms negotiation, and
@@ -85,10 +85,12 @@ negotiation for the same Control version and required feature set, and the
 payload has passed all Comms carrier checks. Control MUST NOT weaken or bypass
 any Comms cryptographic or acceptance failure.
 
-The stable Control protocol identifier, closed Control payload schemas, and
-method-specific state machines remain to be integrated from an accepted
-ADR-030. A generic Comms carrier does not itself establish Control semantics
-or conformance.
+Mutual Comms negotiation selects exactly one of
+`heterodyne-control-human-v1` or `heterodyne-control-agent-mcp-v1`. Those
+identifiers select the closed Control schemas and method state machines in
+this document. A generic Comms carrier, an unconfirmed negotiation, or a
+different protocol identifier does not establish Control semantics or
+conformance.
 
 <a id="control-claim-consumption"></a>
 ### 2.1 Consumption of Comms authorization decisions
@@ -119,7 +121,7 @@ principal into a durable reader or issuer.
 
 This section defines no claim event, proof, repository-record, discovery, JWT,
 or token-status wire format. Those remain exclusively Comms-owned. Future
-Control schemas name qualified Comms anchors and carry only Control method
+Control revisions name qualified Comms anchors, and the schemas below carry only Control method
 inputs and decisions inside the existing Comms carriers.
 
 <a id="control-session-device-profile"></a>
@@ -202,36 +204,42 @@ retained. Audit material MUST be encrypted at rest.
 ## 5. Ingress-relay affinity and restart-safe replay
 
 Every authenticated Control request MUST validate against
-`docs/spec/schemas/control/control-rpc-request-v1.schema.json` and bind exact
-Control version, DR session ID, request ID, method, closed payload, canonical
-payload digest, expiry, and the normalized relay URL on which the valid
-encrypted carrier was received. `reply_relay` and every other
-request-selected response URL are forbidden.
+`docs/spec/schemas/control/control-rpc-request-v1.schema.json`. Its complete
+caller-supplied shape is `{id, method, params, expires_at}`. The negotiated
+Control version, accepted DR session ID, canonical payload digest, and
+normalized relay URL on which the valid encrypted carrier was received are
+receiver-observed execution context, not request members. `spec_version`,
+`session_id`, `payload_digest`, `ingress_relay`, `reply_relay`, and every other
+caller-selected response URL are therefore forbidden by the closed request
+schema.
 
 Before dispatch, the full node MUST atomically reserve:
 
 ```text
-(session ID, request ID, method, payload digest, first ingress relay)
+(session ID, request ID, method, payload digest, expiry, first ingress relay)
 ```
 
 The first cryptographically valid arrival controls execution. Concurrent
 identical arrivals join that reservation and MUST NOT dispatch another
-operation. A request ID reused with another session, method, or payload digest
-MUST fail with `control-request-id-conflict`; an expired request fails with
-`control-request-expired`.
+operation. A request ID reused with another session, method, payload digest,
+or expiry MUST fail with `control-request-id-conflict`; an expired request
+fails with `control-request-expired`.
 
-The final response MUST validate against
-`docs/spec/schemas/control/control-rpc-response-v1.schema.json` and MUST be
-persisted atomically before it becomes replayable. The full node publishes the
-response first and only to the authenticated request's ingress relay and MUST
-NOT fan it out across configured relays.
+The final NIP-46-shaped `{id, result}` or `{id, error}` response MUST validate
+against `docs/spec/schemas/control/control-rpc-response-v1.schema.json` and
+MUST be persisted atomically in the reservation before it becomes
+publishable or replayable. The full node publishes the response first and
+only to the authenticated request's actual ingress relay and MUST NOT fan it
+out across configured relays.
 
 If a response is lost, the client MAY retry the byte-identical logical request
 with the same request ID and expiry through another advertised relay. The full
-node MUST return the one persisted in-progress or final result through that
-retry's authenticated ingress relay without re-execution. After restart it
-MUST recover or resume the reserved operation through the same idempotency
-boundary and MUST NOT repeat a committed side effect.
+node MUST return the one persisted in-progress or final result only through
+that retry's actual authenticated ingress relay without re-execution. After
+restart it MUST recover or resume the reserved operation through the same
+idempotency boundary and MUST NOT repeat a committed side effect. If durable
+evidence cannot prove whether the effect committed, the executor MUST fail
+closed for explicit repair rather than dispatch it again.
 
 <a id="control-agent-requirements"></a>
 ## 6. Requirements for automated agents
@@ -304,26 +312,228 @@ for a declared shorter interval. Audit persistence MUST precede replay of a
 final side-effect result.
 
 <a id="control-reserved-scope"></a>
-## 7. Remaining ADR-030 integration scope
+## 7. Closed ADR-030 draft state machines
 
-Acceptance and integration of ADR-030 must complete at least these areas:
+This section completes the closed draft behavior allocated to Control by
+ADR-030. It does not activate the revision-3 registry reservation or open the
+conformance gate in §9. Every JSON payload named here is the plaintext of a
+Comms generic subprotocol inner rumor after successful Comms authentication
+and mutual negotiation. Control defines no event kind, outer wrapper,
+transport, or wire stamp.
 
-1. enrollment bootstrap, active-invite validation, session-device binding,
-   finality, expiration, and revocation;
-2. the remaining general RPC method/error schemas beyond the normative
-   relay-affinity and agent subsets in §§5-6;
-3. grant tiers, object-level authorization, security-policy state, and
-   privileged mutation ceremonies;
-4. single-use enrollment-token issuance, redemption, issuer binding,
-   idempotency, revocation, expiry, and grant ceilings;
-5. MCP JSON-RPC lifecycle, bidirectional capabilities, tool-schema
-   enforcement, cancellation, timeout, and default-deny inbound execution;
-6. general encrypted local audit semantics beyond the agent subset and
-   restart-safe enrollment/grant state; and
-7. minimum positive and negative conformance vectors for each required path.
+<a id="control-enrollment"></a>
+### 7.1 Enrollment
 
-Until that work lands, these labels describe allocation, not interoperable
-wire behavior.
+An enrollment request MUST validate against
+`docs/spec/schemas/control/control-enrollment-request-v1.schema.json`. It
+names the exact active epoch-invite event, enrollee publishing key, on-wire
+binding nonce, Core-defined BIP-340 `key_proof`, one bootstrap credential,
+the requested grant, and any requested inbound-execution capability. Omission
+of `inbound_execution` means disabled. The request MUST NOT carry a Control
+version stamp, ingress relay, response route, epoch secret, or persona secret.
+
+The executor applies this state machine in order:
+
+1. Comms has already authenticated the `control-enrollment` carrier and
+   transcript and returned its non-oracular hold. Control rejects any request
+   whose named `kind:30078`, `d = double-ratchet/invites/epoch` invite is not
+   the exact currently active event, is tombstoned, lacks the current
+   `kel_head`, or is not signed by the current KERI-authoritative epoch key.
+2. Control reconstructs the Core binding transcript from the candidate
+   publishing key and on-wire nonce, verifies `key_proof`, and requires that
+   the nonce is the live challenge or the presented unspent enrollment-token
+   ID. It binds the invite ID, enrollee key, accepted DR transcript/session,
+   future delegation address/event ID, grant subject, enrolling full-node NID
+   and device key, and negotiated protocol/version tuple. Substitution at any
+   join fails closed.
+3. The pending request expires at its recorded deadline (RECOMMENDED default:
+   two minutes). Remote interactive enrollment validates challenge-response
+   before showing any local prompt. Interactive and co-located enrollment then
+   require a fresh epoch-key unlock ceremony displaying the enrollee
+   fingerprint. Token enrollment uses the already-authorized token ceremony
+   in §7.2. Organization-persona enrollment is prohibited until a later
+   delegate-threshold artifact is specified.
+4. The executor issues the exact Core-owned
+   `heterodyne-control-session-device-v1` candidate. A relay-valid candidate
+   yields only visibly labeled `provisional` state and no authority.
+   `deny-until-repo` treats it as absent. The device becomes `active` only
+   when that exact delegation is canonical-repository-final and every
+   applicable grant decision from the Comms private claim ledger is
+   repository-final `active`.
+
+The default grant for a successful enrollment is `regular`. Delivery,
+accepted DR state, a final delegation alone, a filtered device view, or an
+OIDC/JWT projection never substitutes for active ledger authority. A strict
+light client uses outbound Tor. A browser without Tor MAY use an authenticated
+shared clearnet relay only in visibly declared reduced-assurance mode.
+Optional Tor access to an advertised onion repo relay may obtain repository
+finality or content, but is not a Control transport.
+
+<a id="control-enrollment-token"></a>
+### 7.2 Enrollment-token ledger
+
+An enrollment token MUST validate against
+`docs/spec/schemas/control/control-enrollment-token-v1.schema.json`. Its
+`token_class` is exactly `control-enrollment`; its epoch-key signature binds
+the persona, current epoch key and `kel_head`, unique token ID, minting device,
+issue and expiry times, non-full grant, and optional expected enrollee key.
+Minting requires the §7.1 fresh-authorization ceremony. A token with a `full`
+grant is semantically invalid even if its nested grant is structurally valid.
+
+The sole authoritative token state is a Comms private-claim-ledger record with
+one of `unspent`, `spent`, or `revoked`. Only the minting device may redeem.
+Before delegation publication it atomically changes `unspent` to `spent` and
+binds the enrolling key. A same-token, same-key retry returns the recorded
+delegation idempotently; a different-key retry conflicts. Expired, revoked,
+wrong-issuer, wrong-key, invalid-signature, and already-spent-for-another-key
+presentations fail closed. Redemption is shown in the filtered device
+inventory.
+
+A Control enrollment token is not a Comms/OIDC agent workload access token.
+Neither is an ADR-038 recovery transfer/bootstrap grant. Implementations MUST
+type-separate the three classes and MUST NOT accept one for another class's
+operation.
+
+<a id="control-grants"></a>
+### 7.3 Grants and protected policy state
+
+A filtered grant MUST validate against
+`docs/spec/schemas/control/control-grant-v1.schema.json`. The tier and exact
+repository, configuration-namespace, and session sets are an
+object-authorization intersection, not hints:
+
+- `baseline` permits `ping`, `get_public_key`, `dm.read`, `dm.write`,
+  `dm.sign`, `nip44_encrypt`, `nip44_decrypt`, `decrypt`, and
+  `session.self_revoke`;
+- `regular` is the default and adds human-profile `sign_event`, `publish`,
+  `repo.write`, `feed.update`, `config.get`, and `config.put`;
+- `full` adds only the ability to request `device.activate`,
+  `device.cross_sign`, `token.mint`, and `session.unlock`; activation,
+  cross-signing, and token minting still require a fresh local ceremony; and
+- `media.upload` requires the independent `media_upload` flag at any tier.
+
+The agentic profile never inherits those human methods. It exposes only its
+closed advertised tools and the §6 intent-only publication path.
+
+The Comms private claim ledger is the sole authority for the grant table,
+token registry, device inventory, and revocation records. Only
+repository-final `active` decisions grant positive authority. Authenticated
+reductions and revocations take effect immediately and are then committed for
+finality. `provisional`, `untrusted`, `conflicted`, `invalid`, `expired`, and
+`revoked` decisions fail closed. Every invocation rechecks the method and
+exact object against current state.
+
+Those four security-policy data sets are not configuration. `config.put`
+MUST reject any path reaching them, regardless of tier. Their only mutation
+paths are a fresh-authorized enrollment, activation, or token-mint ceremony;
+caller self-revocation of its own record; automatic inactivity lapse; and a
+fresh-authorized local full-node administration action. No grant may edit
+itself, resurrect a token, clear revocation, or turn a NID-less session device
+into a claim-ledger reader.
+
+<a id="control-rpc"></a>
+### 7.4 General RPC dispatch
+
+Human requests use `heterodyne-control-human-v1` and validate against the
+closed request schema in §5. Agentic JSON-RPC uses
+`heterodyne-control-agent-mcp-v1` and §7.7. The negotiated profile determines
+the permitted method vocabulary. A full node MUST validate `params` against
+the method or tool schema, apply §7.3 object authorization, and then pass
+every side-effect through §5's durable reservation before execution.
+Destructive or exfiltrating methods SHOULD require explicit confirmation, and
+bulk decrypt-on-behalf behavior SHOULD be rate-limited and surfaced.
+
+Key-operation methods run only on the authenticated epoch endpoint after
+enrollment; other methods run on the accepted device session. Vanilla NIP-46,
+if separately offered, has separate grants and MUST NOT be an automatic
+fallback. A client must visibly identify its reduced forward-secrecy and
+lifecycle guarantees.
+
+<a id="control-configuration"></a>
+### 7.5 Filtered configuration
+
+After activation the full node sends the complete grant-filtered live
+configuration, followed by authorized updates, through the accepted DR
+session. The view includes every setting needed to render the permitted UI,
+but excludes security-policy state, private claim records, claim-ledger
+decryption keys, issuer keys, epoch/NID/audience/repository-decryption keys,
+and ratchet secrets. Configuration writes validate their closed namespace and
+object scope and cannot use a generic path to reach an excluded record.
+
+<a id="control-session-lifecycle"></a>
+### 7.6 Session lifecycle and termination
+
+A session-device delegation SHOULD carry a short `valid_until`, refreshed
+only while authorized activity continues. The RECOMMENDED configurable
+inactivity timeout is 15 minutes. At expiry the executor drops the grant,
+invalidates the session locally, and records `lapsed`. Logout performs
+self-revocation and local key deletion; a self-revocation is accepted from
+every tier without ceremony because it only reduces authority.
+
+Self-revocation, logout, inactivity, ledger revocation/reduction, or an
+applicable credential transition stops Control immediately and invalidates
+affected DR sessions locally. The separately authenticated persistent NIP-59
+peer tombstone binds the old session and both delivery identities and is sent
+after transition acceptance; acknowledgement cannot delay local invalidation.
+It is neither an RPC response nor a transcript.
+
+Before any received Control plaintext is released, Comms DR receive-state
+advancement, durable state persistence, and consumed-message-key erasure MUST
+complete atomically. Recovery never restores active DR state, message keys,
+temporary workload tokens, sender proofs, or a live Control session; restored
+peers negotiate fresh sessions.
+
+<a id="control-mcp"></a>
+### 7.7 Agentic MCP data layer
+
+Agentic peers use the MCP 2025-11-25 data layer only; MCP transports are not
+used. Frames MUST validate against
+`docs/spec/schemas/control/control-mcp-frame-v1.schema.json`, and each
+capability set MUST validate against
+`docs/spec/schemas/control/control-capability-set-v1.schema.json`. Both peers
+exchange and confirm `initialize` capability sets before any tool call. Each
+tool has an exact input schema and finite timeout. A peer MUST reject a tool
+that it did not advertise, arguments outside that schema, a call before
+mutual initialization, or a method from the other Control profile.
+
+Cancellation notifications are honored only when the negotiated capability
+permits them and never undo a committed side effect. Every call terminates at
+its negotiated timeout. Full-node-to-light inbound execution is absent by
+default and requires matching opt-in in both the enrollment request and the
+light client's capability set. If enabled, it remains sandboxed and
+allowlisted, has no ambient filesystem, network, or secrets access without a
+separate object grant, visibly surfaces the active session, and SHOULD request
+local consent for each newly exercised tool.
+
+Only after mutual initialization may an agent request a workload token through
+the §6.1 issuance tool. Every publication then uses
+`heterodyne.agent.publish`, a sender-constrained token valid for at most five
+minutes, and a fresh per-use proof. Issuance and use bind the exact issuer,
+pairwise subject, `client_id`, role ID, Control session, request ID, method,
+canonical payload digest, and current credential-ledger persona, generation,
+checkpoint, and status. A generation reset purges prior-generation pending
+issuance and authority and requires reissuance. Raw signing, key access,
+human-profile publication, unlabeled output, and human-key fallback remain
+prohibited.
+
+<a id="control-audit-retention"></a>
+### 7.8 Audit, ordering, and retention
+
+For every side effect the executor first obtains a current Comms
+authorization decision, then creates the §5 reservation, executes or
+reconciles the operation once, atomically persists commit evidence and the
+encrypted `CONTROL-I-AUDIT-AT-REST` record, and only then persists and
+publishes the final response. The audit binds negotiated versions/profile,
+session and request IDs, method, canonical payload digest, expiry, actual
+ingress, source claim IDs/checkpoint/decision, object authorization, result,
+and side-effect evidence. Agent records additionally satisfy §6.3.
+
+Relay-carried requests and responses, DR state, message keys, sender proofs,
+and temporary workload tokens are never repository-committed or backfilled.
+A bounded encrypted side-effect audit MAY be included in protected recovery
+material, but is not a replayable RPC transcript. It contains no message key
+and no raw workload token except under a separately declared, shorter,
+protected diagnostic retention policy.
 
 <a id="control-security"></a>
 ## 8. Security invariants
@@ -393,8 +603,9 @@ profile for a client that implements no Social document.
 Because Control conformance is closed, an implementation MUST NOT place
 `heterodyne-control-strict-v1` in `strict_profiles`, claim the profile in a
 conformance report, or treat its stable identifier as evidence of activation.
-Activation requires the same accepted-ADR, integrated-schema, and vector gates
-as baseline Control conformance, plus all prerequisite strict-profile results.
+Activation requires the same atomic registry-revision-4, ADR-037/ADR-038
+feature/schema/vector, and manifest gates as baseline Control conformance,
+plus all prerequisite strict-profile results.
 
 The revision-3 subsets require a distinct reserved profile. The v1 declaration
 above remains unchanged:
@@ -446,27 +657,31 @@ above remains unchanged:
 
 Because baseline Control conformance is closed, an implementation MUST NOT
 advertise `heterodyne-control-strict-v2`. Its normative subset results may be
-reported only as partial ADR-035/ADR-036 evidence.
+reported only as non-conformant ADR-030/ADR-035/ADR-036 draft evidence.
 
 <a id="control-conformance"></a>
 ## 9. Incomplete conformance gate
 
-There is **no Control conformance claim** for this incomplete draft. The
-ADR-035 relay-affinity subset and ADR-036 automated-agent subset are normative,
-schema-closed, and vectored, but do not fill the remaining ADR-030
-session-device, enrollment, grant, MCP lifecycle, and general RPC requirements.
+There is **no Control conformance claim** for this incomplete draft. ADR-030's
+session-device, enrollment, grant, MCP lifecycle, general RPC, and audit
+behavior is now closed and draft-vectored together with the ADR-035
+relay-affinity and ADR-036 automated-agent subsets. That integration is
+necessary but insufficient: the accepted ADR-037 decision requires registry
+revision 4 and the complete ADR-037/ADR-038 feature, schema, prerequisite,
+vector, family-manifest, and release-manifest artifact set to land atomically.
 
 <!-- fixture:control-conformance-gate -->
 ```json
 {
   "can_claim_control_conformance": false,
   "blockers": [
-    "adr-030-accepted",
-    "adr-030-session-device-and-enrollment-integrated",
-    "adr-030-grants-and-mcp-lifecycle-integrated",
-    "adr-030-minimum-general-control-vectors"
+    "registry-revision-4-not-published",
+    "adr-038-recovery-feature-and-schemas-not-integrated",
+    "atomic-adr-037-and-adr-038-vector-batch-incomplete",
+    "matching-family-and-release-manifests-not-issued"
   ],
   "integrated_normative_subsets": [
+    "adr-030-gated-control-profile",
     "adr-035-relay-affinity",
     "adr-036-agent-workload-publication"
   ]
@@ -475,5 +690,6 @@ session-device, enrollment, grant, MCP lifecycle, and general RPC requirements.
 
 Implementations MAY experiment with the reserved profile identifiers, but
 MUST label that work non-conformant and incomplete. Removing this gate
-requires a later reviewed change that supplies every listed blocker; version
-metadata or passing only the integrated subset vectors cannot open it.
+requires one later reviewed atomic change that supplies every listed blocker;
+version metadata, draft schema validity, or passing the integrated draft
+vectors cannot open it.

@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/control/control-enrollment-request-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "invite_event_id",
+    "publishing_key",
+    "binding_nonce",
+    "key_proof",
+    "bootstrap",
+    "requested_grant"
+  ],
+  "properties": {
+    "invite_event_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "publishing_key": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "binding_nonce": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "key_proof": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    },
+    "bootstrap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "credential"],
+      "properties": {
+        "mode": {
+          "enum": ["qr", "challenge", "token"]
+        },
+        "credential": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        }
+      }
+    },
+    "requested_grant": {
+      "$ref": "https://heterodyne.network/schemas/control/control-grant-v1.schema.json"
+    },
+    "inbound_execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "tools"],
+      "properties": {
+        "enabled": {
+          "const": true
+        },
+        "tools": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9](?:[a-zA-Z0-9._:-]{0,126}[a-zA-Z0-9])?$"
+          }
+        }
+      }
+    }
+  }
+}

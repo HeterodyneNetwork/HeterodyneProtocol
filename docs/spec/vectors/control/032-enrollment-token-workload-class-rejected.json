@@ -1,0 +1,40 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-enrollment-token"
+  ],
+  "vector_id": "control/enrollment-token-workload-class-rejected",
+  "description": "The issuer-bound enrollment-token ledger yields enrollment-token-workload-class-rejected.",
+  "direction": "consume",
+  "input": {
+    "token": {
+      "token_class": "agent-workload",
+      "token_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "issuer_device": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expires_at": 1200,
+      "grant_tier": "regular",
+      "state": "unspent",
+      "signature_valid": true
+    },
+    "redeeming_device": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "enrolling_key": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "now": 1000
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "draft_control_decision": {
+        "verdict": "reject",
+        "reason_code": "control-enrollment-token-class-invalid"
+      },
+      "conformance_claimable": false
+    }
+  }
+}

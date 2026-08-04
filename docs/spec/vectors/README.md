@@ -41,7 +41,7 @@ wire format and is not the vector envelope version.
 The schema requires each actual vector's `registry_revision` to be an integer;
 the placeholder above means that every vector pins the revision governing its
 behavior. The current coverage manifest contains 265 immutable registry-revision-1 vectors,
-55 ADR-034 registry-revision-2 vectors, and 110
+55 ADR-034 registry-revision-2 vectors, and 152
 ADR-030/ADR-035/ADR-036 registry-revision-3 vectors.
 Historical vectors and the signed
 behavior they describe MUST NOT be rewritten to the latest registry revision.
@@ -55,10 +55,11 @@ Core <- Comms <- Social
 ```
 
 Core vectors therefore have no dependencies; Comms vectors pin Core; Control
-and Social vectors pin Core and Comms. Control has normative partial vectors
-for its integrated relay-affinity and automated-agent subsets, but remains
-explicitly `incomplete-draft`; no implementation may claim its profile until
-ADR-030's remaining conformance blockers are resolved.
+and Social vectors pin Core and Comms. Control has closed draft vectors for
+ADR-030 plus its integrated relay-affinity and automated-agent subsets, but
+remains explicitly `incomplete-draft`; no implementation may claim its
+profile before the atomic ADR-037/ADR-038 registry-revision-4 artifact batch
+opens the gate.
 
 ## Coverage authority
 

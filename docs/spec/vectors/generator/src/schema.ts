@@ -113,9 +113,19 @@ const schemasRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../../../schemas/comms",
 );
+const controlSchemasRoot = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../schemas/control",
+);
 
 function readSchema(name: string): AnySchema {
   return JSON.parse(readFileSync(resolve(schemasRoot, name), "utf8")) as AnySchema;
+}
+
+function readControlSchema(name: string): AnySchema {
+  return JSON.parse(
+    readFileSync(resolve(controlSchemasRoot, name), "utf8"),
+  ) as AnySchema;
 }
 
 export const KEY_CLAIM_SCHEMA = readSchema("key-claim-v1.schema.json");
@@ -124,6 +134,13 @@ export const CLAIM_LEDGER_RECORD_SCHEMA = readSchema("claim-ledger-record-v1.sch
 export const OIDC_ISSUANCE_RECORD_SCHEMA = readSchema("oidc-issuance-record-v1.schema.json");
 export const OIDC_ISSUER_METADATA_SCHEMA = readSchema("oidc-issuer-metadata-v1.schema.json");
 export const OIDC_CONTINUITY_MANIFEST_SCHEMA = readSchema("oidc-continuity-manifest-v1.schema.json");
+export const CONTROL_GRANT_SCHEMA = readControlSchema("control-grant-v1.schema.json");
+export const CONTROL_ENROLLMENT_REQUEST_SCHEMA = readControlSchema("control-enrollment-request-v1.schema.json");
+export const CONTROL_ENROLLMENT_TOKEN_SCHEMA = readControlSchema("control-enrollment-token-v1.schema.json");
+export const CONTROL_CAPABILITY_SET_SCHEMA = readControlSchema("control-capability-set-v1.schema.json");
+export const CONTROL_MCP_FRAME_SCHEMA = readControlSchema("control-mcp-frame-v1.schema.json");
+export const CONTROL_RPC_REQUEST_SCHEMA = readControlSchema("control-rpc-request-v1.schema.json");
+export const CONTROL_RPC_RESPONSE_SCHEMA = readControlSchema("control-rpc-response-v1.schema.json");
 
 const commsSchemaAjv = new Ajv({ allErrors: true, strict: false });
 commsSchemaAjv.addSchema(KEY_CLAIM_SCHEMA);
@@ -135,6 +152,31 @@ const validateClaimLedgerRecord = commsSchemaAjv.compile(CLAIM_LEDGER_RECORD_SCH
 const validateOidcIssuanceRecord = commsSchemaAjv.getSchema("https://heterodyne.network/schemas/comms/oidc-issuance-record-v1.schema.json")!;
 const validateOidcIssuerMetadata = commsSchemaAjv.compile(OIDC_ISSUER_METADATA_SCHEMA);
 const validateOidcContinuityManifest = commsSchemaAjv.compile(OIDC_CONTINUITY_MANIFEST_SCHEMA);
+
+const controlSchemaAjv = new Ajv({ allErrors: true, strict: false });
+controlSchemaAjv.addSchema(CONTROL_GRANT_SCHEMA);
+controlSchemaAjv.addSchema(CONTROL_CAPABILITY_SET_SCHEMA);
+const validateControlGrant = controlSchemaAjv.getSchema(
+  "https://heterodyne.network/schemas/control/control-grant-v1.schema.json",
+)!;
+const validateControlCapabilitySet = controlSchemaAjv.getSchema(
+  "https://heterodyne.network/schemas/control/control-capability-set-v1.schema.json",
+)!;
+const validateControlEnrollmentRequest = controlSchemaAjv.compile(
+  CONTROL_ENROLLMENT_REQUEST_SCHEMA,
+);
+const validateControlEnrollmentToken = controlSchemaAjv.compile(
+  CONTROL_ENROLLMENT_TOKEN_SCHEMA,
+);
+const validateControlMcpFrame = controlSchemaAjv.compile(
+  CONTROL_MCP_FRAME_SCHEMA,
+);
+const validateControlRpcRequest = controlSchemaAjv.compile(
+  CONTROL_RPC_REQUEST_SCHEMA,
+);
+const validateControlRpcResponse = controlSchemaAjv.compile(
+  CONTROL_RPC_RESPONSE_SCHEMA,
+);
 
 export function validateVectorOrThrow(value: unknown): asserts value is Vector {
   if (!validate(value)) {
@@ -193,6 +235,80 @@ export function validateOidcContinuityManifestSchemaOrThrow(value: unknown): voi
   assertJcsInput(value);
   if (!validateOidcContinuityManifest(value)) {
     throw new Error(`claim-schema-invalid: ${formatErrors(validateOidcContinuityManifest.errors ?? [])}`);
+  }
+}
+
+export function validateControlGrantSchemaOrThrow(value: unknown): void {
+  validateControlSchemaOrThrow(value, validateControlGrant);
+}
+
+export function validateControlEnrollmentRequestSchemaOrThrow(value: unknown): void {
+  validateControlSchemaOrThrow(value, validateControlEnrollmentRequest);
+}
+
+export function validateControlEnrollmentTokenSchemaOrThrow(value: unknown): void {
+  validateControlSchemaOrThrow(value, validateControlEnrollmentToken);
+  const token = value as {
+    issued_at: number;
+    expires_at: number;
+    grant: { tier: string };
+  };
+  if (token.expires_at <= token.issued_at) {
+    throw new Error(
+      "control-schema-invalid: expires_at must be greater than issued_at",
+    );
+  }
+  if (token.grant.tier === "full") {
+    throw new Error(
+      "control-schema-invalid: an enrollment token cannot confer the full grant",
+    );
+  }
+}
+
+export function validateControlCapabilitySetSchemaOrThrow(value: unknown): void {
+  validateControlSchemaOrThrow(value, validateControlCapabilitySet);
+  const names = (value as { tools: Array<{ name: string }> }).tools.map(
+    ({ name }) => name,
+  );
+  if (new Set(names).size !== names.length) {
+    throw new Error(
+      "control-schema-invalid: capability tool names must be unique",
+    );
+  }
+}
+
+export function validateControlMcpFrameSchemaOrThrow(value: unknown): void {
+  validateControlSchemaOrThrow(value, validateControlMcpFrame);
+}
+
+export function validateControlRpcRequestSchemaOrThrow(value: unknown): void {
+  validateControlSchemaOrThrow(value, validateControlRpcRequest);
+}
+
+export function validateControlRpcResponseSchemaOrThrow(value: unknown): void {
+  validateControlSchemaOrThrow(value, validateControlRpcResponse);
+}
+
+function validateControlSchemaOrThrow(
+  value: unknown,
+  validator: {
+    (data: unknown): boolean;
+    errors?: ErrorObject[] | null;
+  },
+): void {
+  try {
+    jcsCanonicalize(value);
+  } catch (error) {
+    throw new Error(
+      `control-schema-invalid: ${
+        error instanceof Error ? error.message : "invalid JCS value"
+      }`,
+    );
+  }
+  if (!validator(value)) {
+    throw new Error(
+      `control-schema-invalid: ${formatErrors(validator.errors ?? [])}`,
+    );
   }
 }
 

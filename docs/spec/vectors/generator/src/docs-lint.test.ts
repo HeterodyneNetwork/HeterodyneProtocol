@@ -1296,7 +1296,7 @@ describe("protocol family documents", () => {
     for (const profileId of required) expect(text).toContain(profileId);
   });
 
-  it("keeps the Control conformance gate closed until ADR-030 integration and vectors", () => {
+  it("keeps the Control conformance gate closed after gated ADR-030 integration", () => {
     const text = readFileSync(controlPath, "utf8");
     const gate = fixtureFromMarkdown<{
       can_claim_control_conformance: boolean;
@@ -1307,12 +1307,13 @@ describe("protocol family documents", () => {
     expect(gate).toEqual({
       can_claim_control_conformance: false,
       blockers: [
-        "adr-030-accepted",
-        "adr-030-session-device-and-enrollment-integrated",
-        "adr-030-grants-and-mcp-lifecycle-integrated",
-        "adr-030-minimum-general-control-vectors",
+        "registry-revision-4-not-published",
+        "adr-038-recovery-feature-and-schemas-not-integrated",
+        "atomic-adr-037-and-adr-038-vector-batch-incomplete",
+        "matching-family-and-release-manifests-not-issued",
       ],
       integrated_normative_subsets: [
+        "adr-030-gated-control-profile",
         "adr-035-relay-affinity",
         "adr-036-agent-workload-publication",
       ],
@@ -1329,6 +1330,63 @@ describe("protocol family documents", () => {
     ]) {
       expect(text).toContain(invariant);
     }
+  });
+
+  it("defines closed draft enrollment, grants, RPC, lifecycle, and MCP without a Control wire stamp", () => {
+    const text = readFileSync(controlPath, "utf8");
+    for (const anchor of [
+      "control-enrollment",
+      "control-enrollment-token",
+      "control-grants",
+      "control-rpc",
+      "control-configuration",
+      "control-session-lifecycle",
+      "control-mcp",
+      "control-audit-retention",
+    ]) {
+      expect(text).toContain(`<a id="${anchor}"></a>`);
+    }
+    expect(text).toMatch(/default grant[\s\S]*`regular`/i);
+    expect(text).toMatch(/security-policy[\s\S]*not configuration[\s\S]*MUST reject/i);
+    expect(text).toMatch(/same-token, same-key retry[\s\S]*idempotently[\s\S]*different-key retry conflicts/i);
+    expect(text).toMatch(/initialize[\s\S]*before any tool call[\s\S]*did not advertise/i);
+    expect(text).toMatch(/Cancellation notifications[\s\S]*negotiated timeout/i);
+    expect(text).toMatch(/inbound execution is absent by\s+default/i);
+    expect(text).toMatch(/requests and responses[\s\S]*never repository-committed or backfilled/i);
+
+    const schemaRoot = resolve(repositoryRoot, "docs/spec/schemas/control");
+    for (const schemaName of [
+      "control-enrollment-request-v1.schema.json",
+      "control-enrollment-token-v1.schema.json",
+      "control-grant-v1.schema.json",
+      "control-mcp-frame-v1.schema.json",
+      "control-capability-set-v1.schema.json",
+      "control-rpc-request-v1.schema.json",
+      "control-rpc-response-v1.schema.json",
+    ]) {
+      const schema = JSON.parse(
+        readFileSync(resolve(schemaRoot, schemaName), "utf8"),
+      ) as { $schema?: string };
+      expect(schema.$schema).toBe("http://json-schema.org/draft-07/schema#");
+    }
+    const request = JSON.parse(
+      readFileSync(
+        resolve(schemaRoot, "control-rpc-request-v1.schema.json"),
+        "utf8",
+      ),
+    ) as {
+      required: string[];
+      properties: Record<string, unknown>;
+      additionalProperties: boolean;
+    };
+    expect(request.required).toEqual(["id", "method", "params", "expires_at"]);
+    expect(Object.keys(request.properties)).toEqual([
+      "id",
+      "method",
+      "params",
+      "expires_at",
+    ]);
+    expect(request.additionalProperties).toBe(false);
   });
 
   it("keeps Control strict v2 reserved while composing the integrated subsets", () => {
@@ -1361,7 +1419,7 @@ describe("protocol family documents", () => {
       /Requirements for automated agents[\s\S]*MUST refuse[\s\S]*sign_event/i,
     );
     expect(control).toMatch(
-      /ADR-035 relay-affinity subset[\s\S]*ADR-036 automated-agent subset[\s\S]*normative[\s\S]*do not/i,
+      /ADR-030\/ADR-035\/ADR-036 draft evidence[\s\S]*Incomplete conformance gate/i,
     );
   });
 

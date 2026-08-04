@@ -1,17 +1,17 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://heterodyne.network/schemas/control/control-rpc-request-v1.schema.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["spec_version", "session_id", "request_id", "method", "payload", "payload_digest", "expires_at", "ingress_relay"],
+  "required": ["id", "method", "params", "expires_at"],
   "properties": {
-    "spec_version": {"const": "control/0.5.0"},
-    "session_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "request_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "id": {"type": "string", "minLength": 1, "maxLength": 128},
     "method": {"type": "string", "minLength": 1, "maxLength": 128},
-    "payload": {"type": "object"},
-    "payload_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "expires_at": {"type": "integer", "minimum": 1},
-    "ingress_relay": {"type": "string", "pattern": "^wss://"}
+    "params": {"type": "object"},
+    "expires_at": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    }
   }
 }

@@ -1,0 +1,43 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-enrollment"
+  ],
+  "vector_id": "control/rpc-schema-transport-context-excluded",
+  "description": "The closed RPC request carries only id, method, params, and expiry; session, digest, ingress, reply route, and Control version are receiver context.",
+  "direction": "consume",
+  "input": {
+    "request_members": [
+      "id",
+      "method",
+      "params",
+      "expires_at"
+    ],
+    "receiver_context": [
+      "negotiated_control_version",
+      "accepted_dr_session_id",
+      "payload_digest",
+      "actual_ingress_relay"
+    ],
+    "forbidden_members": [
+      "spec_version",
+      "session_id",
+      "payload_digest",
+      "ingress_relay",
+      "reply_relay"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "control_owns_wire_stamp": false
+    }
+  }
+}
