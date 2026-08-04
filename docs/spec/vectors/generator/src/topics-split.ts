@@ -1,5 +1,4 @@
 import { schnorr } from "@noble/curves/secp256k1";
-import { sha256 } from "@noble/hashes/sha2";
 import { nip19, nip44 } from "nostr-tools";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { canonicalNip01, getEventId, getPublicKey, signEvent, verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
@@ -109,7 +108,7 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
     bindingNonce,
   ].join("|");
   const keyProof = bytesToHex(schnorr.sign(
-    sha256(utf8Bytes(bindingPayload)),
+    utf8Bytes(bindingPayload),
     hexToBytes(sessionDevice.private_key),
     AUX_RAND,
   ));
@@ -160,6 +159,17 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
     created_at: fixtures.test_epoch + 512,
     kind: 31001,
     tags: sessionTags.slice(0, -1),
+    content: "",
+    auxRand: AUX_RAND,
+  });
+  const sessionWithMalformedOwnerStamp = await signEvent({
+    secretKey: sender.private_key,
+    created_at: fixtures.test_epoch + 513,
+    kind: 31001,
+    tags: [
+      ...sessionTags.slice(0, -1),
+      ["spec_version", "control/0.5.0"],
+    ],
     content: "",
     auxRand: AUX_RAND,
   });
@@ -376,7 +386,7 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
           schema_valid: true,
           key_proof_valid: schnorr.verify(
             keyProof,
-            sha256(utf8Bytes(bindingPayload)),
+            utf8Bytes(bindingPayload),
             sessionDevice.pubkey,
           ),
           relay_state: "provisional",
@@ -407,7 +417,7 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
       input: { event: sessionWithBadProof, binding_payload: bindingPayload },
       expected_output: {
         verdict: "reject",
-        reason_code: "bad_signature",
+        reason_code: "role-delegation-key-proof-invalid",
         validation_error: "key_proof_invalid",
         conformance_claimable: false,
       },
@@ -447,57 +457,15 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
       },
     },
     {
-      path: "session-device/006-live-challenge-binding-valid.json",
-      vector_id: "session-device/live-challenge-binding-valid",
-      description: "The publishing-key proof nonce matches a fresh challenge from the authenticated enrollment session, while the closed profile gate still grants no Control authority.",
-      direction: "consume",
-      input: {
-        event: sessionDeviceEvent,
-        enrollment_binding: {
-          source: "live-challenge",
-          binding_nonce: bindingNonce,
-          authenticated_session: true,
-          unexpired: true,
-        },
-        profile_gate_open: false,
-      },
+      path: "session-device/006-owner-stamp-malformed.json",
+      vector_id: "session-device/owner-stamp-malformed",
+      description: "A producer refuses to emit the reserved candidate with a non-Core or otherwise malformed owner stamp.",
+      direction: "produce",
+      input: { event: sessionWithMalformedOwnerStamp, binding_payload: bindingPayload },
       expected_output: {
-        verdict: "accept",
-        normalized: {
-          binding_valid: true,
-          binding_source: "live-challenge",
-          control_authority: false,
-          conformance_claimable: false,
-        },
-      },
-    },
-    {
-      path: "session-device/007-one-time-token-binding-valid.json",
-      vector_id: "session-device/one-time-token-binding-valid",
-      description: "The publishing-key proof nonce matches an issuer-bound, unexpired, unredeemed one-time enrollment token, while the closed profile gate still grants no Control authority.",
-      direction: "consume",
-      input: {
-        event: sessionDeviceEvent,
-        enrollment_binding: {
-          source: "one-time-token",
-          binding_nonce: bindingNonce,
-          token_id: "71".repeat(16),
-          authenticated_session: true,
-          issuer_bound: true,
-          single_use: true,
-          unredeemed: true,
-          unexpired: true,
-        },
-        profile_gate_open: false,
-      },
-      expected_output: {
-        verdict: "accept",
-        normalized: {
-          binding_valid: true,
-          binding_source: "one-time-token",
-          control_authority: false,
-          conformance_claimable: false,
-        },
+        verdict: "reject",
+        reason_code: "owner_stamp_malformed",
+        conformance_claimable: false,
       },
     },
     {
@@ -568,6 +536,68 @@ export function validateInviteResponseProfileFixture(vector: {
   if (normalized.invitee_identity !== innerEvent.pubkey || normalized.invitee_session_public_key !== payload.sessionKey || normalized.owner_public_key !== payload.ownerPublicKey) {
     throw new Error("kind:1059 fixture decoded identity/session bytes do not match expected output");
   }
+}
+
+type AtomicReceiveScenario = "success" | "crash-before-commit" | "restart-after-commit";
+
+export function evaluateAtomicRatchetReceive(scenario: AtomicReceiveScenario): Record<string, unknown> {
+  let durableRatchetState: "prior" | "advanced" = "prior";
+  let consumedMessageKeyAvailable = true;
+  let plaintextReleased = false;
+  const stagedAtomicCommit = [
+    "ratchet-advanced",
+    "state-durably-persisted",
+    "consumed-message-key-erased",
+  ];
+
+  if (scenario === "crash-before-commit") {
+    return {
+      durable_ratchet_state: durableRatchetState,
+      consumed_message_key_available: consumedMessageKeyAvailable,
+      plaintext_released: plaintextReleased,
+    };
+  }
+
+  durableRatchetState = "advanced";
+  consumedMessageKeyAvailable = false;
+  const plaintextReleasedBeforeCommit = plaintextReleased;
+  plaintextReleased = true;
+
+  if (scenario === "restart-after-commit") {
+    return {
+      durable_ratchet_state: durableRatchetState,
+      consumed_message_key_available: consumedMessageKeyAvailable,
+      plaintext_released_before_commit: plaintextReleasedBeforeCommit,
+      replay_key_reuse_allowed: consumedMessageKeyAvailable,
+    };
+  }
+
+  return {
+    atomic_commit: stagedAtomicCommit,
+    plaintext_release: plaintextReleased ? "after-commit" : "not-released",
+  };
+}
+
+function atomicReceiveCases(): Case[] {
+  return [{
+    path: "dm/007-atomic-receive-before-plaintext.json",
+    vector_id: "dm/atomic-receive-before-plaintext",
+    description: "A DR receiver atomically advances and persists ratchet state and erases the consumed key before releasing plaintext, with crash-safe restart behavior.",
+    input: {
+      initial_durable_ratchet_state: "prior",
+      consumed_message_key_available: true,
+      plaintext_release_boundary: "after-atomic-commit",
+      crash_points: ["before-commit", "restart-after-commit"],
+    },
+    expected_output: {
+      verdict: "accept",
+      normalized: {
+        success: evaluateAtomicRatchetReceive("success"),
+        crash_before_commit: evaluateAtomicRatchetReceive("crash-before-commit"),
+        restart_after_commit: evaluateAtomicRatchetReceive("restart-after-commit"),
+      },
+    },
+  }];
 }
 
 const CASES: Case[] = [
@@ -651,6 +681,7 @@ const CASES: Case[] = [
     expected_output: { verdict: "reject", reason_code: "unknown_major_version" },
   },
   ...acceptanceCases(),
+  ...atomicReceiveCases(),
   ...profileCases(),
   ...stampCases(),
   {
@@ -673,8 +704,15 @@ const CASES: Case[] = [
 
 function acceptanceCases(): Case[] {
   const hold = { outcome: "hold-as-message-request", content_transferred: false, receipts: 0, typing_signals: 0, retry_hints: 0 };
+  const gatedEnrollmentHold = {
+    ...hold,
+    control_interpretation_allowed: false,
+    sender_visible_signals: 0,
+  };
   const epochInvite = "66".repeat(32);
   const staleInvite = "67".repeat(32);
+  const liveChallenge = "70".repeat(32);
+  const tokenId = "71".repeat(32);
   return [
     ["005-established-ordinary-accept", "established-ordinary-accept", hookInput({ context: "ordinary-dm", authenticated: true, established_locally_accepted_session: true }), { verdict: "accept", normalized: { outcome: "accept" } }],
     ["006-new-ordinary-hold", "new-ordinary-hold", hookInput({ context: "ordinary-dm", authenticated: true, established_locally_accepted_session: false }), { verdict: "accept", normalized: hold }],
@@ -703,10 +741,75 @@ function acceptanceCases(): Case[] {
       }),
       {
         verdict: "accept",
+        normalized: gatedEnrollmentHold,
+      },
+    ],
+    [
+      "022-control-enrollment-live-challenge-gated-hold",
+      "control-enrollment-live-challenge-gated-hold",
+      hookInput({
+        context: "control-enrollment",
+        authenticated: true,
+        active_delegation: false,
+        peer_delegation_id: null,
+        finality: "absent",
+        epoch_invite_event_id: epochInvite,
+        current_epoch_invite_event_id: epochInvite,
+        epoch_invite_signer_current: true,
+        epoch_invite_kel_head_current: true,
+        profile_gate_open: false,
+        session_device_binding_nonce: liveChallenge,
+        enrollment_binding: {
+          source: "live-challenge",
+          binding_nonce: liveChallenge,
+          live_session_challenge: liveChallenge,
+          authenticated_session: true,
+          unexpired: true,
+        },
+      }),
+      {
+        verdict: "accept",
         normalized: {
-          ...hold,
-          control_interpretation_allowed: false,
-          sender_visible_signals: 0,
+          ...gatedEnrollmentHold,
+          binding_valid: true,
+          binding_source: "live-challenge",
+          control_authority: false,
+        },
+      },
+    ],
+    [
+      "023-control-enrollment-token-gated-hold",
+      "control-enrollment-token-gated-hold",
+      hookInput({
+        context: "control-enrollment",
+        authenticated: true,
+        active_delegation: false,
+        peer_delegation_id: null,
+        finality: "absent",
+        epoch_invite_event_id: epochInvite,
+        current_epoch_invite_event_id: epochInvite,
+        epoch_invite_signer_current: true,
+        epoch_invite_kel_head_current: true,
+        profile_gate_open: false,
+        session_device_binding_nonce: tokenId,
+        enrollment_binding: {
+          source: "one-time-token",
+          binding_nonce: tokenId,
+          token_id: tokenId,
+          authenticated_session: true,
+          issuer_bound: true,
+          single_use: true,
+          unredeemed: true,
+          unexpired: true,
+        },
+      }),
+      {
+        verdict: "accept",
+        normalized: {
+          ...gatedEnrollmentHold,
+          binding_valid: true,
+          binding_source: "one-time-token",
+          control_authority: false,
         },
       },
     ],
@@ -727,6 +830,7 @@ function acceptanceCases(): Case[] {
       {
         verdict: "reject",
         reason_code: "dm_invite_revoked_device",
+        validation_error: "epoch_invite_stale",
         normalized: { outcome: "reject", control_interpretation_allowed: false },
       },
     ],
@@ -738,8 +842,24 @@ function acceptanceCases(): Case[] {
         authenticated: true,
         active_delegation: false,
         peer_delegation_id: null,
-        epoch_invite_event_id: epochInvite,
-        current_epoch_invite_event_id: epochInvite,
+        finality: "absent",
+      }),
+      {
+        verdict: "reject",
+        reason_code: "dm_invite_unbound_device",
+        normalized: { outcome: "reject" },
+      },
+    ],
+    [
+      "024-credential-sync-undelegated-reject",
+      "credential-sync-undelegated-reject",
+      hookInput({
+        context: "credential-sync",
+        authenticated: true,
+        active_delegation: false,
+        peer_delegation_id: null,
+        finality: "absent",
+        credential: { status: "valid", nid_bound: false, subject_matches: true },
       }),
       {
         verdict: "reject",
@@ -765,6 +885,7 @@ function acceptanceCases(): Case[] {
       {
         verdict: "reject",
         reason_code: "dm_invite_revoked_device",
+        validation_error: "epoch_invite_tombstoned",
         normalized: { outcome: "reject", control_interpretation_allowed: false },
       },
     ],

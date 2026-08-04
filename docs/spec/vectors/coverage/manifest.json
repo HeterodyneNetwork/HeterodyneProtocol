@@ -60,7 +60,31 @@
     ]
   },
   {
+    "vector_id": "acceptance-gating/control-enrollment-live-challenge-gated-hold",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-acceptance-hook"
+    ]
+  },
+  {
     "vector_id": "acceptance-gating/control-enrollment-stale-invite-reject",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-acceptance-hook"
+    ]
+  },
+  {
+    "vector_id": "acceptance-gating/control-enrollment-token-gated-hold",
     "owner_document": "comms",
     "owner_version": "comms/0.5.0",
     "dependency_versions": {
@@ -139,6 +163,18 @@
       "core": "core/0.5.0"
     },
     "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-acceptance-hook"
+    ]
+  },
+  {
+    "vector_id": "acceptance-gating/credential-sync-undelegated-reject",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-acceptance-hook"
     ]
@@ -1806,6 +1842,18 @@
     "registry_revision": 1,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-multi-host-seeding"
+    ]
+  },
+  {
+    "vector_id": "dm/atomic-receive-before-plaintext",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-dm-retention"
     ]
   },
   {
@@ -4425,16 +4473,6 @@
     ]
   },
   {
-    "vector_id": "session-device/live-challenge-binding-valid",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-nid-delegation"
-    ]
-  },
-  {
     "vector_id": "session-device/nid-fields-forbidden",
     "owner_document": "core",
     "owner_version": "core/0.5.0",
@@ -4445,7 +4483,7 @@
     ]
   },
   {
-    "vector_id": "session-device/one-time-token-binding-valid",
+    "vector_id": "session-device/owner-stamp-malformed",
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},

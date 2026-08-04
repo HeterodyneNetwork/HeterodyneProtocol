@@ -39,6 +39,7 @@
   "expected_output": {
     "verdict": "reject",
     "reason_code": "dm_invite_revoked_device",
+    "validation_error": "epoch_invite_tombstoned",
     "normalized": {
       "outcome": "reject",
       "control_interpretation_allowed": false

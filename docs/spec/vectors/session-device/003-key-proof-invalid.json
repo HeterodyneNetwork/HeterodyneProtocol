@@ -62,7 +62,7 @@
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "bad_signature",
+    "reason_code": "role-delegation-key-proof-invalid",
     "validation_error": "key_proof_invalid",
     "conformance_claimable": false
   }

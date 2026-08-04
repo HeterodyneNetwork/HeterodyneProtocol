@@ -1,14 +1,19 @@
+import { schnorr } from "@noble/curves/secp256k1";
 import { describe, expect, it } from "vitest";
 import { buildFixtures } from "./fixtures.js";
+import { utf8Bytes } from "./hex.js";
 import { verifyEventSignature } from "./nostr.js";
 import { buildSplitVectors, validateInviteResponseProfileFixture } from "./topics-split.js";
 import { buildKeriAuthorityWireVectors } from "./topics-keri-authority.js";
-import { buildAllVectors } from "./topics.js";
 import { vectorMetadata } from "./vector-metadata.js";
 
 const fixtures = buildFixtures();
 const vectors = await buildSplitVectors(fixtures);
-const byId = (id: string) => vectors.find(({ vector }) => vector.vector_id === id)!.vector;
+const byId = (id: string) => {
+  const authored = vectors.find(({ vector }) => vector.vector_id === id);
+  expect(authored, `missing authored vector ${id}`).toBeDefined();
+  return authored!.vector;
+};
 
 describe("split remediation wire and hook contracts", () => {
   it("uses exact Comms hook contexts, outcomes, and authenticated credential preconditions", () => {
@@ -181,6 +186,7 @@ describe("split remediation wire and hook contracts", () => {
   });
 
   it("makes vanilla Nostr authors first-class Social follow targets", async () => {
+    const { buildAllVectors } = await import("./topics.js");
     const allVectors = await buildAllVectors(fixtures);
     const vector = allVectors.find(
       ({ vector: candidate }) => candidate.vector_id === "interop/vanilla-nostr-only-follow",
@@ -230,6 +236,13 @@ describe("split remediation wire and hook contracts", () => {
       ["spec_version", "core/0.5.0"],
     ]);
     expect(event.tags.some((tag) => tag[0] === "radicle_nid" || tag[0] === "nid_proof")).toBe(false);
+    const publishingKey = event.tags.find((tag) => tag[0] === "publishing_key")?.[1];
+    const keyProof = event.tags.find((tag) => tag[0] === "key_proof")?.[1];
+    expect(schnorr.verify(
+      keyProof!,
+      utf8Bytes(vector.input.binding_payload as string),
+      publishingKey!,
+    )).toBe(true);
     expect(vector.expected_output.normalized).toEqual({
       base_owner: "core",
       profile_state: "reserved-inactive",
@@ -251,7 +264,7 @@ describe("split remediation wire and hook contracts", () => {
     [
       "session-device/key-proof-invalid",
       "key_proof_invalid",
-      "bad_signature",
+      "role-delegation-key-proof-invalid",
     ],
   ])("rejects malformed reserved session shape in %s", (id, validationError, reasonCode) => {
     const vector = byId(id);
@@ -291,11 +304,28 @@ describe("split remediation wire and hook contracts", () => {
     });
   });
 
+  it("refuses to produce the candidate with a malformed Core owner stamp", () => {
+    const vector = byId("session-device/owner-stamp-malformed");
+    const event = vector.input.event as { tags: string[][] };
+    expect(vector.direction).toBe("produce");
+    expect(event.tags.find((tag) => tag[0] === "spec_version")).toEqual([
+      "spec_version",
+      "control/0.5.0",
+    ]);
+    expect(vector.expected_output).toEqual({
+      verdict: "reject",
+      reason_code: "owner_stamp_malformed",
+      conformance_claimable: false,
+    });
+  });
+
   it.each([
-    ["session-device/live-challenge-binding-valid", "live-challenge"],
-    ["session-device/one-time-token-binding-valid", "one-time-token"],
-  ])("binds the candidate nonce to authenticated enrollment state in %s", (id, source) => {
+    ["acceptance-gating/control-enrollment-live-challenge-gated-hold", "live-challenge"],
+    ["acceptance-gating/control-enrollment-token-gated-hold", "one-time-token"],
+  ])("keeps authenticated enrollment binding Comms-owned and gated in %s", (id, source) => {
     const vector = byId(id);
+    expect(vector.owner_document).toBe("comms");
+    expect(vector.dependency_versions).toEqual({ core: "core/0.5.0" });
     expect(vector.input.enrollment_binding).toEqual(expect.objectContaining({
       source,
       authenticated_session: true,
@@ -304,9 +334,21 @@ describe("split remediation wire and hook contracts", () => {
     expect(vector.expected_output.normalized).toEqual(expect.objectContaining({
       binding_valid: true,
       binding_source: source,
+      outcome: "hold-as-message-request",
       control_authority: false,
-      conformance_claimable: false,
+      control_interpretation_allowed: false,
     }));
+  });
+
+  it("requires a token id to equal the on-wire binding nonce byte-for-byte", () => {
+    const vector = byId("acceptance-gating/control-enrollment-token-gated-hold");
+    const binding = vector.input.enrollment_binding as {
+      binding_nonce: string;
+      token_id: string;
+    };
+    expect(binding.binding_nonce).toBe(binding.token_id);
+    expect(vector.input.session_device_binding_nonce).toBe(binding.binding_nonce);
+    expect(binding.binding_nonce).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it("makes revocation authoritative even for a repository-final candidate", () => {
@@ -327,15 +369,23 @@ describe("split remediation wire and hook contracts", () => {
     ["acceptance-gating/control-enrollment-stale-invite-reject", "control-enrollment", false, "reject"],
     ["acceptance-gating/control-enrollment-tombstoned-invite-reject", "control-enrollment", false, "reject"],
     ["acceptance-gating/ordinary-undelegated-reject", "ordinary-dm", false, "reject"],
+    ["acceptance-gating/credential-sync-undelegated-reject", "credential-sync", false, "reject"],
   ])("enforces the epoch-invite undelegated carve-out in %s", (id, context, delegated, outcome) => {
     const vector = byId(id);
     expect(vector.registry_revision).toBe(3);
     expect(vector.input).toEqual(expect.objectContaining({
       context,
       active_delegation: delegated,
-      epoch_invite_event_id: expect.any(String),
-      current_epoch_invite_event_id: expect.any(String),
     }));
+    if (context === "control-enrollment") {
+      expect(vector.input).toEqual(expect.objectContaining({
+        epoch_invite_event_id: expect.any(String),
+        current_epoch_invite_event_id: expect.any(String),
+      }));
+    } else {
+      expect(vector.input.epoch_invite_event_id).toBeUndefined();
+      expect(vector.input.current_epoch_invite_event_id).toBeUndefined();
+    }
     expect((vector.expected_output.normalized as Record<string, unknown>).outcome).toBe(outcome);
     if (id.includes("gated-hold")) {
       expect(vector.expected_output.normalized).toEqual(expect.objectContaining({
@@ -343,6 +393,36 @@ describe("split remediation wire and hook contracts", () => {
         sender_visible_signals: 0,
       }));
     }
+  });
+
+  it("commits ratchet advancement, persistence, and key erasure before plaintext release", () => {
+    const vector = byId("dm/atomic-receive-before-plaintext");
+    expect(vector.owner_document).toBe("comms");
+    expect(vector.registry_revision).toBe(3);
+    expect(vector.expected_output).toEqual({
+      verdict: "accept",
+      normalized: {
+        success: {
+          atomic_commit: [
+            "ratchet-advanced",
+            "state-durably-persisted",
+            "consumed-message-key-erased",
+          ],
+          plaintext_release: "after-commit",
+        },
+        crash_before_commit: {
+          durable_ratchet_state: "prior",
+          consumed_message_key_available: true,
+          plaintext_released: false,
+        },
+        restart_after_commit: {
+          durable_ratchet_state: "advanced",
+          consumed_message_key_available: false,
+          plaintext_released_before_commit: false,
+          replay_key_reuse_allowed: false,
+        },
+      },
+    });
   });
 
   it("does not rewrite the historical revision of the earlier default-hold vector", () => {

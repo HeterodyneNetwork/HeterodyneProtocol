@@ -827,6 +827,9 @@ describe("protocol family documents", () => {
     expect(text).toMatch(/`kind:1060`[\s\S]*MUST NOT[\s\S]*repo/i);
     expect(text).toMatch(/double-ratchet[\s\S]*no backfill/i);
     expect(text).toMatch(/MUST delete[\s\S]*message key/i);
+    expect(text).toMatch(
+      /Before releasing received plaintext[\s\S]*ratchet advancement[\s\S]*durable state persistence[\s\S]*atomic\s+action[\s\S]*delete the consumed message key within that same action/i,
+    );
   });
 
   it("retains privacy-tier honesty and org-threshold authorization", () => {
@@ -943,19 +946,22 @@ describe("protocol family documents", () => {
     expect(text).toMatch(/self-DM[\s\S]*MUST NOT[\s\S]*authorit/i);
   });
 
-  it("defines a total Comms-native acceptance decision table", () => {
+  it("defines a mutually exclusive Comms-native acceptance decision table", () => {
     const text = readFileSync(commsPath, "utf8");
 
     expect(text).toMatch(/established locally accepted[\s\S]*`accept`/i);
     expect(text).toMatch(/new `ordinary-dm`[\s\S]*`hold-as-message-request`/i);
     expect(text).toMatch(
-      /`credential-sync`[\s\S]*`accept` iff[\s\S]*authoritative ledger/i,
+      /delegated `credential-sync`[\s\S]*every[\s\S]*authoritative ledger[\s\S]*`accept`/i,
     );
     expect(text).toMatch(
       /current state[\s\S]*cannot be established[\s\S]*`hold-as-message-request`/i,
     );
     expect(text).toMatch(
       /invalid, revoked, expired, mismatched, or NID-less[\s\S]*`reject`/i,
+    );
+    expect(text).toMatch(
+      /`ordinary-dm` or `credential-sync`, undelegated initiator[\s\S]*`reject`/i,
     );
     expect(text).toMatch(/`control-enrollment`[\s\S]*`hold-as-message-request`/i);
   });
@@ -1230,6 +1236,8 @@ describe("protocol family documents", () => {
     expect(coreText).toContain(
       "heterodyne-light-binding-v1|<cold-root-hex>|<publishing-key-hex>|session-device|<binding-nonce>",
     );
+    expect(coreText).toMatch(/exact UTF-8 bytes directly[\s\S]*without an additional prehash/i);
+    expect(coreText).toMatch(/Core treats `binding_nonce` as[\s\S]*opaque profile field[\s\S]*no challenge, token, or acceptance/i);
     expect(coreText).toMatch(/profile remains `reserved-inactive`[\s\S]*conformance_claimable = false/i);
     expect(text).toMatch(/structural diagnostics[\s\S]*does not\s+activate/i);
     expect(text).toMatch(/final candidate[\s\S]*grants no Control authority/i);
@@ -1258,6 +1266,9 @@ describe("protocol family documents", () => {
     );
     expect(comms).toMatch(
       /binding_nonce[\s\S]*live-session challenge[\s\S]*single-use[\s\S]*unredeemed enrollment token/i,
+    );
+    expect(comms).toMatch(
+      /mutually exclusive decision table[\s\S]*ordinary-dm` or `credential-sync`, undelegated initiator[\s\S]*`reject`/i,
     );
     expect(comms).toMatch(
       /repository-final and unrevoked[\s\S]*generic `kind:31015`[\s\S]*`kind:31016`[\s\S]*no-backfill/i,

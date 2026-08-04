@@ -9,8 +9,8 @@
   "spec_refs": [
     "heterodyne:comms/0.5.0#comms-acceptance-hook"
   ],
-  "vector_id": "acceptance-gating/control-enrollment-stale-invite-reject",
-  "description": "Closed Comms acceptance outcome: control enrollment stale invite reject.",
+  "vector_id": "acceptance-gating/control-enrollment-token-gated-hold",
+  "description": "Closed Comms acceptance outcome: control enrollment token gated hold.",
   "direction": "consume",
   "input": {
     "peer_persona_cold_root": "1111111111111111111111111111111111111111111111111111111111111111",
@@ -24,24 +24,41 @@
     "protocol_id": "heterodyne-dm",
     "requested_features": [],
     "active_delegation": false,
-    "finality": "final",
+    "finality": "absent",
     "revoked": false,
     "prior_session_state": "new",
     "explicit_user_decision": null,
     "authenticated": true,
-    "epoch_invite_event_id": "6767676767676767676767676767676767676767676767676767676767676767",
+    "epoch_invite_event_id": "6666666666666666666666666666666666666666666666666666666666666666",
     "current_epoch_invite_event_id": "6666666666666666666666666666666666666666666666666666666666666666",
     "epoch_invite_signer_current": true,
     "epoch_invite_kel_head_current": true,
-    "profile_gate_open": false
+    "profile_gate_open": false,
+    "session_device_binding_nonce": "7171717171717171717171717171717171717171717171717171717171717171",
+    "enrollment_binding": {
+      "source": "one-time-token",
+      "binding_nonce": "7171717171717171717171717171717171717171717171717171717171717171",
+      "token_id": "7171717171717171717171717171717171717171717171717171717171717171",
+      "authenticated_session": true,
+      "issuer_bound": true,
+      "single_use": true,
+      "unredeemed": true,
+      "unexpired": true
+    }
   },
   "expected_output": {
-    "verdict": "reject",
-    "reason_code": "dm_invite_revoked_device",
-    "validation_error": "epoch_invite_stale",
+    "verdict": "accept",
     "normalized": {
-      "outcome": "reject",
-      "control_interpretation_allowed": false
+      "outcome": "hold-as-message-request",
+      "content_transferred": false,
+      "receipts": 0,
+      "typing_signals": 0,
+      "retry_hints": 0,
+      "control_interpretation_allowed": false,
+      "sender_visible_signals": 0,
+      "binding_valid": true,
+      "binding_source": "one-time-token",
+      "control_authority": false
     }
   }
 }

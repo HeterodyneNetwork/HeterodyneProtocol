@@ -774,20 +774,22 @@ state and MUST NOT emit a receipt, typing signal, delivery acknowledgement,
 automatic retry hint, or any other sender-observable signal until the user
 accepts.
 
-The Comms-native default is a total decision table applied only after
-cryptographic authentication succeeds:
+The Comms-native default is the mutually exclusive decision table below,
+applied only after cryptographic authentication succeeds. Here `delegated`
+means that a delegation identifier is present and has passed the applicable
+cryptographic checks; `undelegated` means that identifier is absent.
 
 | Context and authenticated state | Outcome |
 |---|---|
-| `ordinary-dm`, established locally accepted session | `accept` |
-| new `ordinary-dm` | `hold-as-message-request` |
-| `credential-sync` | `accept` iff every §8.1 authoritative ledger and current-grant check passes |
-| `credential-sync`, authoritative current state cannot be established | `hold-as-message-request`; no transfer and no sender-observable signal |
-| `credential-sync`, invalid, revoked, expired, mismatched, or NID-less | `reject` |
+| `ordinary-dm` or `credential-sync`, undelegated initiator | `reject` |
+| delegated `ordinary-dm`, established locally accepted session | `accept` |
+| delegated new `ordinary-dm` | `hold-as-message-request` |
+| delegated `credential-sync`, every §8.1 authoritative ledger and current-grant check passes | `accept` |
+| delegated `credential-sync`, authoritative current state cannot be established | `hold-as-message-request`; no transfer and no sender-observable signal |
+| identified `credential-sync` delegation that is invalid, revoked, expired, mismatched, or NID-less | `reject` |
 | authenticated `control-enrollment`, exact current epoch invite, undelegated initiator, higher profile gated | `hold-as-message-request`; no payload interpretation and no sender-visible signal |
 | `control-enrollment`, stale/tombstoned invite or failed signer/KEL/transcript binding | `reject` |
-| any context other than `control-enrollment`, undelegated initiator | `reject` |
-| active `control-enrollment` without a stricter composed profile decision | `hold-as-message-request` |
+| authenticated `control-enrollment`, exact current epoch invite, higher profile active but without a stricter composed-profile decision | `hold-as-message-request` |
 
 Cryptographically invalid input is rejected before the hook runs. A composed
 profile MAY tighten the table but MUST NOT turn a Comms rejection into another

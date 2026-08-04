@@ -2,8 +2,8 @@
 
 Generated from [manifest.json](manifest.json); do not edit by hand.
 
-- core: 142
-- comms: 166
+- core: 141
+- comms: 170
 - control: 23
 - social: 96
 
@@ -14,13 +14,16 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `acceptance-gating/authoritative-state-unavailable-hold` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/control-enrollment-active-invite-gated-hold` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/control-enrollment-default-hold` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
+| `acceptance-gating/control-enrollment-live-challenge-gated-hold` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/control-enrollment-stale-invite-reject` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
+| `acceptance-gating/control-enrollment-token-gated-hold` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/control-enrollment-tombstoned-invite-reject` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/credential-expired-reject` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/credential-invalid-reject` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/credential-nidless-reject` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/credential-revoked-reject` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/credential-subject-mismatch-reject` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
+| `acceptance-gating/credential-sync-undelegated-reject` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/credential-valid-accept` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/established-ordinary-accept` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/message-request-no-receipt` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
@@ -155,6 +158,7 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `control/token-request-bounded` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-agent-token` |
 | `core-redundancy/radicle-multihost-replication` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-multi-host-seeding` |
 | `core-redundancy/stale-seed-does-not-remove-durability` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-multi-host-seeding` |
+| `dm/atomic-receive-before-plaintext` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-dm-retention` |
 | `dm/double-ratchet-transcript` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | `heterodyne-comms-double-ratchet-message-v1` | `heterodyne:comms/0.5.0#comms-dm-wire` |
 | `dm/invite-delegated-device-valid` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | `heterodyne-comms-double-ratchet-invite-v1` | `heterodyne:comms/0.5.0#comms-dm-wire` |
 | `dm/invite-revoked-device-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | `heterodyne-comms-double-ratchet-invite-v1` | `heterodyne:comms/0.5.0#comms-dm-wire` |
@@ -381,9 +385,8 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `routing-node/repo-location-from-ads-only` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-node-roles` |
 | `routing-node/unverifiable-advert-discarded` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-node-roles` |
 | `session-device/key-proof-invalid` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
-| `session-device/live-challenge-binding-valid` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `session-device/nid-fields-forbidden` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
-| `session-device/one-time-token-binding-valid` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
+| `session-device/owner-stamp-malformed` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `session-device/owner-stamp-missing` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `session-device/repository-final-gate-closed` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `session-device/reserved-shape-valid-but-gated` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |

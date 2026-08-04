@@ -144,8 +144,7 @@ session-device/nid-fields-forbidden
 session-device/key-proof-invalid
 session-device/repository-final-gate-closed
 session-device/owner-stamp-missing
-session-device/live-challenge-binding-valid
-session-device/one-time-token-binding-valid
+session-device/owner-stamp-malformed
 session-device/revoked-no-authority
 registry/downref-nonfrozen-rejected
 registry/frozen-entry-immutable
@@ -269,6 +268,7 @@ config-backup/config-blob-encrypt-decrypt
 config-backup/key-id-derivation
 config-backup/key-rotation-ref-delta
 dm/double-ratchet-transcript
+dm/atomic-receive-before-plaintext
 dm/invite-delegated-device-valid
 dm/invite-revoked-device-rejected
 dm/invite-unbound-device-rejected
@@ -316,7 +316,10 @@ acceptance-gating/control-enrollment-default-hold
 acceptance-gating/control-enrollment-active-invite-gated-hold
 acceptance-gating/control-enrollment-stale-invite-reject
 acceptance-gating/control-enrollment-tombstoned-invite-reject
+acceptance-gating/control-enrollment-live-challenge-gated-hold
+acceptance-gating/control-enrollment-token-gated-hold
 acceptance-gating/ordinary-undelegated-reject
+acceptance-gating/credential-sync-undelegated-reject
 profiles/tier3-kind-1
 profiles/tier3-kind-6
 profiles/tier3-kind-16
@@ -536,7 +539,11 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
       || vectorId === "acceptance-gating/control-enrollment-active-invite-gated-hold"
       || vectorId === "acceptance-gating/control-enrollment-stale-invite-reject"
       || vectorId === "acceptance-gating/control-enrollment-tombstoned-invite-reject"
+      || vectorId === "acceptance-gating/control-enrollment-live-challenge-gated-hold"
+      || vectorId === "acceptance-gating/control-enrollment-token-gated-hold"
       || vectorId === "acceptance-gating/ordinary-undelegated-reject"
+      || vectorId === "acceptance-gating/credential-sync-undelegated-reject"
+      || vectorId === "dm/atomic-receive-before-plaintext"
       || vectorId.startsWith("control/") ? 3
       : vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/") ||
         vectorId.startsWith("oidc/") || vectorId.startsWith("token-status/") ? 2
@@ -547,6 +554,9 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
 }
 
 function referenceFor(vectorId: string, owner: DocumentId): { document: DocumentId; anchor: string } {
+  if (vectorId === "dm/atomic-receive-before-plaintext") {
+    return { document: "comms", anchor: "comms-dm-retention" };
+  }
   if (vectorId === "interop/vanilla-nostr-only-follow") {
     return { document: "social", anchor: "social-following" };
   }

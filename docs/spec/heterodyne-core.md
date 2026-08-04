@@ -596,20 +596,18 @@ for this candidate shape. The outer event MUST be signed by the current
 KERI-authoritative epoch key and its `kel_head` MUST resolve to that accepted
 state. Core remains the only base-schema and stamp owner.
 
-The device proof signs the 32-byte SHA-256 digest of these exact UTF-8 bytes:
+The device proof signs these exact UTF-8 bytes directly as the BIP-340 message,
+without an additional prehash:
 
 ```text
 heterodyne-light-binding-v1|<cold-root-hex>|<publishing-key-hex>|session-device|<binding-nonce>
 ```
 
 The verifier reconstructs those bytes only from the event tags and verifies
-the BIP-340 `key_proof` with `publishing_key`. The issuing full node separately
-binds `binding_nonce` to the authenticated live enrollment challenge or
-higher-layer enrollment-token id. Neither proof alone grants higher-layer
-authority. A higher-layer verifier MUST receive an authenticated, unexpired
-binding result for that exact nonce: either the live session challenge or an
-issuer-bound, single-use, unexpired, and not-yet-redeemed token. A missing,
-mismatched, replayed, expired, or differently bound result is invalid.
+the BIP-340 `key_proof` with `publishing_key`. Core treats `binding_nonce` as
+an opaque profile field and assigns it no challenge, token, or acceptance
+meaning. A registered higher layer defines and validates any such meaning;
+neither the nonce nor the device proof alone grants higher-layer authority.
 
 A structurally and cryptographically valid relay candidate is at most
 `provisional` under §6.2. Canonical repository reachability can make the
