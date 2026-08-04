@@ -11,11 +11,17 @@
     "heterodyne:social/0.5.0#social-interactions"
   ],
   "vector_id": "outbox/cross-persona-attestation-invalid",
-  "description": "Invalid cross-persona attestation is rejected.",
+  "description": "A one-sided or unconfirmed cross-persona relationship is rejected.",
   "input": {
-    "attester": "alice",
-    "subject": "mallory",
-    "signature_valid": false
+    "relation": "same_holder",
+    "left": {
+      "signer": "alice",
+      "other_npub": "alice-work",
+      "signature_valid": true
+    },
+    "right": null,
+    "permanent_linkability_warning_presented": false,
+    "explicit_confirmation": false
   },
   "expected_output": {
     "verdict": "reject",

@@ -4,6 +4,12 @@ Date: 2026-05-23
 Status: Accepted
 Spec target: `docs/spec/heterodyne.md` (landed in v0.3.0)
 
+> **Superseded in part (2026-07-31, ADR-037).**
+> `public_broadcast`/`private_broadcast` are not current Matrix room kinds and
+> room-secret-wrapped private-broadcast behavior is retired. The discussion
+> taxonomy, deniability retirement, and wrapped/bare envelope decisions remain
+> accepted.
+
 ## Context
 
 v0.2.0 (ADR-004/ADR-005) defined six social room kinds on a

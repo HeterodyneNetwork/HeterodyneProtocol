@@ -1,0 +1,40 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-feed-index"
+  ],
+  "vector_id": "index/missing-predecessor-structured-outcome",
+  "description": "An unresolved predecessor produces a structured localizable outcome with durable retry state.",
+  "input": {
+    "referring_page": {
+      "event_id": "abababababababababababababababababababababababababababababababab",
+      "created_at": 1767225600,
+      "d": "feed:page-2"
+    },
+    "missing_predecessor_event_id": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+    "attempted_at": 1767225610,
+    "deadline_at": 1767225640,
+    "last_attempt_at": 1767225640,
+    "retry_state": "retrying"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "outcome_class": "missing-predecessor",
+      "registered_reason_code": null,
+      "terminal_cause": null,
+      "allowed_actions": [
+        "retry",
+        "continue-incomplete"
+      ],
+      "localizable": true
+    }
+  },
+  "direction": "consume"
+}

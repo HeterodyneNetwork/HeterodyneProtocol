@@ -22,7 +22,6 @@ const REPLACEMENTS = new Map<string, Replacement>([
   ["privacy-tiers/tier3-index-key-derivation-and-encryption", { newId: "privacy-tiers/tier3-index-key-derivation-and-encryption-v050", path: "privacy-tiers/012-tier3-index-key-derivation-and-encryption-v050.json", owner: "comms" }],
   ["privacy-tiers/tier3-kind31011-audience-key-wrap", { newId: "privacy-tiers/tier3-kind31011-audience-key-wrap-v050", path: "privacy-tiers/013-tier3-kind31011-audience-key-wrap-v050.json", owner: "comms" }],
   ["privacy-tiers/tier3-kind31012-audience-roster", { newId: "privacy-tiers/tier3-kind31012-audience-roster-v050", path: "privacy-tiers/014-tier3-kind31012-audience-roster-v050.json", owner: "comms" }],
-  ["broadcast/private-broadcast-wrapped", { newId: "broadcast/private-broadcast-wrapped-v050", path: "broadcast/006-private-broadcast-wrapped-v050.json", owner: "social", profile: "tier3" }],
   ["lists/mute-list-public-roundtrip", { newId: "lists/mute-list-public-roundtrip-v050", path: "lists/007-mute-list-public-roundtrip-v050.json", owner: "social", profile: "mute" }],
   ["lists/mute-list-private-items-encrypted-to-self", { newId: "lists/mute-list-private-items-encrypted-to-self-v050", path: "lists/008-mute-list-private-items-encrypted-to-self-v050.json", owner: "social", profile: "mute" }],
 ]);

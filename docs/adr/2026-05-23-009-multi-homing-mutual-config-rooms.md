@@ -4,6 +4,11 @@
 **Status:** Accepted
 **Decision makers:** Liam Helmer (architect); star-chamber providers: gpt-5 (via Fuel-IX, two-instance parallel review); local Claude subagent
 
+> **Superseded in part (2026-07-31, ADR-037).** Requirements 3 and 24 no
+> longer guarantee successful invite/removal within 60 seconds. Current Social
+> requires initiation within the deadline plus retry until a defined terminal
+> or superseding outcome; carrier partition is an availability failure.
+
 ## Context
 
 The Heterodyne v0.2.0 spec presents multi-homing — one npub on multiple MXIDs across multiple homeservers — as the headline design intuition (CLAUDE.md, §3.1 lines 328–334, §3.2 lines 356–368). However, three concrete multi-homing scenarios remain normatively undefined:

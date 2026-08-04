@@ -162,7 +162,7 @@ one mechanism's guarantee as another's.
 | Control session device | Has only negotiated, granted Control authority. It is never a credential-plane device and receives none of the secrets prohibited by CONTROL-I-SESSION-KEY-CONFINEMENT. |
 | Colluding delegated MXID | Applies only to Social+Matrix. It can read rooms it legitimately joined, race coordination state, and exploit a partition window, but cannot forge the persona's epoch-key proof. |
 | Old or mirror homeserver | Applies only to Social+Matrix. It may retain stale room state, equivocate, or continue writing during a migration overlap; signed migration and delegation state wins over server location. |
-| Compromised cold root | Catastrophic persona authority until KERI recovery/re-anchor; already valid attacker events remain attributable history. |
+| Compromised cold root | Catastrophic persona authority. Changed-RID re-anchor cannot repair it because the same root authorizes re-anchor; absent a standardized precommitted recovery policy, migrate to a new persona/root. |
 
 ## 5. Threats and mitigations by owner
 
@@ -183,7 +183,7 @@ one mechanism's guarantee as another's.
 | Direct WebRTC reveals a full node's network location | Keep direct client-to-node WebRTC/TURN outside the base profile; reach the persistent v3 onion service through Tor or an authenticated shared relay so the node does not expose a clearnet candidate. |
 | Shared relay forges content or authority | Treat it only as a transport carrier, verify every signed object locally, and route around it when other relays are available (CORE-I-VERIFY-BEFORE-USE, CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY). |
 | Local key-store theft | Use the keys-repository protection profile, NIP-49 wrapping, and OS-keystore integration where available (CORE-I-KEY-MATERIAL-AT-REST). |
-| Keys repository is lost or copied | Offline backup limits loss; wrapping and local-only storage limit disclosure. Rotation and re-anchor address compromised authority but cannot recover an unavailable secret (CORE-I-KEY-MATERIAL-AT-REST, CORE-I-IDENTITY-INTEGRITY). |
+| Keys repository is lost or copied | Offline backup limits loss; wrapping and local-only storage limit disclosure. Epoch rotation limits eligible compromise windows, while changed-RID re-anchor addresses infrastructure loss only; neither recovers an unavailable or compromised cold root (CORE-I-KEY-MATERIAL-AT-REST, CORE-I-IDENTITY-INTEGRITY). |
 | Derived export AID is mistaken for persona authority | Label it derived/degraded as applicable and always resolve the npub/KEL on divergence (CORE-I-IDENTITY-INTEGRITY). |
 | Separate personas are linked by local metadata | Keep local correlation and recovery bookkeeping private; never publish it as Core identity state (CORE-I-KEY-MATERIAL-AT-REST, CORE-I-IDENTITY-INTEGRITY). |
 | SHA-1 RID or git-object collision | Never let repository identity replace event SHA-256/BIP-340 or Radicle Ed25519 verification (CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
@@ -193,6 +193,7 @@ one mechanism's guarantee as another's.
 | Threat | Mitigation |
 |---|---|
 | Carrier reads Tier 3 plaintext | Encrypt before repository, seed, node, or relay access (COMMS-I-TIER3-BLIND-CARRIER). |
+| Tier 3 audience membership is inferred | Treat Tier 3 as content-confidential, not membership-private. Clear `kind:31011`/`kind:31012` recipient `p`/`d` tags, roster generations, shared `key_id` correlation, timing, count, size, publication, and fetch cadence remain observable; disclose these residuals before use. |
 | Tier 2 mislabeled as encrypted | Warn that every allowed seeder holds plaintext (COMMS-I-TIER2-HONESTY). |
 | Audience, ratchet, or config-state theft | Apply the Comms repository-encryption profile and generation rotation (COMMS-I-CONFIG-AT-REST). |
 | Audience-key compromise exposes retained history | State that Tier 3 has no forward secrecy, rotate to a fresh generation, and never describe cooperative branch scrubbing as erasure (COMMS-I-TIER3-BLIND-CARRIER, COMMS-I-CONFIG-AT-REST). |
@@ -245,6 +246,7 @@ one mechanism's guarantee as another's.
 | Threat | Mitigation |
 |---|---|
 | Centralized follow-graph censorship or poisoning | Evaluate signed relationship data client-side and retain plural discovery sources (SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH). |
+| ATProto DNS validation is bypassed by rebinding or connection substitution | Resolve explicitly, reject any non-public answer, dial one validated address directly, preserve the original hostname for TLS and HTTP authority, inspect the connected peer, and repeat manually for each redirect. If the runtime cannot bind and inspect, expose the feature as unavailable and do not claim resolver conformance. |
 | Breadcrumb-like prose silently rewrites a follow target | Show it only as reduced-assurance external content and require an explicit user action to follow, refollow, or switch. Never project KEL continuity or automatically follow a claimed successor (SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH, CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
 | Private mute/feed/followed-repository state leaks | Store it under the owning Social or bound Comms protection profile (SOCIAL-I-PRIVATE-STATE-AT-REST). |
 | Hostile homeserver reads or downgrades private state | Encrypt private content and protected state and surface downgrade failures (SOCIAL-I-MATRIX-E2EE). |
@@ -265,7 +267,10 @@ one mechanism's guarantee as another's.
 
 Encryption does not hide all metadata. Relays and repository hosts can observe
 timing, volume, public keys, branch changes, and fetch patterns; allowed Tier 2
-seeders also see the membership allow list. Routing nodes see lookup targets.
+seeders also see the membership allow list. Tier 3 provides content
+confidentiality, not membership privacy: recipient tags, roster events,
+`key_id` linkage, timing, count, size, publication, and fetch cadence remain
+observable. Routing nodes see lookup targets.
 Matrix federation exposes the membership graph, sender MXIDs, timestamps, and
 event-graph metadata to relevant servers and their federation peer set. Hosting
 identity/config rooms with a deliberately trusted peer set limits, but cannot

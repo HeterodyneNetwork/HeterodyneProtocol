@@ -809,6 +809,32 @@
     ]
   },
   {
+    "vector_id": "atproto/connection-pinning-unavailable",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-atproto-resolution"
+    ]
+  },
+  {
+    "vector_id": "atproto/pinned-public-hop",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-atproto-resolution"
+    ]
+  },
+  {
     "vector_id": "breadcrumbs/compromise-rotation-not-produced",
     "owner_document": "core",
     "owner_version": "core/0.5.0",
@@ -885,87 +911,6 @@
     "registry_revision": 1,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-headless-bridge"
-    ]
-  },
-  {
-    "vector_id": "broadcast/member-decrypts",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "profile": "heterodyne-comms-tier3-wrapped-content-kind-1-v1",
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-tier-three-profile"
-    ]
-  },
-  {
-    "vector_id": "broadcast/nip59-rejected",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-envelopes"
-    ]
-  },
-  {
-    "vector_id": "broadcast/non-member-cannot-decrypt",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "profile": "heterodyne-comms-tier3-wrapped-content-kind-1-v1",
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-tier-three-profile"
-    ]
-  },
-  {
-    "vector_id": "broadcast/private-broadcast-wrapped",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-envelopes"
-    ]
-  },
-  {
-    "vector_id": "broadcast/private-broadcast-wrapped-v050",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "profile": "heterodyne-comms-tier3-wrapped-content-kind-1-v1",
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-tier-three-profile"
-    ]
-  },
-  {
-    "vector_id": "broadcast/reaction-reply-bare-not-indexed",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-envelopes"
     ]
   },
   {
@@ -2614,6 +2559,19 @@
     ]
   },
   {
+    "vector_id": "discussion/reaction-reply-bare-not-indexed",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-discussion-rooms"
+    ]
+  },
+  {
     "vector_id": "dm/atomic-receive-before-plaintext",
     "owner_document": "comms",
     "owner_version": "comms/0.5.0",
@@ -2822,6 +2780,19 @@
   },
   {
     "vector_id": "envelope/bare-dm-signature-badge",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-matrix-envelopes"
+    ]
+  },
+  {
+    "vector_id": "envelope/compromise-cutoff-overrides-attribution",
     "owner_document": "social",
     "owner_version": "social/0.5.0",
     "dependency_versions": {
@@ -3047,16 +3018,15 @@
     ]
   },
   {
-    "vector_id": "index/context-binding-mismatch",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
+    "vector_id": "index/missing-predecessor-structured-outcome",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
     "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
+      "core": "core/0.5.0"
     },
     "registry_revision": 1,
     "spec_refs": [
-      "heterodyne:social/0.5.0#social-encrypted-state"
+      "heterodyne:comms/0.5.0#comms-feed-index"
     ]
   },
   {
@@ -3069,19 +3039,6 @@
     "registry_revision": 1,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-feed-index"
-    ]
-  },
-  {
-    "vector_id": "index/room-key-wrap-encryption",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-encrypted-state"
     ]
   },
   {
@@ -3828,7 +3785,7 @@
     ]
   },
   {
-    "vector_id": "moderation/strict-mode-invalid-broadcast-signature",
+    "vector_id": "moderation/strict-mode-invalid-event-signature",
     "owner_document": "social",
     "owner_version": "social/0.5.0",
     "dependency_versions": {
@@ -3868,6 +3825,19 @@
   },
   {
     "vector_id": "multi-homing/active-room-election",
+    "owner_document": "social",
+    "owner_version": "social/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0",
+      "comms": "comms/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:social/0.5.0#social-active-room-election"
+    ]
+  },
+  {
+    "vector_id": "multi-homing/config-invite-initiation",
     "owner_document": "social",
     "owner_version": "social/0.5.0",
     "dependency_versions": {
@@ -4428,6 +4398,18 @@
   },
   {
     "vector_id": "privacy-tiers/tier3-kind31012-audience-roster-v050",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-privacy-tiers"
+    ]
+  },
+  {
+    "vector_id": "privacy-tiers/tier3-membership-metadata-disclosed",
     "owner_document": "comms",
     "owner_version": "comms/0.5.0",
     "dependency_versions": {

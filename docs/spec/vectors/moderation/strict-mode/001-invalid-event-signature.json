@@ -10,13 +10,13 @@
   "spec_refs": [
     "heterodyne:social/0.5.0#social-moderation"
   ],
-  "vector_id": "moderation/strict-mode-invalid-broadcast-signature",
-  "description": "Strict mode rejects the invalid broadcast signature that base mode only warns about.",
+  "vector_id": "moderation/strict-mode-invalid-event-signature",
+  "description": "Strict mode rejects an invalid signed Social event that base mode may retain only as explicitly invalid external content.",
   "input": {
-    "same_input_id": "broadcast-invalid-signature-fixture",
+    "same_input_id": "invalid-signed-social-event-fixture",
     "mode": "strict",
     "vector_context": {
-      "notes": "Base-mode companion outcome is warnings:[\"invalid_broadcast_signature\"] for the same input."
+      "notes": "Base-mode companion outcome is warnings:[\"invalid_event_signature\"] for the same external input."
     }
   },
   "expected_output": {

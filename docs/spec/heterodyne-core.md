@@ -47,8 +47,11 @@ full-node-to-full-node; browser and mobile clients use NIP-01 endpoints.
 ## 2. Shared terminology
 
 - **Persona**: one canonical cold-root npub, one accepted KEL, one canonical
-  Radicle RID, and one set of delegations. Separate personas MUST NOT be linked
-  at the protocol layer.
+  Radicle RID, and one set of delegations. Core MUST NOT infer or publish a
+  link between separate personas, and private local correlation data MUST NOT
+  become Core identity state. A higher-layer document MAY define an explicit
+  relationship only when its wire profile authenticates authorization by both
+  personas; Core assigns no application meaning to that relationship.
 - **Cold root**: the offline secp256k1/BIP-340 key whose public key is the
   persona npub. It performs rare identity ceremonies.
 - **Epoch key**: the secp256k1/BIP-340 key authorized by the accepted KEL for
@@ -859,6 +862,13 @@ and publish a cold-root-signed `kind:31005` re-anchor. A verifier MUST reject a
 repo head that regresses below a finalized canonical head unless such an
 authenticated re-anchor authorizes the move.
 
+Changed-RID re-anchor recovers serving-repository, identity-container,
+hosting, or delegate-threshold deadlock only. It is authorized by the existing
+cold root and therefore MUST NOT be presented as recovery from cold-root
+compromise. Until Core standardizes a precommitted cold-root recovery policy,
+a compromised cold root requires migration to a new persona and new root; the
+old persona's trustworthy authority cannot be preserved by re-anchor.
+
 <a id="core-recovery"></a>
 <!-- Monolith provenance: §3.7 and §3.12.2. -->
 ### 7.5 Infrastructure-loss recovery
@@ -884,6 +894,9 @@ between the new pointer and cached state MUST be logged and surfaced. KEL
 continuity uses the witness-threshold algorithm; a `none` rotation is used for
 epoch recovery when its controller conditions apply. Human identity checks a
 witness performs before signing are out of scope.
+
+This procedure requires the existing cold root to remain available and
+uncompromised. It does not repair or supersede cold-root compromise.
 
 <a id="core-multi-host-seeding"></a>
 <!-- Monolith provenance: §3.11. -->
@@ -1432,6 +1445,13 @@ IDs, strict-profile IDs, implementation role, and every dependency version.
 Core has no document dependencies. Protocol conformance and vector conformance
 are distinct claims.
 
+This document remains pinned to registry revision 3. Revision 4 MUST NOT be
+selected, advertised, or loaded until one atomic ADR-037/ADR-038 artifact batch
+contains the complete catalogs, history snapshot, schemas, vectors,
+family/artifact-set manifests, and matching release manifests. A partial
+`history/4.json`, placeholder allocation, or draft schema set is invalid and
+non-claimable.
+
 A conformance report MUST, for each strict-profile ID, list the profile's state,
 conformance class, prerequisite profile IDs, required invariant IDs, required
 features, applicable strict-vector results, and any gaps. It MUST NOT report a
@@ -1440,11 +1460,12 @@ profile, or vector is unmet. A partial report may describe an unknown or unmet
 profile but MUST NOT advertise it in `strict_profiles`.
 
 Normative vectors compare canonical bytes and exact verdicts; semantic
-equivalence is insufficient. Each vector has an immutable ID, owner document,
-owner version, registry pin, qualified spec references, direction, input, and
+equivalence is insufficient. Each vector has an ID, owner document, owner
+version, registry pin, qualified spec references, direction, input, and
 expected output. Time-sensitive vectors use a simulated clock and production
-vectors pin randomness. An incompatible behavior change MUST allocate a new
-vector ID.
+vectors pin randomness. During 0.x, an accepted ADR MAY change or retire an
+unreleased current vector in place. Released artifact sets preserve their
+exact historical bytes. Vector-ID immutability begins at 1.0.
 
 When this document declares a behavior conformant, an implementation MUST
 produce or accept it as specified. NIP-01 events have only the canonical

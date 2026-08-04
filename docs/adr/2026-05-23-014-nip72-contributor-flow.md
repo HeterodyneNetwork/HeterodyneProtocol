@@ -4,6 +4,10 @@
 **Status:** Accepted
 **Decision makers:** Liam Helmer (architect); star-chamber providers: gpt-5 (via Fuel-IX, two-instance parallel review); local Claude subagent
 
+> **Superseded in part (2026-07-31, ADR-037).** Requirements 9 and 11's
+> English messages are non-normative examples. Current Social requires stable
+> structured, localizable moderation outcomes.
+
 ## Context
 
 §8 specifies the NIP-72 moderation flow comprehensively for the moderator side (candidate fetch, `kind:4550` approval issuance, `kind:31007` index update, `kind:5` revocation per ADR-007) and the follower side (read moderator indexes, count approvals, render approved posts). The contributor side — what a user does to submit a post to a `public_moderated` community — has no normative guidance in v0.2.0:

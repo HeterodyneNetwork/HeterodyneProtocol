@@ -139,22 +139,14 @@ export function buildFixtures() {
     // OPTIONAL Matrix-layer fixtures (kept for the Matrix-shaped categories).
     matrix_rooms: {
       identity_alice: "!alice-identity:example.org",
-      private_broadcast_alice: "!alice-private-broadcast:example.org",
       config_alice: "!alice-config:example.org",
-    },
-    room_secrets: {
-      alice_private_broadcast_v1: {
-        matrix_room_id: "!alice-private-broadcast:example.org",
-        key_id: "room-secret-2026-05-25-a",
-        secret: "10".repeat(32),
-      },
     },
     category_keysets: {
       identity: "alice",
       keri: "alice",
       envelope: "alice",
       verification: "alice",
-      broadcast: "alice",
+      discussion: "alice",
       index: "alice",
       relay_interop: "alice",
       config_room: "alice",

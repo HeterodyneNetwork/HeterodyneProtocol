@@ -4,6 +4,11 @@
 **Status:** Accepted
 **Decision makers:** user + Codex adversarial review (release-readiness pass)
 
+> **Superseded in part (2026-07-31, ADR-037).** Decision 3, its room-secret
+> leak fix and rotation, and its private-broadcast vector consequences are
+> retired. Decisions 1, 2, and 4—KEL discovery, structured witness receipts,
+> and relay-level interoperability wording—remain accepted.
+
 ## Context
 
 An adversarial release-readiness review of the 0.x spec — preparing it

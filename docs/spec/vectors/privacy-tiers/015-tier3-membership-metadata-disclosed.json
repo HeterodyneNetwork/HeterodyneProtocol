@@ -1,0 +1,37 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-privacy-tiers"
+  ],
+  "vector_id": "privacy-tiers/tier3-membership-metadata-disclosed",
+  "description": "Tier 3 protects content but discloses recipient, roster, generation-linkage, timing, and volume metadata.",
+  "input": {
+    "tier": 3,
+    "pre_use_disclosure_presented": true,
+    "observed_distribution_graph": [
+      "kind:31011",
+      "kind:31012"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "content_confidentiality": true,
+      "membership_private": false,
+      "residual_metadata": [
+        "recipient-tags",
+        "roster-events",
+        "key-id-linkage",
+        "timing",
+        "volume"
+      ]
+    }
+  },
+  "direction": "consume"
+}

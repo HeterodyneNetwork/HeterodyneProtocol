@@ -11,15 +11,16 @@
     "heterodyne:social/0.5.0#social-matrix-mirroring"
   ],
   "vector_id": "redundancy/rekey-remove-not-join",
-  "description": "Mirror group rekeys on member removal but not on join.",
+  "description": "A Matrix encryption session rotates on member removal but not merely on join.",
   "input": {
     "event": "member_removed",
-    "rekey_performed": true
+    "encryption_session": "megolm",
+    "session_rotation_performed": true
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "rekey_required": true
+      "session_rotation_required": true
     }
   },
   "direction": "consume"

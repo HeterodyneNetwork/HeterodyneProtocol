@@ -11,24 +11,20 @@
     "heterodyne:social/0.5.0#social-config-room"
   ],
   "vector_id": "config_room/key-backup-wrapping-algorithms",
-  "description": "Key backup records preserve their declared wrapping algorithm.",
+  "description": "Heterodyne key backup records use the current user-controlled memory-hard wrapped-nsec profile without redefining Matrix session backup.",
   "input": {
-    "backups": [
-      {
-        "algorithm": "m.megolm_backup.v1"
-      },
-      {
-        "algorithm": "heterodyne.room_secret_wrap.v1"
-      }
-    ]
+    "backup": {
+      "algorithm": "nip49-scrypt-nsec",
+      "memory_hard_kdf": true,
+      "user_controlled_secret": true
+    },
+    "matrix_session_backup_profiled_by_heterodyne": false
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "wrapping_algorithms": [
-        "m.megolm_backup.v1",
-        "heterodyne.room_secret_wrap.v1"
-      ]
+      "wrapping_algorithm": "nip49-scrypt-nsec",
+      "matrix_session_backup_owner": "matrix"
     }
   },
   "direction": "consume"

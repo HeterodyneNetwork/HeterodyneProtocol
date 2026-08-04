@@ -11,22 +11,33 @@
     "heterodyne:social/0.5.0#social-matrix-encryption"
   ],
   "vector_id": "encryption/mls-migration-intent-and-ack",
-  "description": "MLS migration intent is accepted after all eligible receivers ACK.",
+  "description": "MLS members initiate and retry ACKs within the drain window; absence at expiry remains an abort condition.",
   "input": {
     "intent_id": "mls-intent-1",
     "eligible": [
       "@a",
       "@b"
     ],
-    "acked": [
-      "@a",
-      "@b"
-    ]
+    "initiated_acks": [
+      {
+        "member": "@a",
+        "initiated_at": 1767225620,
+        "retry_state": "delivered"
+      },
+      {
+        "member": "@b",
+        "initiated_at": 1767225655,
+        "retry_state": "retrying"
+      }
+    ],
+    "deadline_at": 1767225660
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "intent_acked": true
+      "all_ack_actions_initiated_within_window": true,
+      "migration_complete": false,
+      "expiry_without_all_acks": "abort"
     }
   },
   "direction": "consume"

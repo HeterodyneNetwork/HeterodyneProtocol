@@ -11,20 +11,35 @@
     "heterodyne:social/0.5.0#social-moderation"
   ],
   "vector_id": "moderation/contributor-implicit-rejection-window",
-  "description": "A contributor submission remains pending until the implicit-rejection window elapses.",
+  "description": "A contributor submission remains pending until the seven-day implicit-rejection window elapses.",
   "input": {
     "submitted_at": 1767225600,
-    "simulated_clock": 1767227400,
+    "simulated_clock": 1767830400,
     "approval_events": [],
-    "implicit_rejection_seconds": 3600,
+    "implicit_rejection_seconds": 604800,
     "vector_context": {
-      "simulated_clock": 1767227400
+      "simulated_clock": 1767830400
     }
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "moderation_state": "pending"
+      "moderation_state": "implicitly-rejected",
+      "outcome": {
+        "class": "moderation-approval-window-expired",
+        "candidate_id": "candidate-fixture",
+        "community_id": "34550:community:fixture",
+        "attempted_at": 1767225600,
+        "deadline_at": 1767830400,
+        "last_attempt_at": 1767826800,
+        "retry_state": "terminal",
+        "terminal_cause": "approval-window-expired",
+        "allowed_actions": [
+          "abandon",
+          "edited-republication",
+          "unchanged-republication"
+        ]
+      }
     }
   },
   "direction": "consume"

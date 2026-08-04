@@ -90,6 +90,11 @@ which clients MUST present without ambiguity:
 | Tier 2 | plaintext in a private repository | hidden from non-allowed nodes, but readable by every allowed seeder |
 | Tier 3 | NIP-44-v2-profile ciphertext in a public or private repository | confidential against everyone without the audience key, including seeders and full nodes |
 
+Before a user relies on a Tier 3 audience, the client MUST disclose that Tier
+3 protects content but not sender identity, recipient identity, audience
+membership or membership changes, audience-generation linkage, timing, or
+volume. A client MUST NOT label Tier 3 membership-private.
+
 A client MUST NOT describe Tier 2 as encrypted, end-to-end encrypted, or
 confidential against members. Adding an NID to `visibility.allow` grants that
 node plaintext read and replication access and SHOULD require explicit user
@@ -98,9 +103,14 @@ confirmation. `visibility.allow` MUST NOT be conflated with the repository
 
 Tier 3 content MUST be encrypted before it reaches any repository, full node,
 seed, or relay. Plaintext Tier 3 content MUST NOT be committed or published.
-The outer event exposes only its registered profile marker, opaque `key_id`,
-required Core integrity/identity tags, and Comms profile stamp; semantic
-content and tags, RID, audience association, and retrieval hints are encrypted.
+An individual Tier 3 post or index outer event exposes only its registered
+profile marker, opaque `key_id`, required Core integrity/identity tags, and
+Comms profile stamp; semantic content and tags, RID, audience association, and
+retrieval hints are encrypted. The surrounding distribution graph is not
+membership-private: `kind:31011` and `kind:31012` expose clear recipient
+`p`/`d` tags and roster changes, the shared `key_id` links wraps, rosters,
+posts, indexes, descriptors, and rotations, and carrier observers retain
+timing, size, count, publication, and fetch-cadence metadata.
 
 <a id="comms-audience-keys"></a>
 ### 3.1 Audience key distribution and roster
@@ -132,6 +142,11 @@ The replaceable `kind:31012` roster uses `d = key_id`, the
 tag per recipient. It MUST be epoch-key signed and KEL-validated. A sensitive
 roster MAY instead be carried inside a Tier 3 encrypted object.
 
+Encrypting the roster does not create complete membership privacy.
+Recipient-addressed `kind:31011` events on public carriers still expose clear
+recipient and generation linkage. This release defines no membership-private
+audience-key distribution profile.
+
 A member addition MUST publish a replacing `kind:31012` under the same
 `key_id` containing the new member and MUST publish that member's
 `kind:31011` wrap. Addition SHOULD NOT rotate: the new member receives the
@@ -140,8 +155,12 @@ current generation.
 A member removal MUST generate a fresh audience key and `key_id`, publish the
 new roster, redistribute `kind:31011` wraps only to remaining members,
 republish the current encrypted index under the newly derived `index_key`, and
-supersede the in-audience descriptor. The index and descriptor updates MUST
-complete within 60 seconds. Rotation excludes the removed member from future
+supersede the in-audience descriptor. The producer MUST initiate every
+required index, descriptor, roster, and wrap action within 60 seconds and
+retry until success, explicit expiry, user cancellation, a superseding state
+transition, or the profile's terminal retry-budget outcome. A carrier
+partition is an availability failure, not automatic producer nonconformance.
+Rotation excludes the removed member from future
 content only; it cannot revoke old ciphertext encrypted under a key the member
 already possessed.
 After that removal, every subsequent post, index, and descriptor MUST use the
@@ -413,9 +432,15 @@ hash MAY be rendered only with an unverifiable-chain warning.
 
 After a complete fetch attempt cannot resolve a predecessor, the newest
 resolvable page containing that missing predecessor link is the referring
-page. The client MUST surface exactly "feed truncated after `<created_at-of-referring-page>` / `<d-tag-of-referring-page>`; missing `<event_id>`",
-substituting the referring page's own `created_at` and `d` and
-the exact unavailable predecessor event id from its `previous_index` link.
+page. The client MUST surface a localizable structured outcome with stable
+class `missing-predecessor`, the unavailable predecessor event id, the
+referring page's event id,
+`created_at`, and `d`, attempt/deadline/last-attempt timestamps, retry state,
+terminal cause when present, and allowed user actions. For example, an English
+UI may render “feed truncated after `<created_at>` / `<d>`; missing
+`<event_id>`”; that sentence is not normative. Registry revision 3 allocates
+no reason code for this application outcome, so a client MUST NOT invent or
+reuse an unrelated registered reason.
 The client MUST continue from the newest resolvable page and MUST NOT call the
 result complete. It MUST persist the unresolved predecessor event id and the
 referring-page locator (its event id, `created_at`, and `d`) across process
@@ -459,7 +484,10 @@ object encrypted under `index_key`, addressable from clear `key_id` plus Core
 RID/host routing. Its payload MUST locate the publisher, kind 31007, latest
 opaque `d`, `key_id`, RID, and relay/repo set. This non-circular bootstrap MUST
 work without a higher-layer service. Removal and rotation MUST supersede the
-descriptor under the fresh generation within 60 seconds.
+descriptor under the fresh generation. The producer MUST initiate that
+supersession within 60 seconds and retry until success, explicit expiry, user
+cancellation, a superseding state transition, or the terminal retry-budget
+outcome.
 
 <a id="comms-retrieval"></a>
 ## 6. Retrieval, backfill, and outbox location
@@ -820,6 +848,13 @@ profile MAY tighten the table but MUST NOT turn a Comms rejection into another
 result or accept an unauthenticated input. A higher profile cannot run while
 its feature gate is closed; receiving a valid held request does not advertise
 or activate that profile.
+
+In this release `control-enrollment` is reserved for future Control
+composition and general Control conformance is closed. No current document
+combination can make the higher-profile gate true; that row is unreachable.
+A current conformer MAY authenticate and hold the request as specified, but
+MUST NOT interpret its Control payload, issue Control authority, reply as
+Control, or advertise Control conformance.
 
 <a id="comms-credential-sync"></a>
 ### 8.1 Credential-plane synchronization
@@ -2522,6 +2557,12 @@ supported features and strict profiles. A base implementation MUST implement
 the envelope, tiers, publishing, feed, retrieval, hook, negotiation carrier,
 and all twenty security invariants. It MAY omit the `double-ratchet` feature;
 one that advertises DMs MUST implement all of §7 and §8.
+
+Revision 4 MUST NOT be selected, advertised, or loaded until one atomic
+ADR-037/ADR-038 artifact batch contains the complete catalogs, history
+snapshot, schemas, vectors, family/artifact-set manifests, and matching
+release manifests. A partial revision-4 history or schema batch is invalid and
+non-claimable.
 
 A report claiming `comms.public-reader.v1` MAY omit every send-side and private
 feature, but MUST name the `public-reader` Core role, implement

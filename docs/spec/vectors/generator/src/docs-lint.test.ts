@@ -566,7 +566,10 @@ function validateCapabilityBootstrap(content: Record<string, unknown>): string[]
   const supported = content.supported_versions as Record<string, unknown> | undefined;
   if (content.descriptor !== "heterodyne-capabilities-v1") errors.push("descriptor");
   if (content.bootstrap_version !== "core/0.5.0") errors.push("bootstrap-version");
-  if (content.registry_revision !== 2) errors.push("registry-revision");
+  if (content.registry_revision !== 3) errors.push("registry-revision");
+  if (content.implementation_role !== "authenticated-light") {
+    errors.push("implementation-role");
+  }
   if (!supported || !exactKeys(supported, ["core", "comms", "control", "social"])) {
     errors.push("document-set");
   } else {
@@ -575,7 +578,24 @@ function validateCapabilityBootstrap(content: Record<string, unknown>): string[]
     if (JSON.stringify(supported.control) !== JSON.stringify([])) errors.push("control-support");
     if (JSON.stringify(supported.social) !== JSON.stringify(["social/0.5.0"])) errors.push("social-support");
   }
-  if (!Array.isArray(content.required_features)) errors.push("required-features");
+  if (!Array.isArray(content.required_features)) {
+    errors.push("required-features");
+  } else {
+    const features = content.required_features as unknown[];
+    for (const required of [
+      "core.nostr-relay-read.v1",
+      "core.outbound-tor.v1",
+      "core.repo-relay-client.v1",
+    ]) {
+      if (!features.includes(required)) errors.push("required-features");
+    }
+    if (
+      features.includes("core.identity.v1")
+      || features.includes("core.embedded-tor.v1")
+    ) {
+      errors.push("obsolete-feature");
+    }
+  }
   if (!Array.isArray(content.strict_profiles)) errors.push("strict-profiles");
   return [...new Set(errors)].sort();
 }
@@ -1146,11 +1166,52 @@ describe("protocol family documents", () => {
       /every subsequent post, index, and descriptor[\s\S]*fresh[\s\S]*`key_id`/i,
     );
     expect(text).toMatch(/MUST persist[\s\S]*across process[\s\S]*restart/i);
-    expect(text).toContain(
-      "feed truncated after `<created_at-of-referring-page>` / `<d-tag-of-referring-page>`; missing `<event_id>`",
+    expect(text).toMatch(
+      /localizable structured outcome[\s\S]*`missing-predecessor`[\s\S]*attempt\/deadline\/last-attempt[\s\S]*allowed user actions[\s\S]*allocates\s+no reason code/i,
     );
     expect(text).toMatch(
       /persist[\s\S]*predecessor event id[\s\S]*referring-page locator[\s\S]*process[\s\S]*restart/i,
+    );
+  });
+
+  it("integrates ADR-037 privacy, identity, recovery, deadline, and resolver corrections", () => {
+    const core = readFileSync(corePath, "utf8");
+    const comms = readFileSync(commsPath, "utf8");
+    const social = readFileSync(socialPath, "utf8");
+    const threatModel = readFileSync(threatModelPath, "utf8");
+
+    expect(core).toMatch(
+      /MUST NOT infer or publish[\s\S]*higher-layer document[\s\S]*authorization by both\s+personas/i,
+    );
+    expect(core).toMatch(
+      /Changed-RID re-anchor[\s\S]*infrastructure[\s\S]*MUST NOT[\s\S]*cold-root compromise/i,
+    );
+    expect(comms).toMatch(
+      /Tier\s+3 protects content[\s\S]*MUST NOT label Tier 3 membership-private/i,
+    );
+    expect(comms).toMatch(
+      /kind:31011[\s\S]*kind:31012[\s\S]*`key_id`[\s\S]*timing[\s\S]*size/i,
+    );
+    expect(comms).toMatch(
+      /general Control\s+conformance is closed[\s\S]*No current document\s+combination[\s\S]*unreachable/i,
+    );
+    expect(social).toMatch(
+      /dual-signed pair[\s\S]*`same_holder`[\s\S]*explicit confirmation[\s\S]*permanently/i,
+    );
+    expect(social).toMatch(
+      /ordinary later delegation revocation[\s\S]*Core compromise cutoff[\s\S]*effective_compromise_since - 300/i,
+    );
+    expect(social).toMatch(
+      /connect directly[\s\S]*established peer address[\s\S]*TLS SNI[\s\S]*Automatic\s+redirect[\s\S]*MUST NOT claim ATProto\s+resolver conformance/i,
+    );
+    expect(social).toMatch(
+      /localizable structured outcome[\s\S]*moderation-approval-window-expired[\s\S]*allowed actions/i,
+    );
+    expect(threatModel).toMatch(
+      /Tier 3 audience membership is inferred[\s\S]*recipient[\s\S]*roster[\s\S]*timing/i,
+    );
+    expect(threatModel).toMatch(
+      /ATProto DNS validation[\s\S]*dial one validated address[\s\S]*inspect the connected peer/i,
     );
   });
 
@@ -1330,6 +1391,25 @@ describe("protocol family documents", () => {
     ]) {
       expect(text).toContain(invariant);
     }
+  });
+
+  it("preserves the atomic registry-revision-4 family gate", () => {
+    const registry = loadRegistry(repositoryRoot);
+    expect(registry.manifest.revision).toBe(3);
+    expect(registry.history.has(4)).toBe(false);
+    expect(
+      existsSync(resolve(repositoryRoot, "docs/spec/registry/history/4.json")),
+    ).toBe(false);
+
+    for (const path of [corePath, commsPath, socialPath]) {
+      const text = readFileSync(path, "utf8");
+      expect(text).toMatch(
+        /Revision 4 MUST NOT be[\s\S]*one atomic\s+ADR-037\/ADR-038 artifact batch[\s\S]*non-claimable/i,
+      );
+    }
+    expect(readFileSync(controlPath, "utf8")).toMatch(
+      /registry revision 4[\s\S]*ADR-037\/ADR-038[\s\S]*land atomically/i,
+    );
   });
 
   it("defines all credential-continuity drafts while preserving the revision-4 gate", () => {
@@ -1907,10 +1987,18 @@ describe("protocol family documents", () => {
     expect(capabilities.type).toBe("m.heterodyne.capabilities.v1");
     expect(capabilities.state_key).toBe(capabilities.sender);
     expect(validateCapabilityBootstrap(capabilities.content)).toEqual([]);
-    expect(exactKeys(capabilities.content, ["descriptor", "bootstrap_version", "registry_revision", "supported_versions", "required_features", "strict_profiles", "backends", "node_roles", "matrix", "event_types", "nostr_kinds", "encryption_algorithms_supported", "advertised_at"])).toBe(true);
+    expect(exactKeys(capabilities.content, ["descriptor", "bootstrap_version", "registry_revision", "implementation_role", "supported_versions", "required_features", "strict_profiles", "backends", "matrix", "event_types", "nostr_kinds", "encryption_algorithms_supported", "advertised_at"])).toBe(true);
+    expect(capabilities.content.implementation_role).toBe("authenticated-light");
     expect(capabilities.content.encryption_algorithms_supported).toEqual(["megolm", "mls"]);
     expect(validateCapabilityBootstrap({ ...capabilities.content, descriptor: undefined })).toContain("descriptor");
-    expect(validateCapabilityBootstrap({ ...capabilities.content, registry_revision: 1 })).toContain("registry-revision");
+    expect(validateCapabilityBootstrap({ ...capabilities.content, registry_revision: 2 })).toContain("registry-revision");
+    expect(validateCapabilityBootstrap({ ...capabilities.content, implementation_role: "full-node" })).toContain("implementation-role");
+    expect(
+      validateCapabilityBootstrap({
+        ...capabilities.content,
+        required_features: ["core.identity.v1", "core.embedded-tor.v1"],
+      }),
+    ).toEqual(expect.arrayContaining(["obsolete-feature", "required-features"]));
     expect(
       validateCapabilityBootstrap({
         ...capabilities.content,
@@ -2654,7 +2742,9 @@ describe("protocol family documents", () => {
     expect(readme).toMatch(
       /159 cover\s+ADR-030\/ADR-035\/ADR-036 behavior and 11 are ADR-037 credential-continuity\s+draft outer evaluations[\s\S]*`conformance_claimable:false`[\s\S]*do not activate or claim the gated\s+profiles/i,
     );
-    expect(readme).toMatch(/historical vectors[\s\S]*MUST NOT[\s\S]*rewritten/i);
+    expect(readme).toMatch(
+      /historical released vectors[\s\S]*MUST NOT[\s\S]*rewritten/i,
+    );
   });
 
   it("maps exact revocation stamp, tag, and proof checks to their revocation vector", () => {

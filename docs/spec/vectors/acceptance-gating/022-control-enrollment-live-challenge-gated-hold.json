@@ -53,6 +53,8 @@
       "retry_hints": 0,
       "control_interpretation_allowed": false,
       "sender_visible_signals": 0,
+      "profile_reachable": false,
+      "conformance_claimable": false,
       "binding_valid": true,
       "binding_source": "live-challenge",
       "control_authority": false

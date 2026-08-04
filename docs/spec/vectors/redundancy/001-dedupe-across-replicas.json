@@ -11,7 +11,7 @@
     "heterodyne:social/0.5.0#social-matrix-mirroring"
   ],
   "vector_id": "redundancy/dedupe-across-replicas",
-  "description": "Replica rooms deduplicate the same relay-borne private broadcast by Nostr event id.",
+  "description": "Replica rooms deduplicate the same mirrored Nostr envelope by event id.",
   "input": {
     "replicas": [
       {

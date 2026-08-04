@@ -11,21 +11,19 @@
     "heterodyne:social/0.5.0#social-discussion-rooms"
   ],
   "vector_id": "room-kind/current-kinds-roundtrip",
-  "description": "Four social kinds plus identity_room and config_room round-trip.",
+  "description": "The four current Matrix room kinds round-trip.",
   "input": {
     "room_kinds": [
-      "public_broadcast",
-      "private_broadcast",
-      "public_discussion",
-      "private_discussion",
       "identity_room",
-      "config_room"
+      "config_room",
+      "public_discussion",
+      "private_discussion"
     ]
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "round_tripped_count": 6
+      "round_tripped_count": 4
     }
   },
   "direction": "consume"

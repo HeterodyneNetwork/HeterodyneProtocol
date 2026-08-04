@@ -4,6 +4,11 @@
 **Status:** Accepted
 **Decision makers:** Liam Helmer (architect); star-chamber providers: gpt-5 (via Fuel-IX, two-instance parallel review); local Claude subagent
 
+> **Superseded in part (2026-07-31, ADR-037).** A member initiates and retries
+> its ACK within the drain window. Missing ACKs at expiry still abort the
+> migration, but a carrier partition does not by itself prove the member
+> nonconformant.
+
 ## Context
 
 §9.2 (lines 2998–3039) reserves a state event `m.heterodyne.encryption_version.v1` with `algorithm: "megolm"`, `migrated_from: null`, `migrated_at: null`, and states: "The MLS migration procedure (re-key, member re-acknowledgement, atomic flip of `algorithm`, populating `migrated_from` and `migrated_at`) is deferred to a future spec version." The spec elsewhere references "the MLS variant once stabilized" (§5.4 line 1570; §3.8.1 line 943) as if it is a near-term drop-in.

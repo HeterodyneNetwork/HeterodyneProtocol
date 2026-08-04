@@ -33,6 +33,19 @@ describe("author mode", () => {
     const result = await verifyVectorTree(outputDir);
     expect(result.validFiles).toBe(written.length);
     expect(result.errors).toEqual([]);
+    for (const retiredPath of [
+      "broadcast/001-private-broadcast-wrapped.json",
+      "broadcast/002-member-decrypts.json",
+      "broadcast/003-non-member-cannot-decrypt.json",
+      "broadcast/004-reaction-reply-bare-not-indexed.json",
+      "broadcast/005-nip59-rejected.json",
+      "broadcast/006-private-broadcast-wrapped-v050.json",
+      "index/001-room-key-wrap-encryption.json",
+      "index/004-context-binding-mismatch.json",
+    ]) {
+      expect(written).not.toContain(retiredPath);
+    }
+    expect(written.some((path) => path.startsWith("broadcast/"))).toBe(false);
 
     for (const path of written.filter((candidate) => candidate.startsWith("keri/"))) {
       const scenario = JSON.parse(await readFile(join(outputDir, ...path.split("/")), "utf8"));
@@ -95,7 +108,6 @@ describe("author mode", () => {
       ["privacy-tiers/004-tier3-index-key-derivation-and-encryption.json", "privacy-tiers/012-tier3-index-key-derivation-and-encryption-v050.json", "comms/0.5.0"],
       ["privacy-tiers/003-tier3-kind31011-audience-key-wrap.json", "privacy-tiers/013-tier3-kind31011-audience-key-wrap-v050.json", "comms/0.5.0"],
       ["privacy-tiers/008-tier3-kind31012-audience-roster.json", "privacy-tiers/014-tier3-kind31012-audience-roster-v050.json", "comms/0.5.0"],
-      ["broadcast/001-private-broadcast-wrapped.json", "broadcast/006-private-broadcast-wrapped-v050.json", "comms/0.5.0"],
       ["lists/001-mute-list-public-roundtrip.json", "lists/007-mute-list-public-roundtrip-v050.json", "social/0.5.0"],
       ["lists/002-mute-list-private-items-encrypted-to-self.json", "lists/008-mute-list-private-items-encrypted-to-self-v050.json", "social/0.5.0"],
     ];
@@ -147,5 +159,5 @@ describe("author mode", () => {
       status: "accepted",
       repo_head: currentNodeAdvertisement.input.validation_context.graph_fetch.reachable_oids[0],
     });
-  });
+  }, 30_000);
 });

@@ -1,7 +1,3 @@
-import { hkdf } from "@noble/hashes/hkdf";
-import { sha256 } from "@noble/hashes/sha2";
-import { nip44 } from "nostr-tools";
-import { hexToBytes, utf8Bytes, bytesToHex } from "./hex.js";
 import { buildDmTranscriptVectors } from "./dm-transcript.js";
 import { withKelHead } from "./kel.js";
 import { canonicalNip01, getPublicKey, signEvent } from "./nostr.js";
@@ -43,7 +39,7 @@ export const TOPIC_SPECS = {
   bridge: "§6.4",
   index: "§6.7",
   "room-kind": "§5",
-  broadcast: "§5.3",
+  discussion: "heterodyne:social/0.5.0#social-discussion-rooms",
   outbox: "§7",
   moderation: "§8",
   encryption: "§9",
@@ -70,6 +66,7 @@ export const TOPIC_SPECS = {
   "comms-envelope": "heterodyne:comms/0.5.0#comms-envelope",
   "core-redundancy": "heterodyne:core/0.5.0#core-multi-host-seeding",
   "acceptance-gating": "heterodyne:comms/0.5.0#comms-acceptance-hook",
+  atproto: "heterodyne:social/0.5.0#social-atproto-resolution",
   "credential-continuity": "heterodyne:comms/0.5.0#comms-credential-continuity-gate",
   stamping: "heterodyne:core/0.5.0#core-version-stamps",
   registry: "heterodyne:core/0.5.0#core-registry",
@@ -270,7 +267,6 @@ const VECTOR_FACTORIES: VectorFactory[] = [
       warnings: ["destination_out_of_sync"],
     },
   }),
-  encryptedIndexVector,
   consume("room-kind/001-retired-kind-rejected.json", {
     vector_id: "room-kind/retired-kind-rejected",
     spec_refs: ["§5", "§14.3"],
@@ -283,7 +279,6 @@ const VECTOR_FACTORIES: VectorFactory[] = [
       reason_code: "retired_room_kind",
     },
   }),
-  encryptedBroadcastVector,
   consume("outbox/001-scoped-outbox.json", {
     vector_id: "outbox/scoped-outbox",
     spec_refs: ["§7", "§14.3"],
@@ -304,46 +299,59 @@ const VECTOR_FACTORIES: VectorFactory[] = [
   consume("moderation/001-contributor-implicit-rejection-window.json", {
     vector_id: "moderation/contributor-implicit-rejection-window",
     spec_refs: ["§8", "§14.3"],
-    description: "A contributor submission remains pending until the implicit-rejection window elapses.",
+    description: "A contributor submission remains pending until the seven-day implicit-rejection window elapses.",
     input: {
       submitted_at: 1767225600,
-      simulated_clock: 1767227400,
+      simulated_clock: 1767830400,
       approval_events: [],
-      implicit_rejection_seconds: 3600,
+      implicit_rejection_seconds: 604800,
     },
     expected_output: {
       verdict: "accept",
-      normalized: { moderation_state: "pending" },
+      normalized: {
+        moderation_state: "implicitly-rejected",
+        outcome: {
+          class: "moderation-approval-window-expired",
+          candidate_id: "candidate-fixture",
+          community_id: "34550:community:fixture",
+          attempted_at: 1767225600,
+          deadline_at: 1767830400,
+          last_attempt_at: 1767826800,
+          retry_state: "terminal",
+          terminal_cause: "approval-window-expired",
+          allowed_actions: ["abandon", "edited-republication", "unchanged-republication"],
+        },
+      },
     },
-    simulated_clock: 1767227400,
+    simulated_clock: 1767830400,
   }),
-  consume("moderation/strict-mode/001-invalid-broadcast-signature.json", {
-    vector_id: "moderation/strict-mode-invalid-broadcast-signature",
+  consume("moderation/strict-mode/001-invalid-event-signature.json", {
+    vector_id: "moderation/strict-mode-invalid-event-signature",
     spec_refs: ["§11.7", "§14.3", "§14.5"],
-    description: "Strict mode rejects the invalid broadcast signature that base mode only warns about.",
+    description: "Strict mode rejects an invalid signed Social event that base mode may retain only as explicitly invalid external content.",
     input: {
-      same_input_id: "broadcast-invalid-signature-fixture",
+      same_input_id: "invalid-signed-social-event-fixture",
       mode: "strict",
     },
     expected_output: {
       verdict: "reject",
       reason_code: "bad_signature",
     },
-    notes: "Base-mode companion outcome is warnings:[\"invalid_broadcast_signature\"] for the same input.",
+    notes: "Base-mode companion outcome is warnings:[\"invalid_event_signature\"] for the same external input.",
   }),
   consume("encryption/001-delegation-revocation-rotation.json", {
     vector_id: "encryption/delegation-revocation-rotation",
     spec_refs: ["§9", "§14.3"],
-    description: "Delegation revocation triggers the documented room-secret rotation SHOULD path.",
+    description: "Delegation revocation triggers Matrix Megolm session rotation to exclude the revoked device from later room traffic.",
     input: {
       revoked_mxid: "@old-device:example.org",
-      active_key_id: "room-secret-2026-05-25-a",
-      next_key_id: "room-secret-2026-05-25-b",
+      active_session_id: "megolm-session-a",
+      next_session_id: "megolm-session-b",
     },
     expected_output: {
       verdict: "accept",
-      normalized: { rotation_recommended: true, next_key_id: "room-secret-2026-05-25-b" },
-      warnings: ["should_rotate_room_secret"],
+      normalized: { rotation_recommended: true, next_session_id: "megolm-session-b" },
+      warnings: ["should_rotate_megolm_session"],
     },
   }),
   consume("encryption/mls-migration/001-missing-ack-aborts.json", {
@@ -439,7 +447,7 @@ const VECTOR_FACTORIES: VectorFactory[] = [
   consume("redundancy/001-dedupe-across-replicas.json", {
     vector_id: "redundancy/dedupe-across-replicas",
     spec_refs: ["§3.11", "§14.3"],
-    description: "Replica rooms deduplicate the same relay-borne private broadcast by Nostr event id.",
+    description: "Replica rooms deduplicate the same mirrored Nostr envelope by event id.",
     input: {
       replicas: [
         { room_id: "!primary:example.org", nostr_event_id: "aa".repeat(32) },
@@ -526,119 +534,6 @@ const VECTOR_FACTORIES: VectorFactory[] = [
     },
   }),
 ];
-
-async function encryptedIndexVector(fixtures: Fixtures): Promise<AuthoredVector> {
-  const secret = fixtures.room_secrets.alice_private_broadcast_v1;
-  const roomKey = hkdf(
-    sha256,
-    hexToBytes(secret.secret),
-    utf8Bytes(secret.matrix_room_id),
-    utf8Bytes("heterodyne-index-key-v1"),
-    32,
-  );
-  const nonce = hexToBytes("20".repeat(32));
-  const plaintext = JSON.stringify({
-    room_id: secret.matrix_room_id,
-    key_id: secret.key_id,
-    entries: [{ event_id: "cd".repeat(32), relay: "wss://relay.example.org" }],
-  });
-  const payload = nip44.v2.encrypt(plaintext, roomKey, nonce);
-  return {
-    relativePath: "index/001-room-key-wrap-encryption.json",
-    vector: produceVector({
-      vector_id: "index/room-key-wrap-encryption",
-      spec_refs: ["§6.7", "§14.3", "§14.5"],
-      description: "Private feed index content encrypts under HKDF(room_secret, room_id, heterodyne-index-key-v1).",
-      input: {
-        fixture_room_secret: "alice_private_broadcast_v1",
-        hkdf: {
-          salt: secret.matrix_room_id,
-          info: "heterodyne-index-key-v1",
-          output_len: 32,
-        },
-        nip44_nonce: bytesToHex(nonce),
-        plaintext,
-      },
-      expected_output: {
-        canonical_wire: payload,
-        decoded: {
-          key_id: secret.key_id,
-          matrix_room_id: secret.matrix_room_id,
-          room_key: bytesToHex(roomKey),
-          plaintext: JSON.parse(plaintext) as unknown,
-          nip44_payload: payload,
-        },
-      },
-      notes: "Megolm transport ciphertext is intentionally out of scope; this vector starts at decrypted Matrix payload hand-off.",
-    }),
-  };
-}
-
-async function encryptedBroadcastVector(fixtures: Fixtures): Promise<AuthoredVector> {
-  const secret = fixtures.room_secrets.alice_private_broadcast_v1;
-  const epoch = fixtures.personas.alice.epoch_keys.epoch_1;
-  const postKey = hkdf(
-    sha256,
-    hexToBytes(secret.secret),
-    utf8Bytes(secret.matrix_room_id),
-    utf8Bytes("heterodyne-private-broadcast-post-key-v1"),
-    32,
-  );
-  const nonce = hexToBytes("30".repeat(32));
-  const cleartext = JSON.stringify({
-    body: "private broadcast body",
-    matrix_room_id: secret.matrix_room_id,
-    key_id: secret.key_id,
-  });
-  const ciphertext = nip44.v2.encrypt(cleartext, postKey, nonce);
-  const event = await signEvent({
-    secretKey: epoch.private_key,
-    created_at: fixtures.test_epoch + 15,
-    kind: 1,
-    tags: withKelHead(
-      [
-        ["heterodyne_wrap", "room_key.v2"],
-        ["key_id", secret.key_id],
-        ["matrix_room_id", secret.matrix_room_id],
-      ],
-      fixtures.legacy_kel.alice.head,
-    ),
-    content: ciphertext,
-    auxRand: AUX_RAND,
-  });
-  return {
-    relativePath: "broadcast/001-private-broadcast-wrapped.json",
-    vector: produceVector({
-      vector_id: "broadcast/private-broadcast-wrapped",
-      spec_refs: ["§5.3", "§6.10", "§6.7.4", "§14.1", "§14.3", "§14.5"],
-      description: "OPTIONAL Matrix-hosted audience: a private broadcast post NIP-44-wrapped under the Matrix room-secret-derived post key, then signed. Matrix-shaped; the CORE Tier 3 wrap is in privacy-tiers/.",
-      input: {
-        fixture_room_secret: "alice_private_broadcast_v1",
-        fixture_persona: "alice",
-        signer: "epoch_1",
-        hkdf: {
-          salt: secret.matrix_room_id,
-          info: "heterodyne-private-broadcast-post-key-v1",
-          output_len: 32,
-        },
-        nip44_nonce: bytesToHex(nonce),
-        cleartext,
-      },
-      expected_output: {
-        canonical_wire: canonicalNip01(event),
-        decoded: {
-          event,
-          post_key: bytesToHex(postKey),
-          cleartext: JSON.parse(cleartext) as unknown,
-          nip44_payload: ciphertext,
-        },
-        id: event.id,
-        sig: event.sig,
-      },
-      notes: "Megolm transport is opaque; this vector validates the room-secret to NIP-44 post chain and context binding to matrix_room_id.",
-    }),
-  };
-}
 
 type ConsumeCase = {
   relativePath: string;
@@ -752,9 +647,22 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
     vector: {
       vector_id: "config_room/key-backup-wrapping-algorithms",
       spec_refs: ["§3.8", "§14.3"],
-      description: "Key backup records preserve their declared wrapping algorithm.",
-      input: { backups: [{ algorithm: "m.megolm_backup.v1" }, { algorithm: "heterodyne.room_secret_wrap.v1" }] },
-      expected_output: { verdict: "accept", normalized: { wrapping_algorithms: ["m.megolm_backup.v1", "heterodyne.room_secret_wrap.v1"] } },
+      description: "Heterodyne key backup records use the current user-controlled memory-hard wrapped-nsec profile without redefining Matrix session backup.",
+      input: {
+        backup: {
+          algorithm: "nip49-scrypt-nsec",
+          memory_hard_kdf: true,
+          user_controlled_secret: true,
+        },
+        matrix_session_backup_profiled_by_heterodyne: false,
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          wrapping_algorithm: "nip49-scrypt-nsec",
+          matrix_session_backup_owner: "matrix",
+        },
+      },
     },
   },
   {
@@ -772,9 +680,52 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
     vector: {
       vector_id: "multi-homing/single-mxid-revocation",
       spec_refs: ["§3.9", "§14.3"],
-      description: "Revoking one MXID removes only that MXID from the multi-homed persona set.",
-      input: { revoked_mxid: "@alice-old:example.org", remaining_mxids: ["@alice-new:example.org"] },
-      expected_output: { verdict: "accept", normalized: { active_mxids: ["@alice-new:example.org"] } },
+      description: "Revoking one MXID initiates its removal within 60 seconds and retries without treating a carrier partition as automatic nonconformance.",
+      input: {
+        revoked_mxid: "@alice-old:example.org",
+        remaining_mxids: ["@alice-new:example.org"],
+        revocation_observed_at: 1767225600,
+        initiated_at: 1767225650,
+        deadline_at: 1767225660,
+        retry_state: "retrying-carrier-unavailable",
+        terminal_condition: null,
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          active_mxids: ["@alice-new:example.org"],
+          removal_initiated_within_deadline: true,
+          carrier_success_guaranteed: false,
+        },
+      },
+    },
+  },
+  {
+    relativePath: "multi-homing/006-config-invite-initiation.json",
+    vector: {
+      vector_id: "multi-homing/config-invite-initiation",
+      spec_refs: ["heterodyne:social/0.5.0#social-active-room-election"],
+      description: "Every existing config room initiates an invite within 60 seconds and records retry state when Matrix is unavailable.",
+      input: {
+        delegation_observed_at: 1767225600,
+        invited_mxid: "@alice-new:example.org",
+        actions: [
+          {
+            room_id: "!config-a:example.org",
+            initiated_at: 1767225650,
+            deadline_at: 1767225660,
+            retry_state: "retrying-carrier-unavailable",
+            terminal_condition: null,
+          },
+        ],
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          all_invites_initiated_within_deadline: true,
+          carrier_success_guaranteed: false,
+        },
+      },
     },
   },
   {
@@ -889,13 +840,60 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
     },
   },
   {
-    relativePath: "index/004-context-binding-mismatch.json",
+    relativePath: "index/004-missing-predecessor-structured-outcome.json",
     vector: {
-      vector_id: "index/context-binding-mismatch",
-      spec_refs: ["§6.7", "§14.5"],
-      description: "Index ciphertext derived with the wrong Matrix room salt rejects.",
-      input: { expected_room_id: "!room-a:example.org", derived_with_room_id: "!room-b:example.org" },
-      expected_output: { verdict: "reject", reason_code: "context_binding_mismatch" },
+      vector_id: "index/missing-predecessor-structured-outcome",
+      spec_refs: ["heterodyne:comms/0.5.0#comms-feed-paging"],
+      description: "An unresolved predecessor produces a structured localizable outcome with durable retry state.",
+      input: {
+        referring_page: {
+          event_id: "ab".repeat(32),
+          created_at: 1767225600,
+          d: "feed:page-2",
+        },
+        missing_predecessor_event_id: "cd".repeat(32),
+        attempted_at: 1767225610,
+        deadline_at: 1767225640,
+        last_attempt_at: 1767225640,
+        retry_state: "retrying",
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          outcome_class: "missing-predecessor",
+          registered_reason_code: null,
+          terminal_cause: null,
+          allowed_actions: ["retry", "continue-incomplete"],
+          localizable: true,
+        },
+      },
+    },
+  },
+  {
+    relativePath: "privacy-tiers/015-tier3-membership-metadata-disclosed.json",
+    vector: {
+      vector_id: "privacy-tiers/tier3-membership-metadata-disclosed",
+      spec_refs: ["heterodyne:comms/0.5.0#comms-privacy-tiers"],
+      description: "Tier 3 protects content but discloses recipient, roster, generation-linkage, timing, and volume metadata.",
+      input: {
+        tier: 3,
+        pre_use_disclosure_presented: true,
+        observed_distribution_graph: ["kind:31011", "kind:31012"],
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          content_confidentiality: true,
+          membership_private: false,
+          residual_metadata: [
+            "recipient-tags",
+            "roster-events",
+            "key-id-linkage",
+            "timing",
+            "volume",
+          ],
+        },
+      },
     },
   },
   {
@@ -903,9 +901,9 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
     vector: {
       vector_id: "room-kind/current-kinds-roundtrip",
       spec_refs: ["§5", "§14.3"],
-      description: "Four social kinds plus identity_room and config_room round-trip.",
-      input: { room_kinds: ["public_broadcast", "private_broadcast", "public_discussion", "private_discussion", "identity_room", "config_room"] },
-      expected_output: { verdict: "accept", normalized: { round_tripped_count: 6 } },
+      description: "The four current Matrix room kinds round-trip.",
+      input: { room_kinds: ["identity_room", "config_room", "public_discussion", "private_discussion"] },
+      expected_output: { verdict: "accept", normalized: { round_tripped_count: 4 } },
     },
   },
   {
@@ -919,43 +917,13 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
     },
   },
   {
-    relativePath: "broadcast/002-member-decrypts.json",
+    relativePath: "discussion/001-reaction-reply-bare-not-indexed.json",
     vector: {
-      vector_id: "broadcast/member-decrypts",
-      spec_refs: ["§5.3", "§6.10", "§14.3"],
-      description: "Room member with the active room secret decrypts the private broadcast body.",
-      input: { member_has_room_secret: true, key_id: "room-secret-2026-05-25-a" },
-      expected_output: { verdict: "accept", normalized: { decrypted: true } },
-    },
-  },
-  {
-    relativePath: "broadcast/003-non-member-cannot-decrypt.json",
-    vector: {
-      vector_id: "broadcast/non-member-cannot-decrypt",
-      spec_refs: ["§5.3", "§6.10", "§14.3"],
-      description: "Non-member without the room secret cannot decrypt the private broadcast body.",
-      input: { member_has_room_secret: false, key_id: "room-secret-2026-05-25-a" },
-      expected_output: { verdict: "reject", reason_code: "context_binding_mismatch" },
-    },
-  },
-  {
-    relativePath: "broadcast/004-reaction-reply-bare-not-indexed.json",
-    vector: {
-      vector_id: "broadcast/reaction-reply-bare-not-indexed",
-      spec_refs: ["§5.3", "§6.10", "§14.3"],
+      vector_id: "discussion/reaction-reply-bare-not-indexed",
+      spec_refs: ["heterodyne:social/0.5.0#social-discussion-rooms"],
       description: "Reaction/reply remains bare in-room and is not added to the relay feed index.",
       input: { event_kind: 7, relation: "reaction", candidate_for_index: true },
       expected_output: { verdict: "accept", normalized: { indexed: false, in_room_bare: true } },
-    },
-  },
-  {
-    relativePath: "broadcast/005-nip59-rejected.json",
-    vector: {
-      vector_id: "broadcast/nip59-rejected",
-      spec_refs: ["§5.3", "§6.10", "§14.3"],
-      description: "NIP-59 gift-wrapped broadcast posts are rejected.",
-      input: { event_kind: 1059, claimed_room_kind: "private_broadcast" },
-      expected_output: { verdict: "reject", reason_code: "nip59_broadcast_rejected" },
     },
   },
   {
@@ -983,9 +951,24 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
     vector: {
       vector_id: "outbox/cross-persona-attestation-valid",
       spec_refs: ["§7", "§14.3"],
-      description: "Valid cross-persona attestation links a secondary persona to the root persona.",
-      input: { attester: "alice", subject: "alice-work", signature_valid: true },
-      expected_output: { verdict: "accept", normalized: { cross_persona_attested: true } },
+      description: "A same_holder relationship requires an exact dual-authorized kind:31004 pair plus explicit post-warning confirmation.",
+      input: {
+        relation: "same_holder",
+        left: { signer: "alice", other_npub: "alice-work", signature_valid: true },
+        right: { signer: "alice-work", other_npub: "alice", signature_valid: true },
+        cross_binding_exact: true,
+        permanent_linkability_warning_presented: true,
+        explicit_confirmation: true,
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          cross_persona_attested: true,
+          authorization: "dual",
+          permanently_linkable: true,
+          deletion_erases_prior_observations: false,
+        },
+      },
     },
   },
   {
@@ -993,8 +976,14 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
     vector: {
       vector_id: "outbox/cross-persona-attestation-invalid",
       spec_refs: ["§7", "§14.3"],
-      description: "Invalid cross-persona attestation is rejected.",
-      input: { attester: "alice", subject: "mallory", signature_valid: false },
+      description: "A one-sided or unconfirmed cross-persona relationship is rejected.",
+      input: {
+        relation: "same_holder",
+        left: { signer: "alice", other_npub: "alice-work", signature_valid: true },
+        right: null,
+        permanent_linkability_warning_presented: false,
+        explicit_confirmation: false,
+      },
       expected_output: { verdict: "reject", reason_code: "bad_signature" },
     },
   },
@@ -1053,9 +1042,23 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
     vector: {
       vector_id: "moderation/strict-mode-kind5-deletion-30s",
       spec_refs: ["§11.7", "§14.3"],
-      description: "Strict mode observes kind:5 deletion within 30 seconds.",
-      input: { deletion_kind: 5, observed_after_seconds: 25 },
-      expected_output: { verdict: "accept", normalized: { deletion_observed_within_30s: true } },
+      description: "Strict mode initiates kind:5 subscription or polling within 30 seconds and records retry availability separately from observation.",
+      input: {
+        deletion_kind: 5,
+        source_activated_at: 1767225600,
+        initiated_at: 1767225625,
+        deadline_at: 1767225630,
+        retry_state: "retrying-source-partitioned",
+        observed: false,
+        terminal_condition: null,
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          monitoring_initiated_within_deadline: true,
+          carrier_success_guaranteed: false,
+        },
+      },
     },
   },
   {
@@ -1079,6 +1082,29 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
     },
   },
   {
+    relativePath: "envelope/005-compromise-cutoff-overrides-attribution.json",
+    vector: {
+      vector_id: "envelope/compromise-cutoff-overrides-attribution",
+      spec_refs: [
+        "heterodyne:core/0.5.0#core-kel-verification",
+        "heterodyne:social/0.5.0#social-bare-envelope",
+      ],
+      description: "A later accepted Core compromise declaration overrides ordinary no-retroactive-deattribution for an event inside the compromise cutoff.",
+      input: {
+        envelope_initially_attributable: true,
+        event_created_at: 1767225700,
+        effective_compromise_since: 1767225900,
+        compromise_grace_seconds: 300,
+        compromise_declaration_accepted: true,
+      },
+      expected_output: {
+        verdict: "reject",
+        reason_code: "signing_key_compromised_at_created_at",
+        normalized: { verified_attribution: false },
+      },
+    },
+  },
+  {
     relativePath: "encryption/mls-migration/002-eligibility-check.json",
     vector: {
       vector_id: "encryption/mls-migration-eligibility-check",
@@ -1093,9 +1119,24 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
     vector: {
       vector_id: "encryption/mls-migration-intent-and-ack",
       spec_refs: ["§9.2", "§14.3"],
-      description: "MLS migration intent is accepted after all eligible receivers ACK.",
-      input: { intent_id: "mls-intent-1", eligible: ["@a", "@b"], acked: ["@a", "@b"] },
-      expected_output: { verdict: "accept", normalized: { intent_acked: true } },
+      description: "MLS members initiate and retry ACKs within the drain window; absence at expiry remains an abort condition.",
+      input: {
+        intent_id: "mls-intent-1",
+        eligible: ["@a", "@b"],
+        initiated_acks: [
+          { member: "@a", initiated_at: 1767225620, retry_state: "delivered" },
+          { member: "@b", initiated_at: 1767225655, retry_state: "retrying" },
+        ],
+        deadline_at: 1767225660,
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          all_ack_actions_initiated_within_window: true,
+          migration_complete: false,
+          expiry_without_all_acks: "abort",
+        },
+      },
     },
   },
   {
@@ -1233,9 +1274,15 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
     vector: {
       vector_id: "redundancy/private-body-relay-borne",
       spec_refs: ["§3.11", "§14.3"],
-      description: "Private broadcast body remains relay-borne and is not duplicated per mirror room.",
-      input: { body_storage: "relay", per_room_body_copies: 0 },
-      expected_output: { verdict: "accept", normalized: { duplicated_per_room: false } },
+      description: "A Comms-carried private post is not duplicated into Matrix mirror rooms.",
+      input: {
+        carrier: "comms-tier3-relay-and-repository",
+        matrix_mirror_body_copies: 0,
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: { duplicated_into_matrix_replicas: false },
+      },
     },
   },
   {
@@ -1243,9 +1290,13 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
     vector: {
       vector_id: "redundancy/rekey-remove-not-join",
       spec_refs: ["§3.11", "§14.3"],
-      description: "Mirror group rekeys on member removal but not on join.",
-      input: { event: "member_removed", rekey_performed: true },
-      expected_output: { verdict: "accept", normalized: { rekey_required: true } },
+      description: "A Matrix encryption session rotates on member removal but not merely on join.",
+      input: {
+        event: "member_removed",
+        encryption_session: "megolm",
+        session_rotation_performed: true,
+      },
+      expected_output: { verdict: "accept", normalized: { session_rotation_required: true } },
     },
   },
   {
@@ -1273,9 +1324,22 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
     vector: {
       vector_id: "social-recovery/cold-root-reanchor-authoritative",
       spec_refs: ["§3.12", "§14.3"],
-      description: "Cold-root kind:31005 re-anchor is authoritative over friend-cache fallback.",
-      input: { cold_root_pointer: "!new:example.org", cache_pointer: "!old:example.org" },
-      expected_output: { verdict: "accept", normalized: { authoritative_pointer: "!new:example.org" } },
+      description: "An uncompromised available cold root authoritatively re-anchors after serving-infrastructure loss, but does not recover cold-root compromise.",
+      input: {
+        recovery_cause: "infrastructure-loss",
+        cold_root_available: true,
+        cold_root_compromised: false,
+        cold_root_pointer: "!new:example.org",
+        cache_pointer: "!old:example.org",
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          authoritative_pointer: "!new:example.org",
+          recovery_scope: "infrastructure-loss",
+          cold_root_compromise_recovered: false,
+        },
+      },
     },
   },
   {

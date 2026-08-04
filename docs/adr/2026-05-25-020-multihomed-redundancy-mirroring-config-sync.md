@@ -4,6 +4,11 @@
 **Status:** Accepted
 **Decision makers:** user + multi-LLM council (gemini-3.1-pro, gpt-5.4) via document-mode review
 
+> **Superseded in part (2026-07-31, ADR-037).** Broadcast-room mirroring and
+> room-key/private-broadcast body clauses are retired. Cross-MXID config sync,
+> generic identity/discussion mirroring, explicit promotion, event-id
+> deduplication, and Matrix-session rotation remain accepted.
+
 ## Context
 
 Two deferred items in the 0.x spec both reduce to "a persona's

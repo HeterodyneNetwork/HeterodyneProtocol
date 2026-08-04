@@ -203,6 +203,12 @@ publicly or inside a Comms audience, but a client MUST NOT infer relationships
 from co-hosting, timing, caches, or any signal other than an explicit valid
 pair.
 
+This exact dual-signed pair is the higher-layer explicit-relationship
+exception permitted by Core. Before producing `same_holder`, a client MUST
+obtain explicit confirmation after warning that the two persona histories
+become permanently and externally linkable. Later deletion of either
+relationship event cannot erase prior observations or copies.
+
 <!-- fixture:related-persona-pair -->
 ```json
 {
@@ -434,14 +440,18 @@ OPTIONAL and MUST NOT be used to exclude vanilla submissions. A contributor
 SHOULD poll or subscribe to moderator indexes. Polling MUST use five-minute
 intervals for the first 30 minutes, then MAY use exponential backoff of 5, 10,
 30, then 60 minutes. It MUST stop on approval or when the seven-day
-implicit-rejection window expires. If no approval appears within seven days of candidate
-`created_at`, conforming clients MUST treat the candidate as implicitly
-rejected, MUST surface exactly "post not approved within 7-day window", and
-offer abandon, edited republication with a new id, or intentional unchanged
-republication. This release defines no explicit moderator-rejection event;
-silence is rejection. After three consecutive posts are implicitly rejected
-from one community, the client SHOULD warn that "the community may not be
-accepting your submissions." This is advisory UX, not enforcement.
+implicit-rejection window expires. If no approval appears within seven days
+(604800 seconds) of candidate `created_at`, conforming clients MUST treat the
+candidate as implicitly rejected and surface a localizable structured outcome
+with class `moderation-approval-window-expired`, candidate, approval and
+community identifiers, submission identity, attempt/deadline/last-attempt
+timestamps, retry state, terminal cause, and allowed actions: abandon, edited
+republication with a new id, or intentional unchanged republication. This
+release defines no explicit moderator-rejection event; silence is rejection.
+After three consecutive implicit rejections from one community, the client
+SHOULD surface a structured advisory with class
+`moderation-repeated-implicit-rejection`. English renderings such as “post not
+approved within 7-day window” are examples, not normative strings.
 
 Every moderated community MUST publish a NIP-72 `kind:34550` addressable
 community definition on the Core/Comms backends. It lists each moderator's
@@ -789,12 +799,24 @@ disclose its centralized directory. `did:key` may be a Core witness but has no
 PDS service endpoint and MUST NOT be treated as an ATProto attached identity.
 
 Every DID/PDS HTTPS request MUST reject RFC 1918, loopback, link-local,
-wildcard, and otherwise non-public resolved addresses. A non-443 port MUST be
-rejected unless the user explicitly allow-lists that host and port. At most
-three redirects are RECOMMENDED, and every redirect MUST be independently
-re-resolved and revalidated. A client MUST NOT follow a public-to-private or
-443-to-unapproved-port redirect. It SHOULD warn when a DID's PDS endpoint
-changes from the cached value.
+wildcard, and otherwise non-public resolved addresses. The client MUST
+explicitly resolve a non-empty set and reject the entire hop if any answer is
+non-public. It MUST choose one validated public address and connect directly
+to that address without allowing the HTTP stack to resolve the hostname a
+second time. The established peer address MUST equal the selected address
+after canonical IP normalization.
+
+TLS SNI, certificate-name verification, and HTTP `Host`/`:authority` MUST use
+the original requested hostname, never the selected IP. A non-443 port MUST be
+rejected unless the user explicitly allow-lists that host and port. Automatic
+redirect following MUST be disabled. At most three redirects are
+RECOMMENDED; each target is returned to the resolver and independently
+re-resolved, selected, dial-pinned, peer-inspected, and host-verified. A client
+MUST NOT follow a public-to-private or 443-to-unapproved-port redirect. If its
+runtime cannot both bind the selected address and inspect the established
+peer, it MUST report this feature unavailable and MUST NOT claim ATProto
+resolver conformance. It SHOULD warn when a DID's PDS endpoint changes from
+the cached value.
 
 <a id="social-atproto-binding"></a>
 ### 8.2 Bidirectional binding
@@ -1049,9 +1071,12 @@ safe defaults with a visible warning.
 ### 10.2 Active-room election, publish lease, and failover
 
 Every delegated MXID MUST create its config room on first publish and invite
-all other delegated MXIDs, sharing history. Existing rooms MUST invite a newly
-observed delegated MXID within 60 seconds. Transient asymmetric membership
-MUST NOT stop convergence.
+all other delegated MXIDs, sharing history. Existing rooms MUST initiate an
+invitation to a newly observed delegated MXID within 60 seconds and retry
+until success, expiry, cancellation, superseding delegation state, or the
+terminal retry-budget outcome. Transient asymmetric membership or a carrier
+partition is an availability failure and MUST NOT stop convergence or alone
+make the producer nonconformant.
 
 `m.heterodyne.active_config_room.v1` has empty state key and exactly
 `active_room_id`, `active_room_homeserver`, integer `elected_at`, and UUIDv4
@@ -1089,8 +1114,10 @@ at least observation time plus its declared clock-skew policy, reject unsigned
 or mismatched records, and distrust Matrix events at or after the effective
 time.
 
-Other delegated MXIDs MUST remove the revoked MXID from their config rooms
-within 60 seconds. If it held the lease, a remaining device MUST trigger
+Other delegated MXIDs MUST initiate removal of the revoked MXID from their
+config rooms within 60 seconds and retry until success, expiry, cancellation,
+superseding state, or the terminal retry-budget outcome. If it held the lease,
+a remaining device MUST trigger
 failover. A later KEL rotation deactivates every delegation signed by the old
 epoch independently of this selective process. Affected private-discussion
 rooms SHOULD rotate Megolm sessions to exclude extracted old keys.
@@ -1185,8 +1212,11 @@ A bare message MAY carry `heterodyne_nostr_sig`, an upstream Nostr proof whose
 content equals the Matrix body byte-for-byte after Unicode NFC normalization.
 A receiver MUST verify the embedded event and selected persona. Success earns
 an authenticated indicator. Failure MUST retain the vanilla body with an
-explicit invalid-signature warning. A later delegation revocation MUST NOT
-retroactively de-attribute an event valid at its own DAG position.
+explicit invalid-signature warning. An ordinary later delegation revocation
+MUST NOT retroactively de-attribute an event valid at its own DAG position.
+This does not override Core compromise cutoff: a later accepted Core
+compromise declaration removes verified attribution when the event's
+`created_at` is at or after `effective_compromise_since - 300`.
 
 Unknown Heterodyne Matrix event types MUST render as a safe placeholder. A
 receiver first applies Matrix SDK integrity, then branches on wrapped or bare,
@@ -1293,7 +1323,7 @@ still MUST reject an advertisement whose Core bootstrap is invalid.
   "state_key": "@alice:matrix.example",
   "sender": "@alice:matrix.example",
   "origin_server_ts": 1710000000000,
-  "content": {"descriptor":"heterodyne-capabilities-v1","bootstrap_version":"core/0.5.0","registry_revision":2,"supported_versions":{"core":["core/0.5.0"],"comms":["comms/0.5.0"],"control":[],"social":["social/0.5.0"]},"required_features":["core.identity.v1","core.repo-relay-client.v1","core.embedded-tor.v1"],"strict_profiles":[],"backends":["nostr_relay","repo_relay"],"node_roles":["light"],"matrix":true,"event_types":["m.heterodyne.encryption_version.v1","m.heterodyne.migration_intent.v1","m.heterodyne.migration_ack.v1","m.heterodyne.migration_abort.v1"],"nostr_kinds":[31004,31009],"encryption_algorithms_supported":["megolm","mls"],"advertised_at":1710000000}
+  "content": {"descriptor":"heterodyne-capabilities-v1","bootstrap_version":"core/0.5.0","registry_revision":3,"implementation_role":"authenticated-light","supported_versions":{"core":["core/0.5.0"],"comms":["comms/0.5.0"],"control":[],"social":["social/0.5.0"]},"required_features":["core.nostr-relay-read.v1","core.outbound-tor.v1","core.repo-relay-client.v1"],"strict_profiles":[],"backends":["nostr_relay","repo_relay"],"matrix":true,"event_types":["m.heterodyne.encryption_version.v1","m.heterodyne.migration_intent.v1","m.heterodyne.migration_ack.v1","m.heterodyne.migration_abort.v1"],"nostr_kinds":[31004,31009],"encryption_algorithms_supported":["megolm","mls"],"advertised_at":1710000000}
 }
 ```
 
@@ -1319,8 +1349,11 @@ the current Megolm session. Its closed ordered content is:
 }
 ```
 
-Every current member MUST ACK within the 60-second drain window. An ACK is
-encrypted `m.heterodyne.migration_ack.v1` state with key
+Every current member MUST initiate its ACK within the 60-second drain window
+and retry until delivery, window expiry, cancellation, or superseding
+migration state. A partition is an availability failure; absence at expiry
+still causes the terminal abort below. An ACK is encrypted
+`m.heterodyne.migration_ack.v1` state with key
 `<intent_id>:<member_npub>`; its sender MUST be a joined MXID currently
 delegated for `member_npub`, and `acked_at` MUST fall within the window:
 
@@ -1493,9 +1526,12 @@ is advertised, so they are added by the separate Social+Matrix profile.
 ```
 
 This profile additionally requires a valid signed event to pass baseline
-verification before Social policy, observation of a valid `kind:5` deletion
-within 30 seconds on an active source, and a visible warning when a previously
-met strict requirement becomes unmet. It does not require Matrix.
+verification before Social policy, initiation of subscription or polling for
+a valid `kind:5` deletion within 30 seconds on an active source with retry and
+availability evidence until a terminal condition, and a visible warning when
+a previously met strict requirement becomes unmet. A carrier partition does
+not itself make an otherwise conforming consumer nonconformant. It does not
+require Matrix.
 
 `heterodyne-social-matrix-strict-v1` has the exact conformance class
 `Social+Matrix`. It composes the Matrix-free Social strict profile and adds all
@@ -1667,6 +1703,12 @@ policy, subscriber-local agent-policy moderation when
 `social.agent-policy-moderation.v1` is advertised, and all non-Matrix Social
 invariants.
 
+Revision 4 MUST NOT be selected, advertised, or loaded until one atomic
+ADR-037/ADR-038 artifact batch contains the complete catalogs, history
+snapshot, schemas, vectors, family/artifact-set manifests, and matching
+release manifests. A partial revision-4 history or schema batch is invalid and
+non-claimable.
+
 A `Social+Matrix` report MUST include a complete `Social` claim and every
 Matrix requirement in §§9-12: MXID delegation, election/leases/failover,
 config-room behavior, exit and mirroring, wrapped/bare verification, both room
@@ -1682,7 +1724,8 @@ profile fixture and MUST NOT collapse `Social` and `Social+Matrix`.
 
 Wire conformance is byte-exact. Existing signed 0.4 events MUST NOT be
 restamped. Plain upstream NIP-51 and NIP-72 events remain unstamped; only the
-exact immutable Social profiles opt into a Social stamp. A changed wire
-behavior requires a new immutable vector id. Unsupported Social versions or
-profiles MUST be rejected or explicitly degraded under Core's version rules,
+exact immutable Social profiles opt into a Social stamp. During 0.x, an
+accepted ADR may change or retire an unreleased current vector in place;
+vector-ID immutability begins at 1.0. Unsupported Social versions or profiles
+MUST be rejected or explicitly degraded under Core's version rules,
 never silently interpreted as this release.

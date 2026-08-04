@@ -275,6 +275,7 @@ dm/invite-unbound-device-rejected
 dm/kind1060-outer-message-shape
 dm/repo-relay-refuses-kind1060
 index/complete-fetch-attempt
+index/missing-predecessor-structured-outcome
 index/prev-page-hash
 org/canonical-branch-reachability
 outbox/full-public-outbox
@@ -282,6 +283,7 @@ outbox/scoped-outbox
 outbox/transitive-discovery-walk
 privacy-tiers/audience-key-rotation-on-removal
 privacy-tiers/complete-fetch-attempt
+privacy-tiers/tier3-membership-metadata-disclosed
 privacy-tiers/non-circular-bootstrap
 privacy-tiers/tier1-public-plaintext-both-backends
 privacy-tiers/tier2-private-repo-not-encrypted
@@ -357,15 +359,11 @@ agent-moderation/replacement-key-independent
 agent-moderation/correction-valid
 agent-moderation/correction-list-retained
 agent-moderation/correction-list-removed
+atproto/pinned-public-hop
+atproto/connection-pinning-unavailable
 bridge/idempotent-republication
 bridge/matrix-permanent-failure-index-updated
 bridge/nostr-permanent-failure-index-not-updated
-broadcast/member-decrypts
-broadcast/nip59-rejected
-broadcast/non-member-cannot-decrypt
-broadcast/private-broadcast-wrapped
-broadcast/private-broadcast-wrapped-v050
-broadcast/reaction-reply-bare-not-indexed
 config_room/device-inventory-not-synced
 config_room/key-backup-wrapping-algorithms
 config_room/minimal-config-room
@@ -379,6 +377,7 @@ encryption/mls-migration-non-mls-receiver-fallback
 encryption/mls-migration-offline-reconnect-reencrypt
 encryption/mls-migration-receiver-verifiable-flip
 encryption/mls-migration-tail-period-acceptance
+envelope/compromise-cutoff-overrides-attribution
 envelope/bare-dm-signature-badge
 envelope/cross-kind-wrapping
 envelope/fallback-rendering
@@ -387,8 +386,7 @@ homeserver-exit/dual-publish-during-exit
 homeserver-exit/identity-room-migration
 homeserver-exit/migration-pointer-precedence
 identity/identity-room-full-state
-index/context-binding-mismatch
-index/room-key-wrap-encryption
+discussion/reaction-reply-bare-not-indexed
 interop/bare-hide-pref
 interop/vanilla-nostr-only-follow
 interop/wrapped-vanilla-roundtrip
@@ -412,10 +410,11 @@ moderation/relay-only-created-at-fallback
 moderation/repo-anchor-asof-after-removal-rejected
 moderation/repo-anchor-asof-before-removal-counts
 moderation/strict-mode-bare-not-hidden
-moderation/strict-mode-invalid-broadcast-signature
+moderation/strict-mode-invalid-event-signature
 moderation/strict-mode-kind5-deletion-30s
 moderation/strict-mode-state-downgrade-warning
 multi-homing/active-room-election
+multi-homing/config-invite-initiation
 multi-homing/kind31005-race-tiebreaker
 multi-homing/partition-window-void-requeue
 multi-homing/publish-lease-acquire-renew
@@ -553,13 +552,10 @@ const PROFILE_BY_VECTOR = new Map<string, string>([
   ["profiles/comms-negotiation-kind31015", "comms-subprotocol-negotiation-v1"],
   ["profiles/comms-payload-kind31016", "comms-subprotocol-payload-v1"],
   ["comms-envelope/owner-stamp-valid", "comms-subprotocol-payload-v1"],
-  ["broadcast/private-broadcast-wrapped-v050", "heterodyne-comms-tier3-wrapped-content-kind-1-v1"],
   ["lists/mute-list-public-roundtrip-v050", "heterodyne-social-mute-list-v1"],
   ["lists/mute-list-private-items-encrypted-to-self-v050", "heterodyne-social-mute-list-v1"],
   ["lists/private-items-reencrypt-on-rotation", "heterodyne-social-mute-list-v1"],
   ["lists/stale-list-rollback-rejected", "heterodyne-social-mute-list-v1"],
-  ["broadcast/member-decrypts", "heterodyne-comms-tier3-wrapped-content-kind-1-v1"],
-  ["broadcast/non-member-cannot-decrypt", "heterodyne-comms-tier3-wrapped-content-kind-1-v1"],
   ["dm/invite-delegated-device-valid", "heterodyne-comms-double-ratchet-invite-v1"],
   ["dm/invite-unbound-device-rejected", "heterodyne-comms-double-ratchet-invite-v1"],
   ["dm/invite-revoked-device-rejected", "heterodyne-comms-double-ratchet-invite-v1"],
@@ -750,7 +746,8 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
         ? "social-agent-policy-receipts"
         : "social-agent-policy-list",
       bridge: "social-headless-bridge",
-      broadcast: "social-matrix-envelopes",
+      atproto: "social-atproto-resolution",
+      discussion: "social-discussion-rooms",
       config_room: "social-config-room",
       encryption: "social-matrix-encryption",
       envelope: "social-matrix-envelopes",

@@ -4,6 +4,10 @@
 **Status:** Accepted
 **Decision makers:** user + `/codex:rescue` review (star-chamber unavailable this session)
 
+> **Superseded in part (2026-07-31, ADR-037).** Only the Matrix room-secret
+> key-delivery alternative is retired. Matrix optionality and its current
+> discussion-room role remain accepted.
+
 ## Context
 
 ADR-026 through ADR-028 move content, identity, and privacy onto a

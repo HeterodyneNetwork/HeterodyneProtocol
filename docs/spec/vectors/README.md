@@ -7,8 +7,10 @@ document; directory names do not imply ownership.
 When a vector exists for a behavior, an implementation claiming that vector's
 coverage MUST reproduce `produce` output byte-for-byte, MUST accept and
 validate `consume` input as specified, and MUST preserve the declared
-comparison surface for `round-trip` input. Existing vector IDs are immutable.
-Changed behavior receives a new ID.
+comparison surface for `round-trip` input. During 0.x, current vector IDs and
+behaviors MAY change or be retired before release. Released artifact sets and
+their exact bytes remain historical records; vector-ID immutability begins at
+1.0.
 
 ## Family metadata
 
@@ -40,16 +42,16 @@ wire format and is not the vector envelope version.
 
 The schema requires each actual vector's `registry_revision` to be an integer;
 the placeholder above means that every vector pins the revision governing its
-behavior. The current coverage manifest contains 265 immutable
+behavior. The current coverage manifest contains 264 immutable
 registry-revision-1 vectors, 55 ADR-034 registry-revision-2 vectors, and 170
 registry-revision-3 vectors. Of the latter, 159 cover
 ADR-030/ADR-035/ADR-036 behavior and 11 are ADR-037 credential-continuity
 draft outer evaluations whose normalized output explicitly sets
 `conformance_claimable:false`; those 11 do not activate or claim the gated
 profiles.
-Historical vectors and the signed
-behavior they describe MUST NOT be rewritten to the latest registry revision.
-Changed behavior receives a new vector ID.
+Historical released vectors and the signed behavior they describe MUST NOT be
+rewritten to the latest registry revision. Unreleased 0.x vectors may be
+changed or retired in place under an accepted ADR.
 
 Dependency versions follow the family DAG:
 

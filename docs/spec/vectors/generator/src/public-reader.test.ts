@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { nip19 } from "nostr-tools";
 import {
+  evaluateAtprotoFetch,
   parseLauncherFragment,
   resolvePublicAsset,
   validateBootstrapRelay,
+  type AtprotoFetchInput,
   type PublicResolutionInput,
 } from "./public-reader.js";
 
@@ -131,6 +133,172 @@ describe("bootstrap relay validation", () => {
       expect(validateBootstrapRelay(literal)).toMatchObject({ verdict: "reject" });
       expect(validateBootstrapRelay("wss://relay.example/", address))
         .toMatchObject({ verdict: "reject" });
+    }
+  });
+});
+
+describe("ATProto connection pinning", () => {
+  const accepted: AtprotoFetchInput = {
+    initial_url: "https://pds.example/xrpc/com.atproto.repo.getRecord",
+    can_bind_selected_address: true,
+    can_inspect_peer_address: true,
+    hops: [
+      {
+        requested_url: "https://pds.example/xrpc/com.atproto.repo.getRecord",
+        resolved_addresses: ["93.184.216.34"],
+        selected_address: "93.184.216.34",
+        connected_peer_address: "93.184.216.34",
+        tls_server_name: "pds.example",
+        certificate_hostname: "pds.example",
+        certificate_valid: true,
+        host_header: "pds.example",
+        automatic_redirects: false,
+        redirect_location: null,
+        non_default_port_allowed: false,
+      },
+    ],
+  };
+
+  it("accepts a direct pinned public connection with original-host identity", () => {
+    expect(evaluateAtprotoFetch(accepted)).toEqual({
+      verdict: "accept",
+      conformance_claimable: true,
+      normalized: {
+        fetched_urls: [accepted.initial_url],
+        redirect_count: 0,
+        connection_pinned: true,
+      },
+    });
+  });
+
+  it("rejects special DNS answers and selection outside the validated set", () => {
+    expect(
+      evaluateAtprotoFetch({
+        ...accepted,
+        hops: [{
+          ...accepted.hops[0],
+          resolved_addresses: ["93.184.216.34", "127.0.0.1"],
+        }],
+      }),
+    ).toMatchObject({ verdict: "reject", failure_class: "destination-invalid" });
+    expect(
+      evaluateAtprotoFetch({
+        ...accepted,
+        hops: [{
+          ...accepted.hops[0],
+          selected_address: "93.184.216.35",
+          connected_peer_address: "93.184.216.35",
+        }],
+      }),
+    ).toMatchObject({ verdict: "reject", failure_class: "address-not-validated" });
+  });
+
+  it("rejects connection substitution and hostname identity substitution", () => {
+    expect(
+      evaluateAtprotoFetch({
+        ...accepted,
+        hops: [{
+          ...accepted.hops[0],
+          connected_peer_address: "93.184.216.35",
+        }],
+      }),
+    ).toMatchObject({ verdict: "reject", failure_class: "peer-address-mismatch" });
+    for (const field of [
+      "tls_server_name",
+      "certificate_hostname",
+      "host_header",
+    ] as const) {
+      expect(
+        evaluateAtprotoFetch({
+          ...accepted,
+          hops: [{
+            ...accepted.hops[0],
+            [field]: "93.184.216.34",
+          }],
+        }),
+      ).toMatchObject({ verdict: "reject", failure_class: "authority-mismatch" });
+    }
+    expect(
+      evaluateAtprotoFetch({
+        ...accepted,
+        hops: [{ ...accepted.hops[0], certificate_valid: false }],
+      }),
+    ).toMatchObject({ verdict: "reject", failure_class: "certificate-invalid" });
+  });
+
+  it("requires manual, independently pinned redirect hops", () => {
+    expect(
+      evaluateAtprotoFetch({
+        ...accepted,
+        hops: [{
+          ...accepted.hops[0],
+          automatic_redirects: true,
+        }],
+      }),
+    ).toMatchObject({ verdict: "reject", failure_class: "automatic-redirect" });
+
+    const redirected: AtprotoFetchInput = {
+      ...accepted,
+      hops: [
+        {
+          ...accepted.hops[0],
+          redirect_location: "https://cdn.example/record",
+        },
+        {
+          ...accepted.hops[0],
+          requested_url: "https://cdn.example/record",
+          resolved_addresses: ["1.1.1.1"],
+          selected_address: "1.1.1.1",
+          connected_peer_address: "1.1.1.1",
+          tls_server_name: "cdn.example",
+          certificate_hostname: "cdn.example",
+          host_header: "cdn.example",
+        },
+      ],
+    };
+    expect(evaluateAtprotoFetch(redirected)).toMatchObject({
+      verdict: "accept",
+      normalized: { redirect_count: 1, connection_pinned: true },
+    });
+    expect(
+      evaluateAtprotoFetch({
+        ...redirected,
+        hops: [
+          redirected.hops[0],
+          {
+            ...redirected.hops[1],
+            resolved_addresses: ["10.0.0.1"],
+            selected_address: "10.0.0.1",
+            connected_peer_address: "10.0.0.1",
+          },
+        ],
+      }),
+    ).toMatchObject({ verdict: "reject", failure_class: "destination-invalid" });
+    expect(
+      evaluateAtprotoFetch({
+        ...accepted,
+        hops: [{
+          ...accepted.hops[0],
+          requested_url: "https://pds.example:8443/record",
+          tls_server_name: "pds.example",
+          certificate_hostname: "pds.example",
+          host_header: "pds.example:8443",
+        }],
+        initial_url: "https://pds.example:8443/record",
+      }),
+    ).toMatchObject({ verdict: "reject", failure_class: "port-not-allowed" });
+  });
+
+  it("makes the feature unavailable when the runtime cannot enforce pinning", () => {
+    for (const missing of [
+      { can_bind_selected_address: false },
+      { can_inspect_peer_address: false },
+    ]) {
+      expect(evaluateAtprotoFetch({ ...accepted, ...missing })).toEqual({
+        verdict: "feature-unavailable",
+        failure_class: "connection-pinning-unavailable",
+        conformance_claimable: false,
+      });
     }
   });
 });

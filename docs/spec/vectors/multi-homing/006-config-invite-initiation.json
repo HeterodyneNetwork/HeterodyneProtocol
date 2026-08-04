@@ -1,0 +1,36 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:social/0.5.0#social-active-room-election"
+  ],
+  "vector_id": "multi-homing/config-invite-initiation",
+  "description": "Every existing config room initiates an invite within 60 seconds and records retry state when Matrix is unavailable.",
+  "input": {
+    "delegation_observed_at": 1767225600,
+    "invited_mxid": "@alice-new:example.org",
+    "actions": [
+      {
+        "room_id": "!config-a:example.org",
+        "initiated_at": 1767225650,
+        "deadline_at": 1767225660,
+        "retry_state": "retrying-carrier-unavailable",
+        "terminal_condition": null
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "all_invites_initiated_within_deadline": true,
+      "carrier_success_guaranteed": false
+    }
+  },
+  "direction": "consume"
+}

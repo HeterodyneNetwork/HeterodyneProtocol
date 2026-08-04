@@ -4,6 +4,13 @@
 **Status:** Accepted
 **Decision makers:** liam.helmer (maintainer) + star-chamber (gemini-3.1-pro, gpt-5.4) + codex (gpt-5) council seat
 
+> **Superseded in part (2026-07-31, ADR-037).** The F1 room-secret fixture,
+> E1/E2 room-secret-to-HKDF-to-NIP-44 and Matrix-room context requirements,
+> and related fixture/diagram claims are retired. The generator, schema,
+> deterministic crypto, independent KAT, coverage, and runner architecture
+> remain accepted. During 0.x, ADR-037 permits stale current vector retirement;
+> current IDs are not immutable until 1.0.
+
 ## Context
 
 The spec §14.3 defines an exhaustive vector coverage map (~22 categories) and

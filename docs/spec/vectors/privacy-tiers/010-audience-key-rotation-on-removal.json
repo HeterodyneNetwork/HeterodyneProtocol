@@ -18,7 +18,11 @@
     "remaining_roster": [
       "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
     ],
-    "rotated_within_seconds": 60
+    "removal_observed_at": 1767225600,
+    "initiated_at": 1767225655,
+    "deadline_at": 1767225660,
+    "retry_state": "retrying-carrier-unavailable",
+    "terminal_condition": null
   },
   "expected_output": {
     "verdict": "accept",
@@ -27,8 +31,8 @@
       "new_key_id": "aud-2026-05-25-b",
       "removed_member_reads_future": false,
       "removed_member_reads_past": true,
-      "kind31012_republished": true,
-      "kind31011_redistributed": true
+      "required_actions_initiated": true,
+      "carrier_success_guaranteed": false
     }
   },
   "direction": "consume"

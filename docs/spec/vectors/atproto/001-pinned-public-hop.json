@@ -1,0 +1,49 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:social/0.5.0#social-atproto-resolution"
+  ],
+  "vector_id": "atproto/pinned-public-hop",
+  "description": "An ATProto resolver dials one explicitly validated public address while preserving original-host TLS and HTTP authority.",
+  "direction": "consume",
+  "input": {
+    "initial_url": "https://pds.example/xrpc/com.atproto.repo.getRecord",
+    "can_bind_selected_address": true,
+    "can_inspect_peer_address": true,
+    "hops": [
+      {
+        "requested_url": "https://pds.example/xrpc/com.atproto.repo.getRecord",
+        "resolved_addresses": [
+          "93.184.216.34"
+        ],
+        "selected_address": "93.184.216.34",
+        "connected_peer_address": "93.184.216.34",
+        "tls_server_name": "pds.example",
+        "certificate_hostname": "pds.example",
+        "certificate_valid": true,
+        "host_header": "pds.example",
+        "automatic_redirects": false,
+        "redirect_location": null,
+        "non_default_port_allowed": false
+      }
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "conformance_claimable": true,
+    "normalized": {
+      "fetched_urls": [
+        "https://pds.example/xrpc/com.atproto.repo.getRecord"
+      ],
+      "redirect_count": 0,
+      "connection_pinned": true
+    }
+  }
+}

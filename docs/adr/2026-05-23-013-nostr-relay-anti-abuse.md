@@ -4,6 +4,10 @@
 **Status:** Accepted
 **Decision makers:** Liam Helmer (architect); star-chamber providers: gpt-5 (via Fuel-IX, two-instance parallel review); local Claude subagent
 
+> **Superseded in part (2026-07-31, ADR-037).** Requirement 4's “complete AUTH
+> within 10 seconds” formulation is replaced by Core's send/attempt deadline
+> semantics with retry and availability accounting.
+
 ## Context
 
 The Heterodyne v0.2.0 spec lists Nostr relays as a first-class publish target for all public content and feed indexes (§7.1 lines 2402–2413, §10.5 lines 3190–3225). The research index (CLAUDE.md) catalogs NIP-13 (PoW), NIP-42/NIP-43 (client authentication), NIP-86 (relay admin), NIP-57 (zap-gating), NIP-51 (mute lists), and NIP-72 (community moderation) as relevant anti-spam mechanisms. None appears normatively in the spec.

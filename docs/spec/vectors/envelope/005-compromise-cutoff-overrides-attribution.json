@@ -1,0 +1,30 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:social/0.5.0#social-matrix-envelopes"
+  ],
+  "vector_id": "envelope/compromise-cutoff-overrides-attribution",
+  "description": "A later accepted Core compromise declaration overrides ordinary no-retroactive-deattribution for an event inside the compromise cutoff.",
+  "input": {
+    "envelope_initially_attributable": true,
+    "event_created_at": 1767225700,
+    "effective_compromise_since": 1767225900,
+    "compromise_grace_seconds": 300,
+    "compromise_declaration_accepted": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "signing_key_compromised_at_created_at",
+    "normalized": {
+      "verified_attribution": false
+    }
+  },
+  "direction": "consume"
+}

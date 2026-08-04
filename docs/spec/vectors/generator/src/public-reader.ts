@@ -50,6 +50,57 @@ export type PublicResolutionInput = {
   conflict: boolean;
 };
 
+export type AtprotoFetchHop = {
+  requested_url: string;
+  resolved_addresses: string[];
+  selected_address: string;
+  connected_peer_address: string;
+  tls_server_name: string;
+  certificate_hostname: string;
+  certificate_valid: boolean;
+  host_header: string;
+  automatic_redirects: boolean;
+  redirect_location: string | null;
+  non_default_port_allowed: boolean;
+};
+
+export type AtprotoFetchInput = {
+  initial_url: string;
+  can_bind_selected_address: boolean;
+  can_inspect_peer_address: boolean;
+  hops: AtprotoFetchHop[];
+};
+
+export type AtprotoFetchResult =
+  | {
+      verdict: "accept";
+      conformance_claimable: true;
+      normalized: {
+        fetched_urls: string[];
+        redirect_count: number;
+        connection_pinned: true;
+      };
+    }
+  | {
+      verdict: "reject";
+      failure_class:
+        | "request-invalid"
+        | "destination-invalid"
+        | "port-not-allowed"
+        | "address-not-validated"
+        | "peer-address-mismatch"
+      | "authority-mismatch"
+        | "certificate-invalid"
+        | "automatic-redirect"
+        | "redirect-chain-invalid";
+      conformance_claimable: false;
+    }
+  | {
+      verdict: "feature-unavailable";
+      failure_class: "connection-pinning-unavailable";
+      conformance_claimable: false;
+    };
+
 const rejectRoute = (): LauncherParseResult => ({
   verdict: "reject",
   reason_code: "public-reader-route-invalid",
@@ -222,6 +273,118 @@ function isSpecialDestination(hostOrAddress: string): boolean {
     || value.endsWith(".localhost")
     || value.endsWith(".local")
     || value.endsWith(".internal");
+}
+
+function normalizeIp(address: string): string | undefined {
+  const value = address.toLowerCase().replace(/^\[|\]$/g, "");
+  if (isIP(value) === 4) {
+    return value.split(".").map((octet) => String(Number(octet))).join(".");
+  }
+  const parsed = ipv6ToBigInt(value);
+  return parsed === undefined ? undefined : parsed.toString(16);
+}
+
+function rejectAtproto(
+  failure_class: Extract<AtprotoFetchResult, { verdict: "reject" }>["failure_class"],
+): AtprotoFetchResult {
+  return { verdict: "reject", failure_class, conformance_claimable: false };
+}
+
+export function evaluateAtprotoFetch(input: AtprotoFetchInput): AtprotoFetchResult {
+  if (!input.can_bind_selected_address || !input.can_inspect_peer_address) {
+    return {
+      verdict: "feature-unavailable",
+      failure_class: "connection-pinning-unavailable",
+      conformance_claimable: false,
+    };
+  }
+  if (input.hops.length === 0 || input.hops.length > 4) {
+    return rejectAtproto("redirect-chain-invalid");
+  }
+
+  let expectedUrl = input.initial_url;
+  const fetchedUrls: string[] = [];
+  for (let index = 0; index < input.hops.length; index += 1) {
+    const hop = input.hops[index];
+    if (hop.automatic_redirects) return rejectAtproto("automatic-redirect");
+
+    let requested: URL;
+    try {
+      requested = new URL(hop.requested_url);
+    } catch {
+      return rejectAtproto("request-invalid");
+    }
+    if (
+      hop.requested_url !== expectedUrl
+      || requested.protocol !== "https:"
+      || requested.username !== ""
+      || requested.password !== ""
+      || requested.hostname.length === 0
+    ) {
+      return rejectAtproto("request-invalid");
+    }
+    if (requested.port !== "" && requested.port !== "443" && !hop.non_default_port_allowed) {
+      return rejectAtproto("port-not-allowed");
+    }
+    if (isSpecialDestination(requested.hostname)) {
+      return rejectAtproto("destination-invalid");
+    }
+    if (
+      hop.resolved_addresses.length === 0
+      || hop.resolved_addresses.some((address) =>
+        normalizeIp(address) === undefined || isSpecialDestination(address))
+    ) {
+      return rejectAtproto("destination-invalid");
+    }
+
+    const selected = normalizeIp(hop.selected_address);
+    const validated = new Set(hop.resolved_addresses.map(normalizeIp));
+    if (selected === undefined || !validated.has(selected)) {
+      return rejectAtproto("address-not-validated");
+    }
+    if (normalizeIp(hop.connected_peer_address) !== selected) {
+      return rejectAtproto("peer-address-mismatch");
+    }
+
+    const hostname = requested.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+    const expectedHost = requested.port === "" || requested.port === "443"
+      ? hostname
+      : `${hostname}:${requested.port}`;
+    if (
+      hop.tls_server_name.toLowerCase() !== hostname
+      || hop.certificate_hostname.toLowerCase() !== hostname
+      || hop.host_header.toLowerCase() !== expectedHost
+    ) {
+      return rejectAtproto("authority-mismatch");
+    }
+    if (!hop.certificate_valid) return rejectAtproto("certificate-invalid");
+
+    fetchedUrls.push(hop.requested_url);
+    if (hop.redirect_location === null) {
+      if (index !== input.hops.length - 1) {
+        return rejectAtproto("redirect-chain-invalid");
+      }
+      continue;
+    }
+    if (index === input.hops.length - 1) {
+      return rejectAtproto("redirect-chain-invalid");
+    }
+    try {
+      expectedUrl = new URL(hop.redirect_location, requested).toString();
+    } catch {
+      return rejectAtproto("redirect-chain-invalid");
+    }
+  }
+
+  return {
+    verdict: "accept",
+    conformance_claimable: true,
+    normalized: {
+      fetched_urls: fetchedUrls,
+      redirect_count: fetchedUrls.length - 1,
+      connection_pinned: true,
+    },
+  };
 }
 
 function isPublicIpv4(address: string): boolean {

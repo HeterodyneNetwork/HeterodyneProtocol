@@ -1,5 +1,6 @@
 import { nip19 } from "nostr-tools";
 import {
+  evaluateAtprotoFetch,
   parseLauncherFragment,
   resolvePublicAsset,
   validateBootstrapRelay,
@@ -218,6 +219,45 @@ export function buildPublicReaderVectors(): AuthoredVector[] {
         final_role: "public-reader",
         remote_authority_expires_by: 300,
       },
+    },
+  ));
+
+  const pinnedAtprotoHop = {
+    initial_url: "https://pds.example/xrpc/com.atproto.repo.getRecord",
+    can_bind_selected_address: true,
+    can_inspect_peer_address: true,
+    hops: [{
+      requested_url: "https://pds.example/xrpc/com.atproto.repo.getRecord",
+      resolved_addresses: ["93.184.216.34"],
+      selected_address: "93.184.216.34",
+      connected_peer_address: "93.184.216.34",
+      tls_server_name: "pds.example",
+      certificate_hostname: "pds.example",
+      certificate_valid: true,
+      host_header: "pds.example",
+      automatic_redirects: false,
+      redirect_location: null,
+      non_default_port_allowed: false,
+    }],
+  };
+  vectors.push(authored(
+    "atproto/001-pinned-public-hop.json",
+    "atproto/pinned-public-hop",
+    "An ATProto resolver dials one explicitly validated public address while preserving original-host TLS and HTTP authority.",
+    pinnedAtprotoHop,
+    evaluateAtprotoFetch(pinnedAtprotoHop),
+  ));
+  vectors.push(authored(
+    "atproto/002-connection-pinning-unavailable.json",
+    "atproto/connection-pinning-unavailable",
+    "A runtime unable to bind the selected address and inspect the peer reports the optional feature unavailable without claiming conformance.",
+    { ...pinnedAtprotoHop, can_inspect_peer_address: false },
+    {
+      verdict: "accept",
+      normalized: evaluateAtprotoFetch({
+        ...pinnedAtprotoHop,
+        can_inspect_peer_address: false,
+      }),
     },
   ));
 

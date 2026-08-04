@@ -4,6 +4,12 @@
 **Status:** Accepted; **key-derivation source superseded by [ADR-023](2026-05-25-023-keri-discovery-witness-receipts-room-secret.md)**
 **Decision makers:** Liam Helmer (architect); star-chamber providers: gemini-3.1-pro, gpt-5.4 (via Fuel-IX); local Claude subagent
 
+> **Superseded in part (2026-07-31, ADR-037).** Matrix room-secret key
+> sources, room-id salts, room-secret lifecycle, and their vector requirements
+> are retired. Current private feed behavior uses Comms audience keys and Tier
+> 3. NIP-59 withdrawal/history and the general NIP-44/opaque-address rationale
+> remain historical precursors.
+
 > **Superseded in part (2026-05-25, ADR-023).** This ADR originally
 > derived the wrap key from the Matrix Megolm outbound session key and
 > selected it with a `["megolm_session_id", …]` tag under

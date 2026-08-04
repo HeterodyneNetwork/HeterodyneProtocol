@@ -708,6 +708,8 @@ function acceptanceCases(): Case[] {
     ...hold,
     control_interpretation_allowed: false,
     sender_visible_signals: 0,
+    profile_reachable: false,
+    conformance_claimable: false,
   };
   const epochInvite = "66".repeat(32);
   const staleInvite = "67".repeat(32);
@@ -724,7 +726,7 @@ function acceptanceCases(): Case[] {
     ["012-credential-expired-reject", "credential-expired-reject", hookInput({ context: "credential-sync", authenticated: true, credential: { status: "expired" } }), { verdict: "reject", reason_code: "expired_delegation", normalized: { outcome: "reject" } }],
     ["013-credential-subject-mismatch-reject", "credential-subject-mismatch-reject", hookInput({ context: "credential-sync", authenticated: true, credential: { subject_matches: false } }), { verdict: "reject", reason_code: "delegation_mismatch", normalized: { outcome: "reject" } }],
     ["014-credential-nidless-reject", "credential-nidless-reject", hookInput({ context: "credential-sync", authenticated: true, credential: { nid_bound: false } }), { verdict: "reject", reason_code: "nid_binding_missing_signature", normalized: { outcome: "reject" } }],
-    ["015-control-enrollment-default-hold", "control-enrollment-default-hold", hookInput({ context: "control-enrollment", authenticated: true, explicitly_approved: false }), { verdict: "accept", normalized: hold }],
+    ["015-control-enrollment-default-hold", "control-enrollment-default-hold", hookInput({ context: "control-enrollment", authenticated: true, explicitly_approved: false }), { verdict: "accept", normalized: gatedEnrollmentHold }],
     [
       "018-control-enrollment-active-invite-gated-hold",
       "control-enrollment-active-invite-gated-hold",
@@ -831,7 +833,12 @@ function acceptanceCases(): Case[] {
         verdict: "reject",
         reason_code: "dm_invite_revoked_device",
         validation_error: "epoch_invite_stale",
-        normalized: { outcome: "reject", control_interpretation_allowed: false },
+        normalized: {
+          outcome: "reject",
+          control_interpretation_allowed: false,
+          profile_reachable: false,
+          conformance_claimable: false,
+        },
       },
     ],
     [
@@ -886,7 +893,12 @@ function acceptanceCases(): Case[] {
         verdict: "reject",
         reason_code: "dm_invite_revoked_device",
         validation_error: "epoch_invite_tombstoned",
-        normalized: { outcome: "reject", control_interpretation_allowed: false },
+        normalized: {
+          outcome: "reject",
+          control_interpretation_allowed: false,
+          profile_reachable: false,
+          conformance_claimable: false,
+        },
       },
     ],
     ["016-social-wot-tightens-only", "social-wot-tightens-only", hookInput({ context: "ordinary-dm", authenticated: true, comms_outcome: "accept", social: { follows: false, replied_before: false, trust_distance: 4, overmuted_ratio: 0.75 } }), { verdict: "accept", normalized: { composed_outcome: "hold-as-message-request", loosened_comms_result: false } }],

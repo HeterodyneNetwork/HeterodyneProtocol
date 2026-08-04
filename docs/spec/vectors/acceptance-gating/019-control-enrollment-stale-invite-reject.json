@@ -41,7 +41,9 @@
     "validation_error": "epoch_invite_stale",
     "normalized": {
       "outcome": "reject",
-      "control_interpretation_allowed": false
+      "control_interpretation_allowed": false,
+      "profile_reachable": false,
+      "conformance_claimable": false
     }
   }
 }

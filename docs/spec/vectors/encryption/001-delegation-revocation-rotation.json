@@ -11,20 +11,20 @@
     "heterodyne:social/0.5.0#social-matrix-encryption"
   ],
   "vector_id": "encryption/delegation-revocation-rotation",
-  "description": "Delegation revocation triggers the documented room-secret rotation SHOULD path.",
+  "description": "Delegation revocation triggers Matrix Megolm session rotation to exclude the revoked device from later room traffic.",
   "input": {
     "revoked_mxid": "@old-device:example.org",
-    "active_key_id": "room-secret-2026-05-25-a",
-    "next_key_id": "room-secret-2026-05-25-b"
+    "active_session_id": "megolm-session-a",
+    "next_session_id": "megolm-session-b"
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
       "rotation_recommended": true,
-      "next_key_id": "room-secret-2026-05-25-b"
+      "next_session_id": "megolm-session-b"
     },
     "warnings": [
-      "should_rotate_room_secret"
+      "should_rotate_megolm_session"
     ]
   },
   "direction": "consume"

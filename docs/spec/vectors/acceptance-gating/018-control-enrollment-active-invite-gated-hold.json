@@ -44,7 +44,9 @@
       "typing_signals": 0,
       "retry_hints": 0,
       "control_interpretation_allowed": false,
-      "sender_visible_signals": 0
+      "sender_visible_signals": 0,
+      "profile_reachable": false,
+      "conformance_claimable": false
     }
   }
 }

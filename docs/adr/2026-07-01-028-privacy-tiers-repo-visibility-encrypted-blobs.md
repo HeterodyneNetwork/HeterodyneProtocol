@@ -4,6 +4,12 @@
 **Status:** Accepted
 **Decision makers:** user + `/codex:rescue` review (star-chamber unavailable this session)
 
+> **Superseded in part (2026-07-31, ADR-037).** The OPTIONAL Matrix
+> room-secret alternative is retired. Tier 3 protects content, not membership:
+> clear recipient wrap/roster tags, shared `key_id` linkage, timing, and volume
+> remain visible. Repository tiers, audience-key `kind:31011`, roster/rotation,
+> and encrypted-blob behavior remain accepted.
+
 ## Context
 
 The v0.3.0 privacy model for broadcast content leaned on Matrix:

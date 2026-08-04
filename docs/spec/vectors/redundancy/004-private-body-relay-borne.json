@@ -11,15 +11,15 @@
     "heterodyne:social/0.5.0#social-matrix-mirroring"
   ],
   "vector_id": "redundancy/private-body-relay-borne",
-  "description": "Private broadcast body remains relay-borne and is not duplicated per mirror room.",
+  "description": "A Comms-carried private post is not duplicated into Matrix mirror rooms.",
   "input": {
-    "body_storage": "relay",
-    "per_room_body_copies": 0
+    "carrier": "comms-tier3-relay-and-repository",
+    "matrix_mirror_body_copies": 0
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "duplicated_per_room": false
+      "duplicated_into_matrix_replicas": false
     }
   },
   "direction": "consume"
