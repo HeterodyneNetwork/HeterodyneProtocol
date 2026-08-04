@@ -1,4 +1,8 @@
 import { createHash } from "node:crypto";
+import {
+  validateAgentAccessToken,
+  type AgentTokenValidationInput,
+} from "./agent-authorship.js";
 import { jcsCanonicalize } from "./jcs.js";
 import { validateBootstrapRelay } from "./public-reader.js";
 
@@ -45,10 +49,17 @@ export type AgentAuthorizationBinding = {
   pairwise_sub: string;
   client_id: string;
   role_id: string;
+  role_key: string;
+  source_claim_ids: string[];
+  audience: string;
+  scope: string;
+  token_jti: string;
   control_session: string;
   request_id: string;
   method: string;
   payload_digest: string;
+  feed: string;
+  resource: string;
   ledger_persona: string;
   ledger_generation: number;
   ledger_checkpoint: {
@@ -69,18 +80,28 @@ export type AgentMethodInput = {
   method: string;
   initialization_complete: boolean;
   now: number;
+  intended_audience: string;
   request_binding: AgentAuthorizationBinding;
   token: {
     token_class: "agent-workload" | "control-enrollment" | "recovery";
     signature_valid: boolean;
+    typ: string;
     issued_at: number;
     expires_at: number;
+    audience: string[];
+    scope: string;
+    jti: string;
+    cnf_jkt: string;
+    status: "VALID" | "INVALID" | "SUSPENDED";
+    status_binding_valid: boolean;
     sender_key: string;
     binding: AgentAuthorizationBinding;
   };
   sender_proof: {
     signature_valid: boolean;
     signing_key: string;
+    jkt: string;
+    token_jti: string;
     issued_at: number;
     expires_at: number;
     nonce: string;
@@ -96,9 +117,25 @@ export type AgentMethodInput = {
     };
     status: AgentAuthorizationBinding["ledger_status"];
   };
+  current_role_authority: {
+    role_id: string;
+    role_key: string;
+    status: AgentAuthorizationBinding["ledger_status"];
+    expires_at: number;
+  };
+  current_source_authority: {
+    claim_ids: string[];
+    status: AgentAuthorizationBinding["ledger_status"];
+    expires_at: number;
+  };
+  session_expires_at: number;
+  registration_expires_at: number;
+  consent_expires_at: number;
   pending_issuance_generation: number;
   kind: number;
   allowed_kinds: number[];
+  feed: string;
+  allowed_feeds: string[];
   resource: string;
   allowed_resources: string[];
   content_bytes: number;
@@ -492,8 +529,71 @@ export function authorizeAgentMethod(
     };
   }
   if (
+    input.current_role_authority.status !== "active"
+    || input.current_role_authority.expires_at <= input.now
+    || input.current_role_authority.role_id !== input.request_binding.role_id
+    || input.current_role_authority.role_key !== input.request_binding.role_key
+  ) {
+    return denied("agent-role-mismatch");
+  }
+  if (
+    input.current_source_authority.status !== "active"
+    || input.current_source_authority.expires_at <= input.now
+    || input.current_source_authority.claim_ids.length === 0
+    || !exactStringArray(
+      input.current_source_authority.claim_ids,
+      input.request_binding.source_claim_ids,
+    )
+  ) {
+    return denied("agent-token-stale");
+  }
+  if (
+    input.intended_audience.length === 0
+    || input.request_binding.audience !== input.intended_audience
+    || input.request_binding.scope !== AGENT_PUBLICATION_SCOPE
+    || input.request_binding.token_jti !== input.token.jti
+    || input.request_binding.feed !== input.feed
+    || input.request_binding.resource !== input.resource
+  ) {
+    return denied("agent-resource-denied");
+  }
+  const tokenDecision = validateAgentAccessToken({
+    typ: input.token.typ,
+    iss: input.token.binding.issuer,
+    sub: input.token.binding.pairwise_sub,
+    aud: input.token.audience,
+    exp: input.token.expires_at,
+    iat: input.token.issued_at,
+    jti: input.token.jti,
+    client_id: input.token.binding.client_id,
+    scope: input.token.scope,
+    cnf_jkt: input.token.cnf_jkt,
+    sender_proof_jkt: input.sender_proof.jkt,
+    sender_proof_valid: input.sender_proof.signature_valid,
+    agent_role_id: input.token.binding.role_id,
+    expected_issuer: input.request_binding.issuer,
+    expected_subject: input.request_binding.pairwise_sub,
+    expected_audience: input.intended_audience,
+    expected_client_id: input.request_binding.client_id,
+    expected_scope: AGENT_PUBLICATION_SCOPE,
+    expected_role_id: input.request_binding.role_id,
+    now: input.now,
+    status: input.token.status,
+    ledger_active: input.current_ledger.status === "active",
+    ledger_binding_valid: credentialState.verdict === "accept",
+    status_binding_valid: input.token.status_binding_valid,
+    session_expires_at: input.session_expires_at,
+    delegation_expires_at: input.current_role_authority.expires_at,
+    registration_expires_at: input.registration_expires_at,
+    consent_expires_at: input.consent_expires_at,
+    source_authorization_expires_at:
+      input.current_source_authority.expires_at,
+  } satisfies AgentTokenValidationInput);
+  if (tokenDecision.verdict === "reject") return tokenDecision;
+  if (
     !input.sender_proof.signature_valid
     || input.sender_proof.signing_key !== input.token.sender_key
+    || input.sender_proof.token_jti !== input.token.jti
     || input.sender_proof.issued_at > input.now
     || input.sender_proof.expires_at <= input.now
     || input.sender_proof.expires_at > input.token.expires_at
@@ -505,6 +605,7 @@ export function authorizeAgentMethod(
   }
   if (
     !input.allowed_kinds.includes(input.kind)
+    || !input.allowed_feeds.includes(input.feed)
     || !input.allowed_resources.includes(input.resource)
   ) {
     return denied("agent-resource-denied");
@@ -564,10 +665,16 @@ const AGENT_BINDING_FIELDS = [
   "pairwise_sub",
   "client_id",
   "role_id",
+  "role_key",
+  "audience",
+  "scope",
+  "token_jti",
   "control_session",
   "request_id",
   "method",
   "payload_digest",
+  "feed",
+  "resource",
   "ledger_persona",
   "ledger_generation",
   "ledger_status",
@@ -578,8 +685,16 @@ function agentBindingsEqual(
   right: AgentAuthorizationBinding,
 ): boolean {
   return AGENT_BINDING_FIELDS.every((field) => left[field] === right[field])
+    && exactStringArray(left.source_claim_ids, right.source_claim_ids)
     && left.ledger_checkpoint.event_id === right.ledger_checkpoint.event_id
     && left.ledger_checkpoint.sequence === right.ledger_checkpoint.sequence;
+}
+
+const AGENT_PUBLICATION_SCOPE = "heterodyne:agent:publish";
+
+function exactStringArray(left: string[], right: string[]): boolean {
+  return left.length === right.length
+    && left.every((value, index) => value === right[index]);
 }
 
 export function evaluateControlEnrollment(

@@ -49,10 +49,17 @@ const agentBinding = {
   pairwise_sub: "pairwise-agent-7",
   client_id: "heterodyne-agent-client",
   role_id: "44".repeat(32),
+  role_key: "88".repeat(32),
+  source_claim_ids: ["claim-role-1", "claim-registration-1"],
+  audience: "https://issuer.example/persona/agent",
+  scope: "heterodyne:agent:publish",
+  token_jti: "agent-token-1",
   control_session: sessionId,
   request_id: "agent-request-1",
   method: "heterodyne.agent.publish",
   payload_digest: payloadDigest,
+  feed: "main",
+  resource: "feed:main",
   ledger_persona: "55".repeat(32),
   ledger_generation: 4,
   ledger_checkpoint: {
@@ -65,18 +72,28 @@ const validAgentMethod: AgentMethodInput = {
   method: "heterodyne.agent.publish",
   initialization_complete: true,
   now: 1_000,
+  intended_audience: agentBinding.audience,
   request_binding: agentBinding,
   token: {
     token_class: "agent-workload",
     signature_valid: true,
+    typ: "at+jwt",
     issued_at: 900,
     expires_at: 1_200,
+    audience: [agentBinding.audience],
+    scope: agentBinding.scope,
+    jti: agentBinding.token_jti,
+    cnf_jkt: "A".repeat(43),
+    status: "VALID",
+    status_binding_valid: true,
     sender_key: "77".repeat(32),
     binding: agentBinding,
   },
   sender_proof: {
     signature_valid: true,
     signing_key: "77".repeat(32),
+    jkt: "A".repeat(43),
+    token_jti: agentBinding.token_jti,
     issued_at: 995,
     expires_at: 1_005,
     nonce: "agent-proof-1",
@@ -89,9 +106,25 @@ const validAgentMethod: AgentMethodInput = {
     checkpoint: agentBinding.ledger_checkpoint,
     status: "active",
   },
+  current_role_authority: {
+    role_id: agentBinding.role_id,
+    role_key: agentBinding.role_key,
+    status: "active",
+    expires_at: 1_300,
+  },
+  current_source_authority: {
+    claim_ids: agentBinding.source_claim_ids,
+    status: "active",
+    expires_at: 1_300,
+  },
+  session_expires_at: 1_300,
+  registration_expires_at: 1_300,
+  consent_expires_at: 1_300,
   pending_issuance_generation: agentBinding.ledger_generation,
   kind: 1,
   allowed_kinds: [1, 30023],
+  feed: agentBinding.feed,
+  allowed_feeds: [agentBinding.feed],
   resource: "feed:main",
   allowed_resources: ["feed:main"],
   content_bytes: 100,
@@ -741,6 +774,72 @@ export function buildControlVectors(): AuthoredVector[] {
       },
     },
   ));
+  const agentAuthorityCases: Array<
+    [string, string, string, AgentMethodInput]
+  > = [
+    ["066", "agent-wrong-audience-rejected",
+      "The canonical workload-token decision rejects an audience other than the exact intended Control audience.", {
+        ...validAgentMethod,
+        token: {
+          ...validAgentMethod.token,
+          audience: ["https://other.example/agent"],
+        },
+      }],
+    ["067", "agent-missing-scope-rejected",
+      "The canonical workload-token decision requires the exact agent publication scope.", {
+        ...validAgentMethod,
+        token: {
+          ...validAgentMethod.token,
+          scope: "",
+        },
+      }],
+    ["068", "agent-proof-jti-mismatch-rejected",
+      "The fresh per-use sender proof binds the exact nonempty workload-token jti.", {
+        ...validAgentMethod,
+        sender_proof: {
+          ...validAgentMethod.sender_proof,
+          token_jti: "agent-token-substituted",
+        },
+      }],
+    ["069", "agent-stale-role-key-rejected",
+      "Agent publication requires the exact current active role key joined to the request.", {
+        ...validAgentMethod,
+        current_role_authority: {
+          ...validAgentMethod.current_role_authority,
+          role_key: "99".repeat(32),
+        },
+      }],
+    ["070", "agent-source-claim-inactive-rejected",
+      "A non-active source claim grants no agent publication authority.", {
+        ...validAgentMethod,
+        current_source_authority: {
+          ...validAgentMethod.current_source_authority,
+          status: "revoked" as const,
+        },
+      }],
+    ["071", "agent-source-claim-substitution-rejected",
+      "Source-claim identifiers must match the exact request authorization binding.", {
+        ...validAgentMethod,
+        current_source_authority: {
+          ...validAgentMethod.current_source_authority,
+          claim_ids: ["claim-substituted"],
+        },
+      }],
+    ["072", "agent-feed-authorization-rejected",
+      "The exact request feed must be present in the active authorization's explicit feed set.", {
+        ...validAgentMethod,
+        feed: "other",
+      }],
+  ];
+  for (const [number, name, description, input] of agentAuthorityCases) {
+    vectors.push(draftDecision(
+      `control/${number}-${name}.json`,
+      `control/${name}`,
+      description,
+      input,
+      authorizeAgentMethod(input),
+    ));
+  }
   return vectors;
 }
 

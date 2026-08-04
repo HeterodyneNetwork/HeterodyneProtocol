@@ -169,10 +169,17 @@ describe("requirements for automated agents", () => {
     pairwise_sub: "pairwise-agent-7",
     client_id: "heterodyne-agent-client",
     role_id: "44".repeat(32),
+    role_key: "88".repeat(32),
+    source_claim_ids: ["claim-role-1", "claim-registration-1"],
+    audience: "https://issuer.example/persona/agent",
+    scope: "heterodyne:agent:publish",
+    token_jti: "agent-token-1",
     control_session: sessionId,
     request_id: "agent-request-1",
     method: "heterodyne.agent.publish",
     payload_digest: payloadDigest,
+    feed: "main",
+    resource: "feed:main",
     ledger_persona: "55".repeat(32),
     ledger_generation: 4,
     ledger_checkpoint: {
@@ -185,18 +192,28 @@ describe("requirements for automated agents", () => {
     method: "heterodyne.agent.publish",
     initialization_complete: true,
     now: 1_000,
+    intended_audience: binding.audience,
     request_binding: binding,
     token: {
       token_class: "agent-workload",
       signature_valid: true,
+      typ: "at+jwt",
       issued_at: 900,
       expires_at: 1_200,
+      audience: [binding.audience],
+      scope: binding.scope,
+      jti: binding.token_jti,
+      cnf_jkt: "A".repeat(43),
+      status: "VALID",
+      status_binding_valid: true,
       sender_key: "77".repeat(32),
       binding,
     },
     sender_proof: {
       signature_valid: true,
       signing_key: "77".repeat(32),
+      jkt: "A".repeat(43),
+      token_jti: binding.token_jti,
       issued_at: 995,
       expires_at: 1_005,
       nonce: "agent-proof-1",
@@ -209,9 +226,25 @@ describe("requirements for automated agents", () => {
       checkpoint: binding.ledger_checkpoint,
       status: "active",
     },
+    current_role_authority: {
+      role_id: binding.role_id,
+      role_key: binding.role_key,
+      status: "active",
+      expires_at: 1_300,
+    },
+    current_source_authority: {
+      claim_ids: binding.source_claim_ids,
+      status: "active",
+      expires_at: 1_300,
+    },
+    session_expires_at: 1_300,
+    registration_expires_at: 1_300,
+    consent_expires_at: 1_300,
     pending_issuance_generation: binding.ledger_generation,
     kind: 1,
     allowed_kinds: [1, 30023],
+    feed: binding.feed,
+    allowed_feeds: [binding.feed],
     resource: "feed:main",
     allowed_resources: ["feed:main"],
     content_bytes: 100,
@@ -229,6 +262,137 @@ describe("requirements for automated agents", () => {
     expect(authorizeAgentMethod(valid)).toEqual({
       verdict: "accept",
       method: "heterodyne.agent.publish",
+    });
+  });
+
+  it("requires the exact intended audience and publication scope", () => {
+    expect(authorizeAgentMethod({
+      ...valid,
+      token: {
+        ...valid.token,
+        audience: ["https://other.example/agent"],
+      },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "agent-token-audience-invalid",
+    });
+    expect(authorizeAgentMethod({
+      ...valid,
+      token: {
+        ...valid.token,
+        scope: "",
+      },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "agent-token-scope-invalid",
+    });
+  });
+
+  it("requires a nonempty token jti and binds the fresh proof to it", () => {
+    expect(authorizeAgentMethod({
+      ...valid,
+      request_binding: {
+        ...binding,
+        token_jti: "",
+      },
+      token: {
+        ...valid.token,
+        jti: "",
+        binding: {
+          ...binding,
+          token_jti: "",
+        },
+      },
+      sender_proof: {
+        ...valid.sender_proof,
+        token_jti: "",
+        binding: {
+          ...binding,
+          token_jti: "",
+        },
+      },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "agent-token-invalid",
+    });
+    expect(authorizeAgentMethod({
+      ...valid,
+      sender_proof: {
+        ...valid.sender_proof,
+        token_jti: "agent-token-substituted",
+      },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "agent-sender-proof-invalid",
+    });
+  });
+
+  it("requires exact feed and resource authorization in the request binding", () => {
+    expect(authorizeAgentMethod({
+      ...valid,
+      feed: "other",
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "agent-resource-denied",
+    });
+    expect(authorizeAgentMethod({
+      ...valid,
+      token: {
+        ...valid.token,
+        binding: {
+          ...binding,
+          resource: "feed:other",
+        },
+      },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "agent-token-binding-mismatch",
+    });
+  });
+
+  it("requires current active role-key authority joined to the request", () => {
+    expect(authorizeAgentMethod({
+      ...valid,
+      current_role_authority: {
+        ...valid.current_role_authority,
+        role_key: "99".repeat(32),
+      },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "agent-role-mismatch",
+    });
+    expect(authorizeAgentMethod({
+      ...valid,
+      current_role_authority: {
+        ...valid.current_role_authority,
+        status: "revoked",
+      },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "agent-role-mismatch",
+    });
+  });
+
+  it("requires active exact source-claim authority and active ledger authority", () => {
+    expect(authorizeAgentMethod({
+      ...valid,
+      current_source_authority: {
+        ...valid.current_source_authority,
+        status: "revoked",
+      },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "agent-token-stale",
+    });
+    expect(authorizeAgentMethod({
+      ...valid,
+      current_source_authority: {
+        ...valid.current_source_authority,
+        claim_ids: ["claim-substituted"],
+      },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "agent-token-stale",
     });
   });
 
