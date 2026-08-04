@@ -26,9 +26,8 @@
     "normalized": {
       "signature_valid": true,
       "authority": "nip01-signature-only",
-      "presentation": "external-reduced-assurance",
       "inferred_heterodyne_profile": null,
-      "follow_action": "manual-only"
+      "kel_succession": false
     }
   }
 }
