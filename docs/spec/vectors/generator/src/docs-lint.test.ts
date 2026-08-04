@@ -1388,6 +1388,43 @@ describe("protocol family documents", () => {
     expect(text).toMatch(/historical[\s\S]*frozen 0\.4\.0 monolith/i);
   });
 
+  it("integrates ADR-031 as producer-only Core workflow and manual Social following", () => {
+    const adr = readFileSync(adr031Path, "utf8");
+    const core = readFileSync(corePath, "utf8");
+    const social = readFileSync(socialPath, "utf8");
+    const threatModel = readFileSync(threatModelPath, "utf8");
+
+    expect(adr).toMatch(/\*\*Status:\*\* Accepted/);
+    expect(adr).toContain("production-rule:adr-031-kind0-v1");
+    expect(adr).toContain("production-rule:adr-031-kind1-v1");
+    expect(adr).toMatch(/consumer MUST NOT infer[\s\S]*relay bytes/i);
+    expect(adr).toMatch(/v2 profile[\s\S]*in-band marker/i);
+
+    const rotation = sectionUnderHeading(
+      core,
+      "#### 4.3.1 Vanilla Nostr routine-rotation breadcrumbs",
+    );
+    expect(rotation).toMatch(
+      /prior accepted KEL[\s\S]*accepted routine rotation[\s\S]*retiring key[\s\S]*successor key[\s\S]*NIP-65[\s\S]*exact candidate/i,
+    );
+    expect(rotation).toMatch(/partial relay failure[\s\S]*does not\s+undo/i);
+    expect(rotation).toMatch(/consumer[\s\S]*MUST NOT\s+infer a\s+v1 profile/i);
+    expect(rotation).toMatch(/future machine-recognizable[\s\S]*v2/i);
+
+    const following = sectionUnderHeading(
+      social,
+      "### 3.1 Following semantics and private state",
+    );
+    expect(following).toMatch(/first-class[\s\S]*NIP-65/i);
+    expect(following).toMatch(
+      /explicit user action[\s\S]*MUST NOT change a follow\s+automatically/i,
+    );
+    expect(following).toMatch(/external identity[\s\S]*NIP-17/i);
+
+    expect(threatModel).toMatch(/Retired-key breadcrumb[\s\S]*redirect/i);
+    expect(threatModel).toMatch(/Breadcrumb-like prose[\s\S]*explicit user action/i);
+  });
+
   it("declares the exact Social dependency set and Matrix-free claim", () => {
     const text = readFileSync(socialPath, "utf8");
 

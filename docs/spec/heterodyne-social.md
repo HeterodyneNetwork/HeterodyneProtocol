@@ -154,11 +154,23 @@ local encrypted storage. A followed-repositories record stored through the
 Core keys-repository protection mechanism remains a Social payload; storage
 location does not transfer semantic ownership.
 
-A Heterodyne user MAY follow a vanilla Nostr-only npub. The client verifies
-that user's Nostr signature directly, subscribes to their NIP-65 relays, and
-MUST present the absence of Heterodyne KEL/delegation and private-audience
-features as reduced guarantees. If it offers DMs, it uses the Comms NIP-17
-fallback and labels the lack of Double Ratchet forward secrecy.
+A conforming client MUST support a vanilla Nostr-only author as a first-class
+follow target. It verifies each event's NIP-01 signature, subscribes through
+the author's current NIP-65 write-relay list, and MUST present the author as an
+external identity with no Heterodyne KEL, delegation, or private-audience
+guarantees. If it offers DMs, it uses the Comms NIP-17 fallback and labels the
+lack of Double Ratchet forward secrecy.
+
+An unstamped `kind:0` or `kind:1` without `kel_head` remains ordinary upstream
+Nostr even when its prose claims that an account moved. A client MAY render
+that claim as an advisory, reduced-assurance breadcrumb, but it MUST NOT infer
+either ADR-031 v1 producer profile, project KEL continuity, or use the event as
+persona authority. Following, refollowing, or switching to a claimed successor
+requires an explicit user action; a client MUST NOT change a follow
+automatically. Compromise-driven rotations have no trustworthy old-key
+breadcrumb, and a later compromise of a retired key can overwrite replaceable
+`kind:0` or publish a competing note, so the UI MUST NOT describe breadcrumb
+continuity as secure or compromise-resistant.
 
 <a id="social-cross-persona"></a>
 ### 3.2 Cross-persona advertisements

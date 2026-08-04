@@ -4,6 +4,10 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 
 | Vector | Owner | Version | Dependencies | Registry | Profile | Spec references |
 |---|---|---|---|---:|---|---|
+| `breadcrumbs/compromise-rotation-not-produced` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-kel-rotation` |
+| `breadcrumbs/ordinary-consumer-no-profile-inference` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-kel-rotation` |
+| `breadcrumbs/repointed-nip05-rejected` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-kel-rotation` |
+| `breadcrumbs/unrelated-successor-rejected` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-kel-rotation` |
 | `config-backup/config-rid-advertised-rejected` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-keys-repository` |
 | `config-backup/config-rid-unadvertised-clean` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-keys-repository` |
 | `config-backup/nip49-nsec-wrap` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-keys-repository` |
@@ -35,7 +39,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `keri-authority/export-unsupported-crypto-suite` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-keri-export` |
 | `keri-authority/kel-head-absent-rejected` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-kel-head` |
 | `keri-authority/kel-head-duplicate-rejected` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-kel-head` |
-| `keri-authority/kel-head-forbidden-on-breadcrumb` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-kel-head` |
 | `keri-authority/kel-head-forbidden-on-dr-wire` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-kel-head` |
 | `keri-authority/kel-head-forbidden-on-inception` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-kel-head` |
 | `keri-authority/kel-head-forbidden-on-rotation` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-kel-head` |
@@ -77,8 +80,8 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `org/member-add-dual-authorized` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-threshold-authority` |
 | `org/member-add-single-authorization-insufficient` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-threshold-authority` |
 | `org/threshold-delegate-governance` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-threshold-authority` |
-| `profiles/core-breadcrumb-kind0` | core | `core/0.5.0` | — | 1 | `heterodyne-core-rotation-breadcrumb-profile-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
-| `profiles/core-breadcrumb-kind1` | core | `core/0.5.0` | — | 1 | `heterodyne-core-rotation-breadcrumb-note-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
+| `profiles/core-breadcrumb-kind0` | core | `core/0.5.0` | — | 1 | `heterodyne-core-rotation-breadcrumb-profile-v1` | `heterodyne:core/0.5.0#core-kel-rotation` |
+| `profiles/core-breadcrumb-kind1` | core | `core/0.5.0` | — | 1 | `heterodyne-core-rotation-breadcrumb-note-v1` | `heterodyne:core/0.5.0#core-kel-rotation` |
 | `registry/downref-nonfrozen-rejected` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-registry` |
 | `registry/frozen-entry-immutable` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-registry` |
 | `relay-profile/kel-aware-reputation-continuity` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-nostr-relay-interop` |

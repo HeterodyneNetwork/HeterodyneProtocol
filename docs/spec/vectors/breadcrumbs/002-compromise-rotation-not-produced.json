@@ -4,12 +4,11 @@
   "owner_version": "core/0.5.0",
   "dependency_versions": {},
   "registry_revision": 1,
-  "profile": "heterodyne-core-rotation-breadcrumb-profile-v1",
   "spec_refs": [
     "heterodyne:core/0.5.0#core-kel-rotation"
   ],
-  "vector_id": "profiles/core-breadcrumb-kind0",
-  "description": "A trusted routine-rotation workflow produces the exact unstamped old-key kind:0 successor profile after KEL acceptance and before retiring-secret destruction.",
+  "vector_id": "breadcrumbs/compromise-rotation-not-produced",
+  "description": "A compromise-driven rotation cannot produce a trustworthy old-key breadcrumb profile.",
   "direction": "produce",
   "input": {
     "trusted_rotation_context": {
@@ -18,8 +17,8 @@
         "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
         "seq": 0
       },
-      "routine_rotation_accepted": true,
-      "compromise_rotation": false,
+      "routine_rotation_accepted": false,
+      "compromise_rotation": true,
       "same_persona": true,
       "persona_cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
       "rotation_persona_cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
@@ -51,16 +50,7 @@
     ]
   },
   "expected_output": {
-    "verdict": "accept",
-    "normalized": {
-      "classification_source": "trusted-local-producer-workflow",
-      "same_persona": true,
-      "emitted_after_kel_acceptance": true,
-      "emitted_before_secret_destruction": true,
-      "signature_valid": true,
-      "stamp_count": 0,
-      "nip05_present": false,
-      "successor_npub": "npub15pp5m8j870yxyd2803a34e4wt56y94ymr9pu9d6j568z53lzglrs94guf4"
-    }
+    "verdict": "reject",
+    "reason_code": "compromise_rotation"
   }
 }

@@ -146,7 +146,9 @@ defines these exhaustive classes:
    `heterodyne-core-rotation-breadcrumb-profile-v1` and
    `heterodyne-core-rotation-breadcrumb-note-v1`, with discriminators
    `production-rule:adr-031-kind0-v1` and
-   `production-rule:adr-031-kind1-v1`, are non-stamping.
+   `production-rule:adr-031-kind1-v1`, are non-stamping. Those discriminators
+   select trusted local producer rules only; they are not wire values, and a
+   consumer MUST NOT infer either profile from relay bytes.
 5. Double-ratchet outer kinds `1059` and `1060` carry no Heterodyne marker.
    An encrypted inner rumor carries only its Comms carrier stamp; it MUST NOT
    duplicate a Core or Control stamp.
@@ -385,6 +387,57 @@ A compromise declaration MUST satisfy
 superseded epoch is non-authoritative for any event with
 `created_at >= effective_compromise_since - 300`, under full replay and every
 accelerator.
+
+#### 4.3.1 Vanilla Nostr routine-rotation breadcrumbs
+
+After accepting a routine, non-compromise rotation, a producer SHOULD emit the
+ADR-031 breadcrumb pair from the retiring epoch key before destroying that
+secret:
+
+1. an unstamped `kind:0` profile whose human-readable `about` and `website`
+   fields point to the successor's canonical NIP-19 `npub`; and
+2. an unstamped plain `kind:1` note announcing the same successor `npub`.
+
+Both events MUST omit `kel_head` and every Heterodyne wire marker. Their
+`pubkey` fields remain the retiring key's 32-byte lowercase hexadecimal Nostr
+public key; only human-readable fields use bech32 `npub`. The retiring
+profile MUST NOT carry a NIP-05 identifier that has already been repointed to
+the successor, because it would no longer validate for the signing key. The
+successor's `kind:0` SHOULD identify the predecessor, and a persona-controlled
+NIP-05 identifier SHOULD be repointed to the successor.
+
+The v1 profile classification exists only inside the producer's trusted
+rotation workflow. Before producing either event, the implementation MUST bind
+these inputs as one candidate:
+
+- the prior accepted KEL state;
+- the accepted routine rotation and its persona cold root;
+- the retiring key named by the prior state and the successor key named by the
+  accepted rotation;
+- the persona's selected NIP-65 write-relay set; and
+- the exact candidate `kind:0` and `kind:1` event bytes.
+
+The cold root MUST be identical across the prior and successor state, and both
+candidate events MUST be signed by the retiring key. A compromise-driven
+rotation, an unrelated successor, a candidate substitution, publication
+before KEL acceptance, or publication after retiring-secret destruction MUST
+produce no v1 breadcrumb.
+
+The producer SHOULD attempt the exact pair on every selected write relay after
+KEL acceptance and record per-relay outcomes. A partial relay failure does not
+undo the accepted rotation, confer authority on a delivered event, or justify
+retaining the retiring secret indefinitely. The implementation MAY retry failed
+destinations only within its bounded destruction ceremony, then SHOULD destroy
+the retiring secret and report incomplete delivery.
+
+On consumption, an unstamped `kind:0` or `kind:1` without `kel_head` is
+ordinary upstream Nostr. A consumer verifies its NIP-01 signature but MUST NOT
+infer a v1 profile, KEL succession, or persona authority. A caller-supplied
+role, profile id, expected identity, or similar oracle MUST NOT change that
+classification. Registry histories 1 through 3 and the two v1 discriminators
+remain immutable. Any future machine-recognizable breadcrumb profile MUST
+allocate a v2 discriminator and a signed in-band marker rather than reinterpret
+v1 bytes.
 
 <a id="core-kel-verification"></a>
 <!-- Monolith provenance: §3.5.3. -->

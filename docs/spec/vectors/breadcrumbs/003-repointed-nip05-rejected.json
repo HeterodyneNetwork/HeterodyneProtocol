@@ -4,12 +4,11 @@
   "owner_version": "core/0.5.0",
   "dependency_versions": {},
   "registry_revision": 1,
-  "profile": "heterodyne-core-rotation-breadcrumb-profile-v1",
   "spec_refs": [
     "heterodyne:core/0.5.0#core-kel-rotation"
   ],
-  "vector_id": "profiles/core-breadcrumb-kind0",
-  "description": "A trusted routine-rotation workflow produces the exact unstamped old-key kind:0 successor profile after KEL acceptance and before retiring-secret destruction.",
+  "vector_id": "breadcrumbs/repointed-nip05-rejected",
+  "description": "The retiring-key profile is not produced with a NIP-05 identifier already repointed to the successor.",
   "direction": "produce",
   "input": {
     "trusted_rotation_context": {
@@ -33,34 +32,22 @@
       "kel_accepted_at": 1767226100,
       "retiring_secret_destroyed_at": 1767226200
     },
-    "candidate_pair": {
-      "kind0_event_id": "c8fd5781f422c2621906e0e78ba7ed97cf2217cefeba446602b8784be756d17d",
-      "kind1_event_id": "bfc3a050e7b2a109d96a9310272e8ddeb35ff87266887604b34163e0436fc189"
-    },
     "candidate_event": {
       "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-      "created_at": 1767226103,
+      "created_at": 1767226106,
       "kind": 0,
       "tags": [],
-      "content": "{\"name\":\"Alice (moved)\",\"about\":\"Continues at npub15pp5m8j870yxyd2803a34e4wt56y94ymr9pu9d6j568z53lzglrs94guf4\",\"website\":\"https://heterodyne.network/client/npub15pp5m8j870yxyd2803a34e4wt56y94ymr9pu9d6j568z53lzglrs94guf4\"}",
-      "id": "c8fd5781f422c2621906e0e78ba7ed97cf2217cefeba446602b8784be756d17d",
-      "sig": "ea75770f496cda16081865e4c52159c5783030980bc1b9cff35c5db81a18a81cfc834738fe32fd3fb7adc1c01072ebfb5559a7ae81bdb8585e0c57551704f752"
+      "content": "{\"name\":\"Alice (moved)\",\"about\":\"Continues at npub15pp5m8j870yxyd2803a34e4wt56y94ymr9pu9d6j568z53lzglrs94guf4\",\"website\":\"https://heterodyne.network/client/npub15pp5m8j870yxyd2803a34e4wt56y94ymr9pu9d6j568z53lzglrs94guf4\",\"nip05\":\"alice@example.test\"}",
+      "id": "16ca57f365c07389a6a1e47472804c942ea79e8780d8a3623082ffd25a2f80fc",
+      "sig": "127e52d19b2d3edbaa96bc0497352ff12474cf7c8b2b2a3fb55c663acc1a704fbbb997b0724d7ea28b475117ce6f057c48fe1da8f0e4972e94ecae01952ec523"
     },
+    "nip05_repointed_to_successor": true,
     "publication_relays": [
       "wss://relay.example"
     ]
   },
   "expected_output": {
-    "verdict": "accept",
-    "normalized": {
-      "classification_source": "trusted-local-producer-workflow",
-      "same_persona": true,
-      "emitted_after_kel_acceptance": true,
-      "emitted_before_secret_destruction": true,
-      "signature_valid": true,
-      "stamp_count": 0,
-      "nip05_present": false,
-      "successor_npub": "npub15pp5m8j870yxyd2803a34e4wt56y94ymr9pu9d6j568z53lzglrs94guf4"
-    }
+    "verdict": "reject",
+    "reason_code": "retiring_key_nip05_invalid"
   }
 }

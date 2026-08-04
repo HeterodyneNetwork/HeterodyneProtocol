@@ -4,12 +4,11 @@
   "owner_version": "core/0.5.0",
   "dependency_versions": {},
   "registry_revision": 1,
-  "profile": "heterodyne-core-rotation-breadcrumb-note-v1",
   "spec_refs": [
     "heterodyne:core/0.5.0#core-kel-rotation"
   ],
-  "vector_id": "profiles/core-breadcrumb-kind1",
-  "description": "The same trusted routine-rotation workflow produces the exact unstamped old-key kind:1 continuation note in the permitted post-acceptance window.",
+  "vector_id": "breadcrumbs/unrelated-successor-rejected",
+  "description": "A retiring key that points at another persona's epoch key is not a conforming v1 breadcrumb producer workflow.",
   "direction": "produce",
   "input": {
     "trusted_rotation_context": {
@@ -20,12 +19,12 @@
       },
       "routine_rotation_accepted": true,
       "compromise_rotation": false,
-      "same_persona": true,
+      "same_persona": false,
       "persona_cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
       "rotation_persona_cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
       "retiring_epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
       "rotation_prior_epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-      "successor_epoch_key": "a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c7",
+      "successor_epoch_key": "e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13",
       "rotation_successor_epoch_key": "a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c7",
       "nip65_write_relays": [
         "wss://relay.example"
@@ -33,33 +32,21 @@
       "kel_accepted_at": 1767226100,
       "retiring_secret_destroyed_at": 1767226200
     },
-    "candidate_pair": {
-      "kind0_event_id": "c8fd5781f422c2621906e0e78ba7ed97cf2217cefeba446602b8784be756d17d",
-      "kind1_event_id": "bfc3a050e7b2a109d96a9310272e8ddeb35ff87266887604b34163e0436fc189"
-    },
     "candidate_event": {
       "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-      "created_at": 1767226104,
-      "kind": 1,
+      "created_at": 1767226105,
+      "kind": 0,
       "tags": [],
-      "content": "This account continues at npub15pp5m8j870yxyd2803a34e4wt56y94ymr9pu9d6j568z53lzglrs94guf4",
-      "id": "bfc3a050e7b2a109d96a9310272e8ddeb35ff87266887604b34163e0436fc189",
-      "sig": "23568c3372e01c3888301268c475990df577b9f5bbaf6693717d4bda0d5e4860e50ad4ff134567b38cf21ed236764d3bfc95888fdb0e491cd47a0ac190255292"
+      "content": "{\"name\":\"Alice (moved)\",\"about\":\"Continues at npub1ujfahuwppkq0xkq7fyzfxzc5qnxxcyuspms8tpr5l222h6xye5fsccv64k\",\"website\":\"https://heterodyne.network/client/npub1ujfahuwppkq0xkq7fyzfxzc5qnxxcyuspms8tpr5l222h6xye5fsccv64k\"}",
+      "id": "6c0c5c0c80c81fdc16c5c9bded91a72c027cbfab5d14c3ebc2b4214d12968047",
+      "sig": "47514fcc162d1e724cb2b84b6882e2cf7dac1497f759dc3a918b000bc67bd703499d8bd0f66604fed4b78db6a108e082102adb3d0afdb9a40985097876d5203d"
     },
     "publication_relays": [
       "wss://relay.example"
     ]
   },
   "expected_output": {
-    "verdict": "accept",
-    "normalized": {
-      "classification_source": "trusted-local-producer-workflow",
-      "same_persona": true,
-      "emitted_after_kel_acceptance": true,
-      "emitted_before_secret_destruction": true,
-      "signature_valid": true,
-      "stamp_count": 0,
-      "successor_npub": "npub15pp5m8j870yxyd2803a34e4wt56y94ymr9pu9d6j568z53lzglrs94guf4"
-    }
+    "verdict": "reject",
+    "reason_code": "successor_persona_mismatch"
   }
 }

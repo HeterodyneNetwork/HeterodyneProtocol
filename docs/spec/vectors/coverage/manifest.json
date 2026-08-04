@@ -725,6 +725,46 @@
     ]
   },
   {
+    "vector_id": "breadcrumbs/compromise-rotation-not-produced",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-rotation"
+    ]
+  },
+  {
+    "vector_id": "breadcrumbs/ordinary-consumer-no-profile-inference",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-rotation"
+    ]
+  },
+  {
+    "vector_id": "breadcrumbs/repointed-nip05-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-rotation"
+    ]
+  },
+  {
+    "vector_id": "breadcrumbs/unrelated-successor-rejected",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-kel-rotation"
+    ]
+  },
+  {
     "vector_id": "bridge/idempotent-republication",
     "owner_document": "social",
     "owner_version": "social/0.5.0",
@@ -2212,7 +2252,7 @@
     },
     "registry_revision": 1,
     "spec_refs": [
-      "heterodyne:social/0.5.0#social-vanilla-matrix"
+      "heterodyne:social/0.5.0#social-following"
     ]
   },
   {
@@ -2360,16 +2400,6 @@
   },
   {
     "vector_id": "keri-authority/kel-head-duplicate-rejected",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-kel-head"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/kel-head-forbidden-on-breadcrumb",
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
@@ -3601,7 +3631,7 @@
     "registry_revision": 1,
     "profile": "heterodyne-core-rotation-breadcrumb-profile-v1",
     "spec_refs": [
-      "heterodyne:core/0.5.0#core-version-stamps"
+      "heterodyne:core/0.5.0#core-kel-rotation"
     ]
   },
   {
@@ -3612,7 +3642,7 @@
     "registry_revision": 1,
     "profile": "heterodyne-core-rotation-breadcrumb-note-v1",
     "spec_refs": [
-      "heterodyne:core/0.5.0#core-version-stamps"
+      "heterodyne:core/0.5.0#core-kel-rotation"
     ]
   },
   {

@@ -103,16 +103,6 @@ export async function buildKeriAuthorityWireVectors(fixtures: Fixtures): Promise
     auxRand: AUX_RAND,
   });
 
-  // W8: forbidden kel_head on an ADR-031 vanilla-interop breadcrumb (kind:0, retiring epoch key).
-  const forbiddenBreadcrumb = await signEvent({
-    secretKey: epoch.private_key,
-    created_at: T + 330,
-    kind: 0,
-    tags: [kelHeadTag(head)],
-    content: JSON.stringify({ name: "alice", about: "This account continues on a new key; follow the successor." }),
-    auxRand: AUX_RAND,
-  });
-
   // W9: mandatory kel_head present and well-formed on a kind:31000 root attestation.
   const rootWithHead = await signEvent({
     secretKey: epoch.private_key,
@@ -231,14 +221,6 @@ export async function buildKeriAuthorityWireVectors(fixtures: Fixtures): Promise
       input: { event: forbiddenDrWire, signer_kind: "current_ratchet_key" },
       expected_output: { verdict: "reject", reason_code: "kel_head_forbidden" },
       decision_trace: ["classify_dr_wire_event", "reject_kel_head_on_dr_wire"],
-    }),
-    consumeVector("keri-authority/008-kel-head-forbidden-on-breadcrumb.json", {
-      vector_id: "keri-authority/kel-head-forbidden-on-breadcrumb",
-      spec_refs: ["§3.0", "§4.5.1", "§14.3"],
-      description: "An ADR-031 vanilla-interop breadcrumb (a kind:0 profile update by the retiring epoch key) carrying a kel_head tag is rejected: breadcrumbs are outside §4.5 verification and MUST NOT carry it.",
-      input: { event: forbiddenBreadcrumb, role: "adr031_breadcrumb" },
-      expected_output: { verdict: "reject", reason_code: "kel_head_forbidden" },
-      decision_trace: ["classify_adr031_breadcrumb", "reject_kel_head_on_breadcrumb"],
     }),
     consumeVector("keri-authority/009-kel-head-mandatory-on-root.json", {
       vector_id: "keri-authority/kel-head-mandatory-on-root",

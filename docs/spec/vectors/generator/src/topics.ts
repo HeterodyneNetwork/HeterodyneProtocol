@@ -4,7 +4,7 @@ import { nip44 } from "nostr-tools";
 import { hexToBytes, utf8Bytes, bytesToHex } from "./hex.js";
 import { buildDmTranscriptVectors } from "./dm-transcript.js";
 import { withKelHead } from "./kel.js";
-import { canonicalNip01, signEvent } from "./nostr.js";
+import { canonicalNip01, getPublicKey, signEvent } from "./nostr.js";
 import { buildKeriAuthorityWireVectors } from "./topics-keri-authority.js";
 import { buildKeriAuthorityBehavioralVectors } from "./topics-keri-authority-b.js";
 import { buildKeriAuthorityMaterializedVectors } from "./topics-keri-authority-c.js";
@@ -1329,9 +1329,25 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
     vector: {
       vector_id: "interop/vanilla-nostr-only-follow",
       spec_refs: ["§11", "§14.3"],
-      description: "Vanilla-Nostr-only follow remains readable without Matrix room participation.",
-      input: { follower_capabilities: ["nip01"], matrix_joined: false },
-      expected_output: { verdict: "accept", normalized: { follow_readable_via_nostr: true } },
+      description: "A valid vanilla Nostr author is a first-class manual follow target through NIP-65, with external-identity and reduced-assurance DM presentation.",
+      input: {
+        author_pubkey: getPublicKey("04".padStart(64, "0")),
+        nip01_signature_valid: true,
+        nip65_write_relays: ["wss://relay.example"],
+        follow_change_requested_by_user: true,
+        breadcrumb_claimed_successor: null,
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          follow_target: "vanilla-nostr-author",
+          authority: "nip01-signature-only",
+          presentation: "external-reduced-assurance",
+          subscription_source: "nip65",
+          dm_fallback: "nip17-reduced-assurance",
+          automatic_refollow: false,
+        },
+      },
     },
   },
   {

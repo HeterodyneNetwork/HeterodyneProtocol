@@ -177,6 +177,7 @@ one mechanism's guarantee as another's.
 | Relay suppression, replica lag, or repository rollback hides current key state | Merge independent candidate sources, replay before use, and keep decisions provisional until repository authority is established (CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
 | Stale revocation or backdated event is accepted | Resolve the event time inside the accepted KEL authority window and apply `compromise_since` before authorization (CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
 | Lying or stale `kel_head` accelerates verification | Treat it only as a checked cache hint; replay whenever its event, sequence, authority window, or compromise state is not already accepted (CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
+| Retired-key breadcrumb overwrites or redirects vanilla followers | Treat unstamped `kind:0`/`kind:1` bytes as NIP-01-authenticated advisory content only, never infer the producer-only v1 profile or KEL succession, emit a pair only from a trusted same-persona routine-rotation workflow, and destroy the retiring secret after bounded publication attempts. A compromise rotation has no trustworthy breadcrumb (CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
 | Hostile full node selectively withholds a persona | Try other advertised serving nodes and ordinary relays, then verify every result identically (CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY, CORE-I-VERIFY-BEFORE-USE). |
 | Browser claims Tor assurance it cannot provide | Treat missing outbound Tor as explicit reduced-assurance operation, disclose the shared/clearnet carrier, and never advertise a strict light-client profile without `core.outbound-tor.v1`. |
 | Direct WebRTC reveals a full node's network location | Keep direct client-to-node WebRTC/TURN outside the base profile; reach the persistent v3 onion service through Tor or an authenticated shared relay so the node does not expose a clearnet candidate. |
@@ -244,6 +245,7 @@ one mechanism's guarantee as another's.
 | Threat | Mitigation |
 |---|---|
 | Centralized follow-graph censorship or poisoning | Evaluate signed relationship data client-side and retain plural discovery sources (SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH). |
+| Breadcrumb-like prose silently rewrites a follow target | Show it only as reduced-assurance external content and require an explicit user action to follow, refollow, or switch. Never project KEL continuity or automatically follow a claimed successor (SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH, CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
 | Private mute/feed/followed-repository state leaks | Store it under the owning Social or bound Comms protection profile (SOCIAL-I-PRIVATE-STATE-AT-REST). |
 | Hostile homeserver reads or downgrades private state | Encrypt private content and protected state and surface downgrade failures (SOCIAL-I-MATRIX-E2EE). |
 | Forged MXID delegation | Require both the epoch-key signature and authorized Matrix self-publication (SOCIAL-I-MXID-DELEGATION-DUAL-PROOF). |

@@ -1,0 +1,34 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 1,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-kel-rotation"
+  ],
+  "vector_id": "breadcrumbs/ordinary-consumer-no-profile-inference",
+  "description": "Relay bytes for an unstamped signed kind:0 without kel_head remain ordinary upstream Nostr and never identify either ADR-031 v1 producer profile.",
+  "direction": "consume",
+  "input": {
+    "event": {
+      "pubkey": "e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13",
+      "created_at": 1767226107,
+      "kind": 0,
+      "tags": [],
+      "content": "{\"name\":\"Ordinary upstream author\",\"about\":\"Human-readable continuation at npub15pp5m8j870yxyd2803a34e4wt56y94ymr9pu9d6j568z53lzglrs94guf4\"}",
+      "id": "e5148fc21d81bd0035ad2ee065748446d4d32decb41c5959d73e11c4b731b36e",
+      "sig": "26e9046c76df4d386ee2480626f20e2b87946896bcc5226e5189ae5610ce056f38881f8417b462189b8cfc549b7a9f307c23817fada258bb8f8aff5d90fa71d0"
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "signature_valid": true,
+      "authority": "nip01-signature-only",
+      "presentation": "external-reduced-assurance",
+      "inferred_heterodyne_profile": null,
+      "follow_action": "manual-only"
+    }
+  }
+}

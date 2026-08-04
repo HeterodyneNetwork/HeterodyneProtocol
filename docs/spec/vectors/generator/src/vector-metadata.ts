@@ -44,7 +44,6 @@ keri-authority/export-unmappable-feature
 keri-authority/export-unsupported-crypto-suite
 keri-authority/kel-head-absent-rejected
 keri-authority/kel-head-duplicate-rejected
-keri-authority/kel-head-forbidden-on-breadcrumb
 keri-authority/kel-head-forbidden-on-dr-wire
 keri-authority/kel-head-forbidden-on-inception
 keri-authority/kel-head-forbidden-on-rotation
@@ -136,6 +135,10 @@ stamping/legacy-post-split-not-inferable
 stamping/legacy-profile-only-not-inferable
 profiles/core-breadcrumb-kind0
 profiles/core-breadcrumb-kind1
+breadcrumbs/unrelated-successor-rejected
+breadcrumbs/compromise-rotation-not-produced
+breadcrumbs/repointed-nip05-rejected
+breadcrumbs/ordinary-consumer-no-profile-inference
 registry/downref-nonfrozen-rejected
 registry/frozen-entry-immutable
 role-capabilities/public-reader-reduced-assurance
@@ -527,6 +530,9 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
 }
 
 function referenceFor(vectorId: string, owner: DocumentId): { document: DocumentId; anchor: string } {
+  if (vectorId === "interop/vanilla-nostr-only-follow") {
+    return { document: "social", anchor: "social-following" };
+  }
   if (vectorId.startsWith("claims/")) {
     const id = vectorId.slice("claims/".length);
     if (/^chain-/.test(id)) return { document: "comms", anchor: "comms-claim-chain" };
@@ -556,7 +562,10 @@ function referenceFor(vectorId: string, owner: DocumentId): { document: Document
     return { document: "comms", anchor: /https-outage|issuer-successor/.test(id)
       ? "comms-issuer-continuity" : "comms-token-status" };
   }
-  if (vectorId.startsWith("stamping/") || vectorId.startsWith("profiles/core-breadcrumb")) {
+  if (vectorId.startsWith("profiles/core-breadcrumb")) {
+    return { document: "core", anchor: "core-kel-rotation" };
+  }
+  if (vectorId.startsWith("stamping/")) {
     return { document: "core", anchor: "core-version-stamps" };
   }
   const profile = PROFILE_BY_VECTOR.get(vectorId);
@@ -585,6 +594,7 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
   const prefix = vectorId.split("/", 1)[0];
   const anchors: Partial<Record<DocumentId, Record<string, string>>> = {
     core: {
+      breadcrumbs: "core-kel-rotation",
       identity: vectorId.startsWith("identity/root-attestation-valid") ? "core-root-attestation" : "core-nid-delegation",
       "identity-doc": "core-identity-discovery",
       keri: "core-kel-primitives",

@@ -1,4 +1,4 @@
-import { nip44 } from "nostr-tools";
+import { nip19, nip44 } from "nostr-tools";
 import { hexToBytes } from "./hex.js";
 import { canonicalNip01, getEventId, getPublicKey, signEvent, verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
 import { AUX_RAND, baseVector } from "./vector-helpers.js";
@@ -17,6 +17,11 @@ type Case = {
 export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVector[]> {
   const sender = fixtures.personas.alice.epoch_keys.epoch_1;
   const recipient = fixtures.personas.bob.epoch_keys.epoch_1;
+  const successorPrivateKey = "0a".padStart(64, "0");
+  const successorPublicKey = getPublicKey(successorPrivateKey);
+  const successorNpub = nip19.npubEncode(successorPublicKey);
+  const unrelatedNpub = nip19.npubEncode(recipient.pubkey);
+  const breadcrumbWriteRelays = ["wss://relay.example"];
   const senderDevice = fixtures.device_publishing_keys.alice_device_1;
   const recipientDevice = fixtures.device_publishing_keys.bob_device_1;
   const native = await signEvent({
@@ -53,12 +58,64 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
   const negotiationRumor = { id: getEventId(negotiationBase), ...negotiationBase };
   const breadcrumbProfile = await signEvent({
     secretKey: sender.private_key, created_at: fixtures.test_epoch + 503, kind: 0, tags: [],
-    content: JSON.stringify({ name: "Alice (moved)", about: `Continues at npub ${recipient.pubkey}`, website: `https://example.test/npub/${recipient.pubkey}` }), auxRand: AUX_RAND,
+    content: JSON.stringify({
+      name: "Alice (moved)",
+      about: `Continues at ${successorNpub}`,
+      website: `https://heterodyne.network/client/${successorNpub}`,
+    }),
+    auxRand: AUX_RAND,
   });
   const breadcrumbNote = await signEvent({
     secretKey: sender.private_key, created_at: fixtures.test_epoch + 504, kind: 1, tags: [],
-    content: `This account continues at npub ${recipient.pubkey}`, auxRand: AUX_RAND,
+    content: `This account continues at ${successorNpub}`, auxRand: AUX_RAND,
   });
+  const unrelatedSuccessorProfile = await signEvent({
+    secretKey: sender.private_key, created_at: fixtures.test_epoch + 505, kind: 0, tags: [],
+    content: JSON.stringify({
+      name: "Alice (moved)",
+      about: `Continues at ${unrelatedNpub}`,
+      website: `https://heterodyne.network/client/${unrelatedNpub}`,
+    }),
+    auxRand: AUX_RAND,
+  });
+  const repointedNip05Profile = await signEvent({
+    secretKey: sender.private_key, created_at: fixtures.test_epoch + 506, kind: 0, tags: [],
+    content: JSON.stringify({
+      name: "Alice (moved)",
+      about: `Continues at ${successorNpub}`,
+      website: `https://heterodyne.network/client/${successorNpub}`,
+      nip05: "alice@example.test",
+    }),
+    auxRand: AUX_RAND,
+  });
+  const ordinaryVanillaProfile = await signEvent({
+    secretKey: recipient.private_key, created_at: fixtures.test_epoch + 507, kind: 0, tags: [],
+    content: JSON.stringify({
+      name: "Ordinary upstream author",
+      about: `Human-readable continuation at ${successorNpub}`,
+    }),
+    auxRand: AUX_RAND,
+  });
+  const trustedRotationContext = {
+    prior_kel_accepted: true,
+    prior_kel_head: fixtures.kel.alice.head,
+    routine_rotation_accepted: true,
+    compromise_rotation: false,
+    same_persona: true,
+    persona_cold_root: fixtures.personas.alice.cold_root.pubkey,
+    rotation_persona_cold_root: fixtures.personas.alice.cold_root.pubkey,
+    retiring_epoch_key: sender.pubkey,
+    rotation_prior_epoch_key: sender.pubkey,
+    successor_epoch_key: successorPublicKey,
+    rotation_successor_epoch_key: successorPublicKey,
+    nip65_write_relays: breadcrumbWriteRelays,
+    kel_accepted_at: fixtures.test_epoch + 500,
+    retiring_secret_destroyed_at: fixtures.test_epoch + 600,
+  };
+  const candidatePair = {
+    kind0_event_id: breadcrumbProfile.id,
+    kind1_event_id: breadcrumbNote.id,
+  };
   const orgFeed = await signEvent({
     secretKey: sender.private_key, created_at: fixtures.test_epoch + 505, kind: 31007,
     tags: [["d", "org-news:page-1"], ["heterodyne", "feed_index"], ["cold_root", fixtures.personas.alice.cold_root.pubkey], ["rid", fixtures.radicle_rids.org_acme], ["feed_label", "Org news"], ["e", "33".repeat(32), "wss://relay.example"], ["kel_head", fixtures.kel.alice.head.id, "0"]],
@@ -119,8 +176,118 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
       input: { event: { ...native, content: `${native.content} tampered` } },
       expected_output: { verdict: "reject", reason_code: "bad_signature" },
     },
-    { path: "profiles/001-core-breadcrumb-kind0.json", vector_id: "profiles/core-breadcrumb-kind0", description: "A complete signed ADR-031 kind:0 successor breadcrumb remains a standard unstamped Nostr profile.", direction: "round-trip", input: { event: breadcrumbProfile, canonical_wire: canonicalNip01(breadcrumbProfile) }, expected_output: { verdict: "accept", normalized: { signature_valid: verifyEventSignature(breadcrumbProfile), stamp_count: 0, nip05_present: false } } },
-    { path: "profiles/002-core-breadcrumb-kind1.json", vector_id: "profiles/core-breadcrumb-kind1", description: "A complete signed ADR-031 final kind:1 continuation note remains unstamped.", direction: "round-trip", input: { event: breadcrumbNote, canonical_wire: canonicalNip01(breadcrumbNote) }, expected_output: { verdict: "accept", normalized: { signature_valid: verifyEventSignature(breadcrumbNote), stamp_count: 0 } } },
+    {
+      path: "profiles/001-core-breadcrumb-kind0.json",
+      vector_id: "profiles/core-breadcrumb-kind0",
+      description: "A trusted routine-rotation workflow produces the exact unstamped old-key kind:0 successor profile after KEL acceptance and before retiring-secret destruction.",
+      direction: "produce",
+      input: {
+        trusted_rotation_context: trustedRotationContext,
+        candidate_pair: candidatePair,
+        candidate_event: breadcrumbProfile,
+        publication_relays: breadcrumbWriteRelays,
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          classification_source: "trusted-local-producer-workflow",
+          same_persona: true,
+          emitted_after_kel_acceptance: true,
+          emitted_before_secret_destruction: true,
+          signature_valid: verifyEventSignature(breadcrumbProfile),
+          stamp_count: 0,
+          nip05_present: false,
+          successor_npub: successorNpub,
+        },
+      },
+    },
+    {
+      path: "profiles/002-core-breadcrumb-kind1.json",
+      vector_id: "profiles/core-breadcrumb-kind1",
+      description: "The same trusted routine-rotation workflow produces the exact unstamped old-key kind:1 continuation note in the permitted post-acceptance window.",
+      direction: "produce",
+      input: {
+        trusted_rotation_context: trustedRotationContext,
+        candidate_pair: candidatePair,
+        candidate_event: breadcrumbNote,
+        publication_relays: breadcrumbWriteRelays,
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          classification_source: "trusted-local-producer-workflow",
+          same_persona: true,
+          emitted_after_kel_acceptance: true,
+          emitted_before_secret_destruction: true,
+          signature_valid: verifyEventSignature(breadcrumbNote),
+          stamp_count: 0,
+          successor_npub: successorNpub,
+        },
+      },
+    },
+    {
+      path: "breadcrumbs/001-unrelated-successor-rejected.json",
+      vector_id: "breadcrumbs/unrelated-successor-rejected",
+      description: "A retiring key that points at another persona's epoch key is not a conforming v1 breadcrumb producer workflow.",
+      direction: "produce",
+      input: {
+        trusted_rotation_context: {
+          ...trustedRotationContext,
+          same_persona: false,
+          successor_epoch_key: recipient.pubkey,
+          rotation_successor_epoch_key: successorPublicKey,
+        },
+        candidate_event: unrelatedSuccessorProfile,
+        publication_relays: breadcrumbWriteRelays,
+      },
+      expected_output: { verdict: "reject", reason_code: "successor_persona_mismatch" },
+    },
+    {
+      path: "breadcrumbs/002-compromise-rotation-not-produced.json",
+      vector_id: "breadcrumbs/compromise-rotation-not-produced",
+      description: "A compromise-driven rotation cannot produce a trustworthy old-key breadcrumb profile.",
+      direction: "produce",
+      input: {
+        trusted_rotation_context: {
+          ...trustedRotationContext,
+          routine_rotation_accepted: false,
+          compromise_rotation: true,
+        },
+        candidate_pair: candidatePair,
+        candidate_event: breadcrumbProfile,
+        publication_relays: breadcrumbWriteRelays,
+      },
+      expected_output: { verdict: "reject", reason_code: "compromise_rotation" },
+    },
+    {
+      path: "breadcrumbs/003-repointed-nip05-rejected.json",
+      vector_id: "breadcrumbs/repointed-nip05-rejected",
+      description: "The retiring-key profile is not produced with a NIP-05 identifier already repointed to the successor.",
+      direction: "produce",
+      input: {
+        trusted_rotation_context: trustedRotationContext,
+        candidate_event: repointedNip05Profile,
+        nip05_repointed_to_successor: true,
+        publication_relays: breadcrumbWriteRelays,
+      },
+      expected_output: { verdict: "reject", reason_code: "retiring_key_nip05_invalid" },
+    },
+    {
+      path: "breadcrumbs/004-ordinary-consumer-no-profile-inference.json",
+      vector_id: "breadcrumbs/ordinary-consumer-no-profile-inference",
+      description: "Relay bytes for an unstamped signed kind:0 without kel_head remain ordinary upstream Nostr and never identify either ADR-031 v1 producer profile.",
+      direction: "consume",
+      input: { event: ordinaryVanillaProfile },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          signature_valid: verifyEventSignature(ordinaryVanillaProfile),
+          authority: "nip01-signature-only",
+          inferred_heterodyne_profile: null,
+          kel_succession: false,
+        },
+      },
+    },
     { path: "profiles/010-social-org-feed-kind31007.json", vector_id: "profiles/social-org-feed-kind31007", description: "The active Social organization-feed profile is a complete signed Comms feed-index with its exact canonical content marker.", direction: "round-trip", input: { event: orgFeed, canonical_wire: canonicalNip01(orgFeed) }, expected_output: { verdict: "accept", normalized: { signature_valid: verifyEventSignature(orgFeed), owner: "social", stamp_location: "content.spec_version" } } },
     { path: "profiles/011-comms-negotiation-kind31015.json", vector_id: "profiles/comms-negotiation-kind31015", description: "The active Comms negotiation profile is a complete canonical unsigned rumor with one recipient tag.", direction: "round-trip", input: { rumor: negotiationRumor, canonical_wire: canonicalNip01(negotiationBase) }, expected_output: { verdict: "accept", normalized: { owner: "comms", outer_signature_present: false } } },
     { path: "profiles/012-comms-payload-kind31016.json", vector_id: "profiles/comms-payload-kind31016", description: "The active Comms payload profile is a complete canonical unsigned rumor whose string content carries the Comms stamp.", direction: "round-trip", input: { rumor, canonical_wire: canonicalNip01(rumorBase) }, expected_output: { verdict: "accept", normalized: { owner: "comms", outer_signature_present: false } } },
