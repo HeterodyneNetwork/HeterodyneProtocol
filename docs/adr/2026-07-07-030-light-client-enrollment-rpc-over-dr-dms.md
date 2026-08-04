@@ -294,12 +294,16 @@ support automated and agentic enrollment.**
    publication operation is the intent-level `heterodyne.agent.publish`
    method described in item 12.
 
-   Before dispatch, the full node atomically reserves `(accepted DR session
-   id, request id, method, canonical payload digest, request expiry, first
-   authenticated ingress relay)`. The normalized ingress relay is observed by
-   the receiver and MUST NOT be supplied in the request. Concurrent identical
-   arrivals join one execution; a retry with a changed session, method,
-   payload, or expiry conflicts. The final response is durably persisted
+   Before dispatch, the full node durably and atomically reserves `(accepted
+   DR session id, request id, method, canonical payload digest, request expiry,
+   first authenticated ingress relay)`. The normalized ingress relay is
+   observed by the receiver and MUST NOT be supplied in the request.
+   Concurrent identical arrivals join one execution; a retry with a changed
+   session, method, payload, or expiry conflicts. The reservation is the
+   restart-recovery boundary: execution progress and side-effect commit
+   evidence are reconciled through it after a crash, and an implementation
+   that cannot prove an effect was not committed fails closed rather than
+   repeating it. The final response is durably persisted in the reservation
    before it is publishable, is sent first and only to the actual ingress
    relay for the triggering arrival, and may be replayed through a later
    retry's actual ingress relay without re-execution. Responses are never
@@ -560,17 +564,22 @@ Grants and RPC:
   ceremony.
 - RPC requests MUST carry a request id unique within the accepted DR
   session and an expiry. Before execution, a full node MUST atomically
-  reserve the accepted DR session id, request id, method, canonical
-  payload digest, expiry, and first server-observed normalized
+  and durably reserve the accepted DR session id, request id, method,
+  canonical payload digest, expiry, and first server-observed normalized
   authenticated ingress relay. Ingress relay is transport context and
   MUST NOT be a caller-supplied request member. Concurrent
-  byte-identical logical requests MAY join one execution; a retry with
+  byte-identical logical requests MUST join one execution; a retry with
   a changed session, method, payload, or expiry MUST conflict. The
   final response MUST be durably persisted before publication and
   MUST be sent first and only through the actual ingress relay for
   that arrival. A later identical retry MUST replay the persisted
   response only through that retry's actual ingress relay and MUST NOT
   re-execute or fan out.
+- On restart, an incomplete reservation MUST be resumed or reconciled through
+  the same idempotency boundary. Execution progress and side-effect commit
+  evidence MUST be durable enough to prevent repeating an already committed
+  effect; if commit status cannot be proven, the executor MUST fail closed
+  and require explicit repair rather than dispatch the side effect again.
 - A full node MUST validate RPC and tool-call arguments against their
   schemas, MUST apply object-level authorization (a grant names the
   repos, config namespaces, or sessions it covers), SHOULD confirm
