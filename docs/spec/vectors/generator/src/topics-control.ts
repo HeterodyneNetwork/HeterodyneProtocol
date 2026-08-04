@@ -3,8 +3,10 @@ import {
   authorizeControlMethod,
   authorizeAgentMethod,
   controlPayloadDigest,
+  evaluateAgentCredentialState,
   evaluateControlEnrollment,
   evaluateControlSessionLifecycle,
+  evaluateEnrollmentIdentityJoin,
   evaluateMcpToolCall,
   redeemEnrollmentToken,
   type AgentMethodInput,
@@ -42,10 +44,52 @@ const complete: RequestReservation = {
   response: { status: "ok", event_id: "22".repeat(32) },
 };
 
+const agentBinding = {
+  issuer: "https://issuer.example/persona",
+  pairwise_sub: "pairwise-agent-7",
+  client_id: "heterodyne-agent-client",
+  role_id: "44".repeat(32),
+  control_session: sessionId,
+  request_id: "agent-request-1",
+  method: "heterodyne.agent.publish",
+  payload_digest: payloadDigest,
+  ledger_persona: "55".repeat(32),
+  ledger_generation: 4,
+  ledger_checkpoint: {
+    event_id: "66".repeat(32),
+    sequence: 12,
+  },
+  ledger_status: "active" as const,
+};
 const validAgentMethod: AgentMethodInput = {
   method: "heterodyne.agent.publish",
-  token_decision: { verdict: "accept" },
-  sender_proof_valid: true,
+  initialization_complete: true,
+  now: 1_000,
+  request_binding: agentBinding,
+  token: {
+    token_class: "agent-workload",
+    signature_valid: true,
+    issued_at: 900,
+    expires_at: 1_200,
+    sender_key: "77".repeat(32),
+    binding: agentBinding,
+  },
+  sender_proof: {
+    signature_valid: true,
+    signing_key: "77".repeat(32),
+    issued_at: 995,
+    expires_at: 1_005,
+    nonce: "agent-proof-1",
+    nonce_state: "unused",
+    binding: agentBinding,
+  },
+  current_ledger: {
+    persona: agentBinding.ledger_persona,
+    generation: agentBinding.ledger_generation,
+    checkpoint: agentBinding.ledger_checkpoint,
+    status: "active",
+  },
+  pending_issuance_generation: agentBinding.ledger_generation,
   kind: 1,
   allowed_kinds: [1, 30023],
   resource: "feed:main",
@@ -61,29 +105,60 @@ const validAgentMethod: AgentMethodInput = {
   requests_attribution_bypass: false,
 };
 
+const identityJoin = {
+  invite_event_id: "31".repeat(32),
+  enrollee_key: "32".repeat(32),
+  dr_transcript_hash: "33".repeat(32),
+  dr_session_id: sessionId,
+  delegation_address: `pubkey:${"32".repeat(32)}`,
+  delegation_event_id: "34".repeat(32),
+  grant_subject: "32".repeat(32),
+  executor_nid: "did:key:z6MkhExecutor",
+  executor_device_key: "35".repeat(32),
+  negotiated_protocol: "heterodyne-control-human-v1",
+  negotiated_version: "control/0.5.0",
+};
 const validEnrollment: EnrollmentEvaluationInput = {
   profile_id: "heterodyne-control-session-device-v1",
   binding_proof_valid: true,
   binding_nonce_matches_bootstrap: true,
   active_invite: true,
-  bootstrap_authorized: true,
-  bootstrap_mode: "challenge",
-  fresh_ceremony: true,
   pending_expires_at: 1_200,
   now: 1_000,
   organization_persona: false,
   delegation_state: "repository-final",
   authorization_state: "active",
+  identity_join: {
+    expected: identityJoin,
+    presented: identityJoin,
+  },
+  bootstrap_evidence: {
+    mode: "challenge",
+    credential_valid: true,
+    credential_validated_at: 900,
+    ceremony_prompted_at: 910,
+    ceremony_completed_at: 920,
+    ceremony_authorized: true,
+  },
 };
 
 const enrollmentToken: EnrollmentTokenRecord = {
   token_class: "control-enrollment",
   token_id: "aa".repeat(32),
-  issuer_device: "bb".repeat(32),
+  persona: "11".repeat(32),
+  epoch_key: "22".repeat(32),
+  minting_device: "bb".repeat(32),
+  kel_head: {
+    event_id: "33".repeat(32),
+    sequence: 4,
+  },
+  issued_at: 900,
   expires_at: 1_200,
   grant_tier: "regular",
   state: "unspent",
   signature_valid: true,
+  ledger_finality: "repository-final",
+  ledger_decision: "active",
 };
 
 const regularGrant: ControlGrant = {
@@ -128,9 +203,18 @@ export function buildControlVectors(): AuthoredVector[] {
     ["014", "attribution-bypass-refused", { ...validAgentMethod, requests_attribution_bypass: true }],
     ["015", "expired-token-refused", {
       ...validAgentMethod,
-      token_decision: { verdict: "reject", reason_code: "agent-token-expired" },
+      token: {
+        ...validAgentMethod.token,
+        expires_at: validAgentMethod.now,
+      },
     }],
-    ["016", "sender-proof-refused", { ...validAgentMethod, sender_proof_valid: false }],
+    ["016", "sender-proof-refused", {
+      ...validAgentMethod,
+      sender_proof: {
+        ...validAgentMethod.sender_proof,
+        signature_valid: false,
+      },
+    }],
     ["017", "kind-resource-refused", { ...validAgentMethod, kind: 7 }],
     ["018", "content-size-refused", { ...validAgentMethod, content_bytes: 4097 }],
     ["019", "rate-refused", { ...validAgentMethod, rate_count: 21 }],
@@ -231,13 +315,25 @@ export function buildControlVectors(): AuthoredVector[] {
     ["027", "enrollment-repository-final-active", validEnrollment],
     ["048", "enrollment-qr-ceremony-required", {
       ...validEnrollment,
-      bootstrap_mode: "qr",
-      fresh_ceremony: false,
+      bootstrap_evidence: {
+        mode: "qr" as const,
+        credential_valid: true,
+        credential_validated_at: 900,
+        ceremony_prompted_at: 910,
+        ceremony_completed_at: 920,
+        ceremony_authorized: false,
+      },
     }],
     ["049", "enrollment-challenge-ceremony-required", {
       ...validEnrollment,
-      bootstrap_mode: "challenge",
-      fresh_ceremony: false,
+      bootstrap_evidence: {
+        mode: "challenge" as const,
+        credential_valid: true,
+        credential_validated_at: 900,
+        ceremony_prompted_at: 910,
+        ceremony_completed_at: 920,
+        ceremony_authorized: false,
+      },
     }],
   ];
   for (const [number, name, input] of enrollmentCases) {
@@ -250,12 +346,14 @@ export function buildControlVectors(): AuthoredVector[] {
     ));
   }
 
-  const redeemingDevice = enrollmentToken.issuer_device;
+  const redeemingDevice = enrollmentToken.minting_device;
   const enrollingKey = "cc".repeat(32);
+  const delegationId = "dd".repeat(32);
   const spentToken: EnrollmentTokenRecord = {
     ...enrollmentToken,
     state: "spent",
     enrolling_key: enrollingKey,
+    recorded_delegation_id: delegationId,
   };
   for (const [number, name, token, key] of [
     ["028", "enrollment-token-redeemed", enrollmentToken, enrollingKey],
@@ -274,6 +372,10 @@ export function buildControlVectors(): AuthoredVector[] {
       token,
       redeeming_device: redeemingDevice,
       enrolling_key: key,
+      delegation_id: delegationId,
+      current_persona: enrollmentToken.persona,
+      current_epoch_key: enrollmentToken.epoch_key,
+      current_kel_head: enrollmentToken.kel_head,
       now: 1_000,
     };
     vectors.push(draftDecision(
@@ -297,9 +399,9 @@ export function buildControlVectors(): AuthoredVector[] {
     ["034", "grant-object-scope-refused", {
       grant: regularGrant,
       authorization_state: "active" as const,
-      method: "repo.write",
-      object_type: "repository" as const,
-      object_id: "rad:z-other",
+      method: "config.put",
+      object_type: "none" as const,
+      object_id: "",
       fresh_ceremony: false,
     }],
     ["035", "grant-policy-state-write-refused", {
@@ -369,6 +471,7 @@ export function buildControlVectors(): AuthoredVector[] {
     inbound_execution_advertised: false,
     cancellation_supported: true,
     cancel_requested: false,
+    side_effect_state: "in-progress" as const,
     started_at: 1_000,
     timeout_ms: 1_000,
     now: 1_100,
@@ -466,47 +569,30 @@ export function buildControlVectors(): AuthoredVector[] {
       reservation,
     ),
   ));
-  const identityJoin = {
-    invite_event_id: "31".repeat(32),
-    enrollee_key: "32".repeat(32),
-    dr_transcript_hash: "33".repeat(32),
-    dr_session_id: sessionId,
-    delegation_address: `pubkey:${"32".repeat(32)}`,
-    delegation_event_id: "34".repeat(32),
-    grant_subject: "32".repeat(32),
-    executor_nid: "did:key:z6MkhExecutor",
-    executor_device_key: "35".repeat(32),
-    negotiated_protocol: "heterodyne-control-human-v1",
-    negotiated_version: "control/0.5.0",
+  const matchingIdentityJoin = {
+    expected: identityJoin,
+    presented: identityJoin,
   };
-  vectors.push(authored(
+  vectors.push(draftDecision(
     "control/051-enrollment-identity-join-valid.json",
     "control/enrollment-identity-join-valid",
-    "Enrollment activation binds the complete peer, executor, session, delegation, grant, and negotiated-profile join.",
-    identityJoin,
-    {
-      verdict: "accept",
-      normalized: {
-        all_identity_joins_match: true,
-        authority: "repository-final-active-only",
-      },
-    },
+    "The executable enrollment join compares the complete peer, executor, session, delegation, grant, and negotiated-profile identity.",
+    matchingIdentityJoin,
+    evaluateEnrollmentIdentityJoin(matchingIdentityJoin),
   ));
+  const substitutedIdentityJoin = {
+    expected: identityJoin,
+    presented: {
+      ...identityJoin,
+      executor_device_key: "36".repeat(32),
+    },
+  };
   vectors.push(draftDecision(
     "control/052-enrollment-identity-substitution-rejected.json",
     "control/enrollment-identity-substitution-rejected",
     "Substituting an executor device across the enrollment identity join fails closed.",
-    {
-      expected: identityJoin,
-      presented: {
-        ...identityJoin,
-        executor_device_key: "36".repeat(32),
-      },
-    },
-    {
-      verdict: "reject",
-      reason_code: "control-enrollment-identity-join-mismatch",
-    },
+    substitutedIdentityJoin,
+    evaluateEnrollmentIdentityJoin(substitutedIdentityJoin),
   ));
   for (const [number, authorization_state] of [
     ["053", "provisional"],
@@ -528,56 +614,27 @@ export function buildControlVectors(): AuthoredVector[] {
       evaluateControlEnrollment(input),
     ));
   }
-  vectors.push(authored(
+  vectors.push(draftDecision(
     "control/059-agent-token-per-use-binding.json",
     "control/agent-token-per-use-binding",
-    "Post-initialize workload issuance and publication proof bind the complete current request and credential generation.",
-    {
-      initialization_complete: true,
-      token_ttl_seconds: 300,
-      token_sender_constrained: true,
-      per_use_proof_fresh: true,
-      bindings: [
-        "issuer",
-        "pairwise_sub",
-        "client_id",
-        "role_id",
-        "control_session",
-        "request_id",
-        "method",
-        "payload_digest",
-        "ledger_persona",
-        "ledger_generation",
-        "ledger_checkpoint",
-        "ledger_status",
-      ],
-    },
-    {
-      verdict: "accept",
-      normalized: {
-        method: "heterodyne.agent.publish",
-        token_max_seconds: 300,
-        signer_class: "full-node-held-agent-role-key",
-      },
-    },
+    "The executable agent authorization decision enforces post-initialize five-minute workload-token, sender-key, fresh proof, request, and credential bindings.",
+    validAgentMethod,
+    authorizeAgentMethod(validAgentMethod),
   ));
-  vectors.push(authored(
+  const generationReset = {
+    request_binding: agentBinding,
+    current_ledger: {
+      ...validAgentMethod.current_ledger,
+      generation: agentBinding.ledger_generation + 1,
+    },
+    pending_issuance_generation: agentBinding.ledger_generation,
+  };
+  vectors.push(draftDecision(
     "control/060-agent-generation-reset.json",
     "control/agent-generation-reset",
     "A credential-ledger generation reset purges pending issuance and invalidates prior-generation authority.",
-    {
-      token_generation: 4,
-      current_generation: 5,
-      pending_issuance_generation: 4,
-    },
-    {
-      verdict: "accept",
-      normalized: {
-        prior_token_authority: "invalid",
-        pending_issuance: "purged",
-        requires_current_generation_reissuance: true,
-      },
-    },
+    generationReset,
+    evaluateAgentCredentialState(generationReset),
   ));
   vectors.push(authored(
     "control/061-transition-peer-tombstone.json",

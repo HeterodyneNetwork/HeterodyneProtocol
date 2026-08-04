@@ -382,12 +382,16 @@ grant is semantically invalid even if its nested grant is structurally valid.
 
 The sole authoritative token state is a Comms private-claim-ledger record with
 one of `unspent`, `spent`, or `revoked`. Only the minting device may redeem.
-Before delegation publication it atomically changes `unspent` to `spent` and
-binds the enrolling key. A same-token, same-key retry returns the recorded
-delegation idempotently; a different-key retry conflicts. Expired, revoked,
-wrong-issuer, wrong-key, invalid-signature, and already-spent-for-another-key
-presentations fail closed. Redemption is shown in the filtered device
-inventory.
+Redemption requires that record to be repository-final `active` and requires
+its signed persona, epoch key, and complete `kel_head` to equal the executor's
+current KERI-authoritative state. Before delegation publication the executor
+determines the exact delegation event ID, atomically changes `unspent` to
+`spent`, and records both the enrolling key and that delegation ID. A
+same-token, same-key retry returns the recorded delegation idempotently; a
+different-key retry conflicts. Expired, revoked, wrong-issuer, wrong-key,
+invalid-signature, stale-persona, stale-epoch, stale-`kel_head`, non-final, and
+already-spent-for-another-key presentations fail closed. Redemption is shown
+in the filtered device inventory.
 
 A Control enrollment token is not a Comms/OIDC agent workload access token.
 Neither is an ADR-038 recovery transfer/bootstrap grant. Implementations MUST
@@ -411,6 +415,15 @@ object-authorization intersection, not hints:
   `device.cross_sign`, `token.mint`, and `session.unlock`; activation,
   cross-signing, and token minting still require a fresh local ceremony; and
 - `media.upload` requires the independent `media_upload` flag at any tier.
+
+Every method has one fixed object class. `ping` and `get_public_key` alone use
+`none` and require an empty object ID. DM, encryption/decryption, signing,
+publishing, self-revocation, media upload, activation, cross-signing, token
+minting, and unlock methods use the current granted `session`; `repo.write`
+and `feed.update` use a granted `repository`; and `config.get` and
+`config.put` use a granted `config_namespace`. The caller cannot choose
+`none` for an object-bearing method or substitute another object class. A
+method/object-class mismatch fails before object-set intersection.
 
 The agentic profile never inherits those human methods. It exposes only its
 closed advertised tools and the §6 intent-only publication path.
@@ -490,20 +503,37 @@ Agentic peers use the MCP 2025-11-25 data layer only; MCP transports are not
 used. Frames MUST validate against
 `docs/spec/schemas/control/control-mcp-frame-v1.schema.json`, and each
 capability set MUST validate against
-`docs/spec/schemas/control/control-capability-set-v1.schema.json`. Both peers
-exchange and confirm `initialize` capability sets before any tool call. Each
-tool has an exact input schema and finite timeout. A peer MUST reject a tool
-that it did not advertise, arguments outside that schema, a call before
-mutual initialization, or a method from the other Control profile.
+`docs/spec/schemas/control/control-capability-set-v1.schema.json`. The
+Heterodyne set is the value at
+`capabilities.experimental["network.heterodyne.control"]`; it does not replace
+MCP's capability object.
 
-Cancellation notifications are honored only when the negotiated capability
-permits them and never undo a committed side effect. Every call terminates at
-its negotiated timeout. Full-node-to-light inbound execution is absent by
-default and requires matching opt-in in both the enrollment request and the
-light client's capability set. If enabled, it remains sandboxed and
-allowlisted, has no ambient filesystem, network, or secrets access without a
-separate object grant, visibly surfaces the active session, and SHOULD request
-local consent for each newly exercised tool.
+An `initialize` request carries exactly the pinned `protocolVersion`,
+`capabilities`, and `clientInfo` members required by MCP. Its result carries
+`protocolVersion`, `capabilities`, and `serverInfo`, after which the client
+sends `notifications/initialized`. Request IDs are non-empty strings or safe
+integers. A `tools/call` carries the advertised `name` and optional
+`arguments`; its finite timeout comes from the negotiated Heterodyne
+capability and is not an invented MCP request member. Tool responses contain
+exactly one JSON-RPC `result` or `error`. Within this closed profile,
+successful tool content uses MCP `TextContent` blocks plus optional
+`structuredContent`; no Heterodyne-specific content-block type exists. No
+tool runs before both initialization directions complete: both peers MUST
+complete `initialize` before any tool call. A tool the peer did not advertise
+MUST be rejected, as must arguments outside that schema or a method from the
+other Control profile.
+
+`notifications/cancelled` carries MCP's `requestId` and optional `reason`;
+`request_id` is not an alias. Cancellation notifications are honored only when
+the negotiated capability permits them; they never undo a committed side effect.
+An in-progress request may stop; a notification received after
+side-effect commit or completion is ignored and never rolls the effect back.
+Every call terminates at its negotiated timeout. For full-node-to-light use,
+inbound execution is absent by default and requires matching opt-in in both the
+enrollment request and the light client's capability set. If enabled, it
+remains sandboxed and allowlisted, has no ambient filesystem, network, or
+secrets access without a separate object grant, visibly surfaces the active
+session, and SHOULD request local consent for each newly exercised tool.
 
 Only after mutual initialization may an agent request a workload token through
 the §6.1 issuance tool. Every publication then uses
@@ -512,9 +542,12 @@ minutes, and a fresh per-use proof. Issuance and use bind the exact issuer,
 pairwise subject, `client_id`, role ID, Control session, request ID, method,
 canonical payload digest, and current credential-ledger persona, generation,
 checkpoint, and status. A generation reset purges prior-generation pending
-issuance and authority and requires reissuance. Raw signing, key access,
-human-profile publication, unlabeled output, and human-key fallback remain
-prohibited.
+issuance and authority and requires reissuance. The per-use proof is signed by
+the token's sender-constrained key, has an unused nonce, is live at use time,
+expires no later than the token, and repeats the exact request and
+credential-ledger bindings. A changed checkpoint or non-`active` status also
+invalidates authority. Raw signing, key access, human-profile publication,
+unlabeled output, and human-key fallback remain prohibited.
 
 <a id="control-audit-retention"></a>
 ### 7.8 Audit, ordering, and retention

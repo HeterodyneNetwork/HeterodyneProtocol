@@ -40,12 +40,63 @@ export type ControlRequestDecision =
       reason_code: string;
     };
 
+export type AgentAuthorizationBinding = {
+  issuer: string;
+  pairwise_sub: string;
+  client_id: string;
+  role_id: string;
+  control_session: string;
+  request_id: string;
+  method: string;
+  payload_digest: string;
+  ledger_persona: string;
+  ledger_generation: number;
+  ledger_checkpoint: {
+    event_id: string;
+    sequence: number;
+  };
+  ledger_status:
+    | "active"
+    | "provisional"
+    | "untrusted"
+    | "conflicted"
+    | "invalid"
+    | "expired"
+    | "revoked";
+};
+
 export type AgentMethodInput = {
   method: string;
-  token_decision:
-    | { verdict: "accept" }
-    | { verdict: "reject"; reason_code: string };
-  sender_proof_valid: boolean;
+  initialization_complete: boolean;
+  now: number;
+  request_binding: AgentAuthorizationBinding;
+  token: {
+    token_class: "agent-workload" | "control-enrollment" | "recovery";
+    signature_valid: boolean;
+    issued_at: number;
+    expires_at: number;
+    sender_key: string;
+    binding: AgentAuthorizationBinding;
+  };
+  sender_proof: {
+    signature_valid: boolean;
+    signing_key: string;
+    issued_at: number;
+    expires_at: number;
+    nonce: string;
+    nonce_state: "unused" | "used";
+    binding: AgentAuthorizationBinding;
+  };
+  current_ledger: {
+    persona: string;
+    generation: number;
+    checkpoint: {
+      event_id: string;
+      sequence: number;
+    };
+    status: AgentAuthorizationBinding["ledger_status"];
+  };
+  pending_issuance_generation: number;
   kind: number;
   allowed_kinds: number[];
   resource: string;
@@ -69,6 +120,50 @@ export type AgentMethodDecision =
   | {
       verdict: "reject";
       reason_code: string;
+      purge_pending_issuance?: true;
+      requires_current_generation_reissuance?: true;
+    };
+
+export type AgentCredentialStateDecision =
+  | {
+      verdict: "accept";
+      current_generation: number;
+      purge_pending_issuance: false;
+    }
+  | {
+      verdict: "reject";
+      reason_code: "agent-token-stale-credential";
+      purge_pending_issuance: boolean;
+      requires_current_generation_reissuance: true;
+    };
+
+export type EnrollmentIdentityJoin = {
+  invite_event_id: string;
+  enrollee_key: string;
+  dr_transcript_hash: string;
+  dr_session_id: string;
+  delegation_address: string;
+  delegation_event_id: string;
+  grant_subject: string;
+  executor_nid: string;
+  executor_device_key: string;
+  negotiated_protocol: string;
+  negotiated_version: string;
+};
+
+export type EnrollmentBootstrapEvidence =
+  | {
+      mode: "qr" | "challenge";
+      credential_valid: boolean;
+      credential_validated_at: number;
+      ceremony_prompted_at: number;
+      ceremony_completed_at: number;
+      ceremony_authorized: boolean;
+    }
+  | {
+      mode: "token";
+      token_state: "unspent" | "spent" | "revoked";
+      token_redeemed_at: number;
     };
 
 export type EnrollmentEvaluationInput = {
@@ -76,13 +171,15 @@ export type EnrollmentEvaluationInput = {
   binding_proof_valid: boolean;
   binding_nonce_matches_bootstrap: boolean;
   active_invite: boolean;
-  bootstrap_authorized: boolean;
-  bootstrap_mode: "qr" | "challenge" | "token";
-  fresh_ceremony: boolean;
   pending_expires_at: number;
   now: number;
   organization_persona: boolean;
   delegation_state: "relay-provisional" | "repository-final";
+  identity_join: {
+    expected: EnrollmentIdentityJoin;
+    presented: EnrollmentIdentityJoin;
+  };
+  bootstrap_evidence: EnrollmentBootstrapEvidence;
   authorization_state:
     | "active"
     | "provisional"
@@ -110,22 +207,58 @@ export type EnrollmentEvaluationDecision =
       reason_code: string;
     };
 
+export type EnrollmentIdentityJoinDecision =
+  | {
+      verdict: "accept";
+      normalized: {
+        all_identity_joins_match: true;
+      };
+    }
+  | {
+      verdict: "reject";
+      reason_code: "control-enrollment-identity-join-mismatch";
+    };
+
 export type EnrollmentTokenRecord = {
   token_class: "control-enrollment" | "agent-workload" | "recovery";
   token_id: string;
-  issuer_device: string;
+  persona: string;
+  epoch_key: string;
+  minting_device: string;
+  kel_head: {
+    event_id: string;
+    sequence: number;
+  };
+  issued_at: number;
   enrolling_key?: string;
   expected_enrollee_key?: string;
+  recorded_delegation_id?: string;
   expires_at: number;
   grant_tier: "baseline" | "regular" | "full";
   state: "unspent" | "spent" | "revoked";
   signature_valid: boolean;
+  ledger_finality: "relay-provisional" | "repository-final";
+  ledger_decision:
+    | "active"
+    | "provisional"
+    | "untrusted"
+    | "conflicted"
+    | "invalid"
+    | "expired"
+    | "revoked";
 };
 
 export type EnrollmentTokenRedemptionInput = {
   token: EnrollmentTokenRecord;
   redeeming_device: string;
   enrolling_key: string;
+  delegation_id?: string;
+  current_persona: string;
+  current_epoch_key: string;
+  current_kel_head: {
+    event_id: string;
+    sequence: number;
+  };
   now: number;
 };
 
@@ -134,6 +267,7 @@ export type EnrollmentTokenRedemptionDecision =
       verdict: "accept";
       action: "redeem" | "replay";
       grant_tier: "baseline" | "regular";
+      delegation_id: string;
       next: EnrollmentTokenRecord;
     }
   | {
@@ -210,6 +344,7 @@ export type McpToolCallInput = {
   inbound_execution_advertised: boolean;
   cancellation_supported: boolean;
   cancel_requested: boolean;
+  side_effect_state: "not-started" | "in-progress" | "committed" | "completed";
   started_at: number;
   timeout_ms: number;
   now: number;
@@ -218,7 +353,7 @@ export type McpToolCallInput = {
 export type McpToolCallDecision =
   | {
       verdict: "accept";
-      action: "execute" | "cancel";
+      action: "execute" | "cancel" | "ignore-cancellation";
       tool: string;
     }
   | {
@@ -321,10 +456,53 @@ export function authorizeAgentMethod(
   if (input.requests_attribution_bypass) {
     return denied("agent-attribution-bypass-prohibited");
   }
-  if (input.token_decision.verdict === "reject") {
-    return denied(input.token_decision.reason_code);
+  if (!input.initialization_complete) {
+    return denied("control-mcp-not-initialized");
   }
-  if (!input.sender_proof_valid) return denied("agent-sender-proof-invalid");
+  if (
+    input.token.token_class !== "agent-workload"
+    || !input.token.signature_valid
+    || input.token.issued_at > input.now
+    || input.token.expires_at <= input.now
+    || input.token.expires_at <= input.token.issued_at
+    || input.token.expires_at - input.token.issued_at > 300
+  ) {
+    return denied("agent-token-expired");
+  }
+  if (!agentBindingsEqual(input.token.binding, input.request_binding)) {
+    return denied("agent-token-binding-mismatch");
+  }
+  const credentialState = evaluateAgentCredentialState({
+    request_binding: input.request_binding,
+    current_ledger: input.current_ledger,
+    pending_issuance_generation: input.pending_issuance_generation,
+  });
+  if (
+    input.request_binding.method !== input.method
+    || credentialState.verdict === "reject"
+  ) {
+    return {
+      verdict: "reject",
+      reason_code: "agent-token-stale-credential",
+      requires_current_generation_reissuance: true,
+      ...(credentialState.verdict === "reject"
+          && credentialState.purge_pending_issuance
+        ? { purge_pending_issuance: true as const }
+        : {}),
+    };
+  }
+  if (
+    !input.sender_proof.signature_valid
+    || input.sender_proof.signing_key !== input.token.sender_key
+    || input.sender_proof.issued_at > input.now
+    || input.sender_proof.expires_at <= input.now
+    || input.sender_proof.expires_at > input.token.expires_at
+    || input.sender_proof.nonce.length === 0
+    || input.sender_proof.nonce_state !== "unused"
+    || !agentBindingsEqual(input.sender_proof.binding, input.request_binding)
+  ) {
+    return denied("agent-sender-proof-invalid");
+  }
   if (
     !input.allowed_kinds.includes(input.kind)
     || !input.allowed_resources.includes(input.resource)
@@ -352,6 +530,58 @@ export function authorizeAgentMethod(
   };
 }
 
+export function evaluateAgentCredentialState(input: Pick<
+  AgentMethodInput,
+  "request_binding" | "current_ledger" | "pending_issuance_generation"
+>): AgentCredentialStateDecision {
+  const current = input.current_ledger;
+  const expected = input.request_binding;
+  if (
+    current.persona !== expected.ledger_persona
+    || current.generation !== expected.ledger_generation
+    || current.checkpoint.event_id !== expected.ledger_checkpoint.event_id
+    || current.checkpoint.sequence !== expected.ledger_checkpoint.sequence
+    || current.status !== expected.ledger_status
+    || current.status !== "active"
+  ) {
+    return {
+      verdict: "reject",
+      reason_code: "agent-token-stale-credential",
+      purge_pending_issuance:
+        input.pending_issuance_generation !== current.generation,
+      requires_current_generation_reissuance: true,
+    };
+  }
+  return {
+    verdict: "accept",
+    current_generation: current.generation,
+    purge_pending_issuance: false,
+  };
+}
+
+const AGENT_BINDING_FIELDS = [
+  "issuer",
+  "pairwise_sub",
+  "client_id",
+  "role_id",
+  "control_session",
+  "request_id",
+  "method",
+  "payload_digest",
+  "ledger_persona",
+  "ledger_generation",
+  "ledger_status",
+] as const satisfies readonly (keyof AgentAuthorizationBinding)[];
+
+function agentBindingsEqual(
+  left: AgentAuthorizationBinding,
+  right: AgentAuthorizationBinding,
+): boolean {
+  return AGENT_BINDING_FIELDS.every((field) => left[field] === right[field])
+    && left.ledger_checkpoint.event_id === right.ledger_checkpoint.event_id
+    && left.ledger_checkpoint.sequence === right.ledger_checkpoint.sequence;
+}
+
 export function evaluateControlEnrollment(
   input: EnrollmentEvaluationInput,
 ): EnrollmentEvaluationDecision {
@@ -365,15 +595,19 @@ export function evaluateControlEnrollment(
   if (input.organization_persona) {
     return denied("control-organization-enrollment-prohibited");
   }
-  if (!input.active_invite || !input.bootstrap_authorized) {
+  if (!input.active_invite) {
     return denied("control-enrollment-bootstrap-invalid");
   }
+  const identityDecision = evaluateEnrollmentIdentityJoin(input.identity_join);
+  if (identityDecision.verdict === "reject") return identityDecision;
   if (input.now >= input.pending_expires_at) {
     return denied("control-request-expired");
   }
-  if (input.bootstrap_mode !== "token" && !input.fresh_ceremony) {
-    return denied("control-fresh-authorization-required");
-  }
+  const bootstrapDecision = evaluateEnrollmentBootstrap(
+    input.bootstrap_evidence,
+    input.now,
+  );
+  if (bootstrapDecision.verdict === "reject") return bootstrapDecision;
   if (input.delegation_state === "relay-provisional") {
     return {
       verdict: "hold",
@@ -399,6 +633,69 @@ export function evaluateControlEnrollment(
   };
 }
 
+const ENROLLMENT_IDENTITY_JOIN_FIELDS = [
+  "invite_event_id",
+  "enrollee_key",
+  "dr_transcript_hash",
+  "dr_session_id",
+  "delegation_address",
+  "delegation_event_id",
+  "grant_subject",
+  "executor_nid",
+  "executor_device_key",
+  "negotiated_protocol",
+  "negotiated_version",
+] as const satisfies readonly (keyof EnrollmentIdentityJoin)[];
+
+export function evaluateEnrollmentIdentityJoin(input: {
+  expected: EnrollmentIdentityJoin;
+  presented: EnrollmentIdentityJoin;
+}): EnrollmentIdentityJoinDecision {
+  const matches = ENROLLMENT_IDENTITY_JOIN_FIELDS.every(
+    (field) => input.expected[field] === input.presented[field],
+  );
+  if (!matches) {
+    return {
+      verdict: "reject",
+      reason_code: "control-enrollment-identity-join-mismatch",
+    };
+  }
+  return {
+    verdict: "accept",
+    normalized: {
+      all_identity_joins_match: true,
+    },
+  };
+}
+
+export function evaluateEnrollmentBootstrap(
+  evidence: EnrollmentBootstrapEvidence,
+  now: number,
+): { verdict: "accept" } | { verdict: "reject"; reason_code: string } {
+  if (evidence.mode === "token") {
+    if (
+      evidence.token_state !== "spent"
+      || evidence.token_redeemed_at > now
+    ) {
+      return denied("control-enrollment-bootstrap-invalid");
+    }
+    return { verdict: "accept" };
+  }
+  if (
+    !evidence.credential_valid
+    || evidence.credential_validated_at < 0
+    || evidence.credential_validated_at >= evidence.ceremony_prompted_at
+    || evidence.ceremony_prompted_at > evidence.ceremony_completed_at
+    || evidence.ceremony_completed_at > now
+  ) {
+    return denied("control-enrollment-bootstrap-invalid");
+  }
+  if (!evidence.ceremony_authorized) {
+    return denied("control-fresh-authorization-required");
+  }
+  return { verdict: "accept" };
+}
+
 export function redeemEnrollmentToken(
   input: EnrollmentTokenRedemptionInput,
 ): EnrollmentTokenRedemptionDecision {
@@ -409,10 +706,10 @@ export function redeemEnrollmentToken(
   if (!token.signature_valid) {
     return denied("control-enrollment-token-invalid");
   }
-  if (input.redeeming_device !== token.issuer_device) {
+  if (input.redeeming_device !== token.minting_device) {
     return denied("control-enrollment-token-issuer-mismatch");
   }
-  if (input.now >= token.expires_at) {
+  if (input.now < token.issued_at || input.now >= token.expires_at) {
     return denied("control-request-expired");
   }
   if (token.state === "revoked") {
@@ -427,25 +724,44 @@ export function redeemEnrollmentToken(
   ) {
     return denied("control-enrollment-token-key-mismatch");
   }
+  if (
+    token.ledger_finality !== "repository-final"
+    || token.ledger_decision !== "active"
+    || token.persona !== input.current_persona
+    || token.epoch_key !== input.current_epoch_key
+    || token.kel_head.event_id !== input.current_kel_head.event_id
+    || token.kel_head.sequence !== input.current_kel_head.sequence
+  ) {
+    return denied("control-enrollment-token-authority-invalid");
+  }
   if (token.state === "spent") {
-    if (token.enrolling_key !== input.enrolling_key) {
+    if (
+      token.enrolling_key !== input.enrolling_key
+      || token.recorded_delegation_id === undefined
+    ) {
       return denied("control-enrollment-token-conflict");
     }
     return {
       verdict: "accept",
       action: "replay",
       grant_tier: token.grant_tier,
+      delegation_id: token.recorded_delegation_id,
       next: token,
     };
+  }
+  if (input.delegation_id === undefined || input.delegation_id.length === 0) {
+    return denied("control-enrollment-token-authority-invalid");
   }
   return {
     verdict: "accept",
     action: "redeem",
     grant_tier: token.grant_tier,
+    delegation_id: input.delegation_id,
     next: {
       ...token,
       state: "spent",
       enrolling_key: input.enrolling_key,
+      recorded_delegation_id: input.delegation_id,
     },
   };
 }
@@ -478,6 +794,31 @@ const FULL_METHODS = new Set([
   "session.unlock",
 ]);
 
+type ControlObjectType = ControlMethodAuthorizationInput["object_type"];
+
+const METHOD_OBJECT_TYPES = new Map<string, ControlObjectType>([
+  ["ping", "none"],
+  ["get_public_key", "none"],
+  ["dm.read", "session"],
+  ["dm.write", "session"],
+  ["dm.sign", "session"],
+  ["nip44_encrypt", "session"],
+  ["nip44_decrypt", "session"],
+  ["decrypt", "session"],
+  ["session.self_revoke", "session"],
+  ["sign_event", "session"],
+  ["publish", "session"],
+  ["repo.write", "repository"],
+  ["feed.update", "repository"],
+  ["config.get", "config_namespace"],
+  ["config.put", "config_namespace"],
+  ["device.activate", "session"],
+  ["device.cross_sign", "session"],
+  ["token.mint", "session"],
+  ["session.unlock", "session"],
+  ["media.upload", "session"],
+]);
+
 export function authorizeControlMethod(
   input: ControlMethodAuthorizationInput,
 ): ControlMethodAuthorizationDecision {
@@ -506,7 +847,17 @@ export function authorizeControlMethod(
     return denied("control-fresh-authorization-required");
   }
 
-  const objectAllowed = input.object_type === "none"
+  const requiredObjectType = METHOD_OBJECT_TYPES.get(input.method);
+  if (
+    requiredObjectType === undefined
+    || input.object_type !== requiredObjectType
+  ) {
+    return denied("control-object-not-authorized");
+  }
+  const objectAllowed = (
+    input.object_type === "none"
+    && input.object_id.length === 0
+  )
     || (
       input.object_type === "repository"
       && input.grant.repositories.includes(input.object_id)
@@ -570,6 +921,16 @@ export function evaluateMcpToolCall(
     return denied("control-mcp-inbound-default-deny");
   }
   if (input.cancel_requested) {
+    if (
+      input.side_effect_state === "committed"
+      || input.side_effect_state === "completed"
+    ) {
+      return {
+        verdict: "accept",
+        action: "ignore-cancellation",
+        tool: input.tool,
+      };
+    }
     if (!input.cancellation_supported) {
       return denied("control-mcp-cancellation-unsupported");
     }

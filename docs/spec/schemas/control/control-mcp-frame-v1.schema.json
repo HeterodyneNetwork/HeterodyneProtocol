@@ -1,6 +1,93 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://heterodyne.network/schemas/control/control-mcp-frame-v1.schema.json",
+  "definitions": {
+    "requestId": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        }
+      ]
+    },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "websiteUrl": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "required": ["experimental"],
+      "properties": {
+        "experimental": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object"
+          },
+          "required": ["network.heterodyne.control"],
+          "properties": {
+            "network.heterodyne.control": {
+              "$ref": "https://heterodyne.network/schemas/control/control-capability-set-v1.schema.json"
+            }
+          }
+        }
+      },
+      "additionalProperties": {
+        "type": "object"
+      }
+    },
+    "textContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "text"],
+      "properties": {
+        "type": {
+          "const": "text"
+        },
+        "text": {
+          "type": "string"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "_meta": {
+          "type": "object"
+        }
+      }
+    }
+  },
   "oneOf": [
     {
       "type": "object",
@@ -11,9 +98,7 @@
           "const": "2.0"
         },
         "id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128
+          "$ref": "#/definitions/requestId"
         },
         "method": {
           "const": "initialize"
@@ -21,10 +106,23 @@
         "params": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["capabilities"],
+          "required": [
+            "protocolVersion",
+            "capabilities",
+            "clientInfo"
+          ],
           "properties": {
+            "protocolVersion": {
+              "const": "2025-11-25"
+            },
             "capabilities": {
-              "$ref": "https://heterodyne.network/schemas/control/control-capability-set-v1.schema.json"
+              "$ref": "#/definitions/capabilities"
+            },
+            "clientInfo": {
+              "$ref": "#/definitions/implementation"
+            },
+            "_meta": {
+              "type": "object"
             }
           }
         }
@@ -39,9 +137,96 @@
           "const": "2.0"
         },
         "id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128
+          "$ref": "#/definitions/requestId"
+        },
+        "result": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "protocolVersion",
+            "capabilities",
+            "serverInfo"
+          ],
+          "properties": {
+            "protocolVersion": {
+              "const": "2025-11-25"
+            },
+            "capabilities": {
+              "$ref": "#/definitions/capabilities"
+            },
+            "serverInfo": {
+              "$ref": "#/definitions/implementation"
+            },
+            "instructions": {
+              "type": "string"
+            },
+            "_meta": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jsonrpc", "method"],
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "method": {
+          "const": "notifications/initialized"
+        },
+        "params": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jsonrpc", "id", "method", "params"],
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "id": {
+          "$ref": "#/definitions/requestId"
+        },
+        "method": {
+          "const": "tools/call"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "arguments": {
+              "type": "object"
+            },
+            "_meta": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jsonrpc", "id", "result"],
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "id": {
+          "$ref": "#/definitions/requestId"
         },
         "result": {
           "type": "object",
@@ -52,36 +237,17 @@
               "type": "array",
               "maxItems": 256,
               "items": {
-                "oneOf": [
-                  {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": ["type", "text"],
-                    "properties": {
-                      "type": {
-                        "const": "text"
-                      },
-                      "text": {
-                        "type": "string"
-                      }
-                    }
-                  },
-                  {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": ["type", "value"],
-                    "properties": {
-                      "type": {
-                        "const": "json"
-                      },
-                      "value": {}
-                    }
-                  }
-                ]
+                "$ref": "#/definitions/textContent"
               }
+            },
+            "structuredContent": {
+              "type": "object"
             },
             "isError": {
               "type": "boolean"
+            },
+            "_meta": {
+              "type": "object"
             }
           }
         }
@@ -90,15 +256,13 @@
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["jsonrpc", "id", "error"],
+      "required": ["jsonrpc", "error"],
       "properties": {
         "jsonrpc": {
           "const": "2.0"
         },
         "id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128
+          "$ref": "#/definitions/requestId"
         },
         "error": {
           "type": "object",
@@ -123,69 +287,6 @@
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["jsonrpc", "id", "result"],
-      "properties": {
-        "jsonrpc": {
-          "const": "2.0"
-        },
-        "id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128
-        },
-        "result": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["capabilities"],
-          "properties": {
-            "capabilities": {
-              "$ref": "https://heterodyne.network/schemas/control/control-capability-set-v1.schema.json"
-            }
-          }
-        }
-      }
-    },
-    {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["jsonrpc", "id", "method", "params"],
-      "properties": {
-        "jsonrpc": {
-          "const": "2.0"
-        },
-        "id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128
-        },
-        "method": {
-          "const": "tools/call"
-        },
-        "params": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["name", "arguments", "timeout_ms"],
-          "properties": {
-            "name": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128
-            },
-            "arguments": {
-              "type": "object"
-            },
-            "timeout_ms": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 300000
-            }
-          }
-        }
-      }
-    },
-    {
-      "type": "object",
-      "additionalProperties": false,
       "required": ["jsonrpc", "method", "params"],
       "properties": {
         "jsonrpc": {
@@ -197,12 +298,17 @@
         "params": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["request_id"],
+          "required": ["requestId"],
           "properties": {
-            "request_id": {
+            "requestId": {
+              "$ref": "#/definitions/requestId"
+            },
+            "reason": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 128
+              "maxLength": 1024
+            },
+            "_meta": {
+              "type": "object"
             }
           }
         }
