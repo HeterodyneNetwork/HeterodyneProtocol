@@ -1,0 +1,69 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-nid-delegation"
+  ],
+  "vector_id": "session-device/key-proof-invalid",
+  "description": "A valid epoch-key envelope cannot activate a session-device candidate whose publishing-key proof fails.",
+  "direction": "consume",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767226111,
+      "kind": 31001,
+      "tags": [
+        [
+          "d",
+          "pubkey:fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+        ],
+        [
+          "heterodyne",
+          "delegation"
+        ],
+        [
+          "publishing_key",
+          "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+        ],
+        [
+          "cold_root",
+          "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        ],
+        [
+          "valid_until",
+          "1767229200"
+        ],
+        [
+          "binding_nonce",
+          "7070707070707070707070707070707070707070707070707070707070707070"
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
+        ],
+        [
+          "key_proof",
+          "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "spec_version",
+          "core/0.5.0"
+        ]
+      ],
+      "content": "",
+      "id": "57e31daaaaacb56411d66a84cc842a2bec31b5c18d07b50655a80fa8e4653420",
+      "sig": "b4279f2714b73c44dfb2fc7868b97ef6b022691f139aa9d68ddf03f618f4f2a7b29f53d61a659c0d4326a6345ef7b40b1560ad30a35fecf003ba58c9e12894f6"
+    },
+    "binding_payload": "heterodyne-light-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556|session-device|7070707070707070707070707070707070707070707070707070707070707070"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "bad_signature",
+    "validation_error": "key_proof_invalid",
+    "conformance_claimable": false
+  }
+}

@@ -7,7 +7,10 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `acceptance-gating/authentication-before-policy` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/authentication-reject` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/authoritative-state-unavailable-hold` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
+| `acceptance-gating/control-enrollment-active-invite-gated-hold` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/control-enrollment-default-hold` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
+| `acceptance-gating/control-enrollment-stale-invite-reject` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
+| `acceptance-gating/control-enrollment-tombstoned-invite-reject` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/credential-expired-reject` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/credential-invalid-reject` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/credential-nidless-reject` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
@@ -17,6 +20,7 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `acceptance-gating/established-ordinary-accept` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/message-request-no-receipt` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `acceptance-gating/new-ordinary-hold` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
+| `acceptance-gating/ordinary-undelegated-reject` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `agent-authorship/attribution-kind-1` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | `heterodyne-comms-agent-attribution-kind-1-v1` | `heterodyne:comms/0.5.0#comms-agent-attribution` |
 | `agent-authorship/attribution-kind-1063` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | `heterodyne-comms-agent-attribution-kind-1063-v1` | `heterodyne:comms/0.5.0#comms-agent-attribution` |
 | `agent-authorship/attribution-kind-16` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | `heterodyne-comms-agent-attribution-kind-16-v1` | `heterodyne:comms/0.5.0#comms-agent-attribution` |

@@ -1,5 +1,7 @@
+import { schnorr } from "@noble/curves/secp256k1";
+import { sha256 } from "@noble/hashes/sha2";
 import { nip19, nip44 } from "nostr-tools";
-import { hexToBytes } from "./hex.js";
+import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { canonicalNip01, getEventId, getPublicKey, signEvent, verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
 import { AUX_RAND, baseVector } from "./vector-helpers.js";
 import type { Fixtures } from "./fixtures.js";
@@ -94,6 +96,71 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
       name: "Ordinary upstream author",
       about: `Human-readable continuation at ${successorNpub}`,
     }),
+    auxRand: AUX_RAND,
+  });
+  const sessionDevice = fixtures.device_publishing_keys.alice_device_2;
+  const bindingNonce = "70".repeat(32);
+  const validUntil = String(fixtures.test_epoch + 3600);
+  const bindingPayload = [
+    "heterodyne-light-binding-v1",
+    fixtures.personas.alice.cold_root.pubkey,
+    sessionDevice.pubkey,
+    "session-device",
+    bindingNonce,
+  ].join("|");
+  const keyProof = bytesToHex(schnorr.sign(
+    sha256(utf8Bytes(bindingPayload)),
+    hexToBytes(sessionDevice.private_key),
+    AUX_RAND,
+  ));
+  const sessionTags = [
+    ["d", `pubkey:${sessionDevice.pubkey}`],
+    ["heterodyne", "delegation"],
+    ["publishing_key", sessionDevice.pubkey],
+    ["cold_root", fixtures.personas.alice.cold_root.pubkey],
+    ["valid_until", validUntil],
+    ["binding_nonce", bindingNonce],
+    ["kel_head", fixtures.kel.alice.head.id, "0"],
+    ["key_proof", keyProof],
+    ["spec_version", "core/0.5.0"],
+  ];
+  const sessionDeviceEvent = await signEvent({
+    secretKey: sender.private_key,
+    created_at: fixtures.test_epoch + 509,
+    kind: 31001,
+    tags: sessionTags,
+    content: "",
+    auxRand: AUX_RAND,
+  });
+  const sessionWithNidFields = await signEvent({
+    secretKey: sender.private_key,
+    created_at: fixtures.test_epoch + 510,
+    kind: 31001,
+    tags: [
+      ...sessionTags.slice(0, -1),
+      ["radicle_nid", fixtures.ed25519_nids.alice_device_2.did_key],
+      ["nid_proof", "00".repeat(64)],
+      sessionTags.at(-1)!,
+    ],
+    content: "",
+    auxRand: AUX_RAND,
+  });
+  const sessionWithBadProof = await signEvent({
+    secretKey: sender.private_key,
+    created_at: fixtures.test_epoch + 511,
+    kind: 31001,
+    tags: sessionTags.map((tag) => tag[0] === "key_proof"
+      ? ["key_proof", "00".repeat(64)]
+      : tag),
+    content: "",
+    auxRand: AUX_RAND,
+  });
+  const sessionWithoutOwnerStamp = await signEvent({
+    secretKey: sender.private_key,
+    created_at: fixtures.test_epoch + 512,
+    kind: 31001,
+    tags: sessionTags.slice(0, -1),
+    content: "",
     auxRand: AUX_RAND,
   });
   const trustedRotationContext = {
@@ -288,6 +355,171 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
         },
       },
     },
+    {
+      path: "session-device/001-reserved-shape-valid-but-gated.json",
+      vector_id: "session-device/reserved-shape-valid-but-gated",
+      description: "The exact NID-less session-device event passes draft structural and dual-proof validation, but relay observation is provisional and revision 3 keeps the Control profile non-claimable.",
+      direction: "consume",
+      input: {
+        event: sessionDeviceEvent,
+        binding_payload: bindingPayload,
+        evaluation_time: fixtures.test_epoch + 512,
+        relay_valid: true,
+        repository_reachable: false,
+        profile_gate_open: false,
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          base_owner: "core",
+          profile_state: "reserved-inactive",
+          schema_valid: true,
+          key_proof_valid: schnorr.verify(
+            keyProof,
+            sha256(utf8Bytes(bindingPayload)),
+            sessionDevice.pubkey,
+          ),
+          relay_state: "provisional",
+          repository_final: false,
+          control_authority: false,
+          conformance_claimable: false,
+        },
+      },
+    },
+    {
+      path: "session-device/002-nid-fields-forbidden.json",
+      vector_id: "session-device/nid-fields-forbidden",
+      description: "The reserved NID-less discriminator rejects radicle_nid and nid_proof rather than conflating session and durable-device authority.",
+      direction: "consume",
+      input: { event: sessionWithNidFields, binding_payload: bindingPayload },
+      expected_output: {
+        verdict: "reject",
+        reason_code: "role-delegation-address-invalid",
+        validation_error: "nid_fields_forbidden",
+        conformance_claimable: false,
+      },
+    },
+    {
+      path: "session-device/003-key-proof-invalid.json",
+      vector_id: "session-device/key-proof-invalid",
+      description: "A valid epoch-key envelope cannot activate a session-device candidate whose publishing-key proof fails.",
+      direction: "consume",
+      input: { event: sessionWithBadProof, binding_payload: bindingPayload },
+      expected_output: {
+        verdict: "reject",
+        reason_code: "bad_signature",
+        validation_error: "key_proof_invalid",
+        conformance_claimable: false,
+      },
+    },
+    {
+      path: "session-device/004-repository-final-gate-closed.json",
+      vector_id: "session-device/repository-final-gate-closed",
+      description: "Canonical repository reachability hardens the candidate delegation but cannot open the independently closed revision-3 Control profile gate.",
+      direction: "consume",
+      input: {
+        event: sessionDeviceEvent,
+        relay_valid: true,
+        repository_reachable: true,
+        profile_gate_open: false,
+        comms_authorization_state: "active",
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          repository_final: true,
+          delegation_state: "final-but-gated",
+          control_authority: false,
+          conformance_claimable: false,
+        },
+      },
+    },
+    {
+      path: "session-device/005-owner-stamp-missing.json",
+      vector_id: "session-device/owner-stamp-missing",
+      description: "A producer refuses to emit the reserved candidate without the sole Core owner stamp.",
+      direction: "produce",
+      input: { event: sessionWithoutOwnerStamp, binding_payload: bindingPayload },
+      expected_output: {
+        verdict: "reject",
+        reason_code: "owner_stamp_missing",
+        conformance_claimable: false,
+      },
+    },
+    {
+      path: "session-device/006-live-challenge-binding-valid.json",
+      vector_id: "session-device/live-challenge-binding-valid",
+      description: "The publishing-key proof nonce matches a fresh challenge from the authenticated enrollment session, while the closed profile gate still grants no Control authority.",
+      direction: "consume",
+      input: {
+        event: sessionDeviceEvent,
+        enrollment_binding: {
+          source: "live-challenge",
+          binding_nonce: bindingNonce,
+          authenticated_session: true,
+          unexpired: true,
+        },
+        profile_gate_open: false,
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          binding_valid: true,
+          binding_source: "live-challenge",
+          control_authority: false,
+          conformance_claimable: false,
+        },
+      },
+    },
+    {
+      path: "session-device/007-one-time-token-binding-valid.json",
+      vector_id: "session-device/one-time-token-binding-valid",
+      description: "The publishing-key proof nonce matches an issuer-bound, unexpired, unredeemed one-time enrollment token, while the closed profile gate still grants no Control authority.",
+      direction: "consume",
+      input: {
+        event: sessionDeviceEvent,
+        enrollment_binding: {
+          source: "one-time-token",
+          binding_nonce: bindingNonce,
+          token_id: "71".repeat(16),
+          authenticated_session: true,
+          issuer_bound: true,
+          single_use: true,
+          unredeemed: true,
+          unexpired: true,
+        },
+        profile_gate_open: false,
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          binding_valid: true,
+          binding_source: "one-time-token",
+          control_authority: false,
+          conformance_claimable: false,
+        },
+      },
+    },
+    {
+      path: "session-device/008-revoked-no-authority.json",
+      vector_id: "session-device/revoked-no-authority",
+      description: "Revocation removes all prospective session-device authority even when the candidate was repository-final.",
+      direction: "consume",
+      input: {
+        event: sessionDeviceEvent,
+        repository_final: true,
+        delegation_revoked: true,
+        profile_gate_open: false,
+      },
+      expected_output: {
+        verdict: "accept",
+        normalized: {
+          delegation_state: "revoked",
+          control_authority: false,
+          conformance_claimable: false,
+        },
+      },
+    },
     { path: "profiles/010-social-org-feed-kind31007.json", vector_id: "profiles/social-org-feed-kind31007", description: "The active Social organization-feed profile is a complete signed Comms feed-index with its exact canonical content marker.", direction: "round-trip", input: { event: orgFeed, canonical_wire: canonicalNip01(orgFeed) }, expected_output: { verdict: "accept", normalized: { signature_valid: verifyEventSignature(orgFeed), owner: "social", stamp_location: "content.spec_version" } } },
     { path: "profiles/011-comms-negotiation-kind31015.json", vector_id: "profiles/comms-negotiation-kind31015", description: "The active Comms negotiation profile is a complete canonical unsigned rumor with one recipient tag.", direction: "round-trip", input: { rumor: negotiationRumor, canonical_wire: canonicalNip01(negotiationBase) }, expected_output: { verdict: "accept", normalized: { owner: "comms", outer_signature_present: false } } },
     { path: "profiles/012-comms-payload-kind31016.json", vector_id: "profiles/comms-payload-kind31016", description: "The active Comms payload profile is a complete canonical unsigned rumor whose string content carries the Comms stamp.", direction: "round-trip", input: { rumor, canonical_wire: canonicalNip01(rumorBase) }, expected_output: { verdict: "accept", normalized: { owner: "comms", outer_signature_present: false } } },
@@ -441,6 +673,8 @@ const CASES: Case[] = [
 
 function acceptanceCases(): Case[] {
   const hold = { outcome: "hold-as-message-request", content_transferred: false, receipts: 0, typing_signals: 0, retry_hints: 0 };
+  const epochInvite = "66".repeat(32);
+  const staleInvite = "67".repeat(32);
   return [
     ["005-established-ordinary-accept", "established-ordinary-accept", hookInput({ context: "ordinary-dm", authenticated: true, established_locally_accepted_session: true }), { verdict: "accept", normalized: { outcome: "accept" } }],
     ["006-new-ordinary-hold", "new-ordinary-hold", hookInput({ context: "ordinary-dm", authenticated: true, established_locally_accepted_session: false }), { verdict: "accept", normalized: hold }],
@@ -453,6 +687,87 @@ function acceptanceCases(): Case[] {
     ["013-credential-subject-mismatch-reject", "credential-subject-mismatch-reject", hookInput({ context: "credential-sync", authenticated: true, credential: { subject_matches: false } }), { verdict: "reject", reason_code: "delegation_mismatch", normalized: { outcome: "reject" } }],
     ["014-credential-nidless-reject", "credential-nidless-reject", hookInput({ context: "credential-sync", authenticated: true, credential: { nid_bound: false } }), { verdict: "reject", reason_code: "nid_binding_missing_signature", normalized: { outcome: "reject" } }],
     ["015-control-enrollment-default-hold", "control-enrollment-default-hold", hookInput({ context: "control-enrollment", authenticated: true, explicitly_approved: false }), { verdict: "accept", normalized: hold }],
+    [
+      "018-control-enrollment-active-invite-gated-hold",
+      "control-enrollment-active-invite-gated-hold",
+      hookInput({
+        context: "control-enrollment",
+        authenticated: true,
+        active_delegation: false,
+        peer_delegation_id: null,
+        epoch_invite_event_id: epochInvite,
+        current_epoch_invite_event_id: epochInvite,
+        epoch_invite_signer_current: true,
+        epoch_invite_kel_head_current: true,
+        profile_gate_open: false,
+      }),
+      {
+        verdict: "accept",
+        normalized: {
+          ...hold,
+          control_interpretation_allowed: false,
+          sender_visible_signals: 0,
+        },
+      },
+    ],
+    [
+      "019-control-enrollment-stale-invite-reject",
+      "control-enrollment-stale-invite-reject",
+      hookInput({
+        context: "control-enrollment",
+        authenticated: true,
+        active_delegation: false,
+        peer_delegation_id: null,
+        epoch_invite_event_id: staleInvite,
+        current_epoch_invite_event_id: epochInvite,
+        epoch_invite_signer_current: true,
+        epoch_invite_kel_head_current: true,
+        profile_gate_open: false,
+      }),
+      {
+        verdict: "reject",
+        reason_code: "dm_invite_revoked_device",
+        normalized: { outcome: "reject", control_interpretation_allowed: false },
+      },
+    ],
+    [
+      "020-ordinary-undelegated-reject",
+      "ordinary-undelegated-reject",
+      hookInput({
+        context: "ordinary-dm",
+        authenticated: true,
+        active_delegation: false,
+        peer_delegation_id: null,
+        epoch_invite_event_id: epochInvite,
+        current_epoch_invite_event_id: epochInvite,
+      }),
+      {
+        verdict: "reject",
+        reason_code: "dm_invite_unbound_device",
+        normalized: { outcome: "reject" },
+      },
+    ],
+    [
+      "021-control-enrollment-tombstoned-invite-reject",
+      "control-enrollment-tombstoned-invite-reject",
+      hookInput({
+        context: "control-enrollment",
+        authenticated: true,
+        active_delegation: false,
+        peer_delegation_id: null,
+        epoch_invite_event_id: epochInvite,
+        current_epoch_invite_event_id: epochInvite,
+        epoch_invite_signer_current: true,
+        epoch_invite_kel_head_current: true,
+        epoch_invite_tombstoned: true,
+        profile_gate_open: false,
+      }),
+      {
+        verdict: "reject",
+        reason_code: "dm_invite_revoked_device",
+        normalized: { outcome: "reject", control_interpretation_allowed: false },
+      },
+    ],
     ["016-social-wot-tightens-only", "social-wot-tightens-only", hookInput({ context: "ordinary-dm", authenticated: true, comms_outcome: "accept", social: { follows: false, replied_before: false, trust_distance: 4, overmuted_ratio: 0.75 } }), { verdict: "accept", normalized: { composed_outcome: "hold-as-message-request", loosened_comms_result: false } }],
     ["017-social-wot-cannot-loosen", "social-wot-cannot-loosen", hookInput({ context: "ordinary-dm", authenticated: true, comms_outcome: "reject", social: { follows: true, replied_before: true, trust_distance: 1, overmuted_ratio: 0 } }), { verdict: "accept", normalized: { composed_outcome: "reject", loosened_comms_result: false } }],
   ].map(([file, id, input, expected_output]) => ({

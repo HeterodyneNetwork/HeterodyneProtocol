@@ -131,22 +131,33 @@ discriminator
 `tags:heterodyne=delegation,binding_nonce,key_proof;radicle_nid=absent`.
 The reservation is explicitly **reserved-inactive** in `control/0.5.0`.
 
-The current Core NID-delegation event requires an NID-addressed `d` tag,
-`radicle_nid`, and `nid_proof`. It does not accept this NID-less discriminator
-or its `binding_nonce`/`key_proof` shape. Current Core verification therefore
-rejects that proposed shape, and no event may claim conformance to this
-profile under `control/0.5.0`.
+Core §6.1 now defines the common NID-less candidate shape, exact tag order,
+`pubkey:<key>` address, nonzero expiry, owner stamp, epoch-key/KEL checks, and
+the BIP-340 publishing-key proof over
+`heterodyne-light-binding-v1|<cold-root>|<publishing-key>|session-device|<binding-nonce>`.
+That definition permits deterministic structural diagnostics; it does not
+activate the higher-layer profile. A candidate containing `radicle_nid` or
+`nid_proof` is invalid for this discriminator and cannot inherit durable NID
+authority.
 
 The registry entry's `owner: control`, `stamping: false`, and draft status
 record its future ownership and stamp intention; that reservation does not
 make it active, change current Core verification, or authorize production.
-Activation requires all of the following in order:
+Relay-valid evidence remains provisional. Canonical repository reachability
+can make the candidate delegation final, but even a final candidate with
+otherwise active Comms authorization grants no Control authority while this
+profile gate is closed.
 
-1. ADR-030 is accepted;
-2. a future Core amendment defines the common `kind:31001` envelope and the
-   NID-less subtype's complete verification rules; and
-3. Control vectors plus the registry integration gate prove the resulting
-   schema, discriminator, owner-stamp behavior, and rejection cases.
+Activation now requires all of the following in one atomic artifact batch:
+
+1. the complete closed ADR-030 enrollment, grant, token, RPC, MCP, lifecycle,
+   and audit schemas and state machines;
+2. every minimum positive and negative vector required by ADRs 030, 035, 036,
+   037, and 038;
+3. the complete ADR-038 recovery feature and schema allocations, with no
+   placeholder, wildcard, omission, or unbound prerequisite; and
+4. registry revision 4 plus matching family/release manifests that explicitly
+   change the profile and Control feature gates from inactive to active.
 
 <!-- fixture:control-session-device-reservation -->
 ```json
@@ -154,12 +165,13 @@ Activation requires all of the following in order:
   "profile_id": "heterodyne-control-session-device-v1",
   "registry_status": "draft",
   "profile_state": "reserved-inactive",
-  "current_core_compatible": false,
+  "core_candidate_shape_defined": true,
   "conforming_events_allowed": false,
   "activation_requires": [
-    "adr-030-accepted",
-    "future-core-kind-31001-subtype-amendment",
-    "control-vectors-and-registry-integration-gate"
+    "closed-adr-030-control-profile",
+    "complete-adr-037-and-adr-038-vector-batch",
+    "atomic-registry-revision-4-feature-and-schema-allocation",
+    "matching-family-and-release-manifests"
   ]
 }
 ```

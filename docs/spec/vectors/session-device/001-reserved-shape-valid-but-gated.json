@@ -1,0 +1,80 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-nid-delegation"
+  ],
+  "vector_id": "session-device/reserved-shape-valid-but-gated",
+  "description": "The exact NID-less session-device event passes draft structural and dual-proof validation, but relay observation is provisional and revision 3 keeps the Control profile non-claimable.",
+  "direction": "consume",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767226109,
+      "kind": 31001,
+      "tags": [
+        [
+          "d",
+          "pubkey:fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+        ],
+        [
+          "heterodyne",
+          "delegation"
+        ],
+        [
+          "publishing_key",
+          "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+        ],
+        [
+          "cold_root",
+          "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        ],
+        [
+          "valid_until",
+          "1767229200"
+        ],
+        [
+          "binding_nonce",
+          "7070707070707070707070707070707070707070707070707070707070707070"
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
+        ],
+        [
+          "key_proof",
+          "9a5d16470980d2d23ef9af1b7f8d12ec5ba4e33c8f689d786c2f6464718143802d080b859a0993012a4130cacc0aebb5d1219d5a36241e31602792b06e1078f8"
+        ],
+        [
+          "spec_version",
+          "core/0.5.0"
+        ]
+      ],
+      "content": "",
+      "id": "546b92dbbba714f43f470481f73fc892de071dbb6a404fffe63ca6623fe456f3",
+      "sig": "aabe53796c38e42656b96097b228eb57699ad5a26611bfebe0412f65368ce16c731e0afd70eed9681c6d33dbc0c179e181d0354a45b359a862f672f0d2433fd6"
+    },
+    "binding_payload": "heterodyne-light-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556|session-device|7070707070707070707070707070707070707070707070707070707070707070",
+    "evaluation_time": 1767226112,
+    "relay_valid": true,
+    "repository_reachable": false,
+    "profile_gate_open": false
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "base_owner": "core",
+      "profile_state": "reserved-inactive",
+      "schema_valid": true,
+      "key_proof_valid": true,
+      "relay_state": "provisional",
+      "repository_final": false,
+      "control_authority": false,
+      "conformance_claimable": false
+    }
+  }
+}

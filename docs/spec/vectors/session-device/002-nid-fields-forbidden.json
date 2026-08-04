@@ -1,0 +1,77 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-nid-delegation"
+  ],
+  "vector_id": "session-device/nid-fields-forbidden",
+  "description": "The reserved NID-less discriminator rejects radicle_nid and nid_proof rather than conflating session and durable-device authority.",
+  "direction": "consume",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767226110,
+      "kind": 31001,
+      "tags": [
+        [
+          "d",
+          "pubkey:fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+        ],
+        [
+          "heterodyne",
+          "delegation"
+        ],
+        [
+          "publishing_key",
+          "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+        ],
+        [
+          "cold_root",
+          "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        ],
+        [
+          "valid_until",
+          "1767229200"
+        ],
+        [
+          "binding_nonce",
+          "7070707070707070707070707070707070707070707070707070707070707070"
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
+        ],
+        [
+          "key_proof",
+          "9a5d16470980d2d23ef9af1b7f8d12ec5ba4e33c8f689d786c2f6464718143802d080b859a0993012a4130cacc0aebb5d1219d5a36241e31602792b06e1078f8"
+        ],
+        [
+          "radicle_nid",
+          "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
+        ],
+        [
+          "nid_proof",
+          "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "spec_version",
+          "core/0.5.0"
+        ]
+      ],
+      "content": "",
+      "id": "bb237f0c7b358f0b404f2b22518833518582229ef8b853d977a60868d1282215",
+      "sig": "3d76be0a4e0253e54fbecb86492b876e30914b85471a771a91c2261bcfad3c782acc85f90153723a343d6526c59e183dc896aa50b9a62ea8d9d8206c60e9500a"
+    },
+    "binding_payload": "heterodyne-light-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556|session-device|7070707070707070707070707070707070707070707070707070707070707070"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "role-delegation-address-invalid",
+    "validation_error": "nid_fields_forbidden",
+    "conformance_claimable": false
+  }
+}

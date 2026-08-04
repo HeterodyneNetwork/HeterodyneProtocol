@@ -1,0 +1,64 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-nid-delegation"
+  ],
+  "vector_id": "session-device/owner-stamp-missing",
+  "description": "A producer refuses to emit the reserved candidate without the sole Core owner stamp.",
+  "direction": "produce",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767226112,
+      "kind": 31001,
+      "tags": [
+        [
+          "d",
+          "pubkey:fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+        ],
+        [
+          "heterodyne",
+          "delegation"
+        ],
+        [
+          "publishing_key",
+          "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+        ],
+        [
+          "cold_root",
+          "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        ],
+        [
+          "valid_until",
+          "1767229200"
+        ],
+        [
+          "binding_nonce",
+          "7070707070707070707070707070707070707070707070707070707070707070"
+        ],
+        [
+          "kel_head",
+          "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
+          "0"
+        ],
+        [
+          "key_proof",
+          "9a5d16470980d2d23ef9af1b7f8d12ec5ba4e33c8f689d786c2f6464718143802d080b859a0993012a4130cacc0aebb5d1219d5a36241e31602792b06e1078f8"
+        ]
+      ],
+      "content": "",
+      "id": "493270d4e8a53361793a2da03cdd5876b9c88f15353f9c190b8559f7cfadf57f",
+      "sig": "e6fa6434c1b0270695801b7bd5249e13bd1547eab67c5edbc504a0bdf226f37b34ab9a6104f2be11de9db112ae24848cd7bd51981fb5be43e14e73741cf90656"
+    },
+    "binding_payload": "heterodyne-light-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556|session-device|7070707070707070707070707070707070707070707070707070707070707070"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "owner_stamp_missing",
+    "conformance_claimable": false
+  }
+}

@@ -203,4 +203,151 @@ describe("split remediation wire and hook contracts", () => {
       automatic_refollow: false,
     });
   });
+
+  it("validates the exact session-device shape without opening its revision-3 gate", () => {
+    const vector = byId("session-device/reserved-shape-valid-but-gated");
+    expect(vector.registry_revision).toBe(3);
+    const event = vector.input.event as {
+      kind: number;
+      content: string;
+      tags: string[][];
+      id: string;
+      sig: string;
+    };
+    expect(event.kind).toBe(31001);
+    expect(event.content).toBe("");
+    expect(event.id).toHaveLength(64);
+    expect(event.sig).toHaveLength(128);
+    expect(event.tags).toEqual([
+      ["d", expect.stringMatching(/^pubkey:[0-9a-f]{64}$/)],
+      ["heterodyne", "delegation"],
+      ["publishing_key", expect.stringMatching(/^[0-9a-f]{64}$/)],
+      ["cold_root", expect.stringMatching(/^[0-9a-f]{64}$/)],
+      ["valid_until", expect.stringMatching(/^[1-9][0-9]*$/)],
+      ["binding_nonce", expect.stringMatching(/^[0-9a-f]{64}$/)],
+      ["kel_head", expect.stringMatching(/^[0-9a-f]{64}$/), "0"],
+      ["key_proof", expect.stringMatching(/^[0-9a-f]{128}$/)],
+      ["spec_version", "core/0.5.0"],
+    ]);
+    expect(event.tags.some((tag) => tag[0] === "radicle_nid" || tag[0] === "nid_proof")).toBe(false);
+    expect(vector.expected_output.normalized).toEqual({
+      base_owner: "core",
+      profile_state: "reserved-inactive",
+      schema_valid: true,
+      key_proof_valid: true,
+      relay_state: "provisional",
+      repository_final: false,
+      control_authority: false,
+      conformance_claimable: false,
+    });
+  });
+
+  it.each([
+    [
+      "session-device/nid-fields-forbidden",
+      "nid_fields_forbidden",
+      "role-delegation-address-invalid",
+    ],
+    [
+      "session-device/key-proof-invalid",
+      "key_proof_invalid",
+      "bad_signature",
+    ],
+  ])("rejects malformed reserved session shape in %s", (id, validationError, reasonCode) => {
+    const vector = byId(id);
+    expect(vector.expected_output).toEqual({
+      verdict: "reject",
+      reason_code: reasonCode,
+      validation_error: validationError,
+      conformance_claimable: false,
+    });
+  });
+
+  it("distinguishes repository finality from the still-closed profile gate", () => {
+    const vector = byId("session-device/repository-final-gate-closed");
+    expect(vector.input).toEqual(expect.objectContaining({
+      relay_valid: true,
+      repository_reachable: true,
+      profile_gate_open: false,
+      comms_authorization_state: "active",
+    }));
+    expect(vector.expected_output.normalized).toEqual({
+      repository_final: true,
+      delegation_state: "final-but-gated",
+      control_authority: false,
+      conformance_claimable: false,
+    });
+  });
+
+  it("refuses to produce the candidate without the Core owner stamp", () => {
+    const vector = byId("session-device/owner-stamp-missing");
+    const event = vector.input.event as { tags: string[][] };
+    expect(vector.direction).toBe("produce");
+    expect(event.tags.some((tag) => tag[0] === "spec_version")).toBe(false);
+    expect(vector.expected_output).toEqual({
+      verdict: "reject",
+      reason_code: "owner_stamp_missing",
+      conformance_claimable: false,
+    });
+  });
+
+  it.each([
+    ["session-device/live-challenge-binding-valid", "live-challenge"],
+    ["session-device/one-time-token-binding-valid", "one-time-token"],
+  ])("binds the candidate nonce to authenticated enrollment state in %s", (id, source) => {
+    const vector = byId(id);
+    expect(vector.input.enrollment_binding).toEqual(expect.objectContaining({
+      source,
+      authenticated_session: true,
+      unexpired: true,
+    }));
+    expect(vector.expected_output.normalized).toEqual(expect.objectContaining({
+      binding_valid: true,
+      binding_source: source,
+      control_authority: false,
+      conformance_claimable: false,
+    }));
+  });
+
+  it("makes revocation authoritative even for a repository-final candidate", () => {
+    const vector = byId("session-device/revoked-no-authority");
+    expect(vector.input).toEqual(expect.objectContaining({
+      repository_final: true,
+      delegation_revoked: true,
+    }));
+    expect(vector.expected_output.normalized).toEqual({
+      delegation_state: "revoked",
+      control_authority: false,
+      conformance_claimable: false,
+    });
+  });
+
+  it.each([
+    ["acceptance-gating/control-enrollment-active-invite-gated-hold", "control-enrollment", false, "hold-as-message-request"],
+    ["acceptance-gating/control-enrollment-stale-invite-reject", "control-enrollment", false, "reject"],
+    ["acceptance-gating/control-enrollment-tombstoned-invite-reject", "control-enrollment", false, "reject"],
+    ["acceptance-gating/ordinary-undelegated-reject", "ordinary-dm", false, "reject"],
+  ])("enforces the epoch-invite undelegated carve-out in %s", (id, context, delegated, outcome) => {
+    const vector = byId(id);
+    expect(vector.registry_revision).toBe(3);
+    expect(vector.input).toEqual(expect.objectContaining({
+      context,
+      active_delegation: delegated,
+      epoch_invite_event_id: expect.any(String),
+      current_epoch_invite_event_id: expect.any(String),
+    }));
+    expect((vector.expected_output.normalized as Record<string, unknown>).outcome).toBe(outcome);
+    if (id.includes("gated-hold")) {
+      expect(vector.expected_output.normalized).toEqual(expect.objectContaining({
+        control_interpretation_allowed: false,
+        sender_visible_signals: 0,
+      }));
+    }
+  });
+
+  it("does not rewrite the historical revision of the earlier default-hold vector", () => {
+    expect(
+      byId("acceptance-gating/control-enrollment-default-hold").registry_revision,
+    ).toBe(1);
+  });
 });

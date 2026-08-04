@@ -36,6 +36,18 @@
     ]
   },
   {
+    "vector_id": "acceptance-gating/control-enrollment-active-invite-gated-hold",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-acceptance-hook"
+    ]
+  },
+  {
     "vector_id": "acceptance-gating/control-enrollment-default-hold",
     "owner_document": "comms",
     "owner_version": "comms/0.5.0",
@@ -43,6 +55,30 @@
       "core": "core/0.5.0"
     },
     "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-acceptance-hook"
+    ]
+  },
+  {
+    "vector_id": "acceptance-gating/control-enrollment-stale-invite-reject",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-acceptance-hook"
+    ]
+  },
+  {
+    "vector_id": "acceptance-gating/control-enrollment-tombstoned-invite-reject",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-acceptance-hook"
     ]
@@ -151,6 +187,18 @@
       "core": "core/0.5.0"
     },
     "registry_revision": 1,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-acceptance-hook"
+    ]
+  },
+  {
+    "vector_id": "acceptance-gating/ordinary-undelegated-reject",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-acceptance-hook"
     ]
@@ -4364,6 +4412,86 @@
     "registry_revision": 1,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-node-roles"
+    ]
+  },
+  {
+    "vector_id": "session-device/key-proof-invalid",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nid-delegation"
+    ]
+  },
+  {
+    "vector_id": "session-device/live-challenge-binding-valid",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nid-delegation"
+    ]
+  },
+  {
+    "vector_id": "session-device/nid-fields-forbidden",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nid-delegation"
+    ]
+  },
+  {
+    "vector_id": "session-device/one-time-token-binding-valid",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nid-delegation"
+    ]
+  },
+  {
+    "vector_id": "session-device/owner-stamp-missing",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nid-delegation"
+    ]
+  },
+  {
+    "vector_id": "session-device/repository-final-gate-closed",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nid-delegation"
+    ]
+  },
+  {
+    "vector_id": "session-device/reserved-shape-valid-but-gated",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nid-delegation"
+    ]
+  },
+  {
+    "vector_id": "session-device/revoked-no-authority",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nid-delegation"
     ]
   },
   {

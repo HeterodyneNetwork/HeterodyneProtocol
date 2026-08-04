@@ -139,6 +139,14 @@ breadcrumbs/unrelated-successor-rejected
 breadcrumbs/compromise-rotation-not-produced
 breadcrumbs/repointed-nip05-rejected
 breadcrumbs/ordinary-consumer-no-profile-inference
+session-device/reserved-shape-valid-but-gated
+session-device/nid-fields-forbidden
+session-device/key-proof-invalid
+session-device/repository-final-gate-closed
+session-device/owner-stamp-missing
+session-device/live-challenge-binding-valid
+session-device/one-time-token-binding-valid
+session-device/revoked-no-authority
 registry/downref-nonfrozen-rejected
 registry/frozen-entry-immutable
 role-capabilities/public-reader-reduced-assurance
@@ -305,6 +313,10 @@ acceptance-gating/credential-expired-reject
 acceptance-gating/credential-subject-mismatch-reject
 acceptance-gating/credential-nidless-reject
 acceptance-gating/control-enrollment-default-hold
+acceptance-gating/control-enrollment-active-invite-gated-hold
+acceptance-gating/control-enrollment-stale-invite-reject
+acceptance-gating/control-enrollment-tombstoned-invite-reject
+acceptance-gating/ordinary-undelegated-reject
 profiles/tier3-kind-1
 profiles/tier3-kind-6
 profiles/tier3-kind-16
@@ -520,6 +532,11 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
       || vectorId.startsWith("public-reader/")
       || vectorId.startsWith("agent-authorship/")
       || vectorId.startsWith("agent-moderation/")
+      || vectorId.startsWith("session-device/")
+      || vectorId === "acceptance-gating/control-enrollment-active-invite-gated-hold"
+      || vectorId === "acceptance-gating/control-enrollment-stale-invite-reject"
+      || vectorId === "acceptance-gating/control-enrollment-tombstoned-invite-reject"
+      || vectorId === "acceptance-gating/ordinary-undelegated-reject"
       || vectorId.startsWith("control/") ? 3
       : vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/") ||
         vectorId.startsWith("oidc/") || vectorId.startsWith("token-status/") ? 2
@@ -595,6 +612,7 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
   const anchors: Partial<Record<DocumentId, Record<string, string>>> = {
     core: {
       breadcrumbs: "core-kel-rotation",
+      "session-device": "core-nid-delegation",
       identity: vectorId.startsWith("identity/root-attestation-valid") ? "core-root-attestation" : "core-nid-delegation",
       "identity-doc": "core-identity-discovery",
       keri: "core-kel-primitives",

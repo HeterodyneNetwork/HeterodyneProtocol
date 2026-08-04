@@ -1,0 +1,47 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-acceptance-hook"
+  ],
+  "vector_id": "acceptance-gating/control-enrollment-tombstoned-invite-reject",
+  "description": "Closed Comms acceptance outcome: control enrollment tombstoned invite reject.",
+  "direction": "consume",
+  "input": {
+    "peer_persona_cold_root": "1111111111111111111111111111111111111111111111111111111111111111",
+    "peer_device_publishing_key": "2222222222222222222222222222222222222222222222222222222222222222",
+    "peer_delegation_id": null,
+    "local_recipient_persona": "3333333333333333333333333333333333333333333333333333333333333333",
+    "target_device_nid": "did:key:z6MkFixtureTarget",
+    "context": "control-enrollment",
+    "session_id": "4444444444444444444444444444444444444444444444444444444444444444",
+    "transcript_binding": "5555555555555555555555555555555555555555555555555555555555555555",
+    "protocol_id": "heterodyne-dm",
+    "requested_features": [],
+    "active_delegation": false,
+    "finality": "final",
+    "revoked": false,
+    "prior_session_state": "new",
+    "explicit_user_decision": null,
+    "authenticated": true,
+    "epoch_invite_event_id": "6666666666666666666666666666666666666666666666666666666666666666",
+    "current_epoch_invite_event_id": "6666666666666666666666666666666666666666666666666666666666666666",
+    "epoch_invite_signer_current": true,
+    "epoch_invite_kel_head_current": true,
+    "epoch_invite_tombstoned": true,
+    "profile_gate_open": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "dm_invite_revoked_device",
+    "normalized": {
+      "outcome": "reject",
+      "control_interpretation_allowed": false
+    }
+  }
+}

@@ -102,6 +102,14 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `routing-node/expired-advert-discarded` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-node-roles` |
 | `routing-node/repo-location-from-ads-only` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-node-roles` |
 | `routing-node/unverifiable-advert-discarded` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-node-roles` |
+| `session-device/key-proof-invalid` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
+| `session-device/live-challenge-binding-valid` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
+| `session-device/nid-fields-forbidden` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
+| `session-device/one-time-token-binding-valid` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
+| `session-device/owner-stamp-missing` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
+| `session-device/repository-final-gate-closed` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
+| `session-device/reserved-shape-valid-but-gated` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
+| `session-device/revoked-no-authority` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `social-recovery/cache-rejects-unauthorized-content` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-recovery` |
 | `social-recovery/cache-sourced-marked-stale` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-recovery` |
 | `social-recovery/cold-root-reanchor-authoritative` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-recovery` |

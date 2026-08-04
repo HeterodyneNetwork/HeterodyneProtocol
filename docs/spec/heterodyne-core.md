@@ -569,13 +569,62 @@ RECOMMENDED) by evaluating against `wall_clock - allowance`; an unbounded or
 implicit grace period is forbidden. Invalid, non-decimal, or expired values
 MUST deactivate the delegation.
 
-A light-only device MAY have a publishing-key delegation without an NID. It
-cannot sign Radicle refs and submits its Nostr event to an authorized full
-node. Registry revision 3 reserves the non-stamping profile
+A light-only device MAY use a publishing-key delegation without an NID only
+through a registered higher-layer profile. It cannot sign Radicle refs, become
+a durable claim-ledger reader, or acquire NID authority.
+
+Registry revision 3 reserves the non-stamping, inactive profile
 `heterodyne-control-session-device-v1` with discriminator
-`tags:heterodyne=delegation,binding_nonce,key_proof;radicle_nid=absent`. That
-profile MUST NOT alter the Core base-schema stamp; its added semantics do not
-change Core NID authority.
+`tags:heterodyne=delegation,binding_nonce,key_proof;radicle_nid=absent`. Its
+candidate event has empty content and exactly this ordered tag sequence:
+
+```text
+["d", "pubkey:<64-lowercase-hex publishing key>"]
+["heterodyne", "delegation"]
+["publishing_key", "<same publishing key>"]
+["cold_root", "<64-lowercase-hex persona cold root>"]
+["valid_until", "<nonzero decimal Unix timestamp>"]
+["binding_nonce", "<64-lowercase-hex enrollment nonce>"]
+["kel_head", "<accepted KEL event id>", "<decimal sequence>"]
+["key_proof", "<128-lowercase-hex BIP-340 signature>"]
+["spec_version", "core/0.5.0"]
+```
+
+`radicle_nid`, `nid_proof`, duplicate tags, unknown tags, another order, an
+empty or expired `valid_until`, and a `d`/`publishing_key` mismatch are invalid
+for this candidate shape. The outer event MUST be signed by the current
+KERI-authoritative epoch key and its `kel_head` MUST resolve to that accepted
+state. Core remains the only base-schema and stamp owner.
+
+The device proof signs the 32-byte SHA-256 digest of these exact UTF-8 bytes:
+
+```text
+heterodyne-light-binding-v1|<cold-root-hex>|<publishing-key-hex>|session-device|<binding-nonce>
+```
+
+The verifier reconstructs those bytes only from the event tags and verifies
+the BIP-340 `key_proof` with `publishing_key`. The issuing full node separately
+binds `binding_nonce` to the authenticated live enrollment challenge or
+higher-layer enrollment-token id. Neither proof alone grants higher-layer
+authority. A higher-layer verifier MUST receive an authenticated, unexpired
+binding result for that exact nonce: either the live session challenge or an
+issuer-bound, single-use, unexpired, and not-yet-redeemed token. A missing,
+mismatched, replayed, expired, or differently bound result is invalid.
+
+A structurally and cryptographically valid relay candidate is at most
+`provisional` under §6.2. Canonical repository reachability can make the
+delegation final, but finality still does not open its higher-layer profile.
+At registry revision 3 this profile remains `reserved-inactive`: a verifier
+MAY report structural validity for diagnostics, but MUST report
+`conformance_claimable = false`, MUST NOT grant higher-layer authority, and MUST NOT
+advertise, negotiate, require, or produce the profile as conforming. Only the
+atomic registry-revision-4 gate defined by ADR-037 and ADR-038 can activate it;
+histories 1 through 3 remain byte-identical.
+
+A canonically included replacement or revocation for the candidate address
+overrides relay copies and removes all prospective authority. Repository
+finality of an older candidate cannot survive that revocation, and a stale
+relay event cannot restore it.
 
 <a id="core-role-delegation"></a>
 #### 6.1.1 Role-addressed delegation extension

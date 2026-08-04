@@ -1210,7 +1210,7 @@ describe("protocol family documents", () => {
       profile_id: string;
       registry_status: string;
       profile_state: string;
-      current_core_compatible: boolean;
+      core_candidate_shape_defined: boolean;
       conforming_events_allowed: boolean;
       activation_requires: string[];
     }>(text, "control-session-device-reservation");
@@ -1218,20 +1218,53 @@ describe("protocol family documents", () => {
       profile_id: "heterodyne-control-session-device-v1",
       registry_status: "draft",
       profile_state: "reserved-inactive",
-      current_core_compatible: false,
+      core_candidate_shape_defined: true,
       conforming_events_allowed: false,
       activation_requires: [
-        "adr-030-accepted",
-        "future-core-kind-31001-subtype-amendment",
-        "control-vectors-and-registry-integration-gate",
+        "closed-adr-030-control-profile",
+        "complete-adr-037-and-adr-038-vector-batch",
+        "atomic-registry-revision-4-feature-and-schema-allocation",
+        "matching-family-and-release-manifests",
       ],
     });
-    expect(text).toMatch(/current Core[\s\S]*does not accept[\s\S]*discriminator/i);
-    expect(text).toMatch(/no event may claim conformance[\s\S]*profile/i);
+    expect(coreText).toContain(
+      "heterodyne-light-binding-v1|<cold-root-hex>|<publishing-key-hex>|session-device|<binding-nonce>",
+    );
+    expect(coreText).toMatch(/profile remains `reserved-inactive`[\s\S]*conformance_claimable = false/i);
+    expect(text).toMatch(/structural diagnostics[\s\S]*does not\s+activate/i);
+    expect(text).toMatch(/final candidate[\s\S]*grants no Control authority/i);
     expect(text).toMatch(/ownership[\s\S]*stamp intention[\s\S]*does not\s+make it active/i);
+    expect(text).toMatch(/registry revision 4[\s\S]*matching family\/release manifests/i);
+    expect(text).toMatch(/ADR-038[\s\S]*no\s+placeholder/i);
     expect(text).not.toContain("heterodyne:core/");
     expect(text).toMatch(/Control MUST NOT[\s\S]*wire stamp/i);
     expect(text).not.toMatch(/control\/0\.5\.0.*stamp/i);
+  });
+
+  it("defines the exact Comms epoch invite while holding gated enrollment", () => {
+    const comms = readFileSync(commsPath, "utf8");
+
+    expect(comms).toMatch(
+      /kind:30078[\s\S]*d = double-ratchet\/invites\/epoch[\s\S]*kel_head[\s\S]*current KERI-authoritative epoch key/i,
+    );
+    expect(comms).toMatch(
+      /published before the prior[\s\S]*tombstoned[\s\S]*exact invite event\s+id/i,
+    );
+    expect(comms).toMatch(
+      /undelegated initiator[\s\S]*only[\s\S]*control-enrollment[\s\S]*ordinary DMs[\s\S]*credential sync/i,
+    );
+    expect(comms).toMatch(
+      /higher Control profile remains gated[\s\S]*hold[\s\S]*sender-visible signal[\s\S]*cannot interpret/i,
+    );
+    expect(comms).toMatch(
+      /binding_nonce[\s\S]*live-session challenge[\s\S]*single-use[\s\S]*unredeemed enrollment token/i,
+    );
+    expect(comms).toMatch(
+      /repository-final and unrevoked[\s\S]*generic `kind:31015`[\s\S]*`kind:31016`[\s\S]*no-backfill/i,
+    );
+    expect(comms).toMatch(
+      /Tor-capable light client[\s\S]*shared clearnet Nostr relay[\s\S]*never requires a direct client-to-node address/i,
+    );
   });
 
   it("requires the exact registered Comms double-ratchet profile set", () => {
@@ -2451,7 +2484,9 @@ describe("protocol family documents", () => {
     expect(readme).toContain('"registry_revision": "<pinned-registry-revision>"');
     expect(readme).toContain(`${counts.get(1)} immutable registry-revision-1 vectors`);
     expect(readme).toContain(`${counts.get(2)} ADR-034 registry-revision-2 vectors`);
-    expect(readme).toContain(`${counts.get(3)} ADR-035/ADR-036 registry-revision-3 vectors`);
+    expect(readme).toContain(
+      `${counts.get(3)}\nADR-030/ADR-035/ADR-036 registry-revision-3 vectors`,
+    );
     expect(readme).toMatch(/historical vectors[\s\S]*MUST NOT[\s\S]*rewritten/i);
   });
 

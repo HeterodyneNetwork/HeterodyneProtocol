@@ -649,6 +649,46 @@ device's active delegation under
 `heterodyne:core/0.5.0#core-nid-delegation` and KEL authority; missing or revoked bindings
 are `dm_invite_unbound_device` or `dm_invite_revoked_device`.
 
+The epoch enrollment endpoint is the sole exception to the delegated-device
+invite rule. It is an upstream `kind:30078` with exact
+`d = double-ratchet/invites/epoch`, the ordinary upstream ephemeral bootstrap
+material, and exactly one Core `kel_head`. It is non-stamping and is signed by
+the current KERI-authoritative epoch key. A verifier MUST resolve the named
+KEL state, require that its authorized epoch key equals the event signer, and
+reject a stale, superseded, tombstoned, off-KEL, wrong-signer, or malformed
+candidate.
+
+On epoch rotation, a current-key invite MUST be published before the prior
+invite is tombstoned. An enrollment initiator records the exact invite event
+id in its authenticated transcript and first inner enrollment request. The
+receiver MUST compare it with the currently active epoch invite event id; a
+valid signature by itself cannot revive an older invite.
+
+An otherwise undelegated initiator is permitted only for that authenticated
+transcript in the `control-enrollment` acceptance context. This exception
+does not authorize ordinary DMs, credential sync, activation, revocation,
+unlock, subprotocol payload interpretation, or any other Comms context. The
+carrier, invite, transcript, session identity, and request binding are
+authenticated before policy. While the higher Control profile remains gated,
+Comms can only hold such a valid request without a sender-visible signal; it
+cannot interpret or dispatch the enclosed Control payload.
+
+A future active higher profile may return `accept` only after it verifies the
+exact Core `binding_nonce` against the authenticated live-session challenge or
+an issuer-bound, single-use, unexpired, unredeemed enrollment token; observes
+the resulting session-device delegation as repository-final and unrevoked;
+and binds the accepted session to that delegation. Before that decision, no
+later subprotocol payload may be interpreted. After acceptance, application
+traffic uses only the mutually negotiated generic `kind:31015` and
+`kind:31016` inner-rumor carriers, and the no-backfill rule remains in force.
+
+Transport selection does not change these checks. A Tor-capable light client
+SHOULD use outbound Tor for accepted relay or onion routes. A browser or other
+reduced-assurance client MAY use a configured shared clearnet Nostr relay, and
+a full node that supports that client class MUST expose at least one such
+relay. Enrollment never requires a direct client-to-node address and MUST NOT
+publish an onion service endpoint or transport credential inside the invite.
+
 Publishing a newer invite with the same `(pubkey, kind, d)` replaces the old
 invite; an empty-content replacement is its tombstone. An out-of-band invite
 whose bootstrap bytes are encoded in a URL fragment is an equivalent
@@ -680,8 +720,11 @@ MAY use both backends. Double-ratchet traffic has no backfill and relay
 retention is transient. Local history and ratchet state MUST be encrypted at
 rest.
 
-After successful decryption and ratchet advancement, a receiver MUST delete
-the consumed message key. Lost ratchet state means unrecoverable history and
+Before releasing received plaintext to any application, a receiver MUST
+complete ratchet advancement and durable state persistence as one atomic
+action, and it MUST delete the consumed message key within that same action. A
+crash before that commit releases no plaintext; a restart after it cannot
+reuse the consumed key. Lost ratchet state means unrecoverable history and
 clients MUST say so. Compromise of current state does not reveal deleted past
 keys; a fresh DH step restores security after compromise.
 
@@ -710,13 +753,17 @@ session, delegation, KEL, freshness, revocation, or context checks.
 The hook has these closed inputs:
 
 - authenticated peer persona cold-root npub;
-- authenticated peer device publishing key and delegation identifier;
+- authenticated peer device publishing key and, except for the exact
+  `control-enrollment` carve-out below, its delegation identifier;
 - local recipient persona and target device NID, when one exists;
 - context: exactly `ordinary-dm`, `credential-sync`, or
   `control-enrollment`;
 - verified session identifier and transcript binding;
 - message/negotiated protocol identifier and requested features;
 - active-delegation, finality, and revocation result; and
+- for `control-enrollment`, the referenced epoch invite event id, current
+  active invite event id, invite signer/KEL result, and higher-profile gate
+  state; and
 - local prior-session state plus an explicit user decision, if any.
 
 It returns exactly `accept`, `hold-as-message-request`, or `reject` plus a
@@ -737,11 +784,16 @@ cryptographic authentication succeeds:
 | `credential-sync` | `accept` iff every §8.1 authoritative ledger and current-grant check passes |
 | `credential-sync`, authoritative current state cannot be established | `hold-as-message-request`; no transfer and no sender-observable signal |
 | `credential-sync`, invalid, revoked, expired, mismatched, or NID-less | `reject` |
-| `control-enrollment` without a stricter composed profile decision | `hold-as-message-request` |
+| authenticated `control-enrollment`, exact current epoch invite, undelegated initiator, higher profile gated | `hold-as-message-request`; no payload interpretation and no sender-visible signal |
+| `control-enrollment`, stale/tombstoned invite or failed signer/KEL/transcript binding | `reject` |
+| any context other than `control-enrollment`, undelegated initiator | `reject` |
+| active `control-enrollment` without a stricter composed profile decision | `hold-as-message-request` |
 
 Cryptographically invalid input is rejected before the hook runs. A composed
 profile MAY tighten the table but MUST NOT turn a Comms rejection into another
-result or accept an unauthenticated input.
+result or accept an unauthenticated input. A higher profile cannot run while
+its feature gate is closed; receiving a valid held request does not advertise
+or activate that profile.
 
 <a id="comms-credential-sync"></a>
 ### 8.1 Credential-plane synchronization
