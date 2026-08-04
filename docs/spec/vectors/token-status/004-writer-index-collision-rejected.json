@@ -18,6 +18,7 @@
     "list_sequence": 0,
     "existing": [
       {
+        "credential_ledger_generation": 0,
         "jti": "oidc-evidence-jti-0001",
         "reservation": {
           "uri": "status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
@@ -29,24 +30,25 @@
         "checkpoint": {
           "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
           "branch": "main",
-          "commit_oid": "34d856fd10218a105d4f39114d8e7ba5c64fca2b6c4158139c6622275aa74aec",
+          "commit_oid": "055e69a5c6c05d7e5aede4900763acda43dd472aff46515c34a189f5c9d4ed00",
           "observed_at": 1767245668
         },
         "manifest_max_age_seconds": 300,
         "signing_key_id": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
         "client_id": "registered-client",
-        "authorization_request_digest": "10b2c9eae2f18c371e2af2f72baba3c514424acec5e6b4e7b31ef1d83e2c7978",
-        "release_digest": "f1c093adfe1865514b6dda4fb7e6fa7ad3238f4c162c646aff6b8bdc32bb15cd",
+        "authorization_request_digest": "b7509d7df8cc12b3a2d4d55bb33b18292bca7548cf5776d5d595b5e3b7649b6c",
+        "release_digest": "eff02bd267715d72ec19984890791d7e7d3eda397bdd4eac7b5978c60b6ed123",
         "source_claim_ids": [
-          "4ea73b4873aea25160080d5bd864f6b59ff48dadea0da85745cca728b64dcc7b",
-          "59cd96652a9b9093a0586fc461fcb90c65c901f4b8e1ef7a408b0c574d1d970d",
-          "70dfdf0c27342d99ed20b6b1bd148de172952cfd4a9fbe2a7aa0e729af7d4ef7",
-          "9693d6dd3a202173135cc8535180185bfc1e011334960bbdfb23a0c1fe5f0503"
+          "32faca160d771be922dff2d9860e1d797bb36d710c6203c3201e7a6f63245209",
+          "38a44b0fa86b28c16859204cf8702b0774ac24f5a4d235a2844e597a0dc743f5",
+          "532548fe788d517f1868e485385d0f3a15c2d70c5c4356266e2e720d7f807fe8",
+          "55e26f3da5a8da31311a7df946fc85d382d08142de198c109e5dd33b25b57284"
         ],
         "issued_at": 1767245669,
         "expires_at": 1767246269
       },
       {
+        "credential_ledger_generation": 0,
         "jti": "oidc-evidence-jti-0001",
         "reservation": {
           "uri": "status-lists/20454/9e2d8f969662fd7c68c9cc68c7b205c8/0.jwt",
@@ -58,19 +60,19 @@
         "checkpoint": {
           "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
           "branch": "main",
-          "commit_oid": "34d856fd10218a105d4f39114d8e7ba5c64fca2b6c4158139c6622275aa74aec",
+          "commit_oid": "055e69a5c6c05d7e5aede4900763acda43dd472aff46515c34a189f5c9d4ed00",
           "observed_at": 1767245668
         },
         "manifest_max_age_seconds": 300,
         "signing_key_id": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
         "client_id": "registered-client",
-        "authorization_request_digest": "10b2c9eae2f18c371e2af2f72baba3c514424acec5e6b4e7b31ef1d83e2c7978",
-        "release_digest": "f1c093adfe1865514b6dda4fb7e6fa7ad3238f4c162c646aff6b8bdc32bb15cd",
+        "authorization_request_digest": "b7509d7df8cc12b3a2d4d55bb33b18292bca7548cf5776d5d595b5e3b7649b6c",
+        "release_digest": "eff02bd267715d72ec19984890791d7e7d3eda397bdd4eac7b5978c60b6ed123",
         "source_claim_ids": [
-          "4ea73b4873aea25160080d5bd864f6b59ff48dadea0da85745cca728b64dcc7b",
-          "59cd96652a9b9093a0586fc461fcb90c65c901f4b8e1ef7a408b0c574d1d970d",
-          "70dfdf0c27342d99ed20b6b1bd148de172952cfd4a9fbe2a7aa0e729af7d4ef7",
-          "9693d6dd3a202173135cc8535180185bfc1e011334960bbdfb23a0c1fe5f0503"
+          "32faca160d771be922dff2d9860e1d797bb36d710c6203c3201e7a6f63245209",
+          "38a44b0fa86b28c16859204cf8702b0774ac24f5a4d235a2844e597a0dc743f5",
+          "532548fe788d517f1868e485385d0f3a15c2d70c5c4356266e2e720d7f807fe8",
+          "55e26f3da5a8da31311a7df946fc85d382d08142de198c109e5dd33b25b57284"
         ],
         "issued_at": 1767245669,
         "expires_at": 1767246269

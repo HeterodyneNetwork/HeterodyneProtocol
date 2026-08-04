@@ -329,6 +329,17 @@ profiles/tier3-kind-30402
 profiles/dr-invite-response-kind1059
 profiles/comms-negotiation-kind31015
 profiles/comms-payload-kind31016
+credential-continuity/checkpoint-genesis
+credential-continuity/stale-generation
+credential-continuity/pending-retirement-conservative
+credential-continuity/retention-inventory-genesis
+credential-continuity/governed-obligation-equation
+credential-continuity/routine-removal-complete
+credential-continuity/cold-root-exposure-migrates
+credential-continuity/candidate-exact-tip-append
+credential-continuity/dr-persona-node-removed
+credential-continuity/config-git-raw-projection
+credential-continuity/twenty-schemas-gated
 `);
 
 const SOCIAL_IDS = ids(`
@@ -584,6 +595,7 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
       || vectorId.startsWith("public-reader/")
       || vectorId.startsWith("agent-authorship/")
       || vectorId.startsWith("agent-moderation/")
+      || vectorId.startsWith("credential-continuity/")
       || vectorId.startsWith("session-device/")
       || vectorId === "acceptance-gating/control-enrollment-active-invite-gated-hold"
       || vectorId === "acceptance-gating/control-enrollment-stale-invite-reject"
@@ -730,6 +742,7 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
       "relay-interop": "comms-publishing",
       "comms-envelope": "comms-envelope",
       "acceptance-gating": "comms-acceptance-hook",
+      "credential-continuity": "comms-credential-continuity-gate",
     },
     social: {
       "agent-moderation": vectorId.includes("receipt")

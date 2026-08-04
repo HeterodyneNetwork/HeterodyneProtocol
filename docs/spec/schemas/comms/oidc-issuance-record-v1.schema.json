@@ -4,8 +4,9 @@
   "title": "Heterodyne Comms OIDC issuance record v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["jti", "reservation", "checkpoint", "manifest_max_age_seconds", "signing_key_id", "client_id", "authorization_request_digest", "release_digest", "source_claim_ids", "issued_at", "expires_at"],
+  "required": ["credential_ledger_generation", "jti", "reservation", "checkpoint", "manifest_max_age_seconds", "signing_key_id", "client_id", "authorization_request_digest", "release_digest", "source_claim_ids", "issued_at", "expires_at"],
   "properties": {
+    "credential_ledger_generation": { "$ref": "#/definitions/json_safe_integer" },
     "jti": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
     "reservation": {
       "type": "object",

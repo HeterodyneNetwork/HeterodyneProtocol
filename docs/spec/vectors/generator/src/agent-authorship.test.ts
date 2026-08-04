@@ -22,6 +22,9 @@ describe("agent signing delegation", () => {
   const proof = `heterodyne-agent-signing-binding-v1|${coldRoot}|${nid}|${roleId}|${publishingKey}`;
   const valid = {
     cold_root: coldRoot,
+    credential_ledger_generation: 0,
+    expected_credential_ledger_persona: coldRoot,
+    expected_credential_ledger_generation: 0,
     nid,
     role_id: roleId,
     publishing_key: publishingKey,
@@ -60,6 +63,8 @@ describe("agent signing delegation", () => {
     }
     expect(validateAgentDelegation({ ...valid, repo_final: false }))
       .toMatchObject({ verdict: "reject", reason_code: "provisional_not_final" });
+    expect(validateAgentDelegation({ ...valid, expected_credential_ledger_generation: 1 }))
+      .toMatchObject({ verdict: "reject", reason_code: "credential_generation_stale" });
   });
 });
 
@@ -129,6 +134,10 @@ describe("workload registration and stable identity", () => {
 describe("agent workload access token", () => {
   const valid: AgentTokenValidationInput = {
     typ: "at+jwt",
+    credential_ledger_persona: coldRoot,
+    credential_ledger_generation: 0,
+    expected_credential_ledger_persona: coldRoot,
+    expected_credential_ledger_generation: 0,
     iss: issuer,
     sub: "stable-pairwise-sub",
     aud: [audience],
@@ -183,6 +192,7 @@ describe("agent workload access token", () => {
       [{ sender_proof_jkt: "B".repeat(43) }, "agent-sender-proof-invalid"],
       [{ agent_role_id: "44".repeat(32) }, "agent-role-mismatch"],
       [{ ledger_active: false }, "agent-token-stale"],
+      [{ expected_credential_ledger_generation: 1 }, "credential_generation_stale"],
     ];
     for (const [patch, reason_code] of cases) {
       expect(validateAgentAccessToken({ ...valid, ...patch })).toEqual({

@@ -12,6 +12,7 @@ import {
   projectAccessToken,
   projectIdToken,
   projectJwtAssertion,
+  purgeOidcTransactionsForCredentialReset,
   redeemAuthorizationCode,
   redeemDeviceCode,
   validateAuthorizationRequest,
@@ -33,7 +34,9 @@ beforeAll(async () => { x = await buildOidcScenario(fixtures); });
 
 const options = (token_use: JwtValidationOptions["token_use"], extra: Partial<JwtValidationOptions> = {}): JwtValidationOptions => ({
   now: x.issuance.issued_at, token_use, client_id: "registered-client", sender_constraint: "none",
-  permitted_audiences: ["https://api.example"], ...extra,
+  permitted_audiences: ["https://api.example"],
+  credential_ledger: x.issuedState.credential_ledger,
+  ...extra,
 });
 
 function resignJwt(jwt: string, mutate: (claims: Record<string, unknown>) => void): string {
@@ -185,19 +188,28 @@ describe("evidence-bound release and OAuth state machines", () => {
 
   it("enforces S256, client, redirect, expiry and one-time authorization-code redemption", () => {
     const code = issueAuthorizationCode(x.request, x.issuance.issued_at);
+    expect(code).toMatchObject(x.preMintState.credential_ledger);
     const consumed = new Set<string>();
     const redeem = (overrides = {}) => redeemAuthorizationCode(code, {
       code: code.code, client_id: x.request.client_id, redirect_uri: x.request.redirect_uri!,
-      code_verifier: x.codeVerifier, now: x.issuance.issued_at + 1, ...overrides,
+      code_verifier: x.codeVerifier, now: x.issuance.issued_at + 1,
+      credential_ledger: x.preMintState.credential_ledger, ...overrides,
     }, consumed);
     expect(redeem()).toMatchObject({ allowed: true });
     expect(redeem()).toMatchObject({ allowed: false });
     expect(redeemAuthorizationCode(code, { code: code.code, client_id: "wrong", redirect_uri: x.request.redirect_uri!,
-      code_verifier: x.codeVerifier, now: x.issuance.issued_at + 1 }, new Set())).toMatchObject({ allowed: false });
+      code_verifier: x.codeVerifier, now: x.issuance.issued_at + 1,
+      credential_ledger: x.preMintState.credential_ledger }, new Set())).toMatchObject({ allowed: false });
     expect(redeemAuthorizationCode(code, { code: code.code, client_id: x.request.client_id, redirect_uri: "https://client.example/wrong",
-      code_verifier: x.codeVerifier, now: x.issuance.issued_at + 1 }, new Set())).toMatchObject({ allowed: false });
+      code_verifier: x.codeVerifier, now: x.issuance.issued_at + 1,
+      credential_ledger: x.preMintState.credential_ledger }, new Set())).toMatchObject({ allowed: false });
     expect(redeemAuthorizationCode(code, { code: code.code, client_id: x.request.client_id, redirect_uri: x.request.redirect_uri!,
-      code_verifier: `${x.codeVerifier}x`, now: x.issuance.issued_at + 1 }, new Set())).toMatchObject({ allowed: false });
+      code_verifier: `${x.codeVerifier}x`, now: x.issuance.issued_at + 1,
+      credential_ledger: x.preMintState.credential_ledger }, new Set())).toMatchObject({ allowed: false });
+    expect(redeem({ credential_ledger: {
+      ...x.preMintState.credential_ledger,
+      credential_ledger_generation: x.preMintState.credential_ledger.credential_ledger_generation + 1,
+    } })).toMatchObject({ allowed: false });
     expect(() => issueAuthorizationCode({ ...x.request, client_id: "attacker" }, x.issuance.issued_at))
       .toThrow(/prerequisites|grant/i);
   });
@@ -206,16 +218,66 @@ describe("evidence-bound release and OAuth state machines", () => {
     const request = { ...x.request, flow: "device_authorization", grant_type: "urn:ietf:params:oauth:grant-type:device_code",
       response_type: undefined, redirect_uri: undefined, code_challenge: undefined, code_challenge_method: undefined } as OidcAuthorizationRequest;
     let record = issueDeviceAuthorization(request, x.issuance.issued_at);
-    const pending = redeemDeviceCode(record, { device_code: record.device_code, client_id: record.client_id, now: x.issuance.issued_at + 1 });
+    expect(record).toMatchObject(x.preMintState.credential_ledger);
+    const current = x.preMintState.credential_ledger;
+    const pending = redeemDeviceCode(record, { device_code: record.device_code, client_id: record.client_id,
+      now: x.issuance.issued_at + 1, credential_ledger: current });
     expect(pending.result).toBe("authorization_pending");
-    const slow = redeemDeviceCode(pending.record, { device_code: record.device_code, client_id: record.client_id, now: x.issuance.issued_at + 2 });
+    const slow = redeemDeviceCode(pending.record, { device_code: record.device_code, client_id: record.client_id,
+      now: x.issuance.issued_at + 2, credential_ledger: current });
     expect(slow.result).toBe("slow_down");
-    record = decideDeviceAuthorization(slow.record, "approve", x.issuance.issued_at + 3);
-    const success = redeemDeviceCode(record, { device_code: record.device_code, client_id: record.client_id, now: x.issuance.issued_at + 20 });
+    record = decideDeviceAuthorization(slow.record, "approve", x.issuance.issued_at + 3, current);
+    const success = redeemDeviceCode(record, { device_code: record.device_code, client_id: record.client_id,
+      now: x.issuance.issued_at + 20, credential_ledger: current });
     expect(success.result).toBe("success");
-    expect(redeemDeviceCode(success.record, { device_code: record.device_code, client_id: record.client_id, now: x.issuance.issued_at + 21 }).result).toBe("expired_token");
-    const denied = decideDeviceAuthorization(issueDeviceAuthorization(request, x.issuance.issued_at), "deny", x.issuance.issued_at + 1);
-    expect(redeemDeviceCode(denied, { device_code: denied.device_code, client_id: denied.client_id, now: x.issuance.issued_at + 2 }).result).toBe("access_denied");
+    expect(redeemDeviceCode(success.record, { device_code: record.device_code, client_id: record.client_id,
+      now: x.issuance.issued_at + 21, credential_ledger: current }).result).toBe("expired_token");
+    const denied = decideDeviceAuthorization(issueDeviceAuthorization(request, x.issuance.issued_at), "deny",
+      x.issuance.issued_at + 1, current);
+    expect(redeemDeviceCode(denied, { device_code: denied.device_code, client_id: denied.client_id,
+      now: x.issuance.issued_at + 2, credential_ledger: current }).result).toBe("access_denied");
+    const stale = { ...current, credential_ledger_generation: current.credential_ledger_generation + 1 };
+    expect(() => decideDeviceAuthorization(issueDeviceAuthorization(request, x.issuance.issued_at), "approve",
+      x.issuance.issued_at + 1, stale)).toThrow(/credential_generation_stale/);
+  });
+
+  it("purges every prior-generation OAuth transaction when credential authority resets", () => {
+    const deviceRequest = {
+      ...x.request,
+      flow: "device_authorization",
+      grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+      response_type: undefined,
+      redirect_uri: undefined,
+      code_challenge: undefined,
+      code_challenge_method: undefined,
+    } as OidcAuthorizationRequest;
+    const current = x.preMintState.credential_ledger;
+    const pending = issueDeviceAuthorization(deviceRequest, x.issuance.issued_at);
+    const approved = decideDeviceAuthorization(
+      issueDeviceAuthorization(deviceRequest, x.issuance.issued_at + 1),
+      "approve",
+      x.issuance.issued_at + 2,
+      current,
+    );
+    const denied = decideDeviceAuthorization(
+      issueDeviceAuthorization(deviceRequest, x.issuance.issued_at + 2),
+      "deny",
+      x.issuance.issued_at + 3,
+      current,
+    );
+    const result = purgeOidcTransactionsForCredentialReset(
+      [issueAuthorizationCode(x.request, x.issuance.issued_at)],
+      [pending, approved, denied],
+      { ...current, credential_ledger_generation: current.credential_ledger_generation + 1 },
+    );
+    expect(result).toMatchObject({
+      retained_authorization_codes: [],
+      retained_device_authorizations: [],
+      requires_authority_reissue: true,
+      requires_status_reissue: true,
+    });
+    expect(result.purged_authorization_codes).toHaveLength(1);
+    expect(result.purged_device_codes).toHaveLength(3);
   });
 });
 
@@ -224,6 +286,7 @@ describe("evidence-derived strict JOSE projection", () => {
     const token = projectIdToken(x.projection);
     expect(token.protected_header).toEqual({ alg: "RS256", kid: OIDC_RSA_ONE.key_id, typ: "JWT" });
     expect(token.claims.aud).toEqual(["registered-client"]);
+    expect(token.claims).toMatchObject(x.issuedState.credential_ledger);
     expect(validateProjectedJwt(token.compact, x.metadata.issuer, "registered-client", { keys: [OIDC_RSA_ONE.public_jwk] },
       options("id_token", { nonce: "oidc-vector-nonce" }))).toMatchObject({ allowed: true });
   });
@@ -240,6 +303,23 @@ describe("evidence-derived strict JOSE projection", () => {
       { keys: [OIDC_RSA_ONE.public_jwk] },
       options("id_token", { nonce: "" }),
     )).toMatchObject({ allowed: false, reason_code: "oidc-token-type-invalid" });
+  });
+
+  it("requires the exact current credential-ledger binding in every projected JWT", () => {
+    const access = projectAccessToken(x.projection);
+    const missing = resignJwt(access.compact, (claims) => {
+      delete claims.credential_ledger_generation;
+    });
+    expect(validateProjectedJwt(missing, x.metadata.issuer, "https://api.example",
+      { keys: [OIDC_RSA_ONE.public_jwk] }, options("access_token")))
+      .toMatchObject({ allowed: false, reason_code: "credential_generation_missing" });
+    const stale = resignJwt(access.compact, (claims) => {
+      claims.credential_ledger_generation =
+        x.issuedState.credential_ledger.credential_ledger_generation + 1;
+    });
+    expect(validateProjectedJwt(stale, x.metadata.issuer, "https://api.example",
+      { keys: [OIDC_RSA_ONE.public_jwk] }, options("access_token")))
+      .toMatchObject({ allowed: false, reason_code: "credential_generation_stale" });
   });
 
   it("recomputes release, mint eligibility, returnability and full checkpoint", () => {

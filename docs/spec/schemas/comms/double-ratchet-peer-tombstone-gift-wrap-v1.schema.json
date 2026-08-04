@@ -1,0 +1,146 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/comms/double-ratchet-peer-tombstone-gift-wrap-v1.schema.json",
+  "title": "Heterodyne Double Ratchet peer tombstone NIP-59 carrier v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event", "nip01_raw", "seal", "rumor"],
+  "properties": {
+    "event": { "$ref": "#/definitions/gift_wrap_event" },
+    "nip01_raw": {
+      "type": "string",
+      "minLength": 1
+    },
+    "seal": { "$ref": "#/definitions/seal_carrier" },
+    "rumor": { "$ref": "#/definitions/rumor_carrier" }
+  },
+  "definitions": {
+    "hex64": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "hex128": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    },
+    "json_safe_integer": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "p_tag": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "additionalItems": false,
+      "items": [
+        { "const": "p" },
+        { "$ref": "#/definitions/hex64" }
+      ]
+    },
+    "heterodyne_tag": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "additionalItems": false,
+      "items": [
+        { "const": "heterodyne" },
+        { "const": "dr_peer_tombstone" }
+      ]
+    },
+    "gift_wrap_event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "pubkey", "created_at", "kind", "tags", "content", "sig"],
+      "properties": {
+        "id": { "$ref": "#/definitions/hex64" },
+        "pubkey": { "$ref": "#/definitions/hex64" },
+        "created_at": { "$ref": "#/definitions/json_safe_integer" },
+        "kind": { "const": 1059 },
+        "tags": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "additionalItems": false,
+          "items": [
+            { "$ref": "#/definitions/p_tag" }
+          ]
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sig": { "$ref": "#/definitions/hex128" }
+      }
+    },
+    "seal_event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "pubkey", "created_at", "kind", "tags", "content", "sig"],
+      "properties": {
+        "id": { "$ref": "#/definitions/hex64" },
+        "pubkey": { "$ref": "#/definitions/hex64" },
+        "created_at": { "$ref": "#/definitions/json_safe_integer" },
+        "kind": { "const": 13 },
+        "tags": {
+          "type": "array",
+          "maxItems": 0
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sig": { "$ref": "#/definitions/hex128" }
+      }
+    },
+    "rumor_event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "pubkey", "created_at", "kind", "tags", "content"],
+      "properties": {
+        "id": { "$ref": "#/definitions/hex64" },
+        "pubkey": { "$ref": "#/definitions/hex64" },
+        "created_at": { "$ref": "#/definitions/json_safe_integer" },
+        "kind": { "const": 1061 },
+        "tags": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "additionalItems": false,
+          "items": [
+            { "$ref": "#/definitions/p_tag" },
+            { "$ref": "#/definitions/heterodyne_tag" }
+          ]
+        },
+        "content": {
+          "type": "string",
+          "minLength": 2
+        }
+      }
+    },
+    "seal_carrier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event", "nip01_raw"],
+      "properties": {
+        "event": { "$ref": "#/definitions/seal_event" },
+        "nip01_raw": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "rumor_carrier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event", "nip01_raw"],
+      "properties": {
+        "event": { "$ref": "#/definitions/rumor_event" },
+        "nip01_raw": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

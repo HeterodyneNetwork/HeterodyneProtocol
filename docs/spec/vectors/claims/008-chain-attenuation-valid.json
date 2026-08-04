@@ -15,7 +15,7 @@
   "input": {
     "chain": [
       {
-        "claim_id": "395c07ef010f0d9697a6e82739bc3c51ff24da5a2f985d26a4c81641b07f04cc",
+        "claim_id": "950bdf1050d53365139d58cd176ae7acdac487508053643dae786ade0d83c9cd",
         "issuer": {
           "type": "nostr-secp256k1",
           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -25,6 +25,8 @@
           "value": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
         },
         "claim_class": "authorization",
+        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "credential_ledger_generation": 0,
         "namespace": "heterodyne.device",
         "name": "claim-ledger-reader",
         "value": true,
@@ -54,7 +56,7 @@
         }
       },
       {
-        "claim_id": "ee1b23015339fd5c5561ff0ddd2c082d98d2d620d717e70339101b3a9a452445",
+        "claim_id": "c6bc203bb8947ec6fc30ca35e38ba18de74b34cb6d7f6bbdb9727e3ef7609131",
         "issuer": {
           "type": "nostr-secp256k1",
           "value": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
@@ -64,6 +66,8 @@
           "value": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
         },
         "claim_class": "authorization",
+        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "credential_ledger_generation": 0,
         "namespace": "heterodyne.device",
         "name": "claim-ledger-reader",
         "value": true,
@@ -79,7 +83,7 @@
         "visibility": "repository-private",
         "spec_version": "comms/0.5.0",
         "registry_revision": 2,
-        "parent_claim_id": "395c07ef010f0d9697a6e82739bc3c51ff24da5a2f985d26a4c81641b07f04cc",
+        "parent_claim_id": "950bdf1050d53365139d58cd176ae7acdac487508053643dae786ade0d83c9cd",
         "constraints": {
           "namespaces": [
             "heterodyne.device"

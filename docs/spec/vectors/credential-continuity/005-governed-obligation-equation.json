@@ -1,0 +1,92 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+  ],
+  "vector_id": "credential-continuity/governed-obligation-equation",
+  "description": "The independently derived governed-dependency set equals the active historical-obligation projection exactly.",
+  "direction": "consume",
+  "input": {
+    "records": [
+      {
+        "record_digest": "7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c",
+        "obligation_id": "7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d",
+        "lineage_sequence": 0,
+        "previous_record": null,
+        "action": "retain",
+        "secret_class": "config-audience",
+        "secret_id": "11111111111111111111111111111111",
+        "instance_commitment": "6161616161616161616161616161616161616161616161616161616161616161",
+        "retained_ciphertexts": [
+          {
+            "storage_class": "git-blob",
+            "owner": "comms.config-repository.v1",
+            "repository_rid": "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5",
+            "repository_head": {
+              "object_format": "sha1",
+              "oid": "7777777777777777777777777777777777777777"
+            },
+            "ref_name": "refs/heads/enc/11111111111111111111111111111111",
+            "path": "config-data/7979797979797979797979797979797979797979797979797979797979797979.bin",
+            "git_blob_oid": {
+              "object_format": "sha1",
+              "oid": "7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a"
+            },
+            "object_id": null,
+            "ciphertext_sha256": "7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b",
+            "ciphertext_length": 256
+          }
+        ],
+        "retired_provenance_lineages": []
+      }
+    ],
+    "governed_dependencies": [
+      {
+        "locator": {
+          "storage_class": "git-blob",
+          "owner": "comms.config-repository.v1",
+          "repository_rid": "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5",
+          "repository_head": {
+            "object_format": "sha1",
+            "oid": "7777777777777777777777777777777777777777"
+          },
+          "ref_name": "refs/heads/enc/11111111111111111111111111111111",
+          "path": "config-data/7979797979797979797979797979797979797979797979797979797979797979.bin",
+          "git_blob_oid": {
+            "object_format": "sha1",
+            "oid": "7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a"
+          },
+          "object_id": null,
+          "ciphertext_sha256": "7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b",
+          "ciphertext_length": 256
+        },
+        "tuple": {
+          "secret_class": "config-audience",
+          "secret_id": "11111111111111111111111111111111",
+          "instance_commitment": "6161616161616161616161616161616161616161616161616161616161616161"
+        }
+      }
+    ],
+    "ordinary_acceptance": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "draft_credential_continuity_decision": {
+        "verdict": "accept",
+        "active_obligations": [
+          "7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c"
+        ],
+        "frontier_digest": "91e30997fa350462f0db904eef650c8579e4670ea31751b7a322d2cfe7f3c968"
+      },
+      "selected_registry_revision": 3,
+      "conformance_claimable": false
+    }
+  }
+}

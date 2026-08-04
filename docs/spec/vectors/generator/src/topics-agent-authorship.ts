@@ -71,6 +71,9 @@ export async function buildAgentAuthorshipVectors(
   });
   const delegationInput = {
     cold_root: persona.cold_root.pubkey,
+    credential_ledger_generation: 0,
+    expected_credential_ledger_persona: persona.cold_root.pubkey,
+    expected_credential_ledger_generation: 0,
     nid: nid.did_key,
     role_id: roleId,
     publishing_key: rolePublicKey,
@@ -202,7 +205,7 @@ export async function buildAgentAuthorshipVectors(
     { verdict: "reject", reason_code: "agent-workload-registration-invalid" },
   ));
 
-  const token = tokenInput(fixtures.test_epoch);
+  const token = tokenInput(fixtures.test_epoch, persona.cold_root.pubkey);
   const tokenCases: Array<[string, string, Partial<AgentTokenValidationInput>]> = [
     ["009", "token-valid", {}],
     ["010", "token-expired", { now: token.exp }],
@@ -309,9 +312,13 @@ export async function buildAgentAuthorshipVectors(
   return vectors;
 }
 
-function tokenInput(now: number): AgentTokenValidationInput {
+function tokenInput(now: number, credentialLedgerPersona: string): AgentTokenValidationInput {
   return {
     typ: "at+jwt",
+    credential_ledger_persona: credentialLedgerPersona,
+    credential_ledger_generation: 0,
+    expected_credential_ledger_persona: credentialLedgerPersona,
+    expected_credential_ledger_generation: 0,
     iss: issuer,
     sub: subject,
     aud: [audience],

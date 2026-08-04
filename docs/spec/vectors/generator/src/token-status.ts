@@ -30,6 +30,10 @@ import {
 } from "./oidc.js";
 import { didKeyFromEd25519 } from "./radicle.js";
 import { validateOidcContinuityManifestSchemaOrThrow } from "./schema.js";
+import {
+  evaluateCredentialGeneration,
+  isCredentialLedgerBinding,
+} from "./credential-generation.js";
 
 export const STATUS_LIST_MEDIA_TYPE = "application/statuslist+jwt" as const;
 export const MAX_STATUS_LIST_BYTES = 1_048_576;
@@ -38,6 +42,8 @@ export type TokenStatus = 0 | 1;
 export type StatusListToken = {
   protected_header: { alg: "RS256"; kid: string; typ: "statuslist+jwt" };
   claims: {
+    credential_ledger_persona: string;
+    credential_ledger_generation: number;
     sub: string;
     iat: number;
     exp: number;
@@ -148,10 +154,16 @@ export function generateStatusListToken(input: {
     throw new Error("oidc-status-stale: status iat predates its authoritative ledger checkpoint");
   }
   const confirmed = new Set(input.state.repository_confirmed_record_ids ?? []);
-  const issuances = input.state.records
-    .filter(({ record_type, record_id }) => record_type === "issuance-reservation" && confirmed.has(record_id))
-    .map(({ payload }) => payload as unknown as IssuanceRecord);
-  for (const issuance of issuances) validateIssuanceRecordOrThrow(issuance);
+  const issuanceRecords = input.state.records
+    .filter(({ record_type, record_id }) =>
+      record_type === "issuance-reservation" && confirmed.has(record_id));
+  const issuances = issuanceRecords.map(({ payload }) => payload as unknown as IssuanceRecord);
+  for (const [index, issuance] of issuances.entries()) {
+    validateIssuanceRecordOrThrow(issuance);
+    if (issuanceRecords[index].credential_ledger_generation !== issuance.credential_ledger_generation) {
+      throw new Error("credential_generation_stale");
+    }
+  }
   assertCollisionFreeIssuances(issuances);
   const relativeUri = new URL(input.uri).pathname.replace(/^\/oidc\/npub1[^/]+\//, "");
   const selected = issuances.filter(({ reservation }) => reservation.uri === relativeUri)
@@ -163,7 +175,9 @@ export function generateStatusListToken(input: {
   const status_list = encodeStatusList(selected.map(({ jti }) => invalidated.has(jti) ? 1 : 0));
   const privateJwk = exactPrivateRsaJwk(input.private_jwk);
   const issuerEpochs = input.state.records
-    .filter(({ record_type, record_id }) => record_type === "audience-key-epoch" && confirmed.has(record_id))
+    .filter(({ record_type, record_id, credential_ledger_generation }) =>
+      record_type === "audience-key-epoch" && confirmed.has(record_id) &&
+      credential_ledger_generation === input.state.credential_ledger.credential_ledger_generation)
     .map(({ payload }) => objectValue(payload))
     .filter((payload): payload is Record<string, JsonValue> => payload !== null && payload.scope === "oidc-issuer-key")
     .sort((left, right) => Number(right.epoch) - Number(left.epoch));
@@ -177,7 +191,14 @@ export function generateStatusListToken(input: {
     throw new Error("oidc-issuer-mismatch: status URI is not bound to the validated ledger persona");
   }
   const protected_header = { alg: "RS256", kid: privateJwk.kid, typ: "statuslist+jwt" } as const;
-  const claims = { sub: input.uri, iat: input.iat, exp: input.exp, ttl: input.ttl, status_list };
+  const claims = {
+    ...input.state.credential_ledger,
+    sub: input.uri,
+    iat: input.iat,
+    exp: input.exp,
+    ttl: input.ttl,
+    status_list,
+  };
   const compact = signCompact(protected_header, claims, privateJwk);
   return { protected_header, claims, media_type: STATUS_LIST_MEDIA_TYPE, compact };
 }
@@ -193,6 +214,24 @@ export function validateTokenStatus(
   try {
     assertValidatedProjectedJwtContext(referencedJwt);
     assertValidatedContinuityChain(continuity);
+    const expectedCredentialLedger = {
+      credential_ledger_persona: referencedJwt.claims.credential_ledger_persona,
+      credential_ledger_generation: referencedJwt.claims.credential_ledger_generation,
+    };
+    if (!isCredentialLedgerBinding(expectedCredentialLedger)) return denied("oidc-token-type-invalid");
+    if (!Object.prototype.hasOwnProperty.call(
+      statusListJwt.claims,
+      "credential_ledger_generation",
+    )) {
+      return denied("credential_generation_missing");
+    }
+    if (typeof statusListJwt.claims.credential_ledger_persona !== "string" ||
+        !SHA256_HEX.test(statusListJwt.claims.credential_ledger_persona) ||
+        typeof statusListJwt.claims.credential_ledger_generation !== "number" ||
+        !Number.isSafeInteger(statusListJwt.claims.credential_ledger_generation) ||
+        statusListJwt.claims.credential_ledger_generation < 0) {
+      return denied("oidc-status-invalid");
+    }
     requireSafeTime(now, "validation time");
     requireFiniteTime(resolvedAt, "status resolution time");
     if (!Number.isSafeInteger(referencedJwt.claims.iat) || !Number.isSafeInteger(referencedJwt.claims.exp) ||
@@ -219,6 +258,8 @@ export function validateTokenStatus(
         jcsCanonicalize(parsed.claims) !== jcsCanonicalize(statusListJwt.claims) ||
         statusListJwt.media_type !== STATUS_LIST_MEDIA_TYPE) return denied("oidc-status-invalid");
     const claims = parsed.claims;
+    const generation = evaluateCredentialGeneration(claims, expectedCredentialLedger);
+    if (!generation.valid) return denied(generation.reason_code);
     if (claims.sub !== reference.uri || claims.sub !== currentStatus.uri ||
         !Number.isSafeInteger(claims.iat) || !Number.isSafeInteger(claims.exp) ||
         typeof claims.ttl !== "number" || !Number.isFinite(claims.ttl) || claims.ttl <= 0 || resolvedAt > now ||
@@ -599,7 +640,15 @@ function verifyStatusListCompact(compact: string, jwks: JsonValue): {
       !verify("RSA-SHA256", Buffer.from(`${segments[0]}.${segments[1]}`), publicKey, Buffer.from(segments[2], "base64url"))) {
     throw new Error("signature");
   }
-  if (jcsCanonicalize(Object.keys(claims).sort()) !== jcsCanonicalize(["exp", "iat", "status_list", "sub", "ttl"])) throw new Error("claims");
+  if (jcsCanonicalize(Object.keys(claims).sort()) !== jcsCanonicalize([
+    "credential_ledger_generation",
+    "credential_ledger_persona",
+    "exp",
+    "iat",
+    "status_list",
+    "sub",
+    "ttl",
+  ])) throw new Error("claims");
   return { header, claims };
 }
 

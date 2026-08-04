@@ -14,7 +14,7 @@
   "direction": "consume",
   "input": {
     "semantic_body": {
-      "claim_id": "e70e59f8cac5a5f889f016f6765fcbc364131c0916997a286664c8958dac81b2",
+      "claim_id": "a71a4f6c9c6ec2c418fb2fae5f3b0a588961ca0bdc1cf0c5f2c63bd9caeee6fd",
       "issuer": {
         "type": "nostr-secp256k1",
         "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -24,6 +24,8 @@
         "value": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
       },
       "claim_class": "authorization",
+      "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "credential_ledger_generation": 0,
       "namespace": "heterodyne.device",
       "name": "claim-ledger-reader",
       "value": false,
@@ -40,7 +42,7 @@
       "spec_version": "comms/0.5.0",
       "registry_revision": 2
     },
-    "retained_claim_id": "e70e59f8cac5a5f889f016f6765fcbc364131c0916997a286664c8958dac81b2",
+    "retained_claim_id": "a71a4f6c9c6ec2c418fb2fae5f3b0a588961ca0bdc1cf0c5f2c63bd9caeee6fd",
     "vector_context": {
       "decision_trace": [
         "parse_canonical_bytes",

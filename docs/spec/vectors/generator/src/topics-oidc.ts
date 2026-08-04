@@ -147,7 +147,14 @@ export async function buildOidcScenario(
   };
   const evidenceFor = (record: LedgerRecord, claim: typeof dataClaim): LedgerRecordValidationEvidence => ({
     record_id: record.record_id, payload_digest: record.payload_digest,
-    claim_envelope_context: { issuer_authorized: true, registry_revision: 2 },
+    claim_envelope_context: {
+      issuer_authorized: true,
+      registry_revision: 2,
+      credential_ledger: {
+        credential_ledger_persona: s.persona,
+        credential_ledger_generation: 0,
+      },
+    },
     claims_by_id: new Map(allClaims),
     claim_verification_context: verificationFor(claim, claim.artifact.semantic.resources![0]),
   });
@@ -188,6 +195,7 @@ export async function buildOidcScenario(
   ].sort();
   const now = s.now + 69;
   const issuance: IssuanceRecord = {
+    credential_ledger_generation: 0,
     jti: "oidc-evidence-jti-0001",
     reservation: reserveStatusIndex(s.writerOne.did_key, now + 600, 0, []),
     checkpoint: preMintRepository.checkpoint,
@@ -270,33 +278,46 @@ export function replayOidcVector(input: unknown): unknown {
     const replay = decodeClaimLedgerReplayValue(spec.replay);
     const state = mergeClaimLedger(replay.records, [], replay.checkpoint, replay.context);
     const request = { ...replay.request, state } as OidcAuthorizationRequest;
+    const credential_ledger = state.credential_ledger;
     const code = issueAuthorizationCode(request, replay.now);
     const consumed = new Set<string>();
     const first = redeemAuthorizationCode(code, { code: code.code, client_id: request.client_id,
-      redirect_uri: request.redirect_uri!, code_verifier: replay.code_verifier, now: replay.now + 1 }, consumed);
+      redirect_uri: request.redirect_uri!, code_verifier: replay.code_verifier, now: replay.now + 1,
+      credential_ledger }, consumed);
     const second = redeemAuthorizationCode(code, { code: code.code, client_id: request.client_id,
-      redirect_uri: request.redirect_uri!, code_verifier: replay.code_verifier, now: replay.now + 2 }, consumed);
+      redirect_uri: request.redirect_uri!, code_verifier: replay.code_verifier, now: replay.now + 2,
+      credential_ledger }, consumed);
     const codeMutations = {
       wrong_client: redeemAuthorizationCode(code, { code: code.code, client_id: "wrong-client",
-        redirect_uri: request.redirect_uri!, code_verifier: replay.code_verifier, now: replay.now + 1 }, new Set()),
+        redirect_uri: request.redirect_uri!, code_verifier: replay.code_verifier, now: replay.now + 1,
+        credential_ledger }, new Set()),
       wrong_redirect: redeemAuthorizationCode(code, { code: code.code, client_id: request.client_id,
-        redirect_uri: "https://client.example/wrong", code_verifier: replay.code_verifier, now: replay.now + 1 }, new Set()),
+        redirect_uri: "https://client.example/wrong", code_verifier: replay.code_verifier, now: replay.now + 1,
+        credential_ledger }, new Set()),
       wrong_verifier: redeemAuthorizationCode(code, { code: code.code, client_id: request.client_id,
-        redirect_uri: request.redirect_uri!, code_verifier: `${replay.code_verifier}x`, now: replay.now + 1 }, new Set()),
+        redirect_uri: request.redirect_uri!, code_verifier: `${replay.code_verifier}x`, now: replay.now + 1,
+        credential_ledger }, new Set()),
       expired: redeemAuthorizationCode(code, { code: code.code, client_id: request.client_id,
-        redirect_uri: request.redirect_uri!, code_verifier: replay.code_verifier, now: code.expires_at }, new Set()),
+        redirect_uri: request.redirect_uri!, code_verifier: replay.code_verifier, now: code.expires_at,
+        credential_ledger }, new Set()),
     };
     const deviceRequest = { ...request, flow: "device_authorization", grant_type: "urn:ietf:params:oauth:grant-type:device_code",
       response_type: undefined, redirect_uri: undefined, code_challenge: undefined, code_challenge_method: undefined } as OidcAuthorizationRequest;
     let device = issueDeviceAuthorization(deviceRequest, replay.now);
-    const pending = redeemDeviceCode(device, { device_code: device.device_code, client_id: device.client_id, now: replay.now + 1 });
-    const slow = redeemDeviceCode(pending.record, { device_code: device.device_code, client_id: device.client_id, now: replay.now + 2 });
-    device = decideDeviceAuthorization(slow.record, "approve", replay.now + 3);
-    const success = redeemDeviceCode(device, { device_code: device.device_code, client_id: device.client_id, now: replay.now + 20 });
-    const deniedRecord = decideDeviceAuthorization(issueDeviceAuthorization(deviceRequest, replay.now), "deny", replay.now + 1);
-    const denied = redeemDeviceCode(deniedRecord, { device_code: deniedRecord.device_code, client_id: deniedRecord.client_id, now: replay.now + 2 });
+    const pending = redeemDeviceCode(device, { device_code: device.device_code, client_id: device.client_id,
+      now: replay.now + 1, credential_ledger });
+    const slow = redeemDeviceCode(pending.record, { device_code: device.device_code, client_id: device.client_id,
+      now: replay.now + 2, credential_ledger });
+    device = decideDeviceAuthorization(slow.record, "approve", replay.now + 3, credential_ledger);
+    const success = redeemDeviceCode(device, { device_code: device.device_code, client_id: device.client_id,
+      now: replay.now + 20, credential_ledger });
+    const deniedRecord = decideDeviceAuthorization(issueDeviceAuthorization(deviceRequest, replay.now), "deny",
+      replay.now + 1, credential_ledger);
+    const denied = redeemDeviceCode(deniedRecord, { device_code: deniedRecord.device_code,
+      client_id: deniedRecord.client_id, now: replay.now + 2, credential_ledger });
     const expiring = issueDeviceAuthorization(deviceRequest, replay.now, 1);
-    const expired = redeemDeviceCode(expiring, { device_code: expiring.device_code, client_id: expiring.client_id, now: replay.now + 1 });
+    const expired = redeemDeviceCode(expiring, { device_code: expiring.device_code,
+      client_id: expiring.client_id, now: replay.now + 1, credential_ledger });
     const { nonce: _nonce, ...requestWithoutNonce } = request;
     const nonceMutations = {
       missing: validateAuthorizationRequest(requestWithoutNonce as OidcAuthorizationRequest),
@@ -483,7 +504,12 @@ export async function buildOidcVectors(fixtures: Fixtures): Promise<AuthoredVect
           : "heterodyne:comms/0.5.0#comms-jwt-projection",
     ],
       description, input, expected_output: replayOidcVector(input) as Record<string, unknown> });
-  const common = { now: x.issuance.issued_at, client_id: CLIENT.client_id, permitted_audiences: [API] };
+  const common = {
+    now: x.issuance.issued_at,
+    client_id: CLIENT.client_id,
+    permitted_audiences: [API],
+    credential_ledger: x.issuedState.credential_ledger,
+  };
   const statusCommon = { ...common, now: statusToken.claims.iat };
   const accessAsId = jwtInput(legacyAccess, { ...common, token_use: "id_token", nonce: "oidc-vector-nonce", sender_constraint: "none" });
   const jwtCases = (token: typeof id, cases: Array<{ expected_audience: string; options: JwtValidationOptions }>): ReplayInput => ({
@@ -965,7 +991,8 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
     private_jwk: OIDC_RSA_TWO.private_jwk, iat: rotatedState.checkpoint.observed_at,
     exp: x.issuance.expires_at, ttl: 120 });
   const options: JwtValidationOptions = { now: x.issuance.issued_at, token_use: "access_token",
-    client_id: CLIENT.client_id, sender_constraint: "none", permitted_audiences: [API] };
+    client_id: CLIENT.client_id, sender_constraint: "none", permitted_audiences: [API],
+    credential_ledger: x.issuedState.credential_ledger };
   const expectedDecision = (verdict: "accept" | "reject", reason_code: string | null): MutationObservation =>
     ({ kind: "decision", verdict, reason_code });
   const expectedBytes = (bytes_hex: string): MutationObservation => ({ kind: "status-bytes", bytes_hex });

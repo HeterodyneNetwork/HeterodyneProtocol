@@ -1,0 +1,67 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+  ],
+  "vector_id": "credential-continuity/retention-inventory-genesis",
+  "description": "The draft signed retention inventory activates only at its exact target and complete parent frontier.",
+  "direction": "consume",
+  "input": {
+    "parents": [],
+    "candidate": {
+      "record_digest": "7878787878787878787878787878787878787878787878787878787878787878",
+      "inventory_sequence": 0,
+      "previous_records": [],
+      "basis_checkpoint_digest": null,
+      "target_generation": 0,
+      "target_sequence": 0,
+      "repository_refs": [
+        {
+          "repository_ref_id": "7676767676767676767676767676767676767676767676767676767676767676",
+          "repository_class": "config",
+          "repository_rid": "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5",
+          "ref_name": "refs/heads/enc/11111111111111111111111111111111",
+          "object_format": "sha1",
+          "retired": false,
+          "scan_head": {
+            "object_format": "sha1",
+            "oid": "7777777777777777777777777777777777777777"
+          }
+        }
+      ]
+    },
+    "activated_generation": 0,
+    "activated_sequence": 0,
+    "ancestry_projection": "equal"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "draft_credential_continuity_decision": {
+        "verdict": "accept",
+        "effective_refs": [
+          {
+            "repository_ref_id": "7676767676767676767676767676767676767676767676767676767676767676",
+            "repository_class": "config",
+            "repository_rid": "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5",
+            "ref_name": "refs/heads/enc/11111111111111111111111111111111",
+            "object_format": "sha1",
+            "retired": false,
+            "scan_head": {
+              "object_format": "sha1",
+              "oid": "7777777777777777777777777777777777777777"
+            }
+          }
+        ]
+      },
+      "selected_registry_revision": 3,
+      "conformance_claimable": false
+    }
+  }
+}

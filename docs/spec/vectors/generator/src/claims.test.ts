@@ -38,11 +38,16 @@ const epoch = fixtures.personas.alice.epoch_keys.epoch_1;
 const device = fixtures.ed25519_nids.alice_device_1;
 const auxRand = fixtures.pinned_randomness.schnorr_aux_rand;
 const issuedAt = 1784390400;
+const credentialLedger = {
+  credential_ledger_persona: fixtures.personas.alice.cold_root.pubkey,
+  credential_ledger_generation: 0,
+};
 
 const semanticWithoutId = () => ({
   issuer: { type: "nostr-secp256k1" as const, value: epoch.pubkey },
   subject: { type: "radicle-ed25519-nid" as const, value: device.did_key },
   claim_class: "authorization" as const,
+  ...credentialLedger,
   namespace: "heterodyne.device",
   name: "claim-ledger-reader",
   value: true,
@@ -87,7 +92,11 @@ describe("canonical key claims", () => {
       tags: addressTags(body.claim_id),
       content: jcsCanonicalize(body),
     });
-    expect(validateClaimEnvelope(event, { issuer_authorized: true, registry_revision: 2 })).toEqual(body);
+    expect(validateClaimEnvelope(event, {
+      issuer_authorized: true,
+      registry_revision: 2,
+      credential_ledger: credentialLedger,
+    })).toEqual(body);
   });
 
   it("rejects non-canonical content, duplicate addresses, bad signatures, and failed Core authority", async () => {
@@ -116,11 +125,19 @@ describe("canonical key claims", () => {
       tags: [["d", body.claim_id], ["d", body.claim_id]],
       content: jcsCanonicalize(body),
     });
-    expect(() => validateClaimEnvelope(nonCanonical, { issuer_authorized: true, registry_revision: 2 })).toThrow(/canonical/);
-    expect(() => validateClaimEnvelope(duplicate, { issuer_authorized: true, registry_revision: 2 })).toThrow(/exactly.*d/i);
+    expect(() => validateClaimEnvelope(nonCanonical, {
+      issuer_authorized: true, registry_revision: 2, credential_ledger: credentialLedger,
+    })).toThrow(/canonical/);
+    expect(() => validateClaimEnvelope(duplicate, {
+      issuer_authorized: true, registry_revision: 2, credential_ledger: credentialLedger,
+    })).toThrow(/exactly.*d/i);
     const badSignature = `${valid.sig[0] === "0" ? "1" : "0"}${valid.sig.slice(1)}`;
-    expect(() => validateClaimEnvelope({ ...valid, sig: badSignature }, { issuer_authorized: true, registry_revision: 2 })).toThrow(/signature/);
-    expect(() => validateClaimEnvelope(valid, { issuer_authorized: false, registry_revision: 2 })).toThrow(/authority/);
+    expect(() => validateClaimEnvelope({ ...valid, sig: badSignature }, {
+      issuer_authorized: true, registry_revision: 2, credential_ledger: credentialLedger,
+    })).toThrow(/signature/);
+    expect(() => validateClaimEnvelope(valid, {
+      issuer_authorized: false, registry_revision: 2, credential_ledger: credentialLedger,
+    })).toThrow(/authority/);
   });
 
   it("accepts only byte-identical semantic bodies at an existing address", async () => {
@@ -136,11 +153,13 @@ describe("canonical key claims", () => {
     expect(validateClaimEnvelope(event, {
       issuer_authorized: true,
       registry_revision: 2,
+      credential_ledger: credentialLedger,
       existing_semantic_body: structuredClone(body),
     })).toEqual(body);
     expect(() => validateClaimEnvelope(event, {
       issuer_authorized: true,
       registry_revision: 2,
+      credential_ledger: credentialLedger,
       existing_semantic_body: { ...body, value: false },
     })).toThrow(/identical/);
   });
@@ -155,7 +174,9 @@ describe("canonical key claims", () => {
       tags: addressTags(invalidNidBody.claim_id),
       content: jcsCanonicalize(invalidNidBody),
     });
-    expect(() => validateClaimEnvelope(invalidNid, { issuer_authorized: true, registry_revision: 2 })).toThrow(/NID|did:key/);
+    expect(() => validateClaimEnvelope(invalidNid, {
+      issuer_authorized: true, registry_revision: 2, credential_ledger: credentialLedger,
+    })).toThrow(/NID|did:key/);
 
     const body = semanticBody();
     const mismatched = await signEvent({
@@ -166,7 +187,9 @@ describe("canonical key claims", () => {
       tags: addressTags(body.claim_id),
       content: jcsCanonicalize(body),
     });
-    expect(() => validateClaimEnvelope(mismatched, { issuer_authorized: true, registry_revision: 2 })).toThrow(/signer.*issuer/);
+    expect(() => validateClaimEnvelope(mismatched, {
+      issuer_authorized: true, registry_revision: 2, credential_ledger: credentialLedger,
+    })).toThrow(/signer.*issuer/);
   });
 
   it("rejects noncanonical or non-SHA-256 JWK thumbprint references", () => {
@@ -246,7 +269,7 @@ describe("claim revocation envelopes", () => {
         created_at: issuedAt,
         content: jcsCanonicalize(claim),
         validate: (event: NostrSignedEvent) => validateClaimEnvelope(event, {
-          issuer_authorized: true, registry_revision: 2,
+          issuer_authorized: true, registry_revision: 2, credential_ledger: credentialLedger,
         }),
       },
       {
@@ -540,7 +563,9 @@ describe("closed NIP-01 claim and revocation event structure", () => {
         created_at: issuedAt,
         tags: [["d", claim.claim_id]],
         content: jcsCanonicalize(claim),
-        validate: (event: NostrSignedEvent) => validateClaimEnvelope(event, { issuer_authorized: true, registry_revision: 2 }),
+        validate: (event: NostrSignedEvent) => validateClaimEnvelope(event, {
+          issuer_authorized: true, registry_revision: 2, credential_ledger: credentialLedger,
+        }),
       },
       {
         kind: 31014,
@@ -609,6 +634,10 @@ describe("claim trust, attenuation, and authorization state", () => {
       issuer: rootIssuer,
       subject,
       claim_class: "authorization",
+      credential_ledger_persona:
+        overrides.claim_class === "descriptive" ? null : credentialLedger.credential_ledger_persona,
+      credential_ledger_generation:
+        overrides.claim_class === "descriptive" ? null : credentialLedger.credential_ledger_generation,
       namespace: "heterodyne.device",
       name: "claim-ledger-reader",
       value: true,
@@ -662,6 +691,8 @@ describe("claim trust, attenuation, and authorization state", () => {
       event_id: eventByte.repeat(32),
       envelope_valid: true,
       core_kel_authority_valid: true,
+      credential_ledger_persona: forClaim.credential_ledger_persona,
+      credential_ledger_generation: forClaim.credential_ledger_generation,
       verified_at: issuedAt + 5,
       valid_until: issuedAt + 300,
     };
@@ -689,6 +720,7 @@ describe("claim trust, attenuation, and authorization state", () => {
       revocations: [],
       subject_proof: { key: forClaim.subject, challenge: proofChallenge, proof: nostrProof(forClaim, proofChallenge) },
       ...overrides,
+      credential_ledger: overrides.credential_ledger ?? credentialLedger,
     };
   }
 
@@ -1316,6 +1348,7 @@ describe("normative claim vector authoring", () => {
       expect(() => validateClaimEnvelope(mutation.event, {
         issuer_authorized: true,
         registry_revision: 2,
+        credential_ledger: credentialLedger,
       })).toThrow(/claim-schema-invalid/);
     }
     const revocationMutations = byId.get("claims/authorization-self-revocation")!

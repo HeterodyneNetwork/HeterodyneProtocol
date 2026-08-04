@@ -1332,6 +1332,97 @@ describe("protocol family documents", () => {
     }
   });
 
+  it("defines all credential-continuity drafts while preserving the revision-4 gate", () => {
+    const text = readFileSync(commsPath, "utf8");
+    for (const anchor of [
+      "comms-credential-continuity-gate",
+      "comms-credential-checkpoints",
+      "comms-secret-inventory",
+      "comms-retention-inventory",
+      "comms-secret-transitions",
+      "comms-emergency-reset",
+      "comms-config-git-structure",
+      "comms-dr-terminalization",
+      "comms-credential-generation",
+    ]) {
+      expect(text).toContain(`<a id="${anchor}"></a>`);
+    }
+    expect(text).toMatch(
+      /\*\*not\*\* active[\s\S]*registry revision 3[\s\S]*MUST NOT advertise, negotiate, require, produce as\s+authoritative, or claim conformance/i,
+    );
+    expect(text).toMatch(
+      /two Core-owned offline\s+recovery schemas[\s\S]*governed-decrypt source-profile\s+catalog[\s\S]*revision-4 conformance evidence/i,
+    );
+    expect(text).toMatch(
+      /conformance_claimable:false[\s\S]*do not establish revision-4 or ADR-038 conformance/i,
+    );
+    expect(text).toMatch(
+      /"persona": "<64 lowercase hex cold-root npub>",\s+"credential_ledger_generation": 0/,
+    );
+    expect(text).toMatch(
+      /claim-ledger-record-v1\.schema\.json[\s\S]*`record_id`, `record_type`, `persona`, `credential_ledger_generation`/,
+    );
+    expect(text).toMatch(
+      /authorization key\s+claim uses both explicit members[\s\S]*descriptive key claim carries both\s+members as JSON `null`/i,
+    );
+    expect(text).toMatch(
+      /authorization-code transaction[\s\S]*`credential_ledger_persona`[\s\S]*`credential_ledger_generation`[\s\S]*emergency reset purges every prior-generation pending code/i,
+    );
+    expect(text).toMatch(
+      /Status List Token[\s\S]*Claims are[\s\S]*`credential_ledger_persona`,\s*`credential_ledger_generation`/i,
+    );
+
+    const schemaNames = [
+      "repository-retention-inventory-v1.schema.json",
+      "governed-decrypt-key-binding-v1.schema.json",
+      "historical-decrypt-obligation-v1.schema.json",
+      "credential-ledger-checkpoint-v1.schema.json",
+      "credential-ledger-checkpoint-receipt-v1.schema.json",
+      "credential-ledger-removal-observation-v1.schema.json",
+      "credential-ledger-candidate-abandonment-v1.schema.json",
+      "credential-ledger-staging-ref-cleanup-v1.schema.json",
+      "credential-ledger-config-key-bootstrap-recipient-array-v1.schema.json",
+      "credential-ledger-emergency-reset-v1.schema.json",
+      "credential-ledger-reset-recipient-array-v1.schema.json",
+      "node-secret-source-v1.schema.json",
+      "node-secret-exposure-v1.schema.json",
+      "credential-ledger-secret-transition-v1.schema.json",
+      "node-secret-transition-action-v1.schema.json",
+      "double-ratchet-session-termination-v1.schema.json",
+      "credential-ledger-lost-generation-path-v1.schema.json",
+      "config-repository-git-structure-v1.schema.json",
+      "double-ratchet-peer-tombstone-rumor-v1.schema.json",
+      "double-ratchet-peer-tombstone-gift-wrap-v1.schema.json",
+    ];
+    expect(schemaNames).toHaveLength(20);
+    const schemaRoot = resolve(repositoryRoot, "docs/spec/schemas/comms");
+    for (const schemaName of schemaNames) {
+      const schema = JSON.parse(
+        readFileSync(resolve(schemaRoot, schemaName), "utf8"),
+      ) as { $schema?: string; $id?: string };
+      expect(schema).toMatchObject({
+        $schema: "http://json-schema.org/draft-07/schema#",
+        $id: `https://heterodyne.network/schemas/comms/${schemaName}`,
+      });
+    }
+
+    const registry = loadRegistry(repositoryRoot);
+    const activeProfiles = registry.kinds.flatMap(({ profiles }) =>
+      profiles.map(({ profile_id }) => profile_id),
+    );
+    for (const profile of [
+      "comms.repository-retention-inventory.v1",
+      "comms.credential-ledger-checkpoint.v1",
+      "comms.credential-ledger-secret-transition.v1",
+      "heterodyne-comms-double-ratchet-peer-tombstone-v1",
+    ]) {
+      expect(activeProfiles).not.toContain(profile);
+    }
+    expect(
+      existsSync(resolve(repositoryRoot, "docs/spec/registry/history/4.json")),
+    ).toBe(false);
+  });
+
   it("defines closed draft enrollment, grants, RPC, lifecycle, and MCP without a Control wire stamp", () => {
     const text = readFileSync(controlPath, "utf8");
     for (const anchor of [
@@ -2551,10 +2642,17 @@ describe("protocol family documents", () => {
     for (const { registry_revision: revision } of coverage) counts.set(revision, (counts.get(revision) ?? 0) + 1);
 
     expect(readme).toContain('"registry_revision": "<pinned-registry-revision>"');
-    expect(readme).toContain(`${counts.get(1)} immutable registry-revision-1 vectors`);
-    expect(readme).toContain(`${counts.get(2)} ADR-034 registry-revision-2 vectors`);
-    expect(readme).toContain(
-      `${counts.get(3)}\nADR-030/ADR-035/ADR-036 registry-revision-3 vectors`,
+    expect(readme).toMatch(
+      new RegExp(`${counts.get(1)} immutable\\s+registry-revision-1 vectors`),
+    );
+    expect(readme).toMatch(
+      new RegExp(`${counts.get(2)} ADR-034 registry-revision-2 vectors`),
+    );
+    expect(readme).toMatch(
+      new RegExp(`${counts.get(3)}\\s+registry-revision-3 vectors`),
+    );
+    expect(readme).toMatch(
+      /159 cover\s+ADR-030\/ADR-035\/ADR-036 behavior and 11 are ADR-037 credential-continuity\s+draft outer evaluations[\s\S]*`conformance_claimable:false`[\s\S]*do not activate or claim the gated\s+profiles/i,
     );
     expect(readme).toMatch(/historical vectors[\s\S]*MUST NOT[\s\S]*rewritten/i);
   });

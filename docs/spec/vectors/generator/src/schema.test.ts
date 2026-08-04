@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  CREDENTIAL_CONTINUITY_SCHEMA_FILES,
+  CREDENTIAL_CONTINUITY_SCHEMAS,
   validateClaimRevocationSchemaOrThrow,
+  validateCredentialContinuitySchemaOrThrow,
   validateKeyClaimSchemaOrThrow,
   validateVectorOrThrow,
 } from "./schema.js";
@@ -182,6 +185,21 @@ describe("vector schema", () => {
   });
 });
 
+describe("gated credential-continuity schema registry", () => {
+  it("loads exactly the twenty ADR-037 Comms schemas without activating a profile", () => {
+    expect(CREDENTIAL_CONTINUITY_SCHEMA_FILES).toHaveLength(20);
+    for (const file of CREDENTIAL_CONTINUITY_SCHEMA_FILES) {
+      expect(CREDENTIAL_CONTINUITY_SCHEMAS[file]).toMatchObject({
+        $schema: "http://json-schema.org/draft-07/schema#",
+        $id: `https://heterodyne.network/schemas/comms/${file}`,
+      });
+      expect(() =>
+        validateCredentialContinuitySchemaOrThrow(file, {}),
+      ).toThrow(/credential-continuity-schema-invalid/);
+    }
+  });
+});
+
 describe("Comms claim schemas", () => {
   const key = { type: "nostr-secp256k1", value: "12".repeat(32) };
   const base = {
@@ -198,6 +216,8 @@ describe("Comms claim schemas", () => {
     visibility: "repository-private",
     spec_version: "comms/0.5.0",
     registry_revision: 2,
+    credential_ledger_persona: "34".repeat(32),
+    credential_ledger_generation: 0,
   };
 
   it("accepts exact claims and rejects extra properties", () => {

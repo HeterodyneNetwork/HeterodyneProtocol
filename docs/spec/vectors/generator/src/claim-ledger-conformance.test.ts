@@ -65,6 +65,7 @@ describe("canonical evaluation time and confirmation", () => {
     const lateReduction = createSignedLedgerRecord({
       record_type: "authority-reduction",
       persona: s.persona,
+      credential_ledger_generation: 0,
       writer_nid: s.writerTwo.did_key,
       created_at: s.baseRepository.checkpoint.observed_at + 10,
       parents: [s.claimRecordOne.record_id],
@@ -123,6 +124,7 @@ describe("canonical evaluation time and confirmation", () => {
     const epochRecord = createSignedLedgerRecord({
       record_type: "audience-key-epoch",
       persona: s.persona,
+      credential_ledger_generation: 0,
       writer_nid: s.writerTwo.did_key,
       created_at: s.now + 51,
       parents: [s.issuerAuthorityRecordOne.record_id, s.issuerAuthorityRecordTwo.record_id].sort(),
@@ -144,6 +146,7 @@ describe("canonical evaluation time and confirmation", () => {
     const issuance = createSignedLedgerRecord({
       record_type: "issuance-reservation",
       persona: s.persona,
+      credential_ledger_generation: 0,
       writer_nid: s.writerOne.did_key,
       created_at: s.now + 60,
       parents: [],
@@ -159,6 +162,7 @@ describe("canonical evaluation time and confirmation", () => {
     const independentStatus = createSignedLedgerRecord({
       record_type: "status-invalidation",
       persona: s.persona,
+      credential_ledger_generation: 0,
       writer_nid: s.writerTwo.did_key,
       created_at: s.now + 71,
       parents: [issuance.record_id],
@@ -233,6 +237,7 @@ describe("canonical evaluation time and confirmation", () => {
     const lateReduction = createSignedLedgerRecord({
       record_type: "authority-reduction",
       persona: s.persona,
+      credential_ledger_generation: 0,
       writer_nid: s.writerTwo.did_key,
       created_at: checkpoint + 10,
       parents: [s.claimRecordOne.record_id],
@@ -253,6 +258,7 @@ describe("canonical evaluation time and confirmation", () => {
     const grantOnly = createSignedLedgerRecord({
       record_type: "reader-change",
       persona: s.persona,
+      credential_ledger_generation: 0,
       writer_nid: s.writerOne.did_key,
       created_at: s.grantOne.created_at,
       parents: [],
@@ -295,6 +301,7 @@ describe("exhaustive readers and canonical key epochs", () => {
     const epoch = createSignedLedgerRecord({
       record_type: "audience-key-epoch",
       persona: s.persona,
+      credential_ledger_generation: 0,
       writer_nid: s.writerTwo.did_key,
       created_at: s.now + 51,
       parents: [s.claimRecordOne.record_id, s.claimRecordTwo.record_id],
@@ -348,6 +355,7 @@ describe("exhaustive readers and canonical key epochs", () => {
     const epoch = createSignedLedgerRecord({
       record_type: "audience-key-epoch",
       persona: s.persona,
+      credential_ledger_generation: 0,
       writer_nid: s.writerTwo.did_key,
       created_at: s.now + 61,
       parents: [s.epochOneRecord.record_id, s.removalRecord.record_id],

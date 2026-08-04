@@ -16,9 +16,10 @@
     "active_merge": {
       "left": [
         {
-          "record_id": "adbb03a2f90a532d16fc8d114326b117f537179b86c76e11ba40ab8d34d98c91",
+          "record_id": "fcb0a87071529a68c66bf2a92221e9011387449d3cba404d966d5f9ba9885651",
           "record_type": "claim",
           "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+          "credential_ledger_generation": 0,
           "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
           "created_at": 1767245601,
           "parents": [],
@@ -31,15 +32,15 @@
                 "tags": [
                   [
                     "d",
-                    "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1"
+                    "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957"
                   ]
                 ],
-                "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1\",\"expires_at\":1767249200,\"issued_at\":1767245600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767245600,\"registry_revision\":2,\"resources\":[\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger\"],\"spec_version\":\"comms/0.5.0\",\"subject\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"},\"value\":true,\"visibility\":\"repository-private\"}",
-                "id": "35eac45eadb3a4120abd7fdde0d5216268f939025fa40c601b7b083ecb6b33af",
-                "sig": "753450bf1f676310153772165f5fb13546e783ad91adfda75c2334d53a80671ae3a416c227552386943bb7366d54ca743c2b4991c49cdb54a471a740b633215f"
+                "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957\",\"credential_ledger_generation\":0,\"credential_ledger_persona\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"expires_at\":1767249200,\"issued_at\":1767245600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767245600,\"registry_revision\":2,\"resources\":[\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger\"],\"spec_version\":\"comms/0.5.0\",\"subject\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"},\"value\":true,\"visibility\":\"repository-private\"}",
+                "id": "86ba8daa10b6cd986a34d7d8928648aa3bf643b500dcb6ca0ce33c1cd9442bf1",
+                "sig": "391bc20150bf441d73f022f7871415f66dd830d42ab13ef648a99e3e823a008f72ba0d4c37d2b3a2793c1e7195e1d062298f3b0c62fe591ee860efc5a199fe96"
               },
               "semantic": {
-                "claim_id": "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                "claim_id": "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                 "issuer": {
                   "type": "nostr-secp256k1",
                   "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -49,6 +50,8 @@
                   "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                 },
                 "claim_class": "authorization",
+                "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                "credential_ledger_generation": 0,
                 "namespace": "heterodyne.device",
                 "name": "claim-ledger-reader",
                 "value": true,
@@ -67,13 +70,14 @@
               }
             }
           },
-          "payload_digest": "a667249c5d9526b039162005896517ef4fee2510ad909a9d7daf9b9d403fbea2",
-          "signature": "29b719032cc8f3abac0953aa097eefa8a2a4be6a2344148bb61d9b75975facfa1e21de40da770c12fafae03f411edd98cb6bfb8994c5b57034312b75933dea09"
+          "payload_digest": "6a2d4eff02cae1532031a9420b9861afda7dd1a513a2bf90a5f401371f0585a1",
+          "signature": "93a44e4a1030dd5b02b56aecaa41adc539c06abc1cea36c74dbb95b9a36f556e46019b13884b7d9e63a25f5507d8082c046adb1a238d3a9cda26895b0925380e"
         },
         {
-          "record_id": "7cb7e2d1c9ebd5eb675d7bd0ec18d82bddc1b0c1c2053f56397b6dc40ce3a83e",
+          "record_id": "7af17739ceb9aebbaee6f129b9761992155259ba4c22c068e8f6d1274144a847",
           "record_type": "claim",
           "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+          "credential_ledger_generation": 0,
           "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
           "created_at": 1767245601,
           "parents": [],
@@ -86,15 +90,15 @@
                 "tags": [
                   [
                     "d",
-                    "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df"
+                    "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf"
                   ]
                 ],
-                "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df\",\"expires_at\":1767249200,\"issued_at\":1767245600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767245600,\"registry_revision\":2,\"resources\":[\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger\"],\"spec_version\":\"comms/0.5.0\",\"subject\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx\"},\"value\":true,\"visibility\":\"repository-private\"}",
-                "id": "bd00e7f794b2ff4bd89f21d510e3bbf55ebac3877f56b2dfe31624e33806abc2",
-                "sig": "6f7fd4ded123928c6c94b59b4e0a8ca0a7641f70d967e3c4ca90af96786bad8ea5c7ab3487320817df58285934604bce24e28a0ddf14e5678a91995e55c76700"
+                "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf\",\"credential_ledger_generation\":0,\"credential_ledger_persona\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"expires_at\":1767249200,\"issued_at\":1767245600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767245600,\"registry_revision\":2,\"resources\":[\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger\"],\"spec_version\":\"comms/0.5.0\",\"subject\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx\"},\"value\":true,\"visibility\":\"repository-private\"}",
+                "id": "99dbcfedacc13a2c4c65d427d2851b27823b789ca9b69b573b70e864944e817a",
+                "sig": "e75c2502f4925842f86b6af41631ba392c5f100756dc883e8bc2624ce4563e0cb1b160185684eadf94b66c0b72d915f5dbfd45346536203e5555da811e9cd42f"
               },
               "semantic": {
-                "claim_id": "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                "claim_id": "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                 "issuer": {
                   "type": "nostr-secp256k1",
                   "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -104,6 +108,8 @@
                   "value": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
                 },
                 "claim_class": "authorization",
+                "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                "credential_ledger_generation": 0,
                 "namespace": "heterodyne.device",
                 "name": "claim-ledger-reader",
                 "value": true,
@@ -122,13 +128,14 @@
               }
             }
           },
-          "payload_digest": "ed6f2258fe4fd8fee26e87c931f93cc6ea7bd65310489c3f3e3188d561a00031",
-          "signature": "7dc237e7dcfd71f3124d05bf1eee93f5f2c28345b89d844fb509a2dc3e3f466ade1ea1c1a6afa739d99dba92aa493f2588ba085b143fbdfcdc69553721a02c0c"
+          "payload_digest": "0ec9904d59f2f8c46f265cc7b6e865972f1a81d53ad2bf5a5b6478ec3639d52f",
+          "signature": "306c9b9368c4a4b8b642b4abee9b7a014866a70976356b6b0a69eb6f07ba4cfc02ace2f4c8370b520feba777b900e84e3dd3f6c7efbcaf25485a82a4bd85c105"
         },
         {
-          "record_id": "9080beda898cb13601c692944d53725bb90527472a636d97a386766a8ca17656",
+          "record_id": "33c714c4f730382893e6349fc81c4a5f302713c37757db0b6ac909088569344b",
           "record_type": "claim",
           "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+          "credential_ledger_generation": 0,
           "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
           "created_at": 1767245601,
           "parents": [],
@@ -141,15 +148,15 @@
                 "tags": [
                   [
                     "d",
-                    "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce"
+                    "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72"
                   ]
                 ],
-                "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce\",\"expires_at\":1767249200,\"issued_at\":1767245600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"oidc-token-issuer\",\"namespace\":\"heterodyne.device\",\"not_before\":1767245600,\"registry_revision\":2,\"resources\":[\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#oidc-issuer\"],\"spec_version\":\"comms/0.5.0\",\"subject\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"},\"value\":true,\"visibility\":\"repository-private\"}",
-                "id": "51c004f348d8bf9c3cc5b8764aab6d2300e8e51a51cb057bed0a38ebed242519",
-                "sig": "19452d6ee2a2eec11c832bbeba5da52241264e22442076f8bdffbf95a0bd61a8e02d09613e879339c26149bc9e304bc4b3e370c21522b876180bbe334614b0c5"
+                "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72\",\"credential_ledger_generation\":0,\"credential_ledger_persona\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"expires_at\":1767249200,\"issued_at\":1767245600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"oidc-token-issuer\",\"namespace\":\"heterodyne.device\",\"not_before\":1767245600,\"registry_revision\":2,\"resources\":[\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#oidc-issuer\"],\"spec_version\":\"comms/0.5.0\",\"subject\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"},\"value\":true,\"visibility\":\"repository-private\"}",
+                "id": "4b23aa3cb6c55a38c82f1917ef94210fd0ccbc4d21a0ec85e37b03fa0b060d10",
+                "sig": "b5716806ea567d391be03d1a221b26c19ba6f922bcbad46aa6a1b79fd4eedde33d297d22fd4f8e1e19263b15661f891ea2b2121e174ad5f6180cbc7766befbcc"
               },
               "semantic": {
-                "claim_id": "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                "claim_id": "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                 "issuer": {
                   "type": "nostr-secp256k1",
                   "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -159,6 +166,8 @@
                   "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                 },
                 "claim_class": "authorization",
+                "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                "credential_ledger_generation": 0,
                 "namespace": "heterodyne.device",
                 "name": "oidc-token-issuer",
                 "value": true,
@@ -177,13 +186,14 @@
               }
             }
           },
-          "payload_digest": "78fac98ac35a5e5774653bb9e2226d13dc0afa076befb6f84b4b9f3c69915ff8",
-          "signature": "f9fd8179740c307f38bf53bb94dad2cb9c15caf4336e3f32529d4748a2b611b77cba131aafcd609814dd1825a406db734d2c484800d55be057b477cb8e95960f"
+          "payload_digest": "c2574fd49fec69b17bd6f24d1bc84a6ee164a99ae1beaa14fe2ce56541322122",
+          "signature": "1a23dab66f09e119ebffc04d3c003592bbdd15b1cb9d3d3132c826ff867d03facba3efa3b4b7b3f79e3b3968bc49fe14fa8bde3dac629233424b058e4cdb5501"
         },
         {
-          "record_id": "385c13b4f95a5381bd2a9c3261d43d16c793870d30cad7f81344229ce1eba10d",
+          "record_id": "b64c4e4cf8519bed884cb124d546462ffb3976ce916f2a9d87a96fd09b18a71d",
           "record_type": "claim",
           "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+          "credential_ledger_generation": 0,
           "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
           "created_at": 1767245601,
           "parents": [],
@@ -196,15 +206,15 @@
                 "tags": [
                   [
                     "d",
-                    "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae"
+                    "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44"
                   ]
                 ],
-                "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae\",\"expires_at\":1767249200,\"issued_at\":1767245600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"oidc-token-issuer\",\"namespace\":\"heterodyne.device\",\"not_before\":1767245600,\"registry_revision\":2,\"resources\":[\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#oidc-issuer\"],\"spec_version\":\"comms/0.5.0\",\"subject\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx\"},\"value\":true,\"visibility\":\"repository-private\"}",
-                "id": "e885bcbd6ce561c1a642eefcc2cdb63f24bca2261ed1bffc8feff85f350effe7",
-                "sig": "254478f0ef096dc9248212973344d59c3ee00e8538f497d266d60a4dad54055d678a7544e1f9c51cd47f1bb0483b2f70064bb0ea56dbd44d9a485f21c0c01547"
+                "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44\",\"credential_ledger_generation\":0,\"credential_ledger_persona\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"expires_at\":1767249200,\"issued_at\":1767245600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"oidc-token-issuer\",\"namespace\":\"heterodyne.device\",\"not_before\":1767245600,\"registry_revision\":2,\"resources\":[\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#oidc-issuer\"],\"spec_version\":\"comms/0.5.0\",\"subject\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx\"},\"value\":true,\"visibility\":\"repository-private\"}",
+                "id": "67660f039a557efa74694ff8e6c26c62ee43acfe7df86064200527c21b555026",
+                "sig": "21fe87d5555bd56c0c9b13dfad0821a766c0408b9c1e047f915c80faae0f77f8ebdf86cb22be6191d698e468ffe981ca16cea1cc0f278ce8dc358b99085b17ec"
               },
               "semantic": {
-                "claim_id": "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae",
+                "claim_id": "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44",
                 "issuer": {
                   "type": "nostr-secp256k1",
                   "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -214,6 +224,8 @@
                   "value": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
                 },
                 "claim_class": "authorization",
+                "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                "credential_ledger_generation": 0,
                 "namespace": "heterodyne.device",
                 "name": "oidc-token-issuer",
                 "value": true,
@@ -232,17 +244,18 @@
               }
             }
           },
-          "payload_digest": "82d015587cf231ddd7c974a73c1bfb1969cf1eb8fac9f6115c8961513ba276e3",
-          "signature": "23abd4a6b5b0f5002106c5dff80998c843f656f89d04477c1b0b40716981537ea1489993283a521720d6a75586ed71072fd3c71eaefcf12f9f53161739a1ab00"
+          "payload_digest": "f3459a38569a3c8f53f71bdcb694a64ae451c2304967d2df2e1cc0d0de7eed55",
+          "signature": "4ff47b24ee29b0f87f5b0a0bf35e21991a330c534af89d9261271d6e8bb089f37aaf176cbb21fd2d0e7001de9a66c067f0a06579a75666f1d01f3f34fc9e140d"
         },
         {
-          "record_id": "2e82297a2685660d13e72eb1feaec92839af06d1eeacecb9a34ea15b990bc636",
+          "record_id": "099fd94472bf640060a0e88c8129d25f97c84e2185b39881f598680770eac4d3",
           "record_type": "issuer-authority",
           "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+          "credential_ledger_generation": 0,
           "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
           "created_at": 1767245602,
           "parents": [
-            "9080beda898cb13601c692944d53725bb90527472a636d97a386766a8ca17656"
+            "33c714c4f730382893e6349fc81c4a5f302713c37757db0b6ac909088569344b"
           ],
           "payload": {
             "action": "grant",
@@ -255,15 +268,15 @@
                 "tags": [
                   [
                     "d",
-                    "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce"
+                    "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72"
                   ]
                 ],
-                "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce\",\"expires_at\":1767249200,\"issued_at\":1767245600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"oidc-token-issuer\",\"namespace\":\"heterodyne.device\",\"not_before\":1767245600,\"registry_revision\":2,\"resources\":[\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#oidc-issuer\"],\"spec_version\":\"comms/0.5.0\",\"subject\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"},\"value\":true,\"visibility\":\"repository-private\"}",
-                "id": "51c004f348d8bf9c3cc5b8764aab6d2300e8e51a51cb057bed0a38ebed242519",
-                "sig": "19452d6ee2a2eec11c832bbeba5da52241264e22442076f8bdffbf95a0bd61a8e02d09613e879339c26149bc9e304bc4b3e370c21522b876180bbe334614b0c5"
+                "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72\",\"credential_ledger_generation\":0,\"credential_ledger_persona\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"expires_at\":1767249200,\"issued_at\":1767245600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"oidc-token-issuer\",\"namespace\":\"heterodyne.device\",\"not_before\":1767245600,\"registry_revision\":2,\"resources\":[\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#oidc-issuer\"],\"spec_version\":\"comms/0.5.0\",\"subject\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"},\"value\":true,\"visibility\":\"repository-private\"}",
+                "id": "4b23aa3cb6c55a38c82f1917ef94210fd0ccbc4d21a0ec85e37b03fa0b060d10",
+                "sig": "b5716806ea567d391be03d1a221b26c19ba6f922bcbad46aa6a1b79fd4eedde33d297d22fd4f8e1e19263b15661f891ea2b2121e174ad5f6180cbc7766befbcc"
               },
               "semantic": {
-                "claim_id": "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                "claim_id": "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                 "issuer": {
                   "type": "nostr-secp256k1",
                   "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -273,6 +286,8 @@
                   "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                 },
                 "claim_class": "authorization",
+                "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                "credential_ledger_generation": 0,
                 "namespace": "heterodyne.device",
                 "name": "oidc-token-issuer",
                 "value": true,
@@ -291,17 +306,18 @@
               }
             }
           },
-          "payload_digest": "578f6e62e09eac79c2ea4785d5be8663024546f7913fb21ca0277e040188e3b1",
-          "signature": "57073d418b3ad86b910f68266026321bd72c453b57ded5246009c673d4bbab072d2630e4d37e8fb4d4aaed1d384c0ae6f48dcda9d81d48b3266e8859a8763a00"
+          "payload_digest": "89f28416419f510253768cdd0b2b718a01410d4c5c9101cebf06710899e54604",
+          "signature": "4a8ca1123918b6caeeb60041d5d006655bead6a75f411e63eeae9fa0468f42990af928cf88c5477feecc895187cacccf09e70635b57ae34807cb473ce7a0ea0a"
         },
         {
-          "record_id": "2541ac2803b93e4db2920cfe7938ebb5630ac14cf1b72255c4d5c8964bb06cd1",
+          "record_id": "e1cd618cc33fffbe03e6e933dce9a1078006e2c51200e5a0fb5527da4246a0c2",
           "record_type": "issuer-authority",
           "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+          "credential_ledger_generation": 0,
           "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
           "created_at": 1767245602,
           "parents": [
-            "385c13b4f95a5381bd2a9c3261d43d16c793870d30cad7f81344229ce1eba10d"
+            "b64c4e4cf8519bed884cb124d546462ffb3976ce916f2a9d87a96fd09b18a71d"
           ],
           "payload": {
             "action": "grant",
@@ -314,15 +330,15 @@
                 "tags": [
                   [
                     "d",
-                    "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae"
+                    "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44"
                   ]
                 ],
-                "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae\",\"expires_at\":1767249200,\"issued_at\":1767245600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"oidc-token-issuer\",\"namespace\":\"heterodyne.device\",\"not_before\":1767245600,\"registry_revision\":2,\"resources\":[\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#oidc-issuer\"],\"spec_version\":\"comms/0.5.0\",\"subject\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx\"},\"value\":true,\"visibility\":\"repository-private\"}",
-                "id": "e885bcbd6ce561c1a642eefcc2cdb63f24bca2261ed1bffc8feff85f350effe7",
-                "sig": "254478f0ef096dc9248212973344d59c3ee00e8538f497d266d60a4dad54055d678a7544e1f9c51cd47f1bb0483b2f70064bb0ea56dbd44d9a485f21c0c01547"
+                "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44\",\"credential_ledger_generation\":0,\"credential_ledger_persona\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"expires_at\":1767249200,\"issued_at\":1767245600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"oidc-token-issuer\",\"namespace\":\"heterodyne.device\",\"not_before\":1767245600,\"registry_revision\":2,\"resources\":[\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#oidc-issuer\"],\"spec_version\":\"comms/0.5.0\",\"subject\":{\"type\":\"radicle-ed25519-nid\",\"value\":\"did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx\"},\"value\":true,\"visibility\":\"repository-private\"}",
+                "id": "67660f039a557efa74694ff8e6c26c62ee43acfe7df86064200527c21b555026",
+                "sig": "21fe87d5555bd56c0c9b13dfad0821a766c0408b9c1e047f915c80faae0f77f8ebdf86cb22be6191d698e468ffe981ca16cea1cc0f278ce8dc358b99085b17ec"
               },
               "semantic": {
-                "claim_id": "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae",
+                "claim_id": "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44",
                 "issuer": {
                   "type": "nostr-secp256k1",
                   "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -332,6 +348,8 @@
                   "value": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
                 },
                 "claim_class": "authorization",
+                "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                "credential_ledger_generation": 0,
                 "namespace": "heterodyne.device",
                 "name": "oidc-token-issuer",
                 "value": true,
@@ -350,23 +368,24 @@
               }
             }
           },
-          "payload_digest": "a891d7f9e3bb11e41167fce67f166658074e766c2ca339fd2cc2bd0560344ffc",
-          "signature": "6b83ed5fc04fd46603d4ebee749524dbffe7697558e4a1b4459966fc47cee3109f24de7ff59dacd655deaeac8f795d117744b4bebd1c9dba3aa62cafcf3a5204"
+          "payload_digest": "2078e288d5dfc87c607a3da96bd02feb56b1a21be5e758b85259af0b08ea4a74",
+          "signature": "6aa79fc86d77c457113db212a72e52981cf3c9b42696de10de5cde7134d540f7cfe91e7cb0a0c22aef4833d940bb4a342733992824b9e039e425515f912d1809"
         },
         {
-          "record_id": "d128d721dc6cd153f6da1b2ee6db15240dd8d97d936bb21e8d8cb53d9ad4419b",
+          "record_id": "c2d8e598c0331f912802c7b8b240d4372f3527b274418ffcad84c10ca13a83ba",
           "record_type": "audience-key-epoch",
           "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+          "credential_ledger_generation": 0,
           "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
           "created_at": 1767245665,
           "parents": [
-            "2541ac2803b93e4db2920cfe7938ebb5630ac14cf1b72255c4d5c8964bb06cd1",
-            "2e82297a2685660d13e72eb1feaec92839af06d1eeacecb9a34ea15b990bc636"
+            "099fd94472bf640060a0e88c8129d25f97c84e2185b39881f598680770eac4d3",
+            "e1cd618cc33fffbe03e6e933dce9a1078006e2c51200e5a0fb5527da4246a0c2"
           ],
           "payload": {
             "scope": "oidc-issuer-key",
             "epoch": 1,
-            "envelope_digest": "fd5ec465b8dfd8f5c9dd89c1775bd78aa3749c631f3766f219106edb04710748",
+            "envelope_digest": "990be73acf4e6bf571687d2ecb3bcff74625f705b8153485fd500a7f9c124964",
             "key_digest": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
             "previous_epoch": 0,
             "previous_envelope_digest": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -378,41 +397,49 @@
             "checkpoint": {
               "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
               "branch": "main",
-              "commit_oid": "0d61a5cd4fe9247fb8495bf0e29abdf2ba19eb52588f41645a9e21d4d2964ac9",
+              "commit_oid": "ec3a1f7485f9400a01f03b9b0a800cf5d3da5a19054aa7d49ea035329481a39a",
               "observed_at": 1767245664
             }
           },
-          "payload_digest": "f7b64a582b4e60842e5309e573ce0eccfc08fef79ed20c6d1632a9e25f7ba9ae",
-          "signature": "260e00f342213d3bc2f0b5d423b59a5ac5210d4cd451684136b5114578f455437b83872f45b14382496acb55d45763b21f635dd69a6f241192c2bc571a722a0b"
+          "payload_digest": "c23a80360c09d928ace83147a4878f53ee022749f3b376b9322f901f0d2a1494",
+          "signature": "28e184372ce055e591ff65f2f007f10ffc552bd90d2656ccc4a978d829e867db1fd0c4184ae37d0bdd3f849df9029ac7a346b78170558bcd134852ee3cdccb06"
         }
       ],
       "right": [],
       "checkpoint": {
         "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
         "branch": "main",
-        "commit_oid": "07ad046a7a8f5628511b4127a640555acd0b65b6365a6058f4971ddef28aa3f2",
+        "commit_oid": "a0c94bfb4c248a691ad105a7485a8f0c9a0b1f04a5affdb44e5b005bafcb737a",
         "observed_at": 1767245666
       },
       "context": {
+        "credential_ledger": {
+          "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+          "credential_ledger_generation": 0
+        },
         "record_evidence": {
           "$heterodyne_replay_type": "map",
           "entries": [
             [
-              "adbb03a2f90a532d16fc8d114326b117f537179b86c76e11ba40ab8d34d98c91",
+              "fcb0a87071529a68c66bf2a92221e9011387449d3cba404d966d5f9ba9885651",
               {
-                "record_id": "adbb03a2f90a532d16fc8d114326b117f537179b86c76e11ba40ab8d34d98c91",
-                "payload_digest": "a667249c5d9526b039162005896517ef4fee2510ad909a9d7daf9b9d403fbea2",
+                "record_id": "fcb0a87071529a68c66bf2a92221e9011387449d3cba404d966d5f9ba9885651",
+                "payload_digest": "6a2d4eff02cae1532031a9420b9861afda7dd1a513a2bf90a5f401371f0585a1",
                 "claim_envelope_context": {
                   "issuer_authorized": true,
-                  "registry_revision": 2
+                  "registry_revision": 2,
+                  "credential_ledger": {
+                    "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                    "credential_ledger_generation": 0
+                  }
                 },
                 "claims_by_id": {
                   "$heterodyne_replay_type": "map",
                   "entries": [
                     [
-                      "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                      "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                       {
-                        "claim_id": "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                        "claim_id": "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -422,6 +449,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -440,9 +469,9 @@
                       }
                     ],
                     [
-                      "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                      "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                       {
-                        "claim_id": "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                        "claim_id": "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -452,6 +481,8 @@
                           "value": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -470,9 +501,9 @@
                       }
                     ],
                     [
-                      "a7a1381a5bba77ca06be40896868d91acbc057d30a72c10e008b952f69187870",
+                      "18581821e8338f0033fdd1fd08303e51d6a2e7ba86e8b4b29016fd5b3b0e3074",
                       {
-                        "claim_id": "a7a1381a5bba77ca06be40896868d91acbc057d30a72c10e008b952f69187870",
+                        "claim_id": "18581821e8338f0033fdd1fd08303e51d6a2e7ba86e8b4b29016fd5b3b0e3074",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -482,6 +513,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -518,20 +551,26 @@
                       "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
                     }
                   ],
+                  "credential_ledger": {
+                    "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                    "credential_ledger_generation": 0
+                  },
                   "claim_authority_evidence": {
                     "$heterodyne_replay_type": "map",
                     "entries": [
                       [
-                        "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                        "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                         {
-                          "claim_id": "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                          "claim_id": "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                           "issuer": {
                             "type": "nostr-secp256k1",
                             "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
                           },
-                          "event_id": "35eac45eadb3a4120abd7fdde0d5216268f939025fa40c601b7b083ecb6b33af",
+                          "event_id": "86ba8daa10b6cd986a34d7d8928648aa3bf643b500dcb6ca0ce33c1cd9442bf1",
                           "envelope_valid": true,
                           "core_kel_authority_valid": true,
+                          "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                          "credential_ledger_generation": 0,
                           "verified_at": 1767245605,
                           "valid_until": 1767245900
                         }
@@ -545,7 +584,7 @@
                   "repository_confirmed": {
                     "$heterodyne_replay_type": "set",
                     "values": [
-                      "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1"
+                      "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957"
                     ]
                   },
                   "repository_conflicted": {
@@ -560,7 +599,7 @@
                     },
                     "challenge": {
                       "domain": "heterodyne-claim-pop-v1",
-                      "claim_id": "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                      "claim_id": "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                       "nonce": "0102030405060708090a0b0c0d0e0f10",
                       "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
                       "resource": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger",
@@ -571,28 +610,32 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "25706f9797f7d9a541be22ba52c97263008c37bba72b7e47a8c4eb60bb9757f909175b86a4694b3a2211f72284895d2982d76eee7cb3a8281068e4de97d1a20b"
+                      "signature": "dd91a5f17a8423c8652f06558d53d086afd29ced79718e49d9d6522ba09ab918a6bb110d2912f7762c8ef607363566a32e4fda5e41f91bdc7ee215942417520c"
                     }
                   }
                 }
               }
             ],
             [
-              "7cb7e2d1c9ebd5eb675d7bd0ec18d82bddc1b0c1c2053f56397b6dc40ce3a83e",
+              "7af17739ceb9aebbaee6f129b9761992155259ba4c22c068e8f6d1274144a847",
               {
-                "record_id": "7cb7e2d1c9ebd5eb675d7bd0ec18d82bddc1b0c1c2053f56397b6dc40ce3a83e",
-                "payload_digest": "ed6f2258fe4fd8fee26e87c931f93cc6ea7bd65310489c3f3e3188d561a00031",
+                "record_id": "7af17739ceb9aebbaee6f129b9761992155259ba4c22c068e8f6d1274144a847",
+                "payload_digest": "0ec9904d59f2f8c46f265cc7b6e865972f1a81d53ad2bf5a5b6478ec3639d52f",
                 "claim_envelope_context": {
                   "issuer_authorized": true,
-                  "registry_revision": 2
+                  "registry_revision": 2,
+                  "credential_ledger": {
+                    "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                    "credential_ledger_generation": 0
+                  }
                 },
                 "claims_by_id": {
                   "$heterodyne_replay_type": "map",
                   "entries": [
                     [
-                      "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                      "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                       {
-                        "claim_id": "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                        "claim_id": "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -602,6 +645,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -620,9 +665,9 @@
                       }
                     ],
                     [
-                      "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                      "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                       {
-                        "claim_id": "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                        "claim_id": "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -632,6 +677,8 @@
                           "value": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -650,9 +697,9 @@
                       }
                     ],
                     [
-                      "a7a1381a5bba77ca06be40896868d91acbc057d30a72c10e008b952f69187870",
+                      "18581821e8338f0033fdd1fd08303e51d6a2e7ba86e8b4b29016fd5b3b0e3074",
                       {
-                        "claim_id": "a7a1381a5bba77ca06be40896868d91acbc057d30a72c10e008b952f69187870",
+                        "claim_id": "18581821e8338f0033fdd1fd08303e51d6a2e7ba86e8b4b29016fd5b3b0e3074",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -662,6 +709,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -698,20 +747,26 @@
                       "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
                     }
                   ],
+                  "credential_ledger": {
+                    "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                    "credential_ledger_generation": 0
+                  },
                   "claim_authority_evidence": {
                     "$heterodyne_replay_type": "map",
                     "entries": [
                       [
-                        "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                        "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                         {
-                          "claim_id": "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                          "claim_id": "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                           "issuer": {
                             "type": "nostr-secp256k1",
                             "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
                           },
-                          "event_id": "bd00e7f794b2ff4bd89f21d510e3bbf55ebac3877f56b2dfe31624e33806abc2",
+                          "event_id": "99dbcfedacc13a2c4c65d427d2851b27823b789ca9b69b573b70e864944e817a",
                           "envelope_valid": true,
                           "core_kel_authority_valid": true,
+                          "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                          "credential_ledger_generation": 0,
                           "verified_at": 1767245605,
                           "valid_until": 1767245900
                         }
@@ -725,7 +780,7 @@
                   "repository_confirmed": {
                     "$heterodyne_replay_type": "set",
                     "values": [
-                      "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df"
+                      "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf"
                     ]
                   },
                   "repository_conflicted": {
@@ -740,7 +795,7 @@
                     },
                     "challenge": {
                       "domain": "heterodyne-claim-pop-v1",
-                      "claim_id": "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                      "claim_id": "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                       "nonce": "2122232425262728292a2b2c2d2e2f30",
                       "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
                       "resource": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger",
@@ -751,28 +806,32 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "b9b9dd3a31d5a028924c624a82840f1752cb7c99946851b04ed51ed8e4a9825f",
-                      "signature": "4e525e84528a537137bf2f200cc653c60d45b61ce02ab37d559b562456fc118d3a580fbfb08453527cb8d5e7fa40587f049fdae39021084d3bced2cdf70f5f08"
+                      "signature": "245be4534b1f96e83ac31d91892a2d73325503587e1aa617a55cb3bb2c6cb1eb54da635c65a03d4b79baa1ab071600e409b990d00832457aa3acc19e4769b60b"
                     }
                   }
                 }
               }
             ],
             [
-              "9080beda898cb13601c692944d53725bb90527472a636d97a386766a8ca17656",
+              "33c714c4f730382893e6349fc81c4a5f302713c37757db0b6ac909088569344b",
               {
-                "record_id": "9080beda898cb13601c692944d53725bb90527472a636d97a386766a8ca17656",
-                "payload_digest": "78fac98ac35a5e5774653bb9e2226d13dc0afa076befb6f84b4b9f3c69915ff8",
+                "record_id": "33c714c4f730382893e6349fc81c4a5f302713c37757db0b6ac909088569344b",
+                "payload_digest": "c2574fd49fec69b17bd6f24d1bc84a6ee164a99ae1beaa14fe2ce56541322122",
                 "claim_envelope_context": {
                   "issuer_authorized": true,
-                  "registry_revision": 2
+                  "registry_revision": 2,
+                  "credential_ledger": {
+                    "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                    "credential_ledger_generation": 0
+                  }
                 },
                 "claims_by_id": {
                   "$heterodyne_replay_type": "map",
                   "entries": [
                     [
-                      "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                      "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                       {
-                        "claim_id": "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                        "claim_id": "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -782,6 +841,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -800,9 +861,9 @@
                       }
                     ],
                     [
-                      "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                      "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                       {
-                        "claim_id": "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                        "claim_id": "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -812,6 +873,8 @@
                           "value": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -830,9 +893,9 @@
                       }
                     ],
                     [
-                      "a7a1381a5bba77ca06be40896868d91acbc057d30a72c10e008b952f69187870",
+                      "18581821e8338f0033fdd1fd08303e51d6a2e7ba86e8b4b29016fd5b3b0e3074",
                       {
-                        "claim_id": "a7a1381a5bba77ca06be40896868d91acbc057d30a72c10e008b952f69187870",
+                        "claim_id": "18581821e8338f0033fdd1fd08303e51d6a2e7ba86e8b4b29016fd5b3b0e3074",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -842,6 +905,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -860,9 +925,9 @@
                       }
                     ],
                     [
-                      "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                      "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                       {
-                        "claim_id": "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                        "claim_id": "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -872,6 +937,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "oidc-token-issuer",
                         "value": true,
@@ -890,9 +957,9 @@
                       }
                     ],
                     [
-                      "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae",
+                      "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44",
                       {
-                        "claim_id": "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae",
+                        "claim_id": "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -902,6 +969,8 @@
                           "value": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "oidc-token-issuer",
                         "value": true,
@@ -938,20 +1007,26 @@
                       "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
                     }
                   ],
+                  "credential_ledger": {
+                    "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                    "credential_ledger_generation": 0
+                  },
                   "claim_authority_evidence": {
                     "$heterodyne_replay_type": "map",
                     "entries": [
                       [
-                        "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                        "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                         {
-                          "claim_id": "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                          "claim_id": "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                           "issuer": {
                             "type": "nostr-secp256k1",
                             "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
                           },
-                          "event_id": "51c004f348d8bf9c3cc5b8764aab6d2300e8e51a51cb057bed0a38ebed242519",
+                          "event_id": "4b23aa3cb6c55a38c82f1917ef94210fd0ccbc4d21a0ec85e37b03fa0b060d10",
                           "envelope_valid": true,
                           "core_kel_authority_valid": true,
+                          "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                          "credential_ledger_generation": 0,
                           "verified_at": 1767245605,
                           "valid_until": 1767245900
                         }
@@ -965,7 +1040,7 @@
                   "repository_confirmed": {
                     "$heterodyne_replay_type": "set",
                     "values": [
-                      "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce"
+                      "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72"
                     ]
                   },
                   "repository_conflicted": {
@@ -980,7 +1055,7 @@
                     },
                     "challenge": {
                       "domain": "heterodyne-claim-pop-v1",
-                      "claim_id": "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                      "claim_id": "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                       "nonce": "0102030405060708090a0b0c0d0e0f10",
                       "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
                       "resource": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#oidc-issuer",
@@ -991,28 +1066,32 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "b12387576764e4c23d61aeedf43f64e3003ee3129b9d05bddc367c21fe895939bf0d4f404edee07f0007b57ccc684cac66b63ec80ac2ef3c5eb2f7b0b4e20202"
+                      "signature": "d1cd463f3ab626519769e4fbef470c753658d0e88e10f1febf5049eaaadb101047997e0cbbc91b824dc63655770330f1b64846687accbb4d8560d86402154501"
                     }
                   }
                 }
               }
             ],
             [
-              "385c13b4f95a5381bd2a9c3261d43d16c793870d30cad7f81344229ce1eba10d",
+              "b64c4e4cf8519bed884cb124d546462ffb3976ce916f2a9d87a96fd09b18a71d",
               {
-                "record_id": "385c13b4f95a5381bd2a9c3261d43d16c793870d30cad7f81344229ce1eba10d",
-                "payload_digest": "82d015587cf231ddd7c974a73c1bfb1969cf1eb8fac9f6115c8961513ba276e3",
+                "record_id": "b64c4e4cf8519bed884cb124d546462ffb3976ce916f2a9d87a96fd09b18a71d",
+                "payload_digest": "f3459a38569a3c8f53f71bdcb694a64ae451c2304967d2df2e1cc0d0de7eed55",
                 "claim_envelope_context": {
                   "issuer_authorized": true,
-                  "registry_revision": 2
+                  "registry_revision": 2,
+                  "credential_ledger": {
+                    "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                    "credential_ledger_generation": 0
+                  }
                 },
                 "claims_by_id": {
                   "$heterodyne_replay_type": "map",
                   "entries": [
                     [
-                      "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                      "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                       {
-                        "claim_id": "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                        "claim_id": "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1022,6 +1101,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -1040,9 +1121,9 @@
                       }
                     ],
                     [
-                      "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                      "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                       {
-                        "claim_id": "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                        "claim_id": "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1052,6 +1133,8 @@
                           "value": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -1070,9 +1153,9 @@
                       }
                     ],
                     [
-                      "a7a1381a5bba77ca06be40896868d91acbc057d30a72c10e008b952f69187870",
+                      "18581821e8338f0033fdd1fd08303e51d6a2e7ba86e8b4b29016fd5b3b0e3074",
                       {
-                        "claim_id": "a7a1381a5bba77ca06be40896868d91acbc057d30a72c10e008b952f69187870",
+                        "claim_id": "18581821e8338f0033fdd1fd08303e51d6a2e7ba86e8b4b29016fd5b3b0e3074",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1082,6 +1165,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -1100,9 +1185,9 @@
                       }
                     ],
                     [
-                      "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                      "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                       {
-                        "claim_id": "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                        "claim_id": "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1112,6 +1197,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "oidc-token-issuer",
                         "value": true,
@@ -1130,9 +1217,9 @@
                       }
                     ],
                     [
-                      "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae",
+                      "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44",
                       {
-                        "claim_id": "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae",
+                        "claim_id": "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1142,6 +1229,8 @@
                           "value": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "oidc-token-issuer",
                         "value": true,
@@ -1178,20 +1267,26 @@
                       "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
                     }
                   ],
+                  "credential_ledger": {
+                    "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                    "credential_ledger_generation": 0
+                  },
                   "claim_authority_evidence": {
                     "$heterodyne_replay_type": "map",
                     "entries": [
                       [
-                        "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae",
+                        "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44",
                         {
-                          "claim_id": "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae",
+                          "claim_id": "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44",
                           "issuer": {
                             "type": "nostr-secp256k1",
                             "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
                           },
-                          "event_id": "e885bcbd6ce561c1a642eefcc2cdb63f24bca2261ed1bffc8feff85f350effe7",
+                          "event_id": "67660f039a557efa74694ff8e6c26c62ee43acfe7df86064200527c21b555026",
                           "envelope_valid": true,
                           "core_kel_authority_valid": true,
+                          "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                          "credential_ledger_generation": 0,
                           "verified_at": 1767245605,
                           "valid_until": 1767245900
                         }
@@ -1205,7 +1300,7 @@
                   "repository_confirmed": {
                     "$heterodyne_replay_type": "set",
                     "values": [
-                      "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae"
+                      "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44"
                     ]
                   },
                   "repository_conflicted": {
@@ -1220,7 +1315,7 @@
                     },
                     "challenge": {
                       "domain": "heterodyne-claim-pop-v1",
-                      "claim_id": "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae",
+                      "claim_id": "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44",
                       "nonce": "2122232425262728292a2b2c2d2e2f30",
                       "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
                       "resource": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#oidc-issuer",
@@ -1231,28 +1326,32 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "b9b9dd3a31d5a028924c624a82840f1752cb7c99946851b04ed51ed8e4a9825f",
-                      "signature": "57e54bdd9ad8482e6b7807a7dad08c2d9b91e695db7690fa20fa70329eea263b93b056954d831989de53f0288e6da2d22b3d7cef87596224e1b5f1177f655500"
+                      "signature": "60e74bc05e1657cab663dd80a1e250b61d2d50b719e32f4c908b5f36cc07ba1576b3960370db2f9574d4a90720f130bc8795c0ce8df009924c059efcca100b03"
                     }
                   }
                 }
               }
             ],
             [
-              "2e82297a2685660d13e72eb1feaec92839af06d1eeacecb9a34ea15b990bc636",
+              "099fd94472bf640060a0e88c8129d25f97c84e2185b39881f598680770eac4d3",
               {
-                "record_id": "2e82297a2685660d13e72eb1feaec92839af06d1eeacecb9a34ea15b990bc636",
-                "payload_digest": "578f6e62e09eac79c2ea4785d5be8663024546f7913fb21ca0277e040188e3b1",
+                "record_id": "099fd94472bf640060a0e88c8129d25f97c84e2185b39881f598680770eac4d3",
+                "payload_digest": "89f28416419f510253768cdd0b2b718a01410d4c5c9101cebf06710899e54604",
                 "claim_envelope_context": {
                   "issuer_authorized": true,
-                  "registry_revision": 2
+                  "registry_revision": 2,
+                  "credential_ledger": {
+                    "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                    "credential_ledger_generation": 0
+                  }
                 },
                 "claims_by_id": {
                   "$heterodyne_replay_type": "map",
                   "entries": [
                     [
-                      "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                      "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                       {
-                        "claim_id": "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                        "claim_id": "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1262,6 +1361,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -1280,9 +1381,9 @@
                       }
                     ],
                     [
-                      "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                      "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                       {
-                        "claim_id": "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                        "claim_id": "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1292,6 +1393,8 @@
                           "value": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -1310,9 +1413,9 @@
                       }
                     ],
                     [
-                      "a7a1381a5bba77ca06be40896868d91acbc057d30a72c10e008b952f69187870",
+                      "18581821e8338f0033fdd1fd08303e51d6a2e7ba86e8b4b29016fd5b3b0e3074",
                       {
-                        "claim_id": "a7a1381a5bba77ca06be40896868d91acbc057d30a72c10e008b952f69187870",
+                        "claim_id": "18581821e8338f0033fdd1fd08303e51d6a2e7ba86e8b4b29016fd5b3b0e3074",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1322,6 +1425,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -1340,9 +1445,9 @@
                       }
                     ],
                     [
-                      "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                      "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                       {
-                        "claim_id": "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                        "claim_id": "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1352,6 +1457,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "oidc-token-issuer",
                         "value": true,
@@ -1370,9 +1477,9 @@
                       }
                     ],
                     [
-                      "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae",
+                      "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44",
                       {
-                        "claim_id": "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae",
+                        "claim_id": "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1382,6 +1489,8 @@
                           "value": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "oidc-token-issuer",
                         "value": true,
@@ -1418,20 +1527,26 @@
                       "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
                     }
                   ],
+                  "credential_ledger": {
+                    "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                    "credential_ledger_generation": 0
+                  },
                   "claim_authority_evidence": {
                     "$heterodyne_replay_type": "map",
                     "entries": [
                       [
-                        "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                        "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                         {
-                          "claim_id": "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                          "claim_id": "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                           "issuer": {
                             "type": "nostr-secp256k1",
                             "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
                           },
-                          "event_id": "51c004f348d8bf9c3cc5b8764aab6d2300e8e51a51cb057bed0a38ebed242519",
+                          "event_id": "4b23aa3cb6c55a38c82f1917ef94210fd0ccbc4d21a0ec85e37b03fa0b060d10",
                           "envelope_valid": true,
                           "core_kel_authority_valid": true,
+                          "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                          "credential_ledger_generation": 0,
                           "verified_at": 1767245605,
                           "valid_until": 1767245900
                         }
@@ -1445,7 +1560,7 @@
                   "repository_confirmed": {
                     "$heterodyne_replay_type": "set",
                     "values": [
-                      "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce"
+                      "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72"
                     ]
                   },
                   "repository_conflicted": {
@@ -1460,7 +1575,7 @@
                     },
                     "challenge": {
                       "domain": "heterodyne-claim-pop-v1",
-                      "claim_id": "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                      "claim_id": "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                       "nonce": "0102030405060708090a0b0c0d0e0f10",
                       "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
                       "resource": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#oidc-issuer",
@@ -1471,28 +1586,32 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "b12387576764e4c23d61aeedf43f64e3003ee3129b9d05bddc367c21fe895939bf0d4f404edee07f0007b57ccc684cac66b63ec80ac2ef3c5eb2f7b0b4e20202"
+                      "signature": "d1cd463f3ab626519769e4fbef470c753658d0e88e10f1febf5049eaaadb101047997e0cbbc91b824dc63655770330f1b64846687accbb4d8560d86402154501"
                     }
                   }
                 }
               }
             ],
             [
-              "2541ac2803b93e4db2920cfe7938ebb5630ac14cf1b72255c4d5c8964bb06cd1",
+              "e1cd618cc33fffbe03e6e933dce9a1078006e2c51200e5a0fb5527da4246a0c2",
               {
-                "record_id": "2541ac2803b93e4db2920cfe7938ebb5630ac14cf1b72255c4d5c8964bb06cd1",
-                "payload_digest": "a891d7f9e3bb11e41167fce67f166658074e766c2ca339fd2cc2bd0560344ffc",
+                "record_id": "e1cd618cc33fffbe03e6e933dce9a1078006e2c51200e5a0fb5527da4246a0c2",
+                "payload_digest": "2078e288d5dfc87c607a3da96bd02feb56b1a21be5e758b85259af0b08ea4a74",
                 "claim_envelope_context": {
                   "issuer_authorized": true,
-                  "registry_revision": 2
+                  "registry_revision": 2,
+                  "credential_ledger": {
+                    "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                    "credential_ledger_generation": 0
+                  }
                 },
                 "claims_by_id": {
                   "$heterodyne_replay_type": "map",
                   "entries": [
                     [
-                      "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                      "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                       {
-                        "claim_id": "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                        "claim_id": "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1502,6 +1621,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -1520,9 +1641,9 @@
                       }
                     ],
                     [
-                      "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                      "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                       {
-                        "claim_id": "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                        "claim_id": "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1532,6 +1653,8 @@
                           "value": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -1550,9 +1673,9 @@
                       }
                     ],
                     [
-                      "a7a1381a5bba77ca06be40896868d91acbc057d30a72c10e008b952f69187870",
+                      "18581821e8338f0033fdd1fd08303e51d6a2e7ba86e8b4b29016fd5b3b0e3074",
                       {
-                        "claim_id": "a7a1381a5bba77ca06be40896868d91acbc057d30a72c10e008b952f69187870",
+                        "claim_id": "18581821e8338f0033fdd1fd08303e51d6a2e7ba86e8b4b29016fd5b3b0e3074",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1562,6 +1685,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -1580,9 +1705,9 @@
                       }
                     ],
                     [
-                      "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                      "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                       {
-                        "claim_id": "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                        "claim_id": "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1592,6 +1717,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "oidc-token-issuer",
                         "value": true,
@@ -1610,9 +1737,9 @@
                       }
                     ],
                     [
-                      "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae",
+                      "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44",
                       {
-                        "claim_id": "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae",
+                        "claim_id": "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1622,6 +1749,8 @@
                           "value": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "oidc-token-issuer",
                         "value": true,
@@ -1658,20 +1787,26 @@
                       "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
                     }
                   ],
+                  "credential_ledger": {
+                    "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                    "credential_ledger_generation": 0
+                  },
                   "claim_authority_evidence": {
                     "$heterodyne_replay_type": "map",
                     "entries": [
                       [
-                        "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae",
+                        "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44",
                         {
-                          "claim_id": "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae",
+                          "claim_id": "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44",
                           "issuer": {
                             "type": "nostr-secp256k1",
                             "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
                           },
-                          "event_id": "e885bcbd6ce561c1a642eefcc2cdb63f24bca2261ed1bffc8feff85f350effe7",
+                          "event_id": "67660f039a557efa74694ff8e6c26c62ee43acfe7df86064200527c21b555026",
                           "envelope_valid": true,
                           "core_kel_authority_valid": true,
+                          "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                          "credential_ledger_generation": 0,
                           "verified_at": 1767245605,
                           "valid_until": 1767245900
                         }
@@ -1685,7 +1820,7 @@
                   "repository_confirmed": {
                     "$heterodyne_replay_type": "set",
                     "values": [
-                      "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae"
+                      "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44"
                     ]
                   },
                   "repository_conflicted": {
@@ -1700,7 +1835,7 @@
                     },
                     "challenge": {
                       "domain": "heterodyne-claim-pop-v1",
-                      "claim_id": "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae",
+                      "claim_id": "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44",
                       "nonce": "2122232425262728292a2b2c2d2e2f30",
                       "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
                       "resource": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#oidc-issuer",
@@ -1711,24 +1846,24 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "b9b9dd3a31d5a028924c624a82840f1752cb7c99946851b04ed51ed8e4a9825f",
-                      "signature": "57e54bdd9ad8482e6b7807a7dad08c2d9b91e695db7690fa20fa70329eea263b93b056954d831989de53f0288e6da2d22b3d7cef87596224e1b5f1177f655500"
+                      "signature": "60e74bc05e1657cab663dd80a1e250b61d2d50b719e32f4c908b5f36cc07ba1576b3960370db2f9574d4a90720f130bc8795c0ce8df009924c059efcca100b03"
                     }
                   }
                 }
               }
             ],
             [
-              "ba85455889fee86aca844487864e3b70b6bccc4db0a116dcb7b3764918e160bb",
+              "6604a6997fd0080104c17ebc961cfde8c4f14a29b31b0f2118170c02bf3747c9",
               {
-                "record_id": "ba85455889fee86aca844487864e3b70b6bccc4db0a116dcb7b3764918e160bb",
-                "payload_digest": "fa53b0ad9561290467f92f0a7e2b85d6e59df6c7e95bbc6724f02301eb726739",
+                "record_id": "6604a6997fd0080104c17ebc961cfde8c4f14a29b31b0f2118170c02bf3747c9",
+                "payload_digest": "256d68ab98c214e74fd3ffcf12fa3d767f94153762c33804c2e5f206b750e1f2",
                 "claims_by_id": {
                   "$heterodyne_replay_type": "map",
                   "entries": [
                     [
-                      "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                      "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                       {
-                        "claim_id": "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                        "claim_id": "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1738,6 +1873,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -1756,9 +1893,9 @@
                       }
                     ],
                     [
-                      "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                      "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                       {
-                        "claim_id": "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                        "claim_id": "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1768,6 +1905,8 @@
                           "value": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -1786,9 +1925,9 @@
                       }
                     ],
                     [
-                      "a7a1381a5bba77ca06be40896868d91acbc057d30a72c10e008b952f69187870",
+                      "18581821e8338f0033fdd1fd08303e51d6a2e7ba86e8b4b29016fd5b3b0e3074",
                       {
-                        "claim_id": "a7a1381a5bba77ca06be40896868d91acbc057d30a72c10e008b952f69187870",
+                        "claim_id": "18581821e8338f0033fdd1fd08303e51d6a2e7ba86e8b4b29016fd5b3b0e3074",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1798,6 +1937,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -1816,9 +1957,9 @@
                       }
                     ],
                     [
-                      "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                      "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                       {
-                        "claim_id": "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                        "claim_id": "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1828,6 +1969,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "oidc-token-issuer",
                         "value": true,
@@ -1846,9 +1989,9 @@
                       }
                     ],
                     [
-                      "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae",
+                      "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44",
                       {
-                        "claim_id": "ff5f685bdeebded9cf849061e865ce62a67f21796b0ead14744cb085f6f368ae",
+                        "claim_id": "717115f5a39bf2c336fc7bbfdfe90b84932e95131d160fac642c5f87a4814e44",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -1858,6 +2001,8 @@
                           "value": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "oidc-token-issuer",
                         "value": true,
@@ -1894,20 +2039,26 @@
                       "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
                     }
                   ],
+                  "credential_ledger": {
+                    "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                    "credential_ledger_generation": 0
+                  },
                   "claim_authority_evidence": {
                     "$heterodyne_replay_type": "map",
                     "entries": [
                       [
-                        "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                        "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                         {
-                          "claim_id": "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                          "claim_id": "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                           "issuer": {
                             "type": "nostr-secp256k1",
                             "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
                           },
-                          "event_id": "51c004f348d8bf9c3cc5b8764aab6d2300e8e51a51cb057bed0a38ebed242519",
+                          "event_id": "4b23aa3cb6c55a38c82f1917ef94210fd0ccbc4d21a0ec85e37b03fa0b060d10",
                           "envelope_valid": true,
                           "core_kel_authority_valid": true,
+                          "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                          "credential_ledger_generation": 0,
                           "verified_at": 1767245605,
                           "valid_until": 1767245900
                         }
@@ -1921,7 +2072,7 @@
                   "repository_confirmed": {
                     "$heterodyne_replay_type": "set",
                     "values": [
-                      "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce"
+                      "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72"
                     ]
                   },
                   "repository_conflicted": {
@@ -1936,7 +2087,7 @@
                     },
                     "challenge": {
                       "domain": "heterodyne-claim-pop-v1",
-                      "claim_id": "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+                      "claim_id": "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
                       "nonce": "0102030405060708090a0b0c0d0e0f10",
                       "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
                       "resource": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#oidc-issuer",
@@ -1947,24 +2098,24 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "b12387576764e4c23d61aeedf43f64e3003ee3129b9d05bddc367c21fe895939bf0d4f404edee07f0007b57ccc684cac66b63ec80ac2ef3c5eb2f7b0b4e20202"
+                      "signature": "d1cd463f3ab626519769e4fbef470c753658d0e88e10f1febf5049eaaadb101047997e0cbbc91b824dc63655770330f1b64846687accbb4d8560d86402154501"
                     }
                   }
                 }
               }
             ],
             [
-              "d128d721dc6cd153f6da1b2ee6db15240dd8d97d936bb21e8d8cb53d9ad4419b",
+              "c2d8e598c0331f912802c7b8b240d4372f3527b274418ffcad84c10ca13a83ba",
               {
-                "record_id": "d128d721dc6cd153f6da1b2ee6db15240dd8d97d936bb21e8d8cb53d9ad4419b",
-                "payload_digest": "f7b64a582b4e60842e5309e573ce0eccfc08fef79ed20c6d1632a9e25f7ba9ae"
+                "record_id": "c2d8e598c0331f912802c7b8b240d4372f3527b274418ffcad84c10ca13a83ba",
+                "payload_digest": "c23a80360c09d928ace83147a4878f53ee022749f3b376b9322f901f0d2a1494"
               }
             ],
             [
-              "58cac4be866d93a4862c66212cecc52bc04afdef245e25d671cebb0555014ed5",
+              "1c962fa301abe3ee4e91ce755f2f8d2676e4cf95878266afbc889a832ad5dbf8",
               {
-                "record_id": "58cac4be866d93a4862c66212cecc52bc04afdef245e25d671cebb0555014ed5",
-                "payload_digest": "aa3f1a4eb60c824180c6351930289e8a99eb610e7e27bceb68102710306c3ecc"
+                "record_id": "1c962fa301abe3ee4e91ce755f2f8d2676e4cf95878266afbc889a832ad5dbf8",
+                "payload_digest": "175b9494f11e27119fbdfc0630e2580d8d164b337bca1d79df4ad6782eed3f87"
               }
             ]
           ]
@@ -1976,89 +2127,93 @@
           "prior_checkpoint": {
             "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
             "branch": "main",
-            "commit_oid": "0d61a5cd4fe9247fb8495bf0e29abdf2ba19eb52588f41645a9e21d4d2964ac9",
+            "commit_oid": "ec3a1f7485f9400a01f03b9b0a800cf5d3da5a19054aa7d49ea035329481a39a",
             "observed_at": 1767245664
           },
-          "canonical_head": "07ad046a7a8f5628511b4127a640555acd0b65b6365a6058f4971ddef28aa3f2",
+          "canonical_head": "a0c94bfb4c248a691ad105a7485a8f0c9a0b1f04a5affdb44e5b005bafcb737a",
           "checkpoint": {
             "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
             "branch": "main",
-            "commit_oid": "07ad046a7a8f5628511b4127a640555acd0b65b6365a6058f4971ddef28aa3f2",
+            "commit_oid": "a0c94bfb4c248a691ad105a7485a8f0c9a0b1f04a5affdb44e5b005bafcb737a",
             "observed_at": 1767245666
           },
           "commits": [
             {
-              "commit_oid": "8e7ad354fe8450e3d968c4de79a9f68da33b861a13d8374eb34010d027df65f5",
-              "tree_oid": "9d182d635b7592ca0aabea6c762688c197581abfb0109bcc5638fdde811769e7",
+              "commit_oid": "9b0fc1ba1c36de7ca8c9abe0e355118072804a003d725098998a04a88de14ce9",
+              "tree_oid": "60c6ef0ffa4c27a8c9cdd23c55decd5d6b9251e23ad89253df7fd4f6da292343",
               "parents": [],
               "record_ids": [
-                "7cb7e2d1c9ebd5eb675d7bd0ec18d82bddc1b0c1c2053f56397b6dc40ce3a83e",
-                "adbb03a2f90a532d16fc8d114326b117f537179b86c76e11ba40ab8d34d98c91"
+                "7af17739ceb9aebbaee6f129b9761992155259ba4c22c068e8f6d1274144a847",
+                "fcb0a87071529a68c66bf2a92221e9011387449d3cba404d966d5f9ba9885651"
               ],
-              "record_set_digest": "b6d75e0a0e5b28c6ee473d985d6a5add60fa04979c05a1f4a92146e68379ddab"
+              "record_set_digest": "00356219ca61cb0ae163bae5750c77ea5a65b61474c991d66a32511ac8849a89"
             },
             {
-              "commit_oid": "0d61a5cd4fe9247fb8495bf0e29abdf2ba19eb52588f41645a9e21d4d2964ac9",
-              "tree_oid": "f3648e179f2cecaa747c2223c6c12b069b887271bac0be837b4c61e61ebdb033",
+              "commit_oid": "ec3a1f7485f9400a01f03b9b0a800cf5d3da5a19054aa7d49ea035329481a39a",
+              "tree_oid": "34ad0438dd6c082bba7f08bb507d257b7184a5270c27ff19a5ce2bb09cf1d1ba",
               "parents": [
-                "8e7ad354fe8450e3d968c4de79a9f68da33b861a13d8374eb34010d027df65f5"
+                "9b0fc1ba1c36de7ca8c9abe0e355118072804a003d725098998a04a88de14ce9"
               ],
               "record_ids": [
-                "2541ac2803b93e4db2920cfe7938ebb5630ac14cf1b72255c4d5c8964bb06cd1",
-                "2e82297a2685660d13e72eb1feaec92839af06d1eeacecb9a34ea15b990bc636",
-                "385c13b4f95a5381bd2a9c3261d43d16c793870d30cad7f81344229ce1eba10d",
-                "7cb7e2d1c9ebd5eb675d7bd0ec18d82bddc1b0c1c2053f56397b6dc40ce3a83e",
-                "9080beda898cb13601c692944d53725bb90527472a636d97a386766a8ca17656",
-                "adbb03a2f90a532d16fc8d114326b117f537179b86c76e11ba40ab8d34d98c91"
+                "099fd94472bf640060a0e88c8129d25f97c84e2185b39881f598680770eac4d3",
+                "33c714c4f730382893e6349fc81c4a5f302713c37757db0b6ac909088569344b",
+                "7af17739ceb9aebbaee6f129b9761992155259ba4c22c068e8f6d1274144a847",
+                "b64c4e4cf8519bed884cb124d546462ffb3976ce916f2a9d87a96fd09b18a71d",
+                "e1cd618cc33fffbe03e6e933dce9a1078006e2c51200e5a0fb5527da4246a0c2",
+                "fcb0a87071529a68c66bf2a92221e9011387449d3cba404d966d5f9ba9885651"
               ],
-              "record_set_digest": "5a8f716d399f43a520493acca87674dd501f2289ebf945ba61a13e1515be6d95"
+              "record_set_digest": "b546b8d13dbec6a32505f5d9461d8a9fc028791c7cc478f240c500c7497bd117"
             },
             {
-              "commit_oid": "07ad046a7a8f5628511b4127a640555acd0b65b6365a6058f4971ddef28aa3f2",
-              "tree_oid": "a59e9904898a67ff01dd488650377dc3dfa5b3794a65b93e48794fd0c8e774f1",
+              "commit_oid": "a0c94bfb4c248a691ad105a7485a8f0c9a0b1f04a5affdb44e5b005bafcb737a",
+              "tree_oid": "6048dcf2e01a3db6c6584c4632be0e7a68a554774add9b8e314ac9c25df69f1b",
               "parents": [
-                "0d61a5cd4fe9247fb8495bf0e29abdf2ba19eb52588f41645a9e21d4d2964ac9"
+                "ec3a1f7485f9400a01f03b9b0a800cf5d3da5a19054aa7d49ea035329481a39a"
               ],
               "record_ids": [
-                "2541ac2803b93e4db2920cfe7938ebb5630ac14cf1b72255c4d5c8964bb06cd1",
-                "2e82297a2685660d13e72eb1feaec92839af06d1eeacecb9a34ea15b990bc636",
-                "385c13b4f95a5381bd2a9c3261d43d16c793870d30cad7f81344229ce1eba10d",
-                "7cb7e2d1c9ebd5eb675d7bd0ec18d82bddc1b0c1c2053f56397b6dc40ce3a83e",
-                "9080beda898cb13601c692944d53725bb90527472a636d97a386766a8ca17656",
-                "adbb03a2f90a532d16fc8d114326b117f537179b86c76e11ba40ab8d34d98c91",
-                "d128d721dc6cd153f6da1b2ee6db15240dd8d97d936bb21e8d8cb53d9ad4419b"
+                "099fd94472bf640060a0e88c8129d25f97c84e2185b39881f598680770eac4d3",
+                "33c714c4f730382893e6349fc81c4a5f302713c37757db0b6ac909088569344b",
+                "7af17739ceb9aebbaee6f129b9761992155259ba4c22c068e8f6d1274144a847",
+                "b64c4e4cf8519bed884cb124d546462ffb3976ce916f2a9d87a96fd09b18a71d",
+                "c2d8e598c0331f912802c7b8b240d4372f3527b274418ffcad84c10ca13a83ba",
+                "e1cd618cc33fffbe03e6e933dce9a1078006e2c51200e5a0fb5527da4246a0c2",
+                "fcb0a87071529a68c66bf2a92221e9011387449d3cba404d966d5f9ba9885651"
               ],
-              "record_set_digest": "a78c0be6b4ec9277064111bb25e4a83017e85738c2c95b91bf7b21a15caab0f8"
+              "record_set_digest": "1432b758c042a4cbe79fefe0b8555717b862a88b6aab4570248484ff4e97a881"
             }
           ],
           "repository_confirmed_record_ids": [
-            "2541ac2803b93e4db2920cfe7938ebb5630ac14cf1b72255c4d5c8964bb06cd1",
-            "2e82297a2685660d13e72eb1feaec92839af06d1eeacecb9a34ea15b990bc636",
-            "385c13b4f95a5381bd2a9c3261d43d16c793870d30cad7f81344229ce1eba10d",
-            "7cb7e2d1c9ebd5eb675d7bd0ec18d82bddc1b0c1c2053f56397b6dc40ce3a83e",
-            "9080beda898cb13601c692944d53725bb90527472a636d97a386766a8ca17656",
-            "adbb03a2f90a532d16fc8d114326b117f537179b86c76e11ba40ab8d34d98c91",
-            "d128d721dc6cd153f6da1b2ee6db15240dd8d97d936bb21e8d8cb53d9ad4419b"
+            "099fd94472bf640060a0e88c8129d25f97c84e2185b39881f598680770eac4d3",
+            "33c714c4f730382893e6349fc81c4a5f302713c37757db0b6ac909088569344b",
+            "7af17739ceb9aebbaee6f129b9761992155259ba4c22c068e8f6d1274144a847",
+            "b64c4e4cf8519bed884cb124d546462ffb3976ce916f2a9d87a96fd09b18a71d",
+            "c2d8e598c0331f912802c7b8b240d4372f3527b274418ffcad84c10ca13a83ba",
+            "e1cd618cc33fffbe03e6e933dce9a1078006e2c51200e5a0fb5527da4246a0c2",
+            "fcb0a87071529a68c66bf2a92221e9011387449d3cba404d966d5f9ba9885651"
           ]
         },
         "reader_requests": {
           "$heterodyne_replay_type": "map",
           "entries": [
             [
-              "adbb03a2f90a532d16fc8d114326b117f537179b86c76e11ba40ab8d34d98c91",
+              "fcb0a87071529a68c66bf2a92221e9011387449d3cba404d966d5f9ba9885651",
               {
-                "claim_record_id": "adbb03a2f90a532d16fc8d114326b117f537179b86c76e11ba40ab8d34d98c91",
+                "claim_record_id": "fcb0a87071529a68c66bf2a92221e9011387449d3cba404d966d5f9ba9885651",
                 "envelope_context": {
                   "issuer_authorized": true,
-                  "registry_revision": 2
+                  "registry_revision": 2,
+                  "credential_ledger": {
+                    "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                    "credential_ledger_generation": 0
+                  }
                 },
                 "claims_by_id": {
                   "$heterodyne_replay_type": "map",
                   "entries": [
                     [
-                      "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                      "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                       {
-                        "claim_id": "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                        "claim_id": "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -2068,6 +2223,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -2086,9 +2243,9 @@
                       }
                     ],
                     [
-                      "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                      "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                       {
-                        "claim_id": "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                        "claim_id": "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -2098,6 +2255,8 @@
                           "value": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -2116,9 +2275,9 @@
                       }
                     ],
                     [
-                      "a7a1381a5bba77ca06be40896868d91acbc057d30a72c10e008b952f69187870",
+                      "18581821e8338f0033fdd1fd08303e51d6a2e7ba86e8b4b29016fd5b3b0e3074",
                       {
-                        "claim_id": "a7a1381a5bba77ca06be40896868d91acbc057d30a72c10e008b952f69187870",
+                        "claim_id": "18581821e8338f0033fdd1fd08303e51d6a2e7ba86e8b4b29016fd5b3b0e3074",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -2128,6 +2287,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -2164,20 +2325,26 @@
                       "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
                     }
                   ],
+                  "credential_ledger": {
+                    "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                    "credential_ledger_generation": 0
+                  },
                   "claim_authority_evidence": {
                     "$heterodyne_replay_type": "map",
                     "entries": [
                       [
-                        "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                        "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                         {
-                          "claim_id": "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                          "claim_id": "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                           "issuer": {
                             "type": "nostr-secp256k1",
                             "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
                           },
-                          "event_id": "35eac45eadb3a4120abd7fdde0d5216268f939025fa40c601b7b083ecb6b33af",
+                          "event_id": "86ba8daa10b6cd986a34d7d8928648aa3bf643b500dcb6ca0ce33c1cd9442bf1",
                           "envelope_valid": true,
                           "core_kel_authority_valid": true,
+                          "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                          "credential_ledger_generation": 0,
                           "verified_at": 1767245605,
                           "valid_until": 1767245900
                         }
@@ -2191,7 +2358,7 @@
                   "repository_confirmed": {
                     "$heterodyne_replay_type": "set",
                     "values": [
-                      "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1"
+                      "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957"
                     ]
                   },
                   "repository_conflicted": {
@@ -2206,7 +2373,7 @@
                     },
                     "challenge": {
                       "domain": "heterodyne-claim-pop-v1",
-                      "claim_id": "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                      "claim_id": "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                       "nonce": "0102030405060708090a0b0c0d0e0f10",
                       "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
                       "resource": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger",
@@ -2217,27 +2384,31 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "25706f9797f7d9a541be22ba52c97263008c37bba72b7e47a8c4eb60bb9757f909175b86a4694b3a2211f72284895d2982d76eee7cb3a8281068e4de97d1a20b"
+                      "signature": "dd91a5f17a8423c8652f06558d53d086afd29ced79718e49d9d6522ba09ab918a6bb110d2912f7762c8ef607363566a32e4fda5e41f91bdc7ee215942417520c"
                     }
                   }
                 }
               }
             ],
             [
-              "7cb7e2d1c9ebd5eb675d7bd0ec18d82bddc1b0c1c2053f56397b6dc40ce3a83e",
+              "7af17739ceb9aebbaee6f129b9761992155259ba4c22c068e8f6d1274144a847",
               {
-                "claim_record_id": "7cb7e2d1c9ebd5eb675d7bd0ec18d82bddc1b0c1c2053f56397b6dc40ce3a83e",
+                "claim_record_id": "7af17739ceb9aebbaee6f129b9761992155259ba4c22c068e8f6d1274144a847",
                 "envelope_context": {
                   "issuer_authorized": true,
-                  "registry_revision": 2
+                  "registry_revision": 2,
+                  "credential_ledger": {
+                    "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                    "credential_ledger_generation": 0
+                  }
                 },
                 "claims_by_id": {
                   "$heterodyne_replay_type": "map",
                   "entries": [
                     [
-                      "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                      "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                       {
-                        "claim_id": "9ddbd3a3d5add1e69f0371f0daaf9f71bf2f588bb053d82d1888f72b93eca0e1",
+                        "claim_id": "375b2293d3ade535bd45a8b82b060bac1b5ef47ac348d8e64d82b7686afbc957",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -2247,6 +2418,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -2265,9 +2438,9 @@
                       }
                     ],
                     [
-                      "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                      "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                       {
-                        "claim_id": "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                        "claim_id": "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -2277,6 +2450,8 @@
                           "value": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -2295,9 +2470,9 @@
                       }
                     ],
                     [
-                      "a7a1381a5bba77ca06be40896868d91acbc057d30a72c10e008b952f69187870",
+                      "18581821e8338f0033fdd1fd08303e51d6a2e7ba86e8b4b29016fd5b3b0e3074",
                       {
-                        "claim_id": "a7a1381a5bba77ca06be40896868d91acbc057d30a72c10e008b952f69187870",
+                        "claim_id": "18581821e8338f0033fdd1fd08303e51d6a2e7ba86e8b4b29016fd5b3b0e3074",
                         "issuer": {
                           "type": "nostr-secp256k1",
                           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -2307,6 +2482,8 @@
                           "value": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
                         },
                         "claim_class": "authorization",
+                        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                        "credential_ledger_generation": 0,
                         "namespace": "heterodyne.device",
                         "name": "claim-ledger-reader",
                         "value": true,
@@ -2343,20 +2520,26 @@
                       "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
                     }
                   ],
+                  "credential_ledger": {
+                    "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                    "credential_ledger_generation": 0
+                  },
                   "claim_authority_evidence": {
                     "$heterodyne_replay_type": "map",
                     "entries": [
                       [
-                        "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                        "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                         {
-                          "claim_id": "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                          "claim_id": "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                           "issuer": {
                             "type": "nostr-secp256k1",
                             "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
                           },
-                          "event_id": "bd00e7f794b2ff4bd89f21d510e3bbf55ebac3877f56b2dfe31624e33806abc2",
+                          "event_id": "99dbcfedacc13a2c4c65d427d2851b27823b789ca9b69b573b70e864944e817a",
                           "envelope_valid": true,
                           "core_kel_authority_valid": true,
+                          "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                          "credential_ledger_generation": 0,
                           "verified_at": 1767245605,
                           "valid_until": 1767245900
                         }
@@ -2370,7 +2553,7 @@
                   "repository_confirmed": {
                     "$heterodyne_replay_type": "set",
                     "values": [
-                      "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df"
+                      "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf"
                     ]
                   },
                   "repository_conflicted": {
@@ -2385,7 +2568,7 @@
                     },
                     "challenge": {
                       "domain": "heterodyne-claim-pop-v1",
-                      "claim_id": "99c5ddf4e3146e62c0f7ece4b637f4af77e69f3f23517618ad1c765253b200df",
+                      "claim_id": "0a589e1aa681feb37d50464ffbd71e780b14583f772164c9c909f87097eafcaf",
                       "nonce": "2122232425262728292a2b2c2d2e2f30",
                       "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
                       "resource": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1#claim-ledger",
@@ -2396,7 +2579,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "b9b9dd3a31d5a028924c624a82840f1752cb7c99946851b04ed51ed8e4a9825f",
-                      "signature": "4e525e84528a537137bf2f200cc653c60d45b61ce02ab37d559b562456fc118d3a580fbfb08453527cb8d5e7fa40587f049fdae39021084d3bced2cdf70f5f08"
+                      "signature": "245be4534b1f96e83ac31d91892a2d73325503587e1aa617a55cb3bb2c6cb1eb54da635c65a03d4b79baa1ab071600e409b990d00832457aa3acc19e4769b60b"
                     }
                   }
                 }
@@ -2427,37 +2610,38 @@
           "$heterodyne_replay_type": "map",
           "entries": [
             [
-              "d128d721dc6cd153f6da1b2ee6db15240dd8d97d936bb21e8d8cb53d9ad4419b",
+              "c2d8e598c0331f912802c7b8b240d4372f3527b274418ffcad84c10ca13a83ba",
               {
                 "envelope": {
                   "object_type": "oidc-signing-jwk-v1",
                   "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                  "credential_ledger_generation": 0,
                   "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-                  "checkpoint_commit_oid": "0d61a5cd4fe9247fb8495bf0e29abdf2ba19eb52588f41645a9e21d4d2964ac9",
+                  "checkpoint_commit_oid": "ec3a1f7485f9400a01f03b9b0a800cf5d3da5a19054aa7d49ea035329481a39a",
                   "epoch": 1,
                   "audience_key_id": "3e441393404b2085e7a3090a47d377abb7a6db6ad6bbd006a2f92cc7f469e651",
                   "previous_key_id": "0000000000000000000000000000000000000000000000000000000000000000",
                   "signing_key_id": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
                   "content_digest": "37c4e38678890e5110eb30eae6264f2a7cdeb3fd0d45cfe1003f41fa2b183b9e",
-                  "nonce": "e135716327405fbc07a67c37d6be05ac1b923548d658a91e",
-                  "ciphertext": "bd39bcc11c66c6c803302c5e42bbf0e9cd0692a0397abc10335310a4cacd906866c9ec40ed15050ac2e5d81d8f1d3c377224d4d13ce5420233bb0b566ae27068ae71a3ac7c806358648393af46382f9b9adf78bd4742f8e520c32501b27c346248c697a7b4d62f8567df9f3fb55604cf960ee804c2aae4be14901fe8e599f29eb574d0d87ab08a341c493512c4fd4f1006047e8c99473cf6060db9cdd83ba2e386e61832a85c3328240770a9fb82250fd9ba90024f9785399241b707f086389928a0e7e38991840faf17a3e8dc3f0463bdb2fc5b8418c9062fe2fc86acf8bd8ce876ebb24a0184d9a881d1c7f5d0800121b2b978991ec940ebbd59e2201f48a7845365cc2b9aecaaff733f9382a2ba6083446e420dded5d5180a35e346f9b538d62187e037e26ee911b5fad9060c46320b4e7ff54fb86fb575412ffde7fe9de6b3de878c3b378b148fcc58a3302d8e7c62042d3782cf4de2586c82272624fbcb2ec55c9569d7fbfd8078d48ae5981a75b78346deebde4fd9f8e15332aa64317a23d515bc5ad66a526a4871ec96801ee02268f88f93d328135702ef3330908e81b8639a2e7ba3bff6284b999c5729c83a2c54fb24e2ecc77d6327bda836c47f7b12df18ab1f67fbd51e73ded560e65f6a2f658deaf5ca06242e54f18c64c3405be216f16d28d23aa1d3d13e0031b9c29f8b427cc48ac0ed71844c05454d5270f5f5d59db7ce67a90c5469fe8f27870199034290cc25ccf87906bb0605542a99e2dca00eaa546861e1a729b78c46ba341a619c3c366c2bbc597d8caa7066b317ec3f2c29ec24b8dfcb1b724a75d598f4bce185693cdad1984701773dbe11ae1dff9cc7db7d89f28202c3ab0be122c4ca5ffb214d122d1b11c9fe0be1c04c4744d5475cc6210300a8262c94bf3084d935a5455db09781a4a65dc1326b6be9fc926589d6958ed899d1f8ac8fb52c6cc0aad1995ac546164508b4bafb07bbbf7603b31383eb89a20175dfeab30f2b6a38efebed2fda634b2a803880d1c7be6a50ccc6e7ed7a9441e76bb291ce4a71b4bd54d88332b2f4131be10f1f56532bdd0d270a973a76825a54ce9aed9f06de1a57f10a25c82f2de0579b949967198fa7b32b6f2349f7a32fcecda96271514ed93998a58a966a3eb8ea072be16602828747188933cbb71c1bb4a8219fac329f989de5ced8597d780299994857cd266c1b143c4e305f4bd754fc414d1be0d2ef33c1de93e72c4888989ad160d4900b80d68b3fcd986789cf5d3982a34b3bac04f5c8655fe292b4778a908d292efee02bb92af56cfd53eaf3a0864d884da9d18c8268d3dbf9de12cacef77a6a193272fec074cdbf14b41ebaa522c139e7614e7958fbaeadc246b11091258b9a20328e4c914fc9f33a2f5ada2c941941b1470173d49f3ec00af25c13b8b66df16fbd92afb42e4312e5a110a856fd61e55b67abc681fc542d8cd19df7b7a1ce86d8f2c8b4ebac7896ea4a21d85abd45374894ba66eaa10de886e0e840a8ba876caf4374a07b77c1dbb352d6b523aca8c4c202b02757d63b4581021759b34995c9a119ebb3f8d4f5c86c7ed3d02c44150441818e235a3420ce79c9b284f6956b767e74dfe6cb54b4faf6eb63955a04794d9a21c41551f9e55173e5415461a36d14c383ec2d2a8cac0d422c1b2032fed7e8fc161019a0eeb082d6709a10b891dce0fff8ffad42c610b02b85a5336f3b9ce041c3ad7513f54911e4f2704c318f52684629649f6a5498ccf92c0254fbc060e2ebcc48f14454edfbf2d9a94e52549871d0c9554938040989e43795228055c094f9eb843b6d5ac5f537eb136528d64c6d9875fa56603b36fabc33c1a13b96b4301605da44fb52d1f2af25195ea1ffc1c381c6eab65cda1ad31c0001125ada90a3612b4f0eafdc1e25c5ac991e9746abd6cb01a8b926bf6d5f1adf970f1cfbf69738afa2b191577e1a769d56e1731eaf7584bbbe19d1a1a5a7c123624d996b854f1d6c30cded8802995ff05901b24f2c5581c4ce04e0a28bd4c4135deedcf627a9282c3a274c25ff0aef769f8acd1c09773060edb1b79ecbc64151eea5bde4afc364f99b597cde8abbe0ff96c32f21ec31a3b2a9105a5832ddb2803e1487b6ddf5fc027401667d8b2050c451877cfab88f46ed30d124864e2116c3fff15b1c4aa053da326cb03305548b47c0c45f363261de33b60a7c4fee0e4ce1dd84089c56a5422cca1d5b600df73df87fdcadde1c4b630fea5eeb593a9aac68b6a16d193f8ccf2093c27dd6dd9a7481b9dbeb30e23c5538d5f8d447c37b05ac6ebcc36101e579317c2cc5be20a3234fdfc26f3c39b9676c7ca2b24133527e82d17978967cba26f554c2ac181c5afb65ad52873662c6b4624dba72adef0926ab08e611499f15ed89de28ea4901e7b3af3f829ae3673ca91b1d7fff47b6",
+                  "nonce": "8fc53ebf214bde7da7ebc6510f09bbe197a3d8b39ec6eeca",
+                  "ciphertext": "46975cfb2cdbad8bcc672cc2259fe160012710cfab7832d427bbf6222abddf14d08efde71bd6436029f80d4b4a9bd9b3e0ee8839c53feb6d5f083001a0604ad2c7c5429ea507b91f9a321ddd3da1afd5e0fae08bdcf73907fba47e5ee64ccce699922691ae513ae2ef03ba26898468f687ff9a051e1dd760d9762854e327dbd7e47e8d05fb8d2062f497e54aeac0e01418b7d5cf46a7f087237ed509cda83481f6735e75d318db6f2cc1b2a8e3bd657c65e0d2c4c9fe2581cbca7fc62cec2ceb1177832077f5fa6c58c585fa9127ba692a03cddf5190edb41623a569cc47a76c8d67f7a6410d8cc2fcfa1c8c24264fc8edb81193a0d886d56693cbb9ab44a0afaf10e1cbac9f192216d3a9b63c4db6a6f089d504dac992ebd8eca227aa8cd83b3e2ab7fa6f7e44df13e933688196160267732ef2b3839be1ce7396f11cf138e478477f107c85b4f4faea4399bb07718fb544e652d9e291a5407e01f909eeacf40a7c59bc000d889e0da8092df26b87c7f30ca3faa6a6210c1671b0622a34f831f2cdaa7a4bed2d3ef5aa1ff4289cb57671164dfa9da60b8d3fd4fad6a4ca83b8c8f866501a56f5c41e974f06f47b888f44e70d223da9360030f0b9612328d82d3e00a1b6ce8628be65810d52686a50758cb0280aff4cb5e0b81b0cf0300303a931ae6fbe41aa74bd0e29aeedf82831f739473ab9a784886c6d792b6d68f00437b41e6e4cb9bd55f5b42f541dbc92c9dc15222e8dac13ab96f72efedf7fd53539c220227ca9da723294e702cf9c085429bf3f633dceea38988179676369016866f69ff548828123dff4d81a9747e3677c99d7da2ae666e9fe837bdc8c2d7daf7ca2ba07a93f4966703208e16ea1668171620a09088ad341865ac9e49e573a952f93b31a201a1342da08e36401c594abece1aecc0e1745b317ce688aff985258d5f624ecbed45acc7fd3662345c25221cefaebd9b5dc70f364c955c6c4001dd77a8c048dfd6a1781f311bea29f4f00cf2486eb31180d227aa857cdcd56f7e07a3105a5bef8d19b76e55ece1b2bdc88a7bbc3d7c52a07474fd8264af7cd2dfb95621e56e3cebf3aa613d1487965ce2e230a75695b1234527144ae595d67f9960f81431f3c467415ce795280141e47df335c44b0f3483bb26999c05ba49cd5879b2561485d95b61a53cf96cc577e76ae375216f8405fe2a6aec6fa82b3032647937d58c7b5a9e490a310c3aa6a38e8329da12865e62858e686c2781b1371cd56a1216931930cd8b5e05d41496a215bd9bfb434281ca988654d5e5feb00addd656ed61b08afdfaf0e58deff1c68b31929d5a93075e7ba35edd7e00a04280fce8f519d9fb1c0722eb44db48045f9a7971b4a3325553564c7ffa90b969dde077b1f798b5b0edf4537664da69f1167482310e503894b6e9e6afedcb2dd427d55c61f8eb752ccf4846eafc82fbc456381eb6756d5772b1a4dc90f1eb3f37195b5deac3df3b932bb8aff0d79fd0bae86ee091e74c38e6225a555cddd41d9014c332e6b7c46d576b5e0f01ddc6a709252a9e3dfcaa8e55c4fdfe4596dc607b6b1c98f12502736d2671e8e9865812b6669fd980edc68c1d0dccb6cdab410a75cece578bee6748a64f3bc38dc9872b8d056e9e18310f949cbff82e376e46b54ef03ebb0bfa388d2f9549080ca6d10e19fb407786c98554ea546526b77df87fc2cc14f5676832bb0c16abe26d4ca12bd7813ad93b80773bcac87c643f20fb551a7194e81deb094b9e17c6661462e6123b3121c077e4baf4bf5b298bf588a51b932effb172bacb43c521b5c9451621fb6e80f8cbb048a9c48d320b49df8cbd69dbd3248053f3d29d8c7ce35ddb10bbed9c1b41d078d142bbe6b6a58e89407f9654fa40d0d6dd49d1188bf698d15f20efca23d020c15df81ad9f1a3cdd85de67668d0f0b2b43e4c0ef21256e852ff81e2bb0034965644a02ed2bc6368d88f373629b4cfcf78b6b4da15507637d77a0a4faa389f879322d2341258ba85aa9607c4980d99a87de7f59a21fc4d0992015e365cb8f4917701489fbf1680ca96587cd13ade945b4834d9b0b8c724998be5b7cc94476a0a5bddea66c666daeb9520daa3fdd51de652a1e189d20ebabb9fa8e996ee69cdfaafc781fda0d2f44e28227e2ba2ad4edaff3641a121b6a2244f354eba51fa7a7d76e1e92e1d008c35210163c83297d56df49bc4feea8488db4009e8146566c448da2da2b08279e925f99fa0163b0a1ec0e1f7c64c8f82dadca769f837b3f72963d87d3d91089534aac2e42241bc55c8ead8ee859f6b258fe5d248b252ab37326bb9b5175235f68f16dc4ed9f9daa9a43a9aec9c28ddc046ec054f46ff6f4d79fab5eca6b5a5fade610fb41fb7f46131a86f54cb8e8eb664e21787b6c5bf2062882df2d00b2c58b52366789606f0a41928b2782",
                   "authority_record_ids": [
-                    "2541ac2803b93e4db2920cfe7938ebb5630ac14cf1b72255c4d5c8964bb06cd1",
-                    "2e82297a2685660d13e72eb1feaec92839af06d1eeacecb9a34ea15b990bc636",
-                    "385c13b4f95a5381bd2a9c3261d43d16c793870d30cad7f81344229ce1eba10d",
-                    "9080beda898cb13601c692944d53725bb90527472a636d97a386766a8ca17656"
+                    "099fd94472bf640060a0e88c8129d25f97c84e2185b39881f598680770eac4d3",
+                    "33c714c4f730382893e6349fc81c4a5f302713c37757db0b6ac909088569344b",
+                    "b64c4e4cf8519bed884cb124d546462ffb3976ce916f2a9d87a96fd09b18a71d",
+                    "e1cd618cc33fffbe03e6e933dce9a1078006e2c51200e5a0fb5527da4246a0c2"
                   ],
-                  "authority_record_set_digest": "706d71c8087a8fb891426f7fb770b5ccec460f3c74833f9c6121b980553d0a8b",
+                  "authority_record_set_digest": "b0d297ca208c82c6eda7c7bf56792d9528f976ff02dc039145fbb1cc7eb94fbc",
                   "recipient_wraps": [
                     {
                       "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-                      "context_digest": "ba7fd810bacff72d0023423441aa5d8d4f6b7c5f008a11da7c983a30e22037ce",
-                      "wrapped_key": "ff04063341aafa677d90121c7c11b2d4da4af46a34ddd779ad392aa428dafbb4de3b255c053227068e6177db0b8b33de7cd83a475f17c2a91082022be12a51c4"
+                      "context_digest": "7c7a65485fcd8058d490a5a211daf7e3eb1cafbd0113a97b098991205cc28c7e",
+                      "wrapped_key": "08cf77fd2fe069fe714e9046cdf9ab64b1d2d46d4c5463b72b0f04d11a3a457e06126752c67da85337f0c9c7a9b91dd6f454e8124915c0d3549d8f9c2ea56b18"
                     },
                     {
                       "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
-                      "context_digest": "a68e4b365d9705393a6140f778844d7a46c931cd1bb392de259015274bf82351",
-                      "wrapped_key": "4349a4335762f232f856844d0a86a51aaaad5415a6d32091f73fff631deb7b275d63c8f4ea5aa8e9bb44be637bbe15f3266fbe223de7407ebc10a0075d5fa660"
+                      "context_digest": "5b35099e7f0c0886d8a79b04efc7580256022f8cbeb160ba95b75c8780f6e279",
+                      "wrapped_key": "716dc8f88cb28445b7a5ece11f4ef4e333924ceced9f9b8e7e422696cf650c549cc5ecd6b3ce9a9503d194998c93fa98e41de3cb4862bd2fb72049e568bbc39f"
                     }
                   ],
                   "removed_issuer_nids": []
@@ -2469,33 +2653,34 @@
               }
             ],
             [
-              "58cac4be866d93a4862c66212cecc52bc04afdef245e25d671cebb0555014ed5",
+              "1c962fa301abe3ee4e91ce755f2f8d2676e4cf95878266afbc889a832ad5dbf8",
               {
                 "envelope": {
                   "object_type": "oidc-signing-jwk-v1",
                   "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                  "credential_ledger_generation": 0,
                   "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-                  "checkpoint_commit_oid": "ad29c864e7444dce85fc4dc02ffb2e66f65526a82e6c2b608aa335cac229d2c5",
+                  "checkpoint_commit_oid": "45019f2267e17ef5f402062849f24470d78c941bd84ebd6ecccafa7a23c955a5",
                   "epoch": 2,
                   "audience_key_id": "515a733d7320b35b2117893952f93a9400dc4d5ca8bb6972453cae4cab993a07",
                   "previous_key_id": "3e441393404b2085e7a3090a47d377abb7a6db6ad6bbd006a2f92cc7f469e651",
                   "signing_key_id": "xhd7m7e7Sp799NRgpt6_ksheHCsFF1BfsHO3NqyF_zA",
                   "content_digest": "d2ec21e755d76ae95867f7bafa1e061fb4ae65aba4997c45f2d8202fcfb6752f",
-                  "nonce": "2a7d1cc39b4d9443ae512eefa4e0a91c8263a10d9d6b75c1",
-                  "ciphertext": "c9cda0cc13da11e9815690c4ec0ac4dbf7cf6e52195d02aca56676e72d6c6abb436a502990ffc905e4e28cf0d1af3d6959f7ad44bb35897d61a3259218d8f53960764596393b798e9a685cbeefbc4fbb4d202a37a04311fa55a5a148c5a32954fff33aeb84e47dba9365625507d827c323b6bb7804d376e33b9847454220f3820b310e937d2983adfb2d555f18eaa63c0462803043ccc0b2f76c0a70bdb98abfe370b48df32c4f016af8142a138f2190412e2a4d7be6e8af64e041f7cc0c91d2778b7fa8256c2479947b3f4cfd4e5c64e4b628363f0be5dfadd628106c810e95261af5e237c31ed03b03c4bce2452185a37566c4182c0ee783ccf77713a7964f862fa48e972f3b5d45ae224a2e4df020043a8fa7df398677ee31f96fc17bf2aa0d8cafdf0ac1a78a5ec4f65f8c43c5a740da71e79ef6d05a2a84dd6dbe8dbae9f81310ce27793ac5f6e52cf6b47081f8c5ee62567e905fe49ce0142f97b7a7bf34a5852b09f455b012451ea87db1adae7f5cd5a2e77c5457a243005418a96eb6e6652479caf0db7e3a08da04f6034a01c0be5ac62df41a80f65675446bf98b03d2f88d22c8067e857658c52f228cc339d391c398485f53d3eae6c13d9d7b3da4be97befc8ece49f96841aacd3a4bd5ec41ead52ae9bb27205a78660028985f43ed2465605b473fc7c11ce84b3900797bbc64aae06d862d5bf8a4f92b33526dc72008f48454492eaa864f40641d86f9375f1975e31c1b7cc110aa71dbe59b3b694e4ca2fd0de6140895c671a1ded9057ef62cfadf3f14c3c4382f6974dccc4809f8c4713a61ddc598c3bacec0d789ca977a49b1e1541493b02f674ad5ef3a2c2d9354d18129eac14b2fb5e9779569024f2f652d887055e7bc21a424a51df72d5059eb33c706d91800baf9a2e93616c7fcef099013e3dbd90302165b95c6301e40f0db5caa2c209c26e6cdc2ffe72d1eefd72587e1fe3ba8d1944639329125f7bb63c82cfd928c8c59025db8dd35bd2dfe421034b34620abb84de9e021ec15ba624e130fbcddc6e987eeaa691ad301da9e447bc3f08ac4b59f86c10bdd5f4f432696ffa3eb78de180356ec708851391df2960478b07fa8682d1c847cd05c1286b80644f5c7d45540c54a10e366d4d072391130bbbde0c9c0deb7d2f246979ca455a803af74c8ee2eef1479e3aa43a589104547035d18e1a26124f48fc90f8b20d3ccbce9d0ca3ccbc96fea35e441cf2b8f67df9a69ab613b6c68f9477764c789a189908b0cd250c5bdb7cd80af227f8be492a09abf720c46da3c7593c38f76d9c799d6fdc7d050f99ff222500bed2e1004663cf67415a12ad45dff050519a554319089183691c10f951c2aa2f539954030a7e8cc469be3e0d2584d25c96d2fd0ba1d164bafb7f70c5a0ce90c09c1128c1a12ee6e1ca376fc6235c7a5973dca5539266de2f2c79d5cebe44dab18dc6f9eab24d6cf022ff2782cd5181dfcc86db231c0c15af29724f07d77385a3f4a46e50b2e1f568a96bb1bc7aef5d32f3391f70c03481fbc4907befab06d80bcde89ae2998e679a24b3e1b45978a4538e5934567cbaf9597dbae43fd7c3715d8a0ff34ab165d427371b7cd18a911ac1fce8741456cac9b654c2f05bc5a005442add7d1c8c90c5900bccf08cf7e9ec2ce8e9948cde9f92c6cdcae14904bb7464de4ef88d7ff5cbe66aac51881f29cb2a6b63373409e647352879f5245d3e821cb28b110123e72161c8964ae9a7d23cafdd9eda8233819bb4150eaf874a21d34606de507915c749df1250b2e7d008a6b2705615795e571a4fa77a74a3972778e6790dd5b2d35c3f3fcd0785485e9ff9e061dc6d526a1bd353e9b169806ba4341c8564a4a482a1cff24374e740ffd1be9d56452699ff1a76ab217b5348918b432fcdc50c950a6b6fed95d5329e760b394d1a97dce3e391ca49236f46d796a61c948bad573cf1c03eed5a8add5582d547acff1466ef137a40cf664df93775a451d6c05c3146307057167be52b7d13f30a660ce4bc4ee38dc55c2af9b2da42b72bad5c13297c1f5d438e98b6d8b50552101dabc2ef3a1621c2add765494e35483f95496c8d8dc6db69c5903d5ec3220b26f5dc9e0ab59a27788597c4a8ded2fd508a3192611c34d6f388c00220de20bb2cf224d6934aeeda763edbef1b7b7c795b9e79b60ab0b9eacb7de65b29bd9056f5cadba8b09e1ee2b989c4c2b539029c6908ee822ffbd4bf33947cfc4569e0304d16d7f0fb4f30f1bd2145993153f76228d5eb7bd9ebce14a8e93cb88eec1f240fcb4c370e24e7eccb950c880956ab3a4e7b2eb1496533caaaf8627a81045ca583685200a6d3b3faad473928b7f1499c73007ccfee3e83158deff6b3ab1e3295409d9779ff37c757b3831ef30d5be1cb6aa5f439f735bbed1f1040c1e0f638a66408cd36602b9",
+                  "nonce": "f45f2a398499d9541d1ff1e3af6bee21e1071aea7711b37a",
+                  "ciphertext": "06ce6356bcd21555c3d7090992036a5db85cfc1d865de42d3e01b11c6a3784a39d3f787424a32858ee4f480214e50c537d482f7f1c9067809c2c981acf85a66c5defff516104caa67406198d97cbae4f0c074ad7d6e730193575173f10b9db5d5753238c605891a8d433af2dd4947f372307291052a27057b444dc85c017c665c8dbe143d3e806fbecc4b96705c09989a491c4944ad78e43be07d5fb71a2f9dcca2fcc82bf3ada3f919b214e85d5de26f363288a71ba3b4324196229d27afac1fbe429f1727ef10d4ef0140882b9a96a24348ea9f1a980b085c2e5512e8e24020dcb215aa043fdc8634f5a0ce5e04312153829a9a512ff6dc14a8a7d21a88086085021c7286fa1022cc3464c8cde0522bb1adfce46d31218d32bcceaddd437e54f85f3b3958adf9711586dd486104cd96026d46fc7dbda52e1ae8b8230db0c3221f1a3415a8a9f58200546210f5dcd7edd4e9444b2127724e7e2be73974fc44acff7fee6916708bcea84d43a32ce2a14bac6df76bd98a0a00fe6b655c64079e68c6b86fa03d7d168e42d870238695b16449e1a9466ac7139056f421711eb82c22b03c27560c45c84510581bb2099d2d8b06b8a14fac7b5de4c908789f46a0cf158b3c82c1cadbd21f8f023d6773a7a3a4ee0ef1b2e4880ddfa7947d3e1df31ecb6983e5c974e1b8f45423e3ae63df904afbc39a6f0bb070ff21e1d2ddc7579867c97556f2f7daaa2089a21d3ef0fee88c6f897fb18c64df0fc7bd87588b018f054797bd31b099c6a881a46a97e0a0b0d61e1fe224c964e6113c8f12049069b5b4000ab20e920ad455705c6ffe6a5072f839399e5598907df60b13b69cb34d01fd198ae5d29dd18a37fdfcabdbde6a340fd0db79032a69485bb763f31301eb924c43e3db86abab1e50b9813183b84b3c1ed845da8d5073d412afe59f02b10ed5128a6ab8b68ea5fc8f596e27fe1256213788f999208412336a4a8f5ed12cda88fd84877e994c6031ee56a9f611f46cc1477a341c44748a99b219f06981f9555955e92c182c055a069f0ef0b8b47ff432bb1923a26369b982d313ef37777bf3d6529c2b51dc3d2cb1ea4f6926d46d758b64d003057564d0f8438d1e188a10b05b09e6bf14d51aeeaf998a5756d6b20445ce13080006535f3236069ebc7e65bef2fe04a5d5c7c3a2ecbe518c5ba48ae62735faacce52773e281bd4e9f8ad1e2cc81796cc1b753f5030131532c0ca4ec62ee493b2e44cbf6b5e53fbd29c8939b6f4bd23ff144d53ad431c01adc0041e91a40359b0b4f696e1b98d45bfde45212400a07428275421c5ec332f5c6b664ecbd99eb7e58f26467271ec2081d5f94e4415f8255e1ae9990ed65a9e437ee46cf04834f8785d1d2367dc3ac2592baa70d1e967fc9dc146cadbc803dd58282e76bab6aadf3cc5dea30b1f3b5f7bf21a8fd919300ebc493c32a5845df98b3ad38debd79dc52833c7c42b2a8c57a3b15be5d33d75fe634405f4ca9925802c454b2b2775bc378f8bbf1b9ee80905b3ba71605652f18303c65af7ecfc18ed87d606198295d0dae3604b661a1afb219b5323a2cbd384912df1ed23de91f682b51c05ae44b77c3155a6011aba95f7ccceabda4c7dece60323944dfd18dc95960e627e8d1ed1121a2f50c4e727801fe4840440c71dbfc171b05bf21fa0d351c2aeec28910ef4c8a8551561f6878a7760f224f88eba734127f1d15181f54699f1712cc7eaaf5dd86e10c9b1066dd924aa1e1b54835866cce8300571acee8179972ca8746ae2b4f830f198a6ab90e7e2de90ae21fe0f032866865558f32815ddbaad91813d0977b36d095b793f69cbaa47e70fc40873eadbb407a1f569738a70eb672859ec04fcfe8593a32cce52f79df838c292d95da42ac3d6fe058578458e457b18a7fad478c8311ca5e568ee8fa1fd30ab861f56059df308da1a1d8e1095f81822f1a1b3122a90962e56bb40aea2499577412905d74da4a57d26f7446977407588eccef757d54d8c1cf55ad4b59d712b70f20d8b39a7ff087b78d4e0fbc4943d6f141a4389793783b17b0ef528e81d7dde06974d8f2fa8a3b86c3866f0b0833e1f447b212e1f2618ec166738ce8872eaf0f6a9d9db0e80736c88ff9fb69fc0dcf1d7abe95e60969ec95fb1dc50f393ad5e30455095500283069327d46135bb8751ed09820f7f4b62c3e456766f2fc2347f4380d3ed1323f09c7bb8f61907f9dfa44170007e27cedd9fbb2022a9ba40c166ef89b580f65ec0523f67e702c3af192ce2a1eeb911c405ee8068aebea03a81ee3126036c89993aa8d6819ae18a3819d70b88a917f39f93e88522831acfeedf364faaa602eac5dfab77818a561f449ab8a6a07a6f3465e4dd0acde4d27e777ddfad70ed31e244a8c14de9ab83e667d113b8a2dd1b7c1ec33d4a3842c356d5063aafeeb7fe6",
                   "authority_record_ids": [
-                    "2541ac2803b93e4db2920cfe7938ebb5630ac14cf1b72255c4d5c8964bb06cd1",
-                    "2e82297a2685660d13e72eb1feaec92839af06d1eeacecb9a34ea15b990bc636",
-                    "385c13b4f95a5381bd2a9c3261d43d16c793870d30cad7f81344229ce1eba10d",
-                    "9080beda898cb13601c692944d53725bb90527472a636d97a386766a8ca17656",
-                    "ba85455889fee86aca844487864e3b70b6bccc4db0a116dcb7b3764918e160bb"
+                    "099fd94472bf640060a0e88c8129d25f97c84e2185b39881f598680770eac4d3",
+                    "33c714c4f730382893e6349fc81c4a5f302713c37757db0b6ac909088569344b",
+                    "6604a6997fd0080104c17ebc961cfde8c4f14a29b31b0f2118170c02bf3747c9",
+                    "b64c4e4cf8519bed884cb124d546462ffb3976ce916f2a9d87a96fd09b18a71d",
+                    "e1cd618cc33fffbe03e6e933dce9a1078006e2c51200e5a0fb5527da4246a0c2"
                   ],
-                  "authority_record_set_digest": "0df5a4f14b9438186629b921d5e57fbef11f8091c49d609d41299b088b4676f3",
+                  "authority_record_set_digest": "328ffbe7ffd6ea558cf7fb20b952d29e1cf891131a2f9a45a4b864e1f8bd41d9",
                   "recipient_wraps": [
                     {
                       "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
-                      "context_digest": "c4a26d49a70d1b7b4292bd4275f3216486d8261b23929c0bfc2edab8abfcbb6f",
-                      "wrapped_key": "aef3429b7b05dc6791b3b93f445de8d35e21c09db52cd84ad5b4226ba9112495398611eb69a23d99b21d2a0fff84f089ac297f76c12a122d1de227959289c5c6"
+                      "context_digest": "0b37767fc47b16517e9bd303480031ddbe1166cbf7e12c2d80d78c06c7cdf0c5",
+                      "wrapped_key": "2e96588374b310647629f535ac20d039447e895af2f4a851a29fb8b827b9759eaa78150a9dba50ceb80ef7f64003a1ca01ec42765b1810ec0a7d53dd50178bed"
                     }
                   ],
                   "removed_issuer_nids": [
@@ -2513,13 +2698,14 @@
       }
     },
     "issuer_removal_record": {
-      "record_id": "ba85455889fee86aca844487864e3b70b6bccc4db0a116dcb7b3764918e160bb",
+      "record_id": "6604a6997fd0080104c17ebc961cfde8c4f14a29b31b0f2118170c02bf3747c9",
       "record_type": "issuer-authority",
       "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "credential_ledger_generation": 0,
       "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
       "created_at": 1767245682,
       "parents": [
-        "2e82297a2685660d13e72eb1feaec92839af06d1eeacecb9a34ea15b990bc636"
+        "099fd94472bf640060a0e88c8129d25f97c84e2185b39881f598680770eac4d3"
       ],
       "payload": {
         "action": "remove",
@@ -2532,17 +2718,17 @@
             "tags": [
               [
                 "d",
-                "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce"
+                "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72"
               ]
             ],
-            "content": "{\"claim_id\":\"1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce\",\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767245681,\"revoker\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"spec_version\":\"comms/0.5.0\"}",
-            "id": "c1474245b54989e0574a168656d77e4d9c96f927fe04218d0565c98775ff8814",
-            "sig": "6c71e395fc8835b1c171e533632818e9734ca0591e1a388f6b0f001588761a29c8dbae99667b2be00acad508a7c12eccf33ac05329740bee60a11b4130e08dda"
+            "content": "{\"claim_id\":\"f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72\",\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767245681,\"revoker\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"spec_version\":\"comms/0.5.0\"}",
+            "id": "e7b3c08c53ca3f83a76e70eeff02ecfb035c9509c7fb75b12bb568f11c35df56",
+            "sig": "5a02b33a191c27e92ca28c732cbed99ffff5f409d71fef5d189ad1d763a3469a209927adaa3ef0808e8efb9f532ddbc658072b2f2ec84c7eb110e7807ec0cce5"
           },
           "semantic": {
             "spec_version": "comms/0.5.0",
             "registry_revision": 2,
-            "claim_id": "1d07e484440724af45d5e7d526b3ef423cae6e04fd16c0486a920dca0f6404ce",
+            "claim_id": "f6485e319642eee6630eba6e166afa499203c08eba0c15aa3daa498fa86b4a72",
             "revoked_at": 1767245681,
             "reason_code": "claim-revoked",
             "revoker": {
@@ -2552,8 +2738,8 @@
           }
         }
       },
-      "payload_digest": "fa53b0ad9561290467f92f0a7e2b85d6e59df6c7e95bbc6724f02301eb726739",
-      "signature": "7134401f8098fc4d5a91bfe0f7f51af974827b4d6dd3d91387602df18154afbaf72270a00e6614d1c3910ee7ee6cf6616f35aaa8dca9669a9513d3c255bdd302"
+      "payload_digest": "256d68ab98c214e74fd3ffcf12fa3d767f94153762c33804c2e5f206b750e1f2",
+      "signature": "8c3f42d60b32fef86cb81fc02b4ee0f55bf2fb00c04e802e846dfab01daa9be4de452bee6555985ce4721c32f42739ccb7bdeeccb749c1c6e486b2682dfa1103"
     },
     "removal_observed_at": 1767245700,
     "rotation_observed_at": 1767245702,
@@ -2564,32 +2750,33 @@
     "prior_envelope": {
       "object_type": "oidc-signing-jwk-v1",
       "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "credential_ledger_generation": 0,
       "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-      "checkpoint_commit_oid": "0d61a5cd4fe9247fb8495bf0e29abdf2ba19eb52588f41645a9e21d4d2964ac9",
+      "checkpoint_commit_oid": "ec3a1f7485f9400a01f03b9b0a800cf5d3da5a19054aa7d49ea035329481a39a",
       "epoch": 1,
       "audience_key_id": "3e441393404b2085e7a3090a47d377abb7a6db6ad6bbd006a2f92cc7f469e651",
       "previous_key_id": "0000000000000000000000000000000000000000000000000000000000000000",
       "signing_key_id": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
       "content_digest": "37c4e38678890e5110eb30eae6264f2a7cdeb3fd0d45cfe1003f41fa2b183b9e",
-      "nonce": "e135716327405fbc07a67c37d6be05ac1b923548d658a91e",
-      "ciphertext": "bd39bcc11c66c6c803302c5e42bbf0e9cd0692a0397abc10335310a4cacd906866c9ec40ed15050ac2e5d81d8f1d3c377224d4d13ce5420233bb0b566ae27068ae71a3ac7c806358648393af46382f9b9adf78bd4742f8e520c32501b27c346248c697a7b4d62f8567df9f3fb55604cf960ee804c2aae4be14901fe8e599f29eb574d0d87ab08a341c493512c4fd4f1006047e8c99473cf6060db9cdd83ba2e386e61832a85c3328240770a9fb82250fd9ba90024f9785399241b707f086389928a0e7e38991840faf17a3e8dc3f0463bdb2fc5b8418c9062fe2fc86acf8bd8ce876ebb24a0184d9a881d1c7f5d0800121b2b978991ec940ebbd59e2201f48a7845365cc2b9aecaaff733f9382a2ba6083446e420dded5d5180a35e346f9b538d62187e037e26ee911b5fad9060c46320b4e7ff54fb86fb575412ffde7fe9de6b3de878c3b378b148fcc58a3302d8e7c62042d3782cf4de2586c82272624fbcb2ec55c9569d7fbfd8078d48ae5981a75b78346deebde4fd9f8e15332aa64317a23d515bc5ad66a526a4871ec96801ee02268f88f93d328135702ef3330908e81b8639a2e7ba3bff6284b999c5729c83a2c54fb24e2ecc77d6327bda836c47f7b12df18ab1f67fbd51e73ded560e65f6a2f658deaf5ca06242e54f18c64c3405be216f16d28d23aa1d3d13e0031b9c29f8b427cc48ac0ed71844c05454d5270f5f5d59db7ce67a90c5469fe8f27870199034290cc25ccf87906bb0605542a99e2dca00eaa546861e1a729b78c46ba341a619c3c366c2bbc597d8caa7066b317ec3f2c29ec24b8dfcb1b724a75d598f4bce185693cdad1984701773dbe11ae1dff9cc7db7d89f28202c3ab0be122c4ca5ffb214d122d1b11c9fe0be1c04c4744d5475cc6210300a8262c94bf3084d935a5455db09781a4a65dc1326b6be9fc926589d6958ed899d1f8ac8fb52c6cc0aad1995ac546164508b4bafb07bbbf7603b31383eb89a20175dfeab30f2b6a38efebed2fda634b2a803880d1c7be6a50ccc6e7ed7a9441e76bb291ce4a71b4bd54d88332b2f4131be10f1f56532bdd0d270a973a76825a54ce9aed9f06de1a57f10a25c82f2de0579b949967198fa7b32b6f2349f7a32fcecda96271514ed93998a58a966a3eb8ea072be16602828747188933cbb71c1bb4a8219fac329f989de5ced8597d780299994857cd266c1b143c4e305f4bd754fc414d1be0d2ef33c1de93e72c4888989ad160d4900b80d68b3fcd986789cf5d3982a34b3bac04f5c8655fe292b4778a908d292efee02bb92af56cfd53eaf3a0864d884da9d18c8268d3dbf9de12cacef77a6a193272fec074cdbf14b41ebaa522c139e7614e7958fbaeadc246b11091258b9a20328e4c914fc9f33a2f5ada2c941941b1470173d49f3ec00af25c13b8b66df16fbd92afb42e4312e5a110a856fd61e55b67abc681fc542d8cd19df7b7a1ce86d8f2c8b4ebac7896ea4a21d85abd45374894ba66eaa10de886e0e840a8ba876caf4374a07b77c1dbb352d6b523aca8c4c202b02757d63b4581021759b34995c9a119ebb3f8d4f5c86c7ed3d02c44150441818e235a3420ce79c9b284f6956b767e74dfe6cb54b4faf6eb63955a04794d9a21c41551f9e55173e5415461a36d14c383ec2d2a8cac0d422c1b2032fed7e8fc161019a0eeb082d6709a10b891dce0fff8ffad42c610b02b85a5336f3b9ce041c3ad7513f54911e4f2704c318f52684629649f6a5498ccf92c0254fbc060e2ebcc48f14454edfbf2d9a94e52549871d0c9554938040989e43795228055c094f9eb843b6d5ac5f537eb136528d64c6d9875fa56603b36fabc33c1a13b96b4301605da44fb52d1f2af25195ea1ffc1c381c6eab65cda1ad31c0001125ada90a3612b4f0eafdc1e25c5ac991e9746abd6cb01a8b926bf6d5f1adf970f1cfbf69738afa2b191577e1a769d56e1731eaf7584bbbe19d1a1a5a7c123624d996b854f1d6c30cded8802995ff05901b24f2c5581c4ce04e0a28bd4c4135deedcf627a9282c3a274c25ff0aef769f8acd1c09773060edb1b79ecbc64151eea5bde4afc364f99b597cde8abbe0ff96c32f21ec31a3b2a9105a5832ddb2803e1487b6ddf5fc027401667d8b2050c451877cfab88f46ed30d124864e2116c3fff15b1c4aa053da326cb03305548b47c0c45f363261de33b60a7c4fee0e4ce1dd84089c56a5422cca1d5b600df73df87fdcadde1c4b630fea5eeb593a9aac68b6a16d193f8ccf2093c27dd6dd9a7481b9dbeb30e23c5538d5f8d447c37b05ac6ebcc36101e579317c2cc5be20a3234fdfc26f3c39b9676c7ca2b24133527e82d17978967cba26f554c2ac181c5afb65ad52873662c6b4624dba72adef0926ab08e611499f15ed89de28ea4901e7b3af3f829ae3673ca91b1d7fff47b6",
+      "nonce": "8fc53ebf214bde7da7ebc6510f09bbe197a3d8b39ec6eeca",
+      "ciphertext": "46975cfb2cdbad8bcc672cc2259fe160012710cfab7832d427bbf6222abddf14d08efde71bd6436029f80d4b4a9bd9b3e0ee8839c53feb6d5f083001a0604ad2c7c5429ea507b91f9a321ddd3da1afd5e0fae08bdcf73907fba47e5ee64ccce699922691ae513ae2ef03ba26898468f687ff9a051e1dd760d9762854e327dbd7e47e8d05fb8d2062f497e54aeac0e01418b7d5cf46a7f087237ed509cda83481f6735e75d318db6f2cc1b2a8e3bd657c65e0d2c4c9fe2581cbca7fc62cec2ceb1177832077f5fa6c58c585fa9127ba692a03cddf5190edb41623a569cc47a76c8d67f7a6410d8cc2fcfa1c8c24264fc8edb81193a0d886d56693cbb9ab44a0afaf10e1cbac9f192216d3a9b63c4db6a6f089d504dac992ebd8eca227aa8cd83b3e2ab7fa6f7e44df13e933688196160267732ef2b3839be1ce7396f11cf138e478477f107c85b4f4faea4399bb07718fb544e652d9e291a5407e01f909eeacf40a7c59bc000d889e0da8092df26b87c7f30ca3faa6a6210c1671b0622a34f831f2cdaa7a4bed2d3ef5aa1ff4289cb57671164dfa9da60b8d3fd4fad6a4ca83b8c8f866501a56f5c41e974f06f47b888f44e70d223da9360030f0b9612328d82d3e00a1b6ce8628be65810d52686a50758cb0280aff4cb5e0b81b0cf0300303a931ae6fbe41aa74bd0e29aeedf82831f739473ab9a784886c6d792b6d68f00437b41e6e4cb9bd55f5b42f541dbc92c9dc15222e8dac13ab96f72efedf7fd53539c220227ca9da723294e702cf9c085429bf3f633dceea38988179676369016866f69ff548828123dff4d81a9747e3677c99d7da2ae666e9fe837bdc8c2d7daf7ca2ba07a93f4966703208e16ea1668171620a09088ad341865ac9e49e573a952f93b31a201a1342da08e36401c594abece1aecc0e1745b317ce688aff985258d5f624ecbed45acc7fd3662345c25221cefaebd9b5dc70f364c955c6c4001dd77a8c048dfd6a1781f311bea29f4f00cf2486eb31180d227aa857cdcd56f7e07a3105a5bef8d19b76e55ece1b2bdc88a7bbc3d7c52a07474fd8264af7cd2dfb95621e56e3cebf3aa613d1487965ce2e230a75695b1234527144ae595d67f9960f81431f3c467415ce795280141e47df335c44b0f3483bb26999c05ba49cd5879b2561485d95b61a53cf96cc577e76ae375216f8405fe2a6aec6fa82b3032647937d58c7b5a9e490a310c3aa6a38e8329da12865e62858e686c2781b1371cd56a1216931930cd8b5e05d41496a215bd9bfb434281ca988654d5e5feb00addd656ed61b08afdfaf0e58deff1c68b31929d5a93075e7ba35edd7e00a04280fce8f519d9fb1c0722eb44db48045f9a7971b4a3325553564c7ffa90b969dde077b1f798b5b0edf4537664da69f1167482310e503894b6e9e6afedcb2dd427d55c61f8eb752ccf4846eafc82fbc456381eb6756d5772b1a4dc90f1eb3f37195b5deac3df3b932bb8aff0d79fd0bae86ee091e74c38e6225a555cddd41d9014c332e6b7c46d576b5e0f01ddc6a709252a9e3dfcaa8e55c4fdfe4596dc607b6b1c98f12502736d2671e8e9865812b6669fd980edc68c1d0dccb6cdab410a75cece578bee6748a64f3bc38dc9872b8d056e9e18310f949cbff82e376e46b54ef03ebb0bfa388d2f9549080ca6d10e19fb407786c98554ea546526b77df87fc2cc14f5676832bb0c16abe26d4ca12bd7813ad93b80773bcac87c643f20fb551a7194e81deb094b9e17c6661462e6123b3121c077e4baf4bf5b298bf588a51b932effb172bacb43c521b5c9451621fb6e80f8cbb048a9c48d320b49df8cbd69dbd3248053f3d29d8c7ce35ddb10bbed9c1b41d078d142bbe6b6a58e89407f9654fa40d0d6dd49d1188bf698d15f20efca23d020c15df81ad9f1a3cdd85de67668d0f0b2b43e4c0ef21256e852ff81e2bb0034965644a02ed2bc6368d88f373629b4cfcf78b6b4da15507637d77a0a4faa389f879322d2341258ba85aa9607c4980d99a87de7f59a21fc4d0992015e365cb8f4917701489fbf1680ca96587cd13ade945b4834d9b0b8c724998be5b7cc94476a0a5bddea66c666daeb9520daa3fdd51de652a1e189d20ebabb9fa8e996ee69cdfaafc781fda0d2f44e28227e2ba2ad4edaff3641a121b6a2244f354eba51fa7a7d76e1e92e1d008c35210163c83297d56df49bc4feea8488db4009e8146566c448da2da2b08279e925f99fa0163b0a1ec0e1f7c64c8f82dadca769f837b3f72963d87d3d91089534aac2e42241bc55c8ead8ee859f6b258fe5d248b252ab37326bb9b5175235f68f16dc4ed9f9daa9a43a9aec9c28ddc046ec054f46ff6f4d79fab5eca6b5a5fade610fb41fb7f46131a86f54cb8e8eb664e21787b6c5bf2062882df2d00b2c58b52366789606f0a41928b2782",
       "authority_record_ids": [
-        "2541ac2803b93e4db2920cfe7938ebb5630ac14cf1b72255c4d5c8964bb06cd1",
-        "2e82297a2685660d13e72eb1feaec92839af06d1eeacecb9a34ea15b990bc636",
-        "385c13b4f95a5381bd2a9c3261d43d16c793870d30cad7f81344229ce1eba10d",
-        "9080beda898cb13601c692944d53725bb90527472a636d97a386766a8ca17656"
+        "099fd94472bf640060a0e88c8129d25f97c84e2185b39881f598680770eac4d3",
+        "33c714c4f730382893e6349fc81c4a5f302713c37757db0b6ac909088569344b",
+        "b64c4e4cf8519bed884cb124d546462ffb3976ce916f2a9d87a96fd09b18a71d",
+        "e1cd618cc33fffbe03e6e933dce9a1078006e2c51200e5a0fb5527da4246a0c2"
       ],
-      "authority_record_set_digest": "706d71c8087a8fb891426f7fb770b5ccec460f3c74833f9c6121b980553d0a8b",
+      "authority_record_set_digest": "b0d297ca208c82c6eda7c7bf56792d9528f976ff02dc039145fbb1cc7eb94fbc",
       "recipient_wraps": [
         {
           "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-          "context_digest": "ba7fd810bacff72d0023423441aa5d8d4f6b7c5f008a11da7c983a30e22037ce",
-          "wrapped_key": "ff04063341aafa677d90121c7c11b2d4da4af46a34ddd779ad392aa428dafbb4de3b255c053227068e6177db0b8b33de7cd83a475f17c2a91082022be12a51c4"
+          "context_digest": "7c7a65485fcd8058d490a5a211daf7e3eb1cafbd0113a97b098991205cc28c7e",
+          "wrapped_key": "08cf77fd2fe069fe714e9046cdf9ab64b1d2d46d4c5463b72b0f04d11a3a457e06126752c67da85337f0c9c7a9b91dd6f454e8124915c0d3549d8f9c2ea56b18"
         },
         {
           "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
-          "context_digest": "a68e4b365d9705393a6140f778844d7a46c931cd1bb392de259015274bf82351",
-          "wrapped_key": "4349a4335762f232f856844d0a86a51aaaad5415a6d32091f73fff631deb7b275d63c8f4ea5aa8e9bb44be637bbe15f3266fbe223de7407ebc10a0075d5fa660"
+          "context_digest": "5b35099e7f0c0886d8a79b04efc7580256022f8cbeb160ba95b75c8780f6e279",
+          "wrapped_key": "716dc8f88cb28445b7a5ece11f4ef4e333924ceced9f9b8e7e422696cf650c549cc5ecd6b3ce9a9503d194998c93fa98e41de3cb4862bd2fb72049e568bbc39f"
         }
       ],
       "removed_issuer_nids": []
@@ -2600,22 +2787,23 @@
     },
     "rotated_epoch": {
       "record": {
-        "record_id": "58cac4be866d93a4862c66212cecc52bc04afdef245e25d671cebb0555014ed5",
+        "record_id": "1c962fa301abe3ee4e91ce755f2f8d2676e4cf95878266afbc889a832ad5dbf8",
         "record_type": "audience-key-epoch",
         "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "credential_ledger_generation": 0,
         "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
         "created_at": 1767245701,
         "parents": [
-          "ba85455889fee86aca844487864e3b70b6bccc4db0a116dcb7b3764918e160bb",
-          "d128d721dc6cd153f6da1b2ee6db15240dd8d97d936bb21e8d8cb53d9ad4419b"
+          "6604a6997fd0080104c17ebc961cfde8c4f14a29b31b0f2118170c02bf3747c9",
+          "c2d8e598c0331f912802c7b8b240d4372f3527b274418ffcad84c10ca13a83ba"
         ],
         "payload": {
           "scope": "oidc-issuer-key",
           "epoch": 2,
-          "envelope_digest": "4f71fe5962fc232b2f2a7915ba9b05bcf1ea2103fbebb0f02e20501a3b0c9d9b",
+          "envelope_digest": "bb7e93c6b73d6ef85d0f42f343bd00b6196bbd2c40e355ac5a9b3ddcde643ade",
           "key_digest": "xhd7m7e7Sp799NRgpt6_ksheHCsFF1BfsHO3NqyF_zA",
           "previous_epoch": 1,
-          "previous_envelope_digest": "fd5ec465b8dfd8f5c9dd89c1775bd78aa3749c631f3766f219106edb04710748",
+          "previous_envelope_digest": "990be73acf4e6bf571687d2ecb3bcff74625f705b8153485fd500a7f9c124964",
           "previous_key_digest": "JFxM17QpSMGp4m2o4lkd03scH_xArMeS3jqxqoaWheo",
           "recipient_nids": [
             "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx"
@@ -2623,38 +2811,39 @@
           "checkpoint": {
             "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
             "branch": "main",
-            "commit_oid": "ad29c864e7444dce85fc4dc02ffb2e66f65526a82e6c2b608aa335cac229d2c5",
+            "commit_oid": "45019f2267e17ef5f402062849f24470d78c941bd84ebd6ecccafa7a23c955a5",
             "observed_at": 1767245700
           }
         },
-        "payload_digest": "aa3f1a4eb60c824180c6351930289e8a99eb610e7e27bceb68102710306c3ecc",
-        "signature": "af169b179d00f643eb5e9fbe8091108d71faded1f2142f06fde8c28037137c2d33f081a353ff9a5572132554139fe6461b20ebf96129a0d04522eeae5edf2a0f"
+        "payload_digest": "175b9494f11e27119fbdfc0630e2580d8d164b337bca1d79df4ad6782eed3f87",
+        "signature": "f8ccf5f1346a6c73ecc9f1df85826bce4614c4a458b89e7554eca0328dc1777720aaa2a74fa5b69f29636752cb25414ff25613356ff110809280bd6949b2f705"
       },
       "envelope": {
         "object_type": "oidc-signing-jwk-v1",
         "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "credential_ledger_generation": 0,
         "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-        "checkpoint_commit_oid": "ad29c864e7444dce85fc4dc02ffb2e66f65526a82e6c2b608aa335cac229d2c5",
+        "checkpoint_commit_oid": "45019f2267e17ef5f402062849f24470d78c941bd84ebd6ecccafa7a23c955a5",
         "epoch": 2,
         "audience_key_id": "515a733d7320b35b2117893952f93a9400dc4d5ca8bb6972453cae4cab993a07",
         "previous_key_id": "3e441393404b2085e7a3090a47d377abb7a6db6ad6bbd006a2f92cc7f469e651",
         "signing_key_id": "xhd7m7e7Sp799NRgpt6_ksheHCsFF1BfsHO3NqyF_zA",
         "content_digest": "d2ec21e755d76ae95867f7bafa1e061fb4ae65aba4997c45f2d8202fcfb6752f",
-        "nonce": "2a7d1cc39b4d9443ae512eefa4e0a91c8263a10d9d6b75c1",
-        "ciphertext": "c9cda0cc13da11e9815690c4ec0ac4dbf7cf6e52195d02aca56676e72d6c6abb436a502990ffc905e4e28cf0d1af3d6959f7ad44bb35897d61a3259218d8f53960764596393b798e9a685cbeefbc4fbb4d202a37a04311fa55a5a148c5a32954fff33aeb84e47dba9365625507d827c323b6bb7804d376e33b9847454220f3820b310e937d2983adfb2d555f18eaa63c0462803043ccc0b2f76c0a70bdb98abfe370b48df32c4f016af8142a138f2190412e2a4d7be6e8af64e041f7cc0c91d2778b7fa8256c2479947b3f4cfd4e5c64e4b628363f0be5dfadd628106c810e95261af5e237c31ed03b03c4bce2452185a37566c4182c0ee783ccf77713a7964f862fa48e972f3b5d45ae224a2e4df020043a8fa7df398677ee31f96fc17bf2aa0d8cafdf0ac1a78a5ec4f65f8c43c5a740da71e79ef6d05a2a84dd6dbe8dbae9f81310ce27793ac5f6e52cf6b47081f8c5ee62567e905fe49ce0142f97b7a7bf34a5852b09f455b012451ea87db1adae7f5cd5a2e77c5457a243005418a96eb6e6652479caf0db7e3a08da04f6034a01c0be5ac62df41a80f65675446bf98b03d2f88d22c8067e857658c52f228cc339d391c398485f53d3eae6c13d9d7b3da4be97befc8ece49f96841aacd3a4bd5ec41ead52ae9bb27205a78660028985f43ed2465605b473fc7c11ce84b3900797bbc64aae06d862d5bf8a4f92b33526dc72008f48454492eaa864f40641d86f9375f1975e31c1b7cc110aa71dbe59b3b694e4ca2fd0de6140895c671a1ded9057ef62cfadf3f14c3c4382f6974dccc4809f8c4713a61ddc598c3bacec0d789ca977a49b1e1541493b02f674ad5ef3a2c2d9354d18129eac14b2fb5e9779569024f2f652d887055e7bc21a424a51df72d5059eb33c706d91800baf9a2e93616c7fcef099013e3dbd90302165b95c6301e40f0db5caa2c209c26e6cdc2ffe72d1eefd72587e1fe3ba8d1944639329125f7bb63c82cfd928c8c59025db8dd35bd2dfe421034b34620abb84de9e021ec15ba624e130fbcddc6e987eeaa691ad301da9e447bc3f08ac4b59f86c10bdd5f4f432696ffa3eb78de180356ec708851391df2960478b07fa8682d1c847cd05c1286b80644f5c7d45540c54a10e366d4d072391130bbbde0c9c0deb7d2f246979ca455a803af74c8ee2eef1479e3aa43a589104547035d18e1a26124f48fc90f8b20d3ccbce9d0ca3ccbc96fea35e441cf2b8f67df9a69ab613b6c68f9477764c789a189908b0cd250c5bdb7cd80af227f8be492a09abf720c46da3c7593c38f76d9c799d6fdc7d050f99ff222500bed2e1004663cf67415a12ad45dff050519a554319089183691c10f951c2aa2f539954030a7e8cc469be3e0d2584d25c96d2fd0ba1d164bafb7f70c5a0ce90c09c1128c1a12ee6e1ca376fc6235c7a5973dca5539266de2f2c79d5cebe44dab18dc6f9eab24d6cf022ff2782cd5181dfcc86db231c0c15af29724f07d77385a3f4a46e50b2e1f568a96bb1bc7aef5d32f3391f70c03481fbc4907befab06d80bcde89ae2998e679a24b3e1b45978a4538e5934567cbaf9597dbae43fd7c3715d8a0ff34ab165d427371b7cd18a911ac1fce8741456cac9b654c2f05bc5a005442add7d1c8c90c5900bccf08cf7e9ec2ce8e9948cde9f92c6cdcae14904bb7464de4ef88d7ff5cbe66aac51881f29cb2a6b63373409e647352879f5245d3e821cb28b110123e72161c8964ae9a7d23cafdd9eda8233819bb4150eaf874a21d34606de507915c749df1250b2e7d008a6b2705615795e571a4fa77a74a3972778e6790dd5b2d35c3f3fcd0785485e9ff9e061dc6d526a1bd353e9b169806ba4341c8564a4a482a1cff24374e740ffd1be9d56452699ff1a76ab217b5348918b432fcdc50c950a6b6fed95d5329e760b394d1a97dce3e391ca49236f46d796a61c948bad573cf1c03eed5a8add5582d547acff1466ef137a40cf664df93775a451d6c05c3146307057167be52b7d13f30a660ce4bc4ee38dc55c2af9b2da42b72bad5c13297c1f5d438e98b6d8b50552101dabc2ef3a1621c2add765494e35483f95496c8d8dc6db69c5903d5ec3220b26f5dc9e0ab59a27788597c4a8ded2fd508a3192611c34d6f388c00220de20bb2cf224d6934aeeda763edbef1b7b7c795b9e79b60ab0b9eacb7de65b29bd9056f5cadba8b09e1ee2b989c4c2b539029c6908ee822ffbd4bf33947cfc4569e0304d16d7f0fb4f30f1bd2145993153f76228d5eb7bd9ebce14a8e93cb88eec1f240fcb4c370e24e7eccb950c880956ab3a4e7b2eb1496533caaaf8627a81045ca583685200a6d3b3faad473928b7f1499c73007ccfee3e83158deff6b3ab1e3295409d9779ff37c757b3831ef30d5be1cb6aa5f439f735bbed1f1040c1e0f638a66408cd36602b9",
+        "nonce": "f45f2a398499d9541d1ff1e3af6bee21e1071aea7711b37a",
+        "ciphertext": "06ce6356bcd21555c3d7090992036a5db85cfc1d865de42d3e01b11c6a3784a39d3f787424a32858ee4f480214e50c537d482f7f1c9067809c2c981acf85a66c5defff516104caa67406198d97cbae4f0c074ad7d6e730193575173f10b9db5d5753238c605891a8d433af2dd4947f372307291052a27057b444dc85c017c665c8dbe143d3e806fbecc4b96705c09989a491c4944ad78e43be07d5fb71a2f9dcca2fcc82bf3ada3f919b214e85d5de26f363288a71ba3b4324196229d27afac1fbe429f1727ef10d4ef0140882b9a96a24348ea9f1a980b085c2e5512e8e24020dcb215aa043fdc8634f5a0ce5e04312153829a9a512ff6dc14a8a7d21a88086085021c7286fa1022cc3464c8cde0522bb1adfce46d31218d32bcceaddd437e54f85f3b3958adf9711586dd486104cd96026d46fc7dbda52e1ae8b8230db0c3221f1a3415a8a9f58200546210f5dcd7edd4e9444b2127724e7e2be73974fc44acff7fee6916708bcea84d43a32ce2a14bac6df76bd98a0a00fe6b655c64079e68c6b86fa03d7d168e42d870238695b16449e1a9466ac7139056f421711eb82c22b03c27560c45c84510581bb2099d2d8b06b8a14fac7b5de4c908789f46a0cf158b3c82c1cadbd21f8f023d6773a7a3a4ee0ef1b2e4880ddfa7947d3e1df31ecb6983e5c974e1b8f45423e3ae63df904afbc39a6f0bb070ff21e1d2ddc7579867c97556f2f7daaa2089a21d3ef0fee88c6f897fb18c64df0fc7bd87588b018f054797bd31b099c6a881a46a97e0a0b0d61e1fe224c964e6113c8f12049069b5b4000ab20e920ad455705c6ffe6a5072f839399e5598907df60b13b69cb34d01fd198ae5d29dd18a37fdfcabdbde6a340fd0db79032a69485bb763f31301eb924c43e3db86abab1e50b9813183b84b3c1ed845da8d5073d412afe59f02b10ed5128a6ab8b68ea5fc8f596e27fe1256213788f999208412336a4a8f5ed12cda88fd84877e994c6031ee56a9f611f46cc1477a341c44748a99b219f06981f9555955e92c182c055a069f0ef0b8b47ff432bb1923a26369b982d313ef37777bf3d6529c2b51dc3d2cb1ea4f6926d46d758b64d003057564d0f8438d1e188a10b05b09e6bf14d51aeeaf998a5756d6b20445ce13080006535f3236069ebc7e65bef2fe04a5d5c7c3a2ecbe518c5ba48ae62735faacce52773e281bd4e9f8ad1e2cc81796cc1b753f5030131532c0ca4ec62ee493b2e44cbf6b5e53fbd29c8939b6f4bd23ff144d53ad431c01adc0041e91a40359b0b4f696e1b98d45bfde45212400a07428275421c5ec332f5c6b664ecbd99eb7e58f26467271ec2081d5f94e4415f8255e1ae9990ed65a9e437ee46cf04834f8785d1d2367dc3ac2592baa70d1e967fc9dc146cadbc803dd58282e76bab6aadf3cc5dea30b1f3b5f7bf21a8fd919300ebc493c32a5845df98b3ad38debd79dc52833c7c42b2a8c57a3b15be5d33d75fe634405f4ca9925802c454b2b2775bc378f8bbf1b9ee80905b3ba71605652f18303c65af7ecfc18ed87d606198295d0dae3604b661a1afb219b5323a2cbd384912df1ed23de91f682b51c05ae44b77c3155a6011aba95f7ccceabda4c7dece60323944dfd18dc95960e627e8d1ed1121a2f50c4e727801fe4840440c71dbfc171b05bf21fa0d351c2aeec28910ef4c8a8551561f6878a7760f224f88eba734127f1d15181f54699f1712cc7eaaf5dd86e10c9b1066dd924aa1e1b54835866cce8300571acee8179972ca8746ae2b4f830f198a6ab90e7e2de90ae21fe0f032866865558f32815ddbaad91813d0977b36d095b793f69cbaa47e70fc40873eadbb407a1f569738a70eb672859ec04fcfe8593a32cce52f79df838c292d95da42ac3d6fe058578458e457b18a7fad478c8311ca5e568ee8fa1fd30ab861f56059df308da1a1d8e1095f81822f1a1b3122a90962e56bb40aea2499577412905d74da4a57d26f7446977407588eccef757d54d8c1cf55ad4b59d712b70f20d8b39a7ff087b78d4e0fbc4943d6f141a4389793783b17b0ef528e81d7dde06974d8f2fa8a3b86c3866f0b0833e1f447b212e1f2618ec166738ce8872eaf0f6a9d9db0e80736c88ff9fb69fc0dcf1d7abe95e60969ec95fb1dc50f393ad5e30455095500283069327d46135bb8751ed09820f7f4b62c3e456766f2fc2347f4380d3ed1323f09c7bb8f61907f9dfa44170007e27cedd9fbb2022a9ba40c166ef89b580f65ec0523f67e702c3af192ce2a1eeb911c405ee8068aebea03a81ee3126036c89993aa8d6819ae18a3819d70b88a917f39f93e88522831acfeedf364faaa602eac5dfab77818a561f449ab8a6a07a6f3465e4dd0acde4d27e777ddfad70ed31e244a8c14de9ab83e667d113b8a2dd1b7c1ec33d4a3842c356d5063aafeeb7fe6",
         "authority_record_ids": [
-          "2541ac2803b93e4db2920cfe7938ebb5630ac14cf1b72255c4d5c8964bb06cd1",
-          "2e82297a2685660d13e72eb1feaec92839af06d1eeacecb9a34ea15b990bc636",
-          "385c13b4f95a5381bd2a9c3261d43d16c793870d30cad7f81344229ce1eba10d",
-          "9080beda898cb13601c692944d53725bb90527472a636d97a386766a8ca17656",
-          "ba85455889fee86aca844487864e3b70b6bccc4db0a116dcb7b3764918e160bb"
+          "099fd94472bf640060a0e88c8129d25f97c84e2185b39881f598680770eac4d3",
+          "33c714c4f730382893e6349fc81c4a5f302713c37757db0b6ac909088569344b",
+          "6604a6997fd0080104c17ebc961cfde8c4f14a29b31b0f2118170c02bf3747c9",
+          "b64c4e4cf8519bed884cb124d546462ffb3976ce916f2a9d87a96fd09b18a71d",
+          "e1cd618cc33fffbe03e6e933dce9a1078006e2c51200e5a0fb5527da4246a0c2"
         ],
-        "authority_record_set_digest": "0df5a4f14b9438186629b921d5e57fbef11f8091c49d609d41299b088b4676f3",
+        "authority_record_set_digest": "328ffbe7ffd6ea558cf7fb20b952d29e1cf891131a2f9a45a4b864e1f8bd41d9",
         "recipient_wraps": [
           {
             "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
-            "context_digest": "c4a26d49a70d1b7b4292bd4275f3216486d8261b23929c0bfc2edab8abfcbb6f",
-            "wrapped_key": "aef3429b7b05dc6791b3b93f445de8d35e21c09db52cd84ad5b4226ba9112495398611eb69a23d99b21d2a0fff84f089ac297f76c12a122d1de227959289c5c6"
+            "context_digest": "0b37767fc47b16517e9bd303480031ddbe1166cbf7e12c2d80d78c06c7cdf0c5",
+            "wrapped_key": "2e96588374b310647629f535ac20d039447e895af2f4a851a29fb8b827b9759eaa78150a9dba50ceb80ef7f64003a1ca01ec42765b1810ec0a7d53dd50178bed"
           }
         ],
         "removed_issuer_nids": [
@@ -2668,19 +2857,20 @@
     },
     "genesis_fork": {
       "record": {
-        "record_id": "f7cc77a2cdd6e635b1cb6703e1892fc62f5e180ae135393e93695bdc91abc16a",
+        "record_id": "7c19cbe4cf92b3bdd846d05e7b08f9a2ed0677b893a951653a322d616d8b92ac",
         "record_type": "audience-key-epoch",
         "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "credential_ledger_generation": 0,
         "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
         "created_at": 1767245665,
         "parents": [
-          "2541ac2803b93e4db2920cfe7938ebb5630ac14cf1b72255c4d5c8964bb06cd1",
-          "2e82297a2685660d13e72eb1feaec92839af06d1eeacecb9a34ea15b990bc636"
+          "099fd94472bf640060a0e88c8129d25f97c84e2185b39881f598680770eac4d3",
+          "e1cd618cc33fffbe03e6e933dce9a1078006e2c51200e5a0fb5527da4246a0c2"
         ],
         "payload": {
           "scope": "oidc-issuer-key",
           "epoch": 1,
-          "envelope_digest": "ffe107b6ed3fae22bd99e9f44119d4dfbbf4106b722ebaa42d85d2f4c2a0b88b",
+          "envelope_digest": "b3f6e864c983f6aff1070b66c8d99876b88039913df65322fb142f42127c3895",
           "key_digest": "xhd7m7e7Sp799NRgpt6_ksheHCsFF1BfsHO3NqyF_zA",
           "previous_epoch": 0,
           "previous_envelope_digest": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -2692,42 +2882,43 @@
           "checkpoint": {
             "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
             "branch": "main",
-            "commit_oid": "0d61a5cd4fe9247fb8495bf0e29abdf2ba19eb52588f41645a9e21d4d2964ac9",
+            "commit_oid": "ec3a1f7485f9400a01f03b9b0a800cf5d3da5a19054aa7d49ea035329481a39a",
             "observed_at": 1767245664
           }
         },
-        "payload_digest": "49f7b2cd2412e979105eb5001e4bfe202e619377c5bc63f0b713415589817762",
-        "signature": "d3dd37c5a1fe7366522b8ab197313c34497e89d683d9280927d4b783e526cf917742d8af3db885930c51ea8b49d237543f71c376800b2ad604436247a6e4b10a"
+        "payload_digest": "309c97660372f8e7354563ba57ba216ec98069b7ebacfc7a8b481d9e5435a9e6",
+        "signature": "926d588e99e45ff0d86008e7382cd2472a5dc36e516f810d6e0a09eb40ac5b258fff949013fa93112fbe76e9a0ab0f09b1b67369876f5ea16aefe95d3796e002"
       },
       "envelope": {
         "object_type": "oidc-signing-jwk-v1",
         "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "credential_ledger_generation": 0,
         "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
-        "checkpoint_commit_oid": "0d61a5cd4fe9247fb8495bf0e29abdf2ba19eb52588f41645a9e21d4d2964ac9",
+        "checkpoint_commit_oid": "ec3a1f7485f9400a01f03b9b0a800cf5d3da5a19054aa7d49ea035329481a39a",
         "epoch": 1,
         "audience_key_id": "d71af2bc53398568e2aff5639f499ff0add6177253dbabccfe931459470856a7",
         "previous_key_id": "0000000000000000000000000000000000000000000000000000000000000000",
         "signing_key_id": "xhd7m7e7Sp799NRgpt6_ksheHCsFF1BfsHO3NqyF_zA",
         "content_digest": "d2ec21e755d76ae95867f7bafa1e061fb4ae65aba4997c45f2d8202fcfb6752f",
-        "nonce": "d2872382235084e4db7390c6891a11bfaef07587d24c8b34",
-        "ciphertext": "b50ba432e8e19b502b10c40d668f3131da55759d535704f88371187b4c9ae11c5334f45684c99f77e9923fe0e7078088bdf478d30aec7370bb7ebd88415825e9cca7f2edcb351e3c2256794580d0f6bf2bd367cdf6d25573e07e1600b2a9f6616f1ec000faf6b31653c5c31669c1929bf33bc01587e3157b7f6cbc44595521979b6eb95c6f9234a155a86cb180e87aa2e665124952bbe2832151d183407ad9489c3b6089d8b95b8403119980118e9b25f24ea42e2a3d1a9c324d988cfb9211b85f83002a56ad344b6df67f855e22f2580814e87025df8dd13ec7b77a0129f3bb5b10924b3865d8d9337c5fd76c36d68ce53180d1e6ef921627f0a4a4b82b23bc2769932883a739dbc6ad697a3268c0b00cc35bbb23454a55301ce851e30b2ffe07333c88522939a6c12dd472d295ceeeaefc38aa9ca07ae1f74c5a98bc52979df2a9e0f30c86aef4a295e965874df47c5168e50a4128cd5e8f8882914c955655e9e3b6cad396d2d47de4e89e9bfb235140d4ae0c9757ac6c8e1534718a7426ffc3bfa7a52c1b80bc1930613d1987ab4082e6939942e13ad24d7bbec097c16232944d2a38abd43c506be77820e5ef4dd67ba97584838f09b9d23360eaf2e9e60bc6059013f01be5c3fbde4d06328f893678830ac5d590d04cfbdac349f2b9d5d56c97ff4fc69a65cf778e143cb953ceb2469605770c33c98b542cfa76677768d27932b2da269299b72244e11da9bfbad162112f8aae7f0c576c237fc36b06c92041ea7ca06b4a4c73466a4cf16868b6e74042b6f0abf7906e6bc00d9128f947a042cc456c762ad5dd867955949f4fc64a09cc0f39130cf06c1cc728d9f1454284318e36c733abbb9369e7740616f3adeeb37264adc91110b482357af2d24ae2894d186e96c50942178db45ae75685e2d929a0f14448faf5832069c4521651e0974d3cc7bea319e5b53893a793d04f27856c6e7a0be087923a1ad3e4287af67423b3cf740bc685a073dbbebd6aa40a30f3e612fa864072873cbd4b0c5fd998c11189b7413abee20f953b22fcd67a619662c88106334f5aedae4d27c0c9d9b1ac1bf1a2ff310f7cfe516eb5a48fa3e5419988dbf6c6d3a3d9873690ee3a8e64b561d82db9e8360115b3d171e07e91c43a238706ffcb99ca8e6ad6487d549391fd58b842ffb3d019450ab2e100cafe52280eb33bd6457b857e3fb67ed887dbeff3e58a10eec57d28343d78131f0e375e0070ef8928508ae4cdbdd99cbf12ef6735af01666c9ec11b3176af411c7bd79d94d483ea49ffab302462d1cbf320405ce64544ffcbeed06b115aaa94edc42647a97d4b362d64fcb0301fdef558374ad1df9388de1fe3c6921f5dac1372be28d151c56d5d8f5874ce343aedb3c527c22b40db4b0c073d5d7285be7297923e99fa308aa98df3ed0a81c13d9aa18f527286870eb8514e05c85fc9803a8550b98df784b8b5e3c52ae2514605b65030cb2fc94daaa592fd69097b25471ffb7ad7b5386b8f49e5eef6d00721bdae8b04208edb74a439c635bff0d154894475d7697a32043f5d5303460f124ffaa48d4ab4b2fc6dd16433fdd4afcddd45a2975fcf27c40ab5003ec0d9ccd4c0af3b282fa96bd1da4e03982925a750366b2386e5e96b680f963eca0c546fa76d500c734681a47a0e0294c5131201571ff89bfcbd48e9dbe97257ef4d630ce83b2073c0cb412684838dab4f327c14f6d50930cdcf63f35d85755b82d167725e3aef077a72fa6e3b1ab03097281ab6525ea7b1064b7f00b204bc3d2e6a2d157d24e39e9077aa03c175f1a40af96d5025bee2c1f2727885b6a50a594977b5278c5877326bb0c173bc24ac9e32d2e3a640392bb2cc42d1678910fa8add5e212a602085626243395eb16004e0660b76307b770fd09afeb63d107cfe3ddf6363a1eb6031b86cd5747f8bc2438f04d3bc0bc2cca1bac178008784960a86c1c998e9c7eed216ba9b59632a0ed218be96f24b4cba62775e477f86f926e7a2a1c1b901fa7a8f4415f861ea7830b197a820ad7eb15fdf766240a509609f22c5d3191b92719b357f510f2559e36dd507ef99661bd46a1572f6be9e340fd3ceb59ca2b67bd65440b88c69ab1f126c86fb918e028a89570272d1559d206077a2fe3e94a7e92254da1e6739f0c91984fb9627e38714e7aa3e00c19d81ebfda42e289ddc5e521b4f5050d36666854c1705b946210b84e70e2216a7622bdcf950543ce42cbe422d74ca339baf7efa7f80610af491dc9ec0dba9f1370543fdeecef2807fbfbba630539893ebdc3f9c618f006ecbfee90935848c728f440ceee64cf0af5f04bb15cfcca130706e2266ee3d8f22c783bc2c0e3ee480a715236ef3b90ba62f13bf12e252cbb9648a233ec12d3405ff52e40d250ace13fbb887215a90e795511a407f7336b480ec1ff54e9b216c",
+        "nonce": "8bd4b9d8820e0c46ec9e814b4916c6c359d0f1e6aede60f5",
+        "ciphertext": "449270c168046dc4cf05d139001dc5906ba9fcf0c476da748b6c938b24d7590e53ccf527fd87874a0dd228803b925495fdbeb426ac5601a2763924f7b485d1e2d74059011ca6b542d22c1e50e1759ba91d2de4a0380865a92095a7f1c72fc2ca119d2e5eb96cd9423fed7ff31047023325e2e715a47b5b4f0a201e4746c8f8b18443211819e0d7989f269fa86039cf0dd770a3a3e67aeab931d8b1985b252a55e1af14064e6aad16a6e29c0fba9ec8d1edddc6434d7837d47139264439a914469e99ead30e663bfa7f6fd96c2e458ea0fe47507bde2e931f96f09c3032a829b133f9f206ab6afc52591cce5b7b9a3b628555bb4dbdabf8e95adbc9b9c388f4f6f928fab11d2049eefbdda31a616982074a53317de47b03341b52b03545ddf30b29b40d12ed1e6878d7725fc6e580ec48ca15d1cfa071a36c999098b6d7d7c6e9dffe46bf1d4b46866bc0bba7d99de4bc5864f15218f47faa155698cd3785a4c05dc2ceca141b4e2016b07098485c0262d9545d4fc686987305274a4ddeca9cc5d08beecfbfadf7a169a26dc9b172428ba505d751222eb413002c721dec138016b7848d97d5ca0e1f3ad9eb915df7432cb7cb1808979a2b403f772b184853e054afb4530ac2e0cbd6d56ec37a93120881412fab9b8c746f4eae55136df161cb4627ad404cba8ff84675488c6d3ec586efb08daee0edad853fce2c55fbad6b9746d457118338d618d29f05552814e55a3e697858a406c2a5cf91cbebbef0927870bf964426c073a7ca6b6622f35e76068c2e1610081165a3f83f9e3ec3931ad4e6acd16efd8881e5ab9868aeec915bd60676f1a0b265a417d0f591783b0a09ea1be0c97db470f43a2f8b981c43afbafd482b940e697e14444f282fc981dbb75fc3dbd300c4c44fdd6562f8a82ef9daa8fa9fcb5a85b8d396041760efa71c73c2a77ab9dacc558cfdd6039fd353390b74db6f89a5bdde37c4c11d5f14997898c2229068be1578b940d6f421c0e35111eacad8537f59fabbb11046d8d81816a6b1ad1e08d021c130ee680ed82878db43d3d575a6a9468a964f3998c944d134153872299db5e3aad488375e31bbb69679a03622d9ed132be5cee565734eb24fb6a8b69f9a21d095dd37602b2489fc9240b68f0ee4d73ed044ccb2bbbbcec0149ae675c93a0bc11869773e27f1e59717839ff7580993e141b6ff7c96b638b6c3cbd9b6447bae3f9867addd93c3881cd980ae7a5626b00f608c7e5fa0b535993970b878cb0200a53557b06d97debaaca974251a3cc5da919df2967102a7100e1fbba18407b631e0a0d52a8e07cb39dd1fe79d0438b7fa6fe2a6d9c1e9018116e157ba3dcd8efabfe86b0e3bcc014cad70e469cdd97db0f44d87e047ec3ae2ef0e063ff6c5b4e27ecba4900c1fb046ffb101a7393610611039d0fcc8ca2246873f83b4a3147c9990399418c0af5a0d7fc8754b083ad89d084f4963f63067ca0b01135200317e71ca020a4f2cc90690763ec2b8c7bf006a0878c2e79079b8be66bb80db43a864a5308354b645d0886b234367110b6ab7f4345fb5cf3c9cd941d39b84e5436dba32cfb80520a7ca3b8c81677d3cde8a4d7c13110152333bdb0cf2419785bab1b0e1e80e071da56e3608ab469af1d1cb52528a59034ca893e5e4b164884d2fc91ab897e37847845a87ab63e7f40af45b68b2018fd43937b51d27be860044abcbcb1852d0869c967a62e79aba025d8fd763b44e1844281ee39bb1a64974c3f51b36c73bbaceb3f70403521c62e3f387f4c13cd73c44833e741331684ed522f19965efcc0b98ad18c7a954394c1da9e298d29be2661d331832a95ec9d2d080a6c3b3419fe3b5b7354baa1aae8309396bd95ca9371c0ac66330054ad9a32231e8cbec76b661196168538de4af20650f2274420418fd8dc0bcd0aa6213c51de30653f5ea57020a101c8da0f3e3baeeb5b2d23361df2d8c883be20b156192282611be5c677cfa72887521818bfd3932b89f3dd5ff38ec40aecef6029c72a2beac2a7e053091ea794303ee200c5170753068825bb23466ab0c61c087698f2e2b216f677227916c0affa7a9bf10c2a21453b8203947d57cd8a30df790e34729d53b06912a1c5328bba580f44fb89edbc14b381275355b2820c4f0d7a11677d19ed6b77e6bdf73aa673c58074c7b273362c676880481428268b8b32917be5e30c7213e510132cd03ef848442e4ab8ba7d133904f7d39369a52393822f462b18bb9b3c0a36ce8e8815631be96bc1cd8930d531754dafd3e5d7551438c3f83073692bbd9b6302828e1de1a840370849f881c6515685db0494cc7d319e12b875062ff03bb996fa938ea4f7ca3d58ae7c92008346e3da1dc082d10b9c293aa840a08f63bfe96c5b215a89837215fc5b8482dea0cf12097029ecc98bcf179db1d491638d29e",
         "authority_record_ids": [
-          "2541ac2803b93e4db2920cfe7938ebb5630ac14cf1b72255c4d5c8964bb06cd1",
-          "2e82297a2685660d13e72eb1feaec92839af06d1eeacecb9a34ea15b990bc636",
-          "385c13b4f95a5381bd2a9c3261d43d16c793870d30cad7f81344229ce1eba10d",
-          "9080beda898cb13601c692944d53725bb90527472a636d97a386766a8ca17656"
+          "099fd94472bf640060a0e88c8129d25f97c84e2185b39881f598680770eac4d3",
+          "33c714c4f730382893e6349fc81c4a5f302713c37757db0b6ac909088569344b",
+          "b64c4e4cf8519bed884cb124d546462ffb3976ce916f2a9d87a96fd09b18a71d",
+          "e1cd618cc33fffbe03e6e933dce9a1078006e2c51200e5a0fb5527da4246a0c2"
         ],
-        "authority_record_set_digest": "706d71c8087a8fb891426f7fb770b5ccec460f3c74833f9c6121b980553d0a8b",
+        "authority_record_set_digest": "b0d297ca208c82c6eda7c7bf56792d9528f976ff02dc039145fbb1cc7eb94fbc",
         "recipient_wraps": [
           {
             "writer_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-            "context_digest": "6a1aad71d8551d6ac1514b832e31a0c31311fdd0abe4f41c6a93242feada7447",
-            "wrapped_key": "bea47d5ea1dcdf06928e1b444578832b1a6b13e87d1d933b89391181f4c66ecc803d056dbd83ad51092504a089f5b335d921a2ad0df04c4cf049e5a1c5047f94"
+            "context_digest": "f0d2e1ba3b1e5e96a72ba4cf8f929b243ee321042eef9a414943a8816c508c1c",
+            "wrapped_key": "f9300c1f05b1b2179fc910e4c467ccdbe57fd587037d5c5c85c950d47b3d43eaadf2ec1b235d6928318d0d49f0df1b995794a4bd1f4a3a61f601cf4e35c54ee6"
           },
           {
             "writer_nid": "did:key:z6MkrxFrBYautzyMy7px6CgbUVPkAdyzR3kASDQPePhxAyRx",
-            "context_digest": "d1da090bd62fedae754e11a2038263e303f79f0f9eab91dbe0005ba500375e35",
-            "wrapped_key": "cc85d58b37404af186014c6f6dff979014224bf7099ebc814690d4c56879f29e683d7f45f51ccffb1e52fd7483579052074f75c490fc54d651d016b1808ed605"
+            "context_digest": "c1b98f184c4816b567d48c19fddbdec8e7f8e3f0ff4eb1c1d8e9ba2f20ef6cc8",
+            "wrapped_key": "c0c5cb78e12454524c4280cab980ddc9a5714af9970ace4e04c5b59b3b4b615a27825dfdbb0cbc14d98fa6caec6102cedf56cfdc998fb46d604a13afc8e6e5a7"
           }
         ],
         "removed_issuer_nids": []
@@ -2745,7 +2936,7 @@
       "immediate_sync_checkpoint": {
         "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
         "branch": "main",
-        "commit_oid": "07ad046a7a8f5628511b4127a640555acd0b65b6365a6058f4971ddef28aa3f2",
+        "commit_oid": "a0c94bfb4c248a691ad105a7485a8f0c9a0b1f04a5affdb44e5b005bafcb737a",
         "observed_at": 1767245666
       },
       "boundary_300": {
@@ -2754,7 +2945,7 @@
         "checkpoint": {
           "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
           "branch": "main",
-          "commit_oid": "07ad046a7a8f5628511b4127a640555acd0b65b6365a6058f4971ddef28aa3f2",
+          "commit_oid": "a0c94bfb4c248a691ad105a7485a8f0c9a0b1f04a5affdb44e5b005bafcb737a",
           "observed_at": 1767245666
         },
         "authority_state": "active",
@@ -2771,7 +2962,7 @@
         "checkpoint": {
           "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
           "branch": "main",
-          "commit_oid": "07ad046a7a8f5628511b4127a640555acd0b65b6365a6058f4971ddef28aa3f2",
+          "commit_oid": "a0c94bfb4c248a691ad105a7485a8f0c9a0b1f04a5affdb44e5b005bafcb737a",
           "observed_at": 1767245666
         },
         "authority_state": "active",
@@ -2788,7 +2979,7 @@
         "checkpoint": {
           "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
           "branch": "main",
-          "commit_oid": "07ad046a7a8f5628511b4127a640555acd0b65b6365a6058f4971ddef28aa3f2",
+          "commit_oid": "a0c94bfb4c248a691ad105a7485a8f0c9a0b1f04a5affdb44e5b005bafcb737a",
           "observed_at": 1767245666
         },
         "authority_state": "active",
@@ -2805,7 +2996,7 @@
         "checkpoint": {
           "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
           "branch": "main",
-          "commit_oid": "07ad046a7a8f5628511b4127a640555acd0b65b6365a6058f4971ddef28aa3f2",
+          "commit_oid": "a0c94bfb4c248a691ad105a7485a8f0c9a0b1f04a5affdb44e5b005bafcb737a",
           "observed_at": 1767245666
         },
         "authority_state": "active",
@@ -2822,7 +3013,7 @@
         "checkpoint": {
           "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
           "branch": "main",
-          "commit_oid": "07ad046a7a8f5628511b4127a640555acd0b65b6365a6058f4971ddef28aa3f2",
+          "commit_oid": "a0c94bfb4c248a691ad105a7485a8f0c9a0b1f04a5affdb44e5b005bafcb737a",
           "observed_at": 1767245666
         },
         "authority_state": "active",
@@ -2838,7 +3029,7 @@
         "checkpoint": {
           "repository_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
           "branch": "main",
-          "commit_oid": "6a26d9ec22f7f749190c3db0be43c640714436619840a7e575babe0e6bf88bdf",
+          "commit_oid": "84de7c4f603e29072cb0f10c8c92023cd8dcb68ff49079e1805ae5bbb0250d98",
           "observed_at": 1767245702
         },
         "authority_state": "active",

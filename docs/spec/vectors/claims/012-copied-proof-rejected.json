@@ -14,7 +14,7 @@
   "direction": "consume",
   "input": {
     "claim": {
-      "claim_id": "3a52f399f2905d489713d7f26733dc74ef52969b1d5f011d1c0f6b3423fe8309",
+      "claim_id": "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7",
       "issuer": {
         "type": "nostr-secp256k1",
         "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -24,6 +24,8 @@
         "value": "eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y"
       },
       "claim_class": "authorization",
+      "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "credential_ledger_generation": 0,
       "namespace": "heterodyne.device",
       "name": "claim-ledger-reader",
       "value": true,
@@ -43,7 +45,7 @@
     "source": {
       "challenge": {
         "domain": "heterodyne-claim-pop-v1",
-        "claim_id": "3a52f399f2905d489713d7f26733dc74ef52969b1d5f011d1c0f6b3423fe8309",
+        "claim_id": "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7",
         "nonce": "73737373737373737373737373737373",
         "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
         "resource": "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims",
@@ -59,13 +61,13 @@
           "x": "pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8"
         },
         "protected": "eyJhbGciOiJFZERTQSJ9",
-        "signature": "Rb2P0DyO4nIXiSH_-XllKCE-QnYGtyHtkket_7Dgtypx7zjDRExukCb_SKNdZ_3EHr2df9SmcNz8bLDw1C9TAQ"
+        "signature": "UcragRVvO7Xl7RWjGf6oDz6eFDTzd4Hm4nwsG0UvrC746Q3JvkfJ4efLkjQoyM0TYroH8qazyGCijlQT1wq9Dg"
       }
     },
     "copied_request": {
       "challenge": {
         "domain": "heterodyne-claim-pop-v1",
-        "claim_id": "3a52f399f2905d489713d7f26733dc74ef52969b1d5f011d1c0f6b3423fe8309",
+        "claim_id": "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7",
         "nonce": "79797979797979797979797979797979",
         "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
         "resource": "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims",
@@ -81,20 +83,22 @@
           "x": "pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8"
         },
         "protected": "eyJhbGciOiJFZERTQSJ9",
-        "signature": "Rb2P0DyO4nIXiSH_-XllKCE-QnYGtyHtkket_7Dgtypx7zjDRExukCb_SKNdZ_3EHr2df9SmcNz8bLDw1C9TAQ"
+        "signature": "UcragRVvO7Xl7RWjGf6oDz6eFDTzd4Hm4nwsG0UvrC746Q3JvkfJ4efLkjQoyM0TYroH8qazyGCijlQT1wq9Dg"
       },
       "expected_nonce": "79797979797979797979797979797979"
     },
     "claim_authority_evidence": [
       {
-        "claim_id": "3a52f399f2905d489713d7f26733dc74ef52969b1d5f011d1c0f6b3423fe8309",
+        "claim_id": "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7",
         "issuer": {
           "type": "nostr-secp256k1",
           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
         },
-        "event_id": "15e4f22989c3cd1fa5da7032654a73311d7acbb6bc6f4685804d1c32b6a060d2",
+        "event_id": "0b36b1432a5bde63ddd198757d10a2dbe0acdafcdbed670ab044a9beffc2c1f2",
         "envelope_valid": true,
         "core_kel_authority_valid": true,
+        "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "credential_ledger_generation": 0,
         "verified_at": 1767227605,
         "valid_until": 1767227900
       }

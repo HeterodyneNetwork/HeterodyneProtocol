@@ -559,6 +559,10 @@ export function authorizeAgentMethod(
   }
   const tokenDecision = validateAgentAccessToken({
     typ: input.token.typ,
+    credential_ledger_persona: input.token.binding.ledger_persona,
+    credential_ledger_generation: input.token.binding.ledger_generation,
+    expected_credential_ledger_persona: input.current_ledger.persona,
+    expected_credential_ledger_generation: input.current_ledger.generation,
     iss: input.token.binding.issuer,
     sub: input.token.binding.pairwise_sub,
     aud: input.token.audience,

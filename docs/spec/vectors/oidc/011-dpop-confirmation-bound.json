@@ -54,7 +54,7 @@
         }
       ]
     },
-    "compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkpGeE0xN1FwU01HcDRtMm80bGtkMDNzY0hfeEFyTWVTM2pxeHFvYVdoZW8iLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZCIsInN1YiI6IjVsbmJ2bEtEVG9ZM01FakMydzFYZGtWU01kY3VNUF9QUGFpVE9iRUNzQmciLCJhdWQiOlsiaHR0cHM6Ly9hcGkuZXhhbXBsZSJdLCJleHAiOjE3NjcyNDYyNjksImlhdCI6MTc2NzI0NTY2OSwianRpIjoib2lkYy1ldmlkZW5jZS1qdGktMDAwMSIsImNsaWVudF9pZCI6InJlZ2lzdGVyZWQtY2xpZW50Iiwic2NvcGUiOiJoZXRlcm9keW5lOmtleS1yZWYgb3BlbmlkIHByb2ZpbGUiLCJuYW1lIjoiQWxpY2UiLCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qva2V5LXJlZiI6eyJ0eXBlIjoibm9zdHItc2VjcDI1NmsxIiwidmFsdWUiOiJjNjA0N2Y5NDQxZWQ3ZDZkMzA0NTQwNmU5NWMwN2NkODVjNzc4ZTRiOGNlZjNjYTdhYmFjMDliOTVjNzA5ZWU1In0sImNuZiI6eyJqa3QiOiJCNG9xVElCVkUxRGg5dmFDZmJHN0RiSEg1SUl4U2k4UmdWOFdwdTExNTRnIn0sImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9sZWRnZXItY2hlY2twb2ludCI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJjb21taXRfb2lkIjoiMzRkODU2ZmQxMDIxOGExMDVkNGYzOTExNGQ4ZTdiYTVjNjRmY2EyYjZjNDE1ODEzOWM2NjIyMjc1YWE3NGFlYyIsIm9ic2VydmVkX2F0IjoxNzY3MjQ1NjY4fSwic3RhdHVzIjp7InN0YXR1c19saXN0Ijp7InVyaSI6Imh0dHBzOi8vbm9kZS5leGFtcGxlL29pZGMvbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsImlkeCI6MH19LCJodHRwczovL2hldGVyb2R5bmUubmV0d29yay9qd3Qvc3RhdHVzLW1pcnJvciI6eyJyZXBvc2l0b3J5X3JpZCI6InJhZDp6MlRKb0RBaEs1cFRtTHpxbUs5VzRGTWR0anl5MSIsImJyYW5jaCI6Im1haW4iLCJwYXRoIjoiLndlbGwta25vd24vbnB1YjEweGx4dmxoZW1qYTZjNGRxdjIydWFwY3RxdXBmaGx4bTloOHozazJlNzJxNGs5aGN6N3ZxcGtnZTZkL3N0YXR1cy1saXN0cy8yMDQ1NC85ZTJkOGY5Njk2NjJmZDdjNjhjOWNjNjhjN2IyMDVjOC8wLmp3dCIsInNoYTI1NiI6IjMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMifX0.Cbvl6fBTxFSNXXJVGzNXqzVu3-52pR473zH9e3D6QP5LSKE7LqZx20AVGNoxXobnB-wAgNT7mbAhjSw0GpgQyxmU35RJ85ydRrO1_pWG8SAeRh-d18Gy8msrLeoVmSdbRfZd0hzZr8MPUImbf6uuHz66vLRM1z3oz9F1zvTuZDGqG4JL9HTaWJk7dKZ63zV8Kexy80ehj6q_ctZh97GTOmE6nn5Q0m8iYPGm-BmKE4-DmfwL5zpB7PZbMyMDBWARE3Ihbe80FQ6AUOhNOJxoDjmI_NElnqVzCqF-srcT4KUJoVavHh7Hbdxduvg4p2U3OvSZXggfdq4xUvUYYrQbGQ",
+    "compact": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkpGeE0xN1FwU01HcDRtMm80bGtkMDNzY0hfeEFyTWVTM2pxeHFvYVdoZW8iLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL25vZGUuZXhhbXBsZS9vaWRjL25wdWIxMHhseHZsaGVtamE2YzRkcXYyMnVhcGN0cXVwZmhseG05aDh6M2syZTcycTRrOWhjejd2cXBrZ2U2ZCIsInN1YiI6IjVsbmJ2bEtEVG9ZM01FakMydzFYZGtWU01kY3VNUF9QUGFpVE9iRUNzQmciLCJhdWQiOlsiaHR0cHM6Ly9hcGkuZXhhbXBsZSJdLCJleHAiOjE3NjcyNDYyNjksImlhdCI6MTc2NzI0NTY2OSwianRpIjoib2lkYy1ldmlkZW5jZS1qdGktMDAwMSIsImNsaWVudF9pZCI6InJlZ2lzdGVyZWQtY2xpZW50Iiwic2NvcGUiOiJoZXRlcm9keW5lOmtleS1yZWYgb3BlbmlkIHByb2ZpbGUiLCJjcmVkZW50aWFsX2xlZGdlcl9wZXJzb25hIjoiNzliZTY2N2VmOWRjYmJhYzU1YTA2Mjk1Y2U4NzBiMDcwMjliZmNkYjJkY2UyOGQ5NTlmMjgxNWIxNmY4MTc5OCIsImNyZWRlbnRpYWxfbGVkZ2VyX2dlbmVyYXRpb24iOjAsIm5hbWUiOiJBbGljZSIsImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9rZXktcmVmIjp7InR5cGUiOiJub3N0ci1zZWNwMjU2azEiLCJ2YWx1ZSI6ImM2MDQ3Zjk0NDFlZDdkNmQzMDQ1NDA2ZTk1YzA3Y2Q4NWM3NzhlNGI4Y2VmM2NhN2FiYWMwOWI5NWM3MDllZTUifSwiY25mIjp7ImprdCI6IkI0b3FUSUJWRTFEaDl2YUNmYkc3RGJISDVJSXhTaThSZ1Y4V3B1MTE1NGcifSwiaHR0cHM6Ly9oZXRlcm9keW5lLm5ldHdvcmsvand0L2xlZGdlci1jaGVja3BvaW50Ijp7InJlcG9zaXRvcnlfcmlkIjoicmFkOnoyVEpvREFoSzVwVG1MenFtSzlXNEZNZHRqeXkxIiwiYnJhbmNoIjoibWFpbiIsImNvbW1pdF9vaWQiOiIwNTVlNjlhNWM2YzA1ZDdlNWFlZGU0OTAwNzYzYWNkYTQzZGQ0NzJhZmY0NjUxNWMzNGExODlmNWM5ZDRlZDAwIiwib2JzZXJ2ZWRfYXQiOjE3NjcyNDU2Njh9LCJzdGF0dXMiOnsic3RhdHVzX2xpc3QiOnsidXJpIjoiaHR0cHM6Ly9ub2RlLmV4YW1wbGUvb2lkYy9ucHViMTB4bHh2bGhlbWphNmM0ZHF2MjJ1YXBjdHF1cGZobHhtOWg4ejNrMmU3MnE0azloY3o3dnFwa2dlNmQvc3RhdHVzLWxpc3RzLzIwNDU0LzllMmQ4Zjk2OTY2MmZkN2M2OGM5Y2M2OGM3YjIwNWM4LzAuand0IiwiaWR4IjowfX0sImh0dHBzOi8vaGV0ZXJvZHluZS5uZXR3b3JrL2p3dC9zdGF0dXMtbWlycm9yIjp7InJlcG9zaXRvcnlfcmlkIjoicmFkOnoyVEpvREFoSzVwVG1MenFtSzlXNEZNZHRqeXkxIiwiYnJhbmNoIjoibWFpbiIsInBhdGgiOiIud2VsbC1rbm93bi9ucHViMTB4bHh2bGhlbWphNmM0ZHF2MjJ1YXBjdHF1cGZobHhtOWg4ejNrMmU3MnE0azloY3o3dnFwa2dlNmQvc3RhdHVzLWxpc3RzLzIwNDU0LzllMmQ4Zjk2OTY2MmZkN2M2OGM5Y2M2OGM3YjIwNWM4LzAuand0Iiwic2hhMjU2IjoiMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMyJ9fQ.g1BUPo_vd0ZuMh8fsHwm6nOBzEGa57exYEUvBsrqRK50Q_GhiOuw5RPzXCF7l1v3YC8MCj8JKzKriJU9ePEeE4RY5m_k8F-sZPQRKIutOTVqMLJDl0P_nh4W1FdDpG-2icyZbljB27mkUYL_2SU59wpwExclhhuOnwoJ9i6Ts-Bbk5KljDCDmD4850xWg7HS-rzArlsvniIuhWL2nEdH7b9iSb9XWmfI1ADVYU1dZIEuojeKE-DuThEN7z5BJBePnAiVMU5YzlIOFTwf3j2WctYJVF0PAcfWKj7Hyjd78FpN5kJJHzmUMfeUkQnj5vCScBtyY9ZZuvgob4BV6B0-eg",
     "cases": [
       {
         "expected_audience": "https://api.example",
@@ -64,6 +64,10 @@
           "permitted_audiences": [
             "https://api.example"
           ],
+          "credential_ledger": {
+            "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+            "credential_ledger_generation": 0
+          },
           "token_use": "access_token",
           "cnf": {
             "jkt": "B4oqTIBVE1Dh9vaCfbG7DbHH5IIxSi8RgV8Wpu1154g"
@@ -79,6 +83,10 @@
           "permitted_audiences": [
             "https://api.example"
           ],
+          "credential_ledger": {
+            "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+            "credential_ledger_generation": 0
+          },
           "token_use": "access_token",
           "cnf": {
             "jkt": "TxNkbhUw8cKuLOeNCXfICqDXVBGOKp56ZSk-d-tySzQ"
@@ -94,6 +102,10 @@
           "permitted_audiences": [
             "https://api.example"
           ],
+          "credential_ledger": {
+            "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+            "credential_ledger_generation": 0
+          },
           "token_use": "access_token",
           "cnf": {
             "jkt": "B4oqTIBVE1Dh9vaCfbG7DbHH5IIxSi8RgV8Wpu1154g",
@@ -110,6 +122,10 @@
           "permitted_audiences": [
             "https://api.example"
           ],
+          "credential_ledger": {
+            "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+            "credential_ledger_generation": 0
+          },
           "token_use": "access_token",
           "cnf": {
             "x5t#S256": "tB5C5DPoxWcjBy-OHurWhsFsLI6-SC0cx70RLF5fUdc"

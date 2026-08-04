@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { sha256 } from "@noble/hashes/sha2";
 import {
+  activeCanonicalClaimSemanticsAt,
   buildLedgerRepositoryEvidence,
   buildReaderOnboardingBundle,
   canMint,
@@ -50,6 +51,13 @@ function contextFor(repository: ReturnType<typeof buildLedgerRepositoryEvidence>
   return s.makeContext(repository);
 }
 
+function bindingFor(record: LedgerRecord) {
+  return {
+    credential_ledger_persona: record.persona,
+    credential_ledger_generation: record.credential_ledger_generation,
+  };
+}
+
 function cloneRequest(request: ReaderAccessRequest): ReaderAccessRequest {
   return structuredClone(request);
 }
@@ -58,6 +66,7 @@ function resign(record: LedgerRecord, payload: LedgerRecord["payload"], writer =
   return createSignedLedgerRecord({
     record_type: record.record_type,
     persona: record.persona,
+    credential_ledger_generation: record.credential_ledger_generation,
     writer_nid: writer.did_key,
     created_at: record.created_at,
     parents: record.parents,
@@ -80,12 +89,37 @@ function digestJson(value: unknown): string {
 describe("signed ledger artifact validation", () => {
   it("requires record-bound validation evidence even for a valid repository writer", () => {
     const records = new Map([[s.claimRecordOne.record_id, s.claimRecordOne]]);
-    expect(() => validateLedgerRecordOrThrow(s.claimRecordOne, records)).toThrow(/evidence|unconfirmed/);
+    const binding = {
+      credential_ledger_persona: s.persona,
+      credential_ledger_generation: 0,
+    };
+    expect(() => validateLedgerRecordOrThrow(s.claimRecordOne, records, undefined, binding)).toThrow(/evidence|unconfirmed/);
     expect(() => validateLedgerRecordOrThrow(
       s.claimRecordOne,
       records,
       s.evidence.get(s.claimRecordOne.record_id),
+      binding,
     )).not.toThrow();
+    expect(() => validateLedgerRecordOrThrow(
+      s.claimRecordOne,
+      records,
+      s.evidence.get(s.claimRecordOne.record_id),
+      { ...binding, credential_ledger_generation: 1 },
+    )).toThrow(/credential_generation_stale/);
+    expect(() => validateLedgerRecordOrThrow(
+      s.claimRecordOne,
+      records,
+      s.evidence.get(s.claimRecordOne.record_id),
+      { ...binding, credential_ledger_persona: "ff".repeat(32) },
+    )).toThrow(/credential_ledger_persona_mismatch/);
+    const missingGeneration = { ...s.claimRecordOne } as Partial<LedgerRecord>;
+    delete missingGeneration.credential_ledger_generation;
+    expect(() => validateLedgerRecordOrThrow(
+      missingGeneration as LedgerRecord,
+      records,
+      s.evidence.get(s.claimRecordOne.record_id),
+      binding,
+    )).toThrow(/credential_generation_missing/);
   });
 
   it("rejects a bare semantic claim and an invalid signed envelope despite a valid Ed25519 writer", () => {
@@ -94,6 +128,7 @@ describe("signed ledger artifact validation", () => {
       bare,
       new Map([[bare.record_id, bare]]),
       boundEvidence(bare, s.evidence.get(s.claimRecordOne.record_id)),
+      bindingFor(bare),
     )).toThrow(/schema/);
 
     const artifact = structuredClone(s.claimOne.artifact);
@@ -103,7 +138,26 @@ describe("signed ledger artifact validation", () => {
       tampered,
       new Map([[tampered.record_id, tampered]]),
       boundEvidence(tampered, s.evidence.get(s.claimRecordOne.record_id)),
+      bindingFor(tampered),
     )).toThrow(/signature|event/);
+  });
+
+  it("requires an authorization claim's binding to equal its containing ledger record", () => {
+    const mismatched = createSignedLedgerRecord({
+      record_type: s.claimRecordOne.record_type,
+      persona: s.claimRecordOne.persona,
+      credential_ledger_generation: 1,
+      writer_nid: s.writerOne.did_key,
+      created_at: s.claimRecordOne.created_at,
+      parents: [],
+      payload: s.claimRecordOne.payload,
+    }, s.writerOne.private_key);
+    expect(() => validateLedgerRecordOrThrow(
+      mismatched,
+      new Map([[mismatched.record_id, mismatched]]),
+      boundEvidence(mismatched, s.evidence.get(s.claimRecordOne.record_id)),
+      bindingFor(mismatched),
+    )).toThrow(/credential_generation_stale/);
   });
 
   it("rejects payload/record/signature mutations and cross-writer substitution", () => {
@@ -114,7 +168,12 @@ describe("signed ledger artifact validation", () => {
       { ...s.claimRecordOne, signature: "00".repeat(64) },
       { ...s.claimRecordOne, writer_nid: s.writerTwo.did_key },
     ]) {
-      expect(() => validateLedgerRecordOrThrow(mutation, new Map([[mutation.record_id, mutation]]), evidence)).toThrow();
+      expect(() => validateLedgerRecordOrThrow(
+        mutation,
+        new Map([[mutation.record_id, mutation]]),
+        evidence,
+        bindingFor(mutation),
+      )).toThrow();
     }
   });
 
@@ -123,7 +182,12 @@ describe("signed ledger artifact validation", () => {
       [s.claimRecordOne.record_id, s.claimRecordOne],
       [s.reductionRecord.record_id, s.reductionRecord],
     ]);
-    expect(() => validateLedgerRecordOrThrow(s.reductionRecord, records, s.evidence.get(s.reductionRecord.record_id))).not.toThrow();
+    expect(() => validateLedgerRecordOrThrow(
+      s.reductionRecord,
+      records,
+      s.evidence.get(s.reductionRecord.record_id),
+      bindingFor(s.reductionRecord),
+    )).not.toThrow();
 
     const wrongSubject = resign(s.reductionRecord, {
       ...s.reductionRecord.payload as Record<string, unknown>,
@@ -137,11 +201,33 @@ describe("signed ledger artifact validation", () => {
       wrongSubject,
       wrongRecords,
       boundEvidence(wrongSubject, s.evidence.get(s.reductionRecord.record_id)),
+      bindingFor(wrongSubject),
     )).toThrow(/target|subject|role/);
   });
 });
 
 describe("canonical repository evidence and convergence", () => {
+  it("retains prior-generation records for audit without treating their grants as current", () => {
+    const context = contextFor(s.baseRepository.repository);
+    context.credential_ledger = {
+      credential_ledger_persona: s.persona,
+      credential_ledger_generation: 1,
+    };
+    const state = mergeClaimLedger(
+      [s.claimRecordOne, s.claimRecordTwo],
+      [],
+      s.baseRepository.checkpoint,
+      context,
+    );
+    expect(state.records).toHaveLength(2);
+    expect(state.credential_ledger).toEqual(context.credential_ledger);
+    expect(activeCanonicalClaimSemanticsAt(state)).toEqual([]);
+    expect(resolveAuthoritativeClaimState(
+      s.claimOne.artifact.semantic.claim_id,
+      state,
+    )).toBe("invalid");
+  });
+
   it("fails closed without the required validation/repository context", () => {
     expect(() => mergeClaimLedger(
       [s.claimRecordOne, s.claimRecordTwo], [], s.baseRepository.checkpoint,
@@ -306,7 +392,8 @@ describe("reader lifecycle and metadata privacy", () => {
     })).toThrow(/key|rotation/);
 
     expectInvalidRotation(createSignedLedgerRecord({
-      record_type: "audience-key-epoch", persona: s.persona, writer_nid: s.writerTwo.did_key,
+      record_type: "audience-key-epoch", persona: s.persona, credential_ledger_generation: 0,
+      writer_nid: s.writerTwo.did_key,
       created_at: s.epochTwoRecord.created_at, parents: [s.epochOneRecord.record_id],
       payload: s.epochTwoRecord.payload,
     }, s.writerTwo.private_key));
@@ -430,6 +517,7 @@ describe("multi-writer OIDC issuer authority", () => {
     const epochRecord = createSignedLedgerRecord({
       record_type: "audience-key-epoch",
       persona: s.persona,
+      credential_ledger_generation: 0,
       writer_nid: s.writerTwo.did_key,
       created_at: s.now + 65,
       parents: [s.issuerAuthorityRecordOne.record_id, s.issuerAuthorityRecordTwo.record_id].sort(),
@@ -456,6 +544,21 @@ describe("multi-writer OIDC issuer authority", () => {
       envelope: s.issuerKeyEnvelopeOne,
       audience_key: s.issuerAudienceKeyOne,
     })).toMatchObject({ allowed: true, key_epoch: 1 });
+    expect(evaluateMintingAttempt({
+      now: state.checkpoint.observed_at,
+      manifest_max_age_seconds: 300,
+      writer_nid: s.writerOne.did_key,
+      state,
+      envelope: {
+        ...s.issuerKeyEnvelopeOne,
+        credential_ledger_generation: 1,
+      },
+      audience_key: s.issuerAudienceKeyOne,
+    })).toMatchObject({
+      allowed: false,
+      reason_code: "credential_generation_stale",
+      pending_rotation: true,
+    });
 
     const noEpoch = evaluateMintingAttempt({
       now: s.authorityState.checkpoint.observed_at,
@@ -492,6 +595,7 @@ describe("multi-writer OIDC issuer authority", () => {
         const record = createSignedLedgerRecord({
           record_type: "audience-key-epoch",
           persona: s.persona,
+          credential_ledger_generation: 0,
           writer_nid: s.writerTwo.did_key,
           created_at: s.now + 65,
           parents: [s.issuerAuthorityRecordOne.record_id, s.issuerAuthorityRecordTwo.record_id].sort(),
@@ -531,7 +635,8 @@ describe("multi-writer OIDC issuer authority", () => {
       authority_state: s.authorityState, envelope: alternateGenesisEnvelope, previous_record: null,
     });
     const alternateGenesisRecord = createSignedLedgerRecord({
-      record_type: "audience-key-epoch", persona: s.persona, writer_nid: s.writerOne.did_key,
+      record_type: "audience-key-epoch", persona: s.persona, credential_ledger_generation: 0,
+      writer_nid: s.writerOne.did_key,
       created_at: s.now + 65,
       parents: [s.issuerAuthorityRecordOne.record_id, s.issuerAuthorityRecordTwo.record_id].sort(),
       payload: alternateGenesisPayload as never,
@@ -563,7 +668,8 @@ describe("multi-writer OIDC issuer authority", () => {
       previous_record: s.issuerKeyEpochRecordOne,
     });
     const alternateRotationRecord = createSignedLedgerRecord({
-      record_type: "audience-key-epoch", persona: s.persona, writer_nid: s.writerTwo.did_key,
+      record_type: "audience-key-epoch", persona: s.persona, credential_ledger_generation: 0,
+      writer_nid: s.writerTwo.did_key,
       created_at: s.now + 101,
       parents: [s.issuerKeyEpochRecordOne.record_id, s.issuerRemovalRecord.record_id].sort(),
       payload: alternateRotationPayload as never,
@@ -722,6 +828,7 @@ describe("multi-writer OIDC issuer authority", () => {
     const sideIssuance = createSignedLedgerRecord({
       record_type: "issuance-reservation",
       persona: s.persona,
+      credential_ledger_generation: 0,
       writer_nid: s.writerOne.did_key,
       created_at: s.now + 92,
       parents: [s.claimRecordOne.record_id],
@@ -768,6 +875,7 @@ describe("multi-writer OIDC issuer authority", () => {
     const record = createSignedLedgerRecord({
       record_type: "issuance-reservation",
       persona: s.persona,
+      credential_ledger_generation: 0,
       writer_nid: bob.did_key,
       created_at: s.now + 70,
       parents: [s.claimRecordOne.record_id],
@@ -1015,6 +1123,7 @@ describe("multi-writer OIDC issuer authority", () => {
     const invalidation = createSignedLedgerRecord({
       record_type: "status-invalidation",
       persona: s.persona,
+      credential_ledger_generation: 0,
       writer_nid: s.writerTwo.did_key,
       created_at: createdAt,
       parents: [s.reservationOne.record_id],
@@ -1077,6 +1186,7 @@ describe("multi-writer OIDC issuer authority", () => {
     const rotatedRecord = createSignedLedgerRecord({
       record_type: "audience-key-epoch",
       persona: s.persona,
+      credential_ledger_generation: 0,
       writer_nid: s.writerTwo.did_key,
       created_at: s.now + 111,
       parents: [s.issuerKeyEpochRecordOne.record_id, s.issuerRemovalRecord.record_id].sort(),
@@ -1217,6 +1327,7 @@ describe("multi-writer OIDC issuer authority", () => {
   it("allocates monotonic collision-free indexes in canonical writer/list namespaces", () => {
     const first = reserveStatusIndex(s.writerOne.did_key, s.now + 172_800, 0, []);
     const issuance = {
+      credential_ledger_generation: 0,
       jti: "writer_one_token_0001",
       reservation: first,
       checkpoint: s.baseRepository.checkpoint,
@@ -1242,6 +1353,10 @@ describe("multi-writer OIDC issuer authority", () => {
     expect(() => reserveStatusIndex(s.writerOne.did_key, s.now, 0.5, [])).toThrow(/reservation|schema/);
 
     expect(() => validateIssuanceRecordOrThrow({ ...issuance, extra: true } as never)).toThrow(/additional/);
+    const missingGeneration = { ...issuance } as Partial<typeof issuance>;
+    delete missingGeneration.credential_ledger_generation;
+    expect(() => validateIssuanceRecordOrThrow(missingGeneration as typeof issuance))
+      .toThrow(/credential_generation_missing/);
     expect(() => validateIssuanceRecordOrThrow({ ...issuance, jti: "short" })).toThrow(/jti|pattern/);
     expect(() => validateIssuanceRecordOrThrow({ ...issuance, signing_key_id: "11" })).toThrow(/signing_key_id|pattern/);
     expect(() => validateIssuanceRecordOrThrow({ ...issuance, source_claim_ids: [] })).toThrow(/source_claim_ids|items/);
@@ -1255,6 +1370,7 @@ describe("multi-writer OIDC issuer authority", () => {
     const duplicate = createSignedLedgerRecord({
       record_type: "issuance-reservation",
       persona: s.persona,
+      credential_ledger_generation: 0,
       writer_nid: s.writerOne.did_key,
       created_at: s.now + 71,
       parents: [s.claimRecordOne.record_id],

@@ -76,6 +76,8 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
       issuer: rootIssuer,
       subject: nostrSubject,
       claim_class: "authorization" as const,
+      credential_ledger_persona: overrides.claim_class === "descriptive" ? null : audience,
+      credential_ledger_generation: overrides.claim_class === "descriptive" ? null : 0,
       namespace: "heterodyne.device",
       name: "claim-ledger-reader",
       value: true,
@@ -145,6 +147,8 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
       event_id: claimEventIds.get(claim.claim_id) ?? "75".repeat(32),
       envelope_valid: true,
       core_kel_authority_valid: true,
+      credential_ledger_persona: claim.credential_ledger_persona,
+      credential_ledger_generation: claim.credential_ledger_generation,
       verified_at: now + 5,
       valid_until: now + 300,
     };
@@ -164,6 +168,10 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
       revocations: [],
       subject_proof: { key: claim.subject, challenge: proofChallenge, proof },
       ...overrides,
+      credential_ledger: overrides.credential_ledger ?? {
+        credential_ledger_persona: audience,
+        credential_ledger_generation: 0,
+      },
     };
   };
 
@@ -201,6 +209,10 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
       reason_code: rejectionReason(() => validateClaimEnvelope(event, {
         issuer_authorized: true,
         registry_revision: 2,
+        credential_ledger: {
+          credential_ledger_persona: audience,
+          credential_ledger_generation: 0,
+        },
       })),
     };
   }));
@@ -232,6 +244,10 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
         reason_code: rejectionReason(() => validateClaimEnvelope(event, {
           issuer_authorized: true,
           registry_revision: 2,
+          credential_ledger: {
+            credential_ledger_persona: audience,
+            credential_ledger_generation: 0,
+          },
         })),
       };
     }),
@@ -271,6 +287,8 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
     event_id: parentEvent.id,
     envelope_valid: true,
     core_kel_authority_valid: true,
+    credential_ledger_persona: parent.credential_ledger_persona,
+    credential_ledger_generation: parent.credential_ledger_generation,
     verified_at: now + 5,
     valid_until: now + 300,
   });

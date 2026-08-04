@@ -37,8 +37,12 @@ beforeAll(async () => { x = await buildOidcScenario(fixtures); });
 const statusIat = () => x.issuedState.checkpoint.observed_at;
 const statusJwksBytes = () => Buffer.from(JSON.stringify({ keys: [OIDC_RSA_ONE.public_jwk] }));
 
-function resignStatusToken(token: ReturnType<typeof generateStatusListToken>, lst: string) {
-  const claims = { ...token.claims, status_list: { bits: 1 as const, lst } };
+function resignStatusToken(
+  token: ReturnType<typeof generateStatusListToken>,
+  lst: string,
+  overrides: Partial<ReturnType<typeof generateStatusListToken>["claims"]> = {},
+) {
+  const claims = { ...token.claims, ...overrides, status_list: { bits: 1 as const, lst } };
   const header = Buffer.from(JSON.stringify(token.protected_header)).toString("base64url");
   const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
   const input = `${header}.${payload}`;
@@ -97,6 +101,7 @@ function validatedAccessContext(token: ReturnType<typeof generateStatusListToken
     "https://api.example", { keys: [OIDC_RSA_ONE.public_jwk] }, {
       now: x.issuance.issued_at, token_use: "access_token", client_id: "registered-client",
       sender_constraint: "none", permitted_audiences: ["https://api.example"],
+      credential_ledger: x.issuedState.credential_ledger,
     });
 }
 
@@ -177,7 +182,8 @@ describe("draft-ietf-oauth-status-list-21 exact one-bit profile", () => {
     });
     expect(token.protected_header).toEqual({ alg: "RS256", kid: OIDC_RSA_ONE.public_jwk.kid, typ: "statuslist+jwt" });
     expect(token.claims).toMatchObject({ sub: uri, iat: statusIat(),
-      exp: statusIat() + 60, ttl: 30, status_list: { bits: 1 } });
+      exp: statusIat() + 60, ttl: 30, status_list: { bits: 1 },
+      ...x.issuedState.credential_ledger });
     expect(generateStatusListToken({
       state: x.issuedState, uri, private_jwk: OIDC_RSA_ONE.private_jwk,
       iat: statusIat(), exp: statusIat() + 60, ttl: 30,
@@ -189,6 +195,26 @@ describe("draft-ietf-oauth-status-list-21 exact one-bit profile", () => {
     expect(() => generateStatusListToken({ state: x.issuedState, uri,
       private_jwk: OIDC_RSA_ONE.private_jwk, iat: statusIat(), exp: statusIat() + 60, ttl: 0.5 }))
       .not.toThrow();
+  });
+
+  it("rejects a correctly signed Status List Token from another credential-ledger generation", () => {
+    const uri = `${x.metadata.issuer}/${x.issuance.reservation.uri}`;
+    const token = generateStatusListToken({
+      state: x.issuedState, uri, private_jwk: OIDC_RSA_ONE.private_jwk,
+      iat: statusIat(), exp: statusIat() + 60, ttl: 30,
+    });
+    const stale = resignStatusToken(token, token.claims.status_list.lst, {
+      credential_ledger_generation:
+        x.issuedState.credential_ledger.credential_ledger_generation + 1,
+    } as never);
+    expect(validateTokenStatus(
+      validatedAccessContext(stale),
+      stale,
+      statusJwksBytes(),
+      statusIat(),
+      statusIat(),
+      validationChain(stale),
+    )).toMatchObject({ allowed: false });
   });
 
   it("requires an unforgeable fully validated referenced JWT and never lets VALID override base failures", () => {
@@ -205,7 +231,8 @@ describe("draft-ietf-oauth-status-list-21 exact one-bit profile", () => {
     const projected = projectAccessToken({ ...x.projection, status_mirror: { ...x.projection.status_mirror,
       sha256: createHash("sha256").update(statusToken.compact).digest("hex") } });
     const options: JwtValidationOptions = { now: x.issuance.issued_at, token_use: "access_token",
-      client_id: "registered-client", sender_constraint: "none", permitted_audiences: ["https://api.example"] };
+      client_id: "registered-client", sender_constraint: "none", permitted_audiences: ["https://api.example"],
+      credential_ledger: x.issuedState.credential_ledger };
     expect(() => createValidatedProjectedJwtContext(projected.compact, x.metadata.issuer,
       "https://wrong.example", { keys: [OIDC_RSA_ONE.public_jwk] }, options)).toThrow();
   });
@@ -282,6 +309,7 @@ describe("draft-ietf-oauth-status-list-21 exact one-bit profile", () => {
       "https://api.example", { keys: [OIDC_RSA_ONE.public_jwk] }, {
         now: x.issuance.issued_at, token_use: "access_token", client_id: "registered-client",
         sender_constraint: "none", permitted_audiences: ["https://api.example"],
+        credential_ledger: x.issuedState.credential_ledger,
       });
     expect(validateTokenStatus(outOfRangeContext, valid, statusJwksBytes(), statusIat(), statusIat(), validationChain(valid)))
       .toMatchObject({ allowed: false, reason_code: "oidc-status-index-invalid" });

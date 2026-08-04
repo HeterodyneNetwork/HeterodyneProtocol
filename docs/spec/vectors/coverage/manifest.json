@@ -2482,6 +2482,138 @@
     ]
   },
   {
+    "vector_id": "credential-continuity/candidate-exact-tip-append",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+    ]
+  },
+  {
+    "vector_id": "credential-continuity/checkpoint-genesis",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+    ]
+  },
+  {
+    "vector_id": "credential-continuity/cold-root-exposure-migrates",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+    ]
+  },
+  {
+    "vector_id": "credential-continuity/config-git-raw-projection",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+    ]
+  },
+  {
+    "vector_id": "credential-continuity/dr-persona-node-removed",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+    ]
+  },
+  {
+    "vector_id": "credential-continuity/governed-obligation-equation",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+    ]
+  },
+  {
+    "vector_id": "credential-continuity/pending-retirement-conservative",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+    ]
+  },
+  {
+    "vector_id": "credential-continuity/retention-inventory-genesis",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+    ]
+  },
+  {
+    "vector_id": "credential-continuity/routine-removal-complete",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+    ]
+  },
+  {
+    "vector_id": "credential-continuity/stale-generation",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+    ]
+  },
+  {
+    "vector_id": "credential-continuity/twenty-schemas-gated",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 3,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+    ]
+  },
+  {
     "vector_id": "dm/atomic-receive-before-plaintext",
     "owner_document": "comms",
     "owner_version": "comms/0.5.0",

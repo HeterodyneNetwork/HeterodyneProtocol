@@ -16,6 +16,11 @@ import {
   type LedgerMergeResult,
 } from "./claim-ledger.js";
 import { validateOidcIssuerMetadataSchemaOrThrow } from "./schema.js";
+import {
+  evaluateCredentialGeneration,
+  isCredentialLedgerBinding,
+  type CredentialLedgerBinding,
+} from "./credential-generation.js";
 
 export const KEY_REF_SCOPE = "heterodyne:key-ref";
 export const KEY_REF_CLAIM = "https://heterodyne.network/jwt/key-ref";
@@ -97,6 +102,8 @@ export type RegisteredClient = {
 };
 
 export type OidcAuthorizationDecision = AuthorizationDecision & {
+  credential_ledger_persona?: string;
+  credential_ledger_generation?: number;
   pairwise_sub?: string;
   scopes?: string[];
   audience?: string[];
@@ -149,14 +156,15 @@ export type JwtValidationOptions = {
   cnf?: Record<string, JsonValue>;
   sender_constraint: "none" | "dpop" | "mtls";
   permitted_audiences: string[];
+  credential_ledger: CredentialLedgerBinding;
 };
 
-export type AuthorizationCodeRecord = {
+export type AuthorizationCodeRecord = CredentialLedgerBinding & {
   code: string; client_id: string; redirect_uri: string; code_challenge: string;
   issued_at: number; expires_at: number; release_digest: string;
 };
 
-export type DeviceAuthorizationRecord = {
+export type DeviceAuthorizationRecord = CredentialLedgerBinding & {
   device_code: string; user_code: string; client_id: string; scopes: string[];
   issued_at: number; expires_at: number; interval: number; last_poll_at: number | null;
   status: "pending" | "approved" | "denied" | "consumed"; release_digest: string;
@@ -173,7 +181,8 @@ export function issueAuthorizationCode(
       !Number.isSafeInteger(now) || !Number.isSafeInteger(lifetimeSeconds) || lifetimeSeconds < 1 || lifetimeSeconds > 600) {
     throw new Error("oidc-grant-prohibited: authorization code prerequisites failed");
   }
-  const core = { client_id: request.client_id, redirect_uri: request.redirect_uri,
+  const core = { ...request.state.credential_ledger,
+    client_id: request.client_id, redirect_uri: request.redirect_uri,
     code_challenge: request.code_challenge, issued_at: now, expires_at: now + lifetimeSeconds,
     release_digest: decision.release_digest };
   return { code: createHash("sha256").update(`heterodyne-authorization-code-v1\0${jcsCanonicalize(core)}`).digest("base64url"), ...core };
@@ -181,14 +190,30 @@ export function issueAuthorizationCode(
 
 export function redeemAuthorizationCode(
   record: AuthorizationCodeRecord,
-  input: { code: string; client_id: string; redirect_uri: string; code_verifier: string; now: number },
+  input: {
+    code: string;
+    client_id: string;
+    redirect_uri: string;
+    code_verifier: string;
+    now: number;
+    credential_ledger: CredentialLedgerBinding;
+  },
   consumedCodes: Set<string>,
 ): AuthorizationDecision {
+  if (!Object.prototype.hasOwnProperty.call(record, "credential_ledger_generation")) {
+    return denied("credential_generation_missing");
+  }
   if (consumedCodes.has(record.code) || input.code !== record.code || input.client_id !== record.client_id ||
       input.redirect_uri !== record.redirect_uri || input.now < record.issued_at || input.now >= record.expires_at ||
       typeof input.code_verifier !== "string" || !/^[A-Za-z0-9\-._~]{43,128}$/.test(input.code_verifier) ||
       createHash("sha256").update(input.code_verifier).digest("base64url") !== record.code_challenge) {
     return denied("oidc-grant-prohibited");
+  }
+  const generation = evaluateCredentialGeneration(record, input.credential_ledger);
+  if (!generation.valid) {
+    return denied(generation.reason_code === "credential_schema_invalid"
+      ? "oidc-grant-prohibited"
+      : generation.reason_code);
   }
   consumedCodes.add(record.code);
   return accepted();
@@ -204,7 +229,8 @@ export function issueDeviceAuthorization(
   if (!decision.allowed || decision.release_digest === undefined || request.flow !== "device_authorization" ||
       !Number.isSafeInteger(now) || !Number.isSafeInteger(lifetimeSeconds) || lifetimeSeconds < 1 ||
       !Number.isSafeInteger(interval) || interval < 1) throw new Error("oidc-grant-prohibited: device authorization prerequisites failed");
-  const core = { client_id: request.client_id, scopes: uniqueSorted(decision.scopes ?? []), issued_at: now,
+  const core = { ...request.state.credential_ledger,
+    client_id: request.client_id, scopes: uniqueSorted(decision.scopes ?? []), issued_at: now,
     expires_at: now + lifetimeSeconds, interval, release_digest: decision.release_digest };
   const digest = createHash("sha256").update(`heterodyne-device-code-v1\0${jcsCanonicalize(core)}`).digest();
   return { device_code: digest.toString("base64url"), user_code: digest.subarray(0, 5).toString("hex").toUpperCase(),
@@ -215,17 +241,35 @@ export function decideDeviceAuthorization(
   record: DeviceAuthorizationRecord,
   decision: "approve" | "deny",
   now: number,
+  currentCredentialLedger: CredentialLedgerBinding,
 ): DeviceAuthorizationRecord {
+  if (!Object.prototype.hasOwnProperty.call(record, "credential_ledger_generation")) {
+    throw new Error("credential_generation_missing");
+  }
   if (record.status !== "pending" || now < record.issued_at || now >= record.expires_at) {
     throw new Error("expired_token");
+  }
+  const generation = evaluateCredentialGeneration(record, currentCredentialLedger);
+  if (!generation.valid) {
+    throw new Error(generation.reason_code === "credential_schema_invalid"
+      ? "oidc-grant-prohibited"
+      : generation.reason_code);
   }
   return { ...record, status: decision === "approve" ? "approved" : "denied" };
 }
 
 export function redeemDeviceCode(
   record: DeviceAuthorizationRecord,
-  input: { device_code: string; client_id: string; now: number },
+  input: {
+    device_code: string;
+    client_id: string;
+    now: number;
+    credential_ledger: CredentialLedgerBinding;
+  },
 ): { record: DeviceAuthorizationRecord; result: "authorization_pending" | "slow_down" | "access_denied" | "expired_token" | "success" } {
+  if (!evaluateCredentialGeneration(record, input.credential_ledger).valid) {
+    return { record, result: "access_denied" };
+  }
   if (input.device_code !== record.device_code || input.client_id !== record.client_id) {
     return { record, result: "access_denied" };
   }
@@ -236,6 +280,43 @@ export function redeemDeviceCode(
   }
   if (record.status === "pending") return { record: { ...record, last_poll_at: input.now }, result: "authorization_pending" };
   return { record: { ...record, last_poll_at: input.now, status: "consumed" }, result: "success" };
+}
+
+export function purgeOidcTransactionsForCredentialReset(
+  authorizationCodes: readonly AuthorizationCodeRecord[],
+  deviceAuthorizations: readonly DeviceAuthorizationRecord[],
+  currentCredentialLedger: CredentialLedgerBinding,
+): {
+  retained_authorization_codes: AuthorizationCodeRecord[];
+  retained_device_authorizations: DeviceAuthorizationRecord[];
+  purged_authorization_codes: string[];
+  purged_device_codes: string[];
+  requires_authority_reissue: true;
+  requires_status_reissue: true;
+} {
+  if (!isCredentialLedgerBinding(currentCredentialLedger)) {
+    throw new Error("credential_schema_invalid");
+  }
+  const retainedAuthorizationCodes = authorizationCodes
+    .filter((record) => evaluateCredentialGeneration(record, currentCredentialLedger).valid);
+  const retainedDeviceAuthorizations = deviceAuthorizations
+    .filter((record) => evaluateCredentialGeneration(record, currentCredentialLedger).valid);
+  const retainedCodeIds = new Set(retainedAuthorizationCodes.map(({ code }) => code));
+  const retainedDeviceIds = new Set(retainedDeviceAuthorizations.map(({ device_code }) => device_code));
+  return {
+    retained_authorization_codes: retainedAuthorizationCodes,
+    retained_device_authorizations: retainedDeviceAuthorizations,
+    purged_authorization_codes: authorizationCodes
+      .map(({ code }) => code)
+      .filter((code) => !retainedCodeIds.has(code))
+      .sort(),
+    purged_device_codes: deviceAuthorizations
+      .map(({ device_code }) => device_code)
+      .filter((deviceCode) => !retainedDeviceIds.has(deviceCode))
+      .sort(),
+    requires_authority_reissue: true,
+    requires_status_reissue: true,
+  };
 }
 
 export function issuerUrl(origin: string, coldRootNpub: string, identity: PersonaIdentityState): string {
@@ -351,6 +432,7 @@ export function validateAuthorizationRequest(input: OidcAuthorizationRequest): O
       return denied("oidc-claim-release-denied");
     }
     const canonicalCheckpoint = canonicalValidatedCheckpoint(input.state);
+    const credentialLedger = input.state.credential_ledger;
     const requestCore = {
       flow: input.flow, grant_type: input.grant_type,
       ...(input.response_type === undefined ? {} : { response_type: input.response_type }),
@@ -368,6 +450,7 @@ export function validateAuthorizationRequest(input: OidcAuthorizationRequest): O
       consent_record_id: input.consent.claim_record_id,
       source_record_ids: uniqueSorted(input.source_claims.map(({ claim_record_id }) => claim_record_id)),
       checkpoint: canonicalCheckpoint,
+      ...credentialLedger,
     };
     const request_digest = jsonDigest(requestCore);
     const registrationReplay = replayConfirmedClaimForAuthorization({
@@ -476,6 +559,7 @@ export function validateAuthorizationRequest(input: OidcAuthorizationRequest): O
       ...(input.cnf === undefined ? {} : { cnf: input.cnf }),
       sender_constraint: input.sender_constraint,
       checkpoint: canonicalCheckpoint,
+      ...credentialLedger,
     };
     return { ...accepted(), ...releaseCore, release_digest: jsonDigest(releaseCore) };
   } catch {
@@ -522,6 +606,16 @@ export function validateProjectedJwt(
     }
     const header = parseSegment(segments[0]);
     const claims = parseSegment(segments[1]);
+    if (!Object.prototype.hasOwnProperty.call(claims, "credential_ledger_generation")) {
+      return denied("credential_generation_missing");
+    }
+    if (typeof claims.credential_ledger_persona !== "string" ||
+        !/^[0-9a-f]{64}$/.test(claims.credential_ledger_persona) ||
+        typeof claims.credential_ledger_generation !== "number" ||
+        !Number.isSafeInteger(claims.credential_ledger_generation) ||
+        claims.credential_ledger_generation < 0) {
+      return denied("oidc-token-type-invalid");
+    }
     if (!exactObjectKeys(header, ["alg", "kid", "typ"]) || header.alg !== "RS256" ||
         !canonicalSha256Base64url(header.kid)) return denied("oidc-token-type-invalid");
     const keysObject = asObject(jwks);
@@ -544,6 +638,8 @@ export function validateProjectedJwt(
       return denied("oidc-token-type-invalid");
     }
     if (claims.iss !== expectedIssuer) return denied("oidc-issuer-mismatch");
+    const generation = evaluateCredentialGeneration(claims, options.credential_ledger);
+    if (!generation.valid) return denied(generation.reason_code);
     if ((options.token_use === "access_token" && header.typ !== "at+jwt") ||
         (options.token_use === "id_token" && header.typ !== "JWT") ||
         (options.token_use === "jwt_assertion" && header.typ !== "heterodyne-assertion+jwt")) {
@@ -684,6 +780,7 @@ function project(
     jti: issuance.jti,
     client_id: input.client_id,
     scope: uniqueSorted(input.scopes).join(" "),
+    ...input.state.credential_ledger,
     ...release.released_claims,
     ...extraClaims,
     ...(release.cnf === undefined ? {} : { cnf: release.cnf }),
@@ -718,7 +815,7 @@ function validateProjectionInput(input: JwtProjectionInput): {
     throw new Error("oidc-token-type-invalid: canonical issuance record is absent");
   }
   const issuance = record.payload as unknown as IssuanceRecord;
-  validateIssuanceRecordOrThrow(issuance);
+  validateIssuanceRecordOrThrow(issuance, input.state.credential_ledger);
   const release = validateAuthorizationRequest(input.authorization_request);
   const mint = evaluateMintingAttempt({ now: input.now, manifest_max_age_seconds: issuance.manifest_max_age_seconds,
     writer_nid: input.issuer_writer_nid, state: input.authorization_request.state, envelope: input.issuer_envelope,
@@ -743,6 +840,10 @@ function validateProjectionInput(input: JwtProjectionInput): {
       releaseCheckpoint.repository_rid !== issuance.checkpoint.repository_rid ||
       currentCheckpoint.repository_rid !== issuance.checkpoint.repository_rid ||
       input.issuer_envelope.repository_rid !== issuance.checkpoint.repository_rid ||
+      record.persona !== input.state.credential_ledger.credential_ledger_persona ||
+      record.credential_ledger_generation !== issuance.credential_ledger_generation ||
+      input.issuer_envelope.persona !== input.state.credential_ledger.credential_ledger_persona ||
+      input.issuer_envelope.credential_ledger_generation !== issuance.credential_ledger_generation ||
       release.pairwise_sub !== input.pairwise_sub ||
       issuance.client_id !== input.client_id ||
       issuance.authorization_request_digest !== release.request_digest ||
@@ -770,6 +871,7 @@ function validateProjectionInput(input: JwtProjectionInput): {
   }
   const reserved = new Set([
     "iss", "sub", "aud", "exp", "iat", "jti", "client_id", "scope", "nonce", "cnf",
+    "credential_ledger_persona", "credential_ledger_generation",
     "status", "assertion_profile", CHECKPOINT_CLAIM, STATUS_MIRROR_CLAIM,
     "source_claim_ids", "consent", "provenance", "ledger_contents", "reader_membership",
   ]);

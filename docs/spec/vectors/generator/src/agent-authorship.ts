@@ -1,9 +1,13 @@
 import { Ajv2020 } from "ajv/dist/2020.js";
 import workloadRegistrationSchema from "../../../schemas/comms/agent-workload-registration-v1.schema.json" with { type: "json" };
 import { derivePairwiseSubject } from "./oidc.js";
+import { evaluateCredentialGeneration } from "./credential-generation.js";
 
 export type AgentDelegationInput = {
   cold_root: string;
+  credential_ledger_generation: number;
+  expected_credential_ledger_persona: string;
+  expected_credential_ledger_generation: number;
   nid: string;
   role_id: string;
   publishing_key: string;
@@ -52,6 +56,10 @@ export type WorkloadRegistration = {
 
 export type AgentTokenValidationInput = {
   typ: string;
+  credential_ledger_persona: string;
+  credential_ledger_generation: number;
+  expected_credential_ledger_persona: string;
+  expected_credential_ledger_generation: number;
   iss: string;
   sub: string;
   aud: string[];
@@ -142,6 +150,9 @@ export function agentBindingMessage(
 export function validateAgentDelegation(
   input: AgentDelegationInput,
 ): AgentDelegationResult {
+  if (!Object.prototype.hasOwnProperty.call(input, "credential_ledger_generation")) {
+    return denied("credential_generation_missing");
+  }
   if (
     !/^[0-9a-f]{64}$/.test(input.role_id)
     || input.address !== `agent:${input.role_id}`
@@ -164,6 +175,18 @@ export function validateAgentDelegation(
     || !input.kel_authority_current
   ) {
     return denied("role-delegation-key-proof-invalid");
+  }
+  const generation = evaluateCredentialGeneration({
+    credential_ledger_persona: input.cold_root,
+    credential_ledger_generation: input.credential_ledger_generation,
+  }, {
+    credential_ledger_persona: input.expected_credential_ledger_persona,
+    credential_ledger_generation: input.expected_credential_ledger_generation,
+  });
+  if (!generation.valid) {
+    return denied(generation.reason_code === "credential_schema_invalid"
+      ? "role-delegation-key-proof-invalid"
+      : generation.reason_code);
   }
   if (!input.unexpired) return denied("expired_delegation");
   if (!input.repo_final) return denied("provisional_not_final");
@@ -219,6 +242,9 @@ export function deriveAgentIdentity(
 export function validateAgentAccessToken(
   input: AgentTokenValidationInput,
 ): AgentTokenDecision {
+  if (!Object.prototype.hasOwnProperty.call(input, "credential_ledger_generation")) {
+    return denied("credential_generation_missing");
+  }
   if (
     input.typ !== "at+jwt"
     || input.iss !== input.expected_issuer
@@ -256,6 +282,15 @@ export function validateAgentAccessToken(
     || !/^[A-Za-z0-9_-]{43}$/.test(input.cnf_jkt)
   ) {
     return denied("agent-sender-proof-invalid");
+  }
+  const generation = evaluateCredentialGeneration(input, {
+    credential_ledger_persona: input.expected_credential_ledger_persona,
+    credential_ledger_generation: input.expected_credential_ledger_generation,
+  });
+  if (!generation.valid) {
+    return denied(generation.reason_code === "credential_schema_invalid"
+      ? "agent-token-invalid"
+      : generation.reason_code);
   }
   if (
     input.agent_role_id !== input.expected_role_id

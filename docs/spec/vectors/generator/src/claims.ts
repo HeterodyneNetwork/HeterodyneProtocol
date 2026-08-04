@@ -13,6 +13,10 @@ import {
   validateClaimRevocationSchemaOrThrow,
   validateKeyClaimSchemaOrThrow,
 } from "./schema.js";
+import {
+  evaluateCredentialGeneration,
+  type CredentialLedgerBinding,
+} from "./credential-generation.js";
 
 export type KeyRef =
   | { type: "nostr-secp256k1"; value: string }
@@ -40,6 +44,8 @@ export type ClaimSemanticBody = {
   issuer: KeyRef;
   subject: KeyRef;
   claim_class: ClaimClass;
+  credential_ledger_persona: string | null;
+  credential_ledger_generation: number | null;
   namespace: string;
   name: string;
   value: JsonValue;
@@ -91,6 +97,7 @@ export type SubjectProofChallenge = {
 export type ClaimEnvelopeContext = {
   issuer_authorized: boolean;
   registry_revision: 2;
+  credential_ledger: CredentialLedgerBinding;
   existing_semantic_body?: ClaimSemanticBody;
 };
 
@@ -114,6 +121,8 @@ export type ClaimAuthorityEvidence = {
   event_id: string;
   envelope_valid: boolean;
   core_kel_authority_valid: boolean;
+  credential_ledger_persona: string | null;
+  credential_ledger_generation: number | null;
   verified_at: number;
   valid_until: number;
 };
@@ -138,6 +147,7 @@ export type ClaimVerificationContext = {
   expected_nonce: string;
   used_nonces: Set<string>;
   trusted_issuers: KeyRef[];
+  credential_ledger: CredentialLedgerBinding;
   claim_authority_evidence: Map<string, ClaimAuthorityEvidence>;
   revocation_authority_evidence: Map<string, RevocationAuthorityEvidence>;
   repository_confirmed: Set<string>;
@@ -190,6 +200,10 @@ export function validateClaimEnvelope(
   assertNip01EventStructure(event);
   assertAddressedCommsEvent(event, CLAIM_KIND);
   const parsed = parseCanonicalContent(event.content, "claim") as unknown;
+  if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) &&
+      !Object.prototype.hasOwnProperty.call(parsed, "credential_ledger_generation")) {
+    throw new Error("credential_generation_missing");
+  }
   validateKeyClaimSchemaOrThrow(parsed);
   const body = parsed as ClaimSemanticBody;
   validateKeyRef(body.issuer);
@@ -206,6 +220,10 @@ export function validateClaimEnvelope(
   }
   if (!context.issuer_authorized) {
     throw new Error("claim-issuer-authority-invalid: Core did not authorize the issuer at issuance time");
+  }
+  if (body.claim_class === "authorization") {
+    const generation = evaluateCredentialGeneration(body, context.credential_ledger);
+    if (!generation.valid) throw new Error(generation.reason_code);
   }
   if (
     context.existing_semantic_body !== undefined &&
@@ -347,6 +365,18 @@ function evaluateClaim(
   chain: ClaimSemanticBody[],
   context: ClaimVerificationContext,
 ): ClaimEvaluation {
+  for (const claim of chain) {
+    if (!Object.prototype.hasOwnProperty.call(claim, "credential_ledger_generation")) {
+      return { state: "invalid", reason_code: "credential_generation_missing" };
+    }
+    if (claim.claim_class === "authorization") {
+      const generation = evaluateCredentialGeneration(claim, context.credential_ledger);
+      if (!generation.valid) return { state: "invalid", reason_code: generation.reason_code };
+    } else if (claim.credential_ledger_persona !== null || claim.credential_ledger_generation !== null) {
+      return { state: "invalid", reason_code: "credential_schema_invalid" };
+    }
+  }
+
   // 1. Canonical semantic content and claim identifiers.
   try {
     for (const claim of chain) {
@@ -470,6 +500,9 @@ function validateResolvedChain(leaf: ClaimSemanticBody, chain: ClaimSemanticBody
 function assertAttenuated(parent: ClaimSemanticBody, child: ClaimSemanticBody): void {
   const constraints = parent.constraints!;
   if (
+    (child.claim_class === "authorization" &&
+      (child.credential_ledger_persona !== parent.credential_ledger_persona ||
+       child.credential_ledger_generation !== parent.credential_ledger_generation)) ||
     child.namespace !== parent.namespace ||
     child.name !== parent.name ||
     jcsCanonicalize(child.value) !== jcsCanonicalize(parent.value) ||
@@ -613,6 +646,8 @@ function validClaimAuthorityEvidence(
     CLAIM_ID_PATTERN.test(evidence.event_id) &&
     evidence.envelope_valid &&
     evidence.core_kel_authority_valid &&
+    evidence.credential_ledger_persona === claim.credential_ledger_persona &&
+    evidence.credential_ledger_generation === claim.credential_ledger_generation &&
     Number.isSafeInteger(evidence.verified_at) &&
     Number.isSafeInteger(evidence.valid_until) &&
     evidence.verified_at <= now &&

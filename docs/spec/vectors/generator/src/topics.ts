@@ -19,6 +19,7 @@ import { buildPublicReaderVectors } from "./topics-public-reader.js";
 import { buildAgentAuthorshipVectors } from "./topics-agent-authorship.js";
 import { buildControlVectors } from "./topics-control.js";
 import { buildAgentModerationVectors } from "./topics-agent-moderation.js";
+import { buildCredentialContinuityVectors } from "./topics-credential-continuity.js";
 import { remediateHistoricalProduction } from "./legacy-remediation.js";
 import {
   AUX_RAND,
@@ -69,6 +70,7 @@ export const TOPIC_SPECS = {
   "comms-envelope": "heterodyne:comms/0.5.0#comms-envelope",
   "core-redundancy": "heterodyne:core/0.5.0#core-multi-host-seeding",
   "acceptance-gating": "heterodyne:comms/0.5.0#comms-acceptance-hook",
+  "credential-continuity": "heterodyne:comms/0.5.0#comms-credential-continuity-gate",
   stamping: "heterodyne:core/0.5.0#core-version-stamps",
   registry: "heterodyne:core/0.5.0#core-registry",
 } as const;
@@ -94,6 +96,7 @@ export async function buildAllVectors(fixtures: Fixtures): Promise<AuthoredVecto
   vectors.push(...(await buildAgentAuthorshipVectors(fixtures)));
   vectors.push(...buildControlVectors());
   vectors.push(...(await buildAgentModerationVectors()));
+  vectors.push(...buildCredentialContinuityVectors());
   return remediateHistoricalProduction(vectors, fixtures);
 }
 

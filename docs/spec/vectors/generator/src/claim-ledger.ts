@@ -24,6 +24,12 @@ import {
   validateClaimLedgerRecordSchemaOrThrow,
   validateOidcIssuanceRecordSchemaOrThrow,
 } from "./schema.js";
+import {
+  assertCurrentCredentialGeneration,
+  evaluateCredentialGeneration,
+  isCredentialLedgerBinding,
+  type CredentialLedgerBinding,
+} from "./credential-generation.js";
 import type { NostrSignedEvent } from "./nostr.js";
 
 export type LedgerRecordType =
@@ -40,6 +46,7 @@ export type LedgerRecord = {
   record_id: string;
   record_type: LedgerRecordType;
   persona: string;
+  credential_ledger_generation: number;
   writer_nid: string;
   created_at: number;
   parents: string[];
@@ -70,6 +77,7 @@ export type StatusReservation = {
 };
 
 export type IssuanceRecord = {
+  credential_ledger_generation: number;
   jti: string;
   reservation: StatusReservation;
   checkpoint: LedgerCheckpoint;
@@ -86,6 +94,7 @@ export type IssuanceRecord = {
 export type IssuerKeyEnvelope = {
   object_type: "oidc-signing-jwk-v1";
   persona: string;
+  credential_ledger_generation: number;
   repository_rid: string;
   checkpoint_commit_oid: string;
   epoch: number;
@@ -102,6 +111,7 @@ export type IssuerKeyEnvelope = {
 };
 
 export type LedgerMergeResult = {
+  credential_ledger: CredentialLedgerBinding;
   records: LedgerRecord[];
   conflicted_claim_ids: string[];
   checkpoint: LedgerCheckpoint;
@@ -157,6 +167,7 @@ export type ReaderAccessRequest = {
 };
 
 export type LedgerValidationContext = {
+  credential_ledger: CredentialLedgerBinding;
   record_evidence: Map<string, LedgerRecordValidationEvidence>;
   repository: LedgerRepositoryEvidence;
   reader_requests: Map<string, ReaderAccessRequest>;
@@ -232,6 +243,7 @@ const RECORD_KEYS = [
   "record_id",
   "record_type",
   "persona",
+  "credential_ledger_generation",
   "writer_nid",
   "created_at",
   "parents",
@@ -276,24 +288,36 @@ export function prepareLedgerReplayValidationContext(
 }
 
 export function createSignedLedgerRecord(input: UnsignedLedgerRecord, writerSecretKey: string): LedgerRecord {
-  const payload_digest = digestJson(input.payload);
+  const payload_digest = domainSeparatedDigestJson("heterodyne-claim-ledger-payload-v1", input.payload);
   const signing = recordSigningPayload({ ...input, payload_digest });
   const signature = bytesToHex(ed25519.sign(utf8Bytes(signing), hexToBytes(writerSecretKey)));
   const withoutId = { ...input, payload_digest, signature };
-  return { record_id: digestJson(withoutId), ...withoutId };
+  return {
+    record_id: domainSeparatedDigestJson("heterodyne-claim-ledger-record-id-v1", withoutId),
+    ...withoutId,
+  };
 }
 
 export function validateLedgerRecordOrThrow(
   record: LedgerRecord,
   recordsById: ReadonlyMap<string, LedgerRecord>,
-  evidence?: LedgerRecordValidationEvidence,
+  evidence: LedgerRecordValidationEvidence | undefined,
+  expectedCredentialLedger: CredentialLedgerBinding,
 ): void {
   assertPlainObject(record, "record");
+  if (!Object.prototype.hasOwnProperty.call(record, "credential_ledger_generation")) {
+    throw new Error("credential_generation_missing");
+  }
   assertExactKeys(record, RECORD_KEYS, "record");
   validateClaimLedgerRecordSchemaOrThrow(record);
   if (!HEX_32.test(record.record_id)) throw new Error("claim-id-mismatch: invalid ledger record_id");
   if (!RECORD_TYPES.has(record.record_type)) throw new Error("claim-schema-invalid: invalid ledger record_type");
   if (!PERSONA.test(record.persona)) throw new Error("claim-schema-invalid: invalid ledger persona");
+  if (!Number.isSafeInteger(record.credential_ledger_generation) ||
+      record.credential_ledger_generation < 0 ||
+      record.credential_ledger_generation > MAX_SAFE) {
+    throw new Error("claim-schema-invalid: invalid credential-ledger generation");
+  }
   if (!Number.isSafeInteger(record.created_at) || record.created_at < 0 || record.created_at > MAX_SAFE) {
     throw new Error("claim-schema-invalid: invalid ledger created_at");
   }
@@ -301,12 +325,16 @@ export function validateLedgerRecordOrThrow(
   if (!Array.isArray(record.parents) || record.parents.length > 256 || new Set(record.parents).size !== record.parents.length) {
     throw new Error("claim-schema-invalid: parents must be a unique bounded array");
   }
-  if (!HEX_32.test(record.payload_digest) || record.payload_digest !== digestJson(record.payload)) {
+  if (!HEX_32.test(record.payload_digest) ||
+      record.payload_digest !== domainSeparatedDigestJson("heterodyne-claim-ledger-payload-v1", record.payload)) {
     throw new Error("claim-id-mismatch: ledger payload_digest mismatch");
   }
   if (!HEX_64.test(record.signature)) throw new Error("claim-schema-invalid: invalid ledger signature encoding");
   validatePayload(record.record_type, record.payload);
-  const expectedId = digestJson(withoutRecordId(record));
+  const expectedId = domainSeparatedDigestJson(
+    "heterodyne-claim-ledger-record-id-v1",
+    withoutRecordId(record),
+  );
   if (record.record_id !== expectedId) throw new Error("claim-id-mismatch: ledger record_id mismatch");
   if (!ed25519.verify(
     hexToBytes(record.signature),
@@ -315,6 +343,10 @@ export function validateLedgerRecordOrThrow(
   )) {
     throw new Error("claim-event-signature-invalid: ledger writer signature is invalid");
   }
+  assertCurrentCredentialGeneration({
+    credential_ledger_persona: record.persona,
+    credential_ledger_generation: record.credential_ledger_generation,
+  }, expectedCredentialLedger);
   for (const parentId of record.parents) {
     if (!HEX_32.test(parentId) || parentId === record.record_id) {
       throw new Error("claim-repository-conflict: invalid parent reference");
@@ -339,6 +371,9 @@ export function mergeClaimLedger(
   if (context === undefined) {
     throw new Error("claim-repository-unconfirmed: explicit validation and canonical repository evidence is required");
   }
+  if (!isCredentialLedgerBinding(context.credential_ledger)) {
+    throw new Error("credential_schema_invalid");
+  }
   const recordsById = new Map<string, LedgerRecord>();
   for (const record of [...left, ...right]) {
     const existing = recordsById.get(record.record_id);
@@ -355,7 +390,15 @@ export function mergeClaimLedger(
     : replayValidationFingerprint([...records].sort((left, right) => left.record_id.localeCompare(right.record_id)));
   for (const record of records) {
     if (replayValidatedRecords === undefined) {
-      validateLedgerRecordOrThrow(record, recordsById, context.record_evidence.get(record.record_id));
+      validateLedgerRecordOrThrow(
+        record,
+        recordsById,
+        context.record_evidence.get(record.record_id),
+        {
+          credential_ledger_persona: context.credential_ledger.credential_ledger_persona,
+          credential_ledger_generation: record.credential_ledger_generation,
+        },
+      );
       continue;
     }
     const evidence = context.record_evidence.get(record.record_id);
@@ -369,9 +412,21 @@ export function mergeClaimLedger(
         validated.record !== fingerprint.record ||
         validated.evidence !== fingerprint.evidence ||
         validated.record_context !== fingerprint.record_context) {
-      validateLedgerRecordOrThrow(record, recordsById, evidence);
+      validateLedgerRecordOrThrow(
+        record,
+        recordsById,
+        evidence,
+        {
+          credential_ledger_persona: context.credential_ledger.credential_ledger_persona,
+          credential_ledger_generation: record.credential_ledger_generation,
+        },
+      );
       replayValidatedRecords.set(record, fingerprint);
     }
+  }
+  if (records.some(({ credential_ledger_generation }) =>
+    credential_ledger_generation > context.credential_ledger.credential_ledger_generation)) {
+    throw new Error("credential_generation_stale");
   }
   assertAcyclic(recordsById);
   validateLedgerStateInvariants(recordsById, context);
@@ -392,6 +447,7 @@ export function mergeClaimLedger(
   const tokenInvalidations = [...new Set(explicitTokenInvalidations)].sort();
   const canonicalCommits = canonicalAncestorCommits(context.repository);
   const result: LedgerMergeResult = {
+    credential_ledger: { ...context.credential_ledger },
     records,
     conflicted_claim_ids: findConflictedClaims(records),
     checkpoint: { ...checkpoint },
@@ -433,7 +489,9 @@ export function activeCanonicalClaimSemanticsAt(
   const atHead = new Set(canonicalHead.record_ids);
   const active = new Map<string, ClaimSemanticBody>();
   for (const record of snapshot.records) {
-    if (record.record_type !== "claim" || !confirmed.has(record.record_id) || !atHead.has(record.record_id)) continue;
+    if (record.record_type !== "claim" ||
+        record.credential_ledger_generation !== snapshot.credential_ledger.credential_ledger_generation ||
+        !confirmed.has(record.record_id) || !atHead.has(record.record_id)) continue;
     const semantic = claimArtifactFromRecord(record)?.semantic;
     if (semantic !== undefined &&
         resolveAuthoritativeClaimState(semantic.claim_id, snapshot, evaluationTime) === "active") {
@@ -478,14 +536,16 @@ export function replayConfirmedClaimForAuthorization(input: {
   const context = VALIDATED_LEDGER_CONTEXTS.get(input.state);
   const repository = validatedRepositoryForState(input.state);
   const canonicalHead = repository.commits.find(({ commit_oid }) => commit_oid === repository.canonical_head);
-  if (record?.record_type !== "claim" || context === undefined ||
+  if (record?.record_type !== "claim" ||
+      record.credential_ledger_generation !== input.state.credential_ledger.credential_ledger_generation ||
+      context === undefined ||
       !repository.repository_confirmed_record_ids.includes(input.claim_record_id) ||
       !canonicalHead?.record_ids.includes(input.claim_record_id)) {
     throw new Error("claim-repository-unconfirmed: release source claim is not canonical");
   }
   const records = new Map(snapshot.records.map((candidate) => [candidate.record_id, candidate]));
   const evidence = context.record_evidence.get(record.record_id);
-  validateLedgerRecordOrThrow(record, records, evidence);
+  validateLedgerRecordOrThrow(record, records, evidence, input.state.credential_ledger);
   const artifact = claimArtifactFromRecord(record);
   if (artifact === null || evidence?.claim_envelope_context === undefined || evidence.claims_by_id === undefined) {
     throw new Error("claim-event-signature-invalid: release source claim evidence is absent");
@@ -657,10 +717,16 @@ export function createIssuerKeyEpochPayload(input: {
   previous_record: LedgerRecord | null;
 }): IssuerKeyEpochPayload {
   assertValidatedLedgerState(input.authority_state);
+  if (!Object.prototype.hasOwnProperty.call(input.envelope, "credential_ledger_generation")) {
+    throw new Error("credential_generation_missing");
+  }
   const recipients = input.envelope.recipient_wraps.map(({ writer_nid }) => writer_nid).sort();
   const activeIssuers = deriveActiveIssuerNids(input.authority_state);
   const expectedAuthorityIds = issuerAuthorityRecordIds(input.authority_state);
-  if (input.envelope.repository_rid !== input.authority_state.checkpoint.repository_rid ||
+  if (input.envelope.persona !== input.authority_state.credential_ledger.credential_ledger_persona ||
+      input.envelope.credential_ledger_generation !==
+        input.authority_state.credential_ledger.credential_ledger_generation ||
+      input.envelope.repository_rid !== input.authority_state.checkpoint.repository_rid ||
       input.envelope.checkpoint_commit_oid !== input.authority_state.checkpoint.commit_oid ||
       !input.authority_state.records.every(({ persona }) => persona === input.envelope.persona) ||
       jcsCanonicalize(recipients) !== jcsCanonicalize(activeIssuers) ||
@@ -824,8 +890,19 @@ export function reserveStatusIndex(
   return { uri, idx: indexes.length, expiry_bucket, writer_nid_fingerprint, list_sequence: listSequence };
 }
 
-export function validateIssuanceRecordOrThrow(record: IssuanceRecord): void {
+export function validateIssuanceRecordOrThrow(
+  record: IssuanceRecord,
+  expectedCredentialLedger?: CredentialLedgerBinding,
+): void {
+  if (record === null || typeof record !== "object" ||
+      !Object.prototype.hasOwnProperty.call(record, "credential_ledger_generation")) {
+    throw new Error("credential_generation_missing");
+  }
   validateOidcIssuanceRecordSchemaOrThrow(record);
+  if (expectedCredentialLedger !== undefined &&
+      record.credential_ledger_generation !== expectedCredentialLedger.credential_ledger_generation) {
+    throw new Error("credential_generation_stale");
+  }
   assertCanonicalSigningKeyId(record.signing_key_id);
   if (record.expires_at <= record.issued_at ||
       record.issued_at < record.checkpoint.observed_at ||
@@ -886,6 +963,11 @@ export function createIssuerKeyEnvelope(input: {
       !Number.isSafeInteger(input.epoch) || input.epoch < 1 || input.audience_key.length !== 32) {
     throw new Error("claim-schema-invalid: invalid issuer signing-key envelope context");
   }
+  if (input.persona !== input.authority_state.credential_ledger.credential_ledger_persona) {
+    throw new Error("credential_ledger_persona_mismatch");
+  }
+  const credential_ledger_generation =
+    input.authority_state.credential_ledger.credential_ledger_generation;
   if (input.authority_state.checkpoint.repository_rid !== input.repository_rid ||
       input.authority_state.records.some((record) =>
         record.record_type === "issuer-authority" && payloadObject(record.payload).action === "remove" &&
@@ -935,6 +1017,7 @@ export function createIssuerKeyEnvelope(input: {
   const context = {
     domain: "heterodyne-oidc-signing-key-object-v1",
     persona: input.persona,
+    credential_ledger_generation,
     repository_rid: input.repository_rid,
     checkpoint_commit_oid,
     epoch: input.epoch,
@@ -959,6 +1042,7 @@ export function createIssuerKeyEnvelope(input: {
   return {
     object_type: "oidc-signing-jwk-v1",
     persona: input.persona,
+    credential_ledger_generation,
     repository_rid: input.repository_rid,
     checkpoint_commit_oid,
     epoch: input.epoch,
@@ -980,6 +1064,9 @@ export function unwrapIssuerSigningJwk(
   writerNid: string,
   audienceKey: Uint8Array,
 ): JsonValue {
+  if (!Object.prototype.hasOwnProperty.call(envelope, "credential_ledger_generation")) {
+    throw new Error("credential_generation_missing");
+  }
   ed25519PublicKeyFromNid(writerNid);
   if (audienceKey.length !== 32 || bytesToHex(sha256(audienceKey)) !== envelope.audience_key_id) {
     throw new Error("oidc-signing-key-unavailable: incorrect dedicated issuer audience key");
@@ -991,6 +1078,7 @@ export function unwrapIssuerSigningJwk(
   const context = {
     domain: "heterodyne-oidc-signing-key-object-v1",
     persona: envelope.persona,
+    credential_ledger_generation: envelope.credential_ledger_generation,
     repository_rid: envelope.repository_rid,
     checkpoint_commit_oid: envelope.checkpoint_commit_oid,
     epoch: envelope.epoch,
@@ -1110,7 +1198,8 @@ export function createStatusInvalidationRecords(input: {
       if (!existingCauses.has(causeKey)) {
         records.push(createSignedLedgerRecord({
           record_type: "status-invalidation",
-          persona: issuanceRecord.persona,
+          persona: input.state.credential_ledger.credential_ledger_persona,
+          credential_ledger_generation: input.state.credential_ledger.credential_ledger_generation,
           writer_nid: input.writer_nid,
           created_at: input.created_at,
           parents: [issuanceRecord.record_id, reduction.record_id].sort(),
@@ -1139,7 +1228,8 @@ export function createStatusInvalidationRecords(input: {
       if (!existingCauses.has(causeKey)) {
         records.push(createSignedLedgerRecord({
           record_type: "status-invalidation",
-          persona: issuanceRecord.persona,
+          persona: input.state.credential_ledger.credential_ledger_persona,
+          credential_ledger_generation: input.state.credential_ledger.credential_ledger_generation,
           writer_nid: input.writer_nid,
           created_at: input.created_at,
           parents: [issuanceRecord.record_id],
@@ -1161,6 +1251,13 @@ export function createStatusInvalidationRecords(input: {
 export function ledgerErrorReason(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   for (const code of [
+    "credential_generation_missing",
+    "credential_roster_empty",
+    "credential_ledger_persona_mismatch",
+    "credential_generation_stale",
+    "credential_checkpoint_stale_kel",
+    "credential_checkpoint_invalid",
+    "credential_reset_invalid",
     "claim-ledger-rollback",
     "claim-repository-conflict",
     "claim-repository-unconfirmed",
@@ -1191,7 +1288,10 @@ export function evaluateReaderAccess(
     return readerDenied("invalid", "claim-ledger-reader-unauthorized");
   }
   const record = state.records.find(({ record_id }) => record_id === request.claim_record_id);
-  if (record === undefined) return readerDenied("provisional", "claim-repository-unconfirmed");
+  if (record === undefined ||
+      record.credential_ledger_generation !== state.credential_ledger.credential_ledger_generation) {
+    return readerDenied("provisional", "credential_generation_stale");
+  }
   const artifact = claimArtifactFromRecord(record);
   if (artifact === null) return readerDenied("invalid", "claim-ledger-reader-unauthorized");
   let claim: ClaimSemanticBody;
@@ -1247,7 +1347,12 @@ export function resolveAuthoritativeClaimState(
   if (!HEX_32.test(claimId) || !Number.isSafeInteger(evaluationTime) || evaluationTime < state.checkpoint.observed_at) {
     return "invalid";
   }
-  const related = state.records.filter((record) => recordClaimId(record) === claimId);
+  const allRelated = state.records.filter((record) =>
+    recordClaimId(record) === claimId);
+  const related = allRelated.filter((record) =>
+    record.credential_ledger_generation ===
+      state.credential_ledger.credential_ledger_generation);
+  if (related.length === 0 && allRelated.length !== 0) return "invalid";
   if (related.some((record) => isReduction(record) && record.created_at > evaluationTime)) return "invalid";
   if (related.some(isReduction)) return "revoked";
   if (state.conflicted_claim_ids.includes(claimId)) return "conflicted";
@@ -1278,7 +1383,9 @@ export function resolveIssuerAuthorityState(
   }
   const confirmed = new Set(state.repository_confirmed_record_ids ?? []);
   const candidateClaims = state.records.filter((record) => {
-    if (record.record_type !== "claim" || !confirmed.has(record.record_id)) return false;
+    if (record.record_type !== "claim" ||
+        record.credential_ledger_generation !== state.credential_ledger.credential_ledger_generation ||
+        !confirmed.has(record.record_id)) return false;
     const claim = claimArtifactFromRecord(record)?.semantic;
     return claim?.claim_class === "authorization" &&
       claim.namespace === "heterodyne.device" &&
@@ -1309,7 +1416,11 @@ function canonicalIssuerAuthorityClaimId(
   if (resolveIssuerAuthorityState(writerNid, state, evaluationTime) !== "active") return null;
   const confirmed = new Set(state.repository_confirmed_record_ids ?? []);
   const claimIds = state.records
-    .filter((record) => record.record_type === "claim" && confirmed.has(record.record_id))
+    .filter((record) =>
+      record.record_type === "claim" &&
+      record.credential_ledger_generation ===
+        state.credential_ledger.credential_ledger_generation &&
+      confirmed.has(record.record_id))
     .map(claimArtifactFromRecord)
     .filter((artifact): artifact is ClaimArtifact => artifact !== null)
     .map(({ semantic }) => semantic)
@@ -1330,6 +1441,7 @@ export function deriveActiveIssuerNids(
   assertValidatedLedgerState(state);
   const candidates = new Set<string>();
   for (const record of state.records) {
+    if (record.credential_ledger_generation !== state.credential_ledger.credential_ledger_generation) continue;
     const claim = claimArtifactFromRecord(record)?.semantic;
     if (claim?.claim_class === "authorization" && claim.namespace === "heterodyne.device" &&
         claim.name === "oidc-token-issuer" && claim.value === true &&
@@ -1353,6 +1465,26 @@ export function evaluateMintingAttempt(input: {
   assertValidatedLedgerState(input.state);
   const active_issuer_nids = deriveActiveIssuerNids(input.state, input.now);
   const authority_state = resolveIssuerAuthorityState(input.writer_nid, input.state, input.now);
+  const generation = Object.prototype.hasOwnProperty.call(
+    input.envelope,
+    "credential_ledger_generation",
+  )
+    ? evaluateCredentialGeneration({
+        credential_ledger_persona: input.envelope.persona,
+        credential_ledger_generation: input.envelope.credential_ledger_generation,
+      }, input.state.credential_ledger)
+    : { valid: false as const, reason_code: "credential_generation_missing" as const };
+  if (!generation.valid) {
+    return {
+      allowed: false,
+      reason_code: generation.reason_code,
+      checkpoint: { ...input.state.checkpoint },
+      authority_state,
+      active_issuer_nids,
+      key_epoch: input.envelope.epoch,
+      pending_rotation: true,
+    };
+  }
   const envelopeAuthorityIds = new Set(input.envelope.authority_record_ids);
   const confirmed = new Set(input.state.repository_confirmed_record_ids ?? []);
   const expectedAuthorityIds = issuerAuthorityRecordIds(input.state);
@@ -1374,7 +1506,11 @@ export function evaluateMintingAttempt(input: {
     : input.envelope.epoch > 1 && input.envelope.previous_key_id !== GENESIS_AUDIENCE_KEY_ID &&
       input.envelope.previous_key_id !== input.envelope.audience_key_id;
   const envelopeBindingValid = issuerEpochBindingValid && epochChainValid &&
-    personaMatches && input.envelope.repository_rid === input.state.checkpoint.repository_rid &&
+    personaMatches &&
+    input.envelope.persona === input.state.credential_ledger.credential_ledger_persona &&
+    input.envelope.credential_ledger_generation ===
+      input.state.credential_ledger.credential_ledger_generation &&
+    input.envelope.repository_rid === input.state.checkpoint.repository_rid &&
     input.envelope.authority_record_set_digest === digestJson(input.envelope.authority_record_ids) &&
     jcsCanonicalize(input.envelope.authority_record_ids) === jcsCanonicalize(expectedAuthorityIds) &&
     input.envelope.authority_record_ids.every((recordId) => confirmed.has(recordId)) &&
@@ -1430,7 +1566,11 @@ export function canReturnToken(
       return { allowed: false, state: "provisional", reason_code: "claim-repository-unconfirmed" };
     }
     const issuance = payloadObject(record.payload) as unknown as IssuanceRecord;
-    validateIssuanceRecordOrThrow(issuance);
+    validateIssuanceRecordOrThrow(issuance, state.credential_ledger);
+    if (record.credential_ledger_generation !== state.credential_ledger.credential_ledger_generation ||
+        record.credential_ledger_generation !== issuance.credential_ledger_generation) {
+      return { allowed: false, state: "invalid", reason_code: "credential_generation_stale" };
+    }
     if (!isCanonicalAncestorForState(state, issuance.checkpoint.commit_oid)) {
       return { allowed: false, state: "invalid", reason_code: "claim-ledger-rollback" };
     }
@@ -1644,12 +1784,13 @@ function onboardingBundleMac(
 
 function recordSigningPayload(record: Pick<
   LedgerRecord,
-  "record_type" | "persona" | "writer_nid" | "created_at" | "parents" | "payload" | "payload_digest"
+  "record_type" | "persona" | "credential_ledger_generation" | "writer_nid" | "created_at" | "parents" | "payload" | "payload_digest"
 >): string {
   return jcsCanonicalize({
     domain: "heterodyne-claim-ledger-record-v1",
     record_type: record.record_type,
     persona: record.persona,
+    credential_ledger_generation: record.credential_ledger_generation,
     writer_nid: record.writer_nid,
     created_at: record.created_at,
     parents: record.parents,
@@ -1665,6 +1806,14 @@ function withoutRecordId(record: LedgerRecord): Omit<LedgerRecord, "record_id"> 
 
 function digestJson(value: unknown): string {
   return bytesToHex(sha256(utf8Bytes(jcsCanonicalize(value))));
+}
+
+function domainSeparatedDigestJson(domain: string, value: unknown): string {
+  return bytesToHex(sha256(Uint8Array.from([
+    ...utf8Bytes(domain),
+    0,
+    ...utf8Bytes(jcsCanonicalize(value)),
+  ])));
 }
 
 function replayValidationFingerprint(value: unknown): string {
@@ -1951,6 +2100,13 @@ function validateAuthenticatedArtifact(
       throw new Error("claim-issuer-authority-invalid: signed claim validation context is required");
     }
     const parsed = validateClaimEnvelope(claimArtifact.event, evidence.claim_envelope_context);
+    if (parsed.claim_class === "authorization" &&
+        (parsed.credential_ledger_persona !== record.persona ||
+         parsed.credential_ledger_generation !== record.credential_ledger_generation)) {
+      throw new Error(parsed.credential_ledger_persona !== record.persona
+        ? "credential_ledger_persona_mismatch"
+        : "credential_generation_stale");
+    }
     if (jcsCanonicalize(parsed) !== jcsCanonicalize(claimArtifact.semantic)) {
       throw new Error("claim-id-mismatch: claim artifact semantic does not equal signed event content");
     }
@@ -2104,6 +2260,9 @@ function validateLedgerStateInvariants(
   const indexesByUri = new Map<string, number[]>();
   for (const { record, issuance } of issuanceRecords) {
     validateIssuanceRecordOrThrow(issuance);
+    if (record.credential_ledger_generation !== issuance.credential_ledger_generation) {
+      throw new Error("credential_generation_stale: issuance payload does not match its ledger record");
+    }
     if (seenJtis.has(issuance.jti)) throw new Error("claim-repository-conflict: duplicate issuance jti");
     seenJtis.add(issuance.jti);
     const allocation = `${issuance.reservation.uri}\0${issuance.reservation.idx}`;
@@ -2136,6 +2295,7 @@ function validateLedgerStateInvariants(
     }
   }
   const stateForReaders: LedgerMergeResult = {
+    credential_ledger: { ...context.credential_ledger },
     records,
     conflicted_claim_ids: findConflictedClaims(records),
     checkpoint: context.repository.checkpoint,
@@ -2180,7 +2340,7 @@ function validateLedgerStateInvariants(
     if (material !== undefined) {
       assertPlainObject(material.envelope, "canonical issuer envelope");
       assertExactKeys(material.envelope, [
-        "object_type", "persona", "repository_rid", "checkpoint_commit_oid", "epoch",
+        "object_type", "persona", "credential_ledger_generation", "repository_rid", "checkpoint_commit_oid", "epoch",
         "audience_key_id", "previous_key_id", "signing_key_id", "content_digest", "nonce", "ciphertext",
         "authority_record_ids", "authority_record_set_digest", "recipient_wraps", "removed_issuer_nids",
       ], "canonical issuer envelope");
@@ -2198,6 +2358,7 @@ function validateLedgerStateInvariants(
     if (material === undefined || digestJson(material.envelope) !== payload.envelope_digest ||
         material.envelope.object_type !== "oidc-signing-jwk-v1" ||
         material.envelope.persona !== record.persona ||
+        material.envelope.credential_ledger_generation !== record.credential_ledger_generation ||
         material.envelope.repository_rid !== context.repository.repository_rid ||
         material.envelope.signing_key_id !== payload.key_digest || material.envelope.epoch !== payload.epoch ||
         material.envelope.checkpoint_commit_oid !== payload.checkpoint.commit_oid ||
@@ -2241,10 +2402,13 @@ function validateLedgerStateInvariants(
     issuerEpochs.set(payload.epoch, record);
   }
   const maximumEpoch = records
-    .filter(isReaderAudienceKeyEpochRecord)
+    .filter((record) => isReaderAudienceKeyEpochRecord(record) &&
+      record.credential_ledger_generation === context.credential_ledger.credential_ledger_generation)
     .reduce((maximum, epochRecord) => Math.max(maximum, Number(payloadObject(epochRecord.payload).epoch)), 0);
   const canonicalReaderClaims = records.filter((record) => {
-    if (record.record_type !== "claim" || !context.repository.repository_confirmed_record_ids.includes(record.record_id)) {
+    if (record.record_type !== "claim" ||
+        record.credential_ledger_generation !== context.credential_ledger.credential_ledger_generation ||
+        !context.repository.repository_confirmed_record_ids.includes(record.record_id)) {
       return false;
     }
     const claim = claimArtifactFromRecord(record)?.semantic;
@@ -2433,10 +2597,20 @@ function issuerAuthorityRecordIds(
   state: LedgerMergeResult,
   confirmed = new Set(state.repository_confirmed_record_ids ?? []),
 ): string[] {
+  const selectedGenerations = state.records
+    .filter(({ record_id }) => confirmed.has(record_id))
+    .map(({ credential_ledger_generation }) => credential_ledger_generation);
+  const selectedGeneration = selectedGenerations.length === 0
+    ? state.credential_ledger.credential_ledger_generation
+    : Math.max(...selectedGenerations);
   return state.records.filter((record) => {
     if (!confirmed.has(record.record_id)) return false;
-    if (record.record_type === "issuer-authority") return true;
+    if (record.record_type === "issuer-authority") {
+      return isReduction(record) ||
+        record.credential_ledger_generation === selectedGeneration;
+    }
     if (record.record_type !== "claim") return false;
+    if (record.credential_ledger_generation !== selectedGeneration) return false;
     const claim = claimArtifactFromRecord(record)?.semantic;
     return claim?.claim_class === "authorization" && claim.namespace === "heterodyne.device" &&
       claim.name === "oidc-token-issuer" && claim.value === true &&
@@ -2453,7 +2627,14 @@ function ledgerSnapshotForRecordSet(
   checkpoint = state.checkpoint,
 ): LedgerMergeResult {
   const records = state.records.filter(({ record_id }) => recordIds.has(record_id));
+  const selectedGeneration = records.length === 0
+    ? state.credential_ledger.credential_ledger_generation
+    : Math.max(...records.map(({ credential_ledger_generation }) => credential_ledger_generation));
   return {
+    credential_ledger: {
+      credential_ledger_persona: state.credential_ledger.credential_ledger_persona,
+      credential_ledger_generation: selectedGeneration,
+    },
     records,
     conflicted_claim_ids: findConflictedClaims(records),
     checkpoint: { ...checkpoint, observed_at: evaluationTime },
@@ -2505,12 +2686,18 @@ function validatePreviousIssuerKeyEnvelope(input: {
     const envelope = input.previous.envelope;
     assertPlainObject(envelope, "previous issuer envelope");
     assertExactKeys(envelope, [
-      "object_type", "persona", "repository_rid", "checkpoint_commit_oid", "epoch",
+      "object_type", "persona", "credential_ledger_generation", "repository_rid", "checkpoint_commit_oid", "epoch",
       "audience_key_id", "previous_key_id", "signing_key_id", "content_digest", "nonce", "ciphertext",
       "authority_record_ids", "authority_record_set_digest", "recipient_wraps", "removed_issuer_nids",
     ], "previous issuer envelope");
     assertCanonicalSigningKeyId(envelope.signing_key_id, "previous issuer signing_key_id");
     if (envelope.object_type !== "oidc-signing-jwk-v1" || envelope.persona !== input.persona ||
+        !Number.isSafeInteger(envelope.credential_ledger_generation) ||
+        envelope.credential_ledger_generation < 0 ||
+        envelope.credential_ledger_generation >
+          input.state.credential_ledger.credential_ledger_generation ||
+        input.state.credential_ledger.credential_ledger_generation -
+          envelope.credential_ledger_generation > 1 ||
         envelope.repository_rid !== input.repository_rid || !Number.isSafeInteger(envelope.epoch) || envelope.epoch < 1 ||
         input.next_epoch !== envelope.epoch + 1 || !HEX_32.test(envelope.audience_key_id) ||
         !HEX_32.test(envelope.previous_key_id) || !HEX_32.test(envelope.content_digest) ||
@@ -2532,6 +2719,13 @@ function validatePreviousIssuerKeyEnvelope(input: {
       throw new Error("shape");
     }
     const priorRecordIds = new Set(priorCommit.record_ids);
+    const priorGenerations = input.state.records
+      .filter(({ record_id }) => priorRecordIds.has(record_id))
+      .map(({ credential_ledger_generation }) => credential_ledger_generation);
+    if (priorGenerations.length === 0 ||
+        envelope.credential_ledger_generation !== Math.max(...priorGenerations)) {
+      throw new Error("generation");
+    }
     const expectedAuthorityIds = issuerAuthorityRecordIds(input.state, priorRecordIds);
     if (jcsCanonicalize(envelope.authority_record_ids) !== jcsCanonicalize(expectedAuthorityIds) ||
         envelope.authority_record_set_digest !== digestJson(expectedAuthorityIds)) {
@@ -2600,7 +2794,9 @@ function confirmedClaimIds(state: LedgerMergeResult): Set<string> {
   const confirmedRecords = new Set(state.repository_confirmed_record_ids ?? []);
   return new Set(
     state.records
-      .filter(({ record_id, record_type }) => record_type === "claim" && confirmedRecords.has(record_id))
+      .filter(({ record_id, record_type, credential_ledger_generation }) =>
+        record_type === "claim" && confirmedRecords.has(record_id) &&
+        credential_ledger_generation === state.credential_ledger.credential_ledger_generation)
       .map(recordClaimId)
       .filter((claimId): claimId is string => claimId !== null),
   );
@@ -2609,13 +2805,15 @@ function confirmedClaimIds(state: LedgerMergeResult): Set<string> {
 function currentAudienceEpochRecord(state: LedgerMergeResult): LedgerRecord | null {
   const confirmed = new Set(state.repository_confirmed_record_ids ?? []);
   return state.records
-    .filter((record) => isReaderAudienceKeyEpochRecord(record) && confirmed.has(record.record_id))
+    .filter((record) => isReaderAudienceKeyEpochRecord(record) && confirmed.has(record.record_id) &&
+      record.credential_ledger_generation === state.credential_ledger.credential_ledger_generation)
     .sort((left, right) => Number(payloadObject(right.payload).epoch) - Number(payloadObject(left.payload).epoch))[0] ?? null;
 }
 
 function currentIssuerKeyEpochRecord(state: LedgerMergeResult): LedgerRecord | null {
   const confirmed = new Set(state.repository_confirmed_record_ids ?? []);
   return state.records
-    .filter((record) => isIssuerKeyEpochRecord(record) && confirmed.has(record.record_id))
+    .filter((record) => isIssuerKeyEpochRecord(record) && confirmed.has(record.record_id) &&
+      record.credential_ledger_generation === state.credential_ledger.credential_ledger_generation)
     .sort((left, right) => Number(payloadObject(right.payload).epoch) - Number(payloadObject(left.payload).epoch))[0] ?? null;
 }

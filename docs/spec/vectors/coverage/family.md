@@ -3,7 +3,7 @@
 Generated from [manifest.json](manifest.json); do not edit by hand.
 
 - core: 141
-- comms: 170
+- comms: 181
 - control: 72
 - social: 96
 
@@ -207,6 +207,17 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `control/transport-strict-tor` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-enrollment` |
 | `core-redundancy/radicle-multihost-replication` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-multi-host-seeding` |
 | `core-redundancy/stale-seed-does-not-remove-durability` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-multi-host-seeding` |
+| `credential-continuity/candidate-exact-tip-append` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-credential-continuity-gate` |
+| `credential-continuity/checkpoint-genesis` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-credential-continuity-gate` |
+| `credential-continuity/cold-root-exposure-migrates` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-credential-continuity-gate` |
+| `credential-continuity/config-git-raw-projection` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-credential-continuity-gate` |
+| `credential-continuity/dr-persona-node-removed` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-credential-continuity-gate` |
+| `credential-continuity/governed-obligation-equation` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-credential-continuity-gate` |
+| `credential-continuity/pending-retirement-conservative` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-credential-continuity-gate` |
+| `credential-continuity/retention-inventory-genesis` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-credential-continuity-gate` |
+| `credential-continuity/routine-removal-complete` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-credential-continuity-gate` |
+| `credential-continuity/stale-generation` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-credential-continuity-gate` |
+| `credential-continuity/twenty-schemas-gated` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-credential-continuity-gate` |
 | `dm/atomic-receive-before-plaintext` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-dm-retention` |
 | `dm/double-ratchet-transcript` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | `heterodyne-comms-double-ratchet-message-v1` | `heterodyne:comms/0.5.0#comms-dm-wire` |
 | `dm/invite-delegated-device-valid` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | `heterodyne-comms-double-ratchet-invite-v1` | `heterodyne:comms/0.5.0#comms-dm-wire` |

@@ -14,6 +14,9 @@
   "direction": "consume",
   "input": {
     "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "credential_ledger_generation": 0,
+    "expected_credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "expected_credential_ledger_generation": 0,
     "nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
     "role_id": "abababababababababababababababababababababababababababababababab",
     "publishing_key": "f76a39d05686e34a4420897e359371836145dd3973e3982568b60f8433adde6e",

@@ -1,0 +1,44 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 3,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+  ],
+  "vector_id": "credential-continuity/candidate-exact-tip-append",
+  "description": "Candidate receipt append is an exact-tip CAS that preserves prior bytes and adds new records.",
+  "direction": "consume",
+  "input": {
+    "state": {
+      "status": "pending",
+      "tip": "8181818181818181818181818181818181818181",
+      "partial_record_digests": []
+    },
+    "operation": {
+      "kind": "append",
+      "expected_tip": "8181818181818181818181818181818181818181",
+      "new_tip": "8282828282828282828282828282828282828282",
+      "record_digests": [
+        "8383838383838383838383838383838383838383838383838383838383838383"
+      ]
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "draft_credential_continuity_decision": {
+        "status": "pending",
+        "tip": "8282828282828282828282828282828282828282",
+        "partial_record_digests": [
+          "8383838383838383838383838383838383838383838383838383838383838383"
+        ]
+      },
+      "selected_registry_revision": 3,
+      "conformance_claimable": false
+    }
+  }
+}

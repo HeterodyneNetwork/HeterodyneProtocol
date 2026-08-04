@@ -4,13 +4,14 @@
   "title": "Heterodyne Comms private claim-ledger record v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["record_id", "record_type", "persona", "writer_nid", "created_at", "parents", "payload", "payload_digest", "signature"],
+  "required": ["record_id", "record_type", "persona", "credential_ledger_generation", "writer_nid", "created_at", "parents", "payload", "payload_digest", "signature"],
   "properties": {
     "record_id": { "$ref": "#/definitions/sha256" },
     "record_type": {
       "enum": ["claim", "revocation", "authority-reduction", "reader-change", "audience-key-epoch", "issuer-authority", "issuance-reservation", "status-invalidation"]
     },
     "persona": { "$ref": "#/definitions/sha256" },
+    "credential_ledger_generation": { "$ref": "#/definitions/json_safe_integer" },
     "writer_nid": { "$ref": "#/definitions/nid" },
     "created_at": { "$ref": "#/definitions/json_safe_integer" },
     "parents": { "type": "array", "maxItems": 256, "uniqueItems": true, "items": { "$ref": "#/definitions/sha256" } },

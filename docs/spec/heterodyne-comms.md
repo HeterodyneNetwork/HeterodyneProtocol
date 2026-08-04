@@ -842,6 +842,7 @@ The authorization record is canonical compact JSON:
   "type": "heterodyne.credential-sync.authorization.v1",
   "authorization_id": "<32 lowercase hex characters>",
   "persona": "<64 lowercase hex cold-root npub>",
+  "credential_ledger_generation": 0,
   "target_nid": "<canonical Ed25519 did:key NID>",
   "purpose": "credential-sync",
   "issued_at": 0,
@@ -860,6 +861,8 @@ member sequence is closed and exactly the displayed sequence. Encodings are:
 - `type` and `purpose` are the displayed literals;
 - `authorization_id` is exactly 16 random bytes encoded as 32 lowercase hex;
 - `persona` is exactly 32 bytes encoded as 64 lowercase hex;
+- `credential_ledger_generation` is the JSON-safe nonnegative generation of
+  that persona's credential ledger;
 - `target_nid` is the canonical `did:key` multibase encoding of an Ed25519
   Radicle NID; decoding and re-encoding MUST reproduce the input byte-for-byte;
 - `issued_at`, `valid_until`, and `kel_head.seq` are JSON-safe nonnegative
@@ -1005,6 +1008,554 @@ the encrypted keys repository and its integrity metadata. The receiving
 device MUST verify the presented record against the same current ledger state
 and MUST keep key material encrypted at rest. This permission does not
 authorize remote actions, configuration mutations, or application payloads.
+
+<a id="comms-credential-continuity-gate"></a>
+### 8.2 Gated credential-continuity definition
+
+ADR-037 defines the credential-continuity records in §§8.3-8.10 so their
+closed schemas, state machines, and security boundary can be reviewed before
+the atomic registry revision that activates them. They are **not** active
+Comms 0.5.0 wire profiles under selected registry revision 3. A current
+implementation MUST NOT advertise, negotiate, require, produce as
+authoritative, or claim conformance to any of these draft profiles.
+Schema-valid draft data grants no authority and MUST NOT change current
+credential state.
+
+Activation requires the complete ADR-037/ADR-038 registry-revision-4 artifact
+batch. In particular, the batch MUST contain the two Core-owned offline
+recovery schemas, the exhaustive owner-bound governed-decrypt source-profile
+catalog, every new allocation and diagnostic reason, the complete schema and
+validator graph, and revision-4 conformance evidence. An injected
+already-authenticated offline-recovery or source-profile projection is
+sufficient only for draft unit evaluation; it is not end-to-end conformance.
+The current revision-3 registry, history, release manifests, and reason-code
+catalog remain byte-identical.
+
+The twenty draft Comms schema resources are:
+
+```text
+repository-retention-inventory-v1.schema.json
+governed-decrypt-key-binding-v1.schema.json
+historical-decrypt-obligation-v1.schema.json
+credential-ledger-checkpoint-v1.schema.json
+credential-ledger-checkpoint-receipt-v1.schema.json
+credential-ledger-removal-observation-v1.schema.json
+credential-ledger-candidate-abandonment-v1.schema.json
+credential-ledger-staging-ref-cleanup-v1.schema.json
+credential-ledger-config-key-bootstrap-recipient-array-v1.schema.json
+credential-ledger-emergency-reset-v1.schema.json
+credential-ledger-reset-recipient-array-v1.schema.json
+node-secret-source-v1.schema.json
+node-secret-exposure-v1.schema.json
+credential-ledger-secret-transition-v1.schema.json
+node-secret-transition-action-v1.schema.json
+double-ratchet-session-termination-v1.schema.json
+credential-ledger-lost-generation-path-v1.schema.json
+config-repository-git-structure-v1.schema.json
+double-ratchet-peer-tombstone-rumor-v1.schema.json
+double-ratchet-peer-tombstone-gift-wrap-v1.schema.json
+```
+
+Every object in those schemas is recursively closed. Every integer is a
+JSON-safe nonnegative integer unless a narrower range is stated. A 16-byte
+random identifier is exactly 32 lowercase hexadecimal characters; a
+32-byte identifier, digest, or public key is exactly 64; and a BIP-340
+signature is exactly 128. A typed Git object is exactly
+`{object_format:"sha1"|"sha256",oid}`, with a 40-lowercase-hex SHA-1 OID or
+64-lowercase-hex SHA-256 OID. JSON Schema structural success never substitutes
+for canonical decoding, signature, ancestry, replay, repository, or
+cross-record validation.
+
+<a id="comms-credential-checkpoints"></a>
+### 8.3 Credential checkpoint chain
+
+The draft `heterodyne.credential-ledger.checkpoint.v1` record contains exactly:
+
+```text
+type, persona, generation, sequence, previous_checkpoint,
+record_set_digest, node_roster, config_head, config_key_id,
+config_key_sha256, pairwise_secret_sha256, exposure_set_sha256,
+config_bootstrap_recipients_digest,
+governed_decrypt_key_bindings_sha256,
+historical_decrypt_obligations_sha256, secret_transition_digest,
+generation_transition, epoch_pubkey, kel_head, created_at, epoch_signature
+```
+
+`config_head` is the typed Git state immediately before the commit containing
+the checkpoint. Exactly three continuity forms are valid:
+
+- genesis is generation zero, sequence zero, with null predecessor and null
+  generation transition;
+- an ordinary successor keeps the generation, increments sequence by exactly
+  one, names the complete immediately prior checkpoint digest, and has null
+  generation transition; and
+- a reset successor increments generation by exactly one, uses sequence zero
+  and null predecessor, and names the exact independently valid staged reset
+  record that accepts atomically with it.
+
+Every other combination rejects. The roster is nonempty, canonical-NID
+sorted, unique, and every member has a current durable Core delegation. The
+checkpoint binds the complete canonical credential authorization set, config
+head/key, OIDC pairwise-secret commitment, conservative exposure set,
+activated repository-inventory frontier, governed bindings, complete
+historical-obligation frontier, applicable bootstrap/transition, and the
+current epoch/KEL state. A superseded epoch cannot backdate first acceptance.
+
+The draft receipt contains exactly
+`type, checkpoint_digest, node_nid, observed_at, signature`. Its Ed25519
+signature binds the exact candidate. Before signing, the node independently
+decrypts and replays the candidate, verifies every signed repository ref and
+scan cut, recomputes the authorization set, exposure set, `K(C)`, `G(C)`,
+`O(C)`, `F(C)`, pairwise and epoch singletons, and the three committed
+digests. Acceptance requires at least one valid receipt from every roster NID.
+Distinct valid duplicate receipts remain audit evidence but one NID counts
+once. Orphan, side-branch, out-of-roster, missing, or invalid receipts do not
+count.
+
+Any reachable authorization, source, assignment, retirement, transition
+action, repository inventory/ref/scan cut, binding, obligation, provenance,
+or governed-ciphertext mutation after the candidate basis and before complete
+receipts invalidates the candidate and requires reproposal. Revocations remain
+writable during the receipt window; they are never delayed to help a
+candidate accept.
+
+Every accepted checkpoint has exactly one operational `oauth-pairwise`
+`(secret_id,instance_commitment)` tuple equal to
+`pairwise_secret_sha256`. A holder may be added to that unchanged tuple, but a
+different tuple requires a transition that retires every predecessor and
+competing pairwise assignment and establishes exactly one successor. Exactly
+one operational `epoch` tuple likewise equals the current Core KEL
+`(epoch_pubkey,kel_head.event_id,kel_head.seq)` identity. Noncurrent epoch
+assignments remain conservative historical exposure and cannot manufacture a
+second current singleton.
+
+At most one nonidentical valid, unaccepted, and unabandoned successor of an
+accepted checkpoint may advance. Competing candidates stall credential-plane
+authority until one candidate accepts, one exact abandonment becomes
+canonical, or cold-root reset starts from the last common fully receipted
+checkpoint.
+
+<a id="comms-secret-inventory"></a>
+### 8.4 Secret sources and conservative exposure
+
+The draft source record contains exactly:
+
+```text
+type, persona, secret_class, secret_id, instance_commitment, holder_nid,
+commitment_kind, source_kind, artifact_refs, issued_at, epoch_pubkey,
+kel_head, epoch_signature
+```
+
+The closed secret classes are:
+
+```text
+cold-root, epoch, device-signing, agent-signing, core-protected,
+config-audience, tier3-audience, claim-ledger-audience, object-dek,
+double-ratchet, radicle-access, oauth-signing, oauth-pairwise,
+bearer-credential, ssh-client, ssh-host, recovery-wrap,
+onion-service-identity, tls-serving
+```
+
+`config-audience` alone uses its 16-byte/32-hex config-key ID. Every other
+class uses a fresh random 32-byte/64-hex instance ID. The instance commitment
+is:
+
+```text
+lowercase_hex(SHA256(
+  UTF8("heterodyne-node-secret-instance-v1") || 0x00 ||
+  exact_secret_bytes_or_class_selected_capability_JCS
+))
+```
+
+It is not a bare hash. `commitment_kind` is `secret-bytes` or
+`capability-jcs`; the class selects the permitted exact representation.
+Canonical-artifact sources have a nonempty sorted artifact-reference set.
+Only explicitly local protected-state classes may omit it.
+
+The append-only exposure record contains exactly:
+
+```text
+type, persona, assignment_id, action, holder_nid, secret_class,
+secret_id, secret_commitment, source_profile, source_record_digest,
+transition_id, supersedes, issued_at, authority, signature
+```
+
+`assign` names one exact source companion with equal persona, holder, class,
+ID, and commitment. Ordinary assignments have null transition and supersedes.
+Staged assignments name their transition and enter the conservative set
+immediately even though they grant no operational authority. `retire` repeats
+the complete assigned tuple, names the exact governing accepted transition,
+and supersedes the exact assignment digest. Pending retirement removes
+nothing; accepted retirement is absorbing.
+
+Exact duplicate bytes are idempotent. Nonidentical valid variants for one
+assignment ID remain visible, quarantine operational use of that ID, and are
+all included in conservative replay. Arrival time and digest order never
+select a winner. The exposure-set projection groups every unretired actual
+assignment by exact secret tuple and includes complete sorted holder and
+assignment-digest arrays. Pre-unseal intent origins remain separately tagged
+origins and never become invented assignment records.
+
+<a id="comms-retention-inventory"></a>
+### 8.5 Repository inventory, governed bindings, and obligations
+
+The signed draft repository-retention inventory contains exactly:
+
+```text
+type, persona, inventory_sequence, previous_records,
+basis_checkpoint_digest, target_generation, target_sequence,
+repository_refs, issued_at, epoch_pubkey, kel_head, epoch_signature
+```
+
+Genesis is sequence zero with no parents, null basis, and target `(0,0)`.
+A successor increments the maximum parent sequence and names the complete
+maximal valid parent frontier as sorted unique
+`{inventory_sequence,record_digest}` rows. Ordinary succession has one parent;
+emergency succession names every competing maximum. A record activates only
+at its exact target checkpoint and remains effective through descendants.
+
+Each repository row contains exactly
+`repository_ref_id, repository_class, repository_rid, ref_name,
+object_format, retired, scan_head`. Its deterministic ID is
+domain-separated JCS SHA-256 over the semantic class/RID/ref/format identity.
+Active cuts remain equal or advance to descendants. Ordinary retirement is
+absorbing. Branch absence is not deletion.
+
+The sole ordinary deregistration occurs when one config-key transition
+atomically removes the exact old active `refs/heads/enc/<old-id>` row, adds
+one fully scanned `refs/heads/enc/<new-id>` row, proves complete re-encryption
+from closure basis `B`, and deletes the old signed ref in the same acceptance
+CAS. No other ordinary row may disappear. Emergency reset first unions every
+maximal-parent semantic row, then may subtract only complete `V_old` for that
+same config identity while preserving every other branch-only row. Conflicting
+variants outside `V_old` converge only through the exact emergency `H*`
+construction.
+
+A source profile that marks retained ciphertext as a decrypt dependency
+either embeds its exact secret tuple or uses one draft governed binding:
+
+```text
+type, persona, binding_id, retained_ciphertext, secret_class, secret_id,
+instance_commitment, issued_at, authority, signature
+```
+
+The binding ID is domain-separated JCS SHA-256 of the exact retained locator
+under `heterodyne-governed-decrypt-key-binding-id-v1`. Path ID, signed-record
+digest, selected authority, KEL ancestry, and compromise cutoff all bind.
+Nonidentical otherwise-valid variants for one `(persona,binding_id)` quarantine
+the dependency; missing, extra, owner-mismatched, or unenumerated bindings
+reject.
+
+For candidate `C`, `K(C)` contains exactly the activated maximal
+repository-inventory records and ancestor graph, the sorted owner/RID/ref/head
+projection produced by the exhaustive source-profile table, and the complete
+sorted binding frontier including conflicts. Inventory-frontier or scan-cut
+drift with an unchanged digest rejects.
+
+Retained ciphertext that still needs a retired secret is canonical credential
+state. Its obligation lineage contains exactly:
+
+```text
+type, persona, obligation_id, lineage_sequence, previous_record, action,
+secret_class, secret_id, instance_commitment, retained_ciphertexts,
+retired_provenance_lineages, transition_id, issued_at, authority, signature
+```
+
+A root is sequence zero, has null predecessor, uses `retain`, and has at least
+one exact typed-Git locator. Each successor increments one and names the
+complete prior signed digest. `close` has no locators, repeats the identity,
+and is absorbing; later retention uses a fresh obligation ID. Provenance is
+monotonic and adds exactly transition-effective assignment retirements.
+
+At checkpoint `C`, validators derive governed dependencies `G(C)` only from
+authenticated ciphertext/pointer profiles and bindings. They independently
+derive `O(C)` from unique active `retain` maxima and require exact
+`G(C) = O(C)`. Every dependency row has exactly one obligation coverage;
+duplicate coverage rejects. A close is valid only after every prior row is
+absent from independently derived `G(C)`. `F(C)` commits every branch maximum,
+including active retain, close, and competing heads. Forks reject ordinary
+acceptance but remain committed audit evidence for reset.
+
+Logical signing dependency is:
+
+```text
+accepted predecessor -> artifact A -> optional binding K ->
+repository inventory R -> obligation O -> transition T ->
+checkpoint C -> receipts
+```
+
+This is not Git tree lexical order. No proof may name a future dependent
+record or the carrier commit OID that contains it.
+
+<a id="comms-secret-transitions"></a>
+### 8.6 Secret transitions and candidate lifecycle
+
+One closed transition record supports exactly
+`routine-key-rotation`, `routine-addition`, `routine-removal`, and
+`emergency-reset`. Its top-level members are:
+
+```text
+type, transition_id, persona, mode, prior_checkpoint, added_nids,
+removed_nids, target, inventory_basis, result_basis, exposures, outcomes,
+created_at, authority, signature
+```
+
+Routine modes start from the current fully receipted checkpoint and increment
+sequence by one. Key rotation preserves the roster and rotates at least the
+config audience key. Addition adds only the exact new NID set and rotates the
+config key and OIDC pairwise secret before admission. Removal removes only the
+exact available NID set and rotates config, pairwise, and every capability
+exposed to a removed holder. An unavailable old-roster node cannot complete
+routine removal and requires emergency reset.
+
+Every removed NID signs exactly one removal observation binding the transition,
+candidate checkpoint, old ref, staged ref/head, and its exclusion from the
+new roster/bootstrap. The narrow predecessor-delegation exception authorizes
+only that acknowledgement. It cannot sign a receipt, grant, publication, or
+later act.
+
+The transition processes the union of mode-mandatory tuples and the complete
+cleanup set: target-excluded holders, unaccepted staged assignments,
+competing assignments, and unreconciled offline origins. Each exposure has
+one class-selected action and disposition. The action repeats the complete
+actual-assignment and intent-origin set, exact holder partition, one-to-one
+retirements, successor assignments, historical-decrypt overlay, proof
+artifacts, and the transition-selected authority. Missing or extra actions,
+origins, retirements, successors, or proofs reject.
+
+Changing `epoch`, `core-protected`, `recovery-wrap`, or recovery authority and
+every emergency reset requires cold-root transition authority. Other routine
+actions use the current epoch. Every action, retirement, DR termination, and
+transition uses the same selected authority. Cold-root exposure is terminal
+`persona-migration-required`; it never becomes an acceptable same-persona
+transition merely because the cold root signs it.
+
+Candidate receipt append, acceptance, abandonment, and reset form one
+exact-tip compare-and-swap state machine. A successful append preserves every
+reachable byte, adds a nonempty set of previously absent valid records, and
+advances the exact candidate tip. A losing concurrent writer retries the same
+bytes against the new tip. Delete, replacement, unrelated write, merge,
+or stale-tip operation rejects. Once acceptance, canonical abandonment, or
+reset wins, every competing terminal action and later append fails.
+
+The epoch-signed abandonment record binds the exact predecessor/candidate,
+transition, refs and tips, complete reachable partial receipt/observation set,
+verifier-derived new exposure records, candidate `K(C)` digest, candidate
+obligation-frontier digest, abandonment basis, current epoch/KEL, and time.
+It is absorbing. A same-key abandonment has no inert staging ref: later
+cleanup operates on its mandatory exposure delta in the active audit chain.
+
+A distinct inert config-key staging ref may be deleted only by a signed
+staging-cleanup record after canonical abandonment/reset and a later accepted
+transition terminally accounts for every staged assignment. Cleanup commits
+the complete raw Git object closure, opaque audit copies, the closed safe
+control-record allowlist, inherited accepted cleanup evidence, assignment
+partition, adopted safe current-epoch subset, and exact retirements. Arbitrary
+candidate plaintext, secrets, tokens, and bare plaintext hashes are never
+promoted. One exact multi-ref CAS advances the active ref and deletes only the
+still-identical staging ref; key erasure follows success.
+
+<a id="comms-emergency-reset"></a>
+### 8.7 Emergency reset and offline evidence
+
+Emergency reset starts generation `prior_generation + 1` at sequence zero
+from the last common fully receipted checkpoint. It binds the exact old/new
+rosters, unavailable nodes, fresh epoch/config/pairwise identities,
+compromise cutoff, complete retention/binding/obligation state, secret
+transition, offline intent/activation inventories and collision projections,
+bootstrap recipients, and cold-root signature.
+
+The only draft reset wire reasons are
+`credential_ledger_reset_node_loss` and
+`credential_ledger_reset_offline_activation_id_collision`. Node loss has a
+nonempty unavailable set exactly equal to `old_roster - new_roster` and takes
+precedence when both conditions exist. Collision-only reset has no unavailable
+or removed NID, preserves every old-roster member, and includes at least one
+complete active intent- or activation-collision projection. Both paths rotate
+epoch, config, and pairwise state and require every target-roster receipt.
+
+Offline intent and activation are Core-owned ADR-038 records. Intent becomes
+durable before authority unseal and is authorized by an independently
+available cold root. The archive being opened cannot first reveal the signer
+that authorizes its own unseal. Intent templates bind every future source and
+assignment byte except the explicitly deferred signatures/link digest.
+Activation completes those templates exactly, embeds the complete provisional
+record set, and retains its linked intent digest. Exact duplicates are
+idempotent; nonidentical variants for one activation ID are conservative
+collision evidence with no arrival-order winner.
+
+Until ADR-038 supplies and activates the exact Core schemas, draft evaluation
+may consume only an injected authenticated projection of these records.
+It MUST report the dependency as unavailable rather than accept a partial or
+self-authorizing offline restore.
+
+Emergency inventory `K(I)` unions every named config/source/staging/recovered
+branch, same-key candidate, inventory/binding conflict, obligation branch, and
+offline variant. Config `H*` contains every distinct variant head as a direct
+parent in decoded-OID order and no other parent. `L(S)` enumerates every
+physical marked locator; `Bound_I` contains embedded tuples and every valid
+binding variant; `D(S)` pairs them; `Current_I` requires unanimous complete
+agreement; and `U(S)` contains every noncurrent pair. Actions give every
+locator one terminal disposition. Only independently authenticated result
+profiles produce `ResultPairs(H*)`; post-action `Current_B` determines which
+noncurrent result pairs require fresh obligations. Candidate selection,
+omitted bytes, old-locator reuse, incomplete parents/scans/dispositions, or
+lost `G(B)=O(B)` closure rejects.
+
+Conflicting noncredential paths are preserved as unsigned
+`heterodyne.credential-ledger.lost-generation-path.v1` indexes plus exact
+candidate-key-encrypted object variants. The unsigned index grants no
+authority and is safe-copy eligible only when its exact bytes, path, variants,
+and digests are bound by the otherwise-valid signed reset/transition/checkpoint
+closure.
+
+<a id="comms-config-git-structure"></a>
+### 8.8 Canonical config Git and recipient arrays
+
+Every candidate commit/tree passes the draft
+`comms.config-repository-git-structure.v1` structural and semantic validator.
+The authenticated projection is the closed object:
+
+```text
+{type, object_format, commit_oid, commit_raw_base64url, tree_objects}
+```
+
+`type` is `heterodyne.config-repository-git-structure.v1`; raw values are
+canonical unpadded base64url. Each decoded-OID-sorted unique tree row contains
+exactly `{oid,raw_base64url}`. The validator decodes/re-encodes
+byte-identically, recomputes every SHA-1 or SHA-256 Git object ID, parses the
+commit and complete reachable tree set, and rejects missing, extra/unreachable,
+or malformed tree objects.
+
+An ordinary commit has exactly one tree header, zero or one
+state-machine-permitted parent, fixed protocol author and committer with
+timestamp `0 +0000`, no optional or continuation headers, and message
+`heterodyne-config-v1\n`. The sole merge form is emergency config-class `H*`,
+whose one-or-more unique direct parents are decoded-OID sorted and whose
+message is `heterodyne-config-retention-resolution-v1\n`. `H*` is valid only
+with the complete cold-root inventory/reset predicates in §8.7. Trees use only
+`100644` blobs and `40000` subtrees in canonical Git order.
+
+Paths are either a closed protocol template made entirely of
+schema-classified public identifiers or:
+
+```text
+config-data/<path-token>.bin
+path-token = lowercase_hex(HMAC-SHA256(
+  HKDF-SHA256(
+    IKM=config_audience_key,
+    salt=32 zero bytes,
+    info=UTF8("heterodyne-config-path-index-key-v1"),
+    L=32
+  ),
+  UTF8("heterodyne-config-logical-path-v1") || 0x00 ||
+  UTF8(NFC(normalized_logical_path))
+))
+```
+
+User labels, filenames, hostnames, and other free text remain inside encrypted
+blobs and never appear in Git paths.
+
+Genesis and ordinary config-key changes deliver the new key through the closed
+ordinary recipient array; reset uses the distinct cold-root-bound reset array.
+Each has exactly one NID-sorted entry for every candidate-roster member and no
+other entry. A row binds the active delegation, canonical NID proof, one-use
+X25519 key, exact RFC 9180 base-mode
+X25519/HKDF-SHA256/AES-256-GCM context, and ciphertext. Decrypted plaintext
+repeats persona/generation/checkpoint or reset/key identity and exact audience
+key commitment. Possession permits candidate inspection and receipt only.
+Operational authority remains held until atomic acceptance; the one-use
+private key is erased only after durable candidate state and successful
+receipt.
+
+<a id="comms-dr-terminalization"></a>
+### 8.9 Double Ratchet terminalization
+
+An affected DR capability uses the closed
+`heterodyne.double-ratchet-session-termination.v1` record. It binds the
+transition, old session, both personas/NIDs/delivery keys/delegations,
+complete source assignments, removed/retained holder partition, scoped NID
+revocations, retained-holder receipts, successor sessions, peer tombstone,
+complete NIP-59 delivery event, selected authority, and signature.
+
+Persona-side invalidation occurs locally and atomically at transition
+acceptance. The peer tombstone is constructed before acceptance and broadcast
+immediately afterward. Its authenticated kind-1061 rumor is epoch-signed and
+binds the point-in-time KEL head. The reason is
+`persona_node_removed` only when an old holder is in the transition's actual
+removed-NID set; every other candidate-material cleanup uses
+`candidate_material_retired`.
+
+The rumor is sealed in an exact NIP-44-v2 kind-13 event signed by that epoch,
+then gift-wrapped by a fresh one-time key as kind 1059. The kind-13 empty-tag
+shape is the sole narrow epoch-event `kel_head`-tag exception required by
+NIP-59. A consumer parses and recomputes every exact raw NIP-01 event, unwraps
+the complete carrier, validates recipient/session/delegation/KEL/transition,
+deduplicates by persona/session/transition, and rejects all later old-session
+traffic after first valid observation. A peer acknowledgement is audit
+evidence but cannot block local invalidation.
+
+<a id="comms-credential-generation"></a>
+### 8.10 Persona and generation propagation
+
+Every credential-sync authorization, authorization key claim, claim-ledger
+authority record, built-in issuer record, workload authorization,
+Authorization Code/PKCE and Device Authorization transaction, OIDC issuance
+and signing-key record, ID/access/assertion token, Status List Token, and mint
+authority binds the exact credential-ledger persona and
+`credential_ledger_generation`. Where an existing closed record already has
+an authoritative persona member, such as credential-sync `persona`, a
+claim-ledger record's `persona`, or an issuer envelope's `persona`, that member
+is the credential-ledger persona binding; projected transactions and tokens
+use the explicit `credential_ledger_persona` member. An authorization key
+claim uses both explicit members. A descriptive key claim carries both
+members as JSON `null` because it grants no ledger-scoped authority. Current
+pre-release records use generation zero. A missing generation is never
+inferred as zero.
+
+The issuer typed key MUST resolve through Core/KEL authority to the same
+credential-ledger persona. Consumers compare the bound persona and generation
+with the current fully receipted checkpoint before operational use. Reset
+purges prior-generation pending transactions and mint authority, rotates
+issuer authority, publishes status/revocation state, and requires reissuance.
+A prior-generation record remains audit evidence but grants no authority.
+
+The future revision-4 diagnostic precedence is:
+
+```text
+missing generation
+before recognizable empty roster
+before general schema/cryptographic validation;
+then persona mismatch
+before stale/wrong generation
+before stale KEL
+before checkpoint invalid
+before reset invalid
+```
+
+A present wrong-typed generation, non-array roster, or otherwise unrecognized
+shape retains the generic schema/cryptographic result. These diagnostic names
+remain local draft results under registry revision 3 and MUST NOT appear as
+current registered reason codes or profile-bound reject vectors.
+
+The claim-ledger payload and record identifiers use:
+
+```text
+payload_digest =
+  lowercase_hex(SHA256(
+    UTF8("heterodyne-claim-ledger-payload-v1") || 0x00 ||
+    UTF8(JCS(payload))
+  ))
+
+record_id =
+  lowercase_hex(SHA256(
+    UTF8("heterodyne-claim-ledger-record-id-v1") || 0x00 ||
+    UTF8(JCS(complete signed record with record_id omitted))
+  ))
+```
+
+Undomained current-pre-release identifiers are invalid and are regenerated in
+place before release.
 
 <a id="comms-subprotocol-negotiation"></a>
 ## 9. Encrypted subprotocol negotiation and carrier
@@ -1165,11 +1716,14 @@ These profiles change no signed event bytes and add no second version stamp.
 
 The `heterodyne-comms-key-claim-v1` content is the exact closed object defined
 by `schemas/comms/key-claim-v1.schema.json`. Its required members are
-`claim_id`, `issuer`, `subject`, `claim_class`, `namespace`, `name`, `value`,
-`issued_at`, `not_before`, `visibility`, `spec_version`, and
-`registry_revision`. Optional members are `expires_at`, `audience`,
-`resources`, `parent_claim_id`, `constraints`, and `revokers`. `claim_class`
-is `descriptive` or `authorization`; `visibility` is `public`,
+`claim_id`, `issuer`, `subject`, `claim_class`,
+`credential_ledger_persona`, `credential_ledger_generation`, `namespace`,
+`name`, `value`, `issued_at`, `not_before`, `visibility`, `spec_version`, and
+`registry_revision`. Optional members are `expires_at`, `audience`, `resources`,
+`parent_claim_id`, `constraints`, and `revokers`. For an `authorization`
+claim the credential-ledger persona is 64 lowercase hex and the generation is
+a JSON-safe nonnegative integer; for a `descriptive` claim both are exactly
+JSON `null`. `claim_class` is `descriptive` or `authorization`; `visibility` is `public`,
 `pairwise-private`, `repository-private`, or `local-only`. `issuer`, `subject`,
 and every explicit revoker use Core's canonical `nostr-secp256k1`,
 `radicle-ed25519-nid`, or `jwk-thumbprint` reference. Sets are duplicate-free,
@@ -1301,9 +1855,12 @@ the public persona repository.
 
 The append-only plaintext record schema is
 `schemas/comms/claim-ledger-record-v1.schema.json`. It has exactly
-`record_id`, `record_type`, `persona`, `writer_nid`, `created_at`, `parents`,
-`payload`, `payload_digest`, and Ed25519 `signature`. Record types are `claim`,
-`revocation`, `authority-reduction`, `reader-change`, `audience-key-epoch`,
+`record_id`, `record_type`, `persona`, `credential_ledger_generation`,
+`writer_nid`, `created_at`, `parents`, `payload`, `payload_digest`, and
+Ed25519 `signature`. `persona` and `credential_ledger_generation` bind every
+record, including retained prior-generation audit records, to one exact
+ledger generation. Record types are `claim`, `revocation`,
+`authority-reduction`, `reader-change`, `audience-key-epoch`,
 `issuer-authority`, `issuance-reservation`, and `status-invalidation`.
 `payload_digest` and `record_id` are domain-separated JCS SHA-256 digests. The
 writer signature and current Core NID delegation MUST verify before replay.
@@ -1341,17 +1898,19 @@ reduction of any condition stops minting immediately.
 
 The signing key MUST NOT be encrypted by or released merely with the ledger
 audience key. Its envelope binds persona, repository, checkpoint, key epoch,
-JWK thumbprint, ciphertext digest, active issuer-authority record set, and
-per-recipient NID wraps. Removing an issuer rotates the envelope/key epoch and
-excludes that NID. A node MUST unwrap only after replaying the exact bound
-authority set and checkpoint.
+credential-ledger generation, JWK thumbprint, ciphertext digest, active
+issuer-authority record set, and per-recipient NID wraps. Removing an issuer
+rotates the envelope/key epoch and excludes that NID. A node MUST unwrap only
+after replaying the exact bound authority set, generation, and checkpoint.
 
 Before returning a JWT, a writer durably commits an issuance reservation with
-`jti`, client and request/release digests, signing-key ID, source claim IDs,
-checkpoint, expiration, and the status allocation defined in §14. Returning a
-token before that reservation is canonical is prohibited. Shared-key
-compromise invalidates outstanding tokens, rotates signing material, updates
-the public key set, and advances affected status lists.
+credential-ledger generation, `jti`, client and request/release digests,
+signing-key ID, source claim IDs, checkpoint, expiration, and the status
+allocation defined in §14. The enclosing claim-ledger record supplies the
+exact persona binding. Returning a token before that reservation is canonical
+is prohibited. Shared-key compromise invalidates outstanding tokens, rotates
+signing material, updates the public key set, and advances affected status
+lists.
 
 <a id="comms-oidc-endpoints"></a>
 ## 12. OIDC/OAuth issuer and endpoints
@@ -1418,11 +1977,15 @@ and fail closed. Neither wall-clock order nor writer preference selects one;
 only canonical state containing one compatible active value authorizes.
 
 Authorization codes are short-lived, single-use, client- and redirect-bound,
-and require an exact PKCE verifier. Device codes are client-bound, expire,
-enforce polling intervals and `slow_down`, require an explicit approve/deny
-decision, and are single-use. Authentication, consent, and repository state
-MUST be rechecked before token return; a reduction observed after initial
-approval wins.
+and require an exact PKCE verifier. Both the authorization-code transaction
+and its redemption bind the exact `credential_ledger_persona` and
+`credential_ledger_generation`. Device codes are client-bound, bind the same
+exact ledger tuple, expire, enforce polling intervals and `slow_down`, require
+an explicit approve/deny decision, and are single-use. Authentication,
+consent, generation, and repository state MUST be rechecked before token
+return; a reduction or generation change observed after initial approval
+wins. An accepted emergency reset purges every prior-generation pending code
+transaction rather than treating it as generation zero.
 
 Release is the intersection of requested scope and audience, registered client
 policy, explicit consent, trusted namespaces, active canonical repository
@@ -1472,7 +2035,8 @@ type/profile/nonce confusion is rejected.
 
 An access-token protected header has `typ` equal to `at+jwt` and `alg` equal to
 `RS256`. Its claims include `iss`, pairwise `sub`, `aud`, `exp`, `iat`, `jti`,
-`client_id`, and normalized `scope`, plus:
+`client_id`, normalized `scope`, `credential_ledger_persona`, and
+`credential_ledger_generation`, plus:
 
 - `https://heterodyne.network/jwt/ledger-checkpoint`, binding the canonical
   private RID, `main`, commit and observation time;
@@ -1480,16 +2044,18 @@ An access-token protected header has `typ` equal to `at+jwt` and `alg` equal to
   RID, `main`, manifest path and SHA-256 digest; and
 - the draft-21 `status.status_list` reference from §14.
 
-An ID Token instead enforces OIDC token-type and nonce rules and MUST NOT be
-accepted where an access token is required. A projected JWT is an assertion
-derived from current active claims, not a canonical encoding of the source
-event. DPoP under RFC 9449 or mutual-TLS under RFC 8705 SHOULD bind access
-tokens when supported. A DPoP-bound token's `cnf` is an exact one-member object
-containing only canonical 32-byte base64url `jkt`; a mutual-TLS-bound token's
-`cnf` is an exact one-member object containing only canonical 32-byte base64url
-`x5t#S256`. A bearer token has no `cnf`. The verifier requires exact equality
-with its expected confirmation and rejects missing, extra, mixed, or method-
-confused members. A `cnf` claim MUST NOT be ignored by a bearer-only consumer.
+ID Tokens and registered signed JWT assertions carry the same exact
+credential-ledger tuple. An ID Token additionally enforces OIDC token-type and
+nonce rules and MUST NOT be accepted where an access token is required. A
+projected JWT is an assertion derived from current active claims, not a
+canonical encoding of the source event. DPoP under RFC 9449 or mutual-TLS under
+RFC 8705 SHOULD bind access tokens when supported. A DPoP-bound token's `cnf`
+is an exact one-member object containing only canonical 32-byte base64url
+`jkt`; a mutual-TLS-bound token's `cnf` is an exact one-member object containing
+only canonical 32-byte base64url `x5t#S256`. A bearer token has no `cnf`. The
+verifier requires exact equality with its expected confirmation and rejects
+missing, extra, mixed, or method-confused members. A `cnf` claim MUST NOT be
+ignored by a bearer-only consumer.
 
 <a id="comms-issuer-continuity"></a>
 ## 13. Radicle issuer continuity
@@ -1573,7 +2139,8 @@ Each projected JWT contains `status.status_list` with an HTTPS `uri` and
 non-negative `idx`. That URI returns a distinct compact Status List Token with
 media type `application/statuslist+jwt`, protected `typ` `statuslist+jwt`,
 `alg` `RS256`, and an authenticated `kid`. Claims are `sub` equal to the URI, `iat`,
-`exp`, positive finite `ttl`, and `status_list` with `bits: 1` and `lst`.
+`exp`, positive finite `ttl`, `credential_ledger_persona`,
+`credential_ledger_generation`, and `status_list` with `bits: 1` and `lst`.
 
 `lst` is the unpadded base64url encoding of a valid zlib-wrapped DEFLATE
 representation of the bit array. Producers SHOULD use deterministic level-9
@@ -1728,7 +2295,8 @@ token with:
 
 - protected `typ` exactly `at+jwt`;
 - `iss`, pairwise `sub`, one exact `aud`, `exp`, `iat`, collision-resistant
-  `jti`, `client_id`, and normalized `scope`;
+  `jti`, `client_id`, normalized `scope`, `credential_ledger_persona`, and
+  `credential_ledger_generation`;
 - mandatory `cnf.jkt`;
 - the existing ledger-checkpoint and status-mirror bindings; and
 - `https://heterodyne.network/jwt/agent-role-id` equal to the one registered
@@ -1973,6 +2541,12 @@ membership, Core prerequisite, inherited v1 operational evidence, and every
 applicable public-reader and agent-authorship vector result. An implementation
 that exposes an automated publication path outside §15 MUST NOT claim Comms
 conformance or either Comms strict profile.
+
+No revision-3 report may list a §8.2 credential-continuity draft schema as an
+active wire profile, feature, requirement, or strict-profile obligation. The
+unprofiled revision-3 draft vectors exercise schema and pure state-machine
+definitions only; their normalized `conformance_claimable:false` result is
+part of the case and they do not establish revision-4 or ADR-038 conformance.
 
 Wire conformance is byte-exact. Semantically similar encodings do not conform.
 An unknown Comms version or registry profile MUST be rejected or explicitly

@@ -142,6 +142,36 @@ export const CONTROL_MCP_FRAME_SCHEMA = readControlSchema("control-mcp-frame-v1.
 export const CONTROL_RPC_REQUEST_SCHEMA = readControlSchema("control-rpc-request-v1.schema.json");
 export const CONTROL_RPC_RESPONSE_SCHEMA = readControlSchema("control-rpc-response-v1.schema.json");
 
+export const CREDENTIAL_CONTINUITY_SCHEMA_FILES = [
+  "repository-retention-inventory-v1.schema.json",
+  "governed-decrypt-key-binding-v1.schema.json",
+  "historical-decrypt-obligation-v1.schema.json",
+  "credential-ledger-checkpoint-v1.schema.json",
+  "credential-ledger-checkpoint-receipt-v1.schema.json",
+  "credential-ledger-removal-observation-v1.schema.json",
+  "credential-ledger-candidate-abandonment-v1.schema.json",
+  "credential-ledger-staging-ref-cleanup-v1.schema.json",
+  "credential-ledger-config-key-bootstrap-recipient-array-v1.schema.json",
+  "credential-ledger-emergency-reset-v1.schema.json",
+  "credential-ledger-reset-recipient-array-v1.schema.json",
+  "node-secret-source-v1.schema.json",
+  "node-secret-exposure-v1.schema.json",
+  "credential-ledger-secret-transition-v1.schema.json",
+  "node-secret-transition-action-v1.schema.json",
+  "double-ratchet-session-termination-v1.schema.json",
+  "credential-ledger-lost-generation-path-v1.schema.json",
+  "config-repository-git-structure-v1.schema.json",
+  "double-ratchet-peer-tombstone-rumor-v1.schema.json",
+  "double-ratchet-peer-tombstone-gift-wrap-v1.schema.json",
+] as const;
+
+export type CredentialContinuitySchemaFile =
+  (typeof CREDENTIAL_CONTINUITY_SCHEMA_FILES)[number];
+
+export const CREDENTIAL_CONTINUITY_SCHEMAS = Object.fromEntries(
+  CREDENTIAL_CONTINUITY_SCHEMA_FILES.map((file) => [file, readSchema(file)]),
+) as Record<CredentialContinuitySchemaFile, AnySchema>;
+
 const commsSchemaAjv = new Ajv({ allErrors: true, strict: false });
 commsSchemaAjv.addSchema(KEY_CLAIM_SCHEMA);
 commsSchemaAjv.addSchema(KEY_CLAIM_REVOCATION_SCHEMA);
@@ -177,6 +207,22 @@ const validateControlRpcRequest = controlSchemaAjv.compile(
 const validateControlRpcResponse = controlSchemaAjv.compile(
   CONTROL_RPC_RESPONSE_SCHEMA,
 );
+
+const credentialContinuitySchemaAjv = new Ajv({
+  allErrors: true,
+  strict: false,
+});
+const validateCredentialContinuity = Object.fromEntries(
+  CREDENTIAL_CONTINUITY_SCHEMA_FILES.map((file) => [
+    file,
+    credentialContinuitySchemaAjv.compile(
+      CREDENTIAL_CONTINUITY_SCHEMAS[file],
+    ),
+  ]),
+) as Record<
+  CredentialContinuitySchemaFile,
+  ReturnType<Ajv["compile"]>
+>;
 
 export function validateVectorOrThrow(value: unknown): asserts value is Vector {
   if (!validate(value)) {
@@ -235,6 +281,21 @@ export function validateOidcContinuityManifestSchemaOrThrow(value: unknown): voi
   assertJcsInput(value);
   if (!validateOidcContinuityManifest(value)) {
     throw new Error(`claim-schema-invalid: ${formatErrors(validateOidcContinuityManifest.errors ?? [])}`);
+  }
+}
+
+export function validateCredentialContinuitySchemaOrThrow(
+  file: CredentialContinuitySchemaFile,
+  value: unknown,
+): void {
+  assertJcsInput(value);
+  const validator = validateCredentialContinuity[file];
+  if (!validator(value)) {
+    throw new Error(
+      `credential-continuity-schema-invalid: ${formatErrors(
+        validator.errors ?? [],
+      )}`,
+    );
   }
 }
 

@@ -400,6 +400,8 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
       issuer: { type: "nostr-secp256k1", value: issuer.pubkey },
       subject: { type: "radicle-ed25519-nid", value: reader.did_key },
       claim_class: "authorization",
+      credential_ledger_persona: persona,
+      credential_ledger_generation: 0,
       namespace: "heterodyne.device",
       name: "claim-ledger-reader",
       value: true,
@@ -468,6 +470,8 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
       event_id: claim.artifact.event.id,
       envelope_valid: true,
       core_kel_authority_valid: true,
+      credential_ledger_persona: semantic.credential_ledger_persona,
+      credential_ledger_generation: semantic.credential_ledger_generation,
       verified_at: now + 5,
       valid_until: now + 300,
     };
@@ -480,6 +484,10 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
       expected_nonce: challenge.nonce,
       used_nonces: new Set(),
       trusted_issuers: [semantic.issuer],
+      credential_ledger: {
+        credential_ledger_persona: persona,
+        credential_ledger_generation: 0,
+      },
       claim_authority_evidence: new Map([[semantic.claim_id, authority]]),
       revocation_authority_evidence: new Map(),
       repository_confirmed: confirmed,
@@ -495,7 +503,14 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
 
   const requestFor = (record: LedgerRecord, claim: typeof claimOne): ReaderAccessRequest => ({
     claim_record_id: record.record_id,
-    envelope_context: { issuer_authorized: true, registry_revision: 2 },
+    envelope_context: {
+      issuer_authorized: true,
+      registry_revision: 2,
+      credential_ledger: {
+        credential_ledger_persona: persona,
+        credential_ledger_generation: 0,
+      },
+    },
     claims_by_id: new Map(allClaims),
     verification_context: makeVerification(claim),
   });
@@ -506,7 +521,15 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     writer = writerOne,
     parents: string[] = [],
     created_at = now + 1,
-  ) => createSignedLedgerRecord({ record_type, persona, writer_nid: writer.did_key, created_at, parents, payload }, writer.private_key);
+  ) => createSignedLedgerRecord({
+    record_type,
+    persona,
+    credential_ledger_generation: 0,
+    writer_nid: writer.did_key,
+    created_at,
+    parents,
+    payload,
+  }, writer.private_key);
 
   const claimRecordOne = signRecord("claim", { claim_artifact: claimOne.artifact });
   const claimRecordTwo = signRecord("claim", { claim_artifact: claimTwo.artifact }, writerTwo);
@@ -579,7 +602,14 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   const addClaimEvidence = (record: LedgerRecord, claim: typeof claimOne) => evidence.set(record.record_id, {
     record_id: record.record_id,
     payload_digest: record.payload_digest,
-    claim_envelope_context: { issuer_authorized: true, registry_revision: 2 },
+    claim_envelope_context: {
+      issuer_authorized: true,
+      registry_revision: 2,
+      credential_ledger: {
+        credential_ledger_persona: persona,
+        credential_ledger_generation: 0,
+      },
+    },
     claims_by_id: new Map(allClaims),
     claim_verification_context: makeVerification(claim),
   });
@@ -592,14 +622,28 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   const temporalRecordEvidence: LedgerRecordValidationEvidence = {
     record_id: temporalClaimRecord.record_id,
     payload_digest: temporalClaimRecord.payload_digest,
-    claim_envelope_context: { issuer_authorized: true, registry_revision: 2 },
+    claim_envelope_context: {
+      issuer_authorized: true,
+      registry_revision: 2,
+      credential_ledger: {
+        credential_ledger_persona: persona,
+        credential_ledger_generation: 0,
+      },
+    },
     claims_by_id: new Map([[temporalClaim.artifact.semantic.claim_id, temporalClaim.artifact.semantic]]),
     claim_verification_context: temporalVerification,
   };
   const grantOnlyEvidence: LedgerRecordValidationEvidence = {
     record_id: grantOnly.record_id,
     payload_digest: grantOnly.payload_digest,
-    claim_envelope_context: { issuer_authorized: true, registry_revision: 2 },
+    claim_envelope_context: {
+      issuer_authorized: true,
+      registry_revision: 2,
+      credential_ledger: {
+        credential_ledger_persona: persona,
+        credential_ledger_generation: 0,
+      },
+    },
     claims_by_id: new Map(allClaims),
     claim_verification_context: makeVerification(claimOne),
   };
@@ -646,7 +690,14 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   const addIssuerEvidence = (record: LedgerRecord, claim: typeof issuerClaimOne) => issuerEvidence.set(record.record_id, {
     record_id: record.record_id,
     payload_digest: record.payload_digest,
-    claim_envelope_context: { issuer_authorized: true, registry_revision: 2 },
+    claim_envelope_context: {
+      issuer_authorized: true,
+      registry_revision: 2,
+      credential_ledger: {
+        credential_ledger_persona: persona,
+        credential_ledger_generation: 0,
+      },
+    },
     claims_by_id: new Map(issuerClaimsById),
     claim_verification_context: makeVerification(claim),
   });
@@ -676,6 +727,10 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     requestOne.verification_context.now = repository.checkpoint.observed_at;
     requestTwo.verification_context.now = repository.checkpoint.observed_at;
     return {
+      credential_ledger: {
+        credential_ledger_persona: persona,
+        credential_ledger_generation: 0,
+      },
       record_evidence: new Map([...evidence, ...issuerEvidence]),
       repository,
       reader_requests: new Map([[claimRecordOne.record_id, requestOne], [claimRecordTwo.record_id, requestTwo]]),
@@ -757,6 +812,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
   );
 
   const issuanceOne: IssuanceRecord = {
+    credential_ledger_generation: 0,
     jti: "writer_one_token_0001",
     reservation: reserveStatusIndex(writerOne.did_key, now + 3_600, 0, []),
     checkpoint: issuerKeyEpochOneRepository.checkpoint,
@@ -770,6 +826,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     expires_at: now + 3_600,
   };
   const issuanceTwo: IssuanceRecord = {
+    credential_ledger_generation: 0,
     jti: "writer_two_token_0001",
     reservation: reserveStatusIndex(writerTwo.did_key, now + 3_600, 0, [issuanceOne]),
     checkpoint: issuerKeyEpochOneRepository.checkpoint,
@@ -836,6 +893,10 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     requestOne.verification_context.now = repository.checkpoint.observed_at;
     requestTwo.verification_context.now = repository.checkpoint.observed_at;
     return {
+      credential_ledger: {
+        credential_ledger_persona: persona,
+        credential_ledger_generation: 0,
+      },
       record_evidence: new Map(evidence),
       repository,
       reader_requests: new Map([
@@ -963,6 +1024,7 @@ export async function buildClaimLedgerVectors(fixtures: Fixtures): Promise<Autho
   const alternateGenesisRecord = createSignedLedgerRecord({
     record_type: "audience-key-epoch",
     persona: s.persona,
+    credential_ledger_generation: 0,
     writer_nid: s.writerOne.did_key,
     created_at: s.now + 65,
     parents: [s.issuerAuthorityRecordOne.record_id, s.issuerAuthorityRecordTwo.record_id].sort(),
