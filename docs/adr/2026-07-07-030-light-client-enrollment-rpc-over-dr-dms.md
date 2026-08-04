@@ -1,14 +1,14 @@
 # ADR-030: Light-client device enrollment and RPC over double-ratchet DMs
 
 **Date:** 2026-07-07
-**Status:** Proposed (codex review complete: accept-with-fixes items applied; awaiting acceptance). Amended by ADR-032: relay observation of the device's `kind:31001` confirms provisional enrollment only; final enrollment requires repository confirmation, now allocated to `heterodyne:core/0.5.0#core-key-authority`
+**Status:** Accepted
 **Decision makers:** user (design direction); codex review integrated
 
 ## Family-allocation amendment (2026-07-19)
 
-ADR-033 split the former monolith before this proposed ADR was accepted. This
-amendment allocates the proposal across the independently versioned family;
-it does not accept ADR-030 or complete the Control profile.
+ADR-033 split the former monolith while ADR-030 remained proposed. This
+amendment allocated the proposal across the independently versioned family; at
+that date it neither accepted ADR-030 nor completed the Control profile.
 
 | Family document | Allocation |
 |---|---|
@@ -36,6 +36,90 @@ below names a section of the frozen 0.4.0 monolith and is not a current
 integration target. This label applies only to those reference destinations;
 live proposal statements are corrected in place by this amendment.
 
+## Later-decision reconciliation (2026-08-03)
+
+ADRs 032 through 038 were accepted after the original draft. ADR-030 is
+accepted with the following reconciliations, which are also applied directly
+to the operative Decision, Requirements, diagram, rationale, consequences,
+and vector list below:
+
+- **Core event ownership and finality.** A session-device `kind:31001` uses
+  the non-stamping `heterodyne-control-session-device-v1` profile and carries
+  the sole base-owner stamp `["spec_version","core/0.5.0"]`. Relay-valid
+  evidence is only provisional under Core's declared finality policy. The
+  exact delegation becomes final only when reachable from the canonical
+  event-storage repository; `deny-until-repo` grants no provisional
+  enrollment authority.
+- **Enrollment invite and acceptance.** The epoch invite has exactly
+  `kind:30078` and `d = double-ratchet/invites/epoch`, carries the mandatory
+  `kel_head`, and is signed by the current KERI-authoritative epoch key.
+  Enrollment names the exact currently active invite event. An undelegated
+  initiator is permitted only in the authenticated `control-enrollment`
+  context; it remains forbidden in every ordinary DM, credential, and other
+  Comms context. Comms authenticates the carrier first and otherwise holds
+  the request without a sender-visible policy signal until Control's
+  QR/challenge/enrollment-token decision accepts or rejects it.
+- **Relay-affine replay.** Before execution, the executor atomically reserves
+  the accepted DR session, request id, method, canonical payload digest,
+  request expiry, and first server-observed authenticated ingress relay. The
+  ingress relay is transport context, never a caller-supplied request member.
+  A retry must preserve the complete logical request, including expiry; each
+  response is persisted before publication and sent first and only through
+  the actual authenticated ingress relay for that arrival.
+- **Authorization authority.** Control owns grant and enrollment-token
+  semantics, but the Comms private claim ledger is their sole authorization
+  authority. Only repository-final `active` state grants positive authority.
+  Delivery, a DR session, a delegation alone, a filtered session view, or an
+  OIDC/JWT projection does not. Authenticated revocations and reductions take
+  effect immediately and are then committed for repository finality.
+- **Three non-substitutable token classes.** The one-use, expiring Control
+  enrollment token moves the enrollment ceremony in time. The Comms/OIDC
+  agent workload access token is short-lived, sender-constrained publication
+  authority. ADR-038's recovery transfer/bootstrap grant is key-bound,
+  non-bearer, and valid for at most eight hours. None authorizes a use assigned
+  to either of the other two classes.
+- **Human and agent signing.** A human Control profile may expose explicitly
+  grant-scoped signing methods where separately specified. An agentic profile
+  never exposes raw signing, private-key access, a human publication method,
+  or a human-key fallback. Agent publication uses only the intent-level
+  `heterodyne.agent.publish` path, a current workload token and fresh per-use
+  proof, mandatory attribution constructed by the full node, and the current
+  full-node-held `agent:<role-id>` key.
+- **Workload generation binding.** Agent issuance and every publication side
+  effect bind the exact issuer, pairwise subject, `client_id`, role id, Control
+  session, request, canonical payload digest, and current credential-ledger
+  persona, generation, checkpoint, and status. A credential-ledger reset
+  invalidates and purges prior-generation pending issuance and authority;
+  further work requires current-generation reissuance.
+- **Transport assurance.** Control enrollment and RPC remain relay-mediated
+  and require no direct light-to-full-node channel. Strict clients use
+  outbound Tor. A browser without Tor may use an authenticated clearnet shared
+  relay only in visibly declared reduced-assurance mode. This does not
+  prohibit optional direct application-layer access through Tor to an
+  advertised onion repo relay for repository finality or retrieval; that
+  connection does not become a Control transport.
+- **Ratchet durability and termination.** DR receive-state advancement,
+  durable persistence, and consumed-message-key erasure are one atomic action
+  completed before plaintext release. A revocation or credential transition
+  invalidates affected sessions locally and uses ADR-037's separately
+  authenticated persistent NIP-59 peer tombstone to warn the peer; the
+  tombstone is not a Control response or transcript.
+- **Recovery and retention boundary.** ADR-038 recovery approval,
+  bootstrap/transfer grants, admission, and authority activation are separate
+  Core/Comms compositions and never open Control. Recovery does not restore
+  active DR state, message keys, temporary workload tokens, sender proofs, or
+  a live Control session. Relay-carried Control request/response traffic is
+  never repository-committed or backfilled. A bounded encrypted side-effect
+  audit may be retained in protected recovery material, but it is not a
+  replayable RPC transcript and contains neither message keys nor raw workload
+  tokens except under a separately bounded protected diagnostic policy.
+
+Acceptance records the design decision; it does not open the incomplete
+Control conformance gate. General Control activation, advertisement, and
+conformance claims remain forbidden until registry revision 4, its closed
+schemas and state machines, and the minimum normative vectors named by this
+ADR and ADRs 035-038 are integrated and the profile gate is explicitly opened.
+
 ## Context
 
 Since ADR-027, §3.3 authorizes a browser-only / light device with a
@@ -53,7 +137,7 @@ forward-secret device-to-device transport over ordinary relays;
 §3.3.1 delegations distinguish NID-bearing from NID-less devices and
 carry a `valid_until`; the epoch key alone signs a `kind:31001`, so
 "who can enroll me" is a key-possession question; and `kind:31005`/
-`kind:31001` give a QR entry point and relay-watchable confirmation.
+`kind:31001` give a QR entry point and relay-watchable provisional signal.
 
 Prior art: **NIP-46 (Nostr Connect / remote signing)** - request and
 response payloads over NIP-44-encrypted relay events with QR
@@ -66,13 +150,15 @@ over the §5.7 ratchet.
 enrollment and grant mutations until a later revision specifies the
 governance flow (see Requirements).
 
-Design goals set by the user: no direct light-to-full-node
-connectivity (relays mediate everything); onboarding by QR scan or
-provisioning token; Control session devices receive no persona, NID,
-audience, repository-decryption, or ratchet secrets; the light
-client receives the full configuration so its UI matches any other
-device; light-device keys are session-scoped and disposable; oracle
-power is configurable.
+Design goals set by the user: a relay-mediated Control path requiring no
+direct light-to-full-node channel; onboarding by QR scan or provisioning
+token; Control session devices receive no persona, NID, audience,
+repository-decryption, or ratchet secrets; the light client receives its
+complete grant-filtered configuration so its UI matches any other device;
+light-device keys are session-scoped and disposable; oracle power is
+configurable. Optional Tor application-layer access to an advertised onion
+repo relay for retrieval and repository finality is a separate data path, not
+Control RPC.
 
 ## Decision
 
@@ -80,7 +166,8 @@ power is configurable.
 the delegation set by whichever device holds the epoch key; it then
 drives the persona through RPC carried as inner rumors in a §5.7
 double-ratchet session, the full node executing all key-holding and
-repo-holding operations on its behalf under a per-device grant.
+repo-holding operations on its behalf under an active
+Comms-ledger-authorized per-device grant.
 Delegations are session-scoped and disposable; one-time tokens
 support automated and agentic enrollment.**
 
@@ -88,8 +175,10 @@ support automated and agentic enrollment.**
    The new device generates its own secp256k1 keypair locally; the
    private key never leaves the device. This ADR defines the
    **session device** class: an ephemeral, RPC-driven device whose key
-   never signs world-visible content - the full node signs with the
-   persona's keys on its behalf. It coexists with §10.1.2's
+   never signs world-visible content - the full node performs an authorized
+   human-profile operation with an applicable human key, or an agent
+   publication with only its dedicated full-node-held `agent:<role-id>` key.
+   It coexists with §10.1.2's
    **delegated publishing device** class (durable delegation, authors
    its own events); §10.1.2's "light node MUST author with its own
    key" rule is scoped to that class at spec integration. The session device
@@ -101,7 +190,11 @@ support automated and agentic enrollment.**
 2. **Session-device delegation schema.** Enrollment produces a
    NID-less `kind:31001` mirroring the §3.3.1 bidirectional pattern:
    - `d` tag: `pubkey:<64-hex publishing key>` (replaceable per key).
-   - Tags: `["heterodyne", "delegation"]`, `["publishing_key", <hex>]`,
+   - Profile: the non-stamping
+     `heterodyne-control-session-device-v1`; Core retains the base event and
+     sole stamp.
+   - Tags: `["heterodyne", "delegation"]`,
+     `["spec_version", "core/0.5.0"]`, `["publishing_key", <hex>]`,
      `["cold_root", <npub hex>]`, `["valid_until", <unix-seconds>]`,
      `["binding_nonce", <64-char lowercase hex>]`, `["kel_head",
      <64-hex latest-accepted-KEL-event id>, <decimal seq>]` (mandatory
@@ -119,21 +212,27 @@ support automated and agentic enrollment.**
      reconstructed from those tags, proving the enrollee consented to
      exactly this enrollment. Verification needs no private
      enrollment-context state.
+   - A relay-valid event is only provisional under Core's
+     `provisional-accept` policy. Only reachability from the canonical
+     event-storage repository makes this delegation final;
+     `deny-until-repo` treats it as absent until then.
 
 3. **The epoch key is the enrollment endpoint.** The persona publishes
    a §5.7.1 DR invite under the epoch key itself: a `kind:30078`,
-   reserved `d` tag `double-ratchet/invites/epoch`, signed by the
-   current KERI-authoritative epoch key (an explicit carve-out from
+   exact reserved `d` tag `double-ratchet/invites/epoch`, mandatory
+   point-in-time `kel_head`, and signature by the current
+   KERI-authoritative epoch key (an explicit carve-out from
    §5.7.2's delegated-device-key invite rule, amended at spec
    integration). Every device holding the epoch key - exactly the
    devices able to sign a delegation - listens on it alongside its own
    device-key invite; possession of the epoch key IS the capability,
    so no executor advertisement exists. Requests arriving there are by
-   nature key operations and are restricted to key-operation methods
-   (enrollment, activation, revocation, unlock). On rotation the
-   invite is republished and the old one tombstoned; verifiers check
-   signer KEL-currency, and an enrollment request references the
-   invite event id it used, defeating stale-invite replay.
+   nature key operations and, after enrollment, are restricted to
+   grant-scoped key-operation methods (activation, revocation, unlock).
+   On rotation the current invite is published before the prior invite is
+   tombstoned. Verifiers require the signer and `kel_head` to match current
+   KEL authority, and an enrollment request references the exact currently
+   active invite event id it used, defeating stale-invite replay.
    Three bootstrap variants, all §5.7 sessions initiated before the
    new key is delegated:
    - *Co-located:* the full node displays a QR encoding a §5.7.1
@@ -147,6 +246,13 @@ support automated and agentic enrollment.**
    A pending enrollment request expires after a configurable window
    (RECOMMENDED default: 2 minutes); an expired request requires a
    fresh bootstrap.
+   Comms authenticates the carrier and transcript before Control policy. The
+   sole undelegated-initiator exception is this `control-enrollment` context,
+   where the default result is `hold` without a sender-visible policy signal;
+   only the Control QR-secret, challenge-response, or enrollment-token
+   decision may change that result to accept or reject. An undelegated
+   initiator remains invalid in every other Comms context and cannot invoke
+   activation, revocation, unlock, ordinary DM, or credential methods.
 
 4. **Authorization ceremony (epoch key, not cold root).** Issuing a
    delegation is an epoch-key operation, performed for interactive
@@ -157,18 +263,23 @@ support automated and agentic enrollment.**
    the intended device. Token enrollment does not skip the ceremony;
    it moves it to token minting.
 
-5. **Enrollment confirmation without a direct channel.** The light
-   device watches the persona's write relays for `kind:31001` and
-   detects its own publishing key appearing in the delegation set; no
-   direct connection to the full node is ever required.
+5. **Enrollment confirmation without a direct Control channel.** The light
+   device watches the persona's write relays for its `kind:31001`, but a
+   relay-valid candidate permits only a visibly labeled provisional state
+   under Core's `provisional-accept` policy. It is finally enrolled only when
+   that exact delegation is repository-final and every applicable
+   Comms-ledger authorization decision is `active`; `deny-until-repo` grants
+   no provisional authority. No direct Control connection to the full node is
+   required. A Tor-capable client may separately reach an advertised onion
+   repo relay to obtain repository confirmation.
 
 6. **RPC protocol.** Requests and responses are NIP-46-shaped payloads
    (`{id, method, params}` / `{id, result, error}`) carried inside the
    Comms generic subprotocol-payload rumor after negotiation. Control allocates
    no inner rumor kind and adds no wire stamp.
    Key-operation methods live on the epoch-key endpoint; all others
-   run on the device-key session with the enrolling full node. The
-   method vocabulary is the NIP-46
+   run on the device-key session with the enrolling full node. The human
+   profile's method vocabulary is the NIP-46
    base (`sign_event`, `get_public_key`, `nip44_encrypt`,
    `nip44_decrypt`, `ping`, ...) plus Heterodyne extensions:
    publish/fan-out, repo write via the §10 write path, feed-index
@@ -178,14 +289,32 @@ support automated and agentic enrollment.**
    full node MAY also serve vanilla NIP-46 clients - separately
    opted-in with its own grants, never an automatic fallback for
    enrolled devices (no forward secrecy, no expiry/grant machinery).
+   The agentic profile MUST NOT advertise or accept `sign_event`, private-key
+   access, human publication, or an unlabeled/human-key fallback; its only
+   publication operation is the intent-level `heterodyne.agent.publish`
+   method described in item 12.
+
+   Before dispatch, the full node atomically reserves `(accepted DR session
+   id, request id, method, canonical payload digest, request expiry, first
+   authenticated ingress relay)`. The normalized ingress relay is observed by
+   the receiver and MUST NOT be supplied in the request. Concurrent identical
+   arrivals join one execution; a retry with a changed session, method,
+   payload, or expiry conflicts. The final response is durably persisted
+   before it is publishable, is sent first and only to the actual ingress
+   relay for the triggering arrival, and may be replayed through a later
+   retry's actual ingress relay without re-execution. Responses are never
+   fanned out merely because multiple relays carried the request.
 
 7. **Session-device secrets stay on the full node.** On the Control path,
    epoch keys, audience keys, NID secrets, repository-decryption keys, and
-   ratchet secrets stay on the full node, which decrypts, signs, commits, and
-   publishes on the session device's behalf. This does not prohibit the
+   ratchet secrets stay on the full node, which decrypts, commits, and
+   publishes on the session device's behalf and signs only with the key
+   permitted by the selected human or agent-authorship profile. This does not prohibit the
    separately authorized Comms credential-sync path for durable NID devices.
 
-8. **Per-device permission grants (configurable oracle power).**
+8. **Per-device permission grants (configurable oracle power).** These tiers
+   describe human-profile RPC. The agentic profile exposes only its closed,
+   attenuated MCP tool set and never inherits human raw-signing authority:
    - *Baseline (all grants include this):* DM read/write/sign,
      decrypt-on-behalf, and self-revocation.
    - *Regular (the default for a newly enrolled light device):*
@@ -194,6 +323,19 @@ support automated and agentic enrollment.**
    - *Full:* regular + cross-signing / device activation. Never the
      default; granting it requires the same ceremony as enrollment.
    - *Media upload:* a separate grant, combinable with regular or full.
+   A regular posting grant does not authorize agent publication; item 12's
+   workload token, proof, role, and attribution path is independently
+   mandatory.
+
+   Control defines these grant meanings, while the authoritative grant table,
+   token registry, device inventory, and revocation state are records in the
+   Comms private claim ledger. A positive grant takes effect only as
+   repository-final `active` state. Delivery, an accepted DR session, the
+   session-device delegation alone, or a projected JWT does not authorize.
+   Authenticated reductions take effect immediately and are committed for
+   finality. NID-less session devices receive only filtered views and never
+   ledger repository access or its decryption key.
+
    **Security-policy state is not configuration.** The grant table,
    token registry, device inventory, and revocation records are
    excluded from the configuration grant and mutable only through the
@@ -201,10 +343,12 @@ support automated and agentic enrollment.**
    never edit its own grant, resurrect a spent token, or clear
    revocation state.
 
-9. **Configuration over the session.** The full node delivers the full
-   client configuration (and subsequent updates) to the light device
+9. **Configuration over the session.** The full node delivers the complete
+   grant-filtered client configuration (and subsequent updates) to the light device
    over the DR session, extending the §3.8.7 device-to-device sync
-   channel, so a light client renders the same UI as any other device.
+   channel, so a light client renders the same authorized UI as any other
+   device without receiving security-policy state, ledger keys, or excluded
+   secrets.
 
 10. **Session-scoped keys: logout and inactivity expiry.** A session
     device's key is a session credential, so revoking it is free.
@@ -229,12 +373,16 @@ support automated and agentic enrollment.**
     redeems, recording the token id as spent (bound to the enrolling
     key) before publishing the delegation, so a stolen copy cannot
     race the legitimate device through another full node.
+    This Control enrollment token is neither the short-lived Comms/OIDC agent
+    workload access token nor ADR-038's key-bound recovery transfer/bootstrap
+    grant; the three classes are not interchangeable.
 
 12. **Agentic pattern (two-way RPC).** An agentic light client and an
     agentic control node (a full node) are a special case of this
     pattern:
-    - The handshake is identical, but enrollment uses a token
-      (item 11) so provisioning is automated; agentic traffic uses a
+    - The handshake is identical, but enrollment uses the item-11 Control
+      enrollment token so provisioning is automated; that token grants no
+      publication authority. Agentic traffic uses a
       distinct negotiated protocol id/profile for clarity and separate policy
       handling over the same Comms carrier kinds.
     - Agentic payloads follow the **MCP data layer** (JSON-RPC 2.0
@@ -246,6 +394,20 @@ support automated and agentic enrollment.**
       enforcement surface, backed by per-call argument validation and
       object-level authorization. Nothing may be invoked before
       initialize completes.
+    - After mutual initialization, publication requires the Control
+      token-issuance tool to obtain a current, at-most-five-minute RFC 9068
+      workload access token from the persona's built-in Comms/OIDC issuer.
+      The sender-constrained token and fresh per-publication proof bind the
+      exact issuer, persona-scoped pairwise `sub`, `client_id`, role id,
+      session, request id, method, canonical payload digest, current
+      credential-ledger persona/generation/checkpoint, and status. The agent
+      invokes only `heterodyne.agent.publish`; the full node validates current
+      `active` authority and limits, constructs mandatory attribution, and
+      signs with its current full-node-held `agent:<role-id>` key. It never
+      releases that key or falls back to a persona, epoch, NID, human-device,
+      or unlabeled publication path. A credential-ledger reset invalidates
+      prior-generation pending issuance and authority and requires
+      current-generation reissuance.
     - The relationship is two-way: the light client may be offered
       e.g. Nostr command execution and configuration reads on the
       node; the control node may be offered execution on the light
@@ -255,16 +417,25 @@ support automated and agentic enrollment.**
       filesystem/network/secrets access unless separately granted,
       with any active inbound-control session visibly surfaced.
 
-13. **Revocation.** Revoking the device's `kind:31001` - by the user,
-    by logout, or by inactivity lapse - ends everything at once: peers
-    stop sending on its sessions (§5.7.2), and full nodes MUST drop
-    its grant and refuse further RPC.
+13. **Revocation and session termination.** Revoking the device's
+    `kind:31001` - by the user, by logout, by inactivity lapse, or by an
+    applicable credential transition - ends authority at once: full nodes
+    drop its grant, refuse further RPC, and invalidate affected DR sessions
+    locally. Before an ADR-037 transition is accepted, its persistent
+    authenticated NIP-59 peer tombstone is fully constructed and bound to the
+    old session and both delivery identities; it is broadcast immediately
+    after acceptance. Peer acknowledgement cannot delay local invalidation,
+    and a valid peer rejects later messages on the tombstoned session.
 
 14. **Retention.** RPC traffic is ordinary §5.7 traffic:
-    relay-carried only, never repo-committed, no backfill (§5.7.3) -
-    so command transcripts are never archived, though full nodes keep
-    a local `CONTROL-I-AUDIT-AT-REST`-compliant encrypted audit record of
-    side-effecting RPC.
+    relay-carried only, never repo-committed, and never backfilled (§5.7.3).
+    Active ratchet state, message keys, sender proofs, and temporary workload
+    tokens are likewise excluded from recovery archives. Full nodes keep a
+    bounded local `CONTROL-I-AUDIT-AT-REST`-compliant encrypted audit record
+    of side-effecting RPC, which MAY be included in protected recovery
+    material. That audit is not a replayable request/response transcript and
+    does not retain raw workload tokens except under a separately bounded
+    protected diagnostic policy.
 
 ## Requirements (RFC 2119)
 
