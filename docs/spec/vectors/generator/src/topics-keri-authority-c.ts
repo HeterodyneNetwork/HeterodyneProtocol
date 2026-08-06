@@ -9,7 +9,7 @@ import type { AuthoredVector } from "./types.js";
 const STATE_SCHEMA_REF = "§10.1.2";
 
 // keri-authority/ materialized-KEL derivation (OID-level, §10.1.2) and
-// did:webs export (§11.8) vectors (ADR-032). The materialized vectors pin
+// did:webs export (§11.8) vectors. The materialized vectors pin
 // byte-identical git blob/tree/commit OIDs (validated against real git in
 // keri-materialized.test.ts) for a two-event accepted KEL, plus the empty-KEL
 // deletion and atomic-rebuild ref-transaction rules. The export vectors cover

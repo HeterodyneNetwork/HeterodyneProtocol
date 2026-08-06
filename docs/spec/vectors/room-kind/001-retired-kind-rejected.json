@@ -11,7 +11,7 @@
     "heterodyne:social/0.5.0#social-discussion-rooms"
   ],
   "vector_id": "room-kind/retired-kind-rejected",
-  "description": "A newly-created room asserting a retired pre-ADR-017 kind is rejected.",
+  "description": "A newly-created room asserting a retired legacy room kind is rejected.",
   "input": {
     "room_state": {
       "room_kind": "private_verifiable",

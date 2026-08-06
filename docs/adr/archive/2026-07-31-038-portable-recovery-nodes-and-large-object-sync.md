@@ -4,7 +4,7 @@
 **Status:** Accepted
 **Decision makers:** user and protocol maintainers
 **Design record:**
-[`docs/superpowers/specs/2026-07-31-portable-recovery-and-large-object-design.md`](../superpowers/specs/2026-07-31-portable-recovery-and-large-object-design.md)
+[`docs/superpowers/specs/2026-07-31-portable-recovery-and-large-object-design.md`](../../superpowers/specs/2026-07-31-portable-recovery-and-large-object-design.md)
 **Acceptance dependency:** ADR-037; both decisions form one registry-revision-4
 batch
 **Spec targets:** `heterodyne:core/0.5.0#core-keys-repository`,

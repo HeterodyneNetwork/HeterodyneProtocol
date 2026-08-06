@@ -33,7 +33,7 @@
 
 ### Decision, normative text, and standards map
 
-- `docs/adr/2026-07-18-034-key-claims-private-ledger-oidc-projection.md` — accepted design decision and allocation record.
+- `docs/adr/archive/2026-07-18-034-key-claims-private-ledger-oidc-projection.md` — accepted design decision and allocation record.
 - `docs/spec/heterodyne-comms.md` — normative claims, ledger, OIDC, JWT, continuity, and status profile.
 - `docs/spec/heterodyne-core.md` — bounded typed-key and proof-verification extension points only.
 - `docs/spec/heterodyne-control.md` — consumes active claims for enrollment/RPC/agent authorization and filtered session-device views.
@@ -74,7 +74,7 @@
 ### Task 1: Record ADR-034 and allocate registry revision 2
 
 **Files:**
-- Create: `docs/adr/2026-07-18-034-key-claims-private-ledger-oidc-projection.md`
+- Create: `docs/adr/archive/2026-07-18-034-key-claims-private-ledger-oidc-projection.md`
 - Modify: `docs/spec/registry/kinds.json`
 - Modify: `docs/spec/registry/reason-codes.json`
 - Modify: `docs/spec/registry/security-invariants.json`
@@ -174,7 +174,7 @@ npm --prefix docs/spec/vectors/generator run check
 Expected: all commands exit 0 and the committed digest equals recomputation.
 
 ```bash
-git add docs/adr/2026-07-18-034-key-claims-private-ledger-oidc-projection.md docs/spec/registry docs/spec/vectors/generator/src/registry.test.ts
+git add docs/adr/archive/2026-07-18-034-key-claims-private-ledger-oidc-projection.md docs/spec/registry docs/spec/vectors/generator/src/registry.test.ts
 git commit -m "adr: adopt key claims and OIDC projection"
 ```
 
@@ -1031,7 +1031,7 @@ git diff --check
 Then audit the approved design:
 
 ```bash
-rg -n 'kind:31013|kind:31014|claim-ledger-reader|oidc-token-issuer|300 seconds|RS256|at\+jwt|draft-ietf-oauth-status-list-21|status-lists/<expiry-bucket>' docs/spec/heterodyne-comms.md docs/security/threat-model.md docs/adr/2026-07-18-034-key-claims-private-ledger-oidc-projection.md
+rg -n 'kind:31013|kind:31014|claim-ledger-reader|oidc-token-issuer|300 seconds|RS256|at\+jwt|draft-ietf-oauth-status-list-21|status-lists/<expiry-bucket>' docs/spec/heterodyne-comms.md docs/security/threat-model.md docs/adr/archive/2026-07-18-034-key-claims-private-ledger-oidc-projection.md
 rg -n 'private claim|consent record|issuance mapping|audience key' docs/spec/heterodyne-comms.md docs/security/threat-model.md
 ```
 

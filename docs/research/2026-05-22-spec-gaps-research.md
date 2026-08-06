@@ -514,13 +514,13 @@ existing ADRs:
 
 - `docs/spec/heterodyne.md` — normative spec, all findings cite line
   numbers within this file
-- `docs/adr/2026-05-21-001-client-side-msc-implementation.md`
-- `docs/adr/2026-05-21-002-private-room-interop-profile.md`
-- `docs/adr/2026-05-21-003-keri-inline-profile.md`
-- `docs/adr/2026-05-21-004-security-claims-hygiene.md`
-- `docs/adr/2026-05-21-005-private-feed-index-room-key-wrap.md`
-- `docs/adr/2026-05-21-006-relay-partitioning-page-integrity.md`
-- `docs/adr/2026-05-21-007-strict-mode-client-profile.md`
+- `docs/adr/archive/2026-05-21-001-client-side-msc-implementation.md`
+- `docs/adr/archive/2026-05-21-002-private-room-interop-profile.md`
+- `docs/adr/archive/2026-05-21-003-keri-inline-profile.md`
+- `docs/adr/archive/2026-05-21-004-security-claims-hygiene.md`
+- `docs/adr/archive/2026-05-21-005-private-feed-index-room-key-wrap.md`
+- `docs/adr/archive/2026-05-21-006-relay-partitioning-page-integrity.md`
+- `docs/adr/archive/2026-05-21-007-strict-mode-client-profile.md`
 - `docs/security/threat-model.md`
 - `docs/spec/vectors/README.md`
 - `docs/research/2026-05-21-critique-integration-research.md`

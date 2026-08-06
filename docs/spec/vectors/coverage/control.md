@@ -2,7 +2,7 @@
 
 Status: `incomplete-draft`.
 
-The integrated ADR-035 relay-affinity and ADR-036 automated-agent subset vectors are listed below. They are normative partial evidence but do not open Control conformance; the profile remains non-claimable until the remaining ADR-030 blockers are resolved.
+The ingress-relay-affinity and automated-agent subset vectors are listed below. They are normative partial evidence but do not open Control conformance; the profile remains non-claimable until the remaining enrollment and session blockers are resolved.
 
 Generated from [manifest.json](manifest.json); do not edit by hand.
 

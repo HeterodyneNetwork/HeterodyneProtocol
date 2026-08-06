@@ -443,7 +443,7 @@ const cases: readonly SchemaCase[] = [
   },
 ];
 
-describe("ADR-037 Decision 7 schema group B", () => {
+describe("credential-continuity schema group B", () => {
   it.each(cases)("$name accepts its exact carrier and rejects unknown members", ({ name, id, valid }) => {
     const validate = validatorFor(name);
     expect(validate.schema).toMatchObject({ $schema: "http://json-schema.org/draft-07/schema#", $id: id });

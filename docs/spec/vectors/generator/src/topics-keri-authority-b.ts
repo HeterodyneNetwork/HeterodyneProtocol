@@ -2,7 +2,7 @@ import { consumeVector } from "./vector-helpers.js";
 import type { Fixtures } from "./fixtures.js";
 import type { AuthoredVector } from "./types.js";
 
-// keri-authority/ behavioral vectors (ADR-032): the §4.5.1 accelerator
+// keri-authority/ behavioral vectors: the §4.5.1 accelerator
 // decision-equivalence conditions, §4.5.2 provisional acceptance and
 // convergence-gated withdrawal, the (pubkey,31001,d) conflict rule,
 // §3.9.10.1 rollback resistance, and the "materialized refs are never

@@ -1,7 +1,7 @@
 # Plan: Four-document protocol family split (ADR-033)
 
 **Slug:** four-document-protocol-family-split
-**ADRs:** docs/adr/2026-07-16-033-four-document-protocol-family-split.md
+**ADRs:** docs/adr/archive/2026-07-16-033-four-document-protocol-family-split.md
 **Research:** docs/research/2026-07-15-three-protocol-split-research.md
 **Mode:** --parallel
 **Autopilot:** true

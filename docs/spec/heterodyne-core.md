@@ -83,7 +83,7 @@ accepted by more than half of the delegate set that revision replaces.
 Implementations MUST NOT conflate these mechanisms.
 
 <a id="core-registry"></a>
-<!-- Monolith provenance: §3.0; split allocation: ADR-033. -->
+<!-- Monolith provenance: §3.0. -->
 ## 3. Registry, allocation, and canonical bytes
 
 The separately revisioned Core-owned registry at `docs/spec/registry/` is the
@@ -129,7 +129,7 @@ mismatch is rejection. A transport MUST NOT reconstruct the signing input from
 the parsed object.
 
 <a id="core-version-stamps"></a>
-<!-- Monolith provenance: §3.0 and §12; split rules: ADR-033. -->
+<!-- Monolith provenance: §3.0 and §12. -->
 ### 3.2 Owner stamps and historical bytes
 
 An event carries at most one Heterodyne version stamp. Registry revision 3
@@ -428,7 +428,7 @@ accelerator.
 #### 4.3.1 Vanilla Nostr routine-rotation breadcrumbs
 
 After accepting a routine, non-compromise rotation, a producer SHOULD emit the
-ADR-031 breadcrumb pair from the retiring epoch key before destroying that
+rotation breadcrumb pair from the retiring epoch key before destroying that
 secret:
 
 1. an unstamped `kind:0` profile whose human-readable `about` and `website`
@@ -665,8 +665,8 @@ At registry revision 3 this profile remains `reserved-inactive`: a verifier
 MAY report structural validity for diagnostics, but MUST report
 `conformance_claimable = false`, MUST NOT grant higher-layer authority, and MUST NOT
 advertise, negotiate, require, or produce the profile as conforming. Only the
-atomic registry-revision-4 gate defined by ADR-037 and ADR-038 can activate it;
-histories 1 through 3 remain byte-identical.
+atomic registry-revision-4 artifact gate in §14 can activate it; histories 1
+through 3 remain byte-identical.
 
 A canonically included replacement or revocation for the candidate address
 overrides relay copies and removes all prospective authority. Repository
@@ -910,7 +910,7 @@ host count and durable-host status and SHOULD warn when no durable host is
 advertised.
 
 <a id="core-protected-repository"></a>
-<!-- Monolith provenance: §3.8.6; split allocation: ADR-033. -->
+<!-- Monolith provenance: §3.8.6. -->
 ## 8. Protected repositories and key storage
 
 Core defines a generic encrypted-repository primitive. An instantiating
@@ -1285,7 +1285,7 @@ omitted. Failures are `UNMAPPABLE_FEATURE`, `UNSUPPORTED_CRYPTO_SUITE`, or
 degraded, MUST NOT be labeled complete, and MUST carry explicit warnings.
 
 <a id="core-versioning"></a>
-<!-- Monolith provenance: §12; split rules: ADR-033. -->
+<!-- Monolith provenance: §12. -->
 ## 12. Versioning, dependencies, and capabilities
 
 A qualified version matches:
@@ -1314,7 +1314,7 @@ forbids semantic change, removal, or reassignment of a frozen entry. A 1.0+
 document MUST NOT normatively require a non-frozen registry entry.
 
 <a id="core-capabilities"></a>
-<!-- Monolith provenance: §12.2-§12.3; split rules: ADR-033. -->
+<!-- Monolith provenance: §12.2-§12.3. -->
 ### 12.1 Stable capability bootstrap
 
 Every capability advertisement uses this Core-parsable bootstrap object:
@@ -1436,7 +1436,7 @@ Registry revision 3 binds these exact normative invariants:
 - **CORE-I-KEY-MATERIAL-AT-REST:** Persona nsec, NID secrets, and sensitive cached identity material are protected by the Core keys-repository profile, including NIP-49 wrapping where applicable.
 
 <a id="core-conformance"></a>
-<!-- Monolith provenance: §14; split rules: ADR-033. -->
+<!-- Monolith provenance: §14. -->
 ## 14. Conformance and vectors
 
 Every Heterodyne implementation claims Core conformance. A claim MUST state
@@ -1446,11 +1446,11 @@ Core has no document dependencies. Protocol conformance and vector conformance
 are distinct claims.
 
 This document remains pinned to registry revision 3. Revision 4 MUST NOT be
-selected, advertised, or loaded until one atomic ADR-037/ADR-038 artifact batch
-contains the complete catalogs, history snapshot, schemas, vectors,
-family/artifact-set manifests, and matching release manifests. A partial
-`history/4.json`, placeholder allocation, or draft schema set is invalid and
-non-claimable.
+selected, advertised, or loaded until one atomic artifact batch contains the
+complete credential-continuity and recovery catalogs, history snapshot,
+schemas, vectors, family/artifact-set manifests, and matching release
+manifests. A partial `history/4.json`, placeholder allocation, or draft schema
+set is invalid and non-claimable.
 
 A conformance report MUST, for each strict-profile ID, list the profile's state,
 conformance class, prerequisite profile IDs, required invariant IDs, required
@@ -1463,9 +1463,9 @@ Normative vectors compare canonical bytes and exact verdicts; semantic
 equivalence is insufficient. Each vector has an ID, owner document, owner
 version, registry pin, qualified spec references, direction, input, and
 expected output. Time-sensitive vectors use a simulated clock and production
-vectors pin randomness. During 0.x, an accepted ADR MAY change or retire an
-unreleased current vector in place. Released artifact sets preserve their
-exact historical bytes. Vector-ID immutability begins at 1.0.
+vectors pin randomness. During 0.x, an accepted specification change MAY
+change or retire an unreleased current vector in place. Released artifact sets
+preserve their exact historical bytes. Vector-ID immutability begins at 1.0.
 
 When this document declares a behavior conformant, an implementation MUST
 produce or accept it as specified. NIP-01 events have only the canonical

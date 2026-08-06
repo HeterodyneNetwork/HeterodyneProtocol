@@ -13,8 +13,8 @@ import {
 import type { DocumentId } from "./types.js";
 import { computeRegistryDigest, loadRegistry } from "./registry.js";
 
-/** The complete ADR-034 invariant set required in the family threat model. */
-export const ADR034_INVARIANT_IDS = [
+/** The complete claims/OIDC invariant set required in the family threat model. */
+export const CLAIMS_OIDC_INVARIANT_IDS = [
   "COMMS-I-CLAIM-AUTHENTICITY",
   "COMMS-I-CLAIM-ATTENUATION",
   "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
@@ -42,6 +42,7 @@ export type FamilyDocIssue = {
     | "archive-map-mismatch"
     | "overview-normative-language"
     | "extraction-banner"
+    | "noncanonical-decision-reference"
     | "premature-release-claim"
     | "release-manifest-mismatch";
   message: string;
@@ -66,6 +67,7 @@ const QUALIFIED_REFERENCE =
   /heterodyne:(core|comms|control|social)\/((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)#([a-z0-9]+(?:-[a-z0-9]+)*)/g;
 const BARE_FAMILY_LINK =
   /\]\((?:\.\/)?heterodyne-(core|comms|control|social)\.md(?:#[^)]+)?\)/i;
+const NONCANONICAL_DECISION_REFERENCE = /\bADR-\d{3}\b|docs\/adr\//;
 const BCP14_KEYWORD =
   /\b(?:MUST(?: NOT)?|REQUIRED|SHALL(?: NOT)?|SHOULD(?: NOT)?|RECOMMENDED|NOT RECOMMENDED|MAY|OPTIONAL)\b/;
 const EXPLICIT_NORMATIVE =
@@ -243,6 +245,16 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
       const lineNumber = index + 1;
       const references = [...line.matchAll(QUALIFIED_REFERENCE)];
 
+      if (NONCANONICAL_DECISION_REFERENCE.test(line)) {
+        issues.push({
+          path: document.displayPath,
+          line: lineNumber,
+          code: "noncanonical-decision-reference",
+          message:
+            "live specifications must express requirements without depending on ADRs",
+        });
+      }
+
       for (const match of references) {
         const target = match[1] as DocumentId;
         const version = match[2];
@@ -367,8 +379,8 @@ export function findInvariantEvidenceIssues(
   const registered = new Map(invariants.map(({ id, description }) => [id, description]));
   const issues: string[] = [];
 
-  for (const id of ADR034_INVARIANT_IDS) {
-    if (!registered.has(id)) issues.push(`ADR-034 invariant not registered: ${id}`);
+  for (const id of CLAIMS_OIDC_INVARIANT_IDS) {
+    if (!registered.has(id)) issues.push(`claims/OIDC invariant not registered: ${id}`);
   }
   for (const { id, description } of invariants) {
     if (threatRows.get(id) !== description) {

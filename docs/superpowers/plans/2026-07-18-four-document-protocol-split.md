@@ -568,8 +568,8 @@ git commit -m "spec: extract Heterodyne Social"
 
 **Files:**
 - Create: `docs/spec/heterodyne-control.md`
-- Modify: `docs/adr/2026-07-07-030-light-client-enrollment-rpc-over-dr-dms.md`
-- Modify: `docs/adr/2026-07-07-031-vanilla-nostr-breadcrumbs-and-interop.md`
+- Modify: `docs/adr/archive/2026-07-07-030-light-client-enrollment-rpc-over-dr-dms.md`
+- Modify: `docs/adr/archive/2026-07-07-031-vanilla-nostr-breadcrumbs-and-interop.md`
 - Modify: `docs/spec/vectors/generator/src/docs-lint.test.ts`
 
 **Interfaces:**
@@ -616,7 +616,7 @@ Run:
 ```bash
 npm --prefix docs/spec/vectors/generator test -- src/docs-lint.test.ts src/registry.test.ts
 npm --prefix docs/spec/vectors/generator run family:check
-rg -n 'docs/spec/heterodyne\.md|§[0-9]' docs/adr/2026-07-07-030-light-client-enrollment-rpc-over-dr-dms.md docs/adr/2026-07-07-031-vanilla-nostr-breadcrumbs-and-interop.md
+rg -n 'docs/spec/heterodyne\.md|§[0-9]' docs/adr/archive/2026-07-07-030-light-client-enrollment-rpc-over-dr-dms.md docs/adr/archive/2026-07-07-031-vanilla-nostr-breadcrumbs-and-interop.md
 ```
 
 Expected: tests pass; remaining monolith references occur only in explicitly labeled historical context, never integration targets.
@@ -624,7 +624,7 @@ Expected: tests pass; remaining monolith references occur only in explicitly lab
 - [ ] **Step 7: Commit**
 
 ```bash
-git add docs/spec/heterodyne-control.md docs/adr/2026-07-07-030-light-client-enrollment-rpc-over-dr-dms.md docs/adr/2026-07-07-031-vanilla-nostr-breadcrumbs-and-interop.md docs/spec/vectors/generator/src/docs-lint.test.ts
+git add docs/spec/heterodyne-control.md docs/adr/archive/2026-07-07-030-light-client-enrollment-rpc-over-dr-dms.md docs/adr/archive/2026-07-07-031-vanilla-nostr-breadcrumbs-and-interop.md docs/spec/vectors/generator/src/docs-lint.test.ts
 git commit -m "spec: establish Control profile boundary"
 ```
 

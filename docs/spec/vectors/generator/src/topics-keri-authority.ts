@@ -9,7 +9,7 @@ import type { AuthoredVector } from "./types.js";
 
 const WIRE = ["§3.0", "§4.5.1", "§14.3"];
 
-// keri-authority/ wire-level vectors (ADR-032): kel_head structural handling
+// keri-authority/ wire-level vectors: kel_head structural handling
 // (absent / duplicate / malformed / mismatch), the forbidden classes, the
 // mandatory classes, the equivocation-flagged outcome, and the KERI10JSON /
 // CESR wire-format rejection. Every embedded event is a real signed Nostr
@@ -165,7 +165,7 @@ export async function buildKeriAuthorityWireVectors(fixtures: Fixtures): Promise
     auxRand: AUX_RAND,
   });
 
-  // W11: mandatory kel_head on the ADR-030 epoch-key-signed enrollment invite.
+  // W11: mandatory kel_head on the epoch-key-signed enrollment invite.
   const epochInvite = await signEvent({
     secretKey: epoch.private_key,
     created_at: T + 342,
@@ -277,7 +277,7 @@ export async function buildKeriAuthorityWireVectors(fixtures: Fixtures): Promise
     consumeVector("keri-authority/011-kel-head-mandatory-on-epoch-invite.json", {
       vector_id: "keri-authority/kel-head-mandatory-on-epoch-invite",
       spec_refs: ["§3.0", "§4.5.1", "§5.7.1", "§14.3"],
-      description: "The ADR-030 epoch-key-signed enrollment invite (kind:30078, d=double-ratchet/invites/epoch) carrying a well-formed kel_head is accepted; this is the epoch-key carve-out from §5.7.2's device-key invite rule.",
+      description: "The epoch-key-signed enrollment invite (kind:30078, d=double-ratchet/invites/epoch) carrying a well-formed kel_head is accepted; this is the epoch-key carve-out from §5.7.2's device-key invite rule.",
       input: { event: epochInvite, accepted_kel: acceptedKel, signer: "epoch_key" },
       expected_output: {
         verdict: "accept",

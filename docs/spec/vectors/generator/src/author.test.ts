@@ -18,7 +18,7 @@ afterEach(async () => {
 });
 
 describe("author mode", () => {
-  it("authors at least one schema-valid vector for every ADR-024 topic", async () => {
+  it("authors at least one schema-valid vector for every required topic", async () => {
     const outputDir = await mkdtemp(join(tmpdir(), "heterodyne-vectors-"));
     tempDirs.push(outputDir);
 

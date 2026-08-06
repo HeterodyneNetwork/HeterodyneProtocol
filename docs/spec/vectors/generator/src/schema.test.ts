@@ -186,7 +186,7 @@ describe("vector schema", () => {
 });
 
 describe("gated credential-continuity schema registry", () => {
-  it("loads exactly the twenty ADR-037 Comms schemas without activating a profile", () => {
+  it("loads exactly the twenty gated Comms schemas without activating a profile", () => {
     expect(CREDENTIAL_CONTINUITY_SCHEMA_FILES).toHaveLength(20);
     for (const file of CREDENTIAL_CONTINUITY_SCHEMA_FILES) {
       expect(CREDENTIAL_CONTINUITY_SCHEMAS[file]).toMatchObject({

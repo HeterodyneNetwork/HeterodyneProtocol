@@ -352,7 +352,7 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
     {
       path: "breadcrumbs/004-ordinary-consumer-no-profile-inference.json",
       vector_id: "breadcrumbs/ordinary-consumer-no-profile-inference",
-      description: "Relay bytes for an unstamped signed kind:0 without kel_head remain ordinary upstream Nostr and never identify either ADR-031 v1 producer profile.",
+      description: "Relay bytes for an unstamped signed kind:0 without kel_head remain ordinary upstream Nostr and never identify either registered rotation-breadcrumb producer profile.",
       direction: "consume",
       input: { event: ordinaryVanillaProfile },
       expected_output: {

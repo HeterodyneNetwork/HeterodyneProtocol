@@ -113,7 +113,7 @@ exactly; semantic similarity is not conformance.
 | [docs/architecture.md](docs/architecture.md) | Non-normative family architecture and rationale |
 | [docs/glossary.md](docs/glossary.md) | Non-normative term index |
 | [docs/security/threat-model.md](docs/security/threat-model.md) | Family threat analysis |
-| [docs/adr](docs/adr/) | Architecture Decision Records |
+| [docs/adr](docs/adr/) | Non-canonical decision-record staging and archive |
 | [research/INDEX.md](research/INDEX.md) | Topic-keyed research index |
 
 ## Working on Heterodyne
