@@ -16,6 +16,7 @@ import { buildAgentAuthorshipVectors } from "./topics-agent-authorship.js";
 import { buildControlVectors } from "./topics-control.js";
 import { buildAgentModerationVectors } from "./topics-agent-moderation.js";
 import { buildCredentialContinuityVectors } from "./topics-credential-continuity.js";
+import { buildMarmotRadicleVectors } from "./topics-marmot-radicle.js";
 import { remediateHistoricalProduction } from "./legacy-remediation.js";
 import {
   AUX_RAND,
@@ -32,21 +33,12 @@ import type { Vector, AuthoredVector } from "./types.js";
 export const TOPIC_SPECS = {
   identity: "§3",
   keri: "§3.5",
-  config_room: "§3.8",
-  "multi-homing": "§3.9",
-  envelope: "§4",
   verification: "§4.5",
-  bridge: "§6.4",
   index: "§6.7",
-  "room-kind": "§5",
-  discussion: "heterodyne:social/0.5.0#social-discussion-rooms",
   outbox: "§7",
   moderation: "§8",
-  encryption: "§9",
   "relay-interop": "§10.5",
-  "homeserver-exit": "§3.10",
   transport: "§7.7",
-  redundancy: "§3.11",
   "social-recovery": "§3.12",
   "relay-profile": "§10.6",
   interop: "§11",
@@ -70,6 +62,7 @@ export const TOPIC_SPECS = {
   "credential-continuity": "heterodyne:comms/0.5.0#comms-credential-continuity-gate",
   stamping: "heterodyne:core/0.5.0#core-version-stamps",
   registry: "heterodyne:core/0.5.0#core-registry",
+  "marmot-radicle": "heterodyne:comms/0.5.0#comms-marmot",
 } as const;
 
 export async function buildAllVectors(fixtures: Fixtures): Promise<AuthoredVector[]> {
@@ -94,7 +87,33 @@ export async function buildAllVectors(fixtures: Fixtures): Promise<AuthoredVecto
   vectors.push(...buildControlVectors());
   vectors.push(...(await buildAgentModerationVectors()));
   vectors.push(...buildCredentialContinuityVectors());
-  return remediateHistoricalProduction(vectors, fixtures);
+  vectors.push(...(await buildMarmotRadicleVectors(fixtures)));
+  return (await remediateHistoricalProduction(vectors, fixtures))
+    .filter(({ vector }) => !isRetiredMatrixVector(vector.vector_id));
+}
+
+const RETIRED_MATRIX_PREFIXES = [
+  "bridge/",
+  "config_room/",
+  "encryption/",
+  "envelope/",
+  "homeserver-exit/",
+  "multi-homing/",
+  "redundancy/",
+  "room-kind/",
+] as const;
+
+const RETIRED_MATRIX_IDS = new Set([
+  "identity/kind31005-race-tiebreaker-core",
+  "interop/bare-hide-pref",
+  "interop/wrapped-vanilla-roundtrip",
+  "privacy-tiers/non-circular-bootstrap",
+  "social-recovery/cache-rejects-unauthorized-content",
+]);
+
+function isRetiredMatrixVector(vectorId: string): boolean {
+  return RETIRED_MATRIX_PREFIXES.some((prefix) => vectorId.startsWith(prefix))
+    || RETIRED_MATRIX_IDS.has(vectorId);
 }
 
 const VECTOR_FACTORIES: VectorFactory[] = [
@@ -120,7 +139,7 @@ const VECTOR_FACTORIES: VectorFactory[] = [
       vector: produceVector({
         vector_id: "identity/root-attestation-valid",
         spec_refs: ["§3.2.1", "§14.1", "§14.5"],
-        description: "Matrix-free root attestation: kind:31000 signed by the current epoch key, cold_root tag binds the npub, no matrix_room tag.",
+        description: "Root attestation: kind:31000 signed by the current epoch key, cold_root tag binds the npub.",
         input: {
           fixture_persona: "alice",
           signer: "epoch_1",
@@ -133,7 +152,7 @@ const VECTOR_FACTORIES: VectorFactory[] = [
           id: rootEvent.id,
           sig: rootEvent.sig,
         },
-        notes: "Per §3.2.1 the root attestation is epoch-key-signed (the cold root is never brought online for it) and the matrix_room tag is omitted for a Matrix-free persona.",
+        notes: "Per §3.2.1 the root attestation is epoch-key-signed (the cold root is never brought online for it).",
       }),
     };
   },

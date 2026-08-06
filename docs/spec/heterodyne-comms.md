@@ -2,7 +2,7 @@
 
 Document ID: `comms`<br>
 Version: `comms/0.5.0`<br>
-Registry revision: `3`
+Registry revision: `4`
 
 Normative dependencies: `heterodyne:core/0.5.0#core-conformance`.
 
@@ -26,24 +26,25 @@ kebab-case. Generated heading IDs are not stable protocol references.
 
 Comms defines secure persona speech over the Core substrate: a Nostr-native
 event envelope, public/private/encrypted repository tiers, publishing and
-fan-out, generic feed ordering and location, Double Ratchet direct messages,
+fan-out, generic feed ordering and location, Marmot conversations and media,
+Radicle-backed group storage and relays, Double Ratchet bootstrap and Control,
 credential-plane synchronization, an authenticated acceptance-policy hook,
 an encrypted generic subprotocol carrier, and a receive-only public-reader
 profile with a provider-independent fragment launcher.
 
-Comms does not define following, replies or reactions as social relationships,
-threading, moderation, personal lists, community policy, social-graph
-discovery, Matrix rooms, or command semantics. Application documents may
-select payloads and tighten acceptance, but cannot weaken this document's
-cryptographic checks.
+Comms does not define following as a social relationship, public feed
+presentation, moderation, personal lists, community policy, social-graph
+discovery, or command semantics. Application documents may select payloads
+and tighten acceptance, but cannot weaken this document's cryptographic
+checks.
 
-An implementation claiming Core+Comms is a **Heterodyne persona**. DM support
-is a RECOMMENDED feature; a client that offers Heterodyne-to-Heterodyne DMs
-MUST implement the complete DM feature in §7.
+An implementation claiming Core+Comms is a **Heterodyne persona**. A client
+that offers Heterodyne private conversation MUST implement the applicable
+Marmot client mode in §7.
 
 `comms.public-reader.v1` is a narrower receive-only feature claim. It does not
 require a persona key, publishing, private tiers, claims, OIDC, direct
-messages, or a Control implementation.
+conversation, or a Control implementation.
 
 <a id="comms-envelope"></a>
 ## 2. Nostr-native event envelope and verification
@@ -198,7 +199,7 @@ ECDH or additional KDF is applied. Every encryption under a derived key MUST
 use a fresh 32-byte NIP-44 nonce, and a producer MUST NOT reuse a nonce with
 the same derived key.
 
-Registry revision 3 permits Tier 3 wrapping only for this closed stamping
+The registry permits Tier 3 wrapping only for this closed stamping
 profile set:
 
 | Nostr kind | Profile ID |
@@ -386,7 +387,7 @@ Comms declares which application events are indexed; absent such a profile,
 persistent authored content SHOULD be indexed and ephemeral metadata SHOULD
 not. An explicit `heterodyne_index=true|false` tag overrides that default.
 
-Registry revision 3 defines one narrow exception to the empty-content and
+The registry defines one narrow exception to the empty-content and
 Comms-version-tag rules: the Social stamping profile whose immutable
 discriminator is
 `content.profile=heterodyne.social.org-feed.v1`. That profile is valid only
@@ -438,7 +439,7 @@ referring page's event id,
 `created_at`, and `d`, attempt/deadline/last-attempt timestamps, retry state,
 terminal cause when present, and allowed user actions. For example, an English
 UI may render “feed truncated after `<created_at>` / `<d>`; missing
-`<event_id>`”; that sentence is not normative. Registry revision 3 allocates
+`<event_id>`”; that sentence is not normative. The registry allocates
 no reason code for this application outcome, so a client MUST NOT invent or
 reuse an unrelated registered reason.
 The client MUST continue from the newest resolvable page and MUST NOT call the
@@ -663,135 +664,392 @@ improves detection; it does not make mutable web delivery equivalent to an
 independently installed client. Centrally hosted authenticated sessions SHOULD
 receive short-lived constrained grants by default.
 
+<a id="comms-marmot"></a>
+## 7. Marmot conversations and Double Ratchet bootstrap
+
+Comms adopts Marmot at exact commit
+`4ad4ae21479c3f3fa9950c6fc4556a76941a62e1` as the normative conversation
+dependency for this release. A conforming implementation MUST pin those
+upstream bytes. Moving the pin requires a complete protocol and conformance
+update; an implementation MUST NOT silently substitute another commit.
+
+Marmot is authoritative for MLS group creation, membership, proposals,
+commits, Welcomes, retained state, and convergence; account credentials and
+account-to-leaf proofs; unsigned Nostr-shaped application events; group
+messages, edits, replies, reactions, and group-scoped long-form content;
+encrypted-media v2; and its Nostr KeyPackage, Welcome, and signed `kind:445`
+transport envelopes. Heterodyne MUST NOT fork, reinterpret, or add a required
+application component to those surfaces.
+
+Heterodyne is authoritative only for KERI attribution, Control authorization,
+node-mediated operation, agent policy, Radicle repository and relay profiles,
+and public Social assets. A Marmot-valid event without current KERI evidence
+remains part of Marmot history. It loses verified Heterodyne attribution or
+authorization, but Heterodyne MUST NOT use KERI to select an MLS branch or
+alter convergence.
+
+Ordinary user-facing one-to-one conversations are two-member Marmot groups.
+Marmot also owns private group content, replies, reactions, attachments,
+edits, and group-scoped long-form messages. Double Ratchet is not a second
+user-facing chat system; §7.13 limits it to bootstrap, own-device Control RPC,
+agent RPC, credential synchronization, and token issuance.
+
+<a id="comms-marmot-participation"></a>
+### 7.1 Identity, leaf ownership, and client modes
+
+Each persona uses the Core-bound `marmot:human-messaging` account for ordinary
+account-scoped privilege and a separate `marmot:group-admin` account for
+administration. Automated roles use `agent:<role-id>`. The account private
+keys remain on authorized full or recovery nodes.
+
+Devices use independent Marmot MLS leaf keys. Heterodyne does not adopt
+Marmot's draft multi-device External Commit profile. A new device uses
+standard Marmot KeyPackages, Add commits, account-to-leaf proofs, and
+Welcomes. A leaf backup or transfer is permitted only as the exclusive
+takeover defined by Core; concurrent use of one leaf by multiple devices MUST
+be rejected.
+
+Comms defines two client modes:
+
+- A `direct-member` owns an independent MLS leaf and communicates directly
+  through an authorized Marmot transport after admission. Its ordinary
+  retained history begins at its join epoch.
+- A `node-mediated` client owns no group leaf. A designated full or recovery
+  node participates in the group and exposes only grant-filtered conversation
+  operations and retained history through Control. MLS secrets MUST NOT leave
+  that node.
+
+Browser and other light clients MAY use either mode when capable. Automated
+principals MUST use `node-mediated`. An exclusive leaf restore MAY restore
+retained history and epoch secrets contained in the encrypted backup.
+Heterodyne MUST NOT export old epoch secrets to a new independent leaf merely
+because both leaves are attributable to the same persona.
+
+<a id="comms-marmot-groups"></a>
+### 7.2 Group profiles and delivery policy
+
+A `standard-compatible` group uses Marmot's unmodified Nostr transport.
+Unmodified Marmot clients can join and communicate through the group's
+advertised Nostr relays. Heterodyne clients MAY additionally use native
+Radicle or a Radicle-backed relay, but those paths MUST expose the same Marmot
+event and media bytes.
+
+A `heterodyne-private` group is non-discoverable and Radicle-only. Its static
+directory and routing-generation repositories are private Radicle
+repositories. An administrator MUST authorize a member persona's active
+Radicle NID and privately deliver repository and group bootstrap information.
+The group still uses valid Marmot MLS state, application events, media, and
+transport-envelope bytes. Ordinary Marmot clients cannot discover, join, or
+synchronize it because they do not implement the private Radicle admission
+profile; the incompatibility ends at that boundary.
+
+A private group MUST fail closed when no authorized Radicle route is
+available and MUST NOT fall back to an undeclared public relay.
+
+Delivery configuration is per group and client:
+
+- `failover` submits to one preferred target and tries another authorized
+  target after rejection, timeout, or unavailability;
+- `redundant` submits the exact same signed Marmot event to all configured
+  targets immediately.
+
+The first valid durable acknowledgement satisfies Marmot's
+publish-before-apply requirement. Outstanding redundant attempts MAY
+continue. Receivers MUST deduplicate by Nostr event ID so a second carriage
+does not become a second logical message.
+
+<a id="comms-marmot-directory"></a>
+### 7.3 Static group directory repository
+
+Each Heterodyne-backed group has one stable directory repository and a
+sequence of event repositories. The directory manifest MUST validate against
+`docs/spec/schemas/comms/marmot-group-directory-v1.schema.json`.
+
+The static repository carries stable group identification, public profile and
+policy fields, host announcements, sealed invitations, encrypted routing
+bindings, retention policy, membership administration, mute lists, and
+moderation metadata. It MUST NOT be used as the message log.
+
+A discoverable group has a public static repository. Public fields are
+plaintext. Event-repository locators, membership, administrative records, and
+other sensitive fields MUST be encrypted for current members. Invitations
+MUST be individually sealed to their recipients. A declared public-group
+policy MAY explicitly expose a normally private field.
+
+A non-discoverable group has a private static repository. Its Radicle
+allowlist is an admission boundary, not encryption at rest. Sensitive records
+MUST remain application-encrypted for defense in depth. After removal, hosts
+MUST exclude the removed NID from future replication and encrypt new directory
+records only for the remaining membership.
+
+<a id="comms-marmot-routing-generation"></a>
+### 7.4 Routing generations and bindings
+
+Marmot's `h` tag is the current random `nostr_group_id`; it is not an MLS epoch
+number. One Heterodyne routing generation maps one-to-one to one `h` and one
+event-repository RID.
+
+A new routing generation rotates both `h` and the active event repository:
+
+- whenever a member is added or removed;
+- when the active repository reaches the 5 GB logical soft cap; or
+- when an administrator explicitly rotates after compromise or operational
+  failure.
+
+Other MLS commits MUST NOT rotate the event repository. A routing update
+itself creates an MLS epoch, so implementations MUST NOT describe this profile
+as rotating after every MLS epoch.
+
+For an addition, the administrator MUST prepare the repository and new `h`
+before the Add transition so the Welcome delivers the resulting routing state
+to the new member. For a removal, the removal commit MUST become canonical
+first. A remaining administrator then publishes a separate Marmot routing
+update from the post-removal state. An implementation MUST NOT combine those
+steps in a way that reveals the replacement `h` to the removed member.
+
+A routing binding MUST validate against
+`docs/spec/schemas/comms/marmot-routing-binding-v1.schema.json` and MUST bind
+the stable group identifier, new `h`, event RID, genesis-manifest digest,
+prior generation, authorized host set, advertised interfaces, retention
+metadata, signing administrator, and accompanying Marmot routing-commit event
+ID.
+
+<a id="comms-marmot-event-repository"></a>
+### 7.5 Event repository and logical union
+
+An event repository genesis manifest MUST validate against
+`docs/spec/schemas/comms/marmot-event-repository-genesis-v1.schema.json`.
+The repository is append-only at the logical protocol layer and has no merged
+canonical message branch.
+
+Each native writer MUST publish to its own NID ref. An integrated relay MUST
+publish relay-ingested objects to its designated relay ref. Hosts replicate
+valid authorized refs. The logical contents are the union of valid objects
+reachable from authorized refs, deduplicated by Nostr event ID for events and
+ciphertext hash for media. An unauthorized, malformed, or equivocated ref MUST
+NOT contribute to the union.
+
+Routing-generation event repositories are private by default for both
+discoverable and non-discoverable groups. A group MAY explicitly authorize
+public Radicle replication, but the client MUST present that choice as
+metadata disclosure. Ordinary Marmot clients use an advertised Nostr relay
+and do not need repository access.
+
+The 5 GB cap measures the logical unique encoded bytes of stored event objects
+plus encrypted media objects, not Git object, packfile, or filesystem size.
+After the threshold is crossed, hosts MUST stop admitting new application and
+media objects and MUST initiate rotation. They MUST continue admitting bounded
+proposals, commits, routing updates, and other control traffic required to
+repair or rotate the group.
+
+Radicle ref identity proves storage provenance only. Marmot authenticates the
+sender from the decrypted MLS message. A client MUST NOT infer sender identity
+from the fresh ephemeral public key of an outer `kind:445`.
+
+<a id="comms-marmot-exact-bytes"></a>
+### 7.6 Exact event and media bytes
+
+Every event object is the exact serialized signed Marmot Nostr event. A native
+writer creates the standard event before committing it. A relay commits the
+received bytes unchanged. An event is indexed by exact event ID and `h`; a
+reader or NIP-01 endpoint returns the same bytes.
+
+Radicle commits, indexes, relay adapters, and host replicas MUST NOT re-sign,
+wrap, translate, normalize, or reconstruct the event. For every accepted
+`kind:445`, the exact bytes hashed and signed by Marmot MUST be byte-identical
+through native Radicle, onion NIP-01, and optional clearnet NIP-01 access. The
+only permitted adaptation is between repository lookup and the standard
+NIP-01 request/response interface.
+
+Encrypted media objects are indexed by ciphertext hash. The ciphertext served
+through native Radicle, onion media access, optional clearnet media access,
+and any repeated locator MUST be byte-identical.
+
+<a id="comms-marmot-relay"></a>
+### 7.7 Radicle-backed Marmot relay and hosts
+
+The OPTIONAL feature `comms.radicle-backed-marmot-relay.v1` is a standard
+NIP-01 relay backed by routing-generation event repositories. It may expose
+onion, clearnet, or both interfaces. It is not required of every full node.
+
+The relay maps `h` directly to an event repository. It MUST NOT require or
+infer the stable group identifier, MLS epoch, member list, administrator
+policy, or static repository. It verifies the visible NIP-01 envelope and
+commits exact accepted bytes to its relay ref.
+
+Because `kind:445` uses a fresh ephemeral event key, a restricted relay MUST
+NOT use that key as member identity. A write allowlist uses NIP-42 connection
+authentication by an authorized stable Marmot account or active
+KERI-delegated device or agent key. This is anti-abuse admission only; it MUST
+NOT be presented as Marmot sender authentication.
+
+A group has one or more hosts, and administrators are hosts by default. Hosts
+replicate the static, active, and retained archive repositories; advertise
+authorized Radicle, onion, and clearnet interfaces; enforce repository
+admission and retention; prepare repositories and bindings; and initiate only
+authorized membership and routing commits. A host or Radicle delegate MUST
+NOT acquire group-admin authority merely by hosting.
+
+Light clients do not need Radicle NIDs unless they use native Radicle
+membership. A standard-compatible client may remain Nostr-only.
+
+<a id="comms-marmot-host-authority"></a>
+### 7.8 Host authority, convergence, and equivocation
+
+Static-repository changes are signed announcements. A client accepts a routing
+binding only when:
+
+1. the signer was an active Marmot administrator;
+2. that signer authored the canonical Marmot routing commit establishing the
+   same `h`; and
+3. the event repository's genesis manifest matches the bound digest.
+
+Other authorized hosts may advertise replicas and endpoints for the bound
+RID; they MUST NOT substitute another repository. Neither a Radicle default
+branch nor delegate threshold selects Marmot group state.
+
+Concurrent routing commits are resolved only by Marmot convergence. Prepared
+repositories attached to losing commits are abandoned and eventually
+garbage-collected. Two different validly signed bindings for the canonical
+`h` are administrator equivocation. Native Radicle transition MUST fail
+closed, retain the last valid generation or an already authorized standard
+Nostr path, surface the conflict, and require a new administrator routing
+rotation.
+
+<a id="comms-marmot-rotation"></a>
+### 7.9 Rotation transaction and durable acknowledgement
+
+Preparation occurs off-path: create the new repository, random `h`, genesis
+manifest, routing binding, and required host replicas. The new generation MUST
+NOT become authoritative until the Marmot routing commit is durably published
+through the old `h`. A failed publication leaves the old generation active;
+the prepared repository is retried or abandoned.
+
+For native Radicle publication, durable acknowledgement requires the exact
+event and referenced objects committed to the writer's ref, durable local
+storage, and acceptance of the ref announcement by at least one configured
+host. For an integrated relay, NIP-01 `OK` MUST NOT be returned until event
+ID, signature, tag cardinality, `h`, and local limits validate and the exact
+bytes are durably committed to the relay ref.
+
+Only after durable acknowledgement may the sender apply the new Marmot epoch
+and `h` and publish the encrypted directory entry. A standard-compatible
+group MAY try another authorized host, a direct Radicle peer, or an ordinary
+Nostr relay. A Heterodyne-private group queues locally and fails closed when
+no authorized route exists.
+
+<a id="comms-marmot-retention"></a>
+### 7.10 Retention and non-erasure
+
+Clients and hosts MUST retain the current generation and the prior routing IDs
+required by Marmot's retained-history and rollback horizon. Additional
+archives remain advertised for the signed group retention period.
+
+When an archive expires, conforming hosts remove it from the encrypted active
+directory, stop advertising and seeding its refs, and remove local refs.
+Conforming clients stop requesting or serving it and garbage-collect local
+objects where supported. NIP-40 expiration inside an exact Marmot event
+remains unchanged; repository retention complements it.
+
+Expiration is not erasure. Independent peers, Git objects, exports, and
+backups may survive. Protocol and UI language MUST state this limitation.
+
+<a id="comms-marmot-persona-inbox"></a>
+### 7.11 Persona repository inbox and first contact
+
+A persona repository MAY publish Marmot KeyPackages and expose a
+contributor-ref inbox. Sender refs MUST NOT be merged into the recipient's
+canonical profile branch.
+
+When no suitable two-member group exists, a sender MUST consume one recipient
+KeyPackage, create a standard two-member Marmot group, produce Marmot's exact
+Welcome transport artifact and first exact `kind:445`, and commit both
+atomically in a contact bundle conforming to
+`docs/spec/schemas/comms/marmot-persona-inbox-bundle-v1.schema.json` on its
+sender-specific ref. The first application event may be a direct message,
+private reply, or private reaction referencing a public or privately shared
+Social asset. Heterodyne defines no one-shot encrypted contact payload.
+Subsequent messages use the group's routing-generation repository, and a later
+reaction reuses an existing suitable group.
+
+The recipient MUST validate the Welcome and first event before joining or
+presenting an accepted conversation. Ignoring or rejecting the request does
+not mutate the sender ref and grants no global moderation power.
+
+A private persona inbox accepts only NIDs already authorized to replicate the
+repository. Unknown first contact uses a public inbox or another authorized
+bootstrap path.
+
+For a public inbox, an unknown ref enters pull-based quarantine. The client
+MUST fetch and validate a bounded manifest conforming to
+`docs/spec/schemas/comms/marmot-persona-inbox-manifest-v1.schema.json` before
+larger objects. The manifest identifies sender NID, consumed KeyPackage,
+event IDs, object sizes, and automation status. Unknown bundles MUST NOT
+trigger automatic media retrieval. Clients discard duplicate KeyPackage use,
+malformed artifacts, muted senders, objects over local limits, excess rate,
+and unsupported capabilities. Hosts MAY impose stricter quotas without making
+otherwise valid Marmot bytes invalid. Inbox publication never forces local
+visibility, acceptance, or replication.
+
+<a id="comms-marmot-media"></a>
+### 7.12 Encrypted media and locators
+
+Marmot encrypted-media v2 is the media format and cryptographic authority.
+Heterodyne retains `radicle-v1` only as a locator and storage profile. A
+Marmot message MAY carry repeated locators including both `radicle-v1` and a
+standard Marmot or Blossom locator. Unsupported locators are skipped under
+Marmot's rules and MUST NOT invalidate the message.
+
+A Radicle reader locates media by ciphertext hash from the event repository
+and its advertised object stores. Onion and clearnet media endpoints serve the
+same ciphertext. Heterodyne MUST NOT define a second group-media encryption
+format.
+
 <a id="comms-direct-messages"></a>
-## 7. Double-ratchet direct messages
+### 7.13 Double Ratchet bootstrap and Control carrier
 
 <!-- Monolith provenance: §5.7 and §9.5. -->
 
-Comms adopts nostr-double-ratchet version `0.0.138` as its 0.x normative wire
-reference. It provides forward secrecy and post-compromise security. The wire
-MUST be extracted and frozen before Comms can claim 1.0.
+Comms adopts nostr-double-ratchet version `0.0.138` only for point-to-point
+bootstrap, own-device Control RPC, agent RPC, credential synchronization, and
+token issuance. It provides forward secrecy and post-compromise security for
+those control-plane exchanges. It MUST NOT carry ordinary user conversation,
+group conversation, reactions, typing, receipts, or attachments.
 
 <a id="comms-dm-wire"></a>
-### 7.1 Invite, response, and message profiles
+The registry binds the existing non-stamping
+`heterodyne-comms-double-ratchet-invite-v1` (`kind:30078`),
+`heterodyne-comms-double-ratchet-invite-response-v1` (`kind:1059`), and
+`heterodyne-comms-double-ratchet-message-v1` (`kind:1060`) profiles. A Marmot Welcome that
+also uses an upstream Welcome kind is selected and validated by Marmot's
+profile; it MUST NOT be interpreted as a Double Ratchet response merely
+because the kind number overlaps.
 
-Registry revision 3 binds these immutable, non-stamping profiles:
-
-- `heterodyne-comms-double-ratchet-invite-v1`: upstream `kind:30078`,
-  discriminator `d-prefix:double-ratchet/invites/`;
-- `heterodyne-comms-double-ratchet-invite-response-v1`: upstream
-  `kind:1059`, discriminator `wire:nostr-double-ratchet@0.0.138;kind=1059`;
-- `heterodyne-comms-double-ratchet-message-v1`: upstream `kind:1060`,
-  discriminator `wire:nostr-double-ratchet@0.0.138;kind=1060`.
-
-Each delegated device publishes its own addressable invite at
-`double-ratchet/invites/<device>`. An invite is signed by that device's
-secp256k1 publishing key and contains the upstream ephemeral bootstrap
-material. Before session establishment, the recipient MUST validate the
-device's active delegation under
-`heterodyne:core/0.5.0#core-nid-delegation` and KEL authority; missing or revoked bindings
-are `dm_invite_unbound_device` or `dm_invite_revoked_device`.
-
-The epoch enrollment endpoint is the sole exception to the delegated-device
-invite rule. It is an upstream `kind:30078` with exact
-`d = double-ratchet/invites/epoch`, the ordinary upstream ephemeral bootstrap
-material, and exactly one Core `kel_head`. It is non-stamping and is signed by
-the current KERI-authoritative epoch key. A verifier MUST resolve the named
-KEL state, require that its authorized epoch key equals the event signer, and
+Each delegated device publishes its own invite at
+`double-ratchet/invites/<device>`. The epoch enrollment endpoint remains the
+sole exception and uses exact `d = double-ratchet/invites/epoch`, the current
+KERI-authoritative epoch signer, and one valid `kel_head`. The receiver MUST
 reject a stale, superseded, tombstoned, off-KEL, wrong-signer, or malformed
-candidate.
+candidate and MUST bind the active invite event ID into the authenticated
+transcript and first Control request.
 
-On epoch rotation, a current-key invite MUST be published before the prior
-invite is tombstoned. An enrollment initiator records the exact invite event
-id in its authenticated transcript and first inner enrollment request. The
-receiver MUST compare it with the currently active epoch invite event id; a
-valid signature by itself cannot revive an older invite.
-
-An otherwise undelegated initiator is permitted only for that authenticated
-transcript in the `control-enrollment` acceptance context. This exception
-does not authorize ordinary DMs, credential sync, activation, revocation,
-unlock, subprotocol payload interpretation, or any other Comms context. The
-carrier, invite, transcript, session identity, and request binding are
-authenticated before policy. While the higher Control profile remains gated,
-Comms can only hold such a valid request without a sender-visible signal; it
-cannot interpret or dispatch the enclosed Control payload.
-
-A future active higher profile may return `accept` only after it verifies the
-exact Core `binding_nonce` against the authenticated live-session challenge or
-an issuer-bound, single-use, unexpired, unredeemed enrollment token; observes
-the resulting session-device delegation as repository-final and unrevoked;
-and binds the accepted session to that delegation. Before that decision, no
-later subprotocol payload may be interpreted. After acceptance, application
-traffic uses only the mutually negotiated generic `kind:31015` and
-`kind:31016` inner-rumor carriers, and the no-backfill rule remains in force.
-
-Transport selection does not change these checks. A Tor-capable light client
-SHOULD use outbound Tor for accepted relay or onion routes. A browser or other
-reduced-assurance client MAY use a configured shared clearnet Nostr relay, and
-a full node that supports that client class MUST expose at least one such
-relay. Enrollment never requires a direct client-to-node address and MUST NOT
-publish an onion service endpoint or transport credential inside the invite.
-
-Publishing a newer invite with the same `(pubkey, kind, d)` replaces the old
-invite; an empty-content replacement is its tombstone. An out-of-band invite
-whose bootstrap bytes are encoded in a URL fragment is an equivalent
-client-mediated bootstrap and MUST undergo the same delegation, KEL, expiry,
-and acceptance checks.
-
-An invite response is `kind:1059`. A `kind:1060` message is signed by the
-current DH-ratchet key, not an epoch key, and carries the encrypted header and
-NIP-44-v2 ciphertext. Current and next expected ratchet keys select a session.
-Outer signers rotate at a DH step; messages within one ratchet epoch remain
-linkable until that step.
-
-Decrypted chat, reaction, receipt, and typing data are unsigned NIP-17-style
-rumors. They are attributable through the authenticated session but provide no
-transferable third-party authorship proof. Messages are sent to the recipient's
-NIP-17 `kind:10050` DM relay list; a DM-capable persona SHOULD publish one.
-When the authenticated recipient is a vanilla-Nostr recipient that does not
-support this DR profile, a DM-capable client MUST offer the NIP-17 fallback
-and MUST label that it lacks forward secrecy and post-compromise security.
+After acceptance, application traffic uses only mutually negotiated
+`kind:31015` and `kind:31016` inner-rumor carriers. A Tor-capable light client
+SHOULD use outbound Tor. A reduced-assurance browser MAY use a configured
+shared clearnet relay. Enrollment requires no direct client-to-node address.
 
 <a id="comms-dm-retention"></a>
-### 7.2 Retention and ratchet state
+Double Ratchet responses and messages MUST NOT be committed to a repository.
+They have no backfill. Before plaintext reaches Control, a receiver MUST
+atomically advance and durably persist ratchet state and make the consumed
+message key cryptographically unavailable. Valid skipped keys remain
+separately bounded until used or expired. Lost state means unrecoverable
+history and MUST be surfaced. A revoked or expired peer delegation
+immediately stops its sessions without affecting another device.
 
-<!-- Monolith provenance: §5.7.3 and §9.5. -->
-
-`kind:1060` messages and `kind:1059` responses MUST NOT be committed to any
-repo and a repo relay MUST reject them with `dm_event_not_storable`. Invites
-MAY use both backends. Double-ratchet traffic has no backfill and relay
-retention is transient. Local history and ratchet state MUST be encrypted at
-rest.
-
-Before releasing received plaintext to any application, a receiver MUST
-complete ratchet advancement and durable state persistence as one atomic
-action, and it MUST delete the consumed message key within that same action. A
-crash before that commit releases no plaintext; a restart after it cannot
-reuse the consumed key. Lost ratchet state means unrecoverable history and
-clients MUST say so. Compromise of current state does not reveal deleted past
-keys; a fresh DH step restores security after compromise.
-
-Here `delete` requires cryptographic unavailability from the committed ratchet
-state; it does not claim physical erasure from every storage medium. Valid
-unconsumed skipped-message keys retained for out-of-order delivery are part of
-the same durable state transaction and remain separately identified until
-consumed or removed by the profile's bounded skipped-key policy. A receiver
-MUST NOT erase such a skipped key merely because a later message arrived, and
-MUST NOT release plaintext while advancement, persisted skipped-key state, and
-consumed-key deletion disagree.
-
-Every durable delegated device owns separate invites and sessions. A sender
-SHOULD establish a session with each active recipient device. Self-DMs between
-devices of the same persona carry authorized credential sync. Group sender-key
-extensions are OPTIONAL and non-normative in this release.
-
-When a peer device's delegation expires or is revoked, active peers MUST stop
-sending on every session bound to that device and SHOULD surface the change;
-other devices of the persona are unaffected.
-
-Neither `kind:1059` nor `kind:1060` carries a Heterodyne version marker,
-`kel_head`, or persona identifier. Only encrypted inner Comms carrier rumors
-carry `comms/0.5.0`.
+Neither the DR outer response nor message carries a Heterodyne version marker,
+`kel_head`, or persona identifier. Only the encrypted inner Comms carrier
+rumor carries `comms/0.5.0`.
 
 <a id="comms-acceptance-hook"></a>
 ## 8. Authenticated acceptance-policy hook
@@ -808,8 +1066,8 @@ The hook has these closed inputs:
 - authenticated peer device publishing key and, except for the exact
   `control-enrollment` carve-out below, its delegation identifier;
 - local recipient persona and target device NID, when one exists;
-- context: exactly `ordinary-dm`, `credential-sync`, or
-  `control-enrollment`;
+- context: exactly `credential-sync`, `control-enrollment`,
+  `control-human-rpc`, or `control-agent-rpc`;
 - verified session identifier and transcript binding;
 - message/negotiated protocol identifier and requested features;
 - active-delegation, finality, and revocation result; and
@@ -833,12 +1091,11 @@ cryptographic checks; `undelegated` means that identifier is absent.
 
 | Context and authenticated state | Outcome |
 |---|---|
-| `ordinary-dm` or `credential-sync`, undelegated initiator | `reject` |
-| delegated `ordinary-dm`, established locally accepted session | `accept` |
-| delegated new `ordinary-dm` | `hold-as-message-request` |
+| undelegated `credential-sync` initiator | `reject` |
 | delegated `credential-sync`, every §8.1 authoritative ledger and current-grant check passes | `accept` |
 | delegated `credential-sync`, authoritative current state cannot be established | `hold-as-message-request`; no transfer and no sender-observable signal |
 | identified `credential-sync` delegation that is invalid, revoked, expired, mismatched, or NID-less | `reject` |
+| authenticated delegated `control-human-rpc` or `control-agent-rpc`, higher profile gated | `hold-as-message-request`; no payload interpretation and no sender-visible signal |
 | authenticated `control-enrollment`, exact current epoch invite, undelegated initiator, higher profile gated | `hold-as-message-request`; no payload interpretation and no sender-visible signal |
 | `control-enrollment`, stale/tombstoned invite or failed signer/KEL/transcript binding | `reject` |
 | authenticated `control-enrollment`, exact current epoch invite, higher profile active but without a stricter composed-profile decision | `hold-as-message-request` |
@@ -1049,21 +1306,21 @@ authorize remote actions, configuration mutations, or application payloads.
 
 Sections 8.3-8.10 define credential-continuity records so their closed schemas,
 state machines, and security boundary can be reviewed before the atomic
-registry revision that activates them. They are **not** active Comms 0.5.0
-wire profiles under selected registry revision 3. A current implementation
+registry change that activates them. They are **not** active Comms 0.5.0 wire
+profiles under selected registry revision 4. A current implementation
 MUST NOT advertise, negotiate, require, produce as authoritative, or claim
 conformance to any of these draft profiles. Schema-valid draft data grants no
 authority and MUST NOT change current credential state.
 
-Activation requires the complete registry-revision-4 credential-continuity
-and recovery artifact batch. In particular, the batch MUST contain the two
+Activation requires a future complete credential-continuity and recovery
+artifact batch. In particular, the batch MUST contain the two
 Core-owned offline-recovery schemas, the exhaustive owner-bound
 governed-decrypt source-profile catalog, every new allocation and diagnostic
-reason, the complete schema and validator graph, and revision-4 conformance
+reason, the complete schema and validator graph, and explicit conformance
 evidence. An injected already-authenticated offline-recovery or source-profile
 projection is sufficient only for draft unit evaluation; it is not end-to-end
-conformance. The current revision-3 registry, history, release manifests, and
-reason-code catalog remain byte-identical.
+conformance. Registry revision 4 retains these definitions as gated and
+non-claimable.
 
 The twenty draft Comms schema resources are:
 
@@ -1418,7 +1675,7 @@ record set, and retains its linked intent digest. Exact duplicates are
 idempotent; nonidentical variants for one activation ID are conservative
 collision evidence with no arrival-order winner.
 
-Until registry revision 4 supplies and activates the exact Core recovery
+Until a future registry revision supplies and activates the exact Core recovery
 schemas, draft evaluation may consume only an injected authenticated
 projection of these records. It MUST report the dependency as unavailable
 rather than accept a partial or self-authorizing offline restore.
@@ -1554,7 +1811,7 @@ purges prior-generation pending transactions and mint authority, rotates
 issuer authority, publishes status/revocation state, and requires reissuance.
 A prior-generation record remains audit evidence but grants no authority.
 
-The future revision-4 diagnostic precedence is:
+The future credential-continuity diagnostic precedence is:
 
 ```text
 missing generation
@@ -1569,7 +1826,7 @@ before reset invalid
 
 A present wrong-typed generation, non-array roster, or otherwise unrecognized
 shape retains the generic schema/cryptographic result. These diagnostic names
-remain local draft results under registry revision 3 and MUST NOT appear as
+remain local draft results under registry revision 4 and MUST NOT appear as
 current registered reason codes or profile-bound reject vectors.
 
 The claim-ledger payload and record identifiers use:
@@ -1726,8 +1983,8 @@ only the carrier version and conveys no higher-layer conformance.
 <a id="comms-key-claims"></a>
 ## 10. Atomic typed-key claims
 
-Comms defines an atomic assertion about one typed key. Registry revision 3
-assigns `kind:31013` to `heterodyne-comms-key-claim-v1` and `kind:31014` to
+Comms defines an atomic assertion about one typed key. The registry assigns
+`kind:31013` to `heterodyne-comms-key-claim-v1` and `kind:31014` to
 `heterodyne-comms-key-claim-revocation-v1`. Both are addressable events. Their
 sole `d` tag is the lowercase 64-hex claim identifier, and their JSON content
 uses the single `comms/0.5.0` owner stamp. The outer Nostr signer MUST be the
@@ -2249,7 +2506,7 @@ result, or diagnostic interface. One generic role is normal; separate stable
 roles MAY isolate a newsletter, aggregator, moderator, or other automation
 pipeline.
 
-Registry revision 3 defines the non-stamping
+The registry defines the non-stamping
 `heterodyne-comms-agent-signing-delegation-v1` profile on Core
 `kind:31001`. Its discriminator is
 `tag:d=agent:<role-id>;tags:key_proof,radicle_nid,nid_proof`. `role-id` is
@@ -2371,7 +2628,7 @@ independent verification. Review never changes the automated classification.
 The full node signs exactly once with the current key at the named role
 address, then applies ordinary §4 publication and §5 indexing.
 
-Registry revision 3 makes the attribution discriminator
+The registry makes the attribution discriminator
 `tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1`
 active through these non-stamping profiles:
 
@@ -2423,7 +2680,7 @@ under a separately bounded encrypted diagnostic policy.
 
 <!-- Monolith provenance: §9.0-§9.1 and §9.5. -->
 
-Registry revision 3 defines these Comms invariants:
+The registry defines these Comms invariants:
 
 - **COMMS-I-TIER3-BLIND-CARRIER:** Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay.
 - **COMMS-I-TIER2-HONESTY:** Tier 2 private repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly.
@@ -2445,14 +2702,19 @@ Registry revision 3 defines these Comms invariants:
 - **COMMS-I-AGENT-ROLE-BINDING:** Every agent-authored event signer, workload registration, token role claim, and active role-addressed delegation identify the same dedicated full-node-held role key.
 - **COMMS-I-AGENT-ATTRIBUTION:** Every agent-authored application event carries the canonical automation attribution block at its tier-appropriate protected location.
 - **COMMS-I-WORKLOAD-TOKEN-CONFINEMENT:** Workload tokens, token identifiers, private source claims, and sender proofs remain confined to the protected authorization and audit boundary.
+- **COMMS-I-MARMOT-UPSTREAM-AUTHORITY:** The pinned Marmot dependency remains authoritative for MLS, conversation events, encrypted media, and Nostr transport semantics.
+- **COMMS-I-MARMOT-EXACT-BYTES:** Radicle storage and every Nostr or media interface preserve exact signed Marmot event bytes and encrypted media ciphertext.
+- **COMMS-I-MARMOT-SECRET-CONFINEMENT:** Independent device leaves do not share secrets by default, and node-mediated clients receive no MLS, account, leaf, or repository secret.
+- **COMMS-I-RADICLE-ROUTING-AUTHORITY:** Only a canonical Marmot routing commit by an active administrator can authorize a matching Radicle routing binding and repository genesis.
+- **COMMS-I-RADICLE-NON-ERASURE:** Retention expiry stops conforming advertisement and replication but never claims erasure of independent Git objects, clones, exports, or backups.
 
 Mechanism guarantees MUST remain distinct. Tier 3 has no forward secrecy: a
 compromised audience key decrypts every retained post and index under its
 `key_id`; rotation protects only later generations. Double Ratchet has forward
-secrecy and post-compromise security subject to prompt message-key deletion.
-NIP-17 fallback to a vanilla recipient has neither guarantee because its
-static conversation key exposes past and future wraps. Clients MUST label a
-fallback and MUST NOT infer one mechanism's guarantee for another.
+secrecy and post-compromise security for bootstrap and Control subject to
+prompt message-key deletion. Marmot conversation guarantees come only from
+the pinned Marmot profile. Clients MUST NOT infer one mechanism's guarantee
+for another.
 
 <a id="comms-strict-profile"></a>
 ### 16.1 Comms strict profiles
@@ -2499,7 +2761,7 @@ warning before publication, and MUST retain no retired message keys after the
 Comms deletion points. Its capability advertisement MUST contain both profile
 IDs. An implementation missing either condition MUST omit the Comms profile.
 
-The revision-3 additions require a new profile ID; the v1 declaration above is
+The later additions require a new profile ID; the v1 declaration above is
 unchanged. `heterodyne-comms-strict-v2` has this exact membership:
 
 <!-- fixture:comms-strict-profile-v2 -->
@@ -2551,17 +2813,15 @@ profile.
 <!-- Monolith provenance: §14. -->
 
 A Comms conformance report MUST claim Core+Comms, name `comms/0.5.0`, pin
-`core/0.5.0`, registry revision 3 or its immutable digest, and enumerate
+`core/0.5.0`, registry revision 4 or its immutable digest, and enumerate
 supported features and strict profiles. A base implementation MUST implement
 the envelope, tiers, publishing, feed, retrieval, hook, negotiation carrier,
 and all twenty security invariants. It MAY omit the `double-ratchet` feature;
 one that advertises DMs MUST implement all of §7 and §8.
 
-Revision 4 MUST NOT be selected, advertised, or loaded until one atomic
-credential-continuity and recovery artifact batch contains the complete
-catalogs, history snapshot, schemas, vectors, family/artifact-set manifests,
-and matching release manifests. A partial revision-4 history or schema batch
-is invalid and non-claimable.
+The registry revision 4 entry set, history snapshot, release manifest, and
+vector metadata MUST match exactly. Gated credential-continuity definitions
+remain non-claimable under this selected revision.
 
 A report claiming `comms.public-reader.v1` MAY omit every send-side and private
 feature, but MUST name the `public-reader` Core role, implement
@@ -2582,11 +2842,11 @@ applicable public-reader and agent-authorship vector result. An implementation
 that exposes an automated publication path outside §15 MUST NOT claim Comms
 conformance or either Comms strict profile.
 
-No revision-3 report may list a §8.2 credential-continuity draft schema as an
+No conforming report may list a §8.2 credential-continuity draft schema as an
 active wire profile, feature, requirement, or strict-profile obligation. The
-unprofiled revision-3 draft vectors exercise schema and pure state-machine
+unprofiled credential-continuity draft vectors exercise schema and pure state-machine
 definitions only; their normalized `conformance_claimable:false` result is
-part of the case and they do not establish revision-4 or recovery-profile
+part of the case and they do not establish recovery-profile
 conformance.
 
 Wire conformance is byte-exact. Semantically similar encodings do not conform.

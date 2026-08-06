@@ -20,7 +20,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `identity/delegation-active` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `identity/delegation-expired` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `identity/delegation-revoked` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
-| `identity/kind31005-race-tiebreaker-core` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `identity/revocation-post-window` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `identity/root-attestation-valid` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-root-attestation` |
 | `identity/root-attestation-valid-v050` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-root-attestation` |
@@ -109,7 +108,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `session-device/repository-final-gate-closed` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `session-device/reserved-shape-valid-but-gated` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `session-device/revoked-no-authority` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
-| `social-recovery/cache-rejects-unauthorized-content` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-recovery` |
 | `social-recovery/cache-sourced-marked-stale` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-recovery` |
 | `social-recovery/cold-root-reanchor-authoritative` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-recovery` |
 | `stamping/control-carrier-comms-owner` | core | `core/0.5.0` | — | 1 | `comms-subprotocol-payload-v1` | `heterodyne:core/0.5.0#core-version-stamps` |

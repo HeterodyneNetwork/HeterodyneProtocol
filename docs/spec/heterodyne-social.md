@@ -2,7 +2,7 @@
 
 Document ID: `social`<br>
 Version: `social/0.5.0`<br>
-Registry revision: `3`
+Registry revision: `4`
 
 Normative dependencies:
 
@@ -26,33 +26,19 @@ kebab-case. Generated heading IDs are not stable protocol references.
 <a id="social-scope"></a>
 ## 1. Scope and conformance features
 
-<!-- Monolith provenance: §3.3.2, §3.8.1-§3.8.5, §3.9.1-§3.9.7,
-§3.10, §3.11.2-§3.11.5, §3.12 social bindings, §4.2-§4.5 Matrix path,
-§5.1/§5.4-§5.6, §6.5-§6.8 social policy, §7.3-§7.6, §8,
-§9.1.1-§9.4/§9.6 Matrix path, §10.3-§10.4 Matrix path, §11.1/§11.4-§11.7. -->
+<!-- Monolith provenance: public Social and policy portions only. -->
 
 Social defines following, replies, reactions, threading, social discovery,
 cross-persona advertisements, reply inboxes, feed presentation, community and
 organization presentation, moderation, personal and community lists,
 web-of-trust policy, starter packs, social recovery bindings, and the optional
-ATProto attached outbox. It also defines the complete OPTIONAL Matrix feature:
-MXID delegation and coordination, Matrix envelopes, discussion rooms,
-Megolm/MLS, encrypted configuration rooms, homeserver exit, personal headless
-bridging, homeserver requirements, and vanilla-Matrix fallback rendering.
+ATProto attached outbox. Social owns public and audience publishing, durable
+feed assets, stable links, citations, public community presentation,
+moderation, and discovery. Private conversation and group-scoped content use
+Marmot under Comms.
 
-The following conformance claims are distinct:
-
-- **`Social`** requires every non-Matrix section of this document and the
-  exact dependency versions above. A Matrix-free implementation can be fully Social-conformant.
-  Following, discovery, moderation, lists, recovery
-  binding, and async interaction are complete without Matrix.
-- **`Social+Matrix`** requires `Social` plus the complete Matrix feature in
-  §§9-12. An implementation MUST NOT claim `Social+Matrix` by implementing
-  only selected Matrix carriers.
-
-None of these Matrix-free Social mechanisms require Matrix. Matrix is an
-optional feature inside Social, not an identity, publishing, discovery,
-moderation, privacy, or recovery prerequisite.
+There is one `Social` conformance class. It requires the exact dependency
+versions above and every applicable section of this document.
 
 <a id="social-interactions"></a>
 ## 2. Replies, reactions, threading, and mixed-tier fan-out
@@ -84,6 +70,13 @@ and `30402` indexed; kinds `0`, `3`, `5`, `7`, `8`, `17`, `1984`, `4550`,
 Kind `30024` is a non-indexed draft. Unknown persistent addressable content
 SHOULD default indexed; other unknown kinds SHOULD default non-indexed.
 
+A private reply or reaction MUST use a Marmot conversation under
+`heterodyne:comms/0.5.0#comms-marmot`. If no suitable two-member group exists,
+it uses the persona-inbox bootstrap at
+`heterodyne:comms/0.5.0#comms-marmot-persona-inbox`. The Marmot application
+event MAY reference the stable Social asset ID, but the private response is
+not added to the public Social outbox unless the user separately publishes it.
+
 <a id="social-mixed-tier-fanout"></a>
 ### 2.1 Mixed-tier fan-out and reply inboxes
 
@@ -94,16 +87,16 @@ destination. A client SHOULD warn before a user expands a Tier 2, Tier 3, or
 private-discussion intent to a public destination. The warning never permits
 plaintext leakage.
 
-An outbox advertisement MAY contain a reply inbox: a closed set of ordinary
-relay, repo-relay, and, under Social+Matrix, Matrix-room hints where the persona
-prefers to observe replies and mentions. A replier SHOULD add these reachable
-destinations to the normal destination set; the reply still belongs to the
-replier's own outbox, and an inbox never grants write authority over the
-parent's repository.
+An outbox advertisement MAY contain ordinary-relay, repo-relay, and Marmot
+persona-inbox hints where the persona prefers to observe replies and mentions.
+A replier SHOULD add reachable public destinations to the normal destination
+set. A private response uses the Marmot hint and remains in its two-member
+group. An inbox never grants write authority over the parent's canonical
+repository.
 
-Matrix-free interaction is intentionally asynchronous. A client MUST degrade
-gracefully to outbox replies/reactions and MUST NOT block the user waiting for
-real-time push from Radicle's announce-then-fetch substrate.
+Public interaction is intentionally asynchronous. A client MUST degrade
+gracefully to outbox replies and reactions and MUST NOT block the user waiting
+for real-time push.
 
 <a id="social-discovery"></a>
 ## 3. Following and social discovery
@@ -157,8 +150,8 @@ A conforming client MUST support a vanilla Nostr-only author as a first-class
 follow target. It verifies each event's NIP-01 signature, subscribes through
 the author's current NIP-65 write-relay list, and MUST present the author as an
 external identity with no Heterodyne KEL, delegation, or private-audience
-guarantees. If it offers DMs, it uses the Comms NIP-17 fallback and labels the
-lack of Double Ratchet forward secrecy.
+guarantees. Following an external identity does not imply that it has a
+compatible Marmot account or can receive a Heterodyne private conversation.
 
 An unstamped `kind:0` or `kind:1` without `kel_head` remains ordinary upstream
 Nostr even when its prose claims that an account moved. A client MAY render
@@ -261,8 +254,7 @@ user's own follows or mutes.
 
 Core defines recovery peers, declared witnesses, cached identity material,
 and cold-root re-anchor at `heterodyne:core/0.5.0#core-recovery`. Social MAY
-select recovery peers from follows, mutual follows, friends, and, under
-Social+Matrix, a Matrix identity-room cache:
+select recovery peers from follows, mutual follows, and friends:
 
 - any follower MAY cache permitted identity material;
 - a mutual follow SHOULD cache it; and
@@ -276,8 +268,8 @@ Social+Matrix, a Matrix identity-room cache:
 
 Only persona-signed identity/feed material and valid KEL events may enter this
 cache. A serving peer MUST mark cached data stale and cache-sourced. Social
-relationships and Matrix identity-room cache entries are advisory availability
-bindings and MUST NOT replace the cold-root re-anchor, accepted KEL, witness
+relationships are advisory availability bindings and MUST NOT replace the
+cold-root re-anchor, accepted KEL, witness
 threshold, or verification rules in Core. Informal `kind:31008` social vouches
 are advisory only and MUST NOT count toward a Core rotation threshold.
 
@@ -338,7 +330,7 @@ persona's curated feed.
 <a id="social-org-feed-profile"></a>
 ### 5.1 Registered Social org-feed profile
 
-Registry revision 3 defines the stamping profile
+The registry defines the stamping profile
 `heterodyne-social-org-feed-v1` on the Comms-owned `kind:31007`, with immutable
 discriminator `content.profile=heterodyne.social.org-feed.v1`. An event opting
 into this profile MUST otherwise validate the complete Comms feed-index schema.
@@ -380,27 +372,6 @@ delegate-threshold-approved canonical feed branch. The optional per-ref
 `xyz.radicle.crefs` refinement MAY further scope editorial refs, but baseline
 canonicity MUST NOT depend on it.
 
-<a id="social-matrix-outbox-presentation"></a>
-### 5.2 Optional Matrix outbox presentation
-
-<!-- Monolith provenance: §7.1-§7.2 Matrix carrier forms. -->
-
-Under Social+Matrix, an identity room MAY contain at most one unencrypted
-`m.heterodyne.outbox.public.v1` with `spec_version: social/0.5.0`. It MAY list
-public discussion rooms, topic/feed presentation, NIP-65 read/write relays, an
-optional Matrix Space, and a reply inbox. It is a human-curated mirror only;
-Core identity and Comms outbox discovery MUST remain complete without it.
-Room references MUST accept both structured `{room_id,via}` and `matrix:` URI
-forms.
-
-An audience descriptor MAY additionally appear as encrypted
-`m.heterodyne.outbox.scoped.v1`, keyed by advertising persona, inside an E2EE
-`private_discussion`. The descriptor MUST also remain available through the
-applicable Comms Tier 2 or Tier 3 carrier and MUST NOT exist only in Matrix.
-The Matrix form MUST NOT expose Tier 3 RID, feed address, relay hint, topic, or
-membership data outside encrypted state. Membership or key possession gates
-the descriptor; it never grants repository authority.
-
 <a id="social-moderation"></a>
 ## 6. Moderation and editorial gating
 
@@ -416,10 +387,9 @@ Social defines two independent editorial-gating mechanisms:
 
 A community MAY use either or both. A client MUST NOT treat one as proof of
 the other. Membership is a separate axis: repository `visibility.allow`
-controls replication/read access, Core delegates control repo authority, and
-Matrix membership controls only an optional Matrix room. An unapproved post
-may remain visible in a raw relay/repository/room view while being absent from
-the curated view.
+controls replication/read access and Core delegates control repo authority.
+An unapproved post may remain visible in a raw relay or repository view while
+being absent from the curated view.
 
 <a id="social-nip72-submission"></a>
 ### 6.1 NIP-72 contribution and declaration
@@ -484,15 +454,12 @@ An approval counts only with the anchor required by its hosting mode:
 - **Repo anchor:** its introducing commit is reachable from canonical history;
   the moderator set is the newest `kind:34550` revision in that commit's
   ancestor history.
-- **Matrix anchor:** an `m.heterodyne.approval.v1` timeline event references
-  both ids; the moderator set is Matrix state at that anchor, and the anchor
-  sender MUST resolve to the same moderator persona.
 - **Relay-only fallback:** the newest declaration with `created_at` not after
   the approval is used. A client MUST label this reduced assurance because a
   removed moderator can backdate.
 
-An approval required to have a repo or Matrix anchor but lacking it MUST NOT
-count. An approval omitted from the moderator's current index is off-index and
+An approval required to have a repo anchor but lacking it MUST NOT count. An
+approval omitted from the moderator's current index is off-index and
 MUST NOT count in the Heterodyne curated view even if a vanilla NIP-72 client
 uses it.
 
@@ -507,62 +474,18 @@ MUST invalidate approvals signed after the cutoff. Invalidating an otherwise
 historical approval requires a per-approval NIP-09 `kind:5` deletion request
 and an updated moderator index.
 
-<a id="social-moderator-matrix-carrier"></a>
-### 6.3 Optional Matrix moderator carrier
-
-Under Social+Matrix, a moderated `public_discussion` room carries exactly one
-`m.heterodyne.moderators.v1` state event with empty state key:
-
-```json
-{
-  "type": "m.heterodyne.moderators.v1",
-  "state_key": "",
-  "content": {
-    "spec_version": "social/0.5.0",
-    "approvals_required": 1,
-    "moderators": [{
-      "mxid": "@alice:example.org",
-      "npub": "<cold-root hex>",
-      "powers": ["approve"],
-      "appointed_at": 0
-    }]
-  }
-}
-```
-
-`approvals_required` MUST be a positive integer. A moderator entry's npub is
-the cold root, while approval signatures use the KEL-authoritative epoch key.
-Only `approve` is defined in this release. A community carrying both the
-NIP-72 and Matrix declarations SHOULD keep them consistent; the required
-anchor determines which historical declaration is authoritative for a given
-approval.
-
-The Matrix anchor form is:
-
-```json
-{
-  "type": "m.heterodyne.approval.v1",
-  "content": {
-    "spec_version": "social/0.5.0",
-    "approval_event_id": "<kind:4550 id>",
-    "approved_post_id": "<post id>"
-  }
-}
-```
-
 <a id="social-revocation"></a>
-### 6.4 Approval withdrawal and deletion
+### 6.3 Approval withdrawal and deletion
 
 Silence is rejection; this release defines no explicit rejection event. To
 withdraw an approval, its author MUST publish a NIP-09 `kind:5` deletion
 request targeting its own `kind:4550` and MUST publish an updated approval
 index omitting it. A client MUST validate that the deletion and target authors
-match before hiding or discounting the approval. Matrix redaction MUST NOT be
-treated as cross-protocol approval withdrawal. Deletion signals intent and
+match before hiding or discounting the approval. Deletion signals intent and
 MUST NOT be represented as erasure.
 
 <a id="social-radicle-editorial"></a>
-### 6.5 Radicle editorial-gating mode
+### 6.4 Radicle editorial-gating mode
 
 For a Radicle-mode community, a client MUST treat a post as editorially
 approved if and only if both the post and the `kind:31007` that references it
@@ -577,7 +500,7 @@ old bytes. `xyz.radicle.crefs` MAY refine per-ref authority; the baseline MUST
 remain evaluable without it.
 
 <a id="social-labels"></a>
-### 6.6 Reports and labels
+### 6.5 Reports and labels
 
 Clients MAY consume NIP-56 `kind:1984` reports. They are RECOMMENDED to emit
 and consume NIP-32 `kind:1985` labels. A label event MUST target at least one
@@ -587,9 +510,9 @@ namespace. Labels are advisory: they MAY influence local warnings/ranking but
 MUST NOT constitute either editorial approval mechanism.
 
 <a id="social-agent-policy-receipts"></a>
-### 6.7 Agent-policy receipts and corrections
+### 6.6 Agent-policy receipts and corrections
 
-Registry revision 3 defines the stamping
+The registry defines the stamping
 `heterodyne-social-agent-policy-receipt-v1` profile on NIP-32 `kind:1985`.
 A receipt MUST have exactly:
 
@@ -638,7 +561,7 @@ field. A client SHOULD preserve list order when appending.
 <a id="social-mute-profile"></a>
 ### 7.1 Registered Social mute-list profile
 
-Registry revision 3 defines `heterodyne-social-mute-list-v1` on upstream
+The registry defines `heterodyne-social-mute-list-v1` on upstream
 replaceable `kind:10000`, with immutable discriminator
 `tag:heterodyne=social-mute-list-v1`. A Social-profiled mute list MUST carry
 exactly one of each profile tag:
@@ -662,7 +585,7 @@ inferred, stamped during ingestion, or represented as this Social profile.
 <a id="social-agent-policy-list"></a>
 ### 7.2 Subscriber-local agent policy
 
-Registry revision 3 defines the stamping
+The registry defines the stamping
 `heterodyne-social-agent-policy-list-v1` profile on NIP-51 replaceable
 `kind:10000`, with the exact profile tags:
 
@@ -738,11 +661,6 @@ sets or `['p','<policy npub>','<relay hint>','policy']` in `kind:34550`.
 Clients computing that community's view SHOULD apply adopted sources after
 verifying their signatures and current KEL authority. A follower MAY subscribe
 to additional policy personas independently.
-
-Under Social+Matrix, a room MAY additionally use Matrix policy rooms and
-`m.policy.rule.user`, `m.policy.rule.server`, and `m.policy.rule.room`.
-Matrix-server policy has no Nostr equivalent and MUST NOT alter the verified
-NIP-72 or Radicle editorial record.
 
 <a id="social-admission-policy"></a>
 ### 7.5 Web-of-trust and the Comms acceptance hook
@@ -826,8 +744,9 @@ canonical compact JSON object:
 {"spec_version":"social/0.5.0","did":"<DID>","did_signing_key_id":"<key id>","npub":"<cold-root hex>","rid":"<canonical RID>","established_at":0}
 ```
 
-`rid` is omitted only if no RID exists. Matrix identifiers MUST NOT appear in
-the signed payload. The Nostr attestation MUST be signed by the currently
+`rid` is omitted only if no RID exists. Transport-specific account
+identifiers MUST NOT appear in the signed payload. The Nostr attestation MUST
+be signed by the currently
 authoritative epoch key and include exactly one each of `d=<DID>`,
 `heterodyne=atproto_link`, `cold_root=<npub>`, `did=<DID>`, `kel_head`, and
 use the canonical payload above as its JSON `content`. The in-content
@@ -850,15 +769,7 @@ resolve the DID and verify its named signing key and record signature; read the
 payload's cold-root npub; verify that npub's current Core `kind:31005`; follow
 its canonical RID and KEL; locate the current Social `kind:31009`; verify its
 Nostr id, epoch-key signature, KEL authority, tags, and byte-exact payload; and
-finally require the two payloads to be identical. No Matrix service is needed
-for this procedure.
-
-Under Social+Matrix, the binding MAY be mirrored in
-`m.heterodyne.atproto_link.v1` with state key equal to the DID. Its sender MUST
-equal `content.mxid`, and that MXID MUST have a current delegation for the
-payload npub. The mirror MAY carry a Matrix identity-room locator, but it MUST
-embed the byte-exact signed payload and both proof locators; it MUST NOT modify
-the signed payload or become authoritative.
+finally require the two payloads to be identical.
 
 <!-- fixture:atproto-identity-link -->
 ```json
@@ -880,12 +791,6 @@ the signed payload or become authoritative.
     "public_key": "ca93ac1705187071d67b83c7ff0efe8108e8ec4530575d7726879333dbdabe7c",
     "signed_payload_hash": "6adf242345b2ac833ec54689e1eb6607d84897a5a116ef00df447646c5c541a0",
     "signature": "83a5f27554ae5dcd20552e19894c6d0c87d5a0efc91b423d88cb6ded67d1763c20013b7dec15aea8e8bf577c3dccab4749227756441a608d20d979c2ddc1570b"
-  },
-  "matrix_mirror": {
-    "type": "m.heterodyne.atproto_link.v1",
-    "state_key": "did:web:alice.example",
-    "sender": "@alice:matrix.example",
-    "content": {"spec_version":"social/0.5.0","mxid":"@alice:matrix.example","did":"did:web:alice.example","did_signing_key_id":"did:web:alice.example#atproto","atproto_record_uri":"at://did:web:alice.example/social.heterodyne.identityLink/self","nostr_event_id":"cd41c76501b0b7145c8dd115503473553e0e8a31c8e5849822aa7c87d19c6bf6","binding_payload":"{\"spec_version\":\"social/0.5.0\",\"did\":\"did:web:alice.example\",\"did_signing_key_id\":\"did:web:alice.example#atproto\",\"npub\":\"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337\",\"rid\":\"rad:zAlice\",\"established_at\":1710000000}","atproto_attestation":{"alg":"Ed25519","public_key":"ca93ac1705187071d67b83c7ff0efe8108e8ec4530575d7726879333dbdabe7c","sig":"83a5f27554ae5dcd20552e19894c6d0c87d5a0efc91b423d88cb6ded67d1763c20013b7dec15aea8e8bf577c3dccab4749227756441a608d20d979c2ddc1570b","signed_payload_hash":"6adf242345b2ac833ec54689e1eb6607d84897a5a116ef00df447646c5c541a0"},"established_at":1710000000,"revoked_at":null}
   }
 }
 ```
@@ -899,12 +804,6 @@ DID owner publishes the same revocation value, signed by the current DID key,
 to `social.heterodyne.identityLink/self`. Either independently verified
 revocation supersedes the binding at `revoked_at`; establishing a link still
 requires both signatures.
-
-Under Social+Matrix a revocation MAY be mirrored by updating the same
-`m.heterodyne.atproto_link.v1` DID state with non-null `revoked_at`. The sender
-MUST equal `content.mxid` and be currently delegated for the binding npub; the
-mirror MUST identify the verified Nostr event or ATProto record that caused
-the revocation and is never authoritative by itself.
 
 <!-- fixture:atproto-link-revocations -->
 ```json
@@ -922,12 +821,6 @@ the revocation and is never authoritative by itself.
     "rkey": "self",
     "value": {"spec_version":"social/0.5.0","record_type":"atproto_link_revocation","did":"did:web:alice.example","npub":"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337","binding_hash":"6adf242345b2ac833ec54689e1eb6607d84897a5a116ef00df447646c5c541a0","revoked_at":1710000100},
     "signature": "did-revocation-signature-base64url"
-  },
-  "matrix": {
-    "type": "m.heterodyne.atproto_link.v1",
-    "state_key": "did:web:alice.example",
-    "sender": "@alice:matrix.example",
-    "content": {"spec_version":"social/0.5.0","mxid":"@alice:matrix.example","did":"did:web:alice.example","npub":"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337","binding_hash":"6adf242345b2ac833ec54689e1eb6607d84897a5a116ef00df447646c5c541a0","revocation_source":"nostr","revoked_at":1710000100,"nostr_revocation_event_id":"7777777777777777777777777777777777777777777777777777777777777777"}
   }
 }
 ```
@@ -954,533 +847,28 @@ Core witness threshold. A verifier MAY ignore it without losing Social
 conformance. A displayed ATProto handle MUST remain marked unverified until
 both halves of the binding verify.
 
-<a id="social-matrix-identity"></a>
-## 9. Optional Matrix identity and MXID delegation
-
-<!-- Monolith provenance: §3.2 Matrix path, §3.3.2-§3.3.3, §3.6 Matrix path. -->
-
-Sections 9-12 are one OPTIONAL feature. A Social-only implementation omits
-them completely and remains fully conformant.
-
-<a id="social-identity-room"></a>
-### 9.1 Identity room and root mirror
-
-The Matrix identity room is an optional, intentionally peekable container. It
-SHOULD contain `m.heterodyne.room_kind.v1` with `identity_room`, one
-`m.heterodyne.root.v1`, zero or more delegation and KEL mirrors, and at most
-one public-outbox mirror. Audience-restricted state MUST NOT be placed there.
-The current verified Core identity pointer is authoritative over any cached
-room id, and a verifier MUST discard an older container pointer.
-
-The root mirror wraps Core `kind:31000`. Its Matrix content carries
-`spec_version: social/0.5.0`; the embedded empty-content Nostr event carries
-the Core stamp `core/0.5.0`, empty `d`, `heterodyne=root`, the exact bare room
-id in `matrix_room`, `cold_root`, and exactly one `kel_head`. A verifier MUST
-hash exact `nip01_raw`, verify BIP-340 and current epoch authority, require the
-cold root to equal the persona npub, and require `created_at` within a strict
-plus-or-minus five-minute window at verification. The freshness window applies
-only to this root mirror and MUST NOT be copied to delegations, KEL events,
-indexes, or posts. Conflicting resolved roots with different cold-root npubs
-make the room invalid for delegation verification.
-
-An MXID may locate the room through ordinary Matrix profile/discovery data,
-but a verifier MUST corroborate it against the latest valid Core identity
-pointer before trusting any mirrored state. If Matrix profile or room-mirror
-lookup fails, the verifier MUST fall back to the persona's current cold-root
-`kind:31005` identity pointer rather than treating the persona as unresolved.
-
-<a id="social-mxid-delegation"></a>
-### 9.2 MXID delegation
-
-An MXID delegation uses the Core-owned `kind:31001` base schema embedded in
-an `m.heterodyne.delegation.v1` identity-room state event. The embedded event
-MUST be epoch-key signed, carry exactly one `kel_head`, use
-`d=mxid:<exact MXID>`, `heterodyne=delegation`, `matrix_mxid=<exact MXID>`,
-`cold_root=<npub>`, `valid_until`, and the Core base-schema stamp
-`core/0.5.0`. Social does not override that wire owner.
-
-An MXID delegation is active if and only if:
-
-1. the embedded NIP-01 bytes, id, epoch-key signature, Core KEL authority,
-   compromise window, `kel_head`, and key-material finality all verify;
-2. the Matrix state sender exactly equals its MXID state key, proving
-   self-publication through Matrix state authorization;
-3. `matrix_mxid` and `d` exactly bind that same state key;
-4. `valid_until` is empty or a valid future decimal Unix time, with only a
-   declared bounded clock allowance;
-5. no effective `m.heterodyne.delegation_revoked.v1` exists; and
-6. the epoch remains authoritative at the evaluation time.
-
-Thus MXID delegation requires both the persona epoch-key proof and MXID
-self-publication. A homeserver cannot forge the persona proof. Relay- or
-room-only key material is provisional under Core; a `deny-until-repo` client
-MUST NOT honor it before canonical repo inclusion.
-
-A Matrix identity room is an optional discovery/cache surface. Its root,
-delegation, KEL, outbox, and ATProto state MUST NOT override the accepted KEL,
-the cold-root `kind:31005`, or Core repository authority.
-
-<a id="social-matrix-coordination"></a>
-## 10. Optional Matrix coordination, configuration, and exit
-
-<!-- Monolith provenance: §3.8.1-§3.8.5, §3.9.1-§3.9.7,
-§3.10.1-§3.10.6, §3.11.2-§3.11.5. -->
-
-<a id="social-config-room"></a>
-### 10.1 Encrypted config room and Social mirrors
-
-Each delegated MXID that uses this feature has one invite-only
-`config_room`. It MUST use room version 11, Megolm or the migrated MLS
-algorithm, guest access forbidden, history visibility shared, and only
-currently delegated MXIDs of the same persona as members. Every event,
-including every state event, MUST be encrypted client-side. The Matrix profile
-SHOULD advertise the room by a `matrix:` URI in
-`m.heterodyne.config_room`.
-
-The room MAY mirror these Social-owned records:
-
-- `m.heterodyne.user_prefs.v1`: UI, notification, language, feed-density, and
-  bare-message display preferences;
-- `m.heterodyne.persona_config.v1`, keyed by npub: private mutes, feed
-  preferences, subscribed outboxes, default audience, followed-repository
-  state, and identity-room cache;
-- `m.heterodyne.key_backup.v1`: an additional wrapped-nsec backup; and
-- `m.heterodyne.device_inventory.v1`: per-room bookkeeping only.
-
-Every content object MUST carry `spec_version: social/0.5.0`. Unknown fields
-in preference records MUST be tolerated. The authoritative non-Matrix records
-remain the Social list/private payloads stored through Core/Comms; Matrix is a
-mirror. `key_backup` MUST remain wrapped under a user-controlled secret with a
-memory-hard KDF even inside E2EE, and clients SHOULD allow it to be excluded
-from cross-MXID synchronization. Matrix-native cross-signing, Megolm session
-backup, and recovery keys remain standard Matrix responsibilities.
-
-Mutually delegated MXIDs SHOULD synchronize user preferences, persona config,
-and the wrapped backup through ordinary encrypted Matrix state replication.
-They MUST NOT synchronize device inventory. A higher explicit monotonic
-`revision` wins; equal/absent revisions fall back to `origin_server_ts`, then
-lexicographically smallest event id. Config state MUST NOT be placed in the
-identity room or broadcast to relays. Unreachable config state falls back to
-safe defaults with a visible warning.
-
-<a id="social-active-room-election"></a>
-### 10.2 Active-room election, publish lease, and failover
-
-Every delegated MXID MUST create its config room on first publish and invite
-all other delegated MXIDs, sharing history. Existing rooms MUST initiate an
-invitation to a newly observed delegated MXID within 60 seconds and retry
-until success, expiry, cancellation, superseding delegation state, or the
-terminal retry-budget outcome. Transient asymmetric membership or a carrier
-partition is an availability failure and MUST NOT stop convergence or alone
-make the producer nonconformant.
-
-`m.heterodyne.active_config_room.v1` has empty state key and exactly
-`active_room_id`, `active_room_homeserver`, integer `elected_at`, and UUIDv4
-`election_id`. It MUST be written into every config room. Receivers choose
-greatest `elected_at`, then lexicographically smallest `election_id`. The room
-with the earliest observed create timestamp is bootstrap-active, and even a
-single-MXID persona MUST publish the pointer.
-
-`m.heterodyne.publish_lease.v1` lives only in the active room and contains
-`holder_mxid`, `expires_at`, and fresh UUIDv4 `lease_id`. A device MUST acquire
-it before signing a publishable event. TTL is 60 seconds and renewal at 30
-seconds is RECOMMENDED. Concurrent writes use Matrix state ordering.
-
-A nonactive device MAY elect another room when the active delegation is
-revoked, sync receives 5xx/unreachable errors for more than 30 seconds, or the
-room is tombstoned. It MUST create a fresh lease after election. A readable
-room that remains unwritable for five cumulative minutes across three retry
-windows MUST receive an active-room
-`m.heterodyne.config_room_tombstone.v1`; it is ineligible until `expires_at`
-(default one hour), except when every alternative is unavailable.
-
-During a federation partition, losing-room leases become void after election
-converges. Events signed under them MUST be requeued and republished using the
-same Nostr event id as the Matrix transaction id; readers deduplicate by id.
-
-<a id="social-mxid-revocation"></a>
-### 10.3 Single-MXID revocation
-
-Selective revocation requires both a NIP-09 `kind:5` targeting the embedded
-delegation and `m.heterodyne.delegation_revoked.v1` in the identity room. The
-state embeds an epoch-key-signed revocation binding `revoked_mxid`,
-`effective_at`, the deleted delegation id, and optional reason. `effective_at`
-MUST be no earlier than attestation `created_at`; a verifier MUST clamp it to
-at least observation time plus its declared clock-skew policy, reject unsigned
-or mismatched records, and distrust Matrix events at or after the effective
-time.
-
-Other delegated MXIDs MUST initiate removal of the revoked MXID from their
-config rooms within 60 seconds and retry until success, expiry, cancellation,
-superseding state, or the terminal retry-budget outcome. If it held the lease,
-a remaining device MUST trigger
-failover. A later KEL rotation deactivates every delegation signed by the old
-epoch independently of this selective process. Affected private-discussion
-rooms SHOULD rotate Megolm sessions to exclude extracted old keys.
-
-<a id="social-homeserver-exit"></a>
-### 10.4 Voluntary homeserver exit
-
-Voluntary identity-room exit preserves the same npub and KEL. In order, the
-persona MUST create a room-version-11 identity room at the target; republish
-current root/delegation/KEL/outbox state; publish a fresh cold-root-signed
-`kind:31005` with the new Matrix locator while retaining the same RID; publish
-`m.heterodyne.identity_room_migrated.v1` in the old room; and dual-publish
-state for a RECOMMENDED seven-day cache-expiry overlap before retiring the old
-room. The UI MUST warn that updating the Matrix locator requires the rare
-cold-root signing operation and SHOULD prompt immediate resecuring.
-
-A follower MUST verify the new locator against the cold-root pointer, switch
-lookups after `migrated_at`, and log disagreement; the cold-root pointer wins.
-Config-room movement uses the election machinery above. Private room history
-and Megolm sessions do not migrate automatically: users MUST recreate rooms,
-reinvite members, and receive a warning. A KEL rotation MAY coincide with
-exit, but the rotation MUST be published into both identity rooms during the
-overlap. Before retiring an MXID during exit, the client SHOULD tombstone that
-MXID's config room through `m.heterodyne.config_room_tombstone.v1`, elect a
-surviving room, and only then revoke or retire the MXID.
-
-<a id="social-matrix-mirroring"></a>
-### 10.5 Matrix room mirroring and promotion
-
-A Social+Matrix persona MAY maintain warm identity/discussion-room replicas.
-`m.heterodyne.mirror_group.v1` is keyed by the logical family and records room
-kind, primary, replica ids, optional feed-index address, and update time. It
-MUST be copied into every identity replica so discovery is not circular.
-Identity primary MUST match the current cold-root pointer; a feed primary MUST
-match the verified feed descriptor. Followers MUST deduplicate replicas by
-Nostr event id and MAY read standby replicas with stale-cache handling.
-
-Private post bodies MUST NOT be duplicated into room replicas; only Matrix
-state/session material and room-local interaction may mirror. Removal SHOULD
-rotate the room session; join SHOULD preserve the current session when the
-Matrix SDK permits. Promotion is explicit: choose a healthy replica, republish
-the authoritative pointer/index, update the mirror group, and warn if identity
-promotion unseals the cold root. It MUST NOT be automatic.
-
-<a id="social-matrix-envelopes"></a>
-## 11. Optional Matrix envelopes and discussion rooms
-
-<!-- Monolith provenance: §4.1-§4.5 Matrix entry point, §5.1/§5.4-§5.5,
-§6.5/§6.8 Matrix interaction. -->
-
-Matrix timeline traffic has two envelope forms. A wrapped
-`m.heterodyne.note.v1` embeds a complete Nostr event plus exact `nip01_raw`;
-a bare `m.room.message` or `m.reaction` uses normal Matrix rendering and MAY
-carry an authenticity badge. Neither changes the Comms event or Core identity
-rules.
-
-<a id="social-wrapped-envelope"></a>
-### 11.1 Wrapped envelope
-
-```json
-{
-  "type": "m.heterodyne.note.v1",
-  "content": {
-    "spec_version": "social/0.5.0",
-    "nip01_raw": "[0,\"<epoch key>\",0,1,[],\"hello\"]",
-    "nostr": {
-      "id": "<sha256>", "pubkey": "<epoch key>", "created_at": 0,
-      "kind": 1, "tags": [], "content": "hello", "sig": "<BIP-340>"
-    },
-    "fallback": {"msgtype": "m.text", "body": "hello"}
-  }
-}
-```
-
-The receiver MUST hash `nip01_raw`, compare the id and every parsed field,
-verify BIP-340, verify Core KEL authority and finality, and verify an active
-MXID delegation at the embedded event's `created_at`. Any mismatch is
-rejection. The embedded event MUST be byte-identical to the event that could
-be sent over an ordinary relay. `fallback` is OPTIONAL but RECOMMENDED for
-kind 1; a Social+Matrix client MUST render verified Nostr data, not trust the
-fallback.
-
-<a id="social-bare-envelope"></a>
-### 11.2 Bare envelope and attribution
-
-A bare event is a normal `m.room.message` or `m.reaction`. It is attributable
-through MXID delegation but has no transferable Nostr proof. It SHOULD contain
-`heterodyne_persona`; that selector is REQUIRED when the MXID has more than one
-possible persona and the room context does not select exactly one.
-
-A bare message MAY carry `heterodyne_nostr_sig`, an upstream Nostr proof whose
-content equals the Matrix body byte-for-byte after Unicode NFC normalization.
-A receiver MUST verify the embedded event and selected persona. Success earns
-an authenticated indicator. Failure MUST retain the vanilla body with an
-explicit invalid-signature warning. An ordinary later delegation revocation
-MUST NOT retroactively de-attribute an event valid at its own DAG position.
-This does not override Core compromise cutoff: a later accepted Core
-compromise declaration removes verified attribution when the event's
-`created_at` is at or after `effective_compromise_since - 300`.
-
-Unknown Heterodyne Matrix event types MUST render as a safe placeholder. A
-receiver first applies Matrix SDK integrity, then branches on wrapped or bare,
-then applies exact Nostr/Core checks. It MUST NOT infer a verified identity
-from the Matrix sender alone.
-
-<a id="social-discussion-rooms"></a>
-### 11.3 Room kinds
-
-Every managed Matrix room MUST have empty-state-key
-`m.heterodyne.room_kind.v1` with `spec_version: social/0.5.0`, a current kind,
-and optional namespaced topics. New rooms use exactly `identity_room`,
-`config_room`, `public_discussion`, or `private_discussion`. The
-pre-0.4/v0.3-era kinds
-MAY be mapped for read-back with a visible legacy marker, but MUST NOT be
-produced.
-
-`public_discussion` is an intentionally unencrypted many-party room. It MUST
-use Matrix room version 11, have no encryption state, use `world_readable` or
-`shared` history, and set guest access explicitly. Bare messages are default.
-A moderator carrier turns it into a Matrix-hosted NIP-72 community. Its power
-levels SHOULD use users/events default 0, state default 50 or 100, moderators
-50, and owner 100.
-
-`private_discussion` is invite/restricted E2EE for groups or the optional
-Matrix two-party surface. It MUST use room version 11,
-`m.megolm.v1.aes-sha2` until migrated to MLS, `shared` or `invited` history,
-guest access forbidden, and invite or restricted join rules. Every event,
-including state, MUST be encrypted. Bare messages are default and remain
-attributable; the protocol claims pseudonymity, not deniability.
-Its power levels SHOULD use users/events default 0, state default 50 or 100,
-and owner 100. A client SHOULD warn before inviting a user whose clients have
-not demonstrated Heterodyne Matrix support; this is not a hard rejection.
-
-A Social client SHOULD support these room kinds for real-time communication.
-A Matrix-free client instead uses complete async Social interaction and does
-not lose Social conformance.
-
-<a id="social-matrix-encryption"></a>
-## 12. Optional Matrix encryption, bridge, and interoperability
-
-<!-- Monolith provenance: §9.1.1-§9.4, §9.6 Matrix mirror, §10.3-§10.4,
-§11.1/§11.5. -->
-
-<a id="social-encrypted-state"></a>
-### 12.1 Encrypted state and downgrade resistance
-
-In a `private_discussion` or `config_room`, every timeline and state event MUST
-be end-to-end encrypted. Heterodyne state content is encrypted client-side and
-sent through the standard Matrix state endpoint as opaque JSON; a homeserver
-needs no custom support. A plaintext `m.heterodyne.*` state event in either
-room is a state downgrade attack: it MUST be invalid, MUST NOT participate in
-authoritative Social state, SHOULD be security-logged, and MUST NOT be shown
-without a prominent potentially-forged warning naming the sender.
-
-Removing an MXID SHOULD start a fresh Megolm session for remaining members.
-KERI epoch rotation alone does not require Megolm rotation because the Matrix
-device/session membership is unchanged.
-
-Every Heterodyne E2EE Matrix room MUST declare its logical encryption version
-with empty-state-key `m.heterodyne.encryption_version.v1`. Its initial closed
-content schema is `spec_version`, `algorithm: "megolm"`, `migrated_from:
-null`, and `migrated_at: null`, in that order:
-
-<!-- fixture:matrix-encryption-megolm -->
-```json
-{
-  "type": "m.heterodyne.encryption_version.v1",
-  "state_key": "",
-  "sender": "@alice:matrix.example",
-  "origin_server_ts": 1710000000000,
-  "content": {"spec_version":"social/0.5.0","algorithm":"megolm","migrated_from":null,"migrated_at":null}
-}
-```
-
-If that state is absent but `m.room.encryption.algorithm` is
-`m.megolm.v1.aes-sha2`, a client MUST infer the exact baseline state above and
-SHOULD publish it on its next send to the room. A conflicting downgrade or an
-unknown logical algorithm MUST NOT be silently inferred as Megolm.
-
-<a id="social-megolm-mls"></a>
-### 12.2 Megolm-to-MLS migration
-
-Baseline Social+Matrix capability MUST advertise Megolm. A client claiming
-MLS MUST advertise it. The encrypted, scoped Matrix carrier is
-`m.heterodyne.capabilities.v1`, state-keyed by its publishing MXID; the sender
-MUST equal that state key. Its content MUST begin with the mandatory
-`heterodyne:core/0.5.0#core-capabilities` bootstrap object. Core support,
-descriptor, bootstrap version, registry revision, supported document set,
-required features, and strict profiles are mandatory. Social+Matrix adds only
-safely ignorable extension members after that bootstrap. An extension MUST NOT
-replace, rename, or reinterpret any Core bootstrap member.
-
-The carrier MUST be published on the first Heterodyne interaction in a shared
-private room, updated when the advertised set changes, and omitted from a
-public identity room unless the user opts in. The migration gate reads the
-extension members `encryption_algorithms_supported` and `advertised_at`; it
-still MUST reject an advertisement whose Core bootstrap is invalid.
-
-<!-- fixture:matrix-mls-capabilities -->
-```json
-{
-  "type": "m.heterodyne.capabilities.v1",
-  "state_key": "@alice:matrix.example",
-  "sender": "@alice:matrix.example",
-  "origin_server_ts": 1710000000000,
-  "content": {"descriptor":"heterodyne-capabilities-v1","bootstrap_version":"core/0.5.0","registry_revision":3,"implementation_role":"authenticated-light","supported_versions":{"core":["core/0.5.0"],"comms":["comms/0.5.0"],"control":[],"social":["social/0.5.0"]},"required_features":["core.nostr-relay-read.v1","core.outbound-tor.v1","core.repo-relay-client.v1"],"strict_profiles":[],"backends":["nostr_relay","repo_relay"],"matrix":true,"event_types":["m.heterodyne.encryption_version.v1","m.heterodyne.migration_intent.v1","m.heterodyne.migration_ack.v1","m.heterodyne.migration_abort.v1"],"nostr_kinds":[31004,31009],"encryption_algorithms_supported":["megolm","mls"],"advertised_at":1710000000}
-}
-```
-
-Migration MUST NOT begin until every current joined member has a most-recent,
-signature- and delegation-verified capability advertisement no more than 30
-days old that includes `mls`. The initiator MUST be the currently delegated
-moderator with the highest Matrix power level; a tie selects the
-lexicographically smallest persona npub. The selected initiator's sending MXID
-and npub MUST match the intent.
-
-The initiator publishes encrypted state
-`m.heterodyne.migration_intent.v1`, state-keyed by a UUIDv4 `intent_id`, under
-the current Megolm session. Its closed ordered content is:
-
-<!-- fixture:matrix-mls-intent -->
-```json
-{
-  "type": "m.heterodyne.migration_intent.v1",
-  "state_key": "123e4567-e89b-42d3-a456-426614174000",
-  "sender": "@alice:matrix.example",
-  "origin_server_ts": 1710000000000,
-  "content": {"spec_version":"social/0.5.0","target_algorithm":"mls","drain_window_seconds":60,"intent_id":"123e4567-e89b-42d3-a456-426614174000","initiator_mxid":"@alice:matrix.example","initiator_npub":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
-}
-```
-
-Every current member MUST initiate its ACK within the 60-second drain window
-and retry until delivery, window expiry, cancellation, or superseding
-migration state. A partition is an availability failure; absence at expiry
-still causes the terminal abort below. An ACK is encrypted
-`m.heterodyne.migration_ack.v1` state with key
-`<intent_id>:<member_npub>`; its sender MUST be a joined MXID currently
-delegated for `member_npub`, and `acked_at` MUST fall within the window:
-
-<!-- fixture:matrix-mls-ack -->
-```json
-{
-  "type": "m.heterodyne.migration_ack.v1",
-  "state_key": "123e4567-e89b-42d3-a456-426614174000:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-  "sender": "@bob:matrix.example",
-  "origin_server_ts": 1710000030000,
-  "content": {"spec_version":"social/0.5.0","intent_id":"123e4567-e89b-42d3-a456-426614174000","member_npub":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","acked_at":1710000030}
-}
-```
-
-Members SHOULD NOT originate new timeline traffic during drain; in-flight
-Megolm events created before the intent may complete. At expiry, any missing or
-invalid ACK requires the initiator to publish encrypted
-`m.heterodyne.migration_abort.v1`, state-keyed by the intent id, with the exact
-missing npubs. The room remains on Megolm, and no retry may begin for 24 hours:
-
-<!-- fixture:matrix-mls-abort -->
-```json
-{
-  "type": "m.heterodyne.migration_abort.v1",
-  "state_key": "123e4567-e89b-42d3-a456-426614174000",
-  "sender": "@alice:matrix.example",
-  "origin_server_ts": 1710000060000,
-  "content": {"spec_version":"social/0.5.0","intent_id":"123e4567-e89b-42d3-a456-426614174000","reason":"missing_acks","missing_npubs":["bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],"aborted_at":1710000060}
-}
-```
-
-With all ACKs, the initiator MUST publish the flip as empty-state-key
-`m.heterodyne.encryption_version.v1`, itself encrypted under the last Megolm
-session. `migrated_at` is integer Unix seconds and MUST correspond to the
-event's Matrix `origin_server_ts` in milliseconds:
-
-<!-- fixture:matrix-mls-flip -->
-```json
-{
-  "type": "m.heterodyne.encryption_version.v1",
-  "state_key": "",
-  "sender": "@alice:matrix.example",
-  "origin_server_ts": 1710000060000,
-  "content": {"spec_version":"social/0.5.0","algorithm":"mls","migrated_from":"megolm","migrated_at":1710000060,"intent_id":"123e4567-e89b-42d3-a456-426614174000"}
-}
-```
-
-The flip is receiver-verifiable, not atomic. Events with
-`origin_server_ts` at or before the flip are Megolm; later events are MLS,
-subject only to the tail exception below. An offline sender MUST reread current
-encryption state before publish and re-encrypt queued plaintext with fresh MLS
-state, reusing the original Nostr id as Matrix transaction id. It MUST NOT send
-queued Megolm ciphertext. A sender without MLS MUST fail the queued send
-visibly. If the same event was already published through a Comms backend while
-the member was offline, Matrix-side re-encryption still proceeds and the Comms
-asymmetric-delivery and deduplication rules remain applicable.
-
-A receiver that has observed the flip may accept a lagging Megolm event only
-when all three conditions hold: its `origin_server_ts` is no more than 60
-seconds after the flip; it references a Megolm session key the receiver
-obtained before the flip; and its sender MXID was joined at the flip according
-to pre-flip `m.room.member` state. Missing provenance or membership is
-rejection. After the 60-second tail, every Megolm event MUST be rejected.
-
-The first MLS commit SHOULD carry the Megolm session export, encrypted as
-opaque `app_data.megolm_session_export`, for pre-flip history continuity. A
-non-MLS client encountering the flip MUST stop accepting new room traffic,
-retain readable pre-flip and valid-tail history, and display an MLS-upgrade
-warning. MLS-to-Megolm rollback is FORBIDDEN in this release. An abort or
-expired intent never changes the algorithm; repeated aborts SHOULD warn
-moderators that members are not upgrading.
-
-<a id="social-headless-bridge"></a>
-### 12.3 Client-side bridge and homeserver boundary
-
-A personal headless bridge MAY maintain Matrix presence, mirror public Social
-content to configured destinations, and host archive endpoints. It is a
-normal user-controlled client inside the user's trust boundary. Cross-protocol
-Social bridging MUST run only on user-controlled clients; it MUST NOT require
-a relay-side or homeserver-side bridge that receives protected plaintext.
-
-A vanilla Matrix homeserver is sufficient. A homeserver MUST NOT be expected
-to parse Heterodyne content, verify npubs/KELs, enforce Social policy, or see
-E2EE plaintext. It MAY reject traffic under its ordinary policy. Users respond
-by moving accounts/rooms through the exit procedures rather than requiring a
-server extension.
-
-<a id="social-vanilla-matrix"></a>
-### 12.4 Vanilla Matrix and fallback rendering
-
-A vanilla Matrix client sees `public_discussion` as an ordinary unencrypted
-room and `private_discussion` as an ordinary Megolm/MLS room when it supports
-the selected algorithm. It renders bare messages and ignores unknown Social
-fields. It cannot interpret encrypted Heterodyne state or wrapped-only events.
-
-A wrapped kind-1 event SHOULD contain an `m.text` fallback; kind 30023 MAY use
-an excerpt; nontext events SHOULD omit misleading fallback. Before sending an
-event invisible to known vanilla members, a Social+Matrix client SHOULD warn
-the user. A Social client encountering a bare message MUST render it with an
-unauthenticated-message indicator and SHOULD offer `never`, `unsigned_only`,
-and `per_room` display policies. A room cannot enforce wrapped admission;
-moderation may omit or remove an event from a curated view but MUST NOT claim
-that the Matrix wire rejected it.
-
 <a id="social-security"></a>
-## 13. Security invariants
+## 9. Security invariants
 
-<!-- Monolith provenance: §9 Social/Matrix portions and §13 mixed invariants. -->
+<!-- Monolith provenance: public Social policy portions. -->
 
-Registry revision 3 binds these exact Social invariants:
+The registry binds these exact Social invariants:
 
-- **SOCIAL-I-MATRIX-E2EE:** Private Matrix discussion and configuration content, including protected state, remains end-to-end encrypted and downgrade-resistant from the homeserver.
-- **SOCIAL-I-MXID-DELEGATION-DUAL-PROOF:** A Matrix MXID delegation requires both the persona epoch-key signature and successful MXID self-publication through Matrix state authorization.
 - **SOCIAL-I-PRIVATE-STATE-AT-REST:** Private mute, feed-preference, followed-repository, and other Social state are encrypted at rest using the owning Social or bound Comms profile.
-- **SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE:** Matrix and cross-protocol Social bridging runs on user-controlled clients; no homeserver or relay bridge receives protected plaintext.
 - **SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH:** Following, transitive discovery, and social-graph evaluation do not depend on a centralized follow-graph oracle.
 - **SOCIAL-I-AGENT-POLICY-LOCAL:** Agent-policy receipts inform publicly, but only an explicitly subscribed and verified current policy list changes a client's local visibility.
 - **SOCIAL-I-AGENT-REMEDIATION-SCOPED:** Agent-policy enforcement and remediation target only the offending role device key; replacement at the same role address never requires epoch-key rotation.
 
-The mechanism boundaries MUST remain honest. Tier 2 and Tier 3 guarantees
-come from Comms, not Matrix. A Matrix private room uses its Megolm/MLS session;
-a bare Matrix event is attributed but not a transferable Nostr proof. Social
+The mechanism boundaries MUST remain honest. Tier 2, Tier 3, Marmot
+conversation, and Radicle persona-inbox guarantees come from Comms. Social
 ranking is advisory and never identity or editorial authority. ATProto is an
 attached public outbox and optional witness, never persona authority.
 
 <a id="social-strict-profiles"></a>
-### 13.1 Social strict profiles
+### 9.1 Social strict profiles
 
-The Matrix-free Social strict profile composes the Core, Comms, and applicable
-Social invariant sets. Matrix-only invariants are not applicable until Matrix
-is advertised, so they are added by the separate Social+Matrix profile.
+The Social strict profile composes the Core, Comms, and applicable Social
+invariant sets.
 
 <!-- fixture:social-strict-profile -->
 ```json
@@ -1525,66 +913,7 @@ verification before Social policy, initiation of subscription or polling for
 a valid `kind:5` deletion within 30 seconds on an active source with retry and
 availability evidence until a terminal condition, and a visible warning when
 a previously met strict requirement becomes unmet. A carrier partition does
-not itself make an otherwise conforming consumer nonconformant. It does not
-require Matrix.
-
-`heterodyne-social-matrix-strict-v1` has the exact conformance class
-`Social+Matrix`. It composes the Matrix-free Social strict profile and adds all
-Matrix-specific Social invariants and obligations:
-
-<!-- fixture:social-matrix-strict-profile -->
-```json
-{
-  "profile_id": "heterodyne-social-matrix-strict-v1",
-  "conformance_class": "Social+Matrix",
-  "state": "active",
-  "requires_profiles": ["heterodyne-social-strict-v1"],
-  "required_invariants": [
-    "CORE-I-IDENTITY-INTEGRITY",
-    "CORE-I-NID-DELEGATION-DUAL-PROOF",
-    "CORE-I-VERIFY-BEFORE-USE",
-    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
-    "CORE-I-KEY-MATERIAL-AT-REST",
-    "COMMS-I-TIER3-BLIND-CARRIER",
-    "COMMS-I-TIER2-HONESTY",
-    "COMMS-I-CONFIG-AT-REST",
-    "COMMS-I-CLIENT-SIDE-DELIVERY",
-    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
-    "COMMS-I-CLAIM-AUTHENTICITY",
-    "COMMS-I-CLAIM-ATTENUATION",
-    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
-    "COMMS-I-CLAIM-REVOCATION",
-    "COMMS-I-LEDGER-CONFINEMENT",
-    "COMMS-I-ISSUER-KEY-CONFINEMENT",
-    "COMMS-I-MINT-FRESHNESS",
-    "COMMS-I-ISSUER-CONTINUITY",
-    "COMMS-I-CLAIM-RELEASE",
-    "COMMS-I-JWT-TYPE-AUDIENCE",
-    "COMMS-I-STATUS-INTEGRITY",
-    "SOCIAL-I-PRIVATE-STATE-AT-REST",
-    "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
-    "SOCIAL-I-MATRIX-E2EE",
-    "SOCIAL-I-MXID-DELEGATION-DUAL-PROOF",
-    "SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE"
-  ],
-  "matrix_obligations": [
-    "encrypted-private-content-and-state",
-    "mxid-dual-proof",
-    "downgrade-warning",
-    "bare-message-visibility"
-  ]
-}
-```
-
-The Matrix profile requires private content and protected state encryption,
-MXID dual proof, a visible downgrade warning, and rendering of a valid bare
-message with its unauthenticated indicator rather than hiding it solely for
-being bare. Capability advertisements MUST include every prerequisite profile
-actually met and MUST omit either Social profile when any corresponding
-invariant, obligation, feature, or vector is unmet.
-
-The revision-3 agent-policy invariants require new profile IDs. Both v1
-declarations above remain unchanged.
+not itself make an otherwise conforming consumer nonconformant.
 
 <!-- fixture:social-strict-profile-v2 -->
 ```json
@@ -1631,90 +960,29 @@ declarations above remain unchanged.
 additionally requires exact receipt/list binding, subscribed-policy
 transparency, and device-key-scoped remediation.
 
-<!-- fixture:social-matrix-strict-profile-v2 -->
-```json
-{
-  "profile_id": "heterodyne-social-matrix-strict-v2",
-  "conformance_class": "Social+Matrix",
-  "state": "active",
-  "requires_profiles": ["heterodyne-social-strict-v2"],
-  "required_invariants": [
-    "CORE-I-IDENTITY-INTEGRITY",
-    "CORE-I-NID-DELEGATION-DUAL-PROOF",
-    "CORE-I-VERIFY-BEFORE-USE",
-    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
-    "CORE-I-KEY-MATERIAL-AT-REST",
-    "COMMS-I-TIER3-BLIND-CARRIER",
-    "COMMS-I-TIER2-HONESTY",
-    "COMMS-I-CONFIG-AT-REST",
-    "COMMS-I-CLIENT-SIDE-DELIVERY",
-    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
-    "COMMS-I-CLAIM-AUTHENTICITY",
-    "COMMS-I-CLAIM-ATTENUATION",
-    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
-    "COMMS-I-CLAIM-REVOCATION",
-    "COMMS-I-LEDGER-CONFINEMENT",
-    "COMMS-I-ISSUER-KEY-CONFINEMENT",
-    "COMMS-I-MINT-FRESHNESS",
-    "COMMS-I-ISSUER-CONTINUITY",
-    "COMMS-I-CLAIM-RELEASE",
-    "COMMS-I-JWT-TYPE-AUDIENCE",
-    "COMMS-I-STATUS-INTEGRITY",
-    "COMMS-I-PUBLIC-READER-TIER1-ONLY",
-    "COMMS-I-AGENT-ROLE-BINDING",
-    "COMMS-I-AGENT-ATTRIBUTION",
-    "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT",
-    "SOCIAL-I-PRIVATE-STATE-AT-REST",
-    "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
-    "SOCIAL-I-AGENT-POLICY-LOCAL",
-    "SOCIAL-I-AGENT-REMEDIATION-SCOPED",
-    "SOCIAL-I-MATRIX-E2EE",
-    "SOCIAL-I-MXID-DELEGATION-DUAL-PROOF",
-    "SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE"
-  ],
-  "matrix_obligations": [
-    "encrypted-private-content-and-state",
-    "mxid-dual-proof",
-    "downgrade-warning",
-    "bare-message-visibility"
-  ]
-}
-```
-
 <a id="social-conformance"></a>
-## 14. Conformance
+## 10. Conformance
 
 <!-- Monolith provenance: §11.7 Social policy and §14. -->
 
 A `Social` report MUST name `social/0.5.0`, pin `core/0.5.0` and
-`comms/0.5.0`, pin registry revision 3 or its immutable digest, enumerate
-supported features and strict profiles, and implement §§1-8 and §13. It MUST
+`comms/0.5.0`, pin registry revision 4 or its immutable digest, enumerate
+supported features and strict profiles, and implement §§1-9. It MUST
 include async replies/reactions, following and transitive discovery,
 cross-persona advertisements, reply inboxes, mixed-tier Social fan-out,
 moderation, NIP-51 Social profiles, community policy, Social recovery binding,
 feed/org presentation, ATProto behavior when advertised, the acceptance-hook
 policy, subscriber-local agent-policy moderation when
-`social.agent-policy-moderation.v1` is advertised, and all non-Matrix Social
+`social.agent-policy-moderation.v1` is advertised, and all registered Social
 invariants.
 
-Revision 4 MUST NOT be selected, advertised, or loaded until one atomic
-credential-continuity and recovery artifact batch contains the complete
-catalogs, history snapshot, schemas, vectors, family/artifact-set manifests,
-and matching release manifests. A partial revision-4 history or schema batch
-is invalid and non-claimable.
-
-A `Social+Matrix` report MUST include a complete `Social` claim and every
-Matrix requirement in §§9-12: MXID delegation, election/leases/failover,
-config-room behavior, exit and mirroring, wrapped/bare verification, both room
-kinds, Megolm baseline, downgrade resistance, MLS migration when advertised,
-client-side bridge boundary, homeserver independence, and fallback rendering.
-A partial Matrix implementation MUST list gaps and MUST NOT claim
-`Social+Matrix`.
+The registry revision 4 entry set, history snapshot, release manifest, and
+vector metadata MUST match exactly. Reserved lower-layer profiles remain
+non-claimable until their owning documents open their separate gates.
 
 A Social conformance report that claims a strict profile MUST reproduce its
-exact membership, prerequisite results, applicable strict-vector results, and
-any Matrix obligations. It MUST use the conformance class stated in the
-profile fixture and MUST NOT collapse `Social` and `Social+Matrix`.
+exact membership, prerequisite results, and applicable strict-vector results.
+It MUST use the conformance class stated in the profile fixture.
 
 Wire conformance is byte-exact. Existing signed 0.4 events MUST NOT be
 restamped. Plain upstream NIP-51 and NIP-72 events remain unstamped; only the

@@ -12,7 +12,7 @@ artifacts:
 - [`docs/spec/heterodyne-control.md`](docs/spec/heterodyne-control.md):
   own-device enrollment and RPC; currently incomplete and non-claimable.
 - [`docs/spec/heterodyne-social.md`](docs/spec/heterodyne-social.md): social
-  behavior and optional Matrix support.
+  behavior, public interactions, moderation, and durable social assets.
 - [`docs/spec/registry/`](docs/spec/registry/),
   [`docs/spec/schemas/`](docs/spec/schemas/),
   [`docs/spec/releases/`](docs/spec/releases/), and
@@ -57,7 +57,8 @@ anchors and normative artifacts, not ADRs.
 - Do not edit `research/sources/`; use [`research/INDEX.md`](research/INDEX.md)
   to find preserved research.
 - Keep the family implementation-agnostic. Vanilla Nostr relays, Radicle
-  nodes, and Matrix homeservers must not require Heterodyne-specific changes.
+  nodes, and standard Marmot implementations must not require
+  Heterodyne-specific changes.
 - Preserve unrelated user changes and untracked files.
 
 ## Verification

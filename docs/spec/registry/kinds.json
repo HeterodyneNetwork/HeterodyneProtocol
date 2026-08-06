@@ -158,6 +158,22 @@
       ]
     },
     {
+      "kind": 444,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 445,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
       "kind": 1059,
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
@@ -453,6 +469,14 @@
           "status": "draft"
         }
       ]
+    },
+    {
+      "kind": 30443,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
     },
     {
       "kind": 31000,

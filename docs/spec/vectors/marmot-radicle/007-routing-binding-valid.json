@@ -1,0 +1,27 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 4,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-marmot-routing-generation"
+  ],
+  "vector_id": "marmot-radicle/routing-binding-valid",
+  "description": "A routing binding is accepted when the active administrator authored the canonical matching routing commit and genesis matches.",
+  "direction": "consume",
+  "input": {
+    "active_admin": true,
+    "routing_commit_author_matches": true,
+    "h_matches": true,
+    "genesis_digest_matches": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "binding_authoritative": true
+    }
+  }
+}

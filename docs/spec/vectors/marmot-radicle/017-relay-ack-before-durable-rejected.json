@@ -1,0 +1,24 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 4,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-marmot-rotation"
+  ],
+  "vector_id": "marmot-radicle/relay-ack-before-durable-rejected",
+  "description": "A relay cannot return NIP-01 OK before exact bytes are durable on its relay ref.",
+  "direction": "consume",
+  "input": {
+    "envelope_valid": true,
+    "durable_relay_ref": false,
+    "returned_ok": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "marmot-premature-ack"
+  }
+}

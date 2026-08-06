@@ -42,10 +42,11 @@ wire format and is not the vector envelope version.
 
 The schema requires each actual vector's `registry_revision` to be an integer;
 the placeholder above means that every vector pins the revision governing its
-behavior. The current coverage manifest contains 264 immutable
-registry-revision-1 vectors, 55 claims/OIDC registry-revision-2 vectors, and
-170 registry-revision-3 vectors. Of the latter, 159 cover the gated Control,
-ingress-relay-affinity, and automated-agent behavior, and 11 are
+behavior. The current coverage manifest contains 221 registry-revision-1
+vectors, 55 claims/OIDC registry-revision-2 vectors, 170
+registry-revision-3 vectors, and 30 Marmot/Radicle
+registry-revision-4 vectors. Of the revision-3 vectors, 159 cover the gated
+Control, ingress-relay-affinity, and automated-agent behavior, and 11 are
 credential-continuity draft outer evaluations whose normalized output
 explicitly sets `conformance_claimable:false`; those 11 do not activate or
 claim the gated profiles.
@@ -64,8 +65,8 @@ Core vectors therefore have no dependencies; Comms vectors pin Core; Control
 and Social vectors pin Core and Comms. Control has closed draft vectors for
 its session-device, enrollment, RPC, relay-affinity, and automated-agent
 subsets, but remains explicitly `incomplete-draft`; no implementation may
-claim its profile before the atomic registry-revision-4
-credential-continuity and recovery artifact batch opens the gate.
+claim its profile before a future atomic credential-continuity and recovery
+artifact batch opens the gate.
 
 ## Coverage authority
 
@@ -76,14 +77,16 @@ deterministic generated projections. Do not maintain parallel maps by hand.
 Ownership is declared per vector, never inferred from its directory. In
 particular:
 
-- existing Matrix envelope and mirror-redundancy vectors are Social;
 - new Nostr-native envelope vectors are Comms;
 - `interop/001-003` are Social while `interop/004` is Core;
 - `org/001-003` are Core while `org/004` is Comms;
 - recovery and config-backup vectors split by the behavior each exercises;
 - Core Radicle multi-host redundancy uses new `core-redundancy/` IDs; and
 - acceptance gating is split between Comms hook behavior and Social
-  tighten-only policy behavior.
+  tighten-only policy behavior; and
+- `marmot-radicle/` covers pinned Marmot interoperability, exact-byte
+  carriage, routing generations, group repositories, persona inboxes,
+  retention, and node-mediated agent operations.
 
 Four Comms-owned claims/OIDC groups are pinned to registry revision 2:
 
@@ -121,9 +124,9 @@ NIP-01 bytes rather than pretty JSON or relay framing. The double-ratchet
 transcript uses the exact pinned `nostr-double-ratchet@0.0.138` wire library
 with deterministic keys, randomness, and time.
 
-Matrix vectors begin at the adapter boundary after the Matrix SDK has handled
-federation and E2EE. They cover Social's Heterodyne-visible payload and policy
-semantics, not Matrix server authorization or Megolm internals.
+Marmot/Radicle vectors begin at the Heterodyne integration boundary. They
+exercise Heterodyne attribution, storage, transport, and authorization rules
+without redefining upstream MLS or application-event semantics.
 
 ## Generator
 

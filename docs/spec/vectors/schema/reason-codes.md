@@ -5,18 +5,14 @@ Generated compatibility projection. The authoritative allocation container is `d
 | Code | Owner | Status | First version | Spec refs | Meaning |
 |---|---|---|---|---|---|
 | `bad_signature` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | Nostr event id or BIP-340 signature verification failed. |
-| `delegation_mismatch` | social | draft | `social/0.5.0` | heterodyne:social/0.5.0#social-conformance | The Matrix sender is not covered by the active delegation. |
+| `delegation_mismatch` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-nid-delegation | The presented publishing key, subject, role, or delegation identifier does not match the active Core delegation. |
 | `revoked_key_post_revoked_at` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | An event signed by a revoked epoch key was created after revoked_at. |
 | `expired_delegation` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | The verifier clock is after the delegation valid_until bound. |
-| `retired_room_kind` | social | draft | `social/0.5.0` | heterodyne:social/0.5.0#social-conformance | A new room asserts a retired pre-ADR-017 room kind. |
 | `informal_vouch_not_counted` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | A KERI threshold is satisfied only if advisory vouches are counted. |
 | `nip59_broadcast_rejected` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | A private broadcast post used the withdrawn NIP-59 wrapping path. |
 | `auth_rejected_permanent` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-conformance | Relay rejected the write after NIP-42 AUTH, so the failure is permanent. |
-| `context_binding_mismatch` | social | draft | `social/0.5.0` | heterodyne:social/0.5.0#social-conformance | Encrypted payload decrypted under a key derived for the wrong Matrix room context. |
 | `onion_dns_leak` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | A .onion host was sent to a clearnet resolver instead of Tor. |
 | `strict_mode_tor_disabled` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | Strict mode started with egress-over-Tor disabled without explicit user choice. |
-| `mls_missing_ack` | social | draft | `social/0.5.0` | heterodyne:social/0.5.0#social-conformance | MLS migration proceeded without all required ACKs. |
-| `homeserver_exit_stale_pointer` | social | draft | `social/0.5.0` | heterodyne:social/0.5.0#social-conformance | A stale identity-room pointer was preferred over the migration pointer. |
 | `unauthorized_cache_content` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | Friend-cache content was not owner-signed non-KERI content. |
 | `relay_profile_mutation` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | A Heterodyne-aware relay profile changed vanilla NIP-01 read/write behavior. |
 | `unknown_major_version` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | A receiver encountered an incompatible future major version. |
@@ -35,7 +31,7 @@ Generated compatibility projection. The authoritative allocation container is `d
 | `moderator_not_in_asof_declaration` | social | draft | `social/0.5.0` | heterodyne:social/0.5.0#social-conformance | A kind:4550 approval's moderator is not listed in the kind:34550 declaration resolved as-of the approval's anchor. |
 | `kel_head_missing` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | An epoch-key-signed Heterodyne event required to carry kel_head does not carry exactly one well-formed instance (absent, duplicate, or malformed). |
 | `kel_head_mismatch` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | The kel_head tag's decimal seq does not equal the s value of the KEL event it names once that event is resolved on the accepted KEL. |
-| `kel_head_forbidden` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | A kel_head tag appears on an event class the §3.0 matrix forbids it on (kind:31002/31003 KEL events, §5.7 DR wire events kind:1060/1059 and inner rumors, or ADR-031 breadcrumbs). |
+| `kel_head_forbidden` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | A kel_head tag appears on an event class whose Core applicability rules forbid it (kind:31002/31003 KEL events, DR wire events kind:1060/1059 and inner rumors, or non-stamping rotation breadcrumbs). |
 | `equivocation_flagged` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | A structurally valid kel_head names an event that is not on the persona's accepted KEL; the verifier flags equivocation and surfaces it through the §13 security-warning interface. |
 | `signing_key_compromised_at_created_at` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | The signing epoch key is retroactively non-authoritative at the event's created_at: an accepted compromise-declaring rotation covers created_at under effective_compromise_since - 300 seconds. |
 | `provisional_not_final` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-conformance | Acceptance rests on relay-only key-material state (kind:31002/31003/31001); under deny-until-repo policy the event does not take effect until repo-carried, and provisional-accept results MUST NOT be reported as final. |
@@ -111,3 +107,11 @@ Generated compatibility projection. The authoritative allocation container is `d
 | `agent-policy-receipt-invalid` | social | draft | `social/0.5.0` | heterodyne:social/0.5.0#social-labels | An agent-policy receipt is malformed, unverifiable, secret-bearing, or does not target exactly one event and device key. |
 | `agent-policy-binding-invalid` | social | draft | `social/0.5.0` | heterodyne:social/0.5.0#social-mute-profile | A policy-list entry does not bind the same device key, receipt identifier, and reason code. |
 | `agent-role-key-rotation-required` | social | draft | `social/0.5.0` | heterodyne:social/0.5.0#social-mute-profile | The subscribed policy requires replacement of the exact offending role key before restored visibility. |
+| `marmot-private-route-required` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-marmot-groups | A Heterodyne-private group has no currently authorized Radicle route and cannot use a public fallback. |
+| `marmot-routing-binding-invalid` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-marmot-routing-generation | A routing binding has the wrong administrator, canonical Marmot routing commit, h value, or repository genesis digest. |
+| `marmot-routing-equivocation` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-marmot-host-authority | Different otherwise valid routing bindings claim the same canonical Marmot h. |
+| `marmot-unauthorized-ref` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-marmot-event-repository | A writer or relay ref is not authorized to contribute objects to the routing-generation union. |
+| `marmot-premature-ack` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-marmot-rotation | A publisher or relay acknowledged a Marmot object before the required exact-byte durability boundary. |
+| `marmot-private-inbox-nid-required` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-marmot-persona-inbox | A sender NID is not authorized to contribute a contact bundle to the private persona repository. |
+| `marmot-keypackage-replayed` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-marmot-persona-inbox | A persona-inbox bootstrap attempts to consume a Marmot KeyPackage already consumed by another accepted or quarantined bundle. |
+| `marmot-agent-scope-denied` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-agent-authorship | An automated Marmot operation requests a group, application kind, media type, size, rate, or burst outside its workload token. |

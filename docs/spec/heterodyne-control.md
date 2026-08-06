@@ -6,7 +6,7 @@ Version: `control/0.5.0`
 
 Status: **incomplete 0.5.0 draft**
 
-Registry revision: `3`
+Registry revision: `4`
 
 Normative dependencies:
 
@@ -48,9 +48,9 @@ side-effect audit, and inbound-execution policy.
 The closed draft schemas, state machines, rejection rules, and draft vector
 corpus in §§5-7 include ingress-relay affinity and automated-agent
 requirements. This is an interoperable draft definition, but not an active
-conformance feature: registry revision 3 still marks the session-device
-profile reserved-inactive, and the atomic revision-4 credential-continuity and
-recovery artifact batch has not been issued. An implementation MAY exercise
+conformance feature: registry revision 4 still leaves the session-device
+profile reserved-inactive, and the credential-continuity and recovery
+activation batch has not been issued. An implementation MAY exercise
 these rules only as visibly non-conformant draft behavior and MUST NOT
 advertise Control conformance.
 
@@ -127,7 +127,7 @@ inputs and decisions inside the existing Comms carriers.
 <a id="control-session-device-profile"></a>
 ## 3. Session-device delegation profile
 
-Registry revision 3 contains the draft reservation
+The registry contains the draft reservation
 `heterodyne-control-session-device-v1` on Core `kind:31001`, with immutable
 discriminator
 `tags:heterodyne=delegation,binding_nonce,key_proof;radicle_nid=absent`.
@@ -159,7 +159,7 @@ Activation now requires all of the following in one atomic artifact batch:
    recovery profiles;
 3. the complete recovery feature and schema allocations, with no placeholder,
    wildcard, omission, or unbound prerequisite; and
-4. registry revision 4 plus matching family/release manifests that explicitly
+4. a future registry revision plus matching family/release manifests that explicitly
    change the profile and Control feature gates from inactive to active.
 
 <!-- fixture:control-session-device-reservation -->
@@ -173,7 +173,7 @@ Activation now requires all of the following in one atomic artifact batch:
   "activation_requires": [
     "closed-control-profile",
     "complete-credential-continuity-and-recovery-vector-batch",
-    "atomic-registry-revision-4-feature-and-schema-allocation",
+    "atomic-future-registry-feature-and-schema-allocation",
     "matching-family-and-release-manifests"
   ]
 }
@@ -316,7 +316,7 @@ final side-effect result.
 ## 7. Closed draft state machines
 
 This section defines Control's closed draft behavior. It does not activate the
-revision-3 registry reservation or open the conformance gate in §9. Every JSON
+registry reservation or open the conformance gate in §9. Every JSON
 payload named here is the plaintext of a Comms generic subprotocol inner rumor
 after successful Comms authentication and mutual negotiation. Control defines
 no event kind, outer wrapper, transport, or wire stamp.
@@ -473,8 +473,78 @@ decryption keys, issuer keys, epoch/NID/audience/repository-decryption keys,
 and ratchet secrets. Configuration writes validate their closed namespace and
 object scope and cannot use a generic path to reach an excluded record.
 
+<a id="control-marmot-operations"></a>
+### 7.6 Node-mediated Marmot operations
+
+A grant MAY authorize a `node-mediated` conversation view without granting an
+MLS leaf or any group secret. The designated full or recovery node owns the
+Marmot leaf and MUST expose only the exact group and methods permitted by the
+current repository-final grant.
+
+The closed conversation method families are:
+
+- `marmot.group.list`, `marmot.group.read`, and `marmot.group.subscribe`;
+- `marmot.message.send`, `marmot.message.reply`, `marmot.message.react`, and
+  `marmot.message.edit`;
+- `marmot.media.put` and `marmot.media.get`; and
+- the administrative `marmot.member.add`, `marmot.member.remove`,
+  `marmot.routing.rotate`, `marmot.host.authorize`,
+  `marmot.host.remove`, `marmot.nid.admit`, and `marmot.nid.remove`.
+
+Every request MUST bind the exact Marmot group, requested application kind,
+object or message target, media type and size when applicable, and an
+idempotency key. Read and subscription responses MUST be filtered to the
+grant's group, history boundary, and retention policy. The node MUST construct
+and validate the Marmot application event; a caller MUST NOT supply a signed
+outer `kind:445`, MLS secret, account private key, or leaf private key.
+
+Administration additionally requires a current Core-bound
+`marmot:group-admin` role, current Marmot administrator status, and an exact
+object grant for the operation. A host or Radicle delegate without those
+authorities MUST be rejected. NID admission and removal MUST apply the Core
+Radicle admission rules and MUST NOT be treated as MLS membership on their
+own.
+
+Membership and operational routing follow
+`heterodyne:comms/0.5.0#comms-marmot-routing-generation` and
+`heterodyne:comms/0.5.0#comms-marmot-rotation`. An addition prepares the new
+repository and routing state for the Add transition. A removal becomes
+canonical before a remaining administrator performs the privacy-preserving
+routing rotation. A size or repair rotation preserves membership. The
+executor MUST NOT apply a new epoch or expose its directory binding before the
+old-route publication receives the required durable acknowledgement.
+
+An exclusive leaf restore is a separately confirmed key operation. The node
+MUST fence the prior instance before activating the restored leaf. Creating an
+independent new device uses a KeyPackage, Add, and Welcome and MUST NOT receive
+prior epoch secrets through this method family.
+
+<a id="control-marmot-agent-operations"></a>
+### 7.7 Automated Marmot operations
+
+An automated principal always uses the node-mediated path. Its five-minute
+sender-constrained workload token MUST scope the exact Marmot group,
+application kinds, media types, maximum object and aggregate media size, rate
+window, count, and burst. A generic feed or public-resource scope does not
+authorize a group message.
+
+After validating the token, sender proof, current ledger, group role, and
+limits, the full node constructs the unsigned inner Marmot application event,
+inserts the canonical protected automation attribution, and sends through the
+authorized full-node-held `agent:<role-id>` account and leaf. Verification
+MUST bind the inner application-event pubkey, Marmot MLS sender account,
+current KERI agent role, workload role and scope, and automation attribution.
+The agent receives no account key, leaf secret, repository credential, or raw
+signing method.
+
+Unsupported Marmot application kinds, a group mismatch, unavailable role,
+missing attribution profile, or exhausted size/rate/burst authority MUST fail
+closed without a human-account fallback. The encrypted audit record MUST bind
+the Marmot group, routing generation, inner event ID, resulting outer event ID,
+durable publication target, and exact token scope.
+
 <a id="control-session-lifecycle"></a>
-### 7.6 Session lifecycle and termination
+### 7.8 Session lifecycle and termination
 
 A session-device delegation SHOULD carry a short `valid_until`, refreshed
 only while authorized activity continues. The RECOMMENDED configurable
@@ -497,7 +567,7 @@ temporary workload tokens, sender proofs, or a live Control session; restored
 peers negotiate fresh sessions.
 
 <a id="control-mcp"></a>
-### 7.7 Agentic MCP data layer
+### 7.9 Agentic MCP data layer
 
 Agentic peers use the MCP 2025-11-25 data layer only; MCP transports are not
 used. Frames MUST validate against
@@ -550,7 +620,7 @@ invalidates authority. Raw signing, key access, human-profile publication,
 unlabeled output, and human-key fallback remain prohibited.
 
 <a id="control-audit-retention"></a>
-### 7.8 Audit, ordering, and retention
+### 7.10 Audit, ordering, and retention
 
 For every side effect the executor first obtains a current Comms
 authorization decision, then creates the §5 reservation, executes or
@@ -571,7 +641,7 @@ protected diagnostic retention policy.
 <a id="control-security"></a>
 ## 8. Security invariants
 
-Registry revision 3 assigns exactly these Control invariants:
+The registry assigns exactly these Control invariants:
 
 - **CONTROL-I-AUDIT-AT-REST:** Control audit records containing requests, grants, tokens, or side effects are encrypted at rest under Core, Comms, and Control-owned protection rules without a Social dependency.
 - **CONTROL-I-SESSION-KEY-CONFINEMENT:** A Control session device never receives persona epoch, NID, audience, repository-decryption, or ratchet secrets.
@@ -579,6 +649,7 @@ Registry revision 3 assigns exactly these Control invariants:
 - **CONTROL-I-AGENT-NO-KEY-RELEASE:** An automated principal never receives or directly exercises a persona, epoch, NID, human-device, or agent-role private key.
 - **CONTROL-I-AGENT-INTENT-ONLY:** An automated principal publishes only through the intent-level agent method, and raw signing, human-profile fallback, and attribution bypass fail closed.
 - **CONTROL-I-AGENT-AUTHORIZATION-FRESHNESS:** Every automated side effect requires a current scoped token, sender proof, canonical authorization state, and finite kind, resource, size, rate, and burst limits.
+- **CONTROL-I-MARMOT-GRANT-CONFINEMENT:** Node-mediated Marmot operations expose only grant-filtered content and actions while all account, MLS leaf, epoch, and repository secrets remain on the designated node.
 
 These invariants allocate the security boundary. Full conformance tests for
 them are part of the integration gate below.
@@ -630,17 +701,17 @@ reserved and inactive with the rest of Control 0.5.0:
 
 `CONTROL-I-AUDIT-AT-REST` depends only on the listed Core, Comms, and Control
 rules. An implementation MUST NOT make it depend on any `SOCIAL-I-*`
-invariant, Social feature, or Matrix feature. This preserves a usable Control
+invariant or Social feature. This preserves a usable Control
 profile for a client that implements no Social document.
 
 Because Control conformance is closed, an implementation MUST NOT place
 `heterodyne-control-strict-v1` in `strict_profiles`, claim the profile in a
 conformance report, or treat its stable identifier as evidence of activation.
-Activation requires the same atomic registry-revision-4
+Activation requires the same atomic future-registry
 credential-continuity/recovery feature, schema, vector, and manifest gates as
 baseline Control conformance, plus all prerequisite strict-profile results.
 
-The revision-3 subsets require a distinct reserved profile. The v1 declaration
+The newer subsets require a distinct reserved profile. The v1 declaration
 above remains unchanged:
 
 <!-- fixture:control-strict-profile-v2 -->
@@ -699,7 +770,7 @@ automated-agent draft evidence.
 There is **no Control conformance claim** for this incomplete draft. The
 session-device, enrollment, grant, MCP lifecycle, general RPC, audit,
 relay-affinity, and automated-agent behavior is closed and draft-vectored.
-That integration is necessary but insufficient: registry revision 4 and the
+That integration is necessary but insufficient: a future activating registry revision and the
 complete credential-continuity and recovery feature, schema, prerequisite,
 vector, family-manifest, and release-manifest artifact set must land
 atomically.
@@ -709,7 +780,7 @@ atomically.
 {
   "can_claim_control_conformance": false,
   "blockers": [
-    "registry-revision-4-not-published",
+    "activating-registry-revision-not-published",
     "recovery-feature-and-core-schemas-not-integrated",
     "credential-continuity-and-recovery-vector-batch-incomplete",
     "matching-family-and-release-manifests-not-issued"
@@ -717,7 +788,8 @@ atomically.
   "integrated_normative_subsets": [
     "gated-control-profile",
     "ingress-relay-affinity",
-    "agent-workload-publication"
+    "agent-workload-publication",
+    "node-mediated-marmot"
   ]
 }
 ```

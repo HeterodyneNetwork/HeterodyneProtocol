@@ -24,14 +24,15 @@ registry, versioning, and base conformance. Every Heterodyne
 implementation claims Core.
 
 **Comms.** The document for Nostr-native application envelopes, repository
-privacy tiers, publishing and retrieval, canonical feeds, direct messages,
-credential-plane sync, and encrypted subprotocol carriers.
+privacy tiers, publishing and retrieval, Marmot conversations and media,
+Radicle-backed group storage, credential-plane sync, and encrypted
+subprotocol carriers.
 
 **Control.** A Comms profile for own-device enrollment, grants, RPC, audit, and
 agentic sessions. Control 0.5.0 is incomplete and cannot be claimed.
 
-**Social.** The document for following, interactions, moderation, lists,
-social discovery, presentation, ATProto attachment, and optional Matrix.
+**Social.** The document for public following, interactions, moderation,
+lists, social discovery, presentation, durable assets, and ATProto attachment.
 
 **Qualified version.** A document ID plus semver, such as `core/0.5.0`. The
 whole string is not itself semver. Each family document versions independently.
@@ -41,14 +42,14 @@ discriminators, reason codes, and security-invariant IDs. It is pinned by
 releases, capabilities, reports, and vectors.
 
 **Conformance class.** One of Core, Core+Comms (a Heterodyne persona), Control
-profile, Social, or Social+Matrix. Claims also name required features.
+profile, or Social. Claims also name required features.
 
 **Strict profile.** An additive, stable conformance profile with exact
 invariant membership and prerequisite profiles. Unknown profile IDs confer no
 capability. The current IDs are `heterodyne-core-strict-v1`,
-`heterodyne-comms-strict-v1`, `heterodyne-control-strict-v1`,
-`heterodyne-social-strict-v1`, and
-`heterodyne-social-matrix-strict-v1`; the Control ID is reserved-inactive.
+`heterodyne-comms-strict-v1`, `heterodyne-comms-strict-v2`,
+`heterodyne-control-strict-v1`, `heterodyne-social-strict-v1`, and
+`heterodyne-social-strict-v2`; the Control ID is reserved-inactive.
 
 ## Core terms
 
@@ -286,14 +287,15 @@ claimable.
 not part of Core identity discovery.
 
 **Distribution list / friend circle.** Social UX for an audience category.
-Its concrete confidentiality is still the chosen Comms tier or Matrix room.
+Its concrete confidentiality is still the chosen Comms tier or Marmot group.
 
-**Reply inbox.** A Social destination where another persona may deliver a
-reply reference without write access to the original author's repository.
+**Reply inbox.** A public Social destination or Comms persona-repository inbox
+where another persona may deliver a reply or first-contact bundle without
+write access to the original author's canonical branch.
 
 **Approval anchor.** Evidence fixing the moderator declaration and authority
-state used to count a NIP-72 approval: a repository anchor, optional Matrix
-anchor, or reduced-assurance relay time fallback.
+state used to count a NIP-72 approval: a repository anchor or a
+reduced-assurance relay time fallback.
 
 **Approval.** A NIP-72 `kind:4550` event by an authorized moderator, counted
 only after signature, authority-at-anchor, indexing, and deletion checks.
@@ -339,8 +341,8 @@ or mute other persona, device, NID, or agent-role keys.
 profile. Comms retains the base feed schema and org-content authorization.
 
 **Social recovery binding.** Advisory mapping from Core recovery roles to
-followers, mutual follows, friends, or Matrix caches. It cannot mint identity
-authority.
+followers, mutual follows, friends, or repository and relay caches. It cannot
+mint identity authority.
 
 **Social vouch.** Social `kind:31008`, an advisory attestation about recovery
 identity material. It is not a declared KERI witness receipt.
@@ -352,33 +354,39 @@ persona. It is downstream of the npub/KEL and never authoritative over them.
 the Personal Data Server hosting the attached records. DID resolution and PDS
 content remain downstream of Core identity.
 
-**MXID.** A Matrix user ID used only by the optional Social Matrix feature.
+## Marmot and Radicle conversation terms
 
-**MXID delegation.** Social's optional Matrix binding, requiring both an
-epoch-key proof and successful authorized Matrix self-publication.
+**Marmot account.** A stable Nostr account used by Marmot credentials and
+attributed to a Heterodyne persona role through KERI evidence.
 
-**Identity room.** An optional Matrix coordination/cache room for a persona.
-It is disposable and never authoritative over the npub/KEL.
+**Direct-member client.** A client that owns an independent MLS leaf and
+participates directly after group admission.
 
-**Config room.** An optional encrypted Matrix mirror of Social configuration.
-The owning repository profile wins on divergence.
+**Node-mediated client.** A client that invokes grant-filtered conversation
+operations on a designated full or recovery node and receives no group secret.
 
-**Mirror group.** A set of optional Matrix rooms coordinated for redundancy
-and promotion. Mirroring never changes persona authority.
+**Standard-compatible group.** A group that uses ordinary Marmot Nostr
+transport and may additionally use Heterodyne Radicle-backed storage without
+changing event bytes.
 
-**`matrix:` URI.** The canonical Matrix reference syntax used by Social when a
-Matrix location must be named independently of a homeserver URL.
+**Heterodyne-private group.** A non-discoverable group whose private Radicle
+repositories provide the required discovery and admission path. Its Marmot
+cryptography and event formats remain standard.
 
-**Bare Matrix message.** An attributable Matrix event without a transferable
-Nostr signature attachment. A strict Social+Matrix client does not hide it
-solely because it is bare.
+**Static group directory.** The stable repository containing group identity,
+policy, sealed invites, hosts, retention, and signed routing bindings.
 
-**Wrapped Matrix event.** A Matrix carrier containing an exact signed Nostr
-event plus `nip01_raw`, allowing transferable verification.
+**Routing generation.** The one-to-one binding among one Marmot `h` value, one
+event-repository RID, and its verified genesis manifest.
 
-**Wrap mode.** The Social choice between a wrapped transferable proof and a
-bare Matrix message with attribution-only semantics.
+**Event repository.** A logically append-only repository whose contents are
+the deduplicated union of objects reachable from authorized per-writer and
+integrated-relay refs.
 
-**Social+Matrix.** The conformance class that adds the complete optional Matrix
-feature to a Social claim, including MXID delegation, encrypted private
-content/state, downgrade handling, and client-side bridging.
+**Radicle-backed Marmot relay.** An optional standard NIP-01 and media
+interface that maps `h` to an event repository and serves exact stored event
+and ciphertext bytes.
+
+**Persona repository inbox.** A contributor-ref delivery binding for an
+atomic Marmot Welcome and first-event bundle. Sender refs are quarantined and
+never merged into the persona's canonical profile branch.

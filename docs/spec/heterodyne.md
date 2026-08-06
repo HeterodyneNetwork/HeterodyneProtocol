@@ -4,9 +4,10 @@ This page is the non-normative family overview and navigation map. Normative
 requirements live only in the independently versioned documents linked below.
 
 Heterodyne is a decentralized protocol family built from Nostr signed events,
-Radicle-backed durable repositories, and an optional Matrix feature. A
-persona's KERI-anchored cold-root npub remains authoritative independently of
-the relay, repository host, or Matrix account carrying its activity.
+Marmot conversations and encrypted media, and Radicle-backed durable
+repositories. A persona's KERI-anchored cold-root npub remains authoritative
+independently of the relay, repository host, or Marmot account carrying its
+activity.
 
 ## Document graph
 
@@ -25,9 +26,9 @@ Control; clients can compose their independently stated claims.
 | Document | Prepared version | Scope | Status |
 |---|---|---|---|
 | [Core](heterodyne-core.md) | `core/0.5.0` | Identity, KEL verification, node roles, repositories, registry, versioning, and base conformance | Normative |
-| [Comms](heterodyne-comms.md) | `comms/0.5.0` | Privacy tiers, publishing, direct messages, atomic key claims, private claim ledger, and OIDC/JWT projection | Normative |
-| [Control](heterodyne-control.md) | `control/0.5.0` | Own-device enrollment, grants, RPC, and agentic semantics over Comms | Incomplete draft; not claimable |
-| [Social](heterodyne-social.md) | `social/0.5.0` | Social graph, interactions, moderation, lists, ATProto attachment, and the Matrix feature | Normative 0.x |
+| [Comms](heterodyne-comms.md) | `comms/0.5.0` | Privacy tiers, publishing, Marmot conversations and media, Radicle conversation storage, atomic key claims, private claim ledger, and OIDC/JWT projection | Normative |
+| [Control](heterodyne-control.md) | `control/0.5.0` | Own-device enrollment, grants, RPC, node-mediated Marmot operations, and agentic semantics over Comms | Incomplete draft; not claimable |
+| [Social](heterodyne-social.md) | `social/0.5.0` | Public social graph, interactions, moderation, lists, durable assets, and ATProto attachment | Normative 0.x |
 
 These are four independent version lineages descended from the 0.4.x
 monolith, not a synchronized family version. Their contents are current
@@ -41,9 +42,8 @@ Machine-readable prepared-release manifests are under
 | Claim | Document combination | Feature notes |
 |---|---|---|
 | Core | `core/0.5.0` | Baseline for every implementation |
-| Heterodyne persona | `core/0.5.0` + `comms/0.5.0` | Direct-ratchet messaging is separately feature-qualified |
-| Social | Core + Comms + `social/0.5.0` | Matrix-free social behavior |
-| Social+Matrix | Social plus its Matrix feature | Adds the complete Matrix behavior set |
+| Heterodyne persona | `core/0.5.0` + `comms/0.5.0` | Standard-compatible or Radicle-private Marmot conversations |
+| Social | Core + Comms + `social/0.5.0` | Public social behavior and durable assets |
 | Control profile | Core + Comms + `control/0.5.0` + `double-ratchet` | Gate closed while Control remains incomplete |
 
 Exact versions, registry revision or digest, feature IDs, and strict-profile

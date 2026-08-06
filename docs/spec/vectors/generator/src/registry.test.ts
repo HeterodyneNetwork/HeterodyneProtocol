@@ -48,11 +48,12 @@ function registryWithHistory(
 describe("revisioned protocol registry", () => {
   const registry = loadRegistry(repositoryRoot);
 
-  it("loads revision 3 while retaining immutable revision 1 and 2 snapshots", () => {
-    expect(registry.manifest.revision).toBe(3);
-    expect(registry.history.get(3)).toEqual(registry.currentEntrySet);
+  it("loads revision 4 while retaining immutable revision 1 through 3 snapshots", () => {
+    expect(registry.manifest.revision).toBe(4);
+    expect(registry.history.get(4)).toEqual(registry.currentEntrySet);
     expect(registry.history.has(1)).toBe(true);
     expect(registry.history.has(2)).toBe(true);
+    expect(registry.history.has(3)).toBe(true);
     expect(
       registry.kinds.find((entry) => entry.kind === 31001)
         ?.base_schema_owner,
@@ -115,6 +116,15 @@ describe("revisioned protocol registry", () => {
       first_version: "comms/0.5.0",
       stamping: false,
     });
+  });
+
+  it("registers upstream Marmot transport kinds without Heterodyne stamping", () => {
+    for (const kind of [444, 445, 30443]) {
+      expect(registry.kinds.find((entry) => entry.kind === kind)).toMatchObject({
+        allocation_authority: "nostr",
+        profiles: [],
+      });
+    }
   });
 
   it("allocates the revision 3 agent delegation, attribution, receipt, and policy-list profiles", () => {
@@ -244,7 +254,7 @@ describe("revisioned protocol registry", () => {
     ]));
   });
 
-  it("preserves revisions 1 and 2 byte-identically and snapshots revision 3", () => {
+  it("preserves released historical snapshots and snapshots revision 4", () => {
     const history1 = JSON.parse(readFileSync(
       resolve(repositoryRoot, "docs/spec/registry/history/1.json"),
       "utf8",
@@ -255,6 +265,10 @@ describe("revisioned protocol registry", () => {
     )) as RegistryEntrySet;
     const history3 = JSON.parse(readFileSync(
       resolve(repositoryRoot, "docs/spec/registry/history/3.json"),
+      "utf8",
+    )) as RegistryEntrySet;
+    const history4 = JSON.parse(readFileSync(
+      resolve(repositoryRoot, "docs/spec/registry/history/4.json"),
       "utf8",
     )) as RegistryEntrySet;
 
@@ -292,8 +306,8 @@ describe("revisioned protocol registry", () => {
       expect(current).toEqual(previous);
     }
 
-    expect(history3).toEqual(registry.currentEntrySet);
-    expect(registry.manifest.entry_set_sha256).toBe(computeRegistryDigest(history3));
+    expect(history4).toEqual(registry.currentEntrySet);
+    expect(registry.manifest.entry_set_sha256).toBe(computeRegistryDigest(history4));
   });
 
   it("commits the canonical digest of the current entry set", () => {

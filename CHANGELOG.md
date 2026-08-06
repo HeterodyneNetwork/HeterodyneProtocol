@@ -27,12 +27,15 @@ recorded in [machine-readable manifests](docs/spec/releases/).
 - Added ADR-035 role-scoped transport: persistent v3 onion full nodes with
   Tor-default backend egress, outbound-Tor light clients, and explicit
   reduced-assurance browser operation through shared clearnet relays.
+- Added KERI attribution for stable Marmot human-messaging, group-admin, host,
+  and agent roles without changing Marmot validity or MLS convergence.
 
 ### Comms 0.5.0
 
 - Prepared [Comms](docs/spec/heterodyne-comms.md) `comms/0.5.0`, depending on
-  `core/0.5.0` and owning privacy tiers, publishing, feeds, direct messages,
-  credential sync, and generic subprotocol carriage.
+  `core/0.5.0` and owning privacy tiers, publishing, feeds, Marmot
+  conversations and media, Radicle-backed group storage, credential sync, and
+  generic subprotocol carriage.
 - Added ADR-034 atomic `kind:31013` typed-key claims and irreversible
   `kind:31014` revocations, strict attenuation and native possession proofs,
   and an encrypted private multi-writer claim ledger as the authority for
@@ -49,6 +52,11 @@ recorded in [machine-readable manifests](docs/spec/releases/).
   scoped temporary sender-constrained OIDC workload tokens, canonical
   automation attribution, and fail-closed refusal of user-key or unlabeled
   fallback.
+- Adopted pinned Marmot as the sole user-facing direct/group conversation
+  engine, with standard-compatible and Heterodyne-private group profiles,
+  exact-byte Radicle-backed relays, routing generations, persona inboxes,
+  retention/non-erasure, and `radicle-v1` media locators. Double Ratchet is
+  now limited to bootstrap and Control.
 
 ### Control 0.5.0
 
@@ -62,29 +70,34 @@ recorded in [machine-readable manifests](docs/spec/releases/).
   agent token/publication/audit subset with normative partial vectors. Control
   remains non-claimable until the remaining ADR-030 enrollment/session gates
   close.
+- Added grant-filtered node-mediated Marmot operations and group-scoped agent
+  operations while keeping all Marmot account, leaf, epoch, and repository
+  secrets on the designated node.
 
 ### Social 0.5.0
 
 - Prepared [Social](docs/spec/heterodyne-social.md) `social/0.5.0`, depending
-  on Core and Comms and owning social behavior plus the optional Matrix
-  feature.
+  on Core and Comms and owning public social behavior, moderation, durable
+  assets, and optional ATProto attachment.
 - Added public agent-policy receipts, subscriber-local canonical policy lists,
   visible/removable default subscriptions, and remediation scoped to the
   offending role device key. No moderator or policy list has global power.
+- Removed the former optional group-communication layer; private replies and
+  reactions now start or reuse Marmot conversations through Comms.
 
 ### Family migration and conformance
 
 - Established the family's only normative dependency edges as
   `Core <- Comms <- Control` and `Core <- Comms <- Social`.
-- Advanced all four untagged 0.5.0 release manifests to registry revision 3.
+- Advanced all four untagged 0.5.0 release manifests to registry revision 4.
   Only Comms advertises `key-claims`, `private-claim-ledger`,
   `oidc-jwt-projection`, and `token-status-list-draft-21`; Core and Social add
   no claims/OIDC feature, and Control retains its exact Comms dependency.
 - Added immutable strict-v2 Comms and Social profiles for the ADR-035/036
   invariants while leaving every strict-v1 membership unchanged.
-- Replaced the historical monolith strict mode with composable stable profile
-  IDs for Core, Comms, Control, Social, and Social+Matrix. The Control strict
-  identifier is reserved-inactive with its baseline conformance gate.
+- Replaced the historical monolith strict mode with composable profile IDs
+  for Core, Comms, Control, and Social. The Control strict identifier is
+  reserved-inactive with its baseline conformance gate.
 - Preserved all pre-split normative bytes in
   [`docs/spec/archive/heterodyne-0.4.0.md`](docs/spec/archive/heterodyne-0.4.0.md)
   unchanged and added the complete

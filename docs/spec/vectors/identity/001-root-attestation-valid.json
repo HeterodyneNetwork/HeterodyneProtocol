@@ -43,7 +43,7 @@
         "content": ""
       },
       "vector_context": {
-        "notes": "Per §3.2.1 the root attestation is epoch-key-signed (the cold root is never brought online for it) and the matrix_room tag is omitted for a Matrix-free persona."
+        "notes": "Per §3.2.1 the root attestation is epoch-key-signed (the cold root is never brought online for it)."
       }
     },
     "historical_expected_output": {

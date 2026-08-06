@@ -1,0 +1,28 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 4,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-marmot-relay"
+  ],
+  "vector_id": "marmot-radicle/relay-routes-by-h-only",
+  "description": "A Radicle-backed relay routes by h without group identity, membership, static repository, or MLS epoch knowledge.",
+  "direction": "consume",
+  "input": {
+    "h": "routing-generation-a",
+    "relay_known_fields": [
+      "h",
+      "event_rid"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "group_metadata_required": false
+    }
+  }
+}

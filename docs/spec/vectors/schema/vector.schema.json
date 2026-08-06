@@ -243,15 +243,11 @@
                   "delegation_mismatch",
                   "revoked_key_post_revoked_at",
                   "expired_delegation",
-                  "retired_room_kind",
                   "informal_vouch_not_counted",
                   "nip59_broadcast_rejected",
                   "auth_rejected_permanent",
-                  "context_binding_mismatch",
                   "onion_dns_leak",
                   "strict_mode_tor_disabled",
-                  "mls_missing_ack",
-                  "homeserver_exit_stale_pointer",
                   "unauthorized_cache_content",
                   "relay_profile_mutation",
                   "unknown_major_version",
@@ -345,7 +341,15 @@
                   "agent-publication-bypass",
                   "agent-policy-receipt-invalid",
                   "agent-policy-binding-invalid",
-                  "agent-role-key-rotation-required"
+                  "agent-role-key-rotation-required",
+                  "marmot-private-route-required",
+                  "marmot-routing-binding-invalid",
+                  "marmot-routing-equivocation",
+                  "marmot-unauthorized-ref",
+                  "marmot-premature-ack",
+                  "marmot-private-inbox-nid-required",
+                  "marmot-keypackage-replayed",
+                  "marmot-agent-scope-denied"
                 ]
               }
             },

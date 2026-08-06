@@ -1,0 +1,26 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 4,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-marmot-directory"
+  ],
+  "vector_id": "marmot-radicle/invites-individually-sealed",
+  "description": "Directory invitations are individually sealed rather than encrypted to a public group-wide audience.",
+  "direction": "consume",
+  "input": {
+    "invitation_count": 2,
+    "recipient_ciphertexts": 2,
+    "shared_plaintext_invite": false
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "individually_sealed": true
+    }
+  }
+}

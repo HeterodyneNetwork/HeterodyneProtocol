@@ -1,0 +1,27 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 4,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-marmot-exact-bytes"
+  ],
+  "vector_id": "marmot-radicle/media-exact-bytes",
+  "description": "Every advertised media interface returns the same encrypted-media v2 ciphertext.",
+  "direction": "consume",
+  "input": {
+    "ciphertext_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "radicle": "encrypted-media-bytes",
+    "onion": "encrypted-media-bytes",
+    "clearnet": "encrypted-media-bytes"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "byte_identical": true
+    }
+  }
+}

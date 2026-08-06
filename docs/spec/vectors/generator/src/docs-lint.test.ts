@@ -61,7 +61,6 @@ const companionPaths = [
   "docs/security/threat-model.md",
   "research/INDEX.md",
   "docs/spec/extensions/nips/README.md",
-  "docs/spec/extensions/mscs/README.md",
 ] as const;
 const preCutoverCompanionPaths = [...companionPaths, "CHANGELOG.md"] as const;
 
@@ -374,14 +373,6 @@ function validateRelatedPairCryptography(pair: RelatedPairFixture): string[] {
   return [...new Set(errors)].sort();
 }
 
-type MatrixStateFixture = {
-  type: string;
-  state_key: string;
-  sender?: string;
-  origin_server_ts?: number;
-  content: Record<string, unknown>;
-};
-
 type StrictProfileFixture = {
   profile_id: string;
   conformance_class: string;
@@ -469,15 +460,6 @@ function validateCapabilityBootstrap(content: Record<string, unknown>): string[]
   return [...new Set(errors)].sort();
 }
 
-function matrixTailAcceptsFromFixture(
-  flip: MatrixStateFixture,
-  event: { origin_server_ts: number; pre_flip_session: boolean; member_at_flip: boolean },
-): boolean {
-  if (typeof flip.origin_server_ts !== "number") return false;
-  const delta = event.origin_server_ts - flip.origin_server_ts;
-  return delta >= 0 && delta <= 60_000 && event.pre_flip_session && event.member_at_flip;
-}
-
 type AtprotoFixture = {
   nostr_event: ExampleEvent;
   pds_record: {
@@ -489,7 +471,6 @@ type AtprotoFixture = {
     signed_payload_hash: string;
     signature: string;
   };
-  matrix_mirror: MatrixStateFixture;
 };
 
 function validateAtprotoFixture(fixture: AtprotoFixture): string[] {
@@ -530,21 +511,6 @@ function validateAtprotoFixture(fixture: AtprotoFixture): string[] {
   }
   if (tagValues(fixture.nostr_event, "d")[0]?.[1] !== payload.did) errors.push("did-binding");
   if (tagValues(fixture.nostr_event, "cold_root")[0]?.[1] !== payload.npub) errors.push("npub-binding");
-  const matrixAttestation = fixture.matrix_mirror.content.atproto_attestation as
-    | Record<string, unknown>
-    | undefined;
-  if (
-    fixture.matrix_mirror.state_key !== payload.did ||
-    fixture.matrix_mirror.content.did !== payload.did ||
-    fixture.matrix_mirror.sender !== fixture.matrix_mirror.content.mxid ||
-    fixture.matrix_mirror.content.binding_payload !== fixture.nostr_event.content ||
-    matrixAttestation?.alg !== fixture.pds_record.algorithm ||
-    matrixAttestation?.public_key !== fixture.pds_record.public_key ||
-    matrixAttestation?.sig !== fixture.pds_record.signature ||
-    matrixAttestation?.signed_payload_hash !== fixture.pds_record.signed_payload_hash
-  ) {
-    errors.push("matrix-binding");
-  }
   return [...new Set(errors)].sort();
 }
 
@@ -600,12 +566,12 @@ describe("protocol family documents", () => {
 
     expect(text).toContain("Document ID: `core`");
     expect(text).toContain("Version: `core/0.5.0`");
-    expect(text).toContain("Registry revision: `3`");
+    expect(text).toContain("Registry revision: `4`");
     expect(text).not.toMatch(
       /normative[^\n]*(heterodyne-comms|heterodyne-control|heterodyne-social)/i,
     );
     expect(text).not.toMatch(
-      /follow|mutual follow|friend|Matrix identity-room cache/i,
+      /follow|mutual follow|friend/i,
     );
   });
 
@@ -673,7 +639,7 @@ describe("protocol family documents", () => {
 
     expect(text).toContain("Document ID: `comms`");
     expect(text).toContain("Version: `comms/0.5.0`");
-    expect(text).toContain("Registry revision: `3`");
+    expect(text).toContain("Registry revision: `4`");
     expect(text).toContain(
       "heterodyne:core/0.5.0#core-conformance",
     );
@@ -691,9 +657,10 @@ describe("protocol family documents", () => {
       expect(text).toContain(outcome);
     }
     for (const context of [
-      "ordinary-dm",
       "credential-sync",
       "control-enrollment",
+      "control-human-rpc",
+      "control-agent-rpc",
     ]) {
       expect(text).toContain(context);
     }
@@ -713,12 +680,11 @@ describe("protocol family documents", () => {
       "heterodyne-comms-double-ratchet-invite-response-v1",
     );
     expect(text).toContain("heterodyne-comms-double-ratchet-message-v1");
-    expect(text).toMatch(/`kind:1060`[\s\S]*MUST NOT[\s\S]*repo/i);
-    expect(text).toMatch(/double-ratchet[\s\S]*no backfill/i);
-    expect(text).toMatch(/MUST delete[\s\S]*message key/i);
-    expect(text).toMatch(
-      /Before releasing received plaintext[\s\S]*ratchet advancement[\s\S]*durable state persistence[\s\S]*atomic\s+action[\s\S]*delete the consumed message key within that same action/i,
-    );
+    expect(text).toMatch(/responses and messages MUST NOT be committed to a repository/i);
+    expect(text).toMatch(/They have no backfill/i);
+    expect(text).toMatch(/Before plaintext reaches Control/i);
+    expect(text).toMatch(/atomically advance and durably persist ratchet state/i);
+    expect(text).toMatch(/consumed\s+message key cryptographically unavailable/i);
   });
 
   it("retains privacy-tier honesty and org-threshold authorization", () => {
@@ -783,6 +749,11 @@ describe("protocol family documents", () => {
       "COMMS-I-AGENT-ROLE-BINDING",
       "COMMS-I-AGENT-ATTRIBUTION",
       "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT",
+      "COMMS-I-MARMOT-UPSTREAM-AUTHORITY",
+      "COMMS-I-MARMOT-EXACT-BYTES",
+      "COMMS-I-MARMOT-SECRET-CONFINEMENT",
+      "COMMS-I-RADICLE-ROUTING-AUTHORITY",
+      "COMMS-I-RADICLE-NON-ERASURE",
     ]) {
       expect(text).toContain(invariant);
     }
@@ -838,8 +809,7 @@ describe("protocol family documents", () => {
   it("defines a mutually exclusive Comms-native acceptance decision table", () => {
     const text = readFileSync(commsPath, "utf8");
 
-    expect(text).toMatch(/established locally accepted[\s\S]*`accept`/i);
-    expect(text).toMatch(/new `ordinary-dm`[\s\S]*`hold-as-message-request`/i);
+    expect(text).toMatch(/`control-human-rpc` or `control-agent-rpc`[\s\S]*`hold-as-message-request`/i);
     expect(text).toMatch(
       /delegated `credential-sync`[\s\S]*every[\s\S]*authoritative ledger[\s\S]*`accept`/i,
     );
@@ -850,25 +820,17 @@ describe("protocol family documents", () => {
       /invalid, revoked, expired, mismatched, or NID-less[\s\S]*`reject`/i,
     );
     expect(text).toMatch(
-      /`ordinary-dm` or `credential-sync`, undelegated initiator[\s\S]*`reject`/i,
+      /undelegated `credential-sync` initiator[\s\S]*`reject`/i,
     );
     expect(text).toMatch(/`control-enrollment`[\s\S]*`hold-as-message-request`/i);
   });
 
-  it("retains DR lifecycle, audience rotation, and vanilla fallback", () => {
+  it("confines DR lifecycle to bootstrap and Control", () => {
     const text = readFileSync(commsPath, "utf8");
 
-    expect(text).toMatch(/empty-content replacement[\s\S]*tombstone/i);
-    expect(text).toMatch(/out-of-band invite[\s\S]*URL fragment/i);
-    expect(text).toMatch(/delegation expires or is revoked/);
-    expect(text).toMatch(/active peers MUST stop[\s\S]*sending/);
-    expect(text).toMatch(/vanilla[\s\S]*MUST[\s\S]*NIP-17 fallback/i);
-    expect(text).toMatch(
-      /member addition MUST publish a replacing `kind:31012` under the same\s+`key_id`/i,
-    );
-    expect(text).toMatch(
-      /member removal[\s\S]*republish[\s\S]*encrypted index[\s\S]*60 seconds/i,
-    );
+    expect(text).toMatch(/only for point-to-point[\s\S]*bootstrap[\s\S]*Control RPC/i);
+    expect(text).toMatch(/MUST NOT carry ordinary user conversation/i);
+    expect(text).toMatch(/revoked or expired peer delegation[\s\S]*stops its sessions/i);
   });
 
   it("retains tier-specific publication and exact retrieval metadata", () => {
@@ -1067,9 +1029,7 @@ describe("protocol family documents", () => {
     expect(social).toMatch(
       /dual-signed pair[\s\S]*`same_holder`[\s\S]*explicit confirmation[\s\S]*permanently/i,
     );
-    expect(social).toMatch(
-      /ordinary later delegation revocation[\s\S]*Core compromise cutoff[\s\S]*effective_compromise_since - 300/i,
-    );
+    expect(social).toMatch(/KERI compromise cutoff[\s\S]*invalidate approvals/i);
     expect(social).toMatch(
       /connect directly[\s\S]*established peer address[\s\S]*TLS SNI[\s\S]*Automatic\s+redirect[\s\S]*MUST NOT claim ATProto\s+resolver conformance/i,
     );
@@ -1159,7 +1119,7 @@ describe("protocol family documents", () => {
       activation_requires: [
         "closed-control-profile",
         "complete-credential-continuity-and-recovery-vector-batch",
-        "atomic-registry-revision-4-feature-and-schema-allocation",
+        "atomic-future-registry-feature-and-schema-allocation",
         "matching-family-and-release-manifests",
       ],
     });
@@ -1172,7 +1132,7 @@ describe("protocol family documents", () => {
     expect(text).toMatch(/structural diagnostics[\s\S]*does not\s+activate/i);
     expect(text).toMatch(/final candidate[\s\S]*grants no Control authority/i);
     expect(text).toMatch(/ownership[\s\S]*stamp intention[\s\S]*does not\s+make it active/i);
-    expect(text).toMatch(/registry revision 4[\s\S]*matching family\/release manifests/i);
+    expect(text).toMatch(/future registry revision[\s\S]*matching family\/release manifests/i);
     expect(text).toMatch(/recovery feature[\s\S]*no placeholder/i);
     expect(text).not.toContain("heterodyne:core/");
     expect(text).toMatch(/Control MUST NOT[\s\S]*wire stamp/i);
@@ -1182,30 +1142,12 @@ describe("protocol family documents", () => {
   it("defines the exact Comms epoch invite while holding gated enrollment", () => {
     const comms = readFileSync(commsPath, "utf8");
 
-    expect(comms).toMatch(
-      /kind:30078[\s\S]*d = double-ratchet\/invites\/epoch[\s\S]*kel_head[\s\S]*current KERI-authoritative epoch key/i,
-    );
-    expect(comms).toMatch(
-      /published before the prior[\s\S]*tombstoned[\s\S]*exact invite event\s+id/i,
-    );
-    expect(comms).toMatch(
-      /undelegated initiator[\s\S]*only[\s\S]*control-enrollment[\s\S]*ordinary DMs[\s\S]*credential sync/i,
-    );
-    expect(comms).toMatch(
-      /higher Control profile remains gated[\s\S]*hold[\s\S]*sender-visible signal[\s\S]*cannot interpret/i,
-    );
-    expect(comms).toMatch(
-      /binding_nonce[\s\S]*live-session challenge[\s\S]*single-use[\s\S]*unredeemed enrollment token/i,
-    );
-    expect(comms).toMatch(
-      /mutually exclusive decision table[\s\S]*ordinary-dm` or `credential-sync`, undelegated initiator[\s\S]*`reject`/i,
-    );
-    expect(comms).toMatch(
-      /repository-final and unrevoked[\s\S]*generic `kind:31015`[\s\S]*`kind:31016`[\s\S]*no-backfill/i,
-    );
-    expect(comms).toMatch(
-      /Tor-capable light client[\s\S]*shared clearnet Nostr relay[\s\S]*never requires a direct client-to-node address/i,
-    );
+    expect(comms).toMatch(/`kind:30078`[\s\S]*`d = double-ratchet\/invites\/epoch`/i);
+    expect(comms).toMatch(/current\s+KERI-authoritative epoch signer[\s\S]*`kel_head`/i);
+    expect(comms).toMatch(/bind the active invite event ID[\s\S]*first Control request/i);
+    expect(comms).toMatch(/control-enrollment[\s\S]*higher profile gated[\s\S]*hold-as-message-request/i);
+    expect(comms).toMatch(/Tor-capable light client[\s\S]*shared clearnet relay/i);
+    expect(comms).toMatch(/Enrollment requires no direct client-to-node address/i);
   });
 
   it("requires the exact registered Comms double-ratchet profile set", () => {
@@ -1237,7 +1179,7 @@ describe("protocol family documents", () => {
     expect(gate).toEqual({
       can_claim_control_conformance: false,
       blockers: [
-        "registry-revision-4-not-published",
+        "activating-registry-revision-not-published",
         "recovery-feature-and-core-schemas-not-integrated",
         "credential-continuity-and-recovery-vector-batch-incomplete",
         "matching-family-and-release-manifests-not-issued",
@@ -1246,6 +1188,7 @@ describe("protocol family documents", () => {
         "gated-control-profile",
         "ingress-relay-affinity",
         "agent-workload-publication",
+        "node-mediated-marmot",
       ],
     });
     expect(text).toContain("no Control conformance claim");
@@ -1257,31 +1200,31 @@ describe("protocol family documents", () => {
       "CONTROL-I-AGENT-NO-KEY-RELEASE",
       "CONTROL-I-AGENT-INTENT-ONLY",
       "CONTROL-I-AGENT-AUTHORIZATION-FRESHNESS",
+      "CONTROL-I-MARMOT-GRANT-CONFINEMENT",
     ]) {
       expect(text).toContain(invariant);
     }
   });
 
-  it("preserves the atomic registry-revision-4 family gate", () => {
+  it("selects registry revision 4 while preserving the separate recovery gate", () => {
     const registry = loadRegistry(repositoryRoot);
-    expect(registry.manifest.revision).toBe(3);
-    expect(registry.history.has(4)).toBe(false);
+    expect(registry.manifest.revision).toBe(4);
+    expect(registry.history.has(4)).toBe(true);
     expect(
       existsSync(resolve(repositoryRoot, "docs/spec/registry/history/4.json")),
-    ).toBe(false);
+    ).toBe(true);
 
     for (const path of [corePath, commsPath, socialPath]) {
       const text = readFileSync(path, "utf8");
-      expect(text).toMatch(/Revision 4 MUST NOT be[\s\S]*one atomic/i);
-      expect(text).toMatch(/credential-continuity and recovery/i);
-      expect(text).toMatch(/non-claimable/i);
+      expect(text).toContain("Registry revision: `4`");
     }
+    expect(readFileSync(commsPath, "utf8")).toMatch(/non-claimable/i);
     expect(readFileSync(controlPath, "utf8")).toMatch(
-      /registry revision 4[\s\S]*credential-continuity and recovery[\s\S]*land\s+atomically/i,
+      /future activating registry revision[\s\S]*credential-continuity and recovery[\s\S]*land\s+atomically/i,
     );
   });
 
-  it("defines all credential-continuity drafts while preserving the revision-4 gate", () => {
+  it("defines all credential-continuity drafts while preserving their activation gate", () => {
     const text = readFileSync(commsPath, "utf8");
     for (const anchor of [
       "comms-credential-continuity-gate",
@@ -1297,15 +1240,15 @@ describe("protocol family documents", () => {
       expect(text).toContain(`<a id="${anchor}"></a>`);
     }
     expect(text).toContain("They are **not** active");
-    expect(text).toContain("under selected registry revision 3");
+    expect(text).toContain("under selected registry revision 4");
     expect(text).toMatch(
       /MUST NOT advertise, negotiate, require, produce as authoritative, or claim\s+conformance/i,
     );
     expect(text).toMatch(/two\s+Core-owned offline-recovery schemas/i);
     expect(text).toMatch(/governed-decrypt source-profile\s+catalog/i);
-    expect(text).toMatch(/revision-4 conformance\s+evidence/i);
+    expect(text).toMatch(/explicit conformance\s+evidence/i);
     expect(text).toMatch(
-      /conformance_claimable:false[\s\S]*do not establish revision-4 or recovery-profile\s+conformance/i,
+      /conformance_claimable:false[\s\S]*do not establish recovery-profile\s+conformance/i,
     );
     expect(text).toMatch(
       /"persona": "<64 lowercase hex cold-root npub>",\s+"credential_ledger_generation": 0/,
@@ -1371,7 +1314,7 @@ describe("protocol family documents", () => {
     }
     expect(
       existsSync(resolve(repositoryRoot, "docs/spec/registry/history/4.json")),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("defines closed draft enrollment, grants, RPC, lifecycle, and MCP without a Control wire stamp", () => {
@@ -1489,28 +1432,28 @@ describe("protocol family documents", () => {
     expect(following).toMatch(
       /explicit user action[\s\S]*MUST NOT change a follow\s+automatically/i,
     );
-    expect(following).toMatch(/external identity[\s\S]*NIP-17/i);
+    expect(following).toMatch(/external identity[\s\S]*compatible Marmot account/i);
 
     expect(threatModel).toMatch(/Retired-key breadcrumb[\s\S]*redirect/i);
     expect(threatModel).toMatch(/Breadcrumb-like prose[\s\S]*explicit user action/i);
   });
 
-  it("declares the exact Social dependency set and Matrix-free claim", () => {
+  it("declares the exact Social dependency set and public-Social scope", () => {
     const text = readFileSync(socialPath, "utf8");
 
     expect(text).toContain("Document ID: `social`");
     expect(text).toContain("Version: `social/0.5.0`");
-    expect(text).toContain("Registry revision: `3`");
+    expect(text).toContain("Registry revision: `4`");
     expect(declaredDependencies(text)).toEqual([
       "heterodyne:core/0.5.0#core-conformance",
       "heterodyne:comms/0.5.0#comms-conformance",
     ]);
     expect(text).not.toContain("heterodyne:control/");
-    expect(text).toMatch(/Matrix-free implementation[\s\S]*fully Social-conformant/i);
-    expect(text).toMatch(/distinct[\s\S]*`Social`[\s\S]*`Social\+Matrix`[\s\S]*claims/i);
+    expect(text).toMatch(/public and audience publishing[\s\S]*moderation/i);
+    expect(text).toMatch(/private conversation[\s\S]*Marmot/i);
   });
 
-  it("keeps Matrix-free Social behavior complete", () => {
+  it("keeps public Social behavior complete", () => {
     const text = readFileSync(socialPath, "utf8");
 
     expect(text).toMatch(/replies[\s\S]*reactions[\s\S]*thread/i);
@@ -1520,7 +1463,7 @@ describe("protocol family documents", () => {
     expect(text).toMatch(/mixed-tier[\s\S]*fan-out/i);
     expect(text).toMatch(/NIP-72[\s\S]*Radicle editorial/i);
     expect(text).toMatch(/starter pack[\s\S]*ATProto/i);
-    expect(text).toMatch(/None of these[\s\S]*require Matrix/i);
+    expect(text).toMatch(/private[\s\S]*(?:reply|reaction)[\s\S]*Marmot/i);
   });
 
   it("binds Social wire profiles and leaves plain NIP-51 unstamped", () => {
@@ -1652,7 +1595,7 @@ describe("protocol family documents", () => {
 
     expect(text).toContain("heterodyne:core/0.5.0#core-recovery");
     expect(text).toMatch(/recovery peers[\s\S]*follows[\s\S]*mutual follows[\s\S]*friends/i);
-    expect(text).toMatch(/Matrix identity-room cache/i);
+    expect(text).toMatch(/serving peer[\s\S]*cached data/i);
     expect(text).toMatch(/advisory[\s\S]*MUST NOT[\s\S]*replace[\s\S]*(cold-root|Core)/i);
   });
 
@@ -1748,110 +1691,16 @@ describe("protocol family documents", () => {
     ).toContain("scope");
   });
 
-  it("retains the complete optional Matrix security boundary", () => {
-    const text = readFileSync(socialPath, "utf8");
-
-    expect(text).toMatch(/MXID delegation[\s\S]*epoch-key[\s\S]*self-publication/i);
-    expect(text).toMatch(/active-room election[\s\S]*publish lease[\s\S]*failover/i);
-    expect(text).toMatch(/wrapped[\s\S]*bare[\s\S]*nip01_raw/i);
-    expect(text).toMatch(/private_discussion[\s\S]*Megolm[\s\S]*MLS/i);
-    expect(text).toMatch(/encrypted state[\s\S]*downgrade/i);
-    expect(text).toMatch(/headless bridge[\s\S]*user-controlled/i);
-    expect(text).toMatch(/homeserver[\s\S]*MUST NOT[\s\S]*plaintext/i);
-    expect(text).toMatch(/vanilla Matrix[\s\S]*fallback/i);
-  });
-
-  it("parses the complete Matrix encryption and MLS migration schemas", () => {
-    const text = readFileSync(socialPath, "utf8");
-    const baseline = fixtureFromMarkdown<MatrixStateFixture>(text, "matrix-encryption-megolm");
-    const capabilities = fixtureFromMarkdown<MatrixStateFixture>(text, "matrix-mls-capabilities");
-    const intent = fixtureFromMarkdown<MatrixStateFixture>(text, "matrix-mls-intent");
-    const ack = fixtureFromMarkdown<MatrixStateFixture>(text, "matrix-mls-ack");
-    const abort = fixtureFromMarkdown<MatrixStateFixture>(text, "matrix-mls-abort");
-    const flip = fixtureFromMarkdown<MatrixStateFixture>(text, "matrix-mls-flip");
-
-    expect(baseline).toMatchObject({
-      type: "m.heterodyne.encryption_version.v1",
-      state_key: "",
-      content: {
-        spec_version: "social/0.5.0",
-        algorithm: "megolm",
-        migrated_from: null,
-        migrated_at: null,
-      },
-    });
-    expect(exactKeys(baseline.content, ["spec_version", "algorithm", "migrated_from", "migrated_at"])).toBe(true);
-    expect(capabilities.type).toBe("m.heterodyne.capabilities.v1");
-    expect(capabilities.state_key).toBe(capabilities.sender);
-    expect(validateCapabilityBootstrap(capabilities.content)).toEqual([]);
-    expect(exactKeys(capabilities.content, ["descriptor", "bootstrap_version", "registry_revision", "implementation_role", "supported_versions", "required_features", "strict_profiles", "backends", "matrix", "event_types", "nostr_kinds", "encryption_algorithms_supported", "advertised_at"])).toBe(true);
-    expect(capabilities.content.implementation_role).toBe("authenticated-light");
-    expect(capabilities.content.encryption_algorithms_supported).toEqual(["megolm", "mls"]);
-    expect(validateCapabilityBootstrap({ ...capabilities.content, descriptor: undefined })).toContain("descriptor");
-    expect(validateCapabilityBootstrap({ ...capabilities.content, registry_revision: 2 })).toContain("registry-revision");
-    expect(validateCapabilityBootstrap({ ...capabilities.content, implementation_role: "full-node" })).toContain("implementation-role");
-    expect(
-      validateCapabilityBootstrap({
-        ...capabilities.content,
-        required_features: ["core.identity.v1", "core.embedded-tor.v1"],
-      }),
-    ).toEqual(expect.arrayContaining(["obsolete-feature", "required-features"]));
-    expect(
-      validateCapabilityBootstrap({
-        ...capabilities.content,
-        supported_versions: {
-          ...(capabilities.content.supported_versions as Record<string, unknown>),
-          extra: [],
-        },
-      }),
-    ).toContain("document-set");
-    expect(
-      validateCapabilityBootstrap({
-        ...capabilities.content,
-        supported_versions: {
-          ...(capabilities.content.supported_versions as Record<string, unknown>),
-          core: [],
-        },
-      }),
-    ).toContain("core-support");
-    expect(intent.type).toBe("m.heterodyne.migration_intent.v1");
-    expect(intent.state_key).toBe(intent.content.intent_id);
-    expect(exactKeys(intent.content, ["spec_version", "target_algorithm", "drain_window_seconds", "intent_id", "initiator_mxid", "initiator_npub"])).toBe(true);
-    expect(intent.content.drain_window_seconds).toBe(60);
-    expect(String(intent.content.intent_id)).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-    expect(ack.type).toBe("m.heterodyne.migration_ack.v1");
-    expect(ack.state_key).toBe(`${ack.content.intent_id}:${ack.content.member_npub}`);
-    expect(exactKeys(ack.content, ["spec_version", "intent_id", "member_npub", "acked_at"])).toBe(true);
-    expect(abort.type).toBe("m.heterodyne.migration_abort.v1");
-    expect(abort.state_key).toBe(abort.content.intent_id);
-    expect(abort.content.reason).toBe("missing_acks");
-    expect(exactKeys(abort.content, ["spec_version", "intent_id", "reason", "missing_npubs", "aborted_at"])).toBe(true);
-    expect(flip.type).toBe("m.heterodyne.encryption_version.v1");
-    expect(flip.state_key).toBe("");
-    expect(exactKeys(flip.content, ["spec_version", "algorithm", "migrated_from", "migrated_at", "intent_id"])).toBe(true);
-    expect(typeof flip.origin_server_ts).toBe("number");
-    expect(flip.content.migrated_at).toBe((flip.origin_server_ts as number) / 1000);
-
-    const flipTs = flip.origin_server_ts as number;
-    expect(matrixTailAcceptsFromFixture(flip, { origin_server_ts: flipTs + 60_000, pre_flip_session: true, member_at_flip: true })).toBe(true);
-    expect(matrixTailAcceptsFromFixture(flip, { origin_server_ts: flipTs + 60_001, pre_flip_session: true, member_at_flip: true })).toBe(false);
-    expect(matrixTailAcceptsFromFixture(flip, { origin_server_ts: flipTs + 30_000, pre_flip_session: false, member_at_flip: true })).toBe(false);
-    expect(matrixTailAcceptsFromFixture(flip, { origin_server_ts: flipTs + 30_000, pre_flip_session: true, member_at_flip: false })).toBe(false);
-  });
-
-  it("cryptographically validates the ATProto binding and structurally parses revocation mirrors", () => {
+  it("cryptographically validates the ATProto binding and parses bilateral revocations", () => {
     const text = readFileSync(socialPath, "utf8");
     const fixture = fixtureFromMarkdown<AtprotoFixture>(text, "atproto-identity-link");
     const revocations = fixtureFromMarkdown<{
       nostr: ExampleEvent;
       atproto: AtprotoFixture["pds_record"];
-      matrix: MatrixStateFixture;
     }>(text, "atproto-link-revocations");
 
     expect(validateAtprotoFixture(fixture)).toEqual([]);
     expect(exactKeys(fixture.pds_record.value, ["spec_version", "did", "did_signing_key_id", "npub", "rid", "established_at"])).toBe(true);
-    expect(fixture.matrix_mirror.type).toBe("m.heterodyne.atproto_link.v1");
-    expect(fixture.matrix_mirror.content.binding_payload).toBe(fixture.nostr_event.content);
     expect(tagValues(fixture.nostr_event, "spec_version")).toEqual([]);
     expect(validateAtprotoFixture({ ...fixture, pds_record: { ...fixture.pds_record, collection: "wrong" } })).toContain("collection");
     expect(
@@ -1878,7 +1727,6 @@ describe("protocol family documents", () => {
         pds_record: { ...fixture.pds_record, signature: "00".repeat(64) },
       }),
     ).toContain("atproto-signature");
-    expect(validateAtprotoFixture({ ...fixture, matrix_mirror: { ...fixture.matrix_mirror, state_key: "did:web:other.example" } })).toContain("matrix-binding");
     expect(revocations.nostr.kind).toBe(31009);
     const nostrRevocation = JSON.parse(revocations.nostr.content) as Record<string, unknown>;
     expect(nostrRevocation).toMatchObject({
@@ -1889,19 +1737,13 @@ describe("protocol family documents", () => {
     expect(exactKeys(nostrRevocation, ["spec_version", "record_type", "did", "npub", "binding_hash", "revoked_at"])).toBe(true);
     expect(revocations.atproto.collection).toBe("social.heterodyne.identityLink");
     expect(revocations.atproto.value.revoked_at).toEqual(expect.any(Number));
-    expect(revocations.matrix.type).toBe("m.heterodyne.atproto_link.v1");
-    expect(revocations.matrix.state_key).toBe(revocations.matrix.content.did);
-    expect(revocations.matrix.sender).toBe(revocations.matrix.content.mxid);
   });
 
   it("binds every registered Social security invariant", () => {
     const text = readFileSync(socialPath, "utf8");
 
     for (const invariant of [
-      "SOCIAL-I-MATRIX-E2EE",
-      "SOCIAL-I-MXID-DELEGATION-DUAL-PROOF",
       "SOCIAL-I-PRIVATE-STATE-AT-REST",
-      "SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE",
       "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
       "SOCIAL-I-AGENT-POLICY-LOCAL",
       "SOCIAL-I-AGENT-REMEDIATION-SCOPED",
@@ -1946,16 +1788,10 @@ describe("protocol family documents", () => {
       "CONTROL-I-AUDIT-AT-REST",
       "CONTROL-I-SESSION-KEY-CONFINEMENT",
     ];
-    const nonMatrixSocialInvariants = [
+    const socialInvariants = [
       ...commsInvariants,
       "SOCIAL-I-PRIVATE-STATE-AT-REST",
       "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
-    ];
-    const matrixSocialInvariants = [
-      ...nonMatrixSocialInvariants,
-      "SOCIAL-I-MATRIX-E2EE",
-      "SOCIAL-I-MXID-DELEGATION-DUAL-PROOF",
-      "SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE",
     ];
 
     expect(fixtureFromMarkdown<StrictProfileFixture>(core, "core-strict-profile")).toEqual({
@@ -1990,20 +1826,7 @@ describe("protocol family documents", () => {
         "heterodyne-core-strict-v1",
         "heterodyne-comms-strict-v1",
       ],
-      required_invariants: nonMatrixSocialInvariants,
-    });
-    expect(fixtureFromMarkdown<StrictProfileFixture>(social, "social-matrix-strict-profile")).toEqual({
-      profile_id: "heterodyne-social-matrix-strict-v1",
-      conformance_class: "Social+Matrix",
-      state: "active",
-      requires_profiles: ["heterodyne-social-strict-v1"],
-      required_invariants: matrixSocialInvariants,
-      matrix_obligations: [
-        "encrypted-private-content-and-state",
-        "mxid-dual-proof",
-        "downgrade-warning",
-        "bare-message-visibility",
-      ],
+      required_invariants: socialInvariants,
     });
 
     expect(control).toMatch(/heterodyne-control-strict-v1[\s\S]*MUST NOT[\s\S]*`strict_profiles`/);
@@ -2062,7 +1885,7 @@ describe("protocol family documents", () => {
     });
   });
 
-  it("adds subscriber-local Social strict v2 profiles without changing v1 or depending on Control", () => {
+  it("adds subscriber-local Social strict v2 without changing v1 or depending on Control", () => {
     const comms = readFileSync(commsPath, "utf8");
     const social = readFileSync(socialPath, "utf8");
     const commsV2 = fixtureFromMarkdown<StrictProfileFixture>(
@@ -2077,14 +1900,6 @@ describe("protocol family documents", () => {
       social,
       "social-strict-profile-v2",
     );
-    const matrixV1 = fixtureFromMarkdown<StrictProfileFixture>(
-      social,
-      "social-matrix-strict-profile",
-    );
-    const matrixV2 = fixtureFromMarkdown<StrictProfileFixture>(
-      social,
-      "social-matrix-strict-profile-v2",
-    );
     const socialV2Invariants = [
       ...commsV2.required_invariants,
       "SOCIAL-I-PRIVATE-STATE-AT-REST",
@@ -2094,31 +1909,12 @@ describe("protocol family documents", () => {
     ];
 
     expect(socialV1.required_invariants).not.toContain("SOCIAL-I-AGENT-POLICY-LOCAL");
-    expect(matrixV1.required_invariants).not.toContain("SOCIAL-I-AGENT-POLICY-LOCAL");
     expect(socialV2).toEqual({
       profile_id: "heterodyne-social-strict-v2",
       conformance_class: "Social",
       state: "active",
       requires_profiles: ["heterodyne-comms-strict-v2"],
       required_invariants: socialV2Invariants,
-    });
-    expect(matrixV2).toEqual({
-      profile_id: "heterodyne-social-matrix-strict-v2",
-      conformance_class: "Social+Matrix",
-      state: "active",
-      requires_profiles: ["heterodyne-social-strict-v2"],
-      required_invariants: [
-        ...socialV2Invariants,
-        "SOCIAL-I-MATRIX-E2EE",
-        "SOCIAL-I-MXID-DELEGATION-DUAL-PROOF",
-        "SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE",
-      ],
-      matrix_obligations: [
-        "encrypted-private-content-and-state",
-        "mxid-dual-proof",
-        "downgrade-warning",
-        "bare-message-visibility",
-      ],
     });
     expect(social).toMatch(
       /Normative dependencies:[\s\S]*- `heterodyne:core\/0\.5\.0#core-conformance`[\s\S]*- `heterodyne:comms\/0\.5\.0#comms-conformance`/,
@@ -2176,6 +1972,82 @@ describe("protocol family documents", () => {
     expect(agents).toMatch(/registry, schemas, release metadata, and conformance vectors/i);
     expect(agents).toMatch(/mark the ADR accepted and move it to[\s\S]*docs\/adr\/archive/i);
     expect(agents).toMatch(/Merge only when the specification stands on its own/i);
+  });
+
+  it("integrates Marmot and Radicle conversations without a live Matrix profile", () => {
+    const core = readFileSync(corePath, "utf8");
+    const comms = readFileSync(commsPath, "utf8");
+    const control = readFileSync(controlPath, "utf8");
+    const social = readFileSync(socialPath, "utf8");
+    const overview = readFileSync(overviewPath, "utf8");
+    const architecture = readFileSync(
+      resolve(repositoryRoot, "docs/architecture.md"),
+      "utf8",
+    );
+    const threatModel = readFileSync(threatModelPath, "utf8");
+
+    for (const anchor of [
+      "core-marmot-role-binding",
+      "core-radicle-group-admission",
+    ]) {
+      expect(core).toContain(`<a id="${anchor}"></a>`);
+    }
+    for (const anchor of [
+      "comms-marmot",
+      "comms-marmot-participation",
+      "comms-marmot-groups",
+      "comms-marmot-directory",
+      "comms-marmot-routing-generation",
+      "comms-marmot-event-repository",
+      "comms-marmot-exact-bytes",
+      "comms-marmot-relay",
+      "comms-marmot-rotation",
+      "comms-marmot-retention",
+      "comms-marmot-persona-inbox",
+      "comms-marmot-media",
+    ]) {
+      expect(comms).toContain(`<a id="${anchor}"></a>`);
+    }
+    for (const anchor of [
+      "control-marmot-operations",
+      "control-marmot-agent-operations",
+    ]) {
+      expect(control).toContain(`<a id="${anchor}"></a>`);
+    }
+
+    expect(comms).toContain("4ad4ae21479c3f3fa9950c6fc4556a76941a62e1");
+    expect(comms).toMatch(/kind:445[\s\S]*exact bytes/i);
+    expect(comms).toMatch(/one-to-one[\s\S]*`h`[\s\S]*event-repository RID/i);
+    expect(comms).toMatch(/5 GB[\s\S]*logical unique/i);
+    expect(comms).toMatch(/two-member Marmot group/i);
+    expect(comms).toMatch(/Double Ratchet[\s\S]*Control[\s\S]*bootstrap/i);
+    expect(control).toMatch(/node-mediated[\s\S]*designated full or recovery node/i);
+    expect(control).toMatch(/MUST NOT supply[\s\S]*MLS secret/i);
+    expect(social).toMatch(/public[\s\S]*publishing[\s\S]*moderation/i);
+
+    for (const relativePath of [
+      "docs/spec/schemas/comms/marmot-group-directory-v1.schema.json",
+      "docs/spec/schemas/comms/marmot-routing-binding-v1.schema.json",
+      "docs/spec/schemas/comms/marmot-event-repository-genesis-v1.schema.json",
+      "docs/spec/schemas/comms/marmot-persona-inbox-bundle-v1.schema.json",
+      "docs/spec/schemas/comms/marmot-persona-inbox-manifest-v1.schema.json",
+    ]) {
+      expect(existsSync(resolve(repositoryRoot, relativePath)), relativePath).toBe(true);
+    }
+
+    for (const [name, text] of [
+      ["overview", overview],
+      ["core", core],
+      ["comms", comms],
+      ["control", control],
+      ["social", social],
+      ["architecture", architecture],
+      ["threat model", threatModel],
+    ] as const) {
+      expect(text, `${name} retains live Matrix behavior`).not.toMatch(
+        /\b(?:Matrix|Megolm|MXID|Social\+Matrix)\b/,
+      );
+    }
   });
 
   it("aligns companion architecture with role-scoped Tor, public reading, and agent authorship", () => {
@@ -2365,7 +2237,7 @@ describe("protocol family documents", () => {
 
     expect(readme).toContain('"registry_revision": "<pinned-registry-revision>"');
     expect(readme).toMatch(
-      new RegExp(`${counts.get(1)} immutable\\s+registry-revision-1 vectors`),
+      new RegExp(`${counts.get(1)}\\s+registry-revision-1\\s+vectors`),
     );
     expect(readme).toMatch(
       new RegExp(`${counts.get(2)} claims/OIDC registry-revision-2 vectors`),
@@ -2374,7 +2246,10 @@ describe("protocol family documents", () => {
       new RegExp(`${counts.get(3)}\\s+registry-revision-3 vectors`),
     );
     expect(readme).toMatch(
-      /159 cover the gated Control,[\s\S]*11 are\s+credential-continuity draft outer evaluations[\s\S]*`conformance_claimable:false`[\s\S]*do not activate or\s+claim the gated profiles/i,
+      new RegExp(`${counts.get(4)} Marmot/Radicle\\s+registry-revision-4 vectors`),
+    );
+    expect(readme).toMatch(
+      /159 cover the gated\s+Control,[\s\S]*11 are\s+credential-continuity draft outer evaluations[\s\S]*`conformance_claimable:false`[\s\S]*do not activate or\s+claim the gated profiles/i,
     );
     expect(readme).toMatch(
       /Historical released vectors[\s\S]*MUST NOT[\s\S]*rewritten/i,
@@ -2420,10 +2295,13 @@ describe("protocol family documents", () => {
       "token-status-list-draft-21",
       "comms.public-reader.v1",
       "comms.agent-authorship.v1",
+      "comms.marmot-conversations.v1",
+      "comms.radicle-marmot-storage.v1",
+      "comms.radicle-backed-marmot-relay.v1",
     ];
 
     for (const manifest of Object.values(manifests)) {
-      expect(manifest.registry_revision).toBe(3);
+      expect(manifest.registry_revision).toBe(4);
     }
     expect(manifests.comms.features).toEqual(features);
     expect(manifests.core.features).toEqual([
@@ -2432,12 +2310,14 @@ describe("protocol family documents", () => {
       "core.repo-relay-client.v1",
       "core.onion-service-host.v1",
       "core.browser-shared-relay.v1",
+      "core.marmot-role-attribution.v1",
     ]);
     expect(manifests.social.features).toEqual(["social.agent-policy-moderation.v1"]);
     expect(manifests.control.features).toEqual([
       "double-ratchet",
       "control.relay-affinity.v1",
       "control.agent-workload-publication.v1",
+      "control.node-mediated-marmot.v1",
     ]);
     expect(manifests.control.dependencies.comms).toBe("comms/0.5.0");
     const control = readFileSync(controlPath, "utf8");
@@ -2513,7 +2393,7 @@ describe("protocol family documents", () => {
     const comms = readFileSync(commsPath, "utf8");
     const control = readFileSync(controlPath, "utf8");
     const social = readFileSync(socialPath, "utf8");
-    for (const text of [core, comms, control, social]) expect(text).toContain("Registry revision: `3`");
+    for (const text of [core, comms, control, social]) expect(text).toContain("Registry revision: `4`");
     for (const anchor of ["core-typed-key-references", "core-authority-interfaces"]) {
       expect(core).toContain(`<a id="${anchor}"></a>`);
     }
@@ -2676,7 +2556,7 @@ describe("protocol family documents", () => {
   it("validates historical and current release pins and rejects unknown or mismatched pins", () => {
     const historical = expectedReleaseManifests(repositoryRoot, 1).core;
     const revision2 = expectedReleaseManifests(repositoryRoot, 2).core;
-    const current = expectedReleaseManifests(repositoryRoot, 3).core;
+    const current = expectedReleaseManifests(repositoryRoot, 4).core;
     expect(() => validateReleaseManifestRegistryPin(repositoryRoot, historical)).not.toThrow();
     expect(() => validateReleaseManifestRegistryPin(repositoryRoot, revision2)).not.toThrow();
     expect(() => validateReleaseManifestRegistryPin(repositoryRoot, current)).not.toThrow();
@@ -2689,7 +2569,7 @@ describe("protocol family documents", () => {
       registry_sha256: "0".repeat(64),
     })).toThrow(/registry digest mismatch/);
     expect(loadReleaseSchemaRegistryPin(repositoryRoot)).toEqual({
-      registry_revision: 3,
+      registry_revision: 4,
       registry_sha256: current.registry_sha256,
     });
     expect(() => validateReleaseManifestSchemaPin(repositoryRoot, historical)).toThrow(
@@ -2769,11 +2649,11 @@ describe("protocol family documents", () => {
     expect(lintFamilyCutover(repositoryRoot)).toEqual([]);
   });
 
-  it("retains concrete federation, ratchet, moderation, storage, and crypto residuals", () => {
+  it("retains concrete group, ratchet, moderation, storage, and crypto residuals", () => {
     const text = readFileSync(threatModelPath, "utf8");
 
     expect(text).toMatch(
-      /Federation peer[\s\S]*membership graph[\s\S]*peer set[\s\S]*(metadata|origin_server_ts)/i,
+      /Marmot and Radicle group paths[\s\S]*ref activity[\s\S]*host topology/i,
     );
     expect(text).toMatch(
       /within (?:a )?ratchet epoch[\s\S]*outer signer[\s\S]*link/i,

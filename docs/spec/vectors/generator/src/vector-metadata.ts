@@ -565,16 +565,18 @@ const PROFILE_BY_VECTOR = new Map<string, string>([
 ]);
 
 export function vectorMetadata(vectorId: string): VectorMetadata {
-  const owners = ([
+  const owners = vectorId.startsWith("marmot-radicle/")
+    ? (["comms"] as const)
+    : ([
     ["core", CORE_IDS],
     ["comms", COMMS_IDS],
     ["control", CONTROL_IDS],
     ["social", SOCIAL_IDS],
-  ] as const).filter(([, entries]) => entries.has(vectorId));
+  ] as const).filter(([, entries]) => entries.has(vectorId)).map(([owner]) => owner);
   if (owners.length !== 1) {
     throw new Error(`vector owner is not assigned exactly once: ${vectorId}`);
   }
-  const owner = owners[0][0];
+  const owner = owners[0];
   const dependencies = Object.fromEntries(
     DOCUMENT_DEPENDENCIES[owner].map((dependency) => [
       dependency,
@@ -587,7 +589,8 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
     owner_document: owner,
     owner_version: `${owner}/${DOCUMENT_VERSIONS[owner]}`,
     dependency_versions: dependencies,
-    registry_revision: vectorId.startsWith("role-capabilities/")
+    registry_revision: vectorId.startsWith("marmot-radicle/") ? 4
+      : vectorId.startsWith("role-capabilities/")
       || vectorId.startsWith("public-reader/")
       || vectorId.startsWith("agent-authorship/")
       || vectorId.startsWith("agent-moderation/")
@@ -611,6 +614,43 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
 }
 
 function referenceFor(vectorId: string, owner: DocumentId): { document: DocumentId; anchor: string } {
+  if (vectorId.startsWith("marmot-radicle/")) {
+    const id = vectorId.slice("marmot-radicle/".length);
+    if (/kind445-exact|media-exact/.test(id)) {
+      return { document: "comms", anchor: "comms-marmot-exact-bytes" };
+    }
+    if (/media-locators/.test(id)) {
+      return { document: "comms", anchor: "comms-marmot-media" };
+    }
+    if (/standard-marmot|private-group/.test(id)) {
+      return { document: "comms", anchor: "comms-marmot-groups" };
+    }
+    if (/directory|invites-individually/.test(id)) {
+      return { document: "comms", anchor: "comms-marmot-directory" };
+    }
+    if (/routing-binding|routing-genesis|concurrent-routing|canonical-h|removal-before/.test(id)) {
+      return { document: "comms", anchor: "comms-marmot-routing-generation" };
+    }
+    if (/writer-ref|unauthorized-ref|logical-size/.test(id)) {
+      return { document: "comms", anchor: "comms-marmot-event-repository" };
+    }
+    if (/relay-routes/.test(id)) {
+      return { document: "comms", anchor: "comms-marmot-relay" };
+    }
+    if (/durable-ack|ack-before|failover|redundant/.test(id)) {
+      return { document: "comms", anchor: "comms-marmot-rotation" };
+    }
+    if (/retained-routing|expiration-is/.test(id)) {
+      return { document: "comms", anchor: "comms-marmot-retention" };
+    }
+    if (/persona-inbox|private-inbox|keypackage|public-inbox/.test(id)) {
+      return { document: "comms", anchor: "comms-marmot-persona-inbox" };
+    }
+    if (/agent-group/.test(id)) {
+      return { document: "comms", anchor: "comms-agent-authorship" };
+    }
+    return { document: "comms", anchor: "comms-marmot-participation" };
+  }
   if (vectorId === "dm/atomic-receive-before-plaintext") {
     return { document: "comms", anchor: "comms-dm-retention" };
   }

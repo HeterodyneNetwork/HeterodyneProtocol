@@ -2,10 +2,10 @@
 
 Generated from [manifest.json](manifest.json); do not edit by hand.
 
-- core: 141
-- comms: 183
+- core: 139
+- comms: 212
 - control: 72
-- social: 93
+- social: 53
 
 | Vector | Owner | Version | Dependencies | Registry | Profile | Spec references |
 |---|---|---|---|---:|---|---|
@@ -80,9 +80,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `breadcrumbs/ordinary-consumer-no-profile-inference` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-kel-rotation` |
 | `breadcrumbs/repointed-nip05-rejected` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-kel-rotation` |
 | `breadcrumbs/unrelated-successor-rejected` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-kel-rotation` |
-| `bridge/idempotent-republication` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-headless-bridge` |
-| `bridge/matrix-permanent-failure-index-updated` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-headless-bridge` |
-| `bridge/nostr-permanent-failure-index-not-updated` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-headless-bridge` |
 | `claim-ledger/authority-reduction-wins` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-claim-ledger` |
 | `claim-ledger/checkpoint-rollback-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-claim-ledger` |
 | `claim-ledger/delivered-grant-provisional` | comms | `comms/0.5.0` | core=core/0.5.0 | 2 | — | `heterodyne:comms/0.5.0#comms-claim-ledger` |
@@ -125,10 +122,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `config-backup/key-id-derivation` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-config-repository` |
 | `config-backup/key-rotation-ref-delta` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-config-repository` |
 | `config-backup/nip49-nsec-wrap` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-keys-repository` |
-| `config_room/device-inventory-not-synced` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-config-room` |
-| `config_room/key-backup-wrapping-algorithms` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-config-room` |
-| `config_room/minimal-config-room` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-config-room` |
-| `config_room/private-mutes` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-config-room` |
 | `control/agent-feed-authorization-rejected` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-claim-consumption` |
 | `control/agent-generation-reset` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-agent-token` |
 | `control/agent-missing-scope-rejected` | control | `control/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 3 | — | `heterodyne:control/0.5.0#control-agent-requirements` |
@@ -222,23 +215,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `dm/invite-unbound-device-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | `heterodyne-comms-double-ratchet-invite-v1` | `heterodyne:comms/0.5.0#comms-dm-wire` |
 | `dm/kind1060-outer-message-shape` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | `heterodyne-comms-double-ratchet-message-v1` | `heterodyne:comms/0.5.0#comms-dm-wire` |
 | `dm/repo-relay-refuses-kind1060` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | `heterodyne-comms-double-ratchet-message-v1` | `heterodyne:comms/0.5.0#comms-dm-wire` |
-| `encryption/delegation-revocation-rotation` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-encryption` |
-| `encryption/encryption-version-event` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-encryption` |
-| `encryption/mls-migration-eligibility-check` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-encryption` |
-| `encryption/mls-migration-intent-and-ack` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-encryption` |
-| `encryption/mls-migration-missing-ack-aborts` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-encryption` |
-| `encryption/mls-migration-non-mls-receiver-fallback` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-encryption` |
-| `encryption/mls-migration-offline-reconnect-reencrypt` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-encryption` |
-| `encryption/mls-migration-receiver-verifiable-flip` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-encryption` |
-| `encryption/mls-migration-tail-period-acceptance` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-encryption` |
-| `envelope/bare-dm-signature-badge` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-envelopes` |
-| `envelope/compromise-cutoff-overrides-attribution` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-envelopes` |
-| `envelope/cross-kind-wrapping` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-envelopes` |
-| `envelope/fallback-rendering` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-envelopes` |
-| `envelope/minimal-kind1-wrapped` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-envelopes` |
-| `homeserver-exit/dual-publish-during-exit` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-homeserver-exit` |
-| `homeserver-exit/identity-room-migration` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-homeserver-exit` |
-| `homeserver-exit/migration-pointer-precedence` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-homeserver-exit` |
 | `identity-doc/add-before-remove` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-identity-discovery` |
 | `identity-doc/emergency-reanchor` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-identity-discovery` |
 | `identity-doc/emergency-reanchor-v050` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-identity-discovery` |
@@ -247,17 +223,14 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `identity/delegation-expired` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `identity/delegation-revoked` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `identity/identity-room-full-state` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-identity-room` |
-| `identity/kind31005-race-tiebreaker-core` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `identity/revocation-post-window` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `identity/root-attestation-valid` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-root-attestation` |
 | `identity/root-attestation-valid-v050` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-root-attestation` |
 | `index/complete-fetch-attempt` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-feed-index` |
 | `index/missing-predecessor-structured-outcome` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-feed-index` |
 | `index/prev-page-hash` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-feed-index` |
-| `interop/bare-hide-pref` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-vanilla-matrix` |
 | `interop/kind31005-identity-pointer` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-identity-pointer` |
 | `interop/vanilla-nostr-only-follow` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-following` |
-| `interop/wrapped-vanilla-roundtrip` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-vanilla-matrix` |
 | `keri-authority/accelerator-backdated-compromise` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-kel-verification` |
 | `keri-authority/accelerator-decision-equivalent` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-kel-verification` |
 | `keri-authority/delegation-conflict-repo-wins` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-kel-verification` |
@@ -309,6 +282,36 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `lists/policy-list-adoption-parsed` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-lists` |
 | `lists/private-items-reencrypt-on-rotation` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | `heterodyne-social-mute-list-v1` | `heterodyne:social/0.5.0#social-mute-profile` |
 | `lists/stale-list-rollback-rejected` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | `heterodyne-social-mute-list-v1` | `heterodyne:social/0.5.0#social-mute-profile` |
+| `marmot-radicle/agent-group-attribution` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-agent-authorship` |
+| `marmot-radicle/agent-group-scope-denied` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-agent-authorship` |
+| `marmot-radicle/canonical-h-equivocation` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-routing-generation` |
+| `marmot-radicle/concurrent-routing-marmot-wins` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-routing-generation` |
+| `marmot-radicle/direct-member-history-boundary` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-participation` |
+| `marmot-radicle/directory-sensitive-fields-encrypted` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-directory` |
+| `marmot-radicle/expiration-is-not-erasure` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-retention` |
+| `marmot-radicle/failover-delivery` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-rotation` |
+| `marmot-radicle/invites-individually-sealed` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-directory` |
+| `marmot-radicle/keypackage-replay-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-persona-inbox` |
+| `marmot-radicle/kind445-exact-bytes` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-exact-bytes` |
+| `marmot-radicle/logical-size-cap-control-open` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-event-repository` |
+| `marmot-radicle/media-exact-bytes` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-exact-bytes` |
+| `marmot-radicle/node-mediated-secret-confinement` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-participation` |
+| `marmot-radicle/persona-inbox-atomic-bootstrap` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-persona-inbox` |
+| `marmot-radicle/private-group-radicle-required` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-groups` |
+| `marmot-radicle/private-inbox-nid-required` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-persona-inbox` |
+| `marmot-radicle/public-inbox-lazy-media` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-persona-inbox` |
+| `marmot-radicle/radicle-durable-ack` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-rotation` |
+| `marmot-radicle/redundant-delivery-dedup` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-rotation` |
+| `marmot-radicle/relay-ack-before-durable-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-rotation` |
+| `marmot-radicle/relay-routes-by-h-only` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-relay` |
+| `marmot-radicle/removal-before-routing-rotation` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-routing-generation` |
+| `marmot-radicle/repeated-media-locators` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-media` |
+| `marmot-radicle/retained-routing-overlap` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-retention` |
+| `marmot-radicle/routing-binding-valid` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-routing-generation` |
+| `marmot-radicle/routing-genesis-mismatch` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-routing-generation` |
+| `marmot-radicle/standard-marmot-interop` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-groups` |
+| `marmot-radicle/unauthorized-ref-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-event-repository` |
+| `marmot-radicle/writer-ref-union-dedup` | comms | `comms/0.5.0` | core=core/0.5.0 | 4 | — | `heterodyne:comms/0.5.0#comms-marmot-event-repository` |
 | `moderation/approvals-required-absent-default-one` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-moderation` |
 | `moderation/contributor-implicit-rejection-window` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-moderation` |
 | `moderation/kind34550-approvals-required` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-moderation` |
@@ -324,12 +327,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `moderation/strict-mode-invalid-event-signature` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-moderation` |
 | `moderation/strict-mode-kind5-deletion-30s` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-moderation` |
 | `moderation/strict-mode-state-downgrade-warning` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-moderation` |
-| `multi-homing/active-room-election` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-active-room-election` |
-| `multi-homing/config-invite-initiation` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-active-room-election` |
-| `multi-homing/kind31005-race-tiebreaker` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-active-room-election` |
-| `multi-homing/partition-window-void-requeue` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-active-room-election` |
-| `multi-homing/publish-lease-acquire-renew` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-active-room-election` |
-| `multi-homing/single-mxid-revocation` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-active-room-election` |
 | `nid-binding/bidirectional-valid` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `nid-binding/bidirectional-valid-v050` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `nid-binding/invalid-nid-proof-rejected` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
@@ -364,7 +361,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `outbox/transitive-discovery-walk` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-retrieval` |
 | `privacy-tiers/audience-key-rotation-on-removal` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
 | `privacy-tiers/complete-fetch-attempt` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
-| `privacy-tiers/non-circular-bootstrap` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
 | `privacy-tiers/tier1-public-plaintext-both-backends` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
 | `privacy-tiers/tier1-public-plaintext-both-backends-v050` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
 | `privacy-tiers/tier2-private-repo-not-encrypted` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
@@ -412,11 +408,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `public-reader/tier3-refused` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-public-resolution` |
 | `public-reader/transition-without-reload` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-public-transition` |
 | `public-reader/unknown-version-no-network` | comms | `comms/0.5.0` | core=core/0.5.0 | 3 | — | `heterodyne:comms/0.5.0#comms-public-resolution` |
-| `redundancy/dedupe-across-replicas` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-mirroring` |
-| `redundancy/mirror-group-primary-replicas` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-mirroring` |
-| `redundancy/private-body-relay-borne` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-mirroring` |
-| `redundancy/promotion-republishes-pointer` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-mirroring` |
-| `redundancy/rekey-remove-not-join` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-matrix-mirroring` |
 | `registry/downref-nonfrozen-rejected` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-registry` |
 | `registry/frozen-entry-immutable` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-registry` |
 | `relay-interop/auth-rejection-permanent` | comms | `comms/0.5.0` | core=core/0.5.0 | 1 | — | `heterodyne:comms/0.5.0#comms-publishing` |
@@ -437,9 +428,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `role-capabilities/role-address-invalid` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-role-delegation` |
 | `role-capabilities/role-address-valid` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-role-delegation` |
 | `role-capabilities/strict-missing-tor-rejected` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-node-roles` |
-| `room-kind/current-kinds-roundtrip` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-discussion-rooms` |
-| `room-kind/legacy-read-back-map` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-discussion-rooms` |
-| `room-kind/retired-kind-rejected` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-discussion-rooms` |
 | `routing-node/expired-advert-discarded` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-node-roles` |
 | `routing-node/repo-location-from-ads-only` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-node-roles` |
 | `routing-node/unverifiable-advert-discarded` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-node-roles` |
@@ -450,7 +438,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `session-device/repository-final-gate-closed` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `session-device/reserved-shape-valid-but-gated` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `session-device/revoked-no-authority` | core | `core/0.5.0` | — | 3 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
-| `social-recovery/cache-rejects-unauthorized-content` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-recovery` |
 | `social-recovery/cache-sourced-marked-stale` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-recovery` |
 | `social-recovery/cold-root-reanchor-authoritative` | core | `core/0.5.0` | — | 1 | — | `heterodyne:core/0.5.0#core-recovery` |
 | `social-recovery/retention-30-days` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 1 | — | `heterodyne:social/0.5.0#social-recovery-binding` |

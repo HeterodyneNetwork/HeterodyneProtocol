@@ -10,14 +10,15 @@ This document analyzes the four independently versioned documents:
 - [Heterodyne Core](../spec/heterodyne-core.md) — identity, verification,
   registry, node roles, and repository substrate;
 - [Heterodyne Comms](../spec/heterodyne-comms.md) — publishing, privacy tiers,
-  retrieval, direct messages, atomic claims, private-ledger authority, OIDC/JWT
-  projection, and encrypted subprotocol carriage;
+  Marmot conversations and media, Radicle-backed group storage, atomic claims,
+  private-ledger authority, OIDC/JWT projection, and encrypted subprotocol
+  carriage;
 - [Heterodyne Control](../spec/heterodyne-control.md) — the currently inactive
   own-device command profile over Comms; and
-- [Heterodyne Social](../spec/heterodyne-social.md) — social behavior,
-  moderation, and the optional Matrix feature.
+- [Heterodyne Social](../spec/heterodyne-social.md) — public social behavior,
+  durable assets, and moderation.
 
-The owner sections below reproduce registry revision 3 and security boundaries
+The owner sections below reproduce registry revision 4 and security boundaries
 without creating or relaxing requirements. The family's only normative
 dependency edges are:
 
@@ -35,18 +36,18 @@ The family assumes that endpoint secrets and the selected cryptographic
 primitives remain secure. A compromised endpoint can act with every key it
 holds until the applicable rotation or revocation becomes effective. Network
 services are not assumed honest: relays, repositories, routing nodes, full
-nodes, and Matrix homeservers may observe metadata, omit, delay, reorder, or
-replay traffic.
+nodes, and group hosts may observe metadata, omit, delay, reorder, or replay
+traffic.
 
 Authentication always precedes policy. Routing advertisements, repository
-location, social relationships, moderation labels, and Matrix state never
+location, social relationships, moderation labels, and repository state never
 substitute for local signature, KEL, delegation, or schema verification.
 Availability from multiple carriers reduces withholding risk but does not make
 any carrier authoritative for persona identity.
 
 ## 2. Registry-bound invariants
 
-The descriptions below reproduce registry revision 3 exactly.
+The descriptions below reproduce registry revision 4 exactly.
 Registry-bound rows cite an invariant where that invariant directly governs
 the mitigation. Metadata residuals, operational consequences, out-of-scope
 limitations, and open work may instead be cross-cutting and are not assigned a
@@ -59,6 +60,7 @@ false invariant merely for uniformity.
 - **CORE-I-VERIFY-BEFORE-USE:** Every signed object is locally signature-verified and, where applicable, delegation-checked before rendering, storage, or authorization.
 - **CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY:** Core discovery does not depend on a centralized persona, npub, RID, or serving-node directory.
 - **CORE-I-KEY-MATERIAL-AT-REST:** Persona nsec, NID secrets, and sensitive cached identity material are protected by the Core keys-repository profile, including NIP-49 wrapping where applicable.
+- **CORE-I-MARMOT-ROLE-ATTRIBUTION:** KERI role evidence attributes Marmot accounts and Radicle hosts without selecting MLS state or altering Marmot convergence.
 
 ### 2.2 Comms
 
@@ -82,6 +84,11 @@ false invariant merely for uniformity.
 - **COMMS-I-AGENT-ROLE-BINDING:** Every agent-authored event signer, workload registration, token role claim, and active role-addressed delegation identify the same dedicated full-node-held role key.
 - **COMMS-I-AGENT-ATTRIBUTION:** Every agent-authored application event carries the canonical automation attribution block at its tier-appropriate protected location.
 - **COMMS-I-WORKLOAD-TOKEN-CONFINEMENT:** Workload tokens, token identifiers, private source claims, and sender proofs remain confined to the protected authorization and audit boundary.
+- **COMMS-I-MARMOT-UPSTREAM-AUTHORITY:** The pinned Marmot dependency remains authoritative for MLS, conversation events, encrypted media, and Nostr transport semantics.
+- **COMMS-I-MARMOT-EXACT-BYTES:** Radicle storage and every Nostr or media interface preserve exact signed Marmot event bytes and encrypted media ciphertext.
+- **COMMS-I-MARMOT-SECRET-CONFINEMENT:** Independent device leaves do not share secrets by default, and node-mediated clients receive no MLS, account, leaf, or repository secret.
+- **COMMS-I-RADICLE-ROUTING-AUTHORITY:** Only a canonical Marmot routing commit by an active administrator can authorize a matching Radicle routing binding and repository genesis.
+- **COMMS-I-RADICLE-NON-ERASURE:** Retention expiry stops conforming advertisement and replication but never claims erasure of independent Git objects, clones, exports, or backups.
 
 ### 2.3 Control
 
@@ -91,25 +98,19 @@ false invariant merely for uniformity.
 - **CONTROL-I-AGENT-NO-KEY-RELEASE:** An automated principal never receives or directly exercises a persona, epoch, NID, human-device, or agent-role private key.
 - **CONTROL-I-AGENT-INTENT-ONLY:** An automated principal publishes only through the intent-level agent method, and raw signing, human-profile fallback, and attribution bypass fail closed.
 - **CONTROL-I-AGENT-AUTHORIZATION-FRESHNESS:** Every automated side effect requires a current scoped token, sender proof, canonical authorization state, and finite kind, resource, size, rate, and burst limits.
+- **CONTROL-I-MARMOT-GRANT-CONFINEMENT:** Node-mediated Marmot operations expose only grant-filtered content and actions while all account, MLS leaf, epoch, and repository secrets remain on the designated node.
 
 Control 0.5.0 is incomplete. These identifiers reserve its boundary but do not
 make Control or `heterodyne-control-strict-v1` claimable. In particular,
 CONTROL-I-AUDIT-AT-REST depends only on Core, Comms, and Control protections;
-Social and Matrix are outside that dependency.
+Social is outside that dependency.
 
 ### 2.4 Social
 
-- **SOCIAL-I-MATRIX-E2EE:** Private Matrix discussion and configuration content, including protected state, remains end-to-end encrypted and downgrade-resistant from the homeserver.
-- **SOCIAL-I-MXID-DELEGATION-DUAL-PROOF:** A Matrix MXID delegation requires both the persona epoch-key signature and successful MXID self-publication through Matrix state authorization.
 - **SOCIAL-I-PRIVATE-STATE-AT-REST:** Private mute, feed-preference, followed-repository, and other Social state are encrypted at rest using the owning Social or bound Comms profile.
-- **SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE:** Matrix and cross-protocol Social bridging runs on user-controlled clients; no homeserver or relay bridge receives protected plaintext.
 - **SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH:** Following, transitive discovery, and social-graph evaluation do not depend on a centralized follow-graph oracle.
 - **SOCIAL-I-AGENT-POLICY-LOCAL:** Agent-policy receipts inform publicly, but only an explicitly subscribed and verified current policy list changes a client's local visibility.
 - **SOCIAL-I-AGENT-REMEDIATION-SCOPED:** Agent-policy enforcement and remediation target only the offending role device key; replacement at the same role address never requires epoch-key rotation.
-
-The three Matrix-specific invariants apply only to the optional Matrix feature.
-A Matrix-free Social implementation still applies the private-state and
-social-graph invariants.
 
 ## 3. Assets and trust boundaries
 
@@ -121,7 +122,10 @@ social-graph invariants.
 | Tier 1 content | Public by design | COMMS-I-CLIENT-SIDE-DELIVERY |
 | Tier 2 content | Plaintext on every allowed seeder | COMMS-I-TIER2-HONESTY |
 | Tier 3 content and audience keys | Ciphertext outside key-holding endpoints | COMMS-I-TIER3-BLIND-CARRIER, COMMS-I-CONFIG-AT-REST |
-| Double-ratchet state | Accepted participant devices only | COMMS-I-CLIENT-SIDE-DELIVERY |
+| Double-ratchet state | Bootstrap and Control peers only | COMMS-I-CLIENT-SIDE-DELIVERY |
+| Marmot account and MLS leaf secrets | Authorized full/recovery nodes and direct-member devices | CORE-I-MARMOT-ROLE-ATTRIBUTION, COMMS-I-MARMOT-SECRET-CONFINEMENT |
+| Marmot events and encrypted media | Exact bytes across authorized Radicle and Nostr interfaces | COMMS-I-MARMOT-UPSTREAM-AUTHORITY, COMMS-I-MARMOT-EXACT-BYTES |
+| Group directory and routing bindings | Active administrators authorize; hosts replicate | COMMS-I-RADICLE-ROUTING-AUTHORITY |
 | Atomic key claims and native proofs | Locally verified signed objects; trust follows cryptographic validity | COMMS-I-CLAIM-AUTHENTICITY, COMMS-I-CLAIM-ATTENUATION |
 | Private claim ledger and audience key | Active durable NID-bearing readers only | COMMS-I-CLAIM-REPOSITORY-AUTHORITY, COMMS-I-CLAIM-REVOCATION, COMMS-I-LEDGER-CONFINEMENT |
 | OIDC signing keys and mint authority | Separately authorized, fresh synchronized issuer nodes | COMMS-I-ISSUER-KEY-CONFINEMENT, COMMS-I-MINT-FRESHNESS |
@@ -131,16 +135,17 @@ social-graph invariants.
 | Agent role key | Full-node key store; never released to the automated principal | COMMS-I-AGENT-ROLE-BINDING, CONTROL-I-AGENT-NO-KEY-RELEASE |
 | Workload token, sender proof, and agent audit | Protected authorization/audit boundary; never public event content | COMMS-I-WORKLOAD-TOKEN-CONFINEMENT, CONTROL-I-AUDIT-AT-REST |
 | Control audit and session authority | User-controlled Control endpoint | CONTROL-I-AUDIT-AT-REST, CONTROL-I-SESSION-KEY-CONFINEMENT |
+| Node-mediated group access | Grant-filtered results; all group secrets remain on the designated node | CONTROL-I-MARMOT-GRANT-CONFINEMENT |
 | Social private configuration | Protected local/config storage | SOCIAL-I-PRIVATE-STATE-AT-REST |
 | Agent-policy receipts and subscribed lists | Public signed evidence; subscriber-local effect from verified canonical history | SOCIAL-I-AGENT-POLICY-LOCAL, SOCIAL-I-AGENT-REMEDIATION-SCOPED |
-| Private Matrix content and state | Matrix participant endpoints | SOCIAL-I-MATRIX-E2EE, SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE |
 
 Tier 3 broadcast has no forward secrecy: compromise of an audience key exposes
 retained ciphertext for that `key_id`; rotation protects later generations.
-Double Ratchet provides forward secrecy and post-compromise security when
-message keys are promptly deleted. NIP-17 fallback has neither property.
-Megolm/MLS guarantees are scoped to Matrix sessions. A client must not present
-one mechanism's guarantee as another's.
+Marmot MLS provides its pinned upstream group confidentiality and
+post-compromise properties. Double Ratchet provides forward secrecy and
+post-compromise security for bootstrap and Control when message keys are
+promptly deleted. A client must not present one mechanism's guarantee as
+another's.
 
 ## 4. Actors
 
@@ -150,9 +155,9 @@ one mechanism's guarantee as another's.
 | Hostile full node or seeder | Reads Tier 1 and allowed Tier 2 plaintext, observes repository metadata, and may withhold or replay. It cannot forge accepted signed objects and receives no Tier 3 plaintext. |
 | Hostile routing node | Observes location queries and can return false or stale hints. It holds no content and cannot replace signed pointers or local verification. |
 | Hostile Nostr relay | Correlates public keys, timing, and traffic and may drop, delay, reorder, or replay events. It cannot forge valid signatures. |
+| Hostile group host or Radicle delegate | Observes repository metadata and may withhold refs or advertise stale endpoints. It cannot select Marmot state, forge an administrator routing commit, or substitute a mismatched repository genesis. |
+| Hostile integrated Marmot relay | Observes connection metadata and kind-445 envelopes, may reject or delay writes, and can publish only to its designated relay ref. It does not learn the MLS sender from the fresh envelope key. |
 | Passive network observer | Observes endpoints, timing, and volume outside encrypted transports. Optional Tor egress hides direct destinations but leaves timing and volume leakage. |
-| Hostile Matrix homeserver | Applies only to Social+Matrix. It sees room and federation metadata and may manipulate delivery or visible state, but must not receive private plaintext. |
-| Federation peer | A non-hosting Matrix server participating in a Social+Matrix room sees unencrypted public state, `m.room.member` events, opaque Megolm/MLS ciphertext, sender MXIDs, `origin_server_ts`, and the federation join graph. The membership graph is exposed to every participating server. A persona concerned about that exposure should host identity/config rooms on a homeserver whose federation peer set it trusts; residual metadata still includes sender and timing information. |
 | Compromised durable device | Uses its NID, epoch, audience, or ratchet authority until effective revocation; compromise windows and key rotation bound later trust. |
 | Compromised ledger reader | Reads ledger state and ciphertext already available to it; removal, access withdrawal, and audience-key rotation protect later generations but cannot erase old Git objects. |
 | Compromised token issuer | Can mint while it holds both the separately wrapped signing key and active issuer authority; immediate reduction and the at-most-300-second checkpoint-age bound limit continued minting. |
@@ -160,8 +165,6 @@ one mechanism's guarantee as another's.
 | Public browser reader | Runs downloaded client code without authentication, resolves a fragment-local target, and may lack outbound Tor. It can consume verified Tier 1 only and must show reduced assurance when using clearnet/shared relays. |
 | Automated principal | Supplies publication intent and sender proof under a scoped temporary token. It receives no persona, device, NID, or agent-role private key and cannot select a human profile or suppress attribution. |
 | Control session device | Has only negotiated, granted Control authority. It is never a credential-plane device and receives none of the secrets prohibited by CONTROL-I-SESSION-KEY-CONFINEMENT. |
-| Colluding delegated MXID | Applies only to Social+Matrix. It can read rooms it legitimately joined, race coordination state, and exploit a partition window, but cannot forge the persona's epoch-key proof. |
-| Old or mirror homeserver | Applies only to Social+Matrix. It may retain stale room state, equivocate, or continue writing during a migration overlap; signed migration and delegation state wins over server location. |
 | Compromised cold root | Catastrophic persona authority. Changed-RID re-anchor cannot repair it because the same root authorizes re-anchor; absent a standardized precommitted recovery policy, migrate to a new persona/root. |
 
 ## 5. Threats and mitigations by owner
@@ -211,6 +214,13 @@ one mechanism's guarantee as another's.
 | Stolen, replayed, stale, or overbroad workload token | Enforce exact issuer, audience, client, role, sender proof, time, status, canonical source authority, and finite kind/resource/size/rate/burst bounds for every operation (COMMS-I-AGENT-ROLE-BINDING, COMMS-I-WORKLOAD-TOKEN-CONFINEMENT). |
 | Agent token or private claim leaks into public evidence | Keep raw tokens, `jti` mappings, sender proofs, private claims, and protected audit records inside the authorization/audit boundary; public events carry only the canonical attribution identity (COMMS-I-WORKLOAD-TOKEN-CONFINEMENT). |
 | Agent role key compromise contaminates human authority | Give each automation role a dedicated full-node-held key and stable role address; replace only that key, leaving persona epoch and human-device keys untouched (COMMS-I-AGENT-ROLE-BINDING). |
+| Heterodyne adapter changes Marmot semantics | Validate against the pinned upstream Marmot commit and treat its MLS, application-event, media, and transport rules as authoritative (COMMS-I-MARMOT-UPSTREAM-AUTHORITY). |
+| Repository or relay rewrites a Marmot event or media object | Index and serve the exact signed kind-445 bytes and exact encrypted-media ciphertext; never re-sign, wrap, or translate the object (COMMS-I-MARMOT-EXACT-BYTES). |
+| Shared leaf or node-mediated secret export enables impersonation | Use independent leaves by default, permit only exclusive leaf takeover, and keep all account, leaf, epoch, and repository secrets on the designated node for mediated clients (COMMS-I-MARMOT-SECRET-CONFINEMENT). |
+| Radicle delegate substitutes group state or repository | Require an active Marmot administrator's canonical routing commit, matching `h`, binding, RID, and genesis manifest; delegates replicate but do not authorize (COMMS-I-RADICLE-ROUTING-AUTHORITY). |
+| Removed member receives future private repository data | Remove its NID from future replication, rotate membership and routing in the required two-stage sequence, and encrypt new directory records to remaining members (COMMS-I-RADICLE-ROUTING-AUTHORITY). |
+| Retention UI promises erasure | Stop advertising and serving expired archives and garbage-collect locally where possible, while explicitly disclosing that clones, Git objects, exports, and backups can survive (COMMS-I-RADICLE-NON-ERASURE). |
+| Public persona inbox causes unbounded fetch or media download | Fetch a bounded manifest into quarantine, reject replayed KeyPackages and invalid artifacts, and require policy or user action before media retrieval. |
 | Claim forgery or semantic malleation | Recompute the RFC 8785/JCS `claim_id`, verify the exact event, issuer authority, typed key and native proof, and reject address reuse unless the semantic object is byte-identical. A `kind:31014` reduction additionally requires `comms/0.5.0`, registry revision 2, the exact single `[["d","<claim_id>"]]` tag, and a native proof that binds the owning Comms profile and registry revision. See `heterodyne:comms/0.5.0#comms-key-claims`, `claims/004-claim-id-mismatch`, and `claims/015-authorization-self-revocation`; COMMS-I-CLAIM-AUTHENTICITY. |
 | Compromised or stale claim issuer | Evaluate the issuer's Core/KEL authority at the claim's `issued_at`, apply compromise and revocation state, and keep a cryptographically valid but untrusted third-party issuer non-authorizing; compromised OIDC signing keys invalidate affected tokens and status. See `heterodyne:comms/0.5.0#comms-claim-verification`, `claims/007-third-party-issuer-untrusted`, and `token-status/009-signing-key-compromise`; COMMS-I-CLAIM-AUTHENTICITY and COMMS-I-STATUS-INTEGRITY. |
 | Delegation-chain amplification | Require explicit issuance authority, strict narrowing of every scope dimension, cycle detection, and no more than eight issuance edges. See `heterodyne:comms/0.5.0#comms-claim-chain` and `claims/010-chain-depth-exceeded`; COMMS-I-CLAIM-ATTENUATION. |
@@ -239,6 +249,7 @@ one mechanism's guarantee as another's.
 | Cross-relay retry executes twice or leaks a response | Reserve one request digest restart-safely, join identical retries to that result, reject changed method/payload, and publish the response first and only to the authenticated ingress relay (CONTROL-I-INGRESS-RELAY-AFFINITY). |
 | Automated caller requests a private key, raw signature, human profile, or attribution bypass | Expose only bounded token and intent-level publish methods; refuse every key-access and bypass shape without fallback (CONTROL-I-AGENT-NO-KEY-RELEASE, CONTROL-I-AGENT-INTENT-ONLY). |
 | Automated side effect outlives or exceeds its grant | Revalidate the scoped token, sender proof, canonical authority, and finite kind/resource/size/rate/burst bounds for each operation (CONTROL-I-AGENT-AUTHORIZATION-FRESHNESS). |
+| Node-mediated client escapes its group grant or obtains secrets | Filter every method, object, history range, and result by current authority and retain all Marmot and repository secrets on the designated node (CONTROL-I-MARMOT-GRANT-CONFINEMENT). |
 | Experimental implementation claims conformance | Keep baseline and strict Control claims inactive until the remaining enrollment/session blockers and vector gate are complete. |
 
 ### 5.4 Social threats
@@ -249,11 +260,6 @@ one mechanism's guarantee as another's.
 | ATProto DNS validation is bypassed by rebinding or connection substitution | Resolve explicitly, reject any non-public answer, dial one validated address directly, preserve the original hostname for TLS and HTTP authority, inspect the connected peer, and repeat manually for each redirect. If the runtime cannot bind and inspect, expose the feature as unavailable and do not claim resolver conformance. |
 | Breadcrumb-like prose silently rewrites a follow target | Show it only as reduced-assurance external content and require an explicit user action to follow, refollow, or switch. Never project KEL continuity or automatically follow a claimed successor (SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH, CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
 | Private mute/feed/followed-repository state leaks | Store it under the owning Social or bound Comms protection profile (SOCIAL-I-PRIVATE-STATE-AT-REST). |
-| Hostile homeserver reads or downgrades private state | Encrypt private content and protected state and surface downgrade failures (SOCIAL-I-MATRIX-E2EE). |
-| Forged MXID delegation | Require both the epoch-key signature and authorized Matrix self-publication (SOCIAL-I-MXID-DELEGATION-DUAL-PROOF). |
-| Homeserver forks or replays identity-room state | Revalidate embedded Core authority, Matrix authorization, and current delegation instead of trusting room history alone (SOCIAL-I-MXID-DELEGATION-DUAL-PROOF, CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
-| Old or mirror homeserver races migration state | Apply signed migration precedence and lease/partition rules; a server location never becomes persona authority (SOCIAL-I-MXID-DELEGATION-DUAL-PROOF, SOCIAL-I-MATRIX-E2EE). |
-| Server-side bridge sees protected plaintext | Run Matrix and cross-protocol bridging only on user-controlled clients (SOCIAL-I-CLIENT-SIDE-MATRIX-BRIDGE). |
 | Relay serves a stale mute, moderator, or policy list | Compare replaceable-event authority and timestamps, use anchored history where required, and retain encrypted local state (SOCIAL-I-PRIVATE-STATE-AT-REST, SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH, CORE-I-VERIFY-BEFORE-USE). |
 | Listed-then-removed moderator backdates an approval | A relay-only anchor relies on author-controlled `created_at`, so a listed-then-removed moderator can attempt backdating and the residual cannot be eliminated there. A repository anchor binds the approval to an introducing commit and resolves the moderator declaration from canonical ancestor history; communities needing strong as-of integrity should use that repo anchor. |
 | Advisory label becomes authority | Treat NIP-32 labels and web-of-trust scoring as local policy, never identity or editorial authority. |
@@ -271,11 +277,10 @@ seeders also see the membership allow list. Tier 3 provides content
 confidentiality, not membership privacy: recipient tags, roster events,
 `key_id` linkage, timing, count, size, publication, and fetch cadence remain
 observable. Routing nodes see lookup targets.
-Matrix federation exposes the membership graph, sender MXIDs, timestamps, and
-event-graph metadata to relevant servers and their federation peer set. Hosting
-identity/config rooms with a deliberately trusted peer set limits, but cannot
-eliminate, this exposure. Tor reduces direct network-linkability but does not
-prevent global timing analysis.
+Marmot and Radicle group paths still expose timing, object size, ref activity,
+host topology, and fetch behavior to participating carriers. Private event
+repositories reduce public discovery but do not encrypt Git storage. Tor
+reduces direct network-linkability but does not prevent global timing analysis.
 
 A browser in reduced-assurance mode exposes its relay or shared-gateway
 destination to the network and that carrier observes timing, volume, and
@@ -291,7 +296,7 @@ correlation, but role continuity is not an anonymity mechanism. Raw workload
 tokens, token identifiers, sender proofs, source claims, and audit contents
 must not be used as additional public correlation handles.
 
-Within a ratchet epoch, multiple Comms DM messages use the same outer signer
+Within a ratchet epoch, multiple bootstrap or Control messages use the same outer signer
 and are linkable to one another until the next DH ratchet step, even though the
 signer is not the persona epoch key. Lost or corrupted ratchet state makes the
 affected local history unrecoverable: no backfill exists by design, and a fresh
@@ -320,7 +325,8 @@ key-rotation and status-list activity.
 
 Keys repository and backup loss have irreversible consequences. Losing every
 copy of an audience key permanently loses decryptability of retained Tier 3
-history; losing ratchet state permanently loses that device's DM history; and
+history; losing ratchet state permanently loses that peer's bootstrap or
+Control history; and
 losing every cold-root/recovery copy can permanently prevent identity recovery
 or re-anchor. Operationally, clients should maintain periodic encrypted
 removable-media backups covering all produced and followed repositories plus
@@ -364,14 +370,10 @@ Strict profiles are additive and composable:
 - `heterodyne-comms-strict-v2` adds public-reader and automated-authorship
   invariants without changing v1;
 - `heterodyne-control-strict-v1` is reserved-inactive with Control;
-- `heterodyne-social-strict-v1` composes Core, Comms, and Matrix-free Social
-  obligations; and
-- `heterodyne-social-matrix-strict-v1` adds the Matrix-specific Social
-  invariants and exact `Social+Matrix` conformance class;
+- `heterodyne-social-strict-v1` composes Core, Comms, and Social obligations;
+  and
 - `heterodyne-social-strict-v2` adds subscriber-local agent-policy and
-  device-key-scoped remediation invariants; and
-- `heterodyne-social-matrix-strict-v2` composes that v2 Social profile with
-  the Matrix-specific invariant set.
+  device-key-scoped remediation invariants.
 
 A capability advertisement lists only profiles actually met. Unknown profile
 IDs confer no authority or compatibility. Conformance reports reproduce exact
@@ -396,14 +398,14 @@ also remains outside the delivered anonymity guarantee.
 The current cryptographic suites are **not post-quantum**. A quantum adversary
 capable of breaking secp256k1, Ed25519, or the deployed symmetric assumptions
 falls outside this threat model. A migration strategy is pre-1.0/open work and
-must coordinate with Nostr, Radicle, Matrix, KERI, and stored historical
+must coordinate with Nostr, Radicle, Marmot, KERI, and stored historical
 signature semantics rather than claiming present quantum resistance.
 
 Before relevant 1.0 claims, work remains to freeze the Comms double-ratchet
 wire profile, finish the repo-relay server/storage contract, exercise KERI fork
-and recovery behavior across independent implementations, validate Matrix MLS
-migration, complete the remaining Control enrollment/session vector corpus,
-and expand
+and recovery behavior across independent implementations, expand Marmot and
+Radicle interoperability testing, complete the remaining Control
+enrollment/session vector corpus, and expand
 negative vectors for rollback, metadata, and recovery-policy attacks. Each
 item belongs to its named document and must not create a forbidden dependency.
 The repo-relay server/storage contract must also close storage-exhaustion,

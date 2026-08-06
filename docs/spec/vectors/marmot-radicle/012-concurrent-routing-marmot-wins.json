@@ -1,0 +1,31 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 4,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-marmot-routing-generation"
+  ],
+  "vector_id": "marmot-radicle/concurrent-routing-marmot-wins",
+  "description": "Marmot convergence selects the canonical routing commit and the losing prepared repository is abandoned.",
+  "direction": "consume",
+  "input": {
+    "candidates": [
+      "commit-a",
+      "commit-b"
+    ],
+    "marmot_winner": "commit-b"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "active": "commit-b",
+      "abandoned": [
+        "commit-a"
+      ]
+    }
+  }
+}

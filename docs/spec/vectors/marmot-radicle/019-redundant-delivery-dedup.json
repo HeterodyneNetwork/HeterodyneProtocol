@@ -1,0 +1,29 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 4,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-marmot-rotation"
+  ],
+  "vector_id": "marmot-radicle/redundant-delivery-dedup",
+  "description": "Redundant delivery carries one event ID through multiple targets and applies it once.",
+  "direction": "consume",
+  "input": {
+    "event_id": "97c1c5f23bbdc8dfb778eaf0158448acb2f1bf9598c5b879fad90bd75b3af107",
+    "durable_targets": [
+      "radicle",
+      "nostr"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "first_ack_applies": true,
+      "logical_messages": 1
+    }
+  }
+}
