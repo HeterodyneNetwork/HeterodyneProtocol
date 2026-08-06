@@ -1,5 +1,13 @@
 # Heterodyne
 
+**Own your social identity.** No company owns it, nobody's required to host
+it. Any device with an internet connection can share content, whether public
+or private, and nobody can take it away. You can host it yourself publicly or
+anonymously. **You can't stop the signal!**
+
+**Repository mirrors:** [GitHub](https://github.com/HeterodyneNetwork/HeterodyneProtocol)
+· [Radicle](https://radicle.network/nodes/iris.radicle.network/rad:z2zX5XvPiggGJvCn8DPkp1hRNGA5)
+
 Heterodyne is a decentralized protocol family for portable personas,
 authenticated communication, own-device control, and social interaction. It
 uses Nostr signed events, Radicle-backed durable storage, and Marmot for
