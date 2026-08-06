@@ -1,0 +1,28 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 4,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-agent-authorship"
+  ],
+  "vector_id": "marmot-radicle/agent-group-attribution",
+  "description": "An agent group message binds token group scope, Marmot sender account, KERI role, and protected automation attribution.",
+  "direction": "consume",
+  "input": {
+    "group_scope_matches": true,
+    "mls_sender_matches_role": true,
+    "keri_role_current": true,
+    "automation_attribution_present": true
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "automated": true,
+      "node_mediated": true
+    }
+  }
+}

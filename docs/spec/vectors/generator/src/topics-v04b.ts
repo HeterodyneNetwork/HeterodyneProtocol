@@ -691,7 +691,7 @@ export async function buildV04bVectors(fixtures: Fixtures): Promise<AuthoredVect
     consumeVector("moderation/011-relay-only-created-at-fallback.json", {
       vector_id: "moderation/relay-only-created-at-fallback",
       spec_refs: ["§8.1", "§8.2.1", "§14.3"],
-      description: "For a community with neither a repo nor a Matrix room, the as-of point falls back to the newest kind:34550 revision whose created_at is <= the approval's created_at, carrying reduced assurance.",
+      description: "For a community without a repository anchor, the as-of point falls back to the newest kind:34550 revision whose created_at is <= the approval's created_at, carrying reduced assurance.",
       input: {
         hosting: "relay_only",
         approval: { approval_event_id: "e5".repeat(32), moderator_cold_root: bob.cold_root.pubkey, created_at: T + 500 },
@@ -710,7 +710,7 @@ export async function buildV04bVectors(fixtures: Fixtures): Promise<AuthoredVect
         },
       },
       simulated_clock: T + 900,
-      notes: "REDUCED ASSURANCE: created_at is author-forgeable, so a listed-then-removed moderator could backdate an approval to fall under an older revision that still lists them. Communities SHOULD host in a repo (or Matrix room) when moderation-history integrity matters (§8.1).",
+      notes: "REDUCED ASSURANCE: created_at is author-forgeable, so a listed-then-removed moderator could backdate an approval to fall under an older revision that still lists them. Communities SHOULD host in a repository when moderation-history integrity matters (§8.1).",
     }),
   );
 

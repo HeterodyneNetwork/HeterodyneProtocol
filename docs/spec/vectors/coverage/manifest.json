@@ -875,45 +875,6 @@
     ]
   },
   {
-    "vector_id": "bridge/idempotent-republication",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-headless-bridge"
-    ]
-  },
-  {
-    "vector_id": "bridge/matrix-permanent-failure-index-updated",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-headless-bridge"
-    ]
-  },
-  {
-    "vector_id": "bridge/nostr-permanent-failure-index-not-updated",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-headless-bridge"
-    ]
-  },
-  {
     "vector_id": "claim-ledger/authority-reduction-wins",
     "owner_document": "comms",
     "owner_version": "comms/0.5.0",
@@ -1416,58 +1377,6 @@
     "registry_revision": 1,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-keys-repository"
-    ]
-  },
-  {
-    "vector_id": "config_room/device-inventory-not-synced",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-config-room"
-    ]
-  },
-  {
-    "vector_id": "config_room/key-backup-wrapping-algorithms",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-config-room"
-    ]
-  },
-  {
-    "vector_id": "config_room/minimal-config-room",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-config-room"
-    ]
-  },
-  {
-    "vector_id": "config_room/private-mutes",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-config-room"
     ]
   },
   {
@@ -2662,227 +2571,6 @@
     ]
   },
   {
-    "vector_id": "encryption/delegation-revocation-rotation",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-encryption"
-    ]
-  },
-  {
-    "vector_id": "encryption/encryption-version-event",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-encryption"
-    ]
-  },
-  {
-    "vector_id": "encryption/mls-migration-eligibility-check",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-encryption"
-    ]
-  },
-  {
-    "vector_id": "encryption/mls-migration-intent-and-ack",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-encryption"
-    ]
-  },
-  {
-    "vector_id": "encryption/mls-migration-missing-ack-aborts",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-encryption"
-    ]
-  },
-  {
-    "vector_id": "encryption/mls-migration-non-mls-receiver-fallback",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-encryption"
-    ]
-  },
-  {
-    "vector_id": "encryption/mls-migration-offline-reconnect-reencrypt",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-encryption"
-    ]
-  },
-  {
-    "vector_id": "encryption/mls-migration-receiver-verifiable-flip",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-encryption"
-    ]
-  },
-  {
-    "vector_id": "encryption/mls-migration-tail-period-acceptance",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-encryption"
-    ]
-  },
-  {
-    "vector_id": "envelope/bare-dm-signature-badge",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-envelopes"
-    ]
-  },
-  {
-    "vector_id": "envelope/compromise-cutoff-overrides-attribution",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-envelopes"
-    ]
-  },
-  {
-    "vector_id": "envelope/cross-kind-wrapping",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-envelopes"
-    ]
-  },
-  {
-    "vector_id": "envelope/fallback-rendering",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-envelopes"
-    ]
-  },
-  {
-    "vector_id": "envelope/minimal-kind1-wrapped",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-envelopes"
-    ]
-  },
-  {
-    "vector_id": "homeserver-exit/dual-publish-during-exit",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-homeserver-exit"
-    ]
-  },
-  {
-    "vector_id": "homeserver-exit/identity-room-migration",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-homeserver-exit"
-    ]
-  },
-  {
-    "vector_id": "homeserver-exit/migration-pointer-precedence",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-homeserver-exit"
-    ]
-  },
-  {
     "vector_id": "identity-doc/add-before-remove",
     "owner_document": "core",
     "owner_version": "core/0.5.0",
@@ -2966,16 +2654,6 @@
     ]
   },
   {
-    "vector_id": "identity/kind31005-race-tiebreaker-core",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-nid-delegation"
-    ]
-  },
-  {
     "vector_id": "identity/revocation-post-window",
     "owner_document": "core",
     "owner_version": "core/0.5.0",
@@ -3042,19 +2720,6 @@
     ]
   },
   {
-    "vector_id": "interop/bare-hide-pref",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-vanilla-matrix"
-    ]
-  },
-  {
     "vector_id": "interop/kind31005-identity-pointer",
     "owner_document": "core",
     "owner_version": "core/0.5.0",
@@ -3075,19 +2740,6 @@
     "registry_revision": 1,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-following"
-    ]
-  },
-  {
-    "vector_id": "interop/wrapped-vanilla-roundtrip",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-vanilla-matrix"
     ]
   },
   {
@@ -3629,6 +3281,366 @@
     ]
   },
   {
+    "vector_id": "marmot-radicle/agent-group-attribution",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-authorship"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/agent-group-scope-denied",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-agent-authorship"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/canonical-h-equivocation",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-routing-generation"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/concurrent-routing-marmot-wins",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-routing-generation"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/direct-member-history-boundary",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-participation"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/directory-sensitive-fields-encrypted",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-directory"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/expiration-is-not-erasure",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-retention"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/failover-delivery",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-rotation"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/invites-individually-sealed",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-directory"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/keypackage-replay-rejected",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-persona-inbox"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/kind445-exact-bytes",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-exact-bytes"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/logical-size-cap-control-open",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-event-repository"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/media-exact-bytes",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-exact-bytes"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/node-mediated-secret-confinement",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-participation"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/persona-inbox-atomic-bootstrap",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-persona-inbox"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/private-group-radicle-required",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-groups"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/private-inbox-nid-required",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-persona-inbox"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/public-inbox-lazy-media",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-persona-inbox"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/radicle-durable-ack",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-rotation"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/redundant-delivery-dedup",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-rotation"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/relay-ack-before-durable-rejected",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-rotation"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/relay-routes-by-h-only",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-relay"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/removal-before-routing-rotation",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-routing-generation"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/repeated-media-locators",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-media"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/retained-routing-overlap",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-retention"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/routing-binding-valid",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-routing-generation"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/routing-genesis-mismatch",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-routing-generation"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/standard-marmot-interop",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-groups"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/unauthorized-ref-rejected",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-event-repository"
+    ]
+  },
+  {
+    "vector_id": "marmot-radicle/writer-ref-union-dedup",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 4,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-marmot-event-repository"
+    ]
+  },
+  {
     "vector_id": "moderation/approvals-required-absent-default-one",
     "owner_document": "social",
     "owner_version": "social/0.5.0",
@@ -3821,84 +3833,6 @@
     "registry_revision": 1,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-moderation"
-    ]
-  },
-  {
-    "vector_id": "multi-homing/active-room-election",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-active-room-election"
-    ]
-  },
-  {
-    "vector_id": "multi-homing/config-invite-initiation",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-active-room-election"
-    ]
-  },
-  {
-    "vector_id": "multi-homing/kind31005-race-tiebreaker",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-active-room-election"
-    ]
-  },
-  {
-    "vector_id": "multi-homing/partition-window-void-requeue",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-active-room-election"
-    ]
-  },
-  {
-    "vector_id": "multi-homing/publish-lease-acquire-renew",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-active-room-election"
-    ]
-  },
-  {
-    "vector_id": "multi-homing/single-mxid-revocation",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-active-room-election"
     ]
   },
   {
@@ -4278,18 +4212,6 @@
   },
   {
     "vector_id": "privacy-tiers/complete-fetch-attempt",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/non-circular-bootstrap",
     "owner_document": "comms",
     "owner_version": "comms/0.5.0",
     "dependency_versions": {
@@ -4874,71 +4796,6 @@
     ]
   },
   {
-    "vector_id": "redundancy/dedupe-across-replicas",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-mirroring"
-    ]
-  },
-  {
-    "vector_id": "redundancy/mirror-group-primary-replicas",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-mirroring"
-    ]
-  },
-  {
-    "vector_id": "redundancy/private-body-relay-borne",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-mirroring"
-    ]
-  },
-  {
-    "vector_id": "redundancy/promotion-republishes-pointer",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-mirroring"
-    ]
-  },
-  {
-    "vector_id": "redundancy/rekey-remove-not-join",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-matrix-mirroring"
-    ]
-  },
-  {
     "vector_id": "registry/downref-nonfrozen-rejected",
     "owner_document": "core",
     "owner_version": "core/0.5.0",
@@ -5145,45 +5002,6 @@
     ]
   },
   {
-    "vector_id": "room-kind/current-kinds-roundtrip",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-discussion-rooms"
-    ]
-  },
-  {
-    "vector_id": "room-kind/legacy-read-back-map",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-discussion-rooms"
-    ]
-  },
-  {
-    "vector_id": "room-kind/retired-kind-rejected",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-discussion-rooms"
-    ]
-  },
-  {
     "vector_id": "routing-node/expired-advert-discarded",
     "owner_document": "core",
     "owner_version": "core/0.5.0",
@@ -5281,16 +5099,6 @@
     "registry_revision": 3,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-nid-delegation"
-    ]
-  },
-  {
-    "vector_id": "social-recovery/cache-rejects-unauthorized-content",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-recovery"
     ]
   },
   {

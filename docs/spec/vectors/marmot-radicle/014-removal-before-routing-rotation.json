@@ -1,0 +1,27 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 4,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-marmot-routing-generation"
+  ],
+  "vector_id": "marmot-radicle/removal-before-routing-rotation",
+  "description": "Member removal becomes canonical before a remaining administrator publishes the replacement routing state.",
+  "direction": "consume",
+  "input": {
+    "sequence": [
+      "removal-commit",
+      "post-removal-routing-commit"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "removed_member_received_new_h": false
+    }
+  }
+}

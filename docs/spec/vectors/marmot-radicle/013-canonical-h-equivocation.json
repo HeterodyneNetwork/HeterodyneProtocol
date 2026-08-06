@@ -1,0 +1,26 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 4,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-marmot-routing-generation"
+  ],
+  "vector_id": "marmot-radicle/canonical-h-equivocation",
+  "description": "Two different bindings for the canonical h fail the Radicle transition closed.",
+  "direction": "consume",
+  "input": {
+    "canonical_h": "routing-generation-a",
+    "binding_digests": [
+      "1111111111111111111111111111111111111111111111111111111111111111",
+      "2222222222222222222222222222222222222222222222222222222222222222"
+    ]
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "marmot-routing-equivocation"
+  }
+}

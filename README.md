@@ -2,8 +2,8 @@
 
 Heterodyne is a decentralized protocol family for portable personas,
 authenticated communication, own-device control, and social interaction. It
-uses Nostr signed events, Radicle-backed durable storage, and an optional
-Matrix feature for real-time group communication.
+uses Nostr signed events, Radicle-backed durable storage, and Marmot for
+encrypted direct and group communication.
 
 The project is specification-first and implementation-agnostic. All current
 documents are 0.x drafts and may make breaking changes before 1.0.
@@ -19,9 +19,9 @@ The family has four independently versioned documents:
 | Document | Prepared version | Responsibility |
 |---|---:|---|
 | [Heterodyne Core](docs/spec/heterodyne-core.md) | `core/0.5.0` | Persona identity, KEL verification, canonical Nostr bytes, Radicle delegation, node roles, repository substrate, registry, versioning, and base conformance. |
-| [Heterodyne Comms](docs/spec/heterodyne-comms.md) | `comms/0.5.0` | Nostr-native envelopes, privacy tiers, publishing, retrieval, direct messages, atomic key claims, the private claim ledger, and the OIDC/JWT projection. |
-| [Heterodyne Control](docs/spec/heterodyne-control.md) | `control/0.5.0` | Own-device enrollment, grants, RPC, and agentic sessions as a Comms profile. This release is incomplete and not claimable. |
-| [Heterodyne Social](docs/spec/heterodyne-social.md) | `social/0.5.0` | Following, interactions, moderation, lists, social discovery, ATProto attachment, and optional Matrix behavior. |
+| [Heterodyne Comms](docs/spec/heterodyne-comms.md) | `comms/0.5.0` | Nostr-native envelopes, privacy tiers, publishing, Marmot conversations and media, Radicle conversation storage, atomic key claims, the private claim ledger, and the OIDC/JWT projection. |
+| [Heterodyne Control](docs/spec/heterodyne-control.md) | `control/0.5.0` | Own-device enrollment, grants, RPC, node-mediated Marmot access, and agentic sessions as a Comms profile. This release is incomplete and not claimable. |
+| [Heterodyne Social](docs/spec/heterodyne-social.md) | `social/0.5.0` | Public following, interactions, moderation, lists, social discovery, durable assets, and ATProto attachment. |
 
 The dependency graph is exactly:
 
@@ -57,9 +57,10 @@ redirects historical section links.
 - **Honest privacy boundaries.** Tier 1 is public. Tier 2 is selectively
   replicated plaintext on allowed seeders. Tier 3 is encrypted before any
   repository or carrier receives it.
-- **Forward-secret direct messages.** Comms uses a Signal-style double ratchet
-  over Nostr events, with no repository retention or backfill. NIP-17 remains
-  an interoperability fallback with weaker guarantees.
+- **Encrypted conversations and media.** Comms adopts pinned Marmot semantics
+  for MLS groups, two-member direct conversations, application events, and
+  encrypted media. Standard Nostr delivery and Radicle-backed delivery preserve
+  the same signed event and ciphertext bytes.
 - **Key claims and interoperable tokens.** Comms verifies atomic claims about
   typed keys against a persona's encrypted multi-writer ledger. Its OIDC/JWT
   surface is a consent-limited projection for third-party interoperability,
@@ -70,17 +71,17 @@ redirects historical section links.
   canonical agent attribution and signs with a stable dedicated role key that
   is never released to the agent; direct user-device signing is forbidden.
 - **Independent feature growth.** Control and Social both build on Comms but do
-  not depend on each other. Matrix remains optional inside Social.
-- **Client-side trust.** Relays, full nodes, routing nodes, and Matrix
-  homeservers are carriers. Identity, decryption, bridging, and policy
-  evaluation remain on user-controlled clients.
+  not depend on each other.
+- **Client-side trust.** Relays, full nodes, routing nodes, and Radicle hosts
+  are carriers or designated endpoints. Identity, decryption, authorization,
+  and policy evaluation remain within user-controlled clients and nodes.
 
 ## 0.5.0 conformance
 
 Every implementation claims Core. A Heterodyne persona claims Core+Comms.
-Social and Social+Matrix are distinct claims. Control requires a conformant
-Core+Comms implementation plus the Control profile, but the current incomplete
-Control release cannot be claimed.
+Social adds public social behavior. Control requires a conformant Core+Comms
+implementation plus the Control profile, but the current incomplete Control
+release cannot be claimed.
 
 Claims name exact qualified versions, required features, registry revision or
 digest, and any strict profiles. The stable strict IDs are:
@@ -90,9 +91,7 @@ digest, and any strict profiles. The stable strict IDs are:
 - `heterodyne-comms-strict-v2`
 - `heterodyne-control-strict-v1` (reserved-inactive)
 - `heterodyne-social-strict-v1`
-- `heterodyne-social-matrix-strict-v1`
 - `heterodyne-social-strict-v2`
-- `heterodyne-social-matrix-strict-v2`
 
 Conformance vectors in [docs/spec/vectors](docs/spec/vectors/) are normative
 for the behavior they cover. Canonical bytes and expected verdicts must match
@@ -141,7 +140,7 @@ cryptography or backend protocols:
 - [KERI](https://arxiv.org/abs/1907.02143) and the
   [ToIP KSWG specification](https://trustoverip.github.io/kswg-keri-specification/)
 - [Signal Double Ratchet](https://signal.org/docs/specifications/doubleratchet/)
-- [Matrix](https://spec.matrix.org/latest/) and
+- [Marmot](https://github.com/marmot-protocol/marmot) and
   [MLS RFC 9420](https://www.rfc-editor.org/rfc/rfc9420.html)
 - [OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html)
   and [Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html),

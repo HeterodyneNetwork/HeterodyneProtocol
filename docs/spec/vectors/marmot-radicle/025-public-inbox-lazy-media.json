@@ -1,0 +1,29 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 4,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-marmot-persona-inbox"
+  ],
+  "vector_id": "marmot-radicle/public-inbox-lazy-media",
+  "description": "Public-inbox quarantine fetches the bounded manifest but does not automatically retrieve unknown media.",
+  "direction": "consume",
+  "input": {
+    "manifest_bytes": 2048,
+    "media_objects": 4,
+    "user_accepted_media": false
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "fetched": [
+        "manifest"
+      ],
+      "deferred_media_objects": 4
+    }
+  }
+}

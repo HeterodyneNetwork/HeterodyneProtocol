@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/comms/marmot-event-repository-genesis-v1.schema.json",
+  "title": "Heterodyne Marmot event repository genesis v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version",
+    "stable_group_id_digest",
+    "generation",
+    "h",
+    "event_rid",
+    "created_at",
+    "logical_soft_cap_bytes",
+    "event_index",
+    "media_index",
+    "writer_ref_prefix",
+    "relay_ref"
+  ],
+  "properties": {
+    "spec_version": {
+      "const": "comms/0.5.0"
+    },
+    "stable_group_id_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "generation": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "h": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "event_rid": {
+      "type": "string",
+      "pattern": "^rad:z[1-9A-HJ-NP-Za-km-z]+$"
+    },
+    "created_at": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "logical_soft_cap_bytes": {
+      "const": 5368709120
+    },
+    "event_index": {
+      "const": "events/by-id/<event-id>.json"
+    },
+    "media_index": {
+      "const": "media/by-ciphertext-sha256/<sha256>"
+    },
+    "writer_ref_prefix": {
+      "const": "refs/xyz.heterodyne.marmot/writers/"
+    },
+    "relay_ref": {
+      "const": "refs/xyz.heterodyne.marmot/relay"
+    }
+  }
+}

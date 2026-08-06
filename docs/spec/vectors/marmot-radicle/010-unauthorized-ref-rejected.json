@@ -1,0 +1,23 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 4,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-marmot-event-repository"
+  ],
+  "vector_id": "marmot-radicle/unauthorized-ref-rejected",
+  "description": "Objects reachable only from an unauthorized writer ref do not enter the logical union.",
+  "direction": "consume",
+  "input": {
+    "ref_authorized": false,
+    "event_signature_valid": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "marmot-unauthorized-ref"
+  }
+}

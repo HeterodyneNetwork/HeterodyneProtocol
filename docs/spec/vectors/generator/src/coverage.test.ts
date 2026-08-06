@@ -67,15 +67,12 @@ describe("family coverage", () => {
     const ownerById = new Map(
       coverage.map(({ vector_id, owner_document }) => [vector_id, owner_document]),
     );
-    expect(ownerById.get("envelope/minimal-kind1-wrapped")).toBe("social");
-    expect(ownerById.get("interop/wrapped-vanilla-roundtrip")).toBe("social");
     expect(ownerById.get("interop/kind31005-identity-pointer")).toBe("core");
     expect(ownerById.get("org/threshold-delegate-governance")).toBe("core");
     expect(ownerById.get("org/canonical-branch-reachability")).toBe("comms");
-    expect(ownerById.get("redundancy/dedupe-across-replicas")).toBe("social");
+    expect(ownerById.get("marmot-radicle/redundant-delivery-dedup")).toBe("comms");
     expect(ownerById.get("config-backup/config-blob-encrypt-decrypt")).toBe("comms");
     expect(ownerById.get("config-backup/nip49-nsec-wrap")).toBe("core");
-    expect(ownerById.get("social-recovery/cache-rejects-unauthorized-content")).toBe("core");
     expect(ownerById.get("social-recovery/three-tier-caching")).toBe("social");
     expect(ownerById.get("social-recovery/cold-root-reanchor-authoritative")).toBe("core");
     expect(ownerById.get("social-recovery/cache-sourced-marked-stale")).toBe("core");

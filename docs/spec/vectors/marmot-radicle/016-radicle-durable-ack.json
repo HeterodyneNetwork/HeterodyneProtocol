@@ -1,0 +1,26 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 4,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-marmot-rotation"
+  ],
+  "vector_id": "marmot-radicle/radicle-durable-ack",
+  "description": "Native publication acknowledges only after local durability and one configured host accepts the writer ref announcement.",
+  "direction": "consume",
+  "input": {
+    "exact_objects_committed": true,
+    "durable_local": true,
+    "configured_host_acceptances": 1
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "durable_ack": true
+    }
+  }
+}

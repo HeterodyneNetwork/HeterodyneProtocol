@@ -1,0 +1,23 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 4,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-marmot-persona-inbox"
+  ],
+  "vector_id": "marmot-radicle/private-inbox-nid-required",
+  "description": "An unknown NID cannot write a first-contact bundle to a private persona repository.",
+  "direction": "consume",
+  "input": {
+    "persona_repository": "private",
+    "sender_nid_authorized": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "marmot-private-inbox-nid-required"
+  }
+}

@@ -1,0 +1,152 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/comms/marmot-group-directory-v1.schema.json",
+  "title": "Heterodyne Marmot group directory v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version",
+    "profile",
+    "stable_group_id",
+    "visibility",
+    "public_profile",
+    "encrypted_records",
+    "host_announcements",
+    "routing_binding_digests"
+  ],
+  "properties": {
+    "spec_version": {
+      "const": "comms/0.5.0"
+    },
+    "profile": {
+      "enum": [
+        "standard-compatible",
+        "heterodyne-private"
+      ]
+    },
+    "stable_group_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "visibility": {
+      "enum": [
+        "public-directory",
+        "private-directory"
+      ]
+    },
+    "public_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "description",
+        "policy"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "policy": {
+          "type": "object"
+        }
+      }
+    },
+    "encrypted_records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "record_type",
+          "generation",
+          "ciphertext",
+          "recipient_set_digest"
+        ],
+        "properties": {
+          "record_type": {
+            "enum": [
+              "routing-binding",
+              "membership",
+              "administration",
+              "moderation",
+              "retention"
+            ]
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "ciphertext": {
+            "type": "string",
+            "minLength": 1
+          },
+          "recipient_set_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "host_announcements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "nid",
+          "interfaces",
+          "signature"
+        ],
+        "properties": {
+          "nid": {
+            "type": "string",
+            "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$"
+          },
+          "interfaces": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "signature": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "routing_binding_digests": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "profile": {
+            "const": "heterodyne-private"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "visibility": {
+            "const": "private-directory"
+          }
+        }
+      }
+    }
+  ]
+}

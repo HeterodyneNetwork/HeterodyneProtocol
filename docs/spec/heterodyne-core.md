@@ -2,7 +2,7 @@
 
 Document ID: `core`<br>
 Version: `core/0.5.0`<br>
-Registry revision: `3`
+Registry revision: `4`
 
 Normative dependencies: None.
 
@@ -34,6 +34,7 @@ Heterodyne protocol-family implementation:
 - generic delegate-threshold authority and KERI/Radicle reconciliation;
 - generic protected repositories and a complete local keys-repository
   protection profile;
+- KERI attribution of Marmot account roles and Radicle group-host identities;
 - local signature verification, provisional key-state finality, qualified
   versioning, capabilities, security invariants, and conformance methodology.
 
@@ -76,6 +77,11 @@ full-node-to-full-node; browser and mobile clients use NIP-01 endpoints.
 - **Key-material event**: exactly `kind:31001`, `kind:31002`, or `kind:31003`.
   This class is closed in this release.
 - **Qualified version**: `<document-id>/<semver>`, distinct from bare semver.
+- **Marmot account**: the stable 32-byte Nostr account credential used by
+  Marmot for account-scoped group privilege and account-to-leaf proofs.
+- **Group host**: a full or recovery node authorized to replicate and serve a
+  group's Radicle repositories. Hosting is operational authority, not MLS
+  administration authority.
 
 The Radicle identity document uses two different quorums. Its `threshold`
 governs canonical data refs. A revision of the identity document itself is
@@ -88,7 +94,7 @@ Implementations MUST NOT conflate these mechanisms.
 
 The separately revisioned Core-owned registry at `docs/spec/registry/` is the
 allocation authority for kind numbers, profile discriminators, reason codes,
-and security-invariant IDs. This release pins registry revision `3`; changing a
+and security-invariant IDs. This release pins registry revision `4`; changing a
 non-Core-owned registry entry does not change Core semver. A conformance claim
 MUST pin the registry revision or immutable entry-set digest.
 
@@ -132,8 +138,8 @@ the parsed object.
 <!-- Monolith provenance: §3.0 and §12. -->
 ### 3.2 Owner stamps and historical bytes
 
-An event carries at most one Heterodyne version stamp. Registry revision 3
-defines these exhaustive classes:
+An event carries at most one Heterodyne version stamp. The registry defines
+these exhaustive classes:
 
 1. Heterodyne-defined JSON `content` MUST contain the qualified
    `spec_version` of the base-schema owner.
@@ -622,7 +628,7 @@ A light-only device MAY use a publishing-key delegation without an NID only
 through a registered higher-layer profile. It cannot sign Radicle refs, become
 a durable claim-ledger reader, or acquire NID authority.
 
-Registry revision 3 reserves the non-stamping, inactive profile
+The registry reserves the non-stamping, inactive profile
 `heterodyne-control-session-device-v1` with discriminator
 `tags:heterodyne=delegation,binding_nonce,key_proof;radicle_nid=absent`. Its
 candidate event has empty content and exactly this ordered tag sequence:
@@ -661,12 +667,12 @@ neither the nonce nor the device proof alone grants higher-layer authority.
 A structurally and cryptographically valid relay candidate is at most
 `provisional` under §6.2. Canonical repository reachability can make the
 delegation final, but finality still does not open its higher-layer profile.
-At registry revision 3 this profile remains `reserved-inactive`: a verifier
+At registry revision 4 this profile remains `reserved-inactive`: a verifier
 MAY report structural validity for diagnostics, but MUST report
 `conformance_claimable = false`, MUST NOT grant higher-layer authority, and MUST NOT
 advertise, negotiate, require, or produce the profile as conforming. Only the
-atomic registry-revision-4 artifact gate in §14 can activate it; histories 1
-through 3 remain byte-identical.
+complete Control activation gate can activate it; histories 1 through 3
+remain byte-identical and revision 4 does not open Control conformance.
 
 A canonically included replacement or revocation for the candidate address
 overrides relay copies and removes all prospective authority. Repository
@@ -698,6 +704,67 @@ signature and `key_proof` are both REQUIRED and MUST bind the same
 non-stamping: it does not change the Core owner or base schema of `kind:31001`.
 Core assigns no automation, publication, moderation, or other application
 meaning to a role namespace.
+
+<a id="core-marmot-role-binding"></a>
+#### 6.1.2 KERI attribution of Marmot account roles
+
+Comms registers three persona-scoped Marmot role classes over the
+role-addressed delegation extension:
+
+- `marmot:human-messaging` identifies the persona's stable human messaging
+  account;
+- `marmot:group-admin` identifies a separately governed account permitted to
+  exercise Marmot group-administration privilege; and
+- `agent:<role-id>` identifies an automated account under the existing
+  Comms agent-delegation profile.
+
+Each binding MUST name one 32-byte x-only secp256k1 Marmot account public key
+as `publishing_key`, MUST satisfy §6.1.1, and MUST be repository-final before
+a Heterodyne implementation treats it as current role authority. The private
+key for `marmot:human-messaging`, `marmot:group-admin`, or `agent:<role-id>`
+MUST remain on an authorized full or recovery node. A light client or
+automated principal MUST NOT receive it.
+
+Marmot remains the authority for its account credential, MLS leaf credential,
+and standard account-to-leaf proof. Core verifies only that the account is
+currently attributable to the named persona and role. Invalid, missing,
+provisional, expired, revoked, or equivocated KERI evidence removes verified
+Heterodyne attribution and role authorization; it MUST NOT rewrite Marmot
+history, select an MLS branch, or alter Marmot convergence.
+
+Device MLS leaves are independent credentials. A KERI-authorized full or
+recovery node MAY use the bound account to produce Marmot's standard
+account-to-leaf proof for an authorized device. It MUST NOT represent two
+concurrently active devices as one leaf. An encrypted leaf transfer is valid
+only as an exclusive takeover in which the prior instance is deactivated or
+fenced before the restored instance becomes active.
+
+<a id="core-radicle-group-admission"></a>
+#### 6.1.3 Radicle group admission and host attribution
+
+Comms may bind a Marmot routing identifier to a private Radicle repository.
+Core's NID delegation and protected-repository primitives provide the
+replication identity and admission substrate for that binding.
+
+An administrator admitting a persona to native Radicle group transport MUST
+authorize an active NID attributable to that persona and MUST privately
+deliver every non-public repository locator and bootstrap capability. A
+private repository allow list controls which NIDs may replicate; it does not
+encrypt stored Git objects, prove Marmot membership, or authorize an MLS
+operation. Sensitive directory and administrative records therefore remain
+application-encrypted even in a private repository.
+
+Removing a member MUST remove its NID from future repository admission before
+the replacement routing generation is advertised to that member set. Removal
+prevents future authorized replication and decryption only. Existing clones,
+Git objects, exports, and backups may remain and MUST NOT be described as
+erased.
+
+Group hosts MUST use active KERI-attributed NIDs. A group administrator is a
+host by default, but a host or Radicle delegate is only a replication
+operator. Neither a Radicle default branch, delegate threshold, ref signature,
+nor host announcement may create group membership, select Marmot group state,
+or grant group-admin authority.
 
 <a id="core-key-authority"></a>
 <!-- Monolith provenance: §3.9.10.1 and §4.5.2. -->
@@ -1323,7 +1390,7 @@ Every capability advertisement uses this Core-parsable bootstrap object:
 {
   "descriptor": "heterodyne-capabilities-v1",
   "bootstrap_version": "core/0.5.0",
-  "registry_revision": 3,
+  "registry_revision": 4,
   "implementation_role": "public-reader",
   "supported_versions": {
     "core": ["core/0.5.0"],
@@ -1402,7 +1469,7 @@ membership declaration:
 supported network backend, and requires invalid signatures or delegations to
 be rejected rather than rendered with a warning. Disabling or bypassing Tor
 makes the strict profile unmet; it does not silently downgrade a strict claim.
-A claim MUST satisfy every listed invariant at registry revision 3 and every
+A claim MUST satisfy every listed invariant at registry revision 4 and every
 applicable strict vector.
 
 Higher-document strict profiles compose by naming prerequisite profile IDs and
@@ -1427,13 +1494,14 @@ serving-node withholding, routing-query metadata, rollback, and key-extraction
 threats. Multiple serving nodes and ordinary-relay access improve availability;
 they never replace local verification.
 
-Registry revision 3 binds these exact normative invariants:
+The registry binds these exact normative invariants:
 
 - **CORE-I-IDENTITY-INTEGRITY:** The cold-root npub and accepted KEL are authoritative for persona identity; downstream caches and delegated identifiers cannot override them.
 - **CORE-I-NID-DELEGATION-DUAL-PROOF:** A Radicle NID delegation is active only after both the persona epoch-key BIP-340 signature and the delegated NID Ed25519 proof verify over the same binding.
 - **CORE-I-VERIFY-BEFORE-USE:** Every signed object is locally signature-verified and, where applicable, delegation-checked before rendering, storage, or authorization.
 - **CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY:** Core discovery does not depend on a centralized persona, npub, RID, or serving-node directory.
 - **CORE-I-KEY-MATERIAL-AT-REST:** Persona nsec, NID secrets, and sensitive cached identity material are protected by the Core keys-repository profile, including NIP-49 wrapping where applicable.
+- **CORE-I-MARMOT-ROLE-ATTRIBUTION:** KERI role evidence attributes Marmot accounts and Radicle hosts without selecting MLS state or altering Marmot convergence.
 
 <a id="core-conformance"></a>
 <!-- Monolith provenance: §14. -->
@@ -1445,12 +1513,11 @@ IDs, strict-profile IDs, implementation role, and every dependency version.
 Core has no document dependencies. Protocol conformance and vector conformance
 are distinct claims.
 
-This document remains pinned to registry revision 3. Revision 4 MUST NOT be
-selected, advertised, or loaded until one atomic artifact batch contains the
-complete credential-continuity and recovery catalogs, history snapshot,
-schemas, vectors, family/artifact-set manifests, and matching release
-manifests. A partial `history/4.json`, placeholder allocation, or draft schema
-set is invalid and non-claimable.
+This document is pinned to registry revision 4 and its immutable digest.
+History revision 4, the current entry files, release manifests, and vector
+metadata MUST agree exactly. The presence of reserved Control or
+credential-continuity definitions in that revision does not activate their
+separately closed conformance gates.
 
 A conformance report MUST, for each strict-profile ID, list the profile's state,
 conformance class, prerequisite profile IDs, required invariant IDs, required

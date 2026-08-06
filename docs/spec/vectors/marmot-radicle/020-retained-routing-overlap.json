@@ -1,0 +1,37 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 4,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-marmot-retention"
+  ],
+  "vector_id": "marmot-radicle/retained-routing-overlap",
+  "description": "Clients retain the current generation and every prior routing ID required by the Marmot rollback horizon.",
+  "direction": "consume",
+  "input": {
+    "current": 7,
+    "rollback_required": [
+      6
+    ],
+    "optional_archives": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "required_generations": [
+        6,
+        7
+      ]
+    }
+  }
+}

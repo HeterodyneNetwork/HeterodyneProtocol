@@ -12,12 +12,12 @@
     },
     {
       "code": "delegation_mismatch",
-      "owner": "social",
+      "owner": "core",
       "status": "draft",
-      "first_version": "social/0.5.0",
-      "description": "The Matrix sender is not covered by the active delegation.",
+      "first_version": "core/0.5.0",
+      "description": "The presented publishing key, subject, role, or delegation identifier does not match the active Core delegation.",
       "spec_refs": [
-        "heterodyne:social/0.5.0#social-conformance"
+        "heterodyne:core/0.5.0#core-nid-delegation"
       ]
     },
     {
@@ -38,16 +38,6 @@
       "description": "The verifier clock is after the delegation valid_until bound.",
       "spec_refs": [
         "heterodyne:core/0.5.0#core-conformance"
-      ]
-    },
-    {
-      "code": "retired_room_kind",
-      "owner": "social",
-      "status": "draft",
-      "first_version": "social/0.5.0",
-      "description": "A new room asserts a retired pre-ADR-017 room kind.",
-      "spec_refs": [
-        "heterodyne:social/0.5.0#social-conformance"
       ]
     },
     {
@@ -81,16 +71,6 @@
       ]
     },
     {
-      "code": "context_binding_mismatch",
-      "owner": "social",
-      "status": "draft",
-      "first_version": "social/0.5.0",
-      "description": "Encrypted payload decrypted under a key derived for the wrong Matrix room context.",
-      "spec_refs": [
-        "heterodyne:social/0.5.0#social-conformance"
-      ]
-    },
-    {
       "code": "onion_dns_leak",
       "owner": "core",
       "status": "draft",
@@ -108,26 +88,6 @@
       "description": "Strict mode started with egress-over-Tor disabled without explicit user choice.",
       "spec_refs": [
         "heterodyne:core/0.5.0#core-conformance"
-      ]
-    },
-    {
-      "code": "mls_missing_ack",
-      "owner": "social",
-      "status": "draft",
-      "first_version": "social/0.5.0",
-      "description": "MLS migration proceeded without all required ACKs.",
-      "spec_refs": [
-        "heterodyne:social/0.5.0#social-conformance"
-      ]
-    },
-    {
-      "code": "homeserver_exit_stale_pointer",
-      "owner": "social",
-      "status": "draft",
-      "first_version": "social/0.5.0",
-      "description": "A stale identity-room pointer was preferred over the migration pointer.",
-      "spec_refs": [
-        "heterodyne:social/0.5.0#social-conformance"
       ]
     },
     {
@@ -315,7 +275,7 @@
       "owner": "core",
       "status": "draft",
       "first_version": "core/0.5.0",
-      "description": "A kel_head tag appears on an event class the §3.0 matrix forbids it on (kind:31002/31003 KEL events, §5.7 DR wire events kind:1060/1059 and inner rumors, or ADR-031 breadcrumbs).",
+      "description": "A kel_head tag appears on an event class whose Core applicability rules forbid it (kind:31002/31003 KEL events, DR wire events kind:1060/1059 and inner rumors, or non-stamping rotation breadcrumbs).",
       "spec_refs": [
         "heterodyne:core/0.5.0#core-conformance"
       ]
@@ -939,6 +899,70 @@
       "first_version": "social/0.5.0",
       "description": "The subscribed policy requires replacement of the exact offending role key before restored visibility.",
       "spec_refs": ["heterodyne:social/0.5.0#social-mute-profile"]
+    },
+    {
+      "code": "marmot-private-route-required",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A Heterodyne-private group has no currently authorized Radicle route and cannot use a public fallback.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-marmot-groups"]
+    },
+    {
+      "code": "marmot-routing-binding-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A routing binding has the wrong administrator, canonical Marmot routing commit, h value, or repository genesis digest.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-marmot-routing-generation"]
+    },
+    {
+      "code": "marmot-routing-equivocation",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Different otherwise valid routing bindings claim the same canonical Marmot h.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-marmot-host-authority"]
+    },
+    {
+      "code": "marmot-unauthorized-ref",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A writer or relay ref is not authorized to contribute objects to the routing-generation union.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-marmot-event-repository"]
+    },
+    {
+      "code": "marmot-premature-ack",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A publisher or relay acknowledged a Marmot object before the required exact-byte durability boundary.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-marmot-rotation"]
+    },
+    {
+      "code": "marmot-private-inbox-nid-required",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A sender NID is not authorized to contribute a contact bundle to the private persona repository.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-marmot-persona-inbox"]
+    },
+    {
+      "code": "marmot-keypackage-replayed",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A persona-inbox bootstrap attempts to consume a Marmot KeyPackage already consumed by another accepted or quarantined bundle.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-marmot-persona-inbox"]
+    },
+    {
+      "code": "marmot-agent-scope-denied",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "An automated Marmot operation requests a group, application kind, media type, size, rate, or burst outside its workload token.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-agent-authorship"]
     }
   ]
 }
