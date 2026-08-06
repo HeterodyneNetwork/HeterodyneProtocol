@@ -4,7 +4,7 @@
 **Status:** Accepted
 **Decision makers:** user and protocol maintainers
 **Design record:**
-[`docs/superpowers/specs/2026-07-30-agent-authorship-oidc-moderation-design.md`](../superpowers/specs/2026-07-30-agent-authorship-oidc-moderation-design.md)
+[`docs/superpowers/specs/2026-07-30-agent-authorship-oidc-moderation-design.md`](../../superpowers/specs/2026-07-30-agent-authorship-oidc-moderation-design.md)
 **Spec targets:** `heterodyne:core/0.5.0#core-nid-delegation`,
 `heterodyne:core/0.5.0#core-key-authority`,
 `heterodyne:comms/0.5.0#comms-publishing`,

@@ -1,7 +1,7 @@
 import { getEventId } from "./nostr.js";
 import type { NostrUnsignedEvent } from "./nostr.js";
 
-// The ADR-032 kel_head tag names the latest accepted KEL event the signer had
+// The kel_head tag names the latest accepted KEL event the signer had
 // accepted at signing time: ["kel_head", "<64-hex event id>", "<decimal seq>"]
 // (spec §3.0, handling in §4.5.1). It is carried exactly once on every
 // epoch-key-signed Heterodyne event per the §3.0 applicability matrix.

@@ -170,7 +170,7 @@ defines no transport.
 
 The current Control 0.5.0 document is incomplete. Its relay-affinity and
 automated-agent subsets now have schemas and positive/negative vectors, but the
-remaining ADR-030 enrollment and session requirements still prevent a
+remaining Control enrollment and session requirements still prevent a
 conformance claim. The strict-profile identifier remains reserved-inactive.
 
 Control audit protection depends only on Core, Comms, and Control rules. A

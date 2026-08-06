@@ -43,15 +43,15 @@ wire format and is not the vector envelope version.
 The schema requires each actual vector's `registry_revision` to be an integer;
 the placeholder above means that every vector pins the revision governing its
 behavior. The current coverage manifest contains 264 immutable
-registry-revision-1 vectors, 55 ADR-034 registry-revision-2 vectors, and 170
-registry-revision-3 vectors. Of the latter, 159 cover
-ADR-030/ADR-035/ADR-036 behavior and 11 are ADR-037 credential-continuity
-draft outer evaluations whose normalized output explicitly sets
-`conformance_claimable:false`; those 11 do not activate or claim the gated
-profiles.
+registry-revision-1 vectors, 55 claims/OIDC registry-revision-2 vectors, and
+170 registry-revision-3 vectors. Of the latter, 159 cover the gated Control,
+ingress-relay-affinity, and automated-agent behavior, and 11 are
+credential-continuity draft outer evaluations whose normalized output
+explicitly sets `conformance_claimable:false`; those 11 do not activate or
+claim the gated profiles.
 Historical released vectors and the signed behavior they describe MUST NOT be
 rewritten to the latest registry revision. Unreleased 0.x vectors may be
-changed or retired in place under an accepted ADR.
+changed or retired in place under an accepted specification change.
 
 Dependency versions follow the family DAG:
 
@@ -62,10 +62,10 @@ Core <- Comms <- Social
 
 Core vectors therefore have no dependencies; Comms vectors pin Core; Control
 and Social vectors pin Core and Comms. Control has closed draft vectors for
-ADR-030 plus its integrated relay-affinity and automated-agent subsets, but
-remains explicitly `incomplete-draft`; no implementation may claim its
-profile before the atomic ADR-037/ADR-038 registry-revision-4 artifact batch
-opens the gate.
+its session-device, enrollment, RPC, relay-affinity, and automated-agent
+subsets, but remains explicitly `incomplete-draft`; no implementation may
+claim its profile before the atomic registry-revision-4
+credential-continuity and recovery artifact batch opens the gate.
 
 ## Coverage authority
 
@@ -73,7 +73,8 @@ opens the gate.
 The Core, Comms, Control, Social, and family Markdown files in `coverage/` are
 deterministic generated projections. Do not maintain parallel maps by hand.
 
-Ownership corrections required by ADR-033 are per vector. In particular:
+Ownership is declared per vector, never inferred from its directory. In
+particular:
 
 - existing Matrix envelope and mirror-redundancy vectors are Social;
 - new Nostr-native envelope vectors are Comms;
@@ -84,7 +85,7 @@ Ownership corrections required by ADR-033 are per vector. In particular:
 - acceptance gating is split between Comms hook behavior and Social
   tighten-only policy behavior.
 
-ADR-034 adds four Comms-owned groups, all pinned to registry revision 2:
+Four Comms-owned claims/OIDC groups are pinned to registry revision 2:
 
 - `claims/` covers canonical IDs and typed keys, issuer/trust decisions,
   attenuation, proof of possession, visibility, and revocation;

@@ -22,7 +22,7 @@ kebab-case. Generated heading IDs are not stable protocol references.
 ## 1. Scope
 
 <!-- Monolith provenance: §4.1/§4.5, §5.2, §5.7, §6.1-§6.4,
-§6.7-§6.10, §7.1-§7.2, §9.0-§9.1, §9.5; split allocation: ADR-033. -->
+§6.7-§6.10, §7.1-§7.2, §9.0-§9.1, §9.5. -->
 
 Comms defines secure persona speech over the Core substrate: a Nostr-native
 event envelope, public/private/encrypted repository tiers, publishing and
@@ -255,7 +255,7 @@ not current membership metadata, is the cryptographic access test.
 <a id="comms-config-repository"></a>
 ### 3.3 Config-repository protection profile
 
-<!-- Monolith provenance: §3.8.6; payload ownership rewritten by ADR-033 req 6. -->
+<!-- Monolith provenance: §3.8.6. -->
 
 The `heterodyne-comms-config-repository-v1` protection profile instantiates
 `heterodyne:core/0.5.0#core-protected-repository` with the Tier 3 profile
@@ -796,7 +796,7 @@ carry `comms/0.5.0`.
 <a id="comms-acceptance-hook"></a>
 ## 8. Authenticated acceptance-policy hook
 
-<!-- Monolith provenance: §5.7.4, rewritten by ADR-033 req 16. -->
+<!-- Monolith provenance: §5.7.4. -->
 
 All cryptographic checks MUST complete successfully before acceptance policy
 runs. Policy MUST NOT bypass, replace, reinterpret, or loosen signature,
@@ -859,7 +859,7 @@ Control, or advertise Control conformance.
 <a id="comms-credential-sync"></a>
 ### 8.1 Credential-plane synchronization
 
-<!-- Monolith provenance: §3.8.7 self-DM path and §5.7.3; exact class: ADR-033 req 17. -->
+<!-- Monolith provenance: §3.8.7 self-DM path and §5.7.3. -->
 
 A fully delegated trusted device is a cryptographic class: it has an active,
 durable, NID-bearing Core `kind:31001` delegation and an explicit active
@@ -1047,24 +1047,23 @@ authorize remote actions, configuration mutations, or application payloads.
 <a id="comms-credential-continuity-gate"></a>
 ### 8.2 Gated credential-continuity definition
 
-ADR-037 defines the credential-continuity records in §§8.3-8.10 so their
-closed schemas, state machines, and security boundary can be reviewed before
-the atomic registry revision that activates them. They are **not** active
-Comms 0.5.0 wire profiles under selected registry revision 3. A current
-implementation MUST NOT advertise, negotiate, require, produce as
-authoritative, or claim conformance to any of these draft profiles.
-Schema-valid draft data grants no authority and MUST NOT change current
-credential state.
+Sections 8.3-8.10 define credential-continuity records so their closed schemas,
+state machines, and security boundary can be reviewed before the atomic
+registry revision that activates them. They are **not** active Comms 0.5.0
+wire profiles under selected registry revision 3. A current implementation
+MUST NOT advertise, negotiate, require, produce as authoritative, or claim
+conformance to any of these draft profiles. Schema-valid draft data grants no
+authority and MUST NOT change current credential state.
 
-Activation requires the complete ADR-037/ADR-038 registry-revision-4 artifact
-batch. In particular, the batch MUST contain the two Core-owned offline
-recovery schemas, the exhaustive owner-bound governed-decrypt source-profile
-catalog, every new allocation and diagnostic reason, the complete schema and
-validator graph, and revision-4 conformance evidence. An injected
-already-authenticated offline-recovery or source-profile projection is
-sufficient only for draft unit evaluation; it is not end-to-end conformance.
-The current revision-3 registry, history, release manifests, and reason-code
-catalog remain byte-identical.
+Activation requires the complete registry-revision-4 credential-continuity
+and recovery artifact batch. In particular, the batch MUST contain the two
+Core-owned offline-recovery schemas, the exhaustive owner-bound
+governed-decrypt source-profile catalog, every new allocation and diagnostic
+reason, the complete schema and validator graph, and revision-4 conformance
+evidence. An injected already-authenticated offline-recovery or source-profile
+projection is sufficient only for draft unit evaluation; it is not end-to-end
+conformance. The current revision-3 registry, history, release manifests, and
+reason-code catalog remain byte-identical.
 
 The twenty draft Comms schema resources are:
 
@@ -1409,7 +1408,7 @@ or removed NID, preserves every old-roster member, and includes at least one
 complete active intent- or activation-collision projection. Both paths rotate
 epoch, config, and pairwise state and require every target-roster receipt.
 
-Offline intent and activation are Core-owned ADR-038 records. Intent becomes
+Offline intent and activation are Core-owned recovery records. Intent becomes
 durable before authority unseal and is authorized by an independently
 available cold root. The archive being opened cannot first reveal the signer
 that authorizes its own unseal. Intent templates bind every future source and
@@ -1419,10 +1418,10 @@ record set, and retains its linked intent digest. Exact duplicates are
 idempotent; nonidentical variants for one activation ID are conservative
 collision evidence with no arrival-order winner.
 
-Until ADR-038 supplies and activates the exact Core schemas, draft evaluation
-may consume only an injected authenticated projection of these records.
-It MUST report the dependency as unavailable rather than accept a partial or
-self-authorizing offline restore.
+Until registry revision 4 supplies and activates the exact Core recovery
+schemas, draft evaluation may consume only an injected authenticated
+projection of these records. It MUST report the dependency as unavailable
+rather than accept a partial or self-authorizing offline restore.
 
 Emergency inventory `K(I)` unions every named config/source/staging/recovered
 branch, same-key candidate, inventory/binding conflict, obligation branch, and
@@ -1595,7 +1594,7 @@ place before release.
 <a id="comms-subprotocol-negotiation"></a>
 ## 9. Encrypted subprotocol negotiation and carrier
 
-<!-- Split provenance: ADR-033 reqs 15 and 23-26; no monolith wire existed. -->
+<!-- No monolith wire existed for this carrier. -->
 
 Generic subprotocol traffic is carried only as encrypted inner rumors in an
 accepted DR session. Each carrier is a complete unsigned Nostr rumor with
@@ -2422,7 +2421,7 @@ under a separately bounded encrypted diagnostic policy.
 <a id="comms-security"></a>
 ## 16. Security invariants and forward-secrecy posture
 
-<!-- Monolith provenance: §9.0-§9.1 and §9.5; namespaced by ADR-033. -->
+<!-- Monolith provenance: §9.0-§9.1 and §9.5. -->
 
 Registry revision 3 defines these Comms invariants:
 
@@ -2549,7 +2548,7 @@ profile.
 <a id="comms-conformance"></a>
 ## 17. Conformance
 
-<!-- Monolith provenance: §14; family conformance: ADR-033. -->
+<!-- Monolith provenance: §14. -->
 
 A Comms conformance report MUST claim Core+Comms, name `comms/0.5.0`, pin
 `core/0.5.0`, registry revision 3 or its immutable digest, and enumerate
@@ -2559,10 +2558,10 @@ and all twenty security invariants. It MAY omit the `double-ratchet` feature;
 one that advertises DMs MUST implement all of §7 and §8.
 
 Revision 4 MUST NOT be selected, advertised, or loaded until one atomic
-ADR-037/ADR-038 artifact batch contains the complete catalogs, history
-snapshot, schemas, vectors, family/artifact-set manifests, and matching
-release manifests. A partial revision-4 history or schema batch is invalid and
-non-claimable.
+credential-continuity and recovery artifact batch contains the complete
+catalogs, history snapshot, schemas, vectors, family/artifact-set manifests,
+and matching release manifests. A partial revision-4 history or schema batch
+is invalid and non-claimable.
 
 A report claiming `comms.public-reader.v1` MAY omit every send-side and private
 feature, but MUST name the `public-reader` Core role, implement
@@ -2587,7 +2586,8 @@ No revision-3 report may list a §8.2 credential-continuity draft schema as an
 active wire profile, feature, requirement, or strict-profile obligation. The
 unprofiled revision-3 draft vectors exercise schema and pure state-machine
 definitions only; their normalized `conformance_claimable:false` result is
-part of the case and they do not establish revision-4 or ADR-038 conformance.
+part of the case and they do not establish revision-4 or recovery-profile
+conformance.
 
 Wire conformance is byte-exact. Semantically similar encodings do not conform.
 An unknown Comms version or registry profile MUST be rejected or explicitly

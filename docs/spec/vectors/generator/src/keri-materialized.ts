@@ -3,7 +3,7 @@ import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 
 // OID-level derivation of the OPTIONAL materialized-KEL ref profile
-// (spec §10.1.2, ADR-032): refs/xyz.heterodyne.keri/log and
+// (spec §10.1.2): refs/xyz.heterodyne.keri/log and
 // refs/xyz.heterodyne.keri/state. These are byte-identical git objects
 // (sha1, "<type> <len>\0<content>"), scoped to object derivation only -
 // no packfiles. Cross-checked against git hash-object / mktree /

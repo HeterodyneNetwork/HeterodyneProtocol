@@ -17,7 +17,7 @@ import { ed25519 } from "@noble/curves/ed25519";
 import { sha256 } from "@noble/hashes/sha2";
 import { describe, expect, it } from "vitest";
 import {
-  ADR034_INVARIANT_IDS,
+  CLAIMS_OIDC_INVARIANT_IDS,
   expectedReleaseManifests,
   findInvariantEvidenceIssues,
   lintFamilyCutover,
@@ -53,103 +53,8 @@ const anchorMapPath = resolve(
 const releasesPath = resolve(repositoryRoot, "docs/spec/releases");
 const threatModelPath = resolve(repositoryRoot, "docs/security/threat-model.md");
 
-type AcceptanceEvidence = {
-  criterion: string;
-  summary: string;
-  adr: string[];
-  comms: string[];
-  registry: string[];
-  vectors: string[];
-  invariants: string[];
-};
-
-const acceptanceEvidence = (criterion: string, summary: string, adr: string[], comms: string[],
-  registry: string[], vectors: string[], invariants: string[]): AcceptanceEvidence => ({
-  criterion, summary, adr: [...adr].sort(), comms: [...comms].sort(), registry: [...registry].sort(),
-  vectors: [...vectors].sort(), invariants: [...invariants].sort(),
-});
-
-const ADR034 = "docs/adr/2026-07-18-034-key-claims-private-ledger-oidc-projection.md";
-const ADR033 = "docs/adr/2026-07-16-033-four-document-protocol-family-split.md";
-const C = "heterodyne:comms/0.5.0";
-
-const EXPECTED_ACCEPTANCE_EVIDENCE: AcceptanceEvidence[] = [
-  acceptanceEvidence("1", "A new accepted ADR records the kind allocations, ownership, draft-21 pin, repository authority, and OIDC projection.", [
-    `${ADR034}#ownership-and-allocations`, `${ADR034}#authoritative-private-multi-writer-ledger`,
-    `${ADR034}#oauthoidc-and-interoperable-jwt-profile`, `${ADR034}#draft-21-token-status-and-writer-allocation`,
-  ], [`${C}#comms-key-claims`, `${C}#comms-claim-ledger`, `${C}#comms-jwt-projection`, `${C}#comms-token-status`], [
-    "kind:31013", "kind:31014", "registry revision 2",
-  ], ["claims/001-canonical-nostr-subject", "claim-ledger/001-reader-nid-authorized",
-    "oidc/009-rfc9068-access-token-valid", "token-status/001-valid-status-list"], [
-    "COMMS-I-CLAIM-AUTHENTICITY", "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
-    "COMMS-I-JWT-TYPE-AUDIENCE", "COMMS-I-STATUS-INTEGRITY",
-  ]),
-  acceptanceEvidence("2", "The ADR-033 split is complete and the design integrates into Comms with bounded Core/Control amendments only.", [
-    `${ADR033}#a-document-set-and-dependency-direction`, `${ADR033}#b-document-boundaries`, `${ADR034}#ownership-and-allocations`,
-  ], [`${C}#comms-scope`, `${C}#comms-conformance`], ["registry revision 2"], [
-    "versioning/008-per-document-negotiation", "stamping/008-control-carrier-comms-owner",
-  ], ["COMMS-I-CLAIM-AUTHENTICITY"]),
-  acceptanceEvidence("3", "Claim verification and merge behavior are deterministic and vectorized.", [
-    `${ADR034}#atomic-claims-and-native-subject-proof`, `${ADR034}#layered-and-irreversible-revocation`,
-    `${ADR034}#authoritative-private-multi-writer-ledger`,
-  ], [`${C}#comms-claim-verification`, `${C}#comms-claim-revocation`, `${C}#comms-claim-ledger`], [
-    "kind:31013", "kind:31014", "COMMS-I-CLAIM-AUTHENTICITY", "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
-    "COMMS-I-CLAIM-REVOCATION",
-  ], ["claims/004-claim-id-mismatch", "claims/005-persona-issuance-active",
-    "claim-ledger/005-multiwriter-revocation-wins", "claim-ledger/007-nonmonotonic-conflict-blocks"], [
-    "COMMS-I-CLAIM-AUTHENTICITY", "COMMS-I-CLAIM-REPOSITORY-AUTHORITY", "COMMS-I-CLAIM-REVOCATION",
-  ]),
-  acceptanceEvidence("4", "Private metadata is absent from public repos and outer transport metadata.", [
-    `${ADR034}#atomic-claims-and-native-subject-proof`, `${ADR034}#authoritative-private-multi-writer-ledger`,
-    `${ADR034}#one-issuer-and-simultaneous-radicle-continuity`,
-  ], [`${C}#comms-key-claims`, `${C}#comms-claim-ledger`, `${C}#comms-issuer-continuity`], [
-    "kind:31013", "COMMS-I-LEDGER-CONFINEMENT",
-  ], ["claims/018-pairwise-private-dr-delivery", "claim-ledger/009-keyed-path-metadata-private"], [
-    "COMMS-I-LEDGER-CONFINEMENT",
-  ]),
-  acceptanceEvidence("5", "Multiple authorized nodes can mint without index collisions or stale-state authorization.", [
-    `${ADR034}#shared-issuer-keys-and-mint-authority`, `${ADR034}#draft-21-token-status-and-writer-allocation`,
-  ], [`${C}#comms-multiwriter-minting`, `${C}#comms-token-status`], [
-    "COMMS-I-ISSUER-KEY-CONFINEMENT", "COMMS-I-MINT-FRESHNESS", "COMMS-I-STATUS-INTEGRITY",
-  ], ["claim-ledger/011-multiwriter-status-allocation", "claim-ledger/012-stale-minter-denied"], [
-    "COMMS-I-ISSUER-KEY-CONFINEMENT", "COMMS-I-MINT-FRESHNESS", "COMMS-I-STATUS-INTEGRITY",
-  ]),
-  acceptanceEvidence("6", "Vanilla OIDC/OAuth parties can validate JWTs without Heterodyne software.", [
-    `${ADR034}#oauthoidc-and-interoperable-jwt-profile`, `${ADR034}#draft-21-token-status-and-writer-allocation`,
-  ], [`${C}#comms-oidc-endpoints`, `${C}#comms-jwt-projection`, `${C}#comms-token-status`], [
-    "COMMS-I-JWT-TYPE-AUDIENCE", "COMMS-I-STATUS-INTEGRITY",
-  ], ["oidc/001-discovery-exact-issuer", "oidc/008-id-token-valid", "oidc/009-rfc9068-access-token-valid",
-    "token-status/001-valid-status-list"], ["COMMS-I-JWT-TYPE-AUDIENCE", "COMMS-I-STATUS-INTEGRITY"]),
-  acceptanceEvidence("7", "Heterodyne-aware parties can recover issuer keys and token status from the canonical public Radicle mirror.", [
-    `${ADR034}#one-issuer-and-simultaneous-radicle-continuity`, `${ADR034}#draft-21-token-status-and-writer-allocation`,
-  ], [`${C}#comms-issuer-continuity`, `${C}#comms-token-status`], [
-    "COMMS-I-ISSUER-CONTINUITY", "COMMS-I-STATUS-INTEGRITY",
-  ], ["token-status/005-https-radicle-byte-identity", "token-status/007-https-outage-radicle-fallback",
-    "token-status/008-issuer-successor"], ["COMMS-I-ISSUER-CONTINUITY", "COMMS-I-STATUS-INTEGRITY"]),
-  acceptanceEvidence("8", "Registry, schema, generator, threat model, and companion documentation all pass the family conformance checks.", [
-    `${ADR034}#security-and-privacy-consequences`, `${ADR034}#conformance-obligations`,
-  ], [`${C}#comms-security`, `${C}#comms-conformance`], [
-    "registry revision 2", "registry digest b52c0a6f99fdb8a34fa761a74c8374a5a55bd3b0e0494e9d973589e00febccf9",
-  ], ["claims/*", "claim-ledger/*", "oidc/*", "token-status/*", "registry/002-frozen-entry-immutable",
-    "versioning/008-per-document-negotiation", "stamping/008-control-carrier-comms-owner"], [
-    "COMMS-I-CLAIM-AUTHENTICITY", "COMMS-I-CLAIM-ATTENUATION", "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
-    "COMMS-I-CLAIM-REVOCATION", "COMMS-I-LEDGER-CONFINEMENT", "COMMS-I-ISSUER-KEY-CONFINEMENT",
-    "COMMS-I-MINT-FRESHNESS", "COMMS-I-ISSUER-CONTINUITY", "COMMS-I-CLAIM-RELEASE",
-    "COMMS-I-JWT-TYPE-AUDIENCE", "COMMS-I-STATUS-INTEGRITY",
-  ]),
-];
-
-function parseAcceptanceEvidence(markdown: string): AcceptanceEvidence[] {
-  return markdown.split("\n").filter((line) => /^\| [1-8] \|/.test(line)).map((line) => {
-    const cells = line.slice(2, -2).split(" | ");
-    const tokens = (cell = ""): string[] => [...cell.matchAll(/`([^`]+)`/g)].map((match) => match[1]);
-    return acceptanceEvidence(cells[0], cells[1], tokens(cells[2]), tokens(cells[3]), tokens(cells[4]),
-      tokens(cells[5]), tokens(cells[6]));
-  });
-}
 const companionPaths = [
   "README.md",
-  "CLAUDE.md",
   "AGENTS.md",
   "docs/architecture.md",
   "docs/glossary.md",
@@ -159,14 +64,6 @@ const companionPaths = [
   "docs/spec/extensions/mscs/README.md",
 ] as const;
 const preCutoverCompanionPaths = [...companionPaths, "CHANGELOG.md"] as const;
-const adr030Path = resolve(
-  repositoryRoot,
-  "docs/adr/2026-07-07-030-light-client-enrollment-rpc-over-dr-dms.md",
-);
-const adr031Path = resolve(
-  repositoryRoot,
-  "docs/adr/2026-07-07-031-vanilla-nostr-breadcrumbs-and-interop.md",
-);
 
 type CredentialRecordProbe = {
   authorizationId: string;
@@ -287,34 +184,6 @@ function declaredDependencies(text: string): string[] {
   return [...declaration[1].matchAll(/- `(heterodyne:[^`]+)`/g)].map(
     (match) => match[1],
   );
-}
-
-function allocationTable(
-  text: string,
-  heading: string,
-): Record<string, string> {
-  const start = text.indexOf(heading);
-  if (start < 0) return {};
-  const remainder = text.slice(start + heading.length);
-  const nextHeading = remainder.search(/^## /m);
-  const section = nextHeading < 0 ? remainder : remainder.slice(0, nextHeading);
-  const rows: Record<string, string> = {};
-  for (const line of section.split("\n")) {
-    if (!line.startsWith("|")) continue;
-    const cells = line
-      .split("|")
-      .slice(1, -1)
-      .map((cell) => cell.trim());
-    if (
-      cells.length !== 2 ||
-      cells[0] === "Family document" ||
-      /^-+$/.test(cells[0])
-    ) {
-      continue;
-    }
-    rows[cells[0].replaceAll("`", "")] = cells[1];
-  }
-  return rows;
 }
 
 function sectionUnderHeading(text: string, heading: string): string {
@@ -1174,7 +1043,7 @@ describe("protocol family documents", () => {
     );
   });
 
-  it("integrates ADR-037 privacy, identity, recovery, deadline, and resolver corrections", () => {
+  it("integrates privacy, identity, recovery, deadline, and resolver corrections", () => {
     const core = readFileSync(corePath, "utf8");
     const comms = readFileSync(commsPath, "utf8");
     const social = readFileSync(socialPath, "utf8");
@@ -1288,8 +1157,8 @@ describe("protocol family documents", () => {
       core_candidate_shape_defined: true,
       conforming_events_allowed: false,
       activation_requires: [
-        "closed-adr-030-control-profile",
-        "complete-adr-037-and-adr-038-vector-batch",
+        "closed-control-profile",
+        "complete-credential-continuity-and-recovery-vector-batch",
         "atomic-registry-revision-4-feature-and-schema-allocation",
         "matching-family-and-release-manifests",
       ],
@@ -1304,7 +1173,7 @@ describe("protocol family documents", () => {
     expect(text).toMatch(/final candidate[\s\S]*grants no Control authority/i);
     expect(text).toMatch(/ownership[\s\S]*stamp intention[\s\S]*does not\s+make it active/i);
     expect(text).toMatch(/registry revision 4[\s\S]*matching family\/release manifests/i);
-    expect(text).toMatch(/ADR-038[\s\S]*no\s+placeholder/i);
+    expect(text).toMatch(/recovery feature[\s\S]*no placeholder/i);
     expect(text).not.toContain("heterodyne:core/");
     expect(text).toMatch(/Control MUST NOT[\s\S]*wire stamp/i);
     expect(text).not.toMatch(/control\/0\.5\.0.*stamp/i);
@@ -1357,7 +1226,7 @@ describe("protocol family documents", () => {
     for (const profileId of required) expect(text).toContain(profileId);
   });
 
-  it("keeps the Control conformance gate closed after gated ADR-030 integration", () => {
+  it("keeps the Control conformance gate closed after gated profile integration", () => {
     const text = readFileSync(controlPath, "utf8");
     const gate = fixtureFromMarkdown<{
       can_claim_control_conformance: boolean;
@@ -1369,14 +1238,14 @@ describe("protocol family documents", () => {
       can_claim_control_conformance: false,
       blockers: [
         "registry-revision-4-not-published",
-        "adr-038-recovery-feature-and-schemas-not-integrated",
-        "atomic-adr-037-and-adr-038-vector-batch-incomplete",
+        "recovery-feature-and-core-schemas-not-integrated",
+        "credential-continuity-and-recovery-vector-batch-incomplete",
         "matching-family-and-release-manifests-not-issued",
       ],
       integrated_normative_subsets: [
-        "adr-030-gated-control-profile",
-        "adr-035-relay-affinity",
-        "adr-036-agent-workload-publication",
+        "gated-control-profile",
+        "ingress-relay-affinity",
+        "agent-workload-publication",
       ],
     });
     expect(text).toContain("no Control conformance claim");
@@ -1403,12 +1272,12 @@ describe("protocol family documents", () => {
 
     for (const path of [corePath, commsPath, socialPath]) {
       const text = readFileSync(path, "utf8");
-      expect(text).toMatch(
-        /Revision 4 MUST NOT be[\s\S]*one atomic\s+ADR-037\/ADR-038 artifact batch[\s\S]*non-claimable/i,
-      );
+      expect(text).toMatch(/Revision 4 MUST NOT be[\s\S]*one atomic/i);
+      expect(text).toMatch(/credential-continuity and recovery/i);
+      expect(text).toMatch(/non-claimable/i);
     }
     expect(readFileSync(controlPath, "utf8")).toMatch(
-      /registry revision 4[\s\S]*ADR-037\/ADR-038[\s\S]*land atomically/i,
+      /registry revision 4[\s\S]*credential-continuity and recovery[\s\S]*land\s+atomically/i,
     );
   });
 
@@ -1427,14 +1296,16 @@ describe("protocol family documents", () => {
     ]) {
       expect(text).toContain(`<a id="${anchor}"></a>`);
     }
+    expect(text).toContain("They are **not** active");
+    expect(text).toContain("under selected registry revision 3");
     expect(text).toMatch(
-      /\*\*not\*\* active[\s\S]*registry revision 3[\s\S]*MUST NOT advertise, negotiate, require, produce as\s+authoritative, or claim conformance/i,
+      /MUST NOT advertise, negotiate, require, produce as authoritative, or claim\s+conformance/i,
     );
+    expect(text).toMatch(/two\s+Core-owned offline-recovery schemas/i);
+    expect(text).toMatch(/governed-decrypt source-profile\s+catalog/i);
+    expect(text).toMatch(/revision-4 conformance\s+evidence/i);
     expect(text).toMatch(
-      /two Core-owned offline\s+recovery schemas[\s\S]*governed-decrypt source-profile\s+catalog[\s\S]*revision-4 conformance evidence/i,
-    );
-    expect(text).toMatch(
-      /conformance_claimable:false[\s\S]*do not establish revision-4 or ADR-038 conformance/i,
+      /conformance_claimable:false[\s\S]*do not establish revision-4 or recovery-profile\s+conformance/i,
     );
     expect(text).toMatch(
       /"persona": "<64 lowercase hex cold-root npub>",\s+"credential_ledger_generation": 0/,
@@ -1590,88 +1461,14 @@ describe("protocol family documents", () => {
       /Requirements for automated agents[\s\S]*MUST refuse[\s\S]*sign_event/i,
     );
     expect(control).toMatch(
-      /ADR-030\/ADR-035\/ADR-036 draft evidence[\s\S]*Incomplete conformance gate/i,
+      /gated-Control, ingress-relay-affinity, and\s+automated-agent draft evidence[\s\S]*Incomplete conformance gate/i,
     );
   });
 
-  it("amends ADR-030 with the exact Core, Comms, and Control allocation", () => {
-    const text = readFileSync(adr030Path, "utf8");
-    const rows = allocationTable(text, "## Family-allocation amendment (2026-07-19)");
-
-    expect(Object.keys(rows)).toEqual(["Core", "Comms", "Control"]);
-    expect(rows.Core).toMatch(/session-device base extensibility/i);
-    expect(rows.Comms).toMatch(
-      /epoch-key invite[\s\S]*undelegated initiator[\s\S]*DR contexts[\s\S]*negotiation/i,
-    );
-    expect(rows.Control).toMatch(
-      /enrollment[\s\S]*RPC[\s\S]*grants[\s\S]*tokens[\s\S]*MCP/i,
-    );
-    expect(text).toMatch(
-      /session devices[\s\S]*MUST NOT\s+receive[\s\S]*epoch[\s\S]*NID[\s\S]*audience[\s\S]*ratchet/i,
-    );
-    expect(text).toMatch(
-      /authorized durable NID devices[\s\S]*credential-plane synchronization/i,
-    );
-    const amendment = sectionUnderHeading(
-      text,
-      "## Family-allocation amendment (2026-07-19)",
-    );
-    expect(amendment).toContain("heterodyne:core/0.5.0#core-nid-delegation");
-    expect(amendment).toContain("heterodyne:comms/0.5.0#comms-direct-messages");
-    expect(amendment).not.toMatch(/docs\/spec\/heterodyne\.md|§[0-9]/);
-    expect(text).toMatch(/unqualified `§/);
-    expect(text).toMatch(/historical[\s\S]*frozen 0\.4\.0 monolith/i);
-  });
-
-  it("keeps ADR-030 on unsigned generic Comms carriers without dedicated Control kinds", () => {
-    const text = readFileSync(adr030Path, "utf8");
-
-    expect(text).toMatch(/session device\s+key signs the enrollment `key_proof`/i);
-    expect(text).toMatch(/participates in Comms DR wire\s+authentication/i);
-    expect(text).toMatch(/Control RPC inner rumors are unsigned/i);
-    expect(text).toMatch(
-      /authenticated by the accepted DR session, transcript, and carrier\s+validation/i,
-    );
-    expect(text).toMatch(/single generic Comms[\s\S]*kind:31015[\s\S]*kind:31016/i);
-    expect(text).toMatch(
-      /negotiated Control\s+protocol[\s\S]*method[\s\S]*direction[\s\S]*capabilities/i,
-    );
-    expect(text).not.toMatch(/signs only[\s\S]{0,180}RPC requests/i);
-    expect(text).not.toMatch(/separate kinds|both rumor families|dedicated Control kind/i);
-  });
-
-  it("amends ADR-031 with Core breadcrumb and Social interop ownership", () => {
-    const text = readFileSync(adr031Path, "utf8");
-    const rows = allocationTable(text, "## Family-allocation amendment (2026-07-19)");
-
-    expect(Object.keys(rows)).toEqual(["Core", "Social"]);
-    expect(rows.Core).toMatch(/production[\s\S]*verification exclusion/i);
-    expect(rows.Social).toMatch(/vanilla[\s\S]*follow[\s\S]*UI/i);
-    expect(text).toContain("heterodyne-core-rotation-breadcrumb-profile-v1");
-    expect(text).toContain("heterodyne-core-rotation-breadcrumb-note-v1");
-    expect(text).toMatch(/both profiles[\s\S]*non-stamping/i);
-    const amendment = sectionUnderHeading(
-      text,
-      "## Family-allocation amendment (2026-07-19)",
-    );
-    expect(amendment).toContain("heterodyne:core/0.5.0#core-version-stamps");
-    expect(amendment).toContain("heterodyne:social/0.5.0#social-following");
-    expect(amendment).not.toMatch(/docs\/spec\/heterodyne\.md|§[0-9]/);
-    expect(text).toMatch(/unqualified `§/);
-    expect(text).toMatch(/historical[\s\S]*frozen 0\.4\.0 monolith/i);
-  });
-
-  it("integrates ADR-031 as producer-only Core workflow and manual Social following", () => {
-    const adr = readFileSync(adr031Path, "utf8");
+  it("verifies the producer-only Core breadcrumb workflow and manual Social following", () => {
     const core = readFileSync(corePath, "utf8");
     const social = readFileSync(socialPath, "utf8");
     const threatModel = readFileSync(threatModelPath, "utf8");
-
-    expect(adr).toMatch(/\*\*Status:\*\* Accepted/);
-    expect(adr).toContain("production-rule:adr-031-kind0-v1");
-    expect(adr).toContain("production-rule:adr-031-kind1-v1");
-    expect(adr).toMatch(/consumer MUST NOT infer[\s\S]*relay bytes/i);
-    expect(adr).toMatch(/v2 profile[\s\S]*in-band marker/i);
 
     const rotation = sectionUnderHeading(
       core,
@@ -2369,23 +2166,20 @@ describe("protocol family documents", () => {
     expect(comms).toMatch(/There is no[\s\S]*fallback[\s\S]*unlabeled event/i);
   });
 
-  it("tells coding agents to refuse impersonation and use the scoped node path", () => {
+  it("keeps one concise agent guide with the spec-canonical decision workflow", () => {
     const agents = readFileSync(resolve(repositoryRoot, "AGENTS.md"), "utf8");
 
-    expect(agents).toContain("#### Mandatory automated publishing path");
-    expect(agents).toMatch(/automated principal \*\*MUST NOT\*\*[\s\S]*persona epoch key/i);
-    expect(agents).toMatch(/built-in OIDC issuer[\s\S]*scoped, temporary,[\s\S]*workload token/i);
-    expect(agents).toMatch(/private key remains on the full node/i);
-    expect(agents).toMatch(/MUST fail[\s\S]*closed/i);
-    expect(agents).toMatch(/no permission to fall back[\s\S]*user device key/i);
-    expect(agents).toContain(
-      "docs/spec/heterodyne-comms.md#comms-agent-authorship",
-    );
+    expect(existsSync(resolve(repositoryRoot, "CLAUDE.md"))).toBe(false);
+    expect(agents).toMatch(/ADRs are non-canonical point-in-time decision records/i);
+    expect(agents).toMatch(/If an ADR and the specification disagree, the specification\s+governs/i);
+    expect(agents).toMatch(/same\s+branch and patch or pull request/i);
+    expect(agents).toMatch(/registry, schemas, release metadata, and conformance vectors/i);
+    expect(agents).toMatch(/mark the ADR accepted and move it to[\s\S]*docs\/adr\/archive/i);
+    expect(agents).toMatch(/Merge only when the specification stands on its own/i);
   });
 
   it("aligns companion architecture with role-scoped Tor, public reading, and agent authorship", () => {
     const readme = readFileSync(resolve(repositoryRoot, "README.md"), "utf8");
-    const claude = readFileSync(resolve(repositoryRoot, "CLAUDE.md"), "utf8");
     const architecture = readFileSync(
       resolve(repositoryRoot, "docs/architecture.md"),
       "utf8",
@@ -2393,7 +2187,7 @@ describe("protocol family documents", () => {
     const glossary = readFileSync(resolve(repositoryRoot, "docs/glossary.md"), "utf8");
     const overview = readFileSync(overviewPath, "utf8");
 
-    for (const text of [readme, claude, architecture, overview]) {
+    for (const text of [readme, architecture, overview]) {
       expect(text).toMatch(/full nodes?[\s\S]*onion/i);
       expect(text).toMatch(/browser[\s\S]*reduced-assurance/i);
       expect(text).toMatch(/agent[\s\S]*(scoped|workload token)/i);
@@ -2428,73 +2222,6 @@ describe("protocol family documents", () => {
     expect(threatModel).toMatch(/violation mutes the persona[\s\S]*exact offending device-publishing key/i);
   });
 
-  it("records complete ADR-035 and ADR-036 integration evidence", () => {
-    const design = readFileSync(
-      resolve(
-        repositoryRoot,
-        "docs/superpowers/specs/2026-07-30-agent-authorship-oidc-moderation-design.md",
-      ),
-      "utf8",
-    );
-    const coverage = JSON.parse(
-      readFileSync(
-        resolve(repositoryRoot, "docs/spec/vectors/coverage/manifest.json"),
-        "utf8",
-      ),
-    ) as Array<{ vector_id: string }>;
-    const vectorIds = new Set(coverage.map(({ vector_id }) => vector_id));
-    const evidence = sectionUnderHeading(
-      design,
-      "## Integration acceptance evidence",
-    );
-    const adr036Start = evidence.indexOf("### ADR-036");
-    const adr035 = evidence.slice(0, adr036Start);
-    const adr036 = evidence.slice(adr036Start);
-
-    expect(design).toContain("**Status:** Approved and integrated");
-    expect(adr035.split("\n").filter((line) => /^\| (?:[1-9]|10) \|/.test(line)))
-      .toHaveLength(10);
-    expect(adr036.split("\n").filter((line) => /^\| [1-9] \|/.test(line)))
-      .toHaveLength(9);
-    for (const vectorId of [
-      "role-capabilities/public-reader-reduced-assurance",
-      "role-capabilities/full-node-tor-default",
-      "control/cross-relay-final-response-replay",
-      "public-reader/launcher-persona-roundtrip",
-      "public-reader/resolution-canonical",
-      "public-reader/transition-without-reload",
-      "public-reader/localhost-relay-hint-rejected",
-      "control/raw-signing-refused",
-      "agent-authorship/delegation-valid",
-      "agent-authorship/stable-identity-renewal",
-      "agent-authorship/token-valid",
-      "agent-authorship/attribution-kind-1",
-      "agent-authorship/profile-unavailable-rejected",
-      "control/attribution-bypass-refused",
-      "agent-moderation/receipt-valid",
-      "agent-moderation/policy-list-valid",
-    ]) {
-      expect(design).toContain(`\`${vectorId}\``);
-      expect(vectorIds).toContain(vectorId);
-    }
-    for (const anchor of [
-      "core-node-roles",
-      "core-tor-reachability",
-      "comms-public-launcher",
-      "comms-public-resolution",
-      "comms-agent-authorship",
-      "comms-agent-delegation",
-      "comms-agent-token",
-      "comms-agent-attribution",
-      "social-agent-policy-receipts",
-      "social-agent-policy-list",
-    ]) {
-      expect(
-        `${readFileSync(corePath, "utf8")}\n${readFileSync(commsPath, "utf8")}\n${readFileSync(socialPath, "utf8")}`,
-      ).toContain(`<a id="${anchor}"></a>`);
-    }
-  });
-
   it("uses only namespaced current invariants and exact registry descriptions", () => {
     const threatModel = readFileSync(threatModelPath, "utf8");
     const registry = JSON.parse(
@@ -2506,7 +2233,7 @@ describe("protocol family documents", () => {
       registry.security_invariants,
       threatModel,
     )).toEqual([]);
-    expect(ADR034_INVARIANT_IDS).toHaveLength(11);
+    expect(CLAIMS_OIDC_INVARIANT_IDS).toHaveLength(11);
 
     expect(findInvariantEvidenceIssues(
       [...registry.security_invariants, {
@@ -2524,7 +2251,7 @@ describe("protocol family documents", () => {
     const registry = JSON.parse(
       readFileSync(resolve(repositoryRoot, "docs/spec/registry/security-invariants.json"), "utf8"),
     ) as { security_invariants: Array<{ id: string; description: string }> };
-    const [firstId, secondId] = ADR034_INVARIANT_IDS;
+    const [firstId, secondId] = CLAIMS_OIDC_INVARIANT_IDS;
     const first = registry.security_invariants.find(({ id }) => id === firstId)!;
     const second = registry.security_invariants.find(({ id }) => id === secondId)!;
     const firstRow = `- **${first.id}:** ${first.description}`;
@@ -2550,72 +2277,34 @@ describe("protocol family documents", () => {
     )).toContain(`missing invariant evidence: ${first.id}`);
   });
 
-  it("does not accept ADR-034 as a substitute for threat-model integration", () => {
+  it("requires claims/OIDC invariant integration in the threat model", () => {
     const threatModel = readFileSync(threatModelPath, "utf8");
     const registry = JSON.parse(
       readFileSync(resolve(repositoryRoot, "docs/spec/registry/security-invariants.json"), "utf8"),
     ) as { security_invariants: Array<{ id: string; description: string }> };
-    const integrated = registry.security_invariants.find(
-      ({ id }) => id === ADR034_INVARIANT_IDS[0],
-    )!;
+    const required = registry.security_invariants.filter(({ id }) =>
+      CLAIMS_OIDC_INVARIANT_IDS.includes(
+        id as typeof CLAIMS_OIDC_INVARIANT_IDS[number],
+      ),
+    );
+
+    expect(required).toHaveLength(11);
+    for (const invariant of required) {
+      expect(threatModel).toContain(`- **${invariant.id}:** ${invariant.description}`);
+    }
+
+    const [integrated] = required;
     const withoutIntegratedRow = threatModel.replace(
       `- **${integrated.id}:** ${integrated.description}`,
       "",
     );
-
     expect(findInvariantEvidenceIssues(
       registry.security_invariants,
       withoutIntegratedRow,
     )).toContain(`missing invariant evidence: ${integrated.id}`);
   });
 
-  it("requires canonical claims/OIDC standards references and fetch guidance", () => {
-    const agents = readFileSync(resolve(repositoryRoot, "AGENTS.md"), "utf8");
-    const references = [
-      ["OpenID Connect Core", "https://openid.net/specs/openid-connect-core-1_0.html"],
-      ["OpenID Connect Discovery", "https://openid.net/specs/openid-connect-discovery-1_0.html"],
-      ["RFC 7517", "https://www.rfc-editor.org/rfc/rfc7517.html"],
-      ["RFC 7519", "https://www.rfc-editor.org/rfc/rfc7519.html"],
-      ["RFC 7636", "https://www.rfc-editor.org/rfc/rfc7636.html"],
-      ["RFC 7638", "https://www.rfc-editor.org/rfc/rfc7638.html"],
-      ["RFC 8414", "https://www.rfc-editor.org/rfc/rfc8414.html"],
-      ["RFC 8628", "https://www.rfc-editor.org/rfc/rfc8628.html"],
-      ["RFC 8705", "https://www.rfc-editor.org/rfc/rfc8705.html"],
-      ["RFC 9068", "https://www.rfc-editor.org/rfc/rfc9068.html"],
-      ["RFC 9449", "https://www.rfc-editor.org/rfc/rfc9449.html"],
-      [
-        "draft-ietf-oauth-status-list-21",
-        "https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-21",
-      ],
-    ] as const;
-    for (const [name, url] of references) {
-      expect(agents, name).toContain(`[${name}](${url})`);
-      const entry = agents.match(new RegExp(
-        `^- \\*\\*\\[${name.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}\\]\\(${url.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}\\)\\*\\*[\\s\\S]*?(?=^- \\*\\*\\[|^### |^## |\\Z)`,
-        "m",
-      ))?.[0];
-      expect(entry, `${name} needs source-specific fetch guidance`).toMatch(/\*Use when:\*/);
-    }
-    expect(agents).toMatch(
-      /draft-ietf-oauth-status-list-21[\s\S]*exact[\s\S]*MUST NOT[\s\S]*floating/i,
-    );
-  });
-
-  it("integrates every ADR-034 invariant into the family threat model", () => {
-    const threatModel = readFileSync(threatModelPath, "utf8");
-    const registry = JSON.parse(
-      readFileSync(resolve(repositoryRoot, "docs/spec/registry/security-invariants.json"), "utf8"),
-    ) as { security_invariants: Array<{ id: string; description: string }> };
-    const required = registry.security_invariants.filter(({ id }) =>
-      ADR034_INVARIANT_IDS.includes(id as typeof ADR034_INVARIANT_IDS[number]),
-    );
-    expect(required).toHaveLength(11);
-    for (const invariant of required) {
-      expect(threatModel).toContain(`- **${invariant.id}:** ${invariant.description}`);
-    }
-  });
-
-  it("maps every Task 9 claims/OIDC threat to an invariant, Comms anchor, and vectors", () => {
+  it("maps every claims/OIDC threat to an invariant, Comms anchor, and vectors", () => {
     const threatModel = readFileSync(threatModelPath, "utf8");
     const threatNames = [
       "Claim forgery or semantic malleation",
@@ -2664,92 +2353,40 @@ describe("protocol family documents", () => {
     }
   });
 
-  it("publishes an eight-criterion claims/OIDC acceptance evidence map", () => {
-    const threatModel = readFileSync(threatModelPath, "utf8");
-    const rows = parseAcceptanceEvidence(threatModel);
-    expect(rows).toEqual(EXPECTED_ACCEPTANCE_EVIDENCE);
-    expect(readFileSync(resolve(repositoryRoot, ADR034), "utf8")).toContain(
-      "**Status:** Accepted",
-    );
-    const comms = readFileSync(commsPath, "utf8");
-    const registry = loadRegistry(repositoryRoot);
-    const revision2 = registry.history.get(2)!;
-    const revision2Digest = computeRegistryDigest(revision2);
-    const invariantIds = new Set(registry.currentEntrySet.security_invariants.map(({ id }) => id));
-    for (const row of rows) {
-      for (const adrRef of row.adr) {
-        const [path, anchor] = adrRef.split("#");
-        const adr = readFileSync(resolve(repositoryRoot, path), "utf8");
-        expect(new Set(githubHeadingAnchors(adr)), adrRef).toContain(`#${anchor}`);
-      }
-      for (const commsRef of row.comms) {
-        expect(comms, commsRef).toContain(`<a id="${commsRef.split("#")[1]}"></a>`);
-      }
-      for (const registryEntry of row.registry) {
-        if (/^kind:[0-9]+$/.test(registryEntry)) {
-          expect(registry.currentEntrySet.kinds.map(({ kind }) => kind)).toContain(Number(registryEntry.slice(5)));
-        } else if (registryEntry === "registry revision 2") {
-          expect(registry.history.has(2)).toBe(true);
-        } else if (registryEntry.startsWith("registry digest ")) {
-          expect(revision2Digest).toBe(registryEntry.slice("registry digest ".length));
-        } else {
-          expect(invariantIds).toContain(registryEntry);
-        }
-      }
-      for (const vectorEvidence of row.vectors) {
-        if (vectorEvidence.endsWith("/*")) {
-          const directory = resolve(repositoryRoot, "docs/spec/vectors", vectorEvidence.slice(0, -2));
-          expect(readdirSync(directory).some((name) => name.endsWith(".json"))).toBe(true);
-        } else {
-          expect(existsSync(resolve(repositoryRoot, "docs/spec/vectors", `${vectorEvidence}.json`))).toBe(true);
-        }
-      }
-      for (const invariant of row.invariants) expect(invariantIds).toContain(invariant);
-    }
-  });
-
-  it("rejects valid but criterion-irrelevant acceptance evidence swaps", () => {
-    const threatModel = readFileSync(threatModelPath, "utf8");
-    const swapInCriterion = (criterion: string, from: string, to: string): string => threatModel
-      .split("\n")
-      .map((line) => line.startsWith(`| ${criterion} |`) ? line.replace(`\`${from}\``, `\`${to}\``) : line)
-      .join("\n");
-
-    const wrongVector = swapInCriterion("6", "oidc/001-discovery-exact-issuer", "claims/001-canonical-nostr-subject");
-    const wrongRegistryEntry = swapInCriterion("6", "COMMS-I-JWT-TYPE-AUDIENCE", "kind:31013");
-    expect(parseAcceptanceEvidence(wrongVector)).not.toEqual(EXPECTED_ACCEPTANCE_EVIDENCE);
-    expect(parseAcceptanceEvidence(wrongRegistryEntry)).not.toEqual(EXPECTED_ACCEPTANCE_EVIDENCE);
-  });
-
   it("documents mixed immutable registry revisions without rewriting vector history", () => {
     const readme = readFileSync(resolve(repositoryRoot, "docs/spec/vectors/README.md"), "utf8");
     const coverage = JSON.parse(
       readFileSync(resolve(repositoryRoot, "docs/spec/vectors/coverage/manifest.json"), "utf8"),
     ) as Array<{ registry_revision: number }>;
     const counts = new Map<number, number>();
-    for (const { registry_revision: revision } of coverage) counts.set(revision, (counts.get(revision) ?? 0) + 1);
+    for (const { registry_revision: revision } of coverage) {
+      counts.set(revision, (counts.get(revision) ?? 0) + 1);
+    }
 
     expect(readme).toContain('"registry_revision": "<pinned-registry-revision>"');
     expect(readme).toMatch(
       new RegExp(`${counts.get(1)} immutable\\s+registry-revision-1 vectors`),
     );
     expect(readme).toMatch(
-      new RegExp(`${counts.get(2)} ADR-034 registry-revision-2 vectors`),
+      new RegExp(`${counts.get(2)} claims/OIDC registry-revision-2 vectors`),
     );
     expect(readme).toMatch(
       new RegExp(`${counts.get(3)}\\s+registry-revision-3 vectors`),
     );
     expect(readme).toMatch(
-      /159 cover\s+ADR-030\/ADR-035\/ADR-036 behavior and 11 are ADR-037 credential-continuity\s+draft outer evaluations[\s\S]*`conformance_claimable:false`[\s\S]*do not activate or claim the gated\s+profiles/i,
+      /159 cover the gated Control,[\s\S]*11 are\s+credential-continuity draft outer evaluations[\s\S]*`conformance_claimable:false`[\s\S]*do not activate or\s+claim the gated profiles/i,
     );
     expect(readme).toMatch(
-      /historical released vectors[\s\S]*MUST NOT[\s\S]*rewritten/i,
+      /Historical released vectors[\s\S]*MUST NOT[\s\S]*rewritten/i,
     );
   });
 
   it("maps exact revocation stamp, tag, and proof checks to their revocation vector", () => {
     const threatModel = readFileSync(threatModelPath, "utf8");
-    const row = threatModel.split("\n").find((line) => line.startsWith("| Claim forgery or semantic malleation |"));
+    const row = threatModel.split("\n").find((line) =>
+      line.startsWith("| Claim forgery or semantic malleation |")
+    );
+
     expect(row).toContain("`claims/015-authorization-self-revocation`");
     expect(row).toContain("`kind:31014`");
     expect(row).toContain("`comms/0.5.0`");
@@ -2784,7 +2421,10 @@ describe("protocol family documents", () => {
       "comms.public-reader.v1",
       "comms.agent-authorship.v1",
     ];
-    for (const manifest of Object.values(manifests)) expect(manifest.registry_revision).toBe(3);
+
+    for (const manifest of Object.values(manifests)) {
+      expect(manifest.registry_revision).toBe(3);
+    }
     expect(manifests.comms.features).toEqual(features);
     expect(manifests.core.features).toEqual([
       "core.nostr-relay-read.v1",
@@ -2816,7 +2456,7 @@ describe("protocol family documents", () => {
     for (const anchor of requiredAnchors) expect(comms).toContain(`<a id="${anchor}"></a>`);
     expect(comms).toMatch(/whole atomic signed claims[\s\S]*MUST NOT[\s\S]*SD-JWT/i);
     expect(comms).toMatch(/MUST NOT[\s\S]*automatic(?:ally)?[\s\S]*multiple claim names/i);
-    for (const invariant of ADR034_INVARIANT_IDS) expect(comms).toContain(`**${invariant}:**`);
+    for (const invariant of CLAIMS_OIDC_INVARIANT_IDS) expect(comms).toContain(`**${invariant}:**`);
   });
 
   it("defines exact claim visibility and repository-backed OAuth claim semantics", () => {
@@ -3193,6 +2833,42 @@ describe("protocol family documents", () => {
           "Document ID: `comms`",
           "Normative dependencies: `heterodyne:core/0.5.0#core-identity-model`.",
           '<a id="comms-envelope"></a>',
+        ].join("\n"),
+      },
+      (root) => expect(lintFamilyDocs(root)).toEqual([]),
+    );
+  });
+
+  it.each([
+    ["ADR number", "ADR-039 records this decision."],
+    ["ADR path", "See docs/adr/archive/ for rationale."],
+  ])("rejects non-canonical %s references in live specifications", (_case, reference) => {
+    withFamilyDocs(
+      {
+        core: [
+          "Document ID: `core`",
+          reference,
+          '<a id="core-identity-model"></a>',
+        ].join("\n"),
+      },
+      (root) =>
+        expect(lintFamilyDocs(root)).toContainEqual(
+          expect.objectContaining({
+            path: "docs/spec/heterodyne-core.md",
+            line: 2,
+            code: "noncanonical-decision-reference",
+          }),
+      ),
+    );
+  });
+
+  it("permits lowercase legacy text inside an opaque protocol identifier", () => {
+    withFamilyDocs(
+      {
+        core: [
+          "Document ID: `core`",
+          "The discriminator is `production-rule:adr-031-kind0-v1`.",
+          '<a id="core-identity-model"></a>',
         ].join("\n"),
       },
       (root) => expect(lintFamilyDocs(root)).toEqual([]),

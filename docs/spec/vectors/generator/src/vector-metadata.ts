@@ -12,7 +12,7 @@ export type VectorMetadata = {
 
 const ids = (value: string) => new Set(value.trim().split(/\s+/));
 
-// ADR-033 requirement 38 assigns ownership per vector, never by directory.
+// Ownership is assigned per vector, never inferred from its directory.
 // This exhaustive inventory intentionally names every pre-split vector ID.
 const CORE_IDS = ids(`
 config-backup/config-rid-advertised-rejected

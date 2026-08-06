@@ -108,8 +108,7 @@ real-time push from Radicle's announce-then-fetch substrate.
 <a id="social-discovery"></a>
 ## 3. Following and social discovery
 
-<!-- Monolith provenance: §7.3-§7.6 and §11.4; lower-layer discovery split by
-ADR-033 requirements 9 and 11. -->
+<!-- Monolith provenance: §7.3-§7.6 and §11.4. -->
 
 Social discovery starts only after Core has resolved npub to RID to serving
 node and Comms has located the generic feed/outbox. A follower MUST:
@@ -164,13 +163,13 @@ lack of Double Ratchet forward secrecy.
 An unstamped `kind:0` or `kind:1` without `kel_head` remains ordinary upstream
 Nostr even when its prose claims that an account moved. A client MAY render
 that claim as an advisory, reduced-assurance breadcrumb, but it MUST NOT infer
-either ADR-031 v1 producer profile, project KEL continuity, or use the event as
-persona authority. Following, refollowing, or switching to a claimed successor
-requires an explicit user action; a client MUST NOT change a follow
-automatically. Compromise-driven rotations have no trustworthy old-key
-breadcrumb, and a later compromise of a retired key can overwrite replaceable
-`kind:0` or publish a competing note, so the UI MUST NOT describe breadcrumb
-continuity as secure or compromise-resistant.
+either registered rotation-breadcrumb producer profile, project KEL
+continuity, or use the event as persona authority. Following, refollowing, or
+switching to a claimed successor requires an explicit user action; a client
+MUST NOT change a follow automatically. Compromise-driven rotations have no
+trustworthy old-key breadcrumb, and a later compromise of a retired key can
+overwrite replaceable `kind:0` or publish a competing note, so the UI MUST NOT
+describe breadcrumb continuity as secure or compromise-resistant.
 
 <a id="social-cross-persona"></a>
 ### 3.2 Cross-persona advertisements
@@ -258,8 +257,7 @@ user's own follows or mutes.
 <a id="social-recovery-binding"></a>
 ## 4. Social binding of Core recovery roles
 
-<!-- Monolith provenance: §3.12.1-§3.12.4; mechanism recast in Core by
-ADR-033 requirement 13. -->
+<!-- Monolith provenance: §3.12.1-§3.12.4. -->
 
 Core defines recovery peers, declared witnesses, cached identity material,
 and cold-root re-anchor at `heterodyne:core/0.5.0#core-recovery`. Social MAY
@@ -321,8 +319,7 @@ explicit user action and MUST NOT influence the Core accept/reject verdict.
 <a id="social-feed-presentation"></a>
 ## 5. Feed and organization presentation
 
-<!-- Monolith provenance: §5.6, §6.7.0/§6.7.6, §6.8-§6.8.1, §7.1-§7.2;
-Comms base ownership retained by ADR-033 requirements 7, 11, and 12. -->
+<!-- Monolith provenance: §5.6, §6.7.0/§6.7.6, §6.8-§6.8.1, §7.1-§7.2. -->
 
 Comms owns feed storage, ordering, paging, retrieval, and threshold
 authorization. Social turns those verified inputs into topic subscriptions,
@@ -630,8 +627,7 @@ removes the original binding.
 <a id="social-lists"></a>
 ## 7. Personal lists, community policy, and web of trust
 
-<!-- Monolith provenance: §3.8 private Social payloads and §8.5-§8.6/§8.10;
-NIP-51 ownership corrected by ADR-033 requirement 9. -->
+<!-- Monolith provenance: §3.8 private Social payloads and §8.5-§8.6/§8.10. -->
 
 NIP-51 is an adopted upstream Social profile, not a Core or Comms construct.
 Public NIP-51 items are tags. Private items are tag-shaped arrays encoded as a
@@ -1461,8 +1457,7 @@ that the Matrix wire rejected it.
 <a id="social-security"></a>
 ## 13. Security invariants
 
-<!-- Monolith provenance: §9 Social/Matrix portions and §13 mixed invariants;
-namespaced by ADR-033. -->
+<!-- Monolith provenance: §9 Social/Matrix portions and §13 mixed invariants. -->
 
 Registry revision 3 binds these exact Social invariants:
 
@@ -1689,8 +1684,7 @@ transparency, and device-key-scoped remediation.
 <a id="social-conformance"></a>
 ## 14. Conformance
 
-<!-- Monolith provenance: §11.7 Social policy and §14; family claims split by
-ADR-033 requirements 30-34. -->
+<!-- Monolith provenance: §11.7 Social policy and §14. -->
 
 A `Social` report MUST name `social/0.5.0`, pin `core/0.5.0` and
 `comms/0.5.0`, pin registry revision 3 or its immutable digest, enumerate
@@ -1704,10 +1698,10 @@ policy, subscriber-local agent-policy moderation when
 invariants.
 
 Revision 4 MUST NOT be selected, advertised, or loaded until one atomic
-ADR-037/ADR-038 artifact batch contains the complete catalogs, history
-snapshot, schemas, vectors, family/artifact-set manifests, and matching
-release manifests. A partial revision-4 history or schema batch is invalid and
-non-claimable.
+credential-continuity and recovery artifact batch contains the complete
+catalogs, history snapshot, schemas, vectors, family/artifact-set manifests,
+and matching release manifests. A partial revision-4 history or schema batch
+is invalid and non-claimable.
 
 A `Social+Matrix` report MUST include a complete `Social` claim and every
 Matrix requirement in §§9-12: MXID delegation, election/leases/failover,
@@ -1725,7 +1719,7 @@ profile fixture and MUST NOT collapse `Social` and `Social+Matrix`.
 Wire conformance is byte-exact. Existing signed 0.4 events MUST NOT be
 restamped. Plain upstream NIP-51 and NIP-72 events remain unstamped; only the
 exact immutable Social profiles opt into a Social stamp. During 0.x, an
-accepted ADR may change or retire an unreleased current vector in place;
-vector-ID immutability begins at 1.0. Unsupported Social versions or profiles
-MUST be rejected or explicitly degraded under Core's version rules,
-never silently interpreted as this release.
+accepted specification change may change or retire an unreleased current
+vector in place; vector-ID immutability begins at 1.0. Unsupported Social
+versions or profiles MUST be rejected or explicitly degraded under Core's
+version rules, never silently interpreted as this release.

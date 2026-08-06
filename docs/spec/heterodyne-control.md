@@ -41,18 +41,18 @@ conformance claim.
 Control is a profile of Comms, not an independent transport. It reserves the
 application semantics for light-client and agentic device enrollment, RPC
 requests and responses, permission grants, one-time enrollment tokens, and
-the Model Context Protocol (MCP) data-layer profile described by ADR-030.
-It also reserves session lifecycle, revocation, replay protection,
-object-level authorization, side-effect audit, and inbound-execution policy.
+the Model Context Protocol (MCP) data-layer profile in §§5-7. It also reserves
+session lifecycle, revocation, replay protection, object-level authorization,
+side-effect audit, and inbound-execution policy.
 
 The closed draft schemas, state machines, rejection rules, and draft vector
-corpus in §§5-7 integrate ADR-030 while preserving the relay-affinity and
-automated-agent requirements of ADR-035 and ADR-036. This is an interoperable
-draft definition, but not an active conformance feature: registry revision 3
-still marks the session-device profile reserved-inactive, and the atomic
-ADR-037/ADR-038 revision-4 artifact batch has not been issued. An
-implementation MAY exercise these rules only as visibly non-conformant draft
-behavior and MUST NOT advertise Control conformance.
+corpus in §§5-7 include ingress-relay affinity and automated-agent
+requirements. This is an interoperable draft definition, but not an active
+conformance feature: registry revision 3 still marks the session-device
+profile reserved-inactive, and the atomic revision-4 credential-continuity and
+recovery artifact batch has not been issued. An implementation MAY exercise
+these rules only as visibly non-conformant draft behavior and MUST NOT
+advertise Control conformance.
 
 Control has no transport and no wire-stamp authority. Session-carried Control
 payloads use accepted Comms double-ratchet sessions, Comms negotiation, and
@@ -152,12 +152,13 @@ profile gate is closed.
 
 Activation now requires all of the following in one atomic artifact batch:
 
-1. the complete closed ADR-030 enrollment, grant, token, RPC, MCP, lifecycle,
-   and audit schemas and state machines;
-2. every minimum positive and negative vector required by ADRs 030, 035, 036,
-   037, and 038;
-3. the complete ADR-038 recovery feature and schema allocations, with no
-   placeholder, wildcard, omission, or unbound prerequisite; and
+1. the complete closed enrollment, grant, token, RPC, MCP, lifecycle, and
+   audit schemas and state machines in this document;
+2. every minimum positive and negative vector required by the gated Control,
+   ingress-relay-affinity, automated-agent, credential-continuity, and
+   recovery profiles;
+3. the complete recovery feature and schema allocations, with no placeholder,
+   wildcard, omission, or unbound prerequisite; and
 4. registry revision 4 plus matching family/release manifests that explicitly
    change the profile and Control feature gates from inactive to active.
 
@@ -170,8 +171,8 @@ Activation now requires all of the following in one atomic artifact batch:
   "core_candidate_shape_defined": true,
   "conforming_events_allowed": false,
   "activation_requires": [
-    "closed-adr-030-control-profile",
-    "complete-adr-037-and-adr-038-vector-batch",
+    "closed-control-profile",
+    "complete-credential-continuity-and-recovery-vector-batch",
     "atomic-registry-revision-4-feature-and-schema-allocation",
     "matching-family-and-release-manifests"
   ]
@@ -312,14 +313,13 @@ for a declared shorter interval. Audit persistence MUST precede replay of a
 final side-effect result.
 
 <a id="control-reserved-scope"></a>
-## 7. Closed ADR-030 draft state machines
+## 7. Closed draft state machines
 
-This section completes the closed draft behavior allocated to Control by
-ADR-030. It does not activate the revision-3 registry reservation or open the
-conformance gate in §9. Every JSON payload named here is the plaintext of a
-Comms generic subprotocol inner rumor after successful Comms authentication
-and mutual negotiation. Control defines no event kind, outer wrapper,
-transport, or wire stamp.
+This section defines Control's closed draft behavior. It does not activate the
+revision-3 registry reservation or open the conformance gate in §9. Every JSON
+payload named here is the plaintext of a Comms generic subprotocol inner rumor
+after successful Comms authentication and mutual negotiation. Control defines
+no event kind, outer wrapper, transport, or wire stamp.
 
 <a id="control-enrollment"></a>
 ### 7.1 Enrollment
@@ -394,7 +394,7 @@ already-spent-for-another-key presentations fail closed. Redemption is shown
 in the filtered device inventory.
 
 A Control enrollment token is not a Comms/OIDC agent workload access token.
-Neither is an ADR-038 recovery transfer/bootstrap grant. Implementations MUST
+Neither is a recovery transfer/bootstrap grant. Implementations MUST
 type-separate the three classes and MUST NOT accept one for another class's
 operation.
 
@@ -636,9 +636,9 @@ profile for a client that implements no Social document.
 Because Control conformance is closed, an implementation MUST NOT place
 `heterodyne-control-strict-v1` in `strict_profiles`, claim the profile in a
 conformance report, or treat its stable identifier as evidence of activation.
-Activation requires the same atomic registry-revision-4, ADR-037/ADR-038
-feature/schema/vector, and manifest gates as baseline Control conformance,
-plus all prerequisite strict-profile results.
+Activation requires the same atomic registry-revision-4
+credential-continuity/recovery feature, schema, vector, and manifest gates as
+baseline Control conformance, plus all prerequisite strict-profile results.
 
 The revision-3 subsets require a distinct reserved profile. The v1 declaration
 above remains unchanged:
@@ -690,18 +690,19 @@ above remains unchanged:
 
 Because baseline Control conformance is closed, an implementation MUST NOT
 advertise `heterodyne-control-strict-v2`. Its normative subset results may be
-reported only as non-conformant ADR-030/ADR-035/ADR-036 draft evidence.
+reported only as non-conformant gated-Control, ingress-relay-affinity, and
+automated-agent draft evidence.
 
 <a id="control-conformance"></a>
 ## 9. Incomplete conformance gate
 
-There is **no Control conformance claim** for this incomplete draft. ADR-030's
-session-device, enrollment, grant, MCP lifecycle, general RPC, and audit
-behavior is now closed and draft-vectored together with the ADR-035
-relay-affinity and ADR-036 automated-agent subsets. That integration is
-necessary but insufficient: the accepted ADR-037 decision requires registry
-revision 4 and the complete ADR-037/ADR-038 feature, schema, prerequisite,
-vector, family-manifest, and release-manifest artifact set to land atomically.
+There is **no Control conformance claim** for this incomplete draft. The
+session-device, enrollment, grant, MCP lifecycle, general RPC, audit,
+relay-affinity, and automated-agent behavior is closed and draft-vectored.
+That integration is necessary but insufficient: registry revision 4 and the
+complete credential-continuity and recovery feature, schema, prerequisite,
+vector, family-manifest, and release-manifest artifact set must land
+atomically.
 
 <!-- fixture:control-conformance-gate -->
 ```json
@@ -709,14 +710,14 @@ vector, family-manifest, and release-manifest artifact set to land atomically.
   "can_claim_control_conformance": false,
   "blockers": [
     "registry-revision-4-not-published",
-    "adr-038-recovery-feature-and-schemas-not-integrated",
-    "atomic-adr-037-and-adr-038-vector-batch-incomplete",
+    "recovery-feature-and-core-schemas-not-integrated",
+    "credential-continuity-and-recovery-vector-batch-incomplete",
     "matching-family-and-release-manifests-not-issued"
   ],
   "integrated_normative_subsets": [
-    "adr-030-gated-control-profile",
-    "adr-035-relay-affinity",
-    "adr-036-agent-workload-publication"
+    "gated-control-profile",
+    "ingress-relay-affinity",
+    "agent-workload-publication"
   ]
 }
 ```

@@ -40,7 +40,7 @@ function produced(
   });
 }
 
-// The v0.4.0 CORE categories (ADR-026..029) plus the fixture-aware reframes of
+// The v0.4.0 Core categories plus the fixture-aware reframes of
 // existing categories that moved from MXID/room targets to NID/RID targets.
 export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVector[]> {
   const alice = fixtures.personas.alice;

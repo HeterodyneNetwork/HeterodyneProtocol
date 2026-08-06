@@ -1,7 +1,7 @@
 # Plan: Conformance test-vector suite (ADR-024)
 
 **Slug:** test-vector-suite
-**ADRs:** docs/adr/2026-05-25-024-conformance-test-vector-suite.md
+**ADRs:** docs/adr/archive/2026-05-25-024-conformance-test-vector-suite.md
 **Research:** docs/research/2026-05-25-test-vectors-research.md
 **Mode:** --parallel
 **Autopilot:** true

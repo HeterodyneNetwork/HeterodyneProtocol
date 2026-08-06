@@ -8,7 +8,7 @@
     "heterodyne:core/0.5.0#core-kel-head"
   ],
   "vector_id": "keri-authority/kel-head-mandatory-on-epoch-invite",
-  "description": "The ADR-030 epoch-key-signed enrollment invite (kind:30078, d=double-ratchet/invites/epoch) carrying a well-formed kel_head is accepted; this is the epoch-key carve-out from §5.7.2's device-key invite rule.",
+  "description": "The epoch-key-signed enrollment invite (kind:30078, d=double-ratchet/invites/epoch) carrying a well-formed kel_head is accepted; this is the epoch-key carve-out from §5.7.2's device-key invite rule.",
   "input": {
     "event": {
       "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",

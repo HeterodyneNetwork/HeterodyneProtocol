@@ -98,7 +98,7 @@ describe("split remediation wire and hook contracts", () => {
     })).toThrow(/transient/);
   });
 
-  it("recognizes ADR-031 v1 profiles only from a trusted same-persona producer workflow", () => {
+  it("recognizes rotation-breadcrumb profiles only from a trusted same-persona producer workflow", () => {
     for (const id of ["profiles/core-breadcrumb-kind0", "profiles/core-breadcrumb-kind1"]) {
       const vector = byId(id);
       expect(vector.direction).toBe("produce");

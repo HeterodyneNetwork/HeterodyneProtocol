@@ -270,7 +270,7 @@ const VECTOR_FACTORIES: VectorFactory[] = [
   consume("room-kind/001-retired-kind-rejected.json", {
     vector_id: "room-kind/retired-kind-rejected",
     spec_refs: ["§5", "§14.3"],
-    description: "A newly-created room asserting a retired pre-ADR-017 kind is rejected.",
+    description: "A newly-created room asserting a retired legacy room kind is rejected.",
     input: {
       room_state: { room_kind: "private_verifiable", created_at: 1767225600, legacy: false },
     },

@@ -58,7 +58,7 @@ export function buildFixtures() {
     },
   };
 
-  // Ed25519 Radicle NIDs (core delegation targets, ADR-027). Each device also
+  // Ed25519 Radicle NIDs (Core delegation targets). Each device also
   // carries a secp256k1 publishing key; one kind:31001 binds both to a persona.
   const ed25519_nids = {
     alice_device_1: nid(key(0xa1)),
@@ -86,7 +86,7 @@ export function buildFixtures() {
     alice_tier3_gen_b: { key_id: "aud-2026-05-25-b", key: "41".repeat(32) },
   };
 
-  // Per-persona KEL head (ADR-032). Each persona's KEL here is a single
+  // Per-persona KEL head. Each persona's KEL here is a single
   // committed inception (kind:31002, §3.5.1) with no witnesses; its id is the
   // head every epoch-key-signed event's kel_head tag references (§3.0, §4.5.1).
   // The inception_event is the unsigned NIP-01 template; its id is over that
