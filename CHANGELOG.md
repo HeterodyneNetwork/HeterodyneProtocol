@@ -15,6 +15,9 @@ explicit release approval.
 [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is now the non-normative
 family map. Prepared release combinations and the exact registry digest are
 recorded in [machine-readable manifests](docs/spec/releases/).
+The Marmot/Radicle integration is recorded historically in
+[ADR-040](docs/adr/archive/2026-08-06-040-marmot-radicle-group-messaging.md)
+and was integrated by [PR #19](https://github.com/HeterodyneNetwork/HeterodyneProtocol/pull/19).
 
 ### Core 0.5.0
 
