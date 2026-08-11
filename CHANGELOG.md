@@ -22,6 +22,10 @@ The Marmot Control and optional recovery simplification is recorded
 historically in
 [ADR-041](docs/adr/archive/2026-08-10-041-marmot-control-and-recovery-simplification.md)
 and is reviewed in [PR #21](https://github.com/HeterodyneNetwork/HeterodyneProtocol/pull/21).
+The post-migration conformance repairs and provider-independent invitation
+format are recorded historically in
+[ADR-042](docs/adr/archive/2026-08-10-042-review-gaps-and-one-time-invites.md)
+and are reviewed in [PR #22](https://github.com/HeterodyneNetwork/HeterodyneProtocol/pull/22).
 
 ### Core 0.5.0
 
@@ -36,6 +40,8 @@ and is reviewed in [PR #21](https://github.com/HeterodyneNetwork/HeterodyneProto
   reduced-assurance browser operation through shared clearnet relays.
 - Added KERI attribution for stable Marmot human-messaging, group-admin, host,
   and agent roles without changing Marmot validity or MLS convergence.
+- Added registry revision 6's normative, prerequisite-aware feature catalog
+  and exact provided/required feature resolution across release manifests.
 
 ### Comms 0.5.0
 
@@ -66,6 +72,9 @@ and is reviewed in [PR #21](https://github.com/HeterodyneNetwork/HeterodyneProto
 - Replaced Double Ratchet direct-message and bootstrap carriers with standard
   two-member Marmot groups. Pairwise-private claims and first-contact delivery
   now use the same pinned Marmot substrate as other conversations.
+- Split ordinary Marmot admission from Control admission, restored silent
+  message-request holding for unknown valid DMs, and added signed fragment-only
+  one-time invites with purpose-bound NIP-59 KeyPackage responses.
 
 ### Control 0.5.0
 
@@ -81,6 +90,9 @@ and is reviewed in [PR #21](https://github.com/HeterodyneNetwork/HeterodyneProto
 - Made private-Radicle recovery, locked-epoch full-node bootstrap, and isolated
   per-grant SFTP onion transfer optional, separately claimable capabilities
   rather than baseline Control prerequisites.
+- Defaulted unsolicited Control invitations to off; bounded pending groups,
+  Welcome processing and KeyPackage replenishment; hardened RFC 8628 codes;
+  and capped authorization-view freshness at 300 seconds.
 
 ### Social 0.5.0
 
@@ -97,12 +109,15 @@ and is reviewed in [PR #21](https://github.com/HeterodyneNetwork/HeterodyneProto
 
 - Established the family's only normative dependency edges as
   `Core <- Comms <- Control` and `Core <- Comms <- Social`.
-- Advanced all four untagged 0.5.0 release manifests to registry revision 5.
-  Only Comms advertises `key-claims`, `private-claim-ledger`,
-  `oidc-jwt-projection`, and `token-status-list-draft-21`; Core and Social add
-  no claims/OIDC feature, and Control retains its exact Comms dependency.
+- Advanced all four untagged 0.5.0 release manifests to registry revision 6.
+  Comms provides the registered `comms.key-claims.v1`,
+  `comms.private-claim-ledger.v1`, `comms.oidc-jwt-projection.v1`, and
+  `comms.token-status-list-draft-21.v1` features; every external prerequisite
+  resolves through an exact declared dependency release.
 - Added immutable strict-v2 Comms and Social profiles for the ADR-035/036
-  invariants while leaving every strict-v1 membership unchanged.
+  invariants. Corrected `heterodyne-control-strict-v1` during the mutable 0.x
+  phase to its complete 27-invariant flattened Core, Comms, and Control
+  membership.
 - Replaced the historical monolith strict mode with composable profile IDs
   for Core, Comms, Control, and Social. The Control strict profile is active
   and claimable when its mandatory conformance requirements are met.
