@@ -2,7 +2,7 @@
 
 Document ID: `comms`<br>
 Version: `comms/0.5.0`<br>
-Registry revision: `5`
+Registry revision: `6`
 
 Normative dependencies: `heterodyne:core/0.5.0#core-conformance`.
 
@@ -1034,28 +1034,131 @@ codes, MLS state, and replayable transcripts MUST NOT be committed to Radicle
 or portable backups. Loss of group state creates a new group; it never restores
 old application messages or authorization from transport state.
 
+<a id="comms-one-time-invites"></a>
+### 7.14 Provider-independent one-time invites
+
+Heterodyne defines one closed invitation format with three non-convertible
+purposes: `dm`, `control-enrollment`, and `device-enrollment`. A compatible
+HTTPS client URL carries the envelope only in its fragment:
+
+```text
+#v1.<base64url-no-pad(JCS(envelope))>
+```
+
+The envelope has exactly `descriptor`, `signature`, and `secret`. The web
+origin loads a client but is not authority and, under normal browser URL
+processing, does not receive the fragment. A user MAY substitute any
+compatible client origin without changing the descriptor or invite identity.
+
+The JCS-canonical `descriptor` binds version `1`, exact purpose, inviter
+Marmot account, random 256-bit `invite_id`, a fresh ephemeral Nostr
+`rendezvous_pubkey`, one or more normalized `wss://` relay hints, issue and
+expiry times, `SHA-256(secret)` for a uniformly random 256-bit secret,
+`interactive` or `preauthorized` approval mode, and any exact expected client
+key or preauthorization template. A `device-enrollment` descriptor also binds
+current Core/KERI inviter-authority evidence. Unknown descriptor, envelope,
+authority, or preauthorization members are invalid.
+
+The inviter account produces the BIP-340 `signature` over:
+
+```text
+SHA-256("heterodyne.one-time-invite.v1" || 0x00 || JCS(descriptor))
+```
+
+The secret itself occurs only in the fragment and protected issuer state; it
+MUST NOT occur in the descriptor, logs, relay metadata, or a repository.
+DM invites default to 24 hours and a configured value MUST NOT exceed seven
+days. Control and device-enrollment invites default to ten minutes and MUST
+NOT exceed one hour. Processing at or after `expires_at` fails with
+`invite-expired`.
+
+The responder generates and retains its own Marmot account and fresh
+serialized `mls_key_package` MLSMessage. It sends a NIP-59 gift wrap to the
+ephemeral rendezvous key whose unsigned rumor is `kind:31018`, has the
+responder account as `pubkey`, and carries JCS content conforming exactly to
+`docs/spec/schemas/comms/one-time-invite-response-v1.schema.json`. The NIP-59
+seal signer MUST equal that rumor `pubkey`. The response binds the exact
+purpose, descriptor digest, responder account, KeyPackage bytes, requested
+class, capabilities, and:
+
+```text
+HMAC-SHA-256(
+  secret,
+  "heterodyne.one-time-invite-response.v1" || 0x00 ||
+  SHA-256(JCS(response-without-proof))
+)
+```
+
+It MUST NOT carry a persona, device, epoch, NID, MLS-leaf, repository, or
+agent-role private key. A purpose mismatch fails with
+`invite-purpose-mismatch`; invalid descriptor signature, seal binding, proof,
+KeyPackage, or capability binding fails with
+`invite-authentication-invalid`.
+
+Issuer state is restart-safe and moves `active -> reserved -> spent`. Only the
+first completely valid responder account and canonical response digest may
+reserve it. That exact responder and response MAY retry; any other response
+fails with `invite-already-reserved`. Successful standard Marmot group
+establishment spends it. Malformed, expired, revoked, purpose-mismatched,
+capability-incompatible, or unauthenticated traffic MUST NOT reserve or spend
+it.
+
+A valid `dm` redemption creates an ordinary two-member Marmot group and makes
+the Comms-native admission result `accept` for its issuer, subject to an
+absorbing local mute or block. Higher-layer Control profiles define Control
+and KERI device effects; the Comms rendezvous alone grants no application or
+persona authority.
+
 <a id="comms-acceptance-hook"></a>
-## 8. Authenticated invitation and synchronization policy
+## 8. Authenticated Marmot admission and synchronization policy
 
-Cryptographic validation always precedes local acceptance policy. A valid
-Marmot KeyPackage, Welcome, group membership, or application event never
-grants Control, claim-ledger, repository, or persona authority.
+Marmot cryptographic and group validation always precedes Heterodyne local
+acceptance policy. Neither hook below runs on an invalid KeyPackage, Welcome,
+account-to-leaf proof, group state, membership, or application event. A valid
+Marmot object never grants Control, claim-ledger, repository, or persona
+authority.
 
-For a proposed Control group the hook consumes the authenticated Marmot
-accounts and leaves, exact group identifier, KeyPackage slot, selected Control
-version, requested profile, node-local invitation setting, existing private
-entitlement state, and explicit user decision if any. It returns exactly
-`accept-enrollment-only`, `accept-authorized`, or `reject`.
+<a id="comms-ordinary-conversation-admission"></a>
+### 8.1 Ordinary-conversation hook
+
+For a proposed ordinary two-member conversation, the hook consumes the
+authenticated inviter and recipient Marmot accounts, exact group identifier
+and KeyPackage reference, supported capabilities, prior local acceptance, a
+valid purpose-bound one-time DM invite if present, and an explicit local
+decision if one exists. It returns exactly `accept`,
+`hold-as-message-request`, or `reject`.
+
+An unknown but otherwise valid Welcome defaults to
+`hold-as-message-request`. Before local acceptance a held conversation MUST
+emit no receipt, retry hint, typing signal, read marker, presence update, or
+other sender-observable acceptance signal. Prior local acceptance, an
+explicit local acceptance, or a valid `dm` invite issued for that inviter
+returns `accept`. An explicit rejection returns `reject`.
+
+A higher-layer Social policy MAY only preserve or tighten this result. A mute
+or block is absorbing. Transport acceptance and the Control hook are not
+Social policy inputs.
+
+<a id="comms-control-admission"></a>
+### 8.2 Control-group hook
+
+For a proposed pairwise Control group, the separate hook consumes the
+authenticated Marmot accounts and leaves, exact group identifier and
+KeyPackage slot, selected Control version and profile, node invitation mode,
+resource-limit state, private entitlement state, a valid purpose-bound
+Control invite if present, and an explicit local decision if one exists. It
+returns exactly `accept-enrollment-only`, `accept-authorized`, or `reject`.
 
 `accept-enrollment-only` permits only the methods named by
-`heterodyne:control/0.5.0#control-invitation-policy` and emits no
-sender-observable authorization signal beyond ordinary Marmot delivery.
-`accept-authorized` requires an active, non-conflicted private entitlement
-for the authenticated client account. `reject` ends application processing
-without revealing whether another entitlement or private object exists.
+`heterodyne:control/0.5.0#control-invitation-policy` and grants no durable
+authority. `accept-authorized` requires active, non-conflicted private
+entitlement for the authenticated client account. `reject` ends application
+processing without revealing whether another entitlement or private object
+exists. Resource and KeyPackage decisions occur during tentative Welcome
+validation, before durable group creation or KeyPackage-state mutation.
 
 <a id="comms-credential-sync"></a>
-### 8.1 Credential and configuration synchronization
+### 8.3 Credential and configuration synchronization
 
 Durable NID-bearing full nodes synchronize canonical credential and
 configuration repositories through private Radicle. Small live records,
@@ -1078,7 +1181,7 @@ and later become repository-final. No live Comms profile defines an additional
 encrypted point-to-point carrier.
 
 <a id="comms-credential-continuity"></a>
-### 8.2 Transport-independent credential continuity drafts
+### 8.4 Transport-independent credential continuity drafts
 
 The closed schemas under `schemas/comms/` for repository retention,
 governed decrypt-key obligations, checkpoint receipts, secret-source and
@@ -1143,8 +1246,11 @@ issued.
 
 Every request rechecks current entitlement. A projected token never replaces
 private repository authority. Once revocation is observed, every associated
-token fails regardless of its remaining `exp`. Offline-node delay is bounded
-by token expiry and the node's declared authorization-view freshness policy.
+token fails regardless of its remaining `exp`. Token minting and every
+privileged use require an authenticated, non-conflicted authorization view no
+more than 300 seconds old; mutation additionally requires the immediate
+fail-closed synchronization defined by Control. A fresh token cannot extend a
+stale authorization view.
 
 <a id="comms-control-bootstrap"></a>
 ### 9.2 Locked epoch inbox and recovery records
@@ -1998,13 +2104,13 @@ profile.
 <!-- Monolith provenance: §14. -->
 
 A Comms conformance report MUST claim Core+Comms, name `comms/0.5.0`, pin
-`core/0.5.0`, registry revision 5 or its immutable digest, and enumerate
+`core/0.5.0`, registry revision 6 or its immutable digest, and enumerate
 supported features and strict profiles. A base implementation MUST implement
 the envelope, tiers, publishing, feed, retrieval, Marmot invitation hook,
 private Control-registry integration, and all registered Comms invariants. One
 that advertises DMs MUST implement all applicable Marmot rules in §7.
 
-The registry revision 5 entry set, history snapshot, release manifest, and
+The registry revision 6 entry set, history snapshot, release manifest, and
 vector metadata MUST match exactly. Transport-independent credential-continuity definitions
 remain non-claimable under this selected revision.
 

@@ -1,0 +1,28 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 6,
+  "profile": "heterodyne-control-marmot-frame-v1",
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-token"
+  ],
+  "vector_id": "control/authorization-mutation-sync-failed",
+  "description": "Control authorization-view freshness: authorization-mutation-sync-failed.",
+  "direction": "consume",
+  "input": {
+    "authenticated": true,
+    "conflicted": false,
+    "age_seconds": 10,
+    "mutation": true,
+    "immediate_sync_succeeded": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-authorization-view-stale"
+  }
+}

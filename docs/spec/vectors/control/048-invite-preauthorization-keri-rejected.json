@@ -1,0 +1,41 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 6,
+  "profile": "heterodyne-control-marmot-frame-v1",
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-token"
+  ],
+  "vector_id": "control/invite-preauthorization-keri-rejected",
+  "description": "Purpose-bound invite preauthorization: invite-preauthorization-keri-rejected.",
+  "direction": "consume",
+  "input": {
+    "purpose": "device-enrollment",
+    "approval_mode": "preauthorized",
+    "client_class": "full-device",
+    "expected_client_pubkey": "1111111111111111111111111111111111111111111111111111111111111111",
+    "unbound_bearer_enabled": false,
+    "node_allows_unbound_bearer": false,
+    "methods": [
+      "agent.publish"
+    ],
+    "objects": [
+      "feed:main"
+    ],
+    "limits": {
+      "requests_per_hour": 10
+    },
+    "agent_role": "newsletter",
+    "token_lifetime_ceiling_seconds": 300,
+    "keri_authorized_device": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "invite-preauthorization-invalid"
+  }
+}

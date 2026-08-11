@@ -148,6 +148,9 @@ session-device/owner-stamp-malformed
 session-device/revoked-no-authority
 registry/downref-nonfrozen-rejected
 registry/frozen-entry-immutable
+registry/feature-dependency-exact
+registry/feature-dependency-unprovided-rejected
+registry/control-strict-profile-flattened
 role-capabilities/public-reader-reduced-assurance
 role-capabilities/strict-missing-tor-rejected
 role-capabilities/full-node-feature-set-required
@@ -307,21 +310,22 @@ acceptance-gating/message-request-no-receipt
 acceptance-gating/established-ordinary-accept
 acceptance-gating/new-ordinary-hold
 acceptance-gating/authentication-reject
-acceptance-gating/credential-valid-accept
-acceptance-gating/authoritative-state-unavailable-hold
-acceptance-gating/credential-invalid-reject
-acceptance-gating/credential-revoked-reject
-acceptance-gating/credential-expired-reject
-acceptance-gating/credential-subject-mismatch-reject
-acceptance-gating/credential-nidless-reject
-acceptance-gating/control-enrollment-default-hold
-acceptance-gating/control-enrollment-active-invite-gated-hold
-acceptance-gating/control-enrollment-stale-invite-reject
-acceptance-gating/control-enrollment-tombstoned-invite-reject
-acceptance-gating/control-enrollment-live-challenge-gated-hold
-acceptance-gating/control-enrollment-token-gated-hold
-acceptance-gating/ordinary-undelegated-reject
-acceptance-gating/credential-sync-undelegated-reject
+acceptance-gating/dm-invite-accept
+acceptance-gating/ordinary-explicit-reject
+acceptance-gating/control-default-off-reject
+acceptance-gating/control-permanent-enrollment-only
+acceptance-gating/control-entitled-authorized
+acceptance-gating/control-entitlement-conflict-reject
+acceptance-gating/control-capacity-reject
+acceptance-gating/control-explicit-reject-absorbing
+one-time-invite/descriptor-and-fragment
+one-time-invite/response-proof
+one-time-invite/purpose-mismatch
+one-time-invite/expired
+one-time-invite/first-valid-reservation
+one-time-invite/reserved-responder-retry
+one-time-invite/reservation-race-rejected
+one-time-invite/invalid-keypackage-no-reservation
 profiles/tier3-kind-1
 profiles/tier3-kind-6
 profiles/tier3-kind-16
@@ -444,6 +448,13 @@ control/invitation-enrollment-only
 control/invitation-disabled
 control/invitation-revoked
 control/invitation-nonenrollment-rejected
+control/invitation-account-cap
+control/invitation-global-cap
+control/invitation-rate-limited
+control/invitation-replenishment-paused
+control/invitation-reserved-slot
+control/pending-enrollment-live
+control/pending-enrollment-expired
 control/entitlement-reduction
 control/entitlement-expansion-rejected
 control/entitlement-revocation-absorbing
@@ -455,6 +466,18 @@ control/token-wrong-sender
 control/token-wrong-group
 control/token-wrong-node
 control/token-scope-rejected
+control/token-stale-authorization-view
+control/device-code-hardened
+control/device-code-exhausted
+control/device-code-node-rate-limited
+control/device-code-display-mismatch
+control/authorization-fresh-read
+control/authorization-stale-read
+control/authorization-mutation-sync-failed
+control/invite-preauthorization-key-bound
+control/invite-preauthorization-unbound-rejected
+control/invite-preauthorization-keri-rejected
+control/invite-preauthorization-unbound-higher-risk
 control/operation-first-reservation
 control/operation-identical-join
 control/operation-conflicting-bytes
@@ -550,7 +573,7 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
     owner_document: owner,
     owner_version: `${owner}/${DOCUMENT_VERSIONS[owner]}`,
     dependency_versions: dependencies,
-    registry_revision: 5,
+    registry_revision: 6,
     ...(profile === undefined ? {} : { profile }),
     spec_refs: [`heterodyne:${reference.document}/${DOCUMENT_VERSIONS[reference.document]}#${reference.anchor}`],
   };
@@ -721,6 +744,7 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
       "relay-interop": "comms-publishing",
       "comms-envelope": "comms-envelope",
       "acceptance-gating": "comms-acceptance-hook",
+      "one-time-invite": "comms-one-time-invites",
       "credential-continuity": "comms-credential-continuity",
     },
     social: {
@@ -751,6 +775,12 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
     control: {
       control: vectorId.includes("invitation-")
         ? "control-invitation-policy"
+        : vectorId.includes("device-code-")
+          ? "control-device-authorization"
+          : vectorId.includes("authorization-")
+            ? "control-token"
+            : vectorId.includes("invite-preauthorization-")
+              ? "control-one-time-invites"
         : vectorId.includes("entitlement-")
           ? "control-entitlement"
           : vectorId.includes("token-")

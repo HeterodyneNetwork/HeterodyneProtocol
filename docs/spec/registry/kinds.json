@@ -625,6 +625,14 @@
       ]
     },
     {
+      "kind": 31018,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
       "kind": 34550,
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",

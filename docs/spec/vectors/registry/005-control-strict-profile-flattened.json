@@ -1,0 +1,27 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 6,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-registry"
+  ],
+  "vector_id": "registry/control-strict-profile-flattened",
+  "description": "The active Control strict profile contains the complete 27-invariant flattened Core, Comms, and Control membership.",
+  "direction": "round-trip",
+  "input": {
+    "profile_id": "heterodyne-control-strict-v1",
+    "prerequisite_profiles": [
+      "heterodyne-core-strict-v1",
+      "heterodyne-comms-strict-v1"
+    ],
+    "declared_invariant_count": 27,
+    "duplicate_invariant_ids": [],
+    "missing_prerequisite_invariants": []
+  },
+  "expected_output": {
+    "valid": true,
+    "flattened_invariant_count": 27
+  }
+}

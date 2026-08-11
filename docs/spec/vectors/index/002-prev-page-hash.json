@@ -5,7 +5,7 @@
   "dependency_versions": {
     "core": "core/0.5.0"
   },
-  "registry_revision": 5,
+  "registry_revision": 6,
   "spec_refs": [
     "heterodyne:comms/0.5.0#comms-feed-index"
   ],
