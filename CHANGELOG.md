@@ -18,6 +18,10 @@ recorded in [machine-readable manifests](docs/spec/releases/).
 The Marmot/Radicle integration is recorded historically in
 [ADR-040](docs/adr/archive/2026-08-06-040-marmot-radicle-group-messaging.md)
 and was integrated by [PR #19](https://github.com/HeterodyneNetwork/HeterodyneProtocol/pull/19).
+The Marmot Control and optional recovery simplification is recorded
+historically in
+[ADR-041](docs/adr/archive/2026-08-10-041-marmot-control-and-recovery-simplification.md)
+and is reviewed in [PR #21](https://github.com/HeterodyneNetwork/HeterodyneProtocol/pull/21).
 
 ### Core 0.5.0
 
