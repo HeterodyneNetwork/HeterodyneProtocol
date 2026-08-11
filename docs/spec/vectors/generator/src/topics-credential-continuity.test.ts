@@ -20,7 +20,7 @@ describe("transport-independent credential-continuity vectors", () => {
       expect(vector.owner_document).toBe("comms");
       expect(vector.owner_version).toBe("comms/0.5.0");
       expect(vector.dependency_versions).toEqual({ core: "core/0.5.0" });
-      expect(vector.registry_revision).toBe(5);
+      expect(vector.registry_revision).toBe(6);
       expect(vector.profile).toBeUndefined();
       expect(vector.spec_refs).toEqual([
         "heterodyne:comms/0.5.0#comms-credential-continuity",
@@ -28,7 +28,7 @@ describe("transport-independent credential-continuity vectors", () => {
       expect(vector.expected_output).toMatchObject({
         verdict: "accept",
         normalized: {
-          selected_registry_revision: 5,
+          selected_registry_revision: 6,
           conformance_claimable: false,
         },
       });

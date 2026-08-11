@@ -16,6 +16,8 @@ import { buildControlVectors } from "./topics-control.js";
 import { buildAgentModerationVectors } from "./topics-agent-moderation.js";
 import { buildCredentialContinuityVectors } from "./topics-credential-continuity.js";
 import { buildMarmotRadicleVectors } from "./topics-marmot-radicle.js";
+import { buildMarmotAdmissionVectors } from "./topics-marmot-admission.js";
+import { buildOneTimeInviteVectors } from "./topics-one-time-invite.js";
 import { remediateHistoricalProduction } from "./legacy-remediation.js";
 import {
   AUX_RAND,
@@ -84,6 +86,8 @@ export async function buildAllVectors(fixtures: Fixtures): Promise<AuthoredVecto
   vectors.push(...(await buildAgentModerationVectors()));
   vectors.push(...buildCredentialContinuityVectors());
   vectors.push(...(await buildMarmotRadicleVectors(fixtures)));
+  vectors.push(...buildMarmotAdmissionVectors());
+  vectors.push(...buildOneTimeInviteVectors());
   return (await remediateHistoricalProduction(vectors, fixtures))
     .filter(({ vector }) =>
       !isRetiredMatrixVector(vector.vector_id)
@@ -97,13 +101,6 @@ const RETIRED_CONTROL_PIVOT_PREFIXES = [
 ] as const;
 
 const RETIRED_CONTROL_PIVOT_IDS = new Set([
-  "acceptance-gating/control-enrollment-active-invite-gated-hold",
-  "acceptance-gating/control-enrollment-stale-invite-reject",
-  "acceptance-gating/control-enrollment-tombstoned-invite-reject",
-  "acceptance-gating/control-enrollment-live-challenge-gated-hold",
-  "acceptance-gating/control-enrollment-token-gated-hold",
-  "acceptance-gating/ordinary-undelegated-reject",
-  "acceptance-gating/credential-sync-undelegated-reject",
   "keri-authority/kel-head-forbidden-on-dr-wire",
   "keri-authority/kel-head-mandatory-on-epoch-invite",
   "profiles/dr-invite-response-kind1059",

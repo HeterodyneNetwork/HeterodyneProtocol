@@ -2,6 +2,10 @@ import {
   authorizeInvitation,
   evaluateEntitlementUpdate,
   evaluateEpochActivation,
+  evaluateAuthorizationFreshness,
+  evaluateDeviceAuthorizationAttempt,
+  evaluateInvitePreauthorization,
+  evaluatePendingEnrollment,
   evaluateRecoveryAccess,
   evaluateSftpAccess,
   issueControlToken,
@@ -40,18 +44,35 @@ export function buildControlVectors(): AuthoredVector[] {
   });
 
   const invitation = {
-    invitation_enabled: true,
+    invitation_mode: "permanent" as const,
+    temporary_expires_at: null,
+    now: 1_000,
     keypackage_valid: true,
+    keypackage_last_resort: true,
     member_count: 2,
     node_account_matches: true,
     entitlement_state: "none" as const,
     method: "control.enrollment.start",
+    purpose_bound_invite_valid: false,
+    explicitly_approved: false,
+    pending_for_account: 0,
+    global_pending: 0,
+    global_pending_cap: 10,
+    welcome_rate_remaining: 1,
+    replenishment_rate_remaining: 1,
+    public_pool_replenishment_requested: false,
+    reserved_slot_available: true,
   };
   for (const [number, id, input] of [
     ["001", "invitation-enrollment-only", invitation],
-    ["002", "invitation-disabled", { ...invitation, invitation_enabled: false }],
+    ["002", "invitation-disabled", { ...invitation, invitation_mode: "off" as const }],
     ["003", "invitation-revoked", { ...invitation, entitlement_state: "revoked" as const }],
     ["004", "invitation-nonenrollment-rejected", { ...invitation, method: "config.get" }],
+    ["033", "invitation-account-cap", { ...invitation, pending_for_account: 1 }],
+    ["034", "invitation-global-cap", { ...invitation, global_pending: 10 }],
+    ["035", "invitation-rate-limited", { ...invitation, welcome_rate_remaining: 0 }],
+    ["036", "invitation-replenishment-paused", { ...invitation, global_pending: 10, public_pool_replenishment_requested: true }],
+    ["037", "invitation-reserved-slot", { ...invitation, invitation_mode: "off" as const, entitlement_state: "active" as const, explicitly_approved: true, global_pending: 10 }],
   ] as const) {
     add(number, id, `Marmot Control invitation decision: ${id}.`, input, authorizeInvitation(input));
   }
@@ -89,6 +110,9 @@ export function buildControlVectors(): AuthoredVector[] {
     node_policy_max_seconds: 3_600,
     extended_capability: false,
     now: 1_000,
+    authorization_view_authenticated: true,
+    authorization_view_conflicted: false,
+    authorization_view_age_seconds: 0,
     methods: ["config.get"],
     objects: ["config:ui"],
   };
@@ -101,6 +125,12 @@ export function buildControlVectors(): AuthoredVector[] {
   ] as const) {
     add(number, id, `Node-scoped Control token issuance: ${id}.`, value, issueControlToken(value));
   }
+  for (const [number, id, value] of [
+    ["050", "pending-enrollment-live", { created_at: 1_000, now: 2_799 }],
+    ["051", "pending-enrollment-expired", { created_at: 1_000, now: 2_800 }],
+  ] as const) {
+    add(number, id, `Enrollment-only lifetime: ${id}.`, value, evaluatePendingEnrollment(value));
+  }
   const tokenUse = {
     token: issued.token,
     signature_valid: true,
@@ -110,6 +140,9 @@ export function buildControlVectors(): AuthoredVector[] {
     authenticated_sender_jkt: jkt,
     group_id: group,
     entitlement_state: "active" as const,
+    authorization_view_authenticated: true,
+    authorization_view_conflicted: false,
+    authorization_view_age_seconds: 100,
     method: "config.get",
     object: "config:ui",
   };
@@ -119,8 +152,62 @@ export function buildControlVectors(): AuthoredVector[] {
     ["013", "token-wrong-group", { ...tokenUse, group_id: "99".repeat(32) }],
     ["014", "token-wrong-node", { ...tokenUse, expected_audience: "urn:heterodyne:control:node-b" }],
     ["015", "token-scope-rejected", { ...tokenUse, method: "config.put" }],
+    ["038", "token-stale-authorization-view", { ...tokenUse, authorization_view_age_seconds: 301 }],
   ] as const) {
     add(number, id, `Marmot-bound Control token use: ${id}.`, value, validateControlTokenUse(value));
+  }
+
+  const deviceAuthorization = {
+    device_code_entropy_bits: 128,
+    user_code_entropy_bits: 34.5,
+    failed_guesses: 0,
+    per_code_rate_allowed: true,
+    node_rate_allowed: true,
+    normalized_constant_time_match: true,
+    display_code_matches: true,
+    display_fingerprint_matches: true,
+    poll_interval_observed: true,
+    slow_down_observed: true,
+    terminal_state: "pending" as const,
+  };
+  for (const [number, id, value] of [
+    ["039", "device-code-hardened", deviceAuthorization],
+    ["040", "device-code-exhausted", { ...deviceAuthorization, failed_guesses: 5 }],
+    ["041", "device-code-node-rate-limited", { ...deviceAuthorization, node_rate_allowed: false }],
+    ["042", "device-code-display-mismatch", { ...deviceAuthorization, display_fingerprint_matches: false }],
+  ] as const) {
+    add(number, id, `OAuth Device Authorization decision: ${id}.`, value, evaluateDeviceAuthorizationAttempt(value));
+  }
+
+  for (const [number, id, value] of [
+    ["043", "authorization-fresh-read", { authenticated: true, conflicted: false, age_seconds: 300, mutation: false, immediate_sync_succeeded: false }],
+    ["044", "authorization-stale-read", { authenticated: true, conflicted: false, age_seconds: 301, mutation: false, immediate_sync_succeeded: false }],
+    ["045", "authorization-mutation-sync-failed", { authenticated: true, conflicted: false, age_seconds: 10, mutation: true, immediate_sync_succeeded: false }],
+  ] as const) {
+    add(number, id, `Control authorization-view freshness: ${id}.`, value, evaluateAuthorizationFreshness(value));
+  }
+
+  const preauthorization = {
+    purpose: "control-enrollment" as const,
+    approval_mode: "preauthorized" as const,
+    client_class: "automated" as const,
+    expected_client_pubkey: client,
+    unbound_bearer_enabled: false,
+    node_allows_unbound_bearer: false,
+    methods: ["agent.publish"],
+    objects: ["feed:main"],
+    limits: { requests_per_hour: 10 },
+    agent_role: "newsletter",
+    token_lifetime_ceiling_seconds: 300,
+    keri_authorized_device: false,
+  };
+  for (const [number, id, value] of [
+    ["046", "invite-preauthorization-key-bound", preauthorization],
+    ["047", "invite-preauthorization-unbound-rejected", { ...preauthorization, expected_client_pubkey: null }],
+    ["048", "invite-preauthorization-keri-rejected", { ...preauthorization, purpose: "device-enrollment" as const, client_class: "full-device" as const, keri_authorized_device: true }],
+    ["049", "invite-preauthorization-unbound-higher-risk", { ...preauthorization, expected_client_pubkey: null, unbound_bearer_enabled: true, node_allows_unbound_bearer: true }],
+  ] as const) {
+    add(number, id, `Purpose-bound invite preauthorization: ${id}.`, value, evaluateInvitePreauthorization(value));
   }
 
   const operation: OperationInput = {

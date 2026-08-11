@@ -861,6 +861,66 @@
       ]
     },
     {
+      "code": "invite-expired",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A one-time invitation or response was processed at or after its signed expiry.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-one-time-invites"
+      ]
+    },
+    {
+      "code": "conversation-rejected",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Local ordinary-conversation policy explicitly rejects an otherwise valid Marmot Welcome.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-ordinary-conversation-admission"
+      ]
+    },
+    {
+      "code": "invite-purpose-mismatch",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A one-time invitation was presented or redeemed for a purpose other than its exact signed purpose.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-one-time-invites"
+      ]
+    },
+    {
+      "code": "invite-authentication-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A one-time invite descriptor signature, NIP-59 responder binding, secret proof, or capability binding is invalid.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-one-time-invites"
+      ]
+    },
+    {
+      "code": "invite-already-reserved",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A different authenticated account or canonical response already reserved the one-time invitation.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-one-time-invites"
+      ]
+    },
+    {
+      "code": "invite-preauthorization-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A preauthorized Control invite exceeds its exact bound entitlement template, key binding, client class, or prompt-free policy.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-one-time-invites"
+      ]
+    },
+    {
       "code": "control-invitation-disabled",
       "owner": "control",
       "status": "draft",
@@ -868,6 +928,96 @@
       "description": "A full node's local policy does not accept a new unsolicited Control-group invitation.",
       "spec_refs": [
         "heterodyne:control/0.5.0#control-invitation-policy"
+      ]
+    },
+    {
+      "code": "control-enrollment-capacity",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A pending enrollment exceeds the per-account or global bound, or no reserved entitled/approved slot is available.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-invitation-policy"
+      ]
+    },
+    {
+      "code": "control-enrollment-expired",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An enrollment-only Control group reached its hard 30-minute lifetime and was removed.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-invitation-policy"
+      ]
+    },
+    {
+      "code": "control-enrollment-rate-limited",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Finite Welcome-processing or KeyPackage-replenishment rate or burst capacity is exhausted.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-invitation-policy"
+      ]
+    },
+    {
+      "code": "control-keypackage-replenishment-paused",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The node cannot replenish the public Control KeyPackage pool while its global pending-enrollment cap is full.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-invitation-policy"
+      ]
+    },
+    {
+      "code": "control-device-code-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A Device Authorization code lacks required entropy or constant-time normalized validation.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-device-authorization"
+      ]
+    },
+    {
+      "code": "control-device-code-exhausted",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Five failed guesses atomically invalidated the active Device Authorization user code.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-device-authorization"
+      ]
+    },
+    {
+      "code": "control-device-code-rate-limited",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A Device Authorization guess or poll violates per-code, node-wide, interval, or slow-down limits.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-device-authorization"
+      ]
+    },
+    {
+      "code": "control-device-code-display-mismatch",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The approving and initiating displays do not show the identical user code and client fingerprint.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-device-authorization"
+      ]
+    },
+    {
+      "code": "control-authorization-view-stale",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The authenticated private authorization view is conflicted, older than 300 seconds, or not freshly synchronized for mutation.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
       ]
     },
     {

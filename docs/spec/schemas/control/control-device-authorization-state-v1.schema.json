@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/control/control-device-authorization-state-v1.schema.json",
+  "title": "Node-local hardened OAuth Device Authorization state v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["device_code_sha256", "device_code_entropy_bits", "user_code_sha256", "user_code_entropy_bits", "normalization", "client_fingerprint", "failed_guesses", "max_failed_guesses", "interval_seconds", "expires_at", "state"],
+  "properties": {
+    "device_code_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "device_code_entropy_bits": {"type": "number", "minimum": 128},
+    "user_code_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "user_code_entropy_bits": {"type": "number", "minimum": 34.5},
+    "normalization": {"const": "uppercase-ascii-remove-hyphen"},
+    "client_fingerprint": {"type": "string", "minLength": 1},
+    "failed_guesses": {"type": "integer", "minimum": 0, "maximum": 5},
+    "max_failed_guesses": {"const": 5},
+    "interval_seconds": {"type": "integer", "minimum": 1},
+    "expires_at": {"type": "integer", "minimum": 1},
+    "state": {"enum": ["pending", "approved", "denied", "expired", "exhausted", "consumed"]}
+  }
+}

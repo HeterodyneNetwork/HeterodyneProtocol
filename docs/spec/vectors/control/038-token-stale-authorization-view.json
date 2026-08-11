@@ -1,0 +1,56 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 6,
+  "profile": "heterodyne-control-marmot-frame-v1",
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-token"
+  ],
+  "vector_id": "control/token-stale-authorization-view",
+  "description": "Marmot-bound Control token use: token-stale-authorization-view.",
+  "direction": "consume",
+  "input": {
+    "token": {
+      "typ": "at+jwt",
+      "iss": "https://node.example/oidc/persona",
+      "aud": "urn:heterodyne:control:node-a",
+      "sub": "1111111111111111111111111111111111111111111111111111111111111111",
+      "jti": "a815a63e8e52cbb6a5a24bb16237976d97099c0787e5bb471a4c797cbbe927ea",
+      "iat": 1000,
+      "exp": 1300,
+      "cnf": {
+        "jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "group_id": "3333333333333333333333333333333333333333333333333333333333333333",
+      "authorization_id": "4444444444444444444444444444444444444444444444444444444444444444",
+      "methods": [
+        "config.get"
+      ],
+      "objects": [
+        "config:ui"
+      ],
+      "node_key": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "signature_valid": true,
+    "now": 1100,
+    "expected_issuer": "https://node.example/oidc/persona",
+    "expected_audience": "urn:heterodyne:control:node-a",
+    "authenticated_sender_jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "group_id": "3333333333333333333333333333333333333333333333333333333333333333",
+    "entitlement_state": "active",
+    "authorization_view_authenticated": true,
+    "authorization_view_conflicted": false,
+    "authorization_view_age_seconds": 301,
+    "method": "config.get",
+    "object": "config:ui"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-authorization-view-stale"
+  }
+}

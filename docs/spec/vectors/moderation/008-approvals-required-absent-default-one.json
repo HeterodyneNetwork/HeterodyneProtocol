@@ -6,7 +6,7 @@
     "core": "core/0.5.0",
     "comms": "comms/0.5.0"
   },
-  "registry_revision": 5,
+  "registry_revision": 6,
   "spec_refs": [
     "heterodyne:social/0.5.0#social-moderation"
   ],

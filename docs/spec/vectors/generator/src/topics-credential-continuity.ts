@@ -342,7 +342,7 @@ export function buildCredentialContinuityVectors(): AuthoredVector[] {
       "credential-continuity/seventeen-schemas-draft",
       "All seventeen transport-independent Comms schemas are present as non-claimable draft definitions.",
       {
-        selected_registry_revision: 5,
+        selected_registry_revision: 6,
         schema_files: [...CREDENTIAL_CONTINUITY_SCHEMA_FILES],
         adr038_core_recovery_schemas_active: false,
         governed_source_profile_catalog_active: false,
@@ -378,7 +378,7 @@ function draft(
         verdict: "accept",
         normalized: {
           draft_credential_continuity_decision: decision,
-          selected_registry_revision: 5,
+          selected_registry_revision: 6,
           conformance_claimable: false,
         },
       },

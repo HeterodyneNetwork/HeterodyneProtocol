@@ -1,0 +1,45 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 6,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-one-time-invites"
+  ],
+  "vector_id": "one-time-invite/purpose-mismatch",
+  "description": "A purpose-bound DM invite cannot be converted into device enrollment.",
+  "direction": "consume",
+  "input": {
+    "state": {
+      "status": "active"
+    },
+    "response": {
+      "now": 1001,
+      "expires_at": 87400,
+      "expected_purpose": "dm",
+      "response_purpose": "device-enrollment",
+      "descriptor_valid": true,
+      "secret_commitment_valid": true,
+      "seal_valid": true,
+      "seal_pubkey": "3333333333333333333333333333333333333333333333333333333333333333",
+      "rumor_pubkey": "3333333333333333333333333333333333333333333333333333333333333333",
+      "proof_valid": true,
+      "keypackage_valid": true,
+      "capabilities_compatible": true,
+      "response_digest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "group_established": false
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "invite-purpose-mismatch",
+    "normalized": {
+      "state": {
+        "status": "active"
+      }
+    }
+  }
+}

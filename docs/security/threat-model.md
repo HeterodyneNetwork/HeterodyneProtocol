@@ -18,7 +18,7 @@ This document analyzes the four independently versioned documents:
 - [Heterodyne Social](../spec/heterodyne-social.md) — public social behavior,
   durable assets, and moderation.
 
-The owner sections below reproduce registry revision 5 and security boundaries
+The owner sections below reproduce registry revision 6 and security boundaries
 without creating or relaxing requirements. The family's only normative
 dependency edges are:
 
@@ -47,7 +47,7 @@ any carrier authoritative for persona identity.
 
 ## 2. Registry-bound invariants
 
-The descriptions below reproduce registry revision 5 exactly.
+The descriptions below reproduce registry revision 6 exactly.
 Registry-bound rows cite an invariant where that invariant directly governs
 the mitigation. Metadata residuals, operational consequences, out-of-scope
 limitations, and open work may instead be cross-cutting and are not assigned a
@@ -251,12 +251,17 @@ guarantee as another's.
 | Audit disclosure or tampering | Encrypt durable audit records and bind them to negotiated Core/Comms/Control context (CONTROL-I-AUDIT-AT-REST). |
 | Light client escalates into persona or credential authority | Treat its key as a private Control principal only and never deliver persona, device, epoch, NID, repository, MLS-leaf, or role secrets (CONTROL-I-CLIENT-KEY-CONFINEMENT). |
 | Token is replayed by another account, group, or node | Bind `cnf.jkt` to the authenticated Marmot account, bind the exact group, and require the issuing node's exact audience (CONTROL-I-MARMOT-SENDER-BINDING, CONTROL-I-NODE-AUDIENCE). |
+| Unsolicited Welcome traffic exhausts Control KeyPackages or group state | Default invitations to off; enforce one pending group per account, a finite global cap, a 30-minute lifetime, finite Welcome/replenishment rates, paused public replenishment at capacity, and a reserved entitled/approved slot before durable Welcome mutation. |
+| One-time invite is converted, raced, or replayed | Sign and domain-separate the exact purpose and descriptor, authenticate the NIP-59 responder and secret proof, and persist the first-valid `active -> reserved -> spent` transition. |
+| Device Authorization user code is guessed | Require at least 34.5 bits of user-code entropy, no more than five failures, per-code and node-wide throttles, constant-time normalized comparison, and identical code/fingerprint displays. Device codes contain at least 128 random bits. |
+| A stale full node keeps minting fresh authority | Require an authenticated, non-conflicted authorization view at most 300 seconds old for mint and every privileged request, and an immediate successful synchronization before mutation. |
 | Cross-node retry executes a mutation twice | Reserve the operation before effects and retry only an inherently idempotent operation or one with a provable committed result; otherwise return `indeterminate` (CONTROL-I-OPERATION-AT-MOST-ONCE). |
 | Automated caller requests a private key, raw signature, human profile, or attribution bypass | Expose only bounded token and intent-level publish methods; refuse every key-access and bypass shape without fallback (CONTROL-I-AGENT-NO-KEY-RELEASE, CONTROL-I-AGENT-INTENT-ONLY). |
 | Automated side effect outlives or exceeds its grant | Revalidate the scoped Control token, authenticated sender, current entitlement, role, and finite kind/resource/size/rate/burst bounds for each operation (CONTROL-I-ENTITLEMENT-FRESHNESS, CONTROL-I-AGENT-INTENT-ONLY). |
 | Node-mediated client escapes its group grant or obtains secrets | Filter every method, object, history range, and result by current authority and retain all Marmot and repository secrets on the designated node (CONTROL-I-MARMOT-GRANT-CONFINEMENT). |
 | Recovery capability is confused with baseline Control | Require separate feature advertisement and recovery vectors; baseline Control conveys no epoch custody, repository grant, or SFTP authority. |
 | Epoch key remains live during network transfer | Prepare and wrap activation during an explicit unlock, then erase and relock before any group, Radicle, onion, or SFTP activity (CONTROL-I-EPOCH-LOCKED-DURING-TRANSFER). |
+| Epoch scalar reuse crosses signing and decryption boundaries | The same scalar is intentionally used for BIP-340 epoch authority and Nostr-compatible NIP-59 recipient ECDH, so compromise of either use compromises both. Domain-separate every protocol input, bound work before decryption, reject malformed ciphertext without invoking signing, never sign while processing untrusted epoch-inbox ciphertext, and keep the scalar encrypted and absent from memory outside the explicit short unlock ceremony. |
 | Recovery service exposes other files or network channels | Use an exact finite grant, fresh client-authorized onion, independent SSH authentication and host pinning, rooted SFTP-only process, byte ceiling, expiry, and prohibited forwarding (CONTROL-I-RECOVERY-GRANT-CONFINEMENT, CONTROL-I-SFTP-PROCESS-SEPARATION). |
 
 ### 5.4 Social threats
