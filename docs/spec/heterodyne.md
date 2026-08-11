@@ -27,7 +27,7 @@ Control; clients can compose their independently stated claims.
 |---|---|---|---|
 | [Core](heterodyne-core.md) | `core/0.5.0` | Identity, KEL verification, node roles, repositories, registry, versioning, and base conformance | Normative |
 | [Comms](heterodyne-comms.md) | `comms/0.5.0` | Privacy tiers, publishing, Marmot conversations and media, Radicle conversation storage, atomic key claims, private claim ledger, and OIDC/JWT projection | Normative |
-| [Control](heterodyne-control.md) | `control/0.5.0` | Own-device enrollment, grants, RPC, node-mediated Marmot operations, and agentic semantics over Comms | Incomplete draft; not claimable |
+| [Control](heterodyne-control.md) | `control/0.5.0` | Marmot-carried own-device enrollment, grants, RPC, node-mediated operations, agent semantics, and optional recovery | Normative 0.x |
 | [Social](heterodyne-social.md) | `social/0.5.0` | Public social graph, interactions, moderation, lists, durable assets, and ATProto attachment | Normative 0.x |
 
 These are four independent version lineages descended from the 0.4.x
@@ -44,7 +44,7 @@ Machine-readable prepared-release manifests are under
 | Core | `core/0.5.0` | Baseline for every implementation |
 | Heterodyne persona | `core/0.5.0` + `comms/0.5.0` | Standard-compatible or Radicle-private Marmot conversations |
 | Social | Core + Comms + `social/0.5.0` | Public social behavior and durable assets |
-| Control profile | Core + Comms + `control/0.5.0` + `double-ratchet` | Gate closed while Control remains incomplete |
+| Control profile | Core + Comms + `control/0.5.0` | Standard Marmot carriage; recovery features are optional independent claims |
 
 Exact versions, registry revision or digest, feature IDs, and strict-profile
 IDs belong in each conformance claim.

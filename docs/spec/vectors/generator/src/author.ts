@@ -1,5 +1,5 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { mkdir, readFile, readdir, unlink, writeFile } from "node:fs/promises";
+import { dirname, join, relative } from "node:path";
 import { buildFixtures } from "./fixtures.js";
 import { REASON_CODES } from "./reason-codes.js";
 import { VECTOR_SCHEMA, validateVectorOrThrow } from "./schema.js";
@@ -9,6 +9,11 @@ export async function authorAllVectors(outputDir: string): Promise<string[]> {
   const fixtures = buildFixtures();
   const vectors = await buildAllVectors(fixtures);
   const written: string[] = [];
+
+  await removeRetiredVectors(
+    outputDir,
+    new Set(vectors.map(({ relativePath }) => relativePath)),
+  );
 
   await writeJson(join(outputDir, "fixtures.json"), fixtures);
   await writeJson(join(outputDir, "schema", "vector.schema.json"), VECTOR_SCHEMA);
@@ -22,6 +27,46 @@ export async function authorAllVectors(outputDir: string): Promise<string[]> {
   }
 
   return written.sort();
+}
+
+async function removeRetiredVectors(
+  outputDir: string,
+  expected: ReadonlySet<string>,
+): Promise<void> {
+  for (const path of await jsonFiles(outputDir)) {
+    const relativePath = relative(outputDir, path);
+    if (relativePath === "fixtures.json"
+      || relativePath.startsWith("schema/")
+      || relativePath.startsWith("coverage/")
+      || expected.has(relativePath)) {
+      continue;
+    }
+    let value: unknown;
+    try {
+      value = JSON.parse(await readFile(path, "utf8"));
+    } catch {
+      continue;
+    }
+    if (typeof value === "object" && value !== null && "vector_id" in value) {
+      await unlink(path);
+    }
+  }
+}
+
+async function jsonFiles(root: string): Promise<string[]> {
+  const files: string[] = [];
+  let entries;
+  try {
+    entries = await readdir(root, { withFileTypes: true });
+  } catch {
+    return files;
+  }
+  for (const entry of entries) {
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) files.push(...await jsonFiles(path));
+    else if (entry.isFile() && entry.name.endsWith(".json")) files.push(path);
+  }
+  return files;
 }
 
 async function writeJson(path: string, value: unknown): Promise<void> {

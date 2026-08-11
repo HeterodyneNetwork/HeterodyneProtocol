@@ -23,10 +23,8 @@ import {
   type VerifiedRevocation,
   type RevocationAuthorityEvidence,
 } from "./claims.js";
-import { withDeterministicEnv } from "./dm-transcript.js";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
-import { DoubleRatchetSession } from "./ndr.js";
 import { canonicalNip01, getPublicKey, signEvent, type NostrSignedEvent } from "./nostr.js";
 import { AUX_RAND, baseVector } from "./vector-helpers.js";
 import type { Fixtures } from "./fixtures.js";
@@ -664,24 +662,19 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
   const publicEvent = await signClaim(publicClaim);
   const pairwiseClaim = makeClaim({ visibility: "pairwise-private" });
   const pairwiseEvent = await signClaim(pairwiseClaim);
-  const drAliceSecret = "a1".repeat(32);
-  const drBobSecret = "b2".repeat(32);
-  const drSharedSecret = "c3".repeat(32);
-  const pairwiseDr = withDeterministicEnv(now + 100, () => {
-    const session = DoubleRatchetSession.init(
-      getPublicKey(drBobSecret),
-      hexToBytes(drAliceSecret),
-      true,
-      hexToBytes(drSharedSecret),
-      "claims-pairwise",
-    );
-    return session.sendEvent({
+  const pairwiseGroup = "85".repeat(32);
+  const pairwiseMarmot = {
+    group_id: pairwiseGroup,
+    member_accounts: [deviceOnePublishing.pubkey, audience].sort(),
+    application_event: {
       kind: 14,
       pubkey: deviceOnePublishing.pubkey,
       tags: [["p", audience]],
       content: jcsCanonicalize(pairwiseEvent),
-    });
-  });
+    },
+    outer_kind: 445,
+    outer_claim_metadata_fields: [],
+  };
   const repositoryClaim = makeClaim({ subject: radicleSubject, visibility: "repository-private" });
   const repositoryEvent = await signClaim(repositoryClaim);
   const ledgerAudienceKey = hexToBytes("82".repeat(32));
@@ -862,11 +855,11 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
       expected_output: { verdict: "accept", normalized: { visibility: "public", claim_metadata_public: true, signed_event_complete: true } },
     },
     {
-      path: "018-pairwise-private-dr-delivery.json",
-      vector_id: "pairwise-private-dr-delivery",
-      description: "A full signed claim is carried only inside pairwise DR ciphertext; outer metadata contains no claim ID, namespace, name, value, or visibility.",
-      input: { wire_library: "nostr-double-ratchet@0.0.138", session_setup: { initiator_secret: drAliceSecret, responder_public: getPublicKey(drBobSecret), shared_secret: drSharedSecret }, outer_event: pairwiseDr.event, canonical_wire: canonicalNip01(pairwiseDr.event), inner_rumor: pairwiseDr.innerEvent },
-      expected_output: { verdict: "accept", normalized: { visibility: "pairwise-private", inner_claim_id: pairwiseClaim.claim_id, outer_kind: 1060, outer_signer: pairwiseDr.event.pubkey, signer_is_current_ratchet_key: pairwiseDr.event.pubkey === getPublicKey(drAliceSecret), outer_claim_metadata_fields: [], repository_storable: false, backfill: false } },
+      path: "018-pairwise-private-marmot-delivery.json",
+      vector_id: "pairwise-private-marmot-delivery",
+      description: "A full signed claim is carried only inside a two-member Marmot group; the outer gift wrap discloses no claim fields.",
+      input: { marmot_group: pairwiseMarmot, inner_signed_claim: pairwiseEvent },
+      expected_output: { verdict: "accept", normalized: { visibility: "pairwise-private", inner_claim_id: pairwiseClaim.claim_id, member_count: 2, outer_kind: 445, outer_claim_metadata_fields: [], transport_owner: "marmot" } },
     },
     {
       path: "019-repository-private-encryption.json",

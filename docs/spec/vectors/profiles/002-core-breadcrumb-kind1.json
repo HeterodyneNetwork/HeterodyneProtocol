@@ -3,7 +3,7 @@
   "owner_document": "core",
   "owner_version": "core/0.5.0",
   "dependency_versions": {},
-  "registry_revision": 1,
+  "registry_revision": 5,
   "profile": "heterodyne-core-rotation-breadcrumb-note-v1",
   "spec_refs": [
     "heterodyne:core/0.5.0#core-kel-rotation"

@@ -122,16 +122,6 @@ export async function buildKeriAuthorityWireVectors(fixtures: Fixtures): Promise
     auxRand: AUX_RAND,
   });
 
-  // W7: forbidden kel_head on a kind:1060 DR outer message (ratchet-key-signed wire event).
-  const forbiddenDrWire = await signEvent({
-    secretKey: "d2".padStart(64, "0"),
-    created_at: T + 320,
-    kind: 1060,
-    tags: [["header", "ratchet-header-placeholder"], kelHeadTag(head)],
-    content: "ratchet-ciphertext-placeholder",
-    auxRand: AUX_RAND,
-  });
-
   // W9: mandatory kel_head present and well-formed on a kind:31000 root attestation.
   const rootWithHead = await signEvent({
     secretKey: epoch.private_key,
@@ -158,23 +148,6 @@ export async function buildKeriAuthorityWireVectors(fixtures: Fixtures): Promise
         ["cold_root", cold.pubkey],
         ["nid_proof", bindProof2],
         ["valid_until", ""],
-      ],
-      head,
-    ),
-    content: "",
-    auxRand: AUX_RAND,
-  });
-
-  // W11: mandatory kel_head on the epoch-key-signed enrollment invite.
-  const epochInvite = await signEvent({
-    secretKey: epoch.private_key,
-    created_at: T + 342,
-    kind: 30078,
-    tags: withKelHead(
-      [
-        ["d", "double-ratchet/invites/epoch"],
-        ["heterodyne", "dm_invite"],
-        ["ephemeral_key", getPublicKey("e5".padStart(64, "0"))],
       ],
       head,
     ),
@@ -243,14 +216,6 @@ export async function buildKeriAuthorityWireVectors(fixtures: Fixtures): Promise
       expected_output: { verdict: "reject", reason_code: "kel_head_forbidden" },
       decision_trace: ["classify_kel_event", "reject_kel_head_on_kel_event"],
     }),
-    consumeVector("keri-authority/007-kel-head-forbidden-on-dr-wire.json", {
-      vector_id: "keri-authority/kel-head-forbidden-on-dr-wire",
-      spec_refs: ["§3.0", "§4.5.1", "§5.7", "§14.3"],
-      description: "A kind:1060 double-ratchet outer message (signed by a ratchet key) carrying a kel_head tag is rejected: §5.7 DR wire events MUST NOT carry it.",
-      input: { event: forbiddenDrWire, signer_kind: "current_ratchet_key" },
-      expected_output: { verdict: "reject", reason_code: "kel_head_forbidden" },
-      decision_trace: ["classify_dr_wire_event", "reject_kel_head_on_dr_wire"],
-    }),
     consumeVector("keri-authority/009-kel-head-mandatory-on-root.json", {
       vector_id: "keri-authority/kel-head-mandatory-on-root",
       spec_refs: WIRE,
@@ -273,17 +238,6 @@ export async function buildKeriAuthorityWireVectors(fixtures: Fixtures): Promise
       },
       decision_trace: ["verify_bip340_signature", "verify_nid_proof", "require_kel_head_present", "resolve_on_accepted_kel", "accept"],
       notes: "The bidirectional NID binding is exercised in nid-binding/; this vector isolates the mandatory kel_head on a delegation.",
-    }),
-    consumeVector("keri-authority/011-kel-head-mandatory-on-epoch-invite.json", {
-      vector_id: "keri-authority/kel-head-mandatory-on-epoch-invite",
-      spec_refs: ["§3.0", "§4.5.1", "§5.7.1", "§14.3"],
-      description: "The epoch-key-signed enrollment invite (kind:30078, d=double-ratchet/invites/epoch) carrying a well-formed kel_head is accepted; this is the epoch-key carve-out from §5.7.2's device-key invite rule.",
-      input: { event: epochInvite, accepted_kel: acceptedKel, signer: "epoch_key" },
-      expected_output: {
-        verdict: "accept",
-        normalized: { d: "double-ratchet/invites/epoch", signer: "epoch_key", kel_head_present: true },
-      },
-      decision_trace: ["classify_epoch_key_invite", "verify_bip340_signature", "require_kel_head_present", "accept"],
     }),
     consumeVector("keri-authority/012-equivocation-flagged.json", {
       vector_id: "keri-authority/equivocation-flagged",

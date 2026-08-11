@@ -221,16 +221,6 @@
       ]
     },
     {
-      "code": "dm_event_not_storable",
-      "owner": "comms",
-      "status": "draft",
-      "first_version": "comms/0.5.0",
-      "description": "A repo relay refused to store a kind:1060 double-ratchet message (or kind:1059 response); ratchet ciphertext MUST NOT be archived.",
-      "spec_refs": [
-        "heterodyne:comms/0.5.0#comms-conformance"
-      ]
-    },
-    {
       "code": "config_rid_advertised",
       "owner": "core",
       "status": "draft",
@@ -275,7 +265,7 @@
       "owner": "core",
       "status": "draft",
       "first_version": "core/0.5.0",
-      "description": "A kel_head tag appears on an event class whose Core applicability rules forbid it (kind:31002/31003 KEL events, DR wire events kind:1060/1059 and inner rumors, or non-stamping rotation breadcrumbs).",
+      "description": "A kel_head tag appears on an event class whose Core applicability rules forbid it (kind:31002/31003 KEL events, Marmot outer or inner events, or non-stamping rotation breadcrumbs).",
       "spec_refs": [
         "heterodyne:core/0.5.0#core-conformance"
       ]
@@ -386,7 +376,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The claim or revocation does not satisfy its registered Comms schema.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "claim-id-mismatch",
@@ -394,7 +386,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The claim_id does not equal the lowercase SHA-256 digest of the canonical semantic body.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "claim-key-reference-invalid",
@@ -402,7 +396,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "An issuer, subject, or proof key reference is malformed or uses an unregistered type.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "claim-event-signature-invalid",
@@ -410,7 +406,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The outer Nostr claim or revocation event signature is invalid.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "claim-issuer-authority-invalid",
@@ -418,7 +416,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "Core/KEL validation does not establish the issuer's claimed authority at issuance time.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "claim-issuer-untrusted",
@@ -426,7 +426,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The claim is cryptographically valid but its issuer is outside the verifier's trust policy.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "claim-chain-cycle",
@@ -434,7 +436,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The claim issuance chain contains a repeated claim identifier.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "claim-chain-depth-exceeded",
@@ -442,7 +446,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The claim issuance chain exceeds the strict eight-edge limit.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "claim-delegation-not-authorized",
@@ -450,7 +456,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The parent claim does not authorize the child issuer to redelegate.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "claim-attenuation-violation",
@@ -458,7 +466,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "A child claim widens scope, audience, resources, validity, or delegation depth.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "claim-subject-proof-required",
@@ -466,7 +476,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "Authorization use requires a fresh proof of possession that was not supplied.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "claim-subject-proof-invalid",
@@ -474,7 +486,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The registered native proof profile did not validate possession of the subject key.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "claim-repository-unconfirmed",
@@ -482,7 +496,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "A persona-issued authorization is not reachable from authoritative canonical repository state.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "claim-repository-conflict",
@@ -490,7 +506,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "Concurrent non-monotonic claim-ledger state remains unresolved and cannot authorize.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "claim-expired",
@@ -498,7 +516,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The claim's bounded validity interval has ended.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "claim-revoked",
@@ -506,7 +526,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "An irreversible valid revocation covers the claim.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "claim-revoker-unauthorized",
@@ -514,7 +536,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The signer is not permitted to revoke this authorization or descriptive assertion.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "claim-ledger-reader-unauthorized",
@@ -522,7 +546,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "A device lacks an active durable NID-bearing claim-ledger-reader authorization.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "claim-ledger-rollback",
@@ -530,7 +556,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "Presented claim-ledger state regresses below a previously finalized checkpoint.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "oidc-issuer-authority-invalid",
@@ -538,7 +566,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The minting node lacks active oidc-token-issuer authority for the persona.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "oidc-signing-key-unavailable",
@@ -546,7 +576,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The minting node cannot decrypt or use an active shared issuer signing key.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "oidc-checkpoint-stale",
@@ -554,7 +586,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The authoritative ledger checkpoint exceeds the issuer manifest's at-most-300-second freshness bound.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "oidc-client-unregistered",
@@ -562,7 +596,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The requesting OAuth/OIDC client is not explicitly registered.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "oidc-grant-prohibited",
@@ -570,7 +606,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The request uses Client Credentials, implicit, password, or another prohibited grant.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "oidc-consent-required",
@@ -578,7 +616,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The requested claim release lacks the required persona consent.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "oidc-claim-release-denied",
@@ -586,7 +626,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "Requested claims exceed the intersection of scope, audience, policy, consent, trust, and active state.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "oidc-issuer-mismatch",
@@ -594,7 +636,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "Discovery metadata, JWT iss, or continuity state names a different exact issuer URL.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "oidc-token-type-invalid",
@@ -602,7 +646,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "A JWT is missing or misuses the token-type separation required by the profile.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "oidc-audience-invalid",
@@ -610,7 +656,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The JWT audience does not authorize the relying party or protected resource.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "oidc-status-stale",
@@ -618,7 +666,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The pinned draft-21 Status List Token is expired, outside ttl, or not fresh enough for policy.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "oidc-status-digest-mismatch",
@@ -626,7 +676,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The HTTPS and Radicle status copies are not byte-identical under the continuity digest.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "oidc-status-index-invalid",
@@ -634,7 +686,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "A status index is out of range, reused, or outside its writer-NID namespace allocation.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "oidc-status-invalid",
@@ -642,7 +696,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The token status is INVALID or cannot provide valid evidence of VALID.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-conformance"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
     },
     {
       "code": "role-delegation-address-invalid",
@@ -650,7 +706,9 @@
       "status": "draft",
       "first_version": "core/0.5.0",
       "description": "A role-addressed delegation does not use the exact registered namespace and role identifier syntax.",
-      "spec_refs": ["heterodyne:core/0.5.0#core-nid-delegation"]
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-nid-delegation"
+      ]
     },
     {
       "code": "role-delegation-key-proof-invalid",
@@ -658,7 +716,9 @@
       "status": "draft",
       "first_version": "core/0.5.0",
       "description": "The registered role-key proof is missing, malformed, or invalid over the profile binding.",
-      "spec_refs": ["heterodyne:core/0.5.0#core-nid-delegation"]
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-nid-delegation"
+      ]
     },
     {
       "code": "public-reader-route-invalid",
@@ -666,7 +726,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "A universal-launcher fragment is unknown, malformed, oversized, or contains an invalid NIP-19 entity.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-retrieval"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-retrieval"
+      ]
     },
     {
       "code": "public-reader-relay-hint-invalid",
@@ -674,7 +736,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "A public-reader bootstrap hint violates the normalized relay URL or local-network exclusion rules.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-retrieval"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-retrieval"
+      ]
     },
     {
       "code": "public-reader-private-content",
@@ -682,7 +746,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "Public-reader mode was asked to render Tier 2 plaintext or interpret Tier 3 ciphertext as public content.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-retrieval"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-retrieval"
+      ]
     },
     {
       "code": "agent-workload-registration-invalid",
@@ -690,7 +756,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The agent workload registration is malformed, incompatible, non-final, or grants unbounded automated publication.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-key-claims"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-key-claims"
+      ]
     },
     {
       "code": "agent-token-invalid",
@@ -698,7 +766,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The workload access token fails signature, type, issuer, client, identity, ledger, or structural validation.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-jwt-projection"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-jwt-projection"
+      ]
     },
     {
       "code": "agent-token-expired",
@@ -706,7 +776,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The workload token is expired or exceeds the five-minute or source-authorization lifetime ceiling.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-jwt-projection"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-jwt-projection"
+      ]
     },
     {
       "code": "agent-token-revoked",
@@ -714,7 +786,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "Token status or a source authorization marks the workload token invalid.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-token-status"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-token-status"
+      ]
     },
     {
       "code": "agent-token-stale",
@@ -722,7 +796,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The workload token decision relies on a stale status, ledger checkpoint, or authorization view.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-jwt-projection"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-jwt-projection"
+      ]
     },
     {
       "code": "agent-token-audience-invalid",
@@ -730,7 +806,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The workload token does not name the one exact Control publication audience.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-jwt-projection"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-jwt-projection"
+      ]
     },
     {
       "code": "agent-token-scope-invalid",
@@ -738,7 +816,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The workload token lacks the exact registered scope and resource for the requested publication.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-jwt-projection"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-jwt-projection"
+      ]
     },
     {
       "code": "agent-sender-proof-invalid",
@@ -746,7 +826,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The per-use workload JWK proof is missing, replayed, malformed, or mismatched with cnf.jkt.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-jwt-projection"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-jwt-projection"
+      ]
     },
     {
       "code": "agent-role-mismatch",
@@ -754,7 +836,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The token, registration, delegation role, or event signer names a different agent role.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-publishing"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-publishing"
+      ]
     },
     {
       "code": "agent-attribution-invalid",
@@ -762,7 +846,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "An agent-authored event has missing, malformed, reordered, or identity-mismatched canonical attribution.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-publishing"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-publishing"
+      ]
     },
     {
       "code": "agent-attribution-profile-unavailable",
@@ -770,7 +856,229 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "The requested authored event kind has no active revision-3 agent-attribution profile.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-publishing"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-publishing"
+      ]
+    },
+    {
+      "code": "control-invitation-disabled",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A full node's local policy does not accept a new unsolicited Control-group invitation.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-invitation-policy"
+      ]
+    },
+    {
+      "code": "control-keypackage-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The selected Control KeyPackage is malformed, expired, unsupported, or does not belong to the advertised full-node account.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-invitation-policy"
+      ]
+    },
+    {
+      "code": "control-enrollment-required",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The Control group is enrollment-only and the requested method requires active private entitlement.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-enrollment"
+      ]
+    },
+    {
+      "code": "control-frame-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The inner Control application event or canonical frame violates its closed kind, tag, version, profile, member, or payload rules.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-frame"
+      ]
+    },
+    {
+      "code": "control-entitlement-conflict",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Private Control authorization is missing, stale beyond policy, unauthorized, forked, revoked, or contains a conflicting expansion.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-entitlement"
+      ]
+    },
+    {
+      "code": "control-token-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The Control access token fails type, signature, issuer, time, client, authorization-record, or structural validation.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-token-expired",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The Control token is expired or exceeds its entitlement, node-policy, five-minute default, or sixty-minute absolute lifetime.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-token-audience-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The Control token audience does not name the exact full node receiving the request.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-token-sender-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The authenticated Marmot sender account does not match the token cnf.jkt thumbprint.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-token-group-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The request arrived in a different Marmot group from the one bound by the Control token.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-token-scope-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The method, object, role, kind, media, rate, size, burst, or other finite limit is outside the token and entitlement intersection.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-refresh-prohibited",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A Control client requested or presented a refresh token even though the profile requires fresh node-local issuance.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-operation-conflict",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A logical operation identifier was reused for a different method, object, or canonical payload.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-request-processing"
+      ]
+    },
+    {
+      "code": "control-operation-indeterminate",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A prior node may have committed the mutation, but no authoritative result proves whether repeating it is safe.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-failover"
+      ]
+    },
+    {
+      "code": "control-recovery-locked",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The epoch inbox or prepared activation was accessed without the required explicit unlock, preparation, erasure, and relock ceremony.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-epoch-bootstrap"
+      ]
+    },
+    {
+      "code": "control-registration-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A prospective full-node registration is malformed, expired, or fails a required proof or target-key binding.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-epoch-bootstrap"
+      ]
+    },
+    {
+      "code": "control-activation-mismatch",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Recovered heads, manifest identity, object digests, target keys, grant, or completion state do not match the prepared activation.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-epoch-bootstrap"
+      ]
+    },
+    {
+      "code": "control-recovery-grant-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Private-Radicle recovery access is expired or outside its bound NID, repository, head, direction, byte, activation, or completion limits.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-radicle-recovery"
+      ]
+    },
+    {
+      "code": "control-recovery-completion-mismatch",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Recovery completion cannot prove every repository head, manifest identity, and object digest required by its grant.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-radicle-recovery"
+      ]
+    },
+    {
+      "code": "control-sftp-auth-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The SFTP endpoint, Tor client key, SSH client key, or pinned host key does not match the finite transfer grant.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-sftp-recovery"
+      ]
+    },
+    {
+      "code": "control-sftp-resource-denied",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An SFTP request exceeds its rooted resource set, direction, byte ceiling, or prohibited-channel boundary.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-sftp-recovery"
+      ]
+    },
+    {
+      "code": "control-sftp-expired",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The SFTP grant or its bounded renewal overlap has expired or been completed or revoked.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-sftp-recovery"
+      ]
     },
     {
       "code": "control-request-expired",
@@ -778,23 +1086,19 @@
       "status": "draft",
       "first_version": "control/0.5.0",
       "description": "The authenticated Control request expired before reservation or execution.",
-      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-request-processing"
+      ]
     },
     {
       "code": "control-request-id-conflict",
       "owner": "control",
       "status": "draft",
       "first_version": "control/0.5.0",
-      "description": "A request identifier was reused with a different session, method, or payload digest.",
-      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
-    },
-    {
-      "code": "control-ingress-relay-invalid",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "control/0.5.0",
-      "description": "A response route is not the authenticated canonical ingress relay for the accepted request or retry.",
-      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+      "description": "A request identifier was reused with different canonical frame bytes in the same Control group.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-request-processing"
+      ]
     },
     {
       "code": "agent-method-prohibited",
@@ -802,7 +1106,9 @@
       "status": "draft",
       "first_version": "control/0.5.0",
       "description": "An automated principal requested a method outside its closed agentic Control surface.",
-      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-agent-requirements"
+      ]
     },
     {
       "code": "agent-key-access-prohibited",
@@ -810,7 +1116,9 @@
       "status": "draft",
       "first_version": "control/0.5.0",
       "description": "An automated principal requested private key material or raw signing authority.",
-      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-agent-requirements"
+      ]
     },
     {
       "code": "agent-human-profile-prohibited",
@@ -818,7 +1126,9 @@
       "status": "draft",
       "first_version": "control/0.5.0",
       "description": "An automated principal attempted to route publication through a human-device profile.",
-      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-agent-requirements"
+      ]
     },
     {
       "code": "agent-attribution-bypass-prohibited",
@@ -826,7 +1136,9 @@
       "status": "draft",
       "first_version": "control/0.5.0",
       "description": "An automated principal attempted to omit, alter, or falsify canonical agent attribution.",
-      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-agent-requirements"
+      ]
     },
     {
       "code": "agent-resource-denied",
@@ -834,7 +1146,9 @@
       "status": "draft",
       "first_version": "control/0.5.0",
       "description": "The requested event kind, feed, destination, or resource is outside the active workload grant.",
-      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-agent-requirements"
+      ]
     },
     {
       "code": "agent-size-exceeded",
@@ -842,7 +1156,9 @@
       "status": "draft",
       "first_version": "control/0.5.0",
       "description": "The canonical publication intent exceeds its finite content-byte ceiling.",
-      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-agent-requirements"
+      ]
     },
     {
       "code": "agent-rate-limited",
@@ -850,7 +1166,9 @@
       "status": "draft",
       "first_version": "control/0.5.0",
       "description": "The publication intent exceeds the active finite rate-window, count, or burst limit.",
-      "spec_refs": ["heterodyne:control/0.5.0#control-reserved-scope"]
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-agent-requirements"
+      ]
     },
     {
       "code": "agent-attribution-missing",
@@ -858,7 +1176,9 @@
       "status": "draft",
       "first_version": "social/0.5.0",
       "description": "Evidence indicates an automated publication omitted mandatory agent attribution.",
-      "spec_refs": ["heterodyne:social/0.5.0#social-labels"]
+      "spec_refs": [
+        "heterodyne:social/0.5.0#social-labels"
+      ]
     },
     {
       "code": "agent-attribution-falsified",
@@ -866,7 +1186,9 @@
       "status": "draft",
       "first_version": "social/0.5.0",
       "description": "Evidence indicates an automated publication falsified mandatory agent attribution.",
-      "spec_refs": ["heterodyne:social/0.5.0#social-labels"]
+      "spec_refs": [
+        "heterodyne:social/0.5.0#social-labels"
+      ]
     },
     {
       "code": "agent-publication-bypass",
@@ -874,7 +1196,9 @@
       "status": "draft",
       "first_version": "social/0.5.0",
       "description": "Evidence indicates an automated principal bypassed the required token and intent-level publication path.",
-      "spec_refs": ["heterodyne:social/0.5.0#social-labels"]
+      "spec_refs": [
+        "heterodyne:social/0.5.0#social-labels"
+      ]
     },
     {
       "code": "agent-policy-receipt-invalid",
@@ -882,7 +1206,9 @@
       "status": "draft",
       "first_version": "social/0.5.0",
       "description": "An agent-policy receipt is malformed, unverifiable, secret-bearing, or does not target exactly one event and device key.",
-      "spec_refs": ["heterodyne:social/0.5.0#social-labels"]
+      "spec_refs": [
+        "heterodyne:social/0.5.0#social-labels"
+      ]
     },
     {
       "code": "agent-policy-binding-invalid",
@@ -890,7 +1216,9 @@
       "status": "draft",
       "first_version": "social/0.5.0",
       "description": "A policy-list entry does not bind the same device key, receipt identifier, and reason code.",
-      "spec_refs": ["heterodyne:social/0.5.0#social-mute-profile"]
+      "spec_refs": [
+        "heterodyne:social/0.5.0#social-mute-profile"
+      ]
     },
     {
       "code": "agent-role-key-rotation-required",
@@ -898,7 +1226,9 @@
       "status": "draft",
       "first_version": "social/0.5.0",
       "description": "The subscribed policy requires replacement of the exact offending role key before restored visibility.",
-      "spec_refs": ["heterodyne:social/0.5.0#social-mute-profile"]
+      "spec_refs": [
+        "heterodyne:social/0.5.0#social-mute-profile"
+      ]
     },
     {
       "code": "marmot-private-route-required",
@@ -906,7 +1236,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "A Heterodyne-private group has no currently authorized Radicle route and cannot use a public fallback.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-marmot-groups"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-marmot-groups"
+      ]
     },
     {
       "code": "marmot-routing-binding-invalid",
@@ -914,7 +1246,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "A routing binding has the wrong administrator, canonical Marmot routing commit, h value, or repository genesis digest.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-marmot-routing-generation"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-marmot-routing-generation"
+      ]
     },
     {
       "code": "marmot-routing-equivocation",
@@ -922,7 +1256,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "Different otherwise valid routing bindings claim the same canonical Marmot h.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-marmot-host-authority"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-marmot-host-authority"
+      ]
     },
     {
       "code": "marmot-unauthorized-ref",
@@ -930,7 +1266,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "A writer or relay ref is not authorized to contribute objects to the routing-generation union.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-marmot-event-repository"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-marmot-event-repository"
+      ]
     },
     {
       "code": "marmot-premature-ack",
@@ -938,7 +1276,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "A publisher or relay acknowledged a Marmot object before the required exact-byte durability boundary.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-marmot-rotation"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-marmot-rotation"
+      ]
     },
     {
       "code": "marmot-private-inbox-nid-required",
@@ -946,7 +1286,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "A sender NID is not authorized to contribute a contact bundle to the private persona repository.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-marmot-persona-inbox"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-marmot-persona-inbox"
+      ]
     },
     {
       "code": "marmot-keypackage-replayed",
@@ -954,7 +1296,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "A persona-inbox bootstrap attempts to consume a Marmot KeyPackage already consumed by another accepted or quarantined bundle.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-marmot-persona-inbox"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-marmot-persona-inbox"
+      ]
     },
     {
       "code": "marmot-agent-scope-denied",
@@ -962,7 +1306,9 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "An automated Marmot operation requests a group, application kind, media type, size, rate, or burst outside its workload token.",
-      "spec_refs": ["heterodyne:comms/0.5.0#comms-agent-authorship"]
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-agent-authorship"
+      ]
     }
   ]
 }

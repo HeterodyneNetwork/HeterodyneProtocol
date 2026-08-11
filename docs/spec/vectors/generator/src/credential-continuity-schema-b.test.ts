@@ -21,73 +21,6 @@ const KEL_HEAD = { event_id: H64, seq: 7 };
 const AUTHORITY = { signer_type: "epoch", signer: H64, kel_head: KEL_HEAD };
 const ARTIFACT_REF = { profile_id: "core.nid-delegation.v1", record_digest: H64 };
 
-const PEER_TOMBSTONE = {
-  type: "heterodyne.double-ratchet-peer-tombstone.v1",
-  spec_version: "comms/0.5.0",
-  persona: H64,
-  transition_id: H32,
-  old_session_id: H64,
-  local_nid: NID,
-  remote_persona: H64,
-  remote_nid: NID,
-  local_delivery_pubkey: H64,
-  local_delivery_delegation_event_id: H64,
-  remote_delivery_pubkey: H64,
-  remote_delivery_delegation_event_id: H64,
-  invalidated_at: 1784390400,
-  successor_session_ids: [H64],
-  reason: "candidate_material_retired",
-  epoch_pubkey: H64,
-  kel_head: KEL_HEAD,
-  epoch_signature: H128,
-};
-
-const RUMOR_EVENT = {
-  id: H64,
-  pubkey: H64,
-  created_at: PEER_TOMBSTONE.invalidated_at,
-  kind: 1061,
-  tags: [
-    ["p", H64],
-    ["heterodyne", "dr_peer_tombstone"],
-  ],
-  content: JSON.stringify(PEER_TOMBSTONE),
-};
-
-const RUMOR_CARRIER = {
-  event: RUMOR_EVENT,
-  nip01_raw: `[0,"${H64}",${PEER_TOMBSTONE.invalidated_at},1061,[],""]`,
-};
-
-const SIGNED_SEAL = {
-  id: H64,
-  pubkey: H64,
-  created_at: 1784390401,
-  kind: 13,
-  tags: [],
-  content: "AQ",
-  sig: H128,
-};
-
-const SIGNED_WRAP = {
-  id: H64,
-  pubkey: H64,
-  created_at: 1784390402,
-  kind: 1059,
-  tags: [["p", H64]],
-  content: "Ag",
-  sig: H128,
-};
-
-const GIFT_WRAP_CARRIER = {
-  event: SIGNED_WRAP,
-  nip01_raw: `[0,"${H64}",1784390402,1059,[],""]`,
-  seal: {
-    event: SIGNED_SEAL,
-    nip01_raw: `[0,"${H64}",1784390401,13,[],""]`,
-  },
-  rumor: RUMOR_CARRIER,
-};
 
 interface SchemaCase {
   name: string;
@@ -312,35 +245,6 @@ const transitionAction = {
   signature: H128,
 };
 
-const drTermination = {
-  type: "heterodyne.double-ratchet-session-termination.v1",
-  persona: H64,
-  transition_id: H32,
-  old_session_id: H64,
-  local_nid: NID,
-  remote_persona: H64,
-  remote_nid: NID,
-  local_delivery_pubkey: H64,
-  local_delivery_delegation_event_id: H64,
-  remote_delivery_pubkey: H64,
-  remote_delivery_delegation_event_id: H64,
-  source_assignment_digests: [H64],
-  removed_holder_nids: [],
-  retained_holder_nids: [NID],
-  invalidated_at: 1784390400,
-  successor_session_ids: [H64],
-  nid_revocation_digests: [],
-  retained_receipts: [{
-    termination_base_digest: H64,
-    nid: NID,
-    observed_at: 1784390400,
-    signature: B64URL_64,
-  }],
-  peer_tombstone: PEER_TOMBSTONE,
-  peer_delivery_event: GIFT_WRAP_CARRIER,
-  authority: AUTHORITY,
-  signature: H128,
-};
 
 const lostGenerationPath = {
   type: "heterodyne.credential-ledger.lost-generation-path.v1",
@@ -400,13 +304,7 @@ const cases: readonly SchemaCase[] = [
     name: "node-secret-transition-action-v1.schema.json",
     id: "https://heterodyne.network/schemas/comms/node-secret-transition-action-v1.schema.json",
     valid: transitionAction,
-    wrong: [{ ...transitionAction, action_kind: "ratchet-termination" }],
-  },
-  {
-    name: "double-ratchet-session-termination-v1.schema.json",
-    id: "https://heterodyne.network/schemas/comms/double-ratchet-session-termination-v1.schema.json",
-    valid: drTermination,
-    wrong: [{ ...drTermination, invalidated_at: Number.MAX_SAFE_INTEGER + 1 }],
+    wrong: [{ ...transitionAction, action_kind: "invalid-action" }],
   },
   {
     name: "credential-ledger-lost-generation-path-v1.schema.json",
@@ -425,21 +323,6 @@ const cases: readonly SchemaCase[] = [
     id: "https://heterodyne.network/schemas/comms/config-repository-git-structure-v1.schema.json",
     valid: configGit,
     wrong: [{ ...configGit, commit_oid: H64 }],
-  },
-  {
-    name: "double-ratchet-peer-tombstone-rumor-v1.schema.json",
-    id: "https://heterodyne.network/schemas/comms/double-ratchet-peer-tombstone-rumor-v1.schema.json",
-    valid: RUMOR_CARRIER,
-    wrong: [{ ...RUMOR_CARRIER, event: { ...RUMOR_EVENT, kind: 1060 } }],
-  },
-  {
-    name: "double-ratchet-peer-tombstone-gift-wrap-v1.schema.json",
-    id: "https://heterodyne.network/schemas/comms/double-ratchet-peer-tombstone-gift-wrap-v1.schema.json",
-    valid: GIFT_WRAP_CARRIER,
-    wrong: [{
-      ...GIFT_WRAP_CARRIER,
-      seal: { ...GIFT_WRAP_CARRIER.seal, event: { ...SIGNED_SEAL, tags: [["p", H64]] } },
-    }],
   },
 ];
 

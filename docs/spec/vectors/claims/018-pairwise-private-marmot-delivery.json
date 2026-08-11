@@ -1,0 +1,62 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 5,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-key-claims"
+  ],
+  "vector_id": "claims/pairwise-private-marmot-delivery",
+  "description": "A full signed claim is carried only inside a two-member Marmot group; the outer gift wrap discloses no claim fields.",
+  "direction": "consume",
+  "input": {
+    "marmot_group": {
+      "group_id": "8585858585858585858585858585858585858585858585858585858585858585",
+      "member_accounts": [
+        "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+        "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+      ],
+      "application_event": {
+        "kind": 14,
+        "pubkey": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+        "tags": [
+          [
+            "p",
+            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+          ]
+        ],
+        "content": "{\"content\":\"{\\\"audience\\\":[\\\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\\\"],\\\"claim_class\\\":\\\"authorization\\\",\\\"claim_id\\\":\\\"7cbe89860c3725b78199c8ba42ba0bdd422780556bf48c817264fc7235178552\\\",\\\"credential_ledger_generation\\\":0,\\\"credential_ledger_persona\\\":\\\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\\\",\\\"expires_at\\\":1767231200,\\\"issued_at\\\":1767227600,\\\"issuer\\\":{\\\"type\\\":\\\"nostr-secp256k1\\\",\\\"value\\\":\\\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\\\"},\\\"name\\\":\\\"claim-ledger-reader\\\",\\\"namespace\\\":\\\"heterodyne.device\\\",\\\"not_before\\\":1767227600,\\\"registry_revision\\\":2,\\\"resources\\\":[\\\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\\\"],\\\"spec_version\\\":\\\"comms/0.5.0\\\",\\\"subject\\\":{\\\"type\\\":\\\"nostr-secp256k1\\\",\\\"value\\\":\\\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\\\"},\\\"value\\\":true,\\\"visibility\\\":\\\"pairwise-private\\\"}\",\"created_at\":1767227600,\"id\":\"d9d5157a02bfd0e18e401bd9aaf0088179cf0fcecc4d70eca2145f67cb36bd8d\",\"kind\":31013,\"pubkey\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"sig\":\"070ec7c42963a464f69aa6b50958b97bd482cee97ae101426e6425ca4d98298e4afb9b533b302392f29f19c028886ac981f26838720a2ac752a16874c2b6baff\",\"tags\":[[\"d\",\"7cbe89860c3725b78199c8ba42ba0bdd422780556bf48c817264fc7235178552\"]]}"
+      },
+      "outer_kind": 445,
+      "outer_claim_metadata_fields": []
+    },
+    "inner_signed_claim": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767227600,
+      "kind": 31013,
+      "tags": [
+        [
+          "d",
+          "7cbe89860c3725b78199c8ba42ba0bdd422780556bf48c817264fc7235178552"
+        ]
+      ],
+      "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"7cbe89860c3725b78199c8ba42ba0bdd422780556bf48c817264fc7235178552\",\"credential_ledger_generation\":0,\"credential_ledger_persona\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"expires_at\":1767231200,\"issued_at\":1767227600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767227600,\"registry_revision\":2,\"resources\":[\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\"],\"spec_version\":\"comms/0.5.0\",\"subject\":{\"type\":\"nostr-secp256k1\",\"value\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\"},\"value\":true,\"visibility\":\"pairwise-private\"}",
+      "id": "d9d5157a02bfd0e18e401bd9aaf0088179cf0fcecc4d70eca2145f67cb36bd8d",
+      "sig": "070ec7c42963a464f69aa6b50958b97bd482cee97ae101426e6425ca4d98298e4afb9b533b302392f29f19c028886ac981f26838720a2ac752a16874c2b6baff"
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "visibility": "pairwise-private",
+      "inner_claim_id": "7cbe89860c3725b78199c8ba42ba0bdd422780556bf48c817264fc7235178552",
+      "member_count": 2,
+      "outer_kind": 445,
+      "outer_claim_metadata_fields": [],
+      "transport_owner": "marmot"
+    }
+  }
+}

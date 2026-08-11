@@ -11,14 +11,14 @@ This document analyzes the four independently versioned documents:
   registry, node roles, and repository substrate;
 - [Heterodyne Comms](../spec/heterodyne-comms.md) — publishing, privacy tiers,
   Marmot conversations and media, Radicle-backed group storage, atomic claims,
-  private-ledger authority, OIDC/JWT projection, and encrypted subprotocol
+  private-ledger authority, OIDC/JWT projection, and Marmot application
   carriage;
-- [Heterodyne Control](../spec/heterodyne-control.md) — the currently inactive
-  own-device command profile over Comms; and
+- [Heterodyne Control](../spec/heterodyne-control.md) — the active baseline
+  own-device command profile and optional recovery capabilities; and
 - [Heterodyne Social](../spec/heterodyne-social.md) — public social behavior,
   durable assets, and moderation.
 
-The owner sections below reproduce registry revision 4 and security boundaries
+The owner sections below reproduce registry revision 5 and security boundaries
 without creating or relaxing requirements. The family's only normative
 dependency edges are:
 
@@ -47,7 +47,7 @@ any carrier authoritative for persona identity.
 
 ## 2. Registry-bound invariants
 
-The descriptions below reproduce registry revision 4 exactly.
+The descriptions below reproduce registry revision 5 exactly.
 Registry-bound rows cite an invariant where that invariant directly governs
 the mitigation. Metadata residuals, operational consequences, out-of-scope
 limitations, and open work may instead be cross-cutting and are not assigned a
@@ -66,7 +66,7 @@ false invariant merely for uniformity.
 
 - **COMMS-I-TIER3-BLIND-CARRIER:** Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay.
 - **COMMS-I-TIER2-HONESTY:** Tier 2 private repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly.
-- **COMMS-I-CONFIG-AT-REST:** Comms-owned non-key private state and audience or ratchet material are encrypted under the Comms repository-encryption profile.
+- **COMMS-I-CONFIG-AT-REST:** Comms-owned non-key private state and audience or group material are encrypted under the Comms repository-encryption profile.
 - **COMMS-I-CLIENT-SIDE-DELIVERY:** Cross-backend Comms processing runs on user-controlled clients; full nodes, repository relays, routing nodes, and Nostr relays are blind carriers for protected plaintext.
 - **COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY:** Feed, outbox, and delivery discovery do not depend on a centralized delivery directory.
 - **COMMS-I-CLAIM-AUTHENTICITY:** Claim IDs, event signatures, issuer authority, typed references, and native proofs are verified before trust or authorization policy is applied.
@@ -92,18 +92,22 @@ false invariant merely for uniformity.
 
 ### 2.3 Control
 
-- **CONTROL-I-AUDIT-AT-REST:** Control audit records containing requests, grants, tokens, or side effects are encrypted at rest under Core, Comms, and Control-owned protection rules without a Social dependency.
-- **CONTROL-I-SESSION-KEY-CONFINEMENT:** A Control session device never receives persona epoch, NID, audience, repository-decryption, or ratchet secrets.
-- **CONTROL-I-INGRESS-RELAY-AFFINITY:** A Control response is published first and only to the authenticated request ingress relay, while identical cross-relay retries reuse one restart-safe execution result.
+- **CONTROL-I-AUDIT-AT-REST:** Authorization and side-effect audit is encrypted and contains no replayable token or transcript.
+- **CONTROL-I-CLIENT-KEY-CONFINEMENT:** A light client receives no persona, device, epoch, NID, repository, MLS-leaf, or agent-role private key.
+- **CONTROL-I-MARMOT-SENDER-BINDING:** Every privileged token is bound to the authenticated Marmot account and exact group.
+- **CONTROL-I-ENTITLEMENT-FRESHNESS:** Every privileged request uses current, non-conflicted private entitlement state and absorbing revocation.
+- **CONTROL-I-NODE-AUDIENCE:** A node-issued Control token is accepted only by its exact issuing-node audience.
+- **CONTROL-I-OPERATION-AT-MOST-ONCE:** Mutation reservation precedes effects and cross-node retry is limited to provably safe cases.
 - **CONTROL-I-AGENT-NO-KEY-RELEASE:** An automated principal never receives or directly exercises a persona, epoch, NID, human-device, or agent-role private key.
 - **CONTROL-I-AGENT-INTENT-ONLY:** An automated principal publishes only through the intent-level agent method, and raw signing, human-profile fallback, and attribution bypass fail closed.
-- **CONTROL-I-AGENT-AUTHORIZATION-FRESHNESS:** Every automated side effect requires a current scoped token, sender proof, canonical authorization state, and finite kind, resource, size, rate, and burst limits.
 - **CONTROL-I-MARMOT-GRANT-CONFINEMENT:** Node-mediated Marmot operations expose only grant-filtered content and actions while all account, MLS leaf, epoch, and repository secrets remain on the designated node.
+- **CONTROL-I-EPOCH-LOCKED-DURING-TRANSFER:** Epoch plaintext is erased and relocked before network or bulk-transfer activity.
+- **CONTROL-I-RECOVERY-GRANT-CONFINEMENT:** Recovery access is finite and bound to exact identities, resources, direction, bytes, time, and completion.
+- **CONTROL-I-SFTP-PROCESS-SEPARATION:** Overflow SFTP uses a per-grant onion and isolated rooted process with Tor and SSH authentication.
 
-Control 0.5.0 is incomplete. These identifiers reserve its boundary but do not
-make Control or `heterodyne-control-strict-v1` claimable. In particular,
-CONTROL-I-AUDIT-AT-REST depends only on Core, Comms, and Control protections;
-Social is outside that dependency.
+Baseline Control 0.5.0 is claimable independently of the three optional
+recovery invariants. `CONTROL-I-AUDIT-AT-REST` depends only on Core, Comms,
+and Control protections; Social is outside that dependency.
 
 ### 2.4 Social
 
@@ -122,7 +126,7 @@ Social is outside that dependency.
 | Tier 1 content | Public by design | COMMS-I-CLIENT-SIDE-DELIVERY |
 | Tier 2 content | Plaintext on every allowed seeder | COMMS-I-TIER2-HONESTY |
 | Tier 3 content and audience keys | Ciphertext outside key-holding endpoints | COMMS-I-TIER3-BLIND-CARRIER, COMMS-I-CONFIG-AT-REST |
-| Double-ratchet state | Bootstrap and Control peers only | COMMS-I-CLIENT-SIDE-DELIVERY |
+| Control group state and token | The light client and one full node; bounded and never backed up | CONTROL-I-MARMOT-SENDER-BINDING, CONTROL-I-NODE-AUDIENCE |
 | Marmot account and MLS leaf secrets | Authorized full/recovery nodes and direct-member devices | CORE-I-MARMOT-ROLE-ATTRIBUTION, COMMS-I-MARMOT-SECRET-CONFINEMENT |
 | Marmot events and encrypted media | Exact bytes across authorized Radicle and Nostr interfaces | COMMS-I-MARMOT-UPSTREAM-AUTHORITY, COMMS-I-MARMOT-EXACT-BYTES |
 | Group directory and routing bindings | Active administrators authorize; hosts replicate | COMMS-I-RADICLE-ROUTING-AUTHORITY |
@@ -134,7 +138,7 @@ Social is outside that dependency.
 | Public-reader target and resolved content | Fragment-local target; verified Tier 1 rendering only | COMMS-I-PUBLIC-READER-TIER1-ONLY, CORE-I-VERIFY-BEFORE-USE |
 | Agent role key | Full-node key store; never released to the automated principal | COMMS-I-AGENT-ROLE-BINDING, CONTROL-I-AGENT-NO-KEY-RELEASE |
 | Workload token, sender proof, and agent audit | Protected authorization/audit boundary; never public event content | COMMS-I-WORKLOAD-TOKEN-CONFINEMENT, CONTROL-I-AUDIT-AT-REST |
-| Control audit and session authority | User-controlled Control endpoint | CONTROL-I-AUDIT-AT-REST, CONTROL-I-SESSION-KEY-CONFINEMENT |
+| Control audit and session authority | User-controlled Control endpoint | CONTROL-I-AUDIT-AT-REST, CONTROL-I-CLIENT-KEY-CONFINEMENT |
 | Node-mediated group access | Grant-filtered results; all group secrets remain on the designated node | CONTROL-I-MARMOT-GRANT-CONFINEMENT |
 | Social private configuration | Protected local/config storage | SOCIAL-I-PRIVATE-STATE-AT-REST |
 | Agent-policy receipts and subscribed lists | Public signed evidence; subscriber-local effect from verified canonical history | SOCIAL-I-AGENT-POLICY-LOCAL, SOCIAL-I-AGENT-REMEDIATION-SCOPED |
@@ -142,10 +146,10 @@ Social is outside that dependency.
 Tier 3 broadcast has no forward secrecy: compromise of an audience key exposes
 retained ciphertext for that `key_id`; rotation protects later generations.
 Marmot MLS provides its pinned upstream group confidentiality and
-post-compromise properties. Double Ratchet provides forward secrecy and
-post-compromise security for bootstrap and Control when message keys are
-promptly deleted. A client must not present one mechanism's guarantee as
-another's.
+post-compromise properties for both conversations and Control groups. Bounded
+Control retention and non-backup reduce replayable state but do not create a
+different cryptographic guarantee. A client must not present one mechanism's
+guarantee as another's.
 
 ## 4. Actors
 
@@ -158,13 +162,13 @@ another's.
 | Hostile group host or Radicle delegate | Observes repository metadata and may withhold refs or advertise stale endpoints. It cannot select Marmot state, forge an administrator routing commit, or substitute a mismatched repository genesis. |
 | Hostile integrated Marmot relay | Observes connection metadata and kind-445 envelopes, may reject or delay writes, and can publish only to its designated relay ref. It does not learn the MLS sender from the fresh envelope key. |
 | Passive network observer | Observes endpoints, timing, and volume outside encrypted transports. Optional Tor egress hides direct destinations but leaves timing and volume leakage. |
-| Compromised durable device | Uses its NID, epoch, audience, or ratchet authority until effective revocation; compromise windows and key rotation bound later trust. |
+| Compromised durable device | Uses its NID, epoch, audience, issuer, or MLS authority until effective revocation; compromise windows and key rotation bound later trust. |
 | Compromised ledger reader | Reads ledger state and ciphertext already available to it; removal, access withdrawal, and audience-key rotation protect later generations but cannot erase old Git objects. |
 | Compromised token issuer | Can mint while it holds both the separately wrapped signing key and active issuer authority; immediate reduction and the at-most-300-second checkpoint-age bound limit continued minting. |
 | Ordinary OIDC relying party | Validates HTTPS discovery, JWKS, JWT, and draft-21 status without Heterodyne software. It receives only consented projections and has no authority over the private claim ledger. |
 | Public browser reader | Runs downloaded client code without authentication, resolves a fragment-local target, and may lack outbound Tor. It can consume verified Tier 1 only and must show reduced assurance when using clearnet/shared relays. |
 | Automated principal | Supplies publication intent and sender proof under a scoped temporary token. It receives no persona, device, NID, or agent-role private key and cannot select a human profile or suppress attribution. |
-| Control session device | Has only negotiated, granted Control authority. It is never a credential-plane device and receives none of the secrets prohibited by CONTROL-I-SESSION-KEY-CONFINEMENT. |
+| Light Control client | Has only private entitled Control authority. It is not a Core/KERI device and receives none of the secrets prohibited by CONTROL-I-CLIENT-KEY-CONFINEMENT. |
 | Compromised cold root | Catastrophic persona authority. Changed-RID re-anchor cannot repair it because the same root authorizes re-anchor; absent a standardized precommitted recovery policy, migrate to a new persona/root. |
 
 ## 5. Threats and mitigations by owner
@@ -198,12 +202,12 @@ another's.
 | Carrier reads Tier 3 plaintext | Encrypt before repository, seed, node, or relay access (COMMS-I-TIER3-BLIND-CARRIER). |
 | Tier 3 audience membership is inferred | Treat Tier 3 as content-confidential, not membership-private. Clear `kind:31011`/`kind:31012` recipient `p`/`d` tags, roster generations, shared `key_id` correlation, timing, count, size, publication, and fetch cadence remain observable; disclose these residuals before use. |
 | Tier 2 mislabeled as encrypted | Warn that every allowed seeder holds plaintext (COMMS-I-TIER2-HONESTY). |
-| Audience, ratchet, or config-state theft | Apply the Comms repository-encryption profile and generation rotation (COMMS-I-CONFIG-AT-REST). |
+| Audience or config-state theft | Apply the Comms repository-encryption profile and generation rotation (COMMS-I-CONFIG-AT-REST). |
 | Audience-key compromise exposes retained history | State that Tier 3 has no forward secrecy, rotate to a fresh generation, and never describe cooperative branch scrubbing as erasure (COMMS-I-TIER3-BLIND-CARRIER, COMMS-I-CONFIG-AT-REST). |
 | Config-repository traffic reveals its existence or owner | Keep its RID unadvertised, use encrypted blobs, and recognize that traffic analysis remains residual metadata (COMMS-I-CONFIG-AT-REST, COMMS-I-CLIENT-SIDE-DELIVERY). |
 | Backend bridge becomes a decryption oracle | Keep delivery, deduplication, and decryption on user-controlled clients (COMMS-I-CLIENT-SIDE-DELIVERY). |
 | Central feed directory blocks discovery | Resolve signed feed/outbox hints over multiple carriers (COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY). |
-| DM replay, ratchet-state loss, or metadata correlation | Enforce session replay checks and key deletion; keep outer DR events out of repositories and provide no backfill. Within a ratchet epoch, messages share an outer signer and are linkable to each other until the next DH step. Lost or corrupted ratchet state makes local history unrecoverable because Comms intentionally provides no backfill. |
+| Control replay, group-state loss, or metadata correlation | Authenticate the Marmot sender and exact group, enforce request and operation identifiers, apply bounded NIP-40 retention, and never back up raw frames or MLS state. Group loss establishes a fresh group and token rather than restoring an executable transcript. |
 | Org epoch-key holder bypasses delegate threshold through a relay | Require threshold-authorized canonical history for every org-owned Comms post and feed index, regardless of carrier (CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE, COMMS-I-CLIENT-SIDE-DELIVERY). |
 | Policy bypasses cryptography | Run the authenticated acceptance hook only after cryptographic checks; policy can tighten but never loosen a rejection. |
 | Launcher origin learns the public target | Keep persona/event/address and relay hints in the URL fragment, serve target-independent static bytes, and perform parsing and resolution locally. |
@@ -245,12 +249,15 @@ another's.
 | Threat | Mitigation |
 |---|---|
 | Audit disclosure or tampering | Encrypt durable audit records and bind them to negotiated Core/Comms/Control context (CONTROL-I-AUDIT-AT-REST). |
-| Session device escalates into persona or credential authority | Never deliver epoch, NID, audience, repository-decryption, or ratchet secrets; require explicit object-level grants (CONTROL-I-SESSION-KEY-CONFINEMENT). |
-| Cross-relay retry executes twice or leaks a response | Reserve one request digest restart-safely, join identical retries to that result, reject changed method/payload, and publish the response first and only to the authenticated ingress relay (CONTROL-I-INGRESS-RELAY-AFFINITY). |
+| Light client escalates into persona or credential authority | Treat its key as a private Control principal only and never deliver persona, device, epoch, NID, repository, MLS-leaf, or role secrets (CONTROL-I-CLIENT-KEY-CONFINEMENT). |
+| Token is replayed by another account, group, or node | Bind `cnf.jkt` to the authenticated Marmot account, bind the exact group, and require the issuing node's exact audience (CONTROL-I-MARMOT-SENDER-BINDING, CONTROL-I-NODE-AUDIENCE). |
+| Cross-node retry executes a mutation twice | Reserve the operation before effects and retry only an inherently idempotent operation or one with a provable committed result; otherwise return `indeterminate` (CONTROL-I-OPERATION-AT-MOST-ONCE). |
 | Automated caller requests a private key, raw signature, human profile, or attribution bypass | Expose only bounded token and intent-level publish methods; refuse every key-access and bypass shape without fallback (CONTROL-I-AGENT-NO-KEY-RELEASE, CONTROL-I-AGENT-INTENT-ONLY). |
-| Automated side effect outlives or exceeds its grant | Revalidate the scoped token, sender proof, canonical authority, and finite kind/resource/size/rate/burst bounds for each operation (CONTROL-I-AGENT-AUTHORIZATION-FRESHNESS). |
+| Automated side effect outlives or exceeds its grant | Revalidate the scoped Control token, authenticated sender, current entitlement, role, and finite kind/resource/size/rate/burst bounds for each operation (CONTROL-I-ENTITLEMENT-FRESHNESS, CONTROL-I-AGENT-INTENT-ONLY). |
 | Node-mediated client escapes its group grant or obtains secrets | Filter every method, object, history range, and result by current authority and retain all Marmot and repository secrets on the designated node (CONTROL-I-MARMOT-GRANT-CONFINEMENT). |
-| Experimental implementation claims conformance | Keep baseline and strict Control claims inactive until the remaining enrollment/session blockers and vector gate are complete. |
+| Recovery capability is confused with baseline Control | Require separate feature advertisement and recovery vectors; baseline Control conveys no epoch custody, repository grant, or SFTP authority. |
+| Epoch key remains live during network transfer | Prepare and wrap activation during an explicit unlock, then erase and relock before any group, Radicle, onion, or SFTP activity (CONTROL-I-EPOCH-LOCKED-DURING-TRANSFER). |
+| Recovery service exposes other files or network channels | Use an exact finite grant, fresh client-authorized onion, independent SSH authentication and host pinning, rooted SFTP-only process, byte ceiling, expiry, and prohibited forwarding (CONTROL-I-RECOVERY-GRANT-CONFINEMENT, CONTROL-I-SFTP-PROCESS-SEPARATION). |
 
 ### 5.4 Social threats
 
@@ -296,11 +303,11 @@ correlation, but role continuity is not an anonymity mechanism. Raw workload
 tokens, token identifiers, sender proofs, source claims, and audit contents
 must not be used as additional public correlation handles.
 
-Within a ratchet epoch, multiple bootstrap or Control messages use the same outer signer
-and are linkable to one another until the next DH ratchet step, even though the
-signer is not the persona epoch key. Lost or corrupted ratchet state makes the
-affected local history unrecoverable: no backfill exists by design, and a fresh
-session restores future communication rather than old message keys.
+Marmot Control outer events retain the metadata properties of standard Marmot
+transport. Relays can observe timing, volume, routing hints, and the current
+ephemeral transport signer even though MLS protects application content.
+Losing Control-group state ends that channel; a fresh group and node-scoped
+token restore future operation but do not restore raw Control transcripts.
 
 The config repository has a distinct linkage boundary. Its Radicle identity
 document exposes its private `visibility.allow` allow-list to nodes that know
@@ -325,9 +332,7 @@ key-rotation and status-list activity.
 
 Keys repository and backup loss have irreversible consequences. Losing every
 copy of an audience key permanently loses decryptability of retained Tier 3
-history; losing ratchet state permanently loses that peer's bootstrap or
-Control history; and
-losing every cold-root/recovery copy can permanently prevent identity recovery
+history; losing every cold-root/recovery copy can permanently prevent identity recovery
 or re-anchor. Operationally, clients should maintain periodic encrypted
 removable-media backups covering all produced and followed repositories plus
 config and keys repositories, show a freshness indicator for unbacked changes,
@@ -369,7 +374,8 @@ Strict profiles are additive and composable:
 - `heterodyne-comms-strict-v1` composes Core strict plus Comms invariants;
 - `heterodyne-comms-strict-v2` adds public-reader and automated-authorship
   invariants without changing v1;
-- `heterodyne-control-strict-v1` is reserved-inactive with Control;
+- `heterodyne-control-strict-v1` composes Core, Comms, and active Control
+  invariants;
 - `heterodyne-social-strict-v1` composes Core, Comms, and Social obligations;
   and
 - `heterodyne-social-strict-v2` adds subscriber-local agent-policy and
@@ -377,8 +383,7 @@ Strict profiles are additive and composable:
 
 A capability advertisement lists only profiles actually met. Unknown profile
 IDs confer no authority or compatibility. Conformance reports reproduce exact
-membership and prerequisite results; incomplete Control cannot advertise its
-reserved strict profile.
+membership and prerequisite results.
 
 ## 9. Out of scope and pre-1.0 work
 
@@ -401,12 +406,11 @@ falls outside this threat model. A migration strategy is pre-1.0/open work and
 must coordinate with Nostr, Radicle, Marmot, KERI, and stored historical
 signature semantics rather than claiming present quantum resistance.
 
-Before relevant 1.0 claims, work remains to freeze the Comms double-ratchet
-wire profile, finish the repo-relay server/storage contract, exercise KERI fork
-and recovery behavior across independent implementations, expand Marmot and
-Radicle interoperability testing, complete the remaining Control
-enrollment/session vector corpus, and expand
-negative vectors for rollback, metadata, and recovery-policy attacks. Each
+Before relevant 1.0 claims, work remains to finish the repo-relay
+server/storage contract, exercise KERI fork and recovery behavior across
+independent implementations, expand Marmot, Control, and Radicle
+interoperability testing, and expand negative vectors for rollback, metadata,
+and recovery-policy attacks. Each
 item belongs to its named document and must not create a forbidden dependency.
 The repo-relay server/storage contract must also close storage-exhaustion,
 retention, garbage-collection, and quota behavior before that conformance class

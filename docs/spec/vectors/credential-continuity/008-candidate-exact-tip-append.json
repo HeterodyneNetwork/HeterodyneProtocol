@@ -5,9 +5,9 @@
   "dependency_versions": {
     "core": "core/0.5.0"
   },
-  "registry_revision": 3,
+  "registry_revision": 5,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+    "heterodyne:comms/0.5.0#comms-credential-continuity"
   ],
   "vector_id": "credential-continuity/candidate-exact-tip-append",
   "description": "Candidate receipt append is an exact-tip CAS that preserves prior bytes and adds new records.",
@@ -37,7 +37,7 @@
           "8383838383838383838383838383838383838383838383838383838383838383"
         ]
       },
-      "selected_registry_revision": 3,
+      "selected_registry_revision": 5,
       "conformance_claimable": false
     }
   }

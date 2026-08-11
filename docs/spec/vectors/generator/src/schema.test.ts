@@ -185,9 +185,9 @@ describe("vector schema", () => {
   });
 });
 
-describe("gated credential-continuity schema registry", () => {
-  it("loads exactly the twenty gated Comms schemas without activating a profile", () => {
-    expect(CREDENTIAL_CONTINUITY_SCHEMA_FILES).toHaveLength(20);
+describe("credential-continuity schema registry", () => {
+  it("loads the seventeen transport-independent Comms schemas", () => {
+    expect(CREDENTIAL_CONTINUITY_SCHEMA_FILES).toHaveLength(17);
     for (const file of CREDENTIAL_CONTINUITY_SCHEMA_FILES) {
       expect(CREDENTIAL_CONTINUITY_SCHEMAS[file]).toMatchObject({
         $schema: "http://json-schema.org/draft-07/schema#",

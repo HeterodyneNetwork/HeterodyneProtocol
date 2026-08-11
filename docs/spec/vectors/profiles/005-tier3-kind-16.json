@@ -5,7 +5,7 @@
   "dependency_versions": {
     "core": "core/0.5.0"
   },
-  "registry_revision": 1,
+  "registry_revision": 5,
   "profile": "heterodyne-comms-tier3-wrapped-content-kind-16-v1",
   "spec_refs": [
     "heterodyne:comms/0.5.0#comms-tier-three-profile"

@@ -1,0 +1,56 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 5,
+  "profile": "heterodyne-control-marmot-frame-v1",
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-entitlement"
+  ],
+  "vector_id": "control/entitlement-expansion-rejected",
+  "description": "Private Control entitlement decision: entitlement-expansion-rejected.",
+  "direction": "consume",
+  "input": {
+    "current": {
+      "record_id": "4444444444444444444444444444444444444444444444444444444444444444",
+      "client_key": "1111111111111111111111111111111111111111111111111111111111111111",
+      "predecessor": null,
+      "state": "active",
+      "methods": [
+        "config.get",
+        "config.put"
+      ],
+      "objects": [
+        "config:feeds",
+        "config:ui"
+      ],
+      "authorized_writer": true,
+      "explicit_consent": true
+    },
+    "next": {
+      "record_id": "4646464646464646464646464646464646464646464646464646464646464646",
+      "client_key": "1111111111111111111111111111111111111111111111111111111111111111",
+      "predecessor": "4444444444444444444444444444444444444444444444444444444444444444",
+      "state": "active",
+      "methods": [
+        "config.get",
+        "config.put",
+        "publish"
+      ],
+      "objects": [
+        "config:feeds",
+        "config:ui"
+      ],
+      "authorized_writer": true,
+      "explicit_consent": false
+    }
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-entitlement-conflict"
+  }
+}

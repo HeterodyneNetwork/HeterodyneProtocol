@@ -1,0 +1,193 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/control/control-sftp-grant-v1.schema.json",
+  "title": "Heterodyne isolated SFTP recovery grant v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "grant_id",
+    "activation_id",
+    "onion_address",
+    "radicle_onion_address",
+    "service_process_id",
+    "radicle_process_id",
+    "virtual_port",
+    "ssh_host_key",
+    "tor_client_auth_key",
+    "ssh_client_key",
+    "root",
+    "resources",
+    "byte_ceiling",
+    "issued_at",
+    "expires_at",
+    "renewal_of",
+    "overlap_read_only_until",
+    "channels",
+    "signer",
+    "signature"
+  ],
+  "properties": {
+    "grant_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "activation_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "onion_address": {
+      "type": "string",
+      "pattern": "^[a-z2-7]{56}\\.onion$"
+    },
+    "radicle_onion_address": {
+      "type": "string",
+      "pattern": "^[a-z2-7]{56}\\.onion$"
+    },
+    "service_process_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "radicle_process_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "virtual_port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "ssh_host_key": {
+      "type": "string",
+      "minLength": 16
+    },
+    "tor_client_auth_key": {
+      "type": "string",
+      "minLength": 32
+    },
+    "ssh_client_key": {
+      "type": "string",
+      "minLength": 16
+    },
+    "root": {
+      "type": "string",
+      "pattern": "^/[A-Za-z0-9._/-]+$"
+    },
+    "resources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "digest",
+          "size",
+          "direction"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^/[A-Za-z0-9._/-]+$"
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "direction": {
+            "enum": [
+              "read",
+              "write"
+            ]
+          }
+        }
+      }
+    },
+    "byte_ceiling": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "issued_at": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "expires_at": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "renewal_of": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "overlap_read_only_until": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "channels": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shell",
+        "commands",
+        "pty",
+        "tcp_forward",
+        "unix_forward",
+        "x11_forward",
+        "agent_forward"
+      ],
+      "properties": {
+        "shell": {
+          "const": false
+        },
+        "commands": {
+          "const": false
+        },
+        "pty": {
+          "const": false
+        },
+        "tcp_forward": {
+          "const": false
+        },
+        "unix_forward": {
+          "const": false
+        },
+        "x11_forward": {
+          "const": false
+        },
+        "agent_forward": {
+          "const": false
+        }
+      }
+    },
+    "signer": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    }
+  }
+}

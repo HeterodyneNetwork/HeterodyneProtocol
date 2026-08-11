@@ -106,9 +106,9 @@ Qualified destinations remain stable independently of the current checkout.
 | `#55-private_discussion-optional-matrix-layer` | Comms | `heterodyne:comms/0.5.0#comms-marmot-groups` |
 | `#56-multi-feed-patterns` | Social | `heterodyne:social/0.5.0#social-feed-presentation` |
 | `#57-direct-messages-core-double-ratchet-over-nostr` | Comms | `heterodyne:comms/0.5.0#comms-direct-messages` |
-| `#571-wire-protocol` | Comms | `heterodyne:comms/0.5.0#comms-dm-wire` |
+| `#571-wire-protocol` | Comms | `heterodyne:comms/0.5.0#comms-direct-messages` |
 | `#572-session-binding-to-the-persona-must` | Comms | `heterodyne:comms/0.5.0#comms-direct-messages` |
-| `#573-transport-and-retention-rules` | Comms | `heterodyne:comms/0.5.0#comms-dm-retention` |
+| `#573-transport-and-retention-rules` | Comms | `heterodyne:comms/0.5.0#comms-marmot-retention` |
 | `#574-acceptance-gating-should` | Comms | `heterodyne:comms/0.5.0#comms-acceptance-hook` |
 | `#6-publishing-flow` | Comms | `heterodyne:comms/0.5.0#comms-publishing` |
 | `#61-one-signed-nostr-event-per-intent` | Comms | `heterodyne:comms/0.5.0#comms-publishing` |

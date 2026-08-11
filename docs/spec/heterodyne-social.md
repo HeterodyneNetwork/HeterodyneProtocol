@@ -2,7 +2,7 @@
 
 Document ID: `social`<br>
 Version: `social/0.5.0`<br>
-Registry revision: `4`
+Registry revision: `5`
 
 Normative dependencies:
 
@@ -966,7 +966,7 @@ transparency, and device-key-scoped remediation.
 <!-- Monolith provenance: §11.7 Social policy and §14. -->
 
 A `Social` report MUST name `social/0.5.0`, pin `core/0.5.0` and
-`comms/0.5.0`, pin registry revision 4 or its immutable digest, enumerate
+`comms/0.5.0`, pin registry revision 5 or its immutable digest, enumerate
 supported features and strict profiles, and implement §§1-9. It MUST
 include async replies/reactions, following and transitive discovery,
 cross-persona advertisements, reply inboxes, mixed-tier Social fan-out,
@@ -976,9 +976,9 @@ policy, subscriber-local agent-policy moderation when
 `social.agent-policy-moderation.v1` is advertised, and all registered Social
 invariants.
 
-The registry revision 4 entry set, history snapshot, release manifest, and
-vector metadata MUST match exactly. Reserved lower-layer profiles remain
-non-claimable until their owning documents open their separate gates.
+The registry revision 5 entry set, history snapshot, release manifest, and
+vector metadata MUST match exactly. Optional lower-layer profiles are claimed
+only when their owning documents' requirements and vectors are satisfied.
 
 A Social conformance report that claims a strict profile MUST reproduce its
 exact membership, prerequisite results, and applicable strict-vector results.

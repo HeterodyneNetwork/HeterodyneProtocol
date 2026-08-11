@@ -42,14 +42,10 @@ wire format and is not the vector envelope version.
 
 The schema requires each actual vector's `registry_revision` to be an integer;
 the placeholder above means that every vector pins the revision governing its
-behavior. The current coverage manifest contains 221 registry-revision-1
-vectors, 55 claims/OIDC registry-revision-2 vectors, 170
-registry-revision-3 vectors, and 30 Marmot/Radicle
-registry-revision-4 vectors. Of the revision-3 vectors, 159 cover the gated
-Control, ingress-relay-affinity, and automated-agent behavior, and 11 are
-credential-continuity draft outer evaluations whose normalized output
-explicitly sets `conformance_claimable:false`; those 11 do not activate or
-claim the gated profiles.
+behavior. The current unreleased corpus contains 403 registry-revision-5
+vectors: 127 Core, 191 Comms, 32 Control, and 53 Social. Ten
+transport-independent credential-continuity draft evaluations explicitly set
+`conformance_claimable:false`; they do not activate a wire or recovery profile.
 Historical released vectors and the signed behavior they describe MUST NOT be
 rewritten to the latest registry revision. Unreleased 0.x vectors may be
 changed or retired in place under an accepted specification change.
@@ -62,11 +58,9 @@ Core <- Comms <- Social
 ```
 
 Core vectors therefore have no dependencies; Comms vectors pin Core; Control
-and Social vectors pin Core and Comms. Control has closed draft vectors for
-its session-device, enrollment, RPC, relay-affinity, and automated-agent
-subsets, but remains explicitly `incomplete-draft`; no implementation may
-claim its profile before a future atomic credential-continuity and recovery
-artifact batch opens the gate.
+and Social vectors pin Core and Comms. Control vectors cover Marmot group
+admission, enrollment, entitlements, node-scoped tokens, RPC, operation
+reservation, failover, retention, and separately advertised recovery profiles.
 
 ## Coverage authority
 
@@ -88,7 +82,7 @@ particular:
   carriage, routing generations, group repositories, persona inboxes,
   retention, and node-mediated agent operations.
 
-Four Comms-owned claims/OIDC groups are pinned to registry revision 2:
+Four Comms-owned claims/OIDC groups are carried forward under registry revision 5:
 
 - `claims/` covers canonical IDs and typed keys, issuer/trust decisions,
   attenuation, proof of possession, visibility, and revocation;
@@ -120,9 +114,7 @@ implementation does not need to emit them on the wire.
 Vectors pin all nondeterministic input. BIP-340 signatures use an all-zero
 32-byte auxiliary value; NIP-44 vectors carry fixed nonces; time-sensitive
 cases place `simulated_clock` in `input`; and canonical comparisons use signed
-NIP-01 bytes rather than pretty JSON or relay framing. The double-ratchet
-transcript uses the exact pinned `nostr-double-ratchet@0.0.138` wire library
-with deterministic keys, randomness, and time.
+NIP-01 bytes rather than pretty JSON or relay framing.
 
 Marmot/Radicle vectors begin at the Heterodyne integration boundary. They
 exercise Heterodyne attribution, storage, transport, and authorization rules

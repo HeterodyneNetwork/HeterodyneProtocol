@@ -226,7 +226,7 @@ claims/repository-confirmed-active
 claims/authorization-self-revocation
 claims/descriptive-subject-rejection
 claims/public-claim-publication
-claims/pairwise-private-dr-delivery
+claims/pairwise-private-marmot-delivery
 claims/repository-private-encryption
 claims/local-only-no-publication
 claim-ledger/reader-nid-authorized
@@ -339,9 +339,8 @@ credential-continuity/governed-obligation-equation
 credential-continuity/routine-removal-complete
 credential-continuity/cold-root-exposure-migrates
 credential-continuity/candidate-exact-tip-append
-credential-continuity/dr-persona-node-removed
 credential-continuity/config-git-raw-projection
-credential-continuity/twenty-schemas-gated
+credential-continuity/seventeen-schemas-draft
 `);
 
 const SOCIAL_IDS = ids(`
@@ -441,78 +440,38 @@ profiles/social-org-feed-kind31007
 `);
 
 const CONTROL_IDS = ids(`
-control/first-arrival-reserved
-control/concurrent-identical-joins
-control/cross-relay-final-response-replay
-control/restart-reserved-operation-joins
-control/expired-request-rejected
-control/reply-relay-rejected
-control/changed-method-rejected
-control/changed-payload-rejected
-control/complete-without-response-rejected
-control/agent-publish-authorized
-control/agent-wrong-audience-rejected
-control/agent-missing-scope-rejected
-control/agent-proof-jti-mismatch-rejected
-control/agent-stale-role-key-rejected
-control/agent-source-claim-inactive-rejected
-control/agent-source-claim-substitution-rejected
-control/agent-feed-authorization-rejected
-control/raw-signing-refused
-control/key-access-refused
-control/human-profile-refused
-control/attribution-bypass-refused
-control/expired-token-refused
-control/sender-proof-refused
-control/kind-resource-refused
-control/content-size-refused
-control/rate-refused
-control/burst-refused
-control/token-request-bounded
-control/agent-publish-schema-intent-only
-control/audit-omits-raw-token
-control/enrollment-binding-proof-rejected
-control/enrollment-pending-expired
-control/enrollment-relay-provisional
-control/enrollment-repository-final-active
-control/enrollment-qr-ceremony-required
-control/enrollment-challenge-ceremony-required
-control/enrollment-token-redeemed
-control/enrollment-token-same-key-replay
-control/enrollment-token-different-key-conflict
-control/enrollment-token-full-grant-rejected
-control/enrollment-token-workload-class-rejected
-control/grant-regular-object-authorized
-control/grant-object-scope-refused
-control/grant-policy-state-write-refused
-control/grant-full-ceremony-required
-control/grant-full-ceremony-authorized
-control/lifecycle-self-revocation
-control/lifecycle-inactivity-lapse
-control/mcp-initialize-required
-control/mcp-unadvertised-tool-refused
-control/mcp-cancellation
-control/mcp-timeout
-control/mcp-inbound-execution-default-deny
-control/rpc-schema-transport-context-excluded
-control/rpc-changed-expiry-conflict
-control/rpc-cross-session-conflict
-control/configuration-filter-excludes-policy
-control/enrollment-identity-join-valid
-control/enrollment-identity-substitution-rejected
-control/authorization-provisional
-control/authorization-untrusted
-control/authorization-conflicted
-control/authorization-invalid
-control/authorization-expired
-control/authorization-revoked
-control/agent-token-per-use-binding
-control/agent-generation-reset
-control/transition-peer-tombstone
-control/transport-strict-tor
-control/transport-browser-reduced-assurance
-control/recovery-no-session-restore
-control/retention-no-backfill
+control/invitation-enrollment-only
+control/invitation-disabled
+control/invitation-revoked
+control/invitation-nonenrollment-rejected
+control/entitlement-reduction
+control/entitlement-expansion-rejected
+control/entitlement-revocation-absorbing
+control/token-default-five-minutes
+control/token-explicit-sixty-minutes
+control/token-extension-missing-capability
+control/token-valid
+control/token-wrong-sender
+control/token-wrong-group
+control/token-wrong-node
+control/token-scope-rejected
+control/operation-first-reservation
+control/operation-identical-join
+control/operation-conflicting-bytes
+control/failover-read
+control/failover-idempotent-mutation
+control/failover-indeterminate-mutation
+control/retention-ceiling-and-backup-exclusion
+control/epoch-locked
+control/epoch-prepare-and-relock
+control/epoch-exact-activation
+control/epoch-activation-mismatch
+control/recovery-grant-accepted
+control/recovery-grant-confined
+control/sftp-grant-accepted
+control/sftp-address-separated
+control/sftp-root-confined
+control/sftp-grant-expired
 `);
 
 const PROFILE_BY_VECTOR = new Map<string, string>([
@@ -584,30 +543,14 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
     ]),
   ) as Partial<Record<DocumentId, string>>;
   const reference = referenceFor(vectorId, owner);
-  const profile = PROFILE_BY_VECTOR.get(vectorId);
+  const profile = vectorId.startsWith("control/")
+    ? "heterodyne-control-marmot-frame-v1"
+    : PROFILE_BY_VECTOR.get(vectorId);
   return {
     owner_document: owner,
     owner_version: `${owner}/${DOCUMENT_VERSIONS[owner]}`,
     dependency_versions: dependencies,
-    registry_revision: vectorId.startsWith("marmot-radicle/") ? 4
-      : vectorId.startsWith("role-capabilities/")
-      || vectorId.startsWith("public-reader/")
-      || vectorId.startsWith("agent-authorship/")
-      || vectorId.startsWith("agent-moderation/")
-      || vectorId.startsWith("credential-continuity/")
-      || vectorId.startsWith("session-device/")
-      || vectorId === "acceptance-gating/control-enrollment-active-invite-gated-hold"
-      || vectorId === "acceptance-gating/control-enrollment-stale-invite-reject"
-      || vectorId === "acceptance-gating/control-enrollment-tombstoned-invite-reject"
-      || vectorId === "acceptance-gating/control-enrollment-live-challenge-gated-hold"
-      || vectorId === "acceptance-gating/control-enrollment-token-gated-hold"
-      || vectorId === "acceptance-gating/ordinary-undelegated-reject"
-      || vectorId === "acceptance-gating/credential-sync-undelegated-reject"
-      || vectorId === "dm/atomic-receive-before-plaintext"
-      || vectorId.startsWith("control/") ? 3
-      : vectorId.startsWith("claims/") || vectorId.startsWith("claim-ledger/") ||
-        vectorId.startsWith("oidc/") || vectorId.startsWith("token-status/") ? 2
-      : 1,
+    registry_revision: 5,
     ...(profile === undefined ? {} : { profile }),
     spec_refs: [`heterodyne:${reference.document}/${DOCUMENT_VERSIONS[reference.document]}#${reference.anchor}`],
   };
@@ -778,7 +721,7 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
       "relay-interop": "comms-publishing",
       "comms-envelope": "comms-envelope",
       "acceptance-gating": "comms-acceptance-hook",
-      "credential-continuity": "comms-credential-continuity-gate",
+      "credential-continuity": "comms-credential-continuity",
     },
     social: {
       "agent-moderation": vectorId.includes("receipt")
@@ -806,46 +749,25 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
       "acceptance-gating": "social-admission-policy",
     },
     control: {
-      control: vectorId.includes("enrollment-token")
-        ? "control-enrollment-token"
-        : vectorId.includes("enrollment-")
-          ? "control-enrollment"
-          : vectorId.includes("authorization-")
-            ? "control-claim-consumption"
-          : vectorId.includes("grant-")
-            ? "control-grants"
-            : vectorId.includes("lifecycle-")
-              ? "control-session-lifecycle"
-              : vectorId.includes("transition-")
-                ? "control-session-lifecycle"
-              : vectorId.includes("mcp-")
-                ? "control-mcp"
-                : vectorId.includes("configuration-")
-                  ? "control-configuration"
-                  : vectorId.includes("transport-")
-                    ? "control-enrollment"
+      control: vectorId.includes("invitation-")
+        ? "control-invitation-policy"
+        : vectorId.includes("entitlement-")
+          ? "control-entitlement"
+          : vectorId.includes("token-")
+            ? "control-token"
+            : vectorId.includes("operation-")
+              ? "control-request-processing"
+              : vectorId.includes("failover-")
+                ? "control-failover"
+                : vectorId.includes("retention-")
+                  ? "control-retention"
+                  : vectorId.includes("epoch-")
+                    ? "control-epoch-bootstrap"
                     : vectorId.includes("recovery-")
-                      || vectorId.includes("retention-")
-                      ? "control-audit-retention"
-                  : vectorId.includes("rpc-schema")
-                    ? "control-rpc"
-                    : vectorId.includes("arrival")
-        || vectorId.includes("relay")
-        || vectorId.includes("restart")
-                      || vectorId.includes("expired-request")
-                      || vectorId.includes("changed-")
-                      || vectorId.includes("cross-session")
-                      || vectorId.includes("complete-without")
-                      ? "control-relay-affinity"
-                      : vectorId.includes("token-request")
-                        || vectorId.includes("agent-token-")
-                        || vectorId.includes("agent-generation-")
-                        ? "control-agent-token"
-                        : vectorId.includes("audit")
-                          ? "control-agent-audit"
-                          : vectorId.includes("schema-intent")
-                            ? "control-agent-publish"
-                            : "control-agent-requirements",
+                      ? "control-radicle-recovery"
+                      : vectorId.includes("sftp-")
+                        ? "control-sftp-recovery"
+                        : "control-conformance",
     },
   };
   return anchors[owner]?.[prefix] ?? `${owner}-conformance`;

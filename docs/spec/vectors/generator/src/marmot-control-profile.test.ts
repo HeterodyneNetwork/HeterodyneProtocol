@@ -1,0 +1,233 @@
+import { describe, expect, it } from "vitest";
+import {
+  authorizeInvitation,
+  evaluateEntitlementUpdate,
+  evaluateEpochActivation,
+  evaluateRecoveryAccess,
+  evaluateSftpAccess,
+  issueControlToken,
+  processControlOperation,
+  retentionDecision,
+  validateControlTokenUse,
+} from "./control-profile.js";
+
+const client = "11".repeat(32);
+const node = "22".repeat(32);
+const group = "33".repeat(32);
+const jkt = "A".repeat(43);
+
+describe("Marmot Control invitation and entitlement", () => {
+  it("keeps a valid unsolicited group enrollment-only until entitlement", () => {
+    expect(authorizeInvitation({
+      invitation_enabled: true,
+      keypackage_valid: true,
+      member_count: 2,
+      node_account_matches: true,
+      entitlement_state: "none",
+      method: "control.enrollment.start",
+    })).toEqual({ verdict: "accept", state: "enrollment-only", authority: false });
+
+    expect(authorizeInvitation({
+      invitation_enabled: true,
+      keypackage_valid: true,
+      member_count: 2,
+      node_account_matches: true,
+      entitlement_state: "none",
+      method: "config.get",
+    })).toEqual({ verdict: "reject", reason_code: "control-enrollment-required" });
+  });
+
+  it("rejects disabled invitations and revoked group membership", () => {
+    expect(authorizeInvitation({
+      invitation_enabled: false,
+      keypackage_valid: true,
+      member_count: 2,
+      node_account_matches: true,
+      entitlement_state: "none",
+      method: "control.initialize",
+    })).toEqual({ verdict: "reject", reason_code: "control-invitation-disabled" });
+    expect(authorizeInvitation({
+      invitation_enabled: true,
+      keypackage_valid: true,
+      member_count: 2,
+      node_account_matches: true,
+      entitlement_state: "revoked",
+      method: "control.initialize",
+    })).toEqual({ verdict: "reject", reason_code: "control-entitlement-conflict" });
+  });
+
+  it("converges reductions, absorbs revocation, and rejects unconsented expansion", () => {
+    const current = {
+      record_id: "44".repeat(32), client_key: client, predecessor: null,
+      state: "active" as const, methods: ["config.get", "config.put"],
+      objects: ["config:ui", "config:feeds"], authorized_writer: true,
+      explicit_consent: true,
+    };
+    expect(evaluateEntitlementUpdate(current, {
+      ...current, record_id: "55".repeat(32), predecessor: current.record_id,
+      methods: ["config.get"], objects: ["config:ui"], explicit_consent: false,
+    })).toMatchObject({ verdict: "accept", state: "active", methods: ["config.get"] });
+    expect(evaluateEntitlementUpdate(current, {
+      ...current, record_id: "66".repeat(32), predecessor: current.record_id,
+      methods: [...current.methods, "publish"], explicit_consent: false,
+    })).toEqual({ verdict: "reject", reason_code: "control-entitlement-conflict" });
+    expect(evaluateEntitlementUpdate(current, {
+      ...current, record_id: "77".repeat(32), predecessor: current.record_id,
+      state: "revoked", methods: [], objects: [], explicit_consent: false,
+    })).toMatchObject({ verdict: "accept", state: "revoked", methods: [], objects: [] });
+  });
+});
+
+describe("node-scoped Marmot-bound tokens", () => {
+  const issuance = {
+    entitlement_state: "active" as const,
+    client_key: client,
+    client_jkt: jkt,
+    group_id: group,
+    issuer: "https://node.example/oidc/persona",
+    audience: "urn:heterodyne:control:node-a",
+    node_key: node,
+    authorization_id: "44".repeat(32),
+    requested_lifetime_seconds: 300,
+    entitlement_max_seconds: 3600,
+    node_policy_max_seconds: 3600,
+    extended_capability: false,
+    now: 1_000,
+    methods: ["config.get"],
+    objects: ["config:ui"],
+  };
+
+  it("issues five minutes by default, permits explicit extension, and never refreshes", () => {
+    expect(issueControlToken(issuance)).toMatchObject({
+      verdict: "accept", lifetime_seconds: 300, refresh_token: null,
+    });
+    expect(issueControlToken({
+      ...issuance, requested_lifetime_seconds: 3_600, extended_capability: true,
+    })).toMatchObject({ verdict: "accept", lifetime_seconds: 3_600, refresh_token: null });
+    expect(issueControlToken({ ...issuance, requested_lifetime_seconds: 301 }))
+      .toEqual({ verdict: "reject", reason_code: "control-token-expired" });
+  });
+
+  it("rejects the wrong sender, group, node audience, and scope", () => {
+    const token = issueControlToken(issuance);
+    if (token.verdict !== "accept") throw new Error("fixture token failed");
+    const use = {
+      token: token.token,
+      signature_valid: true,
+      now: 1_100,
+      expected_issuer: issuance.issuer,
+      expected_audience: issuance.audience,
+      authenticated_sender_jkt: jkt,
+      group_id: group,
+      entitlement_state: "active" as const,
+      method: "config.get",
+      object: "config:ui",
+    };
+    expect(validateControlTokenUse(use)).toEqual({ verdict: "accept" });
+    expect(validateControlTokenUse({ ...use, authenticated_sender_jkt: "B".repeat(43) }))
+      .toEqual({ verdict: "reject", reason_code: "control-token-sender-invalid" });
+    expect(validateControlTokenUse({ ...use, group_id: "99".repeat(32) }))
+      .toEqual({ verdict: "reject", reason_code: "control-token-group-invalid" });
+    expect(validateControlTokenUse({ ...use, expected_audience: "urn:heterodyne:control:node-b" }))
+      .toEqual({ verdict: "reject", reason_code: "control-token-audience-invalid" });
+    expect(validateControlTokenUse({ ...use, method: "config.put" }))
+      .toEqual({ verdict: "reject", reason_code: "control-token-scope-invalid" });
+  });
+});
+
+describe("operation reservation, failover, and retention", () => {
+  const request = {
+    node_key: node, group_id: group, request_id: "request-1", operation_id: "op-1",
+    method: "publish", object: "feed:main", payload_digest: "44".repeat(32),
+    expires_at: 1_200, now: 1_000, mutation: true, inherently_idempotent: false,
+    prior_result_proven: false,
+  };
+
+  it("executes first arrival, joins exact duplicate, and conflicts changed bytes", () => {
+    const first = processControlOperation(request);
+    expect(first).toMatchObject({ verdict: "accept", action: "execute", execute: true });
+    if (first.verdict !== "accept") throw new Error("fixture reservation failed");
+    expect(processControlOperation(request, first.reservation))
+      .toMatchObject({ verdict: "accept", action: "join", execute: false });
+    expect(processControlOperation({ ...request, payload_digest: "55".repeat(32) }, first.reservation))
+      .toEqual({ verdict: "reject", reason_code: "control-operation-conflict" });
+  });
+
+  it("fails over reads and safe mutations but returns indeterminate for an unsafe mutation", () => {
+    const first = processControlOperation(request);
+    if (first.verdict !== "accept") throw new Error("fixture reservation failed");
+    const otherNode = "88".repeat(32);
+    expect(processControlOperation({ ...request, node_key: otherNode, mutation: false }, first.reservation))
+      .toMatchObject({ verdict: "accept", action: "execute" });
+    expect(processControlOperation({ ...request, node_key: otherNode, inherently_idempotent: true }, first.reservation))
+      .toMatchObject({ verdict: "accept", action: "execute" });
+    expect(processControlOperation({ ...request, node_key: otherNode }, first.reservation))
+      .toEqual({ verdict: "indeterminate", reason_code: "control-operation-indeterminate" });
+  });
+
+  it("bounds delivery retention and excludes transient authority from backup", () => {
+    expect(retentionDecision({ created_at: 1_000, requested_retention_seconds: 90_000, request_expires_at: 4_000 }))
+      .toEqual({
+        expires_at: 4_000,
+        retention_seconds: 86_400,
+        excluded_from_backup: ["access_tokens", "control_frames", "device_codes", "mls_state", "transcripts"],
+      });
+  });
+});
+
+describe("optional recovery profiles", () => {
+  const expected = {
+    repositories: [{ rid: "rad:z3abc", head: "aa".repeat(20) }],
+    portable_manifest_id: "55".repeat(32), object_digests: ["66".repeat(32)],
+  };
+
+  it("requires unlock only for preparation, relocks before transfer, and exact completion", () => {
+    expect(evaluateEpochActivation({
+      epoch_unlocked: false, registration_valid: true, prepared: false,
+      epoch_relocked_before_transfer: false, expected, completion: null,
+    })).toEqual({ verdict: "reject", reason_code: "control-recovery-locked" });
+    expect(evaluateEpochActivation({
+      epoch_unlocked: true, registration_valid: true, prepared: false,
+      epoch_relocked_before_transfer: false, expected, completion: null,
+    })).toEqual({ verdict: "accept", action: "prepare-and-relock" });
+    expect(evaluateEpochActivation({
+      epoch_unlocked: false, registration_valid: true, prepared: true,
+      epoch_relocked_before_transfer: true, expected, completion: expected,
+    })).toEqual({ verdict: "accept", action: "activate" });
+    expect(evaluateEpochActivation({
+      epoch_unlocked: false, registration_valid: true, prepared: true,
+      epoch_relocked_before_transfer: true, expected,
+      completion: { ...expected, portable_manifest_id: "77".repeat(32) },
+    })).toEqual({ verdict: "reject", reason_code: "control-activation-mismatch" });
+  });
+
+  it("confines temporary private-Radicle recovery", () => {
+    const grant = {
+      prospective_nid: "did:key:z6MkhProspective", repositories: ["rad:z3abc"],
+      direction: "fetch" as const, byte_ceiling: 1_000, expires_at: 2_000,
+    };
+    expect(evaluateRecoveryAccess({ grant, nid: grant.prospective_nid, repository: "rad:z3abc", direction: "fetch", bytes: 500, now: 1_000 }))
+      .toEqual({ verdict: "accept" });
+    expect(evaluateRecoveryAccess({ grant, nid: grant.prospective_nid, repository: "rad:z3other", direction: "fetch", bytes: 500, now: 1_000 }))
+      .toEqual({ verdict: "reject", reason_code: "control-recovery-grant-invalid" });
+  });
+
+  it("requires SFTP address/process separation, dual authentication, rooting, limits, and expiry", () => {
+    const grant = {
+      onion_address: `${"a".repeat(56)}.onion`, radicle_onion_address: `${"b".repeat(56)}.onion`,
+      service_process_id: "sftp-1", radicle_process_id: "radicle-1",
+      tor_client_key: "tor-key", ssh_client_key: "ssh-key", ssh_host_key: "host-key",
+      root: "/grant", resources: [{ path: "/grant/archive.bin", direction: "read" as const, size: 1_000 }],
+      byte_ceiling: 1_000, expires_at: 2_000,
+      channels_disabled: true, renewal_overlap_seconds: 300, prior_endpoint_read_only: true,
+    };
+    const access = { grant, onion_address: grant.onion_address, tor_client_key: "tor-key", ssh_client_key: "ssh-key", ssh_host_key: "host-key", path: "/grant/archive.bin", direction: "read" as const, bytes: 1_000, now: 1_000 };
+    expect(evaluateSftpAccess(access)).toEqual({ verdict: "accept" });
+    expect(evaluateSftpAccess({ ...access, onion_address: grant.radicle_onion_address }))
+      .toEqual({ verdict: "reject", reason_code: "control-sftp-auth-invalid" });
+    expect(evaluateSftpAccess({ ...access, path: "/etc/passwd" }))
+      .toEqual({ verdict: "reject", reason_code: "control-sftp-resource-denied" });
+    expect(evaluateSftpAccess({ ...access, now: 2_000 }))
+      .toEqual({ verdict: "reject", reason_code: "control-sftp-expired" });
+  });
+});

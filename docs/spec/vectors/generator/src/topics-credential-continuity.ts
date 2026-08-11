@@ -6,7 +6,6 @@ import {
   evaluateRetentionInventory,
   evaluateSecretTransition,
   replayExposureSet,
-  selectDrTombstoneReason,
   validateConfigGitProjection,
   type CredentialCheckpoint,
 } from "./credential-continuity.js";
@@ -240,12 +239,10 @@ export function buildCredentialContinuityVectors(): AuthoredVector[] {
     exposure_classes: [
       "config-audience",
       "oauth-pairwise",
-      "double-ratchet",
     ] as const,
     action_classes: [
       "config-audience",
       "oauth-pairwise",
-      "double-ratchet",
     ] as const,
     removal_observation_nids: [NID_B],
     transition_authority: "epoch" as const,
@@ -310,20 +307,6 @@ export function buildCredentialContinuityVectors(): AuthoredVector[] {
     ),
   );
 
-  const tombstoneInput = {
-    old_holder_nids: [NID_A, NID_B],
-    removed_nids: [NID_B],
-  };
-  vectors.push(
-    draft(
-      "credential-continuity/009-dr-persona-node-removed.json",
-      "credential-continuity/dr-persona-node-removed",
-      "The DR tombstone uses persona_node_removed only for an actual removed-roster holder.",
-      tombstoneInput,
-      { reason: selectDrTombstoneReason(tombstoneInput) },
-    ),
-  );
-
   const commitRaw = Buffer.from(
     "tree 4b825dc642cb6eb9a060e54bf8d69288fbee4904\n" +
       "author Heterodyne <protocol@heterodyne.network> 0 +0000\n" +
@@ -345,7 +328,7 @@ export function buildCredentialContinuityVectors(): AuthoredVector[] {
   };
   vectors.push(
     draft(
-      "credential-continuity/010-config-git-raw-projection.json",
+      "credential-continuity/009-config-git-raw-projection.json",
       "credential-continuity/config-git-raw-projection",
       "The closed draft config-Git carrier authenticates exact raw commit/tree bytes without activating the profile.",
       gitProjection,
@@ -355,11 +338,11 @@ export function buildCredentialContinuityVectors(): AuthoredVector[] {
 
   vectors.push(
     draft(
-      "credential-continuity/011-twenty-schemas-gated.json",
-      "credential-continuity/twenty-schemas-gated",
-      "All twenty Comms schemas are present as draft definitions while revision-4 profiles and reasons remain unavailable.",
+      "credential-continuity/010-seventeen-schemas-draft.json",
+      "credential-continuity/seventeen-schemas-draft",
+      "All seventeen transport-independent Comms schemas are present as non-claimable draft definitions.",
       {
-        selected_registry_revision: 3,
+        selected_registry_revision: 5,
         schema_files: [...CREDENTIAL_CONTINUITY_SCHEMA_FILES],
         adr038_core_recovery_schemas_active: false,
         governed_source_profile_catalog_active: false,
@@ -395,7 +378,7 @@ function draft(
         verdict: "accept",
         normalized: {
           draft_credential_continuity_decision: decision,
-          selected_registry_revision: 3,
+          selected_registry_revision: 5,
           conformance_claimable: false,
         },
       },

@@ -1,4 +1,3 @@
-import { buildDmTranscriptVectors } from "./dm-transcript.js";
 import { withKelHead } from "./kel.js";
 import { canonicalNip01, getPublicKey, signEvent } from "./nostr.js";
 import { buildKeriAuthorityWireVectors } from "./topics-keri-authority.js";
@@ -52,14 +51,12 @@ export const TOPIC_SPECS = {
   org: "§6.7.0",
   "privacy-tiers": "§9.0",
   lists: "§8.5",
-  dm: "§5.7",
   "config-backup": "§3.8.6",
   "keri-authority": "§4.5.1",
-  "comms-envelope": "heterodyne:comms/0.5.0#comms-envelope",
   "core-redundancy": "heterodyne:core/0.5.0#core-multi-host-seeding",
   "acceptance-gating": "heterodyne:comms/0.5.0#comms-acceptance-hook",
   atproto: "heterodyne:social/0.5.0#social-atproto-resolution",
-  "credential-continuity": "heterodyne:comms/0.5.0#comms-credential-continuity-gate",
+  "credential-continuity": "heterodyne:comms/0.5.0#comms-credential-continuity",
   stamping: "heterodyne:core/0.5.0#core-version-stamps",
   registry: "heterodyne:core/0.5.0#core-registry",
   "marmot-radicle": "heterodyne:comms/0.5.0#comms-marmot",
@@ -72,7 +69,6 @@ export async function buildAllVectors(fixtures: Fixtures): Promise<AuthoredVecto
   }
   vectors.push(...(await buildV04Vectors(fixtures)));
   vectors.push(...(await buildV04bVectors(fixtures)));
-  vectors.push(...buildDmTranscriptVectors(fixtures));
   vectors.push(...(await buildKeriAuthorityWireVectors(fixtures)));
   vectors.push(...buildKeriAuthorityBehavioralVectors(fixtures));
   vectors.push(...(await buildKeriAuthorityMaterializedVectors(fixtures)));
@@ -89,7 +85,38 @@ export async function buildAllVectors(fixtures: Fixtures): Promise<AuthoredVecto
   vectors.push(...buildCredentialContinuityVectors());
   vectors.push(...(await buildMarmotRadicleVectors(fixtures)));
   return (await remediateHistoricalProduction(vectors, fixtures))
-    .filter(({ vector }) => !isRetiredMatrixVector(vector.vector_id));
+    .filter(({ vector }) =>
+      !isRetiredMatrixVector(vector.vector_id)
+      && !isRetiredControlPivotVector(vector.vector_id));
+}
+
+const RETIRED_CONTROL_PIVOT_PREFIXES = [
+  "comms-envelope/",
+  "dm/",
+  "session-device/",
+] as const;
+
+const RETIRED_CONTROL_PIVOT_IDS = new Set([
+  "acceptance-gating/control-enrollment-active-invite-gated-hold",
+  "acceptance-gating/control-enrollment-stale-invite-reject",
+  "acceptance-gating/control-enrollment-tombstoned-invite-reject",
+  "acceptance-gating/control-enrollment-live-challenge-gated-hold",
+  "acceptance-gating/control-enrollment-token-gated-hold",
+  "acceptance-gating/ordinary-undelegated-reject",
+  "acceptance-gating/credential-sync-undelegated-reject",
+  "keri-authority/kel-head-forbidden-on-dr-wire",
+  "keri-authority/kel-head-mandatory-on-epoch-invite",
+  "profiles/dr-invite-response-kind1059",
+  "profiles/comms-negotiation-kind31015",
+  "profiles/comms-payload-kind31016",
+  "stamping/dr-outer-unstamped",
+  "stamping/control-profile-retains-core-owner",
+  "stamping/control-carrier-comms-owner",
+]);
+
+function isRetiredControlPivotVector(vectorId: string): boolean {
+  return RETIRED_CONTROL_PIVOT_PREFIXES.some((prefix) => vectorId.startsWith(prefix))
+    || RETIRED_CONTROL_PIVOT_IDS.has(vectorId);
 }
 
 const RETIRED_MATRIX_PREFIXES = [

@@ -58,24 +58,25 @@ and was integrated by [PR #19](https://github.com/HeterodyneNetwork/HeterodynePr
 - Adopted pinned Marmot as the sole user-facing direct/group conversation
   engine, with standard-compatible and Heterodyne-private group profiles,
   exact-byte Radicle-backed relays, routing generations, persona inboxes,
-  retention/non-erasure, and `radicle-v1` media locators. Double Ratchet is
-  now limited to bootstrap and Control.
+  retention/non-erasure, and `radicle-v1` media locators.
+- Replaced Double Ratchet direct-message and bootstrap carriers with standard
+  two-member Marmot groups. Pairwise-private claims and first-contact delivery
+  now use the same pinned Marmot substrate as other conversations.
 
 ### Control 0.5.0
 
 - Prepared [Control](docs/spec/heterodyne-control.md) `control/0.5.0` as an
-  incomplete Comms profile requiring Core, Comms, and `double-ratchet`.
-  Control remains non-claimable until its integration and vector gates close.
-- Control consumes only `active` Comms claim decisions for enrollment and RPC;
-  it defines no independent claim wire profile and gives NID-less session
-  devices neither ledger access nor ledger keys.
-- Integrated the relay-affine restart-safe request subset and the bounded
-  agent token/publication/audit subset with normative partial vectors. Control
-  remains non-claimable until the remaining ADR-030 enrollment/session gates
-  close.
+  active Comms profile using standard two-member Marmot groups for enrollment,
+  authorization, human JSON-RPC, and MCP agent operations.
+- Added private, persona-wide light-client entitlements; node-audience,
+  Marmot-bound RFC 9068 tokens; bounded retention; restart-safe operation
+  reservations; and sequential cross-node failover.
 - Added grant-filtered node-mediated Marmot operations and group-scoped agent
   operations while keeping all Marmot account, leaf, epoch, and repository
   secrets on the designated node.
+- Made private-Radicle recovery, locked-epoch full-node bootstrap, and isolated
+  per-grant SFTP onion transfer optional, separately claimable capabilities
+  rather than baseline Control prerequisites.
 
 ### Social 0.5.0
 
@@ -92,15 +93,15 @@ and was integrated by [PR #19](https://github.com/HeterodyneNetwork/HeterodynePr
 
 - Established the family's only normative dependency edges as
   `Core <- Comms <- Control` and `Core <- Comms <- Social`.
-- Advanced all four untagged 0.5.0 release manifests to registry revision 4.
+- Advanced all four untagged 0.5.0 release manifests to registry revision 5.
   Only Comms advertises `key-claims`, `private-claim-ledger`,
   `oidc-jwt-projection`, and `token-status-list-draft-21`; Core and Social add
   no claims/OIDC feature, and Control retains its exact Comms dependency.
 - Added immutable strict-v2 Comms and Social profiles for the ADR-035/036
   invariants while leaving every strict-v1 membership unchanged.
 - Replaced the historical monolith strict mode with composable profile IDs
-  for Core, Comms, Control, and Social. The Control strict identifier is
-  reserved-inactive with its baseline conformance gate.
+  for Core, Comms, Control, and Social. The Control strict profile is active
+  and claimable when its mandatory conformance requirements are met.
 - Preserved all pre-split normative bytes in
   [`docs/spec/archive/heterodyne-0.4.0.md`](docs/spec/archive/heterodyne-0.4.0.md)
   unchanged and added the complete

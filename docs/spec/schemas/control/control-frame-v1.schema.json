@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/control/control-frame-v1.schema.json",
+  "title": "Heterodyne Marmot Control frame v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "profile",
+    "frame_type",
+    "payload"
+  ],
+  "properties": {
+    "version": {
+      "const": "control/0.5.0"
+    },
+    "profile": {
+      "enum": [
+        "human-jsonrpc",
+        "agent-mcp"
+      ]
+    },
+    "frame_type": {
+      "enum": [
+        "initialize",
+        "request",
+        "response",
+        "notification",
+        "close"
+      ]
+    },
+    "request_id": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      ]
+    },
+    "operation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "expires_at": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "access_token": {
+      "type": "string",
+      "minLength": 16
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "frame_type": {
+            "const": "request"
+          }
+        },
+        "required": [
+          "frame_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "request_id",
+          "expires_at"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "frame_type": {
+            "const": "response"
+          }
+        },
+        "required": [
+          "frame_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "request_id"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "frame_type": {
+            "enum": [
+              "initialize",
+              "notification",
+              "close"
+            ]
+          }
+        },
+        "required": [
+          "frame_type"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "access_token"
+          ]
+        }
+      }
+    }
+  ]
+}

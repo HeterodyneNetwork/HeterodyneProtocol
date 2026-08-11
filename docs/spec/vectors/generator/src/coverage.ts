@@ -6,10 +6,8 @@ import type { DocumentId, Vector } from "./types.js";
 /** Registry allocations awaiting normative vectors. */
 export const PENDING_PROFILE_IDS = [] as const;
 
-/** The only registry profile whose conformance gate is explicitly inactive. */
-export const INACTIVE_PROFILE_IDS = [
-  "heterodyne-control-session-device-v1",
-] as const;
+/** Registered profiles intentionally excluded from conformance. */
+export const INACTIVE_PROFILE_IDS = [] as const;
 
 export type CoverageEntry = {
   vector_id: string;
@@ -112,7 +110,7 @@ export async function writeCoverage(vectorRoot: string): Promise<void> {
 function renderDocumentView(document: DocumentId, entries: CoverageEntry[]): string {
   const title = document[0].toUpperCase() + document.slice(1);
   if (document === "control") {
-    return `# ${title} vector coverage\n\nStatus: \`incomplete-draft\`.\n\nThe ingress-relay-affinity and automated-agent subset vectors are listed below. They are normative partial evidence but do not open Control conformance; the profile remains non-claimable until the remaining enrollment and session blockers are resolved.\n\nGenerated from [manifest.json](manifest.json); do not edit by hand.\n\n${renderTable(entries)}`;
+    return `# ${title} vector coverage\n\nStatus: \`conformant\`.\n\nThese vectors cover baseline Marmot Control plus separately advertised optional recovery profiles. Baseline conformance does not require a recovery feature.\n\nGenerated from [manifest.json](manifest.json); do not edit by hand.\n\n${renderTable(entries)}`;
   }
   return `# ${title} vector coverage\n\nGenerated from [manifest.json](manifest.json); do not edit by hand.\n\n${renderTable(entries)}`;
 }

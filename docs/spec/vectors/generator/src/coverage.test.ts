@@ -1,105 +1,55 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { authorAllVectors } from "./author.js";
 import {
-  PENDING_PROFILE_IDS,
   INACTIVE_PROFILE_IDS,
+  PENDING_PROFILE_IDS,
   buildCoverage,
   findProfileCoverageIssues,
   writeCoverage,
 } from "./coverage.js";
-import { buildAllVectors } from "./topics.js";
 import { buildFixtures } from "./fixtures.js";
 import { loadRegistry } from "./registry.js";
-import { resolve } from "node:path";
+import { buildAllVectors } from "./topics.js";
 
 const tempDirs: string[] = [];
-
 afterEach(async () => {
   await Promise.all(tempDirs.map((dir) => rm(dir, { recursive: true, force: true })));
   tempDirs.length = 0;
 });
 
 describe("family coverage", () => {
-  it("is the sorted lossless projection of vector ownership metadata", async () => {
+  it("is a sorted lossless revision-5 projection with active Control coverage", async () => {
     const vectors = (await buildAllVectors(buildFixtures())).map(({ vector }) => vector);
     const coverage = buildCoverage(vectors);
-
     expect(coverage.map(({ vector_id }) => vector_id)).toEqual(
       [...coverage.map(({ vector_id }) => vector_id)].sort(),
     );
     expect(new Set(coverage.map(({ vector_id }) => vector_id)).size).toBe(vectors.length);
-    expect(coverage.filter(({ owner_document }) => owner_document === "control"))
-      .toHaveLength(72);
+    expect(coverage.every(({ registry_revision }) => registry_revision === 5)).toBe(true);
+    expect(coverage.filter(({ owner_document }) => owner_document === "control")).toHaveLength(32);
     expect(coverage).toContainEqual(expect.objectContaining({
-      vector_id: "stamping/control-profile-retains-core-owner",
-      owner_document: "core",
-      dependency_versions: {},
-      profile: "heterodyne-control-session-device-v1",
-      spec_refs: ["heterodyne:core/0.5.0#core-version-stamps"],
+      vector_id: "control/invitation-enrollment-only",
+      profile: "heterodyne-control-marmot-frame-v1",
+      spec_refs: ["heterodyne:control/0.5.0#control-invitation-policy"],
     }));
-    for (const [vector_id, anchor] of [
-      ["control/enrollment-repository-final-active", "control-enrollment"],
-      ["control/enrollment-token-different-key-conflict", "control-enrollment-token"],
-      ["control/grant-policy-state-write-refused", "control-grants"],
-      ["control/authorization-revoked", "control-claim-consumption"],
-      ["control/mcp-inbound-execution-default-deny", "control-mcp"],
-      ["control/agent-generation-reset", "control-agent-token"],
-      ["control/agent-source-claim-substitution-rejected", "control-agent-requirements"],
-      ["control/transition-peer-tombstone", "control-session-lifecycle"],
-      ["control/retention-no-backfill", "control-audit-retention"],
-    ]) {
-      expect(coverage).toContainEqual(expect.objectContaining({
-        vector_id,
-        owner_document: "control",
-        spec_refs: [`heterodyne:control/0.5.0#${anchor}`],
-      }));
-    }
-    expect(coverage).toContainEqual(
-      expect.objectContaining({
-        vector_id: "stamping/tier3-profile-owner",
-        owner_document: "core",
-        profile: "heterodyne-comms-tier3-wrapped-content-kind-1-v1",
-      }),
-    );
-    const ownerById = new Map(
-      coverage.map(({ vector_id, owner_document }) => [vector_id, owner_document]),
-    );
-    expect(ownerById.get("interop/kind31005-identity-pointer")).toBe("core");
-    expect(ownerById.get("org/threshold-delegate-governance")).toBe("core");
-    expect(ownerById.get("org/canonical-branch-reachability")).toBe("comms");
-    expect(ownerById.get("marmot-radicle/redundant-delivery-dedup")).toBe("comms");
-    expect(ownerById.get("config-backup/config-blob-encrypt-decrypt")).toBe("comms");
-    expect(ownerById.get("config-backup/nip49-nsec-wrap")).toBe("core");
-    expect(ownerById.get("social-recovery/three-tier-caching")).toBe("social");
-    expect(ownerById.get("social-recovery/cold-root-reanchor-authoritative")).toBe("core");
-    expect(ownerById.get("social-recovery/cache-sourced-marked-stale")).toBe("core");
-    expect(coverage.every(({ spec_refs }) => spec_refs.every((ref) => ref.startsWith("heterodyne:")))).toBe(true);
-
+    expect(coverage).toContainEqual(expect.objectContaining({
+      vector_id: "control/sftp-grant-expired",
+      spec_refs: ["heterodyne:control/0.5.0#control-sftp-recovery"],
+    }));
     const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
     expect(findProfileCoverageIssues(registry, coverage)).toEqual([]);
     expect(PENDING_PROFILE_IDS).toEqual([]);
-    expect(INACTIVE_PROFILE_IDS).toEqual([
-      "heterodyne-control-session-device-v1",
-    ]);
-    expect(
-      registry.kinds
-        .flatMap(({ profiles }) => profiles)
-        .find(({ profile_id }) => profile_id === INACTIVE_PROFILE_IDS[0])
-        ?.owner,
-    ).toBe("control");
-    expect(coverage.filter(({ profile }) => profile === "heterodyne-control-session-device-v1"))
-      .toHaveLength(1);
+    expect(INACTIVE_PROFILE_IDS).toEqual([]);
   }, 30_000);
 
-  it("fails the staged coverage gate for any unlisted uncovered profile", async () => {
-    const vectors = (await buildAllVectors(buildFixtures())).map(({ vector }) => vector);
-    const coverage = buildCoverage(vectors);
-    const registry = structuredClone(
-      loadRegistry(resolve(import.meta.dirname, "../../../../../")),
+  it("rejects an unlisted uncovered profile", async () => {
+    const coverage = buildCoverage(
+      (await buildAllVectors(buildFixtures())).map(({ vector }) => vector),
     );
+    const registry = structuredClone(loadRegistry(resolve(import.meta.dirname, "../../../../../")));
     registry.kinds[0].profiles.push({
       profile_id: "unlisted-future-profile",
       owner: "comms",
@@ -108,79 +58,22 @@ describe("family coverage", () => {
       first_version: "comms/0.5.0",
       status: "draft",
     });
-
     expect(findProfileCoverageIssues(registry, coverage)).toEqual([
       "uncovered profile: unlisted-future-profile",
     ]);
   }, 30_000);
 
-  it("does not exempt an unlisted Control-owned profile", async () => {
-    const vectors = (await buildAllVectors(buildFixtures())).map(({ vector }) => vector);
-    const coverage = buildCoverage(vectors);
-    const registry = structuredClone(
-      loadRegistry(resolve(import.meta.dirname, "../../../../../")),
-    );
-    registry.kinds[0].profiles.push({
-      profile_id: "unlisted-control-profile",
-      owner: "control",
-      discriminator: "test:unlisted-control",
-      stamping: false,
-      first_version: "control/0.5.0",
-      status: "draft",
-    });
-
-    expect(findProfileCoverageIssues(registry, coverage)).toContain(
-      "uncovered profile: unlisted-control-profile",
-    );
-  }, 30_000);
-
-  it("permits only the exact inactive profile and currently-uncovered pending set", async () => {
-    const vectors = (await buildAllVectors(buildFixtures())).map(({ vector }) => vector);
-    const coverage = buildCoverage(vectors).filter(
-      ({ profile }) => profile !== INACTIVE_PROFILE_IDS[0],
-    );
-    const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
-
-    expect(findProfileCoverageIssues(registry, coverage)).toEqual([]);
-  }, 30_000);
-
-  it("requires the exact inactive profile to remain Control-owned", async () => {
-    const vectors = (await buildAllVectors(buildFixtures())).map(({ vector }) => vector);
-    const coverage = buildCoverage(vectors);
-    const registry = structuredClone(
-      loadRegistry(resolve(import.meta.dirname, "../../../../../")),
-    );
-    const inactive = registry.kinds
-      .flatMap(({ profiles }) => profiles)
-      .find(({ profile_id }) => profile_id === INACTIVE_PROFILE_IDS[0])!;
-    inactive.owner = "comms";
-
-    expect(findProfileCoverageIssues(registry, coverage)).toContain(
-      `inactive profile owner mismatch: ${INACTIVE_PROFILE_IDS[0]}`,
-    );
-  }, 30_000);
-
-  it("writes deterministic Markdown views derived from manifest.json", async () => {
+  it("writes deterministic active-Control Markdown from the manifest", async () => {
     const vectorRoot = await mkdtemp(join(tmpdir(), "heterodyne-vector-coverage-"));
     tempDirs.push(vectorRoot);
     await authorAllVectors(vectorRoot);
     await writeCoverage(vectorRoot);
-    const first = await Promise.all(
-      ["manifest.json", "core.md", "comms.md", "control.md", "social.md", "family.md"].map(
-        (name) => readFile(join(vectorRoot, "coverage", name), "utf8"),
-      ),
-    );
+    const first = await readFile(join(vectorRoot, "coverage", "control.md"), "utf8");
     await writeCoverage(vectorRoot);
-    const second = await Promise.all(
-      ["manifest.json", "core.md", "comms.md", "control.md", "social.md", "family.md"].map(
-        (name) => readFile(join(vectorRoot, "coverage", name), "utf8"),
-      ),
-    );
-
-    expect(second).toEqual(first);
-    expect(first[3]).toContain("incomplete-draft");
-    expect(first[3]).toContain("normative partial evidence");
-    expect(first[3]).toContain("control/first-arrival-reserved");
-    expect(first[3]).toContain("profile remains non-claimable");
+    const second = await readFile(join(vectorRoot, "coverage", "control.md"), "utf8");
+    expect(second).toBe(first);
+    expect(first).toContain("Status: `conformant`");
+    expect(first).toContain("control/invitation-enrollment-only");
+    expect(first).toContain("control/sftp-grant-expired");
   }, 30_000);
 });

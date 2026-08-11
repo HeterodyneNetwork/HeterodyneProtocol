@@ -21,7 +21,6 @@ extracting behavior.
 | `heterodyne:core/0.5.0#core-identity-model` | Persona-preserving KERI rotation for Nostr identities | Generic cold-root/epoch authority and KEL verification. Highest identity extraction priority. |
 | `heterodyne:core/0.5.0#core-identity-discovery` | External repository and serving-node identity hints | Signed npub-to-RID and node bootstrap usable beyond Heterodyne. |
 | `heterodyne:comms/0.5.0#comms-feed-index` | Durable multi-carrier Nostr feed index | Generic ordering and paging across ordinary and repository relays. |
-| `heterodyne:comms/0.5.0#comms-direct-messages` | Double-ratchet profile over Nostr | Candidate only after the currently pinned upstream wire is locally frozen. |
 | `heterodyne:social/0.5.0#social-moderation` | Anchored editorial approvals | Likely an amendment/profile around NIP-72 rather than a new NIP. |
 | `heterodyne:social/0.5.0#social-lists` | Stamped Social list profile | General profile-marker approach while preserving plain NIP-51 interoperability. |
 
