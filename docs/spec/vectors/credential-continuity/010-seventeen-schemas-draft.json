@@ -1,0 +1,52 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 5,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-credential-continuity"
+  ],
+  "vector_id": "credential-continuity/seventeen-schemas-draft",
+  "description": "All seventeen transport-independent Comms schemas are present as non-claimable draft definitions.",
+  "direction": "consume",
+  "input": {
+    "selected_registry_revision": 5,
+    "schema_files": [
+      "repository-retention-inventory-v1.schema.json",
+      "governed-decrypt-key-binding-v1.schema.json",
+      "historical-decrypt-obligation-v1.schema.json",
+      "credential-ledger-checkpoint-v1.schema.json",
+      "credential-ledger-checkpoint-receipt-v1.schema.json",
+      "credential-ledger-removal-observation-v1.schema.json",
+      "credential-ledger-candidate-abandonment-v1.schema.json",
+      "credential-ledger-staging-ref-cleanup-v1.schema.json",
+      "credential-ledger-config-key-bootstrap-recipient-array-v1.schema.json",
+      "credential-ledger-emergency-reset-v1.schema.json",
+      "credential-ledger-reset-recipient-array-v1.schema.json",
+      "node-secret-source-v1.schema.json",
+      "node-secret-exposure-v1.schema.json",
+      "credential-ledger-secret-transition-v1.schema.json",
+      "node-secret-transition-action-v1.schema.json",
+      "credential-ledger-lost-generation-path-v1.schema.json",
+      "config-repository-git-structure-v1.schema.json"
+    ],
+    "adr038_core_recovery_schemas_active": false,
+    "governed_source_profile_catalog_active": false
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "draft_credential_continuity_decision": {
+        "schema_count": 17,
+        "profile_active": false,
+        "revision_4_claimable": false,
+        "offline_recovery_conformance_complete": false
+      },
+      "selected_registry_revision": 5,
+      "conformance_claimable": false
+    }
+  }
+}

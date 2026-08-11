@@ -10,7 +10,7 @@
         {
           "profile_id": "heterodyne-core-rotation-breadcrumb-profile-v1",
           "owner": "core",
-          "discriminator": "production-rule:adr-031-kind0-v1",
+          "discriminator": "production-rule:rotation-breadcrumb-kind0-v1",
           "stamping": false,
           "first_version": "core/0.5.0",
           "status": "draft"
@@ -27,7 +27,7 @@
         {
           "profile_id": "heterodyne-core-rotation-breadcrumb-note-v1",
           "owner": "core",
-          "discriminator": "production-rule:adr-031-kind1-v1",
+          "discriminator": "production-rule:rotation-breadcrumb-kind1-v1",
           "stamping": false,
           "first_version": "core/0.5.0",
           "status": "draft"
@@ -172,40 +172,6 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "profiles": []
-    },
-    {
-      "kind": 1059,
-      "allocation_authority": "nostr",
-      "base_schema_owner": "nostr",
-      "status": "draft",
-      "first_version": "comms/0.5.0",
-      "profiles": [
-        {
-          "profile_id": "heterodyne-comms-double-ratchet-invite-response-v1",
-          "owner": "comms",
-          "discriminator": "wire:nostr-double-ratchet@0.0.138;kind=1059",
-          "stamping": false,
-          "first_version": "comms/0.5.0",
-          "status": "draft"
-        }
-      ]
-    },
-    {
-      "kind": 1060,
-      "allocation_authority": "nostr",
-      "base_schema_owner": "nostr",
-      "status": "draft",
-      "first_version": "comms/0.5.0",
-      "profiles": [
-        {
-          "profile_id": "heterodyne-comms-double-ratchet-message-v1",
-          "owner": "comms",
-          "discriminator": "wire:nostr-double-ratchet@0.0.138;kind=1060",
-          "stamping": false,
-          "first_version": "comms/0.5.0",
-          "status": "draft"
-        }
-      ]
     },
     {
       "kind": 1063,
@@ -437,23 +403,6 @@
       "profiles": []
     },
     {
-      "kind": 30078,
-      "allocation_authority": "nostr",
-      "base_schema_owner": "nostr",
-      "status": "draft",
-      "first_version": "comms/0.5.0",
-      "profiles": [
-        {
-          "profile_id": "heterodyne-comms-double-ratchet-invite-v1",
-          "owner": "comms",
-          "discriminator": "d-prefix:double-ratchet/invites/",
-          "stamping": false,
-          "first_version": "comms/0.5.0",
-          "status": "draft"
-        }
-      ]
-    },
-    {
       "kind": 30402,
       "allocation_authority": "nostr",
       "base_schema_owner": "nostr",
@@ -493,14 +442,6 @@
       "status": "draft",
       "first_version": "core/0.5.0",
       "profiles": [
-        {
-          "profile_id": "heterodyne-control-session-device-v1",
-          "owner": "control",
-          "discriminator": "tags:heterodyne=delegation,binding_nonce,key_proof;radicle_nid=absent",
-          "stamping": false,
-          "first_version": "control/0.5.0",
-          "status": "draft"
-        },
         {
           "profile_id": "heterodyne-comms-agent-signing-delegation-v1",
           "owner": "comms",
@@ -667,35 +608,18 @@
       ]
     },
     {
-      "kind": 31015,
+      "kind": 31017,
       "allocation_authority": "heterodyne",
-      "base_schema_owner": "comms",
+      "base_schema_owner": "control",
       "status": "draft",
-      "first_version": "comms/0.5.0",
+      "first_version": "control/0.5.0",
       "profiles": [
         {
-          "profile_id": "comms-subprotocol-negotiation-v1",
-          "owner": "comms",
-          "discriminator": "content.protocol_type=negotiation",
+          "profile_id": "heterodyne-control-marmot-frame-v1",
+          "owner": "control",
+          "discriminator": "marmot-inner-only;content=control-frame-v1",
           "stamping": false,
-          "first_version": "comms/0.5.0",
-          "status": "draft"
-        }
-      ]
-    },
-    {
-      "kind": 31016,
-      "allocation_authority": "heterodyne",
-      "base_schema_owner": "comms",
-      "status": "draft",
-      "first_version": "comms/0.5.0",
-      "profiles": [
-        {
-          "profile_id": "comms-subprotocol-payload-v1",
-          "owner": "comms",
-          "discriminator": "content.protocol_type=payload",
-          "stamping": false,
-          "first_version": "comms/0.5.0",
+          "first_version": "control/0.5.0",
           "status": "draft"
         }
       ]

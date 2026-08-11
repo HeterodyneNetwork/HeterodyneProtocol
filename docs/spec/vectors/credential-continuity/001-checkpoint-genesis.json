@@ -5,9 +5,9 @@
   "dependency_versions": {
     "core": "core/0.5.0"
   },
-  "registry_revision": 3,
+  "registry_revision": 5,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+    "heterodyne:comms/0.5.0#comms-credential-continuity"
   ],
   "vector_id": "credential-continuity/checkpoint-genesis",
   "description": "The draft credential checkpoint accepts only after exact generation, KEL, singleton, delegation, and receipt replay.",
@@ -78,7 +78,7 @@
         "verdict": "accept",
         "continuity": "genesis"
       },
-      "selected_registry_revision": 3,
+      "selected_registry_revision": 5,
       "conformance_claimable": false
     }
   }

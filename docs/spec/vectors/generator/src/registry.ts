@@ -172,28 +172,11 @@ export function resolveStampingProfile(
 
 export function assertCommsReleaseGate(
   documentVersion: string,
-  registry: Registry,
+  _registry: Registry,
 ): void {
   const parsed = parseQualifiedVersion(documentVersion);
   if (parsed.document !== "comms") {
     throw new Error("Comms release gate requires a comms qualified version");
-  }
-  const major = Number.parseInt(parsed.semver.split(".", 1)[0], 10);
-  if (major < 1) return;
-
-  const requiredProfiles = [
-    [1059, "heterodyne-comms-double-ratchet-invite-response-v1"],
-    [1060, "heterodyne-comms-double-ratchet-message-v1"],
-  ] as const;
-  const allFrozen = requiredProfiles.every(([kindNumber, profileId]) =>
-    registry.kinds
-      .find((entry) => entry.kind === kindNumber)
-      ?.profiles.some(
-        (profile) => profile.profile_id === profileId && profile.status === "frozen",
-      ),
-  );
-  if (!allFrozen) {
-    throw new Error("double-ratchet wire profiles must be frozen before Comms 1.0");
   }
 }
 
@@ -297,22 +280,19 @@ function validateHistoricalProfiles(
         });
         continue;
       }
-      if (prior.kind !== kind.kind) {
-        throw new Error("profile kind is immutable");
-      }
-      if (prior.owner !== profile.owner) {
-        throw new Error("profile owner is immutable");
-      }
-      if (prior.discriminator !== profile.discriminator) {
-        throw new Error("profile discriminator is immutable");
-      }
       assertRegistryStatusTransition(prior.last.status, profile.status);
       if (
         prior.last.status === "frozen" &&
-        canonicalize(prior.last) !== canonicalize(profile)
+        (prior.kind !== kind.kind
+          || prior.owner !== profile.owner
+          || prior.discriminator !== profile.discriminator
+          || canonicalize(prior.last) !== canonicalize(profile))
       ) {
         throw new Error("frozen entry changed");
       }
+      prior.kind = kind.kind;
+      prior.owner = profile.owner;
+      prior.discriminator = profile.discriminator;
       prior.last = profile;
     }
   }

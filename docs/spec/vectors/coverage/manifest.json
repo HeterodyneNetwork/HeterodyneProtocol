@@ -6,7 +6,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-acceptance-hook"
     ]
@@ -18,7 +18,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-acceptance-hook"
     ]
@@ -30,19 +30,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-acceptance-hook"
-    ]
-  },
-  {
-    "vector_id": "acceptance-gating/control-enrollment-active-invite-gated-hold",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-acceptance-hook"
     ]
@@ -54,55 +42,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-acceptance-hook"
-    ]
-  },
-  {
-    "vector_id": "acceptance-gating/control-enrollment-live-challenge-gated-hold",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-acceptance-hook"
-    ]
-  },
-  {
-    "vector_id": "acceptance-gating/control-enrollment-stale-invite-reject",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-acceptance-hook"
-    ]
-  },
-  {
-    "vector_id": "acceptance-gating/control-enrollment-token-gated-hold",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-acceptance-hook"
-    ]
-  },
-  {
-    "vector_id": "acceptance-gating/control-enrollment-tombstoned-invite-reject",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-acceptance-hook"
     ]
@@ -114,7 +54,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-acceptance-hook"
     ]
@@ -126,7 +66,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-acceptance-hook"
     ]
@@ -138,7 +78,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-acceptance-hook"
     ]
@@ -150,7 +90,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-acceptance-hook"
     ]
@@ -162,19 +102,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-acceptance-hook"
-    ]
-  },
-  {
-    "vector_id": "acceptance-gating/credential-sync-undelegated-reject",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-acceptance-hook"
     ]
@@ -186,7 +114,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-acceptance-hook"
     ]
@@ -198,7 +126,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-acceptance-hook"
     ]
@@ -210,7 +138,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-acceptance-hook"
     ]
@@ -222,19 +150,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-acceptance-hook"
-    ]
-  },
-  {
-    "vector_id": "acceptance-gating/ordinary-undelegated-reject",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-acceptance-hook"
     ]
@@ -247,7 +163,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-admission-policy"
     ]
@@ -260,7 +176,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-admission-policy"
     ]
@@ -273,7 +189,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-admission-policy"
     ]
@@ -286,7 +202,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-admission-policy"
     ]
@@ -298,7 +214,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-agent-attribution-kind-1-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-attribution"
@@ -311,7 +227,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-agent-attribution-kind-1063-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-attribution"
@@ -324,7 +240,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-agent-attribution-kind-16-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-attribution"
@@ -337,7 +253,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-agent-attribution-kind-1985-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-attribution"
@@ -350,7 +266,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-agent-attribution-kind-30023-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-attribution"
@@ -363,7 +279,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-agent-attribution-kind-4550-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-attribution"
@@ -376,7 +292,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-agent-attribution-kind-6-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-attribution"
@@ -389,7 +305,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-agent-attribution-kind-7-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-attribution"
@@ -402,7 +318,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-attribution"
     ]
@@ -414,7 +330,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-attribution"
     ]
@@ -426,7 +342,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-delegation"
     ]
@@ -438,7 +354,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-agent-signing-delegation-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-delegation"
@@ -451,7 +367,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-attribution"
     ]
@@ -463,7 +379,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-attribution"
     ]
@@ -475,7 +391,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-delegation"
     ]
@@ -487,7 +403,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-fail-closed"
     ]
@@ -499,7 +415,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-delegation"
     ]
@@ -511,7 +427,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-workload"
     ]
@@ -523,7 +439,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-attribution"
     ]
@@ -535,7 +451,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-token"
     ]
@@ -547,7 +463,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-token"
     ]
@@ -559,7 +475,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-token"
     ]
@@ -571,7 +487,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-token"
     ]
@@ -583,7 +499,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-token"
     ]
@@ -595,7 +511,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-token"
     ]
@@ -607,7 +523,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-workload"
     ]
@@ -619,7 +535,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-workload"
     ]
@@ -632,7 +548,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-agent-policy-receipts"
     ]
@@ -645,7 +561,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-agent-policy-receipts"
     ]
@@ -658,7 +574,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-agent-policy-receipts"
     ]
@@ -671,7 +587,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-agent-policy-list"
     ]
@@ -684,7 +600,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-agent-policy-list"
     ]
@@ -697,7 +613,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "profile": "heterodyne-social-agent-policy-list-v1",
     "spec_refs": [
       "heterodyne:social/0.5.0#social-agent-policy-list"
@@ -711,7 +627,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-agent-policy-receipts"
     ]
@@ -724,7 +640,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-agent-policy-receipts"
     ]
@@ -737,7 +653,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "profile": "heterodyne-social-agent-policy-receipt-v1",
     "spec_refs": [
       "heterodyne:social/0.5.0#social-agent-policy-receipts"
@@ -751,7 +667,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-agent-policy-list"
     ]
@@ -764,7 +680,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-agent-policy-list"
     ]
@@ -777,7 +693,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-agent-policy-list"
     ]
@@ -790,7 +706,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-agent-policy-list"
     ]
@@ -803,7 +719,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-agent-policy-list"
     ]
@@ -816,7 +732,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-atproto-resolution"
     ]
@@ -829,7 +745,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-atproto-resolution"
     ]
@@ -839,7 +755,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-rotation"
     ]
@@ -849,7 +765,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-rotation"
     ]
@@ -859,7 +775,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-rotation"
     ]
@@ -869,7 +785,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-rotation"
     ]
@@ -881,7 +797,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-ledger"
     ]
@@ -893,7 +809,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-ledger"
     ]
@@ -905,7 +821,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-ledger"
     ]
@@ -917,7 +833,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-ledger"
     ]
@@ -929,7 +845,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-ledger"
     ]
@@ -941,7 +857,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-ledger"
     ]
@@ -953,7 +869,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-multiwriter-minting"
     ]
@@ -965,7 +881,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-ledger"
     ]
@@ -977,7 +893,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-ledger"
     ]
@@ -989,7 +905,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-ledger"
     ]
@@ -1001,7 +917,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-ledger"
     ]
@@ -1013,7 +929,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-revocation"
     ]
@@ -1025,7 +941,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-multiwriter-minting"
     ]
@@ -1037,7 +953,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-claim-revocation-nostr-bip340-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-revocation"
@@ -1050,7 +966,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-claim-revocation-jwk-jws-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-key-claims"
@@ -1063,7 +979,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-key-claim-nostr-bip340-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-key-claims"
@@ -1076,7 +992,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-key-claim-radicle-ed25519-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-key-claims"
@@ -1089,7 +1005,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-chain"
     ]
@@ -1101,7 +1017,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-chain"
     ]
@@ -1113,7 +1029,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-chain"
     ]
@@ -1125,7 +1041,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-key-claims"
     ]
@@ -1137,7 +1053,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-verification"
     ]
@@ -1149,7 +1065,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-verification"
     ]
@@ -1161,7 +1077,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-claim-revocation-radicle-ed25519-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-revocation"
@@ -1174,19 +1090,19 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-key-claims"
     ]
   },
   {
-    "vector_id": "claims/pairwise-private-dr-delivery",
+    "vector_id": "claims/pairwise-private-marmot-delivery",
     "owner_document": "comms",
     "owner_version": "comms/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-key-claims"
     ]
@@ -1198,7 +1114,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-verification"
     ]
@@ -1210,7 +1126,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-ledger"
     ]
@@ -1222,7 +1138,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-key-claims"
     ]
@@ -1234,7 +1150,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-ledger"
     ]
@@ -1246,7 +1162,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-key-claims"
     ]
@@ -1258,7 +1174,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-key-claim-jwk-jws-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-verification"
@@ -1271,46 +1187,9 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-claim-verification"
-    ]
-  },
-  {
-    "vector_id": "comms-envelope/nostr-native-event-valid",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-envelope"
-    ]
-  },
-  {
-    "vector_id": "comms-envelope/nostr-native-signature-mutation",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-envelope"
-    ]
-  },
-  {
-    "vector_id": "comms-envelope/owner-stamp-valid",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 1,
-    "profile": "comms-subprotocol-payload-v1",
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-subprotocol-negotiation"
     ]
   },
   {
@@ -1320,7 +1199,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-config-repository"
     ]
@@ -1330,7 +1209,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-keys-repository"
     ]
@@ -1340,7 +1219,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-keys-repository"
     ]
@@ -1352,7 +1231,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-config-repository"
     ]
@@ -1364,7 +1243,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-config-repository"
     ]
@@ -1374,945 +1253,457 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-keys-repository"
     ]
   },
   {
-    "vector_id": "control/agent-feed-authorization-rejected",
+    "vector_id": "control/entitlement-expansion-rejected",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-claim-consumption"
+      "heterodyne:control/0.5.0#control-entitlement"
     ]
   },
   {
-    "vector_id": "control/agent-generation-reset",
+    "vector_id": "control/entitlement-reduction",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-token"
+      "heterodyne:control/0.5.0#control-entitlement"
     ]
   },
   {
-    "vector_id": "control/agent-missing-scope-rejected",
+    "vector_id": "control/entitlement-revocation-absorbing",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-requirements"
+      "heterodyne:control/0.5.0#control-entitlement"
     ]
   },
   {
-    "vector_id": "control/agent-proof-jti-mismatch-rejected",
+    "vector_id": "control/epoch-activation-mismatch",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-requirements"
+      "heterodyne:control/0.5.0#control-epoch-bootstrap"
     ]
   },
   {
-    "vector_id": "control/agent-publish-authorized",
+    "vector_id": "control/epoch-exact-activation",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-requirements"
+      "heterodyne:control/0.5.0#control-epoch-bootstrap"
     ]
   },
   {
-    "vector_id": "control/agent-publish-schema-intent-only",
+    "vector_id": "control/epoch-locked",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-publish"
+      "heterodyne:control/0.5.0#control-epoch-bootstrap"
     ]
   },
   {
-    "vector_id": "control/agent-source-claim-inactive-rejected",
+    "vector_id": "control/epoch-prepare-and-relock",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-requirements"
+      "heterodyne:control/0.5.0#control-epoch-bootstrap"
     ]
   },
   {
-    "vector_id": "control/agent-source-claim-substitution-rejected",
+    "vector_id": "control/failover-idempotent-mutation",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-requirements"
+      "heterodyne:control/0.5.0#control-failover"
     ]
   },
   {
-    "vector_id": "control/agent-stale-role-key-rejected",
+    "vector_id": "control/failover-indeterminate-mutation",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-requirements"
+      "heterodyne:control/0.5.0#control-failover"
     ]
   },
   {
-    "vector_id": "control/agent-token-per-use-binding",
+    "vector_id": "control/failover-read",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-token"
+      "heterodyne:control/0.5.0#control-failover"
     ]
   },
   {
-    "vector_id": "control/agent-wrong-audience-rejected",
+    "vector_id": "control/invitation-disabled",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-requirements"
+      "heterodyne:control/0.5.0#control-invitation-policy"
     ]
   },
   {
-    "vector_id": "control/attribution-bypass-refused",
+    "vector_id": "control/invitation-enrollment-only",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-requirements"
+      "heterodyne:control/0.5.0#control-invitation-policy"
     ]
   },
   {
-    "vector_id": "control/audit-omits-raw-token",
+    "vector_id": "control/invitation-nonenrollment-rejected",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-audit"
+      "heterodyne:control/0.5.0#control-invitation-policy"
     ]
   },
   {
-    "vector_id": "control/authorization-conflicted",
+    "vector_id": "control/invitation-revoked",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-claim-consumption"
+      "heterodyne:control/0.5.0#control-invitation-policy"
     ]
   },
   {
-    "vector_id": "control/authorization-expired",
+    "vector_id": "control/operation-conflicting-bytes",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-claim-consumption"
+      "heterodyne:control/0.5.0#control-request-processing"
     ]
   },
   {
-    "vector_id": "control/authorization-invalid",
+    "vector_id": "control/operation-first-reservation",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-claim-consumption"
+      "heterodyne:control/0.5.0#control-request-processing"
     ]
   },
   {
-    "vector_id": "control/authorization-provisional",
+    "vector_id": "control/operation-identical-join",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-claim-consumption"
+      "heterodyne:control/0.5.0#control-request-processing"
     ]
   },
   {
-    "vector_id": "control/authorization-revoked",
+    "vector_id": "control/recovery-grant-accepted",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-claim-consumption"
+      "heterodyne:control/0.5.0#control-radicle-recovery"
     ]
   },
   {
-    "vector_id": "control/authorization-untrusted",
+    "vector_id": "control/recovery-grant-confined",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-claim-consumption"
+      "heterodyne:control/0.5.0#control-radicle-recovery"
     ]
   },
   {
-    "vector_id": "control/burst-refused",
+    "vector_id": "control/retention-ceiling-and-backup-exclusion",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-requirements"
+      "heterodyne:control/0.5.0#control-retention"
     ]
   },
   {
-    "vector_id": "control/changed-method-rejected",
+    "vector_id": "control/sftp-address-separated",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-relay-affinity"
+      "heterodyne:control/0.5.0#control-sftp-recovery"
     ]
   },
   {
-    "vector_id": "control/changed-payload-rejected",
+    "vector_id": "control/sftp-grant-accepted",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-relay-affinity"
+      "heterodyne:control/0.5.0#control-sftp-recovery"
     ]
   },
   {
-    "vector_id": "control/complete-without-response-rejected",
+    "vector_id": "control/sftp-grant-expired",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-relay-affinity"
+      "heterodyne:control/0.5.0#control-sftp-recovery"
     ]
   },
   {
-    "vector_id": "control/concurrent-identical-joins",
+    "vector_id": "control/sftp-root-confined",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-requirements"
+      "heterodyne:control/0.5.0#control-sftp-recovery"
     ]
   },
   {
-    "vector_id": "control/configuration-filter-excludes-policy",
+    "vector_id": "control/token-default-five-minutes",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-configuration"
+      "heterodyne:control/0.5.0#control-token"
     ]
   },
   {
-    "vector_id": "control/content-size-refused",
+    "vector_id": "control/token-explicit-sixty-minutes",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-requirements"
+      "heterodyne:control/0.5.0#control-token"
     ]
   },
   {
-    "vector_id": "control/cross-relay-final-response-replay",
+    "vector_id": "control/token-extension-missing-capability",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-relay-affinity"
+      "heterodyne:control/0.5.0#control-token"
     ]
   },
   {
-    "vector_id": "control/enrollment-binding-proof-rejected",
+    "vector_id": "control/token-scope-rejected",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-enrollment"
+      "heterodyne:control/0.5.0#control-token"
     ]
   },
   {
-    "vector_id": "control/enrollment-challenge-ceremony-required",
+    "vector_id": "control/token-valid",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-enrollment"
+      "heterodyne:control/0.5.0#control-token"
     ]
   },
   {
-    "vector_id": "control/enrollment-identity-join-valid",
+    "vector_id": "control/token-wrong-group",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-enrollment"
+      "heterodyne:control/0.5.0#control-token"
     ]
   },
   {
-    "vector_id": "control/enrollment-identity-substitution-rejected",
+    "vector_id": "control/token-wrong-node",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-enrollment"
+      "heterodyne:control/0.5.0#control-token"
     ]
   },
   {
-    "vector_id": "control/enrollment-pending-expired",
+    "vector_id": "control/token-wrong-sender",
     "owner_document": "control",
     "owner_version": "control/0.5.0",
     "dependency_versions": {
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
+    "profile": "heterodyne-control-marmot-frame-v1",
     "spec_refs": [
-      "heterodyne:control/0.5.0#control-enrollment"
-    ]
-  },
-  {
-    "vector_id": "control/enrollment-qr-ceremony-required",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-enrollment"
-    ]
-  },
-  {
-    "vector_id": "control/enrollment-relay-provisional",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-enrollment"
-    ]
-  },
-  {
-    "vector_id": "control/enrollment-repository-final-active",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-enrollment"
-    ]
-  },
-  {
-    "vector_id": "control/enrollment-token-different-key-conflict",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-enrollment-token"
-    ]
-  },
-  {
-    "vector_id": "control/enrollment-token-full-grant-rejected",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-enrollment-token"
-    ]
-  },
-  {
-    "vector_id": "control/enrollment-token-redeemed",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-enrollment-token"
-    ]
-  },
-  {
-    "vector_id": "control/enrollment-token-same-key-replay",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-enrollment-token"
-    ]
-  },
-  {
-    "vector_id": "control/enrollment-token-workload-class-rejected",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-enrollment-token"
-    ]
-  },
-  {
-    "vector_id": "control/expired-request-rejected",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-relay-affinity"
-    ]
-  },
-  {
-    "vector_id": "control/expired-token-refused",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-requirements"
-    ]
-  },
-  {
-    "vector_id": "control/first-arrival-reserved",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-relay-affinity"
-    ]
-  },
-  {
-    "vector_id": "control/grant-full-ceremony-authorized",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-grants"
-    ]
-  },
-  {
-    "vector_id": "control/grant-full-ceremony-required",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-grants"
-    ]
-  },
-  {
-    "vector_id": "control/grant-object-scope-refused",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-grants"
-    ]
-  },
-  {
-    "vector_id": "control/grant-policy-state-write-refused",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-grants"
-    ]
-  },
-  {
-    "vector_id": "control/grant-regular-object-authorized",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-grants"
-    ]
-  },
-  {
-    "vector_id": "control/human-profile-refused",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-requirements"
-    ]
-  },
-  {
-    "vector_id": "control/key-access-refused",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-requirements"
-    ]
-  },
-  {
-    "vector_id": "control/kind-resource-refused",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-requirements"
-    ]
-  },
-  {
-    "vector_id": "control/lifecycle-inactivity-lapse",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-session-lifecycle"
-    ]
-  },
-  {
-    "vector_id": "control/lifecycle-self-revocation",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-session-lifecycle"
-    ]
-  },
-  {
-    "vector_id": "control/mcp-cancellation",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-mcp"
-    ]
-  },
-  {
-    "vector_id": "control/mcp-inbound-execution-default-deny",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-mcp"
-    ]
-  },
-  {
-    "vector_id": "control/mcp-initialize-required",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-mcp"
-    ]
-  },
-  {
-    "vector_id": "control/mcp-timeout",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-mcp"
-    ]
-  },
-  {
-    "vector_id": "control/mcp-unadvertised-tool-refused",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-mcp"
-    ]
-  },
-  {
-    "vector_id": "control/rate-refused",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-requirements"
-    ]
-  },
-  {
-    "vector_id": "control/raw-signing-refused",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-requirements"
-    ]
-  },
-  {
-    "vector_id": "control/recovery-no-session-restore",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-audit-retention"
-    ]
-  },
-  {
-    "vector_id": "control/reply-relay-rejected",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-relay-affinity"
-    ]
-  },
-  {
-    "vector_id": "control/restart-reserved-operation-joins",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-relay-affinity"
-    ]
-  },
-  {
-    "vector_id": "control/retention-no-backfill",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-audit-retention"
-    ]
-  },
-  {
-    "vector_id": "control/rpc-changed-expiry-conflict",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-relay-affinity"
-    ]
-  },
-  {
-    "vector_id": "control/rpc-cross-session-conflict",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-relay-affinity"
-    ]
-  },
-  {
-    "vector_id": "control/rpc-schema-transport-context-excluded",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-enrollment"
-    ]
-  },
-  {
-    "vector_id": "control/sender-proof-refused",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-requirements"
-    ]
-  },
-  {
-    "vector_id": "control/token-request-bounded",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-agent-token"
-    ]
-  },
-  {
-    "vector_id": "control/transition-peer-tombstone",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-session-lifecycle"
-    ]
-  },
-  {
-    "vector_id": "control/transport-browser-reduced-assurance",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-enrollment"
-    ]
-  },
-  {
-    "vector_id": "control/transport-strict-tor",
-    "owner_document": "control",
-    "owner_version": "control/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:control/0.5.0#control-enrollment"
+      "heterodyne:control/0.5.0#control-token"
     ]
   },
   {
@@ -2320,7 +1711,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-multi-host-seeding"
     ]
@@ -2330,7 +1721,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-multi-host-seeding"
     ]
@@ -2342,9 +1733,9 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+      "heterodyne:comms/0.5.0#comms-credential-continuity"
     ]
   },
   {
@@ -2354,9 +1745,9 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+      "heterodyne:comms/0.5.0#comms-credential-continuity"
     ]
   },
   {
@@ -2366,9 +1757,9 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+      "heterodyne:comms/0.5.0#comms-credential-continuity"
     ]
   },
   {
@@ -2378,21 +1769,9 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
-    ]
-  },
-  {
-    "vector_id": "credential-continuity/dr-persona-node-removed",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+      "heterodyne:comms/0.5.0#comms-credential-continuity"
     ]
   },
   {
@@ -2402,9 +1781,9 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+      "heterodyne:comms/0.5.0#comms-credential-continuity"
     ]
   },
   {
@@ -2414,9 +1793,9 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+      "heterodyne:comms/0.5.0#comms-credential-continuity"
     ]
   },
   {
@@ -2426,9 +1805,9 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+      "heterodyne:comms/0.5.0#comms-credential-continuity"
     ]
   },
   {
@@ -2438,9 +1817,21 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+      "heterodyne:comms/0.5.0#comms-credential-continuity"
+    ]
+  },
+  {
+    "vector_id": "credential-continuity/seventeen-schemas-draft",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 5,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-credential-continuity"
     ]
   },
   {
@@ -2450,21 +1841,9 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
-    ]
-  },
-  {
-    "vector_id": "credential-continuity/twenty-schemas-gated",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+      "heterodyne:comms/0.5.0#comms-credential-continuity"
     ]
   },
   {
@@ -2475,99 +1854,9 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-discussion-rooms"
-    ]
-  },
-  {
-    "vector_id": "dm/atomic-receive-before-plaintext",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-dm-retention"
-    ]
-  },
-  {
-    "vector_id": "dm/double-ratchet-transcript",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 1,
-    "profile": "heterodyne-comms-double-ratchet-message-v1",
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-dm-wire"
-    ]
-  },
-  {
-    "vector_id": "dm/invite-delegated-device-valid",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 1,
-    "profile": "heterodyne-comms-double-ratchet-invite-v1",
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-dm-wire"
-    ]
-  },
-  {
-    "vector_id": "dm/invite-revoked-device-rejected",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 1,
-    "profile": "heterodyne-comms-double-ratchet-invite-v1",
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-dm-wire"
-    ]
-  },
-  {
-    "vector_id": "dm/invite-unbound-device-rejected",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 1,
-    "profile": "heterodyne-comms-double-ratchet-invite-v1",
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-dm-wire"
-    ]
-  },
-  {
-    "vector_id": "dm/kind1060-outer-message-shape",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 1,
-    "profile": "heterodyne-comms-double-ratchet-message-v1",
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-dm-wire"
-    ]
-  },
-  {
-    "vector_id": "dm/repo-relay-refuses-kind1060",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 1,
-    "profile": "heterodyne-comms-double-ratchet-message-v1",
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-dm-wire"
     ]
   },
   {
@@ -2575,7 +1864,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-identity-discovery"
     ]
@@ -2585,7 +1874,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-identity-discovery"
     ]
@@ -2595,7 +1884,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-identity-discovery"
     ]
@@ -2605,7 +1894,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-identity-discovery"
     ]
@@ -2615,7 +1904,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-nid-delegation"
     ]
@@ -2625,7 +1914,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-nid-delegation"
     ]
@@ -2635,7 +1924,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-nid-delegation"
     ]
@@ -2648,7 +1937,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-identity-room"
     ]
@@ -2658,7 +1947,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-nid-delegation"
     ]
@@ -2668,7 +1957,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-root-attestation"
     ]
@@ -2678,7 +1967,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-root-attestation"
     ]
@@ -2690,7 +1979,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-feed-index"
     ]
@@ -2702,7 +1991,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-feed-index"
     ]
@@ -2714,7 +2003,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-feed-index"
     ]
@@ -2724,7 +2013,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-identity-pointer"
     ]
@@ -2737,7 +2026,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-following"
     ]
@@ -2747,7 +2036,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-verification"
     ]
@@ -2757,7 +2046,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-verification"
     ]
@@ -2767,7 +2056,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-verification"
     ]
@@ -2777,7 +2066,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-verification"
     ]
@@ -2787,7 +2076,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-verification"
     ]
@@ -2797,7 +2086,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-keri-export"
     ]
@@ -2807,7 +2096,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-keri-export"
     ]
@@ -2817,7 +2106,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-keri-export"
     ]
@@ -2827,7 +2116,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-keri-export"
     ]
@@ -2837,7 +2126,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-keri-export"
     ]
@@ -2847,7 +2136,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-keri-export"
     ]
@@ -2857,7 +2146,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-keri-export"
     ]
@@ -2867,7 +2156,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-head"
     ]
@@ -2877,17 +2166,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-kel-head"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/kel-head-forbidden-on-dr-wire",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-head"
     ]
@@ -2897,7 +2176,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-head"
     ]
@@ -2907,7 +2186,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-head"
     ]
@@ -2917,7 +2196,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-head"
     ]
@@ -2927,17 +2206,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-kel-head"
-    ]
-  },
-  {
-    "vector_id": "keri-authority/kel-head-mandatory-on-epoch-invite",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-head"
     ]
@@ -2947,7 +2216,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-head"
     ]
@@ -2957,7 +2226,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-head"
     ]
@@ -2967,7 +2236,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-verification"
     ]
@@ -2977,7 +2246,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-materialized-kel"
     ]
@@ -2987,7 +2256,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-materialized-kel"
     ]
@@ -2997,7 +2266,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-materialized-kel"
     ]
@@ -3007,7 +2276,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-materialized-kel"
     ]
@@ -3017,7 +2286,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-materialized-kel"
     ]
@@ -3027,7 +2296,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-verification"
     ]
@@ -3037,7 +2306,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-verification"
     ]
@@ -3047,7 +2316,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-verification"
     ]
@@ -3057,7 +2326,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-verification"
     ]
@@ -3067,7 +2336,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-verification"
     ]
@@ -3077,7 +2346,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-primitives"
     ]
@@ -3087,7 +2356,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-primitives"
     ]
@@ -3097,7 +2366,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-primitives"
     ]
@@ -3107,7 +2376,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-primitives"
     ]
@@ -3117,7 +2386,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-primitives"
     ]
@@ -3127,7 +2396,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-primitives"
     ]
@@ -3137,7 +2406,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-primitives"
     ]
@@ -3147,7 +2416,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-client-responsibilities"
     ]
@@ -3157,7 +2426,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-client-responsibilities"
     ]
@@ -3167,7 +2436,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-client-responsibilities"
     ]
@@ -3180,7 +2449,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-lists"
     ]
@@ -3193,7 +2462,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-lists"
     ]
@@ -3206,7 +2475,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "profile": "heterodyne-social-mute-list-v1",
     "spec_refs": [
       "heterodyne:social/0.5.0#social-mute-profile"
@@ -3220,7 +2489,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-lists"
     ]
@@ -3233,7 +2502,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "profile": "heterodyne-social-mute-list-v1",
     "spec_refs": [
       "heterodyne:social/0.5.0#social-mute-profile"
@@ -3247,7 +2516,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-lists"
     ]
@@ -3260,7 +2529,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "profile": "heterodyne-social-mute-list-v1",
     "spec_refs": [
       "heterodyne:social/0.5.0#social-mute-profile"
@@ -3274,7 +2543,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "profile": "heterodyne-social-mute-list-v1",
     "spec_refs": [
       "heterodyne:social/0.5.0#social-mute-profile"
@@ -3287,7 +2556,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-authorship"
     ]
@@ -3299,7 +2568,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-agent-authorship"
     ]
@@ -3311,7 +2580,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-routing-generation"
     ]
@@ -3323,7 +2592,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-routing-generation"
     ]
@@ -3335,7 +2604,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-participation"
     ]
@@ -3347,7 +2616,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-directory"
     ]
@@ -3359,7 +2628,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-retention"
     ]
@@ -3371,7 +2640,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-rotation"
     ]
@@ -3383,7 +2652,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-directory"
     ]
@@ -3395,7 +2664,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-persona-inbox"
     ]
@@ -3407,7 +2676,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-exact-bytes"
     ]
@@ -3419,7 +2688,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-event-repository"
     ]
@@ -3431,7 +2700,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-exact-bytes"
     ]
@@ -3443,7 +2712,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-participation"
     ]
@@ -3455,7 +2724,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-persona-inbox"
     ]
@@ -3467,7 +2736,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-groups"
     ]
@@ -3479,7 +2748,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-persona-inbox"
     ]
@@ -3491,7 +2760,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-persona-inbox"
     ]
@@ -3503,7 +2772,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-rotation"
     ]
@@ -3515,7 +2784,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-rotation"
     ]
@@ -3527,7 +2796,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-rotation"
     ]
@@ -3539,7 +2808,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-relay"
     ]
@@ -3551,7 +2820,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-routing-generation"
     ]
@@ -3563,7 +2832,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-media"
     ]
@@ -3575,7 +2844,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-retention"
     ]
@@ -3587,7 +2856,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-routing-generation"
     ]
@@ -3599,7 +2868,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-routing-generation"
     ]
@@ -3611,7 +2880,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-groups"
     ]
@@ -3623,7 +2892,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-event-repository"
     ]
@@ -3635,7 +2904,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 4,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-marmot-event-repository"
     ]
@@ -3648,7 +2917,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-moderation"
     ]
@@ -3661,7 +2930,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-moderation"
     ]
@@ -3674,7 +2943,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-moderation"
     ]
@@ -3687,7 +2956,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-moderation"
     ]
@@ -3700,7 +2969,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-moderation"
     ]
@@ -3713,7 +2982,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-moderation"
     ]
@@ -3726,7 +2995,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-moderation"
     ]
@@ -3739,7 +3008,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-moderation"
     ]
@@ -3752,7 +3021,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-moderation"
     ]
@@ -3765,7 +3034,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-moderation"
     ]
@@ -3778,7 +3047,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-moderation"
     ]
@@ -3791,7 +3060,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-moderation"
     ]
@@ -3804,7 +3073,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-moderation"
     ]
@@ -3817,7 +3086,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-moderation"
     ]
@@ -3830,7 +3099,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-moderation"
     ]
@@ -3840,7 +3109,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-nid-delegation"
     ]
@@ -3850,7 +3119,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-nid-delegation"
     ]
@@ -3860,7 +3129,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-nid-delegation"
     ]
@@ -3870,7 +3139,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-nid-delegation"
     ]
@@ -3880,7 +3149,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-node-advertisement"
     ]
@@ -3890,7 +3159,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-node-advertisement"
     ]
@@ -3900,7 +3169,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-node-advertisement"
     ]
@@ -3910,7 +3179,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-node-advertisement"
     ]
@@ -3920,7 +3189,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-node-advertisement"
     ]
@@ -3932,7 +3201,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-oidc-authorization"
     ]
@@ -3944,7 +3213,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-oidc-authorization"
     ]
@@ -3956,7 +3225,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-oidc-endpoints"
     ]
@@ -3968,7 +3237,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-jwt-projection"
     ]
@@ -3980,7 +3249,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-jwt-projection"
     ]
@@ -3992,7 +3261,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-oidc-endpoints"
     ]
@@ -4004,7 +3273,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-jwt-projection"
     ]
@@ -4016,7 +3285,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-oidc-authorization"
     ]
@@ -4028,7 +3297,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-oidc-authorization"
     ]
@@ -4040,7 +3309,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-jwt-projection"
     ]
@@ -4052,7 +3321,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-jwt-projection"
     ]
@@ -4064,7 +3333,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-oidc-authorization"
     ]
@@ -4076,7 +3345,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-jwt-projection"
     ]
@@ -4088,7 +3357,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-org-authorization"
     ]
@@ -4098,7 +3367,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-threshold-authority"
     ]
@@ -4108,7 +3377,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-threshold-authority"
     ]
@@ -4118,7 +3387,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-threshold-authority"
     ]
@@ -4131,7 +3400,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-interactions"
     ]
@@ -4144,7 +3413,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-interactions"
     ]
@@ -4157,7 +3426,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-interactions"
     ]
@@ -4169,7 +3438,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-retrieval"
     ]
@@ -4181,7 +3450,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-retrieval"
     ]
@@ -4193,7 +3462,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-retrieval"
     ]
@@ -4205,7 +3474,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-privacy-tiers"
     ]
@@ -4217,7 +3486,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-privacy-tiers"
     ]
@@ -4229,7 +3498,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-privacy-tiers"
     ]
@@ -4241,7 +3510,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-privacy-tiers"
     ]
@@ -4253,7 +3522,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-privacy-tiers"
     ]
@@ -4265,7 +3534,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-privacy-tiers"
     ]
@@ -4277,7 +3546,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-privacy-tiers"
     ]
@@ -4289,7 +3558,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-privacy-tiers"
     ]
@@ -4301,7 +3570,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-privacy-tiers"
     ]
@@ -4313,7 +3582,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-privacy-tiers"
     ]
@@ -4325,7 +3594,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-privacy-tiers"
     ]
@@ -4337,7 +3606,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-privacy-tiers"
     ]
@@ -4349,7 +3618,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-privacy-tiers"
     ]
@@ -4361,35 +3630,9 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "profiles/comms-negotiation-kind31015",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 1,
-    "profile": "comms-subprotocol-negotiation-v1",
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-subprotocol-negotiation"
-    ]
-  },
-  {
-    "vector_id": "profiles/comms-payload-kind31016",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 1,
-    "profile": "comms-subprotocol-payload-v1",
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-subprotocol-negotiation"
     ]
   },
   {
@@ -4397,7 +3640,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "profile": "heterodyne-core-rotation-breadcrumb-profile-v1",
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-rotation"
@@ -4408,23 +3651,10 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "profile": "heterodyne-core-rotation-breadcrumb-note-v1",
     "spec_refs": [
       "heterodyne:core/0.5.0#core-kel-rotation"
-    ]
-  },
-  {
-    "vector_id": "profiles/dr-invite-response-kind1059",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 1,
-    "profile": "heterodyne-comms-double-ratchet-invite-response-v1",
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-dm-wire"
     ]
   },
   {
@@ -4435,7 +3665,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "profile": "heterodyne-social-org-feed-v1",
     "spec_refs": [
       "heterodyne:social/0.5.0#social-org-feed-profile"
@@ -4448,7 +3678,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-tier3-wrapped-content-kind-1-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-tier-three-profile"
@@ -4461,7 +3691,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-tier3-wrapped-content-kind-1063-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-tier-three-profile"
@@ -4474,7 +3704,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-tier3-wrapped-content-kind-16-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-tier-three-profile"
@@ -4487,7 +3717,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-tier3-wrapped-content-kind-30023-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-tier-three-profile"
@@ -4500,7 +3730,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-tier3-wrapped-content-kind-30402-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-tier-three-profile"
@@ -4513,7 +3743,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-tier3-wrapped-content-kind-6-v1",
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-tier-three-profile"
@@ -4526,7 +3756,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-launcher"
     ]
@@ -4538,7 +3768,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-reader-security"
     ]
@@ -4550,7 +3780,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-transition"
     ]
@@ -4562,7 +3792,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-launcher"
     ]
@@ -4574,7 +3804,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-launcher"
     ]
@@ -4586,7 +3816,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-launcher"
     ]
@@ -4598,7 +3828,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-launcher"
     ]
@@ -4610,7 +3840,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-transition"
     ]
@@ -4622,7 +3852,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-resolution"
     ]
@@ -4634,7 +3864,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-resolution"
     ]
@@ -4646,7 +3876,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-launcher"
     ]
@@ -4658,7 +3888,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-resolution"
     ]
@@ -4670,7 +3900,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-launcher"
     ]
@@ -4682,7 +3912,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-resolution"
     ]
@@ -4694,7 +3924,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-resolution"
     ]
@@ -4706,7 +3936,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-resolution"
     ]
@@ -4718,7 +3948,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-resolution"
     ]
@@ -4730,7 +3960,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-resolution"
     ]
@@ -4742,7 +3972,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-resolution"
     ]
@@ -4754,7 +3984,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-launcher"
     ]
@@ -4766,7 +3996,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-resolution"
     ]
@@ -4778,7 +4008,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-transition"
     ]
@@ -4790,7 +4020,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-public-resolution"
     ]
@@ -4800,7 +4030,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-registry"
     ]
@@ -4810,7 +4040,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-registry"
     ]
@@ -4822,7 +4052,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-publishing"
     ]
@@ -4834,7 +4064,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-publishing"
     ]
@@ -4846,7 +4076,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-publishing"
     ]
@@ -4856,7 +4086,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-nostr-relay-interop"
     ]
@@ -4866,7 +4096,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-nostr-relay-interop"
     ]
@@ -4876,7 +4106,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-nostr-relay-interop"
     ]
@@ -4886,7 +4116,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-nostr-relay-interop"
     ]
@@ -4896,7 +4126,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-repo-relay"
     ]
@@ -4906,7 +4136,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-repo-relay"
     ]
@@ -4916,7 +4146,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-repo-relay"
     ]
@@ -4926,7 +4156,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-node-roles"
     ]
@@ -4936,7 +4166,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-node-roles"
     ]
@@ -4946,7 +4176,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-node-roles"
     ]
@@ -4956,7 +4186,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-node-roles"
     ]
@@ -4966,7 +4196,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-node-roles"
     ]
@@ -4976,7 +4206,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-role-delegation"
     ]
@@ -4986,7 +4216,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-role-delegation"
     ]
@@ -4996,7 +4226,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 3,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-node-roles"
     ]
@@ -5006,7 +4236,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-node-roles"
     ]
@@ -5016,7 +4246,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-node-roles"
     ]
@@ -5026,79 +4256,9 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-node-roles"
-    ]
-  },
-  {
-    "vector_id": "session-device/key-proof-invalid",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-nid-delegation"
-    ]
-  },
-  {
-    "vector_id": "session-device/nid-fields-forbidden",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-nid-delegation"
-    ]
-  },
-  {
-    "vector_id": "session-device/owner-stamp-malformed",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-nid-delegation"
-    ]
-  },
-  {
-    "vector_id": "session-device/owner-stamp-missing",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-nid-delegation"
-    ]
-  },
-  {
-    "vector_id": "session-device/repository-final-gate-closed",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-nid-delegation"
-    ]
-  },
-  {
-    "vector_id": "session-device/reserved-shape-valid-but-gated",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-nid-delegation"
-    ]
-  },
-  {
-    "vector_id": "session-device/revoked-no-authority",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 3,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-nid-delegation"
     ]
   },
   {
@@ -5106,7 +4266,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-recovery"
     ]
@@ -5116,7 +4276,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-recovery"
     ]
@@ -5129,7 +4289,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-recovery-binding"
     ]
@@ -5142,42 +4302,9 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-recovery-binding"
-    ]
-  },
-  {
-    "vector_id": "stamping/control-carrier-comms-owner",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 1,
-    "profile": "comms-subprotocol-payload-v1",
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-version-stamps"
-    ]
-  },
-  {
-    "vector_id": "stamping/control-profile-retains-core-owner",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 1,
-    "profile": "heterodyne-control-session-device-v1",
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-version-stamps"
-    ]
-  },
-  {
-    "vector_id": "stamping/dr-outer-unstamped",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 1,
-    "profile": "heterodyne-comms-double-ratchet-message-v1",
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-version-stamps"
     ]
   },
   {
@@ -5185,7 +4312,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-version-stamps"
     ]
@@ -5195,7 +4322,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-version-stamps"
     ]
@@ -5205,7 +4332,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-version-stamps"
     ]
@@ -5215,7 +4342,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-version-stamps"
     ]
@@ -5225,7 +4352,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-version-stamps"
     ]
@@ -5235,7 +4362,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-version-stamps"
     ]
@@ -5245,7 +4372,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-version-stamps"
     ]
@@ -5255,7 +4382,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-version-stamps"
     ]
@@ -5265,7 +4392,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-version-stamps"
     ]
@@ -5275,7 +4402,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "profile": "heterodyne-core-rotation-breadcrumb-profile-v1",
     "spec_refs": [
       "heterodyne:core/0.5.0#core-version-stamps"
@@ -5286,7 +4413,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "profile": "heterodyne-comms-tier3-wrapped-content-kind-1-v1",
     "spec_refs": [
       "heterodyne:core/0.5.0#core-version-stamps"
@@ -5297,7 +4424,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "profile": "heterodyne-social-mute-list-v1",
     "spec_refs": [
       "heterodyne:core/0.5.0#core-version-stamps"
@@ -5308,7 +4435,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-version-stamps"
     ]
@@ -5320,7 +4447,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-issuer-continuity"
     ]
@@ -5332,7 +4459,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-token-status"
     ]
@@ -5344,7 +4471,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-token-status"
     ]
@@ -5356,7 +4483,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-issuer-continuity"
     ]
@@ -5368,7 +4495,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-token-status"
     ]
@@ -5380,7 +4507,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-token-status"
     ]
@@ -5392,7 +4519,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-token-status"
     ]
@@ -5404,7 +4531,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-token-status"
     ]
@@ -5416,7 +4543,7 @@
     "dependency_versions": {
       "core": "core/0.5.0"
     },
-    "registry_revision": 2,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:comms/0.5.0#comms-token-status"
     ]
@@ -5426,7 +4553,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-tor-reachability"
     ]
@@ -5436,7 +4563,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-tor-reachability"
     ]
@@ -5446,7 +4573,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-tor-reachability"
     ]
@@ -5456,7 +4583,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-tor-reachability"
     ]
@@ -5466,7 +4593,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-tor-reachability"
     ]
@@ -5476,7 +4603,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-verification"
     ]
@@ -5486,7 +4613,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-verification"
     ]
@@ -5496,7 +4623,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-verification"
     ]
@@ -5506,7 +4633,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-verification"
     ]
@@ -5516,7 +4643,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-versioning"
     ]
@@ -5526,7 +4653,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-versioning"
     ]
@@ -5536,7 +4663,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-versioning"
     ]
@@ -5546,7 +4673,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-versioning"
     ]
@@ -5556,7 +4683,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-versioning"
     ]
@@ -5566,7 +4693,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-versioning"
     ]
@@ -5576,7 +4703,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-versioning"
     ]
@@ -5586,7 +4713,7 @@
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:core/0.5.0#core-versioning"
     ]
@@ -5599,7 +4726,7 @@
       "core": "core/0.5.0",
       "comms": "comms/0.5.0"
     },
-    "registry_revision": 1,
+    "registry_revision": 5,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-discussion-rooms"
     ]

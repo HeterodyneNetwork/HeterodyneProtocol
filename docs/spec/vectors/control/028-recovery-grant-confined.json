@@ -1,0 +1,37 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 5,
+  "profile": "heterodyne-control-marmot-frame-v1",
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-radicle-recovery"
+  ],
+  "vector_id": "control/recovery-grant-confined",
+  "description": "Private Radicle recovery decision: recovery-grant-confined.",
+  "direction": "consume",
+  "input": {
+    "grant": {
+      "prospective_nid": "did:key:z6MkhProspective",
+      "repositories": [
+        "rad:z3abc"
+      ],
+      "direction": "fetch",
+      "byte_ceiling": 1000,
+      "expires_at": 2000
+    },
+    "nid": "did:key:z6MkhProspective",
+    "repository": "rad:z3other",
+    "direction": "fetch",
+    "bytes": 500,
+    "now": 1000
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-recovery-grant-invalid"
+  }
+}

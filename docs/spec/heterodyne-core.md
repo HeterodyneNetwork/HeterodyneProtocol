@@ -2,7 +2,7 @@
 
 Document ID: `core`<br>
 Version: `core/0.5.0`<br>
-Registry revision: `4`
+Registry revision: `5`
 
 Normative dependencies: None.
 
@@ -154,15 +154,15 @@ these exhaustive classes:
    marker. The Core breadcrumb profiles
    `heterodyne-core-rotation-breadcrumb-profile-v1` and
    `heterodyne-core-rotation-breadcrumb-note-v1`, with discriminators
-   `production-rule:adr-031-kind0-v1` and
-   `production-rule:adr-031-kind1-v1`, are non-stamping. Those discriminators
+   `production-rule:rotation-breadcrumb-kind0-v1` and
+   `production-rule:rotation-breadcrumb-kind1-v1`, are non-stamping. Those discriminators
    select trusted local producer rules only; they are not wire values, and a
    consumer MUST NOT infer either profile from relay bytes.
-5. Double-ratchet outer kinds `1059` and `1060` carry no Heterodyne marker.
-   An encrypted inner rumor carries only its Comms carrier stamp; it MUST NOT
-   duplicate a Core or Control stamp.
-6. Control never owns a wire stamp. A Control-profiled `kind:31001` retains the
-   Core base-schema stamp, and its non-stamping profile changes no bytes.
+5. Adopted Marmot transport kinds `444`, `445`, and `30443` carry no
+   Heterodyne marker. Their signed bytes remain upstream-owned.
+6. Control inner application `kind:31017` exists only inside Marmot MLS. Its
+   canonical JSON frame carries `control/0.5.0`; it has no outer Control stamp
+   and MUST NOT be interpreted as a standalone event.
 
 The unqualified stamp `0.4.0` denotes the archived monolith. Missing-stamp
 legacy inference is permitted only for a Heterodyne-allocated kind whose 0.4.0
@@ -203,8 +203,8 @@ event's `s` MUST equal `seq`. Applicability is:
 - an epoch-key-signed `31005` or `31010` MUST carry it, while a genuinely
   cold-root-signed instance MAY carry it;
 - ephemeral NIP-42 AUTH and a device-key-signed invite MAY carry it;
-- device-, session-, or ratchet-key wire events and non-stamping breadcrumb
-  profiles MUST NOT carry it.
+- device- or MLS-leaf wire events and non-stamping breadcrumb profiles MUST
+  NOT carry it.
 
 `['compromise_since', '<unix-seconds>']` occurs exactly once on a
 compromise-declaring rotation and MUST NOT occur on a routine rotation.
@@ -624,63 +624,51 @@ RECOMMENDED) by evaluating against `wall_clock - allowance`; an unbounded or
 implicit grace period is forbidden. Invalid, non-decimal, or expired values
 MUST deactivate the delegation.
 
-A light-only device MAY use a publishing-key delegation without an NID only
-through a registered higher-layer profile. It cannot sign Radicle refs, become
-a durable claim-ledger reader, or acquire NID authority.
+A light-only Control principal is not a Core device and MUST NOT use
+`kind:31001`. Its non-delegated Marmot account and private authorization are
+defined exclusively by Control. It cannot sign Radicle refs, become a durable
+claim-ledger reader, acquire NID authority, or publish for the persona.
 
-The registry reserves the non-stamping, inactive profile
-`heterodyne-control-session-device-v1` with discriminator
-`tags:heterodyne=delegation,binding_nonce,key_proof;radicle_nid=absent`. Its
-candidate event has empty content and exactly this ordered tag sequence:
+<a id="core-full-node-control"></a>
+#### 6.1.1 Full-node Control and recovery metadata
 
-```text
-["d", "pubkey:<64-lowercase-hex publishing key>"]
-["heterodyne", "delegation"]
-["publishing_key", "<same publishing key>"]
-["cold_root", "<64-lowercase-hex persona cold root>"]
-["valid_until", "<nonzero decimal Unix timestamp>"]
-["binding_nonce", "<64-lowercase-hex enrollment nonce>"]
-["kel_head", "<accepted KEL event id>", "<decimal sequence>"]
-["key_proof", "<128-lowercase-hex BIP-340 signature>"]
-["spec_version", "core/0.5.0"]
+A durable NID delegation MAY describe its authorized device as a full node in
+the persona's canonical public device metadata. The signed metadata binds the
+device delegation address and current `kel_head` and contains a closed
+`control` object with:
+
+```json
+{
+  "full_node": true,
+  "versions": ["control/0.5.0"],
+  "marmot_account": "<same authorized device Nostr pubkey>",
+  "keypackage_slots": ["<standard Marmot KeyPackage address>"],
+  "relay_metadata": ["<NIP-65/NIP-17 reference>"],
+  "reachability": ["outbound-tor", "onion-only"],
+  "recovery_features": [
+    "control.recovery.radicle.v1",
+    "control.recovery.epoch-inbox.v1",
+    "control.recovery.sftp.v1"
+  ],
+  "epoch_inbox_relays": ["wss://relay.example/"]
+}
 ```
 
-`radicle_nid`, `nid_proof`, duplicate tags, unknown tags, another order, an
-empty or expired `valid_until`, and a `d`/`publishing_key` mismatch are invalid
-for this candidate shape. The outer event MUST be signed by the current
-KERI-authoritative epoch key and its `kel_head` MUST resolve to that accepted
-state. Core remains the only base-schema and stamp owner.
+`marmot_account` MUST equal the delegated device `publishing_key`.
+`versions`, `keypackage_slots`, `relay_metadata`, `reachability`, and
+`recovery_features` are duplicate-free arrays. Unsupported members or feature
+identifiers invalidate the Control metadata, not the underlying device
+delegation. An implementation MUST NOT infer liveness, current invitation
+acceptance, recovery custody, or authorization from this advertisement.
 
-The device proof signs these exact UTF-8 bytes directly as the BIP-340 message,
-without an additional prehash:
-
-```text
-heterodyne-light-binding-v1|<cold-root-hex>|<publishing-key-hex>|session-device|<binding-nonce>
-```
-
-The verifier reconstructs those bytes only from the event tags and verifies
-the BIP-340 `key_proof` with `publishing_key`. Core treats `binding_nonce` as
-an opaque profile field and assigns it no challenge, token, or acceptance
-meaning. A registered higher layer defines and validates any such meaning;
-neither the nonce nor the device proof alone grants higher-layer authority.
-
-A structurally and cryptographically valid relay candidate is at most
-`provisional` under §6.2. Canonical repository reachability can make the
-delegation final, but finality still does not open its higher-layer profile.
-At registry revision 4 this profile remains `reserved-inactive`: a verifier
-MAY report structural validity for diagnostics, but MUST report
-`conformance_claimable = false`, MUST NOT grant higher-layer authority, and MUST NOT
-advertise, negotiate, require, or produce the profile as conforming. Only the
-complete Control activation gate can activate it; histories 1 through 3
-remain byte-identical and revision 4 does not open Control conformance.
-
-A canonically included replacement or revocation for the candidate address
-overrides relay copies and removes all prospective authority. Repository
-finality of an older candidate cannot survive that revocation, and a stale
-relay event cannot restore it.
+`epoch_inbox_relays` is permitted only when
+`control.recovery.epoch-inbox.v1` is advertised. It locates the locked epoch
+NIP-59 inbox for the new-full-node bootstrap defined by Control; it is not a
+general-purpose RPC endpoint. A device that does not advertise `full_node`
+MUST omit the entire Control object.
 
 <a id="core-role-delegation"></a>
-#### 6.1.1 Role-addressed delegation extension
+#### 6.1.2 Role-addressed delegation extension
 
 Core also permits a registered higher-layer profile to address a durable role
 at `kind:31001` without creating a Radicle NID. Such an extension MUST retain
@@ -706,7 +694,7 @@ Core assigns no automation, publication, moderation, or other application
 meaning to a role namespace.
 
 <a id="core-marmot-role-binding"></a>
-#### 6.1.2 KERI attribution of Marmot account roles
+#### 6.1.3 KERI attribution of Marmot account roles
 
 Comms registers three persona-scoped Marmot role classes over the
 role-addressed delegation extension:
@@ -1469,7 +1457,7 @@ membership declaration:
 supported network backend, and requires invalid signatures or delegations to
 be rejected rather than rendered with a warning. Disabling or bypassing Tor
 makes the strict profile unmet; it does not silently downgrade a strict claim.
-A claim MUST satisfy every listed invariant at registry revision 4 and every
+A claim MUST satisfy every listed invariant at registry revision 5 and every
 applicable strict vector.
 
 Higher-document strict profiles compose by naming prerequisite profile IDs and
@@ -1513,11 +1501,10 @@ IDs, strict-profile IDs, implementation role, and every dependency version.
 Core has no document dependencies. Protocol conformance and vector conformance
 are distinct claims.
 
-This document is pinned to registry revision 4 and its immutable digest.
-History revision 4, the current entry files, release manifests, and vector
-metadata MUST agree exactly. The presence of reserved Control or
-credential-continuity definitions in that revision does not activate their
-separately closed conformance gates.
+This document is pinned to registry revision 5 and its immutable digest.
+History revision 5, the current entry files, release manifests, and vector
+metadata MUST agree exactly. Optional Control recovery profiles remain
+independently claimable and do not alter baseline Core conformance.
 
 A conformance report MUST, for each strict-profile ID, list the profile's state,
 conformance class, prerequisite profile IDs, required invariant IDs, required

@@ -2,7 +2,7 @@
 
 Document ID: `comms`<br>
 Version: `comms/0.5.0`<br>
-Registry revision: `4`
+Registry revision: `5`
 
 Normative dependencies: `heterodyne:core/0.5.0#core-conformance`.
 
@@ -27,10 +27,10 @@ kebab-case. Generated heading IDs are not stable protocol references.
 Comms defines secure persona speech over the Core substrate: a Nostr-native
 event envelope, public/private/encrypted repository tiers, publishing and
 fan-out, generic feed ordering and location, Marmot conversations and media,
-Radicle-backed group storage and relays, Double Ratchet bootstrap and Control,
-credential-plane synchronization, an authenticated acceptance-policy hook,
-an encrypted generic subprotocol carrier, and a receive-only public-reader
-profile with a provider-independent fragment launcher.
+Radicle-backed group storage and relays, Marmot-carried Control integration,
+credential-plane synchronization, private Control authorization state, and a
+receive-only public-reader profile with a provider-independent fragment
+launcher.
 
 Comms does not define following as a social relationship, public feed
 presentation, moderation, personal lists, community policy, social-graph
@@ -74,8 +74,9 @@ Under `heterodyne:core/0.5.0#core-version-stamps`, Comms-allocated
 JSON-content kinds carry `"spec_version":"comms/0.5.0"`.
 Comms-allocated empty-content kinds carry
 `["spec_version","comms/0.5.0"]`. Adopted upstream events remain unstamped
-unless the pinned registry names a stamping profile. Double-ratchet outer
-events are the explicit exception described in §7.2.
+unless the pinned registry names a stamping profile. Marmot transport and
+unsigned inner application events remain governed by the pinned upstream
+profile and their registered Heterodyne application discriminator.
 
 <a id="comms-privacy-tiers"></a>
 ## 3. Repository privacy tiers
@@ -269,8 +270,8 @@ restore.
 
 The dedicated config audience key MUST NOT be distributed by published
 `kind:31011`; that would reveal the repository and audience. The repository
-MUST contain no nsec, epoch secret, NID secret, audience key, or ratchet state.
-Comms owns its encryption profile and audience/ratchet payload types; private
+MUST contain no nsec, epoch secret, NID secret, audience key, or MLS state.
+Comms owns its encryption profile and audience payload types; private
 social preferences and followed-repository payloads are outside Comms.
 The credential authorization ledger in §8.1 is an allowed Comms-owned non-key
 configuration payload.
@@ -516,8 +517,9 @@ error. If relay, repo, and explicitly advertised archive channels fail, the
 object is permanently lost to the network and SHOULD be shown as missing.
 
 Automated historical retrieval requests, responses, or pushes over any DM
-transport are forbidden. Double-ratchet history has no backfill. Comms defines
-no relay-style bulk-fetch service or mandatory archive service.
+transport are forbidden. Marmot history follows the group's declared
+retention and join-epoch rules. Comms defines no relay-style bulk-fetch service
+or mandatory archive service.
 
 The generic public outbox location is the verified `kind:31005` npub-to-RID
 pointer from `heterodyne:core/0.5.0#core-identity-pointer` plus the NIP-65
@@ -634,18 +636,18 @@ canonical Heterodyne publication.
 
 The static application starts with no identity or device key. At explicit user
 request it MAY, without reloading the application or creating a hosted server
-session, generate a disposable session-device key, locate a full-node invite
-on an accepted shared relay, establish a Comms DR session, and invoke the
-separately negotiated Control enrollment profile. The transition MUST NOT
-change the already verified public-reader identity or content results.
+session, generate a local non-delegated Control key, locate a full-node Marmot
+KeyPackage on accepted relays, establish a two-member group, and invoke the
+Control enrollment profile. The transition MUST NOT change already verified
+public-reader identity or content results.
 
-The session device receives no persona epoch secret, NID secret, audience key,
-repository-decryption key, credential-ledger key, or ratchet secret. Logout
-MUST attempt self-revocation when available, delete the local session-device
-key and ratchet state, clear private configuration and decrypted caches, and
-return to public-reader mode without a reload. Local deletion MUST proceed
-when revocation delivery fails; the bounded remote inactivity expiry remains
-the backstop.
+The Control principal receives no persona epoch secret, NID secret, audience
+key, repository-decryption key, credential-ledger key, device key, or MLS leaf
+belonging to another member. Logout MUST attempt self-revocation when
+available, delete the local Control key and group state, clear private
+configuration and decrypted caches, and return to public-reader mode without
+a reload. Local deletion MUST proceed when revocation delivery fails; short
+token expiry and the node's authorization-freshness policy are the backstop.
 
 <a id="comms-public-reader-security"></a>
 ### 6.5 Launcher and content security
@@ -665,7 +667,7 @@ independently installed client. Centrally hosted authenticated sessions SHOULD
 receive short-lived constrained grants by default.
 
 <a id="comms-marmot"></a>
-## 7. Marmot conversations and Double Ratchet bootstrap
+## 7. Marmot conversations and Control application carriage
 
 Comms adopts Marmot at exact commit
 `4ad4ae21479c3f3fa9950c6fc4556a76941a62e1` as the normative conversation
@@ -688,11 +690,10 @@ remains part of Marmot history. It loses verified Heterodyne attribution or
 authorization, but Heterodyne MUST NOT use KERI to select an MLS branch or
 alter convergence.
 
-Ordinary user-facing one-to-one conversations are two-member Marmot groups.
-Marmot also owns private group content, replies, reactions, attachments,
-edits, and group-scoped long-form messages. Double Ratchet is not a second
-user-facing chat system; §7.13 limits it to bootstrap, own-device Control RPC,
-agent RPC, credential synchronization, and token issuance.
+Ordinary user-facing one-to-one conversations and routine own-device Control
+channels are two-member Marmot groups. Marmot also owns private group content,
+replies, reactions, attachments, edits, group-scoped long-form messages, and
+the authenticated encrypted application carriage on which Control relies.
 
 <a id="comms-marmot-participation"></a>
 ### 7.1 Identity, leaf ownership, and client modes
@@ -1006,979 +1007,164 @@ same ciphertext. Heterodyne MUST NOT define a second group-media encryption
 format.
 
 <a id="comms-direct-messages"></a>
-### 7.13 Double Ratchet bootstrap and Control carrier
+### 7.13 Direct messages and pairwise Control groups
 
-<!-- Monolith provenance: §5.7 and §9.5. -->
+Person-to-person direct messages use standard two-member Marmot groups and
+ordinary Marmot application events. Heterodyne adds no competing DM cipher,
+invitation format, or outer event kind.
 
-Comms adopts nostr-double-ratchet version `0.0.138` only for point-to-point
-bootstrap, own-device Control RPC, agent RPC, credential synchronization, and
-token issuance. It provides forward secrecy and post-compromise security for
-those control-plane exchanges. It MUST NOT carry ordinary user conversation,
-group conversation, reactions, typing, receipts, or attachments.
+Routine light-client, human RPC, and agent RPC use ordinary two-member Marmot
+groups under `heterodyne:control/0.5.0#control-frame`. The full node uses its
+Core-authorized device account and a dedicated leaf; the light client uses its
+private non-delegated Control account and its own leaf. A standard Welcome and
+valid MLS membership authenticate transport identity but grant no application
+authority.
 
-<a id="comms-dm-wire"></a>
-The registry binds the existing non-stamping
-`heterodyne-comms-double-ratchet-invite-v1` (`kind:30078`),
-`heterodyne-comms-double-ratchet-invite-response-v1` (`kind:1059`), and
-`heterodyne-comms-double-ratchet-message-v1` (`kind:1060`) profiles. A Marmot Welcome that
-also uses an upstream Welcome kind is selected and validated by Marmot's
-profile; it MUST NOT be interpreted as a Double Ratchet response merely
-because the kind number overlaps.
+The registry profile `heterodyne-control-marmot-frame-v1` allocates unsigned
+inner application `kind:31017`. The event is valid only inside Marmot MLS. It
+has empty tags and JCS-canonical content conforming to the Control frame
+schema. Comms owns no competing negotiation carrier or outer envelope.
 
-Each delegated device publishes its own invite at
-`double-ratchet/invites/<device>`. The epoch enrollment endpoint remains the
-sole exception and uses exact `d = double-ratchet/invites/epoch`, the current
-KERI-authoritative epoch signer, and one valid `kel_head`. The receiver MUST
-reject a stale, superseded, tombstoned, off-KEL, wrong-signer, or malformed
-candidate and MUST bind the active invite event ID into the authenticated
-transcript and first Control request.
+A Tor-capable light client SHOULD use outbound Tor. A browser without Tor MAY
+use configured shared clearnet relays in visibly labeled reduced-assurance
+mode. Neither mode requires a direct client-to-node address.
 
-After acceptance, application traffic uses only mutually negotiated
-`kind:31015` and `kind:31016` inner-rumor carriers. A Tor-capable light client
-SHOULD use outbound Tor. A reduced-assurance browser MAY use a configured
-shared clearnet relay. Enrollment requires no direct client-to-node address.
-
-<a id="comms-dm-retention"></a>
-Double Ratchet responses and messages MUST NOT be committed to a repository.
-They have no backfill. Before plaintext reaches Control, a receiver MUST
-atomically advance and durably persist ratchet state and make the consumed
-message key cryptographically unavailable. Valid skipped keys remain
-separately bounded until used or expired. Lost state means unrecoverable
-history and MUST be surfaced. A revoked or expired peer delegation
-immediately stops its sessions without affecting another device.
-
-Neither the DR outer response nor message carries a Heterodyne version marker,
-`kel_head`, or persona identifier. Only the encrypted inner Comms carrier
-rumor carries `comms/0.5.0`.
+Control applies bounded Marmot retention. Raw Control events, tokens, device
+codes, MLS state, and replayable transcripts MUST NOT be committed to Radicle
+or portable backups. Loss of group state creates a new group; it never restores
+old application messages or authorization from transport state.
 
 <a id="comms-acceptance-hook"></a>
-## 8. Authenticated acceptance-policy hook
+## 8. Authenticated invitation and synchronization policy
 
-<!-- Monolith provenance: §5.7.4. -->
+Cryptographic validation always precedes local acceptance policy. A valid
+Marmot KeyPackage, Welcome, group membership, or application event never
+grants Control, claim-ledger, repository, or persona authority.
 
-All cryptographic checks MUST complete successfully before acceptance policy
-runs. Policy MUST NOT bypass, replace, reinterpret, or loosen signature,
-session, delegation, KEL, freshness, revocation, or context checks.
+For a proposed Control group the hook consumes the authenticated Marmot
+accounts and leaves, exact group identifier, KeyPackage slot, selected Control
+version, requested profile, node-local invitation setting, existing private
+entitlement state, and explicit user decision if any. It returns exactly
+`accept-enrollment-only`, `accept-authorized`, or `reject`.
 
-The hook has these closed inputs:
-
-- authenticated peer persona cold-root npub;
-- authenticated peer device publishing key and, except for the exact
-  `control-enrollment` carve-out below, its delegation identifier;
-- local recipient persona and target device NID, when one exists;
-- context: exactly `credential-sync`, `control-enrollment`,
-  `control-human-rpc`, or `control-agent-rpc`;
-- verified session identifier and transcript binding;
-- message/negotiated protocol identifier and requested features;
-- active-delegation, finality, and revocation result; and
-- for `control-enrollment`, the referenced epoch invite event id, current
-  active invite event id, invite signer/KEL result, and higher-profile gate
-  state; and
-- local prior-session state plus an explicit user decision, if any.
-
-It returns exactly `accept`, `hold-as-message-request`, or `reject` plus a
-local reason. `accept` permits interpretation and ordinary response behavior.
-`reject` ends processing without interpreting application payload.
-`hold-as-message-request` stores only the minimum encrypted local request
-state and MUST NOT emit a receipt, typing signal, delivery acknowledgement,
-automatic retry hint, or any other sender-observable signal until the user
-accepts.
-
-The Comms-native default is the mutually exclusive decision table below,
-applied only after cryptographic authentication succeeds. Here `delegated`
-means that a delegation identifier is present and has passed the applicable
-cryptographic checks; `undelegated` means that identifier is absent.
-
-| Context and authenticated state | Outcome |
-|---|---|
-| undelegated `credential-sync` initiator | `reject` |
-| delegated `credential-sync`, every §8.1 authoritative ledger and current-grant check passes | `accept` |
-| delegated `credential-sync`, authoritative current state cannot be established | `hold-as-message-request`; no transfer and no sender-observable signal |
-| identified `credential-sync` delegation that is invalid, revoked, expired, mismatched, or NID-less | `reject` |
-| authenticated delegated `control-human-rpc` or `control-agent-rpc`, higher profile gated | `hold-as-message-request`; no payload interpretation and no sender-visible signal |
-| authenticated `control-enrollment`, exact current epoch invite, undelegated initiator, higher profile gated | `hold-as-message-request`; no payload interpretation and no sender-visible signal |
-| `control-enrollment`, stale/tombstoned invite or failed signer/KEL/transcript binding | `reject` |
-| authenticated `control-enrollment`, exact current epoch invite, higher profile active but without a stricter composed-profile decision | `hold-as-message-request` |
-
-Cryptographically invalid input is rejected before the hook runs. A composed
-profile MAY tighten the table but MUST NOT turn a Comms rejection into another
-result or accept an unauthenticated input. A higher profile cannot run while
-its feature gate is closed; receiving a valid held request does not advertise
-or activate that profile.
-
-In this release `control-enrollment` is reserved for future Control
-composition and general Control conformance is closed. No current document
-combination can make the higher-profile gate true; that row is unreachable.
-A current conformer MAY authenticate and hold the request as specified, but
-MUST NOT interpret its Control payload, issue Control authority, reply as
-Control, or advertise Control conformance.
+`accept-enrollment-only` permits only the methods named by
+`heterodyne:control/0.5.0#control-invitation-policy` and emits no
+sender-observable authorization signal beyond ordinary Marmot delivery.
+`accept-authorized` requires an active, non-conflicted private entitlement
+for the authenticated client account. `reject` ends application processing
+without revealing whether another entitlement or private object exists.
 
 <a id="comms-credential-sync"></a>
-### 8.1 Credential-plane synchronization
-
-<!-- Monolith provenance: §3.8.7 self-DM path and §5.7.3. -->
-
-A fully delegated trusted device is a cryptographic class: it has an active,
-durable, NID-bearing Core `kind:31001` delegation and an explicit active
-credential-sync authorization. A NID-less session device MUST always reject
-credential-sync and MUST NOT receive a keys repository, audience key, NID
-secret, epoch secret, or ratchet state.
-
-Every credential-sync grant is bound to the target NID and credential-sync
-purpose, validated against the KEL, and revocable as defined below.
-
-The authorization record is canonical compact JSON:
-
-```json
-{
-  "type": "heterodyne.credential-sync.authorization.v1",
-  "authorization_id": "<32 lowercase hex characters>",
-  "persona": "<64 lowercase hex cold-root npub>",
-  "credential_ledger_generation": 0,
-  "target_nid": "<canonical Ed25519 did:key NID>",
-  "purpose": "credential-sync",
-  "issued_at": 0,
-  "valid_until": 9999999999,
-  "kel_head": {"event_id": "<KEL event id>", "seq": 0},
-  "action": "grant",
-  "signature": "<128 lowercase hex BIP-340 signature>"
-}
-```
-
-The signature covers SHA-256 of the UTF-8 bytes
-`heterodyne-credential-sync-authorization-v1|` followed by compact JSON of
-all members except `signature` in the displayed member order. The top-level
-member sequence is closed and exactly the displayed sequence. Encodings are:
-
-- `type` and `purpose` are the displayed literals;
-- `authorization_id` is exactly 16 random bytes encoded as 32 lowercase hex;
-- `persona` is exactly 32 bytes encoded as 64 lowercase hex;
-- `credential_ledger_generation` is the JSON-safe nonnegative generation of
-  that persona's credential ledger;
-- `target_nid` is the canonical `did:key` multibase encoding of an Ed25519
-  Radicle NID; decoding and re-encoding MUST reproduce the input byte-for-byte;
-- `issued_at`, `valid_until`, and `kel_head.seq` are JSON-safe nonnegative
-  integers from 0 through 9007199254740991 inclusive;
-- `kel_head` has exactly the ordered members `event_id`, `seq`, where
-  `event_id` is 32 bytes encoded as 64 lowercase hex;
-- `action` is exactly `grant` or `revoke`; and
-- `signature` is exactly 64 bytes encoded as 128 lowercase hex.
-
-A grant MUST have `valid_until > issued_at`. Its expiry is not an individual
-record-validity failure and is evaluated only by the operational resolver
-below. A revoke MUST use `valid_until` equal to `0`, the permanent sentinel. A
-revoke tombstone MUST NOT expire and MUST never be discarded because of
-`valid_until`. A missing, duplicate, unknown, misordered, or wrongly typed
-member at either object level MUST be rejected.
-
-A new grant MUST create an `authorization_id` not previously used for any
-grant in this persona. A revoke MUST reuse that grant's ID and target NID. A
-later grant MUST NOT reuse a previous or revoked ID; reauthorization requires
-a fresh random `authorization_id`. Exact duplicate bytes are idempotent, but
-records themselves are unique by their signed record digest/bytes, not by
-`authorization_id`. Thus a conforming ID history contains exactly one distinct
-grant record and zero or more distinct revoke records, all for the grant's
-target. A revoke with no matching grant, a target mismatch, or a second
-distinct grant makes that ID history invalid for credential transfer; those
-individually valid signed records remain retained for audit and continuity.
-
-For individual record eligibility, a verifier MUST validate the epoch
-signature, epoch authority at `issued_at`, and `kel_head`. Requiring the target
-to be the receiving device's own NID and requiring its currently active
-NID-bearing delegation are operational checks below, not filters on the
-canonical record set. Revoking or expiring the underlying Core delegation is
-an independent immediate authorization failure even before ledger convergence.
-
-**Durable authority.** The authoritative authorization ledger is a
-Comms-owned non-key record set inside the encrypted private config repository,
-where each record is identified by its signed bytes, as defined below.
-Epoch-signed grant and revoke records have authority only when reachable from
-the verified canonical config-repository state. A self-DM presents and
-transports a signed grant or revoke record, but a self-DM MUST NOT become an
-authorization authority.
-
-The complete canonical signed-record set is the union of all individually
-structurally, cryptographically, and KEL-valid authorization records reachable
-from the active `enc/<key_id>` config branch in canonical signed-ref state
-after a complete sync with every currently configured persona full node.
-Individual validity requires the closed schema and encodings above, a valid
-signature and persona/purpose binding, and an authoritative epoch key and
-`kel_head` at `issued_at`. It also requires `valid_until > issued_at` for a
-grant or the zero sentinel for a revoke. The set MUST include expired grants
-and every revoke tombstone. Current evaluation time and current delegation
-status MUST NOT remove an otherwise valid record from this set.
-
-A record on an unmerged device branch has no authority. Authorized writers
-MUST merge new records without deleting any record. If configured nodes expose
-unresolved candidate canonical heads, or any configured node is unreachable,
-the canonical record set cannot be established and credential sync is held.
-
-Canonical record identity and ordering are exact:
-
-```text
-canonical_signed_record_bytes(record) = UTF8(canonical_compact_json(record))
-record_digest(record) = lowercase-hex(SHA-256(canonical_signed_record_bytes(record)))
-action_rank("grant") = 0
-action_rank("revoke") = 1
-```
-
-Here `record` contains every member, including `signature`, in the displayed
-top-level order. Byte-identical duplicates collapse to one record. Two
-different byte strings with the same digest make canonical state invalid. Sort
-the distinct records ascending by this fully specified tuple:
-
-```text
-(decoded authorization_id bytes,
- UTF8(target_nid) bytes,
- issued_at as an integer,
- action_rank(action),
- decoded record_digest bytes)
-```
-
-All byte comparisons are unsigned lexicographic comparisons. The canonical
-digest input is the canonical compact JSON array of the ordered records'
-`record_digest` strings, with no whitespace:
-
-```text
-canonical_authorization_record_digests =
-  canonical_compact_json([record_digest(record_0), ..., record_digest(record_n)])
-predecessor_ledger_digest = lowercase-hex(
-  SHA-256(UTF8(canonical_authorization_record_digests))
-)
-```
-
-This complete canonical set and its digest are independent of authorization
-evaluation time: crossing a grant's `valid_until` MUST NOT change either one.
-
-**Operational resolution.** Credential-transfer authority is evaluated
-separately at an explicit evaluation time. The resolver first validates the
-authorization-ID history rules above, the target match, and the target's
-currently active NID-bearing delegation. An invalid history is rejected. If
-any revoke exists for a valid history, revocation is absorbing and the result
-is revoked regardless of issue or evaluation time; greatest `issued_at`
-selects the representative revoke and the lexicographically smallest decoded
-`record_digest` wins a tie. Otherwise the same ordering selects the
-representative grant. Only after choosing that representative does the
-resolver require `evaluation_time < valid_until`; an expired representative
-is rejected and an older grant is not substituted. These operational outcomes
-MUST NOT alter or filter the canonical signed-record set. An old grant replayed
-after a tombstone remains revoked.
-
-**Ledger continuity across config-key rotation.** Before a config audience-key
-/ `enc/<key_id>` rotation retires the predecessor branch, the new branch MUST
-atomically commit the complete canonical signed-record set: the exact signed
-record bytes and digests for every predecessor record, including expired
-grants and tombstones, plus metadata containing the old `key_id`,
-`predecessor_ledger_digest`, and the new record-set digest. The verifier MUST
-reconstruct the complete predecessor set, verify its digest, and verify that
-the successor set equals the predecessor set union only individually valid,
-signed authorization records included in the same atomic commit. No
-predecessor record may disappear. Only after that commit is canonical may one
-signed-ref transition publish the new branch and retire/delete the old branch.
-
-An implementation MUST refuse rotation and credential transfer if the complete
-predecessor signed-record set, predecessor digest continuity, successor-set
-equality, or atomic publication cannot be established. These rules instantiate
-Core's rollback-detection and atomic-rotation requirements for this profile.
-
-Before any credential transfer, the source MUST sync and verify canonical
-config-repository state from its configured persona full nodes, resolve any
-multi-writer heads under the repository's canonical-ref rules, replay the KEL,
-verify the active durable NID delegation, and apply revoke-wins resolution.
-If the current canonical state cannot be established because synchronization
-is incomplete, refs conflict, or key state is provisional, the hook MUST hold
-the request and transfer nothing. Invalid, revoked, expired, mismatched, or
-NID-less state MUST be rejected.
-
-Every device MUST re-evaluate the ledger after config-repository sync, so an
-offline device will discover a revocation before its next credential transfer.
-Credential transfer MUST stop if either authorization or delegation becomes
-provisional, expires, is revoked, or no longer matches the target NID.
-
-Only after the `credential-sync` hook returns `accept` may a self-DM transfer
-the encrypted keys repository and its integrity metadata. The receiving
-device MUST verify the presented record against the same current ledger state
-and MUST keep key material encrypted at rest. This permission does not
-authorize remote actions, configuration mutations, or application payloads.
-
-<a id="comms-credential-continuity-gate"></a>
-### 8.2 Gated credential-continuity definition
-
-Sections 8.3-8.10 define credential-continuity records so their closed schemas,
-state machines, and security boundary can be reviewed before the atomic
-registry change that activates them. They are **not** active Comms 0.5.0 wire
-profiles under selected registry revision 4. A current implementation
-MUST NOT advertise, negotiate, require, produce as authoritative, or claim
-conformance to any of these draft profiles. Schema-valid draft data grants no
-authority and MUST NOT change current credential state.
-
-Activation requires a future complete credential-continuity and recovery
-artifact batch. In particular, the batch MUST contain the two
-Core-owned offline-recovery schemas, the exhaustive owner-bound
-governed-decrypt source-profile catalog, every new allocation and diagnostic
-reason, the complete schema and validator graph, and explicit conformance
-evidence. An injected already-authenticated offline-recovery or source-profile
-projection is sufficient only for draft unit evaluation; it is not end-to-end
-conformance. Registry revision 4 retains these definitions as gated and
-non-claimable.
-
-The twenty draft Comms schema resources are:
-
-```text
-repository-retention-inventory-v1.schema.json
-governed-decrypt-key-binding-v1.schema.json
-historical-decrypt-obligation-v1.schema.json
-credential-ledger-checkpoint-v1.schema.json
-credential-ledger-checkpoint-receipt-v1.schema.json
-credential-ledger-removal-observation-v1.schema.json
-credential-ledger-candidate-abandonment-v1.schema.json
-credential-ledger-staging-ref-cleanup-v1.schema.json
-credential-ledger-config-key-bootstrap-recipient-array-v1.schema.json
-credential-ledger-emergency-reset-v1.schema.json
-credential-ledger-reset-recipient-array-v1.schema.json
-node-secret-source-v1.schema.json
-node-secret-exposure-v1.schema.json
-credential-ledger-secret-transition-v1.schema.json
-node-secret-transition-action-v1.schema.json
-double-ratchet-session-termination-v1.schema.json
-credential-ledger-lost-generation-path-v1.schema.json
-config-repository-git-structure-v1.schema.json
-double-ratchet-peer-tombstone-rumor-v1.schema.json
-double-ratchet-peer-tombstone-gift-wrap-v1.schema.json
-```
-
-Every object in those schemas is recursively closed. Every integer is a
-JSON-safe nonnegative integer unless a narrower range is stated. A 16-byte
-random identifier is exactly 32 lowercase hexadecimal characters; a
-32-byte identifier, digest, or public key is exactly 64; and a BIP-340
-signature is exactly 128. A typed Git object is exactly
-`{object_format:"sha1"|"sha256",oid}`, with a 40-lowercase-hex SHA-1 OID or
-64-lowercase-hex SHA-256 OID. JSON Schema structural success never substitutes
-for canonical decoding, signature, ancestry, replay, repository, or
-cross-record validation.
-
-<a id="comms-credential-checkpoints"></a>
-### 8.3 Credential checkpoint chain
-
-The draft `heterodyne.credential-ledger.checkpoint.v1` record contains exactly:
-
-```text
-type, persona, generation, sequence, previous_checkpoint,
-record_set_digest, node_roster, config_head, config_key_id,
-config_key_sha256, pairwise_secret_sha256, exposure_set_sha256,
-config_bootstrap_recipients_digest,
-governed_decrypt_key_bindings_sha256,
-historical_decrypt_obligations_sha256, secret_transition_digest,
-generation_transition, epoch_pubkey, kel_head, created_at, epoch_signature
-```
-
-`config_head` is the typed Git state immediately before the commit containing
-the checkpoint. Exactly three continuity forms are valid:
-
-- genesis is generation zero, sequence zero, with null predecessor and null
-  generation transition;
-- an ordinary successor keeps the generation, increments sequence by exactly
-  one, names the complete immediately prior checkpoint digest, and has null
-  generation transition; and
-- a reset successor increments generation by exactly one, uses sequence zero
-  and null predecessor, and names the exact independently valid staged reset
-  record that accepts atomically with it.
-
-Every other combination rejects. The roster is nonempty, canonical-NID
-sorted, unique, and every member has a current durable Core delegation. The
-checkpoint binds the complete canonical credential authorization set, config
-head/key, OIDC pairwise-secret commitment, conservative exposure set,
-activated repository-inventory frontier, governed bindings, complete
-historical-obligation frontier, applicable bootstrap/transition, and the
-current epoch/KEL state. A superseded epoch cannot backdate first acceptance.
-
-The draft receipt contains exactly
-`type, checkpoint_digest, node_nid, observed_at, signature`. Its Ed25519
-signature binds the exact candidate. Before signing, the node independently
-decrypts and replays the candidate, verifies every signed repository ref and
-scan cut, recomputes the authorization set, exposure set, `K(C)`, `G(C)`,
-`O(C)`, `F(C)`, pairwise and epoch singletons, and the three committed
-digests. Acceptance requires at least one valid receipt from every roster NID.
-Distinct valid duplicate receipts remain audit evidence but one NID counts
-once. Orphan, side-branch, out-of-roster, missing, or invalid receipts do not
-count.
-
-Any reachable authorization, source, assignment, retirement, transition
-action, repository inventory/ref/scan cut, binding, obligation, provenance,
-or governed-ciphertext mutation after the candidate basis and before complete
-receipts invalidates the candidate and requires reproposal. Revocations remain
-writable during the receipt window; they are never delayed to help a
-candidate accept.
-
-Every accepted checkpoint has exactly one operational `oauth-pairwise`
-`(secret_id,instance_commitment)` tuple equal to
-`pairwise_secret_sha256`. A holder may be added to that unchanged tuple, but a
-different tuple requires a transition that retires every predecessor and
-competing pairwise assignment and establishes exactly one successor. Exactly
-one operational `epoch` tuple likewise equals the current Core KEL
-`(epoch_pubkey,kel_head.event_id,kel_head.seq)` identity. Noncurrent epoch
-assignments remain conservative historical exposure and cannot manufacture a
-second current singleton.
-
-At most one nonidentical valid, unaccepted, and unabandoned successor of an
-accepted checkpoint may advance. Competing candidates stall credential-plane
-authority until one candidate accepts, one exact abandonment becomes
-canonical, or cold-root reset starts from the last common fully receipted
-checkpoint.
-
-<a id="comms-secret-inventory"></a>
-### 8.4 Secret sources and conservative exposure
-
-The draft source record contains exactly:
-
-```text
-type, persona, secret_class, secret_id, instance_commitment, holder_nid,
-commitment_kind, source_kind, artifact_refs, issued_at, epoch_pubkey,
-kel_head, epoch_signature
-```
-
-The closed secret classes are:
-
-```text
-cold-root, epoch, device-signing, agent-signing, core-protected,
-config-audience, tier3-audience, claim-ledger-audience, object-dek,
-double-ratchet, radicle-access, oauth-signing, oauth-pairwise,
-bearer-credential, ssh-client, ssh-host, recovery-wrap,
-onion-service-identity, tls-serving
-```
-
-`config-audience` alone uses its 16-byte/32-hex config-key ID. Every other
-class uses a fresh random 32-byte/64-hex instance ID. The instance commitment
-is:
-
-```text
-lowercase_hex(SHA256(
-  UTF8("heterodyne-node-secret-instance-v1") || 0x00 ||
-  exact_secret_bytes_or_class_selected_capability_JCS
-))
-```
-
-It is not a bare hash. `commitment_kind` is `secret-bytes` or
-`capability-jcs`; the class selects the permitted exact representation.
-Canonical-artifact sources have a nonempty sorted artifact-reference set.
-Only explicitly local protected-state classes may omit it.
-
-The append-only exposure record contains exactly:
-
-```text
-type, persona, assignment_id, action, holder_nid, secret_class,
-secret_id, secret_commitment, source_profile, source_record_digest,
-transition_id, supersedes, issued_at, authority, signature
-```
-
-`assign` names one exact source companion with equal persona, holder, class,
-ID, and commitment. Ordinary assignments have null transition and supersedes.
-Staged assignments name their transition and enter the conservative set
-immediately even though they grant no operational authority. `retire` repeats
-the complete assigned tuple, names the exact governing accepted transition,
-and supersedes the exact assignment digest. Pending retirement removes
-nothing; accepted retirement is absorbing.
-
-Exact duplicate bytes are idempotent. Nonidentical valid variants for one
-assignment ID remain visible, quarantine operational use of that ID, and are
-all included in conservative replay. Arrival time and digest order never
-select a winner. The exposure-set projection groups every unretired actual
-assignment by exact secret tuple and includes complete sorted holder and
-assignment-digest arrays. Pre-unseal intent origins remain separately tagged
-origins and never become invented assignment records.
-
-<a id="comms-retention-inventory"></a>
-### 8.5 Repository inventory, governed bindings, and obligations
-
-The signed draft repository-retention inventory contains exactly:
-
-```text
-type, persona, inventory_sequence, previous_records,
-basis_checkpoint_digest, target_generation, target_sequence,
-repository_refs, issued_at, epoch_pubkey, kel_head, epoch_signature
-```
-
-Genesis is sequence zero with no parents, null basis, and target `(0,0)`.
-A successor increments the maximum parent sequence and names the complete
-maximal valid parent frontier as sorted unique
-`{inventory_sequence,record_digest}` rows. Ordinary succession has one parent;
-emergency succession names every competing maximum. A record activates only
-at its exact target checkpoint and remains effective through descendants.
-
-Each repository row contains exactly
-`repository_ref_id, repository_class, repository_rid, ref_name,
-object_format, retired, scan_head`. Its deterministic ID is
-domain-separated JCS SHA-256 over the semantic class/RID/ref/format identity.
-Active cuts remain equal or advance to descendants. Ordinary retirement is
-absorbing. Branch absence is not deletion.
-
-The sole ordinary deregistration occurs when one config-key transition
-atomically removes the exact old active `refs/heads/enc/<old-id>` row, adds
-one fully scanned `refs/heads/enc/<new-id>` row, proves complete re-encryption
-from closure basis `B`, and deletes the old signed ref in the same acceptance
-CAS. No other ordinary row may disappear. Emergency reset first unions every
-maximal-parent semantic row, then may subtract only complete `V_old` for that
-same config identity while preserving every other branch-only row. Conflicting
-variants outside `V_old` converge only through the exact emergency `H*`
-construction.
-
-A source profile that marks retained ciphertext as a decrypt dependency
-either embeds its exact secret tuple or uses one draft governed binding:
-
-```text
-type, persona, binding_id, retained_ciphertext, secret_class, secret_id,
-instance_commitment, issued_at, authority, signature
-```
-
-The binding ID is domain-separated JCS SHA-256 of the exact retained locator
-under `heterodyne-governed-decrypt-key-binding-id-v1`. Path ID, signed-record
-digest, selected authority, KEL ancestry, and compromise cutoff all bind.
-Nonidentical otherwise-valid variants for one `(persona,binding_id)` quarantine
-the dependency; missing, extra, owner-mismatched, or unenumerated bindings
-reject.
-
-For candidate `C`, `K(C)` contains exactly the activated maximal
-repository-inventory records and ancestor graph, the sorted owner/RID/ref/head
-projection produced by the exhaustive source-profile table, and the complete
-sorted binding frontier including conflicts. Inventory-frontier or scan-cut
-drift with an unchanged digest rejects.
-
-Retained ciphertext that still needs a retired secret is canonical credential
-state. Its obligation lineage contains exactly:
-
-```text
-type, persona, obligation_id, lineage_sequence, previous_record, action,
-secret_class, secret_id, instance_commitment, retained_ciphertexts,
-retired_provenance_lineages, transition_id, issued_at, authority, signature
-```
-
-A root is sequence zero, has null predecessor, uses `retain`, and has at least
-one exact typed-Git locator. Each successor increments one and names the
-complete prior signed digest. `close` has no locators, repeats the identity,
-and is absorbing; later retention uses a fresh obligation ID. Provenance is
-monotonic and adds exactly transition-effective assignment retirements.
-
-At checkpoint `C`, validators derive governed dependencies `G(C)` only from
-authenticated ciphertext/pointer profiles and bindings. They independently
-derive `O(C)` from unique active `retain` maxima and require exact
-`G(C) = O(C)`. Every dependency row has exactly one obligation coverage;
-duplicate coverage rejects. A close is valid only after every prior row is
-absent from independently derived `G(C)`. `F(C)` commits every branch maximum,
-including active retain, close, and competing heads. Forks reject ordinary
-acceptance but remain committed audit evidence for reset.
-
-Logical signing dependency is:
-
-```text
-accepted predecessor -> artifact A -> optional binding K ->
-repository inventory R -> obligation O -> transition T ->
-checkpoint C -> receipts
-```
-
-This is not Git tree lexical order. No proof may name a future dependent
-record or the carrier commit OID that contains it.
-
-<a id="comms-secret-transitions"></a>
-### 8.6 Secret transitions and candidate lifecycle
-
-One closed transition record supports exactly
-`routine-key-rotation`, `routine-addition`, `routine-removal`, and
-`emergency-reset`. Its top-level members are:
-
-```text
-type, transition_id, persona, mode, prior_checkpoint, added_nids,
-removed_nids, target, inventory_basis, result_basis, exposures, outcomes,
-created_at, authority, signature
-```
-
-Routine modes start from the current fully receipted checkpoint and increment
-sequence by one. Key rotation preserves the roster and rotates at least the
-config audience key. Addition adds only the exact new NID set and rotates the
-config key and OIDC pairwise secret before admission. Removal removes only the
-exact available NID set and rotates config, pairwise, and every capability
-exposed to a removed holder. An unavailable old-roster node cannot complete
-routine removal and requires emergency reset.
-
-Every removed NID signs exactly one removal observation binding the transition,
-candidate checkpoint, old ref, staged ref/head, and its exclusion from the
-new roster/bootstrap. The narrow predecessor-delegation exception authorizes
-only that acknowledgement. It cannot sign a receipt, grant, publication, or
-later act.
-
-The transition processes the union of mode-mandatory tuples and the complete
-cleanup set: target-excluded holders, unaccepted staged assignments,
-competing assignments, and unreconciled offline origins. Each exposure has
-one class-selected action and disposition. The action repeats the complete
-actual-assignment and intent-origin set, exact holder partition, one-to-one
-retirements, successor assignments, historical-decrypt overlay, proof
-artifacts, and the transition-selected authority. Missing or extra actions,
-origins, retirements, successors, or proofs reject.
-
-Changing `epoch`, `core-protected`, `recovery-wrap`, or recovery authority and
-every emergency reset requires cold-root transition authority. Other routine
-actions use the current epoch. Every action, retirement, DR termination, and
-transition uses the same selected authority. Cold-root exposure is terminal
-`persona-migration-required`; it never becomes an acceptable same-persona
-transition merely because the cold root signs it.
-
-Candidate receipt append, acceptance, abandonment, and reset form one
-exact-tip compare-and-swap state machine. A successful append preserves every
-reachable byte, adds a nonempty set of previously absent valid records, and
-advances the exact candidate tip. A losing concurrent writer retries the same
-bytes against the new tip. Delete, replacement, unrelated write, merge,
-or stale-tip operation rejects. Once acceptance, canonical abandonment, or
-reset wins, every competing terminal action and later append fails.
-
-The epoch-signed abandonment record binds the exact predecessor/candidate,
-transition, refs and tips, complete reachable partial receipt/observation set,
-verifier-derived new exposure records, candidate `K(C)` digest, candidate
-obligation-frontier digest, abandonment basis, current epoch/KEL, and time.
-It is absorbing. A same-key abandonment has no inert staging ref: later
-cleanup operates on its mandatory exposure delta in the active audit chain.
-
-A distinct inert config-key staging ref may be deleted only by a signed
-staging-cleanup record after canonical abandonment/reset and a later accepted
-transition terminally accounts for every staged assignment. Cleanup commits
-the complete raw Git object closure, opaque audit copies, the closed safe
-control-record allowlist, inherited accepted cleanup evidence, assignment
-partition, adopted safe current-epoch subset, and exact retirements. Arbitrary
-candidate plaintext, secrets, tokens, and bare plaintext hashes are never
-promoted. One exact multi-ref CAS advances the active ref and deletes only the
-still-identical staging ref; key erasure follows success.
-
-<a id="comms-emergency-reset"></a>
-### 8.7 Emergency reset and offline evidence
-
-Emergency reset starts generation `prior_generation + 1` at sequence zero
-from the last common fully receipted checkpoint. It binds the exact old/new
-rosters, unavailable nodes, fresh epoch/config/pairwise identities,
-compromise cutoff, complete retention/binding/obligation state, secret
-transition, offline intent/activation inventories and collision projections,
-bootstrap recipients, and cold-root signature.
-
-The only draft reset wire reasons are
-`credential_ledger_reset_node_loss` and
-`credential_ledger_reset_offline_activation_id_collision`. Node loss has a
-nonempty unavailable set exactly equal to `old_roster - new_roster` and takes
-precedence when both conditions exist. Collision-only reset has no unavailable
-or removed NID, preserves every old-roster member, and includes at least one
-complete active intent- or activation-collision projection. Both paths rotate
-epoch, config, and pairwise state and require every target-roster receipt.
-
-Offline intent and activation are Core-owned recovery records. Intent becomes
-durable before authority unseal and is authorized by an independently
-available cold root. The archive being opened cannot first reveal the signer
-that authorizes its own unseal. Intent templates bind every future source and
-assignment byte except the explicitly deferred signatures/link digest.
-Activation completes those templates exactly, embeds the complete provisional
-record set, and retains its linked intent digest. Exact duplicates are
-idempotent; nonidentical variants for one activation ID are conservative
-collision evidence with no arrival-order winner.
-
-Until a future registry revision supplies and activates the exact Core recovery
-schemas, draft evaluation may consume only an injected authenticated
-projection of these records. It MUST report the dependency as unavailable
-rather than accept a partial or self-authorizing offline restore.
-
-Emergency inventory `K(I)` unions every named config/source/staging/recovered
-branch, same-key candidate, inventory/binding conflict, obligation branch, and
-offline variant. Config `H*` contains every distinct variant head as a direct
-parent in decoded-OID order and no other parent. `L(S)` enumerates every
-physical marked locator; `Bound_I` contains embedded tuples and every valid
-binding variant; `D(S)` pairs them; `Current_I` requires unanimous complete
-agreement; and `U(S)` contains every noncurrent pair. Actions give every
-locator one terminal disposition. Only independently authenticated result
-profiles produce `ResultPairs(H*)`; post-action `Current_B` determines which
-noncurrent result pairs require fresh obligations. Candidate selection,
-omitted bytes, old-locator reuse, incomplete parents/scans/dispositions, or
-lost `G(B)=O(B)` closure rejects.
-
-Conflicting noncredential paths are preserved as unsigned
-`heterodyne.credential-ledger.lost-generation-path.v1` indexes plus exact
-candidate-key-encrypted object variants. The unsigned index grants no
-authority and is safe-copy eligible only when its exact bytes, path, variants,
-and digests are bound by the otherwise-valid signed reset/transition/checkpoint
-closure.
-
-<a id="comms-config-git-structure"></a>
-### 8.8 Canonical config Git and recipient arrays
-
-Every candidate commit/tree passes the draft
-`comms.config-repository-git-structure.v1` structural and semantic validator.
-The authenticated projection is the closed object:
-
-```text
-{type, object_format, commit_oid, commit_raw_base64url, tree_objects}
-```
-
-`type` is `heterodyne.config-repository-git-structure.v1`; raw values are
-canonical unpadded base64url. Each decoded-OID-sorted unique tree row contains
-exactly `{oid,raw_base64url}`. The validator decodes/re-encodes
-byte-identically, recomputes every SHA-1 or SHA-256 Git object ID, parses the
-commit and complete reachable tree set, and rejects missing, extra/unreachable,
-or malformed tree objects.
-
-An ordinary commit has exactly one tree header, zero or one
-state-machine-permitted parent, fixed protocol author and committer with
-timestamp `0 +0000`, no optional or continuation headers, and message
-`heterodyne-config-v1\n`. The sole merge form is emergency config-class `H*`,
-whose one-or-more unique direct parents are decoded-OID sorted and whose
-message is `heterodyne-config-retention-resolution-v1\n`. `H*` is valid only
-with the complete cold-root inventory/reset predicates in §8.7. Trees use only
-`100644` blobs and `40000` subtrees in canonical Git order.
-
-Paths are either a closed protocol template made entirely of
-schema-classified public identifiers or:
-
-```text
-config-data/<path-token>.bin
-path-token = lowercase_hex(HMAC-SHA256(
-  HKDF-SHA256(
-    IKM=config_audience_key,
-    salt=32 zero bytes,
-    info=UTF8("heterodyne-config-path-index-key-v1"),
-    L=32
-  ),
-  UTF8("heterodyne-config-logical-path-v1") || 0x00 ||
-  UTF8(NFC(normalized_logical_path))
-))
-```
-
-User labels, filenames, hostnames, and other free text remain inside encrypted
-blobs and never appear in Git paths.
-
-Genesis and ordinary config-key changes deliver the new key through the closed
-ordinary recipient array; reset uses the distinct cold-root-bound reset array.
-Each has exactly one NID-sorted entry for every candidate-roster member and no
-other entry. A row binds the active delegation, canonical NID proof, one-use
-X25519 key, exact RFC 9180 base-mode
-X25519/HKDF-SHA256/AES-256-GCM context, and ciphertext. Decrypted plaintext
-repeats persona/generation/checkpoint or reset/key identity and exact audience
-key commitment. Possession permits candidate inspection and receipt only.
-Operational authority remains held until atomic acceptance; the one-use
-private key is erased only after durable candidate state and successful
-receipt.
-
-<a id="comms-dr-terminalization"></a>
-### 8.9 Double Ratchet terminalization
-
-An affected DR capability uses the closed
-`heterodyne.double-ratchet-session-termination.v1` record. It binds the
-transition, old session, both personas/NIDs/delivery keys/delegations,
-complete source assignments, removed/retained holder partition, scoped NID
-revocations, retained-holder receipts, successor sessions, peer tombstone,
-complete NIP-59 delivery event, selected authority, and signature.
-
-Persona-side invalidation occurs locally and atomically at transition
-acceptance. The peer tombstone is constructed before acceptance and broadcast
-immediately afterward. Its authenticated kind-1061 rumor is epoch-signed and
-binds the point-in-time KEL head. The reason is
-`persona_node_removed` only when an old holder is in the transition's actual
-removed-NID set; every other candidate-material cleanup uses
-`candidate_material_retired`.
-
-The rumor is sealed in an exact NIP-44-v2 kind-13 event signed by that epoch,
-then gift-wrapped by a fresh one-time key as kind 1059. The kind-13 empty-tag
-shape is the sole narrow epoch-event `kel_head`-tag exception required by
-NIP-59. A consumer parses and recomputes every exact raw NIP-01 event, unwraps
-the complete carrier, validates recipient/session/delegation/KEL/transition,
-deduplicates by persona/session/transition, and rejects all later old-session
-traffic after first valid observation. A peer acknowledgement is audit
-evidence but cannot block local invalidation.
-
-<a id="comms-credential-generation"></a>
-### 8.10 Persona and generation propagation
-
-Every credential-sync authorization, authorization key claim, claim-ledger
-authority record, built-in issuer record, workload authorization,
-Authorization Code/PKCE and Device Authorization transaction, OIDC issuance
-and signing-key record, ID/access/assertion token, Status List Token, and mint
-authority binds the exact credential-ledger persona and
-`credential_ledger_generation`. Where an existing closed record already has
-an authoritative persona member, such as credential-sync `persona`, a
-claim-ledger record's `persona`, or an issuer envelope's `persona`, that member
-is the credential-ledger persona binding; projected transactions and tokens
-use the explicit `credential_ledger_persona` member. An authorization key
-claim uses both explicit members. A descriptive key claim carries both
-members as JSON `null` because it grants no ledger-scoped authority. Current
-pre-release records use generation zero. A missing generation is never
-inferred as zero.
-
-The issuer typed key MUST resolve through Core/KEL authority to the same
-credential-ledger persona. Consumers compare the bound persona and generation
-with the current fully receipted checkpoint before operational use. Reset
-purges prior-generation pending transactions and mint authority, rotates
-issuer authority, publishes status/revocation state, and requires reissuance.
-A prior-generation record remains audit evidence but grants no authority.
-
-The future credential-continuity diagnostic precedence is:
-
-```text
-missing generation
-before recognizable empty roster
-before general schema/cryptographic validation;
-then persona mismatch
-before stale/wrong generation
-before stale KEL
-before checkpoint invalid
-before reset invalid
-```
-
-A present wrong-typed generation, non-array roster, or otherwise unrecognized
-shape retains the generic schema/cryptographic result. These diagnostic names
-remain local draft results under registry revision 4 and MUST NOT appear as
-current registered reason codes or profile-bound reject vectors.
-
-The claim-ledger payload and record identifiers use:
-
-```text
-payload_digest =
-  lowercase_hex(SHA256(
-    UTF8("heterodyne-claim-ledger-payload-v1") || 0x00 ||
-    UTF8(JCS(payload))
-  ))
-
-record_id =
-  lowercase_hex(SHA256(
-    UTF8("heterodyne-claim-ledger-record-id-v1") || 0x00 ||
-    UTF8(JCS(complete signed record with record_id omitted))
-  ))
-```
-
-Undomained current-pre-release identifiers are invalid and are regenerated in
-place before release.
-
-<a id="comms-subprotocol-negotiation"></a>
-## 9. Encrypted subprotocol negotiation and carrier
-
-<!-- No monolith wire existed for this carrier. -->
-
-Generic subprotocol traffic is carried only as encrypted inner rumors in an
-accepted DR session. Each carrier is a complete unsigned Nostr rumor with
-exactly these outer members in this order: `id`, `pubkey`, `created_at`,
-`kind`, `tags`, `content`. It MUST NOT include `sig` or any additional member.
-`pubkey` is the session-authenticated sending device's publishing key;
-`created_at` is an integer Unix timestamp; `tags` is an array and MUST contain
-exactly one `["p","<recipient device publishing key>"]` tag.
-
-`content` MUST be a JSON string whose decoded bytes are the canonical compact
-JSON frame defined below; object-valued `content` MUST be rejected. To produce
-and validate `id`, serialize `[0,pubkey,created_at,kind,tags,content]` by
-NIP-01 using the content *string*, hash that NIP-01 serialization with SHA-256,
-and require the lowercase digest to equal `id`. Authenticity comes from the
-accepted encrypted DR session and transcript, not a rumor signature.
-
-A negotiation frame MUST be processed before any payload for that protocol is
-interpreted. The complete kind `31015` unsigned Nostr rumor form is:
-
-```json
-{
-  "id": "<SHA-256 of the NIP-01 serialization>",
-  "pubkey": "<sender device publishing key>",
-  "created_at": 0,
-  "kind": 31015,
-  "tags": [["p", "<recipient device publishing key>"]],
-  "content": "{\"spec_version\":\"comms/0.5.0\",\"protocol_type\":\"negotiation\",\"phase\":\"offer\",\"negotiation_id\":\"<32 lowercase hex>\",\"protocol_id\":\"<stable protocol id>\",\"supported_versions\":[\"<qualified or profile version>\"],\"required_features\":[\"<feature id>\"]}"
-}
-```
-
-This is registry profile `comms-subprotocol-negotiation-v1`, discriminator
-`content.protocol_type=negotiation`, evaluated after decoding the string.
-Negotiation is an authenticated initiator/responder exchange over kind `31015`
-with three phases: offer, selection, and confirmation. Every phase uses a
-fresh rumor id, the same 16-byte lowercase-hex `negotiation_id`, and the same
-accepted DR session.
-
-1. **Offer.** The initiator sends the exact decoded member sequence shown in
-   the example: `spec_version`, `protocol_type`, `phase`, `negotiation_id`,
-   `protocol_id`, `supported_versions`, `required_features`. `phase` is
-   `offer`; the arrays contain unique non-empty strings. Initiator offer order
-   is normative preference from most to least preferred version.
-2. **Selection.** The responder validates the offer and selects the first
-   offered exact version it supports while also supporting all
-   `required_features`; it MUST NOT reorder preference, choose an unoffered
-   version, or remove a required feature. Its decoded sequence is exactly
-   `spec_version`, `protocol_type`, `phase`, `negotiation_id`, `protocol_id`,
-   `selected_version`, `required_features`, `offer_hash`, where `phase` is
-   `selection` and `offer_hash` is defined below. No match rejects the
-   negotiation without a selection.
-3. **Initiator confirmation.** The initiator validates the selected exact
-   tuple and hashes, then sends exactly `spec_version`, `protocol_type`,
-   `phase`, `role`, `negotiation_id`, `protocol_id`, `selected_version`,
-   `required_features`, `offer_hash`, `selection_hash`, `tuple_hash`, with
-   `phase=confirmation` and `role=initiator`.
-4. **Responder confirmation.** After processing the initiator confirmation,
-   the responder echoes the same tuple and hashes in that exact schema with
-   `role=responder` and appends `initiator_confirmation_hash`. The initiator
-   processes and validates this responder confirmation.
-
-All phase strings are non-empty UTF-8, `negotiation_id` is 16 bytes encoded as
-32 lowercase hex, every hash is 32 bytes encoded as 64 lowercase hex, and the
-selection/confirmation `required_features` array MUST be byte-identical to the
-offer's canonical array. Missing, duplicate, unknown, misordered, or wrongly
-typed phase members MUST be rejected.
-
-The transcript hashes are lowercase SHA-256 hex:
-
-```text
-offer_hash = H("heterodyne-comms-offer-v1" || session_id || offer_rumor.id)
-selection_hash = H("heterodyne-comms-selection-v1" || offer_hash || selection_rumor.id)
-tuple_hash = H("heterodyne-comms-tuple-v1" || canonical_compact_json(
-  [protocol_id, selected_version, required_features]))
-initiator_confirmation_hash = H("heterodyne-comms-confirmation-v1" ||
-  selection_hash || initiator_confirmation_rumor.id)
-responder_confirmation_hash = H("heterodyne-comms-responder-confirmation-v1" ||
-  initiator_confirmation_hash || responder_confirmation_rumor.id)
-```
-
-`H` is SHA-256. Each hash input uses UTF-8 and the displayed ASCII `||` is
-concatenation, not data. A phase with a wrong role, order, tuple, session,
-prior hash, or member set MUST reject and erase the pending negotiation state.
-A duplicate phase is idempotent only when its rumor id and canonical content
-are identical.
-
-Both peers MUST NOT accept a `kind:31016` payload until both have processed a
-confirmation: the responder processes the initiator confirmation before
-sending its confirmation, and the initiator processes the responder
-confirmation before sending or accepting payload. Every payload binds
-`responder_confirmation_hash`; this proves to the responder that an initiating
-sender processed the responder confirmation and prevents reordering a payload
-ahead of mutual confirmation. A receiver that has not processed the matching
-confirmation MUST reject the payload without interpretation. The chosen
-protocol id, version, required features, all five hashes, session id, peer
-identity, and rumor ids MUST be retained in encrypted local audit records for
-at least as long as any payload decision derived from them.
-
-After agreement, payload uses `kind:31016`, registry profile
-`comms-subprotocol-payload-v1`, discriminator
-`content.protocol_type=payload`:
-
-```json
-{
-  "id": "<SHA-256 of the NIP-01 serialization>",
-  "pubkey": "<sender device publishing key>",
-  "created_at": 0,
-  "kind": 31016,
-  "tags": [["p", "<recipient device publishing key>"]],
-  "content": "{\"spec_version\":\"comms/0.5.0\",\"protocol_type\":\"payload\",\"negotiation_id\":\"<32 lowercase hex>\",\"protocol_id\":\"<negotiated id>\",\"protocol_version\":\"<negotiated version>\",\"responder_confirmation_hash\":\"<64 lowercase hex>\",\"payload\":{}}"
-}
-```
-
-The decoded payload frame MUST have exactly these members in the displayed
-order: string `spec_version` equal to `comms/0.5.0`, string `protocol_type`
-equal to `payload`, `negotiation_id`, non-empty string `protocol_id`, non-empty
-string `protocol_version`, `responder_confirmation_hash`, and JSON value
-`payload`. The id and hash encodings are those defined above and MUST match the
-locally confirmed tuple. For both rumor kinds, a missing,
-duplicate, unknown, misordered, or wrongly typed outer or decoded member MUST
-be rejected before application processing. A mismatch, payload before
-negotiation, unnegotiated feature, or transcript change MUST also be rejected
-before payload interpretation.
-
-Comms owns both carrier kinds. The Comms stamp is inside the canonical content
-string and is their sole encrypted wire stamp. A higher-layer protocol,
-including Control, MUST NOT add or own a wire stamp; the Comms stamp identifies
-only the carrier version and conveys no higher-layer conformance.
+### 8.1 Credential and configuration synchronization
+
+Durable NID-bearing full nodes synchronize canonical credential and
+configuration repositories through private Radicle. Small live records,
+progress, grant-filtered configuration, and completion receipts MAY travel
+over an authorized pairwise Control group. A transport message never becomes
+canonical state until the corresponding signed record is reachable from the
+applicable canonical repository head.
+
+A joining full node receives temporary private-repository access only through
+the optional recovery grants at
+`heterodyne:control/0.5.0#control-radicle-recovery`. An ordinary light client
+receives filtered decisions and configuration, never claim-ledger reader
+authority, repository credentials, audience keys, issuer keys, or unfiltered
+private records.
+
+Credential and configuration state machines remain append-only,
+generation-bound, rollback-resistant, and fail closed on unresolved forks.
+Valid reductions and revocations take effect immediately when authenticated
+and later become repository-final. No live Comms profile defines an additional
+encrypted point-to-point carrier.
+
+<a id="comms-credential-continuity"></a>
+### 8.2 Transport-independent credential continuity drafts
+
+The closed schemas under `schemas/comms/` for repository retention,
+governed decrypt-key obligations, checkpoint receipts, secret-source and
+exposure records, reset records, lost-generation handling, and exact Git
+projection are transport-independent draft building blocks. They do not
+define a live wire profile, are not required by baseline Control, and are not
+required by either optional recovery profile. Implementations MAY experiment
+with them only as encrypted repository records and MUST report them as
+non-claimable drafts.
+
+<a id="comms-control-registry"></a>
+## 9. Private Control registry and token projection
+
+Each persona has an encrypted private Radicle Control registry shared by
+authorized full nodes. It is logically separate from public device metadata
+and MAY share a protected repository with the private claim ledger only when
+namespaces, keys, and access policy preserve both schemas.
+
+The registry contains:
+
+- signed Control client authorization and absorbing revocation records;
+- authorized full-node issuer public state;
+- minimal operation reservations, results, and commit evidence;
+- encrypted audit records;
+- optional prepared recovery activation, finite recovery grants, and
+  completion receipts; and
+- no raw Control frame, access token, device code, MLS state, epoch secret, or
+  replayable transcript.
+
+Comms stores Control client-authorization records as opaque encrypted objects;
+their authority and merge semantics belong to the Control document. Repository
+writers still authenticate against current Core/KERI state, and Comms MUST NOT
+interpret transport arrival order as authorization.
+
+The approving node may act on its own newly committed record after validating
+that commit. Another node acts only after fetching and validating the record
+and approving authority. The repository is evidence replication, not
+distributed consensus or a cross-node execution lock.
+
+<a id="comms-control-token"></a>
+### 9.1 Node-scoped JWT projection
+
+Each full node is an independent RFC 9068 issuer for its exact Control
+resource. Issuer signing keys MUST remain node-local. Authenticated issuer
+public state in the private Control registry binds the issuer URL, current
+JWKs, node device key, exact resource audience, validity interval, and
+predecessor.
+
+A Control token has protected `typ` exactly `at+jwt`, all mandatory RFC
+9068 claims, `cnf.jkt`, the exact Marmot group, client class, authorization
+record, private-registry checkpoint, methods, objects, finite limits, and
+optional agent role. Its audience names only the issuing node. Another full
+node MUST reject it and issue a new token after independently validating the
+same persona-wide entitlement.
+
+For Marmot carriage the authenticated sender account and MLS sender leaf are
+the proof bound to `cnf.jkt`; Comms MUST NOT invent HTTP method or URI values.
+A separately exposed HTTPS endpoint may apply RFC 9449. The default lifetime
+is five minutes. A separately consented `control.token.extended` grant may
+increase it, but no token may exceed sixty minutes. No refresh token is
+issued.
+
+Every request rechecks current entitlement. A projected token never replaces
+private repository authority. Once revocation is observed, every associated
+token fails regardless of its remaining `exp`. Offline-node delay is bounded
+by token expiry and the node's declared authorization-view freshness policy.
+
+<a id="comms-control-bootstrap"></a>
+### 9.2 Locked epoch inbox and recovery records
+
+The epoch-key NIP-59 inbox exists only for prospective full/recovery-node
+registration when no authorized device Control channel is available. Public
+Core metadata provides the epoch recipient key and relay hints. The gift-wrap
+rumor, prepared activation, recovery grant, and completion records are defined
+at `heterodyne:control/0.5.0#control-epoch-bootstrap`.
+
+The epoch key stays encrypted and absent from memory except during an explicit
+local approval ceremony. Prepared public and private authority remains
+inactive, and the wrapped epoch envelope remains unreleased, until exact
+repository heads, manifest identity, and required object digests satisfy the
+signed completion condition. Epoch plaintext MUST be erased and relocked
+before any Radicle synchronization, onion-service startup, SFTP process, or
+bulk transfer.
+
+Private-Radicle recovery and SFTP overflow are optional Control profiles.
+Neither is a prerequisite for Comms or baseline Control conformance.
 
 <a id="comms-key-claims"></a>
 ## 10. Atomic typed-key claims
@@ -2034,15 +1220,15 @@ never split between carriers:
 
 - `public` claims are complete signed events published through ordinary relays
   and, when the persona republishes them, its public profile repository.
-- `pairwise-private` claims carry the full atomic signed claim only inside an
-  authenticated Double Ratchet message. The outer event exposes no claim ID,
-  namespace, name, value, or visibility metadata, and this carrier has no
-  repository publication and no backfill.
+- `pairwise-private` claims carry the full atomic signed claim only as a
+  protected application event in an authenticated two-member Marmot group.
+  The outer event exposes no claim ID, namespace, name, value, or visibility
+  metadata. Retention follows the group's declared policy.
 - `repository-private` claims appear only in the encrypted private claim ledger
   described by §11; repository paths, commit metadata, and object
   sizes MUST NOT reveal their semantics.
-- `local-only` claims produce no protocol artifact: no Nostr event, Double
-  Ratchet message, repository object, OIDC release, or other network carrier.
+- `local-only` claims produce no protocol artifact: no Nostr or Marmot event,
+  repository object, OIDC release, or other network carrier.
 
 An implementation MUST NOT perform cross-visibility fallback or downgrade when
 the selected carrier is unavailable. An unknown visibility value MUST cause the
@@ -2164,12 +1350,12 @@ monotonic and win. Concurrent incompatible policy changes remain `conflicted`
 and fail closed; wall-clock or writer order MUST NOT resolve them.
 
 Direct fetch, replication, and decryption require an `active`, durable,
-NID-bearing `claim-ledger-reader` authorization. Onboarding is delivered over
-an authenticated Double Ratchet self-session and binds the claim record,
-repository RID, canonical checkpoint, current audience-key epoch and wrap,
-compact-state digest, and Radicle fetch-and-seed access. The recipient verifies
-all bindings before use. A delivered claim not reachable from canonical state
-remains provisional.
+NID-bearing `claim-ledger-reader` authorization. Onboarding uses private
+Radicle plus an authorized pairwise Control group for small wrapped records.
+It binds the claim record, repository RID, canonical checkpoint, current
+audience-key epoch and wrap, compact-state digest, and Radicle fetch-and-seed
+access. The recipient verifies all bindings before use. A delivered claim not
+reachable from canonical state remains provisional.
 
 Reader removal first records the reduction, removes Radicle access, rotates the
 dedicated ledger audience key, wraps the new key only for remaining active
@@ -2578,11 +1764,11 @@ only and grants no authority.
 <a id="comms-agent-token"></a>
 ### 15.3 Sender-constrained workload token
 
-Control/DR is the standard issuance carrier, but token construction,
+Marmot Control is the standard issuance carrier, but token construction,
 validation, and private-ledger authority remain Comms semantics and create no
-Comms dependency on Control. After a negotiated higher-layer request and fresh
-workload-JWK proof, an authorized built-in issuer returns an RFC 9068 access
-token with:
+Comms dependency on Control. After an initialized agent profile and validated
+Marmot account binding, an authorized built-in issuer returns the node-scoped
+RFC 9068 access token defined by §9.1 with:
 
 - protected `typ` exactly `at+jwt`;
 - `iss`, pairwise `sub`, one exact `aud`, `exp`, `iat`, collision-resistant
@@ -2593,17 +1779,17 @@ token with:
 - `https://heterodyne.network/jwt/agent-role-id` equal to the one registered
   role.
 
-The token MUST expire no later than five minutes after `iat`, MUST issue no
-refresh token, and MUST NOT outlive the authenticated session, session-device
-delegation, workload registration, consent, or any source authorization. It
-authorizes only registered scopes and resources. A fresh sender proof is
-required for every side effect; its JWK thumbprint MUST equal `cnf.jkt` and its
-protected input MUST bind token `jti`, authenticated session, request ID,
-method, canonical payload digest, nonce, issue time, and expiry.
+The default lifetime is five minutes; an explicitly consented
+`control.token.extended` capability may permit up to sixty minutes. The token
+MUST issue no refresh token and MUST NOT outlive its Control group binding,
+workload registration, consent, or source authorization. It authorizes only
+registered scopes and resources. Every side effect authenticates the Marmot
+sender whose JWK thumbprint equals `cnf.jkt` and binds the token `jti`, group,
+request and operation IDs, method, and canonical payload digest.
 
 Before authorizing an intent, the full node MUST validate exact issuer,
-subject, audience, client, scope, role, time, signature, ledger checkpoint,
-status binding, current draft-21 status, source claims, and sender proof. A
+subject, audience, client, scope, role, time, signature, Control-group binding,
+ledger checkpoint, status binding, source claims, and authenticated sender. A
 projected JWT never replaces canonical private-ledger state. Client
 Credentials remains prohibited; a separately integrated sender-constrained
 HTTPS workload profile is required before that grant can be added.
@@ -2684,7 +1870,7 @@ The registry defines these Comms invariants:
 
 - **COMMS-I-TIER3-BLIND-CARRIER:** Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay.
 - **COMMS-I-TIER2-HONESTY:** Tier 2 private repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly.
-- **COMMS-I-CONFIG-AT-REST:** Comms-owned non-key private state and audience or ratchet material are encrypted under the Comms repository-encryption profile.
+- **COMMS-I-CONFIG-AT-REST:** Comms-owned non-key private state and audience or group material are encrypted under the Comms repository-encryption profile.
 - **COMMS-I-CLIENT-SIDE-DELIVERY:** Cross-backend Comms processing runs on user-controlled clients; full nodes, repository relays, routing nodes, and Nostr relays are blind carriers for protected plaintext.
 - **COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY:** Feed, outbox, and delivery discovery do not depend on a centralized delivery directory.
 - **COMMS-I-CLAIM-AUTHENTICITY:** Claim IDs, event signatures, issuer authority, typed references, and native proofs are verified before trust or authorization policy is applied.
@@ -2710,11 +1896,10 @@ The registry defines these Comms invariants:
 
 Mechanism guarantees MUST remain distinct. Tier 3 has no forward secrecy: a
 compromised audience key decrypts every retained post and index under its
-`key_id`; rotation protects only later generations. Double Ratchet has forward
-secrecy and post-compromise security for bootstrap and Control subject to
-prompt message-key deletion. Marmot conversation guarantees come only from
-the pinned Marmot profile. Clients MUST NOT infer one mechanism's guarantee
-for another.
+`key_id`; rotation protects only later generations. Marmot conversation and
+Control-channel guarantees come only from the pinned Marmot/MLS profile and
+its retention behavior. Clients MUST NOT infer one mechanism's guarantee for
+another.
 
 <a id="comms-strict-profile"></a>
 ### 16.1 Comms strict profiles
@@ -2813,14 +1998,14 @@ profile.
 <!-- Monolith provenance: §14. -->
 
 A Comms conformance report MUST claim Core+Comms, name `comms/0.5.0`, pin
-`core/0.5.0`, registry revision 4 or its immutable digest, and enumerate
+`core/0.5.0`, registry revision 5 or its immutable digest, and enumerate
 supported features and strict profiles. A base implementation MUST implement
-the envelope, tiers, publishing, feed, retrieval, hook, negotiation carrier,
-and all twenty security invariants. It MAY omit the `double-ratchet` feature;
-one that advertises DMs MUST implement all of §7 and §8.
+the envelope, tiers, publishing, feed, retrieval, Marmot invitation hook,
+private Control-registry integration, and all registered Comms invariants. One
+that advertises DMs MUST implement all applicable Marmot rules in §7.
 
-The registry revision 4 entry set, history snapshot, release manifest, and
-vector metadata MUST match exactly. Gated credential-continuity definitions
+The registry revision 5 entry set, history snapshot, release manifest, and
+vector metadata MUST match exactly. Transport-independent credential-continuity definitions
 remain non-claimable under this selected revision.
 
 A report claiming `comms.public-reader.v1` MAY omit every send-side and private
@@ -2832,9 +2017,8 @@ feature after rendering Tier 2 or Tier 3 as public content.
 
 A report claiming `heterodyne-comms-strict-v1` MUST include the flattened
 membership above, the Core prerequisite result, the Tier 2 warning result,
-message-key deletion evidence when double-ratchet is advertised, and every
-applicable strict-vector result. It MUST NOT claim the profile if any item is
-missing.
+and every applicable strict-vector result. It MUST NOT claim the profile if
+any item is missing.
 
 A report claiming `heterodyne-comms-strict-v2` MUST include its exact flattened
 membership, Core prerequisite, inherited v1 operational evidence, and every
@@ -2846,8 +2030,7 @@ No conforming report may list a §8.2 credential-continuity draft schema as an
 active wire profile, feature, requirement, or strict-profile obligation. The
 unprofiled credential-continuity draft vectors exercise schema and pure state-machine
 definitions only; their normalized `conformance_claimable:false` result is
-part of the case and they do not establish recovery-profile
-conformance.
+part of the case and they do not establish Control or recovery conformance.
 
 Wire conformance is byte-exact. Semantically similar encodings do not conform.
 An unknown Comms version or registry profile MUST be rejected or explicitly

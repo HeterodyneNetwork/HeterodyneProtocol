@@ -59,7 +59,7 @@ describe("author mode", () => {
     expect(identity.owner_document).toBe("core");
     expect(identity.owner_version).toBe("core/0.5.0");
     expect(identity.dependency_versions).toEqual({});
-    expect(identity.registry_revision).toBe(1);
+    expect(identity.registry_revision).toBe(5);
     expect(identity.spec_refs).toEqual(
       expect.arrayContaining([
         "heterodyne:core/0.5.0#core-root-attestation",
@@ -77,13 +77,10 @@ describe("author mode", () => {
     expect(currentIdentity.expected_output.canonical_wire).toContain('["spec_version","core/0.5.0"]');
     expect(verifyEventSignature(currentIdentity.expected_output.decoded.event)).toBe(true);
 
-    const native = JSON.parse(await readFile(join(outputDir, "comms-envelope", "001-nostr-native-event-valid.json"), "utf8"));
-    expect(verifyEventSignature(native.input.event)).toBe(true);
-    expect(native.input.canonical_wire).toContain(native.input.event.content);
-    const rumor = JSON.parse(await readFile(join(outputDir, "comms-envelope", "002-owner-stamp-valid.json"), "utf8"));
-    expect(typeof rumor.input.rumor.content).toBe("string");
-    expect(rumor.input.rumor.kind).toBe(31016);
-    expect(rumor.input.rumor).not.toHaveProperty("sig");
+    const control = JSON.parse(await readFile(join(outputDir, "control", "001-invitation-enrollment-only.json"), "utf8"));
+    expect(control.owner_document).toBe("control");
+    expect(control.profile).toBe("heterodyne-control-marmot-frame-v1");
+    expect(control.expected_output).toMatchObject({ verdict: "accept", state: "enrollment-only" });
 
     const verification = JSON.parse(
       await readFile(join(outputDir, "verification", "001-bad-signature-rejects.json"), "utf8"),

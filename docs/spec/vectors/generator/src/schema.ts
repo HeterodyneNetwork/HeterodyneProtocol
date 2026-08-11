@@ -134,9 +134,14 @@ export const CLAIM_LEDGER_RECORD_SCHEMA = readSchema("claim-ledger-record-v1.sch
 export const OIDC_ISSUANCE_RECORD_SCHEMA = readSchema("oidc-issuance-record-v1.schema.json");
 export const OIDC_ISSUER_METADATA_SCHEMA = readSchema("oidc-issuer-metadata-v1.schema.json");
 export const OIDC_CONTINUITY_MANIFEST_SCHEMA = readSchema("oidc-continuity-manifest-v1.schema.json");
-export const CONTROL_GRANT_SCHEMA = readControlSchema("control-grant-v1.schema.json");
-export const CONTROL_ENROLLMENT_REQUEST_SCHEMA = readControlSchema("control-enrollment-request-v1.schema.json");
-export const CONTROL_ENROLLMENT_TOKEN_SCHEMA = readControlSchema("control-enrollment-token-v1.schema.json");
+export const CONTROL_FRAME_SCHEMA = readControlSchema("control-frame-v1.schema.json");
+export const CONTROL_CLIENT_AUTHORIZATION_SCHEMA = readControlSchema("control-client-authorization-v1.schema.json");
+export const CONTROL_OPERATION_RECORD_SCHEMA = readControlSchema("control-operation-record-v1.schema.json");
+export const CONTROL_EPOCH_REGISTRATION_SCHEMA = readControlSchema("control-epoch-registration-v1.schema.json");
+export const CONTROL_PREPARED_ACTIVATION_SCHEMA = readControlSchema("control-prepared-activation-v1.schema.json");
+export const CONTROL_RECOVERY_GRANT_SCHEMA = readControlSchema("control-recovery-grant-v1.schema.json");
+export const CONTROL_RECOVERY_COMPLETION_SCHEMA = readControlSchema("control-recovery-completion-v1.schema.json");
+export const CONTROL_SFTP_GRANT_SCHEMA = readControlSchema("control-sftp-grant-v1.schema.json");
 export const CONTROL_CAPABILITY_SET_SCHEMA = readControlSchema("control-capability-set-v1.schema.json");
 export const CONTROL_MCP_FRAME_SCHEMA = readControlSchema("control-mcp-frame-v1.schema.json");
 export const CONTROL_RPC_REQUEST_SCHEMA = readControlSchema("control-rpc-request-v1.schema.json");
@@ -158,11 +163,8 @@ export const CREDENTIAL_CONTINUITY_SCHEMA_FILES = [
   "node-secret-exposure-v1.schema.json",
   "credential-ledger-secret-transition-v1.schema.json",
   "node-secret-transition-action-v1.schema.json",
-  "double-ratchet-session-termination-v1.schema.json",
   "credential-ledger-lost-generation-path-v1.schema.json",
   "config-repository-git-structure-v1.schema.json",
-  "double-ratchet-peer-tombstone-rumor-v1.schema.json",
-  "double-ratchet-peer-tombstone-gift-wrap-v1.schema.json",
 ] as const;
 
 export type CredentialContinuitySchemaFile =
@@ -184,20 +186,18 @@ const validateOidcIssuerMetadata = commsSchemaAjv.compile(OIDC_ISSUER_METADATA_S
 const validateOidcContinuityManifest = commsSchemaAjv.compile(OIDC_CONTINUITY_MANIFEST_SCHEMA);
 
 const controlSchemaAjv = new Ajv({ allErrors: true, strict: false });
-controlSchemaAjv.addSchema(CONTROL_GRANT_SCHEMA);
 controlSchemaAjv.addSchema(CONTROL_CAPABILITY_SET_SCHEMA);
-const validateControlGrant = controlSchemaAjv.getSchema(
-  "https://heterodyne.network/schemas/control/control-grant-v1.schema.json",
-)!;
 const validateControlCapabilitySet = controlSchemaAjv.getSchema(
   "https://heterodyne.network/schemas/control/control-capability-set-v1.schema.json",
 )!;
-const validateControlEnrollmentRequest = controlSchemaAjv.compile(
-  CONTROL_ENROLLMENT_REQUEST_SCHEMA,
-);
-const validateControlEnrollmentToken = controlSchemaAjv.compile(
-  CONTROL_ENROLLMENT_TOKEN_SCHEMA,
-);
+const validateControlFrame = controlSchemaAjv.compile(CONTROL_FRAME_SCHEMA);
+const validateControlClientAuthorization = controlSchemaAjv.compile(CONTROL_CLIENT_AUTHORIZATION_SCHEMA);
+const validateControlOperationRecord = controlSchemaAjv.compile(CONTROL_OPERATION_RECORD_SCHEMA);
+const validateControlEpochRegistration = controlSchemaAjv.compile(CONTROL_EPOCH_REGISTRATION_SCHEMA);
+const validateControlPreparedActivation = controlSchemaAjv.compile(CONTROL_PREPARED_ACTIVATION_SCHEMA);
+const validateControlRecoveryGrant = controlSchemaAjv.compile(CONTROL_RECOVERY_GRANT_SCHEMA);
+const validateControlRecoveryCompletion = controlSchemaAjv.compile(CONTROL_RECOVERY_COMPLETION_SCHEMA);
+const validateControlSftpGrant = controlSchemaAjv.compile(CONTROL_SFTP_GRANT_SCHEMA);
 const validateControlMcpFrame = controlSchemaAjv.compile(
   CONTROL_MCP_FRAME_SCHEMA,
 );
@@ -299,31 +299,36 @@ export function validateCredentialContinuitySchemaOrThrow(
   }
 }
 
-export function validateControlGrantSchemaOrThrow(value: unknown): void {
-  validateControlSchemaOrThrow(value, validateControlGrant);
+export function validateControlFrameSchemaOrThrow(value: unknown): void {
+  validateControlSchemaOrThrow(value, validateControlFrame);
 }
 
-export function validateControlEnrollmentRequestSchemaOrThrow(value: unknown): void {
-  validateControlSchemaOrThrow(value, validateControlEnrollmentRequest);
+export function validateControlClientAuthorizationSchemaOrThrow(value: unknown): void {
+  validateControlSchemaOrThrow(value, validateControlClientAuthorization);
 }
 
-export function validateControlEnrollmentTokenSchemaOrThrow(value: unknown): void {
-  validateControlSchemaOrThrow(value, validateControlEnrollmentToken);
-  const token = value as {
-    issued_at: number;
-    expires_at: number;
-    grant: { tier: string };
-  };
-  if (token.expires_at <= token.issued_at) {
-    throw new Error(
-      "control-schema-invalid: expires_at must be greater than issued_at",
-    );
-  }
-  if (token.grant.tier === "full") {
-    throw new Error(
-      "control-schema-invalid: an enrollment token cannot confer the full grant",
-    );
-  }
+export function validateControlOperationRecordSchemaOrThrow(value: unknown): void {
+  validateControlSchemaOrThrow(value, validateControlOperationRecord);
+}
+
+export function validateControlEpochRegistrationSchemaOrThrow(value: unknown): void {
+  validateControlSchemaOrThrow(value, validateControlEpochRegistration);
+}
+
+export function validateControlPreparedActivationSchemaOrThrow(value: unknown): void {
+  validateControlSchemaOrThrow(value, validateControlPreparedActivation);
+}
+
+export function validateControlRecoveryGrantSchemaOrThrow(value: unknown): void {
+  validateControlSchemaOrThrow(value, validateControlRecoveryGrant);
+}
+
+export function validateControlRecoveryCompletionSchemaOrThrow(value: unknown): void {
+  validateControlSchemaOrThrow(value, validateControlRecoveryCompletion);
+}
+
+export function validateControlSftpGrantSchemaOrThrow(value: unknown): void {
+  validateControlSchemaOrThrow(value, validateControlSftpGrant);
 }
 
 export function validateControlCapabilitySetSchemaOrThrow(value: unknown): void {

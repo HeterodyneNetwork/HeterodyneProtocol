@@ -1303,7 +1303,7 @@ describe("claim trust, attenuation, and authorization state", () => {
 });
 
 describe("normative claim vector authoring", () => {
-  it("authors exactly the 20 named revision-2 Comms vectors with closed visibility carriers", async () => {
+  it("authors exactly the 20 named Comms vectors with closed visibility carriers", async () => {
     const vectors = await buildClaimVectors(fixtures);
     expect(vectors.map(({ relativePath }) => relativePath)).toEqual([
       "claims/001-canonical-nostr-subject.json",
@@ -1323,14 +1323,14 @@ describe("normative claim vector authoring", () => {
       "claims/015-authorization-self-revocation.json",
       "claims/016-descriptive-subject-rejection.json",
       "claims/017-public-claim-publication.json",
-      "claims/018-pairwise-private-dr-delivery.json",
+      "claims/018-pairwise-private-marmot-delivery.json",
       "claims/019-repository-private-encryption.json",
       "claims/020-local-only-no-publication.json",
     ]);
     expect(vectors.every(({ vector }) =>
       vector.owner_document === "comms" &&
       vector.owner_version === "comms/0.5.0" &&
-      vector.registry_revision === 2 &&
+      vector.registry_revision === 5 &&
       vector.dependency_versions.core === "core/0.5.0" &&
       vector.spec_refs.every((ref) => ref.startsWith("heterodyne:comms/0.5.0#")),
     )).toBe(true);
@@ -1386,15 +1386,17 @@ describe("normative claim vector authoring", () => {
       expect(mutation.reason_code).toBe("claim-schema-invalid");
       expect(() => validateClaimRevocationEnvelope(mutation.event)).toThrow(/claim-schema-invalid/);
     }
-    const pairwise = byId.get("claims/pairwise-private-dr-delivery")!;
-    const pairwiseEvent = pairwise.input.outer_event as NostrSignedEvent;
-    const pairwiseOuter = JSON.stringify(pairwiseEvent);
-    expect(pairwiseEvent.kind).toBe(1060);
-    expect(verifyEventSignature(pairwiseEvent)).toBe(true);
-    expect(pairwiseOuter).not.toContain("claim_id");
-    expect(pairwiseOuter).not.toContain("heterodyne.device");
-    const pairwiseRumor = pairwise.input.inner_rumor as { content: string };
-    const carriedClaimEvent = JSON.parse(pairwiseRumor.content) as NostrSignedEvent;
+    const pairwise = byId.get("claims/pairwise-private-marmot-delivery")!;
+    const marmotGroup = pairwise.input.marmot_group as {
+      member_accounts: string[];
+      application_event: NostrSignedEvent;
+      outer_kind: number;
+      outer_claim_metadata_fields: string[];
+    };
+    expect(marmotGroup.member_accounts).toHaveLength(2);
+    expect(marmotGroup.outer_kind).toBe(445);
+    expect(marmotGroup.outer_claim_metadata_fields).toEqual([]);
+    const carriedClaimEvent = JSON.parse(marmotGroup.application_event.content) as NostrSignedEvent;
     expect(carriedClaimEvent.kind).toBe(31013);
     expect(verifyEventSignature(carriedClaimEvent)).toBe(true);
     const repository = byId.get("claims/repository-private-encryption")!;

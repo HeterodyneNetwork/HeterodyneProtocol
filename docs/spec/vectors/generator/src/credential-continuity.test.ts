@@ -7,7 +7,6 @@ import {
   evaluateRetentionInventory,
   evaluateSecretTransition,
   replayExposureSet,
-  selectDrTombstoneReason,
   validateConfigGitProjection,
   validateSecretInstance,
   type CheckpointCandidateInput,
@@ -580,8 +579,8 @@ describe("transition, candidate, and DR terminalization", () => {
       new_roster: [NID_A],
       added_nids: [],
       removed_nids: [NID_B],
-      exposure_classes: ["config-audience", "oauth-pairwise", "double-ratchet"],
-      action_classes: ["config-audience", "oauth-pairwise", "double-ratchet"],
+      exposure_classes: ["config-audience", "oauth-pairwise"],
+      action_classes: ["config-audience", "oauth-pairwise"],
       removal_observation_nids: [NID_B],
       transition_authority: "epoch",
     });
@@ -660,20 +659,6 @@ describe("transition, candidate, and DR terminalization", () => {
     ).toThrow(/terminal/i);
   });
 
-  it("selects the DR tombstone reason only from actual roster removal", () => {
-    expect(
-      selectDrTombstoneReason({
-        old_holder_nids: [NID_A, NID_B],
-        removed_nids: [NID_B],
-      }),
-    ).toBe("persona_node_removed");
-    expect(
-      selectDrTombstoneReason({
-        old_holder_nids: [NID_A],
-        removed_nids: [NID_B],
-      }),
-    ).toBe("candidate_material_retired");
-  });
 });
 
 describe("config Git authenticated raw projection", () => {

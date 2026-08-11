@@ -102,8 +102,9 @@ storage and admission, and deployment adapters.
 Ordinary one-to-one conversations are two-member Marmot groups. Direct-member
 clients own independent leaves. Node-mediated browser/light clients use
 grant-filtered Control operations while MLS and repository secrets remain on a
-designated node. Double Ratchet is retained for bootstrap and Control RPC, not
-as a second user-facing chat system.
+designated node. Routine Control itself uses a separate two-member Marmot group
+between the light client and that full node, with short-lived node-scoped
+authorization layered above Marmot sender authentication.
 
 Standard-compatible groups remain usable through ordinary Marmot relays.
 Heterodyne-private groups use private Radicle discovery and admission but keep
@@ -166,9 +167,20 @@ pull-based quarantine and cannot trigger automatic media retrieval.
 
 ## 8. Control and automated principals
 
-Control exposes only methods and objects allowed by current grants. A
-node-mediated client receives rendered or encrypted results appropriate to its
-grant, never account, leaf, epoch, repository, or role secrets.
+Each light client uses a private non-delegated Nostr key and one pairwise
+Marmot group per full node. Group membership is enrollment-only until OAuth
+Device Authorization commits a persona-wide entitlement to encrypted private
+Radicle state. Each node then issues its own five-minute, node-audience JWT
+bound to the client's Marmot account and exact group. Extended tokens require
+separate consent and may never exceed sixty minutes.
+
+Control exposes only methods and objects allowed by current entitlement and
+token scope. Mutations reserve a stable operation ID before effects. A client
+fails over sequentially and repeats a mutation only when it is inherently
+idempotent or another node can prove the committed result; otherwise it
+surfaces an indeterminate outcome. A node-mediated client receives rendered or
+encrypted results appropriate to its grant, never account, leaf, epoch,
+repository, or role secrets.
 
 An AI or programmatic principal submits intent through Control using a scoped,
 temporary, sender-constrained workload token from the node's OIDC issuer. The
@@ -176,6 +188,15 @@ full node validates current authority, constructs the Marmot or public event,
 adds canonical automation attribution, and signs with a full-node-held stable
 agent role. The agent never receives that key and there is no fallback to a
 human device key or unlabeled publication.
+
+Portable recovery is independent of baseline Control. Private Radicle is the
+primary network recovery path. A locked epoch NIP-59 inbox is used only to
+register a new full/recovery node when no authorized device can approve it.
+The epoch key is relocked before transfer begins, and authority activates only
+after exact repository heads and object digests verify. Oversized immutable
+objects may use a separately advertised SFTP profile on a fresh per-grant
+client-authorized onion, isolated from the Radicle service and restricted to a
+rooted, finite, expiring transfer view.
 
 ## 9. Social
 

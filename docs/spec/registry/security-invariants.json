@@ -54,7 +54,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "comms/0.5.0",
-      "description": "Comms-owned non-key private state and audience or ratchet material are encrypted under the Comms repository-encryption profile."
+      "description": "Comms-owned non-key private state and audience or group material are encrypted under the Comms repository-encryption profile."
     },
     {
       "id": "COMMS-I-CLIENT-SIDE-DELIVERY",
@@ -89,14 +89,84 @@
       "owner": "control",
       "status": "draft",
       "first_version": "control/0.5.0",
-      "description": "Control audit records containing requests, grants, tokens, or side effects are encrypted at rest under Core, Comms, and Control-owned protection rules without a Social dependency."
+      "description": "Authorization and side-effect audit is encrypted and contains no replayable token or transcript."
     },
     {
-      "id": "CONTROL-I-SESSION-KEY-CONFINEMENT",
+      "id": "CONTROL-I-CLIENT-KEY-CONFINEMENT",
       "owner": "control",
       "status": "draft",
       "first_version": "control/0.5.0",
-      "description": "A Control session device never receives persona epoch, NID, audience, repository-decryption, or ratchet secrets."
+      "description": "A light client receives no persona, device, epoch, NID, repository, MLS-leaf, or agent-role private key."
+    },
+    {
+      "id": "CONTROL-I-MARMOT-SENDER-BINDING",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Every privileged token is bound to the authenticated Marmot account and exact group."
+    },
+    {
+      "id": "CONTROL-I-ENTITLEMENT-FRESHNESS",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Every privileged request uses current, non-conflicted private entitlement state and absorbing revocation."
+    },
+    {
+      "id": "CONTROL-I-NODE-AUDIENCE",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A node-issued Control token is accepted only by its exact issuing-node audience."
+    },
+    {
+      "id": "CONTROL-I-OPERATION-AT-MOST-ONCE",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Mutation reservation precedes effects and cross-node retry is limited to provably safe cases."
+    },
+    {
+      "id": "CONTROL-I-AGENT-NO-KEY-RELEASE",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An automated principal never receives or directly exercises a persona, epoch, NID, human-device, or agent-role private key."
+    },
+    {
+      "id": "CONTROL-I-AGENT-INTENT-ONLY",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An automated principal publishes only through the intent-level agent method, and raw signing, human-profile fallback, and attribution bypass fail closed."
+    },
+    {
+      "id": "CONTROL-I-MARMOT-GRANT-CONFINEMENT",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Node-mediated Marmot operations expose only grant-filtered content and actions while all account, MLS leaf, epoch, and repository secrets remain on the designated node."
+    },
+    {
+      "id": "CONTROL-I-EPOCH-LOCKED-DURING-TRANSFER",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Epoch plaintext is erased and relocked before network or bulk-transfer activity."
+    },
+    {
+      "id": "CONTROL-I-RECOVERY-GRANT-CONFINEMENT",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Recovery access is finite and bound to exact identities, resources, direction, bytes, time, and completion."
+    },
+    {
+      "id": "CONTROL-I-SFTP-PROCESS-SEPARATION",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Overflow SFTP uses a per-grant onion and isolated rooted process with Tor and SSH authentication."
     },
     {
       "id": "COMMS-I-CLAIM-AUTHENTICITY",
@@ -244,41 +314,6 @@
       "status": "draft",
       "first_version": "comms/0.5.0",
       "description": "Retention expiry stops conforming advertisement and replication but never claims erasure of independent Git objects, clones, exports, or backups."
-    },
-    {
-      "id": "CONTROL-I-MARMOT-GRANT-CONFINEMENT",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "control/0.5.0",
-      "description": "Node-mediated Marmot operations expose only grant-filtered content and actions while all account, MLS leaf, epoch, and repository secrets remain on the designated node."
-    },
-    {
-      "id": "CONTROL-I-INGRESS-RELAY-AFFINITY",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "control/0.5.0",
-      "description": "A Control response is published first and only to the authenticated request ingress relay, while identical cross-relay retries reuse one restart-safe execution result."
-    },
-    {
-      "id": "CONTROL-I-AGENT-NO-KEY-RELEASE",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "control/0.5.0",
-      "description": "An automated principal never receives or directly exercises a persona, epoch, NID, human-device, or agent-role private key."
-    },
-    {
-      "id": "CONTROL-I-AGENT-INTENT-ONLY",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "control/0.5.0",
-      "description": "An automated principal publishes only through the intent-level agent method, and raw signing, human-profile fallback, and attribution bypass fail closed."
-    },
-    {
-      "id": "CONTROL-I-AGENT-AUTHORIZATION-FRESHNESS",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "control/0.5.0",
-      "description": "Every automated side effect requires a current scoped token, sender proof, canonical authorization state, and finite kind, resource, size, rate, and burst limits."
     },
     {
       "id": "SOCIAL-I-AGENT-POLICY-LOCAL",

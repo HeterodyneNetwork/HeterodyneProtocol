@@ -5,9 +5,9 @@
   "dependency_versions": {
     "core": "core/0.5.0"
   },
-  "registry_revision": 3,
+  "registry_revision": 5,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-credential-continuity-gate"
+    "heterodyne:comms/0.5.0#comms-credential-continuity"
   ],
   "vector_id": "credential-continuity/routine-removal-complete",
   "description": "Routine removal requires exact roster delta, observations, mandatory rotations, and a class-complete action set.",
@@ -27,13 +27,11 @@
     ],
     "exposure_classes": [
       "config-audience",
-      "oauth-pairwise",
-      "double-ratchet"
+      "oauth-pairwise"
     ],
     "action_classes": [
       "config-audience",
-      "oauth-pairwise",
-      "double-ratchet"
+      "oauth-pairwise"
     ],
     "removal_observation_nids": [
       "did:key:z6MkjUu8rZKs11amYJzwRyJyyuGHcAfWjjjqbTncCjB7FAsF"
@@ -47,7 +45,7 @@
         "verdict": "accept",
         "required_authority": "epoch"
       },
-      "selected_registry_revision": 3,
+      "selected_registry_revision": 5,
       "conformance_claimable": false
     }
   }

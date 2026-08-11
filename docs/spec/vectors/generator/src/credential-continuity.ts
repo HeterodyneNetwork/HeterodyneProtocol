@@ -18,7 +18,6 @@ export const SECRET_CLASSES = [
   "tier3-audience",
   "claim-ledger-audience",
   "object-dek",
-  "double-ratchet",
   "radicle-access",
   "oauth-signing",
   "oauth-pairwise",
@@ -929,16 +928,6 @@ export function advanceCandidate(
     tip: operation.new_tip,
     partial_record_digests: [...state.partial_record_digests],
   };
-}
-
-export function selectDrTombstoneReason(input: {
-  old_holder_nids: string[];
-  removed_nids: string[];
-}): "persona_node_removed" | "candidate_material_retired" {
-  const removed = new Set(input.removed_nids);
-  return input.old_holder_nids.some((nid) => removed.has(nid))
-    ? "persona_node_removed"
-    : "candidate_material_retired";
 }
 
 export type ConfigGitProjection = {

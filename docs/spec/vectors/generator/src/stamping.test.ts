@@ -18,11 +18,6 @@ describe("registry-driven owner stamping", () => {
   it.each([
     ["kind:31001 base", input({}), "core"],
     [
-      "kind:31001 inactive Control profile retains Core",
-      input({ profile_id: "heterodyne-control-session-device-v1" }),
-      "core",
-    ],
-    [
       "registered Social NIP-51 profile",
       input({ kind: 10000, profile_id: "heterodyne-social-mute-list-v1" }),
       "social",
@@ -45,19 +40,11 @@ describe("registry-driven owner stamping", () => {
       }),
       null,
     ],
+    ["Marmot gift wrap remains upstream", input({ kind: 445 }), null],
     [
-      "double-ratchet outer kind:1060",
-      input({
-        kind: 1060,
-        profile_id: "heterodyne-comms-double-ratchet-message-v1",
-        is_dr_outer: true,
-      }),
+      "inner Control application event adds no standalone stamp",
+      input({ kind: 31017, profile_id: "heterodyne-control-marmot-frame-v1" }),
       null,
-    ],
-    [
-      "Control carrier rumor retains Comms owner",
-      input({ kind: 31016, profile_id: "comms-subprotocol-payload-v1" }),
-      "comms",
     ],
     ["unknown kind", input({ kind: 65535 }), null],
     ["unknown profile on allocated kind", input({ profile_id: "unknown-profile" }), null],

@@ -1,0 +1,53 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 5,
+  "profile": "heterodyne-control-marmot-frame-v1",
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-sftp-recovery"
+  ],
+  "vector_id": "control/sftp-grant-expired",
+  "description": "Isolated SFTP recovery decision: sftp-grant-expired.",
+  "direction": "consume",
+  "input": {
+    "grant": {
+      "onion_address": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.onion",
+      "radicle_onion_address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.onion",
+      "service_process_id": "sftp-1",
+      "radicle_process_id": "radicle-1",
+      "tor_client_key": "tor-key",
+      "ssh_client_key": "ssh-key",
+      "ssh_host_key": "host-key",
+      "root": "/grant",
+      "resources": [
+        {
+          "path": "/grant/archive.bin",
+          "direction": "read",
+          "size": 1000
+        }
+      ],
+      "byte_ceiling": 1000,
+      "expires_at": 2000,
+      "channels_disabled": true,
+      "renewal_overlap_seconds": 300,
+      "prior_endpoint_read_only": true
+    },
+    "onion_address": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.onion",
+    "tor_client_key": "tor-key",
+    "ssh_client_key": "ssh-key",
+    "ssh_host_key": "host-key",
+    "path": "/grant/archive.bin",
+    "direction": "read",
+    "bytes": 1000,
+    "now": 2000
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-sftp-expired"
+  }
+}

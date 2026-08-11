@@ -221,16 +221,6 @@
       ]
     },
     {
-      "code": "dm_event_not_storable",
-      "owner": "comms",
-      "status": "draft",
-      "first_version": "comms/0.5.0",
-      "description": "A repo relay refused to store a kind:1060 double-ratchet message (or kind:1059 response); ratchet ciphertext MUST NOT be archived.",
-      "spec_refs": [
-        "heterodyne:comms/0.5.0#comms-conformance"
-      ]
-    },
-    {
       "code": "config_rid_advertised",
       "owner": "core",
       "status": "draft",
@@ -275,7 +265,7 @@
       "owner": "core",
       "status": "draft",
       "first_version": "core/0.5.0",
-      "description": "A kel_head tag appears on an event class whose Core applicability rules forbid it (kind:31002/31003 KEL events, DR wire events kind:1060/1059 and inner rumors, or non-stamping rotation breadcrumbs).",
+      "description": "A kel_head tag appears on an event class whose Core applicability rules forbid it (kind:31002/31003 KEL events, Marmot outer or inner events, or non-stamping rotation breadcrumbs).",
       "spec_refs": [
         "heterodyne:core/0.5.0#core-conformance"
       ]
@@ -871,13 +861,233 @@
       ]
     },
     {
+      "code": "control-invitation-disabled",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A full node's local policy does not accept a new unsolicited Control-group invitation.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-invitation-policy"
+      ]
+    },
+    {
+      "code": "control-keypackage-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The selected Control KeyPackage is malformed, expired, unsupported, or does not belong to the advertised full-node account.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-invitation-policy"
+      ]
+    },
+    {
+      "code": "control-enrollment-required",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The Control group is enrollment-only and the requested method requires active private entitlement.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-enrollment"
+      ]
+    },
+    {
+      "code": "control-frame-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The inner Control application event or canonical frame violates its closed kind, tag, version, profile, member, or payload rules.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-frame"
+      ]
+    },
+    {
+      "code": "control-entitlement-conflict",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Private Control authorization is missing, stale beyond policy, unauthorized, forked, revoked, or contains a conflicting expansion.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-entitlement"
+      ]
+    },
+    {
+      "code": "control-token-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The Control access token fails type, signature, issuer, time, client, authorization-record, or structural validation.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-token-expired",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The Control token is expired or exceeds its entitlement, node-policy, five-minute default, or sixty-minute absolute lifetime.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-token-audience-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The Control token audience does not name the exact full node receiving the request.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-token-sender-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The authenticated Marmot sender account does not match the token cnf.jkt thumbprint.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-token-group-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The request arrived in a different Marmot group from the one bound by the Control token.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-token-scope-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The method, object, role, kind, media, rate, size, burst, or other finite limit is outside the token and entitlement intersection.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-refresh-prohibited",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A Control client requested or presented a refresh token even though the profile requires fresh node-local issuance.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-operation-conflict",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A logical operation identifier was reused for a different method, object, or canonical payload.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-request-processing"
+      ]
+    },
+    {
+      "code": "control-operation-indeterminate",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A prior node may have committed the mutation, but no authoritative result proves whether repeating it is safe.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-failover"
+      ]
+    },
+    {
+      "code": "control-recovery-locked",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The epoch inbox or prepared activation was accessed without the required explicit unlock, preparation, erasure, and relock ceremony.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-epoch-bootstrap"
+      ]
+    },
+    {
+      "code": "control-registration-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A prospective full-node registration is malformed, expired, or fails a required proof or target-key binding.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-epoch-bootstrap"
+      ]
+    },
+    {
+      "code": "control-activation-mismatch",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Recovered heads, manifest identity, object digests, target keys, grant, or completion state do not match the prepared activation.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-epoch-bootstrap"
+      ]
+    },
+    {
+      "code": "control-recovery-grant-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Private-Radicle recovery access is expired or outside its bound NID, repository, head, direction, byte, activation, or completion limits.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-radicle-recovery"
+      ]
+    },
+    {
+      "code": "control-recovery-completion-mismatch",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Recovery completion cannot prove every repository head, manifest identity, and object digest required by its grant.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-radicle-recovery"
+      ]
+    },
+    {
+      "code": "control-sftp-auth-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The SFTP endpoint, Tor client key, SSH client key, or pinned host key does not match the finite transfer grant.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-sftp-recovery"
+      ]
+    },
+    {
+      "code": "control-sftp-resource-denied",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An SFTP request exceeds its rooted resource set, direction, byte ceiling, or prohibited-channel boundary.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-sftp-recovery"
+      ]
+    },
+    {
+      "code": "control-sftp-expired",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The SFTP grant or its bounded renewal overlap has expired or been completed or revoked.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-sftp-recovery"
+      ]
+    },
+    {
       "code": "control-request-expired",
       "owner": "control",
       "status": "draft",
       "first_version": "control/0.5.0",
       "description": "The authenticated Control request expired before reservation or execution.",
       "spec_refs": [
-        "heterodyne:control/0.5.0#control-reserved-scope"
+        "heterodyne:control/0.5.0#control-request-processing"
       ]
     },
     {
@@ -885,19 +1095,9 @@
       "owner": "control",
       "status": "draft",
       "first_version": "control/0.5.0",
-      "description": "A request identifier was reused with a different session, method, or payload digest.",
+      "description": "A request identifier was reused with different canonical frame bytes in the same Control group.",
       "spec_refs": [
-        "heterodyne:control/0.5.0#control-reserved-scope"
-      ]
-    },
-    {
-      "code": "control-ingress-relay-invalid",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "control/0.5.0",
-      "description": "A response route is not the authenticated canonical ingress relay for the accepted request or retry.",
-      "spec_refs": [
-        "heterodyne:control/0.5.0#control-reserved-scope"
+        "heterodyne:control/0.5.0#control-request-processing"
       ]
     },
     {
@@ -907,7 +1107,7 @@
       "first_version": "control/0.5.0",
       "description": "An automated principal requested a method outside its closed agentic Control surface.",
       "spec_refs": [
-        "heterodyne:control/0.5.0#control-reserved-scope"
+        "heterodyne:control/0.5.0#control-agent-requirements"
       ]
     },
     {
@@ -917,7 +1117,7 @@
       "first_version": "control/0.5.0",
       "description": "An automated principal requested private key material or raw signing authority.",
       "spec_refs": [
-        "heterodyne:control/0.5.0#control-reserved-scope"
+        "heterodyne:control/0.5.0#control-agent-requirements"
       ]
     },
     {
@@ -927,7 +1127,7 @@
       "first_version": "control/0.5.0",
       "description": "An automated principal attempted to route publication through a human-device profile.",
       "spec_refs": [
-        "heterodyne:control/0.5.0#control-reserved-scope"
+        "heterodyne:control/0.5.0#control-agent-requirements"
       ]
     },
     {
@@ -937,7 +1137,7 @@
       "first_version": "control/0.5.0",
       "description": "An automated principal attempted to omit, alter, or falsify canonical agent attribution.",
       "spec_refs": [
-        "heterodyne:control/0.5.0#control-reserved-scope"
+        "heterodyne:control/0.5.0#control-agent-requirements"
       ]
     },
     {
@@ -947,7 +1147,7 @@
       "first_version": "control/0.5.0",
       "description": "The requested event kind, feed, destination, or resource is outside the active workload grant.",
       "spec_refs": [
-        "heterodyne:control/0.5.0#control-reserved-scope"
+        "heterodyne:control/0.5.0#control-agent-requirements"
       ]
     },
     {
@@ -957,7 +1157,7 @@
       "first_version": "control/0.5.0",
       "description": "The canonical publication intent exceeds its finite content-byte ceiling.",
       "spec_refs": [
-        "heterodyne:control/0.5.0#control-reserved-scope"
+        "heterodyne:control/0.5.0#control-agent-requirements"
       ]
     },
     {
@@ -967,7 +1167,7 @@
       "first_version": "control/0.5.0",
       "description": "The publication intent exceeds the active finite rate-window, count, or burst limit.",
       "spec_refs": [
-        "heterodyne:control/0.5.0#control-reserved-scope"
+        "heterodyne:control/0.5.0#control-agent-requirements"
       ]
     },
     {

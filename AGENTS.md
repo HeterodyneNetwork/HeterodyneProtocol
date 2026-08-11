@@ -10,7 +10,7 @@ artifacts:
 - [`docs/spec/heterodyne-comms.md`](docs/spec/heterodyne-comms.md): publishing,
   privacy, direct messages, claims, private ledger, and OIDC/JWT.
 - [`docs/spec/heterodyne-control.md`](docs/spec/heterodyne-control.md):
-  own-device enrollment and RPC; currently incomplete and non-claimable.
+  Marmot-carried own-device enrollment and RPC plus optional recovery profiles.
 - [`docs/spec/heterodyne-social.md`](docs/spec/heterodyne-social.md): social
   behavior, public interactions, moderation, and durable social assets.
 - [`docs/spec/registry/`](docs/spec/registry/),

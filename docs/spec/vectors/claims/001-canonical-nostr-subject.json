@@ -5,7 +5,7 @@
   "dependency_versions": {
     "core": "core/0.5.0"
   },
-  "registry_revision": 2,
+  "registry_revision": 5,
   "profile": "heterodyne-comms-key-claim-nostr-bip340-v1",
   "spec_refs": [
     "heterodyne:comms/0.5.0#comms-key-claims"

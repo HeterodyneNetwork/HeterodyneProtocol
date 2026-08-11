@@ -48,9 +48,9 @@ function registryWithHistory(
 describe("revisioned protocol registry", () => {
   const registry = loadRegistry(repositoryRoot);
 
-  it("loads revision 4 while retaining immutable revision 1 through 3 snapshots", () => {
-    expect(registry.manifest.revision).toBe(4);
-    expect(registry.history.get(4)).toEqual(registry.currentEntrySet);
+  it("loads revision 5 while retaining historical revision 1 through 4 snapshots", () => {
+    expect(registry.manifest.revision).toBe(5);
+    expect(registry.history.get(5)).toEqual(registry.currentEntrySet);
     expect(registry.history.has(1)).toBe(true);
     expect(registry.history.has(2)).toBe(true);
     expect(registry.history.has(3)).toBe(true);
@@ -78,44 +78,21 @@ describe("revisioned protocol registry", () => {
       status: "draft",
       first_version: "comms/0.5.0",
     });
-    expect(registry.kinds.find((entry) => entry.kind === 31015)).toMatchObject({
-      base_schema_owner: "comms",
-      first_version: "comms/0.5.0",
+    expect(registry.kinds.find((entry) => entry.kind === 31017)).toMatchObject({
+      base_schema_owner: "control",
+      first_version: "control/0.5.0",
+      profiles: [expect.objectContaining({
+        profile_id: "heterodyne-control-marmot-frame-v1",
+        discriminator: "marmot-inner-only;content=control-frame-v1",
+        owner: "control",
+        stamping: false,
+      })],
     });
-    expect(registry.kinds.find((entry) => entry.kind === 31016)).toMatchObject({
-      base_schema_owner: "comms",
-      first_version: "comms/0.5.0",
-    });
-    expect(
-      registry.kinds
-        .find((entry) => entry.kind === 1059)
-        ?.profiles.find(
-          (profile) =>
-            profile.profile_id ===
-            "heterodyne-comms-double-ratchet-invite-response-v1",
-        ),
-    ).toMatchObject({
-      discriminator: "wire:nostr-double-ratchet@0.0.138;kind=1059",
-      owner: "comms",
-      status: "draft",
-      first_version: "comms/0.5.0",
-      stamping: false,
-    });
-    expect(
-      registry.kinds
-        .find((entry) => entry.kind === 1060)
-        ?.profiles.find(
-          (profile) =>
-            profile.profile_id ===
-            "heterodyne-comms-double-ratchet-message-v1",
-        ),
-    ).toMatchObject({
-      discriminator: "wire:nostr-double-ratchet@0.0.138;kind=1060",
-      owner: "comms",
-      status: "draft",
-      first_version: "comms/0.5.0",
-      stamping: false,
-    });
+    expect(registry.kinds.find((entry) => entry.kind === 1059)).toBeUndefined();
+    expect(registry.kinds.find((entry) => entry.kind === 1060)).toBeUndefined();
+    expect(registry.kinds.find((entry) => entry.kind === 31015)).toBeUndefined();
+    expect(registry.kinds.find((entry) => entry.kind === 31016)).toBeUndefined();
+    expect(registry.kinds.find((entry) => entry.kind === 30078)).toBeUndefined();
   });
 
   it("registers upstream Marmot transport kinds without Heterodyne stamping", () => {
@@ -254,7 +231,7 @@ describe("revisioned protocol registry", () => {
     ]));
   });
 
-  it("preserves released historical snapshots and snapshots revision 4", () => {
+  it("preserves historical snapshots and snapshots revision 5", () => {
     const history1 = JSON.parse(readFileSync(
       resolve(repositoryRoot, "docs/spec/registry/history/1.json"),
       "utf8",
@@ -269,6 +246,10 @@ describe("revisioned protocol registry", () => {
     )) as RegistryEntrySet;
     const history4 = JSON.parse(readFileSync(
       resolve(repositoryRoot, "docs/spec/registry/history/4.json"),
+      "utf8",
+    )) as RegistryEntrySet;
+    const history5 = JSON.parse(readFileSync(
+      resolve(repositoryRoot, "docs/spec/registry/history/5.json"),
       "utf8",
     )) as RegistryEntrySet;
 
@@ -306,8 +287,9 @@ describe("revisioned protocol registry", () => {
       expect(current).toEqual(previous);
     }
 
-    expect(history4).toEqual(registry.currentEntrySet);
-    expect(registry.manifest.entry_set_sha256).toBe(computeRegistryDigest(history4));
+    expect(history4).not.toEqual(registry.currentEntrySet);
+    expect(history5).toEqual(registry.currentEntrySet);
+    expect(registry.manifest.entry_set_sha256).toBe(computeRegistryDigest(history5));
   });
 
   it("commits the canonical digest of the current entry set", () => {
@@ -515,7 +497,7 @@ describe("revisioned protocol registry", () => {
     ).not.toThrow();
   });
 
-  it("keeps an allocated profile discriminator immutable", () => {
+  it("permits draft profile discriminator changes before 1.0", () => {
     const previous = currentEntrySet(registry);
     const current = structuredClone(previous);
     const kind = current.kinds.find((entry) => entry.profiles.length > 0);
@@ -525,24 +507,21 @@ describe("revisioned protocol registry", () => {
     kind.profiles[0].discriminator = "changed-discriminator";
     expect(() =>
       validateRegistry(registryWithHistory(registry, previous, current)),
-    ).toThrow("profile discriminator is immutable");
+    ).not.toThrow();
   });
 
   it("rejects removal of a frozen profile with its draft parent kind", () => {
     const previous = currentEntrySet(registry);
-    const kind = previous.kinds.find((entry) => entry.kind === 1059);
-    const profile = kind?.profiles.find(
-      (entry) =>
-        entry.profile_id ===
-        "heterodyne-comms-double-ratchet-invite-response-v1",
-    );
+    const kind = previous.kinds.find((entry) => entry.kind === 31017);
+    const profile = kind?.profiles.find((entry) =>
+      entry.profile_id === "heterodyne-control-marmot-frame-v1");
     if (kind === undefined || profile === undefined) {
-      throw new Error("missing kind 1059 profile fixture");
+      throw new Error("missing kind 31017 profile fixture");
     }
     expect(kind.status).toBe("draft");
     profile.status = "frozen";
     const current = structuredClone(previous);
-    current.kinds = current.kinds.filter((entry) => entry.kind !== 1059);
+    current.kinds = current.kinds.filter((entry) => entry.kind !== 31017);
 
     expect(() =>
       validateRegistryHistory(
@@ -554,14 +533,14 @@ describe("revisioned protocol registry", () => {
     ).toThrow("frozen entry");
   });
 
-  it("rejects moving a profile id to another kind", () => {
+  it("permits moving a draft profile before 1.0", () => {
     const previous = currentEntrySet(registry);
     const current = structuredClone(previous);
-    const source = current.kinds.find((entry) => entry.kind === 1059);
-    const target = current.kinds.find((entry) => entry.kind === 1060);
+    const source = current.kinds.find((entry) => entry.kind === 31017);
+    const target = current.kinds.find((entry) => entry.kind === 31014);
     const profile = source?.profiles.shift();
     if (target === undefined || profile === undefined) {
-      throw new Error("missing double-ratchet profile fixtures");
+      throw new Error("missing Control profile fixtures");
     }
     target.profiles.push(profile);
 
@@ -572,20 +551,16 @@ describe("revisioned protocol registry", () => {
           [2, current],
         ]),
       ),
-    ).toThrow("profile kind is immutable");
+    ).not.toThrow();
   });
 
-  it("rejects changing a profile owner after allocation", () => {
+  it("permits changing a draft profile owner before 1.0", () => {
     const previous = currentEntrySet(registry);
     const current = structuredClone(previous);
     const profile = current.kinds
-      .find((entry) => entry.kind === 1059)
-      ?.profiles.find(
-        (entry) =>
-          entry.profile_id ===
-          "heterodyne-comms-double-ratchet-invite-response-v1",
-      );
-    if (profile === undefined) throw new Error("missing kind 1059 profile fixture");
+      .find((entry) => entry.kind === 31017)
+      ?.profiles.find((entry) => entry.profile_id === "heterodyne-control-marmot-frame-v1");
+    if (profile === undefined) throw new Error("missing kind 31017 profile fixture");
     profile.owner = "social";
     profile.first_version = "social/0.5.0";
 
@@ -596,24 +571,20 @@ describe("revisioned protocol registry", () => {
           [2, current],
         ]),
       ),
-    ).toThrow("profile owner is immutable");
+    ).not.toThrow();
   });
 
-  it("rejects changed discriminator after removal and reintroduction", () => {
+  it("permits changed draft discriminator after removal and reintroduction", () => {
     const first = currentEntrySet(registry);
     const profile = first.kinds
-      .find((entry) => entry.kind === 1059)
-      ?.profiles.find(
-        (entry) =>
-          entry.profile_id ===
-          "heterodyne-comms-double-ratchet-invite-response-v1",
-      );
-    if (profile === undefined) throw new Error("missing kind 1059 profile fixture");
+      .find((entry) => entry.kind === 31017)
+      ?.profiles.find((entry) => entry.profile_id === "heterodyne-control-marmot-frame-v1");
+    if (profile === undefined) throw new Error("missing kind 31017 profile fixture");
     const second = structuredClone(first);
-    second.kinds.find((entry) => entry.kind === 1059)!.profiles = [];
+    second.kinds.find((entry) => entry.kind === 31017)!.profiles = [];
     const third = structuredClone(second);
     third.kinds
-      .find((entry) => entry.kind === 1059)!
+      .find((entry) => entry.kind === 31017)!
       .profiles.push({ ...profile, discriminator: "changed-after-gap" });
 
     expect(() =>
@@ -624,23 +595,19 @@ describe("revisioned protocol registry", () => {
           [3, third],
         ]),
       ),
-    ).toThrow("profile discriminator is immutable");
+    ).not.toThrow();
   });
 
   it("allows matching non-frozen profile reintroduction", () => {
     const first = currentEntrySet(registry);
     const profile = first.kinds
-      .find((entry) => entry.kind === 1059)
-      ?.profiles.find(
-        (entry) =>
-          entry.profile_id ===
-          "heterodyne-comms-double-ratchet-invite-response-v1",
-      );
-    if (profile === undefined) throw new Error("missing kind 1059 profile fixture");
+      .find((entry) => entry.kind === 31017)
+      ?.profiles.find((entry) => entry.profile_id === "heterodyne-control-marmot-frame-v1");
+    if (profile === undefined) throw new Error("missing kind 31017 profile fixture");
     const second = structuredClone(first);
-    second.kinds.find((entry) => entry.kind === 1059)!.profiles = [];
+    second.kinds.find((entry) => entry.kind === 31017)!.profiles = [];
     const third = structuredClone(second);
-    third.kinds.find((entry) => entry.kind === 1059)!.profiles.push(profile);
+    third.kinds.find((entry) => entry.kind === 31017)!.profiles.push(profile);
 
     expect(() =>
       validateRegistryHistory(
@@ -688,31 +655,11 @@ describe("revisioned protocol registry", () => {
     ).toThrow("1.0 document requires frozen registry entries");
   });
 
-  it("blocks Comms 1.0 until the double-ratchet wire is frozen", () => {
+  it("has no Comms-specific release gate beyond the family registry rule", () => {
     expect(() => assertCommsReleaseGate("comms/0.9.0", registry)).not.toThrow();
-    expect(() => assertCommsReleaseGate("comms/1.0.0", registry)).toThrow(
-      "double-ratchet wire profiles must be frozen",
+    expect(() => assertCommsReleaseGate("comms/1.0.0", registry)).not.toThrow();
+    expect(() => assertCommsReleaseGate("core/1.0.0", registry)).toThrow(
+      "Comms release gate requires a comms qualified version",
     );
-
-    const missingProfile = cloneRegistry(registry);
-    const kind1059 = missingProfile.kinds.find((entry) => entry.kind === 1059);
-    if (kind1059 === undefined) throw new Error("missing kind 1059 fixture");
-    kind1059.profiles = [];
-    expect(() =>
-      assertCommsReleaseGate("comms/1.0.0", missingProfile),
-    ).toThrow("double-ratchet wire profiles must be frozen");
-
-    const future = cloneRegistry(registry);
-    for (const [kindNumber, profileId] of [
-      [1059, "heterodyne-comms-double-ratchet-invite-response-v1"],
-      [1060, "heterodyne-comms-double-ratchet-message-v1"],
-    ] as const) {
-      const profile = future.kinds
-        .find((entry) => entry.kind === kindNumber)
-        ?.profiles.find((entry) => entry.profile_id === profileId);
-      if (profile === undefined) throw new Error(`missing ${profileId} fixture`);
-      profile.status = "frozen";
-    }
-    expect(() => assertCommsReleaseGate("comms/1.0.0", future)).not.toThrow();
   });
 });
