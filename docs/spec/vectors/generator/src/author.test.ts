@@ -59,7 +59,7 @@ describe("author mode", () => {
     expect(identity.owner_document).toBe("core");
     expect(identity.owner_version).toBe("core/0.5.0");
     expect(identity.dependency_versions).toEqual({});
-    expect(identity.registry_revision).toBe(6);
+    expect(identity.registry_revision).toBe(5);
     expect(identity.spec_refs).toEqual(
       expect.arrayContaining([
         "heterodyne:core/0.5.0#core-root-attestation",

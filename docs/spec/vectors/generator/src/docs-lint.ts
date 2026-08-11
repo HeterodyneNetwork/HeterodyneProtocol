@@ -344,8 +344,7 @@ export type ReleaseManifest = {
   registry_revision: number;
   registry_sha256: string;
   dependencies: Partial<Record<DocumentId, `${DocumentId}/0.5.0`>>;
-  provided_features: string[];
-  required_features: string[];
+  features: string[];
   conformance_status: "conformant" | "incomplete-draft";
 };
 
@@ -386,57 +385,6 @@ export function findInvariantEvidenceIssues(
   for (const { id, description } of invariants) {
     if (threatRows.get(id) !== description) {
       issues.push(`missing invariant evidence: ${id}`);
-    }
-  }
-  return issues.sort();
-}
-
-type StrictProfileFixture = {
-  profile_id: string;
-  requires_profiles: string[];
-  required_invariants: string[];
-};
-
-export function findStrictProfileClosureIssues(
-  documents: Record<string, string>,
-): string[] {
-  const profiles = new Map<string, StrictProfileFixture>();
-  const issues: string[] = [];
-  const fixturePattern = /<!-- fixture:[^>]*strict-profile[^>]* -->\s*```json\s*([\s\S]*?)\s*```/g;
-  for (const [document, text] of Object.entries(documents)) {
-    for (const match of text.matchAll(fixturePattern)) {
-      let profile: StrictProfileFixture;
-      try {
-        profile = JSON.parse(match[1]) as StrictProfileFixture;
-      } catch {
-        issues.push(`invalid strict-profile fixture JSON: ${document}`);
-        continue;
-      }
-      const prior = profiles.get(profile.profile_id);
-      if (prior !== undefined
-        && canonicalJson(prior.required_invariants) !== canonicalJson(profile.required_invariants)) {
-        issues.push(`conflicting strict-profile membership: ${profile.profile_id}`);
-      } else {
-        profiles.set(profile.profile_id, profile);
-      }
-      if (new Set(profile.required_invariants).size !== profile.required_invariants.length) {
-        issues.push(`duplicate invariant membership: ${profile.profile_id}`);
-      }
-    }
-  }
-  for (const profile of profiles.values()) {
-    const membership = new Set(profile.required_invariants);
-    for (const prerequisiteId of profile.requires_profiles) {
-      const prerequisite = profiles.get(prerequisiteId);
-      if (prerequisite === undefined) {
-        issues.push(`unknown strict-profile prerequisite: ${profile.profile_id} -> ${prerequisiteId}`);
-        continue;
-      }
-      for (const invariant of prerequisite.required_invariants) {
-        if (!membership.has(invariant)) {
-          issues.push(`incomplete flattened membership: ${profile.profile_id} missing ${invariant}`);
-        }
-      }
     }
   }
   return issues.sort();
@@ -512,7 +460,7 @@ export function expectedReleaseManifests(
     throw new Error(`unknown registry history revision ${registryRevision}`);
   }
   const registrySha256 = computeRegistryDigest(entrySet);
-  const manifests: Record<DocumentId, ReleaseManifest> = {
+  return {
     core: {
       document: "core",
       version: "0.5.0",
@@ -520,7 +468,7 @@ export function expectedReleaseManifests(
       registry_revision: registryRevision,
       registry_sha256: registrySha256,
       dependencies: {},
-      provided_features: [
+      features: [
         "core.nostr-relay-read.v1",
         "core.outbound-tor.v1",
         "core.repo-relay-client.v1",
@@ -528,7 +476,6 @@ export function expectedReleaseManifests(
         "core.browser-shared-relay.v1",
         "core.marmot-role-attribution.v1",
       ],
-      required_features: [],
       conformance_status: "conformant",
     },
     comms: {
@@ -538,21 +485,16 @@ export function expectedReleaseManifests(
       registry_revision: registryRevision,
       registry_sha256: registrySha256,
       dependencies: { core: "core/0.5.0" },
-      provided_features: [
-        "comms.key-claims.v1",
-        "comms.private-claim-ledger.v1",
-        "comms.oidc-jwt-projection.v1",
-        "comms.token-status-list-draft-21.v1",
+      features: [
+        "key-claims",
+        "private-claim-ledger",
+        "oidc-jwt-projection",
+        "token-status-list-draft-21",
         "comms.public-reader.v1",
         "comms.agent-authorship.v1",
         "comms.marmot-conversations.v1",
         "comms.radicle-marmot-storage.v1",
         "comms.radicle-backed-marmot-relay.v1",
-      ],
-      required_features: [
-        "core.marmot-role-attribution.v1",
-        "core.nostr-relay-read.v1",
-        "core.repo-relay-client.v1",
       ],
       conformance_status: "conformant",
     },
@@ -563,7 +505,7 @@ export function expectedReleaseManifests(
       registry_revision: registryRevision,
       registry_sha256: registrySha256,
       dependencies: { core: "core/0.5.0", comms: "comms/0.5.0" },
-      provided_features: [
+      features: [
         "control.marmot.v1",
         "control.oauth-device-enrollment.v1",
         "control.private-entitlement.v1",
@@ -574,14 +516,6 @@ export function expectedReleaseManifests(
         "control.recovery.epoch-inbox.v1",
         "control.recovery.sftp.v1",
       ],
-      required_features: [
-        "core.repo-relay-client.v1",
-        "comms.agent-authorship.v1",
-        "comms.marmot-conversations.v1",
-        "comms.oidc-jwt-projection.v1",
-        "comms.private-claim-ledger.v1",
-        "comms.radicle-marmot-storage.v1",
-      ],
       conformance_status: "conformant",
     },
     social: {
@@ -591,65 +525,10 @@ export function expectedReleaseManifests(
       registry_revision: registryRevision,
       registry_sha256: registrySha256,
       dependencies: { core: "core/0.5.0", comms: "comms/0.5.0" },
-      provided_features: ["social.agent-policy-moderation.v1"],
-      required_features: [
-        "comms.agent-authorship.v1",
-        "comms.marmot-conversations.v1",
-      ],
+      features: ["social.agent-policy-moderation.v1"],
       conformance_status: "conformant",
     },
   };
-  validateReleaseFeatureResolution(registry, manifests);
-  return manifests;
-}
-
-export function validateReleaseFeatureResolution(
-  registry: ReturnType<typeof loadRegistry>,
-  manifests: Record<DocumentId, ReleaseManifest>,
-): void {
-  const catalog = new Map(registry.features.map((feature) => [feature.id, feature]));
-  for (const [document, manifest] of Object.entries(manifests) as [DocumentId, ReleaseManifest][]) {
-    const provided = new Set(manifest.provided_features);
-    const required = new Set(manifest.required_features);
-    if (provided.size !== manifest.provided_features.length) {
-      throw new Error(`duplicate provided feature: ${document}`);
-    }
-    if (required.size !== manifest.required_features.length) {
-      throw new Error(`duplicate required feature: ${document}`);
-    }
-    for (const featureId of provided) {
-      if (required.has(featureId)) throw new Error(`feature both provided and required: ${featureId}`);
-      const feature = catalog.get(featureId);
-      if (feature === undefined) throw new Error(`unregistered provided feature: ${featureId}`);
-      if (feature.owner !== document) throw new Error(`provided feature owner mismatch: ${featureId}`);
-      for (const prerequisiteId of feature.prerequisites) {
-        const prerequisite = catalog.get(prerequisiteId);
-        if (prerequisite === undefined) {
-          throw new Error(`unregistered feature prerequisite: ${prerequisiteId}`);
-        }
-        if (prerequisite.owner === document) {
-          if (!provided.has(prerequisiteId)) {
-            throw new Error(`local prerequisite not provided: ${featureId} -> ${prerequisiteId}`);
-          }
-        } else if (!required.has(prerequisiteId)) {
-          throw new Error(`external prerequisite not required: ${featureId} -> ${prerequisiteId}`);
-        }
-      }
-    }
-    for (const featureId of required) {
-      const feature = catalog.get(featureId);
-      if (feature === undefined) throw new Error(`unregistered required feature: ${featureId}`);
-      const dependencyVersion = manifest.dependencies[feature.owner];
-      if (dependencyVersion === undefined) {
-        throw new Error(`required feature owner is not a dependency: ${featureId}`);
-      }
-      const dependency = manifests[feature.owner];
-      if (dependency.qualified_version !== dependencyVersion
-        || !dependency.provided_features.includes(featureId)) {
-        throw new Error(`required feature not provided by exact dependency: ${featureId}`);
-      }
-    }
-  }
 }
 
 export function writeReleaseManifests(repoRoot: string): string[] {

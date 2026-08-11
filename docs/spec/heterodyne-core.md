@@ -2,7 +2,7 @@
 
 Document ID: `core`<br>
 Version: `core/0.5.0`<br>
-Registry revision: `6`
+Registry revision: `5`
 
 Normative dependencies: None.
 
@@ -94,8 +94,7 @@ Implementations MUST NOT conflate these mechanisms.
 
 The separately revisioned Core-owned registry at `docs/spec/registry/` is the
 allocation authority for kind numbers, profile discriminators, reason codes,
-security-invariant IDs, and feature IDs. This release pins registry revision
-`6`; changing a
+and security-invariant IDs. This release pins registry revision `4`; changing a
 non-Core-owned registry entry does not change Core semver. A conformance claim
 MUST pin the registry revision or immutable entry-set digest.
 
@@ -108,16 +107,9 @@ they MUST consult the pinned registry entry and any immutable profile
 discriminator. Implementations MUST NOT allocate a new Heterodyne kind outside
 the registry process.
 
-All signed standalone Heterodyne-allocated kinds in the NIP-01 addressable range use the
+All Heterodyne-allocated kinds in the NIP-01 addressable range use the
 `(pubkey, kind, d)` address. A singleton uses `['d', '']`; a multi-instance
 schema defines a non-empty `d`. Examples MUST show the tag explicitly.
-
-`features.json` is the allocation authority for globally unique dotted and
-versioned feature IDs. Each entry binds its owner document, first version,
-status, description, permanent specification reference, and duplicate-free
-acyclic prerequisites. Capability advertisements and release manifests MUST
-use catalog IDs exactly; a string absent from the pinned catalog grants no
-feature capability.
 
 <a id="core-canonical-serialization"></a>
 <!-- Monolith provenance: §3.0.1-§3.0.1.1. -->
@@ -171,10 +163,6 @@ these exhaustive classes:
 6. Control inner application `kind:31017` exists only inside Marmot MLS. Its
    canonical JSON frame carries `control/0.5.0`; it has no outer Control stamp
    and MUST NOT be interpreted as a standalone event.
-7. One-time-invite response rumor `kind:31018` exists only as unsigned inner
-   NIP-59 content. Its JCS content carries `comms/0.5.0`; the authenticated
-   NIP-59 seal supplies responder authentication and it MUST NOT be
-   interpreted as a signed standalone addressable event.
 
 The unqualified stamp `0.4.0` denotes the archived monolith. Missing-stamp
 legacy inference is permitted only for a Heterodyne-allocated kind whose 0.4.0
@@ -1390,7 +1378,7 @@ Every capability advertisement uses this Core-parsable bootstrap object:
 {
   "descriptor": "heterodyne-capabilities-v1",
   "bootstrap_version": "core/0.5.0",
-  "registry_revision": 6,
+  "registry_revision": 4,
   "implementation_role": "public-reader",
   "supported_versions": {
     "core": ["core/0.5.0"],
@@ -1409,8 +1397,8 @@ Every capability advertisement uses this Core-parsable bootstrap object:
 `implementation_role`, and `core` support are REQUIRED.
 `implementation_role` MUST be exactly `public-reader`, `authenticated-light`,
 or `full-node`. Each supported-version set contains qualified versions for
-that document only. `required_features` uses exact IDs from the pinned
-`features.json`; document names alone do not establish feature conformance. A claimed
+that document only. `required_features` uses the exact feature IDs allocated
+in §10; document names alone do not establish feature conformance. A claimed
 role and its required feature set MUST agree.
 
 `strict_profiles` contains stable profile IDs. It MUST contain only profiles
@@ -1469,7 +1457,7 @@ membership declaration:
 supported network backend, and requires invalid signatures or delegations to
 be rejected rather than rendered with a warning. Disabling or bypassing Tor
 makes the strict profile unmet; it does not silently downgrade a strict claim.
-A claim MUST satisfy every listed invariant at registry revision 6 and every
+A claim MUST satisfy every listed invariant at registry revision 5 and every
 applicable strict vector.
 
 Higher-document strict profiles compose by naming prerequisite profile IDs and
@@ -1513,19 +1501,10 @@ IDs, strict-profile IDs, implementation role, and every dependency version.
 Core has no document dependencies. Protocol conformance and vector conformance
 are distinct claims.
 
-This document is pinned to registry revision 6 and its immutable digest.
-History revision 6, the current entry files, release manifests, and vector
+This document is pinned to registry revision 5 and its immutable digest.
+History revision 5, the current entry files, release manifests, and vector
 metadata MUST agree exactly. Optional Control recovery profiles remain
 independently claimable and do not alter baseline Core conformance.
-
-A release manifest lists disjoint `provided_features` and
-`required_features`. Every provided ID MUST be owned by that manifest's
-document. Every same-owner prerequisite of a provided feature MUST also be
-provided; every external prerequisite MUST appear in `required_features`.
-Every required ID MUST be owned and provided by the exact declared dependency
-release. Validators MUST resolve the catalog prerequisite graph, reject cycles
-or missing IDs, and reject a requirement supplied only by a different or
-unpinned dependency release.
 
 A conformance report MUST, for each strict-profile ID, list the profile's state,
 conformance class, prerequisite profile IDs, required invariant IDs, required

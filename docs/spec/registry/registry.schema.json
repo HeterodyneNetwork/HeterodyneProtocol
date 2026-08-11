@@ -8,8 +8,7 @@
     "manifest",
     "kinds",
     "reason_codes",
-    "security_invariants",
-    "features"
+    "security_invariants"
   ],
   "properties": {
     "manifest": {
@@ -31,12 +30,6 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/invariant"
-      }
-    },
-    "features": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/feature"
       }
     }
   },
@@ -81,7 +74,7 @@
         },
         "schema_version": {
           "type": "string",
-          "const": "2.0.0"
+          "const": "1.0.0"
         },
         "entry_set_sha256": {
           "type": "string",
@@ -238,49 +231,6 @@
         "description": {
           "type": "string",
           "minLength": 1
-        }
-      }
-    },
-    "feature": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "id",
-        "owner",
-        "first_version",
-        "status",
-        "description",
-        "spec_ref",
-        "prerequisites"
-      ],
-      "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^(core|comms|control|social)\\.[a-z0-9]+(?:[.-][a-z0-9]+)*\\.v[1-9][0-9]*$"
-        },
-        "owner": {
-          "$ref": "#/definitions/document_id"
-        },
-        "first_version": {
-          "$ref": "#/definitions/qualified_version"
-        },
-        "status": {
-          "$ref": "#/definitions/status"
-        },
-        "description": {
-          "type": "string",
-          "minLength": 1
-        },
-        "spec_ref": {
-          "$ref": "#/definitions/qualified_reference"
-        },
-        "prerequisites": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "pattern": "^(core|comms|control|social)\\.[a-z0-9]+(?:[.-][a-z0-9]+)*\\.v[1-9][0-9]*$"
-          }
         }
       }
     }

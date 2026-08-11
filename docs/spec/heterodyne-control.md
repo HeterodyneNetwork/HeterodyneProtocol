@@ -6,7 +6,7 @@ Version: `control/0.5.0`
 
 Status: **0.5.0 draft**
 
-Registry revision: `6`
+Registry revision: `5`
 
 Normative dependencies:
 
@@ -113,8 +113,7 @@ Every Core/KERI-authorized device record states whether the device is a full
 node and may advertise:
 
 - exact supported Control versions;
-- supported Control invitation modes, without disclosing temporary activation
-  state or claiming current liveness;
+- `accept_control_invitations` capability, without claiming current liveness;
 - Marmot Control KeyPackage slots and their expiry;
 - standard NIP-65 and NIP-17 relay metadata required by Marmot;
 - outbound-Tor, onion-only, and reduced-assurance clearnet reachability;
@@ -135,35 +134,10 @@ device list.
 <a id="control-invitation-policy"></a>
 ## 4. Invitation policy and group establishment
 
-Each full node has exactly one local unsolicited invitation mode: `off`, the
-default; `temporary`, with an authenticated expiry after which it becomes
-`off`; or `permanent`, until explicitly changed. An open mode may accept an
-unsolicited two-member group created from an advertised, unexpired Control
-KeyPackage. Acceptance creates an untrusted enrollment-only context; it grants
-no Control authority. Changing mode never terminates an existing authorized
-group.
-
-Open modes MAY advertise Marmot's standard `last_resort_key_package` for the
-public Control slot. A last-resort KeyPackage may be reused according to
-Marmot until replacement or expiry; it does not remove the following
-application-state bounds. Before durable Welcome acceptance or KeyPackage
-state mutation, the node MUST enforce all of these limits during Marmot's
-tentative Welcome validation:
-
-- at most one pending enrollment-only group per authenticated account;
-- a finite configured global pending-enrollment cap;
-- a hard 30-minute lifetime for every enrollment-only group;
-- finite Welcome-processing and KeyPackage-replenishment rate and burst
-  limits;
-- no public-pool replenishment while the global pending cap is full; and
-- at least one separately classified invitation slot reserved for an active
-  entitled client or explicitly approved enrollment.
-
-Malformed, unsupported, expired, disabled, duplicate, over-quota, or
-rate-limited attempts fail before durable group creation or KeyPackage
-consumption. Expired enrollment-only groups are removed. The exact local
-policy object conforms to
-`docs/spec/schemas/control/control-invitation-policy-v1.schema.json`.
+Each full node has a local `accept_control_invitations` setting whose default
+is `true`. When enabled, the node may accept an unsolicited two-member group
+created from one of its advertised, unexpired Control KeyPackages. Acceptance
+creates an untrusted enrollment-only context; it grants no Control authority.
 
 Before entitlement activation, the node permits only:
 
@@ -176,42 +150,16 @@ Every other method MUST fail with `control-enrollment-required` before
 application dispatch. A valid Welcome, group membership, application event,
 or transport delivery MUST NOT be treated as authorization.
 
-In `off` mode the node rejects or ignores new unsolicited Control groups and
-stops advertising fresh public invitation-ready KeyPackages. A valid
-purpose-bound invite or explicit approval may still use its separately
-classified slot. Stale public advertisements are not a promise of acceptance.
+When invitation acceptance is disabled, the node rejects or ignores new
+unsolicited Control groups and stops advertising fresh invitation-ready
+KeyPackages. It MAY continue an already authorized group under local policy.
+Stale public advertisements are not a promise of acceptance.
 
 To establish a group, the client resolves current full-node metadata, selects
 a compatible node, fetches and validates a Control KeyPackage, creates an
 ordinary two-member Marmot group, completes the standard Add/Commit and
 Welcome obligations, and sends `control.initialize`. No epoch-key interaction
 or direct node address is required.
-
-<a id="control-one-time-invites"></a>
-### 4.1 Purpose-bound Control and device invites
-
-Control consumes the provider-independent format at
-`heterodyne:comms/0.5.0#comms-one-time-invites`. A
-`control-enrollment` redemption creates a standard pairwise Control group and
-bypasses only unsolicited-invitation admission by default. Explicit approval
-and a durable private entitlement remain required.
-
-A node MAY be explicitly configured to issue a `preauthorized` invite for a
-private `human-light` or `automated` principal. The signed descriptor MUST
-bind its exact client class, methods, objects, finite limits, agent role,
-token-lifetime ceiling, and optional expected client public key. Automated
-enrollment is expected-key bound by default. An unbound bearer template is
-valid only when separately enabled by node policy and MUST be reported as
-higher risk. Redemption can activate only that exact entitlement and still
-uses the full-node-held signing and mandatory automation-attribution path.
-
-Prompt-free preauthorization is forbidden for every KERI-authorized persona
-device. A `device-enrollment` invite may request any Core device class, but
-the joining device generates and retains its own keys and redemption provides
-only an authenticated rendezvous. Explicit approval, epoch authorization,
-KERI delegation, repository verification, and the applicable full/recovery
-completion ceremony remain mandatory. Control and device-enrollment invites
-default to ten minutes and have an absolute one-hour maximum.
 
 <a id="control-frame"></a>
 ## 5. Control application frame
@@ -271,19 +219,9 @@ finite limits, inbound-execution request, and requested token-duration
 capability. Approval occurs locally on a full node or through an already
 authorized device whose active entitlement permits `control.approve`.
 
-The `device_code` contains at least 128 bits of uniformly random entropy. The
-human `user_code` contains at least 34.5 bits of entropy. Its declared
-normalization is applied before a constant-time comparison, and no active code
-permits more than five failed guesses. Guessing is subject to both per-code
-and node-wide rate limits. The initiating and approving displays MUST show the
-identical normalized code and client fingerprint.
-
-Polling obeys the RFC 8628 interval and `slow_down` behavior. Success, denial,
-expiry, or attempt exhaustion atomically invalidates both codes. Pending code
-state conforms to
-`docs/spec/schemas/control/control-device-authorization-state-v1.schema.json`,
-is node-local, one-use, and short-lived, and MUST NOT be replicated as a
-credential or included in a backup.
+Pending device codes are node-local, one-use, short-lived state. They are not
+durable authority, MUST NOT be replicated as credentials, and MUST NOT be
+included in a backup.
 
 <a id="control-entitlement"></a>
 ### 6.2 Private client authorization
@@ -362,13 +300,10 @@ interrupt an already accepted side effect, but every later request or MCP tool
 call requires a current token.
 
 Nodes check current entitlement on every request rather than requiring a
-distributed Token Status List. Token minting and every privileged request
-require an authenticated, non-conflicted private authorization view no more
-than 300 seconds old. A mutation additionally performs an immediate
-synchronization attempt before authorization and fails closed unless it can
-establish that fresh canonical view. Minting a new token MUST NOT extend stale
-authority. Once a node observes revocation, it rejects all associated tokens
-and terminates the affected group locally.
+distributed Token Status List. Once a node observes revocation, it rejects all
+associated tokens and terminates the affected group locally. Implementations
+MUST expose an authorization-view freshness policy and apply stricter
+fail-closed freshness to mutations.
 
 <a id="control-request-processing"></a>
 ## 8. Request processing and execution
@@ -648,26 +583,16 @@ unauthorized private object, entitlement, or recovery resource exists.
   ],
   "required_invariants": [
     "CORE-I-IDENTITY-INTEGRITY",
-    "CORE-I-NID-DELEGATION-DUAL-PROOF",
     "CORE-I-VERIFY-BEFORE-USE",
     "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
     "CORE-I-KEY-MATERIAL-AT-REST",
-    "COMMS-I-TIER3-BLIND-CARRIER",
-    "COMMS-I-TIER2-HONESTY",
-    "COMMS-I-CONFIG-AT-REST",
     "COMMS-I-CLIENT-SIDE-DELIVERY",
     "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
     "COMMS-I-CLAIM-AUTHENTICITY",
-    "COMMS-I-CLAIM-ATTENUATION",
-    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
     "COMMS-I-CLAIM-REVOCATION",
     "COMMS-I-LEDGER-CONFINEMENT",
     "COMMS-I-ISSUER-KEY-CONFINEMENT",
-    "COMMS-I-MINT-FRESHNESS",
-    "COMMS-I-ISSUER-CONTINUITY",
-    "COMMS-I-CLAIM-RELEASE",
     "COMMS-I-JWT-TYPE-AUDIENCE",
-    "COMMS-I-STATUS-INTEGRITY",
     "CONTROL-I-AUDIT-AT-REST",
     "CONTROL-I-CLIENT-KEY-CONFINEMENT",
     "CONTROL-I-MARMOT-SENDER-BINDING",

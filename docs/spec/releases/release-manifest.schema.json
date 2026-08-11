@@ -12,8 +12,7 @@
     "registry_revision",
     "registry_sha256",
     "dependencies",
-    "provided_features",
-    "required_features",
+    "features",
     "conformance_status"
   ],
   "properties": {
@@ -39,12 +38,12 @@
       ]
     },
     "registry_revision": {
-      "const": 6
+      "const": 5
     },
     "registry_sha256": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$",
-      "const": "8e8c6d465c5ff2e045a7419eb2fe5229b07be9da313f157007c16c25c25bcb57"
+      "const": "169558fe39e7d2fa1e2b065dceee30bd4bae995c8bacb482e5af9cb73510b0e0"
     },
     "dependencies": {
       "type": "object",
@@ -58,15 +57,7 @@
         }
       }
     },
-    "provided_features": {
-      "type": "array",
-      "uniqueItems": true,
-      "items": {
-        "type": "string",
-        "minLength": 1
-      }
-    },
-    "required_features": {
+    "features": {
       "type": "array",
       "uniqueItems": true,
       "items": {
@@ -94,7 +85,7 @@
         "dependencies": {
           "maxProperties": 0
         },
-        "provided_features": {
+        "features": {
           "const": [
             "core.nostr-relay-read.v1",
             "core.outbound-tor.v1",
@@ -103,9 +94,6 @@
             "core.browser-shared-relay.v1",
             "core.marmot-role-attribution.v1"
           ]
-        },
-        "required_features": {
-          "const": []
         },
         "conformance_status": {
           "const": "conformant"
@@ -127,24 +115,17 @@
           "minProperties": 1,
           "maxProperties": 1
         },
-        "provided_features": {
+        "features": {
           "const": [
-            "comms.key-claims.v1",
-            "comms.private-claim-ledger.v1",
-            "comms.oidc-jwt-projection.v1",
-            "comms.token-status-list-draft-21.v1",
+            "key-claims",
+            "private-claim-ledger",
+            "oidc-jwt-projection",
+            "token-status-list-draft-21",
             "comms.public-reader.v1",
             "comms.agent-authorship.v1",
             "comms.marmot-conversations.v1",
             "comms.radicle-marmot-storage.v1",
             "comms.radicle-backed-marmot-relay.v1"
-          ]
-        },
-        "required_features": {
-          "const": [
-            "core.marmot-role-attribution.v1",
-            "core.nostr-relay-read.v1",
-            "core.repo-relay-client.v1"
           ]
         },
         "conformance_status": {
@@ -168,7 +149,7 @@
           "minProperties": 2,
           "maxProperties": 2
         },
-        "provided_features": {
+        "features": {
           "const": [
             "control.marmot.v1",
             "control.oauth-device-enrollment.v1",
@@ -179,16 +160,6 @@
             "control.recovery.radicle.v1",
             "control.recovery.epoch-inbox.v1",
             "control.recovery.sftp.v1"
-          ]
-        },
-        "required_features": {
-          "const": [
-            "core.repo-relay-client.v1",
-            "comms.agent-authorship.v1",
-            "comms.marmot-conversations.v1",
-            "comms.oidc-jwt-projection.v1",
-            "comms.private-claim-ledger.v1",
-            "comms.radicle-marmot-storage.v1"
           ]
         },
         "conformance_status": {
@@ -212,15 +183,9 @@
           "minProperties": 2,
           "maxProperties": 2
         },
-        "provided_features": {
+        "features": {
           "const": [
             "social.agent-policy-moderation.v1"
-          ]
-        },
-        "required_features": {
-          "const": [
-            "comms.agent-authorship.v1",
-            "comms.marmot-conversations.v1"
           ]
         },
         "conformance_status": {

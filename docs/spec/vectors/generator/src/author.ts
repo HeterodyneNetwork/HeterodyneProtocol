@@ -21,13 +21,7 @@ export async function authorAllVectors(outputDir: string): Promise<string[]> {
   await writeReasonCodesMarkdown(join(outputDir, "schema", "reason-codes.md"));
 
   for (const { relativePath, vector } of vectors) {
-    try {
-      validateVectorOrThrow(vector);
-    } catch (error) {
-      throw new Error(
-        `invalid authored vector ${vector.vector_id}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
+    validateVectorOrThrow(vector);
     await writeJson(join(outputDir, relativePath), vector);
     written.push(relativePath);
   }

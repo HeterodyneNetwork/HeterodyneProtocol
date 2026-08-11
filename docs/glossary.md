@@ -29,8 +29,7 @@ Radicle-backed group storage, credential-plane sync, and encrypted
 subprotocol carriers.
 
 **Control.** A Comms profile for own-device enrollment, grants, RPC, audit, and
-agentic sessions. Baseline Control 0.5.0 is claimable; recovery features are
-separately advertised and optional.
+agentic sessions. Control 0.5.0 is incomplete and cannot be claimed.
 
 **Social.** The document for public following, interactions, moderation,
 lists, social discovery, presentation, durable assets, and ATProto attachment.
@@ -39,12 +38,8 @@ lists, social discovery, presentation, durable assets, and ATProto attachment.
 whole string is not itself semver. Each family document versions independently.
 
 **Registry revision.** A monotonic snapshot of kind allocations, profile
-discriminators, reason codes, security-invariant IDs, and feature IDs. It is pinned by
+discriminators, reason codes, and security-invariant IDs. It is pinned by
 releases, capabilities, reports, and vectors.
-
-**Feature catalog.** The registry-owned allocation of globally unique dotted
-and versioned feature IDs, their document owners, first versions, status,
-specification anchors, and acyclic prerequisites.
 
 **Conformance class.** One of Core, Core+Comms (a Heterodyne persona), Control
 profile, or Social. Claims also name required features.
@@ -54,7 +49,7 @@ invariant membership and prerequisite profiles. Unknown profile IDs confer no
 capability. The current IDs are `heterodyne-core-strict-v1`,
 `heterodyne-comms-strict-v1`, `heterodyne-comms-strict-v2`,
 `heterodyne-control-strict-v1`, `heterodyne-social-strict-v1`, and
-`heterodyne-social-strict-v2`.
+`heterodyne-social-strict-v2`; the Control ID is reserved-inactive.
 
 ## Core terms
 
@@ -274,19 +269,9 @@ token validation failure.
 
 ## Control terms
 
-**Private Control principal.** A confined, NID-less `human-light` or
-`automated` Marmot account authorized only through private Control
-entitlement. It is not a Core/KERI device and never receives persona, NID,
-repository-decryption, MLS-leaf, or agent-role secrets.
-
-**One-time invite.** A purpose-bound, signed fragment envelope for `dm`,
-`control-enrollment`, or `device-enrollment`. Its origin is not authority; the
-first valid authenticated responder reserves it before group establishment
-spends it.
-
-**Enrollment-only group.** A pairwise Marmot Control group with no durable
-application authority. It permits only initialization and enrollment methods,
-is resource-bounded, and expires after at most 30 minutes.
+**Session device.** A confined, NID-less Control principal. It is not a
+credential-plane device and never receives persona, NID, audience,
+repository-decryption, or ratchet secrets.
 
 **Control audit record.** Encrypted local evidence binding a request and result
 to the negotiated Control and Comms versions, peer, session, grant decision,

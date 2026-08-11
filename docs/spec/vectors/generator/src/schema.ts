@@ -134,8 +134,6 @@ export const CLAIM_LEDGER_RECORD_SCHEMA = readSchema("claim-ledger-record-v1.sch
 export const OIDC_ISSUANCE_RECORD_SCHEMA = readSchema("oidc-issuance-record-v1.schema.json");
 export const OIDC_ISSUER_METADATA_SCHEMA = readSchema("oidc-issuer-metadata-v1.schema.json");
 export const OIDC_CONTINUITY_MANIFEST_SCHEMA = readSchema("oidc-continuity-manifest-v1.schema.json");
-export const ONE_TIME_INVITE_SCHEMA = readSchema("one-time-invite-v1.schema.json");
-export const ONE_TIME_INVITE_RESPONSE_SCHEMA = readSchema("one-time-invite-response-v1.schema.json");
 export const CONTROL_FRAME_SCHEMA = readControlSchema("control-frame-v1.schema.json");
 export const CONTROL_CLIENT_AUTHORIZATION_SCHEMA = readControlSchema("control-client-authorization-v1.schema.json");
 export const CONTROL_OPERATION_RECORD_SCHEMA = readControlSchema("control-operation-record-v1.schema.json");
@@ -148,8 +146,6 @@ export const CONTROL_CAPABILITY_SET_SCHEMA = readControlSchema("control-capabili
 export const CONTROL_MCP_FRAME_SCHEMA = readControlSchema("control-mcp-frame-v1.schema.json");
 export const CONTROL_RPC_REQUEST_SCHEMA = readControlSchema("control-rpc-request-v1.schema.json");
 export const CONTROL_RPC_RESPONSE_SCHEMA = readControlSchema("control-rpc-response-v1.schema.json");
-export const CONTROL_INVITATION_POLICY_SCHEMA = readControlSchema("control-invitation-policy-v1.schema.json");
-export const CONTROL_DEVICE_AUTHORIZATION_STATE_SCHEMA = readControlSchema("control-device-authorization-state-v1.schema.json");
 
 export const CREDENTIAL_CONTINUITY_SCHEMA_FILES = [
   "repository-retention-inventory-v1.schema.json",
@@ -188,8 +184,6 @@ const validateClaimLedgerRecord = commsSchemaAjv.compile(CLAIM_LEDGER_RECORD_SCH
 const validateOidcIssuanceRecord = commsSchemaAjv.getSchema("https://heterodyne.network/schemas/comms/oidc-issuance-record-v1.schema.json")!;
 const validateOidcIssuerMetadata = commsSchemaAjv.compile(OIDC_ISSUER_METADATA_SCHEMA);
 const validateOidcContinuityManifest = commsSchemaAjv.compile(OIDC_CONTINUITY_MANIFEST_SCHEMA);
-const validateOneTimeInvite = commsSchemaAjv.compile(ONE_TIME_INVITE_SCHEMA);
-const validateOneTimeInviteResponse = commsSchemaAjv.compile(ONE_TIME_INVITE_RESPONSE_SCHEMA);
 
 const controlSchemaAjv = new Ajv({ allErrors: true, strict: false });
 controlSchemaAjv.addSchema(CONTROL_CAPABILITY_SET_SCHEMA);
@@ -213,22 +207,6 @@ const validateControlRpcRequest = controlSchemaAjv.compile(
 const validateControlRpcResponse = controlSchemaAjv.compile(
   CONTROL_RPC_RESPONSE_SCHEMA,
 );
-const validateControlInvitationPolicy = controlSchemaAjv.compile(CONTROL_INVITATION_POLICY_SCHEMA);
-const validateControlDeviceAuthorizationState = controlSchemaAjv.compile(CONTROL_DEVICE_AUTHORIZATION_STATE_SCHEMA);
-
-export function validateControlInvitationPolicySchemaOrThrow(value: unknown): void {
-  assertJcsInput(value);
-  if (!validateControlInvitationPolicy(value)) {
-    throw new Error(`control-invitation-policy-invalid: ${formatErrors(validateControlInvitationPolicy.errors ?? [])}`);
-  }
-}
-
-export function validateControlDeviceAuthorizationStateSchemaOrThrow(value: unknown): void {
-  assertJcsInput(value);
-  if (!validateControlDeviceAuthorizationState(value)) {
-    throw new Error(`control-device-authorization-state-invalid: ${formatErrors(validateControlDeviceAuthorizationState.errors ?? [])}`);
-  }
-}
 
 const credentialContinuitySchemaAjv = new Ajv({
   allErrors: true,
@@ -251,20 +229,6 @@ export function validateVectorOrThrow(value: unknown): asserts value is Vector {
     throw new Error(formatErrors(validate.errors ?? []));
   }
   validateFamilyMetadata(value);
-}
-
-export function validateOneTimeInviteSchemaOrThrow(value: unknown): void {
-  assertJcsInput(value);
-  if (!validateOneTimeInvite(value)) {
-    throw new Error(`one-time-invite-invalid: ${formatErrors(validateOneTimeInvite.errors ?? [])}`);
-  }
-}
-
-export function validateOneTimeInviteResponseSchemaOrThrow(value: unknown): void {
-  assertJcsInput(value);
-  if (!validateOneTimeInviteResponse(value)) {
-    throw new Error(`one-time-invite-response-invalid: ${formatErrors(validateOneTimeInviteResponse.errors ?? [])}`);
-  }
 }
 
 export function validateKeyClaimSchemaOrThrow(value: unknown): void {

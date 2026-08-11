@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   authorizeInvitation,
-  evaluateAuthorizationFreshness,
-  evaluateDeviceAuthorizationAttempt,
-  evaluateInvitePreauthorization,
-  evaluatePendingEnrollment,
   evaluateEntitlementUpdate,
   evaluateEpochActivation,
   evaluateRecoveryAccess,
@@ -21,72 +17,43 @@ const group = "33".repeat(32);
 const jkt = "A".repeat(43);
 
 describe("Marmot Control invitation and entitlement", () => {
-  const invitation = {
-    invitation_mode: "off" as const,
-    temporary_expires_at: null,
-    now: 1_000,
-    keypackage_valid: true,
-    keypackage_last_resort: true,
-    member_count: 2,
-    node_account_matches: true,
-    entitlement_state: "none" as const,
-    method: "control.enrollment.start",
-    purpose_bound_invite_valid: false,
-    explicitly_approved: false,
-    pending_for_account: 0,
-    global_pending: 0,
-    global_pending_cap: 10,
-    welcome_rate_remaining: 1,
-    replenishment_rate_remaining: 1,
-    public_pool_replenishment_requested: false,
-    reserved_slot_available: true,
-  };
-
-  it("defaults unsolicited invitations to off and admits bounded open mode enrollment", () => {
+  it("keeps a valid unsolicited group enrollment-only until entitlement", () => {
     expect(authorizeInvitation({
-      ...invitation,
-      invitation_mode: "permanent",
+      invitation_enabled: true,
+      keypackage_valid: true,
+      member_count: 2,
+      node_account_matches: true,
+      entitlement_state: "none",
+      method: "control.enrollment.start",
     })).toEqual({ verdict: "accept", state: "enrollment-only", authority: false });
-    expect(authorizeInvitation(invitation))
-      .toEqual({ verdict: "reject", reason_code: "control-invitation-disabled" });
-  });
 
-  it("enforces temporary expiry, one pending group per account, global cap, and rates", () => {
-    expect(authorizeInvitation({ ...invitation, invitation_mode: "temporary", temporary_expires_at: 1_001 }))
-      .toMatchObject({ verdict: "accept", state: "enrollment-only" });
-    expect(authorizeInvitation({ ...invitation, invitation_mode: "temporary", temporary_expires_at: 1_000 }))
-      .toEqual({ verdict: "reject", reason_code: "control-invitation-disabled" });
-    expect(authorizeInvitation({ ...invitation, invitation_mode: "permanent", pending_for_account: 1 }))
-      .toEqual({ verdict: "reject", reason_code: "control-enrollment-capacity" });
-    expect(authorizeInvitation({ ...invitation, invitation_mode: "permanent", global_pending: 10 }))
-      .toEqual({ verdict: "reject", reason_code: "control-enrollment-capacity" });
-    expect(authorizeInvitation({ ...invitation, invitation_mode: "permanent", welcome_rate_remaining: 0 }))
-      .toEqual({ verdict: "reject", reason_code: "control-enrollment-rate-limited" });
-    expect(authorizeInvitation({ ...invitation, invitation_mode: "permanent", global_pending: 10, public_pool_replenishment_requested: true }))
-      .toEqual({ verdict: "reject", reason_code: "control-keypackage-replenishment-paused" });
-  });
-
-  it("reserves capacity for entitled or explicitly approved clients", () => {
     expect(authorizeInvitation({
-      ...invitation,
-      entitlement_state: "active",
-      global_pending: 10,
-      explicitly_approved: true,
-    })).toEqual({ verdict: "accept", state: "active", authority: true });
-    expect(authorizeInvitation({
-      ...invitation,
-      entitlement_state: "active",
-      global_pending: 10,
-      explicitly_approved: true,
-      reserved_slot_available: false,
-    })).toEqual({ verdict: "reject", reason_code: "control-enrollment-capacity" });
+      invitation_enabled: true,
+      keypackage_valid: true,
+      member_count: 2,
+      node_account_matches: true,
+      entitlement_state: "none",
+      method: "config.get",
+    })).toEqual({ verdict: "reject", reason_code: "control-enrollment-required" });
   });
 
-  it("expires enrollment-only groups after the hard 30-minute lifetime", () => {
-    expect(evaluatePendingEnrollment({ created_at: 1_000, now: 2_799 }))
-      .toEqual({ verdict: "accept", state: "enrollment-only", expires_at: 2_800 });
-    expect(evaluatePendingEnrollment({ created_at: 1_000, now: 2_800 }))
-      .toEqual({ verdict: "reject", reason_code: "control-enrollment-expired" });
+  it("rejects disabled invitations and revoked group membership", () => {
+    expect(authorizeInvitation({
+      invitation_enabled: false,
+      keypackage_valid: true,
+      member_count: 2,
+      node_account_matches: true,
+      entitlement_state: "none",
+      method: "control.initialize",
+    })).toEqual({ verdict: "reject", reason_code: "control-invitation-disabled" });
+    expect(authorizeInvitation({
+      invitation_enabled: true,
+      keypackage_valid: true,
+      member_count: 2,
+      node_account_matches: true,
+      entitlement_state: "revoked",
+      method: "control.initialize",
+    })).toEqual({ verdict: "reject", reason_code: "control-entitlement-conflict" });
   });
 
   it("converges reductions, absorbs revocation, and rejects unconsented expansion", () => {
@@ -126,9 +93,6 @@ describe("node-scoped Marmot-bound tokens", () => {
     node_policy_max_seconds: 3600,
     extended_capability: false,
     now: 1_000,
-    authorization_view_authenticated: true,
-    authorization_view_conflicted: false,
-    authorization_view_age_seconds: 0,
     methods: ["config.get"],
     objects: ["config:ui"],
   };
@@ -156,9 +120,6 @@ describe("node-scoped Marmot-bound tokens", () => {
       authenticated_sender_jkt: jkt,
       group_id: group,
       entitlement_state: "active" as const,
-      authorization_view_authenticated: true,
-      authorization_view_conflicted: false,
-      authorization_view_age_seconds: 100,
       method: "config.get",
       object: "config:ui",
     };
@@ -171,90 +132,6 @@ describe("node-scoped Marmot-bound tokens", () => {
       .toEqual({ verdict: "reject", reason_code: "control-token-audience-invalid" });
     expect(validateControlTokenUse({ ...use, method: "config.put" }))
       .toEqual({ verdict: "reject", reason_code: "control-token-scope-invalid" });
-  });
-
-  it("caps authorization-view age at 300 seconds for minting and use", () => {
-    expect(issueControlToken({ ...issuance, authorization_view_age_seconds: 301 }))
-      .toEqual({ verdict: "reject", reason_code: "control-authorization-view-stale" });
-    expect(evaluateAuthorizationFreshness({ authenticated: true, conflicted: false, age_seconds: 300, mutation: false, immediate_sync_succeeded: false }))
-      .toEqual({ verdict: "accept" });
-    expect(evaluateAuthorizationFreshness({ authenticated: true, conflicted: false, age_seconds: 100, mutation: true, immediate_sync_succeeded: false }))
-      .toEqual({ verdict: "reject", reason_code: "control-authorization-view-stale" });
-  });
-});
-
-describe("OAuth Device Authorization hardening", () => {
-  const attempt = {
-    device_code_entropy_bits: 128,
-    user_code_entropy_bits: 34.5,
-    failed_guesses: 0,
-    per_code_rate_allowed: true,
-    node_rate_allowed: true,
-    normalized_constant_time_match: true,
-    display_code_matches: true,
-    display_fingerprint_matches: true,
-    poll_interval_observed: true,
-    slow_down_observed: true,
-    terminal_state: "pending" as const,
-  };
-
-  it("requires entropy, throttling, display binding, and RFC polling behavior", () => {
-    expect(evaluateDeviceAuthorizationAttempt(attempt)).toEqual({ verdict: "accept", state: "pending" });
-    expect(evaluateDeviceAuthorizationAttempt({ ...attempt, device_code_entropy_bits: 127 }))
-      .toMatchObject({ verdict: "reject" });
-    expect(evaluateDeviceAuthorizationAttempt({ ...attempt, user_code_entropy_bits: 34 }))
-      .toMatchObject({ verdict: "reject" });
-    expect(evaluateDeviceAuthorizationAttempt({ ...attempt, failed_guesses: 5 }))
-      .toEqual({ verdict: "reject", reason_code: "control-device-code-exhausted", state: "invalidated" });
-    expect(evaluateDeviceAuthorizationAttempt({ ...attempt, node_rate_allowed: false }))
-      .toEqual({ verdict: "reject", reason_code: "control-device-code-rate-limited", state: "pending" });
-    expect(evaluateDeviceAuthorizationAttempt({ ...attempt, display_fingerprint_matches: false }))
-      .toEqual({ verdict: "reject", reason_code: "control-device-code-display-mismatch", state: "pending" });
-  });
-});
-
-describe("purpose-bound enrollment effects", () => {
-  const preauthorized = {
-    purpose: "control-enrollment" as const,
-    approval_mode: "preauthorized" as const,
-    client_class: "automated" as const,
-    expected_client_pubkey: "11".repeat(32),
-    unbound_bearer_enabled: false,
-    node_allows_unbound_bearer: false,
-    methods: ["agent.publish"],
-    objects: ["feed:main"],
-    limits: { requests_per_hour: 10 },
-    agent_role: "newsletter",
-    token_lifetime_ceiling_seconds: 300,
-    keri_authorized_device: false,
-  };
-
-  it("allows exact key-bound private Control preauthorization", () => {
-    expect(evaluateInvitePreauthorization(preauthorized)).toEqual({
-      verdict: "accept",
-      prompt_free: true,
-      risk: "normal",
-    });
-  });
-
-  it("rejects prompt-free KERI devices and unbound automation by default", () => {
-    expect(evaluateInvitePreauthorization({
-      ...preauthorized,
-      purpose: "device-enrollment",
-      client_class: "full-device",
-      keri_authorized_device: true,
-    })).toEqual({ verdict: "reject", reason_code: "invite-preauthorization-invalid" });
-    expect(evaluateInvitePreauthorization({ ...preauthorized, expected_client_pubkey: null }))
-      .toEqual({ verdict: "reject", reason_code: "invite-preauthorization-invalid" });
-  });
-
-  it("reports explicitly enabled unbound bearer automation as higher risk", () => {
-    expect(evaluateInvitePreauthorization({
-      ...preauthorized,
-      expected_client_pubkey: null,
-      unbound_bearer_enabled: true,
-      node_allows_unbound_bearer: true,
-    })).toEqual({ verdict: "accept", prompt_free: true, risk: "higher" });
   });
 });
 

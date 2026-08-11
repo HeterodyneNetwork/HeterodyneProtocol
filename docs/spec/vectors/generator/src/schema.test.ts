@@ -5,86 +5,8 @@ import {
   validateClaimRevocationSchemaOrThrow,
   validateCredentialContinuitySchemaOrThrow,
   validateKeyClaimSchemaOrThrow,
-  validateOneTimeInviteResponseSchemaOrThrow,
-  validateOneTimeInviteSchemaOrThrow,
   validateVectorOrThrow,
 } from "./schema.js";
-
-describe("one-time invite schemas", () => {
-  const descriptor = {
-    version: 1,
-    purpose: "dm",
-    inviter_account: "11".repeat(32),
-    invite_id: "22".repeat(32),
-    rendezvous_pubkey: "33".repeat(32),
-    relay_hints: ["wss://relay.example"],
-    issued_at: 1_000,
-    expires_at: 2_000,
-    secret_sha256: "44".repeat(32),
-    approval_mode: "interactive",
-  };
-
-  it("accepts closed invite and response shapes", () => {
-    expect(() => validateOneTimeInviteSchemaOrThrow({
-      descriptor,
-      signature: "55".repeat(64),
-      secret: "66".repeat(32),
-    })).not.toThrow();
-    expect(() => validateOneTimeInviteResponseSchemaOrThrow({
-      spec_version: "comms/0.5.0",
-      purpose: "dm",
-      descriptor_digest: "77".repeat(32),
-      responder_account: "88".repeat(32),
-      mls_key_package: "AQID",
-      requested_class: "conversation-peer",
-      capabilities: ["chat"],
-      proof: "99".repeat(32),
-    })).not.toThrow();
-  });
-
-  it("rejects extra authority and private-key members", () => {
-    expect(() => validateOneTimeInviteSchemaOrThrow({
-      descriptor,
-      signature: "55".repeat(64),
-      secret: "66".repeat(32),
-      device_private_key: "77".repeat(32),
-    })).toThrow(/additional/);
-    expect(() => validateOneTimeInviteResponseSchemaOrThrow({
-      spec_version: "comms/0.5.0",
-      purpose: "dm",
-      descriptor_digest: "77".repeat(32),
-      responder_account: "88".repeat(32),
-      mls_key_package: "AQID",
-      requested_class: "conversation-peer",
-      capabilities: [],
-      proof: "99".repeat(32),
-      mls_leaf_private_key: "aa".repeat(32),
-    })).toThrow(/additional/);
-  });
-
-  it("enforces purpose-specific authority and preauthorization", () => {
-    expect(() => validateOneTimeInviteSchemaOrThrow({
-      descriptor: { ...descriptor, purpose: "device-enrollment" },
-      signature: "55".repeat(64),
-      secret: "66".repeat(32),
-    })).toThrow();
-    expect(() => validateOneTimeInviteSchemaOrThrow({
-      descriptor: { ...descriptor, approval_mode: "preauthorized" },
-      signature: "55".repeat(64),
-      secret: "66".repeat(32),
-    })).toThrow();
-    expect(() => validateOneTimeInviteResponseSchemaOrThrow({
-      spec_version: "comms/0.5.0",
-      purpose: "device-enrollment",
-      descriptor_digest: "77".repeat(32),
-      responder_account: "88".repeat(32),
-      mls_key_package: "AQID",
-      requested_class: "conversation-peer",
-      capabilities: [],
-      proof: "99".repeat(32),
-    })).toThrow();
-  });
-});
 
 describe("vector schema", () => {
   const valid = (owner: "core" | "comms" | "social" | "control") => ({

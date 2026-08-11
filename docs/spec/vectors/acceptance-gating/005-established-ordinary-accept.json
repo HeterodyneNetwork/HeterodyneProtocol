@@ -5,30 +5,36 @@
   "dependency_versions": {
     "core": "core/0.5.0"
   },
-  "registry_revision": 6,
+  "registry_revision": 5,
   "spec_refs": [
     "heterodyne:comms/0.5.0#comms-acceptance-hook"
   ],
   "vector_id": "acceptance-gating/established-ordinary-accept",
-  "description": "A previously accepted two-member Marmot conversation remains accepted.",
+  "description": "Closed Comms acceptance outcome: established ordinary accept.",
   "direction": "consume",
   "input": {
-    "cryptographic_valid": true,
-    "inviter_account": "1111111111111111111111111111111111111111111111111111111111111111",
-    "recipient_account": "2222222222222222222222222222222222222222222222222222222222222222",
-    "group_id": "3333333333333333333333333333333333333333333333333333333333333333",
-    "key_package_ref": "4444444444444444444444444444444444444444444444444444444444444444",
-    "member_count": 2,
-    "supported_capabilities": true,
-    "prior_local_acceptance": true,
-    "one_time_dm_invite_valid": false,
-    "explicit_local_decision": "none"
+    "peer_persona_cold_root": "1111111111111111111111111111111111111111111111111111111111111111",
+    "peer_device_publishing_key": "2222222222222222222222222222222222222222222222222222222222222222",
+    "peer_delegation_id": "device:bob:1",
+    "local_recipient_persona": "3333333333333333333333333333333333333333333333333333333333333333",
+    "target_device_nid": "did:key:z6MkFixtureTarget",
+    "context": "ordinary-dm",
+    "session_id": "4444444444444444444444444444444444444444444444444444444444444444",
+    "transcript_binding": "5555555555555555555555555555555555555555555555555555555555555555",
+    "protocol_id": "heterodyne-dm",
+    "requested_features": [],
+    "active_delegation": true,
+    "finality": "final",
+    "revoked": false,
+    "prior_session_state": "new",
+    "explicit_user_decision": null,
+    "authenticated": true,
+    "established_locally_accepted_session": true
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "outcome": "accept",
-      "policy_hook_invoked": true
+      "outcome": "accept"
     }
   }
 }

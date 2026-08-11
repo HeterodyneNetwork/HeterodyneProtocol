@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Ajv, type AnySchema, type ErrorObject } from "ajv";
@@ -50,26 +50,13 @@ export type InvariantEntry = {
   description: string;
 };
 
-export type FeatureEntry = {
-  id: string;
-  owner: DocumentId;
-  first_version: string;
-  status: RegistryStatus;
-  description: string;
-  spec_ref: string;
-  prerequisites: string[];
-};
-
 export type RegistryEntrySet = {
   kinds: KindEntry[];
   reason_codes: ReasonCodeEntry[];
   security_invariants: InvariantEntry[];
-  /** Absent only from historical snapshots created before revision 6. */
-  features?: FeatureEntry[];
 };
 
 export type Registry = RegistryEntrySet & {
-  features: FeatureEntry[];
   manifest: RegistryManifest;
   history: Map<number, RegistryEntrySet>;
   currentEntrySet: RegistryEntrySet;
@@ -99,9 +86,6 @@ export function loadRegistry(root: string): Registry {
   const security_invariants = readJson<{ security_invariants: InvariantEntry[] }>(
     join(registryRoot, "security-invariants.json"),
   ).security_invariants;
-  const features = readJson<{ features: FeatureEntry[] }>(
-    join(registryRoot, "features.json"),
-  ).features;
   const history = new Map<number, RegistryEntrySet>();
   const historyRoot = join(registryRoot, "history");
   for (const name of readdirSync(historyRoot).sort((left, right) =>
@@ -111,56 +95,21 @@ export function loadRegistry(root: string): Registry {
     history.set(Number.parseInt(basename(name, ".json"), 10), readJson(join(historyRoot, name)));
   }
 
-  const currentEntrySet = { kinds, reason_codes, security_invariants, features };
+  const currentEntrySet = { kinds, reason_codes, security_invariants };
   const registry = { manifest, ...currentEntrySet, history, currentEntrySet };
   validateRegistry(registry, registryRoot);
   return registry;
 }
 
 export function computeRegistryDigest(
-  registry: Pick<RegistryEntrySet, "kinds" | "reason_codes" | "security_invariants" | "features">,
+  registry: Pick<Registry, "kinds" | "reason_codes" | "security_invariants">,
 ): string {
   const entrySet: RegistryEntrySet = {
     kinds: registry.kinds,
     reason_codes: registry.reason_codes,
     security_invariants: registry.security_invariants,
-    ...(registry.features === undefined ? {} : { features: registry.features }),
   };
   return createHash("sha256").update(canonicalize(entrySet), "utf8").digest("hex");
-}
-
-export function authorRegistryRevision(
-  repositoryRoot: string,
-  revision: number,
-  schemaVersion = "2.0.0",
-): string {
-  const registryRoot = resolveRegistryRoot(repositoryRoot);
-  const entrySet: RegistryEntrySet = {
-    kinds: readJson<{ kinds: KindEntry[] }>(join(registryRoot, "kinds.json")).kinds,
-    reason_codes: readJson<{ reason_codes: ReasonCodeEntry[] }>(
-      join(registryRoot, "reason-codes.json"),
-    ).reason_codes,
-    security_invariants: readJson<{ security_invariants: InvariantEntry[] }>(
-      join(registryRoot, "security-invariants.json"),
-    ).security_invariants,
-    features: readJson<{ features: FeatureEntry[] }>(
-      join(registryRoot, "features.json"),
-    ).features,
-  };
-  validateUniqueEntries(entrySet);
-  validateEntryMetadata(entrySet);
-  const digest = computeRegistryDigest(entrySet);
-  writeFileSync(
-    join(registryRoot, "history", `${revision}.json`),
-    `${JSON.stringify(entrySet, null, 2)}\n`,
-    "utf8",
-  );
-  writeFileSync(
-    join(registryRoot, "manifest.json"),
-    `${JSON.stringify({ revision, schema_version: schemaVersion, entry_set_sha256: digest }, null, 2)}\n`,
-    "utf8",
-  );
-  return digest;
 }
 
 export function validateRegistry(
@@ -238,7 +187,6 @@ function validateUniqueEntries(registry: RegistryEntrySet): void {
     registry.security_invariants.map((entry) => entry.id),
     "duplicate security invariant",
   );
-  assertUnique((registry.features ?? []).map((entry) => entry.id), "duplicate feature");
 
   const profileIds: string[] = [];
   for (const entry of registry.kinds) {
@@ -273,37 +221,6 @@ function validateEntryMetadata(registry: RegistryEntrySet): void {
       throw new Error(`security invariant owner mismatch: ${entry.id}`);
     }
   }
-  validateFeatures(registry.features ?? []);
-}
-
-function validateFeatures(features: FeatureEntry[]): void {
-  const byId = new Map(features.map((entry) => [entry.id, entry]));
-  for (const entry of features) {
-    if (!entry.id.startsWith(`${entry.owner}.`)) {
-      throw new Error(`feature owner mismatch: ${entry.id}`);
-    }
-    assertQualifiedFirstVersion(entry.first_version, entry.owner);
-    if (!QUALIFIED_REFERENCE.test(entry.spec_ref)) {
-      throw new Error(`unqualified feature spec reference: ${entry.spec_ref}`);
-    }
-    assertUnique(entry.prerequisites, `duplicate feature prerequisite: ${entry.id}`);
-    for (const prerequisite of entry.prerequisites) {
-      if (!byId.has(prerequisite)) {
-        throw new Error(`unknown feature prerequisite: ${entry.id} -> ${prerequisite}`);
-      }
-    }
-  }
-  const visiting = new Set<string>();
-  const visited = new Set<string>();
-  const visit = (id: string): void => {
-    if (visiting.has(id)) throw new Error(`feature prerequisite cycle: ${id}`);
-    if (visited.has(id)) return;
-    visiting.add(id);
-    for (const prerequisite of byId.get(id)?.prerequisites ?? []) visit(prerequisite);
-    visiting.delete(id);
-    visited.add(id);
-  };
-  for (const id of byId.keys()) visit(id);
 }
 
 export function validateRegistryHistory(
@@ -317,7 +234,6 @@ export function validateRegistryHistory(
   const historicalKinds = new Map<string, { last: KindEntry }>();
   const historicalReasonCodes = new Map<string, { last: ReasonCodeEntry }>();
   const historicalInvariants = new Map<string, { last: InvariantEntry }>();
-  const historicalFeatures = new Map<string, { last: FeatureEntry }>();
   for (let index = 0; index < revisions.length; index += 1) {
     if (revisions[index] !== index + 1) {
       throw new Error("registry history revisions must be contiguous from 1");
@@ -337,12 +253,6 @@ export function validateRegistryHistory(
     validateHistoricalCollection(
       current.security_invariants,
       historicalInvariants,
-      (entry) => entry.id,
-    );
-    validateFeatures(current.features ?? []);
-    validateHistoricalCollection(
-      current.features ?? [],
-      historicalFeatures,
       (entry) => entry.id,
     );
     validateHistoricalProfiles(current, historicalProfiles);
@@ -433,7 +343,6 @@ function validateAgainstSchema(registry: Registry, registryRoot: string): void {
     kinds: registry.kinds,
     reason_codes: registry.reason_codes,
     security_invariants: registry.security_invariants,
-    features: registry.features,
   };
   if (!validate(value)) {
     throw new Error(formatErrors(validate.errors ?? []));
