@@ -119,18 +119,27 @@ timing, size, count, publication, and fetch-cadence metadata.
 
 <!-- Monolith provenance: §6.7.4 and §6.10.1. -->
 
-An audience key is 32 uniformly random bytes. `kind:31011` distributes it once
-per recipient using NIP-44 to that recipient's npub. The event MUST be
-epoch-key signed and contain exactly the addressing fields represented here:
+An audience key is 32 uniformly random bytes. Persona membership expands by
+default to every active KEL-delegated human-device secp256k1 publishing key for
+that persona. A policy MAY narrow delivery to an explicit subset of those
+active devices, but MUST NOT add an inactive, revoked, unverified, non-device,
+cold-root, or epoch key. `kind:31011` distributes the key once per effective
+device recipient using NIP-44 to that device publishing key. The same device
+private key signs Nostr events and decrypts its wraps; this is one compromise
+domain. An authenticated light device therefore decrypts directly without
+bringing a persona authority key online.
+
+The event MUST be epoch-key signed and contain exactly the addressing fields
+represented here:
 
 ```json
 {
   "kind": 31011,
   "tags": [
-    ["d", "<key_id>:<recipient npub>"],
+    ["d", "<key_id>:<recipient pubkey-hex>"],
     ["heterodyne", "audience_key_wrap"],
     ["key_id", "<opaque id with at least 128 bits>"],
-    ["p", "<recipient npub>"],
+    ["p", "<recipient pubkey-hex>"],
     ["cold_root", "<persona cold root>"],
     ["kel_head", "<accepted KEL event id>", "<seq>"],
     ["spec_version", "comms/0.5.0"]
@@ -144,6 +153,11 @@ The replaceable `kind:31012` roster uses `d = key_id`, the
 tag per recipient. It MUST be epoch-key signed and KEL-validated. A sensitive
 roster MAY instead be carried inside a Tier 3 encrypted object.
 
+Every NIP-01 `pubkey`, `p` tag, and address coordinate in this section is an
+exact 32-byte x-only public key encoded as 64 lowercase hexadecimal
+characters. `npub` means only the NIP-19 bech32 presentation encoding and MUST
+NOT occur in these wire fields.
+
 Encrypting the roster does not create complete membership privacy.
 Recipient-addressed `kind:31011` events on public carriers still expose clear
 recipient and generation linkage. This release defines no membership-private
@@ -154,7 +168,7 @@ A member addition MUST publish a replacing `kind:31012` under the same
 `kind:31011` wrap. Addition SHOULD NOT rotate: the new member receives the
 current generation.
 
-A member removal MUST generate a fresh audience key and `key_id`, publish the
+A member or effective device removal MUST generate a fresh audience key and `key_id`, publish the
 new roster, redistribute `kind:31011` wraps only to remaining members,
 republish the current encrypted index under the newly derived `index_key`, and
 supersede the in-audience descriptor. The producer MUST initiate every
@@ -165,6 +179,9 @@ partition is an availability failure, not automatic producer nonconformance.
 Rotation excludes the removed member from future
 content only; it cannot revoke old ciphertext encrypted under a key the member
 already possessed.
+Adding an active device follows ordinary member addition and does not rotate
+existing content by default. Removing or revoking a device excludes it from
+the effective set and triggers the complete removal rotation above.
 After that removal, every subsequent post, index, and descriptor MUST use the
 fresh audience generation and its fresh `key_id`; reuse of the retired
 generation for any new object MUST be rejected.
@@ -671,9 +688,24 @@ receive short-lived constrained grants by default.
 
 Comms adopts Marmot at exact commit
 `4ad4ae21479c3f3fa9950c6fc4556a76941a62e1` as the normative conversation
-dependency for this release. A conforming implementation MUST pin those
-upstream bytes. Moving the pin requires a complete protocol and conformance
-update; an implementation MUST NOT silently substitute another commit.
+dependency for this release, with Git tree
+`10d941f358de5d9fe4ee1db75581f3e5363f5e92`. The normative adopted
+specification bytes are preserved under
+`external/marmot/4ad4ae21479c3f3fa9950c6fc4556a76941a62e1/` and closed by
+`external/marmot/manifest.json`. A conforming verifier MUST use that local
+archive and verify every recorded path, byte length, Git blob ID, SHA-256,
+and aggregate SHA-256; the upstream URL is provenance, not a runtime
+dependency. Missing, extra, changed, or path-traversing archive entries are
+rejected.
+
+The archive contains the upstream MIT license, root README, `layout.md`,
+`principles.md`, and every adopted Markdown document in `foundation/`,
+`protocol-core/`, `app-components/`, `transports/`, and `features/`, including
+adopted section READMEs. It excludes implementation, build, MIP, agent-guide,
+experimental, deprecated, superseded, branch-draft, and historical material.
+Updating the pin requires a reviewed replacement archive and manifest plus
+all affected Heterodyne specification, registry, release, and vector changes.
+Upstream implementation code is never normative.
 
 Marmot is authoritative for MLS group creation, membership, proposals,
 commits, Welcomes, retained state, and convergence; account credentials and
@@ -1296,6 +1328,16 @@ The registered non-stamping production profiles and discriminators are exact:
 | revocation JWK proof | `heterodyne-comms-claim-revocation-jwk-jws-v1` | `production-rule:claim-revoker;proof=jwk-jws-v1` |
 
 These profiles change no signed event bytes and add no second version stamp.
+
+For both v1 content schemas, the wire member named `registry_revision` is the
+immutable **profile registry revision**. Its value is exactly `2`, the entry
+set that allocated the v1 profile discriminators and reason-code vocabulary.
+It is signed semantic content and does not float when unrelated registry
+entries are added. The family release manifest and conformance envelope
+separately pin the current complete registry revision and digest. A verifier
+MUST check both meanings and MUST reject a v1 claim or revocation that replaces
+its fixed value `2` with the current family revision. Renaming or changing the
+wire member requires a new claim profile version.
 
 The `heterodyne-comms-key-claim-v1` content is the exact closed object defined
 by `schemas/comms/key-claim-v1.schema.json`. Its required members are
@@ -2104,13 +2146,13 @@ profile.
 <!-- Monolith provenance: §14. -->
 
 A Comms conformance report MUST claim Core+Comms, name `comms/0.5.0`, pin
-`core/0.5.0`, registry revision 6 or its immutable digest, and enumerate
+`core/0.5.0`, registry revision 7 or its immutable digest, and enumerate
 supported features and strict profiles. A base implementation MUST implement
 the envelope, tiers, publishing, feed, retrieval, Marmot invitation hook,
 private Control-registry integration, and all registered Comms invariants. One
 that advertises DMs MUST implement all applicable Marmot rules in §7.
 
-The registry revision 6 entry set, history snapshot, release manifest, and
+The registry revision 7 entry set, history snapshot, release manifest, and
 vector metadata MUST match exactly. Transport-independent credential-continuity definitions
 remain non-claimable under this selected revision.
 

@@ -18,6 +18,7 @@ import { buildCredentialContinuityVectors } from "./topics-credential-continuity
 import { buildMarmotRadicleVectors } from "./topics-marmot-radicle.js";
 import { buildMarmotAdmissionVectors } from "./topics-marmot-admission.js";
 import { buildOneTimeInviteVectors } from "./topics-one-time-invite.js";
+import { buildFollowUpHardeningVectors } from "./topics-follow-up-hardening.js";
 import { remediateHistoricalProduction } from "./legacy-remediation.js";
 import {
   AUX_RAND,
@@ -88,6 +89,7 @@ export async function buildAllVectors(fixtures: Fixtures): Promise<AuthoredVecto
   vectors.push(...(await buildMarmotRadicleVectors(fixtures)));
   vectors.push(...buildMarmotAdmissionVectors());
   vectors.push(...buildOneTimeInviteVectors());
+  vectors.push(...buildFollowUpHardeningVectors(fixtures));
   return (await remediateHistoricalProduction(vectors, fixtures))
     .filter(({ vector }) =>
       !isRetiredMatrixVector(vector.vector_id)

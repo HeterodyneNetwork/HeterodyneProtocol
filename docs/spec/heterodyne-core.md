@@ -903,7 +903,19 @@ heterodyne-node-advert-v1|<rid>|<nid>|<endpoint>|<expiry>|<repo_head>
 
 A verifier MUST validate the outer signature, inner Ed25519 proof, equality of
 all bound fields, canonical tag cardinality and shapes, and expiry. The
-advertised `repo_head` is the repository's canonical head at issuance: it is a
+`expiry` value MUST be a canonical decimal Unix timestamp strictly greater
+than `created_at`, and `expiry - created_at` MUST NOT exceed 86,400 seconds.
+On first acceptance, `created_at` MUST be within 300 seconds of verifier time.
+The verifier clock MUST be strictly before `expiry`. A continuing producer
+MUST refresh before `created_at + 43,200`; refresh failure never extends the
+old advertisement locally.
+
+Verifier time SHOULD come from a secure platform time source. A client that
+knows its clock uncertainty exceeds 300 seconds MUST fail closed for fresh
+advertisement acceptance and report a clock error. It MUST NOT widen the
+acceptance window.
+
+The advertised `repo_head` is the repository's canonical head at issuance: it is a
 possession snapshot, not a promise that no later push occurs. Until expiry the
 advertised endpoint MUST successfully serve an object graph that contains that
 exact head. A missing, malformed, duplicate, proof-mismatched, or successfully
@@ -912,9 +924,43 @@ retryable provisional outcome, not proof that the endpoint does not serve the
 head; an unserved rejection requires a successful graph fetch whose reachable
 object set excludes it. Invalid or expired ads MUST be discarded.
 
+<a id="core-persona-profile"></a>
+### 7.4 Canonical persona profile and vanilla projection
+
+The canonical Heterodyne persona profile is the closed
+`heterodyne-core-persona-profile-v1` record defined by
+`schemas/core/persona-profile-v1.schema.json` in the persona's public Radicle
+profile repository. Canonical-main selection and the repository's configured
+threshold choose exactly one record bound to the cold-root persona. Relay
+state, NIP-05, and arrival time cannot override that selection.
+
+Exactly one active KEL delegation MAY carry the `profile-publisher` role. Its
+delegated secp256k1 device publishing key produces an ordinary, unstamped
+Nostr `kind:0` mirror of the selected record's `vanilla_profile`. The cold
+root MUST NOT sign routine profile updates. A `kind:0` from any other key is
+ordinary Nostr data, not a Heterodyne profile projection.
+
+Optional `nip05` MUST resolve to the current designated publisher key. It is a
+display and discovery identifier only; it never becomes persona authority.
+After publisher rotation, the successor publishes a fresh `kind:0` mirror
+only after its delegation and the repository profile update are accepted.
+
+For every still-live addressable semantic object, rotation republishes the
+object under `(successor_pubkey, kind, d)` and atomically changes the canonical
+repository or feed index to that coordinate. `(old_pubkey, kind, d)` remains
+historical. A NIP-09 deletion request is optional advisory cleanup, not
+migration authority or proof of erasure.
+
+Historical discovery derives a finite set of old and current publisher keys
+from accepted KEL and delegation history and sends ordinary NIP-01 `authors`
+filters containing exact lowercase 64-hex keys. Heterodyne does not redefine
+relay author semantics or merge address coordinates. Results are checked in
+the signer's authority window, and only the repository-confirmed index selects
+the live address.
+
 <a id="core-radicle-reconciliation"></a>
 <!-- Monolith provenance: §3.9.10. -->
-### 7.4 KEL and Radicle reconciliation
+### 7.5 KEL and Radicle reconciliation
 
 The accepted KEL is authoritative over the Radicle identity document. A
 revoked or absent NID MUST NOT be honored even if the document still lists it,
@@ -938,7 +984,7 @@ old persona's trustworthy authority cannot be preserved by re-anchor.
 
 <a id="core-recovery"></a>
 <!-- Monolith provenance: §3.7 and §3.12.2. -->
-### 7.5 Infrastructure-loss recovery
+### 7.6 Infrastructure-loss recovery
 
 Recovery roles are protocol-neutral: recovery peers retain verified identity
 material; declared witnesses attest KEL continuity; the persona uses the cold
@@ -965,9 +1011,23 @@ witness performs before signing are out of scope.
 This procedure requires the existing cold root to remain available and
 uncompromised. It does not repair or supersede cold-root compromise.
 
+Cold-root loss is recoverable only from redundant encrypted backups already
+decryptable through an authorized recovery path. Implementations SHOULD
+recommend multiple independently stored copies using platform secure storage
+and, where available, hardware or removable storage plus the portable backup
+format. Restored bytes do not grant a new device authority; ordinary restore,
+delegation, and activation checks still apply. A configured positive witness
+threshold with `strategy:none` may preserve epoch continuity, but cannot
+reconstruct or replace the cold-root secret or perform a root-only operation.
+
+Suspected cold-root compromise is terminal for the persona. A trustworthy
+remaining controller SHOULD publish the defined migration breadcrumbs and
+move to a new cold-root persona. This protocol defines no same-persona root
+reset, newly selected social-trustee reconstruction, or witness substitution.
+
 <a id="core-multi-host-seeding"></a>
 <!-- Monolith provenance: §3.11. -->
-### 7.6 Multi-host seeding
+### 7.7 Multi-host seeding
 
 Repository redundancy is opt-in Radicle seeding. A repository is replicated
 by exactly the full nodes that elect to seed its RID; Core MUST NOT infer
@@ -1065,6 +1125,27 @@ An object whose identity inputs are provisional MUST NOT be reported final.
 Failed verification MUST be exposed as a rejection or explicit security
 warning; it MUST NOT silently become trusted content.
 
+<a id="core-retired-key-observation"></a>
+### 9.1 Retired-key late observation
+
+An event signed by a routinely superseded epoch or delegated publisher key
+and first observed after retirement is repo-confirmed pre-retirement content
+only when its introducing commit is an ancestor of a trusted repository
+checkpoint bound into, or accepted before, the retiring rotation. A trusted
+local receipt or checkpoint recorded before retirement may establish the same
+fact for that local verifier.
+
+Without either proof, a signature-valid event whose claimed `created_at` is in
+the key's authority window is `provisional-retired-key`. Relay timestamps,
+later relay presence, and the event's own timestamp are not proof of prior
+existence. Provisional retired-key content MAY be displayed with that state,
+but MUST NOT authorize, replace canonical profile state, migrate an address,
+or enter a canonical feed index without an accepted anchor.
+
+The accepted `compromise_since` cutoff remains stronger: content at or after
+that cutoff is rejected even if a later repository or local receipt purports
+to anchor it. This provisional state never weakens compromise handling.
+
 `kel_head` handling has three distinct non-success paths. A required tag that
 is absent, duplicated, or malformed is rejection; a forbidden tag is
 rejection; and an id/sequence mismatch is rejection. A well-formed but stale
@@ -1094,7 +1175,7 @@ ordering, refresh, re-resolution, and `provisional_not_final` rules.
 
 <a id="core-verification-accelerator"></a>
 <!-- Monolith provenance: §4.5.1. -->
-### 9.1 `kel_head` accelerator
+### 9.2 `kel_head` accelerator
 
 `kel_head` is never sufficient for acceptance. A verifier MAY use materialized
 key state instead of full replay only when all conditions hold: the named event
@@ -1161,29 +1242,19 @@ it is not part of Core 0.5.0.
 <!-- Monolith provenance: §10.1.2. -->
 ### 10.1 Repo-relay adapter
 
-A repo relay MUST expose unmodified NIP-01, MUST NOT require a light client to
-speak Radicle or git, MUST reject invalid Nostr signatures, and MUST persist
-accepted events as signed objects in its backing repository. Before serving
-canonical content, a full node MUST verify Radicle signed refs and the
-identity-document threshold. It MUST namespace non-delegate contributions
-under Radicle's signed-ref model.
+`core.repo-relay-client.v1` requires a client to read and write ordinary,
+unmodified NIP-01 events over a websocket endpoint without speaking Git or
+Radicle. It is REQUIRED for a full node and OPTIONAL for public-reader and
+authenticated-light roles. The client MUST verify event signatures locally;
+event authorship rests on the Nostr signature rather than any storage ref.
 
-Event authorship rests on the Nostr signature. The Ed25519 ref signature is a
-storage attestation. A light device authors with its delegated secp256k1 key
-and submits to an authorized full node for ref commitment.
-
-The reserved event-storage namespace uses `refs/cobs/xyz.heterodyne.*` for
-collaborative objects and an event-id-addressed append-log ref layout for
-persona-owned events. Heartwood 1.9.x fixes fetch limits at 5 MiB for special
-`rad/id` and `rad/sigrefs` refs and 5 GiB for data refs; an implementation MUST
-NOT present these as Heterodyne-tunable limits.
-
-`core.repo-relay-client.v1` conformance requires reading and writing NIP-01
-events over a repo relay. It is REQUIRED for a full node and OPTIONAL for
-public-reader and authenticated-light roles. Server/storage conformance
-remains unavailable until the complete ref namespace, filter-to-git mapping,
-retention, garbage-collection, and quota contract is frozen. An implementation
-MUST NOT claim server/storage conformance before that contract exists.
+Core 0.5.0 defines no generic repo-relay server/storage profile, feature, or
+claim. It makes no normative promise about a generic ref namespace,
+append-log representation, filter-to-Git mapping, admission, retention,
+garbage collection, or quota. An implementation MUST NOT claim generic
+repo-relay server/storage conformance. The separately defined Comms
+Radicle-backed Marmot relay is the only claimable relay server/storage profile
+in this family release.
 
 <a id="core-client-responsibilities"></a>
 <!-- Monolith provenance: §10.2. -->
@@ -1390,7 +1461,7 @@ Every capability advertisement uses this Core-parsable bootstrap object:
 {
   "descriptor": "heterodyne-capabilities-v1",
   "bootstrap_version": "core/0.5.0",
-  "registry_revision": 6,
+  "registry_revision": 7,
   "implementation_role": "public-reader",
   "supported_versions": {
     "core": ["core/0.5.0"],
@@ -1469,7 +1540,7 @@ membership declaration:
 supported network backend, and requires invalid signatures or delegations to
 be rejected rather than rendered with a warning. Disabling or bypassing Tor
 makes the strict profile unmet; it does not silently downgrade a strict claim.
-A claim MUST satisfy every listed invariant at registry revision 6 and every
+A claim MUST satisfy every listed invariant at registry revision 7 and every
 applicable strict vector.
 
 Higher-document strict profiles compose by naming prerequisite profile IDs and
@@ -1513,8 +1584,8 @@ IDs, strict-profile IDs, implementation role, and every dependency version.
 Core has no document dependencies. Protocol conformance and vector conformance
 are distinct claims.
 
-This document is pinned to registry revision 6 and its immutable digest.
-History revision 6, the current entry files, release manifests, and vector
+This document is pinned to registry revision 7 and its immutable digest.
+History revision 7, the current entry files, release manifests, and vector
 metadata MUST agree exactly. Optional Control recovery profiles remain
 independently claimable and do not alter baseline Core conformance.
 

@@ -39,12 +39,12 @@
       ]
     },
     "registry_revision": {
-      "const": 6
+      "const": 7
     },
     "registry_sha256": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$",
-      "const": "8e8c6d465c5ff2e045a7419eb2fe5229b07be9da313f157007c16c25c25bcb57"
+      "const": "250cc07a542d3c095eea6290f99e108c95379417194edcab26240900a9c84f26"
     },
     "dependencies": {
       "type": "object",

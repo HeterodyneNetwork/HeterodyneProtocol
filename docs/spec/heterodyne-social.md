@@ -969,7 +969,7 @@ transparency, and device-key-scoped remediation.
 <!-- Monolith provenance: §11.7 Social policy and §14. -->
 
 A `Social` report MUST name `social/0.5.0`, pin `core/0.5.0` and
-`comms/0.5.0`, pin registry revision 6 or its immutable digest, enumerate
+`comms/0.5.0`, pin registry revision 7 or its immutable digest, enumerate
 supported features and strict profiles, and implement §§1-9. It MUST
 include async replies/reactions, following and transitive discovery,
 cross-persona advertisements, reply inboxes, mixed-tier Social fan-out,
@@ -979,7 +979,12 @@ policy, subscriber-local agent-policy moderation when
 `social.agent-policy-moderation.v1` is advertised, and all registered Social
 invariants.
 
-The registry revision 6 entry set, history snapshot, release manifest, and
+Social presentation of persona name, avatar, biography, website, or NIP-05
+MUST begin from the canonical Core persona-profile record. The delegated
+`kind:0` mirror provides vanilla interoperability, but a competing relay event
+or repointed NIP-05 MUST NOT replace canonical repository state.
+
+The registry revision 7 entry set, history snapshot, release manifest, and
 vector metadata MUST match exactly. Optional lower-layer profiles are claimed
 only when their owning documents' requirements and vectors are satisfied.
 

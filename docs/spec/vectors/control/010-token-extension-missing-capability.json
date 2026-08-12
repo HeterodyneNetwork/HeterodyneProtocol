@@ -6,7 +6,7 @@
     "core": "core/0.5.0",
     "comms": "comms/0.5.0"
   },
-  "registry_revision": 6,
+  "registry_revision": 7,
   "profile": "heterodyne-control-marmot-frame-v1",
   "spec_refs": [
     "heterodyne:control/0.5.0#control-token"

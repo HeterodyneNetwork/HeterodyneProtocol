@@ -1330,7 +1330,7 @@ describe("normative claim vector authoring", () => {
     expect(vectors.every(({ vector }) =>
       vector.owner_document === "comms" &&
       vector.owner_version === "comms/0.5.0" &&
-      vector.registry_revision === 6 &&
+      vector.registry_revision === 7 &&
       vector.dependency_versions.core === "core/0.5.0" &&
       vector.spec_refs.every((ref) => ref.startsWith("heterodyne:comms/0.5.0#")),
     )).toBe(true);

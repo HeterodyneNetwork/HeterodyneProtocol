@@ -113,6 +113,20 @@ describe("Radicle / NID helpers", () => {
     });
   });
 
+  it("enforces initial skew, lifetime, expiry ordering, and known clock uncertainty", async () => {
+    const event = await nodeAdvertisement();
+    expect(validateNodeAdvertisement(event, {
+      now: event.created_at - 301,
+      clock_uncertainty_seconds: 0,
+      graph_fetch: { status: "available", reachable_oids: [REPO_HEAD] },
+    })).toEqual({ status: "rejected", failure: "clock_skew" });
+    expect(validateNodeAdvertisement(event, {
+      now: event.created_at,
+      clock_uncertainty_seconds: 301,
+      graph_fetch: { status: "available", reachable_oids: [REPO_HEAD] },
+    })).toEqual({ status: "rejected", failure: "clock_uncertain" });
+  });
+
   it.each([
     ["missing", (tags: string[][]) => tags.filter(([name]) => name !== "repo_head")],
     ["duplicate", (tags: string[][]) => [...tags, ["repo_head", REPO_HEAD]]],

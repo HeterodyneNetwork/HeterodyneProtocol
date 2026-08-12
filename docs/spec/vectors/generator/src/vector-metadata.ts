@@ -82,6 +82,13 @@ node-advert/nid-proof-invalid-rejected
 node-advert/outer-sig-invalid-rejected
 node-advert/valid-dual-signed
 node-advert/valid-dual-signed-v050
+node-advert/maximum-lifetime
+node-advert/excessive-lifetime
+node-advert/future-clock-skew
+node-advert/past-clock-skew
+node-advert/expiry-not-after-created
+node-advert/refresh-by-twelve-hours
+node-advert/uncertain-clock-rejected
 org/member-add-dual-authorized
 org/member-add-single-authorization-insufficient
 org/threshold-delegate-governance
@@ -117,6 +124,15 @@ versioning/qualified-version-unqualified-rejected
 versioning/core-capability-bootstrap
 versioning/per-document-negotiation
 versioning/unknown-asynchronous-stamp-rejected
+persona-profile/designated-publisher-valid
+persona-profile/nip05-mismatch-rejected
+persona-profile/successor-address-republished
+persona-profile/exact-author-set-discovery
+persona-profile/relay-only-replacement-rejected
+key-retirement/repo-anchored-pre-retirement
+key-retirement/local-receipt-pre-retirement
+key-retirement/relay-only-provisional
+key-retirement/compromise-cutoff-rejected
 stamping/heterodyne-json-content-owner
 stamping/heterodyne-empty-content-tag-owner
 stamping/upstream-unstamped
@@ -299,6 +315,13 @@ privacy-tiers/tier1-public-plaintext-both-backends-v050
 privacy-tiers/tier3-index-key-derivation-and-encryption-v050
 privacy-tiers/tier3-kind31011-audience-key-wrap-v050
 privacy-tiers/tier3-kind31012-audience-roster-v050
+privacy-tiers/all-active-devices
+privacy-tiers/selected-device-narrowing
+privacy-tiers/cold-root-recipient-rejected
+privacy-tiers/epoch-recipient-rejected
+privacy-tiers/revoked-device-rejected
+privacy-tiers/light-device-decryption
+privacy-tiers/device-removal-rotates-generation
 relay-interop/auth-rejection-permanent
 relay-interop/keri-rotation-auth-new-key
 relay-interop/nip42-auth-current-epoch-key
@@ -573,7 +596,7 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
     owner_document: owner,
     owner_version: `${owner}/${DOCUMENT_VERSIONS[owner]}`,
     dependency_versions: dependencies,
-    registry_revision: 6,
+    registry_revision: 7,
     ...(profile === undefined ? {} : { profile }),
     spec_refs: [`heterodyne:${reference.document}/${DOCUMENT_VERSIONS[reference.document]}#${reference.anchor}`],
   };
@@ -692,6 +715,8 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
       "keri-authority": "core-kel-verification",
       "nid-binding": "core-nid-delegation",
       "node-advert": "core-node-advertisement",
+      "persona-profile": "core-persona-profile",
+      "key-retirement": "core-retired-key-observation",
       "repo-relay": "core-repo-relay",
       "routing-node": "core-node-roles",
       "light-node": "core-client-responsibilities",

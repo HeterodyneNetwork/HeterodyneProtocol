@@ -11,7 +11,7 @@
     "reason_code": { "type": "string", "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$", "minLength": 1, "maxLength": 128 },
     "revoker": { "$ref": "#/definitions/key_ref" },
     "spec_version": { "const": "comms/0.5.0" },
-    "registry_revision": { "const": 2 },
+    "registry_revision": { "const": 2, "description": "Immutable profile_registry_revision at which the v1 revocation wire profile was allocated; not the current family registry revision." },
     "proof": { "$ref": "#/definitions/key_proof" }
   },
   "definitions": {

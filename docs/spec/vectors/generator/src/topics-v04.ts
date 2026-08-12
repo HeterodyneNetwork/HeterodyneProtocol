@@ -367,9 +367,10 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     content: "",
     auxRand: AUX_RAND,
   });
+  const currentAdvCreatedAt = advExpiry - 300;
   const currentAdvEvent = await signEvent({
     secretKey: epoch.private_key,
-    created_at: T + 50,
+    created_at: currentAdvCreatedAt,
     kind: 31010,
     tags: currentAdvTags(nidProof, advExpiry),
     content: "",

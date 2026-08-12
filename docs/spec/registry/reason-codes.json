@@ -1459,6 +1459,86 @@
       "spec_refs": [
         "heterodyne:comms/0.5.0#comms-agent-authorship"
       ]
+    },
+    {
+      "code": "tier3-recipient-not-active-device",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A Tier 3 audience-key recipient is not an active delegated human-device publishing key in the effective audience.",
+      "spec_refs": ["heterodyne:comms/0.5.0#comms-audience-keys"]
+    },
+    {
+      "code": "profile-repository-selection-required",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Relay state was presented as canonical profile state without repository selection.",
+      "spec_refs": ["heterodyne:core/0.5.0#core-persona-profile"]
+    },
+    {
+      "code": "profile-publisher-delegation-invalid",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "The claimed vanilla profile publisher is not the one active delegated profile-publisher key.",
+      "spec_refs": ["heterodyne:core/0.5.0#core-persona-profile"]
+    },
+    {
+      "code": "profile-nip05-key-mismatch",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Optional NIP-05 resolution did not return the designated profile publisher key.",
+      "spec_refs": ["heterodyne:core/0.5.0#core-persona-profile"]
+    },
+    {
+      "code": "retired-key-authority-window-invalid",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Retired-key content claims a created_at outside that key's authority window.",
+      "spec_refs": ["heterodyne:core/0.5.0#core-retired-key-observation"]
+    },
+    {
+      "code": "revoked_key_post_compromise",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Retired-key content falls at or after the accepted compromise_since cutoff.",
+      "spec_refs": ["heterodyne:core/0.5.0#core-retired-key-observation"]
+    },
+    {
+      "code": "node-advert-clock-skew",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A newly accepted node advertisement is more than 300 seconds from verifier time.",
+      "spec_refs": ["heterodyne:core/0.5.0#core-node-advertisement"]
+    },
+    {
+      "code": "node-advert-clock-uncertain",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Known verifier clock uncertainty exceeds the 300-second acceptance window.",
+      "spec_refs": ["heterodyne:core/0.5.0#core-node-advertisement"]
+    },
+    {
+      "code": "node-advert-expiry-invalid",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A node advertisement expiry is not strictly after created_at.",
+      "spec_refs": ["heterodyne:core/0.5.0#core-node-advertisement"]
+    },
+    {
+      "code": "node-advert-lifetime-exceeded",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A node advertisement lifetime exceeds 86400 seconds.",
+      "spec_refs": ["heterodyne:core/0.5.0#core-node-advertisement"]
     }
   ]
 }

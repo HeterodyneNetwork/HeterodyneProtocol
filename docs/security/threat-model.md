@@ -18,7 +18,7 @@ This document analyzes the four independently versioned documents:
 - [Heterodyne Social](../spec/heterodyne-social.md) — public social behavior,
   durable assets, and moderation.
 
-The owner sections below reproduce registry revision 6 and security boundaries
+The owner sections below reproduce registry revision 7 and security boundaries
 without creating or relaxing requirements. The family's only normative
 dependency edges are:
 
@@ -47,7 +47,7 @@ any carrier authoritative for persona identity.
 
 ## 2. Registry-bound invariants
 
-The descriptions below reproduce registry revision 6 exactly.
+The descriptions below reproduce registry revision 7 exactly.
 Registry-bound rows cite an invariant where that invariant directly governs
 the mitigation. Metadata residuals, operational consequences, out-of-scope
 limitations, and open work may instead be cross-cutting and are not assigned a
@@ -182,7 +182,9 @@ guarantee as another's.
 | JSON reserialization or signature confusion | Verify exact NIP-01 canonical bytes and preserve `nip01_raw` for embedded events (CORE-I-VERIFY-BEFORE-USE). |
 | Malicious directory or serving-node response | Treat location data as hints, use multiple verified sources, and retain decentralized bootstrap (CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY). |
 | Relay suppression, replica lag, or repository rollback hides current key state | Merge independent candidate sources, replay before use, and keep decisions provisional until repository authority is established (CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
-| Stale revocation or backdated event is accepted | Resolve the event time inside the accepted KEL authority window and apply `compromise_since` before authorization (CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
+| Stale revocation or backdated event is accepted | Resolve the event time inside the accepted KEL authority window, apply `compromise_since`, and treat first-seen-after-routine-retirement content as provisional unless a pre-retirement repository or local checkpoint proves prior existence (CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
+| Relay profile or NIP-05 overrides canonical persona metadata | Select the profile from canonical public-repository history, require the one active `profile-publisher` delegation, and treat `kind:0` and NIP-05 only as interoperability projections (CORE-I-IDENTITY-INTEGRITY). |
+| Long-lived or future-dated node advert persists stale reachability | Enforce ±300-second initial skew, 24-hour maximum lifetime, strict expiry, 12-hour refresh, and fail closed when known clock uncertainty exceeds 300 seconds (CORE-I-VERIFY-BEFORE-USE). |
 | Lying or stale `kel_head` accelerates verification | Treat it only as a checked cache hint; replay whenever its event, sequence, authority window, or compromise state is not already accepted (CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
 | Retired-key breadcrumb overwrites or redirects vanilla followers | Treat unstamped `kind:0`/`kind:1` bytes as NIP-01-authenticated advisory content only, never infer the producer-only v1 profile or KEL succession, emit a pair only from a trusted same-persona routine-rotation workflow, and destroy the retiring secret after bounded publication attempts. A compromise rotation has no trustworthy breadcrumb (CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
 | Hostile full node selectively withholds a persona | Try other advertised serving nodes and ordinary relays, then verify every result identically (CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY, CORE-I-VERIFY-BEFORE-USE). |
@@ -190,7 +192,7 @@ guarantee as another's.
 | Direct WebRTC reveals a full node's network location | Keep direct client-to-node WebRTC/TURN outside the base profile; reach the persistent v3 onion service through Tor or an authenticated shared relay so the node does not expose a clearnet candidate. |
 | Shared relay forges content or authority | Treat it only as a transport carrier, verify every signed object locally, and route around it when other relays are available (CORE-I-VERIFY-BEFORE-USE, CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY). |
 | Local key-store theft | Use the keys-repository protection profile, NIP-49 wrapping, and OS-keystore integration where available (CORE-I-KEY-MATERIAL-AT-REST). |
-| Keys repository is lost or copied | Offline backup limits loss; wrapping and local-only storage limit disclosure. Epoch rotation limits eligible compromise windows, while changed-RID re-anchor addresses infrastructure loss only; neither recovers an unavailable or compromised cold root (CORE-I-KEY-MATERIAL-AT-REST, CORE-I-IDENTITY-INTEGRITY). |
+| Keys repository is lost or copied | Redundant independently stored encrypted backups limit loss; wrapping and local-only storage limit disclosure. Witness continuity does not reconstruct the root. Suspected root compromise requires persona migration rather than same-persona reset (CORE-I-KEY-MATERIAL-AT-REST, CORE-I-IDENTITY-INTEGRITY). |
 | Derived export AID is mistaken for persona authority | Label it derived/degraded as applicable and always resolve the npub/KEL on divergence (CORE-I-IDENTITY-INTEGRITY). |
 | Separate personas are linked by local metadata | Keep local correlation and recovery bookkeeping private; never publish it as Core identity state (CORE-I-KEY-MATERIAL-AT-REST, CORE-I-IDENTITY-INTEGRITY). |
 | SHA-1 RID or git-object collision | Never let repository identity replace event SHA-256/BIP-340 or Radicle Ed25519 verification (CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
@@ -203,6 +205,7 @@ guarantee as another's.
 | Tier 3 audience membership is inferred | Treat Tier 3 as content-confidential, not membership-private. Clear `kind:31011`/`kind:31012` recipient `p`/`d` tags, roster generations, shared `key_id` correlation, timing, count, size, publication, and fetch cadence remain observable; disclose these residuals before use. |
 | Tier 2 mislabeled as encrypted | Warn that every allowed seeder holds plaintext (COMMS-I-TIER2-HONESTY). |
 | Audience or config-state theft | Apply the Comms repository-encryption profile and generation rotation (COMMS-I-CONFIG-AT-REST). |
+| Tier 3 wrap targets a persona authority or revoked device | Resolve active KEL-delegated human-device publishing keys, permit only narrowing, reject cold-root/epoch/inactive recipients, and rotate the audience generation when a device leaves. Publishing and NIP-44 decryption share one explicitly disclosed device-key compromise domain. |
 | Audience-key compromise exposes retained history | State that Tier 3 has no forward secrecy, rotate to a fresh generation, and never describe cooperative branch scrubbing as erasure (COMMS-I-TIER3-BLIND-CARRIER, COMMS-I-CONFIG-AT-REST). |
 | Config-repository traffic reveals its existence or owner | Keep its RID unadvertised, use encrypted blobs, and recognize that traffic analysis remains residual metadata (COMMS-I-CONFIG-AT-REST, COMMS-I-CLIENT-SIDE-DELIVERY). |
 | Backend bridge becomes a decryption oracle | Keep delivery, deduplication, and decryption on user-controlled clients (COMMS-I-CLIENT-SIDE-DELIVERY). |
@@ -218,7 +221,7 @@ guarantee as another's.
 | Stolen, replayed, stale, or overbroad workload token | Enforce exact issuer, audience, client, role, sender proof, time, status, canonical source authority, and finite kind/resource/size/rate/burst bounds for every operation (COMMS-I-AGENT-ROLE-BINDING, COMMS-I-WORKLOAD-TOKEN-CONFINEMENT). |
 | Agent token or private claim leaks into public evidence | Keep raw tokens, `jti` mappings, sender proofs, private claims, and protected audit records inside the authorization/audit boundary; public events carry only the canonical attribution identity (COMMS-I-WORKLOAD-TOKEN-CONFINEMENT). |
 | Agent role key compromise contaminates human authority | Give each automation role a dedicated full-node-held key and stable role address; replace only that key, leaving persona epoch and human-device keys untouched (COMMS-I-AGENT-ROLE-BINDING). |
-| Heterodyne adapter changes Marmot semantics | Validate against the pinned upstream Marmot commit and treat its MLS, application-event, media, and transport rules as authoritative (COMMS-I-MARMOT-UPSTREAM-AUTHORITY). |
+| Heterodyne adapter changes or loses Marmot semantics | Validate the closed local archive's paths, exact bytes, Git blobs, per-file SHA-256 values, and aggregate digest; treat those adopted MLS, application-event, media, and transport rules as authoritative (COMMS-I-MARMOT-UPSTREAM-AUTHORITY). |
 | Repository or relay rewrites a Marmot event or media object | Index and serve the exact signed kind-445 bytes and exact encrypted-media ciphertext; never re-sign, wrap, or translate the object (COMMS-I-MARMOT-EXACT-BYTES). |
 | Shared leaf or node-mediated secret export enables impersonation | Use independent leaves by default, permit only exclusive leaf takeover, and keep all account, leaf, epoch, and repository secrets on the designated node for mediated clients (COMMS-I-MARMOT-SECRET-CONFINEMENT). |
 | Radicle delegate substitutes group state or repository | Require an active Marmot administrator's canonical routing commit, matching `h`, binding, RID, and genesis manifest; delegates replicate but do not authorize (COMMS-I-RADICLE-ROUTING-AUTHORITY). |
@@ -411,12 +414,12 @@ falls outside this threat model. A migration strategy is pre-1.0/open work and
 must coordinate with Nostr, Radicle, Marmot, KERI, and stored historical
 signature semantics rather than claiming present quantum resistance.
 
-Before relevant 1.0 claims, work remains to finish the repo-relay
-server/storage contract, exercise KERI fork and recovery behavior across
+Before relevant 1.0 claims, work remains to define any future generic
+repo-relay server/storage profile, exercise KERI fork and recovery behavior across
 independent implementations, expand Marmot, Control, and Radicle
 interoperability testing, and expand negative vectors for rollback, metadata,
 and recovery-policy attacks. Each
 item belongs to its named document and must not create a forbidden dependency.
-The repo-relay server/storage contract must also close storage-exhaustion,
+Any future generic repo-relay server/storage profile must close authenticated admission, storage-exhaustion,
 retention, garbage-collection, and quota behavior before that conformance class
 can reach 1.0.

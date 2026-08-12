@@ -384,7 +384,17 @@
                   "marmot-premature-ack",
                   "marmot-private-inbox-nid-required",
                   "marmot-keypackage-replayed",
-                  "marmot-agent-scope-denied"
+                  "marmot-agent-scope-denied",
+                  "tier3-recipient-not-active-device",
+                  "profile-repository-selection-required",
+                  "profile-publisher-delegation-invalid",
+                  "profile-nip05-key-mismatch",
+                  "retired-key-authority-window-invalid",
+                  "revoked_key_post_compromise",
+                  "node-advert-clock-skew",
+                  "node-advert-clock-uncertain",
+                  "node-advert-expiry-invalid",
+                  "node-advert-lifetime-exceeded"
                 ]
               }
             },

@@ -150,3 +150,13 @@ Generated compatibility projection. The authoritative allocation container is `d
 | `marmot-private-inbox-nid-required` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-marmot-persona-inbox | A sender NID is not authorized to contribute a contact bundle to the private persona repository. |
 | `marmot-keypackage-replayed` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-marmot-persona-inbox | A persona-inbox bootstrap attempts to consume a Marmot KeyPackage already consumed by another accepted or quarantined bundle. |
 | `marmot-agent-scope-denied` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-agent-authorship | An automated Marmot operation requests a group, application kind, media type, size, rate, or burst outside its workload token. |
+| `tier3-recipient-not-active-device` | comms | draft | `comms/0.5.0` | heterodyne:comms/0.5.0#comms-audience-keys | A Tier 3 audience-key recipient is not an active delegated human-device publishing key in the effective audience. |
+| `profile-repository-selection-required` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-persona-profile | Relay state was presented as canonical profile state without repository selection. |
+| `profile-publisher-delegation-invalid` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-persona-profile | The claimed vanilla profile publisher is not the one active delegated profile-publisher key. |
+| `profile-nip05-key-mismatch` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-persona-profile | Optional NIP-05 resolution did not return the designated profile publisher key. |
+| `retired-key-authority-window-invalid` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-retired-key-observation | Retired-key content claims a created_at outside that key's authority window. |
+| `revoked_key_post_compromise` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-retired-key-observation | Retired-key content falls at or after the accepted compromise_since cutoff. |
+| `node-advert-clock-skew` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-node-advertisement | A newly accepted node advertisement is more than 300 seconds from verifier time. |
+| `node-advert-clock-uncertain` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-node-advertisement | Known verifier clock uncertainty exceeds the 300-second acceptance window. |
+| `node-advert-expiry-invalid` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-node-advertisement | A node advertisement expiry is not strictly after created_at. |
+| `node-advert-lifetime-exceeded` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-node-advertisement | A node advertisement lifetime exceeds 86400 seconds. |

@@ -48,9 +48,9 @@ function registryWithHistory(
 describe("revisioned protocol registry", () => {
   const registry = loadRegistry(repositoryRoot);
 
-  it("allocates revision 6 features with unique owners and acyclic prerequisites", () => {
-    expect(registry.manifest.revision).toBe(6);
-    expect(registry.history.get(6)).toEqual(registry.currentEntrySet);
+  it("allocates revision 7 kinds with unique features and acyclic prerequisites", () => {
+    expect(registry.manifest.revision).toBe(7);
+    expect(registry.history.get(7)).toEqual(registry.currentEntrySet);
     expect(registry.features.length).toBeGreaterThan(0);
     expect(new Set(registry.features.map((entry) => entry.id)).size)
       .toBe(registry.features.length);
@@ -68,9 +68,9 @@ describe("revisioned protocol registry", () => {
     expect(() => validateRegistry(registry)).not.toThrow();
   });
 
-  it("loads revision 6 while retaining historical revision 1 through 5 snapshots", () => {
-    expect(registry.manifest.revision).toBe(6);
-    expect(registry.history.get(6)).toEqual(registry.currentEntrySet);
+  it("loads revision 7 while retaining historical revision 1 through 6 snapshots", () => {
+    expect(registry.manifest.revision).toBe(7);
+    expect(registry.history.get(7)).toEqual(registry.currentEntrySet);
     expect(registry.history.has(1)).toBe(true);
     expect(registry.history.has(2)).toBe(true);
     expect(registry.history.has(3)).toBe(true);
@@ -108,7 +108,8 @@ describe("revisioned protocol registry", () => {
         stamping: false,
       })],
     });
-    expect(registry.kinds.find((entry) => entry.kind === 1059)).toBeUndefined();
+    expect(registry.kinds.find((entry) => entry.kind === 1059)).toMatchObject({ allocation_authority: "nostr", profiles: [] });
+    expect(registry.kinds.find((entry) => entry.kind === 22242)).toMatchObject({ allocation_authority: "nostr", profiles: [] });
     expect(registry.kinds.find((entry) => entry.kind === 1060)).toBeUndefined();
     expect(registry.kinds.find((entry) => entry.kind === 31015)).toBeUndefined();
     expect(registry.kinds.find((entry) => entry.kind === 31016)).toBeUndefined();
@@ -251,7 +252,7 @@ describe("revisioned protocol registry", () => {
     ]));
   });
 
-  it("preserves historical snapshots and snapshots revision 6", () => {
+  it("preserves historical snapshots and snapshots revision 7", () => {
     const history1 = JSON.parse(readFileSync(
       resolve(repositoryRoot, "docs/spec/registry/history/1.json"),
       "utf8",
@@ -274,6 +275,10 @@ describe("revisioned protocol registry", () => {
     )) as RegistryEntrySet;
     const history6 = JSON.parse(readFileSync(
       resolve(repositoryRoot, "docs/spec/registry/history/6.json"),
+      "utf8",
+    )) as RegistryEntrySet;
+    const history7 = JSON.parse(readFileSync(
+      resolve(repositoryRoot, "docs/spec/registry/history/7.json"),
       "utf8",
     )) as RegistryEntrySet;
 
@@ -313,8 +318,9 @@ describe("revisioned protocol registry", () => {
 
     expect(history4).not.toEqual(registry.currentEntrySet);
     expect(history5).not.toEqual(registry.currentEntrySet);
-    expect(history6).toEqual(registry.currentEntrySet);
-    expect(registry.manifest.entry_set_sha256).toBe(computeRegistryDigest(history6));
+    expect(history6).not.toEqual(registry.currentEntrySet);
+    expect(history7).toEqual(registry.currentEntrySet);
+    expect(registry.manifest.entry_set_sha256).toBe(computeRegistryDigest(history7));
   });
 
   it("commits the canonical digest of the current entry set", () => {

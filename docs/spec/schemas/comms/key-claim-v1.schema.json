@@ -65,7 +65,7 @@
       "items": { "$ref": "#/definitions/key_ref" }
     },
     "spec_version": { "const": "comms/0.5.0" },
-    "registry_revision": { "const": 2 }
+    "registry_revision": { "const": 2, "description": "Immutable profile_registry_revision at which the v1 claim wire profile was allocated; not the current family registry revision." }
   },
   "allOf": [
     {

@@ -9,6 +9,13 @@ repositories. A persona's KERI-anchored cold-root npub remains authoritative
 independently of the relay, repository host, or Marmot account carrying its
 activity.
 
+Canonical persona metadata lives in the public Radicle profile repository and
+is mirrored to ordinary Nostr by one delegated profile publisher. Tier 3
+delivery targets active delegated device keys, allowing authenticated light
+clients to decrypt without bringing the persona cold root or epoch key online.
+The exact adopted Marmot specification bytes are vendored under
+[`external/marmot/`](external/marmot/) with a closed digest manifest.
+
 ## Document graph
 
 The family dependency graph is:

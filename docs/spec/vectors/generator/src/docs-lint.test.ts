@@ -62,6 +62,24 @@ describe("canonical family documentation", () => {
     expect(core).toMatch(/light-only Control principal[\s\S]*not a Core device/i);
   });
 
+  it("closes the follow-up hardening documentation and archive rules", () => {
+    const issues = lintFamilyDocs(repositoryRoot);
+    expect(issues.filter(({ code }) => [
+      "marmot-archive-invalid",
+      "generic-repo-relay-server-claim",
+      "ambiguous-nostr-wire-key",
+      "claim-profile-revision-ambiguous",
+      "missing-upstream-kind-allocation",
+    ].includes(code))).toEqual([]);
+    const kinds = loadRegistry(repositoryRoot).kinds;
+    for (const kind of [1059, 22242]) {
+      expect(kinds.find((entry) => entry.kind === kind)).toMatchObject({
+        allocation_authority: "nostr",
+        profiles: [],
+      });
+    }
+  });
+
   it("declares complete flattened strict-profile prerequisite membership", () => {
     const documents = Object.fromEntries(
       ["core", "comms", "control", "social"].map((document) => [
@@ -81,9 +99,9 @@ describe("canonical family documentation", () => {
 });
 
 describe("registry-bound release artifacts", () => {
-  it("pins release schema and all manifests to registry revision 6", () => {
+  it("pins release schema and all manifests to registry revision 7", () => {
     const pin = loadReleaseSchemaRegistryPin(repositoryRoot);
-    expect(pin.registry_revision).toBe(6);
+    expect(pin.registry_revision).toBe(7);
     expect(pin.registry_sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(() => validateReleaseManifestRegistryPin(repositoryRoot, pin)).not.toThrow();
 

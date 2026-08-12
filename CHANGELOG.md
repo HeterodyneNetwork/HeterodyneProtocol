@@ -26,6 +26,10 @@ The post-migration conformance repairs and provider-independent invitation
 format are recorded historically in
 [ADR-042](docs/adr/archive/2026-08-10-042-review-gaps-and-one-time-invites.md)
 and are reviewed in [PR #22](https://github.com/HeterodyneNetwork/HeterodyneProtocol/pull/22).
+The follow-up identity, Tier 3, Marmot archive, time, and registry hardening is
+recorded historically in
+[ADR-043](docs/adr/archive/2026-08-11-043-review-follow-up-hardening.md) and is
+reviewed in [PR #22](https://github.com/HeterodyneNetwork/HeterodyneProtocol/pull/22).
 
 ### Core 0.5.0
 
@@ -42,6 +46,9 @@ and are reviewed in [PR #22](https://github.com/HeterodyneNetwork/HeterodyneProt
   and agent roles without changing Marmot validity or MLS convergence.
 - Added registry revision 6's normative, prerequisite-aware feature catalog
   and exact provided/required feature resolution across release manifests.
+- Advanced to registry revision 7, allocating upstream Nostr kinds 1059 and
+  22242, bounding node-advertisement time, and defining canonical repository
+  persona profiles with delegated vanilla projection and address migration.
 
 ### Comms 0.5.0
 
@@ -75,6 +82,9 @@ and are reviewed in [PR #22](https://github.com/HeterodyneNetwork/HeterodyneProt
 - Split ordinary Marmot admission from Control admission, restored silent
   message-request holding for unknown valid DMs, and added signed fragment-only
   one-time invites with purpose-bound NIP-59 KeyPackage responses.
+- Made Tier 3 recipients active delegated device keys, froze the adopted
+  Marmot specification bytes in a closed local archive, and distinguished the
+  fixed v1 claim profile registry revision from the current family revision.
 
 ### Control 0.5.0
 
@@ -109,7 +119,7 @@ and are reviewed in [PR #22](https://github.com/HeterodyneNetwork/HeterodyneProt
 
 - Established the family's only normative dependency edges as
   `Core <- Comms <- Control` and `Core <- Comms <- Social`.
-- Advanced all four untagged 0.5.0 release manifests to registry revision 6.
+- Advanced all four untagged 0.5.0 release manifests to registry revision 7.
   Comms provides the registered `comms.key-claims.v1`,
   `comms.private-claim-ledger.v1`, `comms.oidc-jwt-projection.v1`, and
   `comms.token-status-list-draft-21.v1` features; every external prerequisite

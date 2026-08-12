@@ -6,7 +6,7 @@
     "core": "core/0.5.0",
     "comms": "comms/0.5.0"
   },
-  "registry_revision": 6,
+  "registry_revision": 7,
   "profile": "heterodyne-social-org-feed-v1",
   "spec_refs": [
     "heterodyne:social/0.5.0#social-org-feed-profile"

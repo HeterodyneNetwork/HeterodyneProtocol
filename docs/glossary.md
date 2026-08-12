@@ -42,6 +42,11 @@ whole string is not itself semver. Each family document versions independently.
 discriminators, reason codes, security-invariant IDs, and feature IDs. It is pinned by
 releases, capabilities, reports, and vectors.
 
+**Profile registry revision.** A fixed allocation snapshot embedded in a
+versioned wire profile. In v1 claims the JSON member remains named
+`registry_revision` and is exactly `2`; it does not float with the family
+release registry revision.
+
 **Feature catalog.** The registry-owned allocation of globally unique dotted
 and versioned feature IDs, their document owners, first versions, status,
 specification anchors, and acyclic prerequisites.
@@ -86,6 +91,11 @@ persona, and repository context for bootstrap consumers.
 
 **Identity pointer.** Core `kind:31005`, the authoritative signed npub-to-RID
 binding with optional host hints.
+
+**Canonical persona profile.** The versioned record selected from a persona's
+public Radicle profile repository. A single active delegated
+`profile-publisher` key mirrors it as ordinary Nostr `kind:0`; relay mirrors
+and optional NIP-05 never override the repository record.
 
 **Node advertisement.** Core `kind:31010`, signed evidence that a node serves a
 RID at specified endpoints. It is a locator hint rather than authority.

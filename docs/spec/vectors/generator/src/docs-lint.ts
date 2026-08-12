@@ -12,6 +12,7 @@ import {
 } from "./family.js";
 import type { DocumentId } from "./types.js";
 import { computeRegistryDigest, loadRegistry } from "./registry.js";
+import { verifyMarmotArchive } from "./marmot-archive.js";
 
 /** The complete claims/OIDC invariant set required in the family threat model. */
 export const CLAIMS_OIDC_INVARIANT_IDS = [
@@ -44,6 +45,11 @@ export type FamilyDocIssue = {
     | "extraction-banner"
     | "noncanonical-decision-reference"
     | "premature-release-claim"
+    | "marmot-archive-invalid"
+    | "generic-repo-relay-server-claim"
+    | "ambiguous-nostr-wire-key"
+    | "claim-profile-revision-ambiguous"
+    | "missing-upstream-kind-allocation"
     | "release-manifest-mismatch";
   message: string;
 };
@@ -308,6 +314,32 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
         });
       }
     }
+  }
+
+  const core = documents.find(({ document }) => document === "core");
+  if (core?.lines.some((line) => /core\.repo-relay-(?:server|storage)\./.test(line))) {
+    issues.push({ path: core.displayPath, line: 1, code: "generic-repo-relay-server-claim", message: "Core defines no generic repo-relay server/storage feature" });
+  }
+  const comms = documents.find(({ document }) => document === "comms");
+  if (comms !== undefined) {
+    const wireStart = comms.lines.findIndex((line) => line.includes('<a id="comms-audience-keys"'));
+    const wireEnd = comms.lines.findIndex((line, index) => index > wireStart && line.includes('<a id="comms-tier-three-profile"'));
+    const wire = comms.lines.slice(wireStart, wireEnd).join("\n");
+    if (/<recipient npub>|recipient's npub/.test(wire)) {
+      issues.push({ path: comms.displayPath, line: wireStart + 1, code: "ambiguous-nostr-wire-key", message: "Tier 3 wire keys must use lowercase 64-hex rather than npub" });
+    }
+    if (!/profile registry revision[\s\S]*exactly `2`[\s\S]*current complete registry revision/i.test(comms.lines.join("\n"))) {
+      issues.push({ path: comms.displayPath, line: 1, code: "claim-profile-revision-ambiguous", message: "claim profile and family registry revisions are not distinguished" });
+    }
+  }
+  const registry = loadRegistry(repoRoot);
+  for (const kind of [1059, 22242]) {
+    if (!registry.kinds.some((entry) => entry.kind === kind && entry.allocation_authority === "nostr")) {
+      issues.push({ path: "docs/spec/registry/kinds.json", line: 1, code: "missing-upstream-kind-allocation", message: `missing upstream kind ${kind}` });
+    }
+  }
+  for (const message of verifyMarmotArchive(resolve(repoRoot, "docs/spec/external/marmot"))) {
+    issues.push({ path: "docs/spec/external/marmot/manifest.json", line: 1, code: "marmot-archive-invalid", message });
   }
 
   return issues;

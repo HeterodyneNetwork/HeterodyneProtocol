@@ -1,0 +1,2837 @@
+{
+  "kinds": [
+    {
+      "kind": 0,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-core-rotation-breadcrumb-profile-v1",
+          "owner": "core",
+          "discriminator": "production-rule:rotation-breadcrumb-kind0-v1",
+          "stamping": false,
+          "first_version": "core/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 1,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-core-rotation-breadcrumb-note-v1",
+          "owner": "core",
+          "discriminator": "production-rule:rotation-breadcrumb-kind1-v1",
+          "stamping": false,
+          "first_version": "core/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-1-v1",
+          "owner": "comms",
+          "discriminator": "tag:heterodyne_wrap=room_key.v2",
+          "stamping": true,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-agent-attribution-kind-1-v1",
+          "owner": "comms",
+          "discriminator": "tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 3,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 5,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 6,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-6-v1",
+          "owner": "comms",
+          "discriminator": "tag:heterodyne_wrap=room_key.v2",
+          "stamping": true,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-agent-attribution-kind-6-v1",
+          "owner": "comms",
+          "discriminator": "tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 7,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-agent-attribution-kind-7-v1",
+          "owner": "comms",
+          "discriminator": "tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 13,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 14,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 15,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 16,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-16-v1",
+          "owner": "comms",
+          "discriminator": "tag:heterodyne_wrap=room_key.v2",
+          "stamping": true,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-agent-attribution-kind-16-v1",
+          "owner": "comms",
+          "discriminator": "tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 444,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 445,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 1059,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 1063,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-1063-v1",
+          "owner": "comms",
+          "discriminator": "tag:heterodyne_wrap=room_key.v2",
+          "stamping": true,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-agent-attribution-kind-1063-v1",
+          "owner": "comms",
+          "discriminator": "tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 1984,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 1985,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-agent-attribution-kind-1985-v1",
+          "owner": "comms",
+          "discriminator": "tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-social-agent-policy-receipt-v1",
+          "owner": "social",
+          "discriminator": "tags:L=network.heterodyne.agent-policy,l=<reason>@network.heterodyne.agent-policy",
+          "stamping": true,
+          "first_version": "social/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 4550,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-agent-attribution-kind-4550-v1",
+          "owner": "comms",
+          "discriminator": "tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 9734,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 9735,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 10000,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-social-mute-list-v1",
+          "owner": "social",
+          "discriminator": "tag:heterodyne=social-mute-list-v1",
+          "stamping": true,
+          "first_version": "social/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-social-agent-policy-list-v1",
+          "owner": "social",
+          "discriminator": "tag:heterodyne=social-agent-policy-list-v1",
+          "stamping": true,
+          "first_version": "social/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 10001,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 10002,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 10003,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 10004,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 10050,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 22242,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30000,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30002,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30003,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30007,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30015,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30023,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-30023-v1",
+          "owner": "comms",
+          "discriminator": "tag:heterodyne_wrap=room_key.v2",
+          "stamping": true,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-agent-attribution-kind-30023-v1",
+          "owner": "comms",
+          "discriminator": "tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 30024,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 30402,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-tier3-wrapped-content-kind-30402-v1",
+          "owner": "comms",
+          "discriminator": "tag:heterodyne_wrap=room_key.v2",
+          "stamping": true,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 30443,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31000,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31001,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-agent-signing-delegation-v1",
+          "owner": "comms",
+          "discriminator": "tag:d=agent:<role-id>;tags:key_proof,radicle_nid,nid_proof",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 31002,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31003,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31004,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31005,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31007,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-social-org-feed-v1",
+          "owner": "social",
+          "discriminator": "content.profile=heterodyne.social.org-feed.v1",
+          "stamping": true,
+          "first_version": "social/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 31008,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31009,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31010,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31011,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31012,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 31013,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-key-claim-nostr-bip340-v1",
+          "owner": "comms",
+          "discriminator": "production-rule:claim-subject-pop;proof=nostr-bip340-v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-key-claim-radicle-ed25519-v1",
+          "owner": "comms",
+          "discriminator": "production-rule:claim-subject-pop;proof=radicle-ed25519-v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-key-claim-jwk-jws-v1",
+          "owner": "comms",
+          "discriminator": "production-rule:claim-subject-pop;proof=jwk-jws-v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 31014,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-comms-claim-revocation-nostr-bip340-v1",
+          "owner": "comms",
+          "discriminator": "production-rule:claim-revoker;proof=nostr-bip340-v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-claim-revocation-radicle-ed25519-v1",
+          "owner": "comms",
+          "discriminator": "production-rule:claim-revoker;proof=radicle-ed25519-v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        },
+        {
+          "profile_id": "heterodyne-comms-claim-revocation-jwk-jws-v1",
+          "owner": "comms",
+          "discriminator": "production-rule:claim-revoker;proof=jwk-jws-v1",
+          "stamping": false,
+          "first_version": "comms/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 31017,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-control-marmot-frame-v1",
+          "owner": "control",
+          "discriminator": "marmot-inner-only;content=control-frame-v1",
+          "stamping": false,
+          "first_version": "control/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 31018,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 34550,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    },
+    {
+      "kind": 39089,
+      "allocation_authority": "nostr",
+      "base_schema_owner": "nostr",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "profiles": []
+    }
+  ],
+  "reason_codes": [
+    {
+      "code": "bad_signature",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Nostr event id or BIP-340 signature verification failed.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "delegation_mismatch",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "The presented publishing key, subject, role, or delegation identifier does not match the active Core delegation.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-nid-delegation"
+      ]
+    },
+    {
+      "code": "revoked_key_post_revoked_at",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "An event signed by a revoked epoch key was created after revoked_at.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "expired_delegation",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "The verifier clock is after the delegation valid_until bound.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "informal_vouch_not_counted",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A KERI threshold is satisfied only if advisory vouches are counted.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "nip59_broadcast_rejected",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A private broadcast post used the withdrawn NIP-59 wrapping path.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "auth_rejected_permanent",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Relay rejected the write after NIP-42 AUTH, so the failure is permanent.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "onion_dns_leak",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A .onion host was sent to a clearnet resolver instead of Tor.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "strict_mode_tor_disabled",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Strict mode started with egress-over-Tor disabled without explicit user choice.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "unauthorized_cache_content",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Friend-cache content was not owner-signed non-KERI content.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "relay_profile_mutation",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A Heterodyne-aware relay profile changed vanilla NIP-01 read/write behavior.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "unknown_major_version",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A receiver encountered an incompatible future major version.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "nid_binding_missing_signature",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A kind:31001 NID delegation lacked the epoch-key Schnorr sig or the NID Ed25519 nid_proof.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "nid_proof_invalid",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "An Ed25519 nid_proof did not verify against the advertised NID over the pinned binding payload.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "node_advert_expired",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A kind:31010 node advertisement was past its expiry.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "kel_revoked_nid",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A NID revoked by the KEL was used as a delegate despite the identity document still listing it.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "not_canonical_branch_reachable",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "An org kind:31007 or post was not reachable from the delegate-threshold-approved canonical feed branch.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "org_member_add_unauthorized",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "An org member NID add carried only one of the required member-KEL and org-admin-threshold authorizations.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "page_chain_broken",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A feed-index page's prev_page_hash did not match the prior page's canonical serialization.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "stale_list_rollback",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "A relay served an older NIP-51 list revision than one reachable in the repo's canonical history.",
+      "spec_refs": [
+        "heterodyne:social/0.5.0#social-conformance"
+      ]
+    },
+    {
+      "code": "dm_invite_unbound_device",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A kind:30078 DM invite was signed by a publishing key with no valid kind:31001 delegation to the persona.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "dm_invite_revoked_device",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A kind:30078 DM invite was signed by a device whose kind:31001 delegation is revoked.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "config_rid_advertised",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "The config repository RID appeared on a published surface (kind:31005, kind:31010, kind:0, NIP-65, or a NIP-51 list).",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "moderator_not_in_asof_declaration",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "A kind:4550 approval's moderator is not listed in the kind:34550 declaration resolved as-of the approval's anchor.",
+      "spec_refs": [
+        "heterodyne:social/0.5.0#social-conformance"
+      ]
+    },
+    {
+      "code": "kel_head_missing",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "An epoch-key-signed Heterodyne event required to carry kel_head does not carry exactly one well-formed instance (absent, duplicate, or malformed).",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "kel_head_mismatch",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "The kel_head tag's decimal seq does not equal the s value of the KEL event it names once that event is resolved on the accepted KEL.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "kel_head_forbidden",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A kel_head tag appears on an event class whose Core applicability rules forbid it (kind:31002/31003 KEL events, Marmot outer or inner events, or non-stamping rotation breadcrumbs).",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "equivocation_flagged",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A structurally valid kel_head names an event that is not on the persona's accepted KEL; the verifier flags equivocation and surfaces it through the §13 security-warning interface.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "signing_key_compromised_at_created_at",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "The signing epoch key is retroactively non-authoritative at the event's created_at: an accepted compromise-declaring rotation covers created_at under effective_compromise_since - 300 seconds.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "provisional_not_final",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Acceptance rests on relay-only key-material state (kind:31002/31003/31001); under deny-until-repo policy the event does not take effect until repo-carried, and provisional-accept results MUST NOT be reported as final.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "withdrawn_on_reconcile",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A prior provisional or §4.5.1-accelerator acceptance is withdrawn after convergence-gated repo reconciliation, a KEL update, or later full verification contradicts it.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "repo_head_regression",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A repo presented a key-material head regressing below a previously finalized canonical head without an authenticated re-anchor.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "export_unmappable_feature",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "did:webs export failed: security-relevant KEL state uses a construct with no semantics-preserving canonical-KERI mapping (UNMAPPABLE_FEATURE).",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "export_unsupported_crypto_suite",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "did:webs export failed: a mapping exists but the target crypto suite is unavailable locally (UNSUPPORTED_CRYPTO_SUITE).",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "export_incomplete",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "did:webs export failed: required source KEL events or attachments are unavailable (INCOMPLETE_EXPORT).",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "keri_wire_format_rejected",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A KEL event or stream was presented in KERI10JSON/CESR on the Heterodyne wire or as storage; NIP-01 with nip01_raw is the only wire and storage format.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "export_aid_substituted_for_npub",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A derived export AID or its did:webs DID was substituted for the persona npub where the spec requires the npub; the export identity is never an alternate authoritative identity.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-conformance"
+      ]
+    },
+    {
+      "code": "claim-schema-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The claim or revocation does not satisfy its registered Comms schema.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-id-mismatch",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The claim_id does not equal the lowercase SHA-256 digest of the canonical semantic body.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-key-reference-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "An issuer, subject, or proof key reference is malformed or uses an unregistered type.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-event-signature-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The outer Nostr claim or revocation event signature is invalid.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-issuer-authority-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Core/KEL validation does not establish the issuer's claimed authority at issuance time.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-issuer-untrusted",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The claim is cryptographically valid but its issuer is outside the verifier's trust policy.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-chain-cycle",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The claim issuance chain contains a repeated claim identifier.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-chain-depth-exceeded",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The claim issuance chain exceeds the strict eight-edge limit.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-delegation-not-authorized",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The parent claim does not authorize the child issuer to redelegate.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-attenuation-violation",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A child claim widens scope, audience, resources, validity, or delegation depth.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-subject-proof-required",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Authorization use requires a fresh proof of possession that was not supplied.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-subject-proof-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The registered native proof profile did not validate possession of the subject key.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-repository-unconfirmed",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A persona-issued authorization is not reachable from authoritative canonical repository state.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-repository-conflict",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Concurrent non-monotonic claim-ledger state remains unresolved and cannot authorize.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-expired",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The claim's bounded validity interval has ended.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-revoked",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "An irreversible valid revocation covers the claim.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-revoker-unauthorized",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The signer is not permitted to revoke this authorization or descriptive assertion.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-ledger-reader-unauthorized",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A device lacks an active durable NID-bearing claim-ledger-reader authorization.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "claim-ledger-rollback",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Presented claim-ledger state regresses below a previously finalized checkpoint.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "oidc-issuer-authority-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The minting node lacks active oidc-token-issuer authority for the persona.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "oidc-signing-key-unavailable",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The minting node cannot decrypt or use an active shared issuer signing key.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "oidc-checkpoint-stale",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The authoritative ledger checkpoint exceeds the issuer manifest's at-most-300-second freshness bound.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "oidc-client-unregistered",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The requesting OAuth/OIDC client is not explicitly registered.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "oidc-grant-prohibited",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The request uses Client Credentials, implicit, password, or another prohibited grant.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "oidc-consent-required",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The requested claim release lacks the required persona consent.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "oidc-claim-release-denied",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Requested claims exceed the intersection of scope, audience, policy, consent, trust, and active state.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "oidc-issuer-mismatch",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Discovery metadata, JWT iss, or continuity state names a different exact issuer URL.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "oidc-token-type-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A JWT is missing or misuses the token-type separation required by the profile.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "oidc-audience-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The JWT audience does not authorize the relying party or protected resource.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "oidc-status-stale",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The pinned draft-21 Status List Token is expired, outside ttl, or not fresh enough for policy.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "oidc-status-digest-mismatch",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The HTTPS and Radicle status copies are not byte-identical under the continuity digest.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "oidc-status-index-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A status index is out of range, reused, or outside its writer-NID namespace allocation.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "oidc-status-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The token status is INVALID or cannot provide valid evidence of VALID.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-conformance"
+      ]
+    },
+    {
+      "code": "role-delegation-address-invalid",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A role-addressed delegation does not use the exact registered namespace and role identifier syntax.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-nid-delegation"
+      ]
+    },
+    {
+      "code": "role-delegation-key-proof-invalid",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "The registered role-key proof is missing, malformed, or invalid over the profile binding.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-nid-delegation"
+      ]
+    },
+    {
+      "code": "public-reader-route-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A universal-launcher fragment is unknown, malformed, oversized, or contains an invalid NIP-19 entity.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-retrieval"
+      ]
+    },
+    {
+      "code": "public-reader-relay-hint-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A public-reader bootstrap hint violates the normalized relay URL or local-network exclusion rules.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-retrieval"
+      ]
+    },
+    {
+      "code": "public-reader-private-content",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Public-reader mode was asked to render Tier 2 plaintext or interpret Tier 3 ciphertext as public content.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-retrieval"
+      ]
+    },
+    {
+      "code": "agent-workload-registration-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The agent workload registration is malformed, incompatible, non-final, or grants unbounded automated publication.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-key-claims"
+      ]
+    },
+    {
+      "code": "agent-token-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The workload access token fails signature, type, issuer, client, identity, ledger, or structural validation.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-jwt-projection"
+      ]
+    },
+    {
+      "code": "agent-token-expired",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The workload token is expired or exceeds the five-minute or source-authorization lifetime ceiling.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-jwt-projection"
+      ]
+    },
+    {
+      "code": "agent-token-revoked",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Token status or a source authorization marks the workload token invalid.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-token-status"
+      ]
+    },
+    {
+      "code": "agent-token-stale",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The workload token decision relies on a stale status, ledger checkpoint, or authorization view.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-jwt-projection"
+      ]
+    },
+    {
+      "code": "agent-token-audience-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The workload token does not name the one exact Control publication audience.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-jwt-projection"
+      ]
+    },
+    {
+      "code": "agent-token-scope-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The workload token lacks the exact registered scope and resource for the requested publication.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-jwt-projection"
+      ]
+    },
+    {
+      "code": "agent-sender-proof-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The per-use workload JWK proof is missing, replayed, malformed, or mismatched with cnf.jkt.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-jwt-projection"
+      ]
+    },
+    {
+      "code": "agent-role-mismatch",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The token, registration, delegation role, or event signer names a different agent role.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-publishing"
+      ]
+    },
+    {
+      "code": "agent-attribution-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "An agent-authored event has missing, malformed, reordered, or identity-mismatched canonical attribution.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-publishing"
+      ]
+    },
+    {
+      "code": "agent-attribution-profile-unavailable",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The requested authored event kind has no active revision-3 agent-attribution profile.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-publishing"
+      ]
+    },
+    {
+      "code": "invite-expired",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A one-time invitation or response was processed at or after its signed expiry.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-one-time-invites"
+      ]
+    },
+    {
+      "code": "conversation-rejected",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Local ordinary-conversation policy explicitly rejects an otherwise valid Marmot Welcome.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-ordinary-conversation-admission"
+      ]
+    },
+    {
+      "code": "invite-purpose-mismatch",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A one-time invitation was presented or redeemed for a purpose other than its exact signed purpose.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-one-time-invites"
+      ]
+    },
+    {
+      "code": "invite-authentication-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A one-time invite descriptor signature, NIP-59 responder binding, secret proof, or capability binding is invalid.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-one-time-invites"
+      ]
+    },
+    {
+      "code": "invite-already-reserved",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A different authenticated account or canonical response already reserved the one-time invitation.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-one-time-invites"
+      ]
+    },
+    {
+      "code": "invite-preauthorization-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A preauthorized Control invite exceeds its exact bound entitlement template, key binding, client class, or prompt-free policy.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-one-time-invites"
+      ]
+    },
+    {
+      "code": "control-invitation-disabled",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A full node's local policy does not accept a new unsolicited Control-group invitation.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-invitation-policy"
+      ]
+    },
+    {
+      "code": "control-enrollment-capacity",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A pending enrollment exceeds the per-account or global bound, or no reserved entitled/approved slot is available.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-invitation-policy"
+      ]
+    },
+    {
+      "code": "control-enrollment-expired",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An enrollment-only Control group reached its hard 30-minute lifetime and was removed.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-invitation-policy"
+      ]
+    },
+    {
+      "code": "control-enrollment-rate-limited",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Finite Welcome-processing or KeyPackage-replenishment rate or burst capacity is exhausted.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-invitation-policy"
+      ]
+    },
+    {
+      "code": "control-keypackage-replenishment-paused",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The node cannot replenish the public Control KeyPackage pool while its global pending-enrollment cap is full.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-invitation-policy"
+      ]
+    },
+    {
+      "code": "control-device-code-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A Device Authorization code lacks required entropy or constant-time normalized validation.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-device-authorization"
+      ]
+    },
+    {
+      "code": "control-device-code-exhausted",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Five failed guesses atomically invalidated the active Device Authorization user code.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-device-authorization"
+      ]
+    },
+    {
+      "code": "control-device-code-rate-limited",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A Device Authorization guess or poll violates per-code, node-wide, interval, or slow-down limits.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-device-authorization"
+      ]
+    },
+    {
+      "code": "control-device-code-display-mismatch",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The approving and initiating displays do not show the identical user code and client fingerprint.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-device-authorization"
+      ]
+    },
+    {
+      "code": "control-authorization-view-stale",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The authenticated private authorization view is conflicted, older than 300 seconds, or not freshly synchronized for mutation.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-keypackage-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The selected Control KeyPackage is malformed, expired, unsupported, or does not belong to the advertised full-node account.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-invitation-policy"
+      ]
+    },
+    {
+      "code": "control-enrollment-required",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The Control group is enrollment-only and the requested method requires active private entitlement.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-enrollment"
+      ]
+    },
+    {
+      "code": "control-frame-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The inner Control application event or canonical frame violates its closed kind, tag, version, profile, member, or payload rules.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-frame"
+      ]
+    },
+    {
+      "code": "control-entitlement-conflict",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Private Control authorization is missing, stale beyond policy, unauthorized, forked, revoked, or contains a conflicting expansion.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-entitlement"
+      ]
+    },
+    {
+      "code": "control-token-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The Control access token fails type, signature, issuer, time, client, authorization-record, or structural validation.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-token-expired",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The Control token is expired or exceeds its entitlement, node-policy, five-minute default, or sixty-minute absolute lifetime.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-token-audience-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The Control token audience does not name the exact full node receiving the request.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-token-sender-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The authenticated Marmot sender account does not match the token cnf.jkt thumbprint.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-token-group-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The request arrived in a different Marmot group from the one bound by the Control token.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-token-scope-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The method, object, role, kind, media, rate, size, burst, or other finite limit is outside the token and entitlement intersection.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-refresh-prohibited",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A Control client requested or presented a refresh token even though the profile requires fresh node-local issuance.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-token"
+      ]
+    },
+    {
+      "code": "control-operation-conflict",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A logical operation identifier was reused for a different method, object, or canonical payload.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-request-processing"
+      ]
+    },
+    {
+      "code": "control-operation-indeterminate",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A prior node may have committed the mutation, but no authoritative result proves whether repeating it is safe.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-failover"
+      ]
+    },
+    {
+      "code": "control-recovery-locked",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The epoch inbox or prepared activation was accessed without the required explicit unlock, preparation, erasure, and relock ceremony.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-epoch-bootstrap"
+      ]
+    },
+    {
+      "code": "control-registration-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A prospective full-node registration is malformed, expired, or fails a required proof or target-key binding.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-epoch-bootstrap"
+      ]
+    },
+    {
+      "code": "control-activation-mismatch",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Recovered heads, manifest identity, object digests, target keys, grant, or completion state do not match the prepared activation.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-epoch-bootstrap"
+      ]
+    },
+    {
+      "code": "control-recovery-grant-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Private-Radicle recovery access is expired or outside its bound NID, repository, head, direction, byte, activation, or completion limits.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-radicle-recovery"
+      ]
+    },
+    {
+      "code": "control-recovery-completion-mismatch",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Recovery completion cannot prove every repository head, manifest identity, and object digest required by its grant.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-radicle-recovery"
+      ]
+    },
+    {
+      "code": "control-sftp-auth-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The SFTP endpoint, Tor client key, SSH client key, or pinned host key does not match the finite transfer grant.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-sftp-recovery"
+      ]
+    },
+    {
+      "code": "control-sftp-resource-denied",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An SFTP request exceeds its rooted resource set, direction, byte ceiling, or prohibited-channel boundary.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-sftp-recovery"
+      ]
+    },
+    {
+      "code": "control-sftp-expired",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The SFTP grant or its bounded renewal overlap has expired or been completed or revoked.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-sftp-recovery"
+      ]
+    },
+    {
+      "code": "control-request-expired",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The authenticated Control request expired before reservation or execution.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-request-processing"
+      ]
+    },
+    {
+      "code": "control-request-id-conflict",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A request identifier was reused with different canonical frame bytes in the same Control group.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-request-processing"
+      ]
+    },
+    {
+      "code": "agent-method-prohibited",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An automated principal requested a method outside its closed agentic Control surface.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-agent-requirements"
+      ]
+    },
+    {
+      "code": "agent-key-access-prohibited",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An automated principal requested private key material or raw signing authority.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-agent-requirements"
+      ]
+    },
+    {
+      "code": "agent-human-profile-prohibited",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An automated principal attempted to route publication through a human-device profile.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-agent-requirements"
+      ]
+    },
+    {
+      "code": "agent-attribution-bypass-prohibited",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An automated principal attempted to omit, alter, or falsify canonical agent attribution.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-agent-requirements"
+      ]
+    },
+    {
+      "code": "agent-resource-denied",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The requested event kind, feed, destination, or resource is outside the active workload grant.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-agent-requirements"
+      ]
+    },
+    {
+      "code": "agent-size-exceeded",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The canonical publication intent exceeds its finite content-byte ceiling.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-agent-requirements"
+      ]
+    },
+    {
+      "code": "agent-rate-limited",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "The publication intent exceeds the active finite rate-window, count, or burst limit.",
+      "spec_refs": [
+        "heterodyne:control/0.5.0#control-agent-requirements"
+      ]
+    },
+    {
+      "code": "agent-attribution-missing",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "Evidence indicates an automated publication omitted mandatory agent attribution.",
+      "spec_refs": [
+        "heterodyne:social/0.5.0#social-labels"
+      ]
+    },
+    {
+      "code": "agent-attribution-falsified",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "Evidence indicates an automated publication falsified mandatory agent attribution.",
+      "spec_refs": [
+        "heterodyne:social/0.5.0#social-labels"
+      ]
+    },
+    {
+      "code": "agent-publication-bypass",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "Evidence indicates an automated principal bypassed the required token and intent-level publication path.",
+      "spec_refs": [
+        "heterodyne:social/0.5.0#social-labels"
+      ]
+    },
+    {
+      "code": "agent-policy-receipt-invalid",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "An agent-policy receipt is malformed, unverifiable, secret-bearing, or does not target exactly one event and device key.",
+      "spec_refs": [
+        "heterodyne:social/0.5.0#social-labels"
+      ]
+    },
+    {
+      "code": "agent-policy-binding-invalid",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "A policy-list entry does not bind the same device key, receipt identifier, and reason code.",
+      "spec_refs": [
+        "heterodyne:social/0.5.0#social-mute-profile"
+      ]
+    },
+    {
+      "code": "agent-role-key-rotation-required",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "The subscribed policy requires replacement of the exact offending role key before restored visibility.",
+      "spec_refs": [
+        "heterodyne:social/0.5.0#social-mute-profile"
+      ]
+    },
+    {
+      "code": "marmot-private-route-required",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A Heterodyne-private group has no currently authorized Radicle route and cannot use a public fallback.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-marmot-groups"
+      ]
+    },
+    {
+      "code": "marmot-routing-binding-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A routing binding has the wrong administrator, canonical Marmot routing commit, h value, or repository genesis digest.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-marmot-routing-generation"
+      ]
+    },
+    {
+      "code": "marmot-routing-equivocation",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Different otherwise valid routing bindings claim the same canonical Marmot h.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-marmot-host-authority"
+      ]
+    },
+    {
+      "code": "marmot-unauthorized-ref",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A writer or relay ref is not authorized to contribute objects to the routing-generation union.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-marmot-event-repository"
+      ]
+    },
+    {
+      "code": "marmot-premature-ack",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A publisher or relay acknowledged a Marmot object before the required exact-byte durability boundary.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-marmot-rotation"
+      ]
+    },
+    {
+      "code": "marmot-private-inbox-nid-required",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A sender NID is not authorized to contribute a contact bundle to the private persona repository.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-marmot-persona-inbox"
+      ]
+    },
+    {
+      "code": "marmot-keypackage-replayed",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A persona-inbox bootstrap attempts to consume a Marmot KeyPackage already consumed by another accepted or quarantined bundle.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-marmot-persona-inbox"
+      ]
+    },
+    {
+      "code": "marmot-agent-scope-denied",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "An automated Marmot operation requests a group, application kind, media type, size, rate, or burst outside its workload token.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-agent-authorship"
+      ]
+    },
+    {
+      "code": "tier3-recipient-not-active-device",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A Tier 3 audience-key recipient is not an active delegated human-device publishing key in the effective audience.",
+      "spec_refs": [
+        "heterodyne:comms/0.5.0#comms-audience-keys"
+      ]
+    },
+    {
+      "code": "profile-repository-selection-required",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Relay state was presented as canonical profile state without repository selection.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-persona-profile"
+      ]
+    },
+    {
+      "code": "profile-publisher-delegation-invalid",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "The claimed vanilla profile publisher is not the one active delegated profile-publisher key.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-persona-profile"
+      ]
+    },
+    {
+      "code": "profile-nip05-key-mismatch",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Optional NIP-05 resolution did not return the designated profile publisher key.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-persona-profile"
+      ]
+    },
+    {
+      "code": "retired-key-authority-window-invalid",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Retired-key content claims a created_at outside that key's authority window.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-retired-key-observation"
+      ]
+    },
+    {
+      "code": "revoked_key_post_compromise",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Retired-key content falls at or after the accepted compromise_since cutoff.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-retired-key-observation"
+      ]
+    },
+    {
+      "code": "node-advert-clock-skew",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A newly accepted node advertisement is more than 300 seconds from verifier time.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-node-advertisement"
+      ]
+    },
+    {
+      "code": "node-advert-clock-uncertain",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Known verifier clock uncertainty exceeds the 300-second acceptance window.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-node-advertisement"
+      ]
+    },
+    {
+      "code": "node-advert-expiry-invalid",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A node advertisement expiry is not strictly after created_at.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-node-advertisement"
+      ]
+    },
+    {
+      "code": "node-advert-lifetime-exceeded",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A node advertisement lifetime exceeds 86400 seconds.",
+      "spec_refs": [
+        "heterodyne:core/0.5.0#core-node-advertisement"
+      ]
+    }
+  ],
+  "security_invariants": [
+    {
+      "id": "CORE-I-IDENTITY-INTEGRITY",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "The cold-root npub and accepted KEL are authoritative for persona identity; downstream caches and delegated identifiers cannot override them."
+    },
+    {
+      "id": "CORE-I-NID-DELEGATION-DUAL-PROOF",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "A Radicle NID delegation is active only after both the persona epoch-key BIP-340 signature and the delegated NID Ed25519 proof verify over the same binding."
+    },
+    {
+      "id": "CORE-I-VERIFY-BEFORE-USE",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Every signed object is locally signature-verified and, where applicable, delegation-checked before rendering, storage, or authorization."
+    },
+    {
+      "id": "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Core discovery does not depend on a centralized persona, npub, RID, or serving-node directory."
+    },
+    {
+      "id": "CORE-I-KEY-MATERIAL-AT-REST",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "Persona nsec, NID secrets, and sensitive cached identity material are protected by the Core keys-repository profile, including NIP-49 wrapping where applicable."
+    },
+    {
+      "id": "COMMS-I-TIER3-BLIND-CARRIER",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay."
+    },
+    {
+      "id": "COMMS-I-TIER2-HONESTY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Tier 2 private repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly."
+    },
+    {
+      "id": "COMMS-I-CONFIG-AT-REST",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Comms-owned non-key private state and audience or group material are encrypted under the Comms repository-encryption profile."
+    },
+    {
+      "id": "COMMS-I-CLIENT-SIDE-DELIVERY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Cross-backend Comms processing runs on user-controlled clients; full nodes, repository relays, routing nodes, and Nostr relays are blind carriers for protected plaintext."
+    },
+    {
+      "id": "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Feed, outbox, and delivery discovery do not depend on a centralized delivery directory."
+    },
+    {
+      "id": "SOCIAL-I-PRIVATE-STATE-AT-REST",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "Private mute, feed-preference, followed-repository, and other Social state are encrypted at rest using the owning Social or bound Comms profile."
+    },
+    {
+      "id": "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "Following, transitive discovery, and social-graph evaluation do not depend on a centralized follow-graph oracle."
+    },
+    {
+      "id": "CONTROL-I-AUDIT-AT-REST",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Authorization and side-effect audit is encrypted and contains no replayable token or transcript."
+    },
+    {
+      "id": "CONTROL-I-CLIENT-KEY-CONFINEMENT",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A light client receives no persona, device, epoch, NID, repository, MLS-leaf, or agent-role private key."
+    },
+    {
+      "id": "CONTROL-I-MARMOT-SENDER-BINDING",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Every privileged token is bound to the authenticated Marmot account and exact group."
+    },
+    {
+      "id": "CONTROL-I-ENTITLEMENT-FRESHNESS",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Every privileged request uses current, non-conflicted private entitlement state and absorbing revocation."
+    },
+    {
+      "id": "CONTROL-I-NODE-AUDIENCE",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "A node-issued Control token is accepted only by its exact issuing-node audience."
+    },
+    {
+      "id": "CONTROL-I-OPERATION-AT-MOST-ONCE",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Mutation reservation precedes effects and cross-node retry is limited to provably safe cases."
+    },
+    {
+      "id": "CONTROL-I-AGENT-NO-KEY-RELEASE",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An automated principal never receives or directly exercises a persona, epoch, NID, human-device, or agent-role private key."
+    },
+    {
+      "id": "CONTROL-I-AGENT-INTENT-ONLY",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "An automated principal publishes only through the intent-level agent method, and raw signing, human-profile fallback, and attribution bypass fail closed."
+    },
+    {
+      "id": "CONTROL-I-MARMOT-GRANT-CONFINEMENT",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Node-mediated Marmot operations expose only grant-filtered content and actions while all account, MLS leaf, epoch, and repository secrets remain on the designated node."
+    },
+    {
+      "id": "CONTROL-I-EPOCH-LOCKED-DURING-TRANSFER",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Epoch plaintext is erased and relocked before network or bulk-transfer activity."
+    },
+    {
+      "id": "CONTROL-I-RECOVERY-GRANT-CONFINEMENT",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Recovery access is finite and bound to exact identities, resources, direction, bytes, time, and completion."
+    },
+    {
+      "id": "CONTROL-I-SFTP-PROCESS-SEPARATION",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "control/0.5.0",
+      "description": "Overflow SFTP uses a per-grant onion and isolated rooted process with Tor and SSH authentication."
+    },
+    {
+      "id": "COMMS-I-CLAIM-AUTHENTICITY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Claim IDs, event signatures, issuer authority, typed references, and native proofs are verified before trust or authorization policy is applied."
+    },
+    {
+      "id": "COMMS-I-CLAIM-ATTENUATION",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Every delegated claim strictly preserves or narrows all authority dimensions and issuance chains contain at most eight edges."
+    },
+    {
+      "id": "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Persona-issued device authorization is final only in canonical private claim-repository state, while authenticated reductions take effect immediately."
+    },
+    {
+      "id": "COMMS-I-CLAIM-REVOCATION",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A valid revocation or authority reduction is irreversible, monotonic, and wins concurrent repository merges."
+    },
+    {
+      "id": "COMMS-I-LEDGER-CONFINEMENT",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Private claim-ledger contents and decryption material are available only to active durable NID-bearing ledger readers."
+    },
+    {
+      "id": "COMMS-I-ISSUER-KEY-CONFINEMENT",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Shared OIDC signing keys are separately encrypted and released only to nodes with active oidc-token-issuer authority."
+    },
+    {
+      "id": "COMMS-I-MINT-FRESHNESS",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A node mints only from a synchronized canonical checkpoint no older than the manifest bound, which cannot exceed 300 seconds."
+    },
+    {
+      "id": "COMMS-I-ISSUER-CONTINUITY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "HTTPS issuer metadata and the root-key-scoped Radicle continuity tree agree on the exact active issuer, keys, status digests, and authorized succession."
+    },
+    {
+      "id": "COMMS-I-CLAIM-RELEASE",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "OIDC projection releases only claims allowed by scope, audience, client policy, consent, active repository state, issuer trust, and proof requirements."
+    },
+    {
+      "id": "COMMS-I-JWT-TYPE-AUDIENCE",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "JWT consumers enforce exact issuer, intended audience, time, signature, nonce when applicable, and token-type separation including typ at+jwt for access tokens."
+    },
+    {
+      "id": "COMMS-I-STATUS-INTEGRITY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Draft-21 status lists are signed, fresh, digest-bound across HTTPS and Radicle mirrors, writer-namespaced without index reuse, and never let VALID override other token failures."
+    },
+    {
+      "id": "COMMS-I-PUBLIC-READER-TIER1-ONLY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "A public-reader implementation consumes only verified Tier 1 content and never renders Tier 2 plaintext or interprets Tier 3 ciphertext as public content."
+    },
+    {
+      "id": "COMMS-I-AGENT-ROLE-BINDING",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Every agent-authored event signer, workload registration, token role claim, and active role-addressed delegation identify the same dedicated full-node-held role key."
+    },
+    {
+      "id": "COMMS-I-AGENT-ATTRIBUTION",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Every agent-authored application event carries the canonical automation attribution block at its tier-appropriate protected location."
+    },
+    {
+      "id": "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Workload tokens, token identifiers, private source claims, and sender proofs remain confined to the protected authorization and audit boundary."
+    },
+    {
+      "id": "CORE-I-MARMOT-ROLE-ATTRIBUTION",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "core/0.5.0",
+      "description": "KERI role evidence attributes Marmot accounts and Radicle hosts without selecting MLS state or altering Marmot convergence."
+    },
+    {
+      "id": "COMMS-I-MARMOT-UPSTREAM-AUTHORITY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "The pinned Marmot dependency remains authoritative for MLS, conversation events, encrypted media, and Nostr transport semantics."
+    },
+    {
+      "id": "COMMS-I-MARMOT-EXACT-BYTES",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Radicle storage and every Nostr or media interface preserve exact signed Marmot event bytes and encrypted media ciphertext."
+    },
+    {
+      "id": "COMMS-I-MARMOT-SECRET-CONFINEMENT",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Independent device leaves do not share secrets by default, and node-mediated clients receive no MLS, account, leaf, or repository secret."
+    },
+    {
+      "id": "COMMS-I-RADICLE-ROUTING-AUTHORITY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Only a canonical Marmot routing commit by an active administrator can authorize a matching Radicle routing binding and repository genesis."
+    },
+    {
+      "id": "COMMS-I-RADICLE-NON-ERASURE",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "comms/0.5.0",
+      "description": "Retention expiry stops conforming advertisement and replication but never claims erasure of independent Git objects, clones, exports, or backups."
+    },
+    {
+      "id": "SOCIAL-I-AGENT-POLICY-LOCAL",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "Agent-policy receipts inform publicly, but only an explicitly subscribed and verified current policy list changes a client's local visibility."
+    },
+    {
+      "id": "SOCIAL-I-AGENT-REMEDIATION-SCOPED",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "social/0.5.0",
+      "description": "Agent-policy enforcement and remediation target only the offending role device key; replacement at the same role address never requires epoch-key rotation."
+    }
+  ],
+  "features": [
+    {
+      "id": "core.nostr-relay-read.v1",
+      "owner": "core",
+      "first_version": "core/0.5.0",
+      "status": "draft",
+      "description": "Read verified Nostr events through an ordinary or repository-backed relay.",
+      "spec_ref": "heterodyne:core/0.5.0#core-nostr-relay-interop",
+      "prerequisites": []
+    },
+    {
+      "id": "core.outbound-tor.v1",
+      "owner": "core",
+      "first_version": "core/0.5.0",
+      "status": "draft",
+      "description": "Reach onion services through an outbound Tor client without accepting inbound circuits.",
+      "spec_ref": "heterodyne:core/0.5.0#core-tor-reachability",
+      "prerequisites": []
+    },
+    {
+      "id": "core.repo-relay-client.v1",
+      "owner": "core",
+      "first_version": "core/0.5.0",
+      "status": "draft",
+      "description": "Read and write repository-backed Nostr relay content while verifying canonical Radicle storage.",
+      "spec_ref": "heterodyne:core/0.5.0#core-repo-relay",
+      "prerequisites": [
+        "core.nostr-relay-read.v1"
+      ]
+    },
+    {
+      "id": "core.onion-service-host.v1",
+      "owner": "core",
+      "first_version": "core/0.5.0",
+      "status": "draft",
+      "description": "Host full-node services on persistent Tor v3 onion services.",
+      "spec_ref": "heterodyne:core/0.5.0#core-tor-reachability",
+      "prerequisites": [
+        "core.outbound-tor.v1"
+      ]
+    },
+    {
+      "id": "core.browser-shared-relay.v1",
+      "owner": "core",
+      "first_version": "core/0.5.0",
+      "status": "draft",
+      "description": "Use configured shared clearnet relays in visibly reduced-assurance browser mode.",
+      "spec_ref": "heterodyne:core/0.5.0#core-tor-reachability",
+      "prerequisites": [
+        "core.nostr-relay-read.v1"
+      ]
+    },
+    {
+      "id": "core.marmot-role-attribution.v1",
+      "owner": "core",
+      "first_version": "core/0.5.0",
+      "status": "draft",
+      "description": "Bind Marmot account roles and group-host identities to current KERI authority.",
+      "spec_ref": "heterodyne:core/0.5.0#core-marmot-role-attribution",
+      "prerequisites": []
+    },
+    {
+      "id": "comms.key-claims.v1",
+      "owner": "comms",
+      "first_version": "comms/0.5.0",
+      "status": "draft",
+      "description": "Publish and verify typed key claims and native proof bindings.",
+      "spec_ref": "heterodyne:comms/0.5.0#comms-key-claims",
+      "prerequisites": []
+    },
+    {
+      "id": "comms.private-claim-ledger.v1",
+      "owner": "comms",
+      "first_version": "comms/0.5.0",
+      "status": "draft",
+      "description": "Maintain canonical private multi-writer authorization claims.",
+      "spec_ref": "heterodyne:comms/0.5.0#comms-claim-ledger",
+      "prerequisites": [
+        "comms.key-claims.v1"
+      ]
+    },
+    {
+      "id": "comms.oidc-jwt-projection.v1",
+      "owner": "comms",
+      "first_version": "comms/0.5.0",
+      "status": "draft",
+      "description": "Project private authorization through the built-in OIDC issuer and JWT access-token profile.",
+      "spec_ref": "heterodyne:comms/0.5.0#comms-jwt-projection",
+      "prerequisites": [
+        "comms.private-claim-ledger.v1"
+      ]
+    },
+    {
+      "id": "comms.token-status-list-draft-21.v1",
+      "owner": "comms",
+      "first_version": "comms/0.5.0",
+      "status": "draft",
+      "description": "Publish token status using the exact draft-ietf-oauth-status-list-21 profile.",
+      "spec_ref": "heterodyne:comms/0.5.0#comms-token-status",
+      "prerequisites": [
+        "comms.oidc-jwt-projection.v1"
+      ]
+    },
+    {
+      "id": "comms.public-reader.v1",
+      "owner": "comms",
+      "first_version": "comms/0.5.0",
+      "status": "draft",
+      "description": "Resolve and render public persona content without authentication.",
+      "spec_ref": "heterodyne:comms/0.5.0#comms-public-reader",
+      "prerequisites": [
+        "core.nostr-relay-read.v1"
+      ]
+    },
+    {
+      "id": "comms.agent-authorship.v1",
+      "owner": "comms",
+      "first_version": "comms/0.5.0",
+      "status": "draft",
+      "description": "Authorize attributed automated publication through node-held agent-role keys.",
+      "spec_ref": "heterodyne:comms/0.5.0#comms-agent-authorship",
+      "prerequisites": [
+        "comms.oidc-jwt-projection.v1",
+        "comms.private-claim-ledger.v1"
+      ]
+    },
+    {
+      "id": "comms.marmot-conversations.v1",
+      "owner": "comms",
+      "first_version": "comms/0.5.0",
+      "status": "draft",
+      "description": "Use standard Marmot groups for direct and group conversations.",
+      "spec_ref": "heterodyne:comms/0.5.0#comms-marmot",
+      "prerequisites": [
+        "core.marmot-role-attribution.v1"
+      ]
+    },
+    {
+      "id": "comms.radicle-marmot-storage.v1",
+      "owner": "comms",
+      "first_version": "comms/0.5.0",
+      "status": "draft",
+      "description": "Store exact Marmot events and media in Radicle group repositories.",
+      "spec_ref": "heterodyne:comms/0.5.0#comms-marmot-event-repository",
+      "prerequisites": [
+        "core.repo-relay-client.v1",
+        "comms.marmot-conversations.v1"
+      ]
+    },
+    {
+      "id": "comms.radicle-backed-marmot-relay.v1",
+      "owner": "comms",
+      "first_version": "comms/0.5.0",
+      "status": "draft",
+      "description": "Expose byte-identical Marmot content through Radicle, onion, and clearnet relay locators.",
+      "spec_ref": "heterodyne:comms/0.5.0#comms-marmot-relay",
+      "prerequisites": [
+        "comms.radicle-marmot-storage.v1"
+      ]
+    },
+    {
+      "id": "control.marmot.v1",
+      "owner": "control",
+      "first_version": "control/0.5.0",
+      "status": "draft",
+      "description": "Carry pairwise Control application frames in standard Marmot groups.",
+      "spec_ref": "heterodyne:control/0.5.0#control-frame",
+      "prerequisites": [
+        "comms.marmot-conversations.v1"
+      ]
+    },
+    {
+      "id": "control.oauth-device-enrollment.v1",
+      "owner": "control",
+      "first_version": "control/0.5.0",
+      "status": "draft",
+      "description": "Project hardened OAuth Device Authorization enrollment over Marmot Control.",
+      "spec_ref": "heterodyne:control/0.5.0#control-device-authorization",
+      "prerequisites": [
+        "comms.oidc-jwt-projection.v1",
+        "control.marmot.v1"
+      ]
+    },
+    {
+      "id": "control.private-entitlement.v1",
+      "owner": "control",
+      "first_version": "control/0.5.0",
+      "status": "draft",
+      "description": "Authorize Control clients through the encrypted private Control registry.",
+      "spec_ref": "heterodyne:control/0.5.0#control-entitlement",
+      "prerequisites": [
+        "comms.private-claim-ledger.v1",
+        "control.marmot.v1"
+      ]
+    },
+    {
+      "id": "control.node-scoped-token.v1",
+      "owner": "control",
+      "first_version": "control/0.5.0",
+      "status": "draft",
+      "description": "Issue short-lived sender- and group-bound node-scoped Control tokens.",
+      "spec_ref": "heterodyne:control/0.5.0#control-token",
+      "prerequisites": [
+        "comms.oidc-jwt-projection.v1",
+        "control.private-entitlement.v1"
+      ]
+    },
+    {
+      "id": "control.agent-workload-publication.v1",
+      "owner": "control",
+      "first_version": "control/0.5.0",
+      "status": "draft",
+      "description": "Accept automated publication intent without releasing signing keys.",
+      "spec_ref": "heterodyne:control/0.5.0#control-agent-requirements",
+      "prerequisites": [
+        "comms.agent-authorship.v1",
+        "control.node-scoped-token.v1"
+      ]
+    },
+    {
+      "id": "control.node-mediated-marmot.v1",
+      "owner": "control",
+      "first_version": "control/0.5.0",
+      "status": "draft",
+      "description": "Perform grant-filtered Marmot actions through a full node.",
+      "spec_ref": "heterodyne:control/0.5.0#control-node-mediated-marmot",
+      "prerequisites": [
+        "control.node-scoped-token.v1"
+      ]
+    },
+    {
+      "id": "control.recovery.radicle.v1",
+      "owner": "control",
+      "first_version": "control/0.5.0",
+      "status": "draft",
+      "description": "Bootstrap recovery through finite private-Radicle grants.",
+      "spec_ref": "heterodyne:control/0.5.0#control-radicle-recovery",
+      "prerequisites": [
+        "core.repo-relay-client.v1",
+        "control.private-entitlement.v1"
+      ]
+    },
+    {
+      "id": "control.recovery.epoch-inbox.v1",
+      "owner": "control",
+      "first_version": "control/0.5.0",
+      "status": "draft",
+      "description": "Receive locked-epoch bootstrap registrations through a bounded NIP-59 inbox.",
+      "spec_ref": "heterodyne:control/0.5.0#control-epoch-bootstrap",
+      "prerequisites": [
+        "control.recovery.radicle.v1"
+      ]
+    },
+    {
+      "id": "control.recovery.sftp.v1",
+      "owner": "control",
+      "first_version": "control/0.5.0",
+      "status": "draft",
+      "description": "Transfer oversized recovery objects through isolated SFTP-over-Tor grants.",
+      "spec_ref": "heterodyne:control/0.5.0#control-sftp-recovery",
+      "prerequisites": [
+        "control.recovery.radicle.v1"
+      ]
+    },
+    {
+      "id": "social.agent-policy-moderation.v1",
+      "owner": "social",
+      "first_version": "social/0.5.0",
+      "status": "draft",
+      "description": "Publish and subscribe to advisory automated-authorship policy receipts and lists.",
+      "spec_ref": "heterodyne:social/0.5.0#social-agent-policy",
+      "prerequisites": [
+        "comms.agent-authorship.v1"
+      ]
+    }
+  ]
+}
