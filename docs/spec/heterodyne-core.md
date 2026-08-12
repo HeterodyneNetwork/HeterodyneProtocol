@@ -910,6 +910,11 @@ The verifier clock MUST be strictly before `expiry`. A continuing producer
 MUST refresh before `created_at + 43,200`; refresh failure never extends the
 old advertisement locally.
 
+A verifier that accepts an advertisement MUST retain local acceptance evidence
+until that advertisement expires or is discarded. Later use of that same
+accepted event MUST NOT reapply the first-acceptance `created_at` skew test;
+signature, proof, expiry, and served-graph requirements continue to apply.
+
 Verifier time SHOULD come from a secure platform time source. A client that
 knows its clock uncertainty exceeds 300 seconds MUST fail closed for fresh
 advertisement acceptance and report a clock error. It MUST NOT widen the
@@ -934,7 +939,7 @@ profile repository. Canonical-main selection and the repository's configured
 threshold choose exactly one record bound to the cold-root persona. Relay
 state, NIP-05, and arrival time cannot override that selection.
 
-Exactly one active KEL delegation MAY carry the `profile-publisher` role. Its
+Exactly one active KEL delegation MUST carry the `profile-publisher` role. Its
 delegated secp256k1 device publishing key produces an ordinary, unstamped
 Nostr `kind:0` mirror of the selected record's `vanilla_profile`. The cold
 root MUST NOT sign routine profile updates. A `kind:0` from any other key is

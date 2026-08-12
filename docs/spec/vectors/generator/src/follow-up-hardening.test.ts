@@ -87,6 +87,16 @@ describe("node advertisement time", () => {
       .toEqual({ verdict: "accept", refresh_by: 44_500 });
   });
 
+  it("does not reapply issuance skew to a previously accepted advertisement", () => {
+    expect(validateNodeAdvertisementTime({
+      createdAt: 1_000,
+      expiry: 87_400,
+      now: 10_000,
+      clockUncertainty: 0,
+      firstObservation: false,
+    })).toEqual({ verdict: "accept", refresh_by: 44_200 });
+  });
+
   it.each([
     [{ createdAt: 1_301, expiry: 2_000, now: 1_000, clockUncertainty: 0 }, "node-advert-clock-skew"],
     [{ createdAt: 1_000, expiry: 87_401, now: 1_000, clockUncertainty: 0 }, "node-advert-lifetime-exceeded"],

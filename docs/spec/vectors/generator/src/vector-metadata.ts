@@ -89,6 +89,7 @@ node-advert/past-clock-skew
 node-advert/expiry-not-after-created
 node-advert/refresh-by-twelve-hours
 node-advert/uncertain-clock-rejected
+node-advert/previously-accepted-within-expiry
 org/member-add-dual-authorized
 org/member-add-single-authorization-insufficient
 org/threshold-delegate-governance

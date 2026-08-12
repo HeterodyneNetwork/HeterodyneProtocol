@@ -104,5 +104,12 @@ export function buildFollowUpHardeningVectors(fixtures: Fixtures): AuthoredVecto
     advert("010-expiry-not-after-created", { createdAt: 1_000, expiry: 1_000, now: 1_000, clockUncertainty: 0 }),
     advert("011-refresh-by-twelve-hours", { createdAt: 1_000, expiry: 87_400, now: 1_000, clockUncertainty: 0 }),
     advert("012-uncertain-clock-rejected", { createdAt: 1_000, expiry: 2_000, now: 1_000, clockUncertainty: 301 }),
+    advert("013-previously-accepted-within-expiry", {
+      createdAt: 1_000,
+      expiry: 87_400,
+      now: 10_000,
+      clockUncertainty: 0,
+      firstObservation: false,
+    }),
   ];
 }

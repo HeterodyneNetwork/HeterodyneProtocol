@@ -93,7 +93,12 @@ export type NodeAdvertisementValidation =
 
 export function validateNodeAdvertisement(
   event: NostrSignedEvent,
-  context: { now: number; clock_uncertainty_seconds?: number; graph_fetch: RepositoryGraphFetch },
+  context: {
+    now: number;
+    clock_uncertainty_seconds?: number;
+    first_observation?: boolean;
+    graph_fetch: RepositoryGraphFetch;
+  },
 ): NodeAdvertisementValidation {
   if (!verifyEventSignature(event)) {
     return { status: "rejected", failure: "bad_signature" };
@@ -162,10 +167,11 @@ export function validateNodeAdvertisement(
   if (expiry <= context.now) {
     return { status: "rejected", failure: "expired" };
   }
-  if ((context.clock_uncertainty_seconds ?? 0) > 300) {
+  const firstObservation = context.first_observation ?? true;
+  if (firstObservation && (context.clock_uncertainty_seconds ?? 0) > 300) {
     return { status: "rejected", failure: "clock_uncertain" };
   }
-  if (Math.abs(event.created_at - context.now) > 300) {
+  if (firstObservation && Math.abs(event.created_at - context.now) > 300) {
     return { status: "rejected", failure: "clock_skew" };
   }
   if (context.graph_fetch.status === "transport_unavailable") {
