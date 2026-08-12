@@ -1,0 +1,29 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "social",
+  "owner_version": "social/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 7,
+  "spec_refs": [
+    "heterodyne:social/0.5.0#social-admission-policy"
+  ],
+  "vector_id": "acceptance-gating/social-wot-tightens-only",
+  "description": "Web-of-trust policy may tighten acceptance to a message request.",
+  "direction": "consume",
+  "input": {
+    "comms_outcome": "accept",
+    "requested_social_outcome": "hold-as-message-request",
+    "muted": false,
+    "blocked": false
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "composed_outcome": "hold-as-message-request",
+      "loosened_comms_result": false
+    }
+  }
+}

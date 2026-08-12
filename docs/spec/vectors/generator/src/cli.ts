@@ -15,6 +15,7 @@ import {
 } from "./docs-lint.js";
 import { verifyVectorTree } from "./verify.js";
 import { writeCoverage } from "./coverage.js";
+import { authorRegistryRevision } from "./registry.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultVectorRoot = resolve(here, "..", "..");
@@ -62,9 +63,14 @@ if (command === "author") {
   const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
   const written = writeReleaseManifests(repositoryRoot);
   console.log(`generated ${written.length} release manifests`);
+} else if (command === "registry-author") {
+  const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
+  const revision = Number.parseInt(process.argv[4] ?? "6", 10);
+  const digest = authorRegistryRevision(repositoryRoot, revision);
+  console.log(`authored registry revision ${revision} (${digest})`);
 } else {
   console.error(
-    "usage: tsx src/cli.ts <author|verify|family-check|coverage|release-manifests> [root]",
+    "usage: tsx src/cli.ts <author|verify|family-check|coverage|release-manifests|registry-author> [root] [revision]",
   );
   process.exitCode = 2;
 }

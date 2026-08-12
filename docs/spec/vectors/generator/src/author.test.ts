@@ -59,7 +59,7 @@ describe("author mode", () => {
     expect(identity.owner_document).toBe("core");
     expect(identity.owner_version).toBe("core/0.5.0");
     expect(identity.dependency_versions).toEqual({});
-    expect(identity.registry_revision).toBe(5);
+    expect(identity.registry_revision).toBe(7);
     expect(identity.spec_refs).toEqual(
       expect.arrayContaining([
         "heterodyne:core/0.5.0#core-root-attestation",
@@ -118,6 +118,19 @@ describe("author mode", () => {
       expect(current.expected_output.canonical_wire).toContain(stamp);
       expect(verifyEventSignature(current.expected_output.decoded.event)).toBe(true);
     }
+    const currentWrap = JSON.parse(await readFile(
+      join(outputDir, "privacy-tiers", "013-tier3-kind31011-audience-key-wrap-v050.json"), "utf8",
+    ));
+    expect(currentWrap.input.recipient_pubkey).toBe(buildFixtures().device_publishing_keys.bob_device_1.pubkey);
+    expect(currentWrap.input.recipient_pubkey).not.toBe(buildFixtures().personas.bob.cold_root.pubkey);
+    const currentRoster = JSON.parse(await readFile(
+      join(outputDir, "privacy-tiers", "014-tier3-kind31012-audience-roster-v050.json"), "utf8",
+    ));
+    expect(currentRoster.input.recipients).toEqual([
+      buildFixtures().device_publishing_keys.alice_device_1.pubkey,
+      buildFixtures().device_publishing_keys.bob_device_1.pubkey,
+    ].sort());
+    expect(currentRoster.input.recipients).not.toContain(buildFixtures().personas.bob.cold_root.pubkey);
 
     const fixtures = buildFixtures();
     expect(fixtures.legacy_kel.alice.head.id).toBe(

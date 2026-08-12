@@ -48,9 +48,29 @@ function registryWithHistory(
 describe("revisioned protocol registry", () => {
   const registry = loadRegistry(repositoryRoot);
 
-  it("loads revision 5 while retaining historical revision 1 through 4 snapshots", () => {
-    expect(registry.manifest.revision).toBe(5);
-    expect(registry.history.get(5)).toEqual(registry.currentEntrySet);
+  it("allocates revision 7 kinds with unique features and acyclic prerequisites", () => {
+    expect(registry.manifest.revision).toBe(7);
+    expect(registry.history.get(7)).toEqual(registry.currentEntrySet);
+    expect(registry.features.length).toBeGreaterThan(0);
+    expect(new Set(registry.features.map((entry) => entry.id)).size)
+      .toBe(registry.features.length);
+    expect(registry.features.map((entry) => entry.id)).toEqual(
+      expect.arrayContaining([
+        "comms.key-claims.v1",
+        "comms.private-claim-ledger.v1",
+        "comms.oidc-jwt-projection.v1",
+        "comms.token-status-list-draft-21.v1",
+        "comms.marmot-conversations.v1",
+        "comms.radicle-marmot-storage.v1",
+        "comms.agent-authorship.v1",
+      ]),
+    );
+    expect(() => validateRegistry(registry)).not.toThrow();
+  });
+
+  it("loads revision 7 while retaining historical revision 1 through 6 snapshots", () => {
+    expect(registry.manifest.revision).toBe(7);
+    expect(registry.history.get(7)).toEqual(registry.currentEntrySet);
     expect(registry.history.has(1)).toBe(true);
     expect(registry.history.has(2)).toBe(true);
     expect(registry.history.has(3)).toBe(true);
@@ -88,7 +108,8 @@ describe("revisioned protocol registry", () => {
         stamping: false,
       })],
     });
-    expect(registry.kinds.find((entry) => entry.kind === 1059)).toBeUndefined();
+    expect(registry.kinds.find((entry) => entry.kind === 1059)).toMatchObject({ allocation_authority: "nostr", profiles: [] });
+    expect(registry.kinds.find((entry) => entry.kind === 22242)).toMatchObject({ allocation_authority: "nostr", profiles: [] });
     expect(registry.kinds.find((entry) => entry.kind === 1060)).toBeUndefined();
     expect(registry.kinds.find((entry) => entry.kind === 31015)).toBeUndefined();
     expect(registry.kinds.find((entry) => entry.kind === 31016)).toBeUndefined();
@@ -231,7 +252,7 @@ describe("revisioned protocol registry", () => {
     ]));
   });
 
-  it("preserves historical snapshots and snapshots revision 5", () => {
+  it("preserves historical snapshots and snapshots revision 7", () => {
     const history1 = JSON.parse(readFileSync(
       resolve(repositoryRoot, "docs/spec/registry/history/1.json"),
       "utf8",
@@ -250,6 +271,14 @@ describe("revisioned protocol registry", () => {
     )) as RegistryEntrySet;
     const history5 = JSON.parse(readFileSync(
       resolve(repositoryRoot, "docs/spec/registry/history/5.json"),
+      "utf8",
+    )) as RegistryEntrySet;
+    const history6 = JSON.parse(readFileSync(
+      resolve(repositoryRoot, "docs/spec/registry/history/6.json"),
+      "utf8",
+    )) as RegistryEntrySet;
+    const history7 = JSON.parse(readFileSync(
+      resolve(repositoryRoot, "docs/spec/registry/history/7.json"),
       "utf8",
     )) as RegistryEntrySet;
 
@@ -288,8 +317,10 @@ describe("revisioned protocol registry", () => {
     }
 
     expect(history4).not.toEqual(registry.currentEntrySet);
-    expect(history5).toEqual(registry.currentEntrySet);
-    expect(registry.manifest.entry_set_sha256).toBe(computeRegistryDigest(history5));
+    expect(history5).not.toEqual(registry.currentEntrySet);
+    expect(history6).not.toEqual(registry.currentEntrySet);
+    expect(history7).toEqual(registry.currentEntrySet);
+    expect(registry.manifest.entry_set_sha256).toBe(computeRegistryDigest(history7));
   });
 
   it("commits the canonical digest of the current entry set", () => {
@@ -368,7 +399,7 @@ describe("revisioned protocol registry", () => {
 
   it("validates the manifest against the registry schema", () => {
     const changed = cloneRegistry(registry);
-    changed.manifest.schema_version = "2.0.0";
+    changed.manifest.schema_version = "1.0.0";
     expect(() => validateRegistry(changed)).toThrow(/schema_version/);
   });
 

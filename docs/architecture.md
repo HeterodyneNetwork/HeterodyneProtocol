@@ -86,14 +86,23 @@ flowchart LR
 Tier 1 is public. Tier 2 is plaintext selectively replicated to authorized
 Radicle nodes and must be presented honestly as a replication boundary rather
 than encryption. Tier 3 is encrypted before any carrier or repository receives
-it. Ordinary relays and repository relays preserve signed event bytes.
+it. Its persona membership expands to active delegated human-device keys so
+light devices can decrypt directly; cold-root and epoch keys stay offline.
+Using the device publishing key for NIP-44 and event signing intentionally
+places both operations in one revocation and compromise domain. Ordinary
+relays and repository relays preserve signed event bytes.
+
+Canonical persona metadata lives in the public Radicle profile repository. A
+single delegated profile publisher mirrors it as vanilla `kind:0`; KEL-derived
+historical publisher sets aid discovery, while repository indexes alone select
+current addressable coordinates.
 
 The universal public launcher provides a stable path into verified Tier 1
 content. It is not a centralized identity or content directory.
 
 ## 5. Marmot conversations
 
-Marmot is the canonical conversation engine. The pinned upstream implementation
+Marmot is the canonical conversation engine. The locally archived pinned specification
 owns MLS membership and convergence, account-to-leaf proofs, application
 events, replies, reactions, edits, encrypted media, and ordinary Nostr
 transport. Heterodyne adds KERI attribution, Control authorization, Radicle

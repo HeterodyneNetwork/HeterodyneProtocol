@@ -23,6 +23,7 @@ const REPO_HEAD = "ab".repeat(20);
 
 async function nodeAdvertisement(
   mutateTags: (tags: string[][]) => string[][] = (tags) => tags,
+  createdAt = EXPIRY - 100,
 ) {
   const nid = didKeyFromEd25519(ed25519PublicKey(NID_SECRET));
   const proof = ed25519Sign(
@@ -31,7 +32,7 @@ async function nodeAdvertisement(
   );
   return signEvent({
     secretKey: NODE_SECRET,
-    created_at: EXPIRY - 100,
+    created_at: createdAt,
     kind: 31010,
     tags: mutateTags([
       ["d", RID],
@@ -111,6 +112,42 @@ describe("Radicle / NID helpers", () => {
       failure: "transport_unavailable",
       retryable: true,
     });
+  });
+
+  it("enforces initial skew, lifetime, expiry ordering, and known clock uncertainty", async () => {
+    const event = await nodeAdvertisement();
+    expect(validateNodeAdvertisement(event, {
+      now: event.created_at - 301,
+      clock_uncertainty_seconds: 0,
+      graph_fetch: { status: "available", reachable_oids: [REPO_HEAD] },
+    })).toEqual({ status: "rejected", failure: "clock_skew" });
+    expect(validateNodeAdvertisement(event, {
+      now: event.created_at,
+      clock_uncertainty_seconds: 301,
+      graph_fetch: { status: "available", reachable_oids: [REPO_HEAD] },
+    })).toEqual({ status: "rejected", failure: "clock_uncertain" });
+  });
+
+  it("retains a previously accepted advertisement without reapplying issuance skew", async () => {
+    const event = await nodeAdvertisement((tags) => tags, EXPIRY - 20_000);
+    expect(validateNodeAdvertisement(event, {
+      now: event.created_at + 10_000,
+      previously_accepted_event_id: event.id,
+      graph_fetch: { status: "available", reachable_oids: [REPO_HEAD] },
+    })).toMatchObject({ status: "accepted", repo_head: REPO_HEAD });
+  });
+
+  it("does not let a provisional prior observation bypass first-acceptance skew", async () => {
+    const event = await nodeAdvertisement((tags) => tags, EXPIRY - 20_000);
+    expect(validateNodeAdvertisement(event, {
+      now: event.created_at + 10_000,
+      graph_fetch: { status: "available", reachable_oids: [REPO_HEAD] },
+    })).toEqual({ status: "rejected", failure: "clock_skew" });
+    expect(validateNodeAdvertisement(event, {
+      now: event.created_at + 10_000,
+      previously_accepted_event_id: "00".repeat(32),
+      graph_fetch: { status: "available", reachable_oids: [REPO_HEAD] },
+    })).toEqual({ status: "rejected", failure: "clock_skew" });
   });
 
   it.each([

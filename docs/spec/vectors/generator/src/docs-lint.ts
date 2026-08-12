@@ -12,6 +12,7 @@ import {
 } from "./family.js";
 import type { DocumentId } from "./types.js";
 import { computeRegistryDigest, loadRegistry } from "./registry.js";
+import { verifyMarmotArchive } from "./marmot-archive.js";
 
 /** The complete claims/OIDC invariant set required in the family threat model. */
 export const CLAIMS_OIDC_INVARIANT_IDS = [
@@ -44,6 +45,11 @@ export type FamilyDocIssue = {
     | "extraction-banner"
     | "noncanonical-decision-reference"
     | "premature-release-claim"
+    | "marmot-archive-invalid"
+    | "generic-repo-relay-server-claim"
+    | "ambiguous-nostr-wire-key"
+    | "claim-profile-revision-ambiguous"
+    | "missing-upstream-kind-allocation"
     | "release-manifest-mismatch";
   message: string;
 };
@@ -310,6 +316,32 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
     }
   }
 
+  const core = documents.find(({ document }) => document === "core");
+  if (core?.lines.some((line) => /core\.repo-relay-(?:server|storage)\./.test(line))) {
+    issues.push({ path: core.displayPath, line: 1, code: "generic-repo-relay-server-claim", message: "Core defines no generic repo-relay server/storage feature" });
+  }
+  const comms = documents.find(({ document }) => document === "comms");
+  if (comms !== undefined) {
+    const wireStart = comms.lines.findIndex((line) => line.includes('<a id="comms-audience-keys"'));
+    const wireEnd = comms.lines.findIndex((line, index) => index > wireStart && line.includes('<a id="comms-tier-three-profile"'));
+    const wire = comms.lines.slice(wireStart, wireEnd).join("\n");
+    if (/<recipient npub>|recipient's npub/.test(wire)) {
+      issues.push({ path: comms.displayPath, line: wireStart + 1, code: "ambiguous-nostr-wire-key", message: "Tier 3 wire keys must use lowercase 64-hex rather than npub" });
+    }
+    if (!/profile registry revision[\s\S]*exactly `2`[\s\S]*current complete registry revision/i.test(comms.lines.join("\n"))) {
+      issues.push({ path: comms.displayPath, line: 1, code: "claim-profile-revision-ambiguous", message: "claim profile and family registry revisions are not distinguished" });
+    }
+  }
+  const registry = loadRegistry(repoRoot);
+  for (const kind of [1059, 22242]) {
+    if (!registry.kinds.some((entry) => entry.kind === kind && entry.allocation_authority === "nostr")) {
+      issues.push({ path: "docs/spec/registry/kinds.json", line: 1, code: "missing-upstream-kind-allocation", message: `missing upstream kind ${kind}` });
+    }
+  }
+  for (const message of verifyMarmotArchive(resolve(repoRoot, "docs/spec/external/marmot"))) {
+    issues.push({ path: "docs/spec/external/marmot/manifest.json", line: 1, code: "marmot-archive-invalid", message });
+  }
+
   return issues;
 }
 
@@ -344,7 +376,8 @@ export type ReleaseManifest = {
   registry_revision: number;
   registry_sha256: string;
   dependencies: Partial<Record<DocumentId, `${DocumentId}/0.5.0`>>;
-  features: string[];
+  provided_features: string[];
+  required_features: string[];
   conformance_status: "conformant" | "incomplete-draft";
 };
 
@@ -385,6 +418,57 @@ export function findInvariantEvidenceIssues(
   for (const { id, description } of invariants) {
     if (threatRows.get(id) !== description) {
       issues.push(`missing invariant evidence: ${id}`);
+    }
+  }
+  return issues.sort();
+}
+
+type StrictProfileFixture = {
+  profile_id: string;
+  requires_profiles: string[];
+  required_invariants: string[];
+};
+
+export function findStrictProfileClosureIssues(
+  documents: Record<string, string>,
+): string[] {
+  const profiles = new Map<string, StrictProfileFixture>();
+  const issues: string[] = [];
+  const fixturePattern = /<!-- fixture:[^>]*strict-profile[^>]* -->\s*```json\s*([\s\S]*?)\s*```/g;
+  for (const [document, text] of Object.entries(documents)) {
+    for (const match of text.matchAll(fixturePattern)) {
+      let profile: StrictProfileFixture;
+      try {
+        profile = JSON.parse(match[1]) as StrictProfileFixture;
+      } catch {
+        issues.push(`invalid strict-profile fixture JSON: ${document}`);
+        continue;
+      }
+      const prior = profiles.get(profile.profile_id);
+      if (prior !== undefined
+        && canonicalJson(prior.required_invariants) !== canonicalJson(profile.required_invariants)) {
+        issues.push(`conflicting strict-profile membership: ${profile.profile_id}`);
+      } else {
+        profiles.set(profile.profile_id, profile);
+      }
+      if (new Set(profile.required_invariants).size !== profile.required_invariants.length) {
+        issues.push(`duplicate invariant membership: ${profile.profile_id}`);
+      }
+    }
+  }
+  for (const profile of profiles.values()) {
+    const membership = new Set(profile.required_invariants);
+    for (const prerequisiteId of profile.requires_profiles) {
+      const prerequisite = profiles.get(prerequisiteId);
+      if (prerequisite === undefined) {
+        issues.push(`unknown strict-profile prerequisite: ${profile.profile_id} -> ${prerequisiteId}`);
+        continue;
+      }
+      for (const invariant of prerequisite.required_invariants) {
+        if (!membership.has(invariant)) {
+          issues.push(`incomplete flattened membership: ${profile.profile_id} missing ${invariant}`);
+        }
+      }
     }
   }
   return issues.sort();
@@ -460,7 +544,7 @@ export function expectedReleaseManifests(
     throw new Error(`unknown registry history revision ${registryRevision}`);
   }
   const registrySha256 = computeRegistryDigest(entrySet);
-  return {
+  const manifests: Record<DocumentId, ReleaseManifest> = {
     core: {
       document: "core",
       version: "0.5.0",
@@ -468,7 +552,7 @@ export function expectedReleaseManifests(
       registry_revision: registryRevision,
       registry_sha256: registrySha256,
       dependencies: {},
-      features: [
+      provided_features: [
         "core.nostr-relay-read.v1",
         "core.outbound-tor.v1",
         "core.repo-relay-client.v1",
@@ -476,6 +560,7 @@ export function expectedReleaseManifests(
         "core.browser-shared-relay.v1",
         "core.marmot-role-attribution.v1",
       ],
+      required_features: [],
       conformance_status: "conformant",
     },
     comms: {
@@ -485,16 +570,21 @@ export function expectedReleaseManifests(
       registry_revision: registryRevision,
       registry_sha256: registrySha256,
       dependencies: { core: "core/0.5.0" },
-      features: [
-        "key-claims",
-        "private-claim-ledger",
-        "oidc-jwt-projection",
-        "token-status-list-draft-21",
+      provided_features: [
+        "comms.key-claims.v1",
+        "comms.private-claim-ledger.v1",
+        "comms.oidc-jwt-projection.v1",
+        "comms.token-status-list-draft-21.v1",
         "comms.public-reader.v1",
         "comms.agent-authorship.v1",
         "comms.marmot-conversations.v1",
         "comms.radicle-marmot-storage.v1",
         "comms.radicle-backed-marmot-relay.v1",
+      ],
+      required_features: [
+        "core.marmot-role-attribution.v1",
+        "core.nostr-relay-read.v1",
+        "core.repo-relay-client.v1",
       ],
       conformance_status: "conformant",
     },
@@ -505,7 +595,7 @@ export function expectedReleaseManifests(
       registry_revision: registryRevision,
       registry_sha256: registrySha256,
       dependencies: { core: "core/0.5.0", comms: "comms/0.5.0" },
-      features: [
+      provided_features: [
         "control.marmot.v1",
         "control.oauth-device-enrollment.v1",
         "control.private-entitlement.v1",
@@ -516,6 +606,14 @@ export function expectedReleaseManifests(
         "control.recovery.epoch-inbox.v1",
         "control.recovery.sftp.v1",
       ],
+      required_features: [
+        "core.repo-relay-client.v1",
+        "comms.agent-authorship.v1",
+        "comms.marmot-conversations.v1",
+        "comms.oidc-jwt-projection.v1",
+        "comms.private-claim-ledger.v1",
+        "comms.radicle-marmot-storage.v1",
+      ],
       conformance_status: "conformant",
     },
     social: {
@@ -525,10 +623,65 @@ export function expectedReleaseManifests(
       registry_revision: registryRevision,
       registry_sha256: registrySha256,
       dependencies: { core: "core/0.5.0", comms: "comms/0.5.0" },
-      features: ["social.agent-policy-moderation.v1"],
+      provided_features: ["social.agent-policy-moderation.v1"],
+      required_features: [
+        "comms.agent-authorship.v1",
+        "comms.marmot-conversations.v1",
+      ],
       conformance_status: "conformant",
     },
   };
+  validateReleaseFeatureResolution(registry, manifests);
+  return manifests;
+}
+
+export function validateReleaseFeatureResolution(
+  registry: ReturnType<typeof loadRegistry>,
+  manifests: Record<DocumentId, ReleaseManifest>,
+): void {
+  const catalog = new Map(registry.features.map((feature) => [feature.id, feature]));
+  for (const [document, manifest] of Object.entries(manifests) as [DocumentId, ReleaseManifest][]) {
+    const provided = new Set(manifest.provided_features);
+    const required = new Set(manifest.required_features);
+    if (provided.size !== manifest.provided_features.length) {
+      throw new Error(`duplicate provided feature: ${document}`);
+    }
+    if (required.size !== manifest.required_features.length) {
+      throw new Error(`duplicate required feature: ${document}`);
+    }
+    for (const featureId of provided) {
+      if (required.has(featureId)) throw new Error(`feature both provided and required: ${featureId}`);
+      const feature = catalog.get(featureId);
+      if (feature === undefined) throw new Error(`unregistered provided feature: ${featureId}`);
+      if (feature.owner !== document) throw new Error(`provided feature owner mismatch: ${featureId}`);
+      for (const prerequisiteId of feature.prerequisites) {
+        const prerequisite = catalog.get(prerequisiteId);
+        if (prerequisite === undefined) {
+          throw new Error(`unregistered feature prerequisite: ${prerequisiteId}`);
+        }
+        if (prerequisite.owner === document) {
+          if (!provided.has(prerequisiteId)) {
+            throw new Error(`local prerequisite not provided: ${featureId} -> ${prerequisiteId}`);
+          }
+        } else if (!required.has(prerequisiteId)) {
+          throw new Error(`external prerequisite not required: ${featureId} -> ${prerequisiteId}`);
+        }
+      }
+    }
+    for (const featureId of required) {
+      const feature = catalog.get(featureId);
+      if (feature === undefined) throw new Error(`unregistered required feature: ${featureId}`);
+      const dependencyVersion = manifest.dependencies[feature.owner];
+      if (dependencyVersion === undefined) {
+        throw new Error(`required feature owner is not a dependency: ${featureId}`);
+      }
+      const dependency = manifests[feature.owner];
+      if (dependency.qualified_version !== dependencyVersion
+        || !dependency.provided_features.includes(featureId)) {
+        throw new Error(`required feature not provided by exact dependency: ${featureId}`);
+      }
+    }
+  }
 }
 
 export function writeReleaseManifests(repoRoot: string): string[] {

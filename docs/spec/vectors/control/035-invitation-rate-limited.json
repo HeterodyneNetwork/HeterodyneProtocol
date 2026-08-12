@@ -1,0 +1,41 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "control",
+  "owner_version": "control/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 7,
+  "profile": "heterodyne-control-marmot-frame-v1",
+  "spec_refs": [
+    "heterodyne:control/0.5.0#control-invitation-policy"
+  ],
+  "vector_id": "control/invitation-rate-limited",
+  "description": "Marmot Control invitation decision: invitation-rate-limited.",
+  "direction": "consume",
+  "input": {
+    "invitation_mode": "permanent",
+    "temporary_expires_at": null,
+    "now": 1000,
+    "keypackage_valid": true,
+    "keypackage_last_resort": true,
+    "member_count": 2,
+    "node_account_matches": true,
+    "entitlement_state": "none",
+    "method": "control.enrollment.start",
+    "purpose_bound_invite_valid": false,
+    "explicitly_approved": false,
+    "pending_for_account": 0,
+    "global_pending": 0,
+    "global_pending_cap": 10,
+    "welcome_rate_remaining": 0,
+    "replenishment_rate_remaining": 1,
+    "public_pool_replenishment_requested": false,
+    "reserved_slot_available": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "control-enrollment-rate-limited"
+  }
+}

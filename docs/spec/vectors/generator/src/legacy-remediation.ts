@@ -108,6 +108,40 @@ export async function remediateHistoricalProduction(
       if (endpointIndex < 0) throw new Error("historical node advertisement has no endpoint tag");
       tags.splice(endpointIndex + 1, 0, ["repo_head", repoHead]);
     }
+    if (sourceId === "privacy-tiers/tier3-kind31011-audience-key-wrap") {
+      const recipient = fixtures.device_publishing_keys.bob_device_1;
+      tags = tags.map((tag) => tag[0] === "d"
+        ? ["d", `${fixtures.audience_keys.alice_tier3_gen_a.key_id}:${recipient.pubkey}`]
+        : tag[0] === "p" ? ["p", recipient.pubkey] : tag);
+      const conversationKey = nip44.v2.utils.getConversationKey(
+        hexToBytes(fixtures.personas.alice.epoch_keys.epoch_1.private_key),
+        recipient.pubkey,
+      );
+      const nonce = hexToBytes(source.input.nip44_nonce as string);
+      content = nip44.v2.encrypt(fixtures.audience_keys.alice_tier3_gen_a.key, conversationKey, nonce);
+      currentCryptoInput = {
+        recipient_pubkey: recipient.pubkey,
+        recipient_role: "active-delegated-human-device",
+        nip44_nonce: source.input.nip44_nonce,
+      };
+      currentDecoded = {
+        recipient_pubkey: recipient.pubkey,
+        conversation_key: Buffer.from(conversationKey).toString("hex"),
+        audience_key_plaintext: fixtures.audience_keys.alice_tier3_gen_a.key,
+        nip44_payload: content,
+      };
+    }
+    if (sourceId === "privacy-tiers/tier3-kind31012-audience-roster") {
+      const recipients = [
+        fixtures.device_publishing_keys.alice_device_1.pubkey,
+        fixtures.device_publishing_keys.bob_device_1.pubkey,
+      ].sort();
+      tags = tags.filter((tag) => tag[0] !== "p");
+      const coldRootIndex = tags.findIndex((tag) => tag[0] === "cold_root");
+      tags.splice(coldRootIndex + 1, 0, ...recipients.map((recipient) => ["p", recipient]));
+      currentCryptoInput = { recipients, recipient_role: "active-delegated-human-device" };
+      currentDecoded = { recipients };
+    }
     if (replacement.profile === "tier3") {
       tags = tags.filter((tag) => tag[0] !== "matrix_room_id");
     }
@@ -119,7 +153,10 @@ export async function remediateHistoricalProduction(
     const secretKey = replacement.coldRoot
       ? fixtures.personas.alice.cold_root.private_key
       : fixtures.personas.alice.epoch_keys.epoch_1.private_key;
-    const event = await signEvent({ secretKey, created_at: oldEvent.created_at, kind: oldEvent.kind, tags, content, auxRand: AUX_RAND });
+    const createdAt = sourceId === "node-advert/valid-dual-signed"
+      ? (source.input.expiry as number) - 300
+      : oldEvent.created_at;
+    const event = await signEvent({ secretKey, created_at: createdAt, kind: oldEvent.kind, tags, content, auxRand: AUX_RAND });
     item.vector.input = {
       migrated_from: sourceId,
       event_template: withoutSig(event),

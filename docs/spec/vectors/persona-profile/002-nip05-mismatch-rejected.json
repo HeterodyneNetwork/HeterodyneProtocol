@@ -1,0 +1,24 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 7,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-persona-profile"
+  ],
+  "vector_id": "persona-profile/nip05-mismatch-rejected",
+  "description": "Canonical persona profile: nip05 mismatch rejected.",
+  "input": {
+    "canonicalRepoSelected": true,
+    "publisher": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+    "delegatedPublisher": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+    "nip05Present": true,
+    "nip05ResolvedKey": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556"
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "profile-nip05-key-mismatch"
+  },
+  "direction": "consume"
+}

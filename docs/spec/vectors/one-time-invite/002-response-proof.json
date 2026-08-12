@@ -1,0 +1,38 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 7,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-one-time-invites"
+  ],
+  "vector_id": "one-time-invite/response-proof",
+  "description": "The NIP-59 response binds its responder, KeyPackage, purpose, descriptor, capabilities, and invite secret.",
+  "direction": "consume",
+  "input": {
+    "response": {
+      "spec_version": "comms/0.5.0",
+      "purpose": "dm",
+      "descriptor_digest": "eae01141735b098722f09313ba8448d0c2c7b80abf24ec37cc28bad4442c572e",
+      "responder_account": "3333333333333333333333333333333333333333333333333333333333333333",
+      "mls_key_package": "AQID",
+      "requested_class": "conversation-peer",
+      "capabilities": [
+        "chat"
+      ],
+      "proof": "8c724a81d137ec5d7121501121f47b28fc29e010e65ff72db5ebafdb09331396"
+    },
+    "nip59_seal_pubkey": "3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "proof_valid": true,
+      "seal_matches_rumor": true,
+      "private_key_members": 0
+    }
+  }
+}

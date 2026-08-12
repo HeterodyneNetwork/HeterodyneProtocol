@@ -4,25 +4,57 @@ import { jcsCanonicalize } from "./jcs.js";
 type Reject = { verdict: "reject"; reason_code: string };
 
 export type InvitationInput = {
-  invitation_enabled: boolean;
+  invitation_mode: "off" | "temporary" | "permanent";
+  temporary_expires_at: number | null;
+  now: number;
   keypackage_valid: boolean;
+  keypackage_last_resort: boolean;
   member_count: number;
   node_account_matches: boolean;
   entitlement_state: "none" | "active" | "revoked";
   method: string;
+  purpose_bound_invite_valid: boolean;
+  explicitly_approved: boolean;
+  pending_for_account: number;
+  global_pending: number;
+  global_pending_cap: number;
+  welcome_rate_remaining: number;
+  replenishment_rate_remaining: number;
+  public_pool_replenishment_requested: boolean;
+  reserved_slot_available: boolean;
 };
 
 export function authorizeInvitation(input: InvitationInput):
   | { verdict: "accept"; state: "enrollment-only" | "active"; authority: boolean }
   | Reject {
-  if (!input.invitation_enabled) {
-    return { verdict: "reject", reason_code: "control-invitation-disabled" };
-  }
   if (!input.keypackage_valid || input.member_count !== 2 || !input.node_account_matches) {
     return { verdict: "reject", reason_code: "control-keypackage-invalid" };
   }
   if (input.entitlement_state === "revoked") {
     return { verdict: "reject", reason_code: "control-entitlement-conflict" };
+  }
+  const entitledOrApproved = input.entitlement_state === "active" || input.explicitly_approved;
+  if (entitledOrApproved && !input.reserved_slot_available) {
+    return { verdict: "reject", reason_code: "control-enrollment-capacity" };
+  }
+  const open = input.invitation_mode === "permanent"
+    || (input.invitation_mode === "temporary"
+      && input.temporary_expires_at !== null
+      && input.now < input.temporary_expires_at);
+  if (!entitledOrApproved && !input.purpose_bound_invite_valid && !open) {
+    return { verdict: "reject", reason_code: "control-invitation-disabled" };
+  }
+  if (input.public_pool_replenishment_requested
+    && input.global_pending >= input.global_pending_cap) {
+    return { verdict: "reject", reason_code: "control-keypackage-replenishment-paused" };
+  }
+  if (input.welcome_rate_remaining <= 0
+    || (input.public_pool_replenishment_requested && input.replenishment_rate_remaining <= 0)) {
+    return { verdict: "reject", reason_code: "control-enrollment-rate-limited" };
+  }
+  if (input.pending_for_account >= 1
+    || (!entitledOrApproved && input.global_pending >= input.global_pending_cap)) {
+    return { verdict: "reject", reason_code: "control-enrollment-capacity" };
   }
   if (input.entitlement_state === "active") {
     return { verdict: "accept", state: "active", authority: true };
@@ -31,6 +63,16 @@ export function authorizeInvitation(input: InvitationInput):
     return { verdict: "reject", reason_code: "control-enrollment-required" };
   }
   return { verdict: "accept", state: "enrollment-only", authority: false };
+}
+
+export function evaluatePendingEnrollment(input: {
+  created_at: number;
+  now: number;
+}): { verdict: "accept"; state: "enrollment-only"; expires_at: number } | Reject {
+  const expiresAt = input.created_at + 1_800;
+  return input.now < expiresAt
+    ? { verdict: "accept", state: "enrollment-only", expires_at: expiresAt }
+    : { verdict: "reject", reason_code: "control-enrollment-expired" };
 }
 
 export type Entitlement = {
@@ -99,6 +141,9 @@ export type TokenIssuanceInput = {
   node_policy_max_seconds: number;
   extended_capability: boolean;
   now: number;
+  authorization_view_authenticated: boolean;
+  authorization_view_conflicted: boolean;
+  authorization_view_age_seconds: number;
   methods: string[];
   objects: string[];
 };
@@ -109,6 +154,14 @@ export function issueControlToken(input: TokenIssuanceInput):
   if (input.entitlement_state !== "active") {
     return { verdict: "reject", reason_code: "control-entitlement-conflict" };
   }
+  const freshness = evaluateAuthorizationFreshness({
+    authenticated: input.authorization_view_authenticated,
+    conflicted: input.authorization_view_conflicted,
+    age_seconds: input.authorization_view_age_seconds,
+    mutation: false,
+    immediate_sync_succeeded: false,
+  });
+  if (freshness.verdict === "reject") return freshness;
   const ceiling = Math.min(input.entitlement_max_seconds, input.node_policy_max_seconds, 3_600);
   const allowed = input.extended_capability ? ceiling : Math.min(300, ceiling);
   if (input.requested_lifetime_seconds <= 0 || input.requested_lifetime_seconds > allowed) {
@@ -153,6 +206,9 @@ export type TokenUseInput = {
   authenticated_sender_jkt: string;
   group_id: string;
   entitlement_state: "active" | "revoked";
+  authorization_view_authenticated: boolean;
+  authorization_view_conflicted: boolean;
+  authorization_view_age_seconds: number;
   method: string;
   object: string;
 };
@@ -177,10 +233,109 @@ export function validateControlTokenUse(input: TokenUseInput): { verdict: "accep
   if (input.entitlement_state !== "active") {
     return { verdict: "reject", reason_code: "control-entitlement-conflict" };
   }
+  const freshness = evaluateAuthorizationFreshness({
+    authenticated: input.authorization_view_authenticated,
+    conflicted: input.authorization_view_conflicted,
+    age_seconds: input.authorization_view_age_seconds,
+    mutation: false,
+    immediate_sync_succeeded: false,
+  });
+  if (freshness.verdict === "reject") return freshness;
   if (!token.methods.includes(input.method) || !token.objects.includes(input.object)) {
     return { verdict: "reject", reason_code: "control-token-scope-invalid" };
   }
   return { verdict: "accept" };
+}
+
+export function evaluateAuthorizationFreshness(input: {
+  authenticated: boolean;
+  conflicted: boolean;
+  age_seconds: number;
+  mutation: boolean;
+  immediate_sync_succeeded: boolean;
+}): { verdict: "accept" } | Reject {
+  if (!input.authenticated || input.conflicted || input.age_seconds > 300
+    || input.age_seconds < 0 || (input.mutation && !input.immediate_sync_succeeded)) {
+    return { verdict: "reject", reason_code: "control-authorization-view-stale" };
+  }
+  return { verdict: "accept" };
+}
+
+export function evaluateDeviceAuthorizationAttempt(input: {
+  device_code_entropy_bits: number;
+  user_code_entropy_bits: number;
+  failed_guesses: number;
+  per_code_rate_allowed: boolean;
+  node_rate_allowed: boolean;
+  normalized_constant_time_match: boolean;
+  display_code_matches: boolean;
+  display_fingerprint_matches: boolean;
+  poll_interval_observed: boolean;
+  slow_down_observed: boolean;
+  terminal_state: "pending" | "success" | "denied" | "expired";
+}): { verdict: "accept"; state: "pending" | "invalidated" }
+  | Reject & { state: "pending" | "invalidated" } {
+  if (input.device_code_entropy_bits < 128 || input.user_code_entropy_bits < 34.5
+    || !input.normalized_constant_time_match) {
+    return { verdict: "reject", reason_code: "control-device-code-invalid", state: "invalidated" };
+  }
+  if (input.failed_guesses >= 5) {
+    return { verdict: "reject", reason_code: "control-device-code-exhausted", state: "invalidated" };
+  }
+  if (!input.per_code_rate_allowed || !input.node_rate_allowed
+    || !input.poll_interval_observed || !input.slow_down_observed) {
+    return { verdict: "reject", reason_code: "control-device-code-rate-limited", state: "pending" };
+  }
+  if (!input.display_code_matches || !input.display_fingerprint_matches) {
+    return { verdict: "reject", reason_code: "control-device-code-display-mismatch", state: "pending" };
+  }
+  return {
+    verdict: "accept",
+    state: input.terminal_state === "pending" ? "pending" : "invalidated",
+  };
+}
+
+export function evaluateInvitePreauthorization(input: {
+  purpose: "control-enrollment" | "device-enrollment";
+  approval_mode: "interactive" | "preauthorized";
+  client_class: "human-light" | "automated" | "light-device" | "full-device" | "recovery-device";
+  expected_client_pubkey: string | null;
+  unbound_bearer_enabled: boolean;
+  node_allows_unbound_bearer: boolean;
+  methods: string[];
+  objects: string[];
+  limits: Record<string, number>;
+  agent_role: string | null;
+  token_lifetime_ceiling_seconds: number;
+  keri_authorized_device: boolean;
+}):
+  | { verdict: "accept"; prompt_free: boolean; risk: "normal" | "higher" }
+  | Reject {
+  if (input.approval_mode === "interactive") {
+    return { verdict: "accept", prompt_free: false, risk: "normal" };
+  }
+  const privateControlClass = input.client_class === "human-light"
+    || input.client_class === "automated";
+  const finite = input.methods.length > 0
+    && input.objects.length > 0
+    && Object.keys(input.limits).length > 0
+    && Object.values(input.limits).every((value) => Number.isInteger(value) && value > 0)
+    && input.token_lifetime_ceiling_seconds > 0
+    && input.token_lifetime_ceiling_seconds <= 3_600;
+  if (input.purpose !== "control-enrollment" || !privateControlClass
+    || input.keri_authorized_device || !finite) {
+    return { verdict: "reject", reason_code: "invite-preauthorization-invalid" };
+  }
+  if (input.client_class === "automated" && input.agent_role === null) {
+    return { verdict: "reject", reason_code: "invite-preauthorization-invalid" };
+  }
+  if (input.expected_client_pubkey === null) {
+    if (!input.unbound_bearer_enabled || !input.node_allows_unbound_bearer) {
+      return { verdict: "reject", reason_code: "invite-preauthorization-invalid" };
+    }
+    return { verdict: "accept", prompt_free: true, risk: "higher" };
+  }
+  return { verdict: "accept", prompt_free: true, risk: "normal" };
 }
 
 export type OperationInput = {

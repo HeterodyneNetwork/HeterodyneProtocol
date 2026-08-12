@@ -4,11 +4,13 @@ import { describe, expect, it } from "vitest";
 import {
   expectedReleaseManifests,
   findInvariantEvidenceIssues,
+  findStrictProfileClosureIssues,
   lintFamilyCutover,
   lintFamilyDocs,
   loadReleaseSchemaRegistryPin,
   releaseManifestBytes,
   validateReleaseManifestRegistryPin,
+  validateReleaseFeatureResolution,
 } from "./docs-lint.js";
 import { loadRegistry } from "./registry.js";
 
@@ -59,12 +61,47 @@ describe("canonical family documentation", () => {
     expect(core).toMatch(/full-node Control and recovery metadata/i);
     expect(core).toMatch(/light-only Control principal[\s\S]*not a Core device/i);
   });
+
+  it("closes the follow-up hardening documentation and archive rules", () => {
+    const issues = lintFamilyDocs(repositoryRoot);
+    expect(issues.filter(({ code }) => [
+      "marmot-archive-invalid",
+      "generic-repo-relay-server-claim",
+      "ambiguous-nostr-wire-key",
+      "claim-profile-revision-ambiguous",
+      "missing-upstream-kind-allocation",
+    ].includes(code))).toEqual([]);
+    const kinds = loadRegistry(repositoryRoot).kinds;
+    for (const kind of [1059, 22242]) {
+      expect(kinds.find((entry) => entry.kind === kind)).toMatchObject({
+        allocation_authority: "nostr",
+        profiles: [],
+      });
+    }
+  });
+
+  it("declares complete flattened strict-profile prerequisite membership", () => {
+    const documents = Object.fromEntries(
+      ["core", "comms", "control", "social"].map((document) => [
+        document,
+        read(`docs/spec/heterodyne-${document}.md`),
+      ]),
+    );
+    expect(findStrictProfileClosureIssues(documents)).toEqual([]);
+    documents.core += `\n<!-- fixture:conflicting-strict-profile -->\n\`\`\`json\n${JSON.stringify({
+      profile_id: "heterodyne-core-strict-v1",
+      requires_profiles: [],
+      required_invariants: ["CORE-I-IDENTITY-INTEGRITY"],
+    })}\n\`\`\`\n`;
+    expect(findStrictProfileClosureIssues(documents))
+      .toContain("conflicting strict-profile membership: heterodyne-core-strict-v1");
+  });
 });
 
 describe("registry-bound release artifacts", () => {
-  it("pins release schema and all manifests to registry revision 5", () => {
+  it("pins release schema and all manifests to registry revision 7", () => {
     const pin = loadReleaseSchemaRegistryPin(repositoryRoot);
-    expect(pin.registry_revision).toBe(5);
+    expect(pin.registry_revision).toBe(7);
     expect(pin.registry_sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(() => validateReleaseManifestRegistryPin(repositoryRoot, pin)).not.toThrow();
 
@@ -78,7 +115,7 @@ describe("registry-bound release artifacts", () => {
   it("advertises active Control separately from optional recovery features", () => {
     const manifest = expectedReleaseManifests(repositoryRoot).control;
     expect(manifest.conformance_status).toBe("conformant");
-    expect(manifest.features).toEqual([
+    expect(manifest.provided_features).toEqual([
       "control.marmot.v1",
       "control.oauth-device-enrollment.v1",
       "control.private-entitlement.v1",
@@ -89,6 +126,34 @@ describe("registry-bound release artifacts", () => {
       "control.recovery.epoch-inbox.v1",
       "control.recovery.sftp.v1",
     ]);
+    expect(manifest.required_features).toEqual([
+      "core.repo-relay-client.v1",
+      "comms.agent-authorship.v1",
+      "comms.marmot-conversations.v1",
+      "comms.oidc-jwt-projection.v1",
+      "comms.private-claim-ledger.v1",
+      "comms.radicle-marmot-storage.v1",
+    ]);
+    expect(new Set(manifest.provided_features).size)
+      .toBe(manifest.provided_features.length);
+    expect(new Set(manifest.required_features).size)
+      .toBe(manifest.required_features.length);
+  });
+
+  it("rejects a required feature absent from the exact dependency release", () => {
+    const manifests = structuredClone(expectedReleaseManifests(repositoryRoot));
+    manifests.comms.provided_features = manifests.comms.provided_features
+      .filter((feature) => feature !== "comms.agent-authorship.v1");
+    expect(() => validateReleaseFeatureResolution(loadRegistry(repositoryRoot), manifests))
+      .toThrow(/not provided by exact dependency/);
+  });
+
+  it("rejects a provided feature whose external prerequisite is undeclared", () => {
+    const manifests = structuredClone(expectedReleaseManifests(repositoryRoot));
+    manifests.comms.required_features = manifests.comms.required_features
+      .filter((feature) => feature !== "core.marmot-role-attribution.v1");
+    expect(() => validateReleaseFeatureResolution(loadRegistry(repositoryRoot), manifests))
+      .toThrow(/external prerequisite not required/);
   });
 
   it("mirrors every registered invariant exactly in the threat model", () => {

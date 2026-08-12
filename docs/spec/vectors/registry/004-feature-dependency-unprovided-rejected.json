@@ -1,0 +1,24 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 7,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-registry"
+  ],
+  "vector_id": "registry/feature-dependency-unprovided-rejected",
+  "description": "A catalog entry does not satisfy a required feature unless the exact dependency release provides it.",
+  "direction": "round-trip",
+  "input": {
+    "document": "control/0.5.0",
+    "dependency": "comms/0.5.0",
+    "required_feature": "comms.marmot-conversations.v1",
+    "catalog_owner": "comms",
+    "dependency_provided_features": []
+  },
+  "expected_output": {
+    "valid": false,
+    "error": "required_feature_not_provided"
+  }
+}

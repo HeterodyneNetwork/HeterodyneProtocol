@@ -2,7 +2,7 @@
 
 Document ID: `social`<br>
 Version: `social/0.5.0`<br>
-Registry revision: `5`
+Registry revision: `6`
 
 Normative dependencies:
 
@@ -684,10 +684,13 @@ change `reject` to either other outcome.
 {"accept":["accept","hold-as-message-request","reject"],"hold-as-message-request":["hold-as-message-request","reject"],"reject":["reject"]}
 ```
 
-Before acceptance, `hold-as-message-request` emits no receipt, typing signal,
-read marker, or other sender-observable response. A Social policy MUST preserve
-that no-receipt rule. Muting a sender maps an otherwise acceptable ordinary DM
-to `reject` or `hold-as-message-request`; it never authenticates a sender.
+Before acceptance, `hold-as-message-request` emits no receipt, retry hint,
+typing signal, read marker, presence update, or other sender-observable
+response. A Social policy MUST preserve that no-signal rule. Muting or
+blocking a sender maps an otherwise acceptable ordinary Marmot conversation
+to `reject`; it never authenticates a sender. This lattice applies only to
+the Comms ordinary-conversation hook. It does not consume or alter a Control
+group admission result.
 
 Web-of-trust ranking is local policy, not canonicality. A graph MAY be built
 from verified `kind:3` follows, public Social mute profiles, and weighted
@@ -966,7 +969,7 @@ transparency, and device-key-scoped remediation.
 <!-- Monolith provenance: §11.7 Social policy and §14. -->
 
 A `Social` report MUST name `social/0.5.0`, pin `core/0.5.0` and
-`comms/0.5.0`, pin registry revision 5 or its immutable digest, enumerate
+`comms/0.5.0`, pin registry revision 7 or its immutable digest, enumerate
 supported features and strict profiles, and implement §§1-9. It MUST
 include async replies/reactions, following and transitive discovery,
 cross-persona advertisements, reply inboxes, mixed-tier Social fan-out,
@@ -976,7 +979,12 @@ policy, subscriber-local agent-policy moderation when
 `social.agent-policy-moderation.v1` is advertised, and all registered Social
 invariants.
 
-The registry revision 5 entry set, history snapshot, release manifest, and
+Social presentation of persona name, avatar, biography, website, or NIP-05
+MUST begin from the canonical Core persona-profile record. The delegated
+`kind:0` mirror provides vanilla interoperability, but a competing relay event
+or repointed NIP-05 MUST NOT replace canonical repository state.
+
+The registry revision 7 entry set, history snapshot, release manifest, and
 vector metadata MUST match exactly. Optional lower-layer profiles are claimed
 only when their owning documents' requirements and vectors are satisfied.
 

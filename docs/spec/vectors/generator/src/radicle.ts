@@ -79,6 +79,10 @@ export type NodeAdvertisementValidation =
         | "repo_head_invalid"
         | "nid_proof_invalid"
         | "expired"
+        | "clock_skew"
+        | "clock_uncertain"
+        | "expiry_invalid"
+        | "lifetime_exceeded"
         | "repo_head_unserved";
     }
   | {
@@ -89,7 +93,12 @@ export type NodeAdvertisementValidation =
 
 export function validateNodeAdvertisement(
   event: NostrSignedEvent,
-  context: { now: number; graph_fetch: RepositoryGraphFetch },
+  context: {
+    now: number;
+    clock_uncertainty_seconds?: number;
+    previously_accepted_event_id?: string;
+    graph_fetch: RepositoryGraphFetch;
+  },
 ): NodeAdvertisementValidation {
   if (!verifyEventSignature(event)) {
     return { status: "rejected", failure: "bad_signature" };
@@ -136,6 +145,12 @@ export function validateNodeAdvertisement(
   ) {
     return { status: "rejected", failure: "node_advert_shape_invalid" };
   }
+  if (expiry <= event.created_at) {
+    return { status: "rejected", failure: "expiry_invalid" };
+  }
+  if (expiry - event.created_at > 86_400) {
+    return { status: "rejected", failure: "lifetime_exceeded" };
+  }
 
   const nidPublicKey = ed25519KeyFromDidKey(nid[1]);
   if (
@@ -151,6 +166,13 @@ export function validateNodeAdvertisement(
   }
   if (expiry <= context.now) {
     return { status: "rejected", failure: "expired" };
+  }
+  const hasPriorAcceptance = context.previously_accepted_event_id === event.id;
+  if (!hasPriorAcceptance && (context.clock_uncertainty_seconds ?? 0) > 300) {
+    return { status: "rejected", failure: "clock_uncertain" };
+  }
+  if (!hasPriorAcceptance && Math.abs(event.created_at - context.now) > 300) {
+    return { status: "rejected", failure: "clock_skew" };
   }
   if (context.graph_fetch.status === "transport_unavailable") {
     return {

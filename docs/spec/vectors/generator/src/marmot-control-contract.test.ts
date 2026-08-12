@@ -40,7 +40,7 @@ describe("Marmot Control canonical contract", () => {
     }
   });
 
-  it("uses registry revision 5 and one inner-only Control application profile", () => {
+  it("uses registry revision 7, an invite rumor kind, and one inner-only Control profile", () => {
     const manifest = JSON.parse(read("docs/spec/registry/manifest.json")) as {
       revision: number;
     };
@@ -48,7 +48,7 @@ describe("Marmot Control canonical contract", () => {
       kinds: Array<{ kind: number; profiles: Array<{ profile_id: string; owner: string; discriminator: string }> }>;
     };
 
-    expect(manifest.revision).toBe(5);
+    expect(manifest.revision).toBe(7);
     expect(kinds.kinds.find(({ kind }) => kind === 31017)?.profiles).toContainEqual(
       expect.objectContaining({
         profile_id: "heterodyne-control-marmot-frame-v1",
@@ -56,6 +56,10 @@ describe("Marmot Control canonical contract", () => {
         discriminator: "marmot-inner-only;content=control-frame-v1",
       }),
     );
+    expect(kinds.kinds.find(({ kind }) => kind === 31018)).toMatchObject({
+      base_schema_owner: "comms",
+      profiles: [],
+    });
     expect(JSON.stringify(kinds)).not.toMatch(/heterodyne-comms-double-ratchet|heterodyne-control-session-device/);
   });
 
@@ -77,10 +81,10 @@ describe("Marmot Control canonical contract", () => {
   it("makes Control conformant while advertising recovery as optional features", () => {
     const release = JSON.parse(read("docs/spec/releases/control/0.5.0.json")) as {
       conformance_status: string;
-      features: string[];
+      provided_features: string[];
     };
     expect(release.conformance_status).toBe("conformant");
-    expect(release.features).toEqual([
+    expect(release.provided_features).toEqual([
       "control.marmot.v1",
       "control.oauth-device-enrollment.v1",
       "control.private-entitlement.v1",

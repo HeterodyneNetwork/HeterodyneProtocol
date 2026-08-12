@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/comms/one-time-invite-v1.schema.json",
+  "title": "Heterodyne one-time invite envelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["descriptor", "signature", "secret"],
+  "properties": {
+    "descriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "purpose", "inviter_account", "invite_id", "rendezvous_pubkey", "relay_hints", "issued_at", "expires_at", "secret_sha256", "approval_mode"],
+      "properties": {
+        "version": {"const": 1},
+        "purpose": {"enum": ["dm", "control-enrollment", "device-enrollment"]},
+        "inviter_account": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "inviter_authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["persona", "kel_head", "epoch_key", "authority_event_id"],
+          "properties": {
+            "persona": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "kel_head": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "epoch_key": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "authority_event_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+          }
+        },
+        "invite_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "rendezvous_pubkey": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "relay_hints": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^wss://[^#]+$"}},
+        "issued_at": {"type": "integer", "minimum": 0},
+        "expires_at": {"type": "integer", "minimum": 1},
+        "secret_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "approval_mode": {"enum": ["interactive", "preauthorized"]},
+        "preauthorization": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["client_class", "methods", "objects", "limits", "agent_role", "token_lifetime_ceiling_seconds", "unbound_bearer"],
+          "properties": {
+            "client_class": {"enum": ["human-light", "automated"]},
+            "methods": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+            "objects": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+            "limits": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "integer", "minimum": 1}},
+            "agent_role": {"type": ["string", "null"], "minLength": 1},
+            "token_lifetime_ceiling_seconds": {"type": "integer", "minimum": 1, "maximum": 3600},
+            "unbound_bearer": {"type": "boolean"}
+          }
+        },
+        "expected_client_pubkey": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"purpose": {"const": "device-enrollment"}}},
+          "then": {
+            "required": ["inviter_authority"],
+            "properties": {"approval_mode": {"const": "interactive"}},
+            "not": {"required": ["preauthorization"]}
+          }
+        },
+        {
+          "if": {"properties": {"approval_mode": {"const": "preauthorized"}}},
+          "then": {
+            "required": ["preauthorization"],
+            "properties": {"purpose": {"const": "control-enrollment"}}
+          },
+          "else": {"not": {"required": ["preauthorization"]}}
+        }
+      ]
+    },
+    "signature": {"type": "string", "pattern": "^[0-9a-f]{128}$"},
+    "secret": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

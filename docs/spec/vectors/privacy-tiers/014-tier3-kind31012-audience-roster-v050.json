@@ -5,7 +5,7 @@
   "dependency_versions": {
     "core": "core/0.5.0"
   },
-  "registry_revision": 5,
+  "registry_revision": 7,
   "spec_refs": [
     "heterodyne:comms/0.5.0#comms-privacy-tiers"
   ],
@@ -36,11 +36,11 @@
         ],
         [
           "p",
-          "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+          "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
         ],
         [
           "p",
-          "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01"
+          "5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc"
         ],
         [
           "kel_head",
@@ -54,10 +54,15 @@
       ],
       "content": ""
     },
-    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000"
+    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",
+    "recipients": [
+      "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+      "5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc"
+    ],
+    "recipient_role": "active-delegated-human-device"
   },
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225683,31012,[[\"d\",\"aud-2026-05-25-a\"],[\"heterodyne\",\"audience_roster\"],[\"key_id\",\"aud-2026-05-25-a\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"p\",\"2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"],[\"spec_version\",\"comms/0.5.0\"]],\"\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225683,31012,[[\"d\",\"aud-2026-05-25-a\"],[\"heterodyne\",\"audience_roster\"],[\"key_id\",\"aud-2026-05-25-a\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"p\",\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\"],[\"p\",\"5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"],[\"spec_version\",\"comms/0.5.0\"]],\"\"]",
     "decoded": {
       "event": {
         "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
@@ -82,11 +87,11 @@
           ],
           [
             "p",
-            "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+            "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
           ],
           [
             "p",
-            "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01"
+            "5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc"
           ],
           [
             "kel_head",
@@ -99,12 +104,16 @@
           ]
         ],
         "content": "",
-        "id": "61ac002c4e93df9e94db83d0be4f1b544159bd4993686eb939776ffa9372f06e",
-        "sig": "72ca7d309f0607894572306dcf0871e06fa7940af5c9b5c1206daa7c5f5c7be11fc02f7827c11929a31a7788e5125fdabbaf70908696b406f472d6ac10742f63"
-      }
+        "id": "2c4bc34854beec50b7f47aaf34162d109d25a630468b1bb9f3a0fafed7437b6e",
+        "sig": "7cd4c69a45cd76ea05695e787f4e0c1da61ff2755fb5c05c76e82d872b897b76422bc7897f0be8d8acfdb53257cfba1f89aaefa99d48c57429a6f11145677499"
+      },
+      "recipients": [
+        "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+        "5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc"
+      ]
     },
-    "id": "61ac002c4e93df9e94db83d0be4f1b544159bd4993686eb939776ffa9372f06e",
-    "sig": "72ca7d309f0607894572306dcf0871e06fa7940af5c9b5c1206daa7c5f5c7be11fc02f7827c11929a31a7788e5125fdabbaf70908696b406f472d6ac10742f63"
+    "id": "2c4bc34854beec50b7f47aaf34162d109d25a630468b1bb9f3a0fafed7437b6e",
+    "sig": "7cd4c69a45cd76ea05695e787f4e0c1da61ff2755fb5c05c76e82d872b897b76422bc7897f0be8d8acfdb53257cfba1f89aaefa99d48c57429a6f11145677499"
   },
   "direction": "produce"
 }

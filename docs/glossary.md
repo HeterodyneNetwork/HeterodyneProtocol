@@ -29,7 +29,8 @@ Radicle-backed group storage, credential-plane sync, and encrypted
 subprotocol carriers.
 
 **Control.** A Comms profile for own-device enrollment, grants, RPC, audit, and
-agentic sessions. Control 0.5.0 is incomplete and cannot be claimed.
+agentic sessions. Baseline Control 0.5.0 is claimable; recovery features are
+separately advertised and optional.
 
 **Social.** The document for public following, interactions, moderation,
 lists, social discovery, presentation, durable assets, and ATProto attachment.
@@ -38,8 +39,17 @@ lists, social discovery, presentation, durable assets, and ATProto attachment.
 whole string is not itself semver. Each family document versions independently.
 
 **Registry revision.** A monotonic snapshot of kind allocations, profile
-discriminators, reason codes, and security-invariant IDs. It is pinned by
+discriminators, reason codes, security-invariant IDs, and feature IDs. It is pinned by
 releases, capabilities, reports, and vectors.
+
+**Profile registry revision.** A fixed allocation snapshot embedded in a
+versioned wire profile. In v1 claims the JSON member remains named
+`registry_revision` and is exactly `2`; it does not float with the family
+release registry revision.
+
+**Feature catalog.** The registry-owned allocation of globally unique dotted
+and versioned feature IDs, their document owners, first versions, status,
+specification anchors, and acyclic prerequisites.
 
 **Conformance class.** One of Core, Core+Comms (a Heterodyne persona), Control
 profile, or Social. Claims also name required features.
@@ -49,7 +59,7 @@ invariant membership and prerequisite profiles. Unknown profile IDs confer no
 capability. The current IDs are `heterodyne-core-strict-v1`,
 `heterodyne-comms-strict-v1`, `heterodyne-comms-strict-v2`,
 `heterodyne-control-strict-v1`, `heterodyne-social-strict-v1`, and
-`heterodyne-social-strict-v2`; the Control ID is reserved-inactive.
+`heterodyne-social-strict-v2`.
 
 ## Core terms
 
@@ -81,6 +91,11 @@ persona, and repository context for bootstrap consumers.
 
 **Identity pointer.** Core `kind:31005`, the authoritative signed npub-to-RID
 binding with optional host hints.
+
+**Canonical persona profile.** The versioned record selected from a persona's
+public Radicle profile repository. A single active delegated
+`profile-publisher` key mirrors it as ordinary Nostr `kind:0`; relay mirrors
+and optional NIP-05 never override the repository record.
 
 **Node advertisement.** Core `kind:31010`, signed evidence that a node serves a
 RID at specified endpoints. It is a locator hint rather than authority.
@@ -269,9 +284,19 @@ token validation failure.
 
 ## Control terms
 
-**Session device.** A confined, NID-less Control principal. It is not a
-credential-plane device and never receives persona, NID, audience,
-repository-decryption, or ratchet secrets.
+**Private Control principal.** A confined, NID-less `human-light` or
+`automated` Marmot account authorized only through private Control
+entitlement. It is not a Core/KERI device and never receives persona, NID,
+repository-decryption, MLS-leaf, or agent-role secrets.
+
+**One-time invite.** A purpose-bound, signed fragment envelope for `dm`,
+`control-enrollment`, or `device-enrollment`. Its origin is not authority; the
+first valid authenticated responder reserves it before group establishment
+spends it.
+
+**Enrollment-only group.** A pairwise Marmot Control group with no durable
+application authority. It permits only initialization and enrollment methods,
+is resource-bounded, and expires after at most 30 minutes.
 
 **Control audit record.** Encrypted local evidence binding a request and result
 to the negotiated Control and Comms versions, peer, session, grant decision,
