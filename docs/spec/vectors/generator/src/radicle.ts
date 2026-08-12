@@ -96,7 +96,7 @@ export function validateNodeAdvertisement(
   context: {
     now: number;
     clock_uncertainty_seconds?: number;
-    first_observation?: boolean;
+    previously_accepted_event_id?: string;
     graph_fetch: RepositoryGraphFetch;
   },
 ): NodeAdvertisementValidation {
@@ -167,11 +167,11 @@ export function validateNodeAdvertisement(
   if (expiry <= context.now) {
     return { status: "rejected", failure: "expired" };
   }
-  const firstObservation = context.first_observation ?? true;
-  if (firstObservation && (context.clock_uncertainty_seconds ?? 0) > 300) {
+  const hasPriorAcceptance = context.previously_accepted_event_id === event.id;
+  if (!hasPriorAcceptance && (context.clock_uncertainty_seconds ?? 0) > 300) {
     return { status: "rejected", failure: "clock_uncertain" };
   }
-  if (firstObservation && Math.abs(event.created_at - context.now) > 300) {
+  if (!hasPriorAcceptance && Math.abs(event.created_at - context.now) > 300) {
     return { status: "rejected", failure: "clock_skew" };
   }
   if (context.graph_fetch.status === "transport_unavailable") {

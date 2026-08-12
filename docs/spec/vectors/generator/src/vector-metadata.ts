@@ -90,6 +90,7 @@ node-advert/expiry-not-after-created
 node-advert/refresh-by-twelve-hours
 node-advert/uncertain-clock-rejected
 node-advert/previously-accepted-within-expiry
+node-advert/provisional-observation-does-not-bypass-skew
 org/member-add-dual-authorized
 org/member-add-single-authorization-insufficient
 org/threshold-delegate-governance

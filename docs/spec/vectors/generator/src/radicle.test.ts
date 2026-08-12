@@ -132,9 +132,22 @@ describe("Radicle / NID helpers", () => {
     const event = await nodeAdvertisement((tags) => tags, EXPIRY - 20_000);
     expect(validateNodeAdvertisement(event, {
       now: event.created_at + 10_000,
-      first_observation: false,
+      previously_accepted_event_id: event.id,
       graph_fetch: { status: "available", reachable_oids: [REPO_HEAD] },
     })).toMatchObject({ status: "accepted", repo_head: REPO_HEAD });
+  });
+
+  it("does not let a provisional prior observation bypass first-acceptance skew", async () => {
+    const event = await nodeAdvertisement((tags) => tags, EXPIRY - 20_000);
+    expect(validateNodeAdvertisement(event, {
+      now: event.created_at + 10_000,
+      graph_fetch: { status: "available", reachable_oids: [REPO_HEAD] },
+    })).toEqual({ status: "rejected", failure: "clock_skew" });
+    expect(validateNodeAdvertisement(event, {
+      now: event.created_at + 10_000,
+      previously_accepted_event_id: "00".repeat(32),
+      graph_fetch: { status: "available", reachable_oids: [REPO_HEAD] },
+    })).toEqual({ status: "rejected", failure: "clock_skew" });
   });
 
   it.each([

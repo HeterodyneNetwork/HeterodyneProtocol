@@ -82,6 +82,7 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `node-advert/outer-sig-invalid-rejected` | core | `core/0.5.0` | — | 7 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
 | `node-advert/past-clock-skew` | core | `core/0.5.0` | — | 7 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
 | `node-advert/previously-accepted-within-expiry` | core | `core/0.5.0` | — | 7 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
+| `node-advert/provisional-observation-does-not-bypass-skew` | core | `core/0.5.0` | — | 7 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
 | `node-advert/refresh-by-twelve-hours` | core | `core/0.5.0` | — | 7 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
 | `node-advert/uncertain-clock-rejected` | core | `core/0.5.0` | — | 7 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
 | `node-advert/valid-dual-signed` | core | `core/0.5.0` | — | 7 | — | `heterodyne:core/0.5.0#core-node-advertisement` |

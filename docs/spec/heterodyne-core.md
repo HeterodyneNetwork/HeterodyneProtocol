@@ -911,9 +911,11 @@ MUST refresh before `created_at + 43,200`; refresh failure never extends the
 old advertisement locally.
 
 A verifier that accepts an advertisement MUST retain local acceptance evidence
-until that advertisement expires or is discarded. Later use of that same
-accepted event MUST NOT reapply the first-acceptance `created_at` skew test;
-signature, proof, expiry, and served-graph requirements continue to apply.
+bound to that exact event ID until the advertisement expires or is discarded.
+Only matching prior acceptance evidence permits later use of that event without
+reapplying the first-acceptance `created_at` skew test. A provisional, rejected,
+or merely observed event is not acceptance evidence. Signature, proof, expiry,
+and served-graph requirements continue to apply.
 
 Verifier time SHOULD come from a secure platform time source. A client that
 knows its clock uncertainty exceeds 300 seconds MUST fail closed for fresh

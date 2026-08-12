@@ -109,7 +109,14 @@ export function buildFollowUpHardeningVectors(fixtures: Fixtures): AuthoredVecto
       expiry: 87_400,
       now: 10_000,
       clockUncertainty: 0,
-      firstObservation: false,
+      priorAcceptanceEvidence: true,
+    }),
+    advert("014-provisional-observation-does-not-bypass-skew", {
+      createdAt: 1_000,
+      expiry: 87_400,
+      now: 10_000,
+      clockUncertainty: 0,
+      priorAcceptanceEvidence: false,
     }),
   ];
 }

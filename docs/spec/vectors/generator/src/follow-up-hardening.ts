@@ -89,7 +89,7 @@ type NodeAdvertisementTimeInput = {
   expiry: number;
   now: number;
   clockUncertainty: number;
-  firstObservation?: boolean;
+  priorAcceptanceEvidence?: boolean;
 };
 
 export function validateNodeAdvertisementTime(input: NodeAdvertisementTimeInput):
@@ -104,11 +104,11 @@ export function validateNodeAdvertisementTime(input: NodeAdvertisementTimeInput)
   if (input.now >= input.expiry) {
     return { verdict: "reject", reason_code: "node_advert_expired" };
   }
-  const firstObservation = input.firstObservation ?? true;
-  if (firstObservation && input.clockUncertainty > 300) {
+  const hasPriorAcceptance = input.priorAcceptanceEvidence === true;
+  if (!hasPriorAcceptance && input.clockUncertainty > 300) {
     return { verdict: "reject", reason_code: "node-advert-clock-uncertain" };
   }
-  if (firstObservation && Math.abs(input.createdAt - input.now) > 300) {
+  if (!hasPriorAcceptance && Math.abs(input.createdAt - input.now) > 300) {
     return { verdict: "reject", reason_code: "node-advert-clock-skew" };
   }
   return { verdict: "accept", refresh_by: input.createdAt + 43_200 };

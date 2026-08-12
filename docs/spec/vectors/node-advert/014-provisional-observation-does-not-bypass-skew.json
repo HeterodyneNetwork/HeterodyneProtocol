@@ -7,18 +7,18 @@
   "spec_refs": [
     "heterodyne:core/0.5.0#core-node-advertisement"
   ],
-  "vector_id": "node-advert/previously-accepted-within-expiry",
-  "description": "Node advertisement time: previously accepted within expiry.",
+  "vector_id": "node-advert/provisional-observation-does-not-bypass-skew",
+  "description": "Node advertisement time: provisional observation does not bypass skew.",
   "input": {
     "createdAt": 1000,
     "expiry": 87400,
     "now": 10000,
     "clockUncertainty": 0,
-    "priorAcceptanceEvidence": true
+    "priorAcceptanceEvidence": false
   },
   "expected_output": {
-    "verdict": "accept",
-    "refresh_by": 44200
+    "verdict": "reject",
+    "reason_code": "node-advert-clock-skew"
   },
   "direction": "consume"
 }

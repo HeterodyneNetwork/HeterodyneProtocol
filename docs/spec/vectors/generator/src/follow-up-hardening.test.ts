@@ -93,8 +93,18 @@ describe("node advertisement time", () => {
       expiry: 87_400,
       now: 10_000,
       clockUncertainty: 0,
-      firstObservation: false,
+      priorAcceptanceEvidence: true,
     })).toEqual({ verdict: "accept", refresh_by: 44_200 });
+  });
+
+  it("does not treat a prior provisional observation as acceptance evidence", () => {
+    expect(validateNodeAdvertisementTime({
+      createdAt: 1_000,
+      expiry: 87_400,
+      now: 10_000,
+      clockUncertainty: 0,
+      priorAcceptanceEvidence: false,
+    })).toEqual({ verdict: "reject", reason_code: "node-advert-clock-skew" });
   });
 
   it.each([
