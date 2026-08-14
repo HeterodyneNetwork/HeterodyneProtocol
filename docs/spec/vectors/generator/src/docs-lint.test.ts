@@ -24,7 +24,7 @@ describe("canonical family documentation", () => {
   });
 
   it("keeps live specifications independent of noncanonical decision records", () => {
-    for (const document of ["core", "comms", "control", "social"]) {
+    for (const document of ["core", "comms", "control", "social", "workspace"]) {
       const text = read(`docs/spec/heterodyne-${document}.md`);
       expect(text).not.toMatch(/docs\/adr|ADR-\d+/);
     }
@@ -82,7 +82,7 @@ describe("canonical family documentation", () => {
 
   it("declares complete flattened strict-profile prerequisite membership", () => {
     const documents = Object.fromEntries(
-      ["core", "comms", "control", "social"].map((document) => [
+      ["core", "comms", "control", "social", "workspace"].map((document) => [
         document,
         read(`docs/spec/heterodyne-${document}.md`),
       ]),
@@ -99,9 +99,9 @@ describe("canonical family documentation", () => {
 });
 
 describe("registry-bound release artifacts", () => {
-  it("pins release schema and all manifests to registry revision 7", () => {
+  it("pins release schema and all manifests to registry revision 8", () => {
     const pin = loadReleaseSchemaRegistryPin(repositoryRoot);
-    expect(pin.registry_revision).toBe(7);
+    expect(pin.registry_revision).toBe(8);
     expect(pin.registry_sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(() => validateReleaseManifestRegistryPin(repositoryRoot, pin)).not.toThrow();
 
@@ -110,6 +110,26 @@ describe("registry-bound release artifacts", () => {
       expect(read(`docs/spec/releases/${document}/0.5.0.json`))
         .toBe(releaseManifestBytes(expected[document]));
     }
+    expect(read("docs/spec/releases/workspace/0.1.0.json"))
+      .toBe(releaseManifestBytes(expected.workspace));
+  });
+
+  it("publishes the base Workspace release with optional higher-layer dependencies", () => {
+    const manifest = expectedReleaseManifests(repositoryRoot).workspace;
+    expect(manifest.qualified_version).toBe("workspace/0.1.0");
+    expect(manifest.dependencies).toEqual({
+      core: "core/0.5.0",
+      comms: "comms/0.5.0",
+      control: "control/0.5.0",
+      social: "social/0.5.0",
+    });
+    expect(manifest.required_features).toEqual([
+      "core.marmot-role-attribution.v1",
+      "core.repo-relay-client.v1",
+      "comms.marmot-conversations.v1",
+      "comms.radicle-marmot-storage.v1",
+      "comms.radicle-backed-marmot-relay.v1",
+    ]);
   });
 
   it("advertises active Control separately from optional recovery features", () => {

@@ -328,6 +328,76 @@
       "status": "draft",
       "first_version": "social/0.5.0",
       "description": "Agent-policy enforcement and remediation target only the offending role device key; replacement at the same role address never requires epoch-key rotation."
+    },
+    {
+      "id": "WORKSPACE-I-NO-AMBIENT-AUTHORITY",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "Workspace affiliation alone grants no role or resource capability."
+    },
+    {
+      "id": "WORKSPACE-I-INHERITANCE-NARROWS",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "Child roles, resources, grants, and bilateral allowances cannot widen an applicable workspace or parent-role ceiling."
+    },
+    {
+      "id": "WORKSPACE-I-PRIVATE-TOPOLOGY",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "Public state reveals no stable identifier, digest, count, locator, or correlation for a concealed workspace, role, relationship, repository, or resource."
+    },
+    {
+      "id": "WORKSPACE-I-CARRIER-NOT-AUTHORITY",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "Git authorship, Radicle permission, relay acceptance, MLS membership, and host status are never sufficient Workspace authorization evidence."
+    },
+    {
+      "id": "WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "Role MLS state authorizes delivery but never serves as one universal content key for subordinate resources."
+    },
+    {
+      "id": "WORKSPACE-I-REVOCATION-FUTURE-ONLY",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "Revocation blocks future authorization and key delivery without claiming erasure of data or keys already obtained."
+    },
+    {
+      "id": "WORKSPACE-I-FRESHNESS-BOUNDED",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "Ordinary writes use checkpoints no older than 86400 seconds and authority mutations no older than 300 seconds, with policy able only to shorten those bounds."
+    },
+    {
+      "id": "WORKSPACE-I-HOST-AUTHORITY-SEPARATION",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "Hosting does not grant governance authority, while key-custody hosts remain explicit confidentiality trust boundaries."
+    },
+    {
+      "id": "WORKSPACE-I-RADICLE-BACKSTOP",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "Every effective role retains an authorized Radicle locator and eligible Radicle-backed relay host independent of optional Nostr relays."
+    },
+    {
+      "id": "WORKSPACE-I-DEVICE-LEAF-SEPARATION",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "Each authorized device has an independently revocable MLS leaf and receives only device-bound resource-key envelopes."
     }
   ]
 }

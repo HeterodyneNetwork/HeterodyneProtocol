@@ -8,6 +8,7 @@ import {
 import { relative, resolve, sep } from "node:path";
 import {
   assertAllowedDependency,
+  DOCUMENT_VERSIONS,
   parseQualifiedVersion,
 } from "./family.js";
 import type { DocumentId } from "./types.js";
@@ -66,13 +67,14 @@ const DOCUMENTS: readonly DocumentId[] = [
   "comms",
   "control",
   "social",
+  "workspace",
 ];
 
 const EXPLICIT_ANCHOR = /<a\s+id="([a-z0-9]+(?:-[a-z0-9]+)*)"\s*><\/a>/g;
 const QUALIFIED_REFERENCE =
-  /heterodyne:(core|comms|control|social)\/((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)#([a-z0-9]+(?:-[a-z0-9]+)*)/g;
+  /heterodyne:(core|comms|control|social|workspace)\/((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)#([a-z0-9]+(?:-[a-z0-9]+)*)/g;
 const BARE_FAMILY_LINK =
-  /\]\((?:\.\/)?heterodyne-(core|comms|control|social)\.md(?:#[^)]+)?\)/i;
+  /\]\((?:\.\/)?heterodyne-(core|comms|control|social|workspace)\.md(?:#[^)]+)?\)/i;
 const NONCANONICAL_DECISION_REFERENCE = /\bADR-\d{3}\b|docs\/adr\//;
 const BCP14_KEYWORD =
   /\b(?:MUST(?: NOT)?|REQUIRED|SHALL(?: NOT)?|SHOULD(?: NOT)?|RECOMMENDED|NOT RECOMMENDED|MAY|OPTIONAL)\b/;
@@ -371,11 +373,11 @@ function githubHeadingAnchors(markdown: string): string[] {
 
 export type ReleaseManifest = {
   document: DocumentId;
-  version: "0.5.0";
-  qualified_version: `${DocumentId}/0.5.0`;
+  version: string;
+  qualified_version: `${DocumentId}/${string}`;
   registry_revision: number;
   registry_sha256: string;
-  dependencies: Partial<Record<DocumentId, `${DocumentId}/0.5.0`>>;
+  dependencies: Partial<Record<DocumentId, `${DocumentId}/${string}`>>;
   provided_features: string[];
   required_features: string[];
   conformance_status: "conformant" | "incomplete-draft";
@@ -399,7 +401,7 @@ export function releaseManifestBytes(manifest: ReleaseManifest): string {
 function parseInvariantRows(text: string): Map<string, string> {
   return new Map(
     [...text.matchAll(
-      /^- \*\*((?:CORE|COMMS|CONTROL|SOCIAL)-I-[A-Z0-9]+(?:-[A-Z0-9]+)*):\*\* ([^\r\n]+)$/gm,
+      /^- \*\*((?:CORE|COMMS|CONTROL|SOCIAL|WORKSPACE)-I-[A-Z0-9]+(?:-[A-Z0-9]+)*):\*\* ([^\r\n]+)$/gm,
     )].map((match) => [match[1], match[2]]),
   );
 }
@@ -630,6 +632,35 @@ export function expectedReleaseManifests(
       ],
       conformance_status: "conformant",
     },
+    workspace: {
+      document: "workspace",
+      version: "0.1.0",
+      qualified_version: "workspace/0.1.0",
+      registry_revision: registryRevision,
+      registry_sha256: registrySha256,
+      dependencies: {
+        core: "core/0.5.0",
+        comms: "comms/0.5.0",
+        control: "control/0.5.0",
+        social: "social/0.5.0",
+      },
+      provided_features: [
+        "workspace.role-authorization.v1",
+        "workspace.private-role-control.v1",
+        "workspace.radicle-transport-backstop.v1",
+        "workspace.resource-key-delivery.v1",
+        "workspace.bilateral-allowance.v1",
+        "workspace.joint-governance.v1",
+      ],
+      required_features: [
+        "core.marmot-role-attribution.v1",
+        "core.repo-relay-client.v1",
+        "comms.marmot-conversations.v1",
+        "comms.radicle-marmot-storage.v1",
+        "comms.radicle-backed-marmot-relay.v1",
+      ],
+      conformance_status: "conformant",
+    },
   };
   validateReleaseFeatureResolution(registry, manifests);
   return manifests;
@@ -689,7 +720,7 @@ export function writeReleaseManifests(repoRoot: string): string[] {
   const written: string[] = [];
   for (const document of DOCUMENTS) {
     const directory = resolve(repoRoot, "docs/spec/releases", document);
-    const path = resolve(directory, "0.5.0.json");
+    const path = resolve(directory, `${DOCUMENT_VERSIONS[document]}.json`);
     mkdirSync(directory, { recursive: true });
     writeFileSync(path, releaseManifestBytes(expected[document]), "utf8");
     written.push(path);
@@ -837,7 +868,10 @@ export function lintFamilyCutover(repoRoot: string): FamilyDocIssue[] {
     });
   }
   for (const document of DOCUMENTS) {
-    const path = resolve(repoRoot, `docs/spec/releases/${document}/0.5.0.json`);
+    const path = resolve(
+      repoRoot,
+      `docs/spec/releases/${document}/${DOCUMENT_VERSIONS[document]}.json`,
+    );
     if (!existsSync(path)) {
       issues.push({
         path: displayPath(repoRoot, path),

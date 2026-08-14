@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://heterodyne.example/spec/releases/release-manifest.schema.json",
-  "title": "Heterodyne 0.5.0 document release manifest",
+  "title": "Heterodyne document release manifest",
   "$comment": "Checked-in manifests use lexicographically sorted object keys, compact canonical JSON with no insignificant whitespace, and exactly one trailing LF.",
   "type": "object",
   "additionalProperties": false,
@@ -23,11 +23,12 @@
         "core",
         "comms",
         "control",
-        "social"
+        "social",
+        "workspace"
       ]
     },
     "version": {
-      "const": "0.5.0"
+      "enum": ["0.5.0", "0.1.0"]
     },
     "qualified_version": {
       "type": "string",
@@ -35,16 +36,17 @@
         "core/0.5.0",
         "comms/0.5.0",
         "control/0.5.0",
-        "social/0.5.0"
+        "social/0.5.0",
+        "workspace/0.1.0"
       ]
     },
     "registry_revision": {
-      "const": 7
+      "const": 8
     },
     "registry_sha256": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$",
-      "const": "250cc07a542d3c095eea6290f99e108c95379417194edcab26240900a9c84f26"
+      "const": "c8bb46583807062d2fc39206bba425bfa848d88fd203bfdda175d474ce1005e1"
     },
     "dependencies": {
       "type": "object",
@@ -55,6 +57,12 @@
         },
         "comms": {
           "const": "comms/0.5.0"
+        },
+        "control": {
+          "const": "control/0.5.0"
+        },
+        "social": {
+          "const": "social/0.5.0"
         }
       }
     },
@@ -88,6 +96,9 @@
         "document": {
           "const": "core"
         },
+        "version": {
+          "const": "0.5.0"
+        },
         "qualified_version": {
           "const": "core/0.5.0"
         },
@@ -116,6 +127,9 @@
       "properties": {
         "document": {
           "const": "comms"
+        },
+        "version": {
+          "const": "0.5.0"
         },
         "qualified_version": {
           "const": "comms/0.5.0"
@@ -156,6 +170,9 @@
       "properties": {
         "document": {
           "const": "control"
+        },
+        "version": {
+          "const": "0.5.0"
         },
         "qualified_version": {
           "const": "control/0.5.0"
@@ -201,6 +218,9 @@
         "document": {
           "const": "social"
         },
+        "version": {
+          "const": "0.5.0"
+        },
         "qualified_version": {
           "const": "social/0.5.0"
         },
@@ -221,6 +241,46 @@
           "const": [
             "comms.agent-authorship.v1",
             "comms.marmot-conversations.v1"
+          ]
+        },
+        "conformance_status": {
+          "const": "conformant"
+        }
+      }
+    },
+    {
+      "properties": {
+        "document": {
+          "const": "workspace"
+        },
+        "version": {
+          "const": "0.1.0"
+        },
+        "qualified_version": {
+          "const": "workspace/0.1.0"
+        },
+        "dependencies": {
+          "required": ["core", "comms", "control", "social"],
+          "minProperties": 4,
+          "maxProperties": 4
+        },
+        "provided_features": {
+          "const": [
+            "workspace.role-authorization.v1",
+            "workspace.private-role-control.v1",
+            "workspace.radicle-transport-backstop.v1",
+            "workspace.resource-key-delivery.v1",
+            "workspace.bilateral-allowance.v1",
+            "workspace.joint-governance.v1"
+          ]
+        },
+        "required_features": {
+          "const": [
+            "core.marmot-role-attribution.v1",
+            "core.repo-relay-client.v1",
+            "comms.marmot-conversations.v1",
+            "comms.radicle-marmot-storage.v1",
+            "comms.radicle-backed-marmot-relay.v1"
           ]
         },
         "conformance_status": {

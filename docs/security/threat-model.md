@@ -3,9 +3,9 @@
 **Status:** Draft, non-normative security analysis for the 0.5.x family.
 
 [`docs/spec/heterodyne.md`](../spec/heterodyne.md) is the non-normative family
-map. Security requirements are owned by the four versioned documents below.
+map. Security requirements are owned by the five versioned documents below.
 
-This document analyzes the four independently versioned documents:
+This document analyzes the five independently versioned documents:
 
 - [Heterodyne Core](../spec/heterodyne-core.md) — identity, verification,
   registry, node roles, and repository substrate;
@@ -16,19 +16,25 @@ This document analyzes the four independently versioned documents:
 - [Heterodyne Control](../spec/heterodyne-control.md) — the active baseline
   own-device command profile and optional recovery capabilities; and
 - [Heterodyne Social](../spec/heterodyne-social.md) — public social behavior,
-  durable assets, and moderation.
+  durable assets, and moderation; and
+- [Heterodyne Workspace](../spec/heterodyne-workspace.md) — workspace roles,
+  private discovery, cross-workspace allowances, hosts, and resource keys.
 
-The owner sections below reproduce registry revision 7 and security boundaries
+The owner sections below reproduce registry revision 8 and security boundaries
 without creating or relaxing requirements. The family's only normative
 dependency edges are:
 
 ```text
 Core <- Comms <- Control
 Core <- Comms <- Social
+Core <- Comms <- Workspace
+Control <- Workspace
+Social <- Workspace
 ```
 
 Social has no dependency on Control. A client may implement both as separate
-conformance claims.
+conformance claims. Workspace's base behavior uses Core and Comms; its optional
+compositions consume Control and Social without introducing a reverse edge.
 
 ## 1. Security assumptions
 
@@ -115,6 +121,19 @@ and Control protections; Social is outside that dependency.
 - **SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH:** Following, transitive discovery, and social-graph evaluation do not depend on a centralized follow-graph oracle.
 - **SOCIAL-I-AGENT-POLICY-LOCAL:** Agent-policy receipts inform publicly, but only an explicitly subscribed and verified current policy list changes a client's local visibility.
 - **SOCIAL-I-AGENT-REMEDIATION-SCOPED:** Agent-policy enforcement and remediation target only the offending role device key; replacement at the same role address never requires epoch-key rotation.
+
+### 2.5 Workspace
+
+- **WORKSPACE-I-NO-AMBIENT-AUTHORITY:** Workspace affiliation alone grants no role or resource capability.
+- **WORKSPACE-I-INHERITANCE-NARROWS:** Child roles, resources, grants, and bilateral allowances cannot widen an applicable workspace or parent-role ceiling.
+- **WORKSPACE-I-PRIVATE-TOPOLOGY:** Public state reveals no stable identifier, digest, count, locator, or correlation for a concealed workspace, role, relationship, repository, or resource.
+- **WORKSPACE-I-CARRIER-NOT-AUTHORITY:** Git authorship, Radicle permission, relay acceptance, MLS membership, and host status are never sufficient Workspace authorization evidence.
+- **WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS:** Role MLS state authorizes delivery but never serves as one universal content key for subordinate resources.
+- **WORKSPACE-I-REVOCATION-FUTURE-ONLY:** Revocation blocks future authorization and key delivery without claiming erasure of data or keys already obtained.
+- **WORKSPACE-I-FRESHNESS-BOUNDED:** Ordinary writes use checkpoints no older than 86400 seconds and authority mutations no older than 300 seconds, with policy able only to shorten those bounds.
+- **WORKSPACE-I-HOST-AUTHORITY-SEPARATION:** Hosting does not grant governance authority, while key-custody hosts remain explicit confidentiality trust boundaries.
+- **WORKSPACE-I-RADICLE-BACKSTOP:** Every effective role retains an authorized Radicle locator and eligible Radicle-backed relay host independent of optional Nostr relays.
+- **WORKSPACE-I-DEVICE-LEAF-SEPARATION:** Each authorized device has an independently revocable MLS leaf and receives only device-bound resource-key envelopes.
 
 ## 3. Assets and trust boundaries
 
