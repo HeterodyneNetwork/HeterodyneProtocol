@@ -1,10 +1,12 @@
-# Workspace Role Control-Plane Design
+# ADR 044: Workspace role control plane
 
-**Date:** 2026-08-13
+Date: 2026-08-13
 
-**Status:** Approved for implementation planning
+Status: Accepted and archived
 
-**Protocol owner:** new independently versioned Workspace family document
+This record explains the decision that introduced the independently versioned
+Workspace family document. It is historical context only; the specification
+family and normative machine-readable artifacts are authoritative.
 
 ## Goal
 

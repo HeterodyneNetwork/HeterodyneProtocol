@@ -17,12 +17,12 @@ The project is specification-first and implementation-agnostic. All current
 documents are 0.x drafts and may make breaking changes before 1.0.
 
 [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is the non-normative
-family map. Normative authority is divided among the four versioned documents
+family map. Normative authority is divided among the five versioned documents
 below; the former 0.4.0 monolith is frozen in the archive.
 
 ## Protocol family
 
-The family has four independently versioned documents:
+The family has five independently versioned documents:
 
 | Document | Prepared version | Responsibility |
 |---|---:|---|
@@ -30,12 +30,16 @@ The family has four independently versioned documents:
 | [Heterodyne Comms](docs/spec/heterodyne-comms.md) | `comms/0.5.0` | Nostr-native envelopes, privacy tiers, publishing, Marmot conversations and media, Radicle conversation storage, atomic key claims, the private claim ledger, and the OIDC/JWT projection. |
 | [Heterodyne Control](docs/spec/heterodyne-control.md) | `control/0.5.0` | Own-device enrollment, grants, RPC, node-mediated Marmot access, and agentic sessions as a Comms profile. This release is incomplete and not claimable. |
 | [Heterodyne Social](docs/spec/heterodyne-social.md) | `social/0.5.0` | Public following, interactions, moderation, lists, social discovery, durable assets, and ATProto attachment. |
+| [Heterodyne Workspace](docs/spec/heterodyne-workspace.md) | `workspace/0.1.0` | Independently governed workspaces, roles, private discovery, federation, hosting, and resource-key delivery. |
 
 The dependency graph is exactly:
 
 ```text
 Core <- Comms <- Control
 Core <- Comms <- Social
+Core <- Comms <- Workspace
+Control <- Workspace
+Social <- Workspace
 ```
 
 These prepared 0.5.0 documents are current normative authority in the

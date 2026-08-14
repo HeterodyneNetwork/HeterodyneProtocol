@@ -7,6 +7,7 @@ export const DOCUMENT_VERSIONS: Record<DocumentId, string> = {
   comms: "0.5.0",
   control: "0.5.0",
   social: "0.5.0",
+  workspace: "0.1.0",
 };
 
 export const DOCUMENT_DEPENDENCIES: Record<
@@ -17,10 +18,11 @@ export const DOCUMENT_DEPENDENCIES: Record<
   comms: ["core"],
   control: ["core", "comms"],
   social: ["core", "comms"],
+  workspace: ["core", "comms", "control", "social"],
 };
 
 const QUALIFIED_VERSION =
-  /^(core|comms|control|social)\/(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+  /^(core|comms|control|social|workspace)\/(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 
 export function parseQualifiedVersion(value: string): QualifiedVersion {
   const match = QUALIFIED_VERSION.exec(value);

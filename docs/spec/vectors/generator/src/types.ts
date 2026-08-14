@@ -1,4 +1,4 @@
-export type DocumentId = "core" | "comms" | "control" | "social";
+export type DocumentId = "core" | "comms" | "control" | "social" | "workspace";
 
 export type QualifiedVersion = { document: DocumentId; semver: string };
 

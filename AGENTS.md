@@ -13,6 +13,9 @@ artifacts:
   Marmot-carried own-device enrollment and RPC plus optional recovery profiles.
 - [`docs/spec/heterodyne-social.md`](docs/spec/heterodyne-social.md): social
   behavior, public interactions, moderation, and durable social assets.
+- [`docs/spec/heterodyne-workspace.md`](docs/spec/heterodyne-workspace.md):
+  workspace identity, roles, private discovery, federation, hosting, and
+  resource-key delivery.
 - [`docs/spec/registry/`](docs/spec/registry/),
   [`docs/spec/schemas/`](docs/spec/schemas/),
   [`docs/spec/releases/`](docs/spec/releases/), and
@@ -24,6 +27,9 @@ The family dependency direction is:
 ```text
 Core <- Comms <- Control
 Core <- Comms <- Social
+Core <- Comms <- Workspace
+Control <- Workspace
+Social <- Workspace
 ```
 
 ADRs are non-canonical point-in-time decision records. They explain why a
