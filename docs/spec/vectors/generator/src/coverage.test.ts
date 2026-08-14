@@ -21,14 +21,14 @@ afterEach(async () => {
 });
 
 describe("family coverage", () => {
-  it("is a sorted lossless revision-7 projection with active Control coverage", async () => {
+  it("is a sorted lossless revision-8 projection with active Control coverage", async () => {
     const vectors = (await buildAllVectors(buildFixtures())).map(({ vector }) => vector);
     const coverage = buildCoverage(vectors);
     expect(coverage.map(({ vector_id }) => vector_id)).toEqual(
       [...coverage.map(({ vector_id }) => vector_id)].sort(),
     );
     expect(new Set(coverage.map(({ vector_id }) => vector_id)).size).toBe(vectors.length);
-    expect(coverage.every(({ registry_revision }) => registry_revision === 7)).toBe(true);
+    expect(coverage.every(({ registry_revision }) => registry_revision === 8)).toBe(true);
     expect(coverage.filter(({ owner_document }) => owner_document === "control")).toHaveLength(51);
     expect(coverage).toContainEqual(expect.objectContaining({
       vector_id: "control/invitation-enrollment-only",

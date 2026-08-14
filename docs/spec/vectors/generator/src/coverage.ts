@@ -96,7 +96,7 @@ export async function writeCoverage(vectorRoot: string): Promise<void> {
 
   // The serialized manifest is the sole source for every human-readable view.
   const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as CoverageEntry[];
-  for (const document of ["core", "comms", "control", "social"] as const) {
+  for (const document of ["core", "comms", "control", "social", "workspace"] as const) {
     const filtered = manifest.filter((entry) => entry.owner_document === document);
     await writeFile(
       join(coverageRoot, `${document}.md`),
@@ -116,7 +116,7 @@ function renderDocumentView(document: DocumentId, entries: CoverageEntry[]): str
 }
 
 function renderFamilyView(entries: CoverageEntry[]): string {
-  const counts = (["core", "comms", "control", "social"] as const)
+  const counts = (["core", "comms", "control", "social", "workspace"] as const)
     .map((document) => `- ${document}: ${entries.filter((entry) => entry.owner_document === document).length}`)
     .join("\n");
   return `# Protocol-family vector coverage\n\nGenerated from [manifest.json](manifest.json); do not edit by hand.\n\n${counts}\n\n${renderTable(entries)}`;
