@@ -641,8 +641,6 @@ export function expectedReleaseManifests(
       dependencies: {
         core: "core/0.5.0",
         comms: "comms/0.5.0",
-        control: "control/0.5.0",
-        social: "social/0.5.0",
       },
       provided_features: [
         "workspace.role-authorization.v1",
@@ -804,7 +802,7 @@ export function lintFamilyCutover(repoRoot: string): FamilyDocIssue[] {
     });
   }
   if (
-    !/prepared 0\.5\.0 documents/i.test(overview) ||
+    !/prepared documents/i.test(overview) ||
     !/unreleased[\s\S]*explicit\s+release\s+approval/i.test(
       overview,
     ) ||
@@ -814,7 +812,7 @@ export function lintFamilyCutover(repoRoot: string): FamilyDocIssue[] {
       path: displayPath(repoRoot, overviewPath),
       line: 1,
       code: "premature-release-claim",
-      message: "overview must distinguish current normative authority from the prepared, unreleased 0.5.0 artifacts",
+      message: "overview must distinguish current normative authority from the prepared, unreleased 0.x artifacts",
     });
   }
 

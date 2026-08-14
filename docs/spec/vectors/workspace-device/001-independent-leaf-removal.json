@@ -1,0 +1,37 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "workspace",
+  "owner_version": "workspace/0.1.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 8,
+  "spec_refs": [
+    "heterodyne:workspace/0.1.0#workspace-role-control"
+  ],
+  "vector_id": "workspace-device/independent-leaf-removal",
+  "description": "Removing one device advances the role epoch without removing sibling leaves.",
+  "input": {
+    "persona_removed": false,
+    "removed_device": "d1",
+    "active_devices": [
+      "d1",
+      "d2"
+    ],
+    "current_epoch": 7
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "next_epoch": 8,
+      "removed_devices": [
+        "d1"
+      ],
+      "remaining_devices": [
+        "d2"
+      ]
+    }
+  },
+  "direction": "consume"
+}

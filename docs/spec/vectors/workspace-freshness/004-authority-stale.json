@@ -1,0 +1,25 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "workspace",
+  "owner_version": "workspace/0.1.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 8,
+  "spec_refs": [
+    "heterodyne:workspace/0.1.0#workspace-freshness"
+  ],
+  "vector_id": "workspace-freshness/authority-stale",
+  "description": "An authority mutation one second beyond the five-minute bound is stale.",
+  "input": {
+    "operation_class": "authority",
+    "checkpoint_age": 301,
+    "policy_max_age": 300
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "checkpoint_stale"
+  },
+  "direction": "consume"
+}

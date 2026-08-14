@@ -22,7 +22,8 @@ artifacts:
   [`docs/spec/vectors/`](docs/spec/vectors/): normative machine-readable
   artifacts.
 
-The family dependency direction is:
+The family composition direction is below. Workspace requires Core+Comms;
+its Control and Social compositions are optional.
 
 ```text
 Core <- Comms <- Control

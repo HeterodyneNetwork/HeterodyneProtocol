@@ -5,7 +5,7 @@
   "dependency_versions": {
     "core": "core/0.5.0"
   },
-  "registry_revision": 7,
+  "registry_revision": 8,
   "spec_refs": [
     "heterodyne:comms/0.5.0#comms-credential-continuity"
   ],
@@ -32,7 +32,7 @@
         "parent_oids": [],
         "tree_oid": "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
       },
-      "selected_registry_revision": 7,
+      "selected_registry_revision": 8,
       "conformance_claimable": false
     }
   }

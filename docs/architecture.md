@@ -5,14 +5,18 @@ versioned documents under [`docs/spec/`](spec/) and their registries, schemas,
 release manifests, and vectors are authoritative.
 
 The family documents are [Core](spec/heterodyne-core.md),
-[Comms](spec/heterodyne-comms.md), [Control](spec/heterodyne-control.md), and
-[Social](spec/heterodyne-social.md).
+[Comms](spec/heterodyne-comms.md), [Control](spec/heterodyne-control.md),
+[Social](spec/heterodyne-social.md), and
+[Workspace](spec/heterodyne-workspace.md).
 
 ## 1. Family boundaries
 
 ```text
 Core <- Comms <- Control
 Core <- Comms <- Social
+Core <- Comms <- Workspace
+Control <- Workspace
+Social <- Workspace
 ```
 
 ```mermaid
@@ -21,9 +25,13 @@ flowchart LR
     Comms[Comms<br/>publishing, Marmot, claims, OIDC]
     Control[Control<br/>own-device and agent RPC]
     Social[Social<br/>public graph and moderation]
+    Workspace[Workspace<br/>roles, resources, and federation]
     Core --> Comms
     Comms --> Control
     Comms --> Social
+    Comms --> Workspace
+    Control -. optional composition .-> Workspace
+    Social -. optional composition .-> Workspace
 ```
 
 Core owns the KERI-anchored persona, Nostr and Radicle identifiers, repository
@@ -32,10 +40,13 @@ privacy tiers, publication, Marmot conversations and media, Radicle-backed
 conversation storage, claims, the private ledger, and OIDC/JWT projection.
 Control owns grant-filtered access to a person's own full node. Social owns
 public following, interactions, community policy, moderation, presentation,
-and durable social assets.
+and durable social assets. Workspace owns organizational authority, role
+repositories, private topology, resource and service advertisements,
+cross-workspace allowances, host selection, and resource-key delivery.
 
 Control and Social are siblings. Neither may acquire authority over the other
-through an implementation shortcut.
+through an implementation shortcut. Workspace may consume their advertised
+features, but its base authorization and storage remain a Core+Comms profile.
 
 ## 2. Identity and trust
 
@@ -218,7 +229,34 @@ asset.
 Moderation remains subscriber-local. Receipts inform; only a verified policy
 list to which a client explicitly subscribes changes local visibility.
 
-## 10. Availability and residual trust
+## 10. Workspace control plane
+
+Workspace repositories turn organizational roles into explicit, signed
+authorization state. A root workspace policy sets ceilings; subordinate role
+policies can only narrow them. Affiliation, Git authorship, Radicle access,
+Marmot membership, relay acceptance, and host status are evidence or delivery
+mechanisms, never ambient authorization.
+
+Each effective role has an encrypted role repository, an independent Marmot
+group, and an authorized Radicle-backed delivery path. Public roles are merely
+one visibility choice. Private roles conceal stable identifiers, topology,
+locators, counts, and correlation material from public state. Policies,
+resource advertisements, service advertisements, and host advertisements flow
+through the role repository and may also use ordinary Nostr relays.
+
+Resource encryption is independent from role MLS state. Authorized devices
+have separate, revocable leaves and receive device-bound envelopes for the
+resource epochs their current role and history policy permit. Hosts may store
+or relay bytes without governance authority; a key-custody host is an explicit
+confidentiality trust boundary.
+
+Cross-workspace access defaults to explicit invitations. Bilateral automatic
+allowances require matching signed declarations and fresh affiliation proof.
+Joint workspaces require the declared governance threshold, so neither parent
+can unilaterally widen authority. Default organization hosts and policy are
+inherited unless a narrower role or resource policy overrides them.
+
+## 11. Availability and residual trust
 
 Multiple relays, hosts, writers, and locators improve availability but do not
 create new identity or group authority. Full nodes, Nostr relays, Radicle
@@ -226,7 +264,7 @@ hosts, and repository relays can observe metadata and can omit, delay, or
 reorder traffic. Local signature, KERI, MLS, grant, and repository-binding
 verification remains mandatory.
 
-The four documents are independently versioned. Exact document versions,
+The five documents are independently versioned. Exact document versions,
 registry revision or digest, features, and strict profiles must travel with
 every conformance claim. The family is in its 0.x phase and may make breaking
 changes before 1.0.

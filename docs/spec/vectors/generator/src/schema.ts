@@ -70,8 +70,6 @@ export const VECTOR_SCHEMA = {
       ["workspace", "workspace/0.1.0", {
         core: "core/0.5.0",
         comms: "comms/0.5.0",
-        control: "control/0.5.0",
-        social: "social/0.5.0",
       }],
     ] as const).map(([owner, ownerVersion, dependencies]) => ({
       if: { properties: { owner_document: { const: owner } }, required: ["owner_document"] },
@@ -438,8 +436,6 @@ function validateFamilyMetadata(vector: Vector): void {
     workspace: {
       core: "core/0.5.0",
       comms: "comms/0.5.0",
-      control: "control/0.5.0",
-      social: "social/0.5.0",
     },
   };
   const ownerVersion = parseQualifiedVersion(vector.owner_version);

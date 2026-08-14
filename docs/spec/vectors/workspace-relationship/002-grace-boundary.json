@@ -1,0 +1,41 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "workspace",
+  "owner_version": "workspace/0.1.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 8,
+  "spec_refs": [
+    "heterodyne:workspace/0.1.0#workspace-relationships"
+  ],
+  "vector_id": "workspace-relationship/grace-boundary",
+  "description": "A previously current affiliation remains provisional at the exact signed grace boundary.",
+  "input": {
+    "signatures_match": true,
+    "receiving_policy_allows": true,
+    "revoked": false,
+    "expired": false,
+    "requested_capabilities": [
+      "read"
+    ],
+    "capability_ceiling": [
+      "read",
+      "triage"
+    ],
+    "proof_age": 900,
+    "proof_max_age": 300,
+    "grace_period": 600
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "capabilities": [
+        "read"
+      ],
+      "provisional_grace": true
+    }
+  },
+  "direction": "consume"
+}

@@ -1,0 +1,49 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "workspace",
+  "owner_version": "workspace/0.1.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 8,
+  "spec_refs": [
+    "heterodyne:workspace/0.1.0#workspace-advertisements"
+  ],
+  "vector_id": "workspace-host/inherited-failover",
+  "description": "The last responsive eligible inherited host is tried before the remaining deterministic order.",
+  "input": {
+    "inherited": [
+      {
+        "host_id": "a",
+        "priority": 20,
+        "radicle_locators": [
+          "rad:zA"
+        ],
+        "radicle_backed_relay": true
+      },
+      {
+        "host_id": "b",
+        "priority": 10,
+        "radicle_locators": [
+          "rad:zB"
+        ],
+        "radicle_backed_relay": true
+      }
+    ],
+    "mode": "default",
+    "configured": [],
+    "last_responsive": "a"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "host_ids": [
+        "a",
+        "b"
+      ],
+      "radicle_backstop": true
+    }
+  },
+  "direction": "consume"
+}

@@ -1,0 +1,28 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "workspace",
+  "owner_version": "workspace/0.1.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 8,
+  "spec_refs": [
+    "heterodyne:workspace/0.1.0#workspace-freshness"
+  ],
+  "vector_id": "workspace-freshness/ordinary-boundary",
+  "description": "An ordinary write is accepted at the exact 86400-second default boundary.",
+  "input": {
+    "operation_class": "ordinary",
+    "checkpoint_age": 86400,
+    "policy_max_age": 86400
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "maximum_age": 86400,
+      "age": 86400
+    }
+  },
+  "direction": "consume"
+}

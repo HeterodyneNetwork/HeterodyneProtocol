@@ -30,6 +30,13 @@ describe("family coverage", () => {
     expect(new Set(coverage.map(({ vector_id }) => vector_id)).size).toBe(vectors.length);
     expect(coverage.every(({ registry_revision }) => registry_revision === 8)).toBe(true);
     expect(coverage.filter(({ owner_document }) => owner_document === "control")).toHaveLength(51);
+    const workspace = coverage.filter(({ owner_document }) => owner_document === "workspace");
+    expect(workspace).toHaveLength(39);
+    expect(workspace.every(({ dependency_versions }) =>
+      JSON.stringify(dependency_versions) === JSON.stringify({
+        core: "core/0.5.0",
+        comms: "comms/0.5.0",
+      }))).toBe(true);
     expect(coverage).toContainEqual(expect.objectContaining({
       vector_id: "control/invitation-enrollment-only",
       profile: "heterodyne-control-marmot-frame-v1",

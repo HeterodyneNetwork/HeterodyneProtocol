@@ -1,0 +1,27 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "workspace",
+  "owner_version": "workspace/0.1.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 8,
+  "spec_refs": [
+    "heterodyne:workspace/0.1.0#workspace-privacy"
+  ],
+  "vector_id": "workspace-privacy/public-clean",
+  "description": "A public directory with no concealed correlations is valid.",
+  "input": {
+    "private_identifiers": [],
+    "private_counts": 0,
+    "encrypted_placeholders": 0
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "disclosed_private_references": 0
+    }
+  },
+  "direction": "consume"
+}

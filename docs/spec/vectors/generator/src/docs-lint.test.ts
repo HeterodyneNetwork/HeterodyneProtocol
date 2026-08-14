@@ -42,7 +42,7 @@ describe("canonical family documentation", () => {
   });
 
   it("contains no retired Control or direct-message wire vocabulary in live specs", () => {
-    const text = ["core", "comms", "control", "social"]
+    const text = ["core", "comms", "control", "social", "workspace"]
       .map((document) => read(`docs/spec/heterodyne-${document}.md`))
       .join("\n");
     expect(text).not.toMatch(/kind:31015|kind:31016|kind:1059|kind:1060/i);
@@ -120,8 +120,6 @@ describe("registry-bound release artifacts", () => {
     expect(manifest.dependencies).toEqual({
       core: "core/0.5.0",
       comms: "comms/0.5.0",
-      control: "control/0.5.0",
-      social: "social/0.5.0",
     });
     expect(manifest.required_features).toEqual([
       "core.marmot-role-attribution.v1",

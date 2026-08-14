@@ -18,7 +18,18 @@ export const DOCUMENT_DEPENDENCIES: Record<
   comms: ["core"],
   control: ["core", "comms"],
   social: ["core", "comms"],
-  workspace: ["core", "comms", "control", "social"],
+  workspace: ["core", "comms"],
+};
+
+export const OPTIONAL_DOCUMENT_DEPENDENCIES: Record<
+  DocumentId,
+  readonly DocumentId[]
+> = {
+  core: [],
+  comms: [],
+  control: [],
+  social: [],
+  workspace: ["control", "social"],
 };
 
 const QUALIFIED_VERSION =
@@ -41,7 +52,10 @@ export function assertAllowedDependency(
   document: DocumentId,
   dependency: DocumentId,
 ): void {
-  if (!DOCUMENT_DEPENDENCIES[document].includes(dependency)) {
+  if (
+    !DOCUMENT_DEPENDENCIES[document].includes(dependency) &&
+    !OPTIONAL_DOCUMENT_DEPENDENCIES[document].includes(dependency)
+  ) {
     throw new Error(`forbidden dependency: ${document} -> ${dependency}`);
   }
 }

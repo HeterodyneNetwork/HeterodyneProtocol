@@ -1,0 +1,36 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "workspace",
+  "owner_version": "workspace/0.1.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 8,
+  "spec_refs": [
+    "heterodyne:workspace/0.1.0#workspace-key-delivery"
+  ],
+  "vector_id": "workspace-key/full-history",
+  "description": "Full-history policy returns an idempotent device-bound historical key envelope.",
+  "input": {
+    "resource_known": true,
+    "host_authorized": true,
+    "device_active": true,
+    "membership_active": true,
+    "checkpoint_age": 300,
+    "requested_epoch": 4,
+    "current_epoch": 6,
+    "admission_epoch": 4,
+    "history_mode": "full",
+    "selected_epochs": []
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "key_epoch": 4,
+      "device_bound": true,
+      "idempotent": true
+    }
+  },
+  "direction": "consume"
+}

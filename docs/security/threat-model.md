@@ -1,6 +1,6 @@
 # Heterodyne protocol-family threat model
 
-**Status:** Draft, non-normative security analysis for the 0.5.x family.
+**Status:** Draft, non-normative security analysis for the 0.x family.
 
 [`docs/spec/heterodyne.md`](../spec/heterodyne.md) is the non-normative family
 map. Security requirements are owned by the five versioned documents below.
@@ -53,7 +53,7 @@ any carrier authoritative for persona identity.
 
 ## 2. Registry-bound invariants
 
-The descriptions below reproduce registry revision 7 exactly.
+The descriptions below reproduce registry revision 8 exactly.
 Registry-bound rows cite an invariant where that invariant directly governs
 the mitigation. Metadata residuals, operational consequences, out-of-scope
 limitations, and open work may instead be cross-cutting and are not assigned a
@@ -161,6 +161,10 @@ and Control protections; Social is outside that dependency.
 | Node-mediated group access | Grant-filtered results; all group secrets remain on the designated node | CONTROL-I-MARMOT-GRANT-CONFINEMENT |
 | Social private configuration | Protected local/config storage | SOCIAL-I-PRIVATE-STATE-AT-REST |
 | Agent-policy receipts and subscribed lists | Public signed evidence; subscriber-local effect from verified canonical history | SOCIAL-I-AGENT-POLICY-LOCAL, SOCIAL-I-AGENT-REMEDIATION-SCOPED |
+| Workspace and role policy | Canonical signed repository history; evaluated locally against KERI authority | WORKSPACE-I-NO-AMBIENT-AUTHORITY, WORKSPACE-I-INHERITANCE-NARROWS |
+| Private role topology and membership | Encrypted role repositories and role Marmot groups; absent from public projections | WORKSPACE-I-PRIVATE-TOPOLOGY, WORKSPACE-I-DEVICE-LEAF-SEPARATION |
+| Resource keys and history | Independent per-resource epochs delivered only in device-bound envelopes | WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS, WORKSPACE-I-REVOCATION-FUTURE-ONLY |
+| Workspace hosts and transport locators | Explicit signed advertisements; availability without governance authority | WORKSPACE-I-HOST-AUTHORITY-SEPARATION, WORKSPACE-I-RADICLE-BACKSTOP |
 
 Tier 3 broadcast has no forward secrecy: compromise of an audience key exposes
 retained ciphertext for that `key_id`; rotation protects later generations.
@@ -188,6 +192,7 @@ guarantee as another's.
 | Public browser reader | Runs downloaded client code without authentication, resolves a fragment-local target, and may lack outbound Tor. It can consume verified Tier 1 only and must show reduced assurance when using clearnet/shared relays. |
 | Automated principal | Supplies publication intent and sender proof under a scoped temporary token. It receives no persona, device, NID, or agent-role private key and cannot select a human profile or suppress attribution. |
 | Light Control client | Has only private entitled Control authority. It is not a Core/KERI device and receives none of the secrets prohibited by CONTROL-I-CLIENT-KEY-CONFINEMENT. |
+| Hostile workspace member or host | Reads only resources and history already granted to its active devices, may replay stale policy or withhold delivery, and can retain prior plaintext. It cannot widen a signed capability ceiling, use carrier status as authority, or decrypt independently rotated resource epochs it was not given. |
 | Compromised cold root | Catastrophic persona authority. Changed-RID re-anchor cannot repair it because the same root authorizes re-anchor; absent a standardized precommitted recovery policy, migrate to a new persona/root. |
 
 ## 5. Threats and mitigations by owner
@@ -303,6 +308,21 @@ guarantee as another's.
 | False receipt remains effective after correction | Require both a valid signed correction and removal of the receipt binding from the current canonical policy list before restoring local visibility (SOCIAL-I-AGENT-POLICY-LOCAL, SOCIAL-I-AGENT-REMEDIATION-SCOPED). |
 | Sybil vouchers or poisoned friend caches drive recovery | Treat Social recovery bindings as advisory inputs only; accepted KEL and declared Core witness rules retain authority (SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH, CORE-I-IDENTITY-INTEGRITY, CORE-I-VERIFY-BEFORE-USE). |
 
+### 5.5 Workspace threats
+
+| Threat | Mitigation |
+|---|---|
+| Affiliation or repository access silently grants authority | Require an active signed role grant evaluated through every applicable policy ceiling; carrier and membership evidence alone authorize nothing (WORKSPACE-I-NO-AMBIENT-AUTHORITY, WORKSPACE-I-CARRIER-NOT-AUTHORITY). |
+| A child role or resource policy widens its parent | Intersect workspace, ancestor-role, resource, relationship, subject, and device capability sets and reject any widening declaration (WORKSPACE-I-INHERITANCE-NARROWS). |
+| A public index reveals a concealed organization or role | Publish no stable identifier, digest, count, locator, or correlation for private topology; deliver its entry points only inside already authorized encrypted state (WORKSPACE-I-PRIVATE-TOPOLOGY). |
+| One role-group secret decrypts every subordinate repository or artifact | Use role MLS only to authenticate delivery and wrap independent resource epochs to authorized device leaves (WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS, WORKSPACE-I-DEVICE-LEAF-SEPARATION). |
+| Removal is presented as retroactive erasure | Stop future authorization, rotate affected resource epochs, and disclose that previously delivered keys, plaintext, Git objects, and backups remain recoverable (WORKSPACE-I-REVOCATION-FUTURE-ONLY). |
+| Stale policy permits a revoked or narrowed writer | Require a non-conflicted checkpoint no older than 300 seconds for authority mutations and 86400 seconds for ordinary writes; policies may only shorten those limits (WORKSPACE-I-FRESHNESS-BOUNDED). |
+| A default host becomes an undeclared workspace administrator | Separate signed host eligibility and key-custody declarations from governance grants; hosting, relaying, and storage create no policy authority (WORKSPACE-I-HOST-AUTHORITY-SEPARATION). |
+| Optional relays disappear or censor a role | Keep at least one authorized Radicle locator and eligible Radicle-backed relay host in every effective role configuration (WORKSPACE-I-RADICLE-BACKSTOP). |
+| A bilateral allowance is forged or outlives affiliation | Require matching signed declarations from both workspaces, a fresh affiliation proof, the receiving policy intersection, and immediate expiry on either revocation. |
+| One parent captures a joint workspace | Enforce the declared multi-parent approval threshold over matching canonical objects before any joint governance mutation. |
+
 ## 6. Metadata, availability, and residual risk
 
 Encryption does not hide all metadata. Relays and repository hosts can observe
@@ -406,7 +426,9 @@ Strict profiles are additive and composable:
 - `heterodyne-social-strict-v1` composes Core, Comms, and Social obligations;
   and
 - `heterodyne-social-strict-v2` adds subscriber-local agent-policy and
-  device-key-scoped remediation invariants.
+  device-key-scoped remediation invariants; and
+- `heterodyne-workspace-strict-v1` composes Core and Comms strict obligations
+  with the complete Workspace invariant set.
 
 A capability advertisement lists only profiles actually met. Unknown profile
 IDs confer no authority or compatibility. Conformance reports reproduce exact
@@ -435,7 +457,7 @@ signature semantics rather than claiming present quantum resistance.
 
 Before relevant 1.0 claims, work remains to define any future generic
 repo-relay server/storage profile, exercise KERI fork and recovery behavior across
-independent implementations, expand Marmot, Control, and Radicle
+independent implementations, expand Marmot, Control, Workspace, and Radicle
 interoperability testing, and expand negative vectors for rollback, metadata,
 and recovery-policy attacks. Each
 item belongs to its named document and must not create a forbidden dependency.

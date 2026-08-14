@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   assertAllowedDependency,
+  DOCUMENT_DEPENDENCIES,
+  OPTIONAL_DOCUMENT_DEPENDENCIES,
   parseQualifiedVersion,
 } from "./family.js";
 
@@ -40,5 +42,7 @@ describe("protocol document family", () => {
     expect(() => assertAllowedDependency("control", "workspace")).toThrow(
       "forbidden dependency",
     );
+    expect(DOCUMENT_DEPENDENCIES.workspace).toEqual(["core", "comms"]);
+    expect(OPTIONAL_DOCUMENT_DEPENDENCIES.workspace).toEqual(["control", "social"]);
   });
 });

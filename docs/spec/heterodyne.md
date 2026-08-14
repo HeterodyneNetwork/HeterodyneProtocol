@@ -32,7 +32,7 @@ Control and Social are siblings above Comms. Workspace is a higher-layer
 organizational control plane: its base profile uses Core and Comms, while
 optional compositions add Control and Social without creating a cycle.
 
-## Prepared 0.5.0 documents
+## Prepared documents
 
 | Document | Prepared version | Scope | Status |
 |---|---|---|---|

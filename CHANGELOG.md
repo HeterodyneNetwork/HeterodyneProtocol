@@ -115,11 +115,28 @@ reviewed in [PR #22](https://github.com/HeterodyneNetwork/HeterodyneProtocol/pul
 - Removed the former optional group-communication layer; private replies and
   reactions now start or reuse Marmot conversations through Comms.
 
+### Workspace 0.1.0
+
+- Added the independently versioned
+  [Workspace](docs/spec/heterodyne-workspace.md) control plane for
+  organizational roles, private discovery, project and service
+  advertisements, cross-workspace allowances, joint governance, host
+  inheritance, and independently rotated resource keys.
+- Added signed closed-schema Workspace objects, per-role encrypted Radicle
+  repositories and Marmot groups, a mandatory Radicle-backed transport
+  backstop, device-bound key delivery, bounded checkpoint freshness, and
+  future-only revocation semantics.
+- Registered six Workspace feature IDs, thirteen diagnostic reason codes, ten
+  security invariants, twelve object types, and the composable
+  `heterodyne-workspace-strict-v1` profile at registry revision 8.
+
 ### Family migration and conformance
 
 - Established the family's only normative dependency edges as
-  `Core <- Comms <- Control` and `Core <- Comms <- Social`.
-- Advanced all four untagged 0.5.0 release manifests to registry revision 7.
+  `Core <- Comms <- Control`, `Core <- Comms <- Social`,
+  `Core <- Comms <- Workspace`, `Control <- Workspace`, and
+  `Social <- Workspace`.
+- Advanced all five untagged release manifests to registry revision 8.
   Comms provides the registered `comms.key-claims.v1`,
   `comms.private-claim-ledger.v1`, `comms.oidc-jwt-projection.v1`, and
   `comms.token-status-list-draft-21.v1` features; every external prerequisite
