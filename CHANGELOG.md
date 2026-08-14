@@ -30,6 +30,9 @@ The follow-up identity, Tier 3, Marmot archive, time, and registry hardening is
 recorded historically in
 [ADR-043](docs/adr/archive/2026-08-11-043-review-follow-up-hardening.md) and is
 reviewed in [PR #22](https://github.com/HeterodyneNetwork/HeterodyneProtocol/pull/22).
+The Workspace role control plane is recorded historically in
+[ADR-044](docs/adr/archive/2026-08-13-044-workspace-role-control-plane.md) and
+is reviewed in [PR #23](https://github.com/HeterodyneNetwork/HeterodyneProtocol/pull/23).
 
 ### Core 0.5.0
 
