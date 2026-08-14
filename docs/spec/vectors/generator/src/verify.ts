@@ -64,6 +64,7 @@ export async function verifyVectorTree(rootDir: string): Promise<VerifyResult> {
       "coverage/comms.md",
       "coverage/control.md",
       "coverage/social.md",
+      "coverage/workspace.md",
       "coverage/family.md",
     ];
     for (const file of projections) {

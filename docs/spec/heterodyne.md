@@ -23,12 +23,16 @@ The family dependency graph is:
 ```text
 Core <- Comms <- Control
 Core <- Comms <- Social
+Core <- Comms <- Workspace
+Control <- Workspace
+Social <- Workspace
 ```
 
-Control and Social are siblings above Comms. Social has no dependency on
-Control; clients can compose their independently stated claims.
+Control and Social are siblings above Comms. Workspace is a higher-layer
+organizational control plane: its base profile uses Core and Comms, while
+optional compositions add Control and Social without creating a cycle.
 
-## Prepared 0.5.0 documents
+## Prepared documents
 
 | Document | Prepared version | Scope | Status |
 |---|---|---|---|
@@ -36,11 +40,13 @@ Control; clients can compose their independently stated claims.
 | [Comms](heterodyne-comms.md) | `comms/0.5.0` | Privacy tiers, publishing, Marmot conversations and media, Radicle conversation storage, atomic key claims, private claim ledger, and OIDC/JWT projection | Normative |
 | [Control](heterodyne-control.md) | `control/0.5.0` | Marmot-carried own-device enrollment, grants, RPC, node-mediated operations, agent semantics, and optional recovery | Normative 0.x |
 | [Social](heterodyne-social.md) | `social/0.5.0` | Public social graph, interactions, moderation, lists, durable assets, and ATProto attachment | Normative 0.x |
+| [Workspace](heterodyne-workspace.md) | `workspace/0.1.0` | Independently governed workspaces, roles, private discovery, cross-workspace allowances, hosts, and resource-key delivery | Normative 0.x |
 
-These are four independent version lineages descended from the 0.4.x
-monolith, not a synchronized family version. Their contents are current
-normative authority at these repository paths. The 0.5.0 artifacts remain
-unreleased pending explicit release approval.
+Core, Comms, Control, and Social are independent version lineages descended
+from the 0.4.x monolith. Workspace begins its own independent lineage at
+`workspace/0.1.0`; family versions are not synchronized. Their contents are
+current normative authority at these repository paths. All prepared artifacts
+remain unreleased pending explicit release approval.
 Machine-readable prepared-release manifests are under
 [`releases/`](releases/).
 
@@ -52,6 +58,7 @@ Machine-readable prepared-release manifests are under
 | Heterodyne persona | `core/0.5.0` + `comms/0.5.0` | Standard-compatible or Radicle-private Marmot conversations |
 | Social | Core + Comms + `social/0.5.0` | Public social behavior and durable assets |
 | Control profile | Core + Comms + `control/0.5.0` | Standard Marmot carriage; recovery features are optional independent claims |
+| Workspace | Core + Comms + `workspace/0.1.0` | Role control plane with Radicle transport backstop; Control and Social compositions are optional |
 
 Exact versions, registry revision or digest, feature IDs, and strict-profile
 IDs belong in each conformance claim.

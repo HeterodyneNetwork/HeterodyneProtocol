@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/workspace/workspace-relationship-v1.schema.json",
+  "title": "workspace-relationship-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version",
+    "object_type",
+    "workspace_id",
+    "actor",
+    "kel_head",
+    "authority_sequence",
+    "repository_rid",
+    "repository_head",
+    "issued_at",
+    "signature",
+    "relationship_id",
+    "source_workspace_id",
+    "receiving_workspace_id",
+    "source_role_id",
+    "receiving_role_id",
+    "capability_ceiling",
+    "proof_max_age",
+    "grace_period",
+    "expires_at",
+    "independently_revocable",
+    "source_signature",
+    "receiving_signature"
+  ],
+  "properties": {
+    "spec_version": {
+      "const": "workspace/0.1.0"
+    },
+    "object_type": {
+      "const": "workspace-relationship-v1"
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "actor": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "kel_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "authority_sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "repository_rid": {
+      "type": "string",
+      "pattern": "^rad:[A-Za-z0-9]+$"
+    },
+    "repository_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "issued_at": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    },
+    "relationship_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_workspace_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "receiving_workspace_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_role_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "receiving_role_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "capability_ceiling": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "read",
+          "write",
+          "triage",
+          "moderate",
+          "admin",
+          "invite",
+          "govern-policy",
+          "govern-subroles",
+          "govern-thresholds",
+          "govern-publicize",
+          "govern-federation",
+          "govern-delegation",
+          "govern-lifecycle"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "proof_max_age": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 86400
+    },
+    "grace_period": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 86400
+    },
+    "expires_at": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "independently_revocable": {
+      "const": true
+    },
+    "source_signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    },
+    "receiving_signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    }
+  }
+}

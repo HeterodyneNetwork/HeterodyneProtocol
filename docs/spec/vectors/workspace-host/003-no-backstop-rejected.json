@@ -1,0 +1,50 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "workspace",
+  "owner_version": "workspace/0.1.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 8,
+  "spec_refs": [
+    "heterodyne:workspace/0.1.0#workspace-advertisements"
+  ],
+  "vector_id": "workspace-host/no-backstop-rejected",
+  "description": "An override cannot remove every Radicle-backed relay path.",
+  "input": {
+    "inherited": [
+      {
+        "host_id": "a",
+        "priority": 20,
+        "radicle_locators": [
+          "rad:zA"
+        ],
+        "radicle_backed_relay": true
+      },
+      {
+        "host_id": "b",
+        "priority": 10,
+        "radicle_locators": [
+          "rad:zB"
+        ],
+        "radicle_backed_relay": true
+      }
+    ],
+    "mode": "replace",
+    "configured": [
+      {
+        "host_id": "c",
+        "priority": 1,
+        "radicle_locators": [],
+        "radicle_backed_relay": false
+      }
+    ],
+    "last_responsive": null
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "policy_denied"
+  },
+  "direction": "consume"
+}

@@ -9,7 +9,8 @@
     "kinds",
     "reason_codes",
     "security_invariants",
-    "features"
+    "features",
+    "objects"
   ],
   "properties": {
     "manifest": {
@@ -38,6 +39,12 @@
       "items": {
         "$ref": "#/definitions/feature"
       }
+    },
+    "objects": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/object_type"
+      }
     }
   },
   "definitions": {
@@ -47,7 +54,8 @@
         "core",
         "comms",
         "control",
-        "social"
+        "social",
+        "workspace"
       ]
     },
     "status": {
@@ -60,11 +68,11 @@
     },
     "qualified_version": {
       "type": "string",
-      "pattern": "^(core|comms|control|social)/(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+      "pattern": "^(core|comms|control|social|workspace)/(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
     },
     "qualified_reference": {
       "type": "string",
-      "pattern": "^heterodyne:(core|comms|control|social)/(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?#[a-z0-9]+(?:-[a-z0-9]+)*$"
+      "pattern": "^heterodyne:(core|comms|control|social|workspace)/(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?#[a-z0-9]+(?:-[a-z0-9]+)*$"
     },
     "manifest": {
       "type": "object",
@@ -81,7 +89,7 @@
         },
         "schema_version": {
           "type": "string",
-          "const": "2.0.0"
+          "const": "3.0.0"
         },
         "entry_set_sha256": {
           "type": "string",
@@ -156,6 +164,7 @@
             "comms",
             "control",
             "social",
+            "workspace",
             "nostr"
           ]
         },
@@ -224,7 +233,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "pattern": "^(CORE|COMMS|CONTROL|SOCIAL)-I-[A-Z0-9]+(?:-[A-Z0-9]+)*$"
+          "pattern": "^(CORE|COMMS|CONTROL|SOCIAL|WORKSPACE)-I-[A-Z0-9]+(?:-[A-Z0-9]+)*$"
         },
         "owner": {
           "$ref": "#/definitions/document_id"
@@ -256,7 +265,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "pattern": "^(core|comms|control|social)\\.[a-z0-9]+(?:[.-][a-z0-9]+)*\\.v[1-9][0-9]*$"
+          "pattern": "^(core|comms|control|social|workspace)\\.[a-z0-9]+(?:[.-][a-z0-9]+)*\\.v[1-9][0-9]*$"
         },
         "owner": {
           "$ref": "#/definitions/document_id"
@@ -279,7 +288,49 @@
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "pattern": "^(core|comms|control|social)\\.[a-z0-9]+(?:[.-][a-z0-9]+)*\\.v[1-9][0-9]*$"
+            "pattern": "^(core|comms|control|social|workspace)\\.[a-z0-9]+(?:[.-][a-z0-9]+)*\\.v[1-9][0-9]*$"
+          }
+        }
+      }
+    },
+    "object_type": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "owner",
+        "first_version",
+        "status",
+        "schema",
+        "carriers"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*-v[1-9][0-9]*$"
+        },
+        "owner": {
+          "$ref": "#/definitions/document_id"
+        },
+        "first_version": {
+          "$ref": "#/definitions/qualified_version"
+        },
+        "status": {
+          "$ref": "#/definitions/status"
+        },
+        "schema": {
+          "type": "string",
+          "pattern": "^https://heterodyne\\.network/schemas/[a-z0-9/-]+\\.schema\\.json$"
+        },
+        "carriers": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "radicle-authority-file",
+              "marmot-application-data"
+            ]
           }
         }
       }

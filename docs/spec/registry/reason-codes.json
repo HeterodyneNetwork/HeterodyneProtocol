@@ -1539,6 +1539,110 @@
       "first_version": "core/0.5.0",
       "description": "A node advertisement lifetime exceeds 86400 seconds.",
       "spec_refs": ["heterodyne:core/0.5.0#core-node-advertisement"]
+    },
+    {
+      "code": "workspace_schema_invalid",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "A Workspace object or its canonical encoding does not match its closed schema.",
+      "spec_refs": ["heterodyne:workspace/0.1.0#workspace-errors"]
+    },
+    {
+      "code": "workspace_signature_invalid",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "A Workspace signature, actor, KEL, or repository binding is invalid.",
+      "spec_refs": ["heterodyne:workspace/0.1.0#workspace-errors"]
+    },
+    {
+      "code": "authority_conflict",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "Required authority heads or role paths conflict or are incomparable.",
+      "spec_refs": ["heterodyne:workspace/0.1.0#workspace-errors"]
+    },
+    {
+      "code": "capability_escalation",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "Inheritance, a grant, or delegation attempts to widen an applicable ceiling.",
+      "spec_refs": ["heterodyne:workspace/0.1.0#workspace-errors"]
+    },
+    {
+      "code": "policy_denied",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "Current effective Workspace policy denies the operation.",
+      "spec_refs": ["heterodyne:workspace/0.1.0#workspace-errors"]
+    },
+    {
+      "code": "checkpoint_stale",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "The applicable signed authorization checkpoint exceeds its maximum age.",
+      "spec_refs": ["heterodyne:workspace/0.1.0#workspace-errors"]
+    },
+    {
+      "code": "affiliation_stale",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "A bilateral source affiliation exceeds its proof and grace bounds.",
+      "spec_refs": ["heterodyne:workspace/0.1.0#workspace-errors"]
+    },
+    {
+      "code": "device_revoked",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "The target or requesting device is not currently authorized.",
+      "spec_refs": ["heterodyne:workspace/0.1.0#workspace-errors"]
+    },
+    {
+      "code": "history_denied",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "A requested historical key falls outside the active grant history mode.",
+      "spec_refs": ["heterodyne:workspace/0.1.0#workspace-errors"]
+    },
+    {
+      "code": "resource_unknown",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "An authorized responder has no resource matching the requested identifier.",
+      "spec_refs": ["heterodyne:workspace/0.1.0#workspace-errors"]
+    },
+    {
+      "code": "host_unauthorized",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "The responder is not an authorized key custodian for the resource and checkpoint.",
+      "spec_refs": ["heterodyne:workspace/0.1.0#workspace-errors"]
+    },
+    {
+      "code": "private_topology_disclosed",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "A public projection correlates a concealed workspace, role, relationship, repository, or resource.",
+      "spec_refs": ["heterodyne:workspace/0.1.0#workspace-errors"]
+    },
+    {
+      "code": "workspace_replay",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "workspace/0.1.0",
+      "description": "A Workspace nonce, approval, relationship, grant, or key envelope was replayed.",
+      "spec_refs": ["heterodyne:workspace/0.1.0#workspace-errors"]
     }
   ]
 }

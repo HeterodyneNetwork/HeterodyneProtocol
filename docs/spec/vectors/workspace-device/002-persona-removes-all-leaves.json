@@ -1,0 +1,36 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "workspace",
+  "owner_version": "workspace/0.1.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 8,
+  "spec_refs": [
+    "heterodyne:workspace/0.1.0#workspace-role-control"
+  ],
+  "vector_id": "workspace-device/persona-removes-all-leaves",
+  "description": "Removing a persona removes every device leaf and advances the role epoch once.",
+  "input": {
+    "persona_removed": true,
+    "removed_device": null,
+    "active_devices": [
+      "d1",
+      "d2"
+    ],
+    "current_epoch": 7
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "next_epoch": 8,
+      "removed_devices": [
+        "d1",
+        "d2"
+      ],
+      "remaining_devices": []
+    }
+  },
+  "direction": "consume"
+}

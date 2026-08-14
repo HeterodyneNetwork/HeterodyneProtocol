@@ -1,0 +1,187 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/workspace/role-grant-v1.schema.json",
+  "title": "role-grant-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version",
+    "object_type",
+    "workspace_id",
+    "actor",
+    "kel_head",
+    "authority_sequence",
+    "repository_rid",
+    "repository_head",
+    "issued_at",
+    "signature",
+    "grant_id",
+    "subject",
+    "role_id",
+    "capabilities",
+    "resource_scope",
+    "delegable",
+    "activation",
+    "activates_at",
+    "expires_at",
+    "approval_ids",
+    "invitation",
+    "evidence_ids"
+  ],
+  "properties": {
+    "spec_version": {
+      "const": "workspace/0.1.0"
+    },
+    "object_type": {
+      "const": "role-grant-v1"
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "actor": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "kel_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "authority_sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "repository_rid": {
+      "type": "string",
+      "pattern": "^rad:[A-Za-z0-9]+$"
+    },
+    "repository_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "issued_at": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    },
+    "grant_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "subject": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "role_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "read",
+          "write",
+          "triage",
+          "moderate",
+          "admin",
+          "invite",
+          "govern-policy",
+          "govern-subroles",
+          "govern-thresholds",
+          "govern-publicize",
+          "govern-federation",
+          "govern-delegation",
+          "govern-lifecycle"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "resource_scope": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "uniqueItems": true
+    },
+    "delegable": {
+      "type": "boolean"
+    },
+    "activation": {
+      "enum": [
+        "immediate",
+        "subject-acceptance",
+        "approval-threshold",
+        "waiting-period"
+      ]
+    },
+    "activates_at": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "expires_at": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "approval_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "uniqueItems": true
+    },
+    "invitation": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "nonce_commitment",
+            "expires_at",
+            "history_mode"
+          ],
+          "properties": {
+            "nonce_commitment": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "expires_at": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "history_mode": {
+              "enum": [
+                "full",
+                "from-admission",
+                "selected-snapshots"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "evidence_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "uniqueItems": true
+    }
+  }
+}

@@ -19,6 +19,7 @@ import { buildMarmotRadicleVectors } from "./topics-marmot-radicle.js";
 import { buildMarmotAdmissionVectors } from "./topics-marmot-admission.js";
 import { buildOneTimeInviteVectors } from "./topics-one-time-invite.js";
 import { buildFollowUpHardeningVectors } from "./topics-follow-up-hardening.js";
+import { buildWorkspaceVectors } from "./topics-workspace.js";
 import { remediateHistoricalProduction } from "./legacy-remediation.js";
 import {
   AUX_RAND,
@@ -63,6 +64,17 @@ export const TOPIC_SPECS = {
   stamping: "heterodyne:core/0.5.0#core-version-stamps",
   registry: "heterodyne:core/0.5.0#core-registry",
   "marmot-radicle": "heterodyne:comms/0.5.0#comms-marmot",
+  "workspace-object": "heterodyne:workspace/0.1.0#workspace-object-types",
+  "workspace-policy": "heterodyne:workspace/0.1.0#workspace-role-policy",
+  "workspace-grant": "heterodyne:workspace/0.1.0#workspace-grants",
+  "workspace-relationship": "heterodyne:workspace/0.1.0#workspace-relationships",
+  "workspace-privacy": "heterodyne:workspace/0.1.0#workspace-privacy",
+  "workspace-host": "heterodyne:workspace/0.1.0#workspace-advertisements",
+  "workspace-device": "heterodyne:workspace/0.1.0#workspace-role-control",
+  "workspace-key": "heterodyne:workspace/0.1.0#workspace-key-delivery",
+  "workspace-freshness": "heterodyne:workspace/0.1.0#workspace-freshness",
+  "workspace-joint": "heterodyne:workspace/0.1.0#workspace-relationships",
+  "workspace-events": "heterodyne:workspace/0.1.0#workspace-role-repositories",
 } as const;
 
 export async function buildAllVectors(fixtures: Fixtures): Promise<AuthoredVector[]> {
@@ -90,6 +102,7 @@ export async function buildAllVectors(fixtures: Fixtures): Promise<AuthoredVecto
   vectors.push(...buildMarmotAdmissionVectors());
   vectors.push(...buildOneTimeInviteVectors());
   vectors.push(...buildFollowUpHardeningVectors(fixtures));
+  vectors.push(...buildWorkspaceVectors());
   return (await remediateHistoricalProduction(vectors, fixtures))
     .filter(({ vector }) =>
       !isRetiredMatrixVector(vector.vector_id)

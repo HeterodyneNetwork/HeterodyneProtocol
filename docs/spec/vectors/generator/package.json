@@ -10,6 +10,7 @@
     "family:check": "tsx src/cli.ts family-check",
     "release-manifests": "tsx src/cli.ts release-manifests",
     "registry-author": "tsx src/cli.ts registry-author",
+    "workspace-schemas": "tsx src/cli.ts workspace-schemas",
     "coverage": "tsx src/cli.ts coverage",
     "check": "npm run build && npm test && npm run verify"
   },

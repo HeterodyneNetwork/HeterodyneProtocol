@@ -2,7 +2,7 @@
 
 Document ID: `comms`<br>
 Version: `comms/0.5.0`<br>
-Registry revision: `6`
+Registry revision: `8`
 
 Normative dependencies: `heterodyne:core/0.5.0#core-conformance`.
 
@@ -2146,13 +2146,13 @@ profile.
 <!-- Monolith provenance: §14. -->
 
 A Comms conformance report MUST claim Core+Comms, name `comms/0.5.0`, pin
-`core/0.5.0`, registry revision 7 or its immutable digest, and enumerate
+`core/0.5.0`, registry revision 8 or its immutable digest, and enumerate
 supported features and strict profiles. A base implementation MUST implement
 the envelope, tiers, publishing, feed, retrieval, Marmot invitation hook,
 private Control-registry integration, and all registered Comms invariants. One
 that advertises DMs MUST implement all applicable Marmot rules in §7.
 
-The registry revision 7 entry set, history snapshot, release manifest, and
+The registry revision 8 entry set, history snapshot, release manifest, and
 vector metadata MUST match exactly. Transport-independent credential-continuity definitions
 remain non-claimable under this selected revision.
 

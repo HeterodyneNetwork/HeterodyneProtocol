@@ -1,0 +1,147 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/workspace/workspace-policy-v1.schema.json",
+  "title": "workspace-policy-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version",
+    "object_type",
+    "workspace_id",
+    "actor",
+    "kel_head",
+    "authority_sequence",
+    "repository_rid",
+    "repository_head",
+    "issued_at",
+    "signature",
+    "policy_id",
+    "sequence",
+    "governance",
+    "visibility_ceiling",
+    "allowed_role_types",
+    "allow_public_resources",
+    "allow_bilateral_relationships",
+    "default_host_ids",
+    "ordinary_write_max_age",
+    "authority_mutation_max_age"
+  ],
+  "properties": {
+    "spec_version": {
+      "const": "workspace/0.1.0"
+    },
+    "object_type": {
+      "const": "workspace-policy-v1"
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "actor": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "kel_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "authority_sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "repository_rid": {
+      "type": "string",
+      "pattern": "^rad:[A-Za-z0-9]+$"
+    },
+    "repository_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "issued_at": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    },
+    "policy_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "governance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "threshold",
+        "controllers"
+      ],
+      "properties": {
+        "threshold": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "controllers": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "visibility_ceiling": {
+      "enum": [
+        "public",
+        "selective",
+        "private"
+      ]
+    },
+    "allowed_role_types": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "public",
+          "member",
+          "guest",
+          "project",
+          "service",
+          "moderation"
+        ]
+      }
+    },
+    "allow_public_resources": {
+      "type": "boolean"
+    },
+    "allow_bilateral_relationships": {
+      "type": "boolean"
+    },
+    "default_host_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "uniqueItems": true,
+      "minItems": 1
+    },
+    "ordinary_write_max_age": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 86400
+    },
+    "authority_mutation_max_age": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 300
+    }
+  }
+}

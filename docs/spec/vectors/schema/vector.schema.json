@@ -29,7 +29,8 @@
         "core",
         "comms",
         "control",
-        "social"
+        "social",
+        "workspace"
       ]
     },
     "owner_version": {
@@ -38,7 +39,8 @@
         "core/0.5.0",
         "comms/0.5.0",
         "control/0.5.0",
-        "social/0.5.0"
+        "social/0.5.0",
+        "workspace/0.1.0"
       ]
     },
     "dependency_versions": {
@@ -61,6 +63,10 @@
         "social": {
           "type": "string",
           "const": "social/0.5.0"
+        },
+        "workspace": {
+          "type": "string",
+          "const": "workspace/0.1.0"
         }
       }
     },
@@ -78,7 +84,7 @@
       "maxItems": 1,
       "items": {
         "type": "string",
-        "pattern": "^heterodyne:(core|comms|control|social)/0\\.5\\.0#[a-z0-9]+(?:-[a-z0-9]+)*$"
+        "pattern": "^heterodyne:(?:(?:core|comms|control|social)/0\\.5\\.0|workspace/0\\.1\\.0)#[a-z0-9]+(?:-[a-z0-9]+)*$"
       }
     },
     "description": {
@@ -191,6 +197,31 @@
         "properties": {
           "owner_version": {
             "const": "control/0.5.0"
+          },
+          "dependency_versions": {
+            "const": {
+              "core": "core/0.5.0",
+              "comms": "comms/0.5.0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "owner_document": {
+            "const": "workspace"
+          }
+        },
+        "required": [
+          "owner_document"
+        ]
+      },
+      "then": {
+        "properties": {
+          "owner_version": {
+            "const": "workspace/0.1.0"
           },
           "dependency_versions": {
             "const": {
@@ -394,7 +425,20 @@
                   "node-advert-clock-skew",
                   "node-advert-clock-uncertain",
                   "node-advert-expiry-invalid",
-                  "node-advert-lifetime-exceeded"
+                  "node-advert-lifetime-exceeded",
+                  "workspace_schema_invalid",
+                  "workspace_signature_invalid",
+                  "authority_conflict",
+                  "capability_escalation",
+                  "policy_denied",
+                  "checkpoint_stale",
+                  "affiliation_stale",
+                  "device_revoked",
+                  "history_denied",
+                  "resource_unknown",
+                  "host_unauthorized",
+                  "private_topology_disclosed",
+                  "workspace_replay"
                 ]
               }
             },

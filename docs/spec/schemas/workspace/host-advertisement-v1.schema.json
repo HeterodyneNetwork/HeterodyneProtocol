@@ -1,0 +1,135 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/workspace/host-advertisement-v1.schema.json",
+  "title": "host-advertisement-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version",
+    "object_type",
+    "workspace_id",
+    "actor",
+    "kel_head",
+    "authority_sequence",
+    "repository_rid",
+    "repository_head",
+    "issued_at",
+    "signature",
+    "host_id",
+    "nid",
+    "radicle_locators",
+    "onion_endpoints",
+    "clearnet_endpoints",
+    "supported_features",
+    "inheritance",
+    "key_custody_resource_ids",
+    "priority",
+    "expires_at"
+  ],
+  "properties": {
+    "spec_version": {
+      "const": "workspace/0.1.0"
+    },
+    "object_type": {
+      "const": "host-advertisement-v1"
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "actor": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "kel_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "authority_sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "repository_rid": {
+      "type": "string",
+      "pattern": "^rad:[A-Za-z0-9]+$"
+    },
+    "repository_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "issued_at": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    },
+    "host_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "radicle_locators": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^rad:[A-Za-z0-9]+$"
+      }
+    },
+    "onion_endpoints": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^https?://[a-z2-7]{56}\\.onion(?::[0-9]{1,5})?$"
+      }
+    },
+    "clearnet_endpoints": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^https://"
+      }
+    },
+    "supported_features": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9.-]+\\.v[0-9]+$"
+      }
+    },
+    "inheritance": {
+      "enum": [
+        "default",
+        "supplement",
+        "replace"
+      ]
+    },
+    "key_custody_resource_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "uniqueItems": true
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535
+    },
+    "expires_at": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

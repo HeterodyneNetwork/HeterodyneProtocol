@@ -2,7 +2,7 @@
 
 Document ID: `core`<br>
 Version: `core/0.5.0`<br>
-Registry revision: `6`
+Registry revision: `8`
 
 Normative dependencies: None.
 
@@ -1547,7 +1547,7 @@ membership declaration:
 supported network backend, and requires invalid signatures or delegations to
 be rejected rather than rendered with a warning. Disabling or bypassing Tor
 makes the strict profile unmet; it does not silently downgrade a strict claim.
-A claim MUST satisfy every listed invariant at registry revision 7 and every
+A claim MUST satisfy every listed invariant at registry revision 8 and every
 applicable strict vector.
 
 Higher-document strict profiles compose by naming prerequisite profile IDs and
@@ -1591,8 +1591,8 @@ IDs, strict-profile IDs, implementation role, and every dependency version.
 Core has no document dependencies. Protocol conformance and vector conformance
 are distinct claims.
 
-This document is pinned to registry revision 7 and its immutable digest.
-History revision 7, the current entry files, release manifests, and vector
+This document is pinned to registry revision 8 and its immutable digest.
+History revision 8, the current entry files, release manifests, and vector
 metadata MUST agree exactly. Optional Control recovery profiles remain
 independently claimable and do not alter baseline Core conformance.
 

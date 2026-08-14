@@ -21,8 +21,8 @@ Every vector validates against
 {
   "vector_id": "<topic>/<stable-id>",
   "vector_schema_version": "1.0.0",
-  "owner_document": "core | comms | control | social",
-  "owner_version": "<owner>/0.5.0",
+  "owner_document": "core | comms | control | social | workspace",
+  "owner_version": "<qualified owner version>",
   "dependency_versions": {
     "<permitted-lower-document>": "<document>/0.5.0"
   },
@@ -42,8 +42,8 @@ wire format and is not the vector envelope version.
 
 The schema requires each actual vector's `registry_revision` to be an integer;
 the placeholder above means that every vector pins the revision governing its
-behavior. The current unreleased corpus contains 403 registry-revision-5
-vectors: 127 Core, 191 Comms, 32 Control, and 53 Social. Ten
+behavior. The current unreleased corpus contains 497 registry-revision-8
+vectors: 148 Core, 206 Comms, 51 Control, 53 Social, and 39 Workspace. Ten
 transport-independent credential-continuity draft evaluations explicitly set
 `conformance_claimable:false`; they do not activate a wire or recovery profile.
 Historical released vectors and the signed behavior they describe MUST NOT be
@@ -55,17 +55,22 @@ Dependency versions follow the family DAG:
 ```text
 Core <- Comms <- Control
 Core <- Comms <- Social
+Core <- Comms <- Workspace
+Control <- Workspace
+Social <- Workspace
 ```
 
 Core vectors therefore have no dependencies; Comms vectors pin Core; Control
-and Social vectors pin Core and Comms. Control vectors cover Marmot group
+and Social vectors pin Core and Comms. Workspace vectors pin Core and Comms;
+optional Control and Social composition claims add those documents separately.
+Control vectors cover Marmot group
 admission, enrollment, entitlements, node-scoped tokens, RPC, operation
 reservation, failover, retention, and separately advertised recovery profiles.
 
 ## Coverage authority
 
 [`coverage/manifest.json`](coverage/manifest.json) is the sole coverage source.
-The Core, Comms, Control, Social, and family Markdown files in `coverage/` are
+The Core, Comms, Control, Social, Workspace, and family Markdown files in `coverage/` are
 deterministic generated projections. Do not maintain parallel maps by hand.
 
 Ownership is declared per vector, never inferred from its directory. In
@@ -82,7 +87,8 @@ particular:
   carriage, routing generations, group repositories, persona inboxes,
   retention, and node-mediated agent operations.
 
-Four Comms-owned claims/OIDC groups are carried forward under registry revision 5:
+Four Comms-owned claims/OIDC groups retain their profile-specific allocation
+semantics while their vector envelopes pin the current family registry:
 
 - `claims/` covers canonical IDs and typed keys, issuer/trust decisions,
   attenuation, proof of possession, visibility, and revocation;

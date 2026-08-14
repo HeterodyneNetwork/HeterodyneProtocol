@@ -10,7 +10,7 @@ export type StampInput = {
 export function stampOwner(
   input: StampInput,
   registry: Registry,
-): "core" | "comms" | "social" | null {
+): "core" | "comms" | "social" | "workspace" | null {
   if (input.is_dr_outer) return null;
 
   const kind = registry.kinds.find((entry) => entry.kind === input.kind);

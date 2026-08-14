@@ -37,6 +37,8 @@ function registryWithHistory(
   changed.kinds = current.kinds;
   changed.reason_codes = current.reason_codes;
   changed.security_invariants = current.security_invariants;
+  changed.features = current.features ?? [];
+  changed.objects = current.objects ?? [];
   changed.currentEntrySet = current;
   changed.history = new Map([
     [1, previous],
@@ -48,9 +50,9 @@ function registryWithHistory(
 describe("revisioned protocol registry", () => {
   const registry = loadRegistry(repositoryRoot);
 
-  it("allocates revision 7 kinds with unique features and acyclic prerequisites", () => {
-    expect(registry.manifest.revision).toBe(7);
-    expect(registry.history.get(7)).toEqual(registry.currentEntrySet);
+  it("allocates revision 8 objects with unique features and acyclic prerequisites", () => {
+    expect(registry.manifest.revision).toBe(8);
+    expect(registry.history.get(8)).toEqual(registry.currentEntrySet);
     expect(registry.features.length).toBeGreaterThan(0);
     expect(new Set(registry.features.map((entry) => entry.id)).size)
       .toBe(registry.features.length);
@@ -63,14 +65,34 @@ describe("revisioned protocol registry", () => {
         "comms.marmot-conversations.v1",
         "comms.radicle-marmot-storage.v1",
         "comms.agent-authorship.v1",
+        "workspace.role-authorization.v1",
+        "workspace.private-role-control.v1",
+        "workspace.radicle-transport-backstop.v1",
+        "workspace.resource-key-delivery.v1",
+        "workspace.bilateral-allowance.v1",
+        "workspace.joint-governance.v1",
       ]),
     );
+    expect(registry.objects.map((entry) => entry.id)).toEqual([
+      "workspace-manifest-v1",
+      "workspace-policy-v1",
+      "role-manifest-v1",
+      "role-grant-v1",
+      "role-revocation-v1",
+      "role-checkpoint-v1",
+      "resource-advertisement-v1",
+      "host-advertisement-v1",
+      "service-advertisement-v1",
+      "workspace-relationship-v1",
+      "joint-workspace-relationship-v1",
+      "resource-key-envelope-v1",
+    ]);
     expect(() => validateRegistry(registry)).not.toThrow();
   });
 
-  it("loads revision 7 while retaining historical revision 1 through 6 snapshots", () => {
-    expect(registry.manifest.revision).toBe(7);
-    expect(registry.history.get(7)).toEqual(registry.currentEntrySet);
+  it("loads revision 8 while retaining historical revision 1 through 7 snapshots", () => {
+    expect(registry.manifest.revision).toBe(8);
+    expect(registry.history.get(8)).toEqual(registry.currentEntrySet);
     expect(registry.history.has(1)).toBe(true);
     expect(registry.history.has(2)).toBe(true);
     expect(registry.history.has(3)).toBe(true);
@@ -252,7 +274,7 @@ describe("revisioned protocol registry", () => {
     ]));
   });
 
-  it("preserves historical snapshots and snapshots revision 7", () => {
+  it("preserves historical snapshots and snapshots revision 8", () => {
     const history1 = JSON.parse(readFileSync(
       resolve(repositoryRoot, "docs/spec/registry/history/1.json"),
       "utf8",
@@ -279,6 +301,10 @@ describe("revisioned protocol registry", () => {
     )) as RegistryEntrySet;
     const history7 = JSON.parse(readFileSync(
       resolve(repositoryRoot, "docs/spec/registry/history/7.json"),
+      "utf8",
+    )) as RegistryEntrySet;
+    const history8 = JSON.parse(readFileSync(
+      resolve(repositoryRoot, "docs/spec/registry/history/8.json"),
       "utf8",
     )) as RegistryEntrySet;
 
@@ -319,8 +345,9 @@ describe("revisioned protocol registry", () => {
     expect(history4).not.toEqual(registry.currentEntrySet);
     expect(history5).not.toEqual(registry.currentEntrySet);
     expect(history6).not.toEqual(registry.currentEntrySet);
-    expect(history7).toEqual(registry.currentEntrySet);
-    expect(registry.manifest.entry_set_sha256).toBe(computeRegistryDigest(history7));
+    expect(history7).not.toEqual(registry.currentEntrySet);
+    expect(history8).toEqual(registry.currentEntrySet);
+    expect(registry.manifest.entry_set_sha256).toBe(computeRegistryDigest(history8));
   });
 
   it("commits the canonical digest of the current entry set", () => {

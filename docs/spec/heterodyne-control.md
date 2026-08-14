@@ -6,7 +6,7 @@ Version: `control/0.5.0`
 
 Status: **0.5.0 draft**
 
-Registry revision: `6`
+Registry revision: `8`
 
 Normative dependencies:
 

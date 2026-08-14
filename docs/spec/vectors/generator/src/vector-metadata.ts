@@ -522,6 +522,48 @@ control/sftp-root-confined
 control/sftp-grant-expired
 `);
 
+const WORKSPACE_IDS = ids(`
+workspace-object/canonical-valid
+workspace-object/unknown-member-rejected
+workspace-object/signature-invalid
+workspace-policy/intersection-valid
+workspace-policy/escalation-rejected
+workspace-policy/denial-wins
+workspace-policy/conflict-rejected
+workspace-grant/single-actor-active
+workspace-grant/multi-approval-insufficient
+workspace-grant/invite-replay-rejected
+workspace-grant/admin-no-governance
+workspace-relationship/bilateral-valid
+workspace-relationship/grace-boundary
+workspace-relationship/stale-rejected
+workspace-relationship/mismatched-signatures
+workspace-privacy/public-clean
+workspace-privacy/concealed-correlation-rejected
+workspace-host/inherited-failover
+workspace-host/replace-retains-backstop
+workspace-host/no-backstop-rejected
+workspace-device/independent-leaf-removal
+workspace-device/persona-removes-all-leaves
+workspace-key/full-history
+workspace-key/from-admission-denied
+workspace-key/selected-snapshot
+workspace-key/unauthorized-host
+workspace-key/revoked-device
+workspace-key/keypackage-readmission
+workspace-freshness/ordinary-boundary
+workspace-freshness/ordinary-stale
+workspace-freshness/authority-boundary
+workspace-freshness/authority-stale
+workspace-joint/threshold-valid
+workspace-joint/host-not-authority
+workspace-events/mls-epoch-rotation
+workspace-events/size-rotation
+workspace-events/exact-bytes
+workspace-events/mutated-bytes-rejected
+workspace-events/nostr-radicle-equivalent
+`);
+
 const PROFILE_BY_VECTOR = new Map<string, string>([
   ["agent-moderation/receipt-valid", "heterodyne-social-agent-policy-receipt-v1"],
   ["agent-moderation/policy-list-valid", "heterodyne-social-agent-policy-list-v1"],
@@ -579,6 +621,7 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
     ["comms", COMMS_IDS],
     ["control", CONTROL_IDS],
     ["social", SOCIAL_IDS],
+    ["workspace", WORKSPACE_IDS],
   ] as const).filter(([, entries]) => entries.has(vectorId)).map(([owner]) => owner);
   if (owners.length !== 1) {
     throw new Error(`vector owner is not assigned exactly once: ${vectorId}`);
@@ -598,7 +641,7 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
     owner_document: owner,
     owner_version: `${owner}/${DOCUMENT_VERSIONS[owner]}`,
     dependency_versions: dependencies,
-    registry_revision: 7,
+    registry_revision: 8,
     ...(profile === undefined ? {} : { profile }),
     spec_refs: [`heterodyne:${reference.document}/${DOCUMENT_VERSIONS[reference.document]}#${reference.anchor}`],
   };
@@ -825,6 +868,19 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
                       : vectorId.includes("sftp-")
                         ? "control-sftp-recovery"
                         : "control-conformance",
+    },
+    workspace: {
+      "workspace-object": "workspace-object-types",
+      "workspace-policy": "workspace-role-policy",
+      "workspace-grant": "workspace-grants",
+      "workspace-relationship": "workspace-relationships",
+      "workspace-privacy": "workspace-privacy",
+      "workspace-host": "workspace-advertisements",
+      "workspace-device": "workspace-role-control",
+      "workspace-key": "workspace-key-delivery",
+      "workspace-freshness": "workspace-freshness",
+      "workspace-joint": "workspace-relationships",
+      "workspace-events": "workspace-role-repositories",
     },
   };
   return anchors[owner]?.[prefix] ?? `${owner}-conformance`;

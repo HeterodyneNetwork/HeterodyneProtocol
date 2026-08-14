@@ -17,28 +17,33 @@ The project is specification-first and implementation-agnostic. All current
 documents are 0.x drafts and may make breaking changes before 1.0.
 
 [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is the non-normative
-family map. Normative authority is divided among the four versioned documents
+family map. Normative authority is divided among the five versioned documents
 below; the former 0.4.0 monolith is frozen in the archive.
 
 ## Protocol family
 
-The family has four independently versioned documents:
+The family has five independently versioned documents:
 
 | Document | Prepared version | Responsibility |
 |---|---:|---|
 | [Heterodyne Core](docs/spec/heterodyne-core.md) | `core/0.5.0` | Persona identity, KEL verification, canonical Nostr bytes, Radicle delegation, node roles, repository substrate, registry, versioning, and base conformance. |
 | [Heterodyne Comms](docs/spec/heterodyne-comms.md) | `comms/0.5.0` | Nostr-native envelopes, privacy tiers, publishing, Marmot conversations and media, Radicle conversation storage, atomic key claims, the private claim ledger, and the OIDC/JWT projection. |
-| [Heterodyne Control](docs/spec/heterodyne-control.md) | `control/0.5.0` | Own-device enrollment, grants, RPC, node-mediated Marmot access, and agentic sessions as a Comms profile. This release is incomplete and not claimable. |
+| [Heterodyne Control](docs/spec/heterodyne-control.md) | `control/0.5.0` | Active own-device enrollment, grants, RPC, node-mediated Marmot access, and agentic sessions as a Comms profile. |
 | [Heterodyne Social](docs/spec/heterodyne-social.md) | `social/0.5.0` | Public following, interactions, moderation, lists, social discovery, durable assets, and ATProto attachment. |
+| [Heterodyne Workspace](docs/spec/heterodyne-workspace.md) | `workspace/0.1.0` | Independently governed workspaces, roles, private discovery, federation, hosting, and resource-key delivery. |
 
-The dependency graph is exactly:
+The allowed composition graph is exactly; Workspace's solid base dependency
+is Core+Comms, while its Control and Social edges are optional:
 
 ```text
 Core <- Comms <- Control
 Core <- Comms <- Social
+Core <- Comms <- Workspace
+Control <- Workspace
+Social <- Workspace
 ```
 
-These prepared 0.5.0 documents are current normative authority in the
+These prepared 0.x documents are current normative authority in the
 repository, but remain unreleased pending explicit release approval.
 
 Versions are qualified per document. `core/0.5.0` and `social/0.5.0`, for
@@ -78,18 +83,22 @@ redirects historical section links.
   scoped, temporary, sender-constrained workload tokens. A full node adds
   canonical agent attribution and signs with a stable dedicated role key that
   is never released to the agent; direct user-device signing is forbidden.
-- **Independent feature growth.** Control and Social both build on Comms but do
-  not depend on each other.
+- **Workspace collaboration.** Workspace roles distribute private policy,
+  resource and service advertisements, bilateral allowances, host selection,
+  and independently rotated resource keys across organizational boundaries.
+- **Independent feature growth.** Control and Social are independent Comms
+  siblings. Workspace composes them only for optional RPC and social-policy
+  integrations.
 - **Client-side trust.** Relays, full nodes, routing nodes, and Radicle hosts
   are carriers or designated endpoints. Identity, decryption, authorization,
   and policy evaluation remain within user-controlled clients and nodes.
 
-## 0.5.0 conformance
+## 0.x conformance
 
 Every implementation claims Core. A Heterodyne persona claims Core+Comms.
 Social adds public social behavior. Control requires a conformant Core+Comms
-implementation plus the Control profile, but the current incomplete Control
-release cannot be claimed.
+implementation plus the active Control profile. Workspace requires Core+Comms;
+its Control and Social compositions are optional and separately advertised.
 
 Claims name exact qualified versions, required features, registry revision or
 digest, and any strict profiles. The stable strict IDs are:
@@ -97,9 +106,10 @@ digest, and any strict profiles. The stable strict IDs are:
 - `heterodyne-core-strict-v1`
 - `heterodyne-comms-strict-v1`
 - `heterodyne-comms-strict-v2`
-- `heterodyne-control-strict-v1` (reserved-inactive)
+- `heterodyne-control-strict-v1`
 - `heterodyne-social-strict-v1`
 - `heterodyne-social-strict-v2`
+- `heterodyne-workspace-strict-v1`
 
 Conformance vectors in [docs/spec/vectors](docs/spec/vectors/) are normative
 for the behavior they cover. Canonical bytes and expected verdicts must match
@@ -112,8 +122,9 @@ exactly; semantic similarity is not conformance.
 | [docs/spec/heterodyne.md](docs/spec/heterodyne.md) | Non-normative family overview and document map |
 | [docs/spec/heterodyne-core.md](docs/spec/heterodyne-core.md) | Core 0.5.0 normative document |
 | [docs/spec/heterodyne-comms.md](docs/spec/heterodyne-comms.md) | Comms 0.5.0 normative document |
-| [docs/spec/heterodyne-control.md](docs/spec/heterodyne-control.md) | Incomplete Control 0.5.0 profile |
+| [docs/spec/heterodyne-control.md](docs/spec/heterodyne-control.md) | Active Control 0.5.0 profile |
 | [docs/spec/heterodyne-social.md](docs/spec/heterodyne-social.md) | Social 0.5.0 normative document |
+| [docs/spec/heterodyne-workspace.md](docs/spec/heterodyne-workspace.md) | Workspace 0.1.0 normative document |
 | [docs/spec/registry](docs/spec/registry/) | Core-owned kind, profile, reason-code, and invariant registry |
 | [docs/spec/releases](docs/spec/releases/) | Untagged per-document release manifests pinned to an exact registry snapshot |
 | [docs/spec/vectors](docs/spec/vectors/) | Normative conformance vectors and verification tooling |

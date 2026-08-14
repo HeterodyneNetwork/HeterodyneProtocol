@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/workspace/resource-key-envelope-v1.schema.json",
+  "title": "resource-key-envelope-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version",
+    "object_type",
+    "workspace_id",
+    "actor",
+    "kel_head",
+    "authority_sequence",
+    "repository_rid",
+    "repository_head",
+    "issued_at",
+    "signature",
+    "envelope_id",
+    "resource_id",
+    "key_epoch",
+    "target_persona",
+    "target_device",
+    "role_id",
+    "checkpoint_id",
+    "host_id",
+    "wrapping_profile",
+    "nonce",
+    "ciphertext",
+    "ciphertext_sha256",
+    "created_at"
+  ],
+  "properties": {
+    "spec_version": {
+      "const": "workspace/0.1.0"
+    },
+    "object_type": {
+      "const": "resource-key-envelope-v1"
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "actor": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "kel_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "authority_sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "repository_rid": {
+      "type": "string",
+      "pattern": "^rad:[A-Za-z0-9]+$"
+    },
+    "repository_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "issued_at": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    },
+    "envelope_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "resource_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "key_epoch": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "target_persona": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "target_device": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "role_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "checkpoint_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "host_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "wrapping_profile": {
+      "const": "marmot-mls-application-v1"
+    },
+    "nonce": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{16,128}$"
+    },
+    "ciphertext": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "ciphertext_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "created_at": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

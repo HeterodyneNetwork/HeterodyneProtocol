@@ -160,3 +160,16 @@ Generated compatibility projection. The authoritative allocation container is `d
 | `node-advert-clock-uncertain` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-node-advertisement | Known verifier clock uncertainty exceeds the 300-second acceptance window. |
 | `node-advert-expiry-invalid` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-node-advertisement | A node advertisement expiry is not strictly after created_at. |
 | `node-advert-lifetime-exceeded` | core | draft | `core/0.5.0` | heterodyne:core/0.5.0#core-node-advertisement | A node advertisement lifetime exceeds 86400 seconds. |
+| `workspace_schema_invalid` | workspace | draft | `workspace/0.1.0` | heterodyne:workspace/0.1.0#workspace-errors | A Workspace object or its canonical encoding does not match its closed schema. |
+| `workspace_signature_invalid` | workspace | draft | `workspace/0.1.0` | heterodyne:workspace/0.1.0#workspace-errors | A Workspace signature, actor, KEL, or repository binding is invalid. |
+| `authority_conflict` | workspace | draft | `workspace/0.1.0` | heterodyne:workspace/0.1.0#workspace-errors | Required authority heads or role paths conflict or are incomparable. |
+| `capability_escalation` | workspace | draft | `workspace/0.1.0` | heterodyne:workspace/0.1.0#workspace-errors | Inheritance, a grant, or delegation attempts to widen an applicable ceiling. |
+| `policy_denied` | workspace | draft | `workspace/0.1.0` | heterodyne:workspace/0.1.0#workspace-errors | Current effective Workspace policy denies the operation. |
+| `checkpoint_stale` | workspace | draft | `workspace/0.1.0` | heterodyne:workspace/0.1.0#workspace-errors | The applicable signed authorization checkpoint exceeds its maximum age. |
+| `affiliation_stale` | workspace | draft | `workspace/0.1.0` | heterodyne:workspace/0.1.0#workspace-errors | A bilateral source affiliation exceeds its proof and grace bounds. |
+| `device_revoked` | workspace | draft | `workspace/0.1.0` | heterodyne:workspace/0.1.0#workspace-errors | The target or requesting device is not currently authorized. |
+| `history_denied` | workspace | draft | `workspace/0.1.0` | heterodyne:workspace/0.1.0#workspace-errors | A requested historical key falls outside the active grant history mode. |
+| `resource_unknown` | workspace | draft | `workspace/0.1.0` | heterodyne:workspace/0.1.0#workspace-errors | An authorized responder has no resource matching the requested identifier. |
+| `host_unauthorized` | workspace | draft | `workspace/0.1.0` | heterodyne:workspace/0.1.0#workspace-errors | The responder is not an authorized key custodian for the resource and checkpoint. |
+| `private_topology_disclosed` | workspace | draft | `workspace/0.1.0` | heterodyne:workspace/0.1.0#workspace-errors | A public projection correlates a concealed workspace, role, relationship, repository, or resource. |
+| `workspace_replay` | workspace | draft | `workspace/0.1.0` | heterodyne:workspace/0.1.0#workspace-errors | A Workspace nonce, approval, relationship, grant, or key envelope was replayed. |

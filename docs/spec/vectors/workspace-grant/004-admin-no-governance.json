@@ -1,0 +1,38 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "workspace",
+  "owner_version": "workspace/0.1.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 8,
+  "spec_refs": [
+    "heterodyne:workspace/0.1.0#workspace-grants"
+  ],
+  "vector_id": "workspace-grant/admin-no-governance",
+  "description": "Admin and invite capabilities do not imply policy governance.",
+  "input": {
+    "actor_capabilities": [
+      "admin",
+      "invite"
+    ],
+    "grant_capabilities": [
+      "govern-policy"
+    ],
+    "grant_delegable": false,
+    "required_approvals": 1,
+    "valid_approval_actors": [
+      "actor-a"
+    ],
+    "subject_accepted": true,
+    "waiting_period_elapsed": true,
+    "invitation_nonce_unused": true,
+    "invitation_unexpired": true
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "capability_escalation"
+  },
+  "direction": "consume"
+}

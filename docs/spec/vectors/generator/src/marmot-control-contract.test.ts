@@ -40,7 +40,7 @@ describe("Marmot Control canonical contract", () => {
     }
   });
 
-  it("uses registry revision 7, an invite rumor kind, and one inner-only Control profile", () => {
+  it("uses registry revision 8, an invite rumor kind, and one inner-only Control profile", () => {
     const manifest = JSON.parse(read("docs/spec/registry/manifest.json")) as {
       revision: number;
     };
@@ -48,7 +48,7 @@ describe("Marmot Control canonical contract", () => {
       kinds: Array<{ kind: number; profiles: Array<{ profile_id: string; owner: string; discriminator: string }> }>;
     };
 
-    expect(manifest.revision).toBe(7);
+    expect(manifest.revision).toBe(8);
     expect(kinds.kinds.find(({ kind }) => kind === 31017)?.profiles).toContainEqual(
       expect.objectContaining({
         profile_id: "heterodyne-control-marmot-frame-v1",

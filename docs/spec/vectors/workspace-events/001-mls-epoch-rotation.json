@@ -1,0 +1,32 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "workspace",
+  "owner_version": "workspace/0.1.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 8,
+  "spec_refs": [
+    "heterodyne:workspace/0.1.0#workspace-role-repositories"
+  ],
+  "vector_id": "workspace-events/mls-epoch-rotation",
+  "description": "A membership-changing MLS epoch selects a fresh event repository with one overlap locator.",
+  "input": {
+    "active_rid": "rad:zOld",
+    "active_mls_epoch": 7,
+    "current_mls_epoch": 8,
+    "size_bytes": 1,
+    "max_size_bytes": 5000000000,
+    "next_rid": "rad:zNew"
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "active_rid": "rad:zNew",
+      "overlap_rid": "rad:zOld",
+      "rotation_reason": "mls-epoch"
+    }
+  },
+  "direction": "consume"
+}

@@ -1,0 +1,51 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "workspace",
+  "owner_version": "workspace/0.1.0",
+  "dependency_versions": {
+    "core": "core/0.5.0",
+    "comms": "comms/0.5.0"
+  },
+  "registry_revision": 8,
+  "spec_refs": [
+    "heterodyne:workspace/0.1.0#workspace-role-policy"
+  ],
+  "vector_id": "workspace-policy/conflict-rejected",
+  "description": "Incomparable authority heads fail closed.",
+  "input": {
+    "requested": [
+      "read",
+      "write"
+    ],
+    "workspace_ceiling": [
+      "read",
+      "write",
+      "admin"
+    ],
+    "role_path_ceilings": [
+      [
+        "read",
+        "write"
+      ],
+      [
+        "read",
+        "write",
+        "triage"
+      ]
+    ],
+    "subject_capabilities": [
+      "read",
+      "write"
+    ],
+    "device_active": true,
+    "denied": false,
+    "revoked": false,
+    "authority_conflict": true,
+    "carrier_only_evidence": false
+  },
+  "expected_output": {
+    "verdict": "reject",
+    "reason_code": "authority_conflict"
+  },
+  "direction": "consume"
+}
