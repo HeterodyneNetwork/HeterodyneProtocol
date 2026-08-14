@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/workspace/workspace-manifest-v1.schema.json",
+  "title": "workspace-manifest-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version",
+    "object_type",
+    "workspace_id",
+    "actor",
+    "kel_head",
+    "authority_sequence",
+    "repository_rid",
+    "repository_head",
+    "issued_at",
+    "signature",
+    "root_policy_rid",
+    "root_policy_head",
+    "visibility",
+    "public_roles"
+  ],
+  "properties": {
+    "spec_version": {
+      "const": "workspace/0.1.0"
+    },
+    "object_type": {
+      "const": "workspace-manifest-v1"
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "actor": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "kel_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "authority_sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "repository_rid": {
+      "type": "string",
+      "pattern": "^rad:[A-Za-z0-9]+$"
+    },
+    "repository_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "issued_at": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    },
+    "root_policy_rid": {
+      "type": "string",
+      "pattern": "^rad:[A-Za-z0-9]+$"
+    },
+    "root_policy_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "visibility": {
+      "enum": [
+        "public",
+        "selective",
+        "private"
+      ]
+    },
+    "public_roles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "role_id",
+          "repository_rid"
+        ],
+        "properties": {
+          "role_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "repository_rid": {
+            "type": "string",
+            "pattern": "^rad:[A-Za-z0-9]+$"
+          }
+        }
+      },
+      "uniqueItems": true
+    }
+  }
+}

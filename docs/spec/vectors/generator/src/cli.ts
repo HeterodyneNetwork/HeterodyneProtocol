@@ -13,6 +13,7 @@ import {
   lintFamilyDocs,
   writeReleaseManifests,
 } from "./docs-lint.js";
+import { writeWorkspaceSchemas } from "./workspace-schemas.js";
 import { verifyVectorTree } from "./verify.js";
 import { writeCoverage } from "./coverage.js";
 import { authorRegistryRevision } from "./registry.js";
@@ -68,9 +69,13 @@ if (command === "author") {
   const revision = Number.parseInt(process.argv[4] ?? "6", 10);
   const digest = authorRegistryRevision(repositoryRoot, revision);
   console.log(`authored registry revision ${revision} (${digest})`);
+} else if (command === "workspace-schemas") {
+  const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
+  const written = writeWorkspaceSchemas(repositoryRoot);
+  console.log(`generated ${written.length} Workspace schemas`);
 } else {
   console.error(
-    "usage: tsx src/cli.ts <author|verify|family-check|coverage|release-manifests|registry-author> [root] [revision]",
+    "usage: tsx src/cli.ts <author|verify|family-check|coverage|release-manifests|registry-author|workspace-schemas> [root] [revision]",
   );
   process.exitCode = 2;
 }

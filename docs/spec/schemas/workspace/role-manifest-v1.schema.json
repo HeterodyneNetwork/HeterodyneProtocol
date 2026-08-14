@@ -1,0 +1,219 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/workspace/role-manifest-v1.schema.json",
+  "title": "role-manifest-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version",
+    "object_type",
+    "workspace_id",
+    "actor",
+    "kel_head",
+    "authority_sequence",
+    "repository_rid",
+    "repository_head",
+    "issued_at",
+    "signature",
+    "role_id",
+    "parent_role_id",
+    "role_type",
+    "visibility",
+    "allowed_capabilities",
+    "history_mode",
+    "selected_snapshots",
+    "policy_head",
+    "mls_group_id",
+    "active_event_repository",
+    "overlap_event_repository",
+    "archived_event_repositories"
+  ],
+  "properties": {
+    "spec_version": {
+      "const": "workspace/0.1.0"
+    },
+    "object_type": {
+      "const": "role-manifest-v1"
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "actor": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "kel_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "authority_sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "repository_rid": {
+      "type": "string",
+      "pattern": "^rad:[A-Za-z0-9]+$"
+    },
+    "repository_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "issued_at": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    },
+    "role_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "parent_role_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "role_type": {
+      "enum": [
+        "public",
+        "member",
+        "guest",
+        "project",
+        "service",
+        "moderation"
+      ]
+    },
+    "visibility": {
+      "enum": [
+        "public",
+        "selective",
+        "private"
+      ]
+    },
+    "allowed_capabilities": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "read",
+          "write",
+          "triage",
+          "moderate",
+          "admin",
+          "invite",
+          "govern-policy",
+          "govern-subroles",
+          "govern-thresholds",
+          "govern-publicize",
+          "govern-federation",
+          "govern-delegation",
+          "govern-lifecycle"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "history_mode": {
+      "enum": [
+        "full",
+        "from-admission",
+        "selected-snapshots"
+      ]
+    },
+    "selected_snapshots": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "uniqueItems": true
+    },
+    "policy_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "mls_group_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "active_event_repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository_rid",
+        "mls_epoch"
+      ],
+      "properties": {
+        "repository_rid": {
+          "type": "string",
+          "pattern": "^rad:[A-Za-z0-9]+$"
+        },
+        "mls_epoch": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "overlap_event_repository": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository_rid",
+            "mls_epoch"
+          ],
+          "properties": {
+            "repository_rid": {
+              "type": "string",
+              "pattern": "^rad:[A-Za-z0-9]+$"
+            },
+            "mls_epoch": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "archived_event_repositories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "repository_rid",
+          "mls_epoch"
+        ],
+        "properties": {
+          "repository_rid": {
+            "type": "string",
+            "pattern": "^rad:[A-Za-z0-9]+$"
+          },
+          "mls_epoch": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "uniqueItems": true
+    }
+  }
+}
