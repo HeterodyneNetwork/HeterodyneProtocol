@@ -1,19 +1,6 @@
 # Heterodyne Workspace Protocol Specification
 
-Document ID: `workspace`<br>
-Normative dependencies:
-
-- `heterodyne:0.5.0#core-identity-model`
-- `heterodyne:0.5.0#core-materialized-kel`
-- `heterodyne:0.5.0#core-repo-relay`
-- `heterodyne:0.5.0#comms-marmot`
-- `heterodyne:0.5.0#comms-marmot-event-repository`
-- `heterodyne:0.5.0#comms-marmot-relay`
-
-Optional composition dependencies:
-
-- `heterodyne:0.5.0#control-frame`
-- `heterodyne:0.5.0#social-moderation`
+Document ID: `workspace`
 
 Workspace is a section of the Heterodyne specification and is governed by
 `heterodyne:0.5.0#core-document-conventions`, which fixes the family version,
@@ -368,11 +355,11 @@ global deletion.
 <a id="workspace-freshness"></a>
 ## 13. Freshness, offline work, and conflicts
 
-Workspace defines two maximum authorization-view ages:
-
-- ordinary code, content, and discussion writes: 86,400 seconds;
-- grants, invitations, policy changes, key issuance, publicization,
-  federation, and governance mutations: 300 seconds.
+Authority mutations - grants, invitations, policy changes, key issuance,
+publicization, federation, and governance - use the authorization-view window
+defined by `heterodyne:0.5.0#comms-authorization-freshness`. Workspace adds one
+relaxed window for ordinary code, content, and discussion writes: 86,400
+seconds.
 
 A workspace, role, or resource policy MAY shorten or disable either window
 and MUST NOT lengthen it. The operation must reach a conforming validator

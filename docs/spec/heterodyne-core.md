@@ -1,11 +1,11 @@
 # Heterodyne Core Protocol Specification
 
-Document ID: `core`<br>
-Normative dependencies: None.
+Document ID: `core`
 
 Core is the foundation section of the Heterodyne specification. It owns the
-conventions that every other section follows; see
-[§2 Document conventions](#core-document-conventions).
+conventions that every other section follows, including the layering that
+fixes what each section may depend on; see
+[§1.1 Document conventions](#core-document-conventions).
 
 <a id="core-scope"></a>
 ## 1. Scope and non-goals
@@ -1535,10 +1535,10 @@ invariants it adds. Its **required invariant set** is the transitive closure
 of its prerequisites' required sets plus its own `adds_invariants`; the
 declaration is the single source of truth and no document restates the
 flattened set. An `adds_invariants` entry MUST be a registered invariant owned
-by the declaring document and MUST NOT already be inherited. A conformance
-report MUST list the computed closure and MUST reject a duplicate profile ID
-with a conflicting declaration. From 1.0, profile IDs are stable and changing
-a membership or obligation requires a new ID.
+by the declaring document and MUST NOT already be inherited. A duplicate
+profile ID carrying a conflicting declaration MUST be rejected. From 1.0,
+profile IDs are stable and changing a membership or obligation requires a new
+ID.
 
 <a id="core-security"></a>
 ## 13. Core security model
@@ -1586,17 +1586,19 @@ supplied by a document the claim also names. Validators MUST resolve the
 catalog prerequisite graph and reject cycles, missing IDs, and a requirement
 supplied only by an unclaimed document.
 
-A conformance report MUST, for each strict-profile ID, list the profile's state,
-conformance class, prerequisite profile IDs, required invariant IDs, required
-features, applicable strict-vector results, and any gaps. It MUST NOT report a
+A conformance report MUST, for each strict-profile ID, list the profile's
+state, conformance class, prerequisite profile IDs, the required-invariant
+closure computed under [§12.2](#core-strict-profile), required features,
+applicable strict-vector results, and any gaps. It MUST NOT report a
 profile as met while any required invariant, obligation, feature, prerequisite
 profile, or vector is unmet. A partial report may describe an unknown or unmet
 profile but MUST NOT advertise it in `strict_profiles`.
 
-Normative vectors compare canonical bytes and exact verdicts; semantic
-equivalence is insufficient. Each vector has an ID, owner document, owner
-version, registry pin, qualified spec references, direction, input, and
-expected output. Time-sensitive vectors use a simulated clock and production
+Wire conformance is byte-exact throughout the family: semantically similar
+encodings do not conform, and normative vectors compare canonical bytes and
+exact verdicts. Each vector carries an ID, a schema version, the owner
+document that owns the requirement, the family version, an optional profile,
+qualified spec references, a direction, an input, and an expected output. Time-sensitive vectors use a simulated clock and production
 vectors pin randomness. During 0.x, an accepted specification change MAY
 change or retire an unreleased current vector in place. Released artifact sets
 preserve their exact historical bytes. Vector-ID immutability begins at 1.0.

@@ -1,7 +1,6 @@
 # Heterodyne Comms Protocol Specification
 
-Document ID: `comms`<br>
-Normative dependencies: `heterodyne:0.5.0#core-conformance`.
+Document ID: `comms`
 
 Comms is a section of the Heterodyne specification and is governed by
 `heterodyne:0.5.0#core-document-conventions`, which fixes the family version,
@@ -267,7 +266,7 @@ The dedicated config audience key MUST NOT be distributed by published
 MUST contain no nsec, epoch secret, NID secret, audience key, or MLS state.
 Comms owns its encryption profile and audience payload types; private
 social preferences and followed-repository payloads are outside Comms.
-The credential authorization ledger in §8.1 is an allowed Comms-owned non-key
+The private persona claim ledger in §11 is an allowed Comms-owned non-key
 configuration payload.
 
 Authorization comes only from the KEL and active delegations defined by
@@ -1248,11 +1247,7 @@ issued.
 
 Every request rechecks current entitlement. A projected token never replaces
 private repository authority. Once revocation is observed, every associated
-token fails regardless of its remaining `exp`. Token minting and every
-privileged use require an authenticated, non-conflicted authorization view no
-more than 300 seconds old; mutation additionally requires the immediate
-fail-closed synchronization defined by Control. A fresh token cannot extend a
-stale authorization view.
+token fails regardless of its remaining `exp`.
 
 <a id="comms-control-bootstrap"></a>
 ### 9.2 Locked epoch inbox and recovery records
@@ -1273,6 +1268,20 @@ bulk transfer.
 
 Private-Radicle recovery and SFTP overflow are optional Control profiles.
 Neither is a prerequisite for Comms or baseline Control conformance.
+
+<a id="comms-authorization-freshness"></a>
+### 9.3 Authorization-view freshness
+
+This bound governs every Comms-derived authorization decision and every
+document that composes one; no other document restates it.
+
+Token minting and every privileged use require an authenticated,
+non-conflicted private authorization view no more than 300 seconds old. A
+mutation additionally performs an immediate synchronization attempt against
+the canonical private ledger before authorizing, and fails closed unless it
+establishes that fresh view. A fresh token cannot extend a stale authorization
+view. A composing document or a local policy MAY shorten the window and MUST
+NOT lengthen it.
 
 <a id="comms-key-claims"></a>
 ## 10. Atomic typed-key claims
@@ -1487,8 +1496,9 @@ The repository is multi-writer. An online node is not excluded because another
 authorized writer can mint. A node may mint for the persona only when it has
 all three of: a separately envelope-encrypted usable signing JWK, an `active`
 `oidc-token-issuer` claim, and a canonical checkpoint whose age is within the
-continuity manifest bound. That bound MUST be at most 300 seconds. Loss or
-reduction of any condition stops minting immediately.
+continuity manifest bound. That bound MUST NOT exceed the window in
+[§9.3](#comms-authorization-freshness). Loss or reduction of any condition
+stops minting immediately.
 
 The signing key MUST NOT be encrypted by or released merely with the ledger
 audience key. Its envelope binds persona, repository, checkpoint, key epoch,
@@ -2092,13 +2102,13 @@ NOT claim the profile if any item is missing. An implementation that exposes
 an automated publication path outside §15 MUST NOT claim Comms conformance or
 the Comms strict profile.
 
-No conforming report may list a §8.2 credential-continuity draft schema as an
+No conforming report may list a §8.4 credential-continuity draft schema as an
 active wire profile, feature, requirement, or strict-profile obligation. The
 unprofiled credential-continuity draft vectors exercise schema and pure state-machine
 definitions only; their normalized `conformance_claimable:false` result is
 part of the case and they do not establish Control or recovery conformance.
 
-Wire conformance is byte-exact. Semantically similar encodings do not conform.
-An unknown Comms version or registry profile MUST be rejected or explicitly
-degraded under Core unknown-version handling, never silently interpreted as
-this version.
+Byte-exact wire conformance and unknown-version handling are family-wide
+rules stated once by `heterodyne:0.5.0#core-conformance` and
+`heterodyne:0.5.0#core-versioning`; an unknown registry profile is an unknown
+stamped version for that purpose.

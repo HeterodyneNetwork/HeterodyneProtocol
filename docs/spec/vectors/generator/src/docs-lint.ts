@@ -48,7 +48,9 @@ export type FamilyDocIssue = {
     | "ambiguous-nostr-wire-key"
     | "claim-profile-revision-ambiguous"
     | "missing-upstream-kind-allocation"
-    | "strict-profile-closure-invalid";
+    | "strict-profile-closure-invalid"
+    | "unresolved-section-reference"
+    | "registry-digest-drift";
   message: string;
 };
 
@@ -67,6 +69,8 @@ const QUALIFIED_REFERENCE = new RegExp(
 const BARE_FAMILY_LINK =
   /\]\((?:\.\/)?heterodyne-(core|comms|control|social|workspace)\.md(?:#[^)]+)?\)/i;
 const NONCANONICAL_DECISION_REFERENCE = /\bADR-\d{3}\b|docs\/adr\//;
+const NUMBERED_HEADING = /^#{2,6}\s+(\d+(?:\.\d+)*)\.?\s/;
+const SECTION_REFERENCE = /§(\d+(?:\.\d+)*)/g;
 const BCP14_KEYWORD =
   /\b(?:MUST(?: NOT)?|REQUIRED|SHALL(?: NOT)?|SHOULD(?: NOT)?|RECOMMENDED|NOT RECOMMENDED|MAY|OPTIONAL)\b/;
 const EXPLICIT_NORMATIVE =
@@ -171,48 +175,20 @@ function normativeParagraphLines(lines: readonly string[]): Set<number> {
   return normative;
 }
 
-function declaredNormativeDependencies(
-  lines: readonly string[],
-): Set<string> {
-  const declared = new Set<string>();
-  const addReferences = (line: string): void => {
-    for (const match of line.matchAll(QUALIFIED_REFERENCE)) {
-      declared.add(`${match[1]}/${match[2]}`);
-    }
-  };
-
-  for (const [index, line] of lines.entries()) {
-    if (!/^\s*Normative dependencies\s*:/i.test(line)) continue;
-    addReferences(line);
-    let listStarted = false;
-    for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
-      const candidate = lines[cursor];
-      if (candidate.trim() === "") {
-        if (listStarted) break;
-        continue;
-      }
-      if (LIST_ITEM.test(candidate)) {
-        listStarted = true;
-        addReferences(candidate);
-        continue;
-      }
-      if (listStarted && /^\s+/.test(candidate)) {
-        addReferences(candidate);
-        continue;
-      }
-      break;
-    }
-  }
-  return declared;
-}
-
 export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
   const documents = loadFamilyDocuments(repoRoot);
   const issues: FamilyDocIssue[] = [];
   const anchors = new Map<string, { path: string; line: number }>();
   const documentAnchors = new Set<string>();
+  const sections = new Map<DocumentId, Set<string>>();
 
   for (const document of documents) {
+    sections.set(
+      document.document,
+      new Set(
+        document.lines.flatMap((line) => NUMBERED_HEADING.exec(line)?.[1] ?? []),
+      ),
+    );
     for (const [index, line] of document.lines.entries()) {
       for (const match of line.matchAll(EXPLICIT_ANCHOR)) {
         const anchor = match[1];
@@ -293,6 +269,19 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
         }
       }
 
+      // Section numbers are a second naming scheme over the same headings;
+      // without this they rot silently whenever a document is renumbered.
+      for (const match of line.matchAll(SECTION_REFERENCE)) {
+        if (!sections.get(document.document)?.has(match[1])) {
+          issues.push({
+            path: document.displayPath,
+            line: lineNumber,
+            code: "unresolved-section-reference",
+            message: `${match[0]} is not a heading in ${document.document}`,
+          });
+        }
+      }
+
       if (normativeLines.has(index) && BARE_FAMILY_LINK.test(line)) {
         issues.push({
           path: document.displayPath,
@@ -330,6 +319,22 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
   for (const message of verifyMarmotArchive(resolve(repoRoot, "docs/spec/external/marmot"))) {
     issues.push({ path: "docs/spec/external/marmot/manifest.json", line: 1, code: "marmot-archive-invalid", message });
   }
+  // Core's capability example pastes the manifest digest; nothing else
+  // reconciles the two, so a registry regeneration desyncs it silently.
+  if (core !== undefined) {
+    for (const [index, line] of core.lines.entries()) {
+      const pasted = /"registry_sha256"\s*:\s*"([0-9a-f]{64})"/.exec(line)?.[1];
+      if (pasted !== undefined && pasted !== registry.manifest.entry_set_sha256) {
+        issues.push({
+          path: core.displayPath,
+          line: index + 1,
+          code: "registry-digest-drift",
+          message: `registry_sha256 does not match registry/manifest.json entry_set_sha256`,
+        });
+      }
+    }
+  }
+
   const strictProfileIssues = findStrictProfileClosureIssues(
     Object.fromEntries(documents.map(({ document, lines }) => [document, lines.join("\n")])),
     registry.security_invariants,

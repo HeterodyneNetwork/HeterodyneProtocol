@@ -2,12 +2,6 @@
 
 Document ID: `control`
 
-Normative dependencies:
-
-- `heterodyne:0.5.0#core-conformance`
-- `heterodyne:0.5.0#comms-conformance`
-- `heterodyne:0.5.0#comms-marmot`
-
 Control is a section of the Heterodyne specification and is governed by
 `heterodyne:0.5.0#core-document-conventions`, which fixes the family version,
 the registry pin, release status, BCP 14 usage, and the anchor and reference
@@ -113,7 +107,7 @@ node and may advertise:
 - outbound-Tor, onion-only, and reduced-assurance clearnet reachability;
 - optional `control.recovery.radicle.v1`,
   `control.recovery.epoch-inbox.v1`, and `control.recovery.sftp.v1`; and
-- an epoch-inbox relay set only for recovery bootstrap under §10.2.
+- an epoch-inbox relay set only for recovery bootstrap under §10.1.
 
 A full node reuses its authorized device Nostr account as its Marmot Control
 account. Every pairwise Control group has an independent MLS leaf. Account
@@ -355,13 +349,10 @@ interrupt an already accepted side effect, but every later request or MCP tool
 call requires a current token.
 
 Nodes check current entitlement on every request rather than requiring a
-distributed Token Status List. Token minting and every privileged request
-require an authenticated, non-conflicted private authorization view no more
-than 300 seconds old. A mutation additionally performs an immediate
-synchronization attempt before authorization and fails closed unless it can
-establish that fresh canonical view. Minting a new token MUST NOT extend stale
-authority. Once a node observes revocation, it rejects all associated tokens
-and terminates the affected group locally.
+distributed Token Status List. Minting and every privileged request are bound
+by `heterodyne:0.5.0#comms-authorization-freshness`. Once a node observes
+revocation, it rejects all associated tokens and terminates the affected group
+locally.
 
 <a id="control-request-processing"></a>
 ## 8. Request processing and execution

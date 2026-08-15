@@ -1,10 +1,6 @@
 # Heterodyne Social Protocol Specification
 
-Document ID: `social`<br>
-Normative dependencies:
-
-- `heterodyne:0.5.0#core-conformance`
-- `heterodyne:0.5.0#comms-conformance`
+Document ID: `social`
 
 Social is a section of the Heterodyne specification and is governed by
 `heterodyne:0.5.0#core-document-conventions`, which fixes the family version,
@@ -904,14 +900,9 @@ or repointed NIP-05 MUST NOT replace canonical repository state.
 Optional lower-layer profiles are claimed only when their owning documents'
 requirements and vectors are satisfied.
 
-A Social conformance report that claims a strict profile MUST reproduce its
-exact membership, prerequisite results, and applicable strict-vector results.
-It MUST use the conformance class stated in the profile fixture.
-
-Wire conformance is byte-exact. Plain upstream NIP-51 and NIP-72 events
-remain unstamped; only the
-exact immutable Social profiles opt into a Social stamp. During 0.x, an
-accepted specification change may change or retire an unreleased current
-vector in place; vector-ID immutability begins at 1.0. Unsupported Social
-versions or profiles MUST be rejected or explicitly degraded under Core's
-version rules, never silently interpreted as this release.
+Report contents, byte-exact wire conformance, vector-ID immutability, and
+unknown-version handling are family-wide rules stated once by
+`heterodyne:0.5.0#core-conformance` and `heterodyne:0.5.0#core-versioning`.
+Social adds one stamping rule: plain upstream NIP-51 and NIP-72 events remain
+unstamped, and only the exact immutable Social profiles opt into a Social
+stamp.
