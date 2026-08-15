@@ -453,21 +453,17 @@ inheritance escalation, and joint-governance capture as explicit threats.
 <a id="workspace-profiles"></a>
 ## 17. Features and conformance profiles
 
-`workspace-base-v1` requires Core KERI/device/repository conformance and the
-Comms Marmot conversation, Radicle event storage, and Radicle-backed relay
-features. It provides workspace identity, role authorization, private role
-control, Radicle transport backstop, resource-key delivery, bilateral
-allowances, and joint governance.
+Workspace feature IDs are allocated in
+[`registry/features.json`](registry/features.json), which is the sole
+authority for the set and for each feature's Core and Comms prerequisites.
+Claimed features resolve under `heterodyne:0.5.0#core-conformance`.
 
-`workspace-control-composition-v1` additionally requires a conformant Control
-implementation. It permits an authorized light device to request Workspace
-operations through Control, but Control tokens and RPC carriage do not replace
-Workspace grants or checkpoints.
-
-`workspace-social-composition-v1` additionally requires a conformant Social
-implementation. It permits verified affiliation presentation and advisory
-moderation signals, but Social follows, labels, or lists do not create
-Workspace authority.
+A Workspace claim that also names Control permits an authorized light device
+to request Workspace operations through Control; Control tokens and RPC
+carriage do not replace Workspace grants or checkpoints. A Workspace claim
+that also names Social permits verified affiliation presentation and advisory
+moderation signals; Social follows, labels, or lists do not create Workspace
+authority. Neither composition is required for base Workspace conformance.
 
 The Workspace strict profile composes the Comms strict closure, which
 transitively includes Core, with all Workspace invariants.

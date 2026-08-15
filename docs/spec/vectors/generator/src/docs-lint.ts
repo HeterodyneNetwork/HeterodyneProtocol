@@ -50,7 +50,8 @@ export type FamilyDocIssue = {
     | "missing-upstream-kind-allocation"
     | "strict-profile-closure-invalid"
     | "unresolved-section-reference"
-    | "registry-digest-drift";
+    | "registry-digest-drift"
+    | "unregistered-feature-id";
   message: string;
 };
 
@@ -71,6 +72,8 @@ const BARE_FAMILY_LINK =
 const NONCANONICAL_DECISION_REFERENCE = /\bADR-\d{3}\b|docs\/adr\//;
 const NUMBERED_HEADING = /^#{2,6}\s+(\d+(?:\.\d+)*)\.?\s/;
 const SECTION_REFERENCE = /§(\d+(?:\.\d+)*)/g;
+const FEATURE_ID =
+  /`((?:core|comms|control|social|workspace)\.[a-z0-9-]+(?:\.[a-z0-9-]+)*\.v\d+)`/g;
 const BCP14_KEYWORD =
   /\b(?:MUST(?: NOT)?|REQUIRED|SHALL(?: NOT)?|SHOULD(?: NOT)?|RECOMMENDED|NOT RECOMMENDED|MAY|OPTIONAL)\b/;
 const EXPLICIT_NORMATIVE =
@@ -211,6 +214,9 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
     }
   }
 
+  const registry = loadRegistry(repoRoot);
+  const registeredFeatures = new Set(registry.features.map(({ id }) => id));
+
   for (const document of documents) {
     const normativeLines = normativeParagraphLines(document.lines);
     for (const [index, line] of document.lines.entries()) {
@@ -269,6 +275,19 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
         }
       }
 
+      // The registry is the sole feature-ID authority; prose that invents
+      // an ID reads as a real capability claim and nothing else catches it.
+      for (const match of line.matchAll(FEATURE_ID)) {
+        if (!registeredFeatures.has(match[1])) {
+          issues.push({
+            path: document.displayPath,
+            line: lineNumber,
+            code: "unregistered-feature-id",
+            message: `${match[1]} is not allocated in registry/features.json`,
+          });
+        }
+      }
+
       // Section numbers are a second naming scheme over the same headings;
       // without this they rot silently whenever a document is renumbered.
       for (const match of line.matchAll(SECTION_REFERENCE)) {
@@ -310,7 +329,6 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
       issues.push({ path: comms.displayPath, line: 1, code: "claim-profile-revision-ambiguous", message: "the frozen claim-profile revision must be named profile_revision, distinct from the registry pin" });
     }
   }
-  const registry = loadRegistry(repoRoot);
   for (const kind of [1059, 22242]) {
     if (!registry.kinds.some((entry) => entry.kind === kind && entry.allocation_authority === "nostr")) {
       issues.push({ path: "docs/spec/registry/kinds.json", line: 1, code: "missing-upstream-kind-allocation", message: `missing upstream kind ${kind}` });

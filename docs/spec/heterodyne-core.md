@@ -1206,7 +1206,10 @@ browser-based client MAY use a shared clearnet relay because a browser tab
 cannot open arbitrary Tor sockets. That path is reduced assurance and does
 not expose the full node's onion service as a clearnet endpoint.
 
-Core declares three implementation roles and five exact feature IDs:
+Core feature IDs are allocated in
+[`registry/features.json`](registry/features.json), which is the sole
+authority for the set and its prerequisites; the count is not restated here.
+Core declares three implementation roles:
 
 | Role | Required behavior | Tor requirement |
 |---|---|---|
