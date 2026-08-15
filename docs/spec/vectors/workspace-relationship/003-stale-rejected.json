@@ -1,14 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "workspace",
-  "owner_version": "workspace/0.1.0",
-  "dependency_versions": {
-    "core": "core/0.5.0",
-    "comms": "comms/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:workspace/0.1.0#workspace-relationships"
+    "heterodyne:0.5.0#workspace-relationships"
   ],
   "vector_id": "workspace-relationship/stale-rejected",
   "description": "An affiliation proof one second beyond proof plus grace is suspended.",

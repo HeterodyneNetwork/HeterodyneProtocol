@@ -56,8 +56,8 @@ const semanticWithoutId = () => ({
   expires_at: issuedAt + 86400,
   audience: [fixtures.personas.alice.cold_root.pubkey],
   visibility: "repository-private" as const,
-  spec_version: "comms/0.5.0" as const,
-  registry_revision: 2 as const,
+  spec_version: "heterodyne/0.5.0" as const,
+  profile_revision: 2 as const,
 });
 
 function semanticBody(): ClaimSemanticBody {
@@ -94,7 +94,7 @@ describe("canonical key claims", () => {
     });
     expect(validateClaimEnvelope(event, {
       issuer_authorized: true,
-      registry_revision: 2,
+      profile_revision: 2,
       credential_ledger: credentialLedger,
     })).toEqual(body);
   });
@@ -126,17 +126,17 @@ describe("canonical key claims", () => {
       content: jcsCanonicalize(body),
     });
     expect(() => validateClaimEnvelope(nonCanonical, {
-      issuer_authorized: true, registry_revision: 2, credential_ledger: credentialLedger,
+      issuer_authorized: true, profile_revision: 2, credential_ledger: credentialLedger,
     })).toThrow(/canonical/);
     expect(() => validateClaimEnvelope(duplicate, {
-      issuer_authorized: true, registry_revision: 2, credential_ledger: credentialLedger,
+      issuer_authorized: true, profile_revision: 2, credential_ledger: credentialLedger,
     })).toThrow(/exactly.*d/i);
     const badSignature = `${valid.sig[0] === "0" ? "1" : "0"}${valid.sig.slice(1)}`;
     expect(() => validateClaimEnvelope({ ...valid, sig: badSignature }, {
-      issuer_authorized: true, registry_revision: 2, credential_ledger: credentialLedger,
+      issuer_authorized: true, profile_revision: 2, credential_ledger: credentialLedger,
     })).toThrow(/signature/);
     expect(() => validateClaimEnvelope(valid, {
-      issuer_authorized: false, registry_revision: 2, credential_ledger: credentialLedger,
+      issuer_authorized: false, profile_revision: 2, credential_ledger: credentialLedger,
     })).toThrow(/authority/);
   });
 
@@ -152,13 +152,13 @@ describe("canonical key claims", () => {
     });
     expect(validateClaimEnvelope(event, {
       issuer_authorized: true,
-      registry_revision: 2,
+      profile_revision: 2,
       credential_ledger: credentialLedger,
       existing_semantic_body: structuredClone(body),
     })).toEqual(body);
     expect(() => validateClaimEnvelope(event, {
       issuer_authorized: true,
-      registry_revision: 2,
+      profile_revision: 2,
       credential_ledger: credentialLedger,
       existing_semantic_body: { ...body, value: false },
     })).toThrow(/identical/);
@@ -175,7 +175,7 @@ describe("canonical key claims", () => {
       content: jcsCanonicalize(invalidNidBody),
     });
     expect(() => validateClaimEnvelope(invalidNid, {
-      issuer_authorized: true, registry_revision: 2, credential_ledger: credentialLedger,
+      issuer_authorized: true, profile_revision: 2, credential_ledger: credentialLedger,
     })).toThrow(/NID|did:key/);
 
     const body = semanticBody();
@@ -188,7 +188,7 @@ describe("canonical key claims", () => {
       content: jcsCanonicalize(body),
     });
     expect(() => validateClaimEnvelope(mismatched, {
-      issuer_authorized: true, registry_revision: 2, credential_ledger: credentialLedger,
+      issuer_authorized: true, profile_revision: 2, credential_ledger: credentialLedger,
     })).toThrow(/signer.*issuer/);
   });
 
@@ -220,37 +220,37 @@ describe("claim revocation envelopes", () => {
       revoked_at: issuedAt + 9,
       reason_code: "claim-revoked",
       revoker: { type: "nostr-secp256k1", value: epoch.pubkey },
-      spec_version: "comms/0.5.0",
-      registry_revision: 2,
+      spec_version: "heterodyne/0.5.0",
+      profile_revision: 2,
     } as unknown as ClaimRevocation;
     expect(revocationProofPayload(stamped)).toBe(jcsCanonicalize({
       domain: "heterodyne-claim-revocation-v1",
       claim_id: stamped.claim_id,
       revoked_at: stamped.revoked_at,
       reason_code: stamped.reason_code,
-      spec_version: "comms/0.5.0",
-      registry_revision: 2,
+      spec_version: "heterodyne/0.5.0",
+      profile_revision: 2,
     }));
     const stampedEvent = await revocationEvent(stamped);
     expect(() => validateClaimRevocationEnvelope(stampedEvent)).not.toThrow();
 
     const { spec_version: _version, ...missingVersion } = stamped as ClaimRevocation & { spec_version: string };
-    const { registry_revision: _revision, ...missingRevision } = stamped as ClaimRevocation & { registry_revision: number };
+    const { profile_revision: _revision, ...missingRevision } = stamped as ClaimRevocation & { profile_revision: number };
     const missingVersionEvent = await revocationEvent(missingVersion as ClaimRevocation);
     const missingRevisionEvent = await revocationEvent(missingRevision as ClaimRevocation);
-    const wrongVersionEvent = await revocationEvent({ ...stamped, spec_version: "comms/0.5.1" } as unknown as ClaimRevocation);
+    const wrongVersionEvent = await revocationEvent({ ...stamped, spec_version: "heterodyne/0.5.1" } as unknown as ClaimRevocation);
     const legacyVersionEvent = await revocationEvent({
       ...missingVersion,
-      comms_version: "comms/0.5.0",
+      comms_version: "heterodyne/0.5.0",
     } as unknown as ClaimRevocation);
-    const wrongRevisionEvent = await revocationEvent({ ...stamped, registry_revision: 1 } as unknown as ClaimRevocation);
+    const wrongRevisionEvent = await revocationEvent({ ...stamped, profile_revision: 1 } as unknown as ClaimRevocation);
     expect(() => validateClaimRevocationEnvelope(missingVersionEvent))
       .toThrow(/spec_version|required/);
     expect(() => validateClaimRevocationEnvelope(missingRevisionEvent))
-      .toThrow(/registry_revision|required/);
+      .toThrow(/profile_revision|required/);
     expect(() => validateClaimRevocationEnvelope(wrongVersionEvent)).toThrow(/spec_version|const/);
     expect(() => validateClaimRevocationEnvelope(legacyVersionEvent)).toThrow(/spec_version|required|additional/);
-    expect(() => validateClaimRevocationEnvelope(wrongRevisionEvent)).toThrow(/registry_revision|const/);
+    expect(() => validateClaimRevocationEnvelope(wrongRevisionEvent)).toThrow(/profile_revision|const/);
   });
 
   it("requires exactly one ordered d=claim_id tag and rejects every re-signed alternative", async () => {
@@ -260,8 +260,8 @@ describe("claim revocation envelopes", () => {
       revoked_at: issuedAt + 9,
       reason_code: "claim-revoked",
       revoker: { type: "nostr-secp256k1", value: epoch.pubkey },
-      spec_version: "comms/0.5.0",
-      registry_revision: 2,
+      spec_version: "heterodyne/0.5.0",
+      profile_revision: 2,
     } as unknown as ClaimRevocation;
     const cases = [
       {
@@ -269,7 +269,7 @@ describe("claim revocation envelopes", () => {
         created_at: issuedAt,
         content: jcsCanonicalize(claim),
         validate: (event: NostrSignedEvent) => validateClaimEnvelope(event, {
-          issuer_authorized: true, registry_revision: 2, credential_ledger: credentialLedger,
+          issuer_authorized: true, profile_revision: 2, credential_ledger: credentialLedger,
         }),
       },
       {
@@ -564,7 +564,7 @@ describe("closed NIP-01 claim and revocation event structure", () => {
         tags: [["d", claim.claim_id]],
         content: jcsCanonicalize(claim),
         validate: (event: NostrSignedEvent) => validateClaimEnvelope(event, {
-          issuer_authorized: true, registry_revision: 2, credential_ledger: credentialLedger,
+          issuer_authorized: true, profile_revision: 2, credential_ledger: credentialLedger,
         }),
       },
       {
@@ -647,8 +647,8 @@ describe("claim trust, attenuation, and authorization state", () => {
       audience: [fixtures.personas.alice.cold_root.pubkey, "https://rp.example"],
       resources: ["rad:claims", "rad:claims/device"],
       visibility: "repository-private",
-      spec_version: "comms/0.5.0",
-      registry_revision: 2,
+      spec_version: "heterodyne/0.5.0",
+      profile_revision: 2,
       ...overrides,
     };
     delete (bodyWithUndefined as Partial<ClaimSemanticBody>).claim_id;
@@ -1329,10 +1329,8 @@ describe("normative claim vector authoring", () => {
     ]);
     expect(vectors.every(({ vector }) =>
       vector.owner_document === "comms" &&
-      vector.owner_version === "comms/0.5.0" &&
-      vector.registry_revision === 8 &&
-      vector.dependency_versions.core === "core/0.5.0" &&
-      vector.spec_refs.every((ref) => ref.startsWith("heterodyne:comms/0.5.0#")),
+      vector.spec_version === "heterodyne/0.5.0" &&
+      vector.spec_refs.every((ref) => ref.startsWith("heterodyne:0.5.0#")),
     )).toBe(true);
 
     const byId = new Map(vectors.map(({ vector }) => [vector.vector_id, vector]));
@@ -1347,7 +1345,7 @@ describe("normative claim vector authoring", () => {
       expect(mutation.reason_code).toBe("claim-schema-invalid");
       expect(() => validateClaimEnvelope(mutation.event, {
         issuer_authorized: true,
-        registry_revision: 2,
+        profile_revision: 2,
         credential_ledger: credentialLedger,
       })).toThrow(/claim-schema-invalid/);
     }

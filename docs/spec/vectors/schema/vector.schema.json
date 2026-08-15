@@ -5,9 +5,7 @@
     "vector_id",
     "vector_schema_version",
     "owner_document",
-    "owner_version",
-    "dependency_versions",
-    "registry_revision",
+    "spec_version",
     "spec_refs",
     "description",
     "direction",
@@ -33,46 +31,9 @@
         "workspace"
       ]
     },
-    "owner_version": {
+    "spec_version": {
       "type": "string",
-      "enum": [
-        "core/0.5.0",
-        "comms/0.5.0",
-        "control/0.5.0",
-        "social/0.5.0",
-        "workspace/0.1.0"
-      ]
-    },
-    "dependency_versions": {
-      "type": "object",
-      "required": [],
-      "additionalProperties": false,
-      "properties": {
-        "core": {
-          "type": "string",
-          "const": "core/0.5.0"
-        },
-        "comms": {
-          "type": "string",
-          "const": "comms/0.5.0"
-        },
-        "control": {
-          "type": "string",
-          "const": "control/0.5.0"
-        },
-        "social": {
-          "type": "string",
-          "const": "social/0.5.0"
-        },
-        "workspace": {
-          "type": "string",
-          "const": "workspace/0.1.0"
-        }
-      }
-    },
-    "registry_revision": {
-      "type": "integer",
-      "minimum": 1
+      "const": "heterodyne/0.5.0"
     },
     "profile": {
       "type": "string",
@@ -84,7 +45,7 @@
       "maxItems": 1,
       "items": {
         "type": "string",
-        "pattern": "^heterodyne:(?:(?:core|comms|control|social)/0\\.5\\.0|workspace/0\\.1\\.0)#[a-z0-9]+(?:-[a-z0-9]+)*$"
+        "pattern": "^heterodyne:0\\.5\\.0#[a-z0-9]+(?:-[a-z0-9]+)*$"
       }
     },
     "description": {
@@ -111,127 +72,6 @@
     }
   },
   "allOf": [
-    {
-      "if": {
-        "properties": {
-          "owner_document": {
-            "const": "core"
-          }
-        },
-        "required": [
-          "owner_document"
-        ]
-      },
-      "then": {
-        "properties": {
-          "owner_version": {
-            "const": "core/0.5.0"
-          },
-          "dependency_versions": {
-            "const": {}
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "owner_document": {
-            "const": "comms"
-          }
-        },
-        "required": [
-          "owner_document"
-        ]
-      },
-      "then": {
-        "properties": {
-          "owner_version": {
-            "const": "comms/0.5.0"
-          },
-          "dependency_versions": {
-            "const": {
-              "core": "core/0.5.0"
-            }
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "owner_document": {
-            "const": "social"
-          }
-        },
-        "required": [
-          "owner_document"
-        ]
-      },
-      "then": {
-        "properties": {
-          "owner_version": {
-            "const": "social/0.5.0"
-          },
-          "dependency_versions": {
-            "const": {
-              "core": "core/0.5.0",
-              "comms": "comms/0.5.0"
-            }
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "owner_document": {
-            "const": "control"
-          }
-        },
-        "required": [
-          "owner_document"
-        ]
-      },
-      "then": {
-        "properties": {
-          "owner_version": {
-            "const": "control/0.5.0"
-          },
-          "dependency_versions": {
-            "const": {
-              "core": "core/0.5.0",
-              "comms": "comms/0.5.0"
-            }
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "owner_document": {
-            "const": "workspace"
-          }
-        },
-        "required": [
-          "owner_document"
-        ]
-      },
-      "then": {
-        "properties": {
-          "owner_version": {
-            "const": "workspace/0.1.0"
-          },
-          "dependency_versions": {
-            "const": {
-              "core": "core/0.5.0",
-              "comms": "comms/0.5.0"
-            }
-          }
-        }
-      }
-    },
     {
       "if": {
         "properties": {

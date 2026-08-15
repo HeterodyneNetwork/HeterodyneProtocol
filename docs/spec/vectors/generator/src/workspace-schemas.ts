@@ -35,7 +35,7 @@ const closed = (
 });
 
 const baseProperties = (objectType: string): Record<string, unknown> => ({
-  spec_version: { const: "workspace/0.1.0" },
+  spec_version: { const: "heterodyne/0.5.0" },
   object_type: { const: objectType },
   workspace_id: h64,
   actor: h64,

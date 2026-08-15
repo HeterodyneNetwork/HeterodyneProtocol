@@ -1,14 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "social",
-  "owner_version": "social/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0",
-    "comms": "comms/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:social/0.5.0#social-recovery-binding"
+    "heterodyne:0.5.0#social-recovery-binding"
   ],
   "vector_id": "social-recovery/retention-30-days",
   "description": "Friend-cache retention keeps cache-sourced state for 30 days.",

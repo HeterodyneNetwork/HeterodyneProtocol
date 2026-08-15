@@ -1,21 +1,12 @@
 # Heterodyne Comms Protocol Specification
 
 Document ID: `comms`<br>
-Version: `comms/0.5.0`<br>
-Registry revision: `8`
+Normative dependencies: `heterodyne:0.5.0#core-conformance`.
 
-Normative dependencies: `heterodyne:core/0.5.0#core-conformance`.
-
-This document prepares Comms' 0.5.0 release. It is current normative
-authority at this repository path but remains unreleased pending explicit
-release approval. `comms/0.5.0` is not a synchronized family version. While Comms is 0.x, exact
-version matching is required. The key words MUST, MUST NOT, REQUIRED, SHALL,
-SHALL NOT, SHOULD, SHOULD NOT, RECOMMENDED, NOT RECOMMENDED, MAY, and OPTIONAL
-are to be interpreted as described by BCP 14 when, and only when, they appear
-in all capitals.
-
-Permanent anchors use the literal `comms-` prefix and lowercase ASCII
-kebab-case. Generated heading IDs are not stable protocol references.
+Comms is a section of the Heterodyne specification and is governed by
+`heterodyne:0.5.0#core-document-conventions`, which fixes the family version,
+the registry pin, release status, BCP 14 usage, and the anchor and reference
+forms.
 
 <a id="comms-scope"></a>
 ## 1. Scope
@@ -52,7 +43,7 @@ deduplication key across both backends. Repo visibility and application-layer
 encryption change confidentiality, not the NIP-01 envelope.
 
 Before rendering, storing, indexing, or authorizing a received event, a client
-MUST invoke `heterodyne:core/0.5.0#core-verification`. In order, it MUST:
+MUST invoke `heterodyne:0.5.0#core-verification`. In order, it MUST:
 
 1. require a well-formed event and the exact `nip01_raw` signing bytes;
 2. hash `nip01_raw`, match `id` and every parsed field, and verify BIP-340;
@@ -65,10 +56,10 @@ A failure MUST be surfaced as a rejection or explicit security indicator;
 clients MUST NOT silently treat an invalid event as verified. A provisional
 Core verdict MUST NOT be reported or persisted as final.
 
-Under `heterodyne:core/0.5.0#core-version-stamps`, Comms-allocated
-JSON-content kinds carry `"spec_version":"comms/0.5.0"`.
+Under `heterodyne:0.5.0#core-version-stamps`, Comms-allocated
+JSON-content kinds carry `"spec_version":"heterodyne/0.5.0"`.
 Comms-allocated empty-content kinds carry
-`["spec_version","comms/0.5.0"]`. Adopted upstream events remain unstamped
+`["spec_version","heterodyne/0.5.0"]`. Adopted upstream events remain unstamped
 unless the pinned registry names a stamping profile. Marmot transport and
 unsigned inner application events remain governed by the pinned upstream
 profile and their registered Heterodyne application discriminator.
@@ -135,7 +126,7 @@ represented here:
     ["p", "<recipient pubkey-hex>"],
     ["cold_root", "<persona cold root>"],
     ["kel_head", "<accepted KEL event id>", "<seq>"],
-    ["spec_version", "comms/0.5.0"]
+    ["spec_version", "heterodyne/0.5.0"]
   ],
   "content": "<NIP-44 wrap of the audience key>"
 }
@@ -237,7 +228,7 @@ A Tier 3 post has this outer shape (kind `1` shown):
     ["heterodyne_wrap", "room_key.v2"],
     ["key_id", "<opaque audience-key generation id>"],
     ["kel_head", "<accepted KEL event id>", "<decimal seq>"],
-    ["spec_version", "comms/0.5.0"]
+    ["spec_version", "heterodyne/0.5.0"]
   ],
   "content": "<NIP-44-v2 symmetric ciphertext of the inner payload>",
   "sig": "<BIP-340 signature by current epoch key>"
@@ -245,7 +236,7 @@ A Tier 3 post has this outer shape (kind `1` shown):
 ```
 
 The clear tags of every Tier 3 post MUST include the two wrap tags,
-`spec_version` equal to `comms/0.5.0` as required by its stamping profile, and `kel_head`
+`spec_version` equal to `heterodyne/0.5.0` as required by its stamping profile, and `kel_head`
 exactly as Core requires for an epoch-signed event. For addressable kinds
 `30023` and `30402`, an additional outer `d` tag is REQUIRED and MUST be an
 opaque value derived from at least 128 bits of randomness or a keyed digest;
@@ -268,7 +259,7 @@ not current membership metadata, is the cryptographic access test.
 
 
 The `heterodyne-comms-config-repository-v1` protection profile instantiates
-`heterodyne:core/0.5.0#core-protected-repository` with the Tier 3 profile
+`heterodyne:0.5.0#core-protected-repository` with the Tier 3 profile
 above. There is exactly one private,
 unadvertised config repository per persona; its allow list contains only the
 persona's durable delegated NIDs. The RID MUST NOT appear on any published
@@ -285,7 +276,7 @@ The credential authorization ledger in §8.1 is an allowed Comms-owned non-key
 configuration payload.
 
 Authorization comes only from the KEL and active delegations defined by
-`heterodyne:core/0.5.0#core-nid-delegation`. A device
+`heterodyne:0.5.0#core-nid-delegation`. A device
 inventory is bookkeeping and MUST NOT authorize a device; a stale inventory
 MUST NOT remove a device except through an explicit marked revocation record.
 
@@ -356,7 +347,7 @@ attributed event; an idempotent retry reuses those exact bytes and event id.
 
 `kind:31007` is a persona's canonical ordering authority independent of which
 backend served an event. It is an addressable, epoch-key-signed Comms event,
-with a `["spec_version","comms/0.5.0"]` tag unless a registered stamping
+with a `["spec_version","heterodyne/0.5.0"]` tag unless a registered stamping
 profile assigns the event's sole owner stamp elsewhere.
 Tier 1 and Tier 2 ordinary indexes MUST have empty `content`.
 Tier 3 index `content` MUST be ciphertext as defined by §5.3.
@@ -377,7 +368,7 @@ boundary.
     ["retrieval_hints", "{\"archive_url\":\"https://archive.example/<nostr_event_id>\"}"],
     ["e", "<event id>", "<relay hint>"],
     ["kel_head", "<accepted KEL event id>", "<seq>"],
-    ["spec_version", "comms/0.5.0"]
+    ["spec_version", "heterodyne/0.5.0"]
   ],
   "content": ""
 }
@@ -399,7 +390,7 @@ discriminator is
 `content.profile=heterodyne.social.org-feed.v1`. That profile is valid only
 for Tier 1 or Tier 2 and replaces the ordinary empty content with the exact
 canonical compact JSON string
-`{"profile":"heterodyne.social.org-feed.v1","spec_version":"social/0.5.0"}`.
+`{"profile":"heterodyne.social.org-feed.v1","spec_version":"heterodyne/0.5.0"}`.
 Its object is closed and ordered: `profile` then `spec_version`, with no other
 members. The Social stamp occurs only in `content`; the event MUST NOT carry a
 Comms or Social `spec_version` tag. Every other Comms tag, paging, size,
@@ -411,7 +402,7 @@ Tier 3 ciphertext, and MUST NOT carry `heterodyne_wrap` or `key_id` tags.
 ### 5.1 Organization threshold authorization
 
 
-Applying `heterodyne:core/0.5.0#core-threshold-authority`, all posts and feed
+Applying `heterodyne:0.5.0#core-threshold-authority`, all posts and feed
 indexes owned by an org persona MUST be reachable
 from the delegate-threshold-approved canonical `defaultBranch` before being
 canonical. A lone org epoch-key holder MUST NOT bypass threshold governance by
@@ -523,7 +514,7 @@ retention and join-epoch rules. Comms defines no relay-style bulk-fetch service
 or mandatory archive service.
 
 The generic public outbox location is the verified `kind:31005` npub-to-RID
-pointer from `heterodyne:core/0.5.0#core-identity-pointer` plus the NIP-65
+pointer from `heterodyne:0.5.0#core-identity-pointer` plus the NIP-65
 relay list; clients use it to locate the persona's
 `kind:31007` indexes. Audience-scoped location is the descriptor in §5.3.
 Comms discovery ends at generic feed/outbox location and does not define who
@@ -1030,7 +1021,7 @@ ordinary Marmot application events. Heterodyne adds no competing DM cipher,
 invitation format, or outer event kind.
 
 Routine light-client, human RPC, and agent RPC use ordinary two-member Marmot
-groups under `heterodyne:control/0.5.0#control-frame`. The full node uses its
+groups under `heterodyne:0.5.0#control-frame`. The full node uses its
 Core-authorized device account and a dedicated leaf; the light client uses its
 private non-delegated Control account and its own leaf. A standard Welcome and
 valid MLS membership authenticate transport identity but grant no application
@@ -1166,7 +1157,7 @@ Control invite if present, and an explicit local decision if one exists. It
 returns exactly `accept-enrollment-only`, `accept-authorized`, or `reject`.
 
 `accept-enrollment-only` permits only the methods named by
-`heterodyne:control/0.5.0#control-invitation-policy` and grants no durable
+`heterodyne:0.5.0#control-invitation-policy` and grants no durable
 authority. `accept-authorized` requires active, non-conflicted private
 entitlement for the authenticated client account. `reject` ends application
 processing without revealing whether another entitlement or private object
@@ -1185,7 +1176,7 @@ applicable canonical repository head.
 
 A joining full node receives temporary private-repository access only through
 the optional recovery grants at
-`heterodyne:control/0.5.0#control-radicle-recovery`. An ordinary light client
+`heterodyne:0.5.0#control-radicle-recovery`. An ordinary light client
 receives filtered decisions and configuration, never claim-ledger reader
 authority, repository credentials, audience keys, issuer keys, or unfiltered
 private records.
@@ -1275,7 +1266,7 @@ The epoch-key NIP-59 inbox exists only for prospective full/recovery-node
 registration when no authorized device Control channel is available. Public
 Core metadata provides the epoch recipient key and relay hints. The gift-wrap
 rumor, prepared activation, recovery grant, and completion records are defined
-at `heterodyne:control/0.5.0#control-epoch-bootstrap`.
+at `heterodyne:0.5.0#control-epoch-bootstrap`.
 
 The epoch key stays encrypted and absent from memory except during an explicit
 local approval ceremony. Prepared public and private authority remains
@@ -1295,7 +1286,7 @@ Comms defines an atomic assertion about one typed key. The registry assigns
 `kind:31013` to `heterodyne-comms-key-claim-v1` and `kind:31014` to
 `heterodyne-comms-key-claim-revocation-v1`. Both are addressable events. Their
 sole `d` tag is the lowercase 64-hex claim identifier, and their JSON content
-uses the single `comms/0.5.0` owner stamp. The outer Nostr signer MUST be the
+uses the single `heterodyne/0.5.0` owner stamp. The outer Nostr signer MUST be the
 `nostr-secp256k1` issuer named by the claim. A verifier MUST reject missing,
 duplicate, unknown, or misordered members and tags, an event/content mismatch,
 an unknown profile discriminator, or an event whose BIP-340 signature fails.
@@ -1313,22 +1304,21 @@ The registered non-stamping production profiles and discriminators are exact:
 
 These profiles change no signed event bytes and add no second version stamp.
 
-For both v1 content schemas, the wire member named `registry_revision` is the
-immutable **profile registry revision**. Its value is exactly `2`, the entry
-set that allocated the v1 profile discriminators and reason-code vocabulary.
-It is signed semantic content and does not float when unrelated registry
-entries are added. The family release manifest and conformance envelope
-separately pin the current complete registry revision and digest. A verifier
-MUST check both meanings and MUST reject a v1 claim or revocation that replaces
-its fixed value `2` with the current family revision. Renaming or changing the
-wire member requires a new claim profile version.
+For both v1 content schemas, the signed wire member `profile_revision` is
+exactly `2`: the registry entry set that allocated the v1 profile
+discriminators and reason-code vocabulary. It is frozen semantic content and
+does not float when unrelated registry entries are added, which is why it is
+named distinctly from the specification's registry pin in
+[`registry/manifest.json`](registry/manifest.json). A verifier MUST reject a
+v1 claim or revocation whose `profile_revision` is not `2`. Changing the
+member requires a new claim profile version.
 
 The `heterodyne-comms-key-claim-v1` content is the exact closed object defined
 by `schemas/comms/key-claim-v1.schema.json`. Its required members are
 `claim_id`, `issuer`, `subject`, `claim_class`,
 `credential_ledger_persona`, `credential_ledger_generation`, `namespace`,
 `name`, `value`, `issued_at`, `not_before`, `visibility`, `spec_version`, and
-`registry_revision`. Optional members are `expires_at`, `audience`, `resources`,
+`profile_revision`. Optional members are `expires_at`, `audience`, `resources`,
 `parent_claim_id`, `constraints`, and `revokers`. For an `authorization`
 claim the credential-ledger persona is 64 lowercase hex and the generation is
 a JSON-safe nonnegative integer; for a `descriptive` claim both are exactly
@@ -1372,7 +1362,7 @@ atomic for the whole signed claim; partial member delivery is prohibited.
 
 Verification is ordered and fail-closed:
 
-1. validate the closed JSON schema, owner version, registry revision, typed
+1. validate the closed JSON schema, owner version, profile revision, typed
    references, canonical claim ID, address, exact NIP-01 bytes, event ID, and
    outer signature;
 2. require a `valid` Core/KEL authority result for the issuer at `issued_at`;
@@ -1426,15 +1416,15 @@ leaf `invalid`.
 The revocation content is the exact closed object in
 `schemas/comms/key-claim-revocation-v1.schema.json`: `claim_id`, `revoked_at`,
 registered `reason_code`, typed `revoker`, required `spec_version` equal to
-`comms/0.5.0`, required `registry_revision` equal to `2`, and an optional native
+`heterodyne/0.5.0`, required `profile_revision` equal to `2`, and an optional native
 `proof`. `revoked_at` equals the event `created_at`. For both `kind:31013` and
 `kind:31014`, the complete tag array MUST be exactly
 `[["d","<claim_id>"]]`; an extra, duplicate, malformed, or differently ordered
 tag is invalid. A Nostr revoker signs the outer event. A Radicle or JWK revoker
 also supplies its matching proof over the RFC 8785 canonical object containing
 exactly domain `heterodyne-claim-revocation-v1`, `claim_id`, `revoked_at`,
-`reason_code`, `spec_version`, and `registry_revision`. Thus the native proof
-binds the owning Comms profile and registry revision as well as the revocation.
+`reason_code`, `spec_version`, and `profile_revision`. Thus the native proof
+binds the owning Comms profile revision as well as the revocation.
 
 An authorization claim may be revoked by its issuer, an active superior issuer
 in its verified chain, current persona epoch or cold-root authority, or its
@@ -1829,7 +1819,7 @@ The registry defines the non-stamping
 `kind:31001`. Its discriminator is
 `tag:d=agent:<role-id>;tags:key_proof,radicle_nid,nid_proof`. `role-id` is
 exactly 32 random bytes encoded as 64 lowercase hexadecimal characters. The
-event retains the sole Core owner and `core/0.5.0` stamp and carries:
+event retains the sole Core owner and `heterodyne/0.5.0` stamp and carries:
 
 ```text
 ["d", "agent:<role-id>"]
@@ -1841,7 +1831,7 @@ event retains the sole Core owner and `core/0.5.0` stamp and carries:
 ["key_proof", "<agent-key BIP-340 proof>"]
 ["kel_head", "<accepted KEL event id>", "<decimal sequence>"]
 ["valid_until", "<empty or decimal Unix time>"]
-["spec_version", "core/0.5.0"]
+["spec_version", "heterodyne/0.5.0"]
 ```
 
 The hosting NID and agent key both sign these exact UTF-8 bytes:
@@ -2127,16 +2117,13 @@ profile.
 ## 17. Conformance
 
 
-A Comms conformance report MUST claim Core+Comms, name `comms/0.5.0`, pin
-`core/0.5.0`, registry revision 8 or its immutable digest, and enumerate
-supported features and strict profiles. A base implementation MUST implement
-the envelope, tiers, publishing, feed, retrieval, Marmot invitation hook,
-private Control-registry integration, and all registered Comms invariants. One
-that advertises DMs MUST implement all applicable Marmot rules in §7.
-
-The registry revision 8 entry set, history snapshot, release manifest, and
-vector metadata MUST match exactly. Transport-independent credential-continuity definitions
-remain non-claimable under this selected revision.
+A Comms conformance report follows the family requirements in
+`heterodyne:0.5.0#core-conformance` and claims Core+Comms. A base
+implementation MUST implement the envelope, tiers, publishing, feed,
+retrieval, Marmot invitation hook, private Control-registry integration, and
+all registered Comms invariants. One that advertises DMs MUST implement all
+applicable Marmot rules in §7. Transport-independent credential-continuity
+definitions remain non-claimable at the pinned registry revision.
 
 A report claiming `comms.public-reader.v1` MAY omit every send-side and private
 feature, but MUST name the `public-reader` Core role, implement

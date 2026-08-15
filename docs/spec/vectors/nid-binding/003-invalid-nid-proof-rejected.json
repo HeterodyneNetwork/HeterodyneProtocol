@@ -1,11 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-nid-delegation"
+    "heterodyne:0.5.0#core-nid-delegation"
   ],
   "vector_id": "nid-binding/invalid-nid-proof-rejected",
   "description": "A kind:31001 NID delegation whose nid_proof does not verify under the advertised radicle_nid over the pinned binding payload is rejected.",
@@ -41,7 +39,7 @@
         ],
         [
           "kel_head",
-          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+          "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
           "0"
         ],
         [
@@ -50,12 +48,12 @@
         ],
         [
           "spec_version",
-          "core/0.5.0"
+          "heterodyne/0.5.0"
         ]
       ],
       "content": "",
-      "id": "47091f3527ae2dd87e5f998cc8c20f1896470df71a3ee1591cfefef30745b716",
-      "sig": "0c7e7a96fe2b572833bdbd93a0c149107c7e9330ae9988ff767ffef398e246cbbaa1009e52db47ac15e267ffb6ba75932a0438db292078ca45440e5903f716ce"
+      "id": "45af9067dbf76feb3113c69ed24cd114a997649c6b0fbab5c3fe1712b9025a31",
+      "sig": "98ac491a13a7962f334ceed409d8e620975472a39cac29c0fe8145a0d1f1b2cd10f470a0ffa539c1f1fa0e50f1c693d7841234781bd2fb012b726220462df95f"
     },
     "radicle_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
     "nid_binding_payload": "heterodyne-nid-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|radicle-nid-delegation",

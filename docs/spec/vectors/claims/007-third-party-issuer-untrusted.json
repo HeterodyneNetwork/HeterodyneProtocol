@@ -1,13 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-claim-verification"
+    "heterodyne:0.5.0#comms-claim-verification"
   ],
   "vector_id": "claims/third-party-issuer-untrusted",
   "description": "A cryptographically valid third-party descriptive assertion remains untrusted when its issuer is outside local policy.",
@@ -20,14 +16,14 @@
       "tags": [
         [
           "d",
-          "b8d3d58bd05c2e4f0a097dc6b7498dbf41e7b2b0d33a3c195d02160c8a505ab1"
+          "c23df35b0fffb077919e14aaa47310a2b5895605cb0805a11466b11bb6111f48"
         ]
       ],
-      "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"descriptive\",\"claim_id\":\"b8d3d58bd05c2e4f0a097dc6b7498dbf41e7b2b0d33a3c195d02160c8a505ab1\",\"credential_ledger_generation\":null,\"credential_ledger_persona\":null,\"issued_at\":1767227600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767227600,\"registry_revision\":2,\"resources\":[\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\"],\"spec_version\":\"comms/0.5.0\",\"subject\":{\"type\":\"nostr-secp256k1\",\"value\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\"},\"value\":true,\"visibility\":\"public\"}",
-      "id": "51f5c5957eec849f2b4db9088704ea41fd09df6229c4dd477d1908633f4359cc",
-      "sig": "4e209f26b9b7eb8a5ee747e07a7a4d5833fbc0b18d5251f53c782accdfa8b3113309a7ec048e582f189d1a9d829ad9501c721c899dbf941ac13705edf150e75c"
+      "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"descriptive\",\"claim_id\":\"c23df35b0fffb077919e14aaa47310a2b5895605cb0805a11466b11bb6111f48\",\"credential_ledger_generation\":null,\"credential_ledger_persona\":null,\"issued_at\":1767227600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767227600,\"profile_revision\":2,\"resources\":[\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\"],\"spec_version\":\"heterodyne/0.5.0\",\"subject\":{\"type\":\"nostr-secp256k1\",\"value\":\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\"},\"value\":true,\"visibility\":\"public\"}",
+      "id": "484a5bfb893ac6f8fedb092ff7af604649b716da4b0aab42a7d89ce912c5b76f",
+      "sig": "e23ac2aab5b3bd3be5c095f86bad31e4582d299e79ea1fb8debfac6240c5c17a3096389cd221c284cbb62d8b7a91c17be54d87441f66944d412e03818940166e"
     },
-    "canonical_wire": "[0,\"e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13\",1767227600,31013,[[\"d\",\"b8d3d58bd05c2e4f0a097dc6b7498dbf41e7b2b0d33a3c195d02160c8a505ab1\"]],\"{\\\"audience\\\":[\\\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\\\"],\\\"claim_class\\\":\\\"descriptive\\\",\\\"claim_id\\\":\\\"b8d3d58bd05c2e4f0a097dc6b7498dbf41e7b2b0d33a3c195d02160c8a505ab1\\\",\\\"credential_ledger_generation\\\":null,\\\"credential_ledger_persona\\\":null,\\\"issued_at\\\":1767227600,\\\"issuer\\\":{\\\"type\\\":\\\"nostr-secp256k1\\\",\\\"value\\\":\\\"e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13\\\"},\\\"name\\\":\\\"claim-ledger-reader\\\",\\\"namespace\\\":\\\"heterodyne.device\\\",\\\"not_before\\\":1767227600,\\\"registry_revision\\\":2,\\\"resources\\\":[\\\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\\\"],\\\"spec_version\\\":\\\"comms/0.5.0\\\",\\\"subject\\\":{\\\"type\\\":\\\"nostr-secp256k1\\\",\\\"value\\\":\\\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\\\"},\\\"value\\\":true,\\\"visibility\\\":\\\"public\\\"}\"]",
+    "canonical_wire": "[0,\"e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13\",1767227600,31013,[[\"d\",\"c23df35b0fffb077919e14aaa47310a2b5895605cb0805a11466b11bb6111f48\"]],\"{\\\"audience\\\":[\\\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\\\"],\\\"claim_class\\\":\\\"descriptive\\\",\\\"claim_id\\\":\\\"c23df35b0fffb077919e14aaa47310a2b5895605cb0805a11466b11bb6111f48\\\",\\\"credential_ledger_generation\\\":null,\\\"credential_ledger_persona\\\":null,\\\"issued_at\\\":1767227600,\\\"issuer\\\":{\\\"type\\\":\\\"nostr-secp256k1\\\",\\\"value\\\":\\\"e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13\\\"},\\\"name\\\":\\\"claim-ledger-reader\\\",\\\"namespace\\\":\\\"heterodyne.device\\\",\\\"not_before\\\":1767227600,\\\"profile_revision\\\":2,\\\"resources\\\":[\\\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\\\"],\\\"spec_version\\\":\\\"heterodyne/0.5.0\\\",\\\"subject\\\":{\\\"type\\\":\\\"nostr-secp256k1\\\",\\\"value\\\":\\\"fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556\\\"},\\\"value\\\":true,\\\"visibility\\\":\\\"public\\\"}\"]",
     "issuer_core_authority": "current",
     "trusted_issuers": [],
     "vector_context": {

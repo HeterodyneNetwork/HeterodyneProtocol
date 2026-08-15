@@ -1,13 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-agent-workload"
+    "heterodyne:0.5.0#comms-agent-workload"
   ],
   "vector_id": "agent-authorship/workload-registration-valid",
   "description": "The private workload registration has one role and finite kind, feed, resource, size, rate, and burst authority.",

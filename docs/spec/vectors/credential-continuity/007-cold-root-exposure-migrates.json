@@ -1,13 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-credential-continuity"
+    "heterodyne:0.5.0#comms-credential-continuity"
   ],
   "vector_id": "credential-continuity/cold-root-exposure-migrates",
   "description": "Cold-root exposure is terminal persona migration, never an acceptable same-persona reset.",
@@ -39,7 +35,7 @@
         "reason": "persona-migration-required",
         "required_authority": "cold-root"
       },
-      "selected_registry_revision": 8,
+      "selected_profile_revision": 8,
       "conformance_claimable": false
     }
   }

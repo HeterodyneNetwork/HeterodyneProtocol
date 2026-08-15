@@ -1,13 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-claim-chain"
+    "heterodyne:0.5.0#comms-claim-chain"
   ],
   "vector_id": "claims/chain-depth-exceeded",
   "description": "Nine issuance edges exceed the strict bound; a separately modeled repeated ancestor is rejected as a cycle.",
@@ -16,10 +12,10 @@
     "cases": [
       {
         "name": "ninth-edge",
-        "leaf_claim_id": "1c229de35378a31c3d70ced547723f969a836355076996fd9b321478f720591b",
+        "leaf_claim_id": "1d29170eaf429fab0238d47e5a7c4fee9b9ee6bc2d08d71b112fec9f0b348a02",
         "claims_by_id": {
-          "9352917642239303238ab14a4032282464d85b7dcc3408dda4f0127f42c97482": {
-            "claim_id": "9352917642239303238ab14a4032282464d85b7dcc3408dda4f0127f42c97482",
+          "a930f9c489b89f5afa0d37ffc7c10f00d776de8b21c0974666ce8c3536195fe6": {
+            "claim_id": "a930f9c489b89f5afa0d37ffc7c10f00d776de8b21c0974666ce8c3536195fe6",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -44,8 +40,8 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "spec_version": "comms/0.5.0",
-            "registry_revision": 2,
+            "spec_version": "heterodyne/0.5.0",
+            "profile_revision": 2,
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -59,8 +55,8 @@
               "remaining_depth": 8
             }
           },
-          "91a8ebb2773b5a76289fb4965d7742b9ba2f3ba80086971eb17969246d0c63c4": {
-            "claim_id": "91a8ebb2773b5a76289fb4965d7742b9ba2f3ba80086971eb17969246d0c63c4",
+          "40d64fd0d669fc78ae648eb5eca6fe46d87b13632b3771db9d9f516728961c0a": {
+            "claim_id": "40d64fd0d669fc78ae648eb5eca6fe46d87b13632b3771db9d9f516728961c0a",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
@@ -85,9 +81,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "spec_version": "comms/0.5.0",
-            "registry_revision": 2,
-            "parent_claim_id": "9352917642239303238ab14a4032282464d85b7dcc3408dda4f0127f42c97482",
+            "spec_version": "heterodyne/0.5.0",
+            "profile_revision": 2,
+            "parent_claim_id": "a930f9c489b89f5afa0d37ffc7c10f00d776de8b21c0974666ce8c3536195fe6",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -101,8 +97,8 @@
               "remaining_depth": 7
             }
           },
-          "46cd737378626c0ce2748d200d0e837f1f168823e07c4cffd25fa8993f5071d1": {
-            "claim_id": "46cd737378626c0ce2748d200d0e837f1f168823e07c4cffd25fa8993f5071d1",
+          "c4f896ef4a83f549f050f6b9d3599b4ce15e183a6313e4f1f55924564fcae165": {
+            "claim_id": "c4f896ef4a83f549f050f6b9d3599b4ce15e183a6313e4f1f55924564fcae165",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "7a9375ad6167ad54aa74c6348cc54d344cc5dc9487d847049d5eabb0fa03c8fb"
@@ -127,9 +123,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "spec_version": "comms/0.5.0",
-            "registry_revision": 2,
-            "parent_claim_id": "91a8ebb2773b5a76289fb4965d7742b9ba2f3ba80086971eb17969246d0c63c4",
+            "spec_version": "heterodyne/0.5.0",
+            "profile_revision": 2,
+            "parent_claim_id": "40d64fd0d669fc78ae648eb5eca6fe46d87b13632b3771db9d9f516728961c0a",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -143,8 +139,8 @@
               "remaining_depth": 6
             }
           },
-          "e67a2ed15d1494b2483a2992ab40259cd8135703ebabce20c35657c0db562162": {
-            "claim_id": "e67a2ed15d1494b2483a2992ab40259cd8135703ebabce20c35657c0db562162",
+          "7a5b3688f929bc7b341434416df1b90ab55585b6e7df43b644e7daa1e705758a": {
+            "claim_id": "7a5b3688f929bc7b341434416df1b90ab55585b6e7df43b644e7daa1e705758a",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "fe8d1eb1bcb3432b1db5833ff5f2226d9cb5e65cee430558c18ed3a3c86ce1af"
@@ -169,9 +165,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "spec_version": "comms/0.5.0",
-            "registry_revision": 2,
-            "parent_claim_id": "46cd737378626c0ce2748d200d0e837f1f168823e07c4cffd25fa8993f5071d1",
+            "spec_version": "heterodyne/0.5.0",
+            "profile_revision": 2,
+            "parent_claim_id": "c4f896ef4a83f549f050f6b9d3599b4ce15e183a6313e4f1f55924564fcae165",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -185,8 +181,8 @@
               "remaining_depth": 5
             }
           },
-          "9f15725f6e22e9a305fd0c8a6f766efc825ac5127b726320b06fa5c6fef8abc7": {
-            "claim_id": "9f15725f6e22e9a305fd0c8a6f766efc825ac5127b726320b06fa5c6fef8abc7",
+          "6c399469cf15a2387cf5afc2eb0173750ce5cf5e33387c9e565274794d1fa042": {
+            "claim_id": "6c399469cf15a2387cf5afc2eb0173750ce5cf5e33387c9e565274794d1fa042",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "d528ecd9b696b54c907a9ed045447a79bb408ec39b68df504bb51f459bc3ffc9"
@@ -211,9 +207,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "spec_version": "comms/0.5.0",
-            "registry_revision": 2,
-            "parent_claim_id": "e67a2ed15d1494b2483a2992ab40259cd8135703ebabce20c35657c0db562162",
+            "spec_version": "heterodyne/0.5.0",
+            "profile_revision": 2,
+            "parent_claim_id": "7a5b3688f929bc7b341434416df1b90ab55585b6e7df43b644e7daa1e705758a",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -227,8 +223,8 @@
               "remaining_depth": 4
             }
           },
-          "eee3191fc64d769c21830a695b7344b7bf103b67ef1a2c6ffab3f01e495f22f8": {
-            "claim_id": "eee3191fc64d769c21830a695b7344b7bf103b67ef1a2c6ffab3f01e495f22f8",
+          "138118a43be54db0b01071eff13a18993c78e9392bcdec52a4b0225b0c4fb3f7": {
+            "claim_id": "138118a43be54db0b01071eff13a18993c78e9392bcdec52a4b0225b0c4fb3f7",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "5d045857332d5b9e541514731622af8d60c180165d971a61e06b70a9b3834765"
@@ -253,9 +249,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "spec_version": "comms/0.5.0",
-            "registry_revision": 2,
-            "parent_claim_id": "9f15725f6e22e9a305fd0c8a6f766efc825ac5127b726320b06fa5c6fef8abc7",
+            "spec_version": "heterodyne/0.5.0",
+            "profile_revision": 2,
+            "parent_claim_id": "6c399469cf15a2387cf5afc2eb0173750ce5cf5e33387c9e565274794d1fa042",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -269,8 +265,8 @@
               "remaining_depth": 3
             }
           },
-          "1eb1a9660506236ef3aa620b052908ac7752d33b0c6a855a1690399163993e3a": {
-            "claim_id": "1eb1a9660506236ef3aa620b052908ac7752d33b0c6a855a1690399163993e3a",
+          "244b3c78094b54e14e054f7a460cf77f617f999ca5e294193d5baff45b9e3f8a": {
+            "claim_id": "244b3c78094b54e14e054f7a460cf77f617f999ca5e294193d5baff45b9e3f8a",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "049370a4b5f43412ea25f514e8ecdad05266115e4a7ecb1387231808f8b45963"
@@ -295,9 +291,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "spec_version": "comms/0.5.0",
-            "registry_revision": 2,
-            "parent_claim_id": "eee3191fc64d769c21830a695b7344b7bf103b67ef1a2c6ffab3f01e495f22f8",
+            "spec_version": "heterodyne/0.5.0",
+            "profile_revision": 2,
+            "parent_claim_id": "138118a43be54db0b01071eff13a18993c78e9392bcdec52a4b0225b0c4fb3f7",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -311,8 +307,8 @@
               "remaining_depth": 2
             }
           },
-          "3333cb73e13bef38ff6e5450113226a9ddf09a08c1ef2380e0009c9d1bd66967": {
-            "claim_id": "3333cb73e13bef38ff6e5450113226a9ddf09a08c1ef2380e0009c9d1bd66967",
+          "8f0b71809235c3b74c8cf5d229230473f65bcb95c69d4b620ca6b7f36ce63f94": {
+            "claim_id": "8f0b71809235c3b74c8cf5d229230473f65bcb95c69d4b620ca6b7f36ce63f94",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "f8b0b03d44112259f903b3d100e3950d980fdde9c7e85701c16baedc90235717"
@@ -337,9 +333,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "spec_version": "comms/0.5.0",
-            "registry_revision": 2,
-            "parent_claim_id": "1eb1a9660506236ef3aa620b052908ac7752d33b0c6a855a1690399163993e3a",
+            "spec_version": "heterodyne/0.5.0",
+            "profile_revision": 2,
+            "parent_claim_id": "244b3c78094b54e14e054f7a460cf77f617f999ca5e294193d5baff45b9e3f8a",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -353,8 +349,8 @@
               "remaining_depth": 1
             }
           },
-          "e17c80bac1565ecd50ebeb7949da1599086aa1b8cb0fab351378a9320583856d": {
-            "claim_id": "e17c80bac1565ecd50ebeb7949da1599086aa1b8cb0fab351378a9320583856d",
+          "f2ae843fd0b36d7679cf74cc0382b2f3b770c06de85a27dcf99ea7d9b8652675": {
+            "claim_id": "f2ae843fd0b36d7679cf74cc0382b2f3b770c06de85a27dcf99ea7d9b8652675",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "77f230936ee88cbbd73df930d64702ef881d811e0e1498e2f1c13eb1fc345d74"
@@ -379,9 +375,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "spec_version": "comms/0.5.0",
-            "registry_revision": 2,
-            "parent_claim_id": "3333cb73e13bef38ff6e5450113226a9ddf09a08c1ef2380e0009c9d1bd66967",
+            "spec_version": "heterodyne/0.5.0",
+            "profile_revision": 2,
+            "parent_claim_id": "8f0b71809235c3b74c8cf5d229230473f65bcb95c69d4b620ca6b7f36ce63f94",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -395,8 +391,8 @@
               "remaining_depth": 0
             }
           },
-          "1c229de35378a31c3d70ced547723f969a836355076996fd9b321478f720591b": {
-            "claim_id": "1c229de35378a31c3d70ced547723f969a836355076996fd9b321478f720591b",
+          "1d29170eaf429fab0238d47e5a7c4fee9b9ee6bc2d08d71b112fec9f0b348a02": {
+            "claim_id": "1d29170eaf429fab0238d47e5a7c4fee9b9ee6bc2d08d71b112fec9f0b348a02",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "6eca335d9645307db441656ef4e65b4bfc579b27452bebc19bd870aa1118e5c3"
@@ -421,9 +417,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "spec_version": "comms/0.5.0",
-            "registry_revision": 2,
-            "parent_claim_id": "e17c80bac1565ecd50ebeb7949da1599086aa1b8cb0fab351378a9320583856d",
+            "spec_version": "heterodyne/0.5.0",
+            "profile_revision": 2,
+            "parent_claim_id": "f2ae843fd0b36d7679cf74cc0382b2f3b770c06de85a27dcf99ea7d9b8652675",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -442,10 +438,10 @@
       },
       {
         "name": "cycle",
-        "leaf_claim_id": "c6bc203bb8947ec6fc30ca35e38ba18de74b34cb6d7f6bbdb9727e3ef7609131",
+        "leaf_claim_id": "a2c2e7b383fac2019a86ad0246df1f11100920bc7f2915a32342878d5682fe9b",
         "claims_by_id": {
-          "c6bc203bb8947ec6fc30ca35e38ba18de74b34cb6d7f6bbdb9727e3ef7609131": {
-            "claim_id": "c6bc203bb8947ec6fc30ca35e38ba18de74b34cb6d7f6bbdb9727e3ef7609131",
+          "a2c2e7b383fac2019a86ad0246df1f11100920bc7f2915a32342878d5682fe9b": {
+            "claim_id": "a2c2e7b383fac2019a86ad0246df1f11100920bc7f2915a32342878d5682fe9b",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
@@ -470,9 +466,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "spec_version": "comms/0.5.0",
-            "registry_revision": 2,
-            "parent_claim_id": "950bdf1050d53365139d58cd176ae7acdac487508053643dae786ade0d83c9cd",
+            "spec_version": "heterodyne/0.5.0",
+            "profile_revision": 2,
+            "parent_claim_id": "9440857e490386d157f87481b6ca9b5ab64e72d24779f9252dd4c111d8ac43ac",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -486,8 +482,8 @@
               "remaining_depth": 1
             }
           },
-          "950bdf1050d53365139d58cd176ae7acdac487508053643dae786ade0d83c9cd": {
-            "claim_id": "c6bc203bb8947ec6fc30ca35e38ba18de74b34cb6d7f6bbdb9727e3ef7609131",
+          "9440857e490386d157f87481b6ca9b5ab64e72d24779f9252dd4c111d8ac43ac": {
+            "claim_id": "a2c2e7b383fac2019a86ad0246df1f11100920bc7f2915a32342878d5682fe9b",
             "issuer": {
               "type": "nostr-secp256k1",
               "value": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
@@ -512,9 +508,9 @@
               "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
             ],
             "visibility": "repository-private",
-            "spec_version": "comms/0.5.0",
-            "registry_revision": 2,
-            "parent_claim_id": "950bdf1050d53365139d58cd176ae7acdac487508053643dae786ade0d83c9cd",
+            "spec_version": "heterodyne/0.5.0",
+            "profile_revision": 2,
+            "parent_claim_id": "9440857e490386d157f87481b6ca9b5ab64e72d24779f9252dd4c111d8ac43ac",
             "constraints": {
               "namespaces": [
                 "heterodyne.device"
@@ -540,8 +536,8 @@
     "normalized": {
       "cycle_reason_code": "claim-chain-cycle",
       "cycle_path": [
-        "c6bc203bb8947ec6fc30ca35e38ba18de74b34cb6d7f6bbdb9727e3ef7609131",
-        "c6bc203bb8947ec6fc30ca35e38ba18de74b34cb6d7f6bbdb9727e3ef7609131"
+        "a2c2e7b383fac2019a86ad0246df1f11100920bc7f2915a32342878d5682fe9b",
+        "a2c2e7b383fac2019a86ad0246df1f11100920bc7f2915a32342878d5682fe9b"
       ],
       "maximum_edges": 8
     }

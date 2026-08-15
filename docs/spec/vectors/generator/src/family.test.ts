@@ -1,48 +1,55 @@
 import { describe, expect, it } from "vitest";
 import {
   assertAllowedDependency,
-  DOCUMENT_DEPENDENCIES,
-  OPTIONAL_DOCUMENT_DEPENDENCIES,
-  parseQualifiedVersion,
+  assertCurrentFamilyVersion,
+  DOCUMENT_LAYERING,
+  FAMILY_VERSION,
+  parseFamilyVersion,
+  QUALIFIED_VERSION,
 } from "./family.js";
 
 describe("protocol document family", () => {
-  it("parses qualified document versions", () => {
-    expect(parseQualifiedVersion("core/0.5.0")).toEqual({
-      document: "core",
-      semver: "0.5.0",
-    });
-    expect(parseQualifiedVersion("comms/1.2.3-rc.1+build.5")).toEqual({
-      document: "comms",
-      semver: "1.2.3-rc.1+build.5",
-    });
-    expect(parseQualifiedVersion("workspace/0.1.0")).toEqual({
-      document: "workspace",
-      semver: "0.1.0",
-    });
-    expect(() => parseQualifiedVersion("0.5.0")).toThrow(
-      "qualified version",
+  it("parses the single family version", () => {
+    expect(QUALIFIED_VERSION).toBe(`heterodyne/${FAMILY_VERSION}`);
+    expect(parseFamilyVersion("heterodyne/0.5.0")).toBe("0.5.0");
+    expect(parseFamilyVersion("heterodyne/1.2.3-rc.1+build.5")).toBe(
+      "1.2.3-rc.1+build.5",
+    );
+    expect(() => parseFamilyVersion("0.5.0")).toThrow("invalid family version");
+    expect(() => parseFamilyVersion("core/0.5.0")).toThrow(
+      "invalid family version",
     );
   });
 
-  it("enforces the allowed document dependency DAG", () => {
+  it("rejects a version other than the current release", () => {
+    expect(() => assertCurrentFamilyVersion(QUALIFIED_VERSION)).not.toThrow();
+    expect(() => assertCurrentFamilyVersion("heterodyne/0.4.0")).toThrow(
+      QUALIFIED_VERSION,
+    );
+  });
+
+  it("enforces the document layering DAG", () => {
     expect(() => assertAllowedDependency("core", "comms")).toThrow(
       "forbidden dependency",
     );
     expect(() => assertAllowedDependency("social", "control")).toThrow(
       "forbidden dependency",
     );
-    expect(() => assertAllowedDependency("control", "comms")).not.toThrow();
-    expect(() => assertAllowedDependency("control", "core")).not.toThrow();
-    expect(() => assertAllowedDependency("social", "comms")).not.toThrow();
-    expect(() => assertAllowedDependency("workspace", "core")).not.toThrow();
-    expect(() => assertAllowedDependency("workspace", "comms")).not.toThrow();
-    expect(() => assertAllowedDependency("workspace", "control")).not.toThrow();
-    expect(() => assertAllowedDependency("workspace", "social")).not.toThrow();
     expect(() => assertAllowedDependency("control", "workspace")).toThrow(
       "forbidden dependency",
     );
-    expect(DOCUMENT_DEPENDENCIES.workspace).toEqual(["core", "comms"]);
-    expect(OPTIONAL_DOCUMENT_DEPENDENCIES.workspace).toEqual(["control", "social"]);
+    for (const [document, dependency] of [
+      ["comms", "core"],
+      ["control", "core"],
+      ["control", "comms"],
+      ["social", "comms"],
+      ["workspace", "core"],
+      ["workspace", "comms"],
+      ["workspace", "control"],
+      ["workspace", "social"],
+    ] as const) {
+      expect(() => assertAllowedDependency(document, dependency)).not.toThrow();
+    }
+    expect(DOCUMENT_LAYERING.core).toEqual([]);
   });
 });

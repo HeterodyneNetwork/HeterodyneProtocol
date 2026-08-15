@@ -1,14 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "social",
-  "owner_version": "social/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0",
-    "comms": "comms/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:social/0.5.0#social-moderation"
+    "heterodyne:0.5.0#social-moderation"
   ],
   "vector_id": "moderation/kind34550-approvals-required",
   "description": "A NIP-72 kind:34550 community definition signed by the community persona's epoch key, listing moderators by permanent cold-root npub and carrying the Heterodyne [\"approvals_required\",\"N\"] extension tag.",
@@ -22,7 +17,7 @@
     }
   },
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225730,34550,[[\"d\",\"acme-town-square\"],[\"name\",\"Acme Town Square\"],[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\",\"wss://relay.example\",\"moderator\"],[\"p\",\"2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01\",\"wss://relay.example\",\"moderator\"],[\"approvals_required\",\"2\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"]],\"\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225730,34550,[[\"d\",\"acme-town-square\"],[\"name\",\"Acme Town Square\"],[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\",\"wss://relay.example\",\"moderator\"],[\"p\",\"2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01\",\"wss://relay.example\",\"moderator\"],[\"approvals_required\",\"2\"],[\"kel_head\",\"7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf\",\"0\"]],\"\"]",
     "decoded": {
       "event": {
         "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
@@ -55,17 +50,17 @@
           ],
           [
             "kel_head",
-            "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+            "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
             "0"
           ]
         ],
         "content": "",
-        "id": "80af207c1d524c8161537fbbfd761db1dda9c0743ad4192f7b62686a9300796b",
-        "sig": "fb7b98d6e7a1c3318f758720029ea811d1babe9468ed07a291078af21dc8ea50521b59dbd50447b38881241198fe102a81512cfe41dc432c55396b8784d67e74"
+        "id": "b399d4631f0be979370aca9d7d87e76e5d451a677f29b66f424a80c3cf9380d4",
+        "sig": "f07926df3a9d3c4fe8e5932055e7d501712e23e248327eefa6411cce9d16799e037914a6214018addd2165f314fb3b8312dc1661178683f8caa5cecd75e79216"
       }
     },
-    "id": "80af207c1d524c8161537fbbfd761db1dda9c0743ad4192f7b62686a9300796b",
-    "sig": "fb7b98d6e7a1c3318f758720029ea811d1babe9468ed07a291078af21dc8ea50521b59dbd50447b38881241198fe102a81512cfe41dc432c55396b8784d67e74"
+    "id": "b399d4631f0be979370aca9d7d87e76e5d451a677f29b66f424a80c3cf9380d4",
+    "sig": "f07926df3a9d3c4fe8e5932055e7d501712e23e248327eefa6411cce9d16799e037914a6214018addd2165f314fb3b8312dc1661178683f8caa5cecd75e79216"
   },
   "direction": "produce"
 }

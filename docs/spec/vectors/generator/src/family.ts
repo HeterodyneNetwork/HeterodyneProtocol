@@ -1,61 +1,63 @@
-import type { DocumentId, QualifiedVersion } from "./types.js";
+import type { DocumentId } from "./types.js";
 
-export type { DocumentId, QualifiedVersion } from "./types.js";
+export type { DocumentId } from "./types.js";
 
-export const DOCUMENT_VERSIONS: Record<DocumentId, string> = {
-  core: "0.5.0",
-  comms: "0.5.0",
-  control: "0.5.0",
-  social: "0.5.0",
-  workspace: "0.1.0",
-};
+/**
+ * The single family version. The five documents are sections of one
+ * specification, not independent lineages: every document pins the same
+ * version and the same registry revision, so one string is the only source
+ * of truth for both.
+ */
+export const FAMILY_VERSION = "0.5.0";
 
-export const DOCUMENT_DEPENDENCIES: Record<
-  DocumentId,
-  readonly DocumentId[]
-> = {
+export const QUALIFIED_VERSION = `heterodyne/${FAMILY_VERSION}`;
+
+export const DOCUMENTS: readonly DocumentId[] = [
+  "core",
+  "comms",
+  "control",
+  "social",
+  "workspace",
+];
+
+/**
+ * Which documents each document may normatively depend on. This is a layering
+ * constraint, not a versioning one: the five documents ship as one version,
+ * but Core still MUST NOT reference Social, and the graph MUST stay acyclic.
+ */
+export const DOCUMENT_LAYERING: Record<DocumentId, readonly DocumentId[]> = {
   core: [],
   comms: ["core"],
   control: ["core", "comms"],
   social: ["core", "comms"],
-  workspace: ["core", "comms"],
+  workspace: ["core", "comms", "control", "social"],
 };
-
-export const OPTIONAL_DOCUMENT_DEPENDENCIES: Record<
-  DocumentId,
-  readonly DocumentId[]
-> = {
-  core: [],
-  comms: [],
-  control: [],
-  social: [],
-  workspace: ["control", "social"],
-};
-
-const QUALIFIED_VERSION =
-  /^(core|comms|control|social|workspace)\/(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
-
-export function parseQualifiedVersion(value: string): QualifiedVersion {
-  const match = QUALIFIED_VERSION.exec(value);
-  if (match === null) {
-    throw new Error(`invalid qualified version: ${value}`);
-  }
-
-  const [, document] = match;
-  return {
-    document: document as DocumentId,
-    semver: value.slice(document.length + 1),
-  };
-}
 
 export function assertAllowedDependency(
   document: DocumentId,
   dependency: DocumentId,
 ): void {
-  if (
-    !DOCUMENT_DEPENDENCIES[document].includes(dependency) &&
-    !OPTIONAL_DOCUMENT_DEPENDENCIES[document].includes(dependency)
-  ) {
+  if (!DOCUMENT_LAYERING[document].includes(dependency)) {
     throw new Error(`forbidden dependency: ${document} -> ${dependency}`);
+  }
+}
+
+const SEMVER =
+  /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+
+/** Parses `heterodyne/<semver>` and returns the semver suffix. */
+export function parseFamilyVersion(value: string): string {
+  const semver = value.startsWith("heterodyne/")
+    ? value.slice("heterodyne/".length)
+    : null;
+  if (semver === null || !SEMVER.test(semver)) {
+    throw new Error(`invalid family version: ${value}`);
+  }
+  return semver;
+}
+
+export function assertCurrentFamilyVersion(value: string): void {
+  if (parseFamilyVersion(value) !== FAMILY_VERSION) {
+    throw new Error(`expected ${QUALIFIED_VERSION}, got ${value}`);
   }
 }

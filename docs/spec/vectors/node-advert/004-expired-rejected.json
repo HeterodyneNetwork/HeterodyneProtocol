@@ -1,11 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-node-advertisement"
+    "heterodyne:0.5.0#core-node-advertisement"
   ],
   "vector_id": "node-advert/expired-rejected",
   "description": "A kind:31010 advertisement whose expiry is in the past is rejected even though both signatures verify.",
@@ -49,17 +47,17 @@
         ],
         [
           "kel_head",
-          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+          "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
           "0"
         ],
         [
           "spec_version",
-          "core/0.5.0"
+          "heterodyne/0.5.0"
         ]
       ],
       "content": "",
-      "id": "28b0835ff1f264bdc6fe507dd2da0e31b5632db488795c23834152e6929afae2",
-      "sig": "179e4611f0df10e5c1c0c7e5d291cd1ee989918885c13bbb26e766c4991e659af56f712f3966e5189f3baef791c95ddc4904f8037379ff50ef1797b30967aafc"
+      "id": "7467b10ccb159b5fa98eff5ccd124010617e1309594e5899e9c12bb53532c3fe",
+      "sig": "a1a99e684cbbf23137b072105a7a53d5c9c98d06428c19bfc97f1dcb4b0ba64de48172aacfe6cfa20945aec6004dd5db7d911472c724c81a40f95580f2727090"
     },
     "advertised_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
     "nid_proof_payload": "heterodyne-node-advert-v1|rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|wss://node-a.example/relay|1767225599|4a19af7f069f3c32d4235c726f666fc8cd0175fa",

@@ -1,11 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-kel-head"
+    "heterodyne:0.5.0#core-kel-head"
   ],
   "vector_id": "keri-authority/kel-head-duplicate-rejected",
   "description": "An epoch-key-signed post carrying two kel_head tags fails: the event MUST carry exactly one well-formed instance.",
@@ -21,18 +19,18 @@
         ],
         [
           "kel_head",
-          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+          "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
           "0"
         ],
         [
           "kel_head",
-          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+          "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
           "0"
         ]
       ],
       "content": "post carrying two kel_head tags",
-      "id": "fdfe8427ae67e02b31580cb647c322116b5927bc836c34c2e4fdb7e50d8e04a4",
-      "sig": "87b5538591dd6e1e1863fde7d810f28d19ac16f9ecf737e544ad1bd3cab613b8181b01c73fbeab65d0785454615290e81d862d98a0c7c3493b991d249b514059"
+      "id": "032ce1a60575f9f6ec0af10bd97b09450492eac01ae15e1959faf26f8c261ce3",
+      "sig": "7e1145a9bdbffbcd4fae1586312488097bf55488af170d36a8d2b4a17df7738ce34417ee11747e998d55a297e1ac3082b757c453d5d79bd38f8d17b009ac65c3"
     },
     "kel_head_count": 2,
     "vector_context": {

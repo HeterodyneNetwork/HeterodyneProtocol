@@ -231,7 +231,7 @@ function parseInception(event: ParsedNip01Event): ParsedInception {
   }
   if (
     event.tags.at(-1)?.[0] !== "spec_version"
-    || event.tags.at(-1)?.[1] !== "core/0.5.0"
+    || event.tags.at(-1)?.[1] !== "heterodyne/0.5.0"
     || event.tags.at(-1)?.length !== 2
   ) {
     fail("missing_or_invalid_spec_version");
@@ -275,7 +275,7 @@ function parseRotationContent(content: string): RotationReceipt[] {
   if (
     !isRecord(value)
     || Object.keys(value).join(",") !== "spec_version,receipts"
-    || value.spec_version !== "core/0.5.0"
+    || value.spec_version !== "heterodyne/0.5.0"
     || !Array.isArray(value.receipts)
   ) {
     fail("invalid_rotation_content");
@@ -310,7 +310,7 @@ function parseRotationContent(content: string): RotationReceipt[] {
   }
   if (
     JSON.stringify({
-      spec_version: "core/0.5.0",
+      spec_version: "heterodyne/0.5.0",
       receipts,
     }) !== content
   ) {

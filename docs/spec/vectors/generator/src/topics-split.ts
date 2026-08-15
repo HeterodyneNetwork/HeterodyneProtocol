@@ -34,7 +34,7 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
     auxRand: AUX_RAND,
   });
   const payloadContent = JSON.stringify({
-    spec_version: "comms/0.5.0",
+    spec_version: "heterodyne/0.5.0",
     protocol_type: "payload",
     negotiation_id: "aa".repeat(16),
     protocol_id: "heterodyne-device-rpc",
@@ -51,7 +51,7 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
   };
   const rumor = { id: getEventId(rumorBase), ...rumorBase };
   const negotiationContent = JSON.stringify({
-    spec_version: "comms/0.5.0", protocol_type: "negotiation", phase: "offer",
+    spec_version: "heterodyne/0.5.0", protocol_type: "negotiation", phase: "offer",
     negotiation_id: "cc".repeat(16), protocol_id: "heterodyne-device-rpc",
     supported_versions: ["1.0.0"], required_features: ["claims"],
   });
@@ -121,7 +121,7 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
     ["binding_nonce", bindingNonce],
     ["kel_head", fixtures.kel.alice.head.id, "0"],
     ["key_proof", keyProof],
-    ["spec_version", "core/0.5.0"],
+    ["spec_version", "heterodyne/0.5.0"],
   ];
   const sessionDeviceEvent = await signEvent({
     secretKey: sender.private_key,
@@ -168,7 +168,7 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
     kind: 31001,
     tags: [
       ...sessionTags.slice(0, -1),
-      ["spec_version", "control/0.5.0"],
+      ["spec_version", "heterodyne/0.5.0"],
     ],
     content: "",
     auxRand: AUX_RAND,
@@ -196,7 +196,7 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
   const orgFeed = await signEvent({
     secretKey: sender.private_key, created_at: fixtures.test_epoch + 505, kind: 31007,
     tags: [["d", "org-news:page-1"], ["heterodyne", "feed_index"], ["cold_root", fixtures.personas.alice.cold_root.pubkey], ["rid", fixtures.radicle_rids.org_acme], ["feed_label", "Org news"], ["e", "33".repeat(32), "wss://relay.example"], ["kel_head", fixtures.kel.alice.head.id, "0"]],
-    content: "{\"profile\":\"heterodyne.social.org-feed.v1\",\"spec_version\":\"social/0.5.0\"}", auxRand: AUX_RAND,
+    content: "{\"profile\":\"heterodyne.social.org-feed.v1\",\"spec_version\":\"heterodyne/0.5.0\"}", auxRand: AUX_RAND,
   });
   const inviterEphemeralPrivateKey = "0c".repeat(32);
   const inviterEphemeralPublicKey = getPublicKey(inviterEphemeralPrivateKey);
@@ -379,7 +379,7 @@ const CASES: Case[] = [
     vector_id: "versioning/qualified-version-valid",
     description: "A qualified family version parses into its document and semver suffix.",
     direction: "round-trip",
-    input: { value: "comms/0.5.0" },
+    input: { value: "heterodyne/0.5.0" },
     expected_output: { valid: true, document: "comms", semver: "0.5.0" },
   },
   {
@@ -394,15 +394,15 @@ const CASES: Case[] = [
     path: "versioning/007-core-capability-bootstrap.json",
     vector_id: "versioning/core-capability-bootstrap",
     description: "The Core capability descriptor is discoverable without a higher-document carrier.",
-    input: { descriptor: "heterodyne-capabilities-v1", bootstrap_version: "core/0.5.0", registry_revision: 1 },
+    input: { descriptor: "heterodyne-capabilities-v1", bootstrap_version: "heterodyne/0.5.0", profile_revision: 1 },
     expected_output: { verdict: "accept", normalized: { bootstrap_owner: "core", higher_carrier_required: false } },
   },
   {
     path: "versioning/008-per-document-negotiation.json",
     vector_id: "versioning/per-document-negotiation",
     description: "Peers negotiate each document version independently before using its stamp.",
-    input: { local: { core: ["core/0.5.0"], comms: ["comms/0.5.0"] }, remote: { core: ["core/0.5.0"], comms: [] } },
-    expected_output: { verdict: "accept", normalized: { core: "core/0.5.0", comms: null, may_stamp_comms: false } },
+    input: { local: { core: ["heterodyne/0.5.0"], comms: ["heterodyne/0.5.0"] }, remote: { core: ["heterodyne/0.5.0"], comms: [] } },
+    expected_output: { verdict: "accept", normalized: { core: "heterodyne/0.5.0", comms: null, may_stamp_comms: false } },
   },
   {
     path: "versioning/009-unknown-asynchronous-stamp-rejected.json",
@@ -435,13 +435,13 @@ const CASES: Case[] = [
     description: "A required feature resolves only through the exact declared dependency release that owns and provides it.",
     direction: "round-trip",
     input: {
-      document: "control/0.5.0",
-      dependency: "comms/0.5.0",
+      document: "heterodyne/0.5.0",
+      dependency: "heterodyne/0.5.0",
       required_feature: "comms.marmot-conversations.v1",
       catalog_owner: "comms",
       dependency_provided_features: ["comms.marmot-conversations.v1"],
     },
-    expected_output: { valid: true, resolved_dependency: "comms/0.5.0" },
+    expected_output: { valid: true, resolved_dependency: "heterodyne/0.5.0" },
   },
   {
     path: "registry/004-feature-dependency-unprovided-rejected.json",
@@ -449,8 +449,8 @@ const CASES: Case[] = [
     description: "A catalog entry does not satisfy a required feature unless the exact dependency release provides it.",
     direction: "round-trip",
     input: {
-      document: "control/0.5.0",
-      dependency: "comms/0.5.0",
+      document: "heterodyne/0.5.0",
+      dependency: "heterodyne/0.5.0",
       required_feature: "comms.marmot-conversations.v1",
       catalog_owner: "comms",
       dependency_provided_features: [],
@@ -480,7 +480,7 @@ function profileCases(): Case[] {
     vector_id: `profiles/tier3-kind-${kind}`,
     description: `The active Tier-3 kind:${kind} profile uses the exact opaque carrier tags and Comms owner stamp.`,
     direction: "round-trip",
-    input: { event_template: { kind, tags: [...(kind >= 30000 ? [["d", `opaque-${kind}`]] : []), ["heterodyne_wrap", "room_key.v2"], ["key_id", "aud-fixture"], ["kel_head", "11".repeat(32), "0"], ["spec_version", "comms/0.5.0"]], content: "AopaqueNIP44fixture" } },
+    input: { event_template: { kind, tags: [...(kind >= 30000 ? [["d", `opaque-${kind}`]] : []), ["heterodyne_wrap", "room_key.v2"], ["key_id", "aud-fixture"], ["kel_head", "11".repeat(32), "0"], ["spec_version", "heterodyne/0.5.0"]], content: "AopaqueNIP44fixture" } },
     expected_output: { verdict: "accept", normalized: { owner: "comms", stamp_location: "tag", semantic_cleartext_tags: 0 } },
   }));
   return [
@@ -490,7 +490,7 @@ function profileCases(): Case[] {
 
 function stampCases(): Case[] {
   const values: Array<[string, string, Record<string, unknown>, Record<string, unknown>]> = [
-    ["001-heterodyne-json-content-owner", "heterodyne-json-content-owner", { kind: 31003, content_is_heterodyne_json: true, content: { spec_version: "core/0.5.0" } }, { owner: "core", placement: "content.spec_version" }],
+    ["001-heterodyne-json-content-owner", "heterodyne-json-content-owner", { kind: 31003, content_is_heterodyne_json: true, content: { spec_version: "heterodyne/0.5.0" } }, { owner: "core", placement: "content.spec_version" }],
     ["002-heterodyne-empty-content-tag-owner", "heterodyne-empty-content-tag-owner", { kind: 31001, content_is_heterodyne_json: false }, { owner: "core", placement: "tag" }],
     ["003-upstream-unstamped", "upstream-unstamped", { kind: 10000 }, { owner: null, placement: null }],
     ["004-upstream-profile-owner", "upstream-profile-owner", { kind: 10000, profile_id: "heterodyne-social-mute-list-v1" }, { owner: "social", placement: "tag" }],

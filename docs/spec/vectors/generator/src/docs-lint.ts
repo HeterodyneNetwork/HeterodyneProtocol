@@ -7,8 +7,9 @@ import {
 import { relative, resolve, sep } from "node:path";
 import {
   assertAllowedDependency,
-  DOCUMENT_VERSIONS,
-  parseQualifiedVersion,
+  DOCUMENTS,
+  FAMILY_VERSION,
+  QUALIFIED_VERSION,
 } from "./family.js";
 import type { DocumentId } from "./types.js";
 import { computeRegistryDigest, loadRegistry } from "./registry.js";
@@ -59,17 +60,11 @@ type FamilyDocument = {
   lines: string[];
 };
 
-const DOCUMENTS: readonly DocumentId[] = [
-  "core",
-  "comms",
-  "control",
-  "social",
-  "workspace",
-];
-
 const EXPLICIT_ANCHOR = /<a\s+id="([a-z0-9]+(?:-[a-z0-9]+)*)"\s*><\/a>/g;
-const QUALIFIED_REFERENCE =
-  /heterodyne:(core|comms|control|social|workspace)\/((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)#([a-z0-9]+(?:-[a-z0-9]+)*)/g;
+const QUALIFIED_REFERENCE = new RegExp(
+  `heterodyne:((?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?)#([a-z0-9]+(?:-[a-z0-9]+)*)`,
+  "g",
+);
 const BARE_FAMILY_LINK =
   /\]\((?:\.\/)?heterodyne-(core|comms|control|social|workspace)\.md(?:#[^)]+)?\)/i;
 const NONCANONICAL_DECISION_REFERENCE = /\bADR-\d{3}\b|docs\/adr\//;
@@ -243,7 +238,6 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
 
   for (const document of documents) {
     const normativeLines = normativeParagraphLines(document.lines);
-    const declaredDependencies = declaredNormativeDependencies(document.lines);
     for (const [index, line] of document.lines.entries()) {
       const lineNumber = index + 1;
       const references = [...line.matchAll(QUALIFIED_REFERENCE)];
@@ -259,10 +253,21 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
       }
 
       for (const match of references) {
-        const target = match[1] as DocumentId;
-        const version = match[2];
-        const anchor = match[3];
-        parseQualifiedVersion(`${target}/${version}`);
+        const version = match[1];
+        const anchor = match[2];
+        // The anchor prefix names its owning document, so one qualified
+        // reference form resolves and layer-checks without a per-document
+        // version to carry the owner.
+        const target = anchor.split("-", 1)[0] as DocumentId;
+        if (version !== FAMILY_VERSION) {
+          issues.push({
+            path: document.displayPath,
+            line: lineNumber,
+            code: "unresolved-reference",
+            message: `${match[0]} is not the current family version ${QUALIFIED_VERSION}`,
+          });
+          continue;
+        }
         if (!documentAnchors.has(`${target}:${anchor}`)) {
           issues.push({
             path: document.displayPath,
@@ -270,24 +275,12 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
             code: "unresolved-reference",
             message: `${match[0]} does not resolve to an explicit family anchor`,
           });
+          continue;
         }
-      }
-
-      if (normativeLines.has(index)) {
-        for (const match of references) {
-          const target = match[1] as DocumentId;
-          const targetVersion = `${target}/${match[2]}`;
-          if (
-            target !== document.document &&
-            !declaredDependencies.has(targetVersion)
-          ) {
-            issues.push({
-              path: document.displayPath,
-              line: lineNumber,
-              code: "undeclared-dependency",
-              message: `${document.document} normatively references undeclared dependency ${targetVersion}`,
-            });
-          }
+        if (
+          normativeLines.has(index) &&
+          target !== document.document
+        ) {
           try {
             assertAllowedDependency(document.document, target);
           } catch {
@@ -325,8 +318,8 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
     if (/<recipient npub>|recipient's npub/.test(wire)) {
       issues.push({ path: comms.displayPath, line: wireStart + 1, code: "ambiguous-nostr-wire-key", message: "Tier 3 wire keys must use lowercase 64-hex rather than npub" });
     }
-    if (!/profile registry revision[\s\S]*exactly `2`[\s\S]*current complete registry revision/i.test(comms.lines.join("\n"))) {
-      issues.push({ path: comms.displayPath, line: 1, code: "claim-profile-revision-ambiguous", message: "claim profile and family registry revisions are not distinguished" });
+    if (/\bregistry_revision\b/.test(comms.lines.join("\n"))) {
+      issues.push({ path: comms.displayPath, line: 1, code: "claim-profile-revision-ambiguous", message: "the frozen claim-profile revision must be named profile_revision, distinct from the registry pin" });
     }
   }
   const registry = loadRegistry(repoRoot);
@@ -342,17 +335,6 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
   return issues;
 }
 
-export type ReleaseManifest = {
-  document: DocumentId;
-  version: string;
-  qualified_version: `${DocumentId}/${string}`;
-  registry_revision: number;
-  registry_sha256: string;
-  dependencies: Partial<Record<DocumentId, `${DocumentId}/${string}`>>;
-  provided_features: string[];
-  required_features: string[];
-  conformance_status: "conformant" | "incomplete-draft";
-};
 
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
@@ -363,10 +345,6 @@ function canonicalJson(value: unknown): string {
       .join(",")}}`;
   }
   return JSON.stringify(value);
-}
-
-export function releaseManifestBytes(manifest: ReleaseManifest): string {
-  return `${canonicalJson(manifest)}\n`;
 }
 
 function parseInvariantRows(text: string): Map<string, string> {
@@ -447,257 +425,7 @@ export function findStrictProfileClosureIssues(
   return issues.sort();
 }
 
-export function validateReleaseManifestRegistryPin(
-  repoRoot: string,
-  manifest: Pick<ReleaseManifest, "registry_revision" | "registry_sha256">,
-): void {
-  const registry = loadRegistry(repoRoot);
-  const entrySet = registry.history.get(manifest.registry_revision);
-  if (entrySet === undefined) {
-    throw new Error(
-      `unknown registry history revision ${manifest.registry_revision}`,
-    );
-  }
-  const expectedDigest = computeRegistryDigest(entrySet);
-  if (manifest.registry_sha256 !== expectedDigest) {
-    throw new Error(
-      `registry digest mismatch for revision ${manifest.registry_revision}`,
-    );
-  }
-}
-
-export function loadReleaseSchemaRegistryPin(
-  repoRoot: string,
-): Pick<ReleaseManifest, "registry_revision" | "registry_sha256"> {
-  const schemaPath = resolve(
-    repoRoot,
-    "docs/spec/releases/release-manifest.schema.json",
-  );
-  const schema = JSON.parse(readFileSync(schemaPath, "utf8")) as {
-    properties?: {
-      registry_revision?: { const?: unknown };
-      registry_sha256?: { const?: unknown };
-    };
-  };
-  const registryRevision = schema.properties?.registry_revision?.const;
-  const registrySha256 = schema.properties?.registry_sha256?.const;
-  if (typeof registryRevision !== "number" || typeof registrySha256 !== "string") {
-    throw new Error("release schema registry pin is incomplete");
-  }
-  const pin = {
-    registry_revision: registryRevision,
-    registry_sha256: registrySha256,
-  };
-  validateReleaseManifestRegistryPin(repoRoot, pin);
-  return pin;
-}
-
-export function validateReleaseManifestSchemaPin(
-  repoRoot: string,
-  manifest: Pick<ReleaseManifest, "registry_revision" | "registry_sha256">,
-): void {
-  const schemaPin = loadReleaseSchemaRegistryPin(repoRoot);
-  if (
-    manifest.registry_revision !== schemaPin.registry_revision ||
-    manifest.registry_sha256 !== schemaPin.registry_sha256
-  ) {
-    throw new Error("release manifest does not match release schema pin");
-  }
-  validateReleaseManifestRegistryPin(repoRoot, manifest);
-}
-
-export function expectedReleaseManifests(
-  repoRoot: string,
-  revision?: number,
-): Record<DocumentId, ReleaseManifest> {
-  const registry = loadRegistry(repoRoot);
-  const registryRevision = revision ?? loadReleaseSchemaRegistryPin(repoRoot).registry_revision;
-  const entrySet = registry.history.get(registryRevision);
-  if (entrySet === undefined) {
-    throw new Error(`unknown registry history revision ${registryRevision}`);
-  }
-  const registrySha256 = computeRegistryDigest(entrySet);
-  const manifests: Record<DocumentId, ReleaseManifest> = {
-    core: {
-      document: "core",
-      version: "0.5.0",
-      qualified_version: "core/0.5.0",
-      registry_revision: registryRevision,
-      registry_sha256: registrySha256,
-      dependencies: {},
-      provided_features: [
-        "core.nostr-relay-read.v1",
-        "core.outbound-tor.v1",
-        "core.repo-relay-client.v1",
-        "core.onion-service-host.v1",
-        "core.browser-shared-relay.v1",
-        "core.marmot-role-attribution.v1",
-      ],
-      required_features: [],
-      conformance_status: "conformant",
-    },
-    comms: {
-      document: "comms",
-      version: "0.5.0",
-      qualified_version: "comms/0.5.0",
-      registry_revision: registryRevision,
-      registry_sha256: registrySha256,
-      dependencies: { core: "core/0.5.0" },
-      provided_features: [
-        "comms.key-claims.v1",
-        "comms.private-claim-ledger.v1",
-        "comms.oidc-jwt-projection.v1",
-        "comms.token-status-list-draft-21.v1",
-        "comms.public-reader.v1",
-        "comms.agent-authorship.v1",
-        "comms.marmot-conversations.v1",
-        "comms.radicle-marmot-storage.v1",
-        "comms.radicle-backed-marmot-relay.v1",
-      ],
-      required_features: [
-        "core.marmot-role-attribution.v1",
-        "core.nostr-relay-read.v1",
-        "core.repo-relay-client.v1",
-      ],
-      conformance_status: "conformant",
-    },
-    control: {
-      document: "control",
-      version: "0.5.0",
-      qualified_version: "control/0.5.0",
-      registry_revision: registryRevision,
-      registry_sha256: registrySha256,
-      dependencies: { core: "core/0.5.0", comms: "comms/0.5.0" },
-      provided_features: [
-        "control.marmot.v1",
-        "control.oauth-device-enrollment.v1",
-        "control.private-entitlement.v1",
-        "control.node-scoped-token.v1",
-        "control.agent-workload-publication.v1",
-        "control.node-mediated-marmot.v1",
-        "control.recovery.radicle.v1",
-        "control.recovery.epoch-inbox.v1",
-        "control.recovery.sftp.v1",
-      ],
-      required_features: [
-        "core.repo-relay-client.v1",
-        "comms.agent-authorship.v1",
-        "comms.marmot-conversations.v1",
-        "comms.oidc-jwt-projection.v1",
-        "comms.private-claim-ledger.v1",
-        "comms.radicle-marmot-storage.v1",
-      ],
-      conformance_status: "conformant",
-    },
-    social: {
-      document: "social",
-      version: "0.5.0",
-      qualified_version: "social/0.5.0",
-      registry_revision: registryRevision,
-      registry_sha256: registrySha256,
-      dependencies: { core: "core/0.5.0", comms: "comms/0.5.0" },
-      provided_features: ["social.agent-policy-moderation.v1"],
-      required_features: [
-        "comms.agent-authorship.v1",
-        "comms.marmot-conversations.v1",
-      ],
-      conformance_status: "conformant",
-    },
-    workspace: {
-      document: "workspace",
-      version: "0.1.0",
-      qualified_version: "workspace/0.1.0",
-      registry_revision: registryRevision,
-      registry_sha256: registrySha256,
-      dependencies: {
-        core: "core/0.5.0",
-        comms: "comms/0.5.0",
-      },
-      provided_features: [
-        "workspace.role-authorization.v1",
-        "workspace.private-role-control.v1",
-        "workspace.radicle-transport-backstop.v1",
-        "workspace.resource-key-delivery.v1",
-        "workspace.bilateral-allowance.v1",
-        "workspace.joint-governance.v1",
-      ],
-      required_features: [
-        "core.marmot-role-attribution.v1",
-        "core.repo-relay-client.v1",
-        "comms.marmot-conversations.v1",
-        "comms.radicle-marmot-storage.v1",
-        "comms.radicle-backed-marmot-relay.v1",
-      ],
-      conformance_status: "conformant",
-    },
-  };
-  validateReleaseFeatureResolution(registry, manifests);
-  return manifests;
-}
-
-export function validateReleaseFeatureResolution(
-  registry: ReturnType<typeof loadRegistry>,
-  manifests: Record<DocumentId, ReleaseManifest>,
-): void {
-  const catalog = new Map(registry.features.map((feature) => [feature.id, feature]));
-  for (const [document, manifest] of Object.entries(manifests) as [DocumentId, ReleaseManifest][]) {
-    const provided = new Set(manifest.provided_features);
-    const required = new Set(manifest.required_features);
-    if (provided.size !== manifest.provided_features.length) {
-      throw new Error(`duplicate provided feature: ${document}`);
-    }
-    if (required.size !== manifest.required_features.length) {
-      throw new Error(`duplicate required feature: ${document}`);
-    }
-    for (const featureId of provided) {
-      if (required.has(featureId)) throw new Error(`feature both provided and required: ${featureId}`);
-      const feature = catalog.get(featureId);
-      if (feature === undefined) throw new Error(`unregistered provided feature: ${featureId}`);
-      if (feature.owner !== document) throw new Error(`provided feature owner mismatch: ${featureId}`);
-      for (const prerequisiteId of feature.prerequisites) {
-        const prerequisite = catalog.get(prerequisiteId);
-        if (prerequisite === undefined) {
-          throw new Error(`unregistered feature prerequisite: ${prerequisiteId}`);
-        }
-        if (prerequisite.owner === document) {
-          if (!provided.has(prerequisiteId)) {
-            throw new Error(`local prerequisite not provided: ${featureId} -> ${prerequisiteId}`);
-          }
-        } else if (!required.has(prerequisiteId)) {
-          throw new Error(`external prerequisite not required: ${featureId} -> ${prerequisiteId}`);
-        }
-      }
-    }
-    for (const featureId of required) {
-      const feature = catalog.get(featureId);
-      if (feature === undefined) throw new Error(`unregistered required feature: ${featureId}`);
-      const dependencyVersion = manifest.dependencies[feature.owner];
-      if (dependencyVersion === undefined) {
-        throw new Error(`required feature owner is not a dependency: ${featureId}`);
-      }
-      const dependency = manifests[feature.owner];
-      if (dependency.qualified_version !== dependencyVersion
-        || !dependency.provided_features.includes(featureId)) {
-        throw new Error(`required feature not provided by exact dependency: ${featureId}`);
-      }
-    }
-  }
-}
-
-export function writeReleaseManifests(repoRoot: string): string[] {
-  const expected = expectedReleaseManifests(repoRoot);
-  const written: string[] = [];
-  for (const document of DOCUMENTS) {
-    const directory = resolve(repoRoot, "docs/spec/releases", document);
-    const path = resolve(directory, `${DOCUMENT_VERSIONS[document]}.json`);
-    mkdirSync(directory, { recursive: true });
-    writeFileSync(path, releaseManifestBytes(expected[document]), "utf8");
-    written.push(path);
-  }
-  return written;
-}
-
-export function lintFamilyCutover(repoRoot: string): FamilyDocIssue[] {
+export function lintReleaseReadiness(repoRoot: string): FamilyDocIssue[] {
   const issues: FamilyDocIssue[] = [];
   const overviewPath = resolve(repoRoot, "docs/spec/heterodyne.md");
   if (!existsSync(overviewPath)) {
@@ -761,60 +489,5 @@ export function lintFamilyCutover(repoRoot: string): FamilyDocIssue[] {
     }
   }
 
-  const schemaPath = resolve(repoRoot, "docs/spec/releases/release-manifest.schema.json");
-  if (!existsSync(schemaPath)) {
-    issues.push({
-      path: displayPath(repoRoot, schemaPath),
-      line: 1,
-      code: "missing-cutover-artifact",
-      message: "release manifest schema is missing",
-    });
-    return issues;
-  }
-  let schemaPin: Pick<ReleaseManifest, "registry_revision" | "registry_sha256"> | null = null;
-  try {
-    schemaPin = loadReleaseSchemaRegistryPin(repoRoot);
-  } catch (error) {
-    issues.push({
-      path: displayPath(repoRoot, schemaPath),
-      line: 1,
-      code: "release-manifest-mismatch",
-      message: `release schema has an invalid registry pin: ${error instanceof Error ? error.message : String(error)}`,
-    });
-  }
-  for (const document of DOCUMENTS) {
-    const path = resolve(
-      repoRoot,
-      `docs/spec/releases/${document}/${DOCUMENT_VERSIONS[document]}.json`,
-    );
-    if (!existsSync(path)) {
-      issues.push({
-        path: displayPath(repoRoot, path),
-        line: 1,
-        code: "missing-cutover-artifact",
-        message: `${document} release manifest is missing`,
-      });
-      continue;
-    }
-    const actualBytes = readFileSync(path, "utf8");
-    try {
-      if (schemaPin === null) throw new Error("release schema registry pin is invalid");
-      const actual = JSON.parse(actualBytes) as ReleaseManifest;
-      validateReleaseManifestSchemaPin(repoRoot, actual);
-      const expected = expectedReleaseManifests(
-        repoRoot,
-        schemaPin.registry_revision,
-      )[document];
-      if (actualBytes === releaseManifestBytes(expected)) continue;
-      throw new Error("fields or canonical bytes differ from the pinned form");
-    } catch (error) {
-      issues.push({
-        path: displayPath(repoRoot, path),
-        line: 1,
-        code: "release-manifest-mismatch",
-        message: `${document} release manifest differs from its validated historical registry-derived form: ${error instanceof Error ? error.message : String(error)}`,
-      });
-    }
-  }
   return issues;
 }

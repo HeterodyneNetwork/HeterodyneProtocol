@@ -2,38 +2,31 @@
 
 Document ID: `control`
 
-Version: `control/0.5.0`
-
-Status: **0.5.0 draft**
-
-Registry revision: `8`
-
 Normative dependencies:
 
-- `heterodyne:core/0.5.0#core-conformance`
-- `heterodyne:comms/0.5.0#comms-conformance`
-- `heterodyne:comms/0.5.0#comms-marmot`
+- `heterodyne:0.5.0#core-conformance`
+- `heterodyne:0.5.0#comms-conformance`
+- `heterodyne:0.5.0#comms-marmot`
 
-This document is the complete normative definition of Heterodyne Control
-0.5.0. It is prepared but unreleased pending explicit release approval. Its
-conformance expression is **Core + Comms conformant + Control profile**.
-Recovery capabilities are separately advertised optional profiles and are not
-prerequisites for baseline Control conformance.
+Control is a section of the Heterodyne specification and is governed by
+`heterodyne:0.5.0#core-document-conventions`, which fixes the family version,
+the registry pin, release status, BCP 14 usage, and the anchor and reference
+forms. Its conformance expression is **Core + Comms conformant + Control
+profile**. Recovery capabilities are separately advertised optional profiles
+and are not prerequisites for baseline Control conformance.
 
 <!-- fixture:control-profile-metadata -->
 ```json
 {
   "document_id": "control",
-  "version": "control/0.5.0",
-  "status": "0.5.0 draft",
+  "spec_version": "heterodyne/0.5.0",
   "conformance_expression": "Core + Comms conformant + Control profile",
   "direct_dependencies": [
-    "heterodyne:core/0.5.0#core-conformance",
-    "heterodyne:comms/0.5.0#comms-conformance",
-    "heterodyne:comms/0.5.0#comms-marmot"
+    "heterodyne:0.5.0#core-conformance",
+    "heterodyne:0.5.0#comms-conformance",
+    "heterodyne:0.5.0#comms-marmot"
   ],
-  "supported_comms_versions": ["comms/0.5.0"],
-  "required_comms_features": ["comms.marmot-conversations.v1"],
+  "required_features": ["comms.marmot-conversations.v1"],
   "transport_owner": "marmot",
   "wire_stamp_owner": null
 }
@@ -68,12 +61,12 @@ required for baseline Control.
 <a id="control-comms-contract"></a>
 ## 2. Exact Core, Comms, and Marmot contract
 
-The supported Comms-version set is exactly `{comms/0.5.0}`. Control requires
+The supported Comms-version set is exactly `{heterodyne/0.5.0}`. Control requires
 the standard Marmot group and transport rules at
-`heterodyne:comms/0.5.0#comms-marmot`, the Core full-node metadata at
-`heterodyne:core/0.5.0#core-full-node-control`, and Comms authorization and
-OIDC rules at `heterodyne:comms/0.5.0#comms-control-registry` and
-`heterodyne:comms/0.5.0#comms-control-token`.
+`heterodyne:0.5.0#comms-marmot`, the Core full-node metadata at
+`heterodyne:0.5.0#core-full-node-control`, and Comms authorization and
+OIDC rules at `heterodyne:0.5.0#comms-control-registry` and
+`heterodyne:0.5.0#comms-control-token`.
 
 Marmot owns KeyPackages, Welcome processing, MLS membership and epochs,
 sender authentication, application encryption, `kind:445` transport,
@@ -191,7 +184,7 @@ or direct node address is required.
 ### 4.1 Purpose-bound Control and device invites
 
 Control consumes the provider-independent format at
-`heterodyne:comms/0.5.0#comms-one-time-invites`. A
+`heterodyne:0.5.0#comms-one-time-invites`. A
 `control-enrollment` redemption creates a standard pairwise Control group and
 bypasses only unsolicited-invitation admission by default. Explicit approval
 and a durable private entitlement remain required.
@@ -231,7 +224,7 @@ version, profile, frame_type, request_id, operation_id,
 expires_at, access_token, payload
 ```
 
-`version` is exactly `control/0.5.0`. `profile` is exactly `human-jsonrpc` or
+`version` is exactly `heterodyne/0.5.0`. `profile` is exactly `human-jsonrpc` or
 `agent-mcp`. `frame_type` is one of `initialize`, `request`, `response`,
 `notification`, or `close`. A request has a non-empty `request_id` and an
 application expiry. A mutation also has a stable non-empty `operation_id`.

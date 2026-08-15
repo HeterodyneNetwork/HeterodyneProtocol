@@ -64,7 +64,7 @@ export async function buildAgentAuthorshipVectors(
       ["key_proof", keyProof],
       ["kel_head", fixtures.kel.alice.head.id, "0"],
       ["valid_until", String(fixtures.test_epoch + 3_600)],
-      ["spec_version", "core/0.5.0"],
+      ["spec_version", "heterodyne/0.5.0"],
     ],
     content: "",
     auxRand: AUX_RAND,

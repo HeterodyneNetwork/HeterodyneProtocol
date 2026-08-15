@@ -45,19 +45,19 @@ describe("author mode", () => {
     const identity = JSON.parse(
       await readFile(join(outputDir, "identity", "001-root-attestation-valid.json"), "utf8"),
     );
-    expect(identity).not.toHaveProperty("spec_version");
     expect(identity.owner_document).toBe("core");
-    expect(identity.owner_version).toBe("core/0.5.0");
-    expect(identity.dependency_versions).toEqual({});
-    expect(identity.registry_revision).toBe(8);
+    expect(identity.spec_version).toBe("heterodyne/0.5.0");
+    expect(identity).not.toHaveProperty("owner_version");
+    expect(identity).not.toHaveProperty("dependency_versions");
+    expect(identity).not.toHaveProperty("registry_revision");
     expect(identity.spec_refs).toEqual(
       expect.arrayContaining([
-        "heterodyne:core/0.5.0#core-root-attestation",
+        "heterodyne:0.5.0#core-root-attestation",
       ]),
     );
     expect(identity.direction).toBe("produce");
     expect(identity.expected_output.canonical_wire).toContain('["heterodyne","root"]');
-    expect(identity.expected_output.canonical_wire).toContain('["spec_version","core/0.5.0"]');
+    expect(identity.expected_output.canonical_wire).toContain('["spec_version","heterodyne/0.5.0"]');
     expect(verifyEventSignature(identity.expected_output.decoded.event)).toBe(true);
 
     const control = JSON.parse(await readFile(join(outputDir, "control", "001-invitation-enrollment-only.json"), "utf8"));
@@ -81,16 +81,16 @@ describe("author mode", () => {
     await authorAllVectors(outputDir);
     const fixtures = buildFixtures();
     const produced = [
-      ["identity/001-root-attestation-valid.json", "core/0.5.0"],
-      ["identity-doc/003-emergency-reanchor.json", "core/0.5.0"],
-      ["nid-binding/001-bidirectional-valid.json", "core/0.5.0"],
-      ["node-advert/001-valid-dual-signed.json", "core/0.5.0"],
-      ["privacy-tiers/001-tier1-public-plaintext-both-backends.json", "comms/0.5.0"],
-      ["privacy-tiers/004-tier3-index-key-derivation-and-encryption.json", "comms/0.5.0"],
-      ["privacy-tiers/003-tier3-kind31011-audience-key-wrap.json", "comms/0.5.0"],
-      ["privacy-tiers/008-tier3-kind31012-audience-roster.json", "comms/0.5.0"],
-      ["lists/001-mute-list-public-roundtrip.json", "social/0.5.0"],
-      ["lists/002-mute-list-private-items-encrypted-to-self.json", "social/0.5.0"],
+      ["identity/001-root-attestation-valid.json", "heterodyne/0.5.0"],
+      ["identity-doc/003-emergency-reanchor.json", "heterodyne/0.5.0"],
+      ["nid-binding/001-bidirectional-valid.json", "heterodyne/0.5.0"],
+      ["node-advert/001-valid-dual-signed.json", "heterodyne/0.5.0"],
+      ["privacy-tiers/001-tier1-public-plaintext-both-backends.json", "heterodyne/0.5.0"],
+      ["privacy-tiers/004-tier3-index-key-derivation-and-encryption.json", "heterodyne/0.5.0"],
+      ["privacy-tiers/003-tier3-kind31011-audience-key-wrap.json", "heterodyne/0.5.0"],
+      ["privacy-tiers/008-tier3-kind31012-audience-roster.json", "heterodyne/0.5.0"],
+      ["lists/001-mute-list-public-roundtrip.json", "heterodyne/0.5.0"],
+      ["lists/002-mute-list-private-items-encrypted-to-self.json", "heterodyne/0.5.0"],
     ];
     for (const [path, stamp] of produced) {
       const vector = JSON.parse(await readFile(join(outputDir, ...path.split("/")), "utf8"));

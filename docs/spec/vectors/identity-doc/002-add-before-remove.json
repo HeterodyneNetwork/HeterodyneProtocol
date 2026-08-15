@@ -1,11 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-identity-discovery"
+    "heterodyne:0.5.0#core-identity-discovery"
   ],
   "vector_id": "identity-doc/add-before-remove",
   "description": "A delegate-set update adds the replacement NID and reaches delegate majority before the replaced NID is rescinded, so the live delegate set never drops below the majority identity-document revisions require.",

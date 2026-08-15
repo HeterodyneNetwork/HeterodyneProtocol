@@ -1,15 +1,10 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "social",
-  "owner_version": "social/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0",
-    "comms": "comms/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-social-mute-list-v1",
   "spec_refs": [
-    "heterodyne:social/0.5.0#social-mute-profile"
+    "heterodyne:0.5.0#social-mute-profile"
   ],
   "vector_id": "lists/private-items-reencrypt-on-rotation",
   "description": "On KERI epoch rotation the client re-encrypts a list's private items under the new epoch key when it next writes the list.",

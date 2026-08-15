@@ -1,13 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-one-time-invites"
+    "heterodyne:0.5.0#comms-one-time-invites"
   ],
   "vector_id": "one-time-invite/descriptor-and-fragment",
   "description": "The signed descriptor and secret form a provider-independent fragment envelope.",

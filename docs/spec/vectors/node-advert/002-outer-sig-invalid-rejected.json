@@ -1,11 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-node-advertisement"
+    "heterodyne:0.5.0#core-node-advertisement"
   ],
   "vector_id": "node-advert/outer-sig-invalid-rejected",
   "description": "A kind:31010 advertisement whose outer BIP-340 Nostr signature does not verify is rejected.",
@@ -49,16 +47,16 @@
         ],
         [
           "kel_head",
-          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+          "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
           "0"
         ],
         [
           "spec_version",
-          "core/0.5.0"
+          "heterodyne/0.5.0"
         ]
       ],
       "content": "",
-      "id": "2ed2c8156b6bd18a2663f1d4377d3121d1bc4d68f6fc7e0caeadc1705fc36d48",
+      "id": "50baf6278fa14ed7649bad81d34ebf3f8669d69267f5455f9fd6d00c4d50decb",
       "sig": "22222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222"
     },
     "vector_context": {

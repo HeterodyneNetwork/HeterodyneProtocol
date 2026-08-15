@@ -1,13 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-credential-continuity"
+    "heterodyne:0.5.0#comms-credential-continuity"
   ],
   "vector_id": "credential-continuity/routine-removal-complete",
   "description": "Routine removal requires exact roster delta, observations, mandatory rotations, and a class-complete action set.",
@@ -45,7 +41,7 @@
         "verdict": "accept",
         "required_authority": "epoch"
       },
-      "selected_registry_revision": 8,
+      "selected_profile_revision": 8,
       "conformance_claimable": false
     }
   }

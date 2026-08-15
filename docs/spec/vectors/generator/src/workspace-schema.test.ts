@@ -10,7 +10,7 @@ const H40 = "33".repeat(20);
 const SIG = "44".repeat(64);
 
 const base = (object_type: string) => ({
-  spec_version: "workspace/0.1.0",
+  spec_version: "heterodyne/0.5.0",
   object_type,
   workspace_id: H64,
   actor: H64_B,

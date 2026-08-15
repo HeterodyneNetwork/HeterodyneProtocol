@@ -1,11 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-kel-verification"
+    "heterodyne:0.5.0#core-kel-verification"
   ],
   "vector_id": "keri-authority/delegation-conflict-repo-wins",
   "description": "Two kind:31001 delegations occupy the same replaceable address (pubkey, 31001, d). The repo-carried copy is canonical for acceptance; the relay-only conflicting copy stays provisional and MUST NOT displace it.",

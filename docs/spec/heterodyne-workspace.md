@@ -1,33 +1,24 @@
 # Heterodyne Workspace Protocol Specification
 
 Document ID: `workspace`<br>
-Version: `workspace/0.1.0`<br>
-Registry revision: `8`
-
 Normative dependencies:
 
-- `heterodyne:core/0.5.0#core-identity-model`
-- `heterodyne:core/0.5.0#core-materialized-kel`
-- `heterodyne:core/0.5.0#core-repo-relay`
-- `heterodyne:comms/0.5.0#comms-marmot`
-- `heterodyne:comms/0.5.0#comms-marmot-event-repository`
-- `heterodyne:comms/0.5.0#comms-marmot-relay`
+- `heterodyne:0.5.0#core-identity-model`
+- `heterodyne:0.5.0#core-materialized-kel`
+- `heterodyne:0.5.0#core-repo-relay`
+- `heterodyne:0.5.0#comms-marmot`
+- `heterodyne:0.5.0#comms-marmot-event-repository`
+- `heterodyne:0.5.0#comms-marmot-relay`
 
 Optional composition dependencies:
 
-- `heterodyne:control/0.5.0#control-frame`
-- `heterodyne:social/0.5.0#social-moderation`
+- `heterodyne:0.5.0#control-frame`
+- `heterodyne:0.5.0#social-moderation`
 
-This document prepares Workspace's first release. It is current normative
-authority at this repository path but remains unreleased pending explicit
-release approval. The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT,
-SHOULD, SHOULD NOT, RECOMMENDED, NOT RECOMMENDED, MAY, and OPTIONAL are to be
-interpreted as described by BCP 14 when, and only when, they appear in all
-capitals.
-
-Permanent anchors use the literal `workspace-` prefix and lowercase ASCII
-kebab case. Qualified Workspace references combine the document version with
-one of those explicit anchors.
+Workspace is a section of the Heterodyne specification and is governed by
+`heterodyne:0.5.0#core-document-conventions`, which fixes the family version,
+the registry pin, release status, BCP 14 usage, and the anchor and reference
+forms.
 
 <a id="workspace-scope"></a>
 ## 1. Scope and non-goals
@@ -67,7 +58,7 @@ digests are lowercase 64-character SHA-256 values. Radicle repository
 identifiers begin with `rad:`. Git object IDs are lowercase 40-character
 SHA-1 values because the adopted Radicle substrate uses that object format.
 
-Every signed object contains `spec_version:"workspace/0.1.0"`, its exact
+Every signed object contains `spec_version:"heterodyne/0.5.0"`, its exact
 `object_type`, `workspace_id`, `actor`, `kel_head`, `authority_sequence`,
 `repository_rid`, `repository_head`, and `issued_at`. The signature covers the
 ASCII domain `heterodyne-workspace-object-v1`, one zero byte, and the JCS bytes
@@ -546,7 +537,7 @@ Workspace feature and applicable vector is satisfied.
 <a id="workspace-conformance"></a>
 ## 18. Conformance
 
-A Workspace implementation claims the exact `workspace/0.1.0` release,
+A Workspace implementation claims the exact `heterodyne/0.5.0` release,
 registry revision and digest, dependencies, provided and required feature IDs,
 and applicable profile IDs. Base conformance requires successful processing
 of every Workspace-owned vector. Optional Control or Social composition is

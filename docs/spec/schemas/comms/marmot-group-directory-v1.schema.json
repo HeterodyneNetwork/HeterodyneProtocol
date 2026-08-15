@@ -16,7 +16,7 @@
   ],
   "properties": {
     "spec_version": {
-      "const": "comms/0.5.0"
+      "const": "heterodyne/0.5.0"
     },
     "profile": {
       "enum": [

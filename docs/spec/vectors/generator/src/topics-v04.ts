@@ -342,7 +342,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     ["expiry", String(expiry)],
     ["nid_proof", proof],
     ["kel_head", fixtures.kel.alice.head.id, String(fixtures.kel.alice.head.seq)],
-    ["spec_version", "core/0.5.0"],
+    ["spec_version", "heterodyne/0.5.0"],
   ];
   const currentAdvCreatedAt = advExpiry - 300;
   const currentAdvEvent = await signEvent({
@@ -513,7 +513,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     tags.push(
       ["kel_head", fixtures.kel.alice.head.id, String(fixtures.kel.alice.head.seq)],
       ["valid_until", ""],
-      ["spec_version", "core/0.5.0"],
+      ["spec_version", "heterodyne/0.5.0"],
     );
     return tags;
   };
@@ -591,7 +591,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
       ["heterodyne", "identity_pointer"],
       ["rid", reanchorRid],
       ["host_hint", "wss://node-b.example/relay"],
-      ["spec_version", "core/0.5.0"],
+      ["spec_version", "heterodyne/0.5.0"],
     ],
     content: "",
     auxRand: AUX_RAND,
@@ -718,7 +718,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
         ],
         fixtures.kel.alice.head,
       ),
-      ["spec_version", "comms/0.5.0"],
+      ["spec_version", "heterodyne/0.5.0"],
     ],
     content: "",
     auxRand: AUX_RAND,
@@ -745,7 +745,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
         ],
         fixtures.kel.alice.head,
       ),
-      ["spec_version", "comms/0.5.0"],
+      ["spec_version", "heterodyne/0.5.0"],
     ],
     content: wrapContent,
     auxRand: AUX_RAND,
@@ -754,7 +754,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
   const indexKey = hkdf(sha256, hexToBytes(audA.key), utf8Bytes(audA.key_id), utf8Bytes("heterodyne-index-key-v1"), 32);
   const idxNonce = hexToBytes("51".repeat(32));
   const indexPayload = JSON.stringify({
-    spec_version: "comms/0.5.0",
+    spec_version: "heterodyne/0.5.0",
     rid,
     page_id: "opaque-page-01",
     feed_label: "Close friends",
@@ -777,7 +777,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
         ],
         fixtures.kel.alice.head,
       ),
-      ["spec_version", "comms/0.5.0"],
+      ["spec_version", "heterodyne/0.5.0"],
     ],
     content: idxCipher,
     auxRand: AUX_RAND,
@@ -805,7 +805,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
         ],
         fixtures.kel.alice.head,
       ),
-      ["spec_version", "comms/0.5.0"],
+      ["spec_version", "heterodyne/0.5.0"],
     ],
     content: "",
     auxRand: AUX_RAND,

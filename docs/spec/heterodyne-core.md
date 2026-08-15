@@ -1,21 +1,11 @@
 # Heterodyne Core Protocol Specification
 
 Document ID: `core`<br>
-Version: `core/0.5.0`<br>
-Registry revision: `8`
-
 Normative dependencies: None.
 
-This document prepares Core's 0.5.0 release. It is current normative
-authority at this repository path but remains unreleased pending explicit
-release approval. `core/0.5.0` is not a synchronized family version. The key words MUST, MUST
-NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RECOMMENDED, NOT
-RECOMMENDED, MAY, and OPTIONAL are to be interpreted as described by BCP 14
-when, and only when, they appear in all capitals.
-
-Permanent anchors use explicit HTML IDs formed by the literal `core-` prefix
-and a lowercase ASCII kebab-case topic. Generated heading IDs are not stable
-protocol references.
+Core is the foundation section of the Heterodyne specification. It owns the
+conventions that every other section follows; see
+[§2 Document conventions](#core-document-conventions).
 
 <a id="core-scope"></a>
 ## 1. Scope and non-goals
@@ -42,6 +32,49 @@ semantics, group interaction, moderation, or remote command semantics. It does
 not define a new transport, relay protocol, peer-to-peer network, programming
 language, runtime, or centralized directory. Radicle replication remains
 full-node-to-full-node; browser and mobile clients use NIP-01 endpoints.
+
+<a id="core-document-conventions"></a>
+### 1.1 Document conventions
+
+These conventions govern every document in the family. No other document
+restates them.
+
+**Family version.** The specification is published as five documents at one
+version, `heterodyne/0.5.0`. The five documents are sections of one release,
+not independent lineages: they are versioned, released, and pinned together. A
+conformance claim names this single version.
+
+**Registry pin.** The registry at [`registry/`](registry/) is the allocation
+authority for kind numbers, profile discriminators, reason codes,
+security-invariant IDs, feature IDs, and object types. Its current revision
+and immutable entry-set digest are recorded in exactly one place,
+[`registry/manifest.json`](registry/manifest.json). No document states the
+revision number; a conformance claim reads it from the manifest.
+
+**Release status.** The prepared 0.5.0 documents are current normative
+authority at these repository paths but remain unreleased pending explicit
+release approval.
+
+**BCP 14.** The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD,
+SHOULD NOT, RECOMMENDED, NOT RECOMMENDED, MAY, and OPTIONAL are to be
+interpreted as described by BCP 14 when, and only when, they appear in all
+capitals.
+
+**Anchors.** Every referenceable location carries an explicit HTML ID formed
+by its owning document's literal prefix (`core-`, `comms-`, `control-`,
+`social-`, or `workspace-`) followed by a lowercase ASCII kebab-case topic.
+Generated heading IDs are not stable protocol references.
+
+**Qualified references.** A normative cross-document reference is
+`heterodyne:<semver>#<anchor>`, for example
+`heterodyne:0.5.0#core-root-attestation`. The anchor prefix names the owning
+document, so a reference resolves and layer-checks without naming it twice.
+
+**Layering.** A document may normatively depend only on the documents beneath
+it. Comms depends on Core; Control and Social depend on Core and Comms;
+Workspace depends on Core and Comms and may optionally compose Control and
+Social. Core depends on nothing. The graph MUST remain acyclic and a document
+MUST NOT normatively reference one above it.
 
 <a id="core-terminology"></a>
 ## 2. Shared terminology
@@ -90,12 +123,12 @@ Implementations MUST NOT conflate these mechanisms.
 <a id="core-registry"></a>
 ## 3. Registry, allocation, and canonical bytes
 
-The separately revisioned Core-owned registry at `docs/spec/registry/` is the
-allocation authority for kind numbers, profile discriminators, reason codes,
-security-invariant IDs, and feature IDs. This release pins registry revision
-`6`; changing a
-non-Core-owned registry entry does not change Core semver. A conformance claim
-MUST pin the registry revision or immutable entry-set digest.
+The registry is separately revisioned from the specification: adding or
+promoting an entry does not change the family version. Its current revision
+and entry-set digest are pinned only in
+[`registry/manifest.json`](registry/manifest.json), as
+`heterodyne:0.5.0#core-document-conventions` requires. A conformance claim
+MUST pin that revision or its immutable entry-set digest.
 
 Core owns the base schemas for `kind:31000` root attestations, `kind:31001`
 delegations, `kind:31002` KERI inception, `kind:31003` KERI rotation,
@@ -165,10 +198,10 @@ these exhaustive classes:
 5. Adopted Marmot transport kinds `444`, `445`, and `30443` carry no
    Heterodyne marker. Their signed bytes remain upstream-owned.
 6. Control inner application `kind:31017` exists only inside Marmot MLS. Its
-   canonical JSON frame carries `control/0.5.0`; it has no outer Control stamp
+   canonical JSON frame carries `heterodyne/0.5.0`; it has no outer Control stamp
    and MUST NOT be interpreted as a standalone event.
 7. One-time-invite response rumor `kind:31018` exists only as unsigned inner
-   NIP-59 content. Its JCS content carries `comms/0.5.0`; the authenticated
+   NIP-59 content. Its JCS content carries `heterodyne/0.5.0`; the authenticated
    NIP-59 seal supplies responder authentication and it MUST NOT be
    interpreted as a signed standalone addressable event.
 
@@ -311,7 +344,7 @@ locally. It MUST NOT perform network resolution for `did:key`.
     ["epoch_key", "<initial epoch key hex>"],
     ["witness", "<identifier>", "<positive integer weight>"],
     ["threshold", "<non-negative integer>"],
-    ["spec_version", "core/0.5.0"]
+    ["spec_version", "heterodyne/0.5.0"]
   ],
   "content": "",
   "sig": "<BIP-340 signature by cold root>"
@@ -345,16 +378,16 @@ or another normalized timestamp. The event MUST NOT carry `kel_head`.
     ["witness", "<identifier>", "<positive integer weight>"],
     ["threshold", "<non-negative integer>"]
   ],
-  "content": "{\"spec_version\":\"core/0.5.0\",\"receipts\":[]}",
+  "content": "{\"spec_version\":\"heterodyne/0.5.0\",\"receipts\":[]}",
   "sig": "<controller BIP-340 signature>"
 }
 ```
 
 The rotation event `content` MUST be the compact UTF-8 JSON serialization of
 exactly one object with exactly two members in this order:
-`spec_version`, whose value is exactly `core/0.5.0`, and `receipts`, whose
+`spec_version`, whose value is exactly `heterodyne/0.5.0`, and `receipts`, whose
 value is an array of the receipt objects defined below. The byte form is
-`{"spec_version":"core/0.5.0","receipts":[...]}` with no insignificant
+`{"spec_version":"heterodyne/0.5.0","receipts":[...]}` with no insignificant
 whitespace; an empty receipt set is `[]`. Any missing, duplicate, or unknown
 top-level member, a member in the wrong order, a wrong `spec_version`, or a
 non-array `receipts` value MUST be rejected.
@@ -536,7 +569,7 @@ authority MUST NOT depend on that extension.
 
 A `kind:31000` root attestation is signed by the current epoch key, carries an
 empty `d`, `['heterodyne', 'root']`, the cold-root hex, exactly one `kel_head`,
-and `['spec_version', 'core/0.5.0']`. If embedded in an external container, it
+and `['spec_version', 'heterodyne/0.5.0']`. If embedded in an external container, it
 MAY carry a container-binding tag defined by that profile.
 
 The verifier MUST validate `nip01_raw`, BIP-340 signature, current epoch-key
@@ -564,7 +597,7 @@ attestations naming different cold roots rather than selecting one silently.
     ["nid_proof", "<Ed25519 signature hex>"],
     ["kel_head", "<accepted KEL event id>", "<decimal seq>"],
     ["valid_until", ""],
-    ["spec_version", "core/0.5.0"]
+    ["spec_version", "heterodyne/0.5.0"]
   ],
   "content": "",
   "sig": "<BIP-340 signature by current epoch key>"
@@ -606,7 +639,7 @@ device delegation address and current `kel_head` and contains a closed
 ```json
 {
   "full_node": true,
-  "versions": ["control/0.5.0"],
+  "versions": ["heterodyne/0.5.0"],
   "marmot_account": "<same authorized device Nostr pubkey>",
   "keypackage_slots": ["<standard Marmot KeyPackage address>"],
   "relay_metadata": ["<NIP-65/NIP-17 reference>"],
@@ -802,7 +835,7 @@ duplicity, stale verification, and reduced-assurance operation.
     ["heterodyne", "identity_pointer"],
     ["rid", "rad:z..."],
     ["host_hint", "wss://node.example/relay"],
-    ["spec_version", "core/0.5.0"]
+    ["spec_version", "heterodyne/0.5.0"]
   ],
   "content": "",
   "sig": "<BIP-340 signature>"
@@ -1367,16 +1400,16 @@ degraded, MUST NOT be labeled complete, and MUST carry explicit warnings.
 <a id="core-versioning"></a>
 ## 12. Versioning, dependencies, and capabilities
 
-A qualified version matches:
+The family version matches:
 
 ```text
-^(core|comms|control|social)/(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$
+^heterodyne/(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$
 ```
 
 The qualified string is not semver; only its suffix is passed to a semver
-parser. Every document begins its independent lineage at 0.5.0. During 0.x,
-any release may break an earlier 0.x release and implementations SHOULD pin
-exact qualified versions. At 1.0 and above:
+parser. All five documents share this one version. During 0.x, any release may
+break an earlier 0.x release and implementations MUST pin the exact version.
+At 1.0 and above:
 
 - PATCH is clarification-only and MUST NOT change wire format;
 - MINOR is additive: optional fields, optional types, or loosened requirements;
@@ -1386,11 +1419,10 @@ exact qualified versions. At 1.0 and above:
 
 Implementations SHOULD increment MINOR for every optional field addition.
 
-Document maturity is ordered `0.x < 1.0+`. A document MUST NOT normatively
-depend on another document at a lower level. Registry maturity is ordered
-`draft < stable < frozen`, permits only monotonic adjacent promotion, and
-forbids semantic change, removal, or reassignment of a frozen entry. A 1.0+
-document MUST NOT normatively require a non-frozen registry entry.
+Registry maturity is ordered `draft < stable < frozen`, permits only monotonic
+adjacent promotion, and forbids semantic change, removal, or reassignment of a
+frozen entry. A 1.0+ specification MUST NOT normatively require a non-frozen
+registry entry.
 
 <a id="core-capabilities"></a>
 ### 12.1 Stable capability bootstrap
@@ -1400,15 +1432,12 @@ Every capability advertisement uses this Core-parsable bootstrap object:
 ```json
 {
   "descriptor": "heterodyne-capabilities-v1",
-  "bootstrap_version": "core/0.5.0",
-  "registry_revision": 7,
+  "spec_version": "heterodyne/0.5.0",
+  "registry_sha256": "c5f289023f294d92633b3211ae4d578a4cbb875bbdcceb7f3cab29100a5e3a58",
   "implementation_role": "public-reader",
-  "supported_versions": {
-    "core": ["core/0.5.0"],
-    "comms": [],
-    "control": [],
-    "social": []
-  },
+  "supported_documents": [
+    "core"
+  ],
   "required_features": [
     "core.nostr-relay-read.v1"
   ],
@@ -1416,13 +1445,16 @@ Every capability advertisement uses this Core-parsable bootstrap object:
 }
 ```
 
-`descriptor`, `bootstrap_version`, `registry_revision`,
-`implementation_role`, and `core` support are REQUIRED.
+`descriptor`, `spec_version`, `registry_sha256`, `implementation_role`, and
+`supported_documents` are REQUIRED. `spec_version` MUST be a single family
+version and `registry_sha256` MUST be the entry-set digest recorded in
+[`registry/manifest.json`](registry/manifest.json).
 `implementation_role` MUST be exactly `public-reader`, `authenticated-light`,
-or `full-node`. Each supported-version set contains qualified versions for
-that document only. `required_features` uses exact IDs from the pinned
-`features.json`; document names alone do not establish feature conformance. A claimed
-role and its required feature set MUST agree.
+or `full-node`. `supported_documents` MUST contain `core` and MUST be a
+layering-closed subset of `core`, `comms`, `control`, `social`, and
+`workspace`. `required_features` uses exact IDs from the pinned
+`features.json`; document names alone do not establish feature conformance. A
+claimed role and its required feature set MUST agree.
 
 `strict_profiles` contains stable profile IDs. It MUST contain only profiles
 whose complete invariant, obligation, feature, vector, and
@@ -1480,8 +1512,8 @@ membership declaration:
 supported network backend, and requires invalid signatures or delegations to
 be rejected rather than rendered with a warning. Disabling or bypassing Tor
 makes the strict profile unmet; it does not silently downgrade a strict claim.
-A claim MUST satisfy every listed invariant at registry revision 8 and every
-applicable strict vector.
+A claim MUST satisfy every listed invariant at the pinned registry revision
+and every applicable strict vector.
 
 Higher-document strict profiles compose by naming prerequisite profile IDs and
 listing their complete flattened invariant membership. A conforming report
@@ -1516,25 +1548,23 @@ The registry binds these exact normative invariants:
 <a id="core-conformance"></a>
 ## 14. Conformance and vectors
 
-Every Heterodyne implementation claims Core conformance. A claim MUST state
-the exact qualified version, registry revision or digest, supported feature
-IDs, strict-profile IDs, implementation role, and every dependency version.
-Core has no document dependencies. Protocol conformance and vector conformance
-are distinct claims.
+Every Heterodyne implementation claims Core conformance. This section states
+the conformance-report requirements for the whole family; no other document
+restates them.
 
-This document is pinned to registry revision 8 and its immutable digest.
-History revision 8, the current entry files, release manifests, and vector
-metadata MUST agree exactly. Optional Control recovery profiles remain
-independently claimable and do not alter baseline Core conformance.
+A claim MUST state the exact family version, the registry revision or digest
+read from [`registry/manifest.json`](registry/manifest.json), the documents
+claimed, the supported feature IDs, the strict-profile IDs, and the
+implementation role. Protocol conformance and vector conformance are distinct
+claims. The pinned registry entry files and the vector corpus MUST agree
+exactly. Optional Control recovery profiles remain independently claimable and
+do not alter baseline Core conformance.
 
-A release manifest lists disjoint `provided_features` and
-`required_features`. Every provided ID MUST be owned by that manifest's
-document. Every same-owner prerequisite of a provided feature MUST also be
-provided; every external prerequisite MUST appear in `required_features`.
-Every required ID MUST be owned and provided by the exact declared dependency
-release. Validators MUST resolve the catalog prerequisite graph, reject cycles
-or missing IDs, and reject a requirement supplied only by a different or
-unpinned dependency release.
+Claimed features MUST resolve: every same-owner prerequisite of a claimed
+feature MUST also be claimed, and every cross-document prerequisite MUST be
+supplied by a document the claim also names. Validators MUST resolve the
+catalog prerequisite graph and reject cycles, missing IDs, and a requirement
+supplied only by an unclaimed document.
 
 A conformance report MUST, for each strict-profile ID, list the profile's state,
 conformance class, prerequisite profile IDs, required invariant IDs, required

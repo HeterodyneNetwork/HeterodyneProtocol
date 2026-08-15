@@ -1,11 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-kel-verification"
+    "heterodyne:0.5.0#core-kel-verification"
   ],
   "vector_id": "keri-authority/repo-head-regression-rejected",
   "description": "A repo presenting a key-material head that regresses below a previously finalized canonical head, with no authenticated re-anchor, is rejected: key state must never silently regress.",

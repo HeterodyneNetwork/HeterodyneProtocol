@@ -28,8 +28,8 @@ export type ClaimVisibility = "public" | "pairwise-private" | "repository-privat
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
 export const CLAIM_REVOCATION_PROFILE = {
-  spec_version: "comms/0.5.0",
-  registry_revision: 2,
+  spec_version: "heterodyne/0.5.0",
+  profile_revision: 2,
 } as const;
 
 export type DelegationConstraints = {
@@ -58,8 +58,8 @@ export type ClaimSemanticBody = {
   parent_claim_id?: string;
   constraints?: DelegationConstraints;
   revokers?: KeyRef[];
-  spec_version: "comms/0.5.0";
-  registry_revision: 2;
+  spec_version: "heterodyne/0.5.0";
+  profile_revision: 2;
 };
 
 export type KeyProof =
@@ -73,8 +73,8 @@ export type ClaimRevocation = {
   reason_code: string;
   revoker: KeyRef;
   proof?: KeyProof;
-  spec_version: "comms/0.5.0";
-  registry_revision: 2;
+  spec_version: "heterodyne/0.5.0";
+  profile_revision: 2;
 };
 
 export type VerifiedRevocation = ClaimRevocation & {
@@ -96,7 +96,7 @@ export type SubjectProofChallenge = {
 
 export type ClaimEnvelopeContext = {
   issuer_authorized: boolean;
-  registry_revision: 2;
+  profile_revision: 2;
   credential_ledger: CredentialLedgerBinding;
   existing_semantic_body?: ClaimSemanticBody;
 };
@@ -164,7 +164,7 @@ export type AuthorizationDecision = {
 
 type RevocationProofBody = Pick<
   ClaimRevocation,
-  "claim_id" | "revoked_at" | "reason_code" | "spec_version" | "registry_revision"
+  "claim_id" | "revoked_at" | "reason_code" | "spec_version" | "profile_revision"
 >;
 
 const CLAIM_KIND = 31013;
@@ -215,7 +215,7 @@ export function validateClaimEnvelope(
   validateClaimId(body);
   assertSingleAddress(event, body.claim_id);
   assertOuterSignature(event);
-  if (context.registry_revision !== 2 || body.registry_revision !== context.registry_revision) {
+  if (context.profile_revision !== 2 || body.profile_revision !== context.profile_revision) {
     throw new Error("claim-schema-invalid: registry revision does not match the supplied context");
   }
   if (!context.issuer_authorized) {
@@ -241,7 +241,7 @@ export function revocationProofPayload(body: RevocationProofBody): string {
     revoked_at: body.revoked_at,
     reason_code: body.reason_code,
     spec_version: body.spec_version,
-    registry_revision: body.registry_revision,
+    profile_revision: body.profile_revision,
   });
 }
 

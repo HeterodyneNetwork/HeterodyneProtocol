@@ -42,11 +42,11 @@ type ClaimCase = {
 };
 
 function claimSpecRef(vectorId: string): string {
-  if (/^chain-/.test(vectorId)) return "heterodyne:comms/0.5.0#comms-claim-chain";
-  if (/revocation|rejection/.test(vectorId)) return "heterodyne:comms/0.5.0#comms-claim-revocation";
-  if (/provisional|repository-confirmed/.test(vectorId)) return "heterodyne:comms/0.5.0#comms-claim-ledger";
-  if (/proof|issuance|issuer/.test(vectorId)) return "heterodyne:comms/0.5.0#comms-claim-verification";
-  return "heterodyne:comms/0.5.0#comms-key-claims";
+  if (/^chain-/.test(vectorId)) return "heterodyne:0.5.0#comms-claim-chain";
+  if (/revocation|rejection/.test(vectorId)) return "heterodyne:0.5.0#comms-claim-revocation";
+  if (/provisional|repository-confirmed/.test(vectorId)) return "heterodyne:0.5.0#comms-claim-ledger";
+  if (/proof|issuance|issuer/.test(vectorId)) return "heterodyne:0.5.0#comms-claim-verification";
+  return "heterodyne:0.5.0#comms-key-claims";
 }
 
 export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVector[]> {
@@ -85,8 +85,8 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
       audience: [audience],
       resources: [resource],
       visibility: "repository-private" as const,
-      spec_version: "comms/0.5.0" as const,
-      registry_revision: 2 as const,
+      spec_version: "heterodyne/0.5.0" as const,
+      profile_revision: 2 as const,
       ...overrides,
     };
     const body = Object.fromEntries(
@@ -206,7 +206,7 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
       event,
       reason_code: rejectionReason(() => validateClaimEnvelope(event, {
         issuer_authorized: true,
-        registry_revision: 2,
+        profile_revision: 2,
         credential_ledger: {
           credential_ledger_persona: audience,
           credential_ledger_generation: 0,
@@ -219,11 +219,11 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
     { name: "missing-spec-version", semantic: claimWithoutSpecVersion },
     {
       name: "legacy-comms-version",
-      semantic: { ...claimWithoutSpecVersion, comms_version: "comms/0.5.0" },
+      semantic: { ...claimWithoutSpecVersion, comms_version: "heterodyne/0.5.0" },
     },
     {
       name: "wrong-spec-version",
-      semantic: { ...nostrClaim, spec_version: "comms/0.5.1" },
+      semantic: { ...nostrClaim, spec_version: "heterodyne/0.5.1" },
     },
   ];
   const claimContentMutations = await Promise.all(
@@ -241,7 +241,7 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
         event,
         reason_code: rejectionReason(() => validateClaimEnvelope(event, {
           issuer_authorized: true,
-          registry_revision: 2,
+          profile_revision: 2,
           credential_ledger: {
             credential_ledger_persona: audience,
             credential_ledger_generation: 0,
@@ -350,16 +350,16 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
   });
   const verifiedSelfRevocation = validateClaimRevocationEnvelope(selfRevocationEvent);
   const { spec_version: _selfVersion, ...missingRevocationVersion } = selfRevocation;
-  const { registry_revision: _selfRevision, ...missingRevocationRevision } = selfRevocation;
+  const { profile_revision: _selfRevision, ...missingRevocationRevision } = selfRevocation;
   const revocationContentMutations = [
     { name: "missing-spec-version", semantic: missingRevocationVersion },
     {
       name: "legacy-comms-version",
-      semantic: { ...missingRevocationVersion, comms_version: "comms/0.5.0" },
+      semantic: { ...missingRevocationVersion, comms_version: "heterodyne/0.5.0" },
     },
     { name: "missing-registry-revision", semantic: missingRevocationRevision },
-    { name: "wrong-spec-version", semantic: { ...selfRevocation, spec_version: "comms/0.5.1" } },
-    { name: "wrong-registry-revision", semantic: { ...selfRevocation, registry_revision: 1 } },
+    { name: "wrong-spec-version", semantic: { ...selfRevocation, spec_version: "heterodyne/0.5.1" } },
+    { name: "wrong-registry-revision", semantic: { ...selfRevocation, profile_revision: 1 } },
   ];
   const revocationMutations = [
     ...await Promise.all(tagMutationCases.map(async ({ name, tags }) => ({
@@ -707,7 +707,7 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
           claim_id: nostrClaim.claim_id,
           subject: nostrClaim.subject,
           proof_profile: "nostr-bip340-v1",
-          registry_revision: 2,
+          profile_revision: 2,
           rejection_mutations: claimMutations.map(({ name, reason_code }) => ({ name, reason_code })),
         },
       },
@@ -729,7 +729,7 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
           proof_profile: "jwk-jws-v1",
           revocation_signer: verifiedJwkRevocation.signer,
           revocation_native_proof_valid: true,
-          registry_revision: 2,
+          profile_revision: 2,
           jwk_rejection_mutations: jwkRejectionMutations.map(({ name, reason_code }) => ({
             name,
             reason_code,
@@ -907,7 +907,7 @@ function canonicalCase(
     description: `Canonical kind:31013 bytes use a typed ${claim.subject.type} subject and a fresh ${proofProfile} subject proof.`,
     direction: "round-trip",
     input: { semantic_body: claim, event, canonical_wire: canonicalNip01(event), subject_proof: { challenge, proof } },
-    expected_output: { verdict: "accept", normalized: { claim_id: claim.claim_id, subject: claim.subject, proof_profile: proofProfile, registry_revision: 2 } },
+    expected_output: { verdict: "accept", normalized: { claim_id: claim.claim_id, subject: claim.subject, proof_profile: proofProfile, profile_revision: 2 } },
   };
 }
 

@@ -1,8 +1,8 @@
 # Heterodyne architecture
 
 This document is a non-normative explanation of the protocol family. The
-versioned documents under [`docs/spec/`](spec/) and their registries, schemas,
-release manifests, and vectors are authoritative.
+documents under [`docs/spec/`](spec/) and their registry, schemas, and vectors
+are authoritative.
 
 The family documents are [Core](spec/heterodyne-core.md),
 [Comms](spec/heterodyne-comms.md), [Control](spec/heterodyne-control.md),

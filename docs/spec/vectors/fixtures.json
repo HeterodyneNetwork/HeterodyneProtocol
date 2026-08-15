@@ -1,12 +1,6 @@
 {
   "vector_schema_version": "1.0.0",
-  "document_versions": {
-    "core": "0.5.0",
-    "comms": "0.5.0",
-    "control": "0.5.0",
-    "social": "0.5.0"
-  },
-  "registry_revision": 1,
+  "spec_version": "heterodyne/0.5.0",
   "test_epoch": 1767225600,
   "pinned_randomness": {
     "schnorr_aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -82,13 +76,13 @@
           ],
           [
             "spec_version",
-            "core/0.5.0"
+            "heterodyne/0.5.0"
           ]
         ],
         "content": ""
       },
       "head": {
-        "id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+        "id": "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
         "seq": 0
       }
     },
@@ -120,13 +114,13 @@
           ],
           [
             "spec_version",
-            "core/0.5.0"
+            "heterodyne/0.5.0"
           ]
         ],
         "content": ""
       },
       "head": {
-        "id": "063794fef3e878c6ce475145c2edbf26b1b7799db8585b5f0941943c789d58ad",
+        "id": "2ede1d0072fd5e630bb4093a56db710c733f8088cde71ae11b159157f4f41e06",
         "seq": 0
       }
     },
@@ -158,13 +152,13 @@
           ],
           [
             "spec_version",
-            "core/0.5.0"
+            "heterodyne/0.5.0"
           ]
         ],
         "content": ""
       },
       "head": {
-        "id": "b1edc14e6315018ad8f1eb8acc4c41f4a72097e164ffda2e366097ff02cc1401",
+        "id": "528caf6a8e2b777cad2bdf6b0116ad71c5490083ae094d85f14af9e49ed405af",
         "seq": 0
       }
     }

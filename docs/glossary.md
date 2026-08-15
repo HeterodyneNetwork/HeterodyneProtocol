@@ -34,12 +34,13 @@ separately advertised and optional.
 **Social.** The document for public following, interactions, moderation,
 lists, social discovery, presentation, durable assets, and ATProto attachment.
 
-**Qualified version.** A document ID plus semver, such as `core/0.5.0`. The
-whole string is not itself semver. Each family document versions independently.
+**Family version.** `heterodyne/` plus semver, such as `heterodyne/0.5.0`. The
+whole string is not itself semver. All five documents carry this one version.
 
-**Registry revision.** A monotonic snapshot of kind allocations, profile
-discriminators, reason codes, security-invariant IDs, and feature IDs. It is pinned by
-releases, capabilities, reports, and vectors.
+**Registry revision.** A monotonic counter over the kind, profile,
+reason-code, security-invariant, feature, and object allocations. It advances
+independently of the family version and is pinned in exactly one place,
+`docs/spec/registry/manifest.json`.
 
 **Profile registry revision.** A fixed allocation snapshot embedded in a
 versioned wire profile. In v1 claims the JSON member remains named

@@ -1,14 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "social",
-  "owner_version": "social/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0",
-    "comms": "comms/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:social/0.5.0#social-lists"
+    "heterodyne:0.5.0#social-lists"
   ],
   "vector_id": "lists/kind-mute-set-addressing",
   "description": "NIP-51 kind:30007 kind-mute set: an addressable (pubkey, kind, d) set event; one such event per (kind, d) pair forms the persona's sets file.",
@@ -22,7 +17,7 @@
     }
   },
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225702,30007,[[\"d\",\"1\"],[\"title\",\"Muted authors for kind 1\"],[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"p\",\"2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"]],\"\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225702,30007,[[\"d\",\"1\"],[\"title\",\"Muted authors for kind 1\"],[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"p\",\"2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01\"],[\"kel_head\",\"7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf\",\"0\"]],\"\"]",
     "decoded": {
       "event": {
         "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
@@ -47,17 +42,17 @@
           ],
           [
             "kel_head",
-            "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+            "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
             "0"
           ]
         ],
         "content": "",
-        "id": "010e6da3c50c08bb6880a95f2b75bd50f609a5911fac93e13110d45c6be5ad9c",
-        "sig": "0926c38e24ea33d6403b31c29e0c04feebffce99051dc06ac3196dfc4a3018a5bfea3639ec32f2eb7fa7fa7b9228880a5550bc397723da274d12384fcefc2370"
+        "id": "a03655ddbbd10d39592c88b096ed9eef20ea977033bedbef678d2fdc276f544c",
+        "sig": "9cb8fa73f75c718ab5cd1c5ebe0eb8f3c1c2178d409ae9c90cfe641ce01b992a05eab414acf1ce20e79261e9973c3c9d55227cc7f540b504285aef313711d328"
       }
     },
-    "id": "010e6da3c50c08bb6880a95f2b75bd50f609a5911fac93e13110d45c6be5ad9c",
-    "sig": "0926c38e24ea33d6403b31c29e0c04feebffce99051dc06ac3196dfc4a3018a5bfea3639ec32f2eb7fa7fa7b9228880a5550bc397723da274d12384fcefc2370"
+    "id": "a03655ddbbd10d39592c88b096ed9eef20ea977033bedbef678d2fdc276f544c",
+    "sig": "9cb8fa73f75c718ab5cd1c5ebe0eb8f3c1c2178d409ae9c90cfe641ce01b992a05eab414acf1ce20e79261e9973c3c9d55227cc7f540b504285aef313711d328"
   },
   "direction": "produce"
 }

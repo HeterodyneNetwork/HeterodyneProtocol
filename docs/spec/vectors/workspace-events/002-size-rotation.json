@@ -1,14 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "workspace",
-  "owner_version": "workspace/0.1.0",
-  "dependency_versions": {
-    "core": "core/0.5.0",
-    "comms": "comms/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:workspace/0.1.0#workspace-role-repositories"
+    "heterodyne:0.5.0#workspace-role-repositories"
   ],
   "vector_id": "workspace-events/size-rotation",
   "description": "The Comms repository-size boundary selects a fresh role event repository.",

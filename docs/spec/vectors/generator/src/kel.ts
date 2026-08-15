@@ -31,7 +31,7 @@ export function inceptionTemplate(
       ["p", coldRootPubkey],
       ["s", "0"],
       ["epoch_key", epochPubkey],
-      ["spec_version", "core/0.5.0"],
+      ["spec_version", "heterodyne/0.5.0"],
     ],
     content: "",
   };
@@ -58,7 +58,7 @@ export function rotationContent(receipts: RotationReceipt[]): string {
     }
     previousWitnessId = receipt.witness_id;
   }
-  return JSON.stringify({ spec_version: "core/0.5.0", receipts });
+  return JSON.stringify({ spec_version: "heterodyne/0.5.0", receipts });
 }
 
 export function inceptionHead(

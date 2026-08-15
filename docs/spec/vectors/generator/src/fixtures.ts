@@ -1,3 +1,4 @@
+import { QUALIFIED_VERSION } from "./family.js";
 import { inceptionTemplate } from "./kel.js";
 import { getEventId, getPublicKey } from "./nostr.js";
 import { didKeyFromEd25519, ed25519PublicKey, fixtureRid } from "./radicle.js";
@@ -104,13 +105,7 @@ export function buildFixtures() {
   };
   return {
     vector_schema_version: "1.0.0",
-    document_versions: {
-      core: "0.5.0",
-      comms: "0.5.0",
-      control: "0.5.0",
-      social: "0.5.0",
-    },
-    registry_revision: 1,
+    spec_version: QUALIFIED_VERSION,
     test_epoch: TEST_EPOCH,
     pinned_randomness: {
       schnorr_aux_rand: "00".repeat(32),

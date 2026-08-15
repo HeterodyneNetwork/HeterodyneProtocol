@@ -4,14 +4,14 @@
   "title": "Heterodyne Comms irreversible key-claim revocation v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["claim_id", "revoked_at", "reason_code", "revoker", "spec_version", "registry_revision"],
+  "required": ["claim_id", "revoked_at", "reason_code", "revoker", "spec_version", "profile_revision"],
   "properties": {
     "claim_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "revoked_at": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
     "reason_code": { "type": "string", "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$", "minLength": 1, "maxLength": 128 },
     "revoker": { "$ref": "#/definitions/key_ref" },
-    "spec_version": { "const": "comms/0.5.0" },
-    "registry_revision": { "const": 2, "description": "Immutable profile_registry_revision at which the v1 revocation wire profile was allocated; not the current family registry revision." },
+    "spec_version": { "const": "heterodyne/0.5.0" },
+    "profile_revision": { "const": 2, "description": "Immutable profile_profile_revision at which the v1 revocation wire profile was allocated; not the current family registry revision." },
     "proof": { "$ref": "#/definitions/key_proof" }
   },
   "definitions": {

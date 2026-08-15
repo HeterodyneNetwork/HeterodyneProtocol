@@ -1,21 +1,17 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-comms-claim-revocation-jwk-jws-v1",
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-key-claims"
+    "heterodyne:0.5.0#comms-key-claims"
   ],
   "vector_id": "claims/canonical-jwk-thumbprint-subject",
   "description": "A canonical JWK-thumbprint subject claim and a positive native EdDSA JWK revocation fixture bind the embedded public JWK to the same RFC 7638 thumbprint.",
   "direction": "round-trip",
   "input": {
     "semantic_body": {
-      "claim_id": "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7",
+      "claim_id": "4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3",
       "issuer": {
         "type": "nostr-secp256k1",
         "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -40,8 +36,8 @@
         "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
       ],
       "visibility": "repository-private",
-      "spec_version": "comms/0.5.0",
-      "registry_revision": 2
+      "spec_version": "heterodyne/0.5.0",
+      "profile_revision": 2
     },
     "event": {
       "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
@@ -50,18 +46,18 @@
       "tags": [
         [
           "d",
-          "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7"
+          "4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3"
         ]
       ],
-      "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7\",\"credential_ledger_generation\":0,\"credential_ledger_persona\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"expires_at\":1767231200,\"issued_at\":1767227600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767227600,\"registry_revision\":2,\"resources\":[\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\"],\"spec_version\":\"comms/0.5.0\",\"subject\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"value\":true,\"visibility\":\"repository-private\"}",
-      "id": "0b36b1432a5bde63ddd198757d10a2dbe0acdafcdbed670ab044a9beffc2c1f2",
-      "sig": "71dcb8bfade74fb0f7532782ba8dff287243f7ce952c8837054cdf02b57b2e65e22a21866d207ac45bce3cad9ded7f2e76d691fb1b69e506f04bc032327ba9f2"
+      "content": "{\"audience\":[\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],\"claim_class\":\"authorization\",\"claim_id\":\"4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3\",\"credential_ledger_generation\":0,\"credential_ledger_persona\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"expires_at\":1767231200,\"issued_at\":1767227600,\"issuer\":{\"type\":\"nostr-secp256k1\",\"value\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"},\"name\":\"claim-ledger-reader\",\"namespace\":\"heterodyne.device\",\"not_before\":1767227600,\"profile_revision\":2,\"resources\":[\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\"],\"spec_version\":\"heterodyne/0.5.0\",\"subject\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"value\":true,\"visibility\":\"repository-private\"}",
+      "id": "afb624e96e08eee7d884e21c5598363cd6bf29f2dc64c053b6b21c419de92b0a",
+      "sig": "7c2e72678a44f1b91857d4aa441f56569d01265b4d83ff20fabb1749b5fd0fc3165d0ea1d402c2205cb1fad44487c6339fdac3ee47e38583986c96496d9044c1"
     },
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767227600,31013,[[\"d\",\"d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7\"]],\"{\\\"audience\\\":[\\\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\\\"],\\\"claim_class\\\":\\\"authorization\\\",\\\"claim_id\\\":\\\"d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7\\\",\\\"credential_ledger_generation\\\":0,\\\"credential_ledger_persona\\\":\\\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\\\",\\\"expires_at\\\":1767231200,\\\"issued_at\\\":1767227600,\\\"issuer\\\":{\\\"type\\\":\\\"nostr-secp256k1\\\",\\\"value\\\":\\\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\\\"},\\\"name\\\":\\\"claim-ledger-reader\\\",\\\"namespace\\\":\\\"heterodyne.device\\\",\\\"not_before\\\":1767227600,\\\"registry_revision\\\":2,\\\"resources\\\":[\\\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\\\"],\\\"spec_version\\\":\\\"comms/0.5.0\\\",\\\"subject\\\":{\\\"type\\\":\\\"jwk-thumbprint\\\",\\\"value\\\":\\\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\\\"},\\\"value\\\":true,\\\"visibility\\\":\\\"repository-private\\\"}\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767227600,31013,[[\"d\",\"4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3\"]],\"{\\\"audience\\\":[\\\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\\\"],\\\"claim_class\\\":\\\"authorization\\\",\\\"claim_id\\\":\\\"4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3\\\",\\\"credential_ledger_generation\\\":0,\\\"credential_ledger_persona\\\":\\\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\\\",\\\"expires_at\\\":1767231200,\\\"issued_at\\\":1767227600,\\\"issuer\\\":{\\\"type\\\":\\\"nostr-secp256k1\\\",\\\"value\\\":\\\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\\\"},\\\"name\\\":\\\"claim-ledger-reader\\\",\\\"namespace\\\":\\\"heterodyne.device\\\",\\\"not_before\\\":1767227600,\\\"profile_revision\\\":2,\\\"resources\\\":[\\\"rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims\\\"],\\\"spec_version\\\":\\\"heterodyne/0.5.0\\\",\\\"subject\\\":{\\\"type\\\":\\\"jwk-thumbprint\\\",\\\"value\\\":\\\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\\\"},\\\"value\\\":true,\\\"visibility\\\":\\\"repository-private\\\"}\"]",
     "subject_proof": {
       "challenge": {
         "domain": "heterodyne-claim-pop-v1",
-        "claim_id": "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7",
+        "claim_id": "4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3",
         "nonce": "73737373737373737373737373737373",
         "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
         "resource": "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims",
@@ -77,7 +73,7 @@
           "x": "pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8"
         },
         "protected": "eyJhbGciOiJFZERTQSJ9",
-        "signature": "UcragRVvO7Xl7RWjGf6oDz6eFDTzd4Hm4nwsG0UvrC746Q3JvkfJ4efLkjQoyM0TYroH8qazyGCijlQT1wq9Dg"
+        "signature": "C6M7WuBvmCt92XWG3x1lJYmPbBR7tFk-i77ftBDDowmKW1oBAQGv_iH3aJ8C-oqHVp1JovH4E8oGZNH9L1YGDw"
       }
     },
     "positive_native_revocation_event": {
@@ -87,12 +83,12 @@
       "tags": [
         [
           "d",
-          "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7"
+          "4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3"
         ]
       ],
-      "content": "{\"claim_id\":\"d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7\",\"proof\":{\"jwk\":{\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"eyJhbGciOiJFZERTQSJ9\",\"signature\":\"pnqwcNFVFicMMv_h9KUiAbVDtD0n1fvW2ovHNl08fIJdBAfr_xf9aZJMgs-pJ24ZJ8G-HeGhWeolUSUFpO_GAA\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"spec_version\":\"comms/0.5.0\"}",
-      "id": "e58ad75cd3d8951e59aa87f7927c3dbcf561c8104d3b29877875e7951fd648f6",
-      "sig": "aedccbd00c99d3c58599dce8c475e516505822b7d25333b04548ad0a072ef21d05df21b714b427dc26aedf6c618721bc2cd81a150d1b02434fd449e6e565ab17"
+      "content": "{\"claim_id\":\"4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3\",\"profile_revision\":2,\"proof\":{\"jwk\":{\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"eyJhbGciOiJFZERTQSJ9\",\"signature\":\"-30rLQPEl9WlfN9h6UvjZoKHeRjcWFkQsGj_Z4DOHHMWFc8KYFxANPAF5iETrM6Zs9nboxTEz9vWjpp3Z5uDCQ\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"spec_version\":\"heterodyne/0.5.0\"}",
+      "id": "79633d775c7e64ff953305eb1ff0190213523aee47b0dd5a44b13a2407009ff7",
+      "sig": "74054a2189a38b2170a3165a3c2bb8b276411d3f4a8122d0e0b5173567d010c1829594679be8d46020a9ad59c17415ace575c41df54403bb90dc7b73b0ffb123"
     },
     "jwk_rejection_mutations": [
       {
@@ -104,12 +100,12 @@
           "tags": [
             [
               "d",
-              "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7"
+              "4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3"
             ]
           ],
-          "content": "{\"claim_id\":\"d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7\",\"proof\":{\"jwk\":{\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"e30\",\"signature\":\"pnqwcNFVFicMMv_h9KUiAbVDtD0n1fvW2ovHNl08fIJdBAfr_xf9aZJMgs-pJ24ZJ8G-HeGhWeolUSUFpO_GAA\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"spec_version\":\"comms/0.5.0\"}",
-          "id": "9cd950db3f3da6e9338008f4b1a1d986925e11aadf0afbf420fa71c9eb5c81bc",
-          "sig": "0b92bb9da255519f2b624e4a9f482b075f0c882b233fa6e84677b36f1ea2d116c76ae97207fb2ca2b359ff3fafa59de8ea95cbc1c61e47f02456f7452b234238"
+          "content": "{\"claim_id\":\"4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3\",\"profile_revision\":2,\"proof\":{\"jwk\":{\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"e30\",\"signature\":\"-30rLQPEl9WlfN9h6UvjZoKHeRjcWFkQsGj_Z4DOHHMWFc8KYFxANPAF5iETrM6Zs9nboxTEz9vWjpp3Z5uDCQ\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"spec_version\":\"heterodyne/0.5.0\"}",
+          "id": "37254a8db4b13b9f9530e71ed18130fe0412b1e88e344ec6449edd352168914d",
+          "sig": "8ed8ee5c208e9c5d6154a6f4748e1f693ba9f44c1503683fb449a033a957180a9629a2c913b7b7951d357dadab5d43f2d345aca98fa0baba48fd977c799b853a"
         },
         "reason_code": "claim-subject-proof-invalid"
       },
@@ -122,12 +118,12 @@
           "tags": [
             [
               "d",
-              "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7"
+              "4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3"
             ]
           ],
-          "content": "{\"claim_id\":\"d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7\",\"proof\":{\"jwk\":{\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9\",\"signature\":\"pnqwcNFVFicMMv_h9KUiAbVDtD0n1fvW2ovHNl08fIJdBAfr_xf9aZJMgs-pJ24ZJ8G-HeGhWeolUSUFpO_GAA\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"spec_version\":\"comms/0.5.0\"}",
-          "id": "55a883bedbffc58e5189c9fca9b283e4a8357938a506b90fffc0b42facfd919a",
-          "sig": "deb16fc95c6bdd5eb7d9d9b93777207fb4642d6f94d479e2a5d5b301265aceb47def47d5161af439cf4ff1fb27e6319de884d5e4c93322399e01560f160f84a9"
+          "content": "{\"claim_id\":\"4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3\",\"profile_revision\":2,\"proof\":{\"jwk\":{\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9\",\"signature\":\"-30rLQPEl9WlfN9h6UvjZoKHeRjcWFkQsGj_Z4DOHHMWFc8KYFxANPAF5iETrM6Zs9nboxTEz9vWjpp3Z5uDCQ\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"spec_version\":\"heterodyne/0.5.0\"}",
+          "id": "ed0a4793ae1d5e9674adb65b54476a727832fbe704f9678b6d195cb48086375c",
+          "sig": "f158b910a20e7080cfea3f46e2eb05f717c0885c25af922cc38c7dcce94718f7b080b1f1bdf528b2f8ccdd13fc27e293b022e7f6f6bf50cb8aa9fba8d4b470af"
         },
         "reason_code": "claim-subject-proof-invalid"
       },
@@ -140,12 +136,12 @@
           "tags": [
             [
               "d",
-              "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7"
+              "4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3"
             ]
           ],
-          "content": "{\"claim_id\":\"d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7\",\"proof\":{\"jwk\":{\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"eyJhbGciOiJub25lIn0\",\"signature\":\"pnqwcNFVFicMMv_h9KUiAbVDtD0n1fvW2ovHNl08fIJdBAfr_xf9aZJMgs-pJ24ZJ8G-HeGhWeolUSUFpO_GAA\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"spec_version\":\"comms/0.5.0\"}",
-          "id": "bbd44f97f04218bdade08c5071ec957ba4df3e40a4aea845bc8a07a3ef07493a",
-          "sig": "508e96b445d16a3c92fba9d79711113b46106741c8d96429853b995966bb0ee8079d04a95dae62f48f0767e0366dce1422d6b1a76a16006f216140008d69a829"
+          "content": "{\"claim_id\":\"4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3\",\"profile_revision\":2,\"proof\":{\"jwk\":{\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"eyJhbGciOiJub25lIn0\",\"signature\":\"-30rLQPEl9WlfN9h6UvjZoKHeRjcWFkQsGj_Z4DOHHMWFc8KYFxANPAF5iETrM6Zs9nboxTEz9vWjpp3Z5uDCQ\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"spec_version\":\"heterodyne/0.5.0\"}",
+          "id": "7ed9001629887cf4842f6bdf15add09f4a54704407b0bc283ecab4cf936e8e77",
+          "sig": "317c3fc6c3b8a57cd327e428c379b5240245ada73e57828c118878ab003fc11a164a8b46f4e75e1e2ce5f9adbe139970ba199d06a5f733d277e064ec2c8cc9ea"
         },
         "reason_code": "claim-subject-proof-invalid"
       },
@@ -158,12 +154,12 @@
           "tags": [
             [
               "d",
-              "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7"
+              "4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3"
             ]
           ],
-          "content": "{\"claim_id\":\"d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7\",\"proof\":{\"jwk\":{\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"eyJhbGciOiJIUzI1NiJ9\",\"signature\":\"pnqwcNFVFicMMv_h9KUiAbVDtD0n1fvW2ovHNl08fIJdBAfr_xf9aZJMgs-pJ24ZJ8G-HeGhWeolUSUFpO_GAA\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"spec_version\":\"comms/0.5.0\"}",
-          "id": "9eb4564018193ab5359c6f3a37acc75b179b545fc05e66b93487e739b185b8e5",
-          "sig": "62222031f88a18f9583263a851aded53fbe97b6d0485e37acbba5c769f91627e333a711374965ab2dd48c03bbeb21c9f2ed00ddfba9c3faa5ae0dcb9a771ac62"
+          "content": "{\"claim_id\":\"4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3\",\"profile_revision\":2,\"proof\":{\"jwk\":{\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"eyJhbGciOiJIUzI1NiJ9\",\"signature\":\"-30rLQPEl9WlfN9h6UvjZoKHeRjcWFkQsGj_Z4DOHHMWFc8KYFxANPAF5iETrM6Zs9nboxTEz9vWjpp3Z5uDCQ\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"spec_version\":\"heterodyne/0.5.0\"}",
+          "id": "9d0494c1d09af3685e84e1db01a509580e86ae038a3f87b51bfed28440965497",
+          "sig": "4d2fbf2ae44339c7fd8380451c25d7b1a99396096aabce11f02432c4555e097c0a45152eff3fe8874b65476932321af243f467608f1fe5e9d5da956b6f6b10a6"
         },
         "reason_code": "claim-subject-proof-invalid"
       },
@@ -176,12 +172,12 @@
           "tags": [
             [
               "d",
-              "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7"
+              "4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3"
             ]
           ],
-          "content": "{\"claim_id\":\"d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7\",\"proof\":{\"jwk\":{\"arbitrary\":true,\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"eyJhbGciOiJFZERTQSJ9\",\"signature\":\"pnqwcNFVFicMMv_h9KUiAbVDtD0n1fvW2ovHNl08fIJdBAfr_xf9aZJMgs-pJ24ZJ8G-HeGhWeolUSUFpO_GAA\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"spec_version\":\"comms/0.5.0\"}",
-          "id": "6a63744e0e91f1cd90b9e46a10bbb8de0a8f5fd2c553714a759a4a839e09bfc0",
-          "sig": "bb8a98b31574f7966c30d7dd3871fe04ff7de61c2e663d86c28a00c0b5ab6ebd46a47f6615a60115619c24f5b3ae277bbaeaf6a6255569d9dc7e5ef5836e1f72"
+          "content": "{\"claim_id\":\"4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3\",\"profile_revision\":2,\"proof\":{\"jwk\":{\"arbitrary\":true,\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"eyJhbGciOiJFZERTQSJ9\",\"signature\":\"-30rLQPEl9WlfN9h6UvjZoKHeRjcWFkQsGj_Z4DOHHMWFc8KYFxANPAF5iETrM6Zs9nboxTEz9vWjpp3Z5uDCQ\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"spec_version\":\"heterodyne/0.5.0\"}",
+          "id": "0537c626452fc07c799f993a9df84f3868e01a8cef80b670bb16cff63e217417",
+          "sig": "f96359e8fb9cd089d2e477d610be6042d123857a8e783f78ce5e8bc85ace0d4c9a951157b129457cc79d2e5b80b488e92a9c00f1beb55830b40a1b227eccb647"
         },
         "reason_code": "claim-schema-invalid"
       },
@@ -194,12 +190,12 @@
           "tags": [
             [
               "d",
-              "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7"
+              "4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3"
             ]
           ],
-          "content": "{\"claim_id\":\"d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7\",\"proof\":{\"jwk\":{\"alg\":\"RS256\",\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"eyJhbGciOiJFZERTQSJ9\",\"signature\":\"pnqwcNFVFicMMv_h9KUiAbVDtD0n1fvW2ovHNl08fIJdBAfr_xf9aZJMgs-pJ24ZJ8G-HeGhWeolUSUFpO_GAA\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"spec_version\":\"comms/0.5.0\"}",
-          "id": "7b4712890f8807130ec701c97f0d3f018932f92909d8d15ed25d634efcff7208",
-          "sig": "61ccd1eac516f231a5bd3e7abc0a57066f15d414db4fa277f3388d956c678de4e2a4d1e4cc00b6a10ee9b8d28f03f3c1606225ef953e2f7865c81ec5c52ced3b"
+          "content": "{\"claim_id\":\"4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3\",\"profile_revision\":2,\"proof\":{\"jwk\":{\"alg\":\"RS256\",\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"eyJhbGciOiJFZERTQSJ9\",\"signature\":\"-30rLQPEl9WlfN9h6UvjZoKHeRjcWFkQsGj_Z4DOHHMWFc8KYFxANPAF5iETrM6Zs9nboxTEz9vWjpp3Z5uDCQ\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"spec_version\":\"heterodyne/0.5.0\"}",
+          "id": "e79da9a0db010950fb253fd2db85632b19599941f52d568f3723cedd9341e81a",
+          "sig": "bf9a757b0a7b16047865109b078a4f0808ae153094b368e617e4ce889636ea7bd572cca2475741854a8be8305cae6f749c6c943e2cc4ebb72b627e0e68b997fc"
         },
         "reason_code": "claim-schema-invalid"
       },
@@ -212,12 +208,12 @@
           "tags": [
             [
               "d",
-              "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7"
+              "4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3"
             ]
           ],
-          "content": "{\"claim_id\":\"d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7\",\"proof\":{\"jwk\":{\"crv\":\"Ed25519\",\"kid\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"eyJhbGciOiJFZERTQSJ9\",\"signature\":\"pnqwcNFVFicMMv_h9KUiAbVDtD0n1fvW2ovHNl08fIJdBAfr_xf9aZJMgs-pJ24ZJ8G-HeGhWeolUSUFpO_GAA\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"registry_revision\":2,\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"spec_version\":\"comms/0.5.0\"}",
-          "id": "4bdc5ac74adbb887fdb175e584aa14d8505a3226d290fe96c36ce7e343b1d4d5",
-          "sig": "2df30251c50ca08d000b9f2d54edc7e7a0f239f88878223a7d5740006f82e0f91e03965ca1e67e650767752ce0a50d49f54cd4d7b168dfaaa7d6680b9e8c4a05"
+          "content": "{\"claim_id\":\"4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3\",\"profile_revision\":2,\"proof\":{\"jwk\":{\"crv\":\"Ed25519\",\"kid\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"kty\":\"OKP\",\"x\":\"pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8\"},\"protected\":\"eyJhbGciOiJFZERTQSJ9\",\"signature\":\"-30rLQPEl9WlfN9h6UvjZoKHeRjcWFkQsGj_Z4DOHHMWFc8KYFxANPAF5iETrM6Zs9nboxTEz9vWjpp3Z5uDCQ\",\"type\":\"jwk-jws\"},\"reason_code\":\"claim-revoked\",\"revoked_at\":1767227617,\"revoker\":{\"type\":\"jwk-thumbprint\",\"value\":\"eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y\"},\"spec_version\":\"heterodyne/0.5.0\"}",
+          "id": "a51ffab110c60bec6751de28a2f1cd8328b1fe4830490e3bccb7401c613729e6",
+          "sig": "67d31832a8c3b86bcbaace54d4f0cb48ac6de986890cd03a723bf651d6fb190f0feb8b21536cc52386c7607c2f947b2ec172b619884e7cda47b22bc145b559f3"
         },
         "reason_code": "claim-key-reference-invalid"
       }
@@ -226,7 +222,7 @@
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "claim_id": "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7",
+      "claim_id": "4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3",
       "subject": {
         "type": "jwk-thumbprint",
         "value": "eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y"
@@ -237,7 +233,7 @@
         "value": "eHOP2Ot9IyZ2K7LLGlapamv1skano2PmDNXghHMMk6Y"
       },
       "revocation_native_proof_valid": true,
-      "registry_revision": 2,
+      "profile_revision": 2,
       "jwk_rejection_mutations": [
         {
           "name": "missing-protected-alg",

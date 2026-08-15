@@ -34,7 +34,7 @@ beforeAll(async () => {
     ],
     content: JSON.stringify({
       profile: "heterodyne.social.agent-policy-receipt.v1",
-      spec_version: "social/0.5.0",
+      spec_version: "heterodyne/0.5.0",
       event_id: eventId,
       device_key: deviceKey,
       cold_root: coldRoot,
@@ -53,7 +53,7 @@ beforeAll(async () => {
     kind: 10000,
     tags: [
       ["heterodyne", "social-agent-policy-list-v1"],
-      ["spec_version", "social/0.5.0"],
+      ["spec_version", "heterodyne/0.5.0"],
       ["p", deviceKey],
       ["e", receiptEvent.id],
       ["agent_violation", deviceKey, receiptEvent.id, reason],
@@ -238,7 +238,7 @@ describe("correction and canonical list removal", () => {
       ],
       content: JSON.stringify({
         profile: "heterodyne.social.agent-policy-correction.v1",
-        spec_version: "social/0.5.0",
+        spec_version: "heterodyne/0.5.0",
         receipt_id: receiptEvent.id,
         device_key: deviceKey,
         corrected_at: 1_006,

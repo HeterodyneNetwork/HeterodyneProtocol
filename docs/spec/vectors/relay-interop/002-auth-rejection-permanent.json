@@ -1,13 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-publishing"
+    "heterodyne:0.5.0#comms-publishing"
   ],
   "vector_id": "relay-interop/auth-rejection-permanent",
   "description": "Post-AUTH relay rejection is classified as permanent.",

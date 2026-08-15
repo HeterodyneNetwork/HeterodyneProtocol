@@ -1,11 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-persona-profile"
+    "heterodyne:0.5.0#core-persona-profile"
   ],
   "vector_id": "persona-profile/successor-address-republished",
   "description": "A live addressable object is republished under the successor publisher and the repository index selects the new coordinate.",

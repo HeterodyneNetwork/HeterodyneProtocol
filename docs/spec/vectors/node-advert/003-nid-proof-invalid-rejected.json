@@ -1,11 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-node-advertisement"
+    "heterodyne:0.5.0#core-node-advertisement"
   ],
   "vector_id": "node-advert/nid-proof-invalid-rejected",
   "description": "A kind:31010 advertisement whose inner Ed25519 nid_proof does not verify under the advertised NID is rejected, even though the outer Nostr signature is valid.",
@@ -49,17 +47,17 @@
         ],
         [
           "kel_head",
-          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+          "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
           "0"
         ],
         [
           "spec_version",
-          "core/0.5.0"
+          "heterodyne/0.5.0"
         ]
       ],
       "content": "",
-      "id": "a30e715ade2f9fcf5d6c033011dac19b800f0256ac731b3273d3515bc7265051",
-      "sig": "7218178a96956a209c859ed0a131f45ca7506e9ab6c888c1e0812e739557910c8c98207c79f5c89691f42818460368f7b41927ad79f50710594618af15c209a7"
+      "id": "b25b1e295ccde120635b3126e064a00c50508dd2e77eb73900498afd33f54fff",
+      "sig": "d75b0166aa00f95ffe2bb8022ef9d2a29ab4421894522a2f08c426c9a5186ed849e1642828bd0bbcc1420739cdac2a4d653c4edea892f111745ff23e91a3efc9"
     },
     "advertised_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
     "nid_proof_payload": "heterodyne-node-advert-v1|rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|wss://node-a.example/relay|1767312000|4a19af7f069f3c32d4235c726f666fc8cd0175fa",

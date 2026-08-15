@@ -1,11 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-kel-head"
+    "heterodyne:0.5.0#core-kel-head"
   ],
   "vector_id": "keri-authority/kel-head-seq-mismatch-rejected",
   "description": "A well-formed kel_head names the inception event (s=0) but declares seq 1; once the named event is resolved on the accepted KEL its s (0) does not equal the tag's decimal seq (1).",
@@ -21,28 +19,28 @@
         ],
         [
           "kel_head",
-          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+          "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
           "1"
         ]
       ],
       "content": "post whose kel_head seq disagrees with the named event's s",
-      "id": "9f3e4a3ba5db02bfcb92bbdb54974107cfc48c266f4ac038c6bc41533f43b7cf",
-      "sig": "0ef4f89e0fec95208f9fba65bfe56ac3b59a4c723d768f15cb6eec25d2a9f13919a0c08e864370cf3ef7ac9212f6a416d59217c0b77f84fe4bc9f4cefaab5a61"
+      "id": "73cf7932609148eb0608cd621934a10dc76d6e22ec1b62b0ed683da94f8ec5fd",
+      "sig": "c5d7526590182c4a79c2b9af0accb90b0b398da761a497e155d911809632d65ceb531a6ff7a30b2aea819d78afc1d256491602a30ce4cb2277919092bf7251cd"
     },
     "accepted_kel": [
       {
         "kind": 31002,
-        "id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+        "id": "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
         "s": 0,
         "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-        "nip01_raw": "[0,\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",1767225600,31002,[[\"d\",\"\"],[\"heterodyne\",\"keri_inception\"],[\"p\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"s\",\"0\"],[\"epoch_key\",\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"],[\"spec_version\",\"core/0.5.0\"]],\"\"]",
+        "nip01_raw": "[0,\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",1767225600,31002,[[\"d\",\"\"],[\"heterodyne\",\"keri_inception\"],[\"p\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"s\",\"0\"],[\"epoch_key\",\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"],[\"spec_version\",\"heterodyne/0.5.0\"]],\"\"]",
         "materialized_state": {
           "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
           "s": 0,
           "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
           "witnesses": [],
           "threshold": 0,
-          "producing_event_id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0"
+          "producing_event_id": "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf"
         }
       }
     ],

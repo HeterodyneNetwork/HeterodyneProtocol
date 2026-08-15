@@ -1,11 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-keri-export"
+    "heterodyne:0.5.0#core-keri-export"
   ],
   "vector_id": "keri-authority/export-unmappable-feature",
   "description": "did:webs export fails when security-relevant KEL state uses a construct with no semantics-preserving canonical-KERI mapping (UNMAPPABLE_FEATURE). Security-relevant state MUST NOT be silently omitted or altered.",

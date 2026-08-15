@@ -1,13 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-privacy-tiers"
+    "heterodyne:0.5.0#comms-privacy-tiers"
   ],
   "vector_id": "privacy-tiers/tier3-kind31012-audience-roster",
   "description": "Tier 3 kind:31012 audience roster: an epoch-key-signed replaceable event keyed by key_id enumerating the recipient device publishing keys with one p tag each.",
@@ -26,7 +22,7 @@
     }
   },
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225683,31012,[[\"d\",\"aud-2026-05-25-a\"],[\"heterodyne\",\"audience_roster\"],[\"key_id\",\"aud-2026-05-25-a\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"p\",\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\"],[\"p\",\"5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"],[\"spec_version\",\"comms/0.5.0\"]],\"\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225683,31012,[[\"d\",\"aud-2026-05-25-a\"],[\"heterodyne\",\"audience_roster\"],[\"key_id\",\"aud-2026-05-25-a\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"p\",\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\"],[\"p\",\"5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc\"],[\"kel_head\",\"7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf\",\"0\"],[\"spec_version\",\"heterodyne/0.5.0\"]],\"\"]",
     "decoded": {
       "event": {
         "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
@@ -59,21 +55,21 @@
           ],
           [
             "kel_head",
-            "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+            "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
             "0"
           ],
           [
             "spec_version",
-            "comms/0.5.0"
+            "heterodyne/0.5.0"
           ]
         ],
         "content": "",
-        "id": "2c4bc34854beec50b7f47aaf34162d109d25a630468b1bb9f3a0fafed7437b6e",
-        "sig": "7cd4c69a45cd76ea05695e787f4e0c1da61ff2755fb5c05c76e82d872b897b76422bc7897f0be8d8acfdb53257cfba1f89aaefa99d48c57429a6f11145677499"
+        "id": "0bc8acb31ee3b57e2b1647d20313513b792ccc4cd29b4365233d1f3e87739c76",
+        "sig": "346a8f8158251ef7ef05c19dd9153567853a32490cd8fbc3b7a7ae3bc6ae28692ff413ed1a15f82ac0b69f8dfad833b70a3e1f90684ffa15de699a51a23a16aa"
       }
     },
-    "id": "2c4bc34854beec50b7f47aaf34162d109d25a630468b1bb9f3a0fafed7437b6e",
-    "sig": "7cd4c69a45cd76ea05695e787f4e0c1da61ff2755fb5c05c76e82d872b897b76422bc7897f0be8d8acfdb53257cfba1f89aaefa99d48c57429a6f11145677499"
+    "id": "0bc8acb31ee3b57e2b1647d20313513b792ccc4cd29b4365233d1f3e87739c76",
+    "sig": "346a8f8158251ef7ef05c19dd9153567853a32490cd8fbc3b7a7ae3bc6ae28692ff413ed1a15f82ac0b69f8dfad833b70a3e1f90684ffa15de699a51a23a16aa"
   },
   "direction": "produce"
 }

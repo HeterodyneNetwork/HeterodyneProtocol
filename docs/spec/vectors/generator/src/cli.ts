@@ -1,18 +1,7 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { authorAllVectors } from "./author.js";
-import {
-  assertAllowedDependency,
-  DOCUMENT_DEPENDENCIES,
-  DOCUMENT_VERSIONS,
-  parseQualifiedVersion,
-} from "./family.js";
-import type { DocumentId } from "./types.js";
-import {
-  lintFamilyCutover,
-  lintFamilyDocs,
-  writeReleaseManifests,
-} from "./docs-lint.js";
+import { lintFamilyDocs, lintReleaseReadiness } from "./docs-lint.js";
 import { writeWorkspaceSchemas } from "./workspace-schemas.js";
 import { verifyVectorTree } from "./verify.js";
 import { writeCoverage } from "./coverage.js";
@@ -36,16 +25,10 @@ if (command === "author") {
     console.log(`verified ${result.validFiles} vectors under ${root}`);
   }
 } else if (command === "family-check") {
-  for (const document of Object.keys(DOCUMENT_VERSIONS) as DocumentId[]) {
-    parseQualifiedVersion(`${document}/${DOCUMENT_VERSIONS[document]}`);
-    for (const dependency of DOCUMENT_DEPENDENCIES[document]) {
-      assertAllowedDependency(document, dependency);
-    }
-  }
   const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
   const issues = [
     ...lintFamilyDocs(repositoryRoot),
-    ...lintFamilyCutover(repositoryRoot),
+    ...lintReleaseReadiness(repositoryRoot),
   ];
   if (issues.length > 0) {
     for (const issue of issues) {
@@ -60,10 +43,6 @@ if (command === "author") {
 } else if (command === "coverage") {
   await writeCoverage(root);
   console.log(`generated vector coverage under ${resolve(root, "coverage")}`);
-} else if (command === "release-manifests") {
-  const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
-  const written = writeReleaseManifests(repositoryRoot);
-  console.log(`generated ${written.length} release manifests`);
 } else if (command === "registry-author") {
   const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
   const revision = Number.parseInt(process.argv[4] ?? "6", 10);
@@ -75,7 +54,7 @@ if (command === "author") {
   console.log(`generated ${written.length} Workspace schemas`);
 } else {
   console.error(
-    "usage: tsx src/cli.ts <author|verify|family-check|coverage|release-manifests|registry-author|workspace-schemas> [root] [revision]",
+    "usage: tsx src/cli.ts <author|verify|family-check|coverage|registry-author|workspace-schemas> [root] [revision]",
   );
   process.exitCode = 2;
 }

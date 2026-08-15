@@ -186,8 +186,8 @@ describe("existing credential-bearing schemas", () => {
     audience: ["reader"],
     resources: ["ledger"],
     visibility: "repository-private",
-    spec_version: "comms/0.5.0",
-    registry_revision: 2,
+    spec_version: "heterodyne/0.5.0",
+    profile_revision: 2,
   };
 
   it("requires exact persona/generation fields in all decoded key-claim content profiles", () => {

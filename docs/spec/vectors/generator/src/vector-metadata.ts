@@ -1,11 +1,9 @@
-import { DOCUMENT_DEPENDENCIES, DOCUMENT_VERSIONS } from "./family.js";
+import { FAMILY_VERSION, QUALIFIED_VERSION } from "./family.js";
 import type { DocumentId } from "./types.js";
 
 export type VectorMetadata = {
   owner_document: DocumentId;
-  owner_version: string;
-  dependency_versions: Partial<Record<DocumentId, string>>;
-  registry_revision: number;
+  spec_version: string;
   profile?: string;
   spec_refs: string[];
 };
@@ -529,119 +527,111 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
     throw new Error(`vector owner is not assigned exactly once: ${vectorId}`);
   }
   const owner = owners[0];
-  const dependencies = Object.fromEntries(
-    DOCUMENT_DEPENDENCIES[owner].map((dependency) => [
-      dependency,
-      `${dependency}/${DOCUMENT_VERSIONS[dependency]}`,
-    ]),
-  ) as Partial<Record<DocumentId, string>>;
   const reference = referenceFor(vectorId, owner);
   const profile = vectorId.startsWith("control/")
     ? "heterodyne-control-marmot-frame-v1"
     : PROFILE_BY_VECTOR.get(vectorId);
   return {
     owner_document: owner,
-    owner_version: `${owner}/${DOCUMENT_VERSIONS[owner]}`,
-    dependency_versions: dependencies,
-    registry_revision: 8,
+    spec_version: QUALIFIED_VERSION,
     ...(profile === undefined ? {} : { profile }),
-    spec_refs: [`heterodyne:${reference.document}/${DOCUMENT_VERSIONS[reference.document]}#${reference.anchor}`],
+    spec_refs: [`heterodyne:${FAMILY_VERSION}#${reference}`],
   };
 }
 
-function referenceFor(vectorId: string, owner: DocumentId): { document: DocumentId; anchor: string } {
+function referenceFor(vectorId: string, owner: DocumentId): string {
   if (vectorId.startsWith("marmot-radicle/")) {
     const id = vectorId.slice("marmot-radicle/".length);
     if (/kind445-exact|media-exact/.test(id)) {
-      return { document: "comms", anchor: "comms-marmot-exact-bytes" };
+      return "comms-marmot-exact-bytes";
     }
     if (/media-locators/.test(id)) {
-      return { document: "comms", anchor: "comms-marmot-media" };
+      return "comms-marmot-media";
     }
     if (/standard-marmot|private-group/.test(id)) {
-      return { document: "comms", anchor: "comms-marmot-groups" };
+      return "comms-marmot-groups";
     }
     if (/directory|invites-individually/.test(id)) {
-      return { document: "comms", anchor: "comms-marmot-directory" };
+      return "comms-marmot-directory";
     }
     if (/routing-binding|routing-genesis|concurrent-routing|canonical-h|removal-before/.test(id)) {
-      return { document: "comms", anchor: "comms-marmot-routing-generation" };
+      return "comms-marmot-routing-generation";
     }
     if (/writer-ref|unauthorized-ref|logical-size/.test(id)) {
-      return { document: "comms", anchor: "comms-marmot-event-repository" };
+      return "comms-marmot-event-repository";
     }
     if (/relay-routes/.test(id)) {
-      return { document: "comms", anchor: "comms-marmot-relay" };
+      return "comms-marmot-relay";
     }
     if (/durable-ack|ack-before|failover|redundant/.test(id)) {
-      return { document: "comms", anchor: "comms-marmot-rotation" };
+      return "comms-marmot-rotation";
     }
     if (/retained-routing|expiration-is/.test(id)) {
-      return { document: "comms", anchor: "comms-marmot-retention" };
+      return "comms-marmot-retention";
     }
     if (/persona-inbox|private-inbox|keypackage|public-inbox/.test(id)) {
-      return { document: "comms", anchor: "comms-marmot-persona-inbox" };
+      return "comms-marmot-persona-inbox";
     }
     if (/agent-group/.test(id)) {
-      return { document: "comms", anchor: "comms-agent-authorship" };
+      return "comms-agent-authorship";
     }
-    return { document: "comms", anchor: "comms-marmot-participation" };
+    return "comms-marmot-participation";
   }
   if (vectorId === "interop/vanilla-nostr-only-follow") {
-    return { document: "social", anchor: "social-following" };
+    return "social-following";
   }
   if (vectorId.startsWith("claims/")) {
     const id = vectorId.slice("claims/".length);
-    if (/^chain-/.test(id)) return { document: "comms", anchor: "comms-claim-chain" };
-    if (/revocation|rejection/.test(id)) return { document: "comms", anchor: "comms-claim-revocation" };
-    if (/provisional|repository-confirmed/.test(id)) return { document: "comms", anchor: "comms-claim-ledger" };
-    if (/proof|issuance|issuer/.test(id)) return { document: "comms", anchor: "comms-claim-verification" };
-    return { document: "comms", anchor: "comms-key-claims" };
+    if (/^chain-/.test(id)) return "comms-claim-chain";
+    if (/revocation|rejection/.test(id)) return "comms-claim-revocation";
+    if (/provisional|repository-confirmed/.test(id)) return "comms-claim-ledger";
+    if (/proof|issuance|issuer/.test(id)) return "comms-claim-verification";
+    return "comms-key-claims";
   }
   if (vectorId.startsWith("claim-ledger/")) {
     const id = vectorId.slice("claim-ledger/".length);
-    if (id === "source-claim-revokes-token") return { document: "comms", anchor: "comms-claim-revocation" };
+    if (id === "source-claim-revokes-token") return "comms-claim-revocation";
     if (/multiwriter-status-allocation|stale-minter-denied/.test(id)) {
-      return { document: "comms", anchor: "comms-multiwriter-minting" };
+      return "comms-multiwriter-minting";
     }
-    return { document: "comms", anchor: "comms-claim-ledger" };
+    return "comms-claim-ledger";
   }
   if (vectorId.startsWith("oidc/")) {
     const id = vectorId.slice("oidc/".length);
-    if (/^discovery|^issuer-mismatch/.test(id)) return { document: "comms", anchor: "comms-oidc-endpoints" };
+    if (/^discovery|^issuer-mismatch/.test(id)) return "comms-oidc-endpoints";
     if (/authorization|grant|pairwise|consent/.test(id)) {
-      return { document: "comms", anchor: "comms-oidc-authorization" };
+      return "comms-oidc-authorization";
     }
-    return { document: "comms", anchor: "comms-jwt-projection" };
+    return "comms-jwt-projection";
   }
   if (vectorId.startsWith("token-status/")) {
     const id = vectorId.slice("token-status/".length);
-    return { document: "comms", anchor: /https-outage|issuer-successor/.test(id)
-      ? "comms-issuer-continuity" : "comms-token-status" };
+    return /https-outage|issuer-successor/.test(id)
+      ? "comms-issuer-continuity" : "comms-token-status";
   }
   if (vectorId.startsWith("profiles/core-breadcrumb")) {
-    return { document: "core", anchor: "core-kel-rotation" };
+    return "core-kel-rotation";
   }
   if (vectorId.startsWith("stamping/")) {
-    return { document: "core", anchor: "core-version-stamps" };
+    return "core-version-stamps";
   }
   const profile = PROFILE_BY_VECTOR.get(vectorId);
   if (profile?.startsWith("heterodyne-comms-tier3-")) {
-    return { document: "comms", anchor: "comms-tier-three-profile" };
+    return "comms-tier-three-profile";
   }
   if (profile?.startsWith("heterodyne-comms-double-ratchet-")) {
-    return { document: "comms", anchor: "comms-dm-wire" };
+    return "comms-dm-wire";
   }
   if (profile === "comms-subprotocol-negotiation-v1" || profile === "comms-subprotocol-payload-v1") {
-    return { document: "comms", anchor: "comms-subprotocol-negotiation" };
+    return "comms-subprotocol-negotiation";
   }
   if (profile === "heterodyne-social-org-feed-v1") {
-    return { document: "social", anchor: "social-org-feed-profile" };
+    return "social-org-feed-profile";
   }
   if (profile === "heterodyne-social-mute-list-v1") {
-    return { document: "social", anchor: "social-mute-profile" };
+    return "social-mute-profile";
   }
-  return { document: owner, anchor: anchorFor(vectorId, owner) };
+  return anchorFor(vectorId, owner);
 }
 
 function anchorFor(vectorId: string, owner: DocumentId): string {

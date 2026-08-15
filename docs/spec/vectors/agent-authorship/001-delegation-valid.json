@@ -1,14 +1,10 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-comms-agent-signing-delegation-v1",
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-agent-delegation"
+    "heterodyne:0.5.0#comms-agent-delegation"
   ],
   "vector_id": "agent-authorship/delegation-valid",
   "description": "A complete Core-stamped agent role delegation verifies the epoch, NID, and dedicated role-key proofs over one exact binding.",
@@ -49,7 +45,7 @@
         ],
         [
           "kel_head",
-          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+          "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
           "0"
         ],
         [
@@ -58,12 +54,12 @@
         ],
         [
           "spec_version",
-          "core/0.5.0"
+          "heterodyne/0.5.0"
         ]
       ],
       "content": "",
-      "id": "9096ee7eb97348d6b7a8be3b03b84b06023f5fa1f462d5267f03831de8643103",
-      "sig": "08327658f36d30856ca060cc46e62f3942af5fadbe974a8678de77c0e565ef498508c4f84940c7b7ff8bc62539676e347681b966ffe06e7ebe54cdf5712659dc"
+      "id": "77e82568190fe16f5968ebba14aba9d99e193473c1b69b95badaca3f186fca2c",
+      "sig": "cd4be4778c7094fcbd232f0be877b437b9c2c7504a52e5c7622d25025ca36d5c5707815e1b3c1cc2f008db43b34a9b514af060769817b277fe473a90ed6711c2"
     },
     "proof_bytes": "heterodyne-agent-signing-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|abababababababababababababababababababababababababababababababab|f76a39d05686e34a4420897e359371836145dd3973e3982568b60f8433adde6e",
     "nid_proof": "5295dab1d7e0518095a0952587ce80b74c84c4ce86b0a9db4628137e99811a8d45a91c915ffd834d96d2f5e3e4d0343f35dc65c3de6c07e52ca0f54f42f7d804",

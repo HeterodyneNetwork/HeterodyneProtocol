@@ -1,14 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "social",
-  "owner_version": "social/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0",
-    "comms": "comms/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:social/0.5.0#social-agent-policy-receipts"
+    "heterodyne:0.5.0#social-agent-policy-receipts"
   ],
   "vector_id": "agent-moderation/correction-valid",
   "description": "A correction receipt exactly binds the original receipt and offending device key.",
@@ -30,24 +25,24 @@
         ],
         [
           "e",
-          "2dd3853611b420a9d4d4609ee4d4db802ef2310c2dc3f33b2e19264ae16a2223"
+          "3b02e254a86cf9cdfd1ec52348fce1ff68733f238c71afe1b372cd67d2031008"
         ],
         [
           "p",
           "1111111111111111111111111111111111111111111111111111111111111111"
         ]
       ],
-      "content": "{\"profile\":\"heterodyne.social.agent-policy-correction.v1\",\"spec_version\":\"social/0.5.0\",\"receipt_id\":\"2dd3853611b420a9d4d4609ee4d4db802ef2310c2dc3f33b2e19264ae16a2223\",\"device_key\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"corrected_at\":1005,\"explanation\":\"The original evidence was misclassified.\",\"action\":\"retract\"}",
-      "id": "e39d6d3ed44b2ace8c1b233ff0227b14078a0eea78c1a09be9e32fd84575d790",
-      "sig": "690d1625b13702eb57c6f42af944ae1427ac6d8cf936f1910cb5483c5893fd219473f90337cc72bbb438860e4a2d46b566b42861ced43b313331b709e46073c7"
+      "content": "{\"profile\":\"heterodyne.social.agent-policy-correction.v1\",\"spec_version\":\"heterodyne/0.5.0\",\"receipt_id\":\"3b02e254a86cf9cdfd1ec52348fce1ff68733f238c71afe1b372cd67d2031008\",\"device_key\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"corrected_at\":1005,\"explanation\":\"The original evidence was misclassified.\",\"action\":\"retract\"}",
+      "id": "f068ed3a753b1884e20ade02511c9c7710be239f9ca94a34b384289eab287839",
+      "sig": "29cbef80b3b389bf407eb894c0233169e0704e33ffdf5abf90ff51fed99ba422bea36b65b38f462907d2195014cf123e4aa0e8f08d465c6504cbc034979b8514"
     }
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
       "profile": "heterodyne.social.agent-policy-correction.v1",
-      "spec_version": "social/0.5.0",
-      "receipt_id": "2dd3853611b420a9d4d4609ee4d4db802ef2310c2dc3f33b2e19264ae16a2223",
+      "spec_version": "heterodyne/0.5.0",
+      "receipt_id": "3b02e254a86cf9cdfd1ec52348fce1ff68733f238c71afe1b372cd67d2031008",
       "device_key": "1111111111111111111111111111111111111111111111111111111111111111",
       "corrected_at": 1005,
       "explanation": "The original evidence was misclassified.",

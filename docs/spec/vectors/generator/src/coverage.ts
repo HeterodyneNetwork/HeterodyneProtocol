@@ -12,9 +12,7 @@ export const INACTIVE_PROFILE_IDS = [] as const;
 export type CoverageEntry = {
   vector_id: string;
   owner_document: DocumentId;
-  owner_version: string;
-  dependency_versions: Partial<Record<DocumentId, string>>;
-  registry_revision: number;
+  spec_version: string;
   profile?: string;
   spec_refs: string[];
 };
@@ -30,9 +28,7 @@ export function buildCoverage(vectors: Vector[]): CoverageEntry[] {
       return {
         vector_id: vector.vector_id,
         owner_document: vector.owner_document,
-        owner_version: vector.owner_version,
-        dependency_versions: vector.dependency_versions,
-        registry_revision: vector.registry_revision,
+        spec_version: vector.spec_version,
         ...(vector.profile === undefined ? {} : { profile: vector.profile }),
         spec_refs: vector.spec_refs,
       };
@@ -124,12 +120,9 @@ function renderFamilyView(entries: CoverageEntry[]): string {
 
 function renderTable(entries: CoverageEntry[]): string {
   const rows = entries
-    .map((entry) => {
-      const dependencies = Object.entries(entry.dependency_versions)
-        .map(([document, version]) => `${document}=${version}`)
-        .join(", ") || "—";
-      return `| \`${entry.vector_id}\` | ${entry.owner_document} | \`${entry.owner_version}\` | ${dependencies} | ${entry.registry_revision} | ${entry.profile === undefined ? "—" : `\`${entry.profile}\``} | ${entry.spec_refs.map((ref) => `\`${ref}\``).join("<br>")} |`;
-    })
+    .map((entry) =>
+      `| \`${entry.vector_id}\` | ${entry.owner_document} | ${entry.profile === undefined ? "—" : `\`${entry.profile}\``} | ${entry.spec_refs.map((ref) => `\`${ref}\``).join("<br>")} |`,
+    )
     .join("\n");
-  return `| Vector | Owner | Version | Dependencies | Registry | Profile | Spec references |\n|---|---|---|---|---:|---|---|\n${rows}${rows.length === 0 ? "| — | — | — | — | — | — | — |" : ""}\n`;
+  return `| Vector | Owner | Profile | Spec references |\n|---|---|---|---|\n${rows}${rows.length === 0 ? "| — | — | — | — |" : ""}\n`;
 }

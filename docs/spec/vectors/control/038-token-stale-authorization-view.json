@@ -1,15 +1,10 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "control",
-  "owner_version": "control/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0",
-    "comms": "comms/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-control-marmot-frame-v1",
   "spec_refs": [
-    "heterodyne:control/0.5.0#control-token"
+    "heterodyne:0.5.0#control-token"
   ],
   "vector_id": "control/token-stale-authorization-view",
   "description": "Marmot-bound Control token use: token-stale-authorization-view.",

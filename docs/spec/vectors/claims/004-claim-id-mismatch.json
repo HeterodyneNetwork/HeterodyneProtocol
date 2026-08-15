@@ -1,20 +1,16 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-key-claims"
+    "heterodyne:0.5.0#comms-key-claims"
   ],
   "vector_id": "claims/claim-id-mismatch",
   "description": "Changing one semantic member while retaining the old lowercase claim_id is rejected before trust policy.",
   "direction": "consume",
   "input": {
     "semantic_body": {
-      "claim_id": "a71a4f6c9c6ec2c418fb2fae5f3b0a588961ca0bdc1cf0c5f2c63bd9caeee6fd",
+      "claim_id": "2978d23d3d0c591e8723253f8e7d7fb167f9e6fec870dcdad5fa5a3e0bae51a6",
       "issuer": {
         "type": "nostr-secp256k1",
         "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -39,10 +35,10 @@
         "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
       ],
       "visibility": "repository-private",
-      "spec_version": "comms/0.5.0",
-      "registry_revision": 2
+      "spec_version": "heterodyne/0.5.0",
+      "profile_revision": 2
     },
-    "retained_claim_id": "a71a4f6c9c6ec2c418fb2fae5f3b0a588961ca0bdc1cf0c5f2c63bd9caeee6fd",
+    "retained_claim_id": "2978d23d3d0c591e8723253f8e7d7fb167f9e6fec870dcdad5fa5a3e0bae51a6",
     "vector_context": {
       "decision_trace": [
         "parse_canonical_bytes",

@@ -43,7 +43,7 @@ async function nodeAdvertisement(
       ["repo_head", REPO_HEAD],
       ["expiry", String(EXPIRY)],
       ["nid_proof", proof],
-      ["spec_version", "core/0.5.0"],
+      ["spec_version", "heterodyne/0.5.0"],
     ]),
     content: "",
     auxRand: AUX_RAND,

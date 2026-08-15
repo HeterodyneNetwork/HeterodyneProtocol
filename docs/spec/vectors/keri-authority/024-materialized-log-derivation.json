@@ -1,11 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-materialized-kel"
+    "heterodyne:0.5.0#core-materialized-kel"
   ],
   "vector_id": "keri-authority/materialized-log-derivation",
   "description": "refs/xyz.heterodyne.keri/log derivation: one commit per accepted KEL event in s order, sole parent the prior event's commit (inception parentless). Each tree holds one entry mode 100644 path event.nip01 whose content is the event's exact nip01_raw bytes. Git object OIDs (sha1) are byte-identical to git hash-object / mktree / commit-tree.",
@@ -13,16 +11,16 @@
     "fixture_persona": "alice",
     "kel": [
       {
-        "event_id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+        "event_id": "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
         "s": 0,
         "created_at": 1767225600,
-        "nip01_raw": "[0,\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",1767225600,31002,[[\"d\",\"\"],[\"heterodyne\",\"keri_inception\"],[\"p\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"s\",\"0\"],[\"epoch_key\",\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"],[\"spec_version\",\"core/0.5.0\"]],\"\"]"
+        "nip01_raw": "[0,\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",1767225600,31002,[[\"d\",\"\"],[\"heterodyne\",\"keri_inception\"],[\"p\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"s\",\"0\"],[\"epoch_key\",\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"],[\"spec_version\",\"heterodyne/0.5.0\"]],\"\"]"
       },
       {
-        "event_id": "a1cf4cc9a146b9c2f92defd8d5c9bc816bc321f9adde108d0e26fe0c825a1e52",
+        "event_id": "cee59f50dded06fbd6ca22ef4d582ab398d66fd8817068b32fdbb837c4fec45d",
         "s": 1,
         "created_at": 1767229200,
-        "nip01_raw": "[0,\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",1767229200,31003,[[\"d\",\"1\"],[\"heterodyne\",\"keri_rotation\"],[\"p\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"s\",\"1\"],[\"prior_digest\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\"],[\"strategy\",\"committed\"],[\"epoch_key\",\"1be68a5a028f2601d0e80d468c344ba331d611b96c358b6032e8b4da0547fc11\"]],\"{\\\"spec_version\\\":\\\"core/0.5.0\\\",\\\"receipts\\\":[]}\"]"
+        "nip01_raw": "[0,\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",1767229200,31003,[[\"d\",\"1\"],[\"heterodyne\",\"keri_rotation\"],[\"p\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"s\",\"1\"],[\"prior_digest\",\"7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf\"],[\"strategy\",\"committed\"],[\"epoch_key\",\"1be68a5a028f2601d0e80d468c344ba331d611b96c358b6032e8b4da0547fc11\"]],\"{\\\"spec_version\\\":\\\"heterodyne/0.5.0\\\",\\\"receipts\\\":[]}\"]"
       }
     ],
     "git_actor": "Heterodyne KERI <keri@heterodyne.invalid>",
@@ -32,31 +30,31 @@
     }
   },
   "expected_output": {
-    "canonical_wire": "f5560bc313a2aff1f54e6c4f2c06fc67963ece53",
+    "canonical_wire": "3983f67aa5634438b5179605b5f9e6a7081c61ab",
     "decoded": {
       "ref": "refs/xyz.heterodyne.keri/log",
-      "log_tip": "f5560bc313a2aff1f54e6c4f2c06fc67963ece53",
+      "log_tip": "3983f67aa5634438b5179605b5f9e6a7081c61ab",
       "commits": [
         {
           "s": 0,
-          "event_id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+          "event_id": "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
           "path": "event.nip01",
           "mode": "100644",
-          "blob_oid": "0ff0af49b1366f819d5ed37335f70fa9b792d95e",
-          "tree_oid": "58a5d4bb126e5f6c4f3f493ab6fafed87878662f",
-          "commit_oid": "79263458c882b087d18454c78cb00c9784d887ce",
+          "blob_oid": "223093c303164038db332d13c76ff1508a68c819",
+          "tree_oid": "0483d3f17f71923a7e4061328c8241a3d18a7a48",
+          "commit_oid": "dc7abf23d06341585bb74dcd69195b760e311861",
           "parents": []
         },
         {
           "s": 1,
-          "event_id": "a1cf4cc9a146b9c2f92defd8d5c9bc816bc321f9adde108d0e26fe0c825a1e52",
+          "event_id": "cee59f50dded06fbd6ca22ef4d582ab398d66fd8817068b32fdbb837c4fec45d",
           "path": "event.nip01",
           "mode": "100644",
-          "blob_oid": "a59a2b655f9381e62de8af171f6e4347e58df5cc",
-          "tree_oid": "149146cb5fcaf7fa473fca8b1ca42187be90a404",
-          "commit_oid": "f5560bc313a2aff1f54e6c4f2c06fc67963ece53",
+          "blob_oid": "9311d4190f25663d18ed2b2c8bfb4a78daa8aee3",
+          "tree_oid": "f08c4406040852fcb35de99630913c5c94b03e02",
+          "commit_oid": "3983f67aa5634438b5179605b5f9e6a7081c61ab",
           "parents": [
-            "79263458c882b087d18454c78cb00c9784d887ce"
+            "dc7abf23d06341585bb74dcd69195b760e311861"
           ]
         }
       ]

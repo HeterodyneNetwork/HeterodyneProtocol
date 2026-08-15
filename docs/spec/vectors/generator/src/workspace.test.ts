@@ -22,7 +22,7 @@ const H40 = "33".repeat(20);
 describe("Workspace signed objects", () => {
   it("verifies schema, signature, KERI and repository binding, and digest", () => {
     const object = signWorkspaceObject({
-      spec_version: "workspace/0.1.0",
+      spec_version: "heterodyne/0.5.0",
       object_type: "workspace-manifest-v1",
       workspace_id: H64,
       kel_head: H64,

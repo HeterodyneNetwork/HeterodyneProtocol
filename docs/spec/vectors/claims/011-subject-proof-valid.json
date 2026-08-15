@@ -1,14 +1,10 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-comms-key-claim-jwk-jws-v1",
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-claim-verification"
+    "heterodyne:0.5.0#comms-claim-verification"
   ],
   "vector_id": "claims/subject-proof-valid",
   "description": "Fresh BIP-340, Ed25519, and EdDSA JWS proofs bind exact claim, audience, resource, operation, nonce, and sixty-second window.",
@@ -22,7 +18,7 @@
         },
         "challenge": {
           "domain": "heterodyne-claim-pop-v1",
-          "claim_id": "a71a4f6c9c6ec2c418fb2fae5f3b0a588961ca0bdc1cf0c5f2c63bd9caeee6fd",
+          "claim_id": "2978d23d3d0c591e8723253f8e7d7fb167f9e6fec870dcdad5fa5a3e0bae51a6",
           "nonce": "71717171717171717171717171717171",
           "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
           "resource": "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims",
@@ -32,7 +28,7 @@
         },
         "proof": {
           "type": "nostr-bip340",
-          "signature": "7343b2f9ef3d0688cf155e176c538b9fd04f57fbe39e9ed83987566f0d4f636c32402f3b28fd69c37c1647f6f9b3bfcddba99ace22e7c75cadc1f9db3cf5b5ba"
+          "signature": "7905f1a58bd6489c4345c69709d87cb6a7cf2b96420e5d7fe6b5fd6fe8016f710ff86a136826462e8f1a80c183b6699982a7f8e8b927fab75c54bbf77365f86d"
         }
       },
       {
@@ -42,7 +38,7 @@
         },
         "challenge": {
           "domain": "heterodyne-claim-pop-v1",
-          "claim_id": "3d1b1094917c643c97940251be43c1a61a3b839a744a8d384c5119b984832e20",
+          "claim_id": "ea8af3e11b0b959d31aec34792fe83c89e29b55d256cb032e657960eeb51cf7c",
           "nonce": "72727272727272727272727272727272",
           "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
           "resource": "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims",
@@ -53,7 +49,7 @@
         "proof": {
           "type": "radicle-ed25519",
           "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-          "signature": "4d7c572df9dd747cdad1cf3a6edde269989049b8c823b80176c8f5106c9badcff460254f557b878ae5e418daea765dd2ac9b3358762f6fad213dc783f14ae308"
+          "signature": "ea568ebbe77bc3fc2f60c6cf2492c78d34bd3146d9f4e90aefecb974839ca314f9267d6023e04e81baa70f047579a3ea43eaabf8df563c1b2b7503bdc878510d"
         }
       },
       {
@@ -63,7 +59,7 @@
         },
         "challenge": {
           "domain": "heterodyne-claim-pop-v1",
-          "claim_id": "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7",
+          "claim_id": "4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3",
           "nonce": "73737373737373737373737373737373",
           "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
           "resource": "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims",
@@ -79,7 +75,7 @@
             "x": "pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8"
           },
           "protected": "eyJhbGciOiJFZERTQSJ9",
-          "signature": "UcragRVvO7Xl7RWjGf6oDz6eFDTzd4Hm4nwsG0UvrC746Q3JvkfJ4efLkjQoyM0TYroH8qazyGCijlQT1wq9Dg"
+          "signature": "C6M7WuBvmCt92XWG3x1lJYmPbBR7tFk-i77ftBDDowmKW1oBAQGv_iH3aJ8C-oqHVp1JovH4E8oGZNH9L1YGDw"
         }
       }
     ]

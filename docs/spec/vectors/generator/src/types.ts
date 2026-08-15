@@ -1,16 +1,13 @@
 export type DocumentId = "core" | "comms" | "control" | "social" | "workspace";
 
-export type QualifiedVersion = { document: DocumentId; semver: string };
-
 export type VectorDirection = "produce" | "consume" | "round-trip";
 
 export type Vector = {
   vector_id: string;
   vector_schema_version: string;
+  /** The document that owns the requirement, for coverage reporting only. */
   owner_document: DocumentId;
-  owner_version: string;
-  dependency_versions: Partial<Record<DocumentId, string>>;
-  registry_revision: number;
+  spec_version: string;
   profile?: string;
   spec_refs: string[];
   description: string;

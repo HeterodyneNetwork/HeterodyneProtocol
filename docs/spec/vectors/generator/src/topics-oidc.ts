@@ -149,7 +149,7 @@ export async function buildOidcScenario(
     record_id: record.record_id, payload_digest: record.payload_digest,
     claim_envelope_context: {
       issuer_authorized: true,
-      registry_revision: 2,
+      profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: s.persona,
         credential_ledger_generation: 0,
@@ -498,10 +498,10 @@ export async function buildOidcVectors(fixtures: Fixtures): Promise<AuthoredVect
   const authored = (path: string, id: string, description: string, input: ReplayInput): AuthoredVector =>
     consumeVector(`oidc/${path}`, { vector_id: `oidc/${id}`, spec_refs: [
       /^discovery|^issuer-mismatch/.test(id)
-        ? "heterodyne:comms/0.5.0#comms-oidc-endpoints"
+        ? "heterodyne:0.5.0#comms-oidc-endpoints"
         : /authorization|grant|pairwise|consent/.test(id)
-          ? "heterodyne:comms/0.5.0#comms-oidc-authorization"
-          : "heterodyne:comms/0.5.0#comms-jwt-projection",
+          ? "heterodyne:0.5.0#comms-oidc-authorization"
+          : "heterodyne:0.5.0#comms-jwt-projection",
     ],
       description, input, expected_output: replayOidcVector(input) as Record<string, unknown> });
   const common = {
@@ -999,8 +999,8 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
   const authored = (path: string, vectorId: string, description: string, input: ReplayInput): AuthoredVector =>
     consumeVector(`token-status/${path}`, { vector_id: `token-status/${vectorId}`,
       spec_refs: [/https-outage|issuer-successor/.test(vectorId)
-        ? "heterodyne:comms/0.5.0#comms-issuer-continuity"
-        : "heterodyne:comms/0.5.0#comms-token-status"], description, input,
+        ? "heterodyne:0.5.0#comms-issuer-continuity"
+        : "heterodyne:0.5.0#comms-token-status"], description, input,
       expected_output: replayTokenStatusVector(input) as Record<string, unknown> });
 
   const root = x.root;

@@ -1,11 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-identity-discovery"
+    "heterodyne:0.5.0#core-identity-discovery"
   ],
   "vector_id": "identity-doc/kel-revoked-nid-rejected",
   "description": "A NID revoked by the KEL MUST NOT be honored as a delegate even if the Radicle identity document still lists it; git refs signed by it are rejected.",

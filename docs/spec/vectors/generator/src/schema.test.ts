@@ -31,7 +31,7 @@ describe("one-time invite schemas", () => {
       secret: "66".repeat(32),
     })).not.toThrow();
     expect(() => validateOneTimeInviteResponseSchemaOrThrow({
-      spec_version: "comms/0.5.0",
+      spec_version: "heterodyne/0.5.0",
       purpose: "dm",
       descriptor_digest: "77".repeat(32),
       responder_account: "88".repeat(32),
@@ -50,7 +50,7 @@ describe("one-time invite schemas", () => {
       device_private_key: "77".repeat(32),
     })).toThrow(/additional/);
     expect(() => validateOneTimeInviteResponseSchemaOrThrow({
-      spec_version: "comms/0.5.0",
+      spec_version: "heterodyne/0.5.0",
       purpose: "dm",
       descriptor_digest: "77".repeat(32),
       responder_account: "88".repeat(32),
@@ -74,7 +74,7 @@ describe("one-time invite schemas", () => {
       secret: "66".repeat(32),
     })).toThrow();
     expect(() => validateOneTimeInviteResponseSchemaOrThrow({
-      spec_version: "comms/0.5.0",
+      spec_version: "heterodyne/0.5.0",
       purpose: "device-enrollment",
       descriptor_digest: "77".repeat(32),
       responder_account: "88".repeat(32),
@@ -91,14 +91,8 @@ describe("vector schema", () => {
     vector_id: `versioning/${owner}-metadata`,
     vector_schema_version: "1.0.0",
     owner_document: owner,
-    owner_version: `${owner}/0.5.0`,
-    dependency_versions: owner === "core" ? {} : owner === "comms"
-      ? { core: "core/0.5.0" }
-      : owner === "social"
-        ? { core: "core/0.5.0", comms: "comms/0.5.0" }
-        : { core: "core/0.5.0", comms: "comms/0.5.0" },
-    registry_revision: 1,
-    spec_refs: [`heterodyne:${owner}/0.5.0#${owner}-conformance`],
+    spec_version: "heterodyne/0.5.0",
+    spec_refs: [`heterodyne:0.5.0#${owner}-conformance`],
     description: "exact family metadata",
     direction: "consume",
     input: {},
@@ -111,10 +105,8 @@ describe("vector schema", () => {
         vector_id: "identity/root-attestation-valid",
         vector_schema_version: "1.0.0",
         owner_document: "core",
-        owner_version: "core/0.5.0",
-        dependency_versions: {},
-        registry_revision: 1,
-        spec_refs: ["heterodyne:core/0.5.0#core-root-attestation"],
+        spec_version: "heterodyne/0.5.0",
+        spec_refs: ["heterodyne:0.5.0#core-root-attestation"],
         description: "root attestation is reproduced byte-identically",
         direction: "produce",
         input: { hello: "world" },
@@ -126,49 +118,11 @@ describe("vector schema", () => {
     ).not.toThrow();
   });
 
-  it("rejects the removed scalar spec_version and bare references", () => {
-    expect(() =>
-      validateVectorOrThrow({
-        vector_id: "legacy/scalar-version",
-        vector_schema_version: "1.0.0",
-        spec_version: "0.4.0",
-        owner_document: "core",
-        owner_version: "core/0.5.0",
-        dependency_versions: {},
-        registry_revision: 1,
-        spec_refs: ["§3"],
-        description: "legacy metadata is invalid after the family split",
-        direction: "consume",
-        input: {},
-        expected_output: { verdict: "accept" },
-      }),
-    ).toThrow();
-  });
-
-  it("rejects forbidden and unqualified dependency versions", () => {
-    const vector = {
-      vector_id: "versioning/forbidden-dependency",
-      vector_schema_version: "1.0.0",
-      owner_document: "core",
-      owner_version: "core/0.5.0",
-      dependency_versions: { social: "social/0.5.0" },
-      registry_revision: 1,
-      spec_refs: ["heterodyne:core/0.5.0#core-versioning"],
-      description: "Core cannot depend on Social",
-      direction: "consume",
-      input: {},
-      expected_output: { verdict: "accept" },
-    };
-    expect(() => validateVectorOrThrow(vector)).toThrow(/dependency/);
-    expect(() =>
-      validateVectorOrThrow({
-        ...vector,
-        owner_document: "comms",
-        owner_version: "comms/0.5.0",
-        dependency_versions: { core: "0.5.0" },
-        spec_refs: ["heterodyne:comms/0.5.0#comms-conformance"],
-      }),
-    ).toThrow(/dependency/);
+  it("rejects an unqualified version and a bare section reference", () => {
+    expect(() => validateVectorOrThrow({ ...valid("core"), spec_version: "0.5.0" }))
+      .toThrow();
+    expect(() => validateVectorOrThrow({ ...valid("core"), spec_refs: ["§3"] }))
+      .toThrow();
   });
 
   it.each(["core", "comms", "social", "control"] as const)(
@@ -176,28 +130,23 @@ describe("vector schema", () => {
     (owner) => expect(() => validateVectorOrThrow(valid(owner))).not.toThrow(),
   );
 
-  it("rejects missing, extra, or wrong exact dependencies and owner versions", () => {
-    expect(() => validateVectorOrThrow({ ...valid("comms"), dependency_versions: {} }))
-      .toThrow(/dependency/);
+  it("rejects a version other than the current family release", () => {
+    expect(() => validateVectorOrThrow({ ...valid("core"), spec_version: "heterodyne/0.5.1" }))
+      .toThrow();
     expect(() => validateVectorOrThrow({
-      ...valid("control"), dependency_versions: { comms: "comms/0.5.0" },
-    })).toThrow(/dependency/);
-    expect(() => validateVectorOrThrow({
-      ...valid("social"), dependency_versions: { core: "core/0.5.0", comms: "comms/0.4.0" },
-    })).toThrow(/dependency/);
-    expect(() => validateVectorOrThrow({ ...valid("core"), owner_version: "core/0.5.1" }))
-      .toThrow(/owner_version/);
+      ...valid("core"), spec_refs: ["heterodyne:0.4.0#core-conformance"],
+    })).toThrow();
   });
 
-  it("rejects references outside the owner and its declared dependencies", () => {
+  it("rejects references above the owner in the layering", () => {
     expect(() => validateVectorOrThrow({
-      ...valid("social"), spec_refs: ["heterodyne:control/0.5.0#control-conformance"],
+      ...valid("social"), spec_refs: ["heterodyne:0.5.0#control-conformance"],
     })).toThrow(/spec_ref/);
     expect(() => validateVectorOrThrow({
-      ...valid("comms"), spec_refs: ["heterodyne:social/0.5.0#social-conformance"],
+      ...valid("comms"), spec_refs: ["heterodyne:0.5.0#social-conformance"],
     })).toThrow(/spec_ref/);
     expect(() => validateVectorOrThrow({
-      ...valid("social"), spec_refs: ["heterodyne:core/0.4.0#core-conformance"],
+      ...valid("core"), spec_refs: ["heterodyne:0.5.0#comms-conformance"],
     })).toThrow(/spec_ref/);
   });
 
@@ -205,16 +154,16 @@ describe("vector schema", () => {
     expect(() => validateVectorOrThrow({
       ...valid("core"),
       spec_refs: [
-        "heterodyne:core/0.5.0#core-versioning",
-        "heterodyne:core/0.5.0#core-conformance",
+        "heterodyne:0.5.0#core-versioning",
+        "heterodyne:0.5.0#core-conformance",
       ],
     })).toThrow(/spec_refs|one|item/i);
   });
 
-  it("allows one Control reference to either exact direct dependency", () => {
+  it("allows one Control reference to either document beneath it", () => {
     for (const specRef of [
-      "heterodyne:core/0.5.0#core-version-stamps",
-      "heterodyne:comms/0.5.0#comms-subprotocol-negotiation",
+      "heterodyne:0.5.0#core-version-stamps",
+      "heterodyne:0.5.0#comms-subprotocol-negotiation",
     ]) {
       expect(() => validateVectorOrThrow({
         ...valid("control"),
@@ -229,11 +178,11 @@ describe("vector schema", () => {
         vector_id: "stamping/null-profile",
         vector_schema_version: "1.0.0",
         owner_document: "core",
-        owner_version: "core/0.5.0",
+        owner_version: "heterodyne/0.5.0",
         dependency_versions: {},
-        registry_revision: 1,
+        profile_revision: 1,
         profile: null,
-        spec_refs: ["heterodyne:core/0.5.0#core-version-stamps"],
+        spec_refs: ["heterodyne:0.5.0#core-version-stamps"],
         description: "optional means absent, not null",
         direction: "round-trip",
         input: {},
@@ -248,10 +197,10 @@ describe("vector schema", () => {
         vector_id: "verification/bad-sig-rejects",
         vector_schema_version: "1.0.0",
         owner_document: "core",
-        owner_version: "core/0.5.0",
+        owner_version: "heterodyne/0.5.0",
         dependency_versions: {},
-        registry_revision: 1,
-        spec_refs: ["heterodyne:core/0.5.0#core-verification"],
+        profile_revision: 1,
+        spec_refs: ["heterodyne:0.5.0#core-verification"],
         description: "bad signature rejects",
         direction: "consume",
         input: { event: {} },
@@ -292,8 +241,8 @@ describe("Comms claim schemas", () => {
     not_before: 1784390400,
     expires_at: 1784476800,
     visibility: "repository-private",
-    spec_version: "comms/0.5.0",
-    registry_revision: 2,
+    spec_version: "heterodyne/0.5.0",
+    profile_revision: 2,
     credential_ledger_persona: "34".repeat(32),
     credential_ledger_generation: 0,
   };
@@ -305,11 +254,11 @@ describe("Comms claim schemas", () => {
     expect(() => validateKeyClaimSchemaOrThrow(missingVersion)).toThrow(/spec_version|required/);
     expect(() => validateKeyClaimSchemaOrThrow({
       ...missingVersion,
-      comms_version: "comms/0.5.0",
+      comms_version: "heterodyne/0.5.0",
     })).toThrow(/spec_version|required|additional/);
     expect(() => validateKeyClaimSchemaOrThrow({
       ...base,
-      spec_version: "comms/0.5.1",
+      spec_version: "heterodyne/0.5.1",
     })).toThrow(/spec_version|const/);
   });
 
@@ -343,20 +292,20 @@ describe("Comms claim schemas", () => {
       revoked_at: 1784390500,
       reason_code: "claim-revoked",
       revoker: key,
-      spec_version: "comms/0.5.0",
-      registry_revision: 2,
+      spec_version: "heterodyne/0.5.0",
+      profile_revision: 2,
     };
     expect(() => validateClaimRevocationSchemaOrThrow(revocation)).not.toThrow();
     const { spec_version: _version, ...missingVersion } = revocation;
-    const { registry_revision: _revision, ...missingRevision } = revocation;
+    const { profile_revision: _revision, ...missingRevision } = revocation;
     expect(() => validateClaimRevocationSchemaOrThrow(missingVersion)).toThrow(/spec_version|required/);
     expect(() => validateClaimRevocationSchemaOrThrow({
       ...missingVersion,
-      comms_version: "comms/0.5.0",
+      comms_version: "heterodyne/0.5.0",
     })).toThrow(/spec_version|required|additional/);
-    expect(() => validateClaimRevocationSchemaOrThrow(missingRevision)).toThrow(/registry_revision|required/);
-    expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, spec_version: "comms/0.5.1" })).toThrow(/spec_version|const/);
-    expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, registry_revision: 1 })).toThrow(/registry_revision|const/);
+    expect(() => validateClaimRevocationSchemaOrThrow(missingRevision)).toThrow(/profile_revision|required/);
+    expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, spec_version: "heterodyne/0.5.1" })).toThrow(/spec_version|const/);
+    expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, profile_revision: 1 })).toThrow(/profile_revision|const/);
     expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, reason_code: "not-registered" })).toThrow(/reason_code/);
     expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, extra: true })).toThrow(/additional/);
     expect(() => validateClaimRevocationSchemaOrThrow({ ...revocation, revoked_at: Number.NEGATIVE_INFINITY })).toThrow();
@@ -377,8 +326,8 @@ describe("Comms claim schemas", () => {
       revoked_at: 1784390500,
       reason_code: "claim-revoked",
       revoker: { type: "jwk-thumbprint", value: "B".repeat(43) },
-      spec_version: "comms/0.5.0",
-      registry_revision: 2,
+      spec_version: "heterodyne/0.5.0",
+      profile_revision: 2,
       proof: {
         type: "jwk-jws",
         jwk,

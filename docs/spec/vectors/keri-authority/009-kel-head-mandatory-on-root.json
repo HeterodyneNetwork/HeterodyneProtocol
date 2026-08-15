@@ -1,11 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-kel-head"
+    "heterodyne:0.5.0#core-kel-head"
   ],
   "vector_id": "keri-authority/kel-head-mandatory-on-root",
   "description": "A kind:31000 root attestation carrying exactly one well-formed kel_head that resolves to the accepted KEL head (s=0) passes the structural and resolution checks and is accepted.",
@@ -29,28 +27,28 @@
         ],
         [
           "kel_head",
-          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+          "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
           "0"
         ]
       ],
       "content": "",
-      "id": "7a7f2e2efacfcde52d8bfeed6d42d25827d4b380a72885aff3bea03040e1fa5c",
-      "sig": "79f659eea7268661eba3f263715d35cc1f0bcc9e537fdc988776b9faa9827b996d76e5fb7092344e98167c8884b2db7e3fe0bb9baabdc19dedb850e4a5ec674b"
+      "id": "a2ee45eba6a6e5cb338c2221cf06fa7534944f9029962f3d944e9aca25c98876",
+      "sig": "4569930259dc4a3266ebffce7d8c90f18b673ab0e28fbac8268c93d1343294206ce9f7d373d3c41fbda679db27a6ed23798708c0f2ed07957810f55d210a689f"
     },
     "accepted_kel": [
       {
         "kind": 31002,
-        "id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+        "id": "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
         "s": 0,
         "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-        "nip01_raw": "[0,\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",1767225600,31002,[[\"d\",\"\"],[\"heterodyne\",\"keri_inception\"],[\"p\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"s\",\"0\"],[\"epoch_key\",\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"],[\"spec_version\",\"core/0.5.0\"]],\"\"]",
+        "nip01_raw": "[0,\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",1767225600,31002,[[\"d\",\"\"],[\"heterodyne\",\"keri_inception\"],[\"p\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"s\",\"0\"],[\"epoch_key\",\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\"],[\"spec_version\",\"heterodyne/0.5.0\"]],\"\"]",
         "materialized_state": {
           "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
           "s": 0,
           "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
           "witnesses": [],
           "threshold": 0,
-          "producing_event_id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0"
+          "producing_event_id": "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf"
         }
       }
     ],

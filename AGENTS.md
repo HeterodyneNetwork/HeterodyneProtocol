@@ -17,8 +17,7 @@ artifacts:
   workspace identity, roles, private discovery, federation, hosting, and
   resource-key delivery.
 - [`docs/spec/registry/`](docs/spec/registry/),
-  [`docs/spec/schemas/`](docs/spec/schemas/),
-  [`docs/spec/releases/`](docs/spec/releases/), and
+  [`docs/spec/schemas/`](docs/spec/schemas/), and
   [`docs/spec/vectors/`](docs/spec/vectors/): normative machine-readable
   artifacts.
 

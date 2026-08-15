@@ -1,14 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "social",
-  "owner_version": "social/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0",
-    "comms": "comms/0.5.0"
-  },
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:social/0.5.0#social-lists"
+    "heterodyne:0.5.0#social-lists"
   ],
   "vector_id": "lists/mute-list-private-items-encrypted-to-self",
   "description": "NIP-51 kind:10000 mute list carrying private items: a JSON array of tag-shaped arrays, NIP-44 v2 encrypted-to-self under the persona's current epoch key, in content alongside the public tags.",
@@ -23,7 +18,7 @@
     }
   },
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225701,10000,[[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"t\",\"spam\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"],[\"heterodyne\",\"social-mute-list-v1\"],[\"spec_version\",\"social/0.5.0\"]],\"AlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSLuXzFbzO7BM4hS899uGYPu4D9EqfOxyjsbBvxC9bg0K4RO8igOGnzzekFFY7u5Nq+s1hRfnaB/fMgNHkSn4UUjFnPxLutryQp3P4xo0iuYhoRkndv1hHXEVgehWdhsLmoTj2vr0hNfteUwFqq49rcJPpwHqb9paa9ePvVLz/EmDKE+KYlZAZsmnENs1SEM/YZg+wum2SiPSSf/Wa8Zc483iT\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225701,10000,[[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"t\",\"spam\"],[\"kel_head\",\"7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf\",\"0\"],[\"heterodyne\",\"social-mute-list-v1\"],[\"spec_version\",\"heterodyne/0.5.0\"]],\"AlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSLuXzFbzO7BM4hS899uGYPu4D9EqfOxyjsbBvxC9bg0K4RO8igOGnzzekFFY7u5Nq+s1hRfnaB/fMgNHkSn4UUjFnPxLutryQp3P4xo0iuYhoRkndv1hHXEVgehWdhsLmoTj2vr0hNfteUwFqq49rcJPpwHqb9paa9ePvVLz/EmDKE+KYlZAZsmnENs1SEM/YZg+wum2SiPSSf/Wa8Zc483iT\"]",
     "decoded": {
       "event": {
         "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
@@ -40,7 +35,7 @@
           ],
           [
             "kel_head",
-            "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+            "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
             "0"
           ],
           [
@@ -49,12 +44,12 @@
           ],
           [
             "spec_version",
-            "social/0.5.0"
+            "heterodyne/0.5.0"
           ]
         ],
         "content": "AlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSLuXzFbzO7BM4hS899uGYPu4D9EqfOxyjsbBvxC9bg0K4RO8igOGnzzekFFY7u5Nq+s1hRfnaB/fMgNHkSn4UUjFnPxLutryQp3P4xo0iuYhoRkndv1hHXEVgehWdhsLmoTj2vr0hNfteUwFqq49rcJPpwHqb9paa9ePvVLz/EmDKE+KYlZAZsmnENs1SEM/YZg+wum2SiPSSf/Wa8Zc483iT",
-        "id": "730f082c27f31197b57de54cccfcda82371ef0b1f1399e2291dd58346bca7933",
-        "sig": "fe8cd594f17ac4dc2e66ffe4e410ac93efb097f624b03644a130217d0cf8c071a52ece3fac67ddac1213aa07b00a5a0c7ed00168afb800bebd4a8f09f6d70602"
+        "id": "93eab26a201c7a9b4ae2342f2fa427e7ca6e900537f6caf25388cefa2d510933",
+        "sig": "3c0785d61fef094f8d4083b887f348130fe6861705868093449b1d3c8faa91685e1890caa6c41a11e304f34e5f9fab2b550a893f12a606586207ba07ba290bfe"
       },
       "conversation_key": "b127d717e2a3a193d07ba78341dec2d76dcaf3c7de82ea3cedf8d2e327e4871c",
       "nip44_nonce": "5252525252525252525252525252525252525252525252525252525252525252",
@@ -70,8 +65,8 @@
       ],
       "nip44_payload": "AlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSLuXzFbzO7BM4hS899uGYPu4D9EqfOxyjsbBvxC9bg0K4RO8igOGnzzekFFY7u5Nq+s1hRfnaB/fMgNHkSn4UUjFnPxLutryQp3P4xo0iuYhoRkndv1hHXEVgehWdhsLmoTj2vr0hNfteUwFqq49rcJPpwHqb9paa9ePvVLz/EmDKE+KYlZAZsmnENs1SEM/YZg+wum2SiPSSf/Wa8Zc483iT"
     },
-    "id": "730f082c27f31197b57de54cccfcda82371ef0b1f1399e2291dd58346bca7933",
-    "sig": "fe8cd594f17ac4dc2e66ffe4e410ac93efb097f624b03644a130217d0cf8c071a52ece3fac67ddac1213aa07b00a5a0c7ed00168afb800bebd4a8f09f6d70602"
+    "id": "93eab26a201c7a9b4ae2342f2fa427e7ca6e900537f6caf25388cefa2d510933",
+    "sig": "3c0785d61fef094f8d4083b887f348130fe6861705868093449b1d3c8faa91685e1890caa6c41a11e304f34e5f9fab2b550a893f12a606586207ba07ba290bfe"
   },
   "direction": "produce"
 }

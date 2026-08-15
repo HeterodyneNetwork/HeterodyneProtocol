@@ -68,11 +68,11 @@
     },
     "qualified_version": {
       "type": "string",
-      "pattern": "^(core|comms|control|social|workspace)/(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+      "pattern": "^heterodyne/(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
     },
     "qualified_reference": {
       "type": "string",
-      "pattern": "^heterodyne:(core|comms|control|social|workspace)/(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?#[a-z0-9]+(?:-[a-z0-9]+)*$"
+      "pattern": "^heterodyne:(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?#[a-z0-9]+(?:-[a-z0-9]+)*$"
     },
     "manifest": {
       "type": "object",

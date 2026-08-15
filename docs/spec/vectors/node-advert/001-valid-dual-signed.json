@@ -1,11 +1,9 @@
 {
   "vector_schema_version": "1.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
+  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-node-advertisement"
+    "heterodyne:0.5.0#core-node-advertisement"
   ],
   "vector_id": "node-advert/valid-dual-signed",
   "description": "kind:31010 node advertisement: valid outer BIP-340 Nostr signature AND inner Ed25519 nid_proof over the pinned advertisement payload.",
@@ -32,7 +30,7 @@
     }
   },
   "expected_output": {
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767311700,31010,[[\"d\",\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1\"],[\"heterodyne\",\"node_advert\"],[\"rid\",\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1\"],[\"nid\",\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"],[\"endpoint\",\"wss://node-a.example/relay\"],[\"repo_head\",\"4a19af7f069f3c32d4235c726f666fc8cd0175fa\"],[\"expiry\",\"1767312000\"],[\"nid_proof\",\"0e639f620e4fc376d29ac453ac7d9a2b89c07e0784abcace71bba6e3b978156af08a4b2c09ed577f640a6c0cb4d395fce3bf5032da4fa5b8538221055c774b03\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"],[\"spec_version\",\"core/0.5.0\"]],\"\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767311700,31010,[[\"d\",\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1\"],[\"heterodyne\",\"node_advert\"],[\"rid\",\"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1\"],[\"nid\",\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"],[\"endpoint\",\"wss://node-a.example/relay\"],[\"repo_head\",\"4a19af7f069f3c32d4235c726f666fc8cd0175fa\"],[\"expiry\",\"1767312000\"],[\"nid_proof\",\"0e639f620e4fc376d29ac453ac7d9a2b89c07e0784abcace71bba6e3b978156af08a4b2c09ed577f640a6c0cb4d395fce3bf5032da4fa5b8538221055c774b03\"],[\"kel_head\",\"7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf\",\"0\"],[\"spec_version\",\"heterodyne/0.5.0\"]],\"\"]",
     "decoded": {
       "event": {
         "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
@@ -73,24 +71,24 @@
           ],
           [
             "kel_head",
-            "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+            "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
             "0"
           ],
           [
             "spec_version",
-            "core/0.5.0"
+            "heterodyne/0.5.0"
           ]
         ],
         "content": "",
-        "id": "2ed2c8156b6bd18a2663f1d4377d3121d1bc4d68f6fc7e0caeadc1705fc36d48",
-        "sig": "5af5ff4de1ca44e03be1a086e31ca8bc656f62a6ecd8777f8a71a23dc37e57ac2382c1c5e2cc09b7d353475767244d6ccec9772ff8927a7732e4bba374a0cdb1"
+        "id": "50baf6278fa14ed7649bad81d34ebf3f8669d69267f5455f9fd6d00c4d50decb",
+        "sig": "9a482219401442c4ac1999df1e71833a6e550accc0563c8cefe37f537f9f99a50c1f9e02f5019d95a5fbd06d7d49b71bc23b1e8e0e2d34d73c7f0733e264f8fa"
       },
       "nid_proof_payload": "heterodyne-node-advert-v1|rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|wss://node-a.example/relay|1767312000|4a19af7f069f3c32d4235c726f666fc8cd0175fa",
       "nid_proof": "0e639f620e4fc376d29ac453ac7d9a2b89c07e0784abcace71bba6e3b978156af08a4b2c09ed577f640a6c0cb4d395fce3bf5032da4fa5b8538221055c774b03",
       "repo_head": "4a19af7f069f3c32d4235c726f666fc8cd0175fa"
     },
-    "id": "2ed2c8156b6bd18a2663f1d4377d3121d1bc4d68f6fc7e0caeadc1705fc36d48",
-    "sig": "5af5ff4de1ca44e03be1a086e31ca8bc656f62a6ecd8777f8a71a23dc37e57ac2382c1c5e2cc09b7d353475767244d6ccec9772ff8927a7732e4bba374a0cdb1"
+    "id": "50baf6278fa14ed7649bad81d34ebf3f8669d69267f5455f9fd6d00c4d50decb",
+    "sig": "9a482219401442c4ac1999df1e71833a6e550accc0563c8cefe37f537f9f99a50c1f9e02f5019d95a5fbd06d7d49b71bc23b1e8e0e2d34d73c7f0733e264f8fa"
   },
   "direction": "produce"
 }
