@@ -366,6 +366,38 @@ Core does not define claims, trust policy, authorization state, OIDC, JWT, or
 token status. Registry hooks identify the owning document and immutable
 profile discriminator; they do not transfer semantic ownership into Core.
 
+<a id="core-structured-outcome"></a>
+### 3.8 Structured client outcomes
+
+Some conditions are visible to a user but allocate no reason code, because
+they describe a client's own retry state rather than a verdict on received
+bytes. A document that defines such a condition uses this exact shape and
+defines only its `outcome_class` and the members of `subject`:
+
+```json
+{
+  "outcome_class": "<stable lowercase kebab-case class>",
+  "subject": {},
+  "attempted_at": 0,
+  "deadline_at": 0,
+  "last_attempt_at": 0,
+  "retry_state": "retrying",
+  "terminal_cause": null,
+  "allowed_actions": []
+}
+```
+
+`retry_state` is exactly `retrying` or `terminal`. `terminal_cause` is a
+string when `retry_state` is `terminal` and `null` otherwise.
+`allowed_actions` is a non-empty array of stable lowercase kebab-case action
+identifiers. All three timestamps are decimal Unix seconds.
+
+The outcome MUST be localizable: the class and action identifiers are stable
+and machine-readable, and any rendered sentence is a presentation choice and
+never normative. An `outcome_class` MUST NOT be a registered reason code, and
+a client MUST NOT invent a reason code or reuse an unrelated registered one to
+stand in for an outcome. No other document restates this shape.
+
 <a id="core-identity-model"></a>
 ## 4. Persona identity and KEL
 

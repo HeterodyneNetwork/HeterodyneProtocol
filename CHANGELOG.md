@@ -17,6 +17,12 @@ family map, and the single registry pin is
 
 ### Deduplication and single sources of truth
 
+- Defined the structured client outcome once in Core section 3.8. Comms and
+  Social each described the same payload independently and had already
+  drifted: the vectors encoded it as `outcome.class` in one place and a flat
+  `outcome_class` in the other, and the documents disagreed on whether
+  `terminal_cause` was conditional.
+
 - Made all 58 normative cross-references clickable. A reference is now
   ``[`heterodyne:0.5.0#anchor`](heterodyne-<doc>.md#anchor)``, keeping the
   version in the link text while the target resolves in a rendered document.

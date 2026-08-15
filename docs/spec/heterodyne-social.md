@@ -386,14 +386,15 @@ intervals for the first 30 minutes, then MAY use exponential backoff of 5, 10,
 30, then 60 minutes. It MUST stop on approval or when the seven-day
 implicit-rejection window expires. If no approval appears within seven days
 (604800 seconds) of candidate `created_at`, conforming clients MUST treat the
-candidate as implicitly rejected and surface a localizable structured outcome
-with class `moderation-approval-window-expired`, candidate, approval and
-community identifiers, submission identity, attempt/deadline/last-attempt
-timestamps, retry state, terminal cause, and allowed actions: abandon, edited
-republication with a new id, or intentional unchanged republication. This
+candidate as implicitly rejected and surface a
+[`heterodyne:0.5.0#core-structured-outcome`](heterodyne-core.md#core-structured-outcome)
+with `outcome_class` `moderation-approval-window-expired`, a `subject` binding
+the candidate, approval, and community identifiers and the submission
+identity, and `allowed_actions` of `abandon`, `edited-republication` with a
+new id, and `unchanged-republication`. This
 release defines no explicit moderator-rejection event; silence is rejection.
 After three consecutive implicit rejections from one community, the client
-SHOULD surface a structured advisory with class
+SHOULD surface a second such outcome with `outcome_class`
 `moderation-repeated-implicit-rejection`. English renderings such as “post not
 approved within 7-day window” are examples, not normative strings.
 

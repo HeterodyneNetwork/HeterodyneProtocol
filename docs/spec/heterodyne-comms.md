@@ -422,15 +422,14 @@ the hash MAY be rendered only with an unverifiable-chain warning.
 
 After a complete fetch attempt cannot resolve a predecessor, the newest
 resolvable page containing that missing predecessor link is the referring
-page. The client MUST surface a localizable structured outcome with stable
-class `missing-predecessor`, the unavailable predecessor event id, the
-referring page's event id,
-`created_at`, and `d`, attempt/deadline/last-attempt timestamps, retry state,
-terminal cause when present, and allowed user actions. For example, an English
-UI may render “feed truncated after `<created_at>` / `<d>`; missing
-`<event_id>`”; that sentence is not normative. The registry allocates
-no reason code for this application outcome, so a client MUST NOT invent or
-reuse an unrelated registered reason.
+page. The client MUST surface a
+[`heterodyne:0.5.0#core-structured-outcome`](heterodyne-core.md#core-structured-outcome)
+with `outcome_class` `missing-predecessor`, a `subject` binding the
+unavailable predecessor event id and the referring page's event id,
+`created_at`, and `d`, and `allowed_actions` drawn from `retry` and
+`continue-incomplete`. For example, an English UI may render “feed truncated
+after `<created_at>` / `<d>`; missing `<event_id>`”; that sentence is not
+normative.
 The client MUST continue from the newest resolvable page and MUST NOT call the
 result complete. It MUST persist the unresolved predecessor event id and the
 referring-page locator (its event id, `created_at`, and `d`) across process

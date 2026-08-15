@@ -217,9 +217,11 @@ const VECTOR_FACTORIES: VectorFactory[] = [
       normalized: {
         moderation_state: "implicitly-rejected",
         outcome: {
-          class: "moderation-approval-window-expired",
-          candidate_id: "candidate-fixture",
-          community_id: "34550:community:fixture",
+          outcome_class: "moderation-approval-window-expired",
+          subject: {
+            candidate_id: "candidate-fixture",
+            community_id: "34550:community:fixture",
+          },
           attempted_at: 1767225600,
           deadline_at: 1767830400,
           last_attempt_at: 1767826800,
@@ -487,11 +489,22 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
       expected_output: {
         verdict: "accept",
         normalized: {
-          outcome_class: "missing-predecessor",
+          outcome: {
+            outcome_class: "missing-predecessor",
+            subject: {
+              missing_predecessor_event_id: "cd".repeat(32),
+              referring_event_id: "ab".repeat(32),
+              referring_created_at: 1767225600,
+              referring_d: "feed:page-2",
+            },
+            attempted_at: 1767225610,
+            deadline_at: 1767225640,
+            last_attempt_at: 1767225640,
+            retry_state: "retrying",
+            terminal_cause: null,
+            allowed_actions: ["retry", "continue-incomplete"],
+          },
           registered_reason_code: null,
-          terminal_cause: null,
-          allowed_actions: ["retry", "continue-incomplete"],
-          localizable: true,
         },
       },
     },
