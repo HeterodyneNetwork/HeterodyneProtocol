@@ -123,7 +123,7 @@ exactly; semantic similarity is not conformance.
 | [docs/spec/heterodyne-control.md](docs/spec/heterodyne-control.md) | Active Control profile |
 | [docs/spec/heterodyne-social.md](docs/spec/heterodyne-social.md) | Social normative document |
 | [docs/spec/heterodyne-workspace.md](docs/spec/heterodyne-workspace.md) | Workspace normative document |
-| [docs/spec/registry](docs/spec/registry/) | Kind, profile, reason-code, invariant, feature, and object registry, with the single revision pin in `manifest.json` |
+| [docs/spec/registry](docs/spec/registry/) | Kind, profile, reason-code, invariant, feature, object, and proof-domain registry, with the single revision pin in `manifest.json` |
 | [docs/spec/vectors](docs/spec/vectors/) | Normative conformance vectors and verification tooling |
 | [docs/architecture.md](docs/architecture.md) | Non-normative family architecture and rationale |
 | [docs/glossary.md](docs/glossary.md) | Non-normative term index |

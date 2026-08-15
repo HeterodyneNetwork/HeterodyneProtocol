@@ -69,12 +69,23 @@ export type ObjectEntry = {
   carriers: Array<"radicle-authority-file" | "marmot-application-data">;
 };
 
+export type ProofDomainEntry = {
+  id: string;
+  owner: DocumentId;
+  first_version: string;
+  status: RegistryStatus;
+  bound_members: string[];
+  suites: Array<"bip340" | "ed25519" | "jws">;
+  description: string;
+};
+
 export type RegistryEntrySet = {
   kinds: KindEntry[];
   reason_codes: ReasonCodeEntry[];
   security_invariants: InvariantEntry[];
   features: FeatureEntry[];
   objects: ObjectEntry[];
+  proof_domains: ProofDomainEntry[];
 };
 
 export type Registry = RegistryEntrySet & {
@@ -98,45 +109,8 @@ const DEFAULT_REGISTRY_ROOT = resolve(
   "../../../registry",
 );
 
-export function loadRegistry(root: string): Registry {
-  const registryRoot = resolveRegistryRoot(root);
-  const manifest = readJson<RegistryManifest>(join(registryRoot, "manifest.json"));
-  const kinds = readJson<{ kinds: KindEntry[] }>(join(registryRoot, "kinds.json")).kinds;
-  const reason_codes = readJson<{ reason_codes: ReasonCodeEntry[] }>(
-    join(registryRoot, "reason-codes.json"),
-  ).reason_codes;
-  const security_invariants = readJson<{ security_invariants: InvariantEntry[] }>(
-    join(registryRoot, "security-invariants.json"),
-  ).security_invariants;
-  const features = readJson<{ features: FeatureEntry[] }>(
-    join(registryRoot, "features.json"),
-  ).features;
-  const objects = readJson<{ objects: ObjectEntry[] }>(
-    join(registryRoot, "objects.json"),
-  ).objects;
-  const registry = { manifest, kinds, reason_codes, security_invariants, features, objects };
-  validateRegistry(registry, registryRoot);
-  return registry;
-}
-
-export function computeRegistryDigest(registry: RegistryEntrySet): string {
-  const entrySet: RegistryEntrySet = {
-    kinds: registry.kinds,
-    reason_codes: registry.reason_codes,
-    security_invariants: registry.security_invariants,
-    features: registry.features,
-    objects: registry.objects,
-  };
-  return createHash("sha256").update(canonicalize(entrySet), "utf8").digest("hex");
-}
-
-export function authorRegistryRevision(
-  repositoryRoot: string,
-  revision: number,
-  schemaVersion = "3.0.0",
-): string {
-  const registryRoot = resolveRegistryRoot(repositoryRoot);
-  const entrySet: RegistryEntrySet = {
+function readEntrySet(registryRoot: string): RegistryEntrySet {
+  return {
     kinds: readJson<{ kinds: KindEntry[] }>(join(registryRoot, "kinds.json")).kinds,
     reason_codes: readJson<{ reason_codes: ReasonCodeEntry[] }>(
       join(registryRoot, "reason-codes.json"),
@@ -150,7 +124,41 @@ export function authorRegistryRevision(
     objects: readJson<{ objects: ObjectEntry[] }>(
       join(registryRoot, "objects.json"),
     ).objects,
+    proof_domains: readJson<{ proof_domains: ProofDomainEntry[] }>(
+      join(registryRoot, "proof-domains.json"),
+    ).proof_domains,
   };
+}
+
+export function loadRegistry(root: string): Registry {
+  const registryRoot = resolveRegistryRoot(root);
+  const registry = {
+    manifest: readJson<RegistryManifest>(join(registryRoot, "manifest.json")),
+    ...readEntrySet(registryRoot),
+  };
+  validateRegistry(registry, registryRoot);
+  return registry;
+}
+
+export function computeRegistryDigest(registry: RegistryEntrySet): string {
+  const entrySet: RegistryEntrySet = {
+    kinds: registry.kinds,
+    reason_codes: registry.reason_codes,
+    security_invariants: registry.security_invariants,
+    features: registry.features,
+    objects: registry.objects,
+    proof_domains: registry.proof_domains,
+  };
+  return createHash("sha256").update(canonicalize(entrySet), "utf8").digest("hex");
+}
+
+export function authorRegistryRevision(
+  repositoryRoot: string,
+  revision: number,
+  schemaVersion = "3.0.0",
+): string {
+  const registryRoot = resolveRegistryRoot(repositoryRoot);
+  const entrySet = readEntrySet(registryRoot);
   validateUniqueEntries(entrySet);
   validateEntryMetadata(entrySet);
   const digest = computeRegistryDigest(entrySet);
@@ -218,6 +226,10 @@ function validateUniqueEntries(registry: RegistryEntrySet): void {
   );
   assertUnique((registry.features ?? []).map((entry) => entry.id), "duplicate feature");
   assertUnique((registry.objects ?? []).map((entry) => entry.id), "duplicate object type");
+  assertUnique(
+    (registry.proof_domains ?? []).map((entry) => entry.id),
+    "duplicate proof domain",
+  );
 
   const profileIds: string[] = [];
   for (const entry of registry.kinds) {
@@ -257,6 +269,15 @@ function validateEntryMetadata(registry: RegistryEntrySet): void {
     assertCurrentFamilyVersion(entry.first_version);
     assertUnique(entry.carriers, `duplicate object carrier: ${entry.id}`);
   }
+  for (const entry of registry.proof_domains) {
+    assertCurrentFamilyVersion(entry.first_version);
+    // Bound members are canonicalized under JCS, so a declaration whose
+    // members are unsorted does not describe the bytes an implementer signs.
+    const sorted = [...entry.bound_members].sort();
+    if (entry.bound_members.join(",") !== sorted.join(",")) {
+      throw new Error(`proof-domain bound members are not sorted: ${entry.id}`);
+    }
+  }
 }
 
 function validateFeatures(features: FeatureEntry[]): void {
@@ -292,15 +313,7 @@ function validateFeatures(features: FeatureEntry[]): void {
 function validateAgainstSchema(registry: Registry, registryRoot: string): void {
   const schema = readJson<AnySchema>(join(registryRoot, "registry.schema.json"));
   const validate = new Ajv({ allErrors: true, strict: false }).compile(schema);
-  const value = {
-    manifest: registry.manifest,
-    kinds: registry.kinds,
-    reason_codes: registry.reason_codes,
-    security_invariants: registry.security_invariants,
-    features: registry.features,
-    objects: registry.objects,
-  };
-  if (!validate(value)) {
+  if (!validate(registry)) {
     throw new Error(formatErrors(validate.errors ?? []));
   }
 }

@@ -66,22 +66,28 @@ describe("Radicle / NID helpers", () => {
   it("signs and verifies deterministically with Ed25519 (pure EdDSA)", () => {
     const secret = "01".padStart(64, "0");
     const pub = ed25519PublicKey(secret);
-    const message = "heterodyne-nid-binding-v1|npub|nid|radicle-nid-delegation";
+    const message = nidBindingPayload("aa".repeat(32), "did:key:z6MkExample");
 
     const sig = ed25519Sign(message, secret);
     expect(sig).toHaveLength(128);
     expect(ed25519Sign(message, secret)).toBe(sig);
     expect(ed25519Verify(sig, message, pub)).toBe(true);
-    expect(ed25519.verify(hexToBytes(sig), utf8Bytes(message), hexToBytes(pub))).toBe(true);
+    expect(ed25519.verify(hexToBytes(sig), message, hexToBytes(pub))).toBe(true);
   });
 
-  it("pins the domain-separated binding payloads", () => {
-    expect(nidBindingPayload("aa".repeat(32), "did:key:z6MkExample")).toBe(
-      "heterodyne-nid-binding-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|did:key:z6MkExample|radicle-nid-delegation",
+  it("pins the Core 3.5.1 proof bytes for both binding domains", () => {
+    const decode = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
+    expect(decode(nidBindingPayload("aa".repeat(32), "did:key:z6MkExample"))).toBe(
+      'heterodyne-nid-binding-v1\u0000{"cold_root":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","nid":"did:key:z6MkExample"}',
     );
-    expect(nodeAdvertPayload("rad:zRID", "did:key:z6MkNid", "wss://n.example/relay", 1767312000, "abcd")).toBe(
-      "heterodyne-node-advert-v1|rad:zRID|did:key:z6MkNid|wss://n.example/relay|1767312000|abcd",
+    expect(decode(nodeAdvertPayload("rad:zRID", "did:key:z6MkNid", "wss://n.example/relay", 1767312000, "abcd"))).toBe(
+      'heterodyne-node-advert-v1\u0000{"endpoint":"wss://n.example/relay","expiry":"1767312000","nid":"did:key:z6MkNid","repo_head":"abcd","rid":"rad:zRID"}',
     );
+  });
+
+  it("rejects a delimiter-collision that the retired pipe form allowed", () => {
+    // "a|b" and "a", "b" joined by a pipe produced identical bytes.
+    expect(nidBindingPayload("a|b", "c")).not.toEqual(nidBindingPayload("a", "b|c"));
   });
 
   it("accepts a dual-signed advertisement only when a successful graph fetch contains its exact head", async () => {

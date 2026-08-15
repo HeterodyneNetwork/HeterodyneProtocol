@@ -22,10 +22,10 @@
       "visibility": "public",
       "public_roles": [],
       "actor": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
-      "signature": "487c37ece8bddc56edc8e588420f7247df79f98e57692008842cee8bb8046ef054f653fca88e1f819edc57a7a0c0615ac3212b93b95319704ccf248fb4f49851",
+      "signature": "a3bd519dc2a2d1964d5b3cac82c3db536b6997109b6d9e36649017e974e6b046019b804f8bd19d612201d3b6ddd4a09f88e03ab1afafd698c42a7ef93803e31e",
       "unknown": true
     },
-    "expected_object_id": "faea2245e45bb7526230b146f1f149433d8d8c75fa95342352b93feadb126c31",
+    "expected_object_id": "3e42f44da67a34540a0af1d55d835f577c2e624a919cbc01c8c62d51c574b075",
     "keri_authoritative": true,
     "repository_reachable": true
   },

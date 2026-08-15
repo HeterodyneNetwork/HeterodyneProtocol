@@ -6,6 +6,7 @@ import { sha256 } from "@noble/hashes/sha2";
 import { base58 } from "@scure/base";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
+import { proofBytes } from "./proof-bytes.js";
 import { type NostrSignedEvent, verifyEventSignature } from "./nostr.js";
 import { didKeyFromEd25519 } from "./radicle.js";
 import { reasonCodeValues } from "./reason-codes.js";
@@ -234,14 +235,13 @@ export function validateClaimEnvelope(
   return body;
 }
 
-export function revocationProofPayload(body: RevocationProofBody): string {
-  return jcsCanonicalize({
-    domain: "heterodyne-claim-revocation-v1",
+export function revocationProofPayload(body: RevocationProofBody): Uint8Array {
+  return proofBytes("heterodyne-claim-revocation-v1", {
     claim_id: body.claim_id,
-    revoked_at: body.revoked_at,
-    reason_code: body.reason_code,
-    spec_version: body.spec_version,
     profile_revision: body.profile_revision,
+    reason_code: body.reason_code,
+    revoked_at: body.revoked_at,
+    spec_version: body.spec_version,
   });
 }
 
@@ -332,8 +332,11 @@ export function verifyClaimChain(
   return chain;
 }
 
-export function subjectProofPayload(challenge: SubjectProofChallenge): string {
-  return jcsCanonicalize(challenge);
+export function subjectProofPayload(
+  challenge: SubjectProofChallenge,
+): Uint8Array {
+  const { domain, ...claim } = challenge;
+  return proofBytes(domain, claim);
 }
 
 export function resolveClaimState(
@@ -568,7 +571,7 @@ function verifySubjectProof(leaf: ClaimSemanticBody, context: ClaimVerificationC
     const signature = parseLowerHex(presented.proof.signature, 64, "BIP-340 signature");
     let valid = false;
     try {
-      valid = schnorr.verify(signature, utf8Bytes(payload), leaf.subject.value);
+      valid = schnorr.verify(signature, payload, leaf.subject.value);
     } catch {
       valid = false;
     }
@@ -582,7 +585,7 @@ function verifySubjectProof(leaf: ClaimSemanticBody, context: ClaimVerificationC
       throw new Error("claim-subject-proof-invalid: Ed25519 key does not derive subject NID");
     }
     const signature = parseLowerHex(presented.proof.signature, 64, "Ed25519 signature");
-    if (!ed25519.verify(signature, utf8Bytes(payload), publicKey)) {
+    if (!ed25519.verify(signature, payload, publicKey)) {
       throw new Error("claim-subject-proof-invalid: Ed25519 proof is invalid");
     }
     return;
@@ -809,7 +812,7 @@ function verifyRevocationProof(event: NostrSignedEvent, revocation: ClaimRevocat
     const signature = parseLowerHex(proof.signature, 64, "Ed25519 signature");
     let valid = false;
     try {
-      valid = ed25519.verify(signature, utf8Bytes(payload), publicKey);
+      valid = ed25519.verify(signature, payload, publicKey);
     } catch {
       valid = false;
     }
@@ -1019,7 +1022,10 @@ function decodeCanonicalBase64url(value: string, label: string): Buffer {
   return decoded;
 }
 
-function verifyDetachedJws(proof: Extract<KeyProof, { type: "jwk-jws" }>, payload: string): void {
+function verifyDetachedJws(
+  proof: Extract<KeyProof, { type: "jwk-jws" }>,
+  payload: Uint8Array,
+): void {
   const protectedBytes = decodeCanonicalBase64url(proof.protected, "JWS protected header");
   const signature = decodeCanonicalBase64url(proof.signature, "JWS signature");
   let header: unknown;
@@ -1052,7 +1058,7 @@ function verifyDetachedJws(proof: Extract<KeyProof, { type: "jwk-jws" }>, payloa
     throw new Error("claim-subject-proof-invalid: JWK key_ops does not permit verification");
   }
   const signingInput = utf8Bytes(
-    `${proof.protected}.${Buffer.from(payload, "utf8").toString("base64url")}`,
+    `${proof.protected}.${Buffer.from(payload).toString("base64url")}`,
   );
   let key;
   try {

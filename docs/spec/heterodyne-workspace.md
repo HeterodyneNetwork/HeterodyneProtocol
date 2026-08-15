@@ -48,8 +48,9 @@ SHA-1 values because the adopted Radicle substrate uses that object format.
 Every signed object contains `spec_version:"heterodyne/0.5.0"`, its exact
 `object_type`, `workspace_id`, `actor`, `kel_head`, `authority_sequence`,
 `repository_rid`, `repository_head`, and `issued_at`. The signature covers the
-ASCII domain `heterodyne-workspace-object-v1`, one zero byte, and the JCS bytes
-of the object without its `signature` member. `signature` is a lowercase
+`heterodyne:0.5.0#core-proof-bytes` bytes for domain
+`heterodyne-workspace-object-v1`, whose sole bound member `object` is the
+object without its `signature` member. `signature` is a lowercase
 128-character BIP-340 signature. The actor MUST be authoritative at the stated
 KEL head and MUST possess the capability and approval set required by the
 effective policy at the referenced repository head.

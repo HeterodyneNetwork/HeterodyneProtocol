@@ -68,7 +68,7 @@
       "proof": {
         "type": "radicle-ed25519",
         "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-        "signature": "ea568ebbe77bc3fc2f60c6cf2492c78d34bd3146d9f4e90aefecb974839ca314f9267d6023e04e81baa70f047579a3ea43eaabf8df563c1b2b7503bdc878510d"
+        "signature": "81370d1bd8a24fe8c8f337d15fd6d607fbfc86eb66e861d0d88a6f2157fea86c9ea0b5c54b9d5c62ec2fce721924271e80147ab1885d7fe64e0e2e2b03061a02"
       }
     }
   },

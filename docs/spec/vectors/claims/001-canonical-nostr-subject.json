@@ -67,7 +67,7 @@
       },
       "proof": {
         "type": "nostr-bip340",
-        "signature": "7905f1a58bd6489c4345c69709d87cb6a7cf2b96420e5d7fe6b5fd6fe8016f710ff86a136826462e8f1a80c183b6699982a7f8e8b927fab75c54bbf77365f86d"
+        "signature": "df840fae09cba755217d14f7459570be5323ce4c15c39233edbe26d29ec329240c7251e33e693db67bf5d131d8ae13491580ae142a2089764d8ebe99c156364c"
       }
     },
     "rejection_mutations": [

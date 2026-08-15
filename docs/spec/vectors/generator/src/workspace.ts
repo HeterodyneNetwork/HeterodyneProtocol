@@ -42,11 +42,7 @@ const concatBytes = (...parts: Uint8Array[]): Uint8Array => {
 export function workspaceSigningPayload(object: Record<string, unknown>): Uint8Array {
   const unsigned = { ...object };
   delete unsigned.signature;
-  return concatBytes(
-    utf8Bytes("heterodyne-workspace-object-v1"),
-    new Uint8Array([0]),
-    utf8Bytes(jcsCanonicalize(unsigned)),
-  );
+  return proofBytes("heterodyne-workspace-object-v1", { object: unsigned });
 }
 
 export function workspaceObjectId(object: Record<string, unknown>): string {
@@ -327,4 +323,5 @@ import { sha256 } from "@noble/hashes/sha2";
 import { Ajv } from "ajv";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
+import { proofBytes } from "./proof-bytes.js";
 import { WORKSPACE_SCHEMAS } from "./workspace-schemas.js";

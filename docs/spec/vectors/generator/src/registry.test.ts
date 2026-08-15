@@ -27,6 +27,7 @@ function currentEntrySet(registry: Registry): RegistryEntrySet {
     security_invariants: registry.security_invariants,
     features: registry.features,
     objects: registry.objects,
+    proof_domains: registry.proof_domains,
   });
 }
 

@@ -2,6 +2,7 @@ import { ed25519 } from "@noble/curves/ed25519";
 import { sha256 } from "@noble/hashes/sha2";
 import { base58 } from "@scure/base";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
+import { proofBytes } from "./proof-bytes.js";
 import { verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
 
 // Multicodec prefix for an Ed25519 public key (varint 0xed 0x01), per the
@@ -12,12 +13,16 @@ export function ed25519PublicKey(secretHex: string): string {
   return bytesToHex(ed25519.getPublicKey(hexToBytes(secretHex)));
 }
 
-export function ed25519Sign(message: string, secretHex: string): string {
-  return bytesToHex(ed25519.sign(utf8Bytes(message), hexToBytes(secretHex)));
+export function ed25519Sign(message: Uint8Array, secretHex: string): string {
+  return bytesToHex(ed25519.sign(message, hexToBytes(secretHex)));
 }
 
-export function ed25519Verify(sigHex: string, message: string, pubHex: string): boolean {
-  return ed25519.verify(hexToBytes(sigHex), utf8Bytes(message), hexToBytes(pubHex));
+export function ed25519Verify(
+  sigHex: string,
+  message: Uint8Array,
+  pubHex: string,
+): boolean {
+  return ed25519.verify(hexToBytes(sigHex), message, hexToBytes(pubHex));
 }
 
 // did:key for an Ed25519 public key: multibase base58btc ("z" prefix) of the
@@ -37,26 +42,34 @@ export function fixtureRid(seed: string): string {
   return `rad:z${base58.encode(digest)}`;
 }
 
-// Binding payload signed by BOTH the epoch key (via the outer Nostr sig over
-// the tags) AND the NID's Ed25519 nid_proof for a kind:31001 NID delegation.
-// The serialization is pinned by spec section 3.3.1.
-export function nidBindingPayload(npubHex: string, nidDidKey: string): string {
-  return `heterodyne-nid-binding-v1|${npubHex}|${nidDidKey}|radicle-nid-delegation`;
+// Binding signed by BOTH the epoch key (via the outer Nostr sig over the tags)
+// AND the NID's Ed25519 nid_proof for a kind:31001 NID delegation.
+export function nidBindingPayload(
+  npubHex: string,
+  nidDidKey: string,
+): Uint8Array {
+  return proofBytes("heterodyne-nid-binding-v1", {
+    cold_root: npubHex,
+    nid: nidDidKey,
+  });
 }
 
-// Payload signed by the advertised NID's Ed25519 nid_proof for a kind:31010
-// node/repo advertisement (section 7.0). The spec fixes the bound fields (RID,
-// NID, endpoint, expiry, current canonical repo head) and defers the exact
-// serialization to this vector; the domain-separated form below is that
-// serialization.
+// Binding signed by the advertised NID's Ed25519 nid_proof for a kind:31010
+// node/repo advertisement.
 export function nodeAdvertPayload(
   rid: string,
   nidDidKey: string,
   endpoint: string,
   expiry: number,
   repoHead: string,
-): string {
-  return `heterodyne-node-advert-v1|${rid}|${nidDidKey}|${endpoint}|${expiry}|${repoHead}`;
+): Uint8Array {
+  return proofBytes("heterodyne-node-advert-v1", {
+    endpoint,
+    expiry: String(expiry),
+    nid: nidDidKey,
+    repo_head: repoHead,
+    rid,
+  });
 }
 
 export type RepositoryGraphFetch =
@@ -210,7 +223,11 @@ function ed25519KeyFromDidKey(value: string): string | null {
   }
 }
 
-function safeEd25519Verify(sigHex: string, message: string, pubHex: string): boolean {
+function safeEd25519Verify(
+  sigHex: string,
+  message: Uint8Array,
+  pubHex: string,
+): boolean {
   try {
     return ed25519Verify(sigHex, message, pubHex);
   } catch {

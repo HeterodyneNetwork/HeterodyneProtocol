@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { bytesToHex } from "./hex.js";
 import {
   agentBindingMessage,
   deriveAgentIdentity,
@@ -19,7 +20,7 @@ const audience = "https://node.example/control/agent-publication";
 const subjectJkt = "A".repeat(43);
 
 describe("agent signing delegation", () => {
-  const proof = `heterodyne-agent-signing-binding-v1|${coldRoot}|${nid}|${roleId}|${publishingKey}`;
+  const proof = bytesToHex(agentBindingMessage(coldRoot, nid, roleId, publishingKey));
   const valid = {
     cold_root: coldRoot,
     credential_ledger_generation: 0,
@@ -39,7 +40,13 @@ describe("agent signing delegation", () => {
   };
 
   it("constructs and validates the exact triple-proof binding", () => {
-    expect(agentBindingMessage(coldRoot, nid, roleId, publishingKey)).toBe(proof);
+    expect(new TextDecoder().decode(
+      agentBindingMessage(coldRoot, nid, roleId, publishingKey),
+    )).toBe(
+      'heterodyne-agent-signing-binding-v1\u0000'
+        + `{"cold_root":"${coldRoot}","nid":"${nid}",`
+        + `"publishing_key":"${publishingKey}","role_id":"${roleId}"}`,
+    );
     expect(validateAgentDelegation(valid)).toEqual({
       verdict: "accept",
       role_id: roleId,

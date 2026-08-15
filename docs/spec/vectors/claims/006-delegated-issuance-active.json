@@ -179,7 +179,7 @@
       },
       "proof": {
         "type": "nostr-bip340",
-        "signature": "8d4ef939ef84cd4b487a658f58df92c83772513f33cbf3a36e0c7d843bf820fe8d6da20388027d424be8ec67b85c3fe5db52f3e37c5432de903a8c40f817549e"
+        "signature": "78e1feadfb96a3f34fd454e56113ca859b7ee9a9fd06bcfba7acfdc069ca9165aa82e6142b754e2da49ffe2ec1f53d2e73f7b73f09d07da5bfe8232c2fde5f9a"
       }
     },
     "vector_context": {

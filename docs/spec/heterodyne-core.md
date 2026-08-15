@@ -280,15 +280,49 @@ sole member. Unknown, private, or remote-reference JWK members, an extra
 protected-header member, `none`, an HMAC/HS or `oct` key, a wrong curve, a
 weak RSA modulus, or any algorithm/key-type mismatch MUST be rejected.
 
-The generic native-proof input is a domain-separated canonical byte string
-binding the referenced key, purpose, fresh challenge, audience, resource,
-operation, verifier context, issue time, and expiry. The caller supplies the
-complete bytes and expected reference. Core returns only `valid` or `invalid`
-plus the verified key reference and suite. Freshness, replay, purpose, trust,
-and permission decisions remain the caller's responsibility. For a Radicle
-NID, Core additionally verifies that the public key in the proof encodes to
-the exact canonical NID. For a JWK proof it recomputes the RFC 7638 thumbprint
-before verifying the protected JWS.
+The caller supplies the complete proof bytes and expected reference. Core
+returns only `valid` or `invalid` plus the verified key reference and suite.
+Freshness, replay, purpose, trust, and permission decisions remain the
+caller's responsibility. For a Radicle NID, Core additionally verifies that
+the public key in the proof encodes to the exact canonical NID. For a JWK
+proof it recomputes the RFC 7638 thumbprint before verifying the protected
+JWS.
+
+<a id="core-proof-bytes"></a>
+#### 3.5.1 Domain-separated proof bytes
+
+Every Heterodyne proof that is not an ordinary NIP-01 event signature signs
+exactly these bytes. This is the family's only proof-byte construction and no
+document defines a second one:
+
+```text
+<domain> || 0x00 || JCS(<claim>)
+```
+
+`<domain>` is the US-ASCII proof-domain string. `<claim>` is a JSON object
+holding exactly that domain's bound members and no proof or signature member,
+serialized under RFC 8785 JCS. The single zero byte separates them; a domain
+contains no zero byte, so the boundary is unambiguous. Where a construction is
+defined over a digest, that digest is SHA-256 of these same bytes.
+
+A proof domain is lowercase kebab-case, begins `heterodyne-`, ends `-v<N>`,
+and is allocated with its bound members and permitted suites in
+[`registry/proof-domains.json`](registry/proof-domains.json). Adding,
+removing, or renaming a bound member requires a new domain. A verifier MUST
+reject an unknown domain, a claim carrying a member the domain does not bind,
+a claim missing one, and a suite the domain does not permit.
+
+The suite follows the subject's typed-key reference: BIP-340 for
+`nostr-secp256k1`, Ed25519 for `radicle-ed25519-nid`, and JWS for
+`jwk-thumbprint`. A dual proof over one claim produces one set of bytes signed
+independently by each subject. A domain whose registered suite is
+`hmac-sha256` authenticates the same bytes with a shared secret instead of a
+key reference; the construction is otherwise identical.
+
+Positional and delimiter-joined proof inputs are forbidden. A delimiter that
+can occur inside a bound value lets two distinct claims serialize to identical
+bytes, and a positional form gives a verifier no way to reject an unknown or
+missing member.
 
 <a id="core-authority-interfaces"></a>
 ### 3.6 Authority and repository interfaces
@@ -619,10 +653,14 @@ attestations naming different cold roots rather than selecting one silently.
 }
 ```
 
-The NID signs these exact UTF-8 bytes, with one ASCII `|` separator:
+The NID signs the proof bytes of [§3.5.1](#core-proof-bytes) for domain
+`heterodyne-nid-binding-v1` over this claim:
 
-```text
-heterodyne-nid-binding-v1|<cold-root-hex>|<nid>|radicle-nid-delegation
+```json
+{
+  "cold_root": "<cold-root-hex>",
+  "nid": "<nid>"
+}
 ```
 
 The outer event signature binds the same values. A verifier MUST require both
@@ -892,10 +930,17 @@ and, when it claims browser compatibility, shared clearnet Nostr relay hints.
 A clearnet hint is a transport rendezvous and never authorizes direct
 clearnet access to the full node.
 
-The NID proof signs these exact UTF-8 bytes:
+The NID proof signs the proof bytes of [§3.5.1](#core-proof-bytes) for domain
+`heterodyne-node-advert-v1` over this claim:
 
-```text
-heterodyne-node-advert-v1|<rid>|<nid>|<endpoint>|<expiry>|<repo_head>
+```json
+{
+  "endpoint": "<endpoint>",
+  "expiry": "<expiry>",
+  "nid": "<nid>",
+  "repo_head": "<repo_head>",
+  "rid": "<rid>"
+}
 ```
 
 A verifier MUST validate the outer signature, inner Ed25519 proof, equality of
@@ -1451,7 +1496,7 @@ Every capability advertisement uses this Core-parsable bootstrap object:
 {
   "descriptor": "heterodyne-capabilities-v1",
   "spec_version": "heterodyne/0.5.0",
-  "registry_sha256": "c5f289023f294d92633b3211ae4d578a4cbb875bbdcceb7f3cab29100a5e3a58",
+  "registry_sha256": "631e843a0f104cf7973a0312de7b92205a2ad02407121033f1a826cd2ea5848e",
   "implementation_role": "public-reader",
   "supported_documents": [
     "core"

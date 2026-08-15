@@ -461,7 +461,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
       expires_at: now + 71,
     };
     const signature = bytesToHex(ed25519.sign(
-      utf8Bytes(subjectProofPayload(challenge)),
+      subjectProofPayload(challenge),
       hexToBytes(claim.reader.private_key),
     ));
     const authority: ClaimAuthorityEvidence = {

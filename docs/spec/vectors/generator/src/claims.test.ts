@@ -223,14 +223,15 @@ describe("claim revocation envelopes", () => {
       spec_version: "heterodyne/0.5.0",
       profile_revision: 2,
     } as unknown as ClaimRevocation;
-    expect(revocationProofPayload(stamped)).toBe(jcsCanonicalize({
-      domain: "heterodyne-claim-revocation-v1",
-      claim_id: stamped.claim_id,
-      revoked_at: stamped.revoked_at,
-      reason_code: stamped.reason_code,
-      spec_version: "heterodyne/0.5.0",
-      profile_revision: 2,
-    }));
+    expect(new TextDecoder().decode(revocationProofPayload(stamped))).toBe(
+      `heterodyne-claim-revocation-v1\u0000${jcsCanonicalize({
+        claim_id: stamped.claim_id,
+        profile_revision: 2,
+        reason_code: stamped.reason_code,
+        revoked_at: stamped.revoked_at,
+        spec_version: "heterodyne/0.5.0",
+      })}`,
+    );
     const stampedEvent = await revocationEvent(stamped);
     expect(() => validateClaimRevocationEnvelope(stampedEvent)).not.toThrow();
 
@@ -343,7 +344,7 @@ describe("claim revocation envelopes", () => {
       revoked_at: issuedAt + 20,
       reason_code: "claim-revoked",
     };
-    const signature = bytesToHex(ed25519.sign(utf8Bytes(revocationProofPayload(unsigned)), hexToBytes(device.private_key)));
+    const signature = bytesToHex(ed25519.sign(revocationProofPayload(unsigned), hexToBytes(device.private_key)));
     const revocation: ClaimRevocation = {
       ...unsigned,
       revoker: { type: "radicle-ed25519-nid", value: device.did_key },
@@ -373,7 +374,7 @@ describe("claim revocation envelopes", () => {
       reason_code: "claim-revoked",
     };
     const protectedHeader = Buffer.from('{"alg":"EdDSA"}', "utf8").toString("base64url");
-    const signingInput = `${protectedHeader}.${Buffer.from(revocationProofPayload(unsigned), "utf8").toString("base64url")}`;
+    const signingInput = `${protectedHeader}.${Buffer.from(revocationProofPayload(unsigned)).toString("base64url")}`;
     const signature = Buffer.from(ed25519.sign(utf8Bytes(signingInput), hexToBytes(device.private_key))).toString("base64url");
     const revocation: ClaimRevocation = {
       ...unsigned,
@@ -483,7 +484,7 @@ describe("claim revocation envelopes", () => {
       };
       const protectedHeader = Buffer.from(jcsCanonicalize({ alg }), "utf8").toString("base64url");
       const signingInput = Buffer.from(
-        `${protectedHeader}.${Buffer.from(revocationProofPayload(unsigned), "utf8").toString("base64url")}`,
+        `${protectedHeader}.${Buffer.from(revocationProofPayload(unsigned)).toString("base64url")}`,
         "utf8",
       );
       const signature = alg === "RS256"
@@ -680,7 +681,7 @@ describe("claim trust, attenuation, and authorization state", () => {
   function nostrProof(forClaim: ClaimSemanticBody, proofChallenge = challenge(forClaim)): KeyProof {
     return {
       type: "nostr-bip340",
-      signature: bytesToHex(schnorr.sign(utf8Bytes(subjectProofPayload(proofChallenge)), hexToBytes(fixtures.device_publishing_keys.alice_device_2.private_key), auxRand)),
+      signature: bytesToHex(schnorr.sign(subjectProofPayload(proofChallenge), hexToBytes(fixtures.device_publishing_keys.alice_device_2.private_key), auxRand)),
     };
   }
 
@@ -1226,7 +1227,7 @@ describe("claim trust, attenuation, and authorization state", () => {
     const edProof: KeyProof = {
       type: "radicle-ed25519",
       public_key: device.public_key,
-      signature: bytesToHex(ed25519.sign(utf8Bytes(subjectProofPayload(edChallenge)), hexToBytes(device.private_key))),
+      signature: bytesToHex(ed25519.sign(subjectProofPayload(edChallenge), hexToBytes(device.private_key))),
     };
     expect(authorizeWithClaim(edClaim, [edClaim], context(edClaim, {
       subject_proof: { key: edClaim.subject, challenge: edChallenge, proof: edProof },
@@ -1236,7 +1237,7 @@ describe("claim trust, attenuation, and authorization state", () => {
     const jwkClaim = claim({ subject: { type: "jwk-thumbprint", value: computeJwkThumbprint(jwk) } });
     const jwkChallenge = challenge(jwkClaim);
     const protectedHeader = Buffer.from(jcsCanonicalize({ alg: "EdDSA" }), "utf8").toString("base64url");
-    const signingInput = `${protectedHeader}.${Buffer.from(subjectProofPayload(jwkChallenge), "utf8").toString("base64url")}`;
+    const signingInput = `${protectedHeader}.${Buffer.from(subjectProofPayload(jwkChallenge)).toString("base64url")}`;
     const jwkProof: KeyProof = {
       type: "jwk-jws",
       jwk,
@@ -1258,7 +1259,7 @@ describe("claim trust, attenuation, and authorization state", () => {
       const algorithmChallenge = challenge(algorithmClaim);
       const algorithmProtected = Buffer.from(jcsCanonicalize({ alg }), "utf8").toString("base64url");
       const algorithmInput = Buffer.from(
-        `${algorithmProtected}.${Buffer.from(subjectProofPayload(algorithmChallenge), "utf8").toString("base64url")}`,
+        `${algorithmProtected}.${Buffer.from(subjectProofPayload(algorithmChallenge)).toString("base64url")}`,
         "utf8",
       );
       const algorithmSignature = alg === "RS256"

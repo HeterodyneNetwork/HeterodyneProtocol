@@ -2,6 +2,8 @@ import { Ajv2020 } from "ajv/dist/2020.js";
 import workloadRegistrationSchema from "../../../schemas/comms/agent-workload-registration-v1.schema.json" with { type: "json" };
 import { derivePairwiseSubject } from "./oidc.js";
 import { evaluateCredentialGeneration } from "./credential-generation.js";
+import { proofBytes } from "./proof-bytes.js";
+import { bytesToHex } from "./hex.js";
 
 export type AgentDelegationInput = {
   cold_root: string;
@@ -12,6 +14,7 @@ export type AgentDelegationInput = {
   role_id: string;
   publishing_key: string;
   address: string;
+  /** Hex of the Core 3.5.1 proof bytes. */
   proof_bytes: string;
   outer_epoch_signature_valid: boolean;
   nid_proof_valid: boolean;
@@ -143,8 +146,13 @@ export function agentBindingMessage(
   nid: string,
   roleId: string,
   publishingKey: string,
-): string {
-  return `heterodyne-agent-signing-binding-v1|${coldRoot}|${nid}|${roleId}|${publishingKey}`;
+): Uint8Array {
+  return proofBytes("heterodyne-agent-signing-binding-v1", {
+    cold_root: coldRoot,
+    nid,
+    publishing_key: publishingKey,
+    role_id: roleId,
+  });
 }
 
 export function validateAgentDelegation(
@@ -163,12 +171,12 @@ export function validateAgentDelegation(
     !/^[0-9a-f]{64}$/.test(input.cold_root)
     || !/^did:key:z[1-9A-HJ-NP-Za-km-z]+$/.test(input.nid)
     || !/^[0-9a-f]{64}$/.test(input.publishing_key)
-    || input.proof_bytes !== agentBindingMessage(
+    || input.proof_bytes !== bytesToHex(agentBindingMessage(
       input.cold_root,
       input.nid,
       input.role_id,
       input.publishing_key,
-    )
+    ))
     || !input.outer_epoch_signature_valid
     || !input.nid_proof_valid
     || !input.key_proof_valid

@@ -884,7 +884,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "5b40294c478370b79a58f74502a625173b65a51ec28e03efdc04a889df99cc28374b30e6d1e3d719e84897db197a8edb768e99f84bcc78648407a1bb8ae60c00"
+                      "signature": "f6b64eabf127db697cd008046ed9458a8cf0dcd0074e361f0adcf4f037ebb240c4463effcfb2bf5be9aa172c1b2af9778776d0256639a5acd5cc550e95523e08"
                     }
                   }
                 }
@@ -1080,7 +1080,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "b9b9dd3a31d5a028924c624a82840f1752cb7c99946851b04ed51ed8e4a9825f",
-                      "signature": "1ca5eb5a511df98ddfa41864078e65603b0614d9924cbc5e2b0c3277d47759f6f5f50dc4cfda139e6a1c340dffad4f3d91abb4c4a4ebf01879fa703c51643c0e"
+                      "signature": "3ed805e26e72a438f379e14bcdac9f2f46866b5f0c036c92742075314eeade8ec59258dc8e28ed7fb2a5642ea4fc3cd85e1c6c175ea014366b0e74634d1f7b01"
                     }
                   }
                 }
@@ -1276,7 +1276,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "5b40294c478370b79a58f74502a625173b65a51ec28e03efdc04a889df99cc28374b30e6d1e3d719e84897db197a8edb768e99f84bcc78648407a1bb8ae60c00"
+                      "signature": "f6b64eabf127db697cd008046ed9458a8cf0dcd0074e361f0adcf4f037ebb240c4463effcfb2bf5be9aa172c1b2af9778776d0256639a5acd5cc550e95523e08"
                     }
                   }
                 }
@@ -1472,7 +1472,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "b8c763c98aa92b8ace0f85f0017edeace4e4fa0154c2d7067469e432c7fa7bfcf6e9b5f266b48e73f008e41b6d7cf4098a663b5f692cb921f710b8ddd3c3f506"
+                      "signature": "2b3f27b4449f4896b1cf050a1469a9fe274ada741cf661d5c44a04405ad53d977e6a5ab3fcb717a171fccc400e509cb39ba64faba60dd1a9949efc4debadd505"
                     }
                   }
                 }
@@ -1660,7 +1660,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "5b40294c478370b79a58f74502a625173b65a51ec28e03efdc04a889df99cc28374b30e6d1e3d719e84897db197a8edb768e99f84bcc78648407a1bb8ae60c00"
+                      "signature": "f6b64eabf127db697cd008046ed9458a8cf0dcd0074e361f0adcf4f037ebb240c4463effcfb2bf5be9aa172c1b2af9778776d0256639a5acd5cc550e95523e08"
                     }
                   }
                 }
@@ -1848,7 +1848,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "5b40294c478370b79a58f74502a625173b65a51ec28e03efdc04a889df99cc28374b30e6d1e3d719e84897db197a8edb768e99f84bcc78648407a1bb8ae60c00"
+                      "signature": "f6b64eabf127db697cd008046ed9458a8cf0dcd0074e361f0adcf4f037ebb240c4463effcfb2bf5be9aa172c1b2af9778776d0256639a5acd5cc550e95523e08"
                     }
                   }
                 }
@@ -2036,7 +2036,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "5b40294c478370b79a58f74502a625173b65a51ec28e03efdc04a889df99cc28374b30e6d1e3d719e84897db197a8edb768e99f84bcc78648407a1bb8ae60c00"
+                      "signature": "f6b64eabf127db697cd008046ed9458a8cf0dcd0074e361f0adcf4f037ebb240c4463effcfb2bf5be9aa172c1b2af9778776d0256639a5acd5cc550e95523e08"
                     }
                   }
                 }
@@ -2252,7 +2252,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "5b40294c478370b79a58f74502a625173b65a51ec28e03efdc04a889df99cc28374b30e6d1e3d719e84897db197a8edb768e99f84bcc78648407a1bb8ae60c00"
+                      "signature": "f6b64eabf127db697cd008046ed9458a8cf0dcd0074e361f0adcf4f037ebb240c4463effcfb2bf5be9aa172c1b2af9778776d0256639a5acd5cc550e95523e08"
                     }
                   }
                 }
@@ -2512,7 +2512,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "98f106752ac9d028ccf98c8d07d09124c761555242d2a795b3783a2c4edb204fac924e8e2c00e3efa91a217a6031c2850b814af95a572021b629adb87773ef04"
+                      "signature": "21d7855b324ce987c89e3faa74d05314fee2a8c7d210887b886c15470ef221e1792e574140ca5fcaf0f060a5c8099d21d19e97ff474a3c0b5b1222ee9836970a"
                     }
                   }
                 }
@@ -2772,7 +2772,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "b9b9dd3a31d5a028924c624a82840f1752cb7c99946851b04ed51ed8e4a9825f",
-                      "signature": "ab1fc4f330dac7aab485ff6ab3901c7cf1f94f1781ef2df4e8b1ee5e8fb06a46b2038297d744a2ac52a65205f605ddd129ba4af829a200c5c99f9579c63e680f"
+                      "signature": "023c4daa813990405feb170d44dca6db831246c3ef67bdd8e791d7e2b13f40f90816fa9f6102959bd8ca38442d6e96e1d8725741fff92c4c7087b3df44bfdb08"
                     }
                   }
                 }
@@ -3032,7 +3032,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "98f106752ac9d028ccf98c8d07d09124c761555242d2a795b3783a2c4edb204fac924e8e2c00e3efa91a217a6031c2850b814af95a572021b629adb87773ef04"
+                      "signature": "21d7855b324ce987c89e3faa74d05314fee2a8c7d210887b886c15470ef221e1792e574140ca5fcaf0f060a5c8099d21d19e97ff474a3c0b5b1222ee9836970a"
                     }
                   }
                 }
@@ -3292,7 +3292,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "b9b9dd3a31d5a028924c624a82840f1752cb7c99946851b04ed51ed8e4a9825f",
-                      "signature": "ab1fc4f330dac7aab485ff6ab3901c7cf1f94f1781ef2df4e8b1ee5e8fb06a46b2038297d744a2ac52a65205f605ddd129ba4af829a200c5c99f9579c63e680f"
+                      "signature": "023c4daa813990405feb170d44dca6db831246c3ef67bdd8e791d7e2b13f40f90816fa9f6102959bd8ca38442d6e96e1d8725741fff92c4c7087b3df44bfdb08"
                     }
                   }
                 }
@@ -3544,7 +3544,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "98f106752ac9d028ccf98c8d07d09124c761555242d2a795b3783a2c4edb204fac924e8e2c00e3efa91a217a6031c2850b814af95a572021b629adb87773ef04"
+                      "signature": "21d7855b324ce987c89e3faa74d05314fee2a8c7d210887b886c15470ef221e1792e574140ca5fcaf0f060a5c8099d21d19e97ff474a3c0b5b1222ee9836970a"
                     }
                   }
                 }
@@ -3760,7 +3760,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "5b40294c478370b79a58f74502a625173b65a51ec28e03efdc04a889df99cc28374b30e6d1e3d719e84897db197a8edb768e99f84bcc78648407a1bb8ae60c00"
+                      "signature": "f6b64eabf127db697cd008046ed9458a8cf0dcd0074e361f0adcf4f037ebb240c4463effcfb2bf5be9aa172c1b2af9778776d0256639a5acd5cc550e95523e08"
                     }
                   }
                 }
@@ -3948,7 +3948,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "5b40294c478370b79a58f74502a625173b65a51ec28e03efdc04a889df99cc28374b30e6d1e3d719e84897db197a8edb768e99f84bcc78648407a1bb8ae60c00"
+                      "signature": "f6b64eabf127db697cd008046ed9458a8cf0dcd0074e361f0adcf4f037ebb240c4463effcfb2bf5be9aa172c1b2af9778776d0256639a5acd5cc550e95523e08"
                     }
                   }
                 }
@@ -4324,7 +4324,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "7d0d1c4e427d11f9f6853120cfccced56c6c55e1e3a994e7fda4adbfdec2b8a3b002ee336dec22db3a4d15121dbdf4f1232c502c7d0c321571fc67e06630a200"
+                      "signature": "e92b5281c0fac60ad7e6b6f202ec16d923fd9231297aeef4a9e189be03745b092fdeb396e3166c4611f3fc1775f06654d42a642ddc36415f0e5c49ad5e18c507"
                     }
                   }
                 }
@@ -4700,7 +4700,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "947127efa68702422f66767d96aead0857bfa04554dc519828a90a9f8893ba859af8a2b8ee31b351d4af0e111d8810fa6246c51e779deae42a9541d9495d2404"
+                      "signature": "56d59dce86985e1c8c1e28bba3d005df2d84e1cd4bb0e2f46ea21516300c702a13d633a3f1e7d6211511d91ccb8a606d71e10a9a3008aa48fcbefcabff970802"
                     }
                   }
                 }
@@ -5076,7 +5076,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "5963e4a44730da4cedef6d66594ae5abd297eabab23bbe9e119f22da7310ce55524f1b7817213fea1dc986362fda114a625d521576c102f06aea56bf2741b803"
+                      "signature": "92d2885f077f373eae5a99bc8a59e20f4d34036b4bdeea618358f058e9b473154d770eb7aec813221095e828f48ec3f1574fb100f299c27efdb70b069678560b"
                     }
                   }
                 }
@@ -5452,7 +5452,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "a436f7637c35b26b7a8cc6cae07cba1b18ffc7fbbbe6756e80a823bedca92d200b981d35651c9aabbf2ec6fc7625c7bcf88f2bd5acbaec98e6bb7b4c9d106607"
+                      "signature": "1978cc333eade28c6b0bd554990523c15800dc57242d147ddc6d652fbe2a8af9bf23aee3bd0e77db3da950cac91ad75b47b4c3045743439aae6e509ffdd6150d"
                     }
                   }
                 }
@@ -5749,7 +5749,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                      "signature": "5b40294c478370b79a58f74502a625173b65a51ec28e03efdc04a889df99cc28374b30e6d1e3d719e84897db197a8edb768e99f84bcc78648407a1bb8ae60c00"
+                      "signature": "f6b64eabf127db697cd008046ed9458a8cf0dcd0074e361f0adcf4f037ebb240c4463effcfb2bf5be9aa172c1b2af9778776d0256639a5acd5cc550e95523e08"
                     }
                   }
                 }
@@ -5944,7 +5944,7 @@
                     "proof": {
                       "type": "radicle-ed25519",
                       "public_key": "b9b9dd3a31d5a028924c624a82840f1752cb7c99946851b04ed51ed8e4a9825f",
-                      "signature": "1ca5eb5a511df98ddfa41864078e65603b0614d9924cbc5e2b0c3277d47759f6f5f50dc4cfda139e6a1c340dffad4f3d91abb4c4a4ebf01879fa703c51643c0e"
+                      "signature": "3ed805e26e72a438f379e14bcdac9f2f46866b5f0c036c92742075314eeade8ec59258dc8e28ed7fb2a5642ea4fc3cd85e1c6c175ea014366b0e74634d1f7b01"
                     }
                   }
                 }
@@ -6168,7 +6168,7 @@
               "proof": {
                 "type": "radicle-ed25519",
                 "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                "signature": "7d0d1c4e427d11f9f6853120cfccced56c6c55e1e3a994e7fda4adbfdec2b8a3b002ee336dec22db3a4d15121dbdf4f1232c502c7d0c321571fc67e06630a200"
+                "signature": "e92b5281c0fac60ad7e6b6f202ec16d923fd9231297aeef4a9e189be03745b092fdeb396e3166c4611f3fc1775f06654d42a642ddc36415f0e5c49ad5e18c507"
               }
             }
           }
@@ -6257,7 +6257,7 @@
               "proof": {
                 "type": "radicle-ed25519",
                 "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                "signature": "947127efa68702422f66767d96aead0857bfa04554dc519828a90a9f8893ba859af8a2b8ee31b351d4af0e111d8810fa6246c51e779deae42a9541d9495d2404"
+                "signature": "56d59dce86985e1c8c1e28bba3d005df2d84e1cd4bb0e2f46ea21516300c702a13d633a3f1e7d6211511d91ccb8a606d71e10a9a3008aa48fcbefcabff970802"
               }
             }
           }
@@ -6347,7 +6347,7 @@
                 "proof": {
                   "type": "radicle-ed25519",
                   "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                  "signature": "5963e4a44730da4cedef6d66594ae5abd297eabab23bbe9e119f22da7310ce55524f1b7817213fea1dc986362fda114a625d521576c102f06aea56bf2741b803"
+                  "signature": "92d2885f077f373eae5a99bc8a59e20f4d34036b4bdeea618358f058e9b473154d770eb7aec813221095e828f48ec3f1574fb100f299c27efdb70b069678560b"
                 }
               }
             }
@@ -6436,7 +6436,7 @@
                 "proof": {
                   "type": "radicle-ed25519",
                   "public_key": "a513e30c7f65275b0efbb044d7512795756014e3acadee8534831a8b193543ff",
-                  "signature": "a436f7637c35b26b7a8cc6cae07cba1b18ffc7fbbbe6756e80a823bedca92d200b981d35651c9aabbf2ec6fc7625c7bcf88f2bd5acbaec98e6bb7b4c9d106607"
+                  "signature": "1978cc333eade28c6b0bd554990523c15800dc57242d147ddc6d652fbe2a8af9bf23aee3bd0e77db3da950cac91ad75b47b4c3045743439aae6e509ffdd6150d"
                 }
               }
             }

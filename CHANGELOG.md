@@ -17,6 +17,31 @@ family map, and the single registry pin is
 
 ### Deduplication and single sources of truth
 
+- Unified every proof-byte construction into one. The family had three
+  incompatible ways to build signed bytes: pipe-joined positional strings
+  (`heterodyne-nid-binding-v1`, `heterodyne-node-advert-v1`,
+  `heterodyne-agent-signing-binding-v1`), domain-prefixed JCS
+  (`heterodyne-workspace-object-v1`, `heterodyne-one-time-invite-v1`), and
+  bare JCS with the domain as an object member (`heterodyne-claim-pop-v1`,
+  `heterodyne-claim-revocation-v1`). Core section 3.5.1 now pins
+  `<domain> || 0x00 || JCS(<claim>)` for all of them. The pipe form was also
+  unsound: a `|` inside a bound value let two distinct claims produce
+  identical bytes, and its positional shape gave a verifier no way to reject
+  an unknown or missing member. Core previously described the input as "a
+  domain-separated canonical byte string" without pinning it, and the
+  node-advertisement serialization was defined only in a vector.
+- Added [`registry/proof-domains.json`](docs/spec/registry/proof-domains.json)
+  so each domain's bound members and permitted suites have one authority.
+  Adding, removing, or renaming a bound member now requires a new domain.
+- Moved the shared rules to a single owner: byte-exact wire conformance,
+  vector-ID immutability, and unknown-version handling live only in Core;
+  the 300-second authorization-view bound lives only in Comms section 9.3,
+  which Control, Workspace, and Comms section 11.1 reference.
+- Deleted the per-document "Normative dependencies" headers, which restated
+  the layering Core section 1.1 fixes, at anchor granularity nothing verified.
+- Pointed Core section 10 and Workspace section 17 at the registry instead of
+  restating feature sets. Workspace named three feature IDs that were never
+  allocated; Core claimed five when six exist.
 - Collapsed the five per-document version lineages into the single family
   version `heterodyne/0.5.0`. Nothing was independent: every document had to
   pin its dependencies at exactly the current version and all five pinned the

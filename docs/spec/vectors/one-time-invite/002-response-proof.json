@@ -12,14 +12,14 @@
     "response": {
       "spec_version": "heterodyne/0.5.0",
       "purpose": "dm",
-      "descriptor_digest": "eae01141735b098722f09313ba8448d0c2c7b80abf24ec37cc28bad4442c572e",
+      "descriptor_digest": "cfe907e39bab3cbb35fc4cdebd518eef60b0ba49df48bf7f79c7563388e2fcf3",
       "responder_account": "3333333333333333333333333333333333333333333333333333333333333333",
       "mls_key_package": "AQID",
       "requested_class": "conversation-peer",
       "capabilities": [
         "chat"
       ],
-      "proof": "07093509f9cb1a3f1dd72b671b5338c1c19d318c6199622baf9a7bbca5d94494"
+      "proof": "8bbd88e51e91105c5c1c8035eb4f53efe4fce2fbb1a07dc5ace95f47af5ccf30"
     },
     "nip59_seal_pubkey": "3333333333333333333333333333333333333333333333333333333333333333"
   },

@@ -1060,11 +1060,10 @@ key or preauthorization template. A `device-enrollment` descriptor also binds
 current Core/KERI inviter-authority evidence. Unknown descriptor, envelope,
 authority, or preauthorization members are invalid.
 
-The inviter account produces the BIP-340 `signature` over:
-
-```text
-SHA-256("heterodyne.one-time-invite.v1" || 0x00 || JCS(descriptor))
-```
+The inviter account produces the BIP-340 `signature` over the SHA-256 digest
+of the `heterodyne:0.5.0#core-proof-bytes` bytes for domain
+`heterodyne-one-time-invite-v1`, whose sole bound member `descriptor` is the
+complete descriptor object.
 
 The secret itself occurs only in the fragment and protected issuer state; it
 MUST NOT occur in the descriptor, logs, relay metadata, or a repository.
@@ -1083,12 +1082,10 @@ purpose, descriptor digest, responder account, KeyPackage bytes, requested
 class, capabilities, and:
 
 ```text
-HMAC-SHA-256(
-  secret,
-  "heterodyne.one-time-invite-response.v1" || 0x00 ||
-  SHA-256(JCS(response-without-proof))
-)
+HMAC-SHA-256(secret, <heterodyne-one-time-invite-response-v1 proof bytes>)
 ```
+
+whose sole bound member `response` is the response without its proof member.
 
 It MUST NOT carry a persona, device, epoch, NID, MLS-leaf, repository, or
 agent-role private key. A purpose mismatch fails with
@@ -1385,9 +1382,10 @@ Cryptographic validity is not trust. `untrusted` content MAY be displayed with
 its provenance but MUST NOT authorize. A delivered persona-issued device grant
 is `provisional` until repository-confirmed. Only `active` authorizes.
 
-The proof-of-possession challenge is the canonical object with domain
-`heterodyne-claim-pop-v1`, claim ID, nonce, audience, resource, operation,
-`issued_at`, and `expires_at`. It MUST be fresh, single-use, audience- and
+The proof-of-possession challenge is the
+`heterodyne:0.5.0#core-proof-bytes` construction for domain
+`heterodyne-claim-pop-v1`, whose claim binds `claim_id`, `nonce`, `audience`,
+`resource`, `operation`, `issued_at`, and `expires_at`. It MUST be fresh, single-use, audience- and
 operation-bound, and verified by Core's native suite for the subject type:
 BIP-340, Ed25519 with exact NID binding, or JWS with an RFC 7638-matching JWK.
 An authorization claim without valid fresh subject proof is inactive. An
@@ -1425,10 +1423,11 @@ registered `reason_code`, typed `revoker`, required `spec_version` equal to
 `kind:31014`, the complete tag array MUST be exactly
 `[["d","<claim_id>"]]`; an extra, duplicate, malformed, or differently ordered
 tag is invalid. A Nostr revoker signs the outer event. A Radicle or JWK revoker
-also supplies its matching proof over the RFC 8785 canonical object containing
-exactly domain `heterodyne-claim-revocation-v1`, `claim_id`, `revoked_at`,
-`reason_code`, `spec_version`, and `profile_revision`. Thus the native proof
-binds the owning Comms profile revision as well as the revocation.
+also supplies its matching `heterodyne:0.5.0#core-proof-bytes` proof for
+domain `heterodyne-claim-revocation-v1`, whose claim binds `claim_id`,
+`profile_revision`, `reason_code`, `revoked_at`, and `spec_version`. Thus the
+native proof binds the owning Comms profile revision as well as the
+revocation.
 
 An authorization claim may be revoked by its issuer, an active superior issuer
 in its verified chain, current persona epoch or cold-root authority, or its
@@ -1839,10 +1838,17 @@ event retains the sole Core owner and `heterodyne/0.5.0` stamp and carries:
 ["spec_version", "heterodyne/0.5.0"]
 ```
 
-The hosting NID and agent key both sign these exact UTF-8 bytes:
+The hosting NID and agent key both sign the proof bytes of
+`heterodyne:0.5.0#core-proof-bytes` for domain
+`heterodyne-agent-signing-binding-v1` over this claim:
 
-```text
-heterodyne-agent-signing-binding-v1|<cold-root-hex>|<nid>|<role-id>|<publishing-key>
+```json
+{
+  "cold_root": "<cold-root-hex>",
+  "nid": "<nid>",
+  "publishing_key": "<publishing-key>",
+  "role_id": "<role-id>"
+}
 ```
 
 The epoch-key outer signature covers the same binding. Acceptance requires the

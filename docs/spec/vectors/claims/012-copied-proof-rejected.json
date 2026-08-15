@@ -57,7 +57,7 @@
           "x": "pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8"
         },
         "protected": "eyJhbGciOiJFZERTQSJ9",
-        "signature": "C6M7WuBvmCt92XWG3x1lJYmPbBR7tFk-i77ftBDDowmKW1oBAQGv_iH3aJ8C-oqHVp1JovH4E8oGZNH9L1YGDw"
+        "signature": "L9B08oca2FbWrjxinKq6qck1q85m3SLECmB17hTIUs8He0Xn29SZmNYR5q2ezccmlfz-_BrHB9GxAtaDZNTPBg"
       }
     },
     "copied_request": {
@@ -79,7 +79,7 @@
           "x": "pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8"
         },
         "protected": "eyJhbGciOiJFZERTQSJ9",
-        "signature": "C6M7WuBvmCt92XWG3x1lJYmPbBR7tFk-i77ftBDDowmKW1oBAQGv_iH3aJ8C-oqHVp1JovH4E8oGZNH9L1YGDw"
+        "signature": "L9B08oca2FbWrjxinKq6qck1q85m3SLECmB17hTIUs8He0Xn29SZmNYR5q2ezccmlfz-_BrHB9GxAtaDZNTPBg"
       },
       "expected_nonce": "79797979797979797979797979797979"
     },

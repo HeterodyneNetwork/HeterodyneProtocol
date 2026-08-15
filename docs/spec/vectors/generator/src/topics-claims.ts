@@ -115,16 +115,16 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
   });
   const nostrProof = (proofChallenge: SubjectProofChallenge, privateKey = deviceTwoPublishing.private_key): KeyProof => ({
     type: "nostr-bip340",
-    signature: bytesToHex(schnorr.sign(utf8Bytes(subjectProofPayload(proofChallenge)), hexToBytes(privateKey), AUX_RAND)),
+    signature: bytesToHex(schnorr.sign(subjectProofPayload(proofChallenge), hexToBytes(privateKey), AUX_RAND)),
   });
   const edProof = (proofChallenge: SubjectProofChallenge): KeyProof => ({
     type: "radicle-ed25519",
     public_key: deviceOne.public_key,
-    signature: bytesToHex(ed25519.sign(utf8Bytes(subjectProofPayload(proofChallenge)), hexToBytes(deviceOne.private_key))),
+    signature: bytesToHex(ed25519.sign(subjectProofPayload(proofChallenge), hexToBytes(deviceOne.private_key))),
   });
   const jwkProof = (proofChallenge: SubjectProofChallenge): KeyProof => {
     const protectedHeader = Buffer.from(jcsCanonicalize({ alg: "EdDSA" }), "utf8").toString("base64url");
-    const signingInput = `${protectedHeader}.${Buffer.from(subjectProofPayload(proofChallenge), "utf8").toString("base64url")}`;
+    const signingInput = `${protectedHeader}.${Buffer.from(subjectProofPayload(proofChallenge)).toString("base64url")}`;
     return {
       type: "jwk-jws",
       jwk: publicJwk,
@@ -469,7 +469,7 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
     proof: {
       type: "radicle-ed25519",
       public_key: deviceOne.public_key,
-      signature: bytesToHex(ed25519.sign(utf8Bytes(revocationProofPayload(edRevocationUnsigned)), hexToBytes(deviceOne.private_key))),
+      signature: bytesToHex(ed25519.sign(revocationProofPayload(edRevocationUnsigned), hexToBytes(deviceOne.private_key))),
     },
   };
   const edRevocationEvent = await signEvent({
@@ -554,7 +554,7 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
     reason_code: "claim-revoked",
   };
   const copiedProtected = Buffer.from(jcsCanonicalize({ alg: "EdDSA" }), "utf8").toString("base64url");
-  const copiedInput = `${copiedProtected}.${Buffer.from(revocationProofPayload(jwkRevocationUnsigned), "utf8").toString("base64url")}`;
+  const copiedInput = `${copiedProtected}.${Buffer.from(revocationProofPayload(jwkRevocationUnsigned)).toString("base64url")}`;
   const validJwkRevocation: ClaimRevocation = {
     ...jwkRevocationUnsigned,
     revoker: jwkSubject,

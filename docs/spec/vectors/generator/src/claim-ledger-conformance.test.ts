@@ -400,7 +400,7 @@ describe("authenticated onboarding and snapshot-wide layout", () => {
       subjectProof.challenge.issued_at = repository.checkpoint.observed_at;
       subjectProof.challenge.expires_at = repository.checkpoint.observed_at + 60;
       subjectProof.proof.signature = bytesToHex(ed25519.sign(
-        utf8Bytes(subjectProofPayload(subjectProof.challenge)),
+        subjectProofPayload(subjectProof.challenge),
         hexToBytes(writer.private_key),
       ));
       return request;

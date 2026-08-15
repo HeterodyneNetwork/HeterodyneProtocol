@@ -51,7 +51,8 @@ export type FamilyDocIssue = {
     | "strict-profile-closure-invalid"
     | "unresolved-section-reference"
     | "registry-digest-drift"
-    | "unregistered-feature-id";
+    | "unregistered-feature-id"
+    | "unregistered-proof-domain";
   message: string;
 };
 
@@ -72,6 +73,8 @@ const BARE_FAMILY_LINK =
 const NONCANONICAL_DECISION_REFERENCE = /\bADR-\d{3}\b|docs\/adr\//;
 const NUMBERED_HEADING = /^#{2,6}\s+(\d+(?:\.\d+)*)\.?\s/;
 const SECTION_REFERENCE = /§(\d+(?:\.\d+)*)/g;
+const PROOF_DOMAIN = /\bdomain\s+`(heterodyne-[a-z0-9-]*-v[1-9][0-9]*)`/g;
+const PROOF_DOMAIN_FENCED = /`?<?(heterodyne-[a-z0-9-]*-v[1-9][0-9]*) proof bytes>?`?/g;
 const FEATURE_ID =
   /`((?:core|comms|control|social|workspace)\.[a-z0-9-]+(?:\.[a-z0-9-]+)*\.v\d+)`/g;
 const BCP14_KEYWORD =
@@ -216,6 +219,9 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
 
   const registry = loadRegistry(repoRoot);
   const registeredFeatures = new Set(registry.features.map(({ id }) => id));
+  const registeredProofDomains = new Set(
+    registry.proof_domains.map(({ id }) => id),
+  );
 
   for (const document of documents) {
     const normativeLines = normativeParagraphLines(document.lines);
@@ -350,6 +356,37 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
           message: `registry_sha256 does not match registry/manifest.json entry_set_sha256`,
         });
       }
+    }
+  }
+
+  // A proof domain names exact signed bytes; an unallocated one has no
+  // bound-member declaration for an implementer to sign against, and an
+  // allocated one nothing specifies is bytes nobody can produce. The citation
+  // routinely wraps, so scan joined text and recover the line from the offset.
+  const citedProofDomains = new Set<string>();
+  for (const document of documents) {
+    const text = document.lines.join("\n");
+    for (const pattern of [PROOF_DOMAIN, PROOF_DOMAIN_FENCED]) {
+      for (const match of text.matchAll(pattern)) {
+        citedProofDomains.add(match[1]);
+        if (registeredProofDomains.has(match[1])) continue;
+        issues.push({
+          path: document.displayPath,
+          line: text.slice(0, match.index).split("\n").length,
+          code: "unregistered-proof-domain",
+          message: `${match[1]} is not allocated in registry/proof-domains.json`,
+        });
+      }
+    }
+  }
+  for (const entry of registry.proof_domains) {
+    if (!citedProofDomains.has(entry.id)) {
+      issues.push({
+        path: "docs/spec/registry/proof-domains.json",
+        line: 1,
+        code: "unregistered-proof-domain",
+        message: `${entry.id} is allocated but no document specifies its bytes`,
+      });
     }
   }
 

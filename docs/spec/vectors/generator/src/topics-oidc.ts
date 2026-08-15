@@ -134,7 +134,7 @@ export async function buildOidcScenario(
       ...verification.subject_proof!.challenge, resource, issued_at: s.now + 68, expires_at: s.now + 128,
     };
     const signature = bytesToHex(ed25519.sign(
-      utf8Bytes(subjectProofPayload(challenge)), hexToBytes(claim.reader.private_key),
+      subjectProofPayload(challenge), hexToBytes(claim.reader.private_key),
     ));
     return {
       ...verification, now: s.now + 69, resource, requested_namespace: claim.artifact.semantic.namespace,
