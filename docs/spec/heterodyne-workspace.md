@@ -81,7 +81,8 @@ carriers or availability signals, not Workspace authority.
 ## 3. Workspace identity and governance
 
 A workspace is an independently governed Heterodyne identity. Its
-`workspace_id` is the cold-root public key of a separately accepted Core KEL.
+`workspace_id` is the cold-root public key of a separately accepted KEL under
+[`heterodyne:0.5.0#core-identity-model`](heterodyne-core.md#core-identity-model).
 Multiple workspaces operated by one organization remain distinct identities.
 They MAY publish signed parent, peer, or joint relationships, but no
 relationship changes either identity's KEL authority.
@@ -89,7 +90,7 @@ relationship changes either identity's KEL authority.
 The stable workspace repository contains exactly one current
 `workspace-manifest-v1`, the root `workspace-policy-v1`, and the append-only
 history from which both are derived. Its canonical authority branch follows
-Core repository authority. A public workspace MAY advertise this repository
+[`heterodyne:0.5.0#core-threshold-authority`](heterodyne-core.md#core-threshold-authority). A public workspace MAY advertise this repository
 from its public persona profile. A private workspace has no required public
 projection; an invitation or relationship conveys the KEL verification
 material and private locator needed by the recipient.
@@ -150,11 +151,12 @@ role's active and archived event repositories are private Radicle
 repositories as well.
 
 High-volume Marmot traffic MUST NOT accumulate in the stable authority
-repository. It uses the Comms event-repository layout and rotates to a fresh
-repository when either:
+repository. It uses the [`heterodyne:0.5.0#comms-marmot-event-repository`](heterodyne-comms.md#comms-marmot-event-repository)
+layout and rotates to a fresh repository when either:
 
 - a membership-changing MLS commit establishes a new group epoch; or
-- the active repository reaches the Comms maximum repository size.
+- the active repository reaches the maximum size that
+  [`heterodyne:0.5.0#comms-marmot-event-repository`](heterodyne-comms.md#comms-marmot-event-repository) fixes.
 
 The stable role repository records the new active locator, the immediately
 prior overlap locator, and retained archives. At most one active repository
@@ -224,8 +226,9 @@ is a grant with `activation:"subject-acceptance"`, an unguessable one-time
 nonce commitment, expiry, target persona, disclosed role locator, and history
 mode. Acceptance consumes the nonce exactly once and binds the accepted grant
 to the recipient's device KeyPackage. Invitation material for a private role
-is delivered through an authenticated two-member Marmot DM or an existing
-authorized private repository.
+is delivered through an authenticated two-member conversation under
+[`heterodyne:0.5.0#comms-direct-messages`](heterodyne-comms.md#comms-direct-messages) or an existing authorized private
+repository.
 
 A `role-revocation-v1` may revoke a grant, persona, device, relationship, host,
 or resource. A valid revocation is effective at its declared effective time,
@@ -269,7 +272,8 @@ native resource's signatures or state machine.
 clearnet endpoints, supported feature IDs, custody scope, priority, and
 expiry. `service-advertisement-v1` advertises a higher-level service and its
 native profile. Endpoint strings are data, not authorization; consumers MUST
-apply Core locator validation and MUST NOT fetch a locator before its
+apply the locator validation in
+[`heterodyne:0.5.0#core-identity-pointer`](heterodyne-core.md#core-identity-pointer) and MUST NOT fetch a locator before its
 containing private object is authorized and decrypted.
 
 Organization-default hosts are ordered in workspace policy. Roles inherit
@@ -296,10 +300,12 @@ MLS membership alone does not create a role grant, and a role grant without a
 current admitted device leaf does not disclose MLS application secrets.
 
 A grant belongs to a persona. Each authorized device is a separate MLS leaf
-bound to that persona and its current Core device-registry entry. Devices MUST
+bound to that persona and its current device entry under
+[`heterodyne:0.5.0#core-nid-delegation`](heterodyne-core.md#core-nid-delegation). Devices MUST
 NOT share leaf private keys. Removing a device advances the role MLS epoch;
 removing a persona removes all its leaves and advances the epoch. Implementers
-MUST apply the Comms KeyPackage admission, replenishment, pending-group,
+MUST apply the [`heterodyne:0.5.0#comms-marmot-participation`](heterodyne-comms.md#comms-marmot-participation)
+KeyPackage admission, replenishment, pending-group,
 retention, and resource limits.
 
 Public roles MAY omit the private role control group when they distribute no

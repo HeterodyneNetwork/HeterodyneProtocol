@@ -55,8 +55,7 @@ required for baseline Control.
 <a id="control-comms-contract"></a>
 ## 2. Exact Core, Comms, and Marmot contract
 
-The supported Comms-version set is exactly `{heterodyne/0.5.0}`. Control requires
-the standard Marmot group and transport rules at
+Control requires the standard Marmot group and transport rules at
 [`heterodyne:0.5.0#comms-marmot`](heterodyne-comms.md#comms-marmot), the Core full-node metadata at
 [`heterodyne:0.5.0#core-full-node-control`](heterodyne-core.md#core-full-node-control), and Comms authorization and
 OIDC rules at [`heterodyne:0.5.0#comms-control-registry`](heterodyne-comms.md#comms-control-registry) and
