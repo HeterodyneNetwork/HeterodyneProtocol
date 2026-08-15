@@ -9,12 +9,10 @@ Normative dependencies:
 - `heterodyne:core/0.5.0#core-conformance`
 - `heterodyne:comms/0.5.0#comms-conformance`
 
-This document prepares Social's first 0.5.0 release, descended from the
-Heterodyne 0.4.x monolith. It is current normative authority at this repository
-path but remains unreleased pending explicit release approval. It is not a
-synchronized family version. While Social is
-0.x, a
-conformance claim MUST pin the exact Social, Core, and Comms versions; any 0.x
+This document prepares Social's 0.5.0 release. It is current normative
+authority at this repository path but remains unreleased pending explicit
+release approval. It is not a synchronized family version. While Social is
+0.x, a conformance claim MUST pin the exact Social, Core, and Comms versions; any 0.x
 release MAY break an earlier one. The key words MUST, MUST NOT, REQUIRED,
 SHALL, SHALL NOT, SHOULD, SHOULD NOT, RECOMMENDED, NOT RECOMMENDED, MAY, and
 OPTIONAL are to be interpreted as described by BCP 14 when, and only when,
@@ -26,7 +24,6 @@ kebab-case. Generated heading IDs are not stable protocol references.
 <a id="social-scope"></a>
 ## 1. Scope and conformance features
 
-<!-- Monolith provenance: public Social and policy portions only. -->
 
 Social defines following, replies, reactions, threading, social discovery,
 cross-persona advertisements, reply inboxes, feed presentation, community and
@@ -43,7 +40,6 @@ versions above and every applicable section of this document.
 <a id="social-interactions"></a>
 ## 2. Replies, reactions, threading, and mixed-tier fan-out
 
-<!-- Monolith provenance: §4.4, §6.5-§6.6, §6.8-§6.8.1. -->
 
 Because a persona's repository is writable only by its authorized delegates,
 a replier MUST NOT require write access to another persona's repository.
@@ -101,7 +97,6 @@ for real-time push.
 <a id="social-discovery"></a>
 ## 3. Following and social discovery
 
-<!-- Monolith provenance: §7.3-§7.6 and §11.4. -->
 
 Social discovery starts only after Core has resolved npub to RID to serving
 node and Comms has located the generic feed/outbox. A follower MUST:
@@ -250,7 +245,6 @@ user's own follows or mutes.
 <a id="social-recovery-binding"></a>
 ## 4. Social binding of Core recovery roles
 
-<!-- Monolith provenance: §3.12.1-§3.12.4. -->
 
 Core defines recovery peers, declared witnesses, cached identity material,
 and cold-root re-anchor at `heterodyne:core/0.5.0#core-recovery`. Social MAY
@@ -311,7 +305,6 @@ explicit user action and MUST NOT influence the Core accept/reject verdict.
 <a id="social-feed-presentation"></a>
 ## 5. Feed and organization presentation
 
-<!-- Monolith provenance: §5.6, §6.7.0/§6.7.6, §6.8-§6.8.1, §7.1-§7.2. -->
 
 Comms owns feed storage, ordering, paging, retrieval, and threshold
 authorization. Social turns those verified inputs into topic subscriptions,
@@ -375,7 +368,6 @@ canonicity MUST NOT depend on it.
 <a id="social-moderation"></a>
 ## 6. Moderation and editorial gating
 
-<!-- Monolith provenance: §8.0-§8.4 and §8.7-§8.9. -->
 
 Social defines two independent editorial-gating mechanisms:
 
@@ -550,7 +542,6 @@ removes the original binding.
 <a id="social-lists"></a>
 ## 7. Personal lists, community policy, and web of trust
 
-<!-- Monolith provenance: §3.8 private Social payloads and §8.5-§8.6/§8.10. -->
 
 NIP-51 is an adopted upstream Social profile, not a Core or Comms construct.
 Public NIP-51 items are tags. Private items are tag-shaped arrays encoded as a
@@ -578,9 +569,9 @@ shape. A client MUST verify the signer through Core and re-encrypt private
 items under the new authoritative epoch key on the next list write after
 rotation.
 
-A plain upstream NIP-51 event without the exact Social discriminator MUST remain unstamped.
-It is an interoperability input and MUST NOT be legacy-
-inferred, stamped during ingestion, or represented as this Social profile.
+A plain upstream NIP-51 event without the exact Social discriminator MUST
+remain unstamped. It is an interoperability input and MUST NOT be stamped
+during ingestion or represented as this Social profile.
 
 <a id="social-agent-policy-list"></a>
 ### 7.2 Subscriber-local agent policy
@@ -700,7 +691,6 @@ NIP-72-approved, or Radicle-editorially approved.
 <a id="social-atproto"></a>
 ## 8. Optional ATProto attached outbox
 
-<!-- Monolith provenance: §11.6.1-§11.6.9. -->
 
 ATProto is an OPTIONAL decorative public outbox and witness surface. It is not
 the persona identity, a required transport, or recovery authority. The npub,
@@ -853,7 +843,6 @@ both halves of the binding verify.
 <a id="social-security"></a>
 ## 9. Security invariants
 
-<!-- Monolith provenance: public Social policy portions. -->
 
 The registry binds these exact Social invariants:
 
@@ -966,7 +955,6 @@ transparency, and device-key-scoped remediation.
 <a id="social-conformance"></a>
 ## 10. Conformance
 
-<!-- Monolith provenance: §11.7 Social policy and §14. -->
 
 A `Social` report MUST name `social/0.5.0`, pin `core/0.5.0` and
 `comms/0.5.0`, pin registry revision 8 or its immutable digest, enumerate
@@ -992,8 +980,8 @@ A Social conformance report that claims a strict profile MUST reproduce its
 exact membership, prerequisite results, and applicable strict-vector results.
 It MUST use the conformance class stated in the profile fixture.
 
-Wire conformance is byte-exact. Existing signed 0.4 events MUST NOT be
-restamped. Plain upstream NIP-51 and NIP-72 events remain unstamped; only the
+Wire conformance is byte-exact. Plain upstream NIP-51 and NIP-72 events
+remain unstamped; only the
 exact immutable Social profiles opt into a Social stamp. During 0.x, an
 accepted specification change may change or retire an unreleased current
 vector in place; vector-ID immutability begins at 1.0. Unsupported Social

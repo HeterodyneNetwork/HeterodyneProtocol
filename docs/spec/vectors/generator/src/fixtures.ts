@@ -1,4 +1,4 @@
-import { inceptionTemplate, legacyInceptionTemplate } from "./kel.js";
+import { inceptionTemplate } from "./kel.js";
 import { getEventId, getPublicKey } from "./nostr.js";
 import { didKeyFromEd25519, ed25519PublicKey, fixtureRid } from "./radicle.js";
 
@@ -102,19 +102,6 @@ export function buildFixtures() {
     bob: kelFor(personas.bob.cold_root.pubkey, personas.bob.epoch_keys.epoch_1.pubkey),
     carol: kelFor(personas.carol.cold_root.pubkey, personas.carol.epoch_keys.epoch_1.pubkey),
   };
-  const legacyKelFor = (coldRootPubkey: string, epochPubkey: string) => {
-    const inceptionEvent = legacyInceptionTemplate(coldRootPubkey, epochPubkey, TEST_EPOCH);
-    const id = getEventId(inceptionEvent);
-    return { inception_event: inceptionEvent, head: { id, seq: 0 } };
-  };
-  // Exact pre-stamp heads are retained only for archived 0.4 signing inputs.
-  // Current production code must use kel above.
-  const legacy_kel = {
-    alice: legacyKelFor(personas.alice.cold_root.pubkey, personas.alice.epoch_keys.epoch_1.pubkey),
-    bob: legacyKelFor(personas.bob.cold_root.pubkey, personas.bob.epoch_keys.epoch_1.pubkey),
-    carol: legacyKelFor(personas.carol.cold_root.pubkey, personas.carol.epoch_keys.epoch_1.pubkey),
-  };
-
   return {
     vector_schema_version: "1.0.0",
     document_versions: {
@@ -131,25 +118,16 @@ export function buildFixtures() {
     },
     personas,
     kel,
-    legacy_kel,
     ed25519_nids,
     device_publishing_keys,
     radicle_rids,
     audience_keys,
-    // OPTIONAL Matrix-layer fixtures (kept for the Matrix-shaped categories).
-    matrix_rooms: {
-      identity_alice: "!alice-identity:example.org",
-      config_alice: "!alice-config:example.org",
-    },
     category_keysets: {
       identity: "alice",
       keri: "alice",
-      envelope: "alice",
       verification: "alice",
-      discussion: "alice",
       index: "alice",
       relay_interop: "alice",
-      config_room: "alice",
       "nid-binding": "alice",
       "identity-doc": "alice",
       "node-advert": "alice",

@@ -2,10 +2,10 @@
 
 Generated from [manifest.json](manifest.json); do not edit by hand.
 
-- core: 148
-- comms: 206
+- core: 138
+- comms: 203
 - control: 51
-- social: 53
+- social: 51
 - workspace: 39
 
 | Vector | Owner | Version | Dependencies | Registry | Profile | Spec references |
@@ -179,15 +179,14 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `discussion/reaction-reply-bare-not-indexed` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | — | `heterodyne:social/0.5.0#social-discussion-rooms` |
 | `identity-doc/add-before-remove` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-identity-discovery` |
 | `identity-doc/emergency-reanchor` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-identity-discovery` |
-| `identity-doc/emergency-reanchor-v050` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-identity-discovery` |
 | `identity-doc/kel-revoked-nid-rejected` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-identity-discovery` |
 | `identity/delegation-active` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `identity/delegation-expired` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `identity/delegation-revoked` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `identity/identity-room-full-state` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | — | `heterodyne:social/0.5.0#social-identity-room` |
+| `identity/kind31005-race-tiebreaker-core` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `identity/revocation-post-window` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `identity/root-attestation-valid` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-root-attestation` |
-| `identity/root-attestation-valid-v050` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-root-attestation` |
 | `index/complete-fetch-attempt` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-feed-index` |
 | `index/missing-predecessor-structured-outcome` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-feed-index` |
 | `index/prev-page-hash` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-feed-index` |
@@ -240,9 +239,7 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `light-node/verifies-signature-locally` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-client-responsibilities` |
 | `lists/kind-mute-set-addressing` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | — | `heterodyne:social/0.5.0#social-lists` |
 | `lists/mute-list-private-items-encrypted-to-self` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | — | `heterodyne:social/0.5.0#social-lists` |
-| `lists/mute-list-private-items-encrypted-to-self-v050` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | `heterodyne-social-mute-list-v1` | `heterodyne:social/0.5.0#social-mute-profile` |
 | `lists/mute-list-public-roundtrip` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | — | `heterodyne:social/0.5.0#social-lists` |
-| `lists/mute-list-public-roundtrip-v050` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | `heterodyne-social-mute-list-v1` | `heterodyne:social/0.5.0#social-mute-profile` |
 | `lists/policy-list-adoption-parsed` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | — | `heterodyne:social/0.5.0#social-lists` |
 | `lists/private-items-reencrypt-on-rotation` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | `heterodyne-social-mute-list-v1` | `heterodyne:social/0.5.0#social-mute-profile` |
 | `lists/stale-list-rollback-rejected` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | `heterodyne-social-mute-list-v1` | `heterodyne:social/0.5.0#social-mute-profile` |
@@ -292,7 +289,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `moderation/strict-mode-kind5-deletion-30s` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | — | `heterodyne:social/0.5.0#social-moderation` |
 | `moderation/strict-mode-state-downgrade-warning` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | — | `heterodyne:social/0.5.0#social-moderation` |
 | `nid-binding/bidirectional-valid` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
-| `nid-binding/bidirectional-valid-v050` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `nid-binding/invalid-nid-proof-rejected` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `nid-binding/missing-nid-proof-rejected` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `node-advert/excessive-lifetime` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
@@ -308,7 +304,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `node-advert/refresh-by-twelve-hours` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
 | `node-advert/uncertain-clock-rejected` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
 | `node-advert/valid-dual-signed` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
-| `node-advert/valid-dual-signed-v050` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
 | `oidc/authorization-code-pkce` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-oidc-authorization` |
 | `oidc/device-authorization` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-oidc-authorization` |
 | `oidc/discovery-exact-issuer` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-oidc-endpoints` |
@@ -352,17 +347,14 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `privacy-tiers/device-removal-rotates-generation` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
 | `privacy-tiers/epoch-recipient-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
 | `privacy-tiers/light-device-decryption` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
+| `privacy-tiers/non-circular-bootstrap` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
 | `privacy-tiers/revoked-device-rejected` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
 | `privacy-tiers/selected-device-narrowing` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
 | `privacy-tiers/tier1-public-plaintext-both-backends` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
-| `privacy-tiers/tier1-public-plaintext-both-backends-v050` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
 | `privacy-tiers/tier2-private-repo-not-encrypted` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
 | `privacy-tiers/tier3-index-key-derivation-and-encryption` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
-| `privacy-tiers/tier3-index-key-derivation-and-encryption-v050` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
 | `privacy-tiers/tier3-kind31011-audience-key-wrap` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
-| `privacy-tiers/tier3-kind31011-audience-key-wrap-v050` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
 | `privacy-tiers/tier3-kind31012-audience-roster` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
-| `privacy-tiers/tier3-kind31012-audience-roster-v050` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
 | `privacy-tiers/tier3-membership-metadata-disclosed` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
 | `privacy-tiers/tier3-prev-page-hash-mismatch` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
 | `privacy-tiers/tier3-prev-page-hash-valid` | comms | `comms/0.5.0` | core=core/0.5.0 | 8 | — | `heterodyne:comms/0.5.0#comms-privacy-tiers` |
@@ -430,13 +422,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `social-recovery/three-tier-caching` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | — | `heterodyne:social/0.5.0#social-recovery-binding` |
 | `stamping/heterodyne-empty-content-tag-owner` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/heterodyne-json-content-owner` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-version-stamps` |
-| `stamping/legacy-malformed-not-inferable` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-version-stamps` |
-| `stamping/legacy-monolith-explicit` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-version-stamps` |
-| `stamping/legacy-monolith-inferred` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-version-stamps` |
-| `stamping/legacy-post-split-not-inferable` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-version-stamps` |
-| `stamping/legacy-profile-only-not-inferable` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-version-stamps` |
-| `stamping/legacy-upstream-not-inferable` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-version-stamps` |
-| `stamping/no-restamp-existing-bytes` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/non-stamping-profile-unchanged` | core | `core/0.5.0` | — | 8 | `heterodyne-core-rotation-breadcrumb-profile-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/tier3-profile-owner` | core | `core/0.5.0` | — | 8 | `heterodyne-comms-tier3-wrapped-content-kind-1-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/upstream-profile-owner` | core | `core/0.5.0` | — | 8 | `heterodyne-social-mute-list-v1` | `heterodyne:core/0.5.0#core-version-stamps` |

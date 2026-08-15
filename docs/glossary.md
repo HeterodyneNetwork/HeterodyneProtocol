@@ -13,8 +13,7 @@ document-local terms are assigned to their owners:
 - [Heterodyne Social](spec/heterodyne-social.md)
 
 The owning version-qualified family document controls any conflict with this
-index. Historical terminology is preserved in the
-[0.4.0 archive](spec/archive/heterodyne-0.4.0.md).
+index.
 
 ## Family and conformance
 

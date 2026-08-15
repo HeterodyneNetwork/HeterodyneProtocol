@@ -75,16 +75,11 @@ full-node-held agent role key; automation cannot fall back to user device keys
 or unlabeled publication. Social policy receipts are public information, while
 only subscribed verified canonical policy lists affect local visibility.
 
-## Migration and machine-readable material
+## Machine-readable material
 
-- Frozen 0.4.0 bytes: [`archive/heterodyne-0.4.0.md`](archive/heterodyne-0.4.0.md)
-- Old-heading migration map: [`archive/heterodyne-0.4.0-anchor-map.md`](archive/heterodyne-0.4.0-anchor-map.md)
 - Current registry pin: [`registry/manifest.json`](registry/manifest.json)
 - Registry entries and schemas: [`registry/`](registry/)
 - Normative vector corpus: [`vectors/`](vectors/)
 - Machine-readable family vector coverage: [`vectors/coverage/manifest.json`](vectors/coverage/manifest.json)
 - Human-readable family vector coverage: [`vectors/coverage/family.md`](vectors/coverage/family.md)
 - Per-document coverage maps: [`vectors/coverage/`](vectors/coverage/)
-
-The archive preserves historical signed-byte interpretation. The migration map
-redirects old section links to permanent, version-qualified family anchors.

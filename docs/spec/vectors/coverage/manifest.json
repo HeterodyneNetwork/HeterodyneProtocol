@@ -2146,16 +2146,6 @@
     ]
   },
   {
-    "vector_id": "identity-doc/emergency-reanchor-v050",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 8,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-identity-discovery"
-    ]
-  },
-  {
     "vector_id": "identity-doc/kel-revoked-nid-rejected",
     "owner_document": "core",
     "owner_version": "core/0.5.0",
@@ -2209,6 +2199,16 @@
     ]
   },
   {
+    "vector_id": "identity/kind31005-race-tiebreaker-core",
+    "owner_document": "core",
+    "owner_version": "core/0.5.0",
+    "dependency_versions": {},
+    "registry_revision": 8,
+    "spec_refs": [
+      "heterodyne:core/0.5.0#core-nid-delegation"
+    ]
+  },
+  {
     "vector_id": "identity/revocation-post-window",
     "owner_document": "core",
     "owner_version": "core/0.5.0",
@@ -2220,16 +2220,6 @@
   },
   {
     "vector_id": "identity/root-attestation-valid",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 8,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-root-attestation"
-    ]
-  },
-  {
-    "vector_id": "identity/root-attestation-valid-v050",
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
@@ -2774,20 +2764,6 @@
     ]
   },
   {
-    "vector_id": "lists/mute-list-private-items-encrypted-to-self-v050",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 8,
-    "profile": "heterodyne-social-mute-list-v1",
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-mute-profile"
-    ]
-  },
-  {
     "vector_id": "lists/mute-list-public-roundtrip",
     "owner_document": "social",
     "owner_version": "social/0.5.0",
@@ -2798,20 +2774,6 @@
     "registry_revision": 8,
     "spec_refs": [
       "heterodyne:social/0.5.0#social-lists"
-    ]
-  },
-  {
-    "vector_id": "lists/mute-list-public-roundtrip-v050",
-    "owner_document": "social",
-    "owner_version": "social/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0",
-      "comms": "comms/0.5.0"
-    },
-    "registry_revision": 8,
-    "profile": "heterodyne-social-mute-list-v1",
-    "spec_refs": [
-      "heterodyne:social/0.5.0#social-mute-profile"
     ]
   },
   {
@@ -3421,16 +3383,6 @@
     ]
   },
   {
-    "vector_id": "nid-binding/bidirectional-valid-v050",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 8,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-nid-delegation"
-    ]
-  },
-  {
     "vector_id": "nid-binding/invalid-nid-proof-rejected",
     "owner_document": "core",
     "owner_version": "core/0.5.0",
@@ -3572,16 +3524,6 @@
   },
   {
     "vector_id": "node-advert/valid-dual-signed",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 8,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-node-advertisement"
-    ]
-  },
-  {
-    "vector_id": "node-advert/valid-dual-signed-v050",
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},
@@ -4094,6 +4036,18 @@
     ]
   },
   {
+    "vector_id": "privacy-tiers/non-circular-bootstrap",
+    "owner_document": "comms",
+    "owner_version": "comms/0.5.0",
+    "dependency_versions": {
+      "core": "core/0.5.0"
+    },
+    "registry_revision": 8,
+    "spec_refs": [
+      "heterodyne:comms/0.5.0#comms-privacy-tiers"
+    ]
+  },
+  {
     "vector_id": "privacy-tiers/revoked-device-rejected",
     "owner_document": "comms",
     "owner_version": "comms/0.5.0",
@@ -4130,18 +4084,6 @@
     ]
   },
   {
-    "vector_id": "privacy-tiers/tier1-public-plaintext-both-backends-v050",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 8,
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-privacy-tiers"
-    ]
-  },
-  {
     "vector_id": "privacy-tiers/tier2-private-repo-not-encrypted",
     "owner_document": "comms",
     "owner_version": "comms/0.5.0",
@@ -4166,18 +4108,6 @@
     ]
   },
   {
-    "vector_id": "privacy-tiers/tier3-index-key-derivation-and-encryption-v050",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 8,
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-privacy-tiers"
-    ]
-  },
-  {
     "vector_id": "privacy-tiers/tier3-kind31011-audience-key-wrap",
     "owner_document": "comms",
     "owner_version": "comms/0.5.0",
@@ -4190,31 +4120,7 @@
     ]
   },
   {
-    "vector_id": "privacy-tiers/tier3-kind31011-audience-key-wrap-v050",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 8,
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-privacy-tiers"
-    ]
-  },
-  {
     "vector_id": "privacy-tiers/tier3-kind31012-audience-roster",
-    "owner_document": "comms",
-    "owner_version": "comms/0.5.0",
-    "dependency_versions": {
-      "core": "core/0.5.0"
-    },
-    "registry_revision": 8,
-    "spec_refs": [
-      "heterodyne:comms/0.5.0#comms-privacy-tiers"
-    ]
-  },
-  {
-    "vector_id": "privacy-tiers/tier3-kind31012-audience-roster-v050",
     "owner_document": "comms",
     "owner_version": "comms/0.5.0",
     "dependency_versions": {
@@ -4975,76 +4881,6 @@
   },
   {
     "vector_id": "stamping/heterodyne-json-content-owner",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 8,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-version-stamps"
-    ]
-  },
-  {
-    "vector_id": "stamping/legacy-malformed-not-inferable",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 8,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-version-stamps"
-    ]
-  },
-  {
-    "vector_id": "stamping/legacy-monolith-explicit",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 8,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-version-stamps"
-    ]
-  },
-  {
-    "vector_id": "stamping/legacy-monolith-inferred",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 8,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-version-stamps"
-    ]
-  },
-  {
-    "vector_id": "stamping/legacy-post-split-not-inferable",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 8,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-version-stamps"
-    ]
-  },
-  {
-    "vector_id": "stamping/legacy-profile-only-not-inferable",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 8,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-version-stamps"
-    ]
-  },
-  {
-    "vector_id": "stamping/legacy-upstream-not-inferable",
-    "owner_document": "core",
-    "owner_version": "core/0.5.0",
-    "dependency_versions": {},
-    "registry_revision": 8,
-    "spec_refs": [
-      "heterodyne:core/0.5.0#core-version-stamps"
-    ]
-  },
-  {
-    "vector_id": "stamping/no-restamp-existing-bytes",
     "owner_document": "core",
     "owner_version": "core/0.5.0",
     "dependency_versions": {},

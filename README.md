@@ -18,7 +18,7 @@ documents are 0.x drafts and may make breaking changes before 1.0.
 
 [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is the non-normative
 family map. Normative authority is divided among the five versioned documents
-below; the former 0.4.0 monolith is frozen in the archive.
+below.
 
 ## Protocol family
 
@@ -48,10 +48,6 @@ repository, but remain unreleased pending explicit release approval.
 
 Versions are qualified per document. `core/0.5.0` and `social/0.5.0`, for
 example, are independent releases rather than one synchronized family version.
-The frozen [0.4.0 archive](docs/spec/archive/heterodyne-0.4.0.md) preserves the
-former monolith bytes. The complete
-[old-section anchor map](docs/spec/archive/heterodyne-0.4.0-anchor-map.md)
-redirects historical section links.
 
 ## What the family provides
 

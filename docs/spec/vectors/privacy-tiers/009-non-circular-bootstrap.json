@@ -1,0 +1,48 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "comms",
+  "owner_version": "comms/0.5.0",
+  "dependency_versions": {
+    "core": "core/0.5.0"
+  },
+  "registry_revision": 8,
+  "spec_refs": [
+    "heterodyne:comms/0.5.0#comms-privacy-tiers"
+  ],
+  "vector_id": "privacy-tiers/non-circular-bootstrap",
+  "description": "A new member locates the encrypted object and their wrapped audience key from clear data alone (opaque key_id, the recipient-addressed kind:31011, and kind:31005/kind:31010 routing), with no dependency on any higher-layer service.",
+  "input": {
+    "key_id": "aud-2026-05-25-a",
+    "kind31011_present": true,
+    "routing": {
+      "kind31005_rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+      "kind31010_hosts": [
+        "wss://node-a.example/relay"
+      ]
+    },
+    "higher_layer_service_available": false,
+    "vector_context": {
+      "decision_trace": [
+        "locate_key_id",
+        "find_kind31011_for_recipient",
+        "resolve_rid_and_hosts",
+        "unwrap_audience_key",
+        "fetch_encrypted_object"
+      ]
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "bootstrap": "non_circular",
+      "located_from_clear": [
+        "key_id",
+        "kind:31011",
+        "kind:31005",
+        "kind:31010"
+      ],
+      "higher_layer_service_required": false
+    }
+  },
+  "direction": "consume"
+}

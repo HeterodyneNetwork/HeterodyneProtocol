@@ -13,7 +13,10 @@ export type RotationReceipt = {
   sig: string;
 };
 
-function bareInceptionTemplate(
+// A minimal Core KERI inception (kind:31002): cold-root-authored, s=0,
+// committing the initial epoch key, with no witnesses and the required owner
+// stamp. The authoritative ceremony timestamp is retained exactly.
+export function inceptionTemplate(
   coldRootPubkey: string,
   epochPubkey: string,
   createdAt: number,
@@ -28,34 +31,9 @@ function bareInceptionTemplate(
       ["p", coldRootPubkey],
       ["s", "0"],
       ["epoch_key", epochPubkey],
+      ["spec_version", "core/0.5.0"],
     ],
     content: "",
-  };
-}
-
-// Archived 0.4 vectors predate the Core owner stamp. Keep their exact signing
-// bytes available under an explicitly legacy name; current vectors must use
-// inceptionTemplate instead.
-export function legacyInceptionTemplate(
-  coldRootPubkey: string,
-  epochPubkey: string,
-  createdAt: number,
-): NostrUnsignedEvent {
-  return bareInceptionTemplate(coldRootPubkey, epochPubkey, createdAt);
-}
-
-// A minimal current Core 0.5.0 KERI inception (kind:31002): cold-root-authored,
-// s=0, committing the initial epoch key, with no witnesses and the required
-// Core owner stamp. The authoritative ceremony timestamp is retained exactly.
-export function inceptionTemplate(
-  coldRootPubkey: string,
-  epochPubkey: string,
-  createdAt: number,
-): NostrUnsignedEvent {
-  const event = bareInceptionTemplate(coldRootPubkey, epochPubkey, createdAt);
-  return {
-    ...event,
-    tags: [...event.tags, ["spec_version", "core/0.5.0"]],
   };
 }
 

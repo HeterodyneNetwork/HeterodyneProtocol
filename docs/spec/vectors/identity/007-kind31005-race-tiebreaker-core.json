@@ -1,0 +1,55 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "owner_version": "core/0.5.0",
+  "dependency_versions": {},
+  "registry_revision": 8,
+  "spec_refs": [
+    "heterodyne:core/0.5.0#core-nid-delegation"
+  ],
+  "vector_id": "identity/kind31005-race-tiebreaker-core",
+  "description": "kind:31005 conflicting-binding tiebreaker: discard an invalid cold-root signature, prefer the KEL-consistent binding, then the highest created_at, then the lexicographically smallest event id.",
+  "input": {
+    "npub": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "candidates": [
+      {
+        "id": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
+        "created_at": 1767225610,
+        "cold_root_sig_valid": true,
+        "kel_consistent": true
+      },
+      {
+        "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+        "rid": "rad:z4cWBYC5PTLgTmWvmQAn4U25RGWH",
+        "created_at": 1767225620,
+        "cold_root_sig_valid": true,
+        "kel_consistent": true
+      },
+      {
+        "id": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+        "rid": "rad:zBogusStalePointer",
+        "created_at": 1767225630,
+        "cold_root_sig_valid": false,
+        "kel_consistent": false
+      }
+    ],
+    "vector_context": {
+      "decision_trace": [
+        "discard_invalid_cold_root_sig",
+        "prefer_kel_consistent",
+        "higher_created_at",
+        "lex_min_id"
+      ]
+    }
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "selected_pointer_id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+      "selected_rid": "rad:z4cWBYC5PTLgTmWvmQAn4U25RGWH",
+      "tiebreaker_step": "higher_created_at"
+    }
+  },
+  "direction": "consume"
+}

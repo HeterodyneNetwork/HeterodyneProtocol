@@ -21,22 +21,24 @@
   "expected_output": {
     "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225620,22242,[[\"relay\",\"wss://relay.example.org\"],[\"challenge\",\"auth-challenge-001\"]],\"\"]",
     "decoded": {
-      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-      "created_at": 1767225620,
-      "kind": 22242,
-      "tags": [
-        [
-          "relay",
-          "wss://relay.example.org"
+      "event": {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767225620,
+        "kind": 22242,
+        "tags": [
+          [
+            "relay",
+            "wss://relay.example.org"
+          ],
+          [
+            "challenge",
+            "auth-challenge-001"
+          ]
         ],
-        [
-          "challenge",
-          "auth-challenge-001"
-        ]
-      ],
-      "content": "",
-      "id": "bc869e893a51e30f68ed25b3993b008ef8fd3818bad4ac44a0a67ce670cf5498",
-      "sig": "997035669911afd81be89434cc9a780f729f1b5759331d1db3507d43a3810d9814819d0eed5070bd7f79d31b1e11c9236e1e42818bdb3cf32133584081b55f37"
+        "content": "",
+        "id": "bc869e893a51e30f68ed25b3993b008ef8fd3818bad4ac44a0a67ce670cf5498",
+        "sig": "997035669911afd81be89434cc9a780f729f1b5759331d1db3507d43a3810d9814819d0eed5070bd7f79d31b1e11c9236e1e42818bdb3cf32133584081b55f37"
+      }
     },
     "id": "bc869e893a51e30f68ed25b3993b008ef8fd3818bad4ac44a0a67ce670cf5498",
     "sig": "997035669911afd81be89434cc9a780f729f1b5759331d1db3507d43a3810d9814819d0eed5070bd7f79d31b1e11c9236e1e42818bdb3cf32133584081b55f37"

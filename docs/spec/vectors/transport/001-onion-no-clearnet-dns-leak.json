@@ -16,12 +16,7 @@
         "resolver": "system_dns",
         "host": "examplehiddenservice.onion"
       }
-    ],
-    "vector_context": {
-      "transport_context": {
-        "adapter_boundary": "matrix_to_protocol"
-      }
-    }
+    ]
   },
   "expected_output": {
     "verdict": "reject",

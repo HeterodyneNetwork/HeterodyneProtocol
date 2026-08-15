@@ -109,13 +109,13 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     }),
   );
 
-  // ---- identity/ CORE Matrix-free kind:31005 race tiebreaker (§3.9.8) -------
+  // ---- identity/ kind:31005 conflicting-binding tiebreaker (§3.9.8) ---------
 
   vectors.push(
     consumeVector("identity/007-kind31005-race-tiebreaker-core.json", {
       vector_id: "identity/kind31005-race-tiebreaker-core",
       spec_refs: ["§3.9.8", "§11.3", "§14.3"],
-      description: "CORE Matrix-free kind:31005 tiebreaker: discard invalid cold-root sig, prefer KEL-consistent, then highest created_at, then lex-min id, with no Matrix input.",
+      description: "kind:31005 conflicting-binding tiebreaker: discard an invalid cold-root signature, prefer the KEL-consistent binding, then the highest created_at, then the lexicographically smallest event id.",
       input: {
         npub: cold.pubkey,
         candidates: [
@@ -123,14 +123,12 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
           { id: "b2".repeat(32), rid: reanchorRid, created_at: T + 20, cold_root_sig_valid: true, kel_consistent: true },
           { id: "c3".repeat(32), rid: "rad:zBogusStalePointer", created_at: T + 30, cold_root_sig_valid: false, kel_consistent: false },
         ],
-        matrix_input: null,
       },
       expected_output: {
         verdict: "accept",
         normalized: {
           selected_pointer_id: "b2".repeat(32),
           selected_rid: reanchorRid,
-          matrix_input_used: false,
           tiebreaker_step: "higher_created_at",
         },
       },
@@ -225,7 +223,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
         expected_output: {
           comparison_surface: "nip01_canonical_event_serialization",
           canonical_wire: canonicalNip01(repoRelayEvent),
-          decoded: repoRelayEvent,
+          decoded: { event: repoRelayEvent },
           id: repoRelayEvent.id,
           sig: repoRelayEvent.sig,
         },
@@ -334,19 +332,6 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
   const advExpiry = T + 86400;
   const advPayload = nodeAdvertPayload(rid, nid1.did_key, endpoint, advExpiry, repoHead);
   const nidProof = ed25519Sign(advPayload, nid1.private_key);
-  const legacyAdvTags = (proof: string, expiry: number): string[][] =>
-    withKelHead(
-      [
-        ["d", rid],
-        ["heterodyne", "node_advert"],
-        ["rid", rid],
-        ["nid", nid1.did_key],
-        ["endpoint", endpoint],
-        ["expiry", String(expiry)],
-        ["nid_proof", proof],
-      ],
-      fixtures.legacy_kel.alice.head,
-    );
   const currentAdvTags = (proof: string, expiry: number): string[][] => [
     ["d", rid],
     ["heterodyne", "node_advert"],
@@ -359,14 +344,6 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     ["kel_head", fixtures.kel.alice.head.id, String(fixtures.kel.alice.head.seq)],
     ["spec_version", "core/0.5.0"],
   ];
-  const advEvent = await signEvent({
-    secretKey: epoch.private_key,
-    created_at: T + 50,
-    kind: 31010,
-    tags: legacyAdvTags(nidProof, advExpiry),
-    content: "",
-    auxRand: AUX_RAND,
-  });
   const currentAdvCreatedAt = advExpiry - 300;
   const currentAdvEvent = await signEvent({
     secretKey: epoch.private_key,
@@ -392,10 +369,14 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
           expiry: advExpiry,
           repo_head: repoHead,
           aux_rand: AUX_RAND,
+          validation_context: {
+            now: advExpiry - 1,
+            graph_fetch: { status: "available", reachable_oids: [repoHead] },
+          },
         },
         notes: "The nid_proof payload serialization is defined by this vector (§7.0 fixes the bound fields - RID, NID, endpoint, expiry, canonical repo head - and defers the exact bytes here): heterodyne-node-advert-v1|<rid>|<nid>|<endpoint>|<expiry>|<repo_head>, UTF-8, single ASCII '|' separator. A single endpoint is used for determinism.",
       },
-      advEvent,
+      currentAdvEvent,
       { nid_proof_payload: advPayload, nid_proof: nidProof, repo_head: repoHead },
     ),
     consumeVector("node-advert/002-outer-sig-invalid-rejected.json", {
@@ -518,7 +499,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
 
   const bindPayload = nidBindingPayload(cold.pubkey, nid1.did_key);
   const bindProof = ed25519Sign(bindPayload, nid1.private_key);
-  const nidDelegationTags = (proof: string | null, current: boolean): string[][] => {
+  const nidDelegationTags = (proof: string | null): string[][] => {
     const tags: string[][] = [
       ["d", `nid:${nid1.did_key}`],
       ["heterodyne", "delegation"],
@@ -528,10 +509,6 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     ];
     if (proof !== null) {
       tags.push(["nid_proof", proof]);
-    }
-    if (!current) {
-      tags.push(["valid_until", ""]);
-      return withKelHead(tags, fixtures.legacy_kel.alice.head);
     }
     tags.push(
       ["kel_head", fixtures.kel.alice.head.id, String(fixtures.kel.alice.head.seq)],
@@ -544,7 +521,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     secretKey: epoch.private_key,
     created_at: T + 5,
     kind: 31001,
-    tags: nidDelegationTags(bindProof, false),
+    tags: nidDelegationTags(bindProof),
     content: "",
     auxRand: AUX_RAND,
   });
@@ -552,7 +529,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     secretKey: epoch.private_key,
     created_at: T + 5,
     kind: 31001,
-    tags: nidDelegationTags(null, true),
+    tags: nidDelegationTags(null),
     content: "",
     auxRand: AUX_RAND,
   });
@@ -561,7 +538,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     secretKey: epoch.private_key,
     created_at: T + 5,
     kind: 31001,
-    tags: nidDelegationTags(wrongBindProof, true),
+    tags: nidDelegationTags(wrongBindProof),
     content: "",
     auxRand: AUX_RAND,
   });
@@ -614,7 +591,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
       ["heterodyne", "identity_pointer"],
       ["rid", reanchorRid],
       ["host_hint", "wss://node-b.example/relay"],
-      ["spec_version", "0.4.0"],
+      ["spec_version", "core/0.5.0"],
     ],
     content: "",
     auxRand: AUX_RAND,
@@ -729,39 +706,47 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     secretKey: epoch.private_key,
     created_at: T + 80,
     kind: 31007,
-    tags: withKelHead(
-      [
-        ["d", "tech:2026-q2"],
-        ["heterodyne", "feed_index"],
-        ["cold_root", cold.pubkey],
-        ["rid", rid],
-        ["feed_label", "Tech"],
-        ["e", "cd".repeat(32), "wss://relay.example"],
-      ],
-      fixtures.legacy_kel.alice.head,
-    ),
+    tags: [
+      ...withKelHead(
+        [
+          ["d", "tech:2026-q2"],
+          ["heterodyne", "feed_index"],
+          ["cold_root", cold.pubkey],
+          ["rid", rid],
+          ["feed_label", "Tech"],
+          ["e", "cd".repeat(32), "wss://relay.example"],
+        ],
+        fixtures.kel.alice.head,
+      ),
+      ["spec_version", "comms/0.5.0"],
+    ],
     content: "",
     auxRand: AUX_RAND,
   });
 
-  const recipientNpub = bob.cold_root.pubkey;
-  const wrapConvKey = nip44.v2.utils.getConversationKey(hexToBytes(epoch.private_key), recipientNpub);
+  // Audience-key wraps target an active delegated device publishing key, never
+  // a persona cold root (comms-audience-keys).
+  const wrapRecipient = fixtures.device_publishing_keys.bob_device_1.pubkey;
+  const wrapConvKey = nip44.v2.utils.getConversationKey(hexToBytes(epoch.private_key), wrapRecipient);
   const wrapNonce = hexToBytes("50".repeat(32));
   const wrapContent = nip44.v2.encrypt(audA.key, wrapConvKey, wrapNonce);
   const audienceWrap = await signEvent({
     secretKey: epoch.private_key,
     created_at: T + 81,
     kind: 31011,
-    tags: withKelHead(
-      [
-        ["d", `${audA.key_id}:${recipientNpub}`],
-        ["heterodyne", "audience_key_wrap"],
-        ["key_id", audA.key_id],
-        ["p", recipientNpub],
-        ["cold_root", cold.pubkey],
-      ],
-      fixtures.legacy_kel.alice.head,
-    ),
+    tags: [
+      ...withKelHead(
+        [
+          ["d", `${audA.key_id}:${wrapRecipient}`],
+          ["heterodyne", "audience_key_wrap"],
+          ["key_id", audA.key_id],
+          ["p", wrapRecipient],
+          ["cold_root", cold.pubkey],
+        ],
+        fixtures.kel.alice.head,
+      ),
+      ["spec_version", "comms/0.5.0"],
+    ],
     content: wrapContent,
     auxRand: AUX_RAND,
   });
@@ -769,7 +754,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
   const indexKey = hkdf(sha256, hexToBytes(audA.key), utf8Bytes(audA.key_id), utf8Bytes("heterodyne-index-key-v1"), 32);
   const idxNonce = hexToBytes("51".repeat(32));
   const indexPayload = JSON.stringify({
-    spec_version: "0.4.0",
+    spec_version: "comms/0.5.0",
     rid,
     page_id: "opaque-page-01",
     feed_label: "Close friends",
@@ -781,36 +766,47 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     secretKey: epoch.private_key,
     created_at: T + 82,
     kind: 31007,
-    tags: withKelHead(
-      [
-        ["d", "opaque-page-01"],
-        ["heterodyne", "feed_index"],
-        ["cold_root", cold.pubkey],
-        ["heterodyne_wrap", "room_key.v2"],
-        ["key_id", audA.key_id],
-      ],
-      fixtures.legacy_kel.alice.head,
-    ),
+    tags: [
+      ...withKelHead(
+        [
+          ["d", "opaque-page-01"],
+          ["heterodyne", "feed_index"],
+          ["cold_root", cold.pubkey],
+          ["heterodyne_wrap", "room_key.v2"],
+          ["key_id", audA.key_id],
+        ],
+        fixtures.kel.alice.head,
+      ),
+      ["spec_version", "comms/0.5.0"],
+    ],
     content: idxCipher,
     auxRand: AUX_RAND,
   });
   const priorPageHash = getEventId(tier3Index);
 
+  // Roster recipients are the audience's active delegated device publishing
+  // keys, sorted, and never persona cold roots (comms-audience-keys).
+  const rosterRecipients = [
+    fixtures.device_publishing_keys.alice_device_1.pubkey,
+    fixtures.device_publishing_keys.bob_device_1.pubkey,
+  ].sort();
   const roster = await signEvent({
     secretKey: epoch.private_key,
     created_at: T + 83,
     kind: 31012,
-    tags: withKelHead(
-      [
-        ["d", audA.key_id],
-        ["heterodyne", "audience_roster"],
-        ["key_id", audA.key_id],
-        ["cold_root", cold.pubkey],
-        ["p", bob.cold_root.pubkey],
-        ["p", carol.cold_root.pubkey],
-      ],
-      fixtures.legacy_kel.alice.head,
-    ),
+    tags: [
+      ...withKelHead(
+        [
+          ["d", audA.key_id],
+          ["heterodyne", "audience_roster"],
+          ["key_id", audA.key_id],
+          ["cold_root", cold.pubkey],
+          ...rosterRecipients.map((recipient) => ["p", recipient]),
+        ],
+        fixtures.kel.alice.head,
+      ),
+      ["spec_version", "comms/0.5.0"],
+    ],
     content: "",
     auxRand: AUX_RAND,
   });
@@ -855,21 +851,22 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
       {
         vector_id: "privacy-tiers/tier3-kind31011-audience-key-wrap",
         spec_refs: ["§6.7.4", "§6.10", "§9.0", "§14.3"],
-        description: "Tier 3 kind:31011 per-recipient audience-key wrap: the 32-byte audience key is NIP-44 v2 ECDH-wrapped from the persona's epoch key to the recipient npub.",
+        description: "Tier 3 kind:31011 per-recipient audience-key wrap: the 32-byte audience key is NIP-44 v2 ECDH-wrapped from the persona's epoch key to one active delegated device publishing key.",
         input: {
           fixture_persona: "alice",
           signer: "epoch_1",
-          fixture_recipient: "bob",
-          recipient_npub: recipientNpub,
+          fixture_recipient: "bob_device_1",
+          recipient_pubkey: wrapRecipient,
+          recipient_role: "active-delegated-human-device",
           key_id: audA.key_id,
           nip44_nonce: bytesToHex(wrapNonce),
           audience_key: audA.key,
         },
-        notes: "The NIP-44 plaintext is the 32-byte audience key as its 64-char lowercase-hex string. The conversation key is the NIP-44 v2 ECDH of the epoch private key and the recipient npub.",
+        notes: "The NIP-44 plaintext is the 32-byte audience key as its 64-char lowercase-hex string. The conversation key is the NIP-44 v2 ECDH of the epoch private key and the recipient device publishing key. Every wire key here is 64 lowercase hex, never an npub.",
       },
       audienceWrap,
       {
-        recipient_npub: recipientNpub,
+        recipient_pubkey: wrapRecipient,
         conversation_key: bytesToHex(wrapConvKey),
         nip44_nonce: bytesToHex(wrapNonce),
         audience_key_plaintext: audA.key,
@@ -887,7 +884,13 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
           signer: "epoch_1",
           fixture_audience_key: "alice_tier3_gen_a",
           key_id: audA.key_id,
-          hkdf: { salt: audA.key_id, info: "heterodyne-index-key-v1", output_len: 32 },
+          hkdf: {
+            hash: "SHA-256",
+            ikm_hex: audA.key,
+            salt_utf8: audA.key_id,
+            info_utf8: "heterodyne-index-key-v1",
+            output_len: 32,
+          },
           nip44_nonce: bytesToHex(idxNonce),
           plaintext: indexPayload,
         },
@@ -896,6 +899,7 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
       tier3Index,
       {
         index_key: bytesToHex(indexKey),
+        nip44_conversation_key: bytesToHex(indexKey),
         plaintext: JSON.parse(indexPayload) as unknown,
         nip44_payload: idxCipher,
       },
@@ -940,12 +944,13 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
       {
         vector_id: "privacy-tiers/tier3-kind31012-audience-roster",
         spec_refs: ["§6.7.4", "§7.2", "§14.3"],
-        description: "Tier 3 kind:31012 audience roster: an epoch-key-signed replaceable event keyed by key_id enumerating the recipient npubs with one p tag each.",
+        description: "Tier 3 kind:31012 audience roster: an epoch-key-signed replaceable event keyed by key_id enumerating the recipient device publishing keys with one p tag each.",
         input: {
           fixture_persona: "alice",
           signer: "epoch_1",
           key_id: audA.key_id,
-          recipients: [bob.cold_root.pubkey, carol.cold_root.pubkey],
+          recipients: rosterRecipients,
+          recipient_role: "active-delegated-human-device",
           aux_rand: AUX_RAND,
         },
         notes: "The roster and the per-recipient kind:31011 wraps share the same key_id.",
@@ -955,19 +960,19 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
     consumeVector("privacy-tiers/009-non-circular-bootstrap.json", {
       vector_id: "privacy-tiers/non-circular-bootstrap",
       spec_refs: ["§6.7.4", "§7.3", "§14.3"],
-      description: "A new member locates the encrypted object and their wrapped audience key from clear data alone (opaque key_id, the recipient-addressed kind:31011, and kind:31005/kind:31010 routing), with no Matrix dependency.",
+      description: "A new member locates the encrypted object and their wrapped audience key from clear data alone (opaque key_id, the recipient-addressed kind:31011, and kind:31005/kind:31010 routing), with no dependency on any higher-layer service.",
       input: {
         key_id: audA.key_id,
         kind31011_present: true,
         routing: { kind31005_rid: rid, kind31010_hosts: ["wss://node-a.example/relay"] },
-        matrix_available: false,
+        higher_layer_service_available: false,
       },
       expected_output: {
         verdict: "accept",
         normalized: {
           bootstrap: "non_circular",
           located_from_clear: ["key_id", "kind:31011", "kind:31005", "kind:31010"],
-          matrix_required: false,
+          higher_layer_service_required: false,
         },
       },
       decision_trace: [

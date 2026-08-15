@@ -15,14 +15,13 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `core-redundancy/stale-seed-does-not-remove-durability` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-multi-host-seeding` |
 | `identity-doc/add-before-remove` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-identity-discovery` |
 | `identity-doc/emergency-reanchor` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-identity-discovery` |
-| `identity-doc/emergency-reanchor-v050` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-identity-discovery` |
 | `identity-doc/kel-revoked-nid-rejected` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-identity-discovery` |
 | `identity/delegation-active` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `identity/delegation-expired` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `identity/delegation-revoked` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
+| `identity/kind31005-race-tiebreaker-core` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `identity/revocation-post-window` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `identity/root-attestation-valid` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-root-attestation` |
-| `identity/root-attestation-valid-v050` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-root-attestation` |
 | `interop/kind31005-identity-pointer` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-identity-pointer` |
 | `keri-authority/accelerator-backdated-compromise` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-kel-verification` |
 | `keri-authority/accelerator-decision-equivalent` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-kel-verification` |
@@ -70,7 +69,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `light-node/route-around-withholding-host` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-client-responsibilities` |
 | `light-node/verifies-signature-locally` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-client-responsibilities` |
 | `nid-binding/bidirectional-valid` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
-| `nid-binding/bidirectional-valid-v050` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `nid-binding/invalid-nid-proof-rejected` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `nid-binding/missing-nid-proof-rejected` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-nid-delegation` |
 | `node-advert/excessive-lifetime` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
@@ -86,7 +84,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `node-advert/refresh-by-twelve-hours` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
 | `node-advert/uncertain-clock-rejected` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
 | `node-advert/valid-dual-signed` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
-| `node-advert/valid-dual-signed-v050` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-node-advertisement` |
 | `org/member-add-dual-authorized` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-threshold-authority` |
 | `org/member-add-single-authorization-insufficient` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-threshold-authority` |
 | `org/threshold-delegate-governance` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-threshold-authority` |
@@ -124,13 +121,6 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `social-recovery/cold-root-reanchor-authoritative` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-recovery` |
 | `stamping/heterodyne-empty-content-tag-owner` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/heterodyne-json-content-owner` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-version-stamps` |
-| `stamping/legacy-malformed-not-inferable` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-version-stamps` |
-| `stamping/legacy-monolith-explicit` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-version-stamps` |
-| `stamping/legacy-monolith-inferred` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-version-stamps` |
-| `stamping/legacy-post-split-not-inferable` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-version-stamps` |
-| `stamping/legacy-profile-only-not-inferable` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-version-stamps` |
-| `stamping/legacy-upstream-not-inferable` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-version-stamps` |
-| `stamping/no-restamp-existing-bytes` | core | `core/0.5.0` | — | 8 | — | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/non-stamping-profile-unchanged` | core | `core/0.5.0` | — | 8 | `heterodyne-core-rotation-breadcrumb-profile-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/tier3-profile-owner` | core | `core/0.5.0` | — | 8 | `heterodyne-comms-tier3-wrapped-content-kind-1-v1` | `heterodyne:core/0.5.0#core-version-stamps` |
 | `stamping/upstream-profile-owner` | core | `core/0.5.0` | — | 8 | `heterodyne-social-mute-list-v1` | `heterodyne:core/0.5.0#core-version-stamps` |

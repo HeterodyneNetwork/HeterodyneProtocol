@@ -33,19 +33,9 @@ describe("author mode", () => {
     const result = await verifyVectorTree(outputDir);
     expect(result.validFiles).toBe(written.length);
     expect(result.errors).toEqual([]);
-    for (const retiredPath of [
-      "broadcast/001-private-broadcast-wrapped.json",
-      "broadcast/002-member-decrypts.json",
-      "broadcast/003-non-member-cannot-decrypt.json",
-      "broadcast/004-reaction-reply-bare-not-indexed.json",
-      "broadcast/005-nip59-rejected.json",
-      "broadcast/006-private-broadcast-wrapped-v050.json",
-      "index/001-room-key-wrap-encryption.json",
-      "index/004-context-binding-mismatch.json",
-    ]) {
-      expect(written).not.toContain(retiredPath);
-    }
-    expect(written.some((path) => path.startsWith("broadcast/"))).toBe(false);
+    // The corpus authors exactly one current form per behavior: no archived
+    // monolith consume twin, and no `-v050` produce twin derived from it.
+    expect(written.filter((path) => /-v050\.json$/.test(path))).toEqual([]);
 
     for (const path of written.filter((candidate) => candidate.startsWith("keri/"))) {
       const scenario = JSON.parse(await readFile(join(outputDir, ...path.split("/")), "utf8"));
@@ -65,17 +55,10 @@ describe("author mode", () => {
         "heterodyne:core/0.5.0#core-root-attestation",
       ]),
     );
-    expect(identity.direction).toBe("consume");
-    expect(identity.input.source_schema).toBe("monolith/0.4.0");
-    expect(identity.input.historical_expected_output.canonical_wire).toContain('["heterodyne","root"]');
-    expect(identity.expected_output.normalized.restamped).toBe(false);
-
-    const currentIdentity = JSON.parse(
-      await readFile(join(outputDir, "identity", "008-root-attestation-valid-v050.json"), "utf8"),
-    );
-    expect(currentIdentity.direction).toBe("produce");
-    expect(currentIdentity.expected_output.canonical_wire).toContain('["spec_version","core/0.5.0"]');
-    expect(verifyEventSignature(currentIdentity.expected_output.decoded.event)).toBe(true);
+    expect(identity.direction).toBe("produce");
+    expect(identity.expected_output.canonical_wire).toContain('["heterodyne","root"]');
+    expect(identity.expected_output.canonical_wire).toContain('["spec_version","core/0.5.0"]');
+    expect(verifyEventSignature(identity.expected_output.decoded.event)).toBe(true);
 
     const control = JSON.parse(await readFile(join(outputDir, "control", "001-invitation-enrollment-only.json"), "utf8"));
     expect(control.owner_document).toBe("control");
@@ -92,82 +75,62 @@ describe("author mode", () => {
     ]);
   }, 30_000);
 
-  it("keeps archived bytes as verification inputs and emits separately identified 0.5 production forms", async () => {
+  it("authors one current production form per addressable identity/privacy/list vector", async () => {
     const outputDir = await mkdtemp(join(tmpdir(), "heterodyne-vectors-"));
     tempDirs.push(outputDir);
     await authorAllVectors(outputDir);
-    const pairs = [
-      ["identity/001-root-attestation-valid.json", "identity/008-root-attestation-valid-v050.json", "core/0.5.0"],
-      ["identity-doc/003-emergency-reanchor.json", "identity-doc/004-emergency-reanchor-v050.json", "core/0.5.0"],
-      ["nid-binding/001-bidirectional-valid.json", "nid-binding/004-bidirectional-valid-v050.json", "core/0.5.0"],
-      ["node-advert/001-valid-dual-signed.json", "node-advert/005-valid-dual-signed-v050.json", "core/0.5.0"],
-      ["privacy-tiers/001-tier1-public-plaintext-both-backends.json", "privacy-tiers/011-tier1-public-plaintext-both-backends-v050.json", "comms/0.5.0"],
-      ["privacy-tiers/004-tier3-index-key-derivation-and-encryption.json", "privacy-tiers/012-tier3-index-key-derivation-and-encryption-v050.json", "comms/0.5.0"],
-      ["privacy-tiers/003-tier3-kind31011-audience-key-wrap.json", "privacy-tiers/013-tier3-kind31011-audience-key-wrap-v050.json", "comms/0.5.0"],
-      ["privacy-tiers/008-tier3-kind31012-audience-roster.json", "privacy-tiers/014-tier3-kind31012-audience-roster-v050.json", "comms/0.5.0"],
-      ["lists/001-mute-list-public-roundtrip.json", "lists/007-mute-list-public-roundtrip-v050.json", "social/0.5.0"],
-      ["lists/002-mute-list-private-items-encrypted-to-self.json", "lists/008-mute-list-private-items-encrypted-to-self-v050.json", "social/0.5.0"],
-    ];
-    for (const [legacyPath, currentPath, stamp] of pairs) {
-      const legacy = JSON.parse(await readFile(join(outputDir, ...legacyPath.split("/")), "utf8"));
-      const current = JSON.parse(await readFile(join(outputDir, ...currentPath.split("/")), "utf8"));
-      expect(legacy.direction).toBe("consume");
-      expect(legacy.input.source_schema).toBe("monolith/0.4.0");
-      expect(legacy.expected_output.normalized.historical_bytes_preserved).toBe(true);
-      expect(current.direction).toBe("produce");
-      expect(current.expected_output.canonical_wire).toContain(stamp);
-      expect(verifyEventSignature(current.expected_output.decoded.event)).toBe(true);
-    }
-    const currentWrap = JSON.parse(await readFile(
-      join(outputDir, "privacy-tiers", "013-tier3-kind31011-audience-key-wrap-v050.json"), "utf8",
-    ));
-    expect(currentWrap.input.recipient_pubkey).toBe(buildFixtures().device_publishing_keys.bob_device_1.pubkey);
-    expect(currentWrap.input.recipient_pubkey).not.toBe(buildFixtures().personas.bob.cold_root.pubkey);
-    const currentRoster = JSON.parse(await readFile(
-      join(outputDir, "privacy-tiers", "014-tier3-kind31012-audience-roster-v050.json"), "utf8",
-    ));
-    expect(currentRoster.input.recipients).toEqual([
-      buildFixtures().device_publishing_keys.alice_device_1.pubkey,
-      buildFixtures().device_publishing_keys.bob_device_1.pubkey,
-    ].sort());
-    expect(currentRoster.input.recipients).not.toContain(buildFixtures().personas.bob.cold_root.pubkey);
-
     const fixtures = buildFixtures();
-    expect(fixtures.legacy_kel.alice.head.id).toBe(
-      "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
-    );
-    expect(fixtures.kel.alice.head.id).not.toBe(fixtures.legacy_kel.alice.head.id);
+    const produced = [
+      ["identity/001-root-attestation-valid.json", "core/0.5.0"],
+      ["identity-doc/003-emergency-reanchor.json", "core/0.5.0"],
+      ["nid-binding/001-bidirectional-valid.json", "core/0.5.0"],
+      ["node-advert/001-valid-dual-signed.json", "core/0.5.0"],
+      ["privacy-tiers/001-tier1-public-plaintext-both-backends.json", "comms/0.5.0"],
+      ["privacy-tiers/004-tier3-index-key-derivation-and-encryption.json", "comms/0.5.0"],
+      ["privacy-tiers/003-tier3-kind31011-audience-key-wrap.json", "comms/0.5.0"],
+      ["privacy-tiers/008-tier3-kind31012-audience-roster.json", "comms/0.5.0"],
+      ["lists/001-mute-list-public-roundtrip.json", "social/0.5.0"],
+      ["lists/002-mute-list-private-items-encrypted-to-self.json", "social/0.5.0"],
+    ];
+    for (const [path, stamp] of produced) {
+      const vector = JSON.parse(await readFile(join(outputDir, ...path.split("/")), "utf8"));
+      expect(vector.direction).toBe("produce");
+      expect(vector.expected_output.canonical_wire).toContain(stamp);
+      expect(verifyEventSignature(vector.expected_output.decoded.event)).toBe(true);
+      expect(
+        vector.expected_output.decoded.event.tags.find((tag: string[]) => tag[0] === "kel_head"),
+      ).toEqual(
+        vector.expected_output.decoded.event.kind === 31005
+          ? undefined
+          : ["kel_head", fixtures.kel.alice.head.id, "0"],
+      );
+    }
 
-    const archivedIdentity = JSON.parse(
-      await readFile(join(outputDir, "identity", "001-root-attestation-valid.json"), "utf8"),
-    );
-    expect(archivedIdentity.input.historical_expected_output.id).toBe(
-      "7d9c544d18a4c820060d2425f9e4ee74256c960fa26b76dee7cabcd3017fd4d6",
-    );
-    expect(
-      archivedIdentity.input.historical_expected_output.decoded.tags.find(
-        (tag: string[]) => tag[0] === "kel_head",
-      ),
-    ).toEqual(["kel_head", fixtures.legacy_kel.alice.head.id, "0"]);
+    // Audience material addresses delegated device publishing keys, never a
+    // persona cold root.
+    const wrap = JSON.parse(await readFile(
+      join(outputDir, "privacy-tiers", "003-tier3-kind31011-audience-key-wrap.json"), "utf8",
+    ));
+    expect(wrap.input.recipient_pubkey).toBe(fixtures.device_publishing_keys.bob_device_1.pubkey);
+    expect(wrap.input.recipient_pubkey).not.toBe(fixtures.personas.bob.cold_root.pubkey);
+    const roster = JSON.parse(await readFile(
+      join(outputDir, "privacy-tiers", "008-tier3-kind31012-audience-roster.json"), "utf8",
+    ));
+    expect(roster.input.recipients).toEqual([
+      fixtures.device_publishing_keys.alice_device_1.pubkey,
+      fixtures.device_publishing_keys.bob_device_1.pubkey,
+    ].sort());
+    expect(roster.input.recipients).not.toContain(fixtures.personas.bob.cold_root.pubkey);
 
-    const currentIdentity = JSON.parse(
-      await readFile(join(outputDir, "identity", "008-root-attestation-valid-v050.json"), "utf8"),
-    );
-    expect(
-      currentIdentity.expected_output.decoded.event.tags.find(
-        (tag: string[]) => tag[0] === "kel_head",
-      ),
-    ).toEqual(["kel_head", fixtures.kel.alice.head.id, "0"]);
-
-    const currentNodeAdvertisement = JSON.parse(
-      await readFile(join(outputDir, "node-advert", "005-valid-dual-signed-v050.json"), "utf8"),
-    );
+    const advertisement = JSON.parse(await readFile(
+      join(outputDir, "node-advert", "001-valid-dual-signed.json"), "utf8",
+    ));
     expect(validateNodeAdvertisement(
-      currentNodeAdvertisement.expected_output.decoded.event,
-      currentNodeAdvertisement.input.validation_context,
+      advertisement.expected_output.decoded.event,
+      advertisement.input.validation_context,
     )).toMatchObject({
       status: "accepted",
-      repo_head: currentNodeAdvertisement.input.validation_context.graph_fetch.reachable_oids[0],
+      repo_head: advertisement.input.validation_context.graph_fetch.reachable_oids[0],
     });
   }, 30_000);
 });

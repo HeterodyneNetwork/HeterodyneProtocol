@@ -29,9 +29,7 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `interop/vanilla-nostr-only-follow` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | — | `heterodyne:social/0.5.0#social-following` |
 | `lists/kind-mute-set-addressing` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | — | `heterodyne:social/0.5.0#social-lists` |
 | `lists/mute-list-private-items-encrypted-to-self` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | — | `heterodyne:social/0.5.0#social-lists` |
-| `lists/mute-list-private-items-encrypted-to-self-v050` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | `heterodyne-social-mute-list-v1` | `heterodyne:social/0.5.0#social-mute-profile` |
 | `lists/mute-list-public-roundtrip` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | — | `heterodyne:social/0.5.0#social-lists` |
-| `lists/mute-list-public-roundtrip-v050` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | `heterodyne-social-mute-list-v1` | `heterodyne:social/0.5.0#social-mute-profile` |
 | `lists/policy-list-adoption-parsed` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | — | `heterodyne:social/0.5.0#social-lists` |
 | `lists/private-items-reencrypt-on-rotation` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | `heterodyne-social-mute-list-v1` | `heterodyne:social/0.5.0#social-mute-profile` |
 | `lists/stale-list-rollback-rejected` | social | `social/0.5.0` | core=core/0.5.0, comms=comms/0.5.0 | 8 | `heterodyne-social-mute-list-v1` | `heterodyne:social/0.5.0#social-mute-profile` |

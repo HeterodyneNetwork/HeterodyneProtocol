@@ -7,18 +7,17 @@ export const AUX_RAND = "00".repeat(32);
 
 export type VectorFactory = (fixtures: Fixtures) => Promise<AuthoredVector> | AuthoredVector;
 
-type LegacyTopLevelMetadata = {
+type VectorContextMetadata = {
   fixtures?: Record<string, unknown>;
   simulated_clock?: number;
   decision_trace?: string[];
-  transport_context?: Record<string, unknown>;
   notes?: string;
 };
 
 export type VectorBody = Pick<
   Vector,
   "vector_id" | "spec_refs" | "description" | "input" | "expected_output"
-> & LegacyTopLevelMetadata;
+> & VectorContextMetadata;
 
 type DirectionalVectorBody = VectorBody & { direction: Vector["direction"] };
 
@@ -27,7 +26,6 @@ export function baseVector(vector: DirectionalVectorBody): Vector {
     fixtures,
     simulated_clock,
     decision_trace,
-    transport_context,
     notes,
     spec_refs: _legacySpecRefs,
     ...body
@@ -37,7 +35,6 @@ export function baseVector(vector: DirectionalVectorBody): Vector {
     ...(fixtures === undefined ? {} : { fixtures }),
     ...(simulated_clock === undefined ? {} : { simulated_clock }),
     ...(decision_trace === undefined ? {} : { decision_trace }),
-    ...(transport_context === undefined ? {} : { transport_context }),
     ...(notes === undefined ? {} : { notes }),
   };
   const normalizedInput = {

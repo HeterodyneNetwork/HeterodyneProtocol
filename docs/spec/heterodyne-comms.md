@@ -6,10 +6,9 @@ Registry revision: `8`
 
 Normative dependencies: `heterodyne:core/0.5.0#core-conformance`.
 
-This document prepares Comms' first 0.5.0 release, descended from the
-Heterodyne 0.4.x monolith. It is current normative authority at this repository
-path but remains unreleased pending explicit release approval.
-`comms/0.5.0` is not a synchronized family version. While Comms is 0.x, exact
+This document prepares Comms' 0.5.0 release. It is current normative
+authority at this repository path but remains unreleased pending explicit
+release approval. `comms/0.5.0` is not a synchronized family version. While Comms is 0.x, exact
 version matching is required. The key words MUST, MUST NOT, REQUIRED, SHALL,
 SHALL NOT, SHOULD, SHOULD NOT, RECOMMENDED, NOT RECOMMENDED, MAY, and OPTIONAL
 are to be interpreted as described by BCP 14 when, and only when, they appear
@@ -20,9 +19,6 @@ kebab-case. Generated heading IDs are not stable protocol references.
 
 <a id="comms-scope"></a>
 ## 1. Scope
-
-<!-- Monolith provenance: §4.1/§4.5, §5.2, §5.7, §6.1-§6.4,
-§6.7-§6.10, §7.1-§7.2, §9.0-§9.1, §9.5. -->
 
 Comms defines secure persona speech over the Core substrate: a Nostr-native
 event envelope, public/private/encrypted repository tiers, publishing and
@@ -49,7 +45,6 @@ conversation, or a Control implementation.
 <a id="comms-envelope"></a>
 ## 2. Nostr-native event envelope and verification
 
-<!-- Monolith provenance: §4.1 and primary `verify_nostr` entry point in §4.5. -->
 
 The canonical Comms content unit is one NIP-01 signed event. Ordinary Nostr
 relays and Core repo relays carry the same event bytes; the event `id` is the
@@ -81,7 +76,6 @@ profile and their registered Heterodyne application discriminator.
 <a id="comms-privacy-tiers"></a>
 ## 3. Repository privacy tiers
 
-<!-- Monolith provenance: §5.2, §6.10, §9.0-§9.1. -->
 
 Every repository-carried publication declares one of three trust boundaries,
 which clients MUST present without ambiguity:
@@ -117,7 +111,6 @@ timing, size, count, publication, and fetch-cadence metadata.
 <a id="comms-audience-keys"></a>
 ### 3.1 Audience key distribution and roster
 
-<!-- Monolith provenance: §6.7.4 and §6.10.1. -->
 
 An audience key is 32 uniformly random bytes. Persona membership expands by
 default to every active KEL-delegated human-device secp256k1 publishing key for
@@ -189,7 +182,6 @@ generation for any new object MUST be rejected.
 <a id="comms-tier-three-profile"></a>
 ### 3.2 Tier 3 encryption profile
 
-<!-- Monolith provenance: §6.7.4 and §6.10.1. -->
 
 Comms profiles the symmetric ChaCha20/HMAC-SHA256 layer of NIP-44 v2. It does
 not perform NIP-44 ECDH for a post or index body; the per-recipient ECDH occurs
@@ -274,7 +266,6 @@ not current membership metadata, is the cryptographic access test.
 <a id="comms-config-repository"></a>
 ### 3.3 Config-repository protection profile
 
-<!-- Monolith provenance: §3.8.6. -->
 
 The `heterodyne-comms-config-repository-v1` protection profile instantiates
 `heterodyne:core/0.5.0#core-protected-repository` with the Tier 3 profile
@@ -301,7 +292,6 @@ MUST NOT remove a device except through an explicit marked revocation record.
 <a id="comms-encrypted-branches"></a>
 ### 3.4 Encrypted branches, deletion, and residue
 
-<!-- Monolith provenance: §6.10.3-§6.10.4. -->
 
 Ciphertext for each generation MUST live only at
 `refs/heads/enc/<key_id>`; the default branch carries no ciphertext. The
@@ -326,7 +316,6 @@ non-cooperating seeds and remains readable to holders of its retired key.
 <a id="comms-publishing"></a>
 ## 4. Publishing and delivery
 
-<!-- Monolith provenance: §6.1-§6.4.1. -->
 
 One publication intent MUST produce exactly one signed Nostr event, computed
 once and fanned out unchanged. Implementations MUST NOT re-sign the same
@@ -364,7 +353,6 @@ attributed event; an idempotent retry reuses those exact bytes and event id.
 <a id="comms-feed-index"></a>
 ## 5. Generic feed index
 
-<!-- Monolith provenance: §6.7-§6.8; moderator and Social kind policy removed. -->
 
 `kind:31007` is a persona's canonical ordering authority independent of which
 backend served an event. It is an addressable, epoch-key-signed Comms event,
@@ -422,7 +410,6 @@ Tier 3 ciphertext, and MUST NOT carry `heterodyne_wrap` or `key_id` tags.
 <a id="comms-org-authorization"></a>
 ### 5.1 Organization threshold authorization
 
-<!-- Monolith provenance: §6.7.0; authority supplied by Core, presentation removed. -->
 
 Applying `heterodyne:core/0.5.0#core-threshold-authority`, all posts and feed
 indexes owned by an org persona MUST be reachable
@@ -439,15 +426,14 @@ threshold authorization is not a presentation-layer option.
 <a id="comms-feed-paging"></a>
 ### 5.2 Paging and integrity
 
-<!-- Monolith provenance: §6.7.2. -->
 
 A page MUST contain at most 500 entries and SHOULD contain 256. A chained
 public page uses exactly `["previous_index", "<event_id>"]` and MUST also use
 `["prev_page_hash", "<hex-sha256>"]`, where the hash is SHA-256 of the
 prior page's canonical NIP-01 bytes. The first page MUST omit both tags. A
 verifier MUST check every page signature and hash; mismatch breaks the chain
-with `page_chain_broken` and a visible feed-integrity error. A legacy missing
-hash MAY be rendered only with an unverifiable-chain warning.
+with `page_chain_broken` and a visible feed-integrity error. A page missing
+the hash MAY be rendered only with an unverifiable-chain warning.
 
 After a complete fetch attempt cannot resolve a predecessor, the newest
 resolvable page containing that missing predecessor link is the referring
@@ -470,7 +456,6 @@ lexicographically smallest event id.
 <a id="comms-private-index"></a>
 ### 5.3 Tier-specific indexes and descriptors
 
-<!-- Monolith provenance: §6.7.3-§6.7.5 and §7.2. -->
 
 Tier 1 indexes are plaintext and MUST be published to ordinary relays and the
 public repo relay. Tier 2 indexes are plaintext only on private-repo allowed
@@ -511,7 +496,6 @@ outcome.
 <a id="comms-retrieval"></a>
 ## 6. Retrieval, backfill, and outbox location
 
-<!-- Monolith provenance: §6.9 and §7.1-§7.2; follower/community surfaces removed. -->
 
 A missing indexed event is queried by NIP-01 id from its hint, then the
 persona's NIP-65 write and read relays, and eligible repo relays. For this
@@ -2012,7 +1996,6 @@ under a separately bounded encrypted diagnostic policy.
 <a id="comms-security"></a>
 ## 16. Security invariants and forward-secrecy posture
 
-<!-- Monolith provenance: §9.0-§9.1 and §9.5. -->
 
 The registry defines these Comms invariants:
 
@@ -2143,7 +2126,6 @@ profile.
 <a id="comms-conformance"></a>
 ## 17. Conformance
 
-<!-- Monolith provenance: §14. -->
 
 A Comms conformance report MUST claim Core+Comms, name `comms/0.5.0`, pin
 `core/0.5.0`, registry revision 8 or its immutable digest, and enumerate

@@ -8,82 +8,73 @@
     "heterodyne:core/0.5.0#core-nid-delegation"
   ],
   "vector_id": "nid-binding/bidirectional-valid",
-  "description": "Verify preserved nid-binding/bidirectional-valid bytes as an archived monolith/0.4.0 form; never restamp or resign them.",
-  "direction": "consume",
+  "description": "kind:31001 NID delegation: bidirectionally bound by the epoch-key Schnorr signature (outer Nostr sig over the tags) AND the NID's Ed25519 nid_proof over the pinned binding payload.",
   "input": {
-    "source_schema": "monolith/0.4.0",
-    "archived_form_valid": true,
-    "historical_input": {
-      "fixture_persona": "alice",
-      "signer": "epoch_1",
-      "radicle_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
-      "publishing_key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
-      "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",
-      "vector_context": {
-        "notes": "Binding payload bytes are pinned by §3.3.1: heterodyne-nid-binding-v1|<npub>|<nid>|radicle-nid-delegation, UTF-8. <npub> is the 64-char lowercase-hex x-only cold-root key; <nid> is the did:key verbatim."
-      }
-    },
-    "historical_expected_output": {
-      "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225605,31001,[[\"d\",\"nid:did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"],[\"heterodyne\",\"delegation\"],[\"radicle_nid\",\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"],[\"publishing_key\",\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"nid_proof\",\"2ccd2f7fc0b1fd1c7f823285e352ee3de25b771ba0c52ebd573dba97ce195e48fbbf3aee5be64e82b2d6fe6a33a58ad6592719a865b04cb66bbfd16fad30d70a\"],[\"valid_until\",\"\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"\"]",
-      "decoded": {
-        "event": {
-          "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-          "created_at": 1767225605,
-          "kind": 31001,
-          "tags": [
-            [
-              "d",
-              "nid:did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
-            ],
-            [
-              "heterodyne",
-              "delegation"
-            ],
-            [
-              "radicle_nid",
-              "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
-            ],
-            [
-              "publishing_key",
-              "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
-            ],
-            [
-              "cold_root",
-              "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-            ],
-            [
-              "nid_proof",
-              "2ccd2f7fc0b1fd1c7f823285e352ee3de25b771ba0c52ebd573dba97ce195e48fbbf3aee5be64e82b2d6fe6a33a58ad6592719a865b04cb66bbfd16fad30d70a"
-            ],
-            [
-              "valid_until",
-              ""
-            ],
-            [
-              "kel_head",
-              "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
-              "0"
-            ]
-          ],
-          "content": "",
-          "id": "c9103a99b835b08f77b1db7909cf87a69e698682c5cb93fa559d182fc41c56a5",
-          "sig": "db9ec9b8c653ecfd17abc93bc6e9b9e9752a13a65a249077288e53199e64d005f3f64ac63b440651f57d5a06de073a408e5cf9a80195c893cd0a9690a91e1632"
-        },
-        "nid_binding_payload": "heterodyne-nid-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|radicle-nid-delegation",
-        "nid_proof": "2ccd2f7fc0b1fd1c7f823285e352ee3de25b771ba0c52ebd573dba97ce195e48fbbf3aee5be64e82b2d6fe6a33a58ad6592719a865b04cb66bbfd16fad30d70a"
-      },
-      "id": "c9103a99b835b08f77b1db7909cf87a69e698682c5cb93fa559d182fc41c56a5",
-      "sig": "db9ec9b8c653ecfd17abc93bc6e9b9e9752a13a65a249077288e53199e64d005f3f64ac63b440651f57d5a06de073a408e5cf9a80195c893cd0a9690a91e1632"
+    "fixture_persona": "alice",
+    "signer": "epoch_1",
+    "radicle_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
+    "publishing_key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+    "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",
+    "vector_context": {
+      "notes": "Binding payload bytes are pinned by §3.3.1: heterodyne-nid-binding-v1|<npub>|<nid>|radicle-nid-delegation, UTF-8. <npub> is the 64-char lowercase-hex x-only cold-root key; <nid> is the did:key verbatim."
     }
   },
   "expected_output": {
-    "verdict": "accept",
-    "normalized": {
-      "owner": "monolith/0.4.0",
-      "direction": "verify",
-      "historical_bytes_preserved": true,
-      "restamped": false
-    }
-  }
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225605,31001,[[\"d\",\"nid:did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"],[\"heterodyne\",\"delegation\"],[\"radicle_nid\",\"did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC\"],[\"publishing_key\",\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"nid_proof\",\"2ccd2f7fc0b1fd1c7f823285e352ee3de25b771ba0c52ebd573dba97ce195e48fbbf3aee5be64e82b2d6fe6a33a58ad6592719a865b04cb66bbfd16fad30d70a\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"],[\"valid_until\",\"\"],[\"spec_version\",\"core/0.5.0\"]],\"\"]",
+    "decoded": {
+      "event": {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767225605,
+        "kind": 31001,
+        "tags": [
+          [
+            "d",
+            "nid:did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+          ],
+          [
+            "heterodyne",
+            "delegation"
+          ],
+          [
+            "radicle_nid",
+            "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"
+          ],
+          [
+            "publishing_key",
+            "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
+          ],
+          [
+            "cold_root",
+            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+          ],
+          [
+            "nid_proof",
+            "2ccd2f7fc0b1fd1c7f823285e352ee3de25b771ba0c52ebd573dba97ce195e48fbbf3aee5be64e82b2d6fe6a33a58ad6592719a865b04cb66bbfd16fad30d70a"
+          ],
+          [
+            "kel_head",
+            "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+            "0"
+          ],
+          [
+            "valid_until",
+            ""
+          ],
+          [
+            "spec_version",
+            "core/0.5.0"
+          ]
+        ],
+        "content": "",
+        "id": "18ce9bf406b9fad76952fbbfbcb29152ca395638c49207e56fcf79d468239b38",
+        "sig": "5e4a96f95417b899ada11eec1b69dc970abe5271f7d469b3290dd881ad49494f59a67d6344602149bfd907430c6e04ba46bf31dfc14233838929b86139818ab7"
+      },
+      "nid_binding_payload": "heterodyne-nid-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|radicle-nid-delegation",
+      "nid_proof": "2ccd2f7fc0b1fd1c7f823285e352ee3de25b771ba0c52ebd573dba97ce195e48fbbf3aee5be64e82b2d6fe6a33a58ad6592719a865b04cb66bbfd16fad30d70a"
+    },
+    "id": "18ce9bf406b9fad76952fbbfbcb29152ca395638c49207e56fcf79d468239b38",
+    "sig": "5e4a96f95417b899ada11eec1b69dc970abe5271f7d469b3290dd881ad49494f59a67d6344602149bfd907430c6e04ba46bf31dfc14233838929b86139818ab7"
+  },
+  "direction": "produce"
 }

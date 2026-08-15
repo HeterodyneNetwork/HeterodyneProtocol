@@ -20,7 +20,6 @@ config-backup/config-rid-unadvertised-clean
 config-backup/nip49-nsec-wrap
 identity-doc/add-before-remove
 identity-doc/emergency-reanchor
-identity-doc/emergency-reanchor-v050
 identity-doc/kel-revoked-nid-rejected
 identity/delegation-active
 identity/delegation-expired
@@ -28,7 +27,6 @@ identity/delegation-revoked
 identity/kind31005-race-tiebreaker-core
 identity/revocation-post-window
 identity/root-attestation-valid
-identity/root-attestation-valid-v050
 interop/kind31005-identity-pointer
 keri-authority/accelerator-backdated-compromise
 keri-authority/accelerator-decision-equivalent
@@ -44,12 +42,10 @@ keri-authority/export-unmappable-feature
 keri-authority/export-unsupported-crypto-suite
 keri-authority/kel-head-absent-rejected
 keri-authority/kel-head-duplicate-rejected
-keri-authority/kel-head-forbidden-on-dr-wire
 keri-authority/kel-head-forbidden-on-inception
 keri-authority/kel-head-forbidden-on-rotation
 keri-authority/kel-head-malformed-rejected
 keri-authority/kel-head-mandatory-on-delegation
-keri-authority/kel-head-mandatory-on-epoch-invite
 keri-authority/kel-head-mandatory-on-root
 keri-authority/kel-head-seq-mismatch-rejected
 keri-authority/keri10json-cesr-wire-rejected
@@ -74,14 +70,12 @@ light-node/content-not-through-routing-node
 light-node/route-around-withholding-host
 light-node/verifies-signature-locally
 nid-binding/bidirectional-valid
-nid-binding/bidirectional-valid-v050
 nid-binding/invalid-nid-proof-rejected
 nid-binding/missing-nid-proof-rejected
 node-advert/expired-rejected
 node-advert/nid-proof-invalid-rejected
 node-advert/outer-sig-invalid-rejected
 node-advert/valid-dual-signed
-node-advert/valid-dual-signed-v050
 node-advert/maximum-lifetime
 node-advert/excessive-lifetime
 node-advert/future-clock-skew
@@ -105,7 +99,6 @@ routing-node/expired-advert-discarded
 routing-node/repo-location-from-ads-only
 routing-node/unverifiable-advert-discarded
 social-recovery/cold-root-reanchor-authoritative
-social-recovery/cache-rejects-unauthorized-content
 social-recovery/cache-sourced-marked-stale
 transport/egress-tor-off-default-indicator
 transport/onion-no-clearnet-dns-leak
@@ -140,30 +133,13 @@ stamping/heterodyne-empty-content-tag-owner
 stamping/upstream-unstamped
 stamping/upstream-profile-owner
 stamping/non-stamping-profile-unchanged
-stamping/dr-outer-unstamped
-stamping/control-profile-retains-core-owner
-stamping/control-carrier-comms-owner
-stamping/legacy-monolith-explicit
-stamping/legacy-monolith-inferred
-stamping/legacy-upstream-not-inferable
-stamping/no-restamp-existing-bytes
 stamping/tier3-profile-owner
-stamping/legacy-malformed-not-inferable
-stamping/legacy-post-split-not-inferable
-stamping/legacy-profile-only-not-inferable
 profiles/core-breadcrumb-kind0
 profiles/core-breadcrumb-kind1
 breadcrumbs/unrelated-successor-rejected
 breadcrumbs/compromise-rotation-not-produced
 breadcrumbs/repointed-nip05-rejected
 breadcrumbs/ordinary-consumer-no-profile-inference
-session-device/reserved-shape-valid-but-gated
-session-device/nid-fields-forbidden
-session-device/key-proof-invalid
-session-device/repository-final-gate-closed
-session-device/owner-stamp-missing
-session-device/owner-stamp-malformed
-session-device/revoked-no-authority
 registry/downref-nonfrozen-rejected
 registry/frozen-entry-immutable
 registry/feature-dependency-exact
@@ -288,13 +264,6 @@ token-status/signing-key-compromise
 config-backup/config-blob-encrypt-decrypt
 config-backup/key-id-derivation
 config-backup/key-rotation-ref-delta
-dm/double-ratchet-transcript
-dm/atomic-receive-before-plaintext
-dm/invite-delegated-device-valid
-dm/invite-revoked-device-rejected
-dm/invite-unbound-device-rejected
-dm/kind1060-outer-message-shape
-dm/repo-relay-refuses-kind1060
 index/complete-fetch-attempt
 index/missing-predecessor-structured-outcome
 index/prev-page-hash
@@ -313,10 +282,6 @@ privacy-tiers/tier3-kind31011-audience-key-wrap
 privacy-tiers/tier3-kind31012-audience-roster
 privacy-tiers/tier3-prev-page-hash-mismatch
 privacy-tiers/tier3-prev-page-hash-valid
-privacy-tiers/tier1-public-plaintext-both-backends-v050
-privacy-tiers/tier3-index-key-derivation-and-encryption-v050
-privacy-tiers/tier3-kind31011-audience-key-wrap-v050
-privacy-tiers/tier3-kind31012-audience-roster-v050
 privacy-tiers/all-active-devices
 privacy-tiers/selected-device-narrowing
 privacy-tiers/cold-root-recipient-rejected
@@ -327,9 +292,6 @@ privacy-tiers/device-removal-rotates-generation
 relay-interop/auth-rejection-permanent
 relay-interop/keri-rotation-auth-new-key
 relay-interop/nip42-auth-current-epoch-key
-comms-envelope/nostr-native-event-valid
-comms-envelope/owner-stamp-valid
-comms-envelope/nostr-native-signature-mutation
 acceptance-gating/authentication-before-policy
 acceptance-gating/message-request-no-receipt
 acceptance-gating/established-ordinary-accept
@@ -357,9 +319,6 @@ profiles/tier3-kind-16
 profiles/tier3-kind-1063
 profiles/tier3-kind-30023
 profiles/tier3-kind-30402
-profiles/dr-invite-response-kind1059
-profiles/comms-negotiation-kind31015
-profiles/comms-payload-kind31016
 credential-continuity/checkpoint-genesis
 credential-continuity/stale-generation
 credential-continuity/pending-retirement-conservative
@@ -389,40 +348,12 @@ agent-moderation/correction-list-retained
 agent-moderation/correction-list-removed
 atproto/pinned-public-hop
 atproto/connection-pinning-unavailable
-bridge/idempotent-republication
-bridge/matrix-permanent-failure-index-updated
-bridge/nostr-permanent-failure-index-not-updated
-config_room/device-inventory-not-synced
-config_room/key-backup-wrapping-algorithms
-config_room/minimal-config-room
-config_room/private-mutes
-encryption/delegation-revocation-rotation
-encryption/encryption-version-event
-encryption/mls-migration-eligibility-check
-encryption/mls-migration-intent-and-ack
-encryption/mls-migration-missing-ack-aborts
-encryption/mls-migration-non-mls-receiver-fallback
-encryption/mls-migration-offline-reconnect-reencrypt
-encryption/mls-migration-receiver-verifiable-flip
-encryption/mls-migration-tail-period-acceptance
-envelope/compromise-cutoff-overrides-attribution
-envelope/bare-dm-signature-badge
-envelope/cross-kind-wrapping
-envelope/fallback-rendering
-envelope/minimal-kind1-wrapped
-homeserver-exit/dual-publish-during-exit
-homeserver-exit/identity-room-migration
-homeserver-exit/migration-pointer-precedence
 identity/identity-room-full-state
 discussion/reaction-reply-bare-not-indexed
-interop/bare-hide-pref
 interop/vanilla-nostr-only-follow
-interop/wrapped-vanilla-roundtrip
 lists/kind-mute-set-addressing
 lists/mute-list-private-items-encrypted-to-self
 lists/mute-list-public-roundtrip
-lists/mute-list-public-roundtrip-v050
-lists/mute-list-private-items-encrypted-to-self-v050
 lists/policy-list-adoption-parsed
 lists/private-items-reencrypt-on-rotation
 lists/stale-list-rollback-rejected
@@ -441,23 +372,9 @@ moderation/strict-mode-bare-not-hidden
 moderation/strict-mode-invalid-event-signature
 moderation/strict-mode-kind5-deletion-30s
 moderation/strict-mode-state-downgrade-warning
-multi-homing/active-room-election
-multi-homing/config-invite-initiation
-multi-homing/kind31005-race-tiebreaker
-multi-homing/partition-window-void-requeue
-multi-homing/publish-lease-acquire-renew
-multi-homing/single-mxid-revocation
 outbox/cross-backend-reply-dedup
 outbox/cross-persona-attestation-invalid
 outbox/cross-persona-attestation-valid
-redundancy/dedupe-across-replicas
-redundancy/mirror-group-primary-replicas
-redundancy/private-body-relay-borne
-redundancy/promotion-republishes-pointer
-redundancy/rekey-remove-not-join
-room-kind/current-kinds-roundtrip
-room-kind/legacy-read-back-map
-room-kind/retired-kind-rejected
 social-recovery/retention-30-days
 social-recovery/three-tier-caching
 versioning/unknown-room-kind-tolerance
@@ -584,9 +501,6 @@ const PROFILE_BY_VECTOR = new Map<string, string>([
   ["claims/canonical-jwk-thumbprint-subject", "heterodyne-comms-claim-revocation-jwk-jws-v1"],
   ["stamping/upstream-profile-owner", "heterodyne-social-mute-list-v1"],
   ["stamping/non-stamping-profile-unchanged", "heterodyne-core-rotation-breadcrumb-profile-v1"],
-  ["stamping/dr-outer-unstamped", "heterodyne-comms-double-ratchet-message-v1"],
-  ["stamping/control-profile-retains-core-owner", "heterodyne-control-session-device-v1"],
-  ["stamping/control-carrier-comms-owner", "comms-subprotocol-payload-v1"],
   ["stamping/tier3-profile-owner", "heterodyne-comms-tier3-wrapped-content-kind-1-v1"],
   ["profiles/core-breadcrumb-kind0", "heterodyne-core-rotation-breadcrumb-profile-v1"],
   ["profiles/core-breadcrumb-kind1", "heterodyne-core-rotation-breadcrumb-note-v1"],
@@ -596,21 +510,9 @@ const PROFILE_BY_VECTOR = new Map<string, string>([
   ["profiles/tier3-kind-1063", "heterodyne-comms-tier3-wrapped-content-kind-1063-v1"],
   ["profiles/tier3-kind-30023", "heterodyne-comms-tier3-wrapped-content-kind-30023-v1"],
   ["profiles/tier3-kind-30402", "heterodyne-comms-tier3-wrapped-content-kind-30402-v1"],
-  ["profiles/dr-invite-response-kind1059", "heterodyne-comms-double-ratchet-invite-response-v1"],
   ["profiles/social-org-feed-kind31007", "heterodyne-social-org-feed-v1"],
-  ["profiles/comms-negotiation-kind31015", "comms-subprotocol-negotiation-v1"],
-  ["profiles/comms-payload-kind31016", "comms-subprotocol-payload-v1"],
-  ["comms-envelope/owner-stamp-valid", "comms-subprotocol-payload-v1"],
-  ["lists/mute-list-public-roundtrip-v050", "heterodyne-social-mute-list-v1"],
-  ["lists/mute-list-private-items-encrypted-to-self-v050", "heterodyne-social-mute-list-v1"],
   ["lists/private-items-reencrypt-on-rotation", "heterodyne-social-mute-list-v1"],
   ["lists/stale-list-rollback-rejected", "heterodyne-social-mute-list-v1"],
-  ["dm/invite-delegated-device-valid", "heterodyne-comms-double-ratchet-invite-v1"],
-  ["dm/invite-unbound-device-rejected", "heterodyne-comms-double-ratchet-invite-v1"],
-  ["dm/invite-revoked-device-rejected", "heterodyne-comms-double-ratchet-invite-v1"],
-  ["dm/kind1060-outer-message-shape", "heterodyne-comms-double-ratchet-message-v1"],
-  ["dm/repo-relay-refuses-kind1060", "heterodyne-comms-double-ratchet-message-v1"],
-  ["dm/double-ratchet-transcript", "heterodyne-comms-double-ratchet-message-v1"],
 ]);
 
 export function vectorMetadata(vectorId: string): VectorMetadata {
@@ -685,9 +587,6 @@ function referenceFor(vectorId: string, owner: DocumentId): { document: Document
     }
     return { document: "comms", anchor: "comms-marmot-participation" };
   }
-  if (vectorId === "dm/atomic-receive-before-plaintext") {
-    return { document: "comms", anchor: "comms-dm-retention" };
-  }
   if (vectorId === "interop/vanilla-nostr-only-follow") {
     return { document: "social", anchor: "social-following" };
   }
@@ -753,7 +652,6 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
   const anchors: Partial<Record<DocumentId, Record<string, string>>> = {
     core: {
       breadcrumbs: "core-kel-rotation",
-      "session-device": "core-nid-delegation",
       identity: vectorId.startsWith("identity/root-attestation-valid") ? "core-root-attestation" : "core-nid-delegation",
       "identity-doc": "core-identity-discovery",
       keri: "core-kel-primitives",
@@ -806,13 +704,11 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
             ? "comms-public-reader-security"
             : "comms-public-resolution",
       "config-backup": "comms-config-repository",
-      dm: "comms-direct-messages",
       index: "comms-feed-index",
       org: "comms-org-authorization",
       outbox: "comms-retrieval",
       "privacy-tiers": "comms-privacy-tiers",
       "relay-interop": "comms-publishing",
-      "comms-envelope": "comms-envelope",
       "acceptance-gating": "comms-acceptance-hook",
       "one-time-invite": "comms-one-time-invites",
       "credential-continuity": "comms-credential-continuity",
@@ -822,22 +718,12 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
         || vectorId.includes("correction")
         ? "social-agent-policy-receipts"
         : "social-agent-policy-list",
-      bridge: "social-headless-bridge",
       atproto: "social-atproto-resolution",
       discussion: "social-discussion-rooms",
-      config_room: "social-config-room",
-      encryption: "social-matrix-encryption",
-      envelope: "social-matrix-envelopes",
-      "homeserver-exit": "social-homeserver-exit",
       identity: "social-identity-room",
-      index: "social-encrypted-state",
-      interop: "social-vanilla-matrix",
       lists: "social-lists",
       moderation: "social-moderation",
-      "multi-homing": "social-active-room-election",
       outbox: "social-interactions",
-      redundancy: "social-matrix-mirroring",
-      "room-kind": "social-discussion-rooms",
       "social-recovery": "social-recovery-binding",
       versioning: "social-discussion-rooms",
       "acceptance-gating": "social-admission-policy",

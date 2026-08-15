@@ -12,10 +12,10 @@
   "vector_id": "privacy-tiers/tier3-prev-page-hash-mismatch",
   "description": "A Tier 3 index page whose decrypted prev_page_hash does not match the prior page's canonical serialization indicates relay-side page substitution; the chain is broken.",
   "input": {
-    "prior_page_id": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28",
-    "prior_page_canonical_hash": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28",
+    "prior_page_id": "c8af992ddc9b2d8f2a77d211ee0e2c470de084d661bf1f87436e4b88aef73ece",
+    "prior_page_canonical_hash": "c8af992ddc9b2d8f2a77d211ee0e2c470de084d661bf1f87436e4b88aef73ece",
     "current_page_previous_index": {
-      "event_id": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28",
+      "event_id": "c8af992ddc9b2d8f2a77d211ee0e2c470de084d661bf1f87436e4b88aef73ece",
       "prev_page_hash": "9999999999999999999999999999999999999999999999999999999999999999"
     },
     "vector_context": {

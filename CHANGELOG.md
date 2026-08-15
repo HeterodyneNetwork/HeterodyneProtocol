@@ -151,12 +151,10 @@ is reviewed in [PR #23](https://github.com/HeterodyneNetwork/HeterodyneProtocol/
 - Replaced the historical monolith strict mode with composable profile IDs
   for Core, Comms, Control, and Social. The Control strict profile is active
   and claimable when its mandatory conformance requirements are met.
-- Preserved all pre-split normative bytes in
-  [`docs/spec/archive/heterodyne-0.4.0.md`](docs/spec/archive/heterodyne-0.4.0.md)
-  unchanged and added the complete
-  [old-section anchor map](docs/spec/archive/heterodyne-0.4.0-anchor-map.md).
-  The 0.4.0 notes below are historical archive descriptions, not current
-  ownership guidance.
+- Deleted the frozen 0.4.0 monolith archive and its old-section anchor map.
+  Nothing pre-1.0 was ever deployed, so no historical signed bytes need a
+  preserved interpretation. The 0.4.0 notes below are historical changelog
+  entries, not current ownership guidance.
 
 ### Historical 0.4.0 work recorded before the family split
 

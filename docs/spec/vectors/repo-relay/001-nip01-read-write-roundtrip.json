@@ -66,23 +66,25 @@
     "comparison_surface": "nip01_canonical_event_serialization",
     "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225640,1,[[\"client\",\"heterodyne\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"]],\"posted over a repo relay's NIP-01 wire\"]",
     "decoded": {
-      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-      "created_at": 1767225640,
-      "kind": 1,
-      "tags": [
-        [
-          "client",
-          "heterodyne"
+      "event": {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767225640,
+        "kind": 1,
+        "tags": [
+          [
+            "client",
+            "heterodyne"
+          ],
+          [
+            "kel_head",
+            "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+            "0"
+          ]
         ],
-        [
-          "kel_head",
-          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
-          "0"
-        ]
-      ],
-      "content": "posted over a repo relay's NIP-01 wire",
-      "id": "778ed4dd1063851ce5cbfb3fe098934557dbedbb23b68062388d77be783dd428",
-      "sig": "ab112bfd6321706ba4511eb7d046926a03cad18e894d3e45ee9f67e9eec4dc47b963865b088f091627fb3f635d2e44e971c0d410908a10efc9f2448242c53623"
+        "content": "posted over a repo relay's NIP-01 wire",
+        "id": "778ed4dd1063851ce5cbfb3fe098934557dbedbb23b68062388d77be783dd428",
+        "sig": "ab112bfd6321706ba4511eb7d046926a03cad18e894d3e45ee9f67e9eec4dc47b963865b088f091627fb3f635d2e44e971c0d410908a10efc9f2448242c53623"
+      }
     },
     "id": "778ed4dd1063851ce5cbfb3fe098934557dbedbb23b68062388d77be783dd428",
     "sig": "ab112bfd6321706ba4511eb7d046926a03cad18e894d3e45ee9f67e9eec4dc47b963865b088f091627fb3f635d2e44e971c0d410908a10efc9f2448242c53623"

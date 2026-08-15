@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
@@ -40,8 +39,6 @@ export type FamilyDocIssue = {
     | "undeclared-dependency"
     | "bare-normative-link"
     | "missing-cutover-artifact"
-    | "archive-digest-mismatch"
-    | "archive-map-mismatch"
     | "overview-normative-language"
     | "extraction-banner"
     | "noncanonical-decision-reference"
@@ -83,8 +80,6 @@ const EXPLICIT_NORMATIVE =
 const LIST_ITEM = /^\s{0,3}(?:[-+*]|\d+[.)])\s+/;
 const TABLE_ROW = /^\s*\|.*\|\s*$/;
 const WRAPPED_DEPENDENCY_DECLARATION = /^\s*Normative dependencies\s*:\s*$/i;
-const ARCHIVE_SHA256 =
-  "357f4082b3dd82e3870859c654c354106267399ff8589cf7e22894ee2033c83d";
 
 function displayPath(repoRoot: string, path: string): string {
   return relative(repoRoot, path).split(sep).join("/");
@@ -345,30 +340,6 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
   }
 
   return issues;
-}
-
-function githubHeadingAnchors(markdown: string): string[] {
-  const anchors: string[] = [];
-  const counts = new Map<string, number>();
-  let fenced = false;
-  for (const line of markdown.split(/\r?\n/)) {
-    if (/^\s*```/.test(line)) {
-      fenced = !fenced;
-      continue;
-    }
-    if (fenced) continue;
-    const heading = line.match(/^#{1,6}\s+(.+?)\s*#*\s*$/)?.[1];
-    if (!heading) continue;
-    const base = heading
-      .toLowerCase()
-      .replace(/<[^>]*>/g, "")
-      .replace(/[^\p{L}\p{N}\s_-]/gu, "")
-      .replace(/ /g, "-");
-    const duplicate = counts.get(base) ?? 0;
-    counts.set(base, duplicate + 1);
-    anchors.push(`#${base}${duplicate === 0 ? "" : `-${duplicate}`}`);
-  }
-  return anchors;
 }
 
 export type ReleaseManifest = {
@@ -728,68 +699,14 @@ export function writeReleaseManifests(repoRoot: string): string[] {
 
 export function lintFamilyCutover(repoRoot: string): FamilyDocIssue[] {
   const issues: FamilyDocIssue[] = [];
-  const archivePath = resolve(repoRoot, "docs/spec/archive/heterodyne-0.4.0.md");
-  const mapPath = resolve(
-    repoRoot,
-    "docs/spec/archive/heterodyne-0.4.0-anchor-map.md",
-  );
   const overviewPath = resolve(repoRoot, "docs/spec/heterodyne.md");
-  const required = [archivePath, mapPath, overviewPath];
-  for (const path of required) {
-    if (!existsSync(path)) {
-      issues.push({
-        path: displayPath(repoRoot, path),
-        line: 1,
-        code: "missing-cutover-artifact",
-        message: "required family-cutover artifact is missing",
-      });
-    }
-  }
-  if (issues.length > 0) return issues;
-
-  const archive = readFileSync(archivePath, "utf8");
-  const archiveDigest = createHash("sha256").update(archive, "utf8").digest("hex");
-  if (archiveDigest !== ARCHIVE_SHA256) {
-    issues.push({
-      path: displayPath(repoRoot, archivePath),
+  if (!existsSync(overviewPath)) {
+    return [{
+      path: displayPath(repoRoot, overviewPath),
       line: 1,
-      code: "archive-digest-mismatch",
-      message: `expected ${ARCHIVE_SHA256}, got ${archiveDigest}`,
-    });
-  }
-
-  const map = readFileSync(mapPath, "utf8");
-  const expectedOldAnchors = githubHeadingAnchors(archive);
-  const rows = [...map.matchAll(
-    /^\| `(#(?:[^`]+))` \| (Core|Comms|Control|Social) \| `heterodyne:(core|comms|control|social)\/0\.5\.0#([a-z0-9]+(?:-[a-z0-9]+)*)` \|$/gm,
-  )];
-  const mappedAnchors = rows.map((row) => row[1]);
-  const familyDocs = loadFamilyDocuments(repoRoot);
-  const destinations = new Set(
-    familyDocs.flatMap((document) =>
-      document.lines.flatMap((line) =>
-        [...line.matchAll(EXPLICIT_ANCHOR)].map(
-          (match) => `${document.document}:${match[1]}`,
-        ),
-      ),
-    ),
-  );
-  if (
-    !map.includes(`Archive SHA-256: \`${ARCHIVE_SHA256}\``) ||
-    JSON.stringify(mappedAnchors) !== JSON.stringify(expectedOldAnchors) ||
-    new Set(mappedAnchors).size !== expectedOldAnchors.length ||
-    rows.some(
-      (row) =>
-        row[2].toLowerCase() !== row[3] ||
-        !destinations.has(`${row[3]}:${row[4]}`),
-    )
-  ) {
-    issues.push({
-      path: displayPath(repoRoot, mapPath),
-      line: 1,
-      code: "archive-map-mismatch",
-      message: "anchor map must cover every archive heading once with a resolvable owner-qualified destination",
-    });
+      code: "missing-cutover-artifact",
+      message: "the family overview is missing",
+    }];
   }
 
   const overview = readFileSync(overviewPath, "utf8");
@@ -833,7 +750,7 @@ export function lintFamilyCutover(repoRoot: string): FamilyDocIssue[] {
       });
     }
   }
-  for (const document of familyDocs) {
+  for (const document of loadFamilyDocuments(repoRoot)) {
     if (/pre-release extraction draft/i.test(document.lines.join("\n"))) {
       issues.push({
         path: document.displayPath,

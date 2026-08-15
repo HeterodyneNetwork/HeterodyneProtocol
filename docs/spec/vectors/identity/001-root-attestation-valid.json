@@ -8,84 +8,81 @@
     "heterodyne:core/0.5.0#core-root-attestation"
   ],
   "vector_id": "identity/root-attestation-valid",
-  "description": "Verify preserved identity/root-attestation-valid bytes as an archived monolith/0.4.0 form; never restamp or resign them.",
-  "direction": "consume",
+  "description": "Root attestation: kind:31000 signed by the current epoch key, cold_root tag binds the npub.",
   "input": {
-    "source_schema": "monolith/0.4.0",
-    "archived_form_valid": true,
-    "historical_input": {
-      "fixture_persona": "alice",
-      "signer": "epoch_1",
-      "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",
-      "event_template": {
-        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-        "created_at": 1767225600,
-        "kind": 31000,
-        "tags": [
-          [
-            "d",
-            ""
-          ],
-          [
-            "heterodyne",
-            "root"
-          ],
-          [
-            "cold_root",
-            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-          ],
-          [
-            "kel_head",
-            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
-            "0"
-          ]
+    "fixture_persona": "alice",
+    "signer": "epoch_1",
+    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",
+    "event_template": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767225600,
+      "kind": 31000,
+      "tags": [
+        [
+          "d",
+          ""
         ],
-        "content": ""
-      },
-      "vector_context": {
-        "notes": "Per §3.2.1 the root attestation is epoch-key-signed (the cold root is never brought online for it)."
-      }
+        [
+          "heterodyne",
+          "root"
+        ],
+        [
+          "cold_root",
+          "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        ],
+        [
+          "kel_head",
+          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+          "0"
+        ],
+        [
+          "spec_version",
+          "core/0.5.0"
+        ]
+      ],
+      "content": ""
     },
-    "historical_expected_output": {
-      "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225600,31000,[[\"d\",\"\"],[\"heterodyne\",\"root\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"\"]",
-      "decoded": {
-        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-        "created_at": 1767225600,
-        "kind": 31000,
-        "tags": [
-          [
-            "d",
-            ""
-          ],
-          [
-            "heterodyne",
-            "root"
-          ],
-          [
-            "cold_root",
-            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-          ],
-          [
-            "kel_head",
-            "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
-            "0"
-          ]
-        ],
-        "content": "",
-        "id": "7d9c544d18a4c820060d2425f9e4ee74256c960fa26b76dee7cabcd3017fd4d6",
-        "sig": "92c28e7aed7e2f4857c799154a6912fe9e2a0a56052d3cdb5674a655671ba3d3c0d2ca89982b9b4257b7b081212428c732eed4f672993bae85761c0b410be7ee"
-      },
-      "id": "7d9c544d18a4c820060d2425f9e4ee74256c960fa26b76dee7cabcd3017fd4d6",
-      "sig": "92c28e7aed7e2f4857c799154a6912fe9e2a0a56052d3cdb5674a655671ba3d3c0d2ca89982b9b4257b7b081212428c732eed4f672993bae85761c0b410be7ee"
+    "vector_context": {
+      "notes": "Per §3.2.1 the root attestation is epoch-key-signed (the cold root is never brought online for it)."
     }
   },
   "expected_output": {
-    "verdict": "accept",
-    "normalized": {
-      "owner": "monolith/0.4.0",
-      "direction": "verify",
-      "historical_bytes_preserved": true,
-      "restamped": false
-    }
-  }
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225600,31000,[[\"d\",\"\"],[\"heterodyne\",\"root\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"],[\"spec_version\",\"core/0.5.0\"]],\"\"]",
+    "decoded": {
+      "event": {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767225600,
+        "kind": 31000,
+        "tags": [
+          [
+            "d",
+            ""
+          ],
+          [
+            "heterodyne",
+            "root"
+          ],
+          [
+            "cold_root",
+            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+          ],
+          [
+            "kel_head",
+            "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+            "0"
+          ],
+          [
+            "spec_version",
+            "core/0.5.0"
+          ]
+        ],
+        "content": "",
+        "id": "402f5d9027f54812f19ce19700aa72307886df415795aa64bc0791725e6fca13",
+        "sig": "c375af4308d029f83f8a01043a26e7c6095181470faa53d6560757674e0e7e1100d87465aa6e0aa18ff342dd1b1ea72dc2fe2a215f544245e18116bc5819e150"
+      }
+    },
+    "id": "402f5d9027f54812f19ce19700aa72307886df415795aa64bc0791725e6fca13",
+    "sig": "c375af4308d029f83f8a01043a26e7c6095181470faa53d6560757674e0e7e1100d87465aa6e0aa18ff342dd1b1ea72dc2fe2a215f544245e18116bc5819e150"
+  },
+  "direction": "produce"
 }

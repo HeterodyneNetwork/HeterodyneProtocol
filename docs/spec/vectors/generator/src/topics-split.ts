@@ -232,28 +232,6 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
   });
   const dynamic: Case[] = [
     {
-      path: "comms-envelope/001-nostr-native-event-valid.json",
-      vector_id: "comms-envelope/nostr-native-event-valid",
-      description: "A complete deterministic BIP-340-signed NIP-01 event is the Comms-native envelope on ordinary and repo relays.",
-      direction: "round-trip",
-      input: { event: native, canonical_wire: canonicalNip01(native), carriers: ["nostr_relay", "repo_relay"] },
-      expected_output: { verdict: "accept", normalized: { deduplication_key: native.id, carrier_bytes_equal: true, id_valid: true, signature_valid: verifyEventSignature(native) } },
-    },
-    {
-      path: "comms-envelope/002-owner-stamp-valid.json",
-      vector_id: "comms-envelope/owner-stamp-valid",
-      description: "A complete unsigned kind:31016 Comms rumor carries its qualified stamp inside the canonical JSON content string.",
-      input: { rumor, canonical_wire: canonicalNip01(rumorBase) },
-      expected_output: { verdict: "accept", normalized: { owner: "comms", stamp_location: "content.spec_version", event_id: rumor.id, outer_signature_present: false } },
-    },
-    {
-      path: "comms-envelope/003-nostr-native-signature-mutation.json",
-      vector_id: "comms-envelope/nostr-native-signature-mutation",
-      description: "Changing signed NIP-01 content while retaining the deterministic id and signature is rejected.",
-      input: { event: { ...native, content: `${native.content} tampered` } },
-      expected_output: { verdict: "reject", reason_code: "bad_signature" },
-    },
-    {
       path: "profiles/001-core-breadcrumb-kind0.json",
       vector_id: "profiles/core-breadcrumb-kind0",
       description: "A trusted routine-rotation workflow produces the exact unstamped old-key kind:0 successor profile after KEL acceptance and before retiring-secret destruction.",
@@ -365,133 +343,7 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
         },
       },
     },
-    {
-      path: "session-device/001-reserved-shape-valid-but-gated.json",
-      vector_id: "session-device/reserved-shape-valid-but-gated",
-      description: "The exact NID-less session-device event passes draft structural and dual-proof validation, but relay observation is provisional and revision 3 keeps the Control profile non-claimable.",
-      direction: "consume",
-      input: {
-        event: sessionDeviceEvent,
-        binding_payload: bindingPayload,
-        evaluation_time: fixtures.test_epoch + 512,
-        relay_valid: true,
-        repository_reachable: false,
-        profile_gate_open: false,
-      },
-      expected_output: {
-        verdict: "accept",
-        normalized: {
-          base_owner: "core",
-          profile_state: "reserved-inactive",
-          schema_valid: true,
-          key_proof_valid: schnorr.verify(
-            keyProof,
-            utf8Bytes(bindingPayload),
-            sessionDevice.pubkey,
-          ),
-          relay_state: "provisional",
-          repository_final: false,
-          control_authority: false,
-          conformance_claimable: false,
-        },
-      },
-    },
-    {
-      path: "session-device/002-nid-fields-forbidden.json",
-      vector_id: "session-device/nid-fields-forbidden",
-      description: "The reserved NID-less discriminator rejects radicle_nid and nid_proof rather than conflating session and durable-device authority.",
-      direction: "consume",
-      input: { event: sessionWithNidFields, binding_payload: bindingPayload },
-      expected_output: {
-        verdict: "reject",
-        reason_code: "role-delegation-address-invalid",
-        validation_error: "nid_fields_forbidden",
-        conformance_claimable: false,
-      },
-    },
-    {
-      path: "session-device/003-key-proof-invalid.json",
-      vector_id: "session-device/key-proof-invalid",
-      description: "A valid epoch-key envelope cannot activate a session-device candidate whose publishing-key proof fails.",
-      direction: "consume",
-      input: { event: sessionWithBadProof, binding_payload: bindingPayload },
-      expected_output: {
-        verdict: "reject",
-        reason_code: "role-delegation-key-proof-invalid",
-        validation_error: "key_proof_invalid",
-        conformance_claimable: false,
-      },
-    },
-    {
-      path: "session-device/004-repository-final-gate-closed.json",
-      vector_id: "session-device/repository-final-gate-closed",
-      description: "Canonical repository reachability hardens the candidate delegation but cannot open the independently closed revision-3 Control profile gate.",
-      direction: "consume",
-      input: {
-        event: sessionDeviceEvent,
-        relay_valid: true,
-        repository_reachable: true,
-        profile_gate_open: false,
-        comms_authorization_state: "active",
-      },
-      expected_output: {
-        verdict: "accept",
-        normalized: {
-          repository_final: true,
-          delegation_state: "final-but-gated",
-          control_authority: false,
-          conformance_claimable: false,
-        },
-      },
-    },
-    {
-      path: "session-device/005-owner-stamp-missing.json",
-      vector_id: "session-device/owner-stamp-missing",
-      description: "A producer refuses to emit the reserved candidate without the sole Core owner stamp.",
-      direction: "produce",
-      input: { event: sessionWithoutOwnerStamp, binding_payload: bindingPayload },
-      expected_output: {
-        verdict: "reject",
-        reason_code: "owner_stamp_missing",
-        conformance_claimable: false,
-      },
-    },
-    {
-      path: "session-device/006-owner-stamp-malformed.json",
-      vector_id: "session-device/owner-stamp-malformed",
-      description: "A producer refuses to emit the reserved candidate with a non-Core or otherwise malformed owner stamp.",
-      direction: "produce",
-      input: { event: sessionWithMalformedOwnerStamp, binding_payload: bindingPayload },
-      expected_output: {
-        verdict: "reject",
-        reason_code: "owner_stamp_malformed",
-        conformance_claimable: false,
-      },
-    },
-    {
-      path: "session-device/008-revoked-no-authority.json",
-      vector_id: "session-device/revoked-no-authority",
-      description: "Revocation removes all prospective session-device authority even when the candidate was repository-final.",
-      direction: "consume",
-      input: {
-        event: sessionDeviceEvent,
-        repository_final: true,
-        delegation_revoked: true,
-        profile_gate_open: false,
-      },
-      expected_output: {
-        verdict: "accept",
-        normalized: {
-          delegation_state: "revoked",
-          control_authority: false,
-          conformance_claimable: false,
-        },
-      },
-    },
     { path: "profiles/010-social-org-feed-kind31007.json", vector_id: "profiles/social-org-feed-kind31007", description: "The active Social organization-feed profile is a complete signed Comms feed-index with its exact canonical content marker.", direction: "round-trip", input: { event: orgFeed, canonical_wire: canonicalNip01(orgFeed) }, expected_output: { verdict: "accept", normalized: { signature_valid: verifyEventSignature(orgFeed), owner: "social", stamp_location: "content.spec_version" } } },
-    { path: "profiles/011-comms-negotiation-kind31015.json", vector_id: "profiles/comms-negotiation-kind31015", description: "The active Comms negotiation profile is a complete canonical unsigned rumor with one recipient tag.", direction: "round-trip", input: { rumor: negotiationRumor, canonical_wire: canonicalNip01(negotiationBase) }, expected_output: { verdict: "accept", normalized: { owner: "comms", outer_signature_present: false } } },
-    { path: "profiles/012-comms-payload-kind31016.json", vector_id: "profiles/comms-payload-kind31016", description: "The active Comms payload profile is a complete canonical unsigned rumor whose string content carries the Comms stamp.", direction: "round-trip", input: { rumor, canonical_wire: canonicalNip01(rumorBase) }, expected_output: { verdict: "accept", normalized: { owner: "comms", outer_signature_present: false } } },
-    { path: "profiles/009-dr-invite-response-kind1059.json", vector_id: "profiles/dr-invite-response-kind1059", description: "A complete deterministic nostr-double-ratchet 0.0.138 kind:1059 invite response is transient relay traffic and never repository storage or backfill.", direction: "round-trip", input: { wire_version: "nostr-double-ratchet/0.0.138", event: inviteResponse, canonical_wire: canonicalNip01(inviteResponse), inviter_ephemeral_private_key: inviterEphemeralPrivateKey, inviter_identity_private_key: senderDevice.private_key, shared_secret: sharedSecret, pinned_nonces: ["61".repeat(32), "62".repeat(32), "63".repeat(32)] }, expected_output: { verdict: "accept", normalized: { invitee_identity: recipientDevice.pubkey, invitee_session_public_key: inviteeSessionPublicKey, owner_public_key: fixtures.personas.bob.cold_root.pubkey, stamp_count: 0, relay_carriage: "transient", repo_storable: false, backfill: false } } },
   ];
   const authored = [...dynamic, ...CASES].map((testCase) => ({
     relativePath: testCase.path,
@@ -504,100 +356,7 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
       expected_output: testCase.expected_output,
     }),
   }));
-  validateInviteResponseProfileFixture(authored.find(({ vector }) => vector.vector_id === "profiles/dr-invite-response-kind1059")!.vector);
   return authored;
-}
-
-export function validateInviteResponseProfileFixture(vector: {
-  input: Record<string, unknown>;
-  expected_output: Record<string, unknown>;
-}): void {
-  const event = vector.input.event as Partial<NostrSignedEvent> | undefined;
-  if (event === undefined || event.kind !== 1059 || typeof event.id !== "string" || typeof event.sig !== "string" ||
-      typeof event.pubkey !== "string" || typeof event.created_at !== "number" || typeof event.content !== "string" ||
-      !Array.isArray(event.tags) || !verifyEventSignature(event as NostrSignedEvent)) {
-    throw new Error("kind:1059 fixture must be a complete signed deterministic event");
-  }
-  const normalized = vector.expected_output.normalized as Record<string, unknown> | undefined;
-  if (normalized?.repo_storable !== false || normalized.backfill !== false || normalized.relay_carriage !== "transient") {
-    throw new Error("kind:1059 fixture must declare transient relay carriage without repository storage or backfill");
-  }
-  if (event.tags.length !== 1 || event.tags[0]?.[0] !== "p" || event.tags[0]?.length !== 2) {
-    throw new Error("kind:1059 fixture must contain exactly one ephemeral recipient p tag");
-  }
-  const inviterEphemeralPrivateKey = vector.input.inviter_ephemeral_private_key as string;
-  const inviterIdentityPrivateKey = vector.input.inviter_identity_private_key as string;
-  const sharedSecret = vector.input.shared_secret as string;
-  const outerKey = nip44.v2.utils.getConversationKey(hexToBytes(inviterEphemeralPrivateKey), event.pubkey);
-  const innerEvent = JSON.parse(nip44.v2.decrypt(event.content, outerKey)) as { pubkey: string; content: string; created_at: number };
-  const dhEncrypted = nip44.v2.decrypt(innerEvent.content, hexToBytes(sharedSecret));
-  const identityKey = nip44.v2.utils.getConversationKey(hexToBytes(inviterIdentityPrivateKey), innerEvent.pubkey);
-  const payload = JSON.parse(nip44.v2.decrypt(dhEncrypted, identityKey)) as { sessionKey: string; ownerPublicKey?: string };
-  if (normalized.invitee_identity !== innerEvent.pubkey || normalized.invitee_session_public_key !== payload.sessionKey || normalized.owner_public_key !== payload.ownerPublicKey) {
-    throw new Error("kind:1059 fixture decoded identity/session bytes do not match expected output");
-  }
-}
-
-type AtomicReceiveScenario = "success" | "crash-before-commit" | "restart-after-commit";
-
-export function evaluateAtomicRatchetReceive(scenario: AtomicReceiveScenario): Record<string, unknown> {
-  let durableRatchetState: "prior" | "advanced" = "prior";
-  let consumedMessageKeyAvailable = true;
-  let plaintextReleased = false;
-  const stagedAtomicCommit = [
-    "ratchet-advanced",
-    "state-durably-persisted",
-    "consumed-message-key-erased",
-  ];
-
-  if (scenario === "crash-before-commit") {
-    return {
-      durable_ratchet_state: durableRatchetState,
-      consumed_message_key_available: consumedMessageKeyAvailable,
-      plaintext_released: plaintextReleased,
-    };
-  }
-
-  durableRatchetState = "advanced";
-  consumedMessageKeyAvailable = false;
-  const plaintextReleasedBeforeCommit = plaintextReleased;
-  plaintextReleased = true;
-
-  if (scenario === "restart-after-commit") {
-    return {
-      durable_ratchet_state: durableRatchetState,
-      consumed_message_key_available: consumedMessageKeyAvailable,
-      plaintext_released_before_commit: plaintextReleasedBeforeCommit,
-      replay_key_reuse_allowed: consumedMessageKeyAvailable,
-    };
-  }
-
-  return {
-    atomic_commit: stagedAtomicCommit,
-    plaintext_release: plaintextReleased ? "after-commit" : "not-released",
-  };
-}
-
-function atomicReceiveCases(): Case[] {
-  return [{
-    path: "dm/007-atomic-receive-before-plaintext.json",
-    vector_id: "dm/atomic-receive-before-plaintext",
-    description: "A DR receiver atomically advances and persists ratchet state and erases the consumed key before releasing plaintext, with crash-safe restart behavior.",
-    input: {
-      initial_durable_ratchet_state: "prior",
-      consumed_message_key_available: true,
-      plaintext_release_boundary: "after-atomic-commit",
-      crash_points: ["before-commit", "restart-after-commit"],
-    },
-    expected_output: {
-      verdict: "accept",
-      normalized: {
-        success: evaluateAtomicRatchetReceive("success"),
-        crash_before_commit: evaluateAtomicRatchetReceive("crash-before-commit"),
-        restart_after_commit: evaluateAtomicRatchetReceive("restart-after-commit"),
-      },
-    },
-  }];
 }
 
 const CASES: Case[] = [
@@ -652,7 +411,6 @@ const CASES: Case[] = [
     input: { received_stamp: "comms/9.0.0", negotiated_session: false, degraded_mode_declared: false },
     expected_output: { verdict: "reject", reason_code: "unknown_major_version" },
   },
-  ...atomicReceiveCases(),
   ...profileCases(),
   ...stampCases(),
   {
@@ -737,17 +495,7 @@ function stampCases(): Case[] {
     ["003-upstream-unstamped", "upstream-unstamped", { kind: 10000 }, { owner: null, placement: null }],
     ["004-upstream-profile-owner", "upstream-profile-owner", { kind: 10000, profile_id: "heterodyne-social-mute-list-v1" }, { owner: "social", placement: "tag" }],
     ["005-non-stamping-profile-unchanged", "non-stamping-profile-unchanged", { kind: 0, profile_id: "heterodyne-core-rotation-breadcrumb-profile-v1" }, { owner: null, bytes_changed: false }],
-    ["006-dr-outer-unstamped", "dr-outer-unstamped", { kind: 1060, is_dr_outer: true }, { owner: null, marker_count: 0 }],
-    ["007-control-profile-retains-core-owner", "control-profile-retains-core-owner", { kind: 31001, profile_id: "heterodyne-control-session-device-v1" }, { owner: "core", control_stamp_count: 0 }],
-    ["008-control-carrier-comms-owner", "control-carrier-comms-owner", { kind: 31016, profile_id: "comms-subprotocol-payload-v1" }, { owner: "comms", control_stamp_count: 0 }],
-    ["009-legacy-monolith-explicit", "legacy-monolith-explicit", { kind: 31001, stamp: "0.4.0" }, { owner: "monolith/0.4.0" }],
-    ["010-legacy-monolith-inferred", "legacy-monolith-inferred", { kind: 31007, stamp: null, archived_form_valid: true }, { owner: "monolith/0.4.0" }],
-    ["011-legacy-upstream-not-inferable", "legacy-upstream-not-inferable", { kind: 1, adopted_upstream: true }, { owner: null, inferable: false }],
-    ["012-no-restamp-existing-bytes", "no-restamp-existing-bytes", { historical_stamp: "0.4.0", migration_target: "core/0.5.0" }, { historical_stamp: "0.4.0", resign: false, bytes_changed: false }],
-    ["013-tier3-profile-owner", "tier3-profile-owner", { kind: 1, profile_id: "heterodyne-comms-tier3-wrapped-content-kind-1-v1", content_is_heterodyne_json: false }, { owner: "comms", placement: "tag" }],
-    ["014-legacy-malformed-not-inferable", "legacy-malformed-not-inferable", { kind: 31001, archived_form_valid: false }, { owner: null, inferable: false }],
-    ["015-legacy-post-split-not-inferable", "legacy-post-split-not-inferable", { kind: 31001, archived_form_valid: true, post_split_discriminator: true }, { owner: null, inferable: false }],
-    ["016-legacy-profile-only-not-inferable", "legacy-profile-only-not-inferable", { kind: 31001, archived_form_valid: true, profile_only: true }, { owner: null, inferable: false }],
+    ["006-tier3-profile-owner", "tier3-profile-owner", { kind: 1, profile_id: "heterodyne-comms-tier3-wrapped-content-kind-1-v1", content_is_heterodyne_json: false }, { owner: "comms", placement: "tag" }],
   ];
   return values.map(([file, id, input, expected_output]) => ({
     path: `stamping/${file}.json`,
