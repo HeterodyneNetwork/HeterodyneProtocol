@@ -3,7 +3,7 @@
 Document ID: `social`
 
 Social is a section of the Heterodyne specification and is governed by
-`heterodyne:0.5.0#core-document-conventions`, which fixes the family version,
+[`heterodyne:0.5.0#core-document-conventions`](heterodyne-core.md#core-document-conventions), which fixes the family version,
 the registry pin, release status, BCP 14 usage, and the anchor and reference
 forms.
 
@@ -34,10 +34,10 @@ Replies and reactions use the Nostr outbox model:
 - A reply is a NIP-10 event and a reaction is a NIP-25 `kind:7` event written
   to the replier's own Comms outbox. It carries the standard `e`/`p` references
   to the target id and author and is published under
-  `heterodyne:0.5.0#comms-publishing`.
+  [`heterodyne:0.5.0#comms-publishing`](heterodyne-comms.md#comms-publishing).
 - Thread assembly is scatter-gather over repliers' repo relays and ordinary
   relays. A client MUST locally verify every event through
-  `heterodyne:0.5.0#comms-envelope` and MUST deduplicate by event id.
+  [`heterodyne:0.5.0#comms-envelope`](heterodyne-comms.md#comms-envelope) and MUST deduplicate by event id.
 - A full node MAY materialize `xyz.heterodyne.thread` as a Radicle
   Collaborative Object, but a client MUST treat it only as an optimization.
   The verified scatter-gathered events remain authoritative.
@@ -53,9 +53,9 @@ Kind `30024` is a non-indexed draft. Unknown persistent addressable content
 SHOULD default indexed; other unknown kinds SHOULD default non-indexed.
 
 A private reply or reaction MUST use a Marmot conversation under
-`heterodyne:0.5.0#comms-marmot`. If no suitable two-member group exists,
+[`heterodyne:0.5.0#comms-marmot`](heterodyne-comms.md#comms-marmot). If no suitable two-member group exists,
 it uses the persona-inbox bootstrap at
-`heterodyne:0.5.0#comms-marmot-persona-inbox`. The Marmot application
+[`heterodyne:0.5.0#comms-marmot-persona-inbox`](heterodyne-comms.md#comms-marmot-persona-inbox). The Marmot application
 event MAY reference the stable Social asset ID, but the private response is
 not added to the public Social outbox unless the user separately publishes it.
 
@@ -63,7 +63,7 @@ not added to the public Social outbox unless the user separately publishes it.
 ### 2.1 Mixed-tier fan-out and reply inboxes
 
 A Social UI MAY compose one intent across multiple Comms destinations, but it
-MUST preserve `heterodyne:0.5.0#comms-privacy-tiers`: Tier 2 plaintext
+MUST preserve [`heterodyne:0.5.0#comms-privacy-tiers`](heterodyne-comms.md#comms-privacy-tiers): Tier 2 plaintext
 MUST NOT reach a public relay, and Tier 3 MUST remain ciphertext at every
 destination. A client SHOULD warn before a user expands a Tier 2, Tier 3, or
 private-discussion intent to a public destination. The warning never permits
@@ -88,7 +88,7 @@ Social discovery starts only after Core has resolved npub to RID to serving
 node and Comms has located the generic feed/outbox. A follower MUST:
 
 1. resolve the target npub through
-   `heterodyne:0.5.0#core-identity-discovery`;
+   [`heterodyne:0.5.0#core-identity-discovery`](heterodyne-core.md#core-identity-discovery);
 2. read and verify the target's public Comms `kind:31007` indexes and select
    topic feeds;
 3. for Tier 2, establish access through the repository allow list; for Tier 3,
@@ -122,7 +122,7 @@ A client MAY publish a NIP-02 `kind:3` follow list for vanilla interop, but
 MUST NOT require a public follow list. Private follows, feed preferences,
 followed-repository locators, private mutes, and UI preferences are
 Social-owned records. They MUST be encrypted at rest in the config-repository
-profile of `heterodyne:0.5.0#comms-config-repository` or retained in
+profile of [`heterodyne:0.5.0#comms-config-repository`](heterodyne-comms.md#comms-config-repository) or retained in
 local encrypted storage. A followed-repositories record stored through the
 Core keys-repository protection mechanism remains a Social payload; storage
 location does not transfer semantic ownership.
@@ -233,7 +233,7 @@ user's own follows or mutes.
 
 
 Core defines recovery peers, declared witnesses, cached identity material,
-and cold-root re-anchor at `heterodyne:0.5.0#core-recovery`. Social MAY
+and cold-root re-anchor at [`heterodyne:0.5.0#core-recovery`](heterodyne-core.md#core-recovery). Social MAY
 select recovery peers from follows, mutual follows, and friends:
 
 - any follower MAY cache permitted identity material;
@@ -297,7 +297,7 @@ authorization. Social turns those verified inputs into topic subscriptions,
 curated views, community pages, reply counters, moderation views, and
 organization presentation. A Social renderer MUST NOT show an org post or
 index as canonical until it passes
-`heterodyne:0.5.0#comms-org-authorization`.
+[`heterodyne:0.5.0#comms-org-authorization`](heterodyne-comms.md#comms-org-authorization).
 
 A persona MAY operate multiple topic feeds and multiple audience feeds. A
 client SHOULD support topic-selective subscription and MAY present a union as
@@ -348,7 +348,7 @@ profile.
 The profile controls only org/community/editorial presentation. It MUST NOT
 weaken the requirement that both the org post and index be reachable from the
 delegate-threshold-approved canonical feed branch. Any `xyz.radicle.crefs` refinement of editorial refs
-is bounded by `heterodyne:0.5.0#core-threshold-authority`.
+is bounded by [`heterodyne:0.5.0#core-threshold-authority`](heterodyne-core.md#core-threshold-authority).
 
 <a id="social-moderation"></a>
 ## 6. Moderation and editorial gating
@@ -400,7 +400,7 @@ approved within 7-day window” are examples, not normative strings.
 Every moderated community MUST publish a NIP-72 `kind:34550` addressable
 community definition on the Core/Comms backends. It lists each moderator's
 permanent cold root as a wire key per
-`heterodyne:0.5.0#core-wire-keys`:
+[`heterodyne:0.5.0#core-wire-keys`](heterodyne-core.md#core-wire-keys):
 
 ```text
 ['p','<moderator cold-root 64-lowercase-hex>','<relay hint>','moderator']
@@ -473,7 +473,7 @@ that threshold. A client MUST NOT require `kind:4550` in this mode. Conversely,
 it MUST NOT impose branch reachability on a NIP-72-mode view.
 
 Post-hoc removal uses `kind:5` plus a new canonical index omitting the post.
-It changes the live view only, under `heterodyne:0.5.0#core-non-erasure`.
+It changes the live view only, under [`heterodyne:0.5.0#core-non-erasure`](heterodyne-core.md#core-non-erasure).
 
 <a id="social-labels"></a>
 ### 6.5 Reports and labels
@@ -642,7 +642,7 @@ to additional policy personas independently.
 ### 7.5 Web-of-trust and the Comms acceptance hook
 
 Social implements mute and web-of-trust admission only through
-`heterodyne:0.5.0#comms-acceptance-hook`. Authentication and all Comms
+[`heterodyne:0.5.0#comms-acceptance-hook`](heterodyne-comms.md#comms-acceptance-hook). Authentication and all Comms
 cryptographic checks run first. An explicit user decision is an input to a
 fresh Comms hook evaluation, not a Social override: the client MUST first
 recompute the Comms-native outcome with that locally authenticated decision,
@@ -879,7 +879,7 @@ otherwise conforming consumer nonconformant.
 
 
 A `Social` report follows the family requirements in
-`heterodyne:0.5.0#core-conformance`, claims Core+Comms+Social, and implements
+[`heterodyne:0.5.0#core-conformance`](heterodyne-core.md#core-conformance), claims Core+Comms+Social, and implements
 §§1-9. It MUST
 include async replies/reactions, following and transitive discovery,
 cross-persona advertisements, reply inboxes, mixed-tier Social fan-out,
@@ -899,7 +899,7 @@ requirements and vectors are satisfied.
 
 Report contents, byte-exact wire conformance, vector-ID immutability, and
 unknown-version handling are family-wide rules stated once by
-`heterodyne:0.5.0#core-conformance` and `heterodyne:0.5.0#core-versioning`.
+[`heterodyne:0.5.0#core-conformance`](heterodyne-core.md#core-conformance) and [`heterodyne:0.5.0#core-versioning`](heterodyne-core.md#core-versioning).
 Social adds one stamping rule: plain upstream NIP-51 and NIP-72 events remain
 unstamped, and only the exact immutable Social profiles opt into a Social
 stamp.

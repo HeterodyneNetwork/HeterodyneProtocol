@@ -52,7 +52,8 @@ export type FamilyDocIssue = {
     | "unresolved-section-reference"
     | "registry-digest-drift"
     | "unregistered-feature-id"
-    | "unregistered-proof-domain";
+    | "unregistered-proof-domain"
+    | "mislinked-reference";
   message: string;
 };
 
@@ -68,8 +69,18 @@ const QUALIFIED_REFERENCE = new RegExp(
   `heterodyne:((?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?)#([a-z0-9]+(?:-[a-z0-9]+)*)`,
   "g",
 );
-const BARE_FAMILY_LINK =
-  /\]\((?:\.\/)?heterodyne-(core|comms|control|social|workspace)\.md(?:#[^)]+)?\)/i;
+// A normative cross-reference is a clickable link whose text is its own
+// qualified URI: [`heterodyne:<ver>#<anchor>`](<file>#<anchor>).
+const LINKED_QUALIFIED_REFERENCE = new RegExp(
+  "\\[`heterodyne:[^`]+#([a-z0-9-]+)`\\]"
+    + "\\((?:heterodyne-(core|comms|control|social|workspace)\\.md)?#([a-z0-9-]+)\\)",
+  "g",
+);
+// Within a document [12.2](#anchor) is fine; across one, the version has to
+// travel with the reference.
+const CROSS_DOCUMENT_LINK =
+  /\]\((?:\.\/)?heterodyne-(?:core|comms|control|social|workspace)\.md#[^)]+\)/;
+const LOCAL_ANCHOR_LINK = /\]\(#([a-z0-9-]+)\)/g;
 const NONCANONICAL_DECISION_REFERENCE = /\bADR-\d{3}\b|docs\/adr\//;
 const NUMBERED_HEADING = /^#{2,6}\s+(\d+(?:\.\d+)*)\.?\s/;
 const SECTION_REFERENCE = /§(\d+(?:\.\d+)*)/g;
@@ -187,6 +198,7 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
   const anchors = new Map<string, { path: string; line: number }>();
   const documentAnchors = new Set<string>();
   const sections = new Map<DocumentId, Set<string>>();
+  const anchorOwner = new Map<string, DocumentId>();
 
   for (const document of documents) {
     sections.set(
@@ -199,6 +211,7 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
       for (const match of line.matchAll(EXPLICIT_ANCHOR)) {
         const anchor = match[1];
         documentAnchors.add(`${document.document}:${anchor}`);
+        anchorOwner.set(anchor, document.document);
         const existing = anchors.get(anchor);
         if (existing !== undefined) {
           issues.push({
@@ -307,13 +320,43 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
         }
       }
 
-      if (normativeLines.has(index) && BARE_FAMILY_LINK.test(line)) {
+      // The link text carries the version and the target carries the file;
+      // a mismatch between them is a reference that resolves to the wrong
+      // section while still reading as correct.
+      for (const match of line.matchAll(LINKED_QUALIFIED_REFERENCE)) {
+        const [, textAnchor, targetFile, targetAnchor] = match;
+        const expectedFile = anchorOwner.get(textAnchor);
+        if (textAnchor !== targetAnchor) {
+          issues.push({
+            path: document.displayPath,
+            line: lineNumber,
+            code: "mislinked-reference",
+            message: `link text names ${textAnchor} but targets ${targetAnchor}`,
+          });
+        } else if (expectedFile !== undefined
+          && (targetFile ?? document.document) !== expectedFile) {
+          issues.push({
+            path: document.displayPath,
+            line: lineNumber,
+            code: "mislinked-reference",
+            message: `${textAnchor} is owned by ${expectedFile}, not ${targetFile ?? document.document}`,
+          });
+        }
+      }
+
+      // An unqualified cross-document link drops the version.
+      const withoutQualified = line.replace(LINKED_QUALIFIED_REFERENCE, "");
+      const crossesDocuments = CROSS_DOCUMENT_LINK.test(withoutQualified)
+        || [...withoutQualified.matchAll(LOCAL_ANCHOR_LINK)].some(
+          ([, anchor]) => (anchorOwner.get(anchor) ?? document.document) !== document.document,
+        );
+      if (normativeLines.has(index) && crossesDocuments) {
         issues.push({
           path: document.displayPath,
           line: lineNumber,
           code: "bare-normative-link",
           message:
-            "normative family references must use a qualified heterodyne: URI",
+            "a normative cross-document reference must be [`heterodyne:<version>#<anchor>`](<file>#<anchor>)",
         });
       }
     }

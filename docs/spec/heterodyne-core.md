@@ -67,7 +67,7 @@ Generated heading IDs are not stable protocol references.
 
 **Qualified references.** A normative cross-document reference is
 `heterodyne:<semver>#<anchor>`, for example
-`heterodyne:0.5.0#core-root-attestation`. The anchor prefix names the owning
+[`heterodyne:0.5.0#core-root-attestation`](#core-root-attestation). The anchor prefix names the owning
 document, so a reference resolves and layer-checks without naming it twice.
 
 **Layering.** A document may normatively depend only on the documents beneath
@@ -127,7 +127,7 @@ The registry is separately revisioned from the specification: adding or
 promoting an entry does not change the family version. Its current revision
 and entry-set digest are pinned only in
 [`registry/manifest.json`](registry/manifest.json), as
-`heterodyne:0.5.0#core-document-conventions` requires. A conformance claim
+[`heterodyne:0.5.0#core-document-conventions`](#core-document-conventions) requires. A conformance claim
 MUST pin that revision or its immutable entry-set digest.
 
 Core owns the base schemas for `kind:31000` root attestations, `kind:31001`

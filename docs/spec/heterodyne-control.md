@@ -3,7 +3,7 @@
 Document ID: `control`
 
 Control is a section of the Heterodyne specification and is governed by
-`heterodyne:0.5.0#core-document-conventions`, which fixes the family version,
+[`heterodyne:0.5.0#core-document-conventions`](heterodyne-core.md#core-document-conventions), which fixes the family version,
 the registry pin, release status, BCP 14 usage, and the anchor and reference
 forms. Its conformance expression is **Core + Comms conformant + Control
 profile**. Recovery capabilities are separately advertised optional profiles
@@ -57,10 +57,10 @@ required for baseline Control.
 
 The supported Comms-version set is exactly `{heterodyne/0.5.0}`. Control requires
 the standard Marmot group and transport rules at
-`heterodyne:0.5.0#comms-marmot`, the Core full-node metadata at
-`heterodyne:0.5.0#core-full-node-control`, and Comms authorization and
-OIDC rules at `heterodyne:0.5.0#comms-control-registry` and
-`heterodyne:0.5.0#comms-control-token`.
+[`heterodyne:0.5.0#comms-marmot`](heterodyne-comms.md#comms-marmot), the Core full-node metadata at
+[`heterodyne:0.5.0#core-full-node-control`](heterodyne-core.md#core-full-node-control), and Comms authorization and
+OIDC rules at [`heterodyne:0.5.0#comms-control-registry`](heterodyne-comms.md#comms-control-registry) and
+[`heterodyne:0.5.0#comms-control-token`](heterodyne-comms.md#comms-control-token).
 
 Marmot owns KeyPackages, Welcome processing, MLS membership and epochs,
 sender authentication, application encryption, `kind:445` transport,
@@ -73,7 +73,7 @@ are valid under the pinned Marmot profile.
 Registry profile `heterodyne-control-marmot-frame-v1` allocates inner
 application `kind:31017`. It is an unsigned Nostr-shaped application event
 inside MLS and MUST NOT be published or interpreted as a standalone Nostr
-event. Its content is the `heterodyne:0.5.0#core-canonical-json` object
+event. Its content is the [`heterodyne:0.5.0#core-canonical-json`](heterodyne-core.md#core-canonical-json) object
 defined in §5.
 
 <a id="control-authority"></a>
@@ -179,7 +179,7 @@ or direct node address is required.
 ### 4.1 Purpose-bound Control and device invites
 
 Control consumes the provider-independent format at
-`heterodyne:0.5.0#comms-one-time-invites`. A
+[`heterodyne:0.5.0#comms-one-time-invites`](heterodyne-comms.md#comms-one-time-invites). A
 `control-enrollment` redemption creates a standard pairwise Control group and
 bypasses only unsolicited-invitation admission by default. Explicit approval
 and a durable private entitlement remain required.
@@ -351,7 +351,7 @@ call requires a current token.
 
 Nodes check current entitlement on every request rather than requiring a
 distributed Token Status List. Minting and every privileged request are bound
-by `heterodyne:0.5.0#comms-authorization-freshness`. Once a node observes
+by [`heterodyne:0.5.0#comms-authorization-freshness`](heterodyne-comms.md#comms-authorization-freshness). Once a node observes
 revocation, it rejects all associated tokens and terminates the affected group
 locally.
 

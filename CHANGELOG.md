@@ -17,6 +17,18 @@ family map, and the single registry pin is
 
 ### Deduplication and single sources of truth
 
+- Made all 58 normative cross-references clickable. A reference is now
+  ``[`heterodyne:0.5.0#anchor`](heterodyne-<doc>.md#anchor)``, keeping the
+  version in the link text while the target resolves in a rendered document.
+  The lint inverted accordingly: it used to forbid links in normative text,
+  and now requires them and checks that the text anchor, the target anchor,
+  and the anchor's owning document all agree.
+- Defined canonical JSON once in Core section 3.4. "Canonical compact JSON"
+  was used by Comms, Control, and Social without a definition anywhere.
+- Consolidated the role-addressed `kind:31001` contract. Core carries the base
+  tag block; a profile supplies only its namespace, proof domain, additional
+  tags, and semantics.
+
 - Unified every proof-byte construction into one. The family had three
   incompatible ways to build signed bytes: pipe-joined positional strings
   (`heterodyne-nid-binding-v1`, `heterodyne-node-advert-v1`,

@@ -3,7 +3,7 @@
 Document ID: `workspace`
 
 Workspace is a section of the Heterodyne specification and is governed by
-`heterodyne:0.5.0#core-document-conventions`, which fixes the family version,
+[`heterodyne:0.5.0#core-document-conventions`](heterodyne-core.md#core-document-conventions), which fixes the family version,
 the registry pin, release status, BCP 14 usage, and the anchor and reference
 forms.
 
@@ -31,7 +31,7 @@ relays and ordinary Radicle nodes do not interpret Workspace objects.
 <a id="workspace-conventions"></a>
 ## 2. Conventions and data model
 
-Workspace JSON objects follow `heterodyne:0.5.0#core-canonical-json`.
+Workspace JSON objects follow [`heterodyne:0.5.0#core-canonical-json`](heterodyne-core.md#core-canonical-json).
 
 `workspace_id`, persona identifiers, device keys, and signing keys are
 lowercase 64-character hexadecimal secp256k1 x-only public keys. Human-facing
@@ -41,12 +41,12 @@ in a Workspace object. `kel_head`, `policy_head`, `checkpoint_id`,
 digests are lowercase 64-character SHA-256 values. Radicle repository
 identifiers begin with `rad:`. Git object IDs are lowercase 40-character
 SHA-1 values because the adopted Radicle substrate uses that object format;
-`heterodyne:0.5.0#core-security` bounds what that format is trusted for.
+[`heterodyne:0.5.0#core-security`](heterodyne-core.md#core-security) bounds what that format is trusted for.
 
 Every signed object contains `spec_version:"heterodyne/0.5.0"`, its exact
 `object_type`, `workspace_id`, `actor`, `kel_head`, `authority_sequence`,
 `repository_rid`, `repository_head`, and `issued_at`. The signature covers the
-`heterodyne:0.5.0#core-proof-bytes` bytes for domain
+[`heterodyne:0.5.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes) bytes for domain
 `heterodyne-workspace-object-v1`, whose sole bound member `object` is the
 object without its `signature` member. `signature` is a lowercase
 128-character BIP-340 signature.
@@ -60,7 +60,7 @@ Three identifiers in that set are distinct and MUST NOT be conflated:
   and never a Radicle NID.
 - `kel_head` is the accepted KEL head of the persona that authorizes `actor`,
   not the workspace's. A verifier resolves `actor` against that KEL under
-  `heterodyne:0.5.0#core-kel-verification`.
+  [`heterodyne:0.5.0#core-kel-verification`](heterodyne-core.md#core-kel-verification).
 
 `repository_head` is a git object ID and therefore the one 40-character value
 in a signed object; every other digest-shaped member is 64-character SHA-256.
@@ -372,7 +372,7 @@ global deletion.
 
 Authority mutations - grants, invitations, policy changes, key issuance,
 publicization, federation, and governance - use the authorization-view window
-defined by `heterodyne:0.5.0#comms-authorization-freshness`. Workspace adds one
+defined by [`heterodyne:0.5.0#comms-authorization-freshness`](heterodyne-comms.md#comms-authorization-freshness). Workspace adds one
 relaxed window for ordinary code, content, and discussion writes: 86,400
 seconds.
 
@@ -471,7 +471,7 @@ inheritance escalation, and joint-governance capture as explicit threats.
 Workspace feature IDs are allocated in
 [`registry/features.json`](registry/features.json), which is the sole
 authority for the set and for each feature's Core and Comms prerequisites.
-Claimed features resolve under `heterodyne:0.5.0#core-conformance`.
+Claimed features resolve under [`heterodyne:0.5.0#core-conformance`](heterodyne-core.md#core-conformance).
 
 A Workspace claim that also names Control permits an authorized light device
 to request Workspace operations through Control; Control tokens and RPC
