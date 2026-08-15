@@ -73,7 +73,8 @@ are valid under the pinned Marmot profile.
 Registry profile `heterodyne-control-marmot-frame-v1` allocates inner
 application `kind:31017`. It is an unsigned Nostr-shaped application event
 inside MLS and MUST NOT be published or interpreted as a standalone Nostr
-event. Its content is the canonical compact JSON defined in §5.
+event. Its content is the `heterodyne:0.5.0#core-canonical-json` object
+defined in §5.
 
 <a id="control-authority"></a>
 ## 3. Authority and discovery

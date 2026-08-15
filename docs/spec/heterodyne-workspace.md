@@ -31,10 +31,7 @@ relays and ordinary Radicle nodes do not interpret Workspace objects.
 <a id="workspace-conventions"></a>
 ## 2. Conventions and data model
 
-All Workspace JSON objects use UTF-8 JSON and the JSON Canonicalization Scheme
-(JCS). A producer MUST reject duplicate member names, non-integer numbers,
-unknown members, and values outside the object's closed schema before signing.
-A consumer MUST validate the applicable schema before evaluating authority.
+Workspace JSON objects follow `heterodyne:0.5.0#core-canonical-json`.
 
 `workspace_id`, persona identifiers, device keys, and signing keys are
 lowercase 64-character hexadecimal secp256k1 x-only public keys. Human-facing
@@ -52,9 +49,25 @@ Every signed object contains `spec_version:"heterodyne/0.5.0"`, its exact
 `heterodyne:0.5.0#core-proof-bytes` bytes for domain
 `heterodyne-workspace-object-v1`, whose sole bound member `object` is the
 object without its `signature` member. `signature` is a lowercase
-128-character BIP-340 signature. The actor MUST be authoritative at the stated
-KEL head and MUST possess the capability and approval set required by the
-effective policy at the referenced repository head.
+128-character BIP-340 signature.
+
+Three identifiers in that set are distinct and MUST NOT be conflated:
+
+- `workspace_id` is the workspace's own cold root, and its KEL is not
+  referenced by a signed object.
+- `actor` is the exact secp256k1 x-only public key that produced `signature`.
+  It is an epoch key or a delegated device publishing key, never a cold root
+  and never a Radicle NID.
+- `kel_head` is the accepted KEL head of the persona that authorizes `actor`,
+  not the workspace's. A verifier resolves `actor` against that KEL under
+  `heterodyne:0.5.0#core-kel-verification`.
+
+`repository_head` is a git object ID and therefore the one 40-character value
+in a signed object; every other digest-shaped member is 64-character SHA-256.
+
+The actor MUST be authoritative at the stated KEL head and MUST possess the
+capability and approval set required by the effective policy at the referenced
+repository head.
 
 The SHA-256 digest of the complete JCS object including `signature` is its
 object identifier unless a field-specific identifier is defined. Consumers

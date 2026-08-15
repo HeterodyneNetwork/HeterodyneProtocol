@@ -224,8 +224,22 @@ inherits this rule; none restates it.
 Radicle NIDs use the canonical Ed25519 `did:key:z...` encoding and RIDs the
 canonical `rad:z...` encoding, likewise exactly and without normalization.
 
+<a id="core-canonical-json"></a>
+### 3.4 Canonical JSON
+
+Every JSON object this family defines outside a NIP-01 event serializes as
+UTF-8 under RFC 8785 JCS. "Canonical compact JSON" names exactly that
+serialization; no document defines another.
+
+Before signing, a producer MUST reject duplicate member names, non-integer
+numbers where the schema requires integers, unknown members, and any value
+outside the object's closed schema. A consumer MUST validate the applicable
+schema before evaluating authority or acting on the object. Member order is
+fixed by JCS, so a document that shows an object literal is showing the
+canonical order and not imposing a second one.
+
 <a id="core-kel-head"></a>
-### 3.4 Registered integrity tags
+### 3.5 Registered integrity tags
 
 `['kel_head', '<64-lowercase-hex event id>', '<decimal seq>']` names the latest
 accepted KEL event known to the signer. It is advisory and never replaces KEL
@@ -244,7 +258,7 @@ event's `s` MUST equal `seq`. Applicability is:
 compromise-declaring rotation and MUST NOT occur on a routine rotation.
 
 <a id="core-typed-key-references"></a>
-### 3.5 Typed-key references and native proof hooks
+### 3.6 Typed-key references and native proof hooks
 
 Core provides a closed syntax and registration hook for higher documents to
 name cryptographic keys without assigning policy meaning to those names. The
@@ -289,7 +303,7 @@ proof it recomputes the RFC 7638 thumbprint before verifying the protected
 JWS.
 
 <a id="core-proof-bytes"></a>
-#### 3.5.1 Domain-separated proof bytes
+#### 3.6.1 Domain-separated proof bytes
 
 Every Heterodyne proof that is not an ordinary NIP-01 event signature signs
 exactly these bytes. This is the family's only proof-byte construction and no
@@ -325,7 +339,7 @@ bytes, and a positional form gives a verifier no way to reject an unknown or
 missing member.
 
 <a id="core-authority-interfaces"></a>
-### 3.6 Authority and repository interfaces
+### 3.7 Authority and repository interfaces
 
 Core exposes a point-in-time persona/KEL issuer-authority result containing:
 the cold-root persona, accepted KEL head, candidate signing key, authority
@@ -656,7 +670,7 @@ attestations naming different cold roots rather than selecting one silently.
 }
 ```
 
-The NID signs the proof bytes of [§3.5.1](#core-proof-bytes) for domain
+The NID signs the proof bytes of [§3.6.1](#core-proof-bytes) for domain
 `heterodyne-nid-binding-v1` over this claim:
 
 ```json
@@ -947,7 +961,7 @@ and, when it claims browser compatibility, shared clearnet Nostr relay hints.
 A clearnet hint is a transport rendezvous and never authorizes direct
 clearnet access to the full node.
 
-The NID proof signs the proof bytes of [§3.5.1](#core-proof-bytes) for domain
+The NID proof signs the proof bytes of [§3.6.1](#core-proof-bytes) for domain
 `heterodyne-node-advert-v1` over this claim:
 
 ```json

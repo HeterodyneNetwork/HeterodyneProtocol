@@ -370,8 +370,9 @@ boundary.
 The public `d` tag MUST be exactly `["d", "<feed_id>:<page_id>"]`.
 `heterodyne` and `cold_root` are REQUIRED. `rid` SHOULD appear for a
 repo-backed feed; `feed_label` and `retrieval_hints` are OPTIONAL feed
-metadata. When present, `retrieval_hints` contains canonical compact JSON and
-its `archive_url` is interpreted by §6. Ordered `e` tags define the display
+metadata. When present, `retrieval_hints` contains
+`heterodyne:0.5.0#core-canonical-json` and its `archive_url` is interpreted by
+§6. Ordered `e` tags define the display
 order. A profile above
 Comms declares which application events are indexed; absent such a profile,
 persistent authored content SHOULD be indexed and ephemeral metadata SHOULD
