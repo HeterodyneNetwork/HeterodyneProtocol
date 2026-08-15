@@ -404,10 +404,11 @@ approved within 7-day window” are examples, not normative strings.
 
 Every moderated community MUST publish a NIP-72 `kind:34550` addressable
 community definition on the Core/Comms backends. It lists each moderator's
-permanent cold-root npub as:
+permanent cold root as a wire key per
+`heterodyne:0.5.0#core-wire-keys`:
 
 ```text
-['p','<moderator cold-root npub>','<relay hint>','moderator']
+['p','<moderator cold-root 64-lowercase-hex>','<relay hint>','moderator']
 ```
 
 and MAY carry `['approvals_required','<positive integer>']`; absence means 1.
@@ -638,7 +639,8 @@ NIP-51 event.
 
 A policy persona MAY publish community block/allow policy using `kind:10000`,
 `kind:30007`, and `kind:30000`. A community adopts it through `a` tags for
-sets or `['p','<policy npub>','<relay hint>','policy']` in `kind:34550`.
+sets or `['p','<policy cold-root 64-lowercase-hex>','<relay hint>','policy']`
+in `kind:34550`.
 Clients computing that community's view SHOULD apply adopted sources after
 verifying their signatures and current KEL authority. A follower MAY subscribe
 to additional policy personas independently.
@@ -859,77 +861,9 @@ invariant sets.
   "conformance_class": "Social",
   "state": "active",
   "requires_profiles": [
-    "heterodyne-core-strict-v1",
     "heterodyne-comms-strict-v1"
   ],
-  "required_invariants": [
-    "CORE-I-IDENTITY-INTEGRITY",
-    "CORE-I-NID-DELEGATION-DUAL-PROOF",
-    "CORE-I-VERIFY-BEFORE-USE",
-    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
-    "CORE-I-KEY-MATERIAL-AT-REST",
-    "COMMS-I-TIER3-BLIND-CARRIER",
-    "COMMS-I-TIER2-HONESTY",
-    "COMMS-I-CONFIG-AT-REST",
-    "COMMS-I-CLIENT-SIDE-DELIVERY",
-    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
-    "COMMS-I-CLAIM-AUTHENTICITY",
-    "COMMS-I-CLAIM-ATTENUATION",
-    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
-    "COMMS-I-CLAIM-REVOCATION",
-    "COMMS-I-LEDGER-CONFINEMENT",
-    "COMMS-I-ISSUER-KEY-CONFINEMENT",
-    "COMMS-I-MINT-FRESHNESS",
-    "COMMS-I-ISSUER-CONTINUITY",
-    "COMMS-I-CLAIM-RELEASE",
-    "COMMS-I-JWT-TYPE-AUDIENCE",
-    "COMMS-I-STATUS-INTEGRITY",
-    "SOCIAL-I-PRIVATE-STATE-AT-REST",
-    "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH"
-  ]
-}
-```
-
-This profile additionally requires a valid signed event to pass baseline
-verification before Social policy, initiation of subscription or polling for
-a valid `kind:5` deletion within 30 seconds on an active source with retry and
-availability evidence until a terminal condition, and a visible warning when
-a previously met strict requirement becomes unmet. A carrier partition does
-not itself make an otherwise conforming consumer nonconformant.
-
-<!-- fixture:social-strict-profile-v2 -->
-```json
-{
-  "profile_id": "heterodyne-social-strict-v2",
-  "conformance_class": "Social",
-  "state": "active",
-  "requires_profiles": ["heterodyne-comms-strict-v2"],
-  "required_invariants": [
-    "CORE-I-IDENTITY-INTEGRITY",
-    "CORE-I-NID-DELEGATION-DUAL-PROOF",
-    "CORE-I-VERIFY-BEFORE-USE",
-    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
-    "CORE-I-KEY-MATERIAL-AT-REST",
-    "COMMS-I-TIER3-BLIND-CARRIER",
-    "COMMS-I-TIER2-HONESTY",
-    "COMMS-I-CONFIG-AT-REST",
-    "COMMS-I-CLIENT-SIDE-DELIVERY",
-    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
-    "COMMS-I-CLAIM-AUTHENTICITY",
-    "COMMS-I-CLAIM-ATTENUATION",
-    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
-    "COMMS-I-CLAIM-REVOCATION",
-    "COMMS-I-LEDGER-CONFINEMENT",
-    "COMMS-I-ISSUER-KEY-CONFINEMENT",
-    "COMMS-I-MINT-FRESHNESS",
-    "COMMS-I-ISSUER-CONTINUITY",
-    "COMMS-I-CLAIM-RELEASE",
-    "COMMS-I-JWT-TYPE-AUDIENCE",
-    "COMMS-I-STATUS-INTEGRITY",
-    "COMMS-I-PUBLIC-READER-TIER1-ONLY",
-    "COMMS-I-AGENT-ROLE-BINDING",
-    "COMMS-I-AGENT-ATTRIBUTION",
-    "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT",
+  "adds_invariants": [
     "SOCIAL-I-PRIVATE-STATE-AT-REST",
     "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
     "SOCIAL-I-AGENT-POLICY-LOCAL",
@@ -938,9 +872,14 @@ not itself make an otherwise conforming consumer nonconformant.
 }
 ```
 
-`heterodyne-social-strict-v2` inherits the v1 operational obligations and
-additionally requires exact receipt/list binding, subscribed-policy
-transparency, and device-key-scoped remediation.
+Beyond its inherited obligations this profile requires a valid signed event to
+pass baseline verification before Social policy is applied; initiation of
+subscription or polling for a valid `kind:5` deletion within 30 seconds on an
+active source, with retry and availability evidence until a terminal
+condition; exact receipt/list binding; subscribed-policy transparency;
+device-key-scoped remediation; and a visible warning when a previously met
+strict requirement becomes unmet. A carrier partition does not itself make an
+otherwise conforming consumer nonconformant.
 
 <a id="social-conformance"></a>
 ## 10. Conformance

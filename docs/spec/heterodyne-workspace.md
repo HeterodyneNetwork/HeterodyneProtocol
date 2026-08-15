@@ -482,41 +482,19 @@ implementation. It permits verified affiliation presentation and advisory
 moderation signals, but Social follows, labels, or lists do not create
 Workspace authority.
 
-The Workspace strict profile composes the complete Core strict v1 and Comms
-strict v2 invariant membership with all Workspace invariants.
+The Workspace strict profile composes the Comms strict closure, which
+transitively includes Core, with all Workspace invariants.
 
 <!-- fixture:workspace-strict-profile -->
 ```json
 {
   "profile_id": "heterodyne-workspace-strict-v1",
   "conformance_class": "Workspace",
-  "requires_profiles": ["heterodyne-core-strict-v1", "heterodyne-comms-strict-v2"],
-  "required_invariants": [
-    "CORE-I-IDENTITY-INTEGRITY",
-    "CORE-I-NID-DELEGATION-DUAL-PROOF",
-    "CORE-I-VERIFY-BEFORE-USE",
-    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
-    "CORE-I-KEY-MATERIAL-AT-REST",
-    "COMMS-I-TIER3-BLIND-CARRIER",
-    "COMMS-I-TIER2-HONESTY",
-    "COMMS-I-CONFIG-AT-REST",
-    "COMMS-I-CLIENT-SIDE-DELIVERY",
-    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
-    "COMMS-I-CLAIM-AUTHENTICITY",
-    "COMMS-I-CLAIM-ATTENUATION",
-    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
-    "COMMS-I-CLAIM-REVOCATION",
-    "COMMS-I-LEDGER-CONFINEMENT",
-    "COMMS-I-ISSUER-KEY-CONFINEMENT",
-    "COMMS-I-MINT-FRESHNESS",
-    "COMMS-I-ISSUER-CONTINUITY",
-    "COMMS-I-CLAIM-RELEASE",
-    "COMMS-I-JWT-TYPE-AUDIENCE",
-    "COMMS-I-STATUS-INTEGRITY",
-    "COMMS-I-PUBLIC-READER-TIER1-ONLY",
-    "COMMS-I-AGENT-ROLE-BINDING",
-    "COMMS-I-AGENT-ATTRIBUTION",
-    "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT",
+  "state": "active",
+  "requires_profiles": [
+    "heterodyne-comms-strict-v1"
+  ],
+  "adds_invariants": [
     "WORKSPACE-I-NO-AMBIENT-AUTHORITY",
     "WORKSPACE-I-INHERITANCE-NARROWS",
     "WORKSPACE-I-PRIVATE-TOPOLOGY",
@@ -531,8 +509,8 @@ strict v2 invariant membership with all Workspace invariants.
 }
 ```
 
-This exact flattened membership is active and claimable only when every base
-Workspace feature and applicable vector is satisfied.
+The computed closure is active and claimable only when every base Workspace
+feature and applicable vector is satisfied.
 
 <a id="workspace-conformance"></a>
 ## 18. Conformance

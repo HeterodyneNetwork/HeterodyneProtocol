@@ -102,11 +102,12 @@ or digest, and any strict profiles. The stable strict IDs are:
 
 - `heterodyne-core-strict-v1`
 - `heterodyne-comms-strict-v1`
-- `heterodyne-comms-strict-v2`
 - `heterodyne-control-strict-v1`
 - `heterodyne-social-strict-v1`
-- `heterodyne-social-strict-v2`
 - `heterodyne-workspace-strict-v1`
+
+Each profile declares only its prerequisites and the invariants it adds; the
+required set is the transitive closure.
 
 Conformance vectors in [docs/spec/vectors](docs/spec/vectors/) are normative
 for the behavior they cover. Canonical bytes and expected verdicts must match

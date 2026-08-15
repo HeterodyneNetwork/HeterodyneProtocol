@@ -74,21 +74,61 @@ describe("canonical family documentation", () => {
     }
   });
 
-  it("declares complete flattened strict-profile prerequisite membership", () => {
+  it("derives strict-profile membership from prerequisite closures", () => {
     const documents = Object.fromEntries(
       ["core", "comms", "control", "social", "workspace"].map((document) => [
         document,
         read(`docs/spec/heterodyne-${document}.md`),
       ]),
     );
-    expect(findStrictProfileClosureIssues(documents)).toEqual([]);
-    documents.core += `\n<!-- fixture:conflicting-strict-profile -->\n\`\`\`json\n${JSON.stringify({
+    const invariants = loadRegistry(repositoryRoot).security_invariants;
+    expect(findStrictProfileClosureIssues(documents, invariants)).toEqual([]);
+
+    const fixture = (profile: unknown) =>
+      `\n<!-- fixture:extra-strict-profile -->\n\`\`\`json\n${JSON.stringify(profile)}\n\`\`\`\n`;
+    const withFixture = (profile: unknown) =>
+      findStrictProfileClosureIssues(
+        { ...documents, core: documents.core + fixture(profile) },
+        invariants,
+      );
+
+    expect(withFixture({
       profile_id: "heterodyne-core-strict-v1",
       requires_profiles: [],
-      required_invariants: ["CORE-I-IDENTITY-INTEGRITY"],
-    })}\n\`\`\`\n`;
-    expect(findStrictProfileClosureIssues(documents))
-      .toContain("conflicting strict-profile membership: heterodyne-core-strict-v1");
+      adds_invariants: ["CORE-I-IDENTITY-INTEGRITY"],
+    })).toContain("conflicting strict-profile declaration: heterodyne-core-strict-v1");
+
+    expect(withFixture({
+      profile_id: "heterodyne-core-strict-v9",
+      requires_profiles: ["heterodyne-core-strict-v8"],
+      adds_invariants: [],
+    })).toContain(
+      "unknown strict-profile prerequisite: heterodyne-core-strict-v9 -> heterodyne-core-strict-v8",
+    );
+
+    expect(withFixture({
+      profile_id: "heterodyne-core-strict-v9",
+      requires_profiles: ["heterodyne-core-strict-v1"],
+      adds_invariants: ["CORE-I-IDENTITY-INTEGRITY"],
+    })).toContain(
+      "redundant added invariant: heterodyne-core-strict-v9 already inherits CORE-I-IDENTITY-INTEGRITY",
+    );
+
+    expect(withFixture({
+      profile_id: "heterodyne-core-strict-v9",
+      requires_profiles: [],
+      adds_invariants: ["COMMS-I-TIER3-BLIND-CARRIER"],
+    })).toContain(
+      "added invariant is not owned by the declaring document: heterodyne-core-strict-v9 -> COMMS-I-TIER3-BLIND-CARRIER",
+    );
+
+    expect(withFixture({
+      profile_id: "heterodyne-core-strict-v9",
+      requires_profiles: [],
+      adds_invariants: ["CORE-I-NOT-REGISTERED"],
+    })).toContain(
+      "unregistered added invariant: heterodyne-core-strict-v9 -> CORE-I-NOT-REGISTERED",
+    );
   });
 });
 

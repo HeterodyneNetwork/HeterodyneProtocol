@@ -209,8 +209,23 @@ An unqualified or unrecognized owner stamp names no registered owner. A
 consumer MUST NOT infer an owner from the event kind alone, and MUST reject an
 event whose stamp does not resolve to a registered document version.
 
+<a id="core-wire-keys"></a>
+### 3.3 Canonical wire keys
+
+Every NIP-01 `pubkey`, every `p` tag value, every address coordinate, and
+every other Heterodyne wire field naming a Nostr key is an exact 32-byte
+x-only secp256k1 public key encoded as 64 lowercase hexadecimal characters.
+`npub` names only the NIP-19 bech32 presentation encoding: it MAY appear in
+human-readable text and user interfaces, and MUST NOT appear in a wire field.
+A consumer MUST reject an uppercase, bech32, truncated, or otherwise
+non-canonical value rather than normalizing it. Every document in the family
+inherits this rule; none restates it.
+
+Radicle NIDs use the canonical Ed25519 `did:key:z...` encoding and RIDs the
+canonical `rad:z...` encoding, likewise exactly and without normalization.
+
 <a id="core-kel-head"></a>
-### 3.3 Registered integrity tags
+### 3.4 Registered integrity tags
 
 `['kel_head', '<64-lowercase-hex event id>', '<decimal seq>']` names the latest
 accepted KEL event known to the signer. It is advisory and never replaces KEL
@@ -229,7 +244,7 @@ event's `s` MUST equal `seq`. Applicability is:
 compromise-declaring rotation and MUST NOT occur on a routine rotation.
 
 <a id="core-typed-key-references"></a>
-### 3.4 Typed-key references and native proof hooks
+### 3.5 Typed-key references and native proof hooks
 
 Core provides a closed syntax and registration hook for higher documents to
 name cryptographic keys without assigning policy meaning to those names. The
@@ -276,7 +291,7 @@ the exact canonical NID. For a JWK proof it recomputes the RFC 7638 thumbprint
 before verifying the protected JWS.
 
 <a id="core-authority-interfaces"></a>
-### 3.5 Authority and repository interfaces
+### 3.6 Authority and repository interfaces
 
 Core exposes a point-in-time persona/KEL issuer-authority result containing:
 the cold-root persona, accepted KEL head, candidate signing key, authority
@@ -727,7 +742,7 @@ only as an exclusive takeover in which the prior instance is deactivated or
 fenced before the restored instance becomes active.
 
 <a id="core-radicle-group-admission"></a>
-#### 6.1.3 Radicle group admission and host attribution
+#### 6.1.4 Radicle group admission and host attribution
 
 Comms may bind a Marmot routing identifier to a private Radicle repository.
 Core's NID delegation and protected-repository primitives provide the
@@ -1497,7 +1512,7 @@ membership declaration:
   "conformance_class": "Core",
   "state": "active",
   "requires_profiles": [],
-  "required_invariants": [
+  "adds_invariants": [
     "CORE-I-IDENTITY-INTEGRITY",
     "CORE-I-NID-DELEGATION-DUAL-PROOF",
     "CORE-I-VERIFY-BEFORE-USE",
@@ -1515,10 +1530,15 @@ makes the strict profile unmet; it does not silently downgrade a strict claim.
 A claim MUST satisfy every listed invariant at the pinned registry revision
 and every applicable strict vector.
 
-Higher-document strict profiles compose by naming prerequisite profile IDs and
-listing their complete flattened invariant membership. A conforming report
-MUST reject a duplicate profile ID with conflicting membership. Profile IDs
-are stable: changing membership or an obligation requires a new ID.
+A strict profile declares only its prerequisite profile IDs and the
+invariants it adds. Its **required invariant set** is the transitive closure
+of its prerequisites' required sets plus its own `adds_invariants`; the
+declaration is the single source of truth and no document restates the
+flattened set. An `adds_invariants` entry MUST be a registered invariant owned
+by the declaring document and MUST NOT already be inherited. A conformance
+report MUST list the computed closure and MUST reject a duplicate profile ID
+with a conflicting declaration. From 1.0, profile IDs are stable and changing
+a membership or obligation requires a new ID.
 
 <a id="core-security"></a>
 ## 13. Core security model

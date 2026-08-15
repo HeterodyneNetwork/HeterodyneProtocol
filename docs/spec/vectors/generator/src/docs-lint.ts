@@ -37,7 +37,6 @@ export type FamilyDocIssue = {
     | "duplicate-anchor"
     | "unresolved-reference"
     | "forbidden-dependency"
-    | "undeclared-dependency"
     | "bare-normative-link"
     | "missing-cutover-artifact"
     | "overview-normative-language"
@@ -49,7 +48,7 @@ export type FamilyDocIssue = {
     | "ambiguous-nostr-wire-key"
     | "claim-profile-revision-ambiguous"
     | "missing-upstream-kind-allocation"
-    | "release-manifest-mismatch";
+    | "strict-profile-closure-invalid";
   message: string;
 };
 
@@ -331,6 +330,13 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
   for (const message of verifyMarmotArchive(resolve(repoRoot, "docs/spec/external/marmot"))) {
     issues.push({ path: "docs/spec/external/marmot/manifest.json", line: 1, code: "marmot-archive-invalid", message });
   }
+  const strictProfileIssues = findStrictProfileClosureIssues(
+    Object.fromEntries(documents.map(({ document, lines }) => [document, lines.join("\n")])),
+    registry.security_invariants,
+  );
+  for (const message of strictProfileIssues) {
+    issues.push({ path: "docs/spec/heterodyne-core.md", line: 1, code: "strict-profile-closure-invalid", message });
+  }
 
   return issues;
 }
@@ -377,11 +383,12 @@ export function findInvariantEvidenceIssues(
 type StrictProfileFixture = {
   profile_id: string;
   requires_profiles: string[];
-  required_invariants: string[];
+  adds_invariants: string[];
 };
 
 export function findStrictProfileClosureIssues(
   documents: Record<string, string>,
+  registeredInvariants?: readonly { id: string; owner: DocumentId }[],
 ): string[] {
   const profiles = new Map<string, StrictProfileFixture>();
   const issues: string[] = [];
@@ -396,35 +403,69 @@ export function findStrictProfileClosureIssues(
         continue;
       }
       const prior = profiles.get(profile.profile_id);
-      if (prior !== undefined
-        && canonicalJson(prior.required_invariants) !== canonicalJson(profile.required_invariants)) {
-        issues.push(`conflicting strict-profile membership: ${profile.profile_id}`);
-      } else {
-        profiles.set(profile.profile_id, profile);
-      }
-      if (new Set(profile.required_invariants).size !== profile.required_invariants.length) {
-        issues.push(`duplicate invariant membership: ${profile.profile_id}`);
-      }
-    }
-  }
-  for (const profile of profiles.values()) {
-    const membership = new Set(profile.required_invariants);
-    for (const prerequisiteId of profile.requires_profiles) {
-      const prerequisite = profiles.get(prerequisiteId);
-      if (prerequisite === undefined) {
-        issues.push(`unknown strict-profile prerequisite: ${profile.profile_id} -> ${prerequisiteId}`);
+      if (prior !== undefined && canonicalJson(prior) !== canonicalJson(profile)) {
+        issues.push(`conflicting strict-profile declaration: ${profile.profile_id}`);
         continue;
       }
-      for (const invariant of prerequisite.required_invariants) {
-        if (!membership.has(invariant)) {
-          issues.push(`incomplete flattened membership: ${profile.profile_id} missing ${invariant}`);
-        }
+      if (new Set(profile.adds_invariants).size !== profile.adds_invariants.length) {
+        issues.push(`duplicate added invariant: ${profile.profile_id}`);
+      }
+      profiles.set(profile.profile_id, profile);
+    }
+  }
+
+  // The required set is the transitive closure of prerequisites plus the
+  // profile's own additions; nothing restates a flattened list.
+  const closures = new Map<string, Set<string>>();
+  const visiting = new Set<string>();
+  const closureOf = (id: string): Set<string> => {
+    const cached = closures.get(id);
+    if (cached !== undefined) return cached;
+    if (visiting.has(id)) {
+      issues.push(`strict-profile prerequisite cycle: ${id}`);
+      return new Set();
+    }
+    visiting.add(id);
+    const profile = profiles.get(id);
+    const required = new Set<string>();
+    for (const prerequisiteId of profile?.requires_profiles ?? []) {
+      if (!profiles.has(prerequisiteId)) {
+        issues.push(`unknown strict-profile prerequisite: ${id} -> ${prerequisiteId}`);
+        continue;
+      }
+      for (const invariant of closureOf(prerequisiteId)) required.add(invariant);
+    }
+    for (const invariant of profile?.adds_invariants ?? []) {
+      if (required.has(invariant)) {
+        issues.push(`redundant added invariant: ${id} already inherits ${invariant}`);
+      }
+      required.add(invariant);
+    }
+    visiting.delete(id);
+    closures.set(id, required);
+    return required;
+  };
+
+  const owners = new Map(
+    (registeredInvariants ?? []).map(({ id, owner }) => [id, owner]),
+  );
+  for (const profile of profiles.values()) {
+    closureOf(profile.profile_id);
+    if (registeredInvariants === undefined) continue;
+    const declaringOwner = /^heterodyne-([a-z]+)-strict-/.exec(profile.profile_id)?.[1];
+    for (const invariant of profile.adds_invariants) {
+      const owner = owners.get(invariant);
+      if (owner === undefined) {
+        issues.push(`unregistered added invariant: ${profile.profile_id} -> ${invariant}`);
+      } else if (owner !== declaringOwner) {
+        issues.push(
+          `added invariant is not owned by the declaring document: ${profile.profile_id} -> ${invariant}`,
+        );
       }
     }
   }
   return issues.sort();
 }
-
 export function lintReleaseReadiness(repoRoot: string): FamilyDocIssue[] {
   const issues: FamilyDocIssue[] = [];
   const overviewPath = resolve(repoRoot, "docs/spec/heterodyne.md");

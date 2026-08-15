@@ -41,6 +41,9 @@ family map, and the single registry pin is
 - Qualified references are now `heterodyne:<semver>#<anchor>`. The anchor
   prefix already names the owning document, so a reference no longer names it
   twice, and the layering check reads the prefix.
+- Strict profiles now declare only their prerequisites and the invariants they
+  add. The required set is the transitive closure, so the flattened lists are
+  no longer restated seven times across five documents.
 
 ### Historical decision records
 
@@ -170,10 +173,10 @@ is reviewed in [PR #23](https://github.com/HeterodyneNetwork/HeterodyneProtocol/
 - Registered the `comms.key-claims.v1`, `comms.private-claim-ledger.v1`,
   `comms.oidc-jwt-projection.v1`, and `comms.token-status-list-draft-21.v1`
   features; every cross-document prerequisite resolves within the registry.
-- Added immutable strict-v2 Comms and Social profiles for the ADR-035/036
-  invariants. Corrected `heterodyne-control-strict-v1` during the mutable 0.x
-  phase to its complete 27-invariant flattened Core, Comms, and Control
-  membership.
+- Folded the ADR-035/036 invariants into the Comms and Social strict
+  profiles, replacing the strict-v2 pair. Profile IDs become immutable at 1.0,
+  so during 0.x the additions belong in the existing ID rather than a second
+  one restating 21 inherited invariants.
 - Replaced the historical monolith strict mode with composable profile IDs
   for Core, Comms, Control, and Social. The Control strict profile is active
   and claimable when its mandatory conformance requirements are met.

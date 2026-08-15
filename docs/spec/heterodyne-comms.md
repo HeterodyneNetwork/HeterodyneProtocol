@@ -137,11 +137,6 @@ The replaceable `kind:31012` roster uses `d = key_id`, the
 tag per recipient. It MUST be epoch-key signed and KEL-validated. A sensitive
 roster MAY instead be carried inside a Tier 3 encrypted object.
 
-Every NIP-01 `pubkey`, `p` tag, and address coordinate in this section is an
-exact 32-byte x-only public key encoded as 64 lowercase hexadecimal
-characters. `npub` means only the NIP-19 bech32 presentation encoding and MUST
-NOT occur in these wire fields.
-
 Encrypting the roster does not create complete membership privacy.
 Recipient-addressed `kind:31011` events on public carriers still expose clear
 recipient and generation linkage. This release defines no membership-private
@@ -2034,55 +2029,10 @@ invariant membership is exact:
   "profile_id": "heterodyne-comms-strict-v1",
   "conformance_class": "Core+Comms",
   "state": "active",
-  "requires_profiles": ["heterodyne-core-strict-v1"],
-  "required_invariants": [
-    "CORE-I-IDENTITY-INTEGRITY",
-    "CORE-I-NID-DELEGATION-DUAL-PROOF",
-    "CORE-I-VERIFY-BEFORE-USE",
-    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
-    "CORE-I-KEY-MATERIAL-AT-REST",
-    "COMMS-I-TIER3-BLIND-CARRIER",
-    "COMMS-I-TIER2-HONESTY",
-    "COMMS-I-CONFIG-AT-REST",
-    "COMMS-I-CLIENT-SIDE-DELIVERY",
-    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
-    "COMMS-I-CLAIM-AUTHENTICITY",
-    "COMMS-I-CLAIM-ATTENUATION",
-    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
-    "COMMS-I-CLAIM-REVOCATION",
-    "COMMS-I-LEDGER-CONFINEMENT",
-    "COMMS-I-ISSUER-KEY-CONFINEMENT",
-    "COMMS-I-MINT-FRESHNESS",
-    "COMMS-I-ISSUER-CONTINUITY",
-    "COMMS-I-CLAIM-RELEASE",
-    "COMMS-I-JWT-TYPE-AUDIENCE",
-    "COMMS-I-STATUS-INTEGRITY"
-  ]
-}
-```
-
-A `heterodyne-comms-strict-v1` implementation MUST meet
-`heterodyne-core-strict-v1`, MUST present the Tier 2 plaintext-on-allowed-seeds
-warning before publication, and MUST retain no retired message keys after the
-Comms deletion points. Its capability advertisement MUST contain both profile
-IDs. An implementation missing either condition MUST omit the Comms profile.
-
-The later additions require a new profile ID; the v1 declaration above is
-unchanged. `heterodyne-comms-strict-v2` has this exact membership:
-
-<!-- fixture:comms-strict-profile-v2 -->
-```json
-{
-  "profile_id": "heterodyne-comms-strict-v2",
-  "conformance_class": "Core+Comms",
-  "state": "active",
-  "requires_profiles": ["heterodyne-core-strict-v1"],
-  "required_invariants": [
-    "CORE-I-IDENTITY-INTEGRITY",
-    "CORE-I-NID-DELEGATION-DUAL-PROOF",
-    "CORE-I-VERIFY-BEFORE-USE",
-    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
-    "CORE-I-KEY-MATERIAL-AT-REST",
+  "requires_profiles": [
+    "heterodyne-core-strict-v1"
+  ],
+  "adds_invariants": [
     "COMMS-I-TIER3-BLIND-CARRIER",
     "COMMS-I-TIER2-HONESTY",
     "COMMS-I-CONFIG-AT-REST",
@@ -2107,11 +2057,14 @@ unchanged. `heterodyne-comms-strict-v2` has this exact membership:
 }
 ```
 
-The v2 profile requires every v1 operational obligation plus the public-reader
-Tier boundary and all §15 role, token, attribution, no-fallback, and
-confinement obligations. It MUST advertise `heterodyne-core-strict-v1` and
-`heterodyne-comms-strict-v2`; it need not advertise the superseded Comms v1
-profile.
+A `heterodyne-comms-strict-v1` implementation MUST meet every inherited Core
+obligation, MUST present the Tier 2 plaintext-on-allowed-seeds warning before
+publication, MUST retain no retired message keys after the Comms deletion
+points, MUST hold the public-reader Tier boundary, and MUST meet all
+`heterodyne:0.5.0#comms-agent-authorship` role, token, attribution,
+no-fallback, and confinement obligations. Its capability advertisement MUST
+name both profile IDs. An implementation missing any condition MUST omit the
+Comms profile.
 
 <a id="comms-conformance"></a>
 ## 17. Conformance
@@ -2132,16 +2085,12 @@ pass every public-reader and applicable Core vector, and report reduced
 assurance when Tor or repo confirmation is unavailable. It MUST NOT claim this
 feature after rendering Tier 2 or Tier 3 as public content.
 
-A report claiming `heterodyne-comms-strict-v1` MUST include the flattened
-membership above, the Core prerequisite result, the Tier 2 warning result,
-and every applicable strict-vector result. It MUST NOT claim the profile if
-any item is missing.
-
-A report claiming `heterodyne-comms-strict-v2` MUST include its exact flattened
-membership, Core prerequisite, inherited v1 operational evidence, and every
-applicable public-reader and agent-authorship vector result. An implementation
-that exposes an automated publication path outside §15 MUST NOT claim Comms
-conformance or either Comms strict profile.
+A report claiming `heterodyne-comms-strict-v1` MUST include the computed
+closure, the Core prerequisite result, the Tier 2 warning result, and every
+applicable strict, public-reader, and agent-authorship vector result. It MUST
+NOT claim the profile if any item is missing. An implementation that exposes
+an automated publication path outside §15 MUST NOT claim Comms conformance or
+the Comms strict profile.
 
 No conforming report may list a §8.2 credential-continuity draft schema as an
 active wire profile, feature, requirement, or strict-profile obligation. The
