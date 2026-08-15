@@ -1,10 +1,20 @@
 # Conformance Harness Independence Design
 
 **Date:** 2026-08-15
-**Status:** Approved for implementation planning
+**Status:** Approved for implementation planning; amended 2026-08-15 after the
+per-document versioning machinery was deleted
 **Protocol owners:** Core (registry and reason codes only)
-**Registry target:** revision 9
+**Registry target:** revision 10
 **Decision record:** ADR-045
+
+> **Amendment.** This design was written against five per-document version
+> lineages, per-document release manifests, and a `registry/history/` snapshot
+> chain. All three are gone: there is one family version `heterodyne/0.5.0`,
+> one registry pin in `registry/manifest.json`, and no history directory until
+> it restarts at 1.0. The gate rules and key forms below are corrected for
+> that. The `fixtures.json` corrections this design specified are already
+> applied, and seven structural checks landed in `docs-lint.ts` ahead of the
+> harness; see "Already live" below.
 
 ## Goal
 
@@ -56,7 +66,7 @@ means the gates and the future interoperability kit are the same program.
 ## Scope
 
 In scope: a new independent conformance package, its gate suite, the ratchet
-mechanism, registry revision 9 for four reason codes, the minimal Core prose
+mechanism, registry revision 10 for four reason codes, the minimal Core prose
 edits that revision requires, the data corrections needed to keep day-one
 baselines small, and the patch-time CI gate on both intake paths.
 
@@ -79,7 +89,7 @@ import path to `docs/spec/vectors/generator/`. Two layers.
 ### Corpus gates
 
 Pure static analysis over repository artifacts: vectors, registry, schemas,
-release manifests, and specification markdown. No subject, no cryptography, no
+and specification markdown. No subject, no cryptography, no
 network. Each gate is a module exporting a single function from artifact paths
 to a sorted array of stable failure keys.
 
@@ -124,11 +134,11 @@ Structural gates over repository artifacts:
 
 | Gate | Rule | Day-one baseline |
 |---|---|---|
-| G1 anchor-resolution | every vector `spec_ref` resolves to a real `<a id>` in that document at that version | 3 |
+| G1 anchor-resolution | every vector `spec_ref` resolves to a real `<a id>` in the document its anchor prefix names | 3 |
 | G2 reason-code closure | every `expected_output.reason_code` is registered, unconditionally | 0 after this track |
 | G3 invariant completeness | every registered invariant appears in at least one strict profile | 12 |
 | G4 anchor coverage | every normative anchor has at least one vector | 83 |
-| G5 fixtures consistency | `registry_revision` matches `manifest.json`; `document_versions` matches `family.ts`; no key outside a declared allowlist | 0 after this track |
+| G5 fixtures consistency | `spec_version` matches `family.ts`; no key outside a declared allowlist | 0 after this track |
 | G6 dead vocabulary | registered reason codes exercised by no vector | 54 |
 | G7 orphan schemas | every schema file bound by specification prose or a vector | 36 |
 
@@ -177,7 +187,7 @@ unrelated edits do not churn them:
 | G1 | `<vector_id> :: <spec_ref>` |
 | G2 | `<vector_id> :: <reason_code>` |
 | G3 | `<invariant_id>` |
-| G4 | `heterodyne:<document>/<version>#<anchor>` |
+| G4 | `heterodyne:<version>#<anchor>` |
 | G5 | `<json pointer>` |
 | G6 | `<reason_code>` |
 | G7 | `<repository-relative schema path>` |
@@ -199,7 +209,7 @@ today: `conformance/report.json`, which later becomes the report a third party
 submits, and `conformance/DEBT.md`, a human-readable table of outstanding debt
 per gate.
 
-## Registry revision 9
+## Registry revision 10
 
 Four Core-owned reason codes, snake_case to match Core's existing convention:
 
@@ -222,33 +232,50 @@ the bump carries prose. All edits are in Core:
 - §3.1 names `nip01_raw_mismatch` as the rejection code.
 - §4.3.1 names the three breadcrumb codes in the sentence already enumerating
   those refusal conditions.
-- The registry revision becomes `9` at the document header, §3, the §12.1
-  capability example, and §14. This pulls track 1's registry-drift finding
-  forward, because those four sites currently read `8`, `6`, `7`, and `8`, and
-  bumping one while leaving the others would worsen the contradiction.
+- The revision bump is now a one-file edit. The four disagreeing sites this
+  design set out to reconcile - the document header, §3, the §12.1 capability
+  example, and §14, reading `8`, `6`, `7`, and `8` - no longer exist: no
+  document states the revision, and `registry-author` recomputes
+  `manifest.json`. The §12.1 example still carries the entry-set digest, which
+  `registry-digest-drift` reconciles.
 
 ### Mechanical sweep
 
-`registry/history/9.json`; `registry/manifest.json` revision and recomputed
-`entry_set_sha256`; the registry-revision header of all five documents; all
-five release manifests; the `registry_revision` field of every vector;
-`vectors/fixtures.json`; and the coverage manifest. G5 and the vector-metadata
-gate police this sweep from then on.
+Superseded. The sweep this design specified covered artifacts that no longer
+exist: `registry/history/9.json`, the registry-revision header of all five
+documents, five release manifests, and a `registry_revision` field on every
+vector. What remains is `registry/manifest.json` (revision and recomputed
+`entry_set_sha256`), the digest in Core's capability example, and the coverage
+manifest. `registry-digest-drift` now polices the second against the first.
 
 ## Data corrections
 
-`fixtures.ts`, which produces `fixtures.json`: set `registry_revision` to 9,
-add `workspace: "0.1.0"` to `document_versions`, and delete `matrix_rooms`.
-Within `category_keysets`, delete only provably dead entries — `config_room`
-appears retired, `discussion` is likely still consumed by `vectors/discussion/*`
-— confirming each by reference search before removal. G5's allowlist enforces
-the boundary afterward.
+Applied. `fixtures.json` carries `spec_version` and `vector_schema_version` in
+place of `registry_revision` and `document_versions`, and `matrix_rooms` is
+gone along with the rest of the room architecture. The three dangling anchors
+were resolved as predicted except that `identity/identity-room-full-state` was
+de-Matrixed and kept rather than retired, because it still covers a live
+normative requirement.
 
-The three dangling anchors are decided per vector, repointing where the
-behaviour still exists and retiring where the vector only tested the deleted
-room architecture. Expected outcome: `discussion/reaction-reply-bare-not-indexed`
-repoints to `social-interactions`; `versioning/unknown-room-kind-tolerance`
-repoints to `core-versioning`; `identity/identity-room-full-state` retires.
+## Already live
+
+Seven structural checks landed in `docs-lint.ts` before the harness, each
+failing `family-check` today rather than entering a baseline:
+
+| Check | Rule |
+|---|---|
+| `unresolved-reference` | a qualified reference resolves to a real anchor and respects layering |
+| `mislinked-reference` | a link's text anchor, target anchor, and owning document agree |
+| `unresolved-section-reference` | a numeric section reference names a real heading |
+| `registry-digest-drift` | the digest in Core's capability example equals `manifest.json` |
+| `unregistered-feature-id` | a cited feature ID is allocated |
+| `unregistered-proof-domain` | a cited proof domain is allocated, and an allocated one is specified |
+| `strict-profile-closure-invalid` | prerequisites resolve, additions are registered and owned, nothing is inherited twice |
+
+These overlap G1 and G5 and reduce their day-one baselines. The harness still
+owns them independently: `docs-lint.ts` is part of the generator, and the
+point of this track is a checker that does not share code with the thing it
+checks.
 
 ## Patch acceptance gate
 
@@ -328,8 +355,8 @@ Beyond per-gate unit tests:
 | `scripts/conformance-ci.sh` | single gate definition |
 | `.radicle/native.yaml` | Radicle entry point |
 | `.github/workflows/conformance.yml` | GitHub entry point |
-| `docs/spec/registry/` | revision 9, four new reason codes, history snapshot |
-| `docs/spec/heterodyne-core.md` | §3.1, §4.3.1, and four revision sites |
+| `docs/spec/registry/` | revision 10, four new reason codes |
+| `docs/spec/heterodyne-core.md` | §3.1 and §4.3.1 |
 | `AGENTS.md` | third verification command, delegate merge rule |
 
 ## Non-goals
