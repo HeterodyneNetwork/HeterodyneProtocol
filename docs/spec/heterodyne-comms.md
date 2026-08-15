@@ -287,9 +287,8 @@ all valid ids as opaque.
 On rotation the publisher MUST create the new branch and force-delete the
 retired ref from its signed refs. It MAY re-encrypt retained history, producing
 new events and ids. Cooperating seeds SHOULD reclaim unreachable objects.
-This scrub is cooperative hygiene, not erasure: offline or hostile seeds and
-ordinary relays may retain ciphertext indefinitely, and clients MUST NOT claim
-otherwise.
+This scrub is cooperative hygiene, not erasure, under
+`heterodyne:0.5.0#core-non-erasure`.
 
 Individual deletion uses Nostr `kind:5` plus an updated feed index. It signals
 intent, not erasure. Live history MUST NOT be rewritten; deletion of a whole
@@ -402,8 +401,8 @@ from the delegate-threshold-approved canonical `defaultBranch` before being
 canonical. A lone org epoch-key holder MUST NOT bypass threshold governance by
 publishing a valid signature only to relays; failure is
 `not_canonical_branch_reachable`. For a single-delegate persona this reduces
-to ordinary signature verification. Per-ref `xyz.radicle.crefs` MAY refine
-authorization, but baseline canonicity MUST NOT depend on it.
+to ordinary signature verification, under
+`heterodyne:0.5.0#core-threshold-authority`.
 
 This rule applies uniformly to org-owned Comms posts and feed indexes; their
 threshold authorization is not a presentation-layer option.
@@ -953,8 +952,7 @@ Conforming clients stop requesting or serving it and garbage-collect local
 objects where supported. NIP-40 expiration inside an exact Marmot event
 remains unchanged; repository retention complements it.
 
-Expiration is not erasure. Independent peers, Git objects, exports, and
-backups may survive. Protocol and UI language MUST state this limitation.
+Expiration is not erasure, under `heterodyne:0.5.0#core-non-erasure`.
 
 <a id="comms-marmot-persona-inbox"></a>
 ### 7.11 Persona repository inbox and first contact
@@ -1819,45 +1817,29 @@ roles MAY isolate a newsletter, aggregator, moderator, or other automation
 pipeline.
 
 The registry defines the non-stamping
-`heterodyne-comms-agent-signing-delegation-v1` profile on Core
-`kind:31001`. Its discriminator is
-`tag:d=agent:<role-id>;tags:key_proof,radicle_nid,nid_proof`. `role-id` is
-exactly 32 random bytes encoded as 64 lowercase hexadecimal characters. The
-event retains the sole Core owner and `heterodyne/0.5.0` stamp and carries:
+`heterodyne-comms-agent-signing-delegation-v1` profile on the Core
+role-addressed delegation extension at `heterodyne:0.5.0#core-nid-delegation`.
+Its discriminator is
+`tag:d=agent:<role-id>;tags:key_proof,radicle_nid,nid_proof`. Comms supplies
+only the four items that extension requires.
 
-```text
-["d", "agent:<role-id>"]
-["heterodyne", "delegation"]
-["radicle_nid", "<hosting full-node NID>"]
-["publishing_key", "<agent-signing secp256k1 public key>"]
-["cold_root", "<persona cold-root hex>"]
-["nid_proof", "<hosting NID Ed25519 proof>"]
-["key_proof", "<agent-key BIP-340 proof>"]
-["kel_head", "<accepted KEL event id>", "<decimal sequence>"]
-["valid_until", "<empty or decimal Unix time>"]
-["spec_version", "heterodyne/0.5.0"]
-```
+**Namespace.** `agent`. `role-id` is exactly 32 random bytes encoded as 64
+lowercase hexadecimal characters.
 
-The hosting NID and agent key both sign the proof bytes of
-`heterodyne:0.5.0#core-proof-bytes` for domain
-`heterodyne-agent-signing-binding-v1` over this claim:
+**Proof domain.** Domain `heterodyne-agent-signing-binding-v1`, whose claim binds
+`cold_root`, `nid`, `publishing_key`, and `role_id`. The hosting NID and the
+agent key each sign those bytes independently.
 
-```json
-{
-  "cold_root": "<cold-root-hex>",
-  "nid": "<nid>",
-  "publishing_key": "<publishing-key>",
-  "role_id": "<role-id>"
-}
-```
+**Additional tags.** `radicle_nid` carrying the hosting full-node NID, and
+`nid_proof` carrying that NID's Ed25519 proof, inserted after `heterodyne` and
+before `publishing_key`. Each appears exactly once. Both proofs are REQUIRED;
+the Core extension's `key_proof` is the agent key's BIP-340 proof over the
+same bytes.
 
-The epoch-key outer signature covers the same binding. Acceptance requires the
-outer epoch signature, NID Ed25519 proof, agent-key BIP-340 proof, exact role
-address, current KEL authority, valid expiry, and ordinary Core repo finality.
-A failure returns the applicable registered
-`role-delegation-address-invalid`,
-`role-delegation-key-proof-invalid`, `expired_delegation`, or
-`provisional_not_final` result.
+**Semantics.** The role authorizes automated publication for the persona under
+`heterodyne:0.5.0#comms-agent-attribution` and nothing else. Acceptance
+additionally requires ordinary Core repo finality, returning
+`provisional_not_final` while unmet.
 
 Replacing the delegation at the same `agent:<role-id>` address rotates only
 that role's device key. The prior key remains historically attributable but

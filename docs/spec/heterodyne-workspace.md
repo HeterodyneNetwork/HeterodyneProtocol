@@ -43,7 +43,8 @@ in a Workspace object. `kel_head`, `policy_head`, `checkpoint_id`,
 `relationship_id`, `grant_id`, `revocation_id`, `resource_id`, and envelope
 digests are lowercase 64-character SHA-256 values. Radicle repository
 identifiers begin with `rad:`. Git object IDs are lowercase 40-character
-SHA-1 values because the adopted Radicle substrate uses that object format.
+SHA-1 values because the adopted Radicle substrate uses that object format;
+`heterodyne:0.5.0#core-security` bounds what that format is trusted for.
 
 Every signed object contains `spec_version:"heterodyne/0.5.0"`, its exact
 `object_type`, `workspace_id`, `actor`, `kel_head`, `authority_sequence`,

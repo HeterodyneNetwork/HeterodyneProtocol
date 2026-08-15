@@ -347,9 +347,8 @@ profile.
 
 The profile controls only org/community/editorial presentation. It MUST NOT
 weaken the requirement that both the org post and index be reachable from the
-delegate-threshold-approved canonical feed branch. The optional per-ref
-`xyz.radicle.crefs` refinement MAY further scope editorial refs, but baseline
-canonicity MUST NOT depend on it.
+delegate-threshold-approved canonical feed branch. Any `xyz.radicle.crefs` refinement of editorial refs
+is bounded by `heterodyne:0.5.0#core-threshold-authority`.
 
 <a id="social-moderation"></a>
 ## 6. Moderation and editorial gating
@@ -474,9 +473,7 @@ that threshold. A client MUST NOT require `kind:4550` in this mode. Conversely,
 it MUST NOT impose branch reachability on a NIP-72-mode view.
 
 Post-hoc removal uses `kind:5` plus a new canonical index omitting the post.
-Immutable git history means this changes the live view but does not erase the
-old bytes. `xyz.radicle.crefs` MAY refine per-ref authority; the baseline MUST
-remain evaluable without it.
+It changes the live view only, under `heterodyne:0.5.0#core-non-erasure`.
 
 <a id="social-labels"></a>
 ### 6.5 Reports and labels

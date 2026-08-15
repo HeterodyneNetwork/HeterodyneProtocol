@@ -73,7 +73,7 @@ const BARE_FAMILY_LINK =
 const NONCANONICAL_DECISION_REFERENCE = /\bADR-\d{3}\b|docs\/adr\//;
 const NUMBERED_HEADING = /^#{2,6}\s+(\d+(?:\.\d+)*)\.?\s/;
 const SECTION_REFERENCE = /§(\d+(?:\.\d+)*)/g;
-const PROOF_DOMAIN = /\bdomain\s+`(heterodyne-[a-z0-9-]*-v[1-9][0-9]*)`/g;
+const PROOF_DOMAIN = /\bdomain\s+`(heterodyne-[a-z0-9-]*-v[1-9][0-9]*)`/gi;
 const PROOF_DOMAIN_FENCED = /`?<?(heterodyne-[a-z0-9-]*-v[1-9][0-9]*) proof bytes>?`?/g;
 const FEATURE_ID =
   /`((?:core|comms|control|social|workspace)\.[a-z0-9-]+(?:\.[a-z0-9-]+)*\.v\d+)`/g;

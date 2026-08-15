@@ -609,9 +609,12 @@ threshold persona MUST have both that NID holder's valid Core delegation
 chain and authorization by the existing persona delegate quorum; either alone
 is insufficient. A higher document instantiating threshold authority MUST use
 this algorithm and MAY add policy checks, but MUST NOT weaken these checks.
-The optional `xyz.radicle.crefs` threshold extension MAY be used only after
-all participating implementations negotiate it explicitly; baseline Core
-authority MUST NOT depend on that extension.
+The optional `xyz.radicle.crefs` extension MAY be used only after all
+participating implementations negotiate it explicitly, whether to raise a
+threshold or to refine per-ref authority. No baseline authority or canonicity
+decision, in Core or in any document above it, may depend on that extension;
+every such decision MUST remain evaluable without it. No other document
+restates this rule.
 
 <a id="core-root-attestation"></a>
 ## 6. Root attestation and delegation
@@ -723,17 +726,31 @@ MUST omit the entire Control object.
 #### 6.1.2 Role-addressed delegation extension
 
 Core also permits a registered higher-layer profile to address a durable role
-at `kind:31001` without creating a Radicle NID. Such an extension MUST retain
-the epoch-key outer signature, `["heterodyne", "delegation"]`,
-`publishing_key`, `cold_root`, `kel_head`, `valid_until`, empty content, and
-the Core version stamp. It MUST set `d` to a registered
-`<namespace>:<role-id>` address and provide a `key_proof` made by the declared
-`publishing_key`. The registered profile MUST define:
+at `kind:31001` without creating a Radicle NID. Every role-addressed
+delegation carries exactly this base, in this order, and a registered profile
+states only what it adds:
+
+```text
+["d", "<namespace>:<role-id>"]
+["heterodyne", "delegation"]
+["publishing_key", "<role secp256k1 public key hex>"]
+["cold_root", "<persona cold-root hex>"]
+["key_proof", "<BIP-340 proof by publishing_key>"]
+["kel_head", "<accepted KEL event id>", "<decimal sequence>"]
+["valid_until", "<empty or decimal Unix time>"]
+["spec_version", "heterodyne/0.5.0"]
+```
+
+The epoch-key outer signature, empty content, and the Core version stamp are
+retained. The registered profile MUST define exactly four things:
 
 1. the namespace and closed syntax of `role-id`;
-2. the exact proof-domain bytes signed by `publishing_key`;
-3. any additional binding tags and their uniqueness rules; and
+2. the allocated proof domain signed by `publishing_key`;
+3. any additional binding tags, their position, and their uniqueness rules; and
 4. the higher-layer authority and lifecycle semantics of the role.
+
+No profile restates the base tags, the acceptance requirements, or the failure
+codes below.
 
 A verifier MUST resolve the registered profile before interpreting the role.
 An unknown namespace, malformed address, or profile/discriminator mismatch
@@ -1096,8 +1113,15 @@ application encryption profile.
 The repository identity, access controls, and ciphertext metadata MUST reveal
 no more than the instantiating profile declares. A decryptor MUST authenticate
 ciphertext before parsing. Rotation MUST prevent a retired generation from
-remaining canonical, but deletion from cooperating replicas is not a promise
-of erasure.
+remaining canonical.
+
+<a id="core-non-erasure"></a>
+Deletion, expiry, retraction, and rotation are cooperative hygiene, never
+erasure. Git objects are immutable, and independent peers, exports, backups,
+offline seeds, and ordinary relays may retain bytes indefinitely. Every
+document in the family inherits this bound: no removal mechanism at any layer
+may be specified or presented as erasure, and protocol and interface language
+MUST state the limitation. No other document restates it.
 
 Protected-record ownership is closed for this release:
 
