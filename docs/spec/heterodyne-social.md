@@ -309,14 +309,14 @@ persona's curated feed.
 <a id="social-org-feed-profile"></a>
 ### 5.1 Registered Social org-feed profile
 
-The registry defines the stamping profile
-`heterodyne-social-org-feed-v1` on the Comms-owned `kind:31007`, with immutable
-discriminator `content.profile=heterodyne.social.org-feed.v1`. An event opting
-into this profile MUST otherwise validate the complete Comms feed-index schema.
-The immutable profile permits it only in Tier 1 and Tier 2; Tier 3 use and
-ciphertext are forbidden. It replaces the ordinary Comms empty content with
-exactly this canonical compact JSON string, including member order and with no
-unknown members:
+The registry allocates the stamping profile `heterodyne-social-org-feed-v1`
+on the Comms-owned `kind:31007`. Social supplies the content object it stamps;
+[`heterodyne:0.5.0#comms-feed-index`](heterodyne-comms.md#comms-feed-index)
+governs everything else, including the discriminator's authority, the
+stamp-location and version-tag rules, and the Tier 3 prohibition. An event
+opting into this profile MUST otherwise validate the complete Comms
+feed-index schema. The content object is closed, has no unknown members, and
+is exactly:
 
 ```json
 {
@@ -325,13 +325,8 @@ unknown members:
 }
 ```
 
-Because the profile is stamping, the Social stamp is the event's sole owner
-stamp and occurs only in `content`; the event MUST NOT carry either a Comms or
-Social version tag. All Comms tags, paging, thresholds, page-size, publication,
-retrieval, signature, and KEL requirements remain in force. It MUST NOT carry
-`heterodyne_wrap` or `key_id`. A Comms `kind:31007` without the exact
-discriminator remains a Comms event and MUST NOT be interpreted as this Social
-profile.
+A Comms `kind:31007` without the exact discriminator remains a Comms event and
+MUST NOT be interpreted as this Social profile.
 
 <!-- fixture:social-org-feed-index -->
 ```json
@@ -661,9 +656,9 @@ change `reject` to either other outcome.
 {"accept":["accept","hold-as-message-request","reject"],"hold-as-message-request":["hold-as-message-request","reject"],"reject":["reject"]}
 ```
 
-Before acceptance, `hold-as-message-request` emits no receipt, retry hint,
-typing signal, read marker, presence update, or other sender-observable
-response. A Social policy MUST preserve that no-signal rule. Muting or
+A Social policy MUST preserve the no-signal rule that
+[`heterodyne:0.5.0#comms-ordinary-conversation-admission`](heterodyne-comms.md#comms-ordinary-conversation-admission)
+places on `hold-as-message-request`. Muting or
 blocking a sender maps an otherwise acceptable ordinary Marmot conversation
 to `reject`; it never authenticates a sender. This lattice applies only to
 the Comms ordinary-conversation hook. It does not consume or alter a Control

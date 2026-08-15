@@ -378,19 +378,17 @@ Comms declares which application events are indexed; absent such a profile,
 persistent authored content SHOULD be indexed and ephemeral metadata SHOULD
 not. An explicit `heterodyne_index=true|false` tag overrides that default.
 
-The registry defines one narrow exception to the empty-content and
-Comms-version-tag rules: the Social stamping profile whose immutable
-discriminator is
-`content.profile=heterodyne.social.org-feed.v1`. That profile is valid only
-for Tier 1 or Tier 2 and replaces the ordinary empty content with the exact
-canonical compact JSON string
-`{"profile":"heterodyne.social.org-feed.v1","spec_version":"heterodyne/0.5.0"}`.
-Its object is closed and ordered: `profile` then `spec_version`, with no other
-members. The Social stamp occurs only in `content`; the event MUST NOT carry a
-Comms or Social `spec_version` tag. Every other Comms tag, paging, size,
-publication, retrieval, signature, KEL, and organization-threshold rule
-remains unchanged. The profile MUST NOT be used for Tier 3, MUST NOT contain
-Tier 3 ciphertext, and MUST NOT carry `heterodyne_wrap` or `key_id` tags.
+Comms permits exactly one class of exception to the empty-content and
+Comms-version-tag rules: a registered stamping profile on `kind:31007`. The
+[`registry/kinds.json`](registry/kinds.json) entry names each such profile,
+its owner, and its immutable `content.profile=` discriminator; the owning
+document defines the exact content object. A stamped event carries that object
+as its sole owner stamp, in `content` only, and MUST NOT carry a Comms or
+owner `spec_version` tag. Every other Comms tag, paging, size, publication,
+retrieval, signature, KEL, and organization-threshold rule remains unchanged.
+No stamping profile may be used for Tier 3, contain Tier 3 ciphertext, or
+carry `heterodyne_wrap` or `key_id` tags. A profile absent from the registry
+entry MUST be rejected rather than treated as ordinary content.
 
 <a id="comms-org-authorization"></a>
 ### 5.1 Organization threshold authorization
@@ -1212,10 +1210,10 @@ their authority and merge semantics belong to the Control document. Repository
 writers still authenticate against current Core/KERI state, and Comms MUST NOT
 interpret transport arrival order as authorization.
 
-The approving node may act on its own newly committed record after validating
-that commit. Another node acts only after fetching and validating the record
-and approving authority. The repository is evidence replication, not
-distributed consensus or a cross-node execution lock.
+The approving node may act on its own record only after durably committing
+and validating that commit. Another node acts only after fetching and
+validating the record and approving authority. The repository is evidence
+replication, not distributed consensus or a cross-node execution lock.
 
 <a id="comms-control-token"></a>
 ### 9.1 Node-scoped JWT projection

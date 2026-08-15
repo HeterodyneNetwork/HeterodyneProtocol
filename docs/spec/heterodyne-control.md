@@ -290,10 +290,8 @@ persona's encrypted private Radicle Control registry. The signed record binds:
 - predecessor/lineage, creation, optional expiry, and active/revoked state;
 - signing algorithm, signer, signature, and record digest.
 
-The approving node may use the entitlement only after durably committing and
-validating its own record. Another full node accepts it only after fetching
-and validating the record and approving authority. The repository is
-replicated evidence, not a lock or consensus protocol.
+Entitlement records replicate as evidence under
+[`heterodyne:0.5.0#comms-control-registry`](heterodyne-comms.md#comms-control-registry).
 
 Records are append-only. A valid grant reduction takes effect immediately at
 an observing node. A valid revocation is absorbing and wins over every active
