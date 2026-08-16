@@ -35,6 +35,6 @@
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "control-token-expired"
+    "reason_code": "control-token-invalid"
   }
 }

@@ -273,16 +273,16 @@ export function validateAgentAccessToken(
   ) {
     return denied("agent-token-invalid");
   }
-  if (input.now >= input.exp) return denied("agent-token-expired");
-  if (input.status !== "VALID") return denied("agent-token-revoked");
+  if (input.now >= input.exp) return denied("agent-token-invalid");
+  if (input.status !== "VALID") return denied("agent-token-invalid");
   if (input.aud.length !== 1 || input.aud[0] !== input.expected_audience) {
-    return denied("agent-token-audience-invalid");
+    return denied("agent-token-invalid");
   }
   if (
     input.scope.trim().split(/\s+/).join(" ") !== input.expected_scope
     || input.scope !== input.expected_scope
   ) {
-    return denied("agent-token-scope-invalid");
+    return denied("agent-token-invalid");
   }
   if (
     !input.sender_proof_valid
@@ -311,7 +311,7 @@ export function validateAgentAccessToken(
     || !input.ledger_binding_valid
     || !input.status_binding_valid
   ) {
-    return denied("agent-token-stale");
+    return denied("agent-token-invalid");
   }
   return {
     verdict: "accept",

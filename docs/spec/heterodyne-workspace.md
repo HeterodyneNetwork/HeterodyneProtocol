@@ -321,13 +321,26 @@ it MUST NOT be used as a universal content key. A resource qualifying through
 multiple roles may deliver the same current resource key independently
 through each role.
 
+A `resource-key-envelope-v1` is one
+[`heterodyne:0.5.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
+key envelope. Workspace supplies the four instantiation choices:
+
+| Choice | Workspace value |
+|---|---|
+| Recipient set | every device leaf currently eligible through a qualifying role |
+| Reference and wrapping | the device leaf under wrapping profile `marmot-mls-application-v1` |
+| Carrier | the role Marmot control group, committed to the active event repository |
+| Generation identifier | `key_epoch`, scoped to `resource_id` |
+
 Key distribution is push-first. After a key change, signed authority state
-records the epoch, each eligible device leaf receives a
-`resource-key-envelope-v1` in the role control group, and the exact Marmot
-carrier event is committed to the active event repository directly or through
-an eligible relay. An envelope binds resource, epoch, persona, device,
-wrapping profile, authority checkpoint, host, nonce, ciphertext, and
-ciphertext digest. A raw unprotected resource key MUST NOT be returned.
+records the epoch, each eligible device leaf receives its envelope in the role
+control group, and the exact Marmot carrier event is committed to the active
+event repository directly or through an eligible relay. Beyond the members
+Core requires, the envelope binds the qualifying role, the authority
+checkpoint, and the host. A raw unprotected resource key MUST NOT be returned.
+Workspace does not re-protect existing objects on rotation: each affected
+resource rotates forward independently and prior ciphertext is left as it
+stands.
 
 For pull recovery, a client sends an authenticated request over a standard
 two-member Marmot DM to a resource host, role host, or inherited workspace
@@ -351,10 +364,11 @@ keys plus historical keys permitted by one history mode:
 - `from-admission`: epochs current at or created after the grant's activation;
 - `selected-snapshots`: only explicitly listed snapshots or key epochs.
 
-Removing a persona or device always advances the role MLS membership epoch.
-Each affected resource rotates independently; unrelated resources do not.
-Revocation prevents future delivery and acceptance but cannot erase plaintext
-or keys already copied by a former member.
+Removing a persona or device always advances the role MLS membership epoch and
+is a Core removal rotation for every resource that device could reach.
+Unrelated resources do not rotate. Revocation prevents future delivery and
+acceptance but cannot erase plaintext or keys already copied by a former
+member.
 
 <a id="workspace-lifecycle"></a>
 ## 12. Resource creation, publication, and retention
@@ -451,7 +465,10 @@ outcomes where disclosure or retry behavior differs.
 <a id="workspace-security"></a>
 ## 16. Security invariants
 
-The registry binds these exact Workspace invariants:
+The registry binds these exact Workspace invariants. An entry the registry binds to a feature is owed only by an implementation
+claiming that feature, under
+[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope).
+The list below is descriptive:
 
 - **WORKSPACE-I-NO-AMBIENT-AUTHORITY:** Workspace affiliation alone grants no role or resource capability.
 - **WORKSPACE-I-INHERITANCE-NARROWS:** Child roles, resources, grants, and bilateral allowances cannot widen an applicable workspace or parent-role ceiling.
@@ -487,7 +504,12 @@ moderation signals; Social follows, labels, or lists do not create Workspace
 authority. Neither composition is required for base Workspace conformance.
 
 The Workspace strict profile composes the Comms strict closure, which
-transitively includes Core, with all Workspace invariants.
+transitively includes Core, and adds the baseline Workspace invariants. The
+invariants bound to `workspace.private-role-control.v1`,
+`workspace.resource-key-delivery.v1`, and
+`workspace.radicle-transport-backstop.v1` are owed under
+[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope) whenever those
+features are claimed, so the profile does not restate them.
 
 <!-- fixture:workspace-strict-profile -->
 ```json
@@ -503,12 +525,9 @@ transitively includes Core, with all Workspace invariants.
     "WORKSPACE-I-INHERITANCE-NARROWS",
     "WORKSPACE-I-PRIVATE-TOPOLOGY",
     "WORKSPACE-I-CARRIER-NOT-AUTHORITY",
-    "WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS",
     "WORKSPACE-I-REVOCATION-FUTURE-ONLY",
     "WORKSPACE-I-FRESHNESS-BOUNDED",
-    "WORKSPACE-I-HOST-AUTHORITY-SEPARATION",
-    "WORKSPACE-I-RADICLE-BACKSTOP",
-    "WORKSPACE-I-DEVICE-LEAF-SEPARATION"
+    "WORKSPACE-I-HOST-AUTHORITY-SEPARATION"
   ]
 }
 ```

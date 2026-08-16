@@ -825,7 +825,10 @@ both halves of the binding verify.
 ## 9. Security invariants
 
 
-The registry binds these exact Social invariants:
+The registry binds these exact Social invariants. An entry the registry binds to a feature is owed only by an implementation
+claiming that feature, under
+[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope).
+The list below is descriptive:
 
 - **SOCIAL-I-PRIVATE-STATE-AT-REST:** Private mute, feed-preference, followed-repository, and other Social state are encrypted at rest using the owning Social or bound Comms profile.
 - **SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH:** Following, transitive discovery, and social-graph evaluation do not depend on a centralized follow-graph oracle.
@@ -840,8 +843,11 @@ attached public outbox and optional witness, never persona authority.
 <a id="social-strict-profiles"></a>
 ### 9.1 Social strict profiles
 
-The Social strict profile composes the Core, Comms, and applicable Social
-invariant sets.
+The Social strict profile composes the Core and Comms strict closures and adds
+the baseline Social invariants. The agent-policy invariants are bound to
+`social.agent-policy-moderation.v1` and are owed under
+[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope) whenever that
+feature is claimed, so the profile does not restate them.
 
 <!-- fixture:social-strict-profile -->
 ```json
@@ -854,9 +860,7 @@ invariant sets.
   ],
   "adds_invariants": [
     "SOCIAL-I-PRIVATE-STATE-AT-REST",
-    "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
-    "SOCIAL-I-AGENT-POLICY-LOCAL",
-    "SOCIAL-I-AGENT-REMEDIATION-SCOPED"
+    "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH"
   ]
 }
 ```
@@ -882,8 +886,9 @@ cross-persona advertisements, reply inboxes, mixed-tier Social fan-out,
 moderation, NIP-51 Social profiles, community policy, Social recovery binding,
 feed/org presentation, ATProto behavior when advertised, the acceptance-hook
 policy, subscriber-local agent-policy moderation when
-`social.agent-policy-moderation.v1` is advertised, and all registered Social
-invariants.
+`social.agent-policy-moderation.v1` is advertised, and every Social invariant
+its claim scopes in under
+[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope).
 
 Social presentation of persona name, avatar, biography, website, or NIP-05
 MUST begin from the canonical Core persona-profile record. The delegated

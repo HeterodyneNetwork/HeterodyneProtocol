@@ -491,7 +491,7 @@ type StrictProfileFixture = {
 
 export function findStrictProfileClosureIssues(
   documents: Record<string, string>,
-  registeredInvariants?: readonly { id: string; owner: DocumentId }[],
+  registeredInvariants?: readonly { id: string; owner: DocumentId; feature?: string }[],
 ): string[] {
   const profiles = new Map<string, StrictProfileFixture>();
   const issues: string[] = [];
@@ -549,20 +549,26 @@ export function findStrictProfileClosureIssues(
     return required;
   };
 
-  const owners = new Map(
-    (registeredInvariants ?? []).map(({ id, owner }) => [id, owner]),
+  const registered = new Map(
+    (registeredInvariants ?? []).map((entry) => [entry.id, entry]),
   );
   for (const profile of profiles.values()) {
     closureOf(profile.profile_id);
     if (registeredInvariants === undefined) continue;
     const declaringOwner = /^heterodyne-([a-z]+)-strict-/.exec(profile.profile_id)?.[1];
     for (const invariant of profile.adds_invariants) {
-      const owner = owners.get(invariant);
-      if (owner === undefined) {
+      const entry = registered.get(invariant);
+      if (entry === undefined) {
         issues.push(`unregistered added invariant: ${profile.profile_id} -> ${invariant}`);
-      } else if (owner !== declaringOwner) {
+      } else if (entry.owner !== declaringOwner) {
         issues.push(
           `added invariant is not owned by the declaring document: ${profile.profile_id} -> ${invariant}`,
+        );
+      } else if (entry.feature !== undefined) {
+        // A feature-bound invariant is owed whenever its feature is claimed, so
+        // adding it to a profile would make the profile require the feature.
+        issues.push(
+          `feature-bound added invariant: ${profile.profile_id} -> ${invariant} is bound to ${entry.feature}`,
         );
       }
     }

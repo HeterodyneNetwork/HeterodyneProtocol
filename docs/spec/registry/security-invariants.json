@@ -131,6 +131,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "control.agent-workload-publication.v1",
       "description": "An automated principal never receives or directly exercises a persona, epoch, NID, human-device, or agent-role private key."
     },
     {
@@ -138,6 +139,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "control.agent-workload-publication.v1",
       "description": "An automated principal publishes only through the intent-level agent method, and raw signing, human-profile fallback, and attribution bypass fail closed."
     },
     {
@@ -145,6 +147,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "control.node-mediated-marmot.v1",
       "description": "Node-mediated Marmot operations expose only grant-filtered content and actions while all account, MLS leaf, epoch, and repository secrets remain on the designated node."
     },
     {
@@ -152,6 +155,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "control.recovery.epoch-inbox.v1",
       "description": "Epoch plaintext is erased and relocked before network or bulk-transfer activity."
     },
     {
@@ -159,6 +163,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "control.recovery.radicle.v1",
       "description": "Recovery access is finite and bound to exact identities, resources, direction, bytes, time, and completion."
     },
     {
@@ -166,6 +171,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "control.recovery.sftp.v1",
       "description": "Overflow SFTP uses a per-grant onion and isolated rooted process with Tor and SSH authentication."
     },
     {
@@ -173,6 +179,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.key-claims.v1",
       "description": "Claim IDs, event signatures, issuer authority, typed references, and native proofs are verified before trust or authorization policy is applied."
     },
     {
@@ -180,6 +187,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.key-claims.v1",
       "description": "Every delegated claim strictly preserves or narrows all authority dimensions and issuance chains contain at most eight edges."
     },
     {
@@ -187,6 +195,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.private-claim-ledger.v1",
       "description": "Persona-issued device authorization is final only in canonical private claim-repository state, while authenticated reductions take effect immediately."
     },
     {
@@ -194,6 +203,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.key-claims.v1",
       "description": "A valid revocation or authority reduction is irreversible, monotonic, and wins concurrent repository merges."
     },
     {
@@ -201,6 +211,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.private-claim-ledger.v1",
       "description": "Private claim-ledger contents and decryption material are available only to active durable NID-bearing ledger readers."
     },
     {
@@ -208,6 +219,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.oidc-jwt-projection.v1",
       "description": "Shared OIDC signing keys are separately encrypted and released only to nodes with active oidc-token-issuer authority."
     },
     {
@@ -215,6 +227,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.oidc-jwt-projection.v1",
       "description": "A node mints only from a synchronized canonical checkpoint no older than the manifest bound, which cannot exceed 300 seconds."
     },
     {
@@ -222,6 +235,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.oidc-jwt-projection.v1",
       "description": "HTTPS issuer metadata and the root-key-scoped Radicle continuity tree agree on the exact active issuer, keys, status digests, and authorized succession."
     },
     {
@@ -229,6 +243,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.oidc-jwt-projection.v1",
       "description": "OIDC projection releases only claims allowed by scope, audience, client policy, consent, active repository state, issuer trust, and proof requirements."
     },
     {
@@ -236,6 +251,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.node-scoped-jwt.v1",
       "description": "JWT consumers enforce exact issuer, intended audience, time, signature, nonce when applicable, and token-type separation including typ at+jwt for access tokens."
     },
     {
@@ -243,6 +259,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.token-status-list-draft-21.v1",
       "description": "Draft-21 status lists are signed, fresh, digest-bound across HTTPS and Radicle mirrors, writer-namespaced without index reuse, and never let VALID override other token failures."
     },
     {
@@ -250,6 +267,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.public-reader.v1",
       "description": "A public-reader implementation consumes only verified Tier 1 content and never renders Tier 2 plaintext or interprets Tier 3 ciphertext as public content."
     },
     {
@@ -257,6 +275,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.agent-authorship.v1",
       "description": "Every agent-authored event signer, workload registration, token role claim, and active role-addressed delegation identify the same dedicated full-node-held role key."
     },
     {
@@ -264,6 +283,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.agent-authorship.v1",
       "description": "Every agent-authored application event carries the canonical automation attribution block at its tier-appropriate protected location."
     },
     {
@@ -271,6 +291,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.agent-authorship.v1",
       "description": "Workload tokens, token identifiers, private source claims, and sender proofs remain confined to the protected authorization and audit boundary."
     },
     {
@@ -278,6 +299,7 @@
       "owner": "core",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "core.marmot-role-attribution.v1",
       "description": "KERI role evidence attributes Marmot accounts and Radicle hosts without selecting MLS state or altering Marmot convergence."
     },
     {
@@ -285,6 +307,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.marmot-conversations.v1",
       "description": "The pinned Marmot dependency remains authoritative for MLS, conversation events, encrypted media, and Nostr transport semantics."
     },
     {
@@ -292,6 +315,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.radicle-marmot-storage.v1",
       "description": "Radicle storage and every Nostr or media interface preserve exact signed Marmot event bytes and encrypted media ciphertext."
     },
     {
@@ -299,6 +323,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.marmot-conversations.v1",
       "description": "Independent device leaves do not share secrets by default, and node-mediated clients receive no MLS, account, leaf, or repository secret."
     },
     {
@@ -306,6 +331,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.radicle-backed-marmot-relay.v1",
       "description": "Only a canonical Marmot routing commit by an active administrator can authorize a matching Radicle routing binding and repository genesis."
     },
     {
@@ -313,6 +339,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "comms.radicle-marmot-storage.v1",
       "description": "Retention expiry stops conforming advertisement and replication but never claims erasure of independent Git objects, clones, exports, or backups."
     },
     {
@@ -320,6 +347,7 @@
       "owner": "social",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "social.agent-policy-moderation.v1",
       "description": "Agent-policy receipts inform publicly, but only an explicitly subscribed and verified current policy list changes a client's local visibility."
     },
     {
@@ -327,6 +355,7 @@
       "owner": "social",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "social.agent-policy-moderation.v1",
       "description": "Agent-policy enforcement and remediation target only the offending role device key; replacement at the same role address never requires epoch-key rotation."
     },
     {
@@ -362,6 +391,7 @@
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "workspace.resource-key-delivery.v1",
       "description": "Role MLS state authorizes delivery but never serves as one universal content key for subordinate resources."
     },
     {
@@ -390,6 +420,7 @@
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "workspace.radicle-transport-backstop.v1",
       "description": "Every effective role retains an authorized Radicle locator and eligible Radicle-backed relay host independent of optional Nostr relays."
     },
     {
@@ -397,6 +428,7 @@
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
+      "feature": "workspace.private-role-control.v1",
       "description": "Each authorized device has an independently revocable MLS leaf and receives only device-bound resource-key envelopes."
     }
   ]

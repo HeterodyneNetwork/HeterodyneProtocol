@@ -35,14 +35,14 @@ export function authorizeInvitation(input: InvitationInput):
   }
   const entitledOrApproved = input.entitlement_state === "active" || input.explicitly_approved;
   if (entitledOrApproved && !input.reserved_slot_available) {
-    return { verdict: "reject", reason_code: "control-enrollment-capacity" };
+    return { verdict: "reject", reason_code: "control-enrollment-unavailable" };
   }
   const open = input.invitation_mode === "permanent"
     || (input.invitation_mode === "temporary"
       && input.temporary_expires_at !== null
       && input.now < input.temporary_expires_at);
   if (!entitledOrApproved && !input.purpose_bound_invite_valid && !open) {
-    return { verdict: "reject", reason_code: "control-invitation-disabled" };
+    return { verdict: "reject", reason_code: "control-enrollment-unavailable" };
   }
   if (input.public_pool_replenishment_requested
     && input.global_pending >= input.global_pending_cap) {
@@ -54,7 +54,7 @@ export function authorizeInvitation(input: InvitationInput):
   }
   if (input.pending_for_account >= 1
     || (!entitledOrApproved && input.global_pending >= input.global_pending_cap)) {
-    return { verdict: "reject", reason_code: "control-enrollment-capacity" };
+    return { verdict: "reject", reason_code: "control-enrollment-unavailable" };
   }
   if (input.entitlement_state === "active") {
     return { verdict: "accept", state: "active", authority: true };
@@ -72,7 +72,7 @@ export function evaluatePendingEnrollment(input: {
   const expiresAt = input.created_at + 1_800;
   return input.now < expiresAt
     ? { verdict: "accept", state: "enrollment-only", expires_at: expiresAt }
-    : { verdict: "reject", reason_code: "control-enrollment-expired" };
+    : { verdict: "reject", reason_code: "control-enrollment-unavailable" };
 }
 
 export type Entitlement = {
@@ -165,7 +165,7 @@ export function issueControlToken(input: TokenIssuanceInput):
   const ceiling = Math.min(input.entitlement_max_seconds, input.node_policy_max_seconds, 3_600);
   const allowed = input.extended_capability ? ceiling : Math.min(300, ceiling);
   if (input.requested_lifetime_seconds <= 0 || input.requested_lifetime_seconds > allowed) {
-    return { verdict: "reject", reason_code: "control-token-expired" };
+    return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   const jti = sha256(jcsCanonicalize({
     authorization_id: input.authorization_id,
@@ -219,16 +219,16 @@ export function validateControlTokenUse(input: TokenUseInput): { verdict: "accep
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   if (input.now < token.iat || input.now >= token.exp) {
-    return { verdict: "reject", reason_code: "control-token-expired" };
+    return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   if (token.aud !== input.expected_audience) {
-    return { verdict: "reject", reason_code: "control-token-audience-invalid" };
+    return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   if (token.cnf.jkt !== input.authenticated_sender_jkt || token.sub.length !== 64) {
-    return { verdict: "reject", reason_code: "control-token-sender-invalid" };
+    return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   if (token.group_id !== input.group_id) {
-    return { verdict: "reject", reason_code: "control-token-group-invalid" };
+    return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   if (input.entitlement_state !== "active") {
     return { verdict: "reject", reason_code: "control-entitlement-conflict" };
@@ -242,7 +242,7 @@ export function validateControlTokenUse(input: TokenUseInput): { verdict: "accep
   });
   if (freshness.verdict === "reject") return freshness;
   if (!token.methods.includes(input.method) || !token.objects.includes(input.object)) {
-    return { verdict: "reject", reason_code: "control-token-scope-invalid" };
+    return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   return { verdict: "accept" };
 }
@@ -280,7 +280,7 @@ export function evaluateDeviceAuthorizationAttempt(input: {
     return { verdict: "reject", reason_code: "control-device-code-invalid", state: "invalidated" };
   }
   if (input.failed_guesses >= 5) {
-    return { verdict: "reject", reason_code: "control-device-code-exhausted", state: "invalidated" };
+    return { verdict: "reject", reason_code: "control-device-code-invalid", state: "invalidated" };
   }
   if (!input.per_code_rate_allowed || !input.node_rate_allowed
     || !input.poll_interval_observed || !input.slow_down_observed) {
@@ -369,7 +369,7 @@ export function processControlOperation(input: OperationInput, prior?: Operation
   | Reject
   | { verdict: "indeterminate"; reason_code: "control-operation-indeterminate" } {
   if (input.now >= input.expires_at) {
-    return { verdict: "reject", reason_code: "control-token-expired" };
+    return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   const reservation: OperationReservation = {
     node_key: input.node_key,
@@ -507,7 +507,7 @@ export function evaluateSftpAccess(input: {
 }): { verdict: "accept" } | Reject {
   const grant = input.grant;
   if (input.now >= grant.expires_at) {
-    return { verdict: "reject", reason_code: "control-sftp-expired" };
+    return { verdict: "reject", reason_code: "control-sftp-denied" };
   }
   const separated = grant.onion_address !== grant.radicle_onion_address
     && grant.service_process_id !== grant.radicle_process_id;
@@ -517,7 +517,7 @@ export function evaluateSftpAccess(input: {
     && input.ssh_client_key === grant.ssh_client_key
     && input.ssh_host_key === grant.ssh_host_key;
   if (!authenticated) {
-    return { verdict: "reject", reason_code: "control-sftp-auth-invalid" };
+    return { verdict: "reject", reason_code: "control-sftp-denied" };
   }
   const resource = grant.resources.find(({ path, direction }) => path === input.path && direction === input.direction);
   const withinRoot = input.path === grant.root || input.path.startsWith(`${grant.root}/`);
@@ -529,7 +529,7 @@ export function evaluateSftpAccess(input: {
     && input.bytes <= grant.byte_ceiling;
   return confined
     ? { verdict: "accept" }
-    : { verdict: "reject", reason_code: "control-sftp-resource-denied" };
+    : { verdict: "reject", reason_code: "control-sftp-denied" };
 }
 
 export function controlPayloadDigest(payload: unknown): string {

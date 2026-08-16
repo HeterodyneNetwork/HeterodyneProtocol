@@ -6494,7 +6494,7 @@
       "expired": {
         "kind": "decision",
         "verdict": "reject",
-        "reason_code": "oidc-status-stale"
+        "reason_code": "oidc-status-invalid"
       },
       "bad_signature": {
         "kind": "decision",
@@ -6514,7 +6514,7 @@
       "out_of_range": {
         "kind": "decision",
         "verdict": "reject",
-        "reason_code": "oidc-status-index-invalid"
+        "reason_code": "oidc-status-invalid"
       }
     }
   },
@@ -6544,12 +6544,12 @@
           "expected": {
             "kind": "decision",
             "verdict": "reject",
-            "reason_code": "oidc-status-stale"
+            "reason_code": "oidc-status-invalid"
           },
           "actual": {
             "kind": "decision",
             "verdict": "reject",
-            "reason_code": "oidc-status-stale"
+            "reason_code": "oidc-status-invalid"
           },
           "matched": true
         },
@@ -6596,12 +6596,12 @@
           "expected": {
             "kind": "decision",
             "verdict": "reject",
-            "reason_code": "oidc-status-index-invalid"
+            "reason_code": "oidc-status-invalid"
           },
           "actual": {
             "kind": "decision",
             "verdict": "reject",
-            "reason_code": "oidc-status-index-invalid"
+            "reason_code": "oidc-status-invalid"
           },
           "matched": true
         }

@@ -24,7 +24,7 @@
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "control-device-code-exhausted",
+    "reason_code": "control-device-code-invalid",
     "state": "invalidated"
   }
 }

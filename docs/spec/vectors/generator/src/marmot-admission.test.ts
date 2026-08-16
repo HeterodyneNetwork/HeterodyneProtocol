@@ -66,7 +66,7 @@ describe("Control Marmot group admission", () => {
   it("defaults unsolicited Control invitations to off", () => {
     expect(controlGroupAdmission(control)).toEqual({
       outcome: "reject",
-      reason_code: "control-invitation-disabled",
+      reason_code: "control-enrollment-unavailable",
     });
   });
 
@@ -89,11 +89,11 @@ describe("Control Marmot group admission", () => {
       ...control,
       entitlement_state: "active",
       explicit_local_decision: "reject",
-    })).toEqual({ outcome: "reject", reason_code: "control-invitation-disabled" });
+    })).toEqual({ outcome: "reject", reason_code: "control-enrollment-unavailable" });
     expect(controlGroupAdmission({
       ...control,
       entitlement_state: "active",
       resource_available: false,
-    })).toEqual({ outcome: "reject", reason_code: "control-enrollment-capacity" });
+    })).toEqual({ outcome: "reject", reason_code: "control-enrollment-unavailable" });
   });
 });

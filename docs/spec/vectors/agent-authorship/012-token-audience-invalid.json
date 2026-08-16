@@ -48,6 +48,6 @@
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "agent-token-audience-invalid"
+    "reason_code": "agent-token-invalid"
   }
 }

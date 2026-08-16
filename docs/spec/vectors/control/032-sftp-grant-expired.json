@@ -43,6 +43,6 @@
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "control-sftp-expired"
+    "reason_code": "control-sftp-denied"
   }
 }

@@ -276,9 +276,9 @@ describe("draft-ietf-oauth-status-list-21 exact one-bit profile", () => {
     expect((validateTokenStatus as any)(referenced, statusToken, rawJwks,
       statusIat() + 1, statusIat() + 0.5, chain)).toMatchObject({ allowed: true });
     expect((validateTokenStatus as any)(referenced, statusToken, rawJwks,
-      statusIat() + 1, statusIat(), chain)).toMatchObject({ allowed: false, reason_code: "oidc-status-stale" });
+      statusIat() + 1, statusIat(), chain)).toMatchObject({ allowed: false, reason_code: "oidc-status-invalid" });
     expect(validateTokenStatus(referenced, statusToken, rawJwks,
-      statusIat(), statusIat() + 1, chain)).toMatchObject({ allowed: false, reason_code: "oidc-status-stale" });
+      statusIat(), statusIat() + 1, chain)).toMatchObject({ allowed: false, reason_code: "oidc-status-invalid" });
     expect((validateTokenStatus as any)(referenced, statusToken,
       { keys: [OIDC_RSA_ONE.public_jwk] }, statusIat(), statusIat(), chain))
       .toMatchObject({ allowed: false });
@@ -299,7 +299,7 @@ describe("draft-ietf-oauth-status-list-21 exact one-bit profile", () => {
       iat: statusIat(), exp: statusIat() + 60, ttl: 1 });
     const validContext = validatedAccessContext(valid);
     expect(validateTokenStatus(validContext, valid, statusJwksBytes(), statusIat() + 2, statusIat(), validationChain(valid)))
-      .toMatchObject({ allowed: false, reason_code: "oidc-status-stale" });
+      .toMatchObject({ allowed: false, reason_code: "oidc-status-invalid" });
 
     const projection = { ...x.projection, status_mirror: { ...x.projection.status_mirror,
       sha256: continuityManifestDigest(statusManifestFor(valid)) } };
@@ -312,7 +312,7 @@ describe("draft-ietf-oauth-status-list-21 exact one-bit profile", () => {
         credential_ledger: x.issuedState.credential_ledger,
       });
     expect(validateTokenStatus(outOfRangeContext, valid, statusJwksBytes(), statusIat(), statusIat(), validationChain(valid)))
-      .toMatchObject({ allowed: false, reason_code: "oidc-status-index-invalid" });
+      .toMatchObject({ allowed: false, reason_code: "oidc-status-invalid" });
     const malformed = resignStatusToken(valid, "eA");
     expect(validateTokenStatus(validatedAccessContext(malformed), malformed,
       statusJwksBytes(), statusIat(), statusIat(), validationChain(malformed))).toMatchObject({ allowed: false });
@@ -404,7 +404,7 @@ describe("root-scoped Radicle issuer continuity", () => {
     const missing: ContinuityManifest = { ...missingBody,
       authority_proof: createContinuityAuthorityProof(missingBody, x.s.writerOne.private_key) };
     expect(resolveIssuerContinuity(null, missing, context)).toMatchObject({
-      allowed: false, reason_code: "oidc-status-digest-mismatch",
+      allowed: false, reason_code: "oidc-status-invalid",
     });
   });
 
@@ -527,7 +527,7 @@ describe("root-scoped Radicle issuer continuity", () => {
     const context: ContinuityValidationContext = { ...baseContext, writer_nid: x.s.writerTwo.did_key,
       now: repository.checkpoint.observed_at, ledger_state: state };
     expect(resolveIssuerContinuity(previous, candidate, updateKelContext(context, previous, candidate))).toMatchObject({ allowed: false,
-      reason_code: "oidc-status-digest-mismatch" });
+      reason_code: "oidc-status-invalid" });
   });
 
   it("rejects duplicate status paths", () => {
@@ -593,7 +593,7 @@ describe("root-scoped Radicle issuer continuity", () => {
   it("fails replay when a declared mutation expectation is changed or is not closed and typed", async () => {
     const stale = structuredClone((await buildTokenStatusVectors(fixtures))
       .find(({ vector }) => vector.vector_id === "token-status/stale-status-list-rejected")!.vector.input) as any;
-    stale.mutation_table.ttl_boundary = { kind: "decision", verdict: "reject", reason_code: "oidc-status-stale" };
+    stale.mutation_table.ttl_boundary = { kind: "decision", verdict: "reject", reason_code: "oidc-status-invalid" };
     expect(replayTokenStatusVector(stale)).toMatchObject({
       verdict: "reject", reason_code: "mutation-expectation-mismatch", normalized: { mutation_results: {
         ttl_boundary: { matched: false },

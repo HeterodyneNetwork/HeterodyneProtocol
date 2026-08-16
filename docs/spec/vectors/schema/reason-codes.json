@@ -661,41 +661,11 @@
       ]
     },
     {
-      "code": "oidc-status-stale",
-      "owner": "comms",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "The pinned draft-21 Status List Token is expired, outside ttl, or not fresh enough for policy.",
-      "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
-      ]
-    },
-    {
-      "code": "oidc-status-digest-mismatch",
-      "owner": "comms",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "The HTTPS and Radicle status copies are not byte-identical under the continuity digest.",
-      "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
-      ]
-    },
-    {
-      "code": "oidc-status-index-invalid",
-      "owner": "comms",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "A status index is out of range, reused, or outside its writer-NID namespace allocation.",
-      "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
-      ]
-    },
-    {
       "code": "oidc-status-invalid",
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The token status is INVALID or cannot provide valid evidence of VALID.",
+      "description": "The referenced status evidence does not establish VALID: it is INVALID, stale, outside ttl, digest-mismatched, out of index bounds, or otherwise unverifiable.",
       "spec_refs": [
         "heterodyne:0.5.0#comms-conformance"
       ]
@@ -765,59 +735,10 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The workload access token fails signature, type, issuer, client, identity, ledger, or structural validation.",
+      "description": "The workload access token is not usable: it fails signature, type, issuer, client, identity, audience, scope, role, ledger, status, lifetime, or structural validation. The specific condition is recorded only in the encrypted audit.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-jwt-projection"
-      ]
-    },
-    {
-      "code": "agent-token-expired",
-      "owner": "comms",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "The workload token is expired or exceeds the five-minute or source-authorization lifetime ceiling.",
-      "spec_refs": [
-        "heterodyne:0.5.0#comms-jwt-projection"
-      ]
-    },
-    {
-      "code": "agent-token-revoked",
-      "owner": "comms",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "Token status or a source authorization marks the workload token invalid.",
-      "spec_refs": [
+        "heterodyne:0.5.0#comms-jwt-projection",
         "heterodyne:0.5.0#comms-token-status"
-      ]
-    },
-    {
-      "code": "agent-token-stale",
-      "owner": "comms",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "The workload token decision relies on a stale status, ledger checkpoint, or authorization view.",
-      "spec_refs": [
-        "heterodyne:0.5.0#comms-jwt-projection"
-      ]
-    },
-    {
-      "code": "agent-token-audience-invalid",
-      "owner": "comms",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "The workload token does not name the one exact Control publication audience.",
-      "spec_refs": [
-        "heterodyne:0.5.0#comms-jwt-projection"
-      ]
-    },
-    {
-      "code": "agent-token-scope-invalid",
-      "owner": "comms",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "The workload token lacks the exact registered scope and resource for the requested publication.",
-      "spec_refs": [
-        "heterodyne:0.5.0#comms-jwt-projection"
       ]
     },
     {
@@ -921,31 +842,11 @@
       ]
     },
     {
-      "code": "control-invitation-disabled",
+      "code": "control-enrollment-unavailable",
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A full node's local policy does not accept a new unsolicited Control-group invitation.",
-      "spec_refs": [
-        "heterodyne:0.5.0#control-invitation-policy"
-      ]
-    },
-    {
-      "code": "control-enrollment-capacity",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "A pending enrollment exceeds the per-account or global bound, or no reserved entitled/approved slot is available.",
-      "spec_refs": [
-        "heterodyne:0.5.0#control-invitation-policy"
-      ]
-    },
-    {
-      "code": "control-enrollment-expired",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "An enrollment-only Control group reached its hard 30-minute lifetime and was removed.",
+      "description": "A full node accepts no new enrollment for this request. Disabled policy, exhausted capacity, and expired enrollment state are indistinguishable to the requester.",
       "spec_refs": [
         "heterodyne:0.5.0#control-invitation-policy"
       ]
@@ -975,17 +876,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A Device Authorization code lacks required entropy or constant-time normalized validation.",
-      "spec_refs": [
-        "heterodyne:0.5.0#control-device-authorization"
-      ]
-    },
-    {
-      "code": "control-device-code-exhausted",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "Five failed guesses atomically invalidated the active Device Authorization user code.",
+      "description": "A Device Authorization user code is not usable, whether malformed, unknown, or atomically invalidated after five failed guesses.",
       "spec_refs": [
         "heterodyne:0.5.0#control-device-authorization"
       ]
@@ -1065,57 +956,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The Control access token fails type, signature, issuer, time, client, authorization-record, or structural validation.",
-      "spec_refs": [
-        "heterodyne:0.5.0#control-token"
-      ]
-    },
-    {
-      "code": "control-token-expired",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "The Control token is expired or exceeds its entitlement, node-policy, five-minute default, or sixty-minute absolute lifetime.",
-      "spec_refs": [
-        "heterodyne:0.5.0#control-token"
-      ]
-    },
-    {
-      "code": "control-token-audience-invalid",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "The Control token audience does not name the exact full node receiving the request.",
-      "spec_refs": [
-        "heterodyne:0.5.0#control-token"
-      ]
-    },
-    {
-      "code": "control-token-sender-invalid",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "The authenticated Marmot sender account does not match the token cnf.jkt thumbprint.",
-      "spec_refs": [
-        "heterodyne:0.5.0#control-token"
-      ]
-    },
-    {
-      "code": "control-token-group-invalid",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "The request arrived in a different Marmot group from the one bound by the Control token.",
-      "spec_refs": [
-        "heterodyne:0.5.0#control-token"
-      ]
-    },
-    {
-      "code": "control-token-scope-invalid",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "The method, object, role, kind, media, rate, size, burst, or other finite limit is outside the token and entitlement intersection.",
+      "description": "The Control access token is not usable: it fails type, signature, issuer, time, client, audience, sender, group, scope, authorization-record, or structural validation. The specific condition is recorded only in the encrypted audit.",
       "spec_refs": [
         "heterodyne:0.5.0#control-token"
       ]
@@ -1201,31 +1042,11 @@
       ]
     },
     {
-      "code": "control-sftp-auth-invalid",
+      "code": "control-sftp-denied",
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The SFTP endpoint, Tor client key, SSH client key, or pinned host key does not match the finite transfer grant.",
-      "spec_refs": [
-        "heterodyne:0.5.0#control-sftp-recovery"
-      ]
-    },
-    {
-      "code": "control-sftp-resource-denied",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "An SFTP request exceeds its rooted resource set, direction, byte ceiling, or prohibited-channel boundary.",
-      "spec_refs": [
-        "heterodyne:0.5.0#control-sftp-recovery"
-      ]
-    },
-    {
-      "code": "control-sftp-expired",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "The SFTP grant or its bounded renewal overlap has expired or been completed or revoked.",
+      "description": "An SFTP overflow request is refused. Endpoint, key, resource, direction, byte-ceiling, and expiry failures are indistinguishable to the requester and separated only in the encrypted audit.",
       "spec_refs": [
         "heterodyne:0.5.0#control-sftp-recovery"
       ]

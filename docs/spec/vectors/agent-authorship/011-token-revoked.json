@@ -47,6 +47,6 @@
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "agent-token-revoked"
+    "reason_code": "agent-token-invalid"
   }
 }

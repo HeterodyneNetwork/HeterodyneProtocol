@@ -41,7 +41,7 @@ family map, and the single registry pin is
   `heterodyne-agent-signing-binding-v1`), domain-prefixed JCS
   (`heterodyne-workspace-object-v1`, `heterodyne-one-time-invite-v1`), and
   bare JCS with the domain as an object member (`heterodyne-claim-pop-v1`,
-  `heterodyne-claim-revocation-v1`). Core section 3.5.1 now pins
+  `heterodyne-claim-revocation-v1`). Core section 3.6.1 now pins
   `<domain> || 0x00 || JCS(<claim>)` for all of them. The pipe form was also
   unsound: a `|` inside a bound value let two distinct claims produce
   identical bytes, and its positional shape gave a verifier no way to reject
@@ -87,6 +87,56 @@ family map, and the single registry pin is
 - Strict profiles now declare only their prerequisites and the invariants they
   add. The required set is the transitive closure, so the flattened lists are
   no longer restated seven times across five documents.
+
+### Simplifications
+
+- Took the OIDC issuer out of baseline Comms. The feature catalog listed
+  `comms.oidc-jwt-projection.v1` as an optional capability while Comms
+  section 17 required "all registered Comms invariants" of a base
+  implementation, so reading the two together made an RFC 9068 issuer, RS256
+  with a 2048-bit modulus, JWKS, PKCE, the device-code flow, pairwise
+  subjects, a Radicle continuity manifest, and zlib-packed status lists the
+  price of sending a private message. Each invariant now names its owning
+  feature in the registry; an invariant with no `feature` member is baseline
+  and one with a `feature` member binds only implementations claiming it. The
+  new rule lives once at
+  `heterodyne:0.5.0#core-invariant-scope`. Baseline Comms is now the five
+  envelope, tier, and delivery invariants, and the OIDC stack becomes
+  mandatory exactly where something requires it, which for Comms means
+  `comms.agent-authorship.v1`.
+- Split `comms.node-scoped-jwt.v1` out of `comms.oidc-jwt-projection.v1`.
+  Comms section 9.1 issues a node-local `at+jwt` that only its own issuer ever
+  verifies, and needs no HTTPS discovery, JWKS, continuity manifest, or status
+  list; sections 12 to 14 exist for third-party relying parties.
+  `control.node-scoped-token.v1` required the whole OIDC feature for a token
+  in the first category, so baseline Control pulled in the second.
+- Strict profiles no longer carry feature-bound invariants, and a lint rejects
+  one that does. A strict claim is a hardening posture; it was also acting as
+  a second, hidden way to require features. Comms strict went from 20 added
+  invariants to 5, Social from 4 to 2, and Workspace from 10 to 7, with no
+  obligation lost: a feature's invariants are owed whenever the feature is
+  claimed, strict or not.
+- Unified three key-envelope mechanisms into one Core primitive at
+  `heterodyne:0.5.0#core-key-envelope`. Comms audience keys, Comms
+  claim-ledger reader keys, and Workspace resource-key envelopes solved the
+  same problem, with the same rotate-on-removal semantics and the same
+  non-erasure caveat, in three sets of prose. Each site now supplies exactly
+  four things: the recipient-set rule, the typed-key reference and wrapping
+  profile, the carrier, and any extra rotation trigger. The generation
+  identifier is deliberately either an opaque `key_id` or a resource-scoped
+  `key_epoch`, because the three carriers already differ there and forcing one
+  form would have changed signed bytes for no gain.
+- Consolidated 18 fine-grained reason codes into 6, taking the registry from
+  169 to 151. Control section 11 requires that errors "MUST NOT reveal whether
+  an unauthorized private object, entitlement, or recovery resource exists,"
+  yet the vocabulary let a caller distinguish `agent-token-expired` from
+  `-revoked` from `-scope-invalid`, and the same for Control tokens, SFTP
+  grants, enrollment refusals, and status evidence. Each family collapses to
+  one externally visible code, with the specific condition recorded only in
+  the Control section 9.3 encrypted audit; `core-reason-codes` states the
+  granularity rule once. Codes that reveal nothing privileged were kept
+  distinct, including `control-enrollment-rate-limited` and
+  `control-device-code-display-mismatch`.
 
 ### Historical decision records
 

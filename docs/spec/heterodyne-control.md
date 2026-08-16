@@ -499,8 +499,10 @@ Every privileged decision records the Control version/profile, client class,
 node and group, request/operation IDs, canonical payload digest, entitlement
 record/checkpoint, token `jti` but not token bytes, method/object authorization,
 finite-limit result, commit evidence, result, and applicable agent role and
-attribution. Audit persistence precedes final response publication. Audit
-material is encrypted at rest and cannot itself replay an operation.
+attribution. A refusal additionally records the exact internal condition behind
+the coarse reason code returned to the requester; that record is the only place
+the distinction exists. Audit persistence precedes final response publication.
+Audit material is encrypted at rest and cannot itself replay an operation.
 
 <a id="control-recovery"></a>
 ## 10. Optional recovery profiles
@@ -592,7 +594,10 @@ port may remain stable and is not a security boundary.
 <a id="control-security"></a>
 ## 11. Security invariants and failure behavior
 
-The registry assigns these Control invariants:
+The registry assigns these Control invariants. An entry the registry binds to a feature is owed only by an implementation
+claiming that feature, under
+[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope).
+The list below is descriptive:
 
 - **CONTROL-I-AUDIT-AT-REST:** authorization and side-effect audit is encrypted and contains no replayable token or transcript.
 - **CONTROL-I-CLIENT-KEY-CONFINEMENT:** a light client receives no persona, device, epoch, NID, repository, MLS-leaf, or agent-role private key.
@@ -613,7 +618,15 @@ conflicted entitlement, scope or limit mismatch, request/operation conflict,
 indeterminate mutation, locked epoch inbox, registration or activation
 mismatch, unauthorized repository access, SFTP identity/resource/time
 mismatch, and incomplete recovery proof. Errors MUST NOT reveal whether an
-unauthorized private object, entitlement, or recovery resource exists.
+unauthorized private object, entitlement, or recovery resource exists. The
+registered vocabulary enforces that under
+[`heterodyne:0.5.0#core-reason-codes`](heterodyne-core.md#core-reason-codes) rather than leaving it
+to implementer discretion: `control-token-invalid` covers every unusable
+Control token, `control-enrollment-unavailable` covers every refused
+enrollment, and `control-sftp-denied` covers every refused overflow transfer.
+A responder MUST NOT reconstruct the finer distinction through a status code,
+timing difference, message string, or retry hint. It records the specific
+condition in the [§9.3](#control-audit) encrypted audit and nowhere else.
 
 <a id="control-strict-profile"></a>
 ### 11.1 Strict profiles
@@ -638,9 +651,11 @@ unauthorized private object, entitlement, or recovery resource exists.
 }
 ```
 
-Optional recovery conformance adds only the recovery invariants applicable to
-the advertised profile. A baseline-only implementation is not penalized for
-omitting them.
+The agent, node-mediated-Marmot, and recovery invariants are bound to their
+features and are owed under
+[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope) whenever those
+features are claimed, so the profile does not restate them. A baseline-only
+implementation is not penalized for omitting them.
 
 <a id="control-conformance"></a>
 ## 12. Conformance
@@ -654,7 +669,8 @@ Core and Comms conformant and passes every applicable Control vector for:
 - frame canonicalization, human JSON-RPC, MCP, grants, limits, and agents;
 - operation reservation, duplicate handling, failover, retention, and audit;
 - revocation, group loss, and state freshness; and
-- every security invariant required by its conformance class.
+- every security invariant its claim scopes in under
+  [`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope).
 
 Optional recovery claims additionally require every vector for the exact
 advertised recovery feature. Claiming baseline Control does not imply portable

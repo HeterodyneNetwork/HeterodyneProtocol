@@ -129,6 +129,58 @@ describe("canonical family documentation", () => {
     })).toContain(
       "unregistered added invariant: heterodyne-core-strict-v9 -> CORE-I-NOT-REGISTERED",
     );
+
+    expect(withFixture({
+      profile_id: "heterodyne-core-strict-v9",
+      requires_profiles: [],
+      adds_invariants: ["CORE-I-MARMOT-ROLE-ATTRIBUTION"],
+    })).toContain(
+      "feature-bound added invariant: heterodyne-core-strict-v9 -> CORE-I-MARMOT-ROLE-ATTRIBUTION"
+        + " is bound to core.marmot-role-attribution.v1",
+    );
+  });
+
+  it("scopes every invariant to baseline or one feature its own document owns", () => {
+    const registry = loadRegistry(repositoryRoot);
+    const features = new Set(registry.features.map(({ id }) => id));
+    for (const { id, owner, feature } of registry.security_invariants) {
+      if (feature === undefined) continue;
+      expect(features).toContain(feature);
+      expect(feature.startsWith(`${owner}.`)).toBe(true);
+      expect(id.startsWith(`${owner.toUpperCase()}-I-`)).toBe(true);
+    }
+    // Baseline is what an implementation owes for merely claiming the document,
+    // so the OIDC, status, claim, and agent stacks must all be feature-bound.
+    const baseline = registry.security_invariants
+      .filter(({ feature }) => feature === undefined)
+      .map(({ id }) => id);
+    expect(baseline).not.toContain("COMMS-I-ISSUER-CONTINUITY");
+    expect(baseline).not.toContain("COMMS-I-CLAIM-RELEASE");
+    expect(baseline).not.toContain("COMMS-I-STATUS-INTEGRITY");
+    expect(baseline).not.toContain("COMMS-I-AGENT-ATTRIBUTION");
+    expect(baseline).toContain("COMMS-I-TIER3-BLIND-CARRIER");
+  });
+
+  it("requires the OIDC issuer only through the features that need it", () => {
+    const features = new Map(
+      loadRegistry(repositoryRoot).features.map((entry) => [entry.id, entry]),
+    );
+    const requires = (id: string, target: string): boolean => {
+      const entry = features.get(id);
+      if (entry === undefined) return false;
+      return entry.prerequisites.some(
+        (prerequisite) => prerequisite === target || requires(prerequisite, target),
+      );
+    };
+    const oidc = "comms.oidc-jwt-projection.v1";
+    expect(requires("comms.agent-authorship.v1", oidc)).toBe(true);
+    expect(requires("control.oauth-device-enrollment.v1", oidc)).toBe(true);
+    // A node-scoped token is verified only by its own issuer, so it needs none
+    // of the third-party discovery, continuity, or status machinery.
+    expect(requires("control.node-scoped-token.v1", oidc)).toBe(false);
+    expect(requires("control.node-scoped-token.v1", "comms.node-scoped-jwt.v1")).toBe(true);
+    expect(requires("comms.marmot-conversations.v1", oidc)).toBe(false);
+    expect(requires("comms.public-reader.v1", oidc)).toBe(false);
   });
 });
 

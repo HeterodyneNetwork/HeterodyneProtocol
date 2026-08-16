@@ -251,6 +251,11 @@
     "first_version": {
      "$ref": "#/definitions/qualified_version"
     },
+    "feature": {
+     "type": "string",
+     "pattern": "^(core|comms|control|social|workspace)\\.[a-z0-9]+(?:[.-][a-z0-9]+)*\\.v[1-9][0-9]*$",
+     "description": "Optional owning feature. An invariant with this member binds only implementations claiming that feature; an invariant without it is baseline for its document."
+    },
     "description": {
      "type": "string",
      "minLength": 1

@@ -22,10 +22,10 @@
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "control-invitation-disabled",
+    "reason_code": "control-enrollment-unavailable",
     "normalized": {
       "outcome": "reject",
-      "reason_code": "control-invitation-disabled"
+      "reason_code": "control-enrollment-unavailable"
     }
   }
 }

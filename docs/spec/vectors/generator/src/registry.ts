@@ -47,6 +47,8 @@ export type InvariantEntry = {
   owner: DocumentId;
   status: RegistryStatus;
   first_version: string;
+  /** Absent means baseline for the owning document; present scopes the invariant to that feature. */
+  feature?: string;
   description: string;
 };
 
@@ -75,7 +77,7 @@ export type ProofDomainEntry = {
   first_version: string;
   status: RegistryStatus;
   bound_members: string[];
-  suites: Array<"bip340" | "ed25519" | "jws">;
+  suites: Array<"bip340" | "ed25519" | "jws" | "hmac-sha256">;
   description: string;
 };
 
@@ -257,11 +259,21 @@ function validateEntryMetadata(registry: RegistryEntrySet): void {
       }
     }
   }
+  const featureIds = new Set(registry.features.map((entry) => entry.id));
   for (const entry of registry.security_invariants) {
     assertCurrentFamilyVersion(entry.first_version);
     const prefix = `${entry.owner.toUpperCase()}-I-`;
     if (!entry.id.startsWith(prefix)) {
       throw new Error(`security invariant owner mismatch: ${entry.id}`);
+    }
+    if (entry.feature === undefined) continue;
+    if (!featureIds.has(entry.feature)) {
+      throw new Error(`unknown invariant feature: ${entry.id} -> ${entry.feature}`);
+    }
+    // An invariant scopes to a feature its own document owns; otherwise a
+    // document could make another document's claim carry its obligations.
+    if (!entry.feature.startsWith(`${entry.owner}.`)) {
+      throw new Error(`invariant feature owner mismatch: ${entry.id} -> ${entry.feature}`);
     }
   }
   validateFeatures(registry.features);

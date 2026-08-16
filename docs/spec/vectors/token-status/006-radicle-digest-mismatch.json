@@ -112,35 +112,35 @@
       "digest_nibble": {
         "kind": "decision",
         "verdict": "reject",
-        "reason_code": "oidc-status-digest-mismatch"
+        "reason_code": "oidc-status-invalid"
       },
       "byte_mismatch": {
         "kind": "decision",
         "verdict": "reject",
-        "reason_code": "oidc-status-digest-mismatch"
+        "reason_code": "oidc-status-invalid"
       },
       "extra_status_path": {
         "kind": "decision",
         "verdict": "reject",
-        "reason_code": "oidc-status-digest-mismatch"
+        "reason_code": "oidc-status-invalid"
       }
     }
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "oidc-status-digest-mismatch",
+    "reason_code": "oidc-status-invalid",
     "normalized": {
       "mutation_results": {
         "digest_nibble": {
           "expected": {
             "kind": "decision",
             "verdict": "reject",
-            "reason_code": "oidc-status-digest-mismatch"
+            "reason_code": "oidc-status-invalid"
           },
           "actual": {
             "kind": "decision",
             "verdict": "reject",
-            "reason_code": "oidc-status-digest-mismatch"
+            "reason_code": "oidc-status-invalid"
           },
           "matched": true
         },
@@ -148,12 +148,12 @@
           "expected": {
             "kind": "decision",
             "verdict": "reject",
-            "reason_code": "oidc-status-digest-mismatch"
+            "reason_code": "oidc-status-invalid"
           },
           "actual": {
             "kind": "decision",
             "verdict": "reject",
-            "reason_code": "oidc-status-digest-mismatch"
+            "reason_code": "oidc-status-invalid"
           },
           "matched": true
         },
@@ -161,12 +161,12 @@
           "expected": {
             "kind": "decision",
             "verdict": "reject",
-            "reason_code": "oidc-status-digest-mismatch"
+            "reason_code": "oidc-status-invalid"
           },
           "actual": {
             "kind": "decision",
             "verdict": "reject",
-            "reason_code": "oidc-status-digest-mismatch"
+            "reason_code": "oidc-status-invalid"
           },
           "matched": true
         }

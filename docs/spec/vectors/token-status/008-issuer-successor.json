@@ -6428,7 +6428,7 @@
       "predecessor_nibble": {
         "kind": "decision",
         "verdict": "reject",
-        "reason_code": "oidc-status-digest-mismatch"
+        "reason_code": "oidc-status-invalid"
       },
       "wrong_successor_url": {
         "kind": "decision",
@@ -6469,12 +6469,12 @@
           "expected": {
             "kind": "decision",
             "verdict": "reject",
-            "reason_code": "oidc-status-digest-mismatch"
+            "reason_code": "oidc-status-invalid"
           },
           "actual": {
             "kind": "decision",
             "verdict": "reject",
-            "reason_code": "oidc-status-digest-mismatch"
+            "reason_code": "oidc-status-invalid"
           },
           "matched": true
         },

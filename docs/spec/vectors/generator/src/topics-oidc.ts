@@ -701,7 +701,7 @@ function replayTokenStatusVectorCore(input: unknown): unknown {
       const expected = new Map((spec.https_bytes as unknown as Array<{ path: string; hex: string }>).map(({ path, hex }) => [path, hex]));
       const identical = [...tree].every(([path, bytes]) => expected.get(path) === Buffer.from(bytes).toString("hex")) && tree.size === expected.size;
       return identical ? { verdict: "accept", normalized: { byte_identical: true,
-        paths: [...tree.keys()].sort() } } : { verdict: "reject", reason_code: "oidc-status-digest-mismatch" };
+        paths: [...tree.keys()].sort() } } : { verdict: "reject", reason_code: "oidc-status-invalid" };
     }
     if (spec.operation === "continuity") {
       const state = ledgerStateFromReplay(spec.ledger_replay);
@@ -717,7 +717,7 @@ function replayTokenStatusVectorCore(input: unknown): unknown {
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     const reason = message.includes("claim-repository-conflict") || message.includes("collision") || message.includes("duplicate") ? "claim-repository-conflict" :
-      message.includes("digest") ? "oidc-status-digest-mismatch" : "oidc-status-invalid";
+      "oidc-status-invalid";
     return { verdict: "reject", reason_code: reason };
   }
 }
@@ -1247,11 +1247,11 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
       ...statusInput(validStatus, validReferenced, validChain, validStatus.claims.iat + validStatus.claims.ttl),
       mutation_material: staleMutationMaterial,
       mutation_table: mutationTable({ ttl_boundary: expectedDecision("accept", null),
-        expired: expectedDecision("reject", "oidc-status-stale"),
+        expired: expectedDecision("reject", "oidc-status-invalid"),
         bad_signature: expectedDecision("reject", "oidc-status-invalid"),
         malformed_zlib: expectedDecision("reject", "oidc-status-invalid"),
         alternative_zlib: expectedDecision("accept", null),
-        out_of_range: expectedDecision("reject", "oidc-status-index-invalid") }),
+        out_of_range: expectedDecision("reject", "oidc-status-invalid") }),
     }),
     authored("004-writer-index-collision-rejected.json", "writer-index-collision-rejected", "Duplicate writer-namespaced URI/index allocation is rejected before token return.", {
       ...collisionInput, mutation_table: mutationTable({
@@ -1263,18 +1263,18 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
       operation: "mirror", manifest: manifest as unknown as JsonValue, discovery,
       jwks_hex: jwksBytes.toString("hex"), status_tokens: [{ path: statusPath, hex: Buffer.from(validStatus.compact).toString("hex") }],
       https_bytes: treeBytes, mutation_table: mutationTable({
-        jwks_byte: expectedDecision("reject", "oidc-status-digest-mismatch"),
-        status_byte: expectedDecision("reject", "oidc-status-digest-mismatch"),
-        path_case: expectedDecision("reject", "oidc-status-digest-mismatch"),
+        jwks_byte: expectedDecision("reject", "oidc-status-invalid"),
+        status_byte: expectedDecision("reject", "oidc-status-invalid"),
+        path_case: expectedDecision("reject", "oidc-status-invalid"),
         branch_not_main: expectedDecision("reject", "oidc-status-invalid") }),
     }),
     authored("006-radicle-digest-mismatch.json", "radicle-digest-mismatch", "A manifest/JWKS SHA-256 mismatch fails closed even when the public key itself is usable.", {
       operation: "mirror", manifest: corruptedManifest as unknown as JsonValue, discovery,
       jwks_hex: jwksBytes.toString("hex"), status_tokens: [{ path: statusPath, hex: Buffer.from(validStatus.compact).toString("hex") }],
       https_bytes: treeBytes, mutation_table: mutationTable({
-        digest_nibble: expectedDecision("reject", "oidc-status-digest-mismatch"),
-        byte_mismatch: expectedDecision("reject", "oidc-status-digest-mismatch"),
-        extra_status_path: expectedDecision("reject", "oidc-status-digest-mismatch") }),
+        digest_nibble: expectedDecision("reject", "oidc-status-invalid"),
+        byte_mismatch: expectedDecision("reject", "oidc-status-invalid"),
+        extra_status_path: expectedDecision("reject", "oidc-status-invalid") }),
     }),
     authored("007-https-outage-radicle-fallback.json", "https-outage-radicle-fallback", "A Heterodyne verifier may use validated canonical-main continuity during HTTPS outage; ordinary OIDC does not auto-follow it.", {
       ...outageInput, mutation_table: mutationTable({ https_outage: expectedDecision("accept", null),
@@ -1285,7 +1285,7 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
     authored("008-issuer-successor.json", "issuer-successor", "Issuer succession binds predecessor and successor commitments and separately proves persona authority.", {
       ...successionInput, mutation_material: successionMutationMaterial, mutation_table: mutationTable({
         missing_persona_proof: expectedDecision("reject", "oidc-issuer-authority-invalid"),
-        predecessor_nibble: expectedDecision("reject", "oidc-status-digest-mismatch"),
+        predecessor_nibble: expectedDecision("reject", "oidc-status-invalid"),
         wrong_successor_url: expectedDecision("reject", "oidc-issuer-authority-invalid"),
         old_https_issuer: expectedDecision("reject", "oidc-issuer-authority-invalid") }),
     }),
@@ -1306,7 +1306,7 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
         compromised_key_bit: expectedDecision("reject", "oidc-status-invalid"),
         shared_key_only_successor: expectedDecision("reject", "oidc-issuer-authority-invalid"),
         retain_compromised_key: expectedDecision("reject", "oidc-issuer-authority-invalid"),
-        drop_status_before_expiry: expectedDecision("reject", "oidc-status-digest-mismatch") }),
+        drop_status_before_expiry: expectedDecision("reject", "oidc-status-invalid") }),
     }),
   ];
 }

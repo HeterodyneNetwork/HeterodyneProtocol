@@ -61,7 +61,11 @@ unreleased pending explicit release approval.
 | Workspace | Core + Comms + Workspace | Role control plane with Radicle transport backstop; Control and Social compositions are optional |
 
 Every claim names the family version, the registry revision or digest, the
-feature IDs, and the strict-profile IDs it satisfies.
+feature IDs, and the strict-profile IDs it satisfies. A document class is an
+entry point, not a bill of materials: the invariants a claim owes follow from
+its baseline plus the features it actually claims, so a persona that only
+sends and receives owes nothing from the claims, OIDC, status, or agent
+stacks.
 
 Core distinguishes public-reader, authenticated-light, and full-node roles.
 Full nodes are persistent v3 onion services with Tor-default backend egress.
@@ -69,11 +73,14 @@ Light clients should implement outbound Tor; a browser tab without it may use
 an authenticated shared relay only as explicit reduced-assurance operation.
 
 Comms defines a universal fragment-only public launcher for locally resolving
-verified Tier-1 persona content. It also requires every AI or programmatic
-publisher to use a scoped temporary OIDC workload token and a dedicated,
-full-node-held agent role key; automation cannot fall back to user device keys
-or unlabeled publication. Social policy receipts are public information, while
-only subscribed verified canonical policy lists affect local visibility.
+verified Tier-1 persona content. An implementation that works with agents
+additionally requires every AI or programmatic publisher to use a scoped
+temporary OIDC workload token and a dedicated, full-node-held agent role key;
+automation cannot fall back to user device keys or unlabeled publication. That
+is the one path that makes the OIDC issuer mandatory, and it is why
+`comms.agent-authorship.v1` requires `comms.oidc-jwt-projection.v1`. Social
+policy receipts are public information, while only subscribed verified
+canonical policy lists affect local visibility.
 
 ## Machine-readable material
 

@@ -191,14 +191,14 @@ describe("agent workload access token", () => {
     const cases: Array<[Partial<AgentTokenValidationInput>, string]> = [
       [{ typ: "JWT" }, "agent-token-invalid"],
       [{ exp: 1_301 }, "agent-token-invalid"],
-      [{ now: 1_251 }, "agent-token-expired"],
-      [{ status: "INVALID" }, "agent-token-revoked"],
-      [{ aud: [audience, "https://other.example"] }, "agent-token-audience-invalid"],
-      [{ scope: "heterodyne:agent:publish extra" }, "agent-token-scope-invalid"],
+      [{ now: 1_251 }, "agent-token-invalid"],
+      [{ status: "INVALID" }, "agent-token-invalid"],
+      [{ aud: [audience, "https://other.example"] }, "agent-token-invalid"],
+      [{ scope: "heterodyne:agent:publish extra" }, "agent-token-invalid"],
       [{ sender_proof_valid: false }, "agent-sender-proof-invalid"],
       [{ sender_proof_jkt: "B".repeat(43) }, "agent-sender-proof-invalid"],
       [{ agent_role_id: "44".repeat(32) }, "agent-role-mismatch"],
-      [{ ledger_active: false }, "agent-token-stale"],
+      [{ ledger_active: false }, "agent-token-invalid"],
       [{ expected_credential_ledger_generation: 1 }, "credential_generation_stale"],
     ];
     for (const [patch, reason_code] of cases) {

@@ -13947,20 +13947,20 @@
         },
         {
           "verdict": "reject",
-          "reason_code": "oidc-status-digest-mismatch",
+          "reason_code": "oidc-status-invalid",
           "normalized": {
             "allowed": false,
             "state": "invalid",
-            "reason_code": "oidc-status-digest-mismatch"
+            "reason_code": "oidc-status-invalid"
           }
         },
         {
           "verdict": "reject",
-          "reason_code": "oidc-status-digest-mismatch",
+          "reason_code": "oidc-status-invalid",
           "normalized": {
             "allowed": false,
             "state": "invalid",
-            "reason_code": "oidc-status-digest-mismatch"
+            "reason_code": "oidc-status-invalid"
           }
         }
       ]

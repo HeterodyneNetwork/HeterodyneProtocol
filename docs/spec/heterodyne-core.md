@@ -356,8 +356,9 @@ and accepted KEL head. This interface verifies identity and possession only.
 
 Higher documents may reuse Core's generic protected-repository primitives:
 canonical `main` selection, commit/ref verification, encrypted private-tree
-storage, recipient-key wrapping, reader removal, key rotation, rollback
-detection, and cooperative ciphertext scrubbing. They may also reuse the
+storage, rollback detection, and cooperative ciphertext scrubbing. Recipient
+wrapping, recipient removal, and key rotation are the separate primitive at
+[`heterodyne:0.5.0#core-key-envelope`](#core-key-envelope). They may also reuse the
 public identity repository's canonical-`main` publication and digest-binding
 rules. Those primitives do not assign meaning to repository records or make a
 repository state authoritative for a higher-layer decision.
@@ -1218,6 +1219,56 @@ repositories. Losing every keys-repository copy can destroy decryptability,
 but it does not change KEL identity continuity. Clients SHOULD state these
 loss consequences plainly before destructive reset or restore.
 
+<a id="core-key-envelope"></a>
+### 8.2 Key envelopes and generations
+
+Several documents deliver one symmetric secret to a set of authorized holders.
+They all instantiate this primitive; no document defines a second one, and the
+carrier is not restricted to a repository.
+
+A **key generation** is one secret together with a generation identifier and
+the exact recipient set entitled to hold it. The generation identifier is
+either an opaque `key_id` carrying at least 128 bits of entropy or a
+monotonically increasing `key_epoch` scoped to a stable resource identifier;
+an instantiating document picks one form and MUST NOT mix both for the same
+secret. A **key envelope** delivers one generation to exactly one recipient
+and binds at least:
+
+- the generation identifier it carries;
+- the recipient, named by a [§3.6](#core-typed-key-references) typed-key
+  reference;
+- the issuing authority and the KEL, checkpoint, or repository evidence
+  current at issuance; and
+- the wrapping profile, nonce, ciphertext, and ciphertext digest.
+
+An envelope MUST NOT carry an unwrapped secret, and one envelope MUST address
+exactly one recipient. A recipient MUST authenticate the ciphertext and verify
+the issuing authority before unwrapping.
+
+Membership change is asymmetric:
+
+- Adding a recipient publishes an envelope for the **current** generation and
+  MUST NOT rotate. The new holder receives what the audience already has.
+- Removing a recipient MUST derive a fresh secret under a new generation
+  identifier and publish envelopes only to the remaining recipients.
+- After a removal rotation, a producer MUST reject the retired generation for
+  every new object. Whether existing objects are re-protected under the new
+  generation is the instantiating document's choice and is never implied.
+
+Rotation excludes a removed recipient from later generations only. It cannot
+revoke ciphertext that recipient could already read, and no implementation may
+present it as erasure; the bound above at
+[`heterodyne:0.5.0#core-non-erasure`](#core-non-erasure) governs what stays
+observable.
+
+An instantiating document supplies exactly four things: the rule that fixes
+the recipient set, the typed-key reference type and wrapping profile, the
+carrier that transports the envelope, and any rotation trigger beyond
+recipient removal. It MAY tighten these rules and MUST NOT weaken them. The
+distribution graph is not private by default: unless the instantiating
+document states otherwise, envelope addressing exposes recipients, generation
+linkage, and change timing to a carrier observer.
+
 <a id="core-verification"></a>
 ## 9. Verification algorithm
 
@@ -1566,7 +1617,7 @@ Every capability advertisement uses this Core-parsable bootstrap object:
 {
   "descriptor": "heterodyne-capabilities-v1",
   "spec_version": "heterodyne/0.5.0",
-  "registry_sha256": "631e843a0f104cf7973a0312de7b92205a2ad02407121033f1a826cd2ea5848e",
+  "registry_sha256": "a2a902c616a5671bf058c1d9a0e2ed91ee15c7915593fac5fa551e3f41a805f4",
   "implementation_role": "public-reader",
   "supported_documents": [
     "core"
@@ -1653,10 +1704,12 @@ invariants it adds. Its **required invariant set** is the transitive closure
 of its prerequisites' required sets plus its own `adds_invariants`; the
 declaration is the single source of truth and no document restates the
 flattened set. An `adds_invariants` entry MUST be a registered invariant owned
-by the declaring document and MUST NOT already be inherited. A duplicate
-profile ID carrying a conflicting declaration MUST be rejected. From 1.0,
-profile IDs are stable and changing a membership or obligation requires a new
-ID.
+by the declaring document, MUST NOT already be inherited, and MUST NOT be an
+invariant the registry binds to a feature: a feature-bound invariant is
+required by [§14](#core-conformance) whenever its feature is claimed, so a
+strict profile neither adds it nor forces the feature. A duplicate profile ID
+carrying a conflicting declaration MUST be rejected. From 1.0, profile IDs are
+stable and changing a membership or obligation requires a new ID.
 
 <a id="core-security"></a>
 ## 13. Core security model
@@ -1674,7 +1727,9 @@ serving-node withholding, routing-query metadata, rollback, and key-extraction
 threats. Multiple serving nodes and ordinary-relay access improve availability;
 they never replace local verification.
 
-The registry binds these exact normative invariants:
+The registry binds these exact normative invariants. Which of them a given
+implementation owes is decided by [§14](#core-invariant-scope), not by this
+list:
 
 - **CORE-I-IDENTITY-INTEGRITY:** The cold-root npub and accepted KEL are authoritative for persona identity; downstream caches and delegated identifiers cannot override them.
 - **CORE-I-NID-DELEGATION-DUAL-PROOF:** A Radicle NID delegation is active only after both the persona epoch-key BIP-340 signature and the delegated NID Ed25519 proof verify over the same binding.
@@ -1703,6 +1758,19 @@ feature MUST also be claimed, and every cross-document prerequisite MUST be
 supplied by a document the claim also names. Validators MUST resolve the
 catalog prerequisite graph and reject cycles, missing IDs, and a requirement
 supplied only by an unclaimed document.
+
+<a id="core-invariant-scope"></a>
+Security invariants are scoped the same way, and this is the family's only
+rule for it. A registered invariant that carries no `feature` member is
+**baseline**: every implementation claiming its owning document MUST meet it.
+An invariant that carries a `feature` member binds only an implementation
+claiming that feature, and claiming the feature makes it mandatory whether or
+not any strict profile is claimed. Because prerequisites resolve transitively,
+claiming a feature also incurs the invariants bound to everything it requires.
+An implementation MUST NOT expose a mechanism whose invariants it has not
+accepted: exercising a feature's behavior without claiming the feature is
+nonconformance, not an omission. No document restates which invariants are
+baseline; the pinned `security-invariants.json` is the sole authority.
 
 A conformance report MUST, for each strict-profile ID, list the profile's
 state, conformance class, prerequisite profile IDs, the required-invariant
@@ -1737,5 +1805,16 @@ a full Core vector-conformance claim; partial reports MUST list every gap and
 rationale.
 
 Vector JSON under `docs/spec/vectors/` is normative for the behavior it covers.
-Generator code is non-normative authoring and verification tooling. Diagnostic
-reason codes are registry vocabulary, not a wire API.
+Generator code is non-normative authoring and verification tooling.
+
+<a id="core-reason-codes"></a>
+Diagnostic reason codes are registry vocabulary, not a wire API, and this is
+the family's only rule for their granularity. A code names the decision a
+verifier reached, not the internal condition that produced it. Where a
+requester is not authorized to learn the difference, one code MUST cover the
+whole family of conditions: token, grant, enrollment, and recovery refusals
+are reported as a single indistinguishable outcome, and separating them by
+code would let a caller probe state it cannot otherwise observe. The specific
+condition is retained only where the owning document already puts privileged
+detail, which is its encrypted audit record. A document MUST NOT allocate a
+finer code to describe a refusal a coarser registered code already covers.

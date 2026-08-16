@@ -15,6 +15,6 @@
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "control-enrollment-expired"
+    "reason_code": "control-enrollment-unavailable"
   }
 }

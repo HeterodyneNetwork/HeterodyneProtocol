@@ -102,15 +102,23 @@ timing, size, count, publication, and fetch-cadence metadata.
 ### 3.1 Audience key distribution and roster
 
 
-An audience key is 32 uniformly random bytes. Persona membership expands by
-default to every active KEL-delegated human-device secp256k1 publishing key for
-that persona. A policy MAY narrow delivery to an explicit subset of those
-active devices, but MUST NOT add an inactive, revoked, unverified, non-device,
-cold-root, or epoch key. `kind:31011` distributes the key once per effective
-device recipient using NIP-44 to that device publishing key. The same device
-private key signs Nostr events and decrypts its wraps; this is one compromise
-domain. An authenticated light device therefore decrypts directly without
-bringing a persona authority key online.
+An audience key is one
+[`heterodyne:0.5.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
+key generation. Comms supplies the four instantiation choices that primitive
+requires and adds nothing else to its distribution and rotation rules:
+
+| Choice | Comms value |
+|---|---|
+| Recipient set | every active KEL-delegated human-device secp256k1 publishing key for the persona, or an explicit policy-narrowed subset of those active devices |
+| Reference and wrapping | `nostr-secp256k1`, NIP-44 wrapped to the device publishing key |
+| Carrier | one `kind:31011` per recipient, with the replaceable `kind:31012` roster |
+| Generation identifier | opaque `key_id` |
+
+An audience key is 32 uniformly random bytes. A narrowing policy MUST NOT add
+an inactive, revoked, unverified, non-device, cold-root, or epoch key. The same
+device private key signs Nostr events and decrypts its wraps; this is one
+compromise domain. An authenticated light device therefore decrypts directly
+without bringing a persona authority key online.
 
 The event MUST be epoch-key signed and contain exactly the addressing fields
 represented here:
@@ -137,32 +145,21 @@ tag per recipient. It MUST be epoch-key signed and KEL-validated. A sensitive
 roster MAY instead be carried inside a Tier 3 encrypted object.
 
 Encrypting the roster does not create complete membership privacy.
-Recipient-addressed `kind:31011` events on public carriers still expose clear
-recipient and generation linkage. This release defines no membership-private
-audience-key distribution profile.
+Recipient-addressed `kind:31011` events on public carriers still expose the
+clear recipient and generation linkage Core warns of. This release defines no
+membership-private audience-key distribution profile.
 
-A member addition MUST publish a replacing `kind:31012` under the same
-`key_id` containing the new member and MUST publish that member's
-`kind:31011` wrap. Addition SHOULD NOT rotate: the new member receives the
-current generation.
-
-A member or effective device removal MUST generate a fresh audience key and `key_id`, publish the
-new roster, redistribute `kind:31011` wraps only to remaining members,
-republish the current encrypted index under the newly derived `index_key`, and
-supersede the in-audience descriptor. The producer MUST initiate every
-required index, descriptor, roster, and wrap action within 60 seconds and
-retry until success, explicit expiry, user cancellation, a superseding state
-transition, or the profile's terminal retry-budget outcome. A carrier
+Every addition and removal follows the Core rotation rules; Comms restates
+none of them and adds exactly two obligations. First, removing or revoking a
+device removes it from the effective recipient set and is therefore a Core
+removal rotation, whether or not the persona intended a membership change.
+Second, Comms does re-protect existing objects: the rotation republishes the
+current encrypted index under the newly derived `index_key` and supersedes the
+in-audience descriptor. The producer MUST initiate every required index,
+descriptor, roster, and wrap action within 60 seconds of the triggering change
+and retry until success, explicit expiry, user cancellation, a superseding
+state transition, or the profile's terminal retry-budget outcome. A carrier
 partition is an availability failure, not automatic producer nonconformance.
-Rotation excludes the removed member from future
-content only; it cannot revoke old ciphertext encrypted under a key the member
-already possessed.
-Adding an active device follows ordinary member addition and does not rotate
-existing content by default. Removing or revoking a device excludes it from
-the effective set and triggers the complete removal rotation above.
-After that removal, every subsequent post, index, and descriptor MUST use the
-fresh audience generation and its fresh `key_id`; reuse of the retired
-generation for any new object MUST be rejected.
 
 <a id="comms-tier-three-profile"></a>
 ### 3.2 Tier 3 encryption profile
@@ -1218,6 +1215,11 @@ replication, not distributed consensus or a cross-node execution lock.
 <a id="comms-control-token"></a>
 ### 9.1 Node-scoped JWT projection
 
+This section is `comms.node-scoped-jwt.v1` and stands alone. It requires no
+HTTPS discovery, no published JWKS, no continuity manifest, and no status
+list: a node that only issues tokens its own resource will consume needs
+nothing from §§12-14.
+
 Each full node is an independent RFC 9068 issuer for its exact Control
 resource. Issuer signing keys MUST remain node-local. Authenticated issuer
 public state in the private Control registry binds the issuer URL, current
@@ -1478,11 +1480,15 @@ audience-key epoch and wrap, compact-state digest, and Radicle fetch-and-seed
 access. The recipient verifies all bindings before use. A delivered claim not
 reachable from canonical state remains provisional.
 
-Reader removal first records the reduction, removes Radicle access, rotates the
-dedicated ledger audience key, wraps the new key only for remaining active
-readers, advances the checkpoint, and retires prior ciphertext under the
-cooperative scrub profile. Old Git objects may remain observable to a former
-reader; rotation protects new state and the UI MUST describe this limit.
+The dedicated ledger audience key is a second
+[`heterodyne:0.5.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
+instantiation: its recipient set is the `active` `claim-ledger-reader`
+authorizations, its recipients are named by `radicle-ed25519-nid`, its carrier
+is the private repository, and its generation identifier is a `key_id`. Reader
+removal is the Core removal rotation with three Comms additions performed in
+order: record the authority reduction, remove Radicle access, and, after the
+rotation, advance the checkpoint and retire prior ciphertext under the
+cooperative scrub profile.
 
 <a id="comms-multiwriter-minting"></a>
 ### 11.1 Multi-writer minting and issuer-key confinement
@@ -1496,11 +1502,15 @@ continuity manifest bound. That bound MUST NOT exceed the window in
 stops minting immediately.
 
 The signing key MUST NOT be encrypted by or released merely with the ledger
-audience key. Its envelope binds persona, repository, checkpoint, key epoch,
-credential-ledger generation, JWK thumbprint, ciphertext digest, active
-issuer-authority record set, and per-recipient NID wraps. Removing an issuer
-rotates the envelope/key epoch and excludes that NID. A node MUST unwrap only
-after replaying the exact bound authority set, generation, and checkpoint.
+audience key. It is a third
+[`heterodyne:0.5.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
+instantiation whose recipient set is the NIDs holding active
+`oidc-token-issuer` authority, named by `radicle-ed25519-nid`, carried in the
+private repository under a monotonic key epoch. Beyond the members Core
+requires, its envelope binds the credential-ledger generation, the JWK
+thumbprint, and the exact active issuer-authority record set. Removing an
+issuer is the Core removal rotation. A node MUST unwrap only after replaying
+the exact bound authority set, generation, and checkpoint.
 
 Before returning a JWT, a writer durably commits an issuance reservation with
 credential-ledger generation, `jti`, client and request/release digests,
@@ -1513,6 +1523,13 @@ lists.
 
 <a id="comms-oidc-endpoints"></a>
 ## 12. OIDC/OAuth issuer and endpoints
+
+Sections 12 through 14 are `comms.oidc-jwt-projection.v1` and its dependent
+`comms.token-status-list-draft-21.v1`. They are optional: they exist so an
+ordinary third-party relying party can verify a persona's assertions through
+standard discovery, and an implementation that projects nothing to third
+parties omits them entirely. The prerequisite chain in
+[`registry/features.json`](registry/features.json) fixes who must ship them.
 
 A persona has one exact HTTPS issuer:
 
@@ -1978,7 +1995,10 @@ under a separately bounded encrypted diagnostic policy.
 ## 16. Security invariants and forward-secrecy posture
 
 
-The registry defines these Comms invariants:
+The registry defines these Comms invariants. An entry the registry binds to a feature is owed only by an implementation
+claiming that feature, under
+[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope).
+The list below is descriptive:
 
 - **COMMS-I-TIER3-BLIND-CARRIER:** Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay.
 - **COMMS-I-TIER2-HONESTY:** Tier 2 private repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly.
@@ -2016,8 +2036,12 @@ another.
 <a id="comms-strict-profile"></a>
 ### 16.1 Comms strict profiles
 
-The stable Comms strict profile composes the Core strict profile. Its flattened
-invariant membership is exact:
+The stable Comms strict profile composes the Core strict profile and adds the
+baseline Comms invariants. Under
+[`heterodyne:0.5.0#core-strict-profile`](heterodyne-core.md#core-strict-profile) it does not add or
+require a feature-bound invariant, so claiming it does not oblige an
+implementation to ship claims, the OIDC issuer, token status, or agent
+authorship:
 
 <!-- fixture:comms-strict-profile -->
 ```json
@@ -2033,34 +2057,19 @@ invariant membership is exact:
     "COMMS-I-TIER2-HONESTY",
     "COMMS-I-CONFIG-AT-REST",
     "COMMS-I-CLIENT-SIDE-DELIVERY",
-    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
-    "COMMS-I-CLAIM-AUTHENTICITY",
-    "COMMS-I-CLAIM-ATTENUATION",
-    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
-    "COMMS-I-CLAIM-REVOCATION",
-    "COMMS-I-LEDGER-CONFINEMENT",
-    "COMMS-I-ISSUER-KEY-CONFINEMENT",
-    "COMMS-I-MINT-FRESHNESS",
-    "COMMS-I-ISSUER-CONTINUITY",
-    "COMMS-I-CLAIM-RELEASE",
-    "COMMS-I-JWT-TYPE-AUDIENCE",
-    "COMMS-I-STATUS-INTEGRITY",
-    "COMMS-I-PUBLIC-READER-TIER1-ONLY",
-    "COMMS-I-AGENT-ROLE-BINDING",
-    "COMMS-I-AGENT-ATTRIBUTION",
-    "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT"
+    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY"
   ]
 }
 ```
 
 A `heterodyne-comms-strict-v1` implementation MUST meet every inherited Core
 obligation, MUST present the Tier 2 plaintext-on-allowed-seeds warning before
-publication, MUST retain no retired message keys after the Comms deletion
-points, MUST hold the public-reader Tier boundary, and MUST meet all
-[`heterodyne:0.5.0#comms-agent-authorship`](#comms-agent-authorship) role, token, attribution,
-no-fallback, and confinement obligations. Its capability advertisement MUST
-name both profile IDs. An implementation missing any condition MUST omit the
-Comms profile.
+publication, and MUST retain no retired message keys after the Comms deletion
+points. Its capability advertisement MUST name both profile IDs. An
+implementation missing any condition MUST omit the Comms profile. The
+invariants bound to `comms.public-reader.v1` and
+[`heterodyne:0.5.0#comms-agent-authorship`](#comms-agent-authorship) are owed
+by every implementation claiming those features, strict or not.
 
 <a id="comms-conformance"></a>
 ## 17. Conformance
@@ -2069,10 +2078,23 @@ Comms profile.
 A Comms conformance report follows the family requirements in
 [`heterodyne:0.5.0#core-conformance`](heterodyne-core.md#core-conformance) and claims Core+Comms. A base
 implementation MUST implement the envelope, tiers, publishing, feed,
-retrieval, Marmot invitation hook, private Control-registry integration, and
-all registered Comms invariants. One that advertises DMs MUST implement all
+retrieval, the Marmot invitation hook, private Control-registry integration,
+and every baseline Comms invariant. One that advertises DMs MUST implement all
 applicable Marmot rules in §7. Transport-independent credential-continuity
 definitions remain non-claimable at the pinned registry revision.
+
+Typed key claims, the private claim ledger, node-scoped JWTs, the OIDC issuer,
+token status, the public reader, Marmot conversations, Radicle Marmot storage
+and relays, and agent authorship are each a separately claimed feature, not an
+entry requirement. A base Comms implementation therefore does not need an
+RFC 9068 issuer, JWKS discovery, a continuity manifest, or status lists. The
+invariant scoping in
+[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope) governs what each
+claim owes. `comms.oidc-jwt-projection.v1` becomes mandatory exactly when an
+implementation claims a feature that requires it, which for Comms means
+`comms.agent-authorship.v1`: an automated principal's registration, consent,
+and pairwise subject are OIDC objects, so a client that works with agents
+ships the issuer and a client that does not, does not.
 
 A report claiming `comms.public-reader.v1` MAY omit every send-side and private
 feature, but MUST name the `public-reader` Core role, implement
@@ -2082,11 +2104,11 @@ assurance when Tor or repo confirmation is unavailable. It MUST NOT claim this
 feature after rendering Tier 2 or Tier 3 as public content.
 
 A report claiming `heterodyne-comms-strict-v1` MUST include the computed
-closure, the Core prerequisite result, the Tier 2 warning result, and every
-applicable strict, public-reader, and agent-authorship vector result. It MUST
-NOT claim the profile if any item is missing. An implementation that exposes
-an automated publication path outside §15 MUST NOT claim Comms conformance or
-the Comms strict profile.
+closure, the Core prerequisite result, the Tier 2 warning result, every
+applicable strict vector result, and the vector results for every feature it
+also claims. It MUST NOT claim the profile if any item is missing. An
+implementation that exposes an automated publication path outside §15 MUST NOT
+claim Comms conformance or the Comms strict profile.
 
 No conforming report may list a §8.4 credential-continuity draft schema as an
 active wire profile, feature, requirement, or strict-profile obligation. The

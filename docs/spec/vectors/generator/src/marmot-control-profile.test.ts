@@ -48,18 +48,18 @@ describe("Marmot Control invitation and entitlement", () => {
       invitation_mode: "permanent",
     })).toEqual({ verdict: "accept", state: "enrollment-only", authority: false });
     expect(authorizeInvitation(invitation))
-      .toEqual({ verdict: "reject", reason_code: "control-invitation-disabled" });
+      .toEqual({ verdict: "reject", reason_code: "control-enrollment-unavailable" });
   });
 
   it("enforces temporary expiry, one pending group per account, global cap, and rates", () => {
     expect(authorizeInvitation({ ...invitation, invitation_mode: "temporary", temporary_expires_at: 1_001 }))
       .toMatchObject({ verdict: "accept", state: "enrollment-only" });
     expect(authorizeInvitation({ ...invitation, invitation_mode: "temporary", temporary_expires_at: 1_000 }))
-      .toEqual({ verdict: "reject", reason_code: "control-invitation-disabled" });
+      .toEqual({ verdict: "reject", reason_code: "control-enrollment-unavailable" });
     expect(authorizeInvitation({ ...invitation, invitation_mode: "permanent", pending_for_account: 1 }))
-      .toEqual({ verdict: "reject", reason_code: "control-enrollment-capacity" });
+      .toEqual({ verdict: "reject", reason_code: "control-enrollment-unavailable" });
     expect(authorizeInvitation({ ...invitation, invitation_mode: "permanent", global_pending: 10 }))
-      .toEqual({ verdict: "reject", reason_code: "control-enrollment-capacity" });
+      .toEqual({ verdict: "reject", reason_code: "control-enrollment-unavailable" });
     expect(authorizeInvitation({ ...invitation, invitation_mode: "permanent", welcome_rate_remaining: 0 }))
       .toEqual({ verdict: "reject", reason_code: "control-enrollment-rate-limited" });
     expect(authorizeInvitation({ ...invitation, invitation_mode: "permanent", global_pending: 10, public_pool_replenishment_requested: true }))
@@ -79,14 +79,14 @@ describe("Marmot Control invitation and entitlement", () => {
       global_pending: 10,
       explicitly_approved: true,
       reserved_slot_available: false,
-    })).toEqual({ verdict: "reject", reason_code: "control-enrollment-capacity" });
+    })).toEqual({ verdict: "reject", reason_code: "control-enrollment-unavailable" });
   });
 
   it("expires enrollment-only groups after the hard 30-minute lifetime", () => {
     expect(evaluatePendingEnrollment({ created_at: 1_000, now: 2_799 }))
       .toEqual({ verdict: "accept", state: "enrollment-only", expires_at: 2_800 });
     expect(evaluatePendingEnrollment({ created_at: 1_000, now: 2_800 }))
-      .toEqual({ verdict: "reject", reason_code: "control-enrollment-expired" });
+      .toEqual({ verdict: "reject", reason_code: "control-enrollment-unavailable" });
   });
 
   it("converges reductions, absorbs revocation, and rejects unconsented expansion", () => {
@@ -141,7 +141,7 @@ describe("node-scoped Marmot-bound tokens", () => {
       ...issuance, requested_lifetime_seconds: 3_600, extended_capability: true,
     })).toMatchObject({ verdict: "accept", lifetime_seconds: 3_600, refresh_token: null });
     expect(issueControlToken({ ...issuance, requested_lifetime_seconds: 301 }))
-      .toEqual({ verdict: "reject", reason_code: "control-token-expired" });
+      .toEqual({ verdict: "reject", reason_code: "control-token-invalid" });
   });
 
   it("rejects the wrong sender, group, node audience, and scope", () => {
@@ -164,13 +164,13 @@ describe("node-scoped Marmot-bound tokens", () => {
     };
     expect(validateControlTokenUse(use)).toEqual({ verdict: "accept" });
     expect(validateControlTokenUse({ ...use, authenticated_sender_jkt: "B".repeat(43) }))
-      .toEqual({ verdict: "reject", reason_code: "control-token-sender-invalid" });
+      .toEqual({ verdict: "reject", reason_code: "control-token-invalid" });
     expect(validateControlTokenUse({ ...use, group_id: "99".repeat(32) }))
-      .toEqual({ verdict: "reject", reason_code: "control-token-group-invalid" });
+      .toEqual({ verdict: "reject", reason_code: "control-token-invalid" });
     expect(validateControlTokenUse({ ...use, expected_audience: "urn:heterodyne:control:node-b" }))
-      .toEqual({ verdict: "reject", reason_code: "control-token-audience-invalid" });
+      .toEqual({ verdict: "reject", reason_code: "control-token-invalid" });
     expect(validateControlTokenUse({ ...use, method: "config.put" }))
-      .toEqual({ verdict: "reject", reason_code: "control-token-scope-invalid" });
+      .toEqual({ verdict: "reject", reason_code: "control-token-invalid" });
   });
 
   it("caps authorization-view age at 300 seconds for minting and use", () => {
@@ -205,7 +205,7 @@ describe("OAuth Device Authorization hardening", () => {
     expect(evaluateDeviceAuthorizationAttempt({ ...attempt, user_code_entropy_bits: 34 }))
       .toMatchObject({ verdict: "reject" });
     expect(evaluateDeviceAuthorizationAttempt({ ...attempt, failed_guesses: 5 }))
-      .toEqual({ verdict: "reject", reason_code: "control-device-code-exhausted", state: "invalidated" });
+      .toEqual({ verdict: "reject", reason_code: "control-device-code-invalid", state: "invalidated" });
     expect(evaluateDeviceAuthorizationAttempt({ ...attempt, node_rate_allowed: false }))
       .toEqual({ verdict: "reject", reason_code: "control-device-code-rate-limited", state: "pending" });
     expect(evaluateDeviceAuthorizationAttempt({ ...attempt, display_fingerprint_matches: false }))
@@ -347,10 +347,10 @@ describe("optional recovery profiles", () => {
     const access = { grant, onion_address: grant.onion_address, tor_client_key: "tor-key", ssh_client_key: "ssh-key", ssh_host_key: "host-key", path: "/grant/archive.bin", direction: "read" as const, bytes: 1_000, now: 1_000 };
     expect(evaluateSftpAccess(access)).toEqual({ verdict: "accept" });
     expect(evaluateSftpAccess({ ...access, onion_address: grant.radicle_onion_address }))
-      .toEqual({ verdict: "reject", reason_code: "control-sftp-auth-invalid" });
+      .toEqual({ verdict: "reject", reason_code: "control-sftp-denied" });
     expect(evaluateSftpAccess({ ...access, path: "/etc/passwd" }))
-      .toEqual({ verdict: "reject", reason_code: "control-sftp-resource-denied" });
+      .toEqual({ verdict: "reject", reason_code: "control-sftp-denied" });
     expect(evaluateSftpAccess({ ...access, now: 2_000 }))
-      .toEqual({ verdict: "reject", reason_code: "control-sftp-expired" });
+      .toEqual({ verdict: "reject", reason_code: "control-sftp-denied" });
   });
 });

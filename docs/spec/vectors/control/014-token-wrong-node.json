@@ -46,6 +46,6 @@
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "control-token-audience-invalid"
+    "reason_code": "control-token-invalid"
   }
 }

@@ -230,10 +230,34 @@ describe("revisioned protocol registry", () => {
       "oidc-issuer-mismatch",
       "oidc-token-type-invalid",
       "oidc-audience-invalid",
-      "oidc-status-stale",
-      "oidc-status-digest-mismatch",
-      "oidc-status-index-invalid",
       "oidc-status-invalid",
+    ]));
+
+    // A refusal a caller is not entitled to distinguish gets exactly one code;
+    // the specific condition lives only in the encrypted audit.
+    for (const collapsed of [
+      "agent-token-expired", "agent-token-revoked", "agent-token-stale",
+      "agent-token-audience-invalid", "agent-token-scope-invalid",
+      "control-token-expired", "control-token-audience-invalid",
+      "control-token-sender-invalid", "control-token-group-invalid",
+      "control-token-scope-invalid",
+      "oidc-status-stale", "oidc-status-digest-mismatch", "oidc-status-index-invalid",
+      "control-sftp-auth-invalid", "control-sftp-resource-denied", "control-sftp-expired",
+      "control-invitation-disabled", "control-enrollment-capacity",
+      "control-enrollment-expired", "control-device-code-exhausted",
+    ]) {
+      expect(reasonCodes).not.toContain(collapsed);
+    }
+    expect(reasonCodes).toEqual(expect.arrayContaining([
+      "agent-token-invalid",
+      "control-token-invalid",
+      "control-sftp-denied",
+      "control-enrollment-unavailable",
+      "control-device-code-invalid",
+      // Backoff and the user-visible code comparison stay separable: they tell
+      // a caller nothing it is not already entitled to know.
+      "control-enrollment-rate-limited",
+      "control-device-code-display-mismatch",
     ]));
 
     const invariantIds = registry.security_invariants.map((entry) => entry.id);
