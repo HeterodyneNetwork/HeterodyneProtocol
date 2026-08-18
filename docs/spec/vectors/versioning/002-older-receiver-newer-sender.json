@@ -6,21 +6,18 @@
     "heterodyne:0.5.0#core-versioning"
   ],
   "vector_id": "versioning/older-receiver-newer-sender",
-  "description": "Older receiver tolerates a newer compatible 0.x sender with unknown optional fields.",
+  "description": "A peer offering heterodyne/0.4.0 cannot negotiate the exact supported family version.",
   "input": {
-    "receiver_version": "0.3.0",
-    "sender_version": "0.4.0",
-    "unknown_optional_fields": [
-      "x-new"
+    "local": [
+      "heterodyne/0.5.0"
+    ],
+    "remote": [
+      "heterodyne/0.4.0"
     ]
   },
   "expected_output": {
-    "verdict": "accept",
-    "normalized": {
-      "ignored_unknown_optional_fields": [
-        "x-new"
-      ]
-    }
+    "valid": false,
+    "error": "unsupported_family_version"
   },
   "direction": "consume"
 }

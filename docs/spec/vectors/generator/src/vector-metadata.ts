@@ -115,7 +115,7 @@ core-redundancy/stale-seed-does-not-remove-durability
 versioning/qualified-version-valid
 versioning/qualified-version-unqualified-rejected
 versioning/core-capability-bootstrap
-versioning/per-document-negotiation
+versioning/exact-family-version-negotiation
 versioning/unknown-asynchronous-stamp-rejected
 persona-profile/designated-publisher-valid
 persona-profile/nip05-mismatch-rejected

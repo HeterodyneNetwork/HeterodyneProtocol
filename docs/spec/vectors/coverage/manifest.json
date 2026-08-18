@@ -3570,7 +3570,7 @@
     ]
   },
   {
-    "vector_id": "versioning/older-receiver-newer-sender",
+    "vector_id": "versioning/exact-family-version-negotiation",
     "owner_document": "core",
     "spec_version": "heterodyne/0.5.0",
     "spec_refs": [
@@ -3578,7 +3578,7 @@
     ]
   },
   {
-    "vector_id": "versioning/per-document-negotiation",
+    "vector_id": "versioning/older-receiver-newer-sender",
     "owner_document": "core",
     "spec_version": "heterodyne/0.5.0",
     "spec_refs": [

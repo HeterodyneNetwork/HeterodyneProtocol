@@ -8,8 +8,10 @@
   "vector_id": "versioning/unknown-major-placeholder",
   "description": "Future incompatible major versions render as placeholders rather than being misinterpreted.",
   "input": {
-    "receiver_supported_major": 0,
-    "sender_version": "1.0.0",
+    "receiver_supported_versions": [
+      "heterodyne/0.5.0"
+    ],
+    "sender_version": "heterodyne/1.0.0",
     "event_kind": 31007
   },
   "expected_output": {

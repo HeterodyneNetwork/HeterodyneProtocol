@@ -136,8 +136,8 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `verification/revoked-key-rejects` | core | — | `heterodyne:0.5.0#core-verification` |
 | `versioning/capabilities-roundtrip` | core | — | `heterodyne:0.5.0#core-versioning` |
 | `versioning/core-capability-bootstrap` | core | — | `heterodyne:0.5.0#core-versioning` |
+| `versioning/exact-family-version-negotiation` | core | — | `heterodyne:0.5.0#core-versioning` |
 | `versioning/older-receiver-newer-sender` | core | — | `heterodyne:0.5.0#core-versioning` |
-| `versioning/per-document-negotiation` | core | — | `heterodyne:0.5.0#core-versioning` |
 | `versioning/qualified-version-unqualified-rejected` | core | — | `heterodyne:0.5.0#core-versioning` |
 | `versioning/qualified-version-valid` | core | — | `heterodyne:0.5.0#core-versioning` |
 | `versioning/unknown-asynchronous-stamp-rejected` | core | — | `heterodyne:0.5.0#core-versioning` |

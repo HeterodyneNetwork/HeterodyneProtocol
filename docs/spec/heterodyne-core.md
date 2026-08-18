@@ -1644,7 +1644,7 @@ claimed role and its required feature set MUST agree.
 whose complete invariant, obligation, feature, vector, and
 prerequisite-profile sets are actually met by the advertiser. A composed profile
 MUST advertise every prerequisite profile in the same object and MUST
-advertise the document versions and required features on which those profiles
+advertise the family version and required features on which those profiles
 depend. An unknown strict-profile ID MUST be retained or ignored safely and
 MUST NOT be used to infer conformance, grant a capability, or satisfy a known
 profile. An unknown claimed Core feature MUST fail capability negotiation;

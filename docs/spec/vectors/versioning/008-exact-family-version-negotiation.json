@@ -1,0 +1,25 @@
+{
+  "vector_schema_version": "1.0.0",
+  "owner_document": "core",
+  "spec_version": "heterodyne/0.5.0",
+  "spec_refs": [
+    "heterodyne:0.5.0#core-versioning"
+  ],
+  "vector_id": "versioning/exact-family-version-negotiation",
+  "description": "Peers select one exact family version before sending stamped events.",
+  "direction": "consume",
+  "input": {
+    "local": [
+      "heterodyne/0.5.0"
+    ],
+    "remote": [
+      "heterodyne/0.5.0"
+    ]
+  },
+  "expected_output": {
+    "verdict": "accept",
+    "normalized": {
+      "selected_version": "heterodyne/0.5.0"
+    }
+  }
+}

@@ -9,7 +9,7 @@
   "description": "A 1.0 document cannot require a non-frozen registry entry.",
   "direction": "round-trip",
   "input": {
-    "document_version": "core/1.0.0",
+    "document_version": "heterodyne/1.0.0",
     "required_entry_status": "stable"
   },
   "expected_output": {

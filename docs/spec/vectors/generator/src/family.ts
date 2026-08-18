@@ -61,3 +61,12 @@ export function assertCurrentFamilyVersion(value: string): void {
     throw new Error(`expected ${QUALIFIED_VERSION}, got ${value}`);
   }
 }
+
+export function negotiateExactFamilyVersion(
+  local: readonly string[],
+  remote: readonly string[],
+): string | null {
+  return local.includes(QUALIFIED_VERSION) && remote.includes(QUALIFIED_VERSION)
+    ? QUALIFIED_VERSION
+    : null;
+}

@@ -328,8 +328,8 @@ const VECTOR_FACTORIES: VectorFactory[] = [
     spec_refs: ["§12", "§14.3"],
     description: "Future incompatible major versions render as placeholders rather than being misinterpreted.",
     input: {
-      receiver_supported_major: 0,
-      sender_version: "1.0.0",
+      receiver_supported_versions: ["heterodyne/0.5.0"],
+      sender_version: "heterodyne/1.0.0",
       event_kind: 31007,
     },
     expected_output: {
@@ -855,9 +855,9 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
     vector: {
       vector_id: "versioning/older-receiver-newer-sender",
       spec_refs: ["§12", "§14.3"],
-      description: "Older receiver tolerates a newer compatible 0.x sender with unknown optional fields.",
-      input: { receiver_version: "0.3.0", sender_version: "0.4.0", unknown_optional_fields: ["x-new"] },
-      expected_output: { verdict: "accept", normalized: { ignored_unknown_optional_fields: ["x-new"] } },
+      description: "A peer offering heterodyne/0.4.0 cannot negotiate the exact supported family version.",
+      input: { local: ["heterodyne/0.5.0"], remote: ["heterodyne/0.4.0"] },
+      expected_output: { valid: false, error: "unsupported_family_version" },
     },
   },
   {
@@ -865,9 +865,9 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
     vector: {
       vector_id: "versioning/capabilities-roundtrip",
       spec_refs: ["§12", "§14.3"],
-      description: "Capabilities event round-trips supported feature flags.",
-      input: { capabilities: ["baseline", "tor", "strict-mode"] },
-      expected_output: { verdict: "accept", normalized: { capabilities: ["baseline", "tor", "strict-mode"] } },
+      description: "The complete heterodyne-capabilities-v1 object round-trips with one family version.",
+      input: { capabilities: { descriptor: "heterodyne-capabilities-v1", spec_version: "heterodyne/0.5.0", registry_sha256: "a2a902c616a5671bf058c1d9a0e2ed91ee15c7915593fac5fa551e3f41a805f4", implementation_role: "public-reader", supported_documents: ["core"], required_features: ["core.nostr-relay-read.v1"], strict_profiles: [] } },
+      expected_output: { verdict: "accept", normalized: { capabilities: { descriptor: "heterodyne-capabilities-v1", spec_version: "heterodyne/0.5.0", registry_sha256: "a2a902c616a5671bf058c1d9a0e2ed91ee15c7915593fac5fa551e3f41a805f4", implementation_role: "public-reader", supported_documents: ["core"], required_features: ["core.nostr-relay-read.v1"], strict_profiles: [] } } },
     },
   },
   {
@@ -875,8 +875,8 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
     vector: {
       vector_id: "versioning/unknown-room-kind-tolerance",
       spec_refs: ["§12", "§14.3"],
-      description: "Unknown room kind from a compatible sender is tolerated with placeholder rendering.",
-      input: { room_kind: "future_kind", sender_version: "0.4.0" },
+      description: "An unknown optional room kind is tolerated only at the same supported family version.",
+      input: { room_kind: "future_kind", receiver_supported_versions: ["heterodyne/0.5.0"], sender_version: "heterodyne/0.5.0" },
       expected_output: { verdict: "accept", normalized: { placeholder_required: true } },
     },
   },

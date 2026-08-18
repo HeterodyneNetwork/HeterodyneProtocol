@@ -6,22 +6,38 @@
     "heterodyne:0.5.0#core-versioning"
   ],
   "vector_id": "versioning/capabilities-roundtrip",
-  "description": "Capabilities event round-trips supported feature flags.",
+  "description": "The complete heterodyne-capabilities-v1 object round-trips with one family version.",
   "input": {
-    "capabilities": [
-      "baseline",
-      "tor",
-      "strict-mode"
-    ]
+    "capabilities": {
+      "descriptor": "heterodyne-capabilities-v1",
+      "spec_version": "heterodyne/0.5.0",
+      "registry_sha256": "a2a902c616a5671bf058c1d9a0e2ed91ee15c7915593fac5fa551e3f41a805f4",
+      "implementation_role": "public-reader",
+      "supported_documents": [
+        "core"
+      ],
+      "required_features": [
+        "core.nostr-relay-read.v1"
+      ],
+      "strict_profiles": []
+    }
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "capabilities": [
-        "baseline",
-        "tor",
-        "strict-mode"
-      ]
+      "capabilities": {
+        "descriptor": "heterodyne-capabilities-v1",
+        "spec_version": "heterodyne/0.5.0",
+        "registry_sha256": "a2a902c616a5671bf058c1d9a0e2ed91ee15c7915593fac5fa551e3f41a805f4",
+        "implementation_role": "public-reader",
+        "supported_documents": [
+          "core"
+        ],
+        "required_features": [
+          "core.nostr-relay-read.v1"
+        ],
+        "strict_profiles": []
+      }
     }
   },
   "direction": "consume"

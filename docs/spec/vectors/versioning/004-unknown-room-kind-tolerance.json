@@ -6,10 +6,13 @@
     "heterodyne:0.5.0#social-discussion-rooms"
   ],
   "vector_id": "versioning/unknown-room-kind-tolerance",
-  "description": "Unknown room kind from a compatible sender is tolerated with placeholder rendering.",
+  "description": "An unknown optional room kind is tolerated only at the same supported family version.",
   "input": {
     "room_kind": "future_kind",
-    "sender_version": "0.4.0"
+    "receiver_supported_versions": [
+      "heterodyne/0.5.0"
+    ],
+    "sender_version": "heterodyne/0.5.0"
   },
   "expected_output": {
     "verdict": "accept",
