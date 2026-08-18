@@ -50,6 +50,13 @@ describe("canonical family documentation", () => {
     expect(comms).toMatch(/credential continuity drafts[\s\S]*not required by baseline Control/i);
   });
 
+  it("keeps Control-shaped node token semantics out of live Comms prose", () => {
+    const comms = read("docs/spec/heterodyne-comms.md");
+    expect(comms).not.toContain("comms.node-scoped-jwt.v1");
+    expect(comms).not.toContain("A Control token has");
+    expect(comms).not.toContain('id="comms-control-token"');
+  });
+
   it("keeps the full-node registry and recovery contract explicit in Core", () => {
     const core = read("docs/spec/heterodyne-core.md");
     expect(core).toMatch(/full-node Control and recovery metadata/i);
@@ -178,7 +185,7 @@ describe("canonical family documentation", () => {
     // A node-scoped token is verified only by its own issuer, so it needs none
     // of the third-party discovery, continuity, or status machinery.
     expect(requires("control.node-scoped-token.v1", oidc)).toBe(false);
-    expect(requires("control.node-scoped-token.v1", "comms.node-scoped-jwt.v1")).toBe(true);
+    expect(features.has("comms.node-scoped-jwt.v1")).toBe(false);
     expect(requires("comms.marmot-conversations.v1", oidc)).toBe(false);
     expect(requires("comms.public-reader.v1", oidc)).toBe(false);
   });

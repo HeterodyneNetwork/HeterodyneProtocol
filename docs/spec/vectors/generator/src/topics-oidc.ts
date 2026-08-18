@@ -525,7 +525,7 @@ export async function buildOidcVectors(fixtures: Fixtures): Promise<AuthoredVect
     claims.nonce = "";
   }, OIDC_RSA_ONE.private_jwk);
   return [
-    authored("001-discovery-exact-issuer.json", "discovery-exact-issuer", "Exact cold-root-bound issuer discovery.", { operation: "discovery", origin: "https://node.example", cold_root_npub: x.root, identity: x.identity as unknown as JsonValue }),
+    authored("001-discovery-exact-issuer.json", "discovery-exact-issuer", "Exact cold-root-bound third-party issuer discovery.", { operation: "discovery", origin: "https://node.example", cold_root_npub: x.root, identity: x.identity as unknown as JsonValue }),
     authored("002-issuer-mismatch-rejected.json", "issuer-mismatch-rejected", "A valid epoch npub is rejected as an issuer.", { operation: "jwt-validation", ...jwtInput(legacyId, { ...common, token_use: "id_token", nonce: "oidc-vector-nonce", sender_constraint: "none" }), expected_issuer: `https://node.example/oidc/${x.epoch}` }),
     authored("003-authorization-code-pkce.json", "authorization-code-pkce", "Signed registration, consent, nonempty nonce, source replay, S256 and single-use code redemption.", { operation: "oauth-flows", mode: "authorization-code", replay: authorizationReplay }),
     authored("004-device-authorization.json", "device-authorization", "RFC 8628 pending, slow_down, denial, expiry, and successful redemption transitions.", { operation: "oauth-flows", mode: "device-authorization", replay: authorizationReplay }),
@@ -550,7 +550,7 @@ export async function buildOidcVectors(fixtures: Fixtures): Promise<AuthoredVect
       ...jwtInput(id, { ...statusCommon, token_use: "id_token", nonce: "oidc-vector-nonce", sender_constraint: "none" }, true),
       empty_nonce_compact: emptyNonceId,
     }),
-    authored("009-rfc9068-access-token-valid.json", "rfc9068-access-token-valid", "Strict RFC 9068 access-token and pinned draft-21 status validation.", jwtInput(access, { ...statusCommon, token_use: "access_token", sender_constraint: "none" }, true)),
+    authored("009-rfc9068-access-token-valid.json", "rfc9068-access-token-valid", "Strict third-party RFC 9068 access-token and pinned draft-21 status validation.", jwtInput(access, { ...statusCommon, token_use: "access_token", sender_constraint: "none" }, true)),
     authored("010-token-type-confusion-rejected.json", "token-type-confusion-rejected", "Access token rejected as ID Token.", accessAsId),
     authored("011-dpop-confirmation-bound.json", "dpop-confirmation-bound", "DPoP accepts only the exact canonical thumbprint and rejects wrong, mixed, and method-confused confirmation.", jwtCases(dpop, [
       { expected_audience: API, options: { ...common, token_use: "access_token", cnf: dpopCnf, sender_constraint: "dpop" } },

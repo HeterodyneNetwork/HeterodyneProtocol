@@ -6,7 +6,7 @@
     "heterodyne:0.5.0#comms-oidc-endpoints"
   ],
   "vector_id": "oidc/discovery-exact-issuer",
-  "description": "Exact cold-root-bound issuer discovery.",
+  "description": "Exact cold-root-bound third-party issuer discovery.",
   "input": {
     "operation": "discovery",
     "origin": "https://node.example",

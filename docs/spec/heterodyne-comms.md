@@ -1185,7 +1185,7 @@ with them only as encrypted repository records and MUST report them as
 non-claimable drafts.
 
 <a id="comms-control-registry"></a>
-## 9. Private Control registry and token projection
+## 9. Private Control registry integration
 
 Each persona has an encrypted private Radicle Control registry shared by
 authorized full nodes. It is logically separate from public device metadata
@@ -1213,40 +1213,8 @@ and validating that commit. Another node acts only after fetching and
 validating the record and approving authority. The repository is evidence
 replication, not distributed consensus or a cross-node execution lock.
 
-<a id="comms-control-token"></a>
-### 9.1 Node-scoped JWT projection
-
-This section is `comms.node-scoped-jwt.v1` and stands alone. It requires no
-HTTPS discovery, no published JWKS, no continuity manifest, and no status
-list: a node that only issues tokens its own resource will consume needs
-nothing from §§12-14.
-
-Each full node is an independent RFC 9068 issuer for its exact Control
-resource. Issuer signing keys MUST remain node-local. Authenticated issuer
-public state in the private Control registry binds the issuer URL, current
-JWKs, node device key, exact resource audience, validity interval, and
-predecessor.
-
-A Control token has protected `typ` exactly `at+jwt`, all mandatory RFC
-9068 claims, `cnf.jkt`, the exact Marmot group, client class, authorization
-record, private-registry checkpoint, methods, objects, finite limits, and
-optional agent role. Its audience names only the issuing node. Another full
-node MUST reject it and issue a new token after independently validating the
-same persona-wide entitlement.
-
-For Marmot carriage the authenticated sender account and MLS sender leaf are
-the proof bound to `cnf.jkt`; Comms MUST NOT invent HTTP method or URI values.
-A separately exposed HTTPS endpoint may apply RFC 9449. The default lifetime
-is five minutes. A separately consented `control.token.extended` grant may
-increase it, but no token may exceed sixty minutes. No refresh token is
-issued.
-
-Every request rechecks current entitlement. A projected token never replaces
-private repository authority. Once revocation is observed, every associated
-token fails regardless of its remaining `exp`.
-
 <a id="comms-control-bootstrap"></a>
-### 9.2 Locked epoch inbox and recovery records
+### 9.1 Locked epoch inbox and recovery records
 
 The epoch-key NIP-59 inbox exists only for prospective full/recovery-node
 registration when no authorized device Control channel is available. Public
@@ -1266,7 +1234,7 @@ Private-Radicle recovery and SFTP overflow are optional Control profiles.
 Neither is a prerequisite for Comms or baseline Control conformance.
 
 <a id="comms-authorization-freshness"></a>
-### 9.3 Authorization-view freshness
+### 9.2 Authorization-view freshness
 
 This bound governs every Comms-derived authorization decision and every
 document that composes one; no other document restates it.
@@ -1500,7 +1468,7 @@ authorized writer can mint. A node may mint for the persona only when it has
 all three of: a separately envelope-encrypted usable signing JWK, an `active`
 `oidc-token-issuer` claim, and a canonical checkpoint whose age is within the
 continuity manifest bound. That bound MUST NOT exceed the window in
-[§9.3](#comms-authorization-freshness). Loss or reduction of any condition
+[§9.2](#comms-authorization-freshness). Loss or reduction of any condition
 stops minting immediately.
 
 The signing key MUST NOT be encrypted by or released merely with the ledger
@@ -1904,7 +1872,7 @@ Marmot Control is the standard issuance carrier, but token construction,
 validation, and private-ledger authority remain Comms semantics and create no
 Comms dependency on Control. After an initialized agent profile and validated
 Marmot account binding, an authorized built-in issuer returns the node-scoped
-RFC 9068 access token defined by §9.1 with:
+RFC 9068 access token projected by §12.2 with:
 
 - protected `typ` exactly `at+jwt`;
 - `iss`, pairwise `sub`, one exact `aud`, `exp`, `iat`, collision-resistant
@@ -2089,11 +2057,11 @@ and every baseline Comms invariant. One that advertises DMs MUST implement all
 applicable Marmot rules in §7. Transport-independent credential-continuity
 definitions remain non-claimable at the pinned registry revision.
 
-Typed key claims, the private claim ledger, node-scoped JWTs, the OIDC issuer,
-token status, the public reader, Marmot conversations, Radicle Marmot storage
-and relays, and agent authorship are each a separately claimed feature, not an
-entry requirement. A base Comms implementation therefore does not need an
-RFC 9068 issuer, JWKS discovery, a continuity manifest, or status lists. The
+Typed key claims, the private claim ledger, the OIDC issuer, token status, the
+public reader, Marmot conversations, Radicle Marmot storage and relays, and
+agent authorship are each a separately claimed feature, not an entry
+requirement. A base Comms implementation therefore does not need an RFC 9068
+issuer, JWKS discovery, a continuity manifest, or status lists. The
 invariant scoping in
 [`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope) governs what each
 claim owes. `comms.oidc-jwt-projection.v1` becomes mandatory exactly when an

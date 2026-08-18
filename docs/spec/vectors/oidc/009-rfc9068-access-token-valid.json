@@ -6,7 +6,7 @@
     "heterodyne:0.5.0#comms-jwt-projection"
   ],
   "vector_id": "oidc/rfc9068-access-token-valid",
-  "description": "Strict RFC 9068 access-token and pinned draft-21 status validation.",
+  "description": "Strict third-party RFC 9068 access-token and pinned draft-21 status validation.",
   "input": {
     "operation": "jwt-validation",
     "metadata": {

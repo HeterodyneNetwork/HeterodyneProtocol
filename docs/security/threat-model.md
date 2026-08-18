@@ -102,7 +102,7 @@ false invariant merely for uniformity.
 - **CONTROL-I-CLIENT-KEY-CONFINEMENT:** A light client receives no persona, device, epoch, NID, repository, MLS-leaf, or agent-role private key.
 - **CONTROL-I-MARMOT-SENDER-BINDING:** Every privileged token is bound to the authenticated Marmot account and exact group.
 - **CONTROL-I-ENTITLEMENT-FRESHNESS:** Every privileged request uses current, non-conflicted private entitlement state and absorbing revocation.
-- **CONTROL-I-NODE-AUDIENCE:** A node-issued Control token is accepted only by its exact issuing-node audience.
+- **CONTROL-I-NODE-AUDIENCE:** A node-issued Control token is accepted only when its protected typ is exactly at+jwt, signature and issuer validate, time bounds hold, and audience is the exact issuing-node resource.
 - **CONTROL-I-OPERATION-AT-MOST-ONCE:** Mutation reservation precedes effects and cross-node retry is limited to provably safe cases.
 - **CONTROL-I-AGENT-NO-KEY-RELEASE:** An automated principal never receives or directly exercises a persona, epoch, NID, human-device, or agent-role private key.
 - **CONTROL-I-AGENT-INTENT-ONLY:** An automated principal publishes only through the intent-level agent method, and raw signing, human-profile fallback, and attribution bypass fail closed.

@@ -34,6 +34,30 @@ function currentEntrySet(registry: Registry): RegistryEntrySet {
 describe("revisioned protocol registry", () => {
   const registry = loadRegistry(repositoryRoot);
 
+  it("assigns node-scoped JWT ownership only to Control", () => {
+    const featureIds = registry.features.map(({ id }) => id);
+    const feature = (id: string) => {
+      const entry = registry.features.find((candidate) => candidate.id === id);
+      if (entry === undefined) throw new Error(`missing feature: ${id}`);
+      return entry;
+    };
+    const invariant = (id: string) => {
+      const entry = registry.security_invariants.find((candidate) => candidate.id === id);
+      if (entry === undefined) throw new Error(`missing invariant: ${id}`);
+      return entry;
+    };
+
+    expect(featureIds).not.toContain("comms.node-scoped-jwt.v1");
+    expect(feature("comms.oidc-jwt-projection.v1").prerequisites)
+      .toEqual(["comms.private-claim-ledger.v1"]);
+    expect(feature("control.node-scoped-token.v1").prerequisites)
+      .toEqual(["control.private-entitlement.v1"]);
+    expect(feature("control.oauth-device-enrollment.v1").prerequisites)
+      .toEqual(["comms.oidc-jwt-projection.v1", "control.node-scoped-token.v1"]);
+    expect(invariant("COMMS-I-JWT-TYPE-AUDIENCE").feature)
+      .toBe("comms.oidc-jwt-projection.v1");
+  });
+
   it("allocates objects with unique features and acyclic prerequisites", () => {
     expect(registry.manifest.revision).toBeGreaterThan(0);
     expect(registry.features.length).toBeGreaterThan(0);

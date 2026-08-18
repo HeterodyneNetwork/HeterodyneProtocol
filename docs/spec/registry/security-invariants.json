@@ -117,7 +117,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A node-issued Control token is accepted only by its exact issuing-node audience."
+      "description": "A node-issued Control token is accepted only when its protected typ is exactly at+jwt, signature and issuer validate, time bounds hold, and audience is the exact issuing-node resource."
     },
     {
       "id": "CONTROL-I-OPERATION-AT-MOST-ONCE",
@@ -251,7 +251,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "feature": "comms.node-scoped-jwt.v1",
+      "feature": "comms.oidc-jwt-projection.v1",
       "description": "JWT consumers enforce exact issuer, intended audience, time, signature, nonce when applicable, and token-type separation including typ at+jwt for access tokens."
     },
     {

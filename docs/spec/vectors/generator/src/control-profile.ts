@@ -218,7 +218,8 @@ export function validateControlTokenUse(input: TokenUseInput): { verdict: "accep
   if (!input.signature_valid || token.typ !== "at+jwt" || token.iss !== input.expected_issuer) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
-  if (input.now < token.iat || input.now >= token.exp) {
+  if (input.now < token.iat || input.now >= token.exp
+    || token.exp <= token.iat || token.exp - token.iat > 3_600) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   if (token.aud !== input.expected_audience) {
