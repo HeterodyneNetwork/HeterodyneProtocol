@@ -730,21 +730,28 @@ export function lintMaintainedGuides(
   }
 
   const registryRevision = loadRegistry(repoRoot).manifest.revision;
-  const profileRevisionIsFrozenAtTwo =
-    /`profile_revision`[\s\S]{0,80}?(?:frozen at|value)\s*`2`/;
   const namesCurrentRegistryRevision = new RegExp(
     `distinct from[^.\n]*current family registry revision ${registryRevision}\\b`,
   );
   for (const path of ["docs/glossary.md", "docs/security/threat-model.md"]) {
     const text = contents.get(path)!;
-    if (!profileRevisionIsFrozenAtTwo.test(text)
+    const profileRevisionIndex = text.indexOf("`profile_revision`");
+    const namesProfileRevision = profileRevisionIndex >= 0;
+    const profileRevisionContext = namesProfileRevision
+      ? text.slice(Math.max(0, profileRevisionIndex - 80), profileRevisionIndex + 160)
+      : "";
+    const statesFrozenStatus = /\bfrozen\b/i.test(profileRevisionContext);
+    const statesValueTwo = /`2`/.test(profileRevisionContext);
+    if (!namesProfileRevision
+      || !statesFrozenStatus
+      || !statesValueTwo
       || !namesCurrentRegistryRevision.test(text)) {
       issues.push({
         path,
         line: 1,
         code: "profile-revision-registry-context-missing",
         message:
-          `guide must state frozen profile_revision 2 and its distinction from current family registry revision ${registryRevision}`,
+          `guide must state profile_revision, its frozen value 2, and its distinction from current family registry revision ${registryRevision}`,
       });
     }
   }

@@ -29,31 +29,34 @@ describe("canonical family documentation", () => {
     expect(vectorReadme).toContain(`${vectors.length} normative vectors`);
   });
 
-  it("requires the frozen profile revision to name the current registry revision", () => {
+  it("requires every guide to state each profile-revision fact", () => {
     const { revision } = JSON.parse(
       read("docs/spec/registry/manifest.json"),
     ) as { revision: number };
     const currentRegistryRevision = `current family registry revision ${revision}`;
-    const issues = lintMaintainedGuides(repositoryRoot, {
-      "docs/glossary.md": read("docs/glossary.md").replace(
+    const guides = ["docs/glossary.md", "docs/security/threat-model.md"];
+    const mutations = [
+      ["member", (text: string) => text.replace("profile_revision", "claim_profile_revision")],
+      ["frozen status", (text: string) => text.replace("frozen", "recorded")],
+      ["value", (text: string) => text.replace("`2`", "`3`")],
+      ["registry distinction", (text: string) => text.replace(
         currentRegistryRevision,
-        "`2`; it is a fixed allocation snapshot.",
-      ),
-      "docs/security/threat-model.md": read("docs/security/threat-model.md").replace(
-        currentRegistryRevision,
-        "(a fixed allocation snapshot)",
-      ),
-    });
-    expect(issues).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        path: "docs/glossary.md",
-        code: "profile-revision-registry-context-missing",
-      }),
-      expect.objectContaining({
-        path: "docs/security/threat-model.md",
-        code: "profile-revision-registry-context-missing",
-      }),
-    ]));
+        `current family registry revision ${revision + 1}`,
+      )],
+    ] as const;
+
+    for (const [, mutate] of mutations) {
+      const issues = lintMaintainedGuides(
+        repositoryRoot,
+        Object.fromEntries(guides.map((path) => [path, mutate(read(path))])),
+      );
+      expect(issues).toEqual(expect.arrayContaining(guides.map((path) =>
+        expect.objectContaining({
+          path,
+          code: "profile-revision-registry-context-missing",
+        }),
+      )));
+    }
   });
 
   it("keeps live specifications independent of noncanonical decision records", () => {
