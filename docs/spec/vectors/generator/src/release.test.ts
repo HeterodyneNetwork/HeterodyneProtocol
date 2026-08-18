@@ -1,3 +1,4 @@
+import { Ajv } from "ajv";
 import { createHash } from "node:crypto";
 import {
   copyFileSync,
@@ -78,6 +79,16 @@ function writeManifest(root: string, manifest: Record<string, unknown>): void {
 }
 
 describe("family release manifest", () => {
+  it("schema rejects a trailing empty path segment", () => {
+    const schema = JSON.parse(readFileSync(resolve(repositoryRoot, schemaPath), "utf8")) as object;
+    const validate = new Ajv({ allErrors: true }).compile(schema);
+    const manifest = readManifest(repositoryRoot);
+    const artifacts = manifest.artifacts as Array<Record<string, unknown>>;
+    artifacts[0] = { ...artifacts[0], path: "a/" };
+
+    expect(validate(manifest)).toBe(false);
+  });
+
   it("builds the complete path-sorted normative family corpus", () => {
     const manifest = buildFamilyReleaseManifest(repositoryRoot);
 
@@ -172,5 +183,30 @@ describe("family release manifest", () => {
     expect(validateFamilyReleaseManifest(root).join("\n")).toContain(
       "unsafe artifact path: ../outside.json",
     );
+  });
+
+  it("reports corpus, shape, path, role, and digest failures together", () => {
+    const root = copyRepository();
+    unlinkSync(resolve(root, changedSpecification));
+    const manifest = readManifest(root);
+    manifest.extra = true;
+    const artifacts = manifest.artifacts as Array<Record<string, unknown>>;
+    artifacts[0] = {
+      ...artifacts[0],
+      path: "../outside.json",
+      role: "invalid",
+      sha256: "invalid",
+    };
+    mkdirSync(resolve(root, "../outside.json"), { recursive: true });
+    writeManifest(root, manifest);
+
+    const issues = validateFamilyReleaseManifest(root);
+    expect(issues).toEqual(expect.arrayContaining([
+      expect.stringContaining("unable to build expected family release manifest"),
+      "family release manifest has unexpected property: extra",
+      "unsafe artifact path: ../outside.json",
+      "invalid artifact role: invalid",
+      "invalid artifact digest: ../outside.json",
+    ]));
   });
 });

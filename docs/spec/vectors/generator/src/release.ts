@@ -149,21 +149,24 @@ function isSafePath(path: string): boolean {
 export function validateFamilyReleaseManifest(repoRoot: string): string[] {
   const repositoryRoot = resolve(repoRoot);
   const issues: string[] = [];
-  let expected: FamilyReleaseManifest;
+  let expected: FamilyReleaseManifest | undefined;
   try {
     expected = buildFamilyReleaseManifest(repositoryRoot);
   } catch (error) {
     issues.push(`unable to build expected family release manifest: ${error instanceof Error ? error.message : String(error)}`);
-    return issues;
   }
 
   let value: unknown;
   try {
     value = JSON.parse(readFileSync(resolve(repositoryRoot, RELEASE_PATH), "utf8")) as unknown;
   } catch (error) {
-    return [`missing or invalid family release manifest: ${error instanceof Error ? error.message : String(error)}`];
+    issues.push(`missing or invalid family release manifest: ${error instanceof Error ? error.message : String(error)}`);
+    return issues.sort();
   }
-  if (!isObject(value)) return ["family release manifest must be an object"];
+  if (!isObject(value)) {
+    issues.push("family release manifest must be an object");
+    return issues.sort();
+  }
 
   reportObjectShape(
     issues,
@@ -171,9 +174,9 @@ export function validateFamilyReleaseManifest(repoRoot: string): string[] {
     ["schema_version", "family_version", "status", "registry", "artifacts"],
     "family release manifest",
   );
-  if (value.schema_version !== expected.schema_version) issues.push("schema version mismatch");
-  if (value.family_version !== expected.family_version) issues.push("family version mismatch");
-  if (value.status !== expected.status) issues.push("release status mismatch");
+  if (value.schema_version !== "1.0.0") issues.push("schema version mismatch");
+  if (value.family_version !== "heterodyne/0.5.0") issues.push("family version mismatch");
+  if (value.status !== "unreleased") issues.push("release status mismatch");
 
   if (!isObject(value.registry)) {
     issues.push("registry pin must be an object");
@@ -181,10 +184,12 @@ export function validateFamilyReleaseManifest(repoRoot: string): string[] {
     reportObjectShape(issues, value.registry, ["path", "sha256"], "registry pin");
     if (typeof value.registry.path !== "string" || !isSafePath(value.registry.path)) {
       issues.push(`unsafe registry path: ${String(value.registry.path)}`);
-    } else if (value.registry.path !== expected.registry.path) {
+    } else if (value.registry.path !== REGISTRY_MANIFEST_PATH) {
       issues.push(`registry path mismatch: ${value.registry.path}`);
     }
-    if (value.registry.sha256 !== expected.registry.sha256) issues.push("registry digest mismatch");
+    if (expected !== undefined && value.registry.sha256 !== expected.registry.sha256) {
+      issues.push("registry digest mismatch");
+    }
     if (typeof value.registry.sha256 !== "string" || !SHA256_PATTERN.test(value.registry.sha256)) {
       issues.push("registry digest must be lowercase 64-hex SHA-256");
     }
@@ -195,7 +200,9 @@ export function validateFamilyReleaseManifest(repoRoot: string): string[] {
     return issues.sort();
   }
 
-  const expectedByPath = new Map(expected.artifacts.map((entry) => [entry.path, entry]));
+  const expectedByPath = new Map(
+    expected?.artifacts.map((entry) => [entry.path, entry] as const) ?? [],
+  );
   const safeManifestPaths: string[] = [];
   const seen = new Set<string>();
   for (const [index, item] of value.artifacts.entries()) {
@@ -205,6 +212,12 @@ export function validateFamilyReleaseManifest(repoRoot: string): string[] {
       continue;
     }
     reportObjectShape(issues, item, ["path", "role", "sha256"], label);
+    if (typeof item.role !== "string" || !ROLES.has(item.role as FamilyReleaseArtifactRole)) {
+      issues.push(`invalid artifact role: ${String(item.role)}`);
+    }
+    if (typeof item.sha256 !== "string" || !SHA256_PATTERN.test(item.sha256)) {
+      issues.push(`invalid artifact digest: ${String(item.path)}`);
+    }
     if (typeof item.path !== "string" || !isSafePath(item.path)) {
       issues.push(`unsafe artifact path: ${String(item.path)}`);
       continue;
@@ -212,27 +225,25 @@ export function validateFamilyReleaseManifest(repoRoot: string): string[] {
     safeManifestPaths.push(item.path);
     if (seen.has(item.path)) issues.push(`duplicate artifact path: ${item.path}`);
     seen.add(item.path);
-    if (typeof item.role !== "string" || !ROLES.has(item.role as FamilyReleaseArtifactRole)) {
-      issues.push(`invalid artifact role: ${String(item.role)}`);
-    }
-    if (typeof item.sha256 !== "string" || !SHA256_PATTERN.test(item.sha256)) {
-      issues.push(`invalid artifact digest: ${item.path}`);
-    }
 
     const expectedArtifact = expectedByPath.get(item.path);
-    if (expectedArtifact === undefined) {
+    if (expected !== undefined && expectedArtifact === undefined) {
       issues.push(`unexpected artifact in manifest: ${item.path}`);
       continue;
     }
-    if (item.role !== expectedArtifact.role) issues.push(`artifact role mismatch: ${item.path}`);
-    if (item.sha256 !== expectedArtifact.sha256) issues.push(`artifact digest mismatch: ${item.path}`);
+    if (expectedArtifact !== undefined) {
+      if (item.role !== expectedArtifact.role) issues.push(`artifact role mismatch: ${item.path}`);
+      if (item.sha256 !== expectedArtifact.sha256) issues.push(`artifact digest mismatch: ${item.path}`);
+    }
   }
 
   if (safeManifestPaths.some((path, index) => index > 0 && safeManifestPaths[index - 1]! >= path)) {
     issues.push("artifact paths must be strictly increasing");
   }
-  for (const path of expectedByPath.keys()) {
-    if (!seen.has(path)) issues.push(`missing artifact from manifest: ${path}`);
+  if (expected !== undefined) {
+    for (const path of expectedByPath.keys()) {
+      if (!seen.has(path)) issues.push(`missing artifact from manifest: ${path}`);
+    }
   }
   return issues.sort();
 }
