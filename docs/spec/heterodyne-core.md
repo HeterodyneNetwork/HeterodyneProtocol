@@ -269,6 +269,7 @@ initial reference types are:
 | `nostr-secp256k1` | 32-byte x-only secp256k1 public key as 64 lowercase hexadecimal characters | BIP-340 |
 | `radicle-ed25519-nid` | canonical Ed25519 `did:key:z...` Radicle NID | Ed25519 |
 | `jwk-thumbprint` | unpadded base64url SHA-256 RFC 7638 thumbprint | JWS with a public JWK whose recomputed thumbprint is identical |
+| `marmot-mls-leaf` | unpadded base64url SHA-256 of the exact TLS-serialized MLS `LeafNode` in its authenticated group epoch | MLS leaf signature plus Marmot `marmot.member.account-identity-proof.v2` and membership in the bound group context |
 
 A parser MUST reject an unknown type, a non-canonical value, private JWK
 members, remote JWK key references, or a proof whose suite does not match the
@@ -1247,8 +1248,10 @@ the issuing authority before unwrapping.
 
 Membership change is asymmetric:
 
-- Adding a recipient publishes an envelope for the **current** generation and
-  MUST NOT rotate. The new holder receives what the audience already has.
+- Adding a recipient alone publishes an envelope for the **current** generation
+  and does not cause a rotation. The new holder receives what the audience
+  already has. A simultaneous independent rotation trigger supplied by the
+  instantiating document still applies.
 - Removing a recipient MUST derive a fresh secret under a new generation
   identifier and publish envelopes only to the remaining recipients.
 - After a removal rotation, a producer MUST reject the retired generation for
@@ -1261,13 +1264,14 @@ present it as erasure; the bound above at
 [`heterodyne:0.5.0#core-non-erasure`](#core-non-erasure) governs what stays
 observable.
 
-An instantiating document supplies exactly four things: the rule that fixes
+An instantiating document supplies exactly five things: the rule that fixes
 the recipient set, the typed-key reference type and wrapping profile, the
-carrier that transports the envelope, and any rotation trigger beyond
-recipient removal. It MAY tighten these rules and MUST NOT weaken them. The
-distribution graph is not private by default: unless the instantiating
-document states otherwise, envelope addressing exposes recipients, generation
-linkage, and change timing to a carrier observer.
+carrier that transports the envelope, the generation-identifier form, and any
+rotation trigger beyond recipient removal. The fifth value is `none` when
+removal is the only rotation trigger. It MAY tighten these rules and MUST NOT
+weaken them. The distribution graph is not private by default: unless the
+instantiating document states otherwise, envelope addressing exposes
+recipients, generation linkage, and change timing to a carrier observer.
 
 <a id="core-verification"></a>
 ## 9. Verification algorithm

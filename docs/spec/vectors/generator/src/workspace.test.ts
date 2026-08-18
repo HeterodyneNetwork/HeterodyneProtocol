@@ -186,8 +186,39 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
       admission_epoch: 4,
       history_mode: "full" as const,
       selected_epochs: [] as number[],
+      target_device: H64,
+      recipient: {
+        type: "marmot-mls-leaf",
+        value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      },
     };
-    expect(evaluateKeyRequest(base)).toMatchObject({ verdict: "accept" });
+    expect(evaluateKeyRequest(base)).toEqual({
+      verdict: "accept",
+      normalized: {
+        key_epoch: 4,
+        target_device: H64,
+        recipient: {
+          type: "marmot-mls-leaf",
+          value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        },
+        device_bound: true,
+        idempotent: true,
+      },
+    });
+    expect(evaluateKeyRequest({
+      ...base,
+      recipient: {
+        type: "nostr-secp256k1",
+        value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      },
+    })).toEqual({ verdict: "reject", reason_code: "workspace_schema_invalid" });
+    expect(evaluateKeyRequest({
+      ...base,
+      recipient: {
+        type: "marmot-mls-leaf",
+        value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      },
+    })).toEqual({ verdict: "reject", reason_code: "workspace_schema_invalid" });
     expect(evaluateKeyRequest({ ...base, history_mode: "from-admission", requested_epoch: 3 }))
       .toEqual({ verdict: "reject", reason_code: "history_denied" });
     expect(evaluateKeyRequest({ ...base, history_mode: "selected-snapshots", requested_epoch: 3, selected_epochs: [3] }))

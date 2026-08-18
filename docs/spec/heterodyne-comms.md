@@ -104,7 +104,7 @@ timing, size, count, publication, and fetch-cadence metadata.
 
 An audience key is one
 [`heterodyne:0.5.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
-key generation. Comms supplies the four instantiation choices that primitive
+key generation. Comms supplies the five instantiation choices that primitive
 requires and adds nothing else to its distribution and rotation rules:
 
 | Choice | Comms value |
@@ -113,6 +113,7 @@ requires and adds nothing else to its distribution and rotation rules:
 | Reference and wrapping | `nostr-secp256k1`, NIP-44 wrapped to the device publishing key |
 | Carrier | one `kind:31011` per recipient, with the replaceable `kind:31012` roster |
 | Generation identifier | opaque `key_id` |
+| Extra rotation triggers | `none` |
 
 An audience key is 32 uniformly random bytes. A narrowing policy MUST NOT add
 an inactive, revoked, unverified, non-device, cold-root, or epoch key. The same
@@ -1482,13 +1483,14 @@ reachable from canonical state remains provisional.
 
 The dedicated ledger audience key is a second
 [`heterodyne:0.5.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
-instantiation: its recipient set is the `active` `claim-ledger-reader`
-authorizations, its recipients are named by `radicle-ed25519-nid`, its carrier
-is the private repository, and its generation identifier is a `key_id`. Reader
-removal is the Core removal rotation with three Comms additions performed in
-order: record the authority reduction, remove Radicle access, and, after the
-rotation, advance the checkpoint and retire prior ciphertext under the
-cooperative scrub profile.
+instantiation. Its five choices are: the recipient set is the `active`
+`claim-ledger-reader` authorizations; the reference and wrapping profile are
+`radicle-ed25519-nid` and `heterodyne-claim-ledger-key-wrap-v1`; the carrier is
+the private repository; the generation identifier is a `key_id`; and the
+extra rotation trigger is `none`. Reader removal is the Core removal rotation
+with three Comms additions performed in order: record the authority reduction,
+remove Radicle access, and, after the rotation, advance the checkpoint and
+retire prior ciphertext under the cooperative scrub profile.
 
 <a id="comms-multiwriter-minting"></a>
 ### 11.1 Multi-writer minting and issuer-key confinement
@@ -1504,13 +1506,15 @@ stops minting immediately.
 The signing key MUST NOT be encrypted by or released merely with the ledger
 audience key. It is a third
 [`heterodyne:0.5.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
-instantiation whose recipient set is the NIDs holding active
-`oidc-token-issuer` authority, named by `radicle-ed25519-nid`, carried in the
-private repository under a monotonic key epoch. Beyond the members Core
-requires, its envelope binds the credential-ledger generation, the JWK
-thumbprint, and the exact active issuer-authority record set. Removing an
-issuer is the Core removal rotation. A node MUST unwrap only after replaying
-the exact bound authority set, generation, and checkpoint.
+instantiation. Its five choices are: the recipient set is the NIDs holding
+active `oidc-token-issuer` authority; the reference and wrapping profile are
+`radicle-ed25519-nid` and `heterodyne-oidc-issuer-key-wrap-v1`; the carrier is
+the private repository; the generation identifier is a monotonic `key_epoch`;
+and the extra rotation trigger is `none`. Beyond the members Core requires,
+its envelope binds the credential-ledger generation, the JWK thumbprint, and
+the exact active issuer-authority record set. Removing an issuer is the Core
+removal rotation. A node MUST unwrap only after replaying the exact bound
+authority set, generation, and checkpoint.
 
 Before returning a JWT, a writer durably commits an issuance reservation with
 credential-ledger generation, `jti`, client and request/release digests,

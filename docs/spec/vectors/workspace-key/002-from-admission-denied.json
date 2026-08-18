@@ -17,7 +17,12 @@
     "current_epoch": 6,
     "admission_epoch": 4,
     "history_mode": "from-admission",
-    "selected_epochs": []
+    "selected_epochs": [],
+    "target_device": "2222222222222222222222222222222222222222222222222222222222222222",
+    "recipient": {
+      "type": "marmot-mls-leaf",
+      "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    }
   },
   "expected_output": {
     "verdict": "reject",

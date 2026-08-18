@@ -19,12 +19,22 @@
     "history_mode": "selected-snapshots",
     "selected_epochs": [
       3
-    ]
+    ],
+    "target_device": "2222222222222222222222222222222222222222222222222222222222222222",
+    "recipient": {
+      "type": "marmot-mls-leaf",
+      "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    }
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
       "key_epoch": 3,
+      "target_device": "2222222222222222222222222222222222222222222222222222222222222222",
+      "recipient": {
+        "type": "marmot-mls-leaf",
+        "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
       "device_bound": true,
       "idempotent": true
     }

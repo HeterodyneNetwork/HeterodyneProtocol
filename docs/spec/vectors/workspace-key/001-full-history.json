@@ -17,12 +17,22 @@
     "current_epoch": 6,
     "admission_epoch": 4,
     "history_mode": "full",
-    "selected_epochs": []
+    "selected_epochs": [],
+    "target_device": "2222222222222222222222222222222222222222222222222222222222222222",
+    "recipient": {
+      "type": "marmot-mls-leaf",
+      "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    }
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
       "key_epoch": 4,
+      "target_device": "2222222222222222222222222222222222222222222222222222222222222222",
+      "recipient": {
+        "type": "marmot-mls-leaf",
+        "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
       "device_bound": true,
       "idempotent": true
     }

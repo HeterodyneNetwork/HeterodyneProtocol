@@ -105,6 +105,11 @@ export function buildWorkspaceVectors(): AuthoredVector[] {
     admission_epoch: 4,
     history_mode: "full" as const,
     selected_epochs: [] as number[],
+    target_device: H64_B,
+    recipient: {
+      type: "marmot-mls-leaf",
+      value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    },
   };
   const event = "{\"id\":\"same\",\"content\":\"ciphertext\"}";
 
