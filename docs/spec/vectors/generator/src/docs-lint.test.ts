@@ -5,6 +5,7 @@ import {
   findInvariantEvidenceIssues,
   findStrictProfileClosureIssues,
   lintFamilyDocs,
+  lintMaintainedGuides,
   lintReleaseReadiness,
 } from "./docs-lint.js";
 import { loadRegistry } from "./registry.js";
@@ -16,6 +17,16 @@ describe("canonical family documentation", () => {
   it("passes layering, anchor, and release-readiness lint", () => {
     expect(lintFamilyDocs(repositoryRoot)).toEqual([]);
     expect(lintReleaseReadiness(repositoryRoot)).toEqual([]);
+  });
+
+  it("keeps maintained authoring guides on the single-family model", () => {
+    expect(lintMaintainedGuides(repositoryRoot)).toEqual([]);
+
+    const vectors = JSON.parse(
+      read("docs/spec/vectors/coverage/manifest.json"),
+    ) as unknown[];
+    const vectorReadme = read("docs/spec/vectors/README.md");
+    expect(vectorReadme).toContain(`${vectors.length} normative vectors`);
   });
 
   it("keeps live specifications independent of noncanonical decision records", () => {

@@ -42,10 +42,9 @@ reason-code, security-invariant, feature, and object allocations. It advances
 independently of the family version and is pinned in exactly one place,
 `docs/spec/registry/manifest.json`.
 
-**Profile registry revision.** A fixed allocation snapshot embedded in a
-versioned wire profile. In v1 claims the JSON member remains named
-`registry_revision` and is exactly `2`; it does not float with the family
-release registry revision.
+**Profile revision.** A fixed allocation snapshot embedded in a versioned wire
+profile. In v1 claims the JSON member is `profile_revision` and is frozen at
+`2`; it is distinct from the family release registry revision.
 
 **Feature catalog.** The registry-owned allocation of globally unique dotted
 and versioned feature IDs, their document owners, first versions, status,

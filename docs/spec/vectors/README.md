@@ -1,8 +1,8 @@
 # Test vectors
 
 This directory contains the normative conformance vectors for the Heterodyne
-protocol family. A vector is owned by exactly one independently versioned
-document; directory names do not imply ownership.
+protocol family. A vector is owned by exactly one family document; directory
+names do not imply ownership.
 
 When a vector exists for a behavior, an implementation claiming that vector's
 coverage MUST reproduce `produce` output byte-for-byte, MUST accept and
@@ -22,13 +22,9 @@ Every vector validates against
   "vector_id": "<topic>/<stable-id>",
   "vector_schema_version": "1.0.0",
   "owner_document": "core | comms | control | social | workspace",
-  "owner_version": "<qualified owner version>",
-  "dependency_versions": {
-    "<permitted-lower-document>": "<document>/0.5.0"
-  },
-  "registry_revision": "<pinned-registry-revision>",
+  "spec_version": "heterodyne/0.5.0",
   "profile": "<optional immutable profile id>",
-  "spec_refs": ["heterodyne:<document>/0.5.0#<permanent-anchor>"],
+  "spec_refs": ["heterodyne:0.5.0#<permanent-anchor>"],
   "description": "<behavior>",
   "direction": "produce | consume | round-trip",
   "input": {},
@@ -36,21 +32,18 @@ Every vector validates against
 }
 ```
 
-The former scalar `spec_version` is not vector metadata. A `spec_version`
-inside a tested event's `input` or `expected_output` is part of that event's
-wire format and is not the vector envelope version.
-
-The schema requires each actual vector's `registry_revision` to be an integer;
-the placeholder above means that every vector pins the revision governing its
-behavior. The current unreleased corpus contains 497 registry-revision-8
-vectors: 148 Core, 206 Comms, 51 Control, 53 Social, and 39 Workspace. Ten
+The schema requires each actual vector's `spec_version` to be the scalar
+family version. A `spec_version` inside a tested event's `input` or
+`expected_output` is part of that event's wire format and is not the vector
+envelope version. The current unreleased corpus contains 495 normative vectors.
+Ten
 transport-independent credential-continuity draft evaluations explicitly set
 `conformance_claimable:false`; they do not activate a wire or recovery profile.
 Historical released vectors and the signed behavior they describe MUST NOT be
-rewritten to the latest registry revision. Unreleased 0.x vectors may be
-changed or retired in place under an accepted specification change.
+rewritten. Unreleased 0.x vectors may be changed or retired in place under an
+accepted specification change.
 
-Dependency versions follow the family DAG:
+Family layering follows this DAG:
 
 ```text
 Core <- Comms <- Control
@@ -60,9 +53,9 @@ Control <- Workspace
 Social <- Workspace
 ```
 
-Core vectors therefore have no dependencies; Comms vectors pin Core; Control
-and Social vectors pin Core and Comms. Workspace vectors pin Core and Comms;
-optional Control and Social composition claims add those documents separately.
+Core vectors stand alone; Comms, Control, Social, and Workspace behaviors obey
+the corresponding family-layering constraints. Optional Control and Social
+composition claims add those documents separately.
 Control vectors cover Marmot group
 admission, enrollment, entitlements, node-scoped tokens, RPC, operation
 reservation, failover, retention, and separately advertised recovery profiles.
@@ -88,7 +81,7 @@ particular:
   retention, and node-mediated agent operations.
 
 Four Comms-owned claims/OIDC groups retain their profile-specific allocation
-semantics while their vector envelopes pin the current family registry:
+semantics while their vector envelopes carry the current family version:
 
 - `claims/` covers canonical IDs and typed keys, issuer/trust decisions,
   attenuation, proof of possession, visibility, and revocation;
@@ -136,7 +129,8 @@ From the repository root:
 ```bash
 npm --prefix docs/spec/vectors/generator run author
 npm --prefix docs/spec/vectors/generator run coverage
-npm --prefix docs/spec/vectors/generator run release-manifests
+npm --prefix docs/spec/vectors/generator run release-author
+npm --prefix docs/spec/vectors/generator run release-check
 npm --prefix docs/spec/vectors/generator run check
 ```
 

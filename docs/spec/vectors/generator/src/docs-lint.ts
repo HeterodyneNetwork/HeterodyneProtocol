@@ -53,7 +53,11 @@ export type FamilyDocIssue = {
     | "registry-digest-drift"
     | "unregistered-feature-id"
     | "unregistered-proof-domain"
-    | "mislinked-reference";
+    | "mislinked-reference"
+    | "retired-authoring-model"
+    | "missing-current-vector-metadata"
+    | "vector-count-drift"
+    | "missing-release-command";
   message: string;
 };
 
@@ -95,6 +99,13 @@ const EXPLICIT_NORMATIVE =
 const LIST_ITEM = /^\s{0,3}(?:[-+*]|\d+[.)])\s+/;
 const TABLE_ROW = /^\s*\|.*\|\s*$/;
 const WRAPPED_DEPENDENCY_DECLARATION = /^\s*Normative dependencies\s*:\s*$/i;
+const RETIRED_MAINTAINED_GUIDE_PATTERNS = [
+  /owner_version/,
+  /dependency_versions/,
+  /heterodyne:(?:core|comms|control|social|workspace)\//,
+  /run release-manifests/,
+  /JSON member remains named\s+`registry_revision`/,
+];
 
 function displayPath(repoRoot: string, path: string): string {
   return relative(repoRoot, path).split(sep).join("/");
@@ -635,6 +646,78 @@ export function lintReleaseReadiness(repoRoot: string): FamilyDocIssue[] {
         line: 1,
         code: "extraction-banner",
         message: "pre-release extraction banner remains after cutover",
+      });
+    }
+  }
+
+  return issues;
+}
+
+/** Lint the maintained authoring guides against the single-family model. */
+export function lintMaintainedGuides(repoRoot: string): FamilyDocIssue[] {
+  const issues: FamilyDocIssue[] = [];
+  const guides = [
+    "docs/spec/vectors/README.md",
+    "docs/spec/extensions/nips/README.md",
+    "docs/glossary.md",
+    "docs/security/threat-model.md",
+  ];
+  const contents = new Map(
+    guides.map((path) => [path, readFileSync(resolve(repoRoot, path), "utf8")]),
+  );
+  const lineFor = (text: string, offset: number) =>
+    text.slice(0, offset).split(/\r?\n/).length;
+
+  for (const [path, text] of contents) {
+    for (const pattern of RETIRED_MAINTAINED_GUIDE_PATTERNS) {
+      const match = pattern.exec(text);
+      if (match !== null) {
+        issues.push({
+          path,
+          line: lineFor(text, match.index),
+          code: "retired-authoring-model",
+          message: `retired authoring terminology: ${match[0]}`,
+        });
+      }
+    }
+  }
+
+  const vectorsReadme = contents.get("docs/spec/vectors/README.md")!;
+  for (const [field, pattern] of [
+    ["owner_document", /"owner_document"\s*:/],
+    ["scalar spec_version", /"spec_version"\s*:\s*"heterodyne\/0\.5\.0"/],
+    ["one spec_refs entry", /"spec_refs"\s*:\s*\[\s*"heterodyne:0\.5\.0#<permanent-anchor>"\s*\]/],
+  ] as const) {
+    if (!pattern.test(vectorsReadme)) {
+      issues.push({
+        path: "docs/spec/vectors/README.md",
+        line: 1,
+        code: "missing-current-vector-metadata",
+        message: `vector README must document ${field}`,
+      });
+    }
+  }
+
+  const vectors = JSON.parse(readFileSync(
+    resolve(repoRoot, "docs/spec/vectors/coverage/manifest.json"),
+    "utf8",
+  )) as unknown[];
+  if (!vectorsReadme.includes(`${vectors.length} normative vectors`)) {
+    issues.push({
+      path: "docs/spec/vectors/README.md",
+      line: 1,
+      code: "vector-count-drift",
+      message: `vector README must state the built corpus count (${vectors.length})`,
+    });
+  }
+
+  for (const command of ["release-author", "release-check"]) {
+    if (!new RegExp(`run ${command}`).test(vectorsReadme)) {
+      issues.push({
+        path: "docs/spec/vectors/README.md",
+        line: 1,
+        code: "missing-release-command",
+        message: `vector README must document ${command}`,
       });
     }
   }
