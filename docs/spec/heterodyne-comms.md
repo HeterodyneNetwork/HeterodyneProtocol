@@ -1509,12 +1509,14 @@ audience key. It is a third
 instantiation. Its five choices are: the recipient set is the NIDs holding
 active `oidc-token-issuer` authority; the reference and wrapping profile are
 `radicle-ed25519-nid` and `heterodyne-oidc-issuer-key-wrap-v1`; the carrier is
-the private repository; the generation identifier is a monotonic `key_epoch`;
-and the extra rotation trigger is `none`. Beyond the members Core requires,
-its envelope binds the credential-ledger generation, the JWK thumbprint, and
-the exact active issuer-authority record set. Removing an issuer is the Core
-removal rotation. A node MUST unwrap only after replaying the exact bound
-authority set, generation, and checkpoint.
+the private repository; the generation identifier is a monotonic `key_epoch`
+scoped to the stable `credential_ledger_persona` identifier; and the extra
+rotation triggers are routine issuer-signing-key rotation and shared-key
+compromise. Beyond the members Core requires, its envelope binds the
+credential-ledger generation, the JWK thumbprint, and the exact active
+issuer-authority record set. Removing an issuer is the Core removal rotation.
+A node MUST unwrap only after replaying the exact bound authority set,
+generation, and checkpoint.
 
 Before returning a JWT, a writer durably commits an issuance reservation with
 credential-ledger generation, `jti`, client and request/release digests,
