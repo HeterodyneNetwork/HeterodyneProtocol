@@ -60,4 +60,51 @@ describe("OIDC and node-scoped Control vector ownership", () => {
       reason_code: "control-token-invalid",
     });
   });
+
+  it("authors the complete current-entitlement and lifetime rejection corpus", () => {
+    const vectors = buildControlVectors();
+    const valid = vectors.find(({ vector }) => vector.vector_id === "control/token-valid")?.vector;
+    if (valid === undefined) throw new Error("missing valid Control token vector");
+    expect(valid.input.token).toMatchObject({
+      client_id: "agent-newsletter",
+      client_class: "automated",
+      scope: "control.read",
+      limits: { content_bytes: 1024, requests_per_hour: 10 },
+      agent_role: "newsletter",
+    });
+    expect(valid.input).toHaveProperty("current_entitlement");
+
+    for (const vectorId of [
+      "control/token-over-sixty-minutes-rejected",
+      "control/token-entitlement-id-mismatch",
+      "control/token-client-key-mismatch",
+      "control/token-client-id-mismatch",
+      "control/token-client-class-mismatch",
+      "control/token-current-scope-mismatch",
+      "control/token-current-method-mismatch",
+      "control/token-current-object-mismatch",
+      "control/token-current-limit-mismatch",
+      "control/token-registry-checkpoint-mismatch",
+      "control/token-agent-role-mismatch",
+      "control/token-current-lifetime-mismatch",
+    ]) {
+      const authored = vectors.find(({ vector }) => vector.vector_id === vectorId)?.vector;
+      expect(authored, vectorId).toBeDefined();
+      expect(authored?.expected_output).toEqual({
+        verdict: "reject",
+        reason_code: "control-token-invalid",
+      });
+      expect(authored?.owner_document).toBe("control");
+      expect(authored?.spec_refs).toEqual(["heterodyne:0.5.0#control-token"]);
+    }
+
+    const human = vectors.find(({ vector }) =>
+      vector.vector_id === "control/token-human-role-omitted",
+    )?.vector;
+    expect(human?.expected_output).toMatchObject({
+      verdict: "accept",
+      token: { client_class: "human-light" },
+    });
+    expect(human?.expected_output.token).not.toHaveProperty("agent_role");
+  });
 });

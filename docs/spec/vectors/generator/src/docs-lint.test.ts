@@ -55,6 +55,15 @@ describe("canonical family documentation", () => {
     expect(comms).not.toContain("comms.node-scoped-jwt.v1");
     expect(comms).not.toContain("A Control token has");
     expect(comms).not.toContain('id="comms-control-token"');
+
+    const agentToken = comms.match(
+      /<a id="comms-agent-token"><\/a>[\s\S]*?(?=<a id="comms-agent-attribution"><\/a>)/,
+    )?.[0];
+    expect(agentToken).toBeDefined();
+    expect(agentToken).toMatch(/third-party OIDC/i);
+    expect(agentToken).not.toMatch(
+      /node-scoped|Marmot|Control|control\.token\.extended|five minutes|sixty minutes|group binding|operation ID/i,
+    );
   });
 
   it("keeps the full-node registry and recovery contract explicit in Core", () => {

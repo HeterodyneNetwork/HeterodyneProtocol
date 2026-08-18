@@ -6,8 +6,8 @@
   "spec_refs": [
     "heterodyne:0.5.0#control-token"
   ],
-  "vector_id": "control/token-stale-authorization-view",
-  "description": "Marmot-bound Control token use: token-stale-authorization-view.",
+  "vector_id": "control/token-current-limit-mismatch",
+  "description": "Marmot-bound Control token use: token-current-limit-mismatch.",
   "direction": "consume",
   "input": {
     "token": {
@@ -63,7 +63,7 @@
         "config:ui"
       ],
       "limits": {
-        "content_bytes": 1024,
+        "content_bytes": 256,
         "requests_per_hour": 10
       },
       "registry_checkpoint": "5555555555555555555555555555555555555555555555555555555555555555",
@@ -72,7 +72,7 @@
     },
     "authorization_view_authenticated": true,
     "authorization_view_conflicted": false,
-    "authorization_view_age_seconds": 301,
+    "authorization_view_age_seconds": 100,
     "required_scope": "control.read",
     "method": "config.get",
     "object": "config:ui",
@@ -84,6 +84,6 @@
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "control-authorization-view-stale"
+    "reason_code": "control-token-invalid"
   }
 }

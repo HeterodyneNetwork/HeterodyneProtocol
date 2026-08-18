@@ -407,6 +407,19 @@ control/token-wrong-group
 control/token-wrong-node
 control/token-scope-rejected
 control/token-stale-authorization-view
+control/token-over-sixty-minutes-rejected
+control/token-entitlement-id-mismatch
+control/token-client-key-mismatch
+control/token-client-id-mismatch
+control/token-client-class-mismatch
+control/token-current-scope-mismatch
+control/token-current-method-mismatch
+control/token-current-object-mismatch
+control/token-current-limit-mismatch
+control/token-registry-checkpoint-mismatch
+control/token-agent-role-mismatch
+control/token-current-lifetime-mismatch
+control/token-human-role-omitted
 control/device-code-hardened
 control/device-code-exhausted
 control/device-code-node-rate-limited
@@ -727,10 +740,10 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
             ? "control-token"
             : vectorId.includes("invite-preauthorization-")
               ? "control-one-time-invites"
-        : vectorId.includes("entitlement-")
-          ? "control-entitlement"
-          : vectorId.includes("token-")
-            ? "control-token"
+        : vectorId.includes("token-")
+          ? "control-token"
+          : vectorId.includes("entitlement-")
+            ? "control-entitlement"
             : vectorId.includes("operation-")
               ? "control-request-processing"
               : vectorId.includes("failover-")

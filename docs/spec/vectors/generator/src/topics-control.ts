@@ -14,6 +14,9 @@ import {
   validateControlTokenUse,
   type Entitlement,
   type OperationInput,
+  type TokenEntitlementState,
+  type TokenIssuanceInput,
+  type TokenUseInput,
 } from "./control-profile.js";
 import { baseVector } from "./vector-helpers.js";
 import type { AuthoredVector } from "./types.js";
@@ -96,33 +99,58 @@ export function buildControlVectors(): AuthoredVector[] {
     add(number, id, `Private Control entitlement decision: ${id}.`, { current: entitlement, next }, evaluateEntitlementUpdate(entitlement, next));
   }
 
-  const issuance = {
-    entitlement_state: "active" as const,
+  const tokenEntitlement: TokenEntitlementState = {
+    record_id: "44".repeat(32),
+    state: "active",
     client_key: client,
+    client_id: "agent-newsletter",
+    client_class: "automated",
+    scopes: ["control.read"],
+    methods: ["config.get"],
+    objects: ["config:ui"],
+    limits: { content_bytes: 1_024, requests_per_hour: 10 },
+    registry_checkpoint: "55".repeat(32),
+    agent_role: "newsletter",
+    max_token_lifetime_seconds: 3_600,
+  };
+  const issuance = {
+    entitlement: tokenEntitlement,
     client_jkt: jkt,
     group_id: group,
     issuer: "https://node.example/oidc/persona",
     audience: "urn:heterodyne:control:node-a",
     node_key: node,
-    authorization_id: "44".repeat(32),
     requested_lifetime_seconds: 300,
-    entitlement_max_seconds: 3_600,
     node_policy_max_seconds: 3_600,
     extended_capability: false,
     now: 1_000,
     authorization_view_authenticated: true,
     authorization_view_conflicted: false,
     authorization_view_age_seconds: 0,
+    scopes: ["control.read"],
     methods: ["config.get"],
     objects: ["config:ui"],
+    limits: { content_bytes: 1_024, requests_per_hour: 10 },
+    agent_role: "newsletter",
   };
   const issued = issueControlToken(issuance);
   if (issued.verdict !== "accept") throw new Error("Control token fixture failed");
-  for (const [number, id, value] of [
+  const tokenIssuanceCases: Array<[string, string, TokenIssuanceInput]> = [
     ["008", "token-default-five-minutes", issuance],
     ["009", "token-explicit-sixty-minutes", { ...issuance, requested_lifetime_seconds: 3_600, extended_capability: true }],
     ["010", "token-extension-missing-capability", { ...issuance, requested_lifetime_seconds: 301 }],
-  ] as const) {
+    ["064", "token-human-role-omitted", {
+      ...issuance,
+      entitlement: {
+        ...tokenEntitlement,
+        client_id: "human-light-client",
+        client_class: "human-light",
+        agent_role: null,
+      },
+      agent_role: null,
+    }],
+  ];
+  for (const [number, id, value] of tokenIssuanceCases) {
     add(number, id, `Node-scoped Control token issuance: ${id}.`, value, issueControlToken(value));
   }
   for (const [number, id, value] of [
@@ -137,23 +165,79 @@ export function buildControlVectors(): AuthoredVector[] {
     now: 1_100,
     expected_issuer: issuance.issuer,
     expected_audience: issuance.audience,
+    expected_node_key: node,
     authenticated_sender_jkt: jkt,
     group_id: group,
-    entitlement_state: "active" as const,
+    current_entitlement: tokenEntitlement,
     authorization_view_authenticated: true,
     authorization_view_conflicted: false,
     authorization_view_age_seconds: 100,
+    required_scope: "control.read",
     method: "config.get",
     object: "config:ui",
+    usage: { content_bytes: 512, requests_per_hour: 1 },
+    required_agent_role: "newsletter",
   };
-  for (const [number, id, value] of [
+  const tokenUseCases: Array<[string, string, TokenUseInput]> = [
     ["011", "token-valid", tokenUse],
     ["012", "token-wrong-sender", { ...tokenUse, authenticated_sender_jkt: "B".repeat(43) }],
     ["013", "token-wrong-group", { ...tokenUse, group_id: "99".repeat(32) }],
     ["014", "token-wrong-node", { ...tokenUse, expected_audience: "urn:heterodyne:control:node-b" }],
     ["015", "token-scope-rejected", { ...tokenUse, method: "config.put" }],
     ["038", "token-stale-authorization-view", { ...tokenUse, authorization_view_age_seconds: 301 }],
-  ] as const) {
+    ["052", "token-over-sixty-minutes-rejected", {
+      ...tokenUse,
+      token: { ...tokenUse.token, exp: tokenUse.token.iat + 3_601 },
+    }],
+    ["053", "token-entitlement-id-mismatch", {
+      ...tokenUse,
+      current_entitlement: { ...tokenEntitlement, record_id: "66".repeat(32) },
+    }],
+    ["054", "token-client-id-mismatch", {
+      ...tokenUse,
+      current_entitlement: { ...tokenEntitlement, client_id: "other-client" },
+    }],
+    ["062", "token-client-key-mismatch", {
+      ...tokenUse,
+      current_entitlement: { ...tokenEntitlement, client_key: "88".repeat(32) },
+    }],
+    ["055", "token-client-class-mismatch", {
+      ...tokenUse,
+      current_entitlement: { ...tokenEntitlement, client_class: "human-light" as const },
+    }],
+    ["056", "token-current-scope-mismatch", {
+      ...tokenUse,
+      current_entitlement: { ...tokenEntitlement, scopes: ["control.write"] },
+    }],
+    ["057", "token-current-method-mismatch", {
+      ...tokenUse,
+      current_entitlement: { ...tokenEntitlement, methods: ["config.put"] },
+    }],
+    ["058", "token-current-object-mismatch", {
+      ...tokenUse,
+      current_entitlement: { ...tokenEntitlement, objects: ["config:feeds"] },
+    }],
+    ["059", "token-current-limit-mismatch", {
+      ...tokenUse,
+      current_entitlement: {
+        ...tokenEntitlement,
+        limits: { content_bytes: 256, requests_per_hour: 10 },
+      },
+    }],
+    ["060", "token-registry-checkpoint-mismatch", {
+      ...tokenUse,
+      current_entitlement: { ...tokenEntitlement, registry_checkpoint: "77".repeat(32) },
+    }],
+    ["061", "token-agent-role-mismatch", {
+      ...tokenUse,
+      current_entitlement: { ...tokenEntitlement, agent_role: "moderator" },
+    }],
+    ["063", "token-current-lifetime-mismatch", {
+      ...tokenUse,
+      current_entitlement: { ...tokenEntitlement, max_token_lifetime_seconds: 299 },
+    }],
+  ];
+  for (const [number, id, value] of tokenUseCases) {
     add(number, id, `Marmot-bound Control token use: ${id}.`, value, validateControlTokenUse(value));
   }
 

@@ -413,10 +413,13 @@ expansion methods require their specified fresh local confirmation.
 ### 8.2 Automated principals and MCP
 
 An AI or programmatic principal uses profile `agent-mcp` and the MCP
-2025-11-25 data layer. It uses the same node-scoped Control access token as
-its OIDC workload token; no nested second token exists. Its entitlement and
-token identify the automated client class, exact `agent:<role-id>`, tools,
-methods, kinds, objects, media, rate, size, burst, and expiry.
+2025-11-25 data layer. It uses the node-scoped Control access token defined in
+§7. If its identity originated in the optional third-party OIDC workload
+projection, the node maps the current issuer, subject, client, and role tuple
+to the entitlement during enrollment; that projected token neither authorizes
+Control frames nor replaces the §7 token. The entitlement and Control token
+identify the automated client class, exact `agent:<role-id>`, tools, methods,
+kinds, objects, media, rate, size, burst, and expiry.
 
 MCP `initialize`, `notifications/initialized`, `tools/list`, `tools/call`,
 `notifications/cancelled`, result, and error objects MUST validate against

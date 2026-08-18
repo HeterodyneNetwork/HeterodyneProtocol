@@ -122,36 +122,86 @@ export type ControlToken = {
   cnf: { jkt: string };
   group_id: string;
   authorization_id: string;
+  client_id: string;
+  client_class: "human-light" | "automated";
+  scope: string;
   methods: string[];
   objects: string[];
+  limits: Record<string, number>;
+  registry_checkpoint: string;
+  agent_role?: string;
   node_key: string;
 };
 
-export type TokenIssuanceInput = {
-  entitlement_state: "active" | "revoked";
+export type TokenEntitlementState = {
+  record_id: string;
+  state: "active" | "revoked";
   client_key: string;
+  client_id: string;
+  client_class: "human-light" | "automated";
+  scopes: string[];
+  methods: string[];
+  objects: string[];
+  limits: Record<string, number>;
+  registry_checkpoint: string;
+  agent_role: string | null;
+  max_token_lifetime_seconds: number;
+};
+
+export type TokenIssuanceInput = {
+  entitlement: TokenEntitlementState;
   client_jkt: string;
   group_id: string;
   issuer: string;
   audience: string;
   node_key: string;
-  authorization_id: string;
   requested_lifetime_seconds: number;
-  entitlement_max_seconds: number;
   node_policy_max_seconds: number;
   extended_capability: boolean;
   now: number;
   authorization_view_authenticated: boolean;
   authorization_view_conflicted: boolean;
   authorization_view_age_seconds: number;
+  scopes: string[];
   methods: string[];
   objects: string[];
+  limits: Record<string, number>;
+  agent_role: string | null;
 };
+
+function normalizedValues(values: string[]): string[] {
+  return [...new Set(values)].sort();
+}
+
+function normalizedLimits(limits: Record<string, number>): Record<string, number> {
+  return Object.fromEntries(Object.entries(limits).sort(([left], [right]) => left.localeCompare(right)));
+}
+
+function valuesAreAuthorized(requested: string[], authorized: string[]): boolean {
+  return requested.length > 0 && requested.every((value) => authorized.includes(value));
+}
+
+function limitsAreFinite(limits: Record<string, number>): boolean {
+  const entries = Object.entries(limits);
+  return entries.length > 0 && entries.every(([name, value]) =>
+    name.length > 0 && Number.isFinite(value) && Number.isInteger(value) && value > 0);
+}
+
+function limitsAreAuthorized(
+  requested: Record<string, number>,
+  authorized: Record<string, number>,
+): boolean {
+  return limitsAreFinite(requested) && Object.entries(requested).every(([name, value]) => {
+    const ceiling = authorized[name];
+    return ceiling !== undefined && Number.isFinite(ceiling) && value <= ceiling;
+  });
+}
 
 export function issueControlToken(input: TokenIssuanceInput):
   | { verdict: "accept"; lifetime_seconds: number; refresh_token: null; token: ControlToken }
   | Reject {
-  if (input.entitlement_state !== "active") {
+  const entitlement = input.entitlement;
+  if (entitlement.state !== "active") {
     return { verdict: "reject", reason_code: "control-entitlement-conflict" };
   }
   const freshness = evaluateAuthorizationFreshness({
@@ -162,38 +212,59 @@ export function issueControlToken(input: TokenIssuanceInput):
     immediate_sync_succeeded: false,
   });
   if (freshness.verdict === "reject") return freshness;
-  const ceiling = Math.min(input.entitlement_max_seconds, input.node_policy_max_seconds, 3_600);
+  if (!valuesAreAuthorized(input.scopes, entitlement.scopes)
+    || !valuesAreAuthorized(input.methods, entitlement.methods)
+    || !valuesAreAuthorized(input.objects, entitlement.objects)
+    || !limitsAreAuthorized(input.limits, entitlement.limits)
+    || input.agent_role !== entitlement.agent_role
+    || (entitlement.client_class === "automated" && input.agent_role === null)
+    || (entitlement.client_class === "human-light" && input.agent_role !== null)) {
+    return { verdict: "reject", reason_code: "control-token-invalid" };
+  }
+  const ceiling = Math.min(
+    entitlement.max_token_lifetime_seconds,
+    input.node_policy_max_seconds,
+    3_600,
+  );
   const allowed = input.extended_capability ? ceiling : Math.min(300, ceiling);
   if (input.requested_lifetime_seconds <= 0 || input.requested_lifetime_seconds > allowed) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   const jti = sha256(jcsCanonicalize({
-    authorization_id: input.authorization_id,
+    authorization_id: entitlement.record_id,
     audience: input.audience,
-    client_key: input.client_key,
+    client_key: entitlement.client_key,
     group_id: input.group_id,
     issued_at: input.now,
     node_key: input.node_key,
+    registry_checkpoint: entitlement.registry_checkpoint,
   }));
+  const token = {
+    typ: "at+jwt" as const,
+    iss: input.issuer,
+    aud: input.audience,
+    sub: entitlement.client_key,
+    jti,
+    iat: input.now,
+    exp: input.now + input.requested_lifetime_seconds,
+    cnf: { jkt: input.client_jkt },
+    group_id: input.group_id,
+    authorization_id: entitlement.record_id,
+    client_id: entitlement.client_id,
+    client_class: entitlement.client_class,
+    scope: normalizedValues(input.scopes).join(" "),
+    methods: normalizedValues(input.methods),
+    objects: normalizedValues(input.objects),
+    limits: normalizedLimits(input.limits),
+    registry_checkpoint: entitlement.registry_checkpoint,
+    node_key: input.node_key,
+    ...(input.agent_role === null ? {} : { agent_role: input.agent_role }),
+  };
   return {
     verdict: "accept",
     lifetime_seconds: input.requested_lifetime_seconds,
     refresh_token: null,
-    token: {
-      typ: "at+jwt",
-      iss: input.issuer,
-      aud: input.audience,
-      sub: input.client_key,
-      jti,
-      iat: input.now,
-      exp: input.now + input.requested_lifetime_seconds,
-      cnf: { jkt: input.client_jkt },
-      group_id: input.group_id,
-      authorization_id: input.authorization_id,
-      methods: [...input.methods].sort(),
-      objects: [...input.objects].sort(),
-      node_key: input.node_key,
-    },
+    token,
   };
 }
 
@@ -203,14 +274,18 @@ export type TokenUseInput = {
   now: number;
   expected_issuer: string;
   expected_audience: string;
+  expected_node_key: string;
   authenticated_sender_jkt: string;
   group_id: string;
-  entitlement_state: "active" | "revoked";
+  current_entitlement: TokenEntitlementState;
   authorization_view_authenticated: boolean;
   authorization_view_conflicted: boolean;
   authorization_view_age_seconds: number;
+  required_scope: string;
   method: string;
   object: string;
+  usage: Record<string, number>;
+  required_agent_role: string | null;
 };
 
 export function validateControlTokenUse(input: TokenUseInput): { verdict: "accept" } | Reject {
@@ -222,7 +297,7 @@ export function validateControlTokenUse(input: TokenUseInput): { verdict: "accep
     || token.exp <= token.iat || token.exp - token.iat > 3_600) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
-  if (token.aud !== input.expected_audience) {
+  if (token.aud !== input.expected_audience || token.node_key !== input.expected_node_key) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   if (token.cnf.jkt !== input.authenticated_sender_jkt || token.sub.length !== 64) {
@@ -231,7 +306,8 @@ export function validateControlTokenUse(input: TokenUseInput): { verdict: "accep
   if (token.group_id !== input.group_id) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
-  if (input.entitlement_state !== "active") {
+  const entitlement = input.current_entitlement;
+  if (entitlement.state !== "active") {
     return { verdict: "reject", reason_code: "control-entitlement-conflict" };
   }
   const freshness = evaluateAuthorizationFreshness({
@@ -242,7 +318,26 @@ export function validateControlTokenUse(input: TokenUseInput): { verdict: "accep
     immediate_sync_succeeded: false,
   });
   if (freshness.verdict === "reject") return freshness;
-  if (!token.methods.includes(input.method) || !token.objects.includes(input.object)) {
+  const scopes = token.scope.split(" ");
+  const tokenRole = token.agent_role ?? null;
+  if (token.authorization_id !== entitlement.record_id
+    || token.sub !== entitlement.client_key
+    || token.client_id !== entitlement.client_id
+    || token.client_class !== entitlement.client_class
+    || token.registry_checkpoint !== entitlement.registry_checkpoint
+    || token.exp - token.iat > entitlement.max_token_lifetime_seconds
+    || normalizedValues(scopes).join(" ") !== token.scope
+    || !valuesAreAuthorized(scopes, entitlement.scopes)
+    || !valuesAreAuthorized(token.methods, entitlement.methods)
+    || !valuesAreAuthorized(token.objects, entitlement.objects)
+    || !limitsAreAuthorized(token.limits, entitlement.limits)
+    || tokenRole !== entitlement.agent_role
+    || tokenRole !== input.required_agent_role
+    || !scopes.includes(input.required_scope)
+    || !token.methods.includes(input.method)
+    || !token.objects.includes(input.object)
+    || !limitsAreAuthorized(input.usage, token.limits)
+    || !limitsAreAuthorized(input.usage, entitlement.limits)) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   return { verdict: "accept" };

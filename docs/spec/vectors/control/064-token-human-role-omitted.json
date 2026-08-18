@@ -6,16 +6,16 @@
   "spec_refs": [
     "heterodyne:0.5.0#control-token"
   ],
-  "vector_id": "control/token-extension-missing-capability",
-  "description": "Node-scoped Control token issuance: token-extension-missing-capability.",
+  "vector_id": "control/token-human-role-omitted",
+  "description": "Node-scoped Control token issuance: token-human-role-omitted.",
   "direction": "consume",
   "input": {
     "entitlement": {
       "record_id": "4444444444444444444444444444444444444444444444444444444444444444",
       "state": "active",
       "client_key": "1111111111111111111111111111111111111111111111111111111111111111",
-      "client_id": "agent-newsletter",
-      "client_class": "automated",
+      "client_id": "human-light-client",
+      "client_class": "human-light",
       "scopes": [
         "control.read"
       ],
@@ -30,7 +30,7 @@
         "requests_per_hour": 10
       },
       "registry_checkpoint": "5555555555555555555555555555555555555555555555555555555555555555",
-      "agent_role": "newsletter",
+      "agent_role": null,
       "max_token_lifetime_seconds": 3600
     },
     "client_jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
@@ -38,7 +38,7 @@
     "issuer": "https://node.example/oidc/persona",
     "audience": "urn:heterodyne:control:node-a",
     "node_key": "2222222222222222222222222222222222222222222222222222222222222222",
-    "requested_lifetime_seconds": 301,
+    "requested_lifetime_seconds": 300,
     "node_policy_max_seconds": 3600,
     "extended_capability": false,
     "now": 1000,
@@ -58,10 +58,40 @@
       "content_bytes": 1024,
       "requests_per_hour": 10
     },
-    "agent_role": "newsletter"
+    "agent_role": null
   },
   "expected_output": {
-    "verdict": "reject",
-    "reason_code": "control-token-invalid"
+    "verdict": "accept",
+    "lifetime_seconds": 300,
+    "refresh_token": null,
+    "token": {
+      "typ": "at+jwt",
+      "iss": "https://node.example/oidc/persona",
+      "aud": "urn:heterodyne:control:node-a",
+      "sub": "1111111111111111111111111111111111111111111111111111111111111111",
+      "jti": "2e0663f96040e8af42d5841579a94b89eddce82467516de7cb828fa372380a0c",
+      "iat": 1000,
+      "exp": 1300,
+      "cnf": {
+        "jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "group_id": "3333333333333333333333333333333333333333333333333333333333333333",
+      "authorization_id": "4444444444444444444444444444444444444444444444444444444444444444",
+      "client_id": "human-light-client",
+      "client_class": "human-light",
+      "scope": "control.read",
+      "methods": [
+        "config.get"
+      ],
+      "objects": [
+        "config:ui"
+      ],
+      "limits": {
+        "content_bytes": 1024,
+        "requests_per_hour": 10
+      },
+      "registry_checkpoint": "5555555555555555555555555555555555555555555555555555555555555555",
+      "node_key": "2222222222222222222222222222222222222222222222222222222222222222"
+    }
   }
 }

@@ -1866,35 +1866,25 @@ personas. An optional software, vendor, model, or pipeline claim is descriptive
 only and grants no authority.
 
 <a id="comms-agent-token"></a>
-### 15.3 Sender-constrained workload token
+### 15.3 Third-party OIDC workload projection
 
-Marmot Control is the standard issuance carrier, but token construction,
-validation, and private-ledger authority remain Comms semantics and create no
-Comms dependency on Control. After an initialized agent profile and validated
-Marmot account binding, an authorized built-in issuer returns the node-scoped
-RFC 9068 access token projected by §12.2 with:
+When `comms.oidc-jwt-projection.v1` is enabled, an authorized issuer MAY
+project an active workload registration to an ordinary third-party resource
+server as the RFC 9068 access token defined by §12.2. This is an interoperable
+projection of private-ledger authority, not a node-local command credential.
+In addition to the generic §12.2 claims, it carries
+`https://heterodyne.network/jwt/agent-role-id` equal to the registration's one
+role. Its exact `aud` and normalized `scope` MUST be allowed by that workload
+registration and the compatible client registration and consent.
 
-- protected `typ` exactly `at+jwt`;
-- `iss`, pairwise `sub`, one exact `aud`, `exp`, `iat`, collision-resistant
-  `jti`, `client_id`, normalized `scope`, `credential_ledger_persona`, and
-  `credential_ledger_generation`;
-- mandatory `cnf.jkt`;
-- the existing ledger-checkpoint and status-mirror bindings; and
-- `https://heterodyne.network/jwt/agent-role-id` equal to the one registered
-  role.
-
-The default lifetime is five minutes; an explicitly consented
-`control.token.extended` capability may permit up to sixty minutes. The token
-MUST issue no refresh token and MUST NOT outlive its Control group binding,
-workload registration, consent, or source authorization. It authorizes only
-registered scopes and resources. Every side effect authenticates the Marmot
-sender whose JWK thumbprint equals `cnf.jkt` and binds the token `jti`, group,
-request and operation IDs, method, and canonical payload digest.
-
-Before authorizing an intent, the full node MUST validate exact issuer,
-subject, audience, client, scope, role, time, signature, Control-group binding,
-ledger checkpoint, status binding, source claims, and authenticated sender. A
-projected JWT never replaces canonical private-ledger state. Client
+If the client registration selects sender constraint, the token uses only the
+standard DPoP or mutual-TLS confirmation form defined by §12.2. Its validity
+MUST NOT outlive the workload registration, consent, source authorization, or
+the issuer's applicable third-party token policy. Before claim use, a resource
+server validates the complete §12.2 type, issuer, audience, signature, time,
+client, scope, confirmation, checkpoint, status, and source-claim contract,
+plus exact equality between the projected role and current registration.
+A projected JWT never replaces canonical private-ledger state. Client
 Credentials remains prohibited; a separately integrated sender-constrained
 HTTPS workload profile is required before that grant can be added.
 

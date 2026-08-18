@@ -6,8 +6,8 @@
   "spec_refs": [
     "heterodyne:0.5.0#control-token"
   ],
-  "vector_id": "control/token-stale-authorization-view",
-  "description": "Marmot-bound Control token use: token-stale-authorization-view.",
+  "vector_id": "control/token-entitlement-id-mismatch",
+  "description": "Marmot-bound Control token use: token-entitlement-id-mismatch.",
   "direction": "consume",
   "input": {
     "token": {
@@ -48,7 +48,7 @@
     "authenticated_sender_jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     "group_id": "3333333333333333333333333333333333333333333333333333333333333333",
     "current_entitlement": {
-      "record_id": "4444444444444444444444444444444444444444444444444444444444444444",
+      "record_id": "6666666666666666666666666666666666666666666666666666666666666666",
       "state": "active",
       "client_key": "1111111111111111111111111111111111111111111111111111111111111111",
       "client_id": "agent-newsletter",
@@ -72,7 +72,7 @@
     },
     "authorization_view_authenticated": true,
     "authorization_view_conflicted": false,
-    "authorization_view_age_seconds": 301,
+    "authorization_view_age_seconds": 100,
     "required_scope": "control.read",
     "method": "config.get",
     "object": "config:ui",
@@ -84,6 +84,6 @@
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "control-authorization-view-stale"
+    "reason_code": "control-token-invalid"
   }
 }

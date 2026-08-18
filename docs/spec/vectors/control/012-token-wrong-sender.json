@@ -15,7 +15,7 @@
       "iss": "https://node.example/oidc/persona",
       "aud": "urn:heterodyne:control:node-a",
       "sub": "1111111111111111111111111111111111111111111111111111111111111111",
-      "jti": "a815a63e8e52cbb6a5a24bb16237976d97099c0787e5bb471a4c797cbbe927ea",
+      "jti": "2e0663f96040e8af42d5841579a94b89eddce82467516de7cb828fa372380a0c",
       "iat": 1000,
       "exp": 1300,
       "cnf": {
@@ -23,26 +23,64 @@
       },
       "group_id": "3333333333333333333333333333333333333333333333333333333333333333",
       "authorization_id": "4444444444444444444444444444444444444444444444444444444444444444",
+      "client_id": "agent-newsletter",
+      "client_class": "automated",
+      "scope": "control.read",
       "methods": [
         "config.get"
       ],
       "objects": [
         "config:ui"
       ],
-      "node_key": "2222222222222222222222222222222222222222222222222222222222222222"
+      "limits": {
+        "content_bytes": 1024,
+        "requests_per_hour": 10
+      },
+      "registry_checkpoint": "5555555555555555555555555555555555555555555555555555555555555555",
+      "node_key": "2222222222222222222222222222222222222222222222222222222222222222",
+      "agent_role": "newsletter"
     },
     "signature_valid": true,
     "now": 1100,
     "expected_issuer": "https://node.example/oidc/persona",
     "expected_audience": "urn:heterodyne:control:node-a",
+    "expected_node_key": "2222222222222222222222222222222222222222222222222222222222222222",
     "authenticated_sender_jkt": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
     "group_id": "3333333333333333333333333333333333333333333333333333333333333333",
-    "entitlement_state": "active",
+    "current_entitlement": {
+      "record_id": "4444444444444444444444444444444444444444444444444444444444444444",
+      "state": "active",
+      "client_key": "1111111111111111111111111111111111111111111111111111111111111111",
+      "client_id": "agent-newsletter",
+      "client_class": "automated",
+      "scopes": [
+        "control.read"
+      ],
+      "methods": [
+        "config.get"
+      ],
+      "objects": [
+        "config:ui"
+      ],
+      "limits": {
+        "content_bytes": 1024,
+        "requests_per_hour": 10
+      },
+      "registry_checkpoint": "5555555555555555555555555555555555555555555555555555555555555555",
+      "agent_role": "newsletter",
+      "max_token_lifetime_seconds": 3600
+    },
     "authorization_view_authenticated": true,
     "authorization_view_conflicted": false,
     "authorization_view_age_seconds": 100,
+    "required_scope": "control.read",
     "method": "config.get",
-    "object": "config:ui"
+    "object": "config:ui",
+    "usage": {
+      "content_bytes": 512,
+      "requests_per_hour": 1
+    },
+    "required_agent_role": "newsletter"
   },
   "expected_output": {
     "verdict": "reject",

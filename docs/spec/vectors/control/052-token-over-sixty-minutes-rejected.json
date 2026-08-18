@@ -6,8 +6,8 @@
   "spec_refs": [
     "heterodyne:0.5.0#control-token"
   ],
-  "vector_id": "control/token-stale-authorization-view",
-  "description": "Marmot-bound Control token use: token-stale-authorization-view.",
+  "vector_id": "control/token-over-sixty-minutes-rejected",
+  "description": "Marmot-bound Control token use: token-over-sixty-minutes-rejected.",
   "direction": "consume",
   "input": {
     "token": {
@@ -17,7 +17,7 @@
       "sub": "1111111111111111111111111111111111111111111111111111111111111111",
       "jti": "2e0663f96040e8af42d5841579a94b89eddce82467516de7cb828fa372380a0c",
       "iat": 1000,
-      "exp": 1300,
+      "exp": 4601,
       "cnf": {
         "jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
       },
@@ -72,7 +72,7 @@
     },
     "authorization_view_authenticated": true,
     "authorization_view_conflicted": false,
-    "authorization_view_age_seconds": 301,
+    "authorization_view_age_seconds": 100,
     "required_scope": "control.read",
     "method": "config.get",
     "object": "config:ui",
@@ -84,6 +84,6 @@
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "control-authorization-view-stale"
+    "reason_code": "control-token-invalid"
   }
 }
