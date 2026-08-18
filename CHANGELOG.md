@@ -15,6 +15,15 @@ explicit release approval.
 family map, and the single registry pin is
 [`docs/spec/registry/manifest.json`](docs/spec/registry/manifest.json).
 
+### Proposed protocol stabilization
+
+- [ADR-046](docs/adr/2026-08-17-046-stabilize-single-family-simplification.md)
+  records the proposed single-family simplification. Its live specification
+  owners are [Core versioning](docs/spec/heterodyne-core.md#core-versioning),
+  [Core key envelope](docs/spec/heterodyne-core.md#core-key-envelope),
+  [Control token](docs/spec/heterodyne-control.md#control-token), and the
+  [family release manifest](docs/spec/releases/family/0.5.0.json).
+
 ### Deduplication and single sources of truth
 
 - Defined the structured client outcome once in Core section 3.8. Comms and
