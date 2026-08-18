@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Heterodyne family release manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "family_version",
+    "status",
+    "registry",
+    "artifacts"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "family_version": {
+      "const": "heterodyne/0.5.0"
+    },
+    "status": {
+      "const": "unreleased"
+    },
+    "registry": {
+      "$ref": "#/definitions/pin"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "role",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "$ref": "#/definitions/path"
+          },
+          "role": {
+            "enum": [
+              "specification",
+              "registry",
+              "schema",
+              "vector",
+              "normative-support"
+            ]
+          },
+          "sha256": {
+            "$ref": "#/definitions/sha256"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "path": {
+      "type": "string",
+      "allOf": [
+        {
+          "pattern": "^[A-Za-z0-9._/-]+$"
+        },
+        {
+          "pattern": "^(?!/)(?!.*//)(?!.*(?:^|/)\\.{1,2}(?:/|$)).+$"
+        }
+      ]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/definitions/path"
+        },
+        "sha256": {
+          "$ref": "#/definitions/sha256"
+        }
+      }
+    }
+  }
+}

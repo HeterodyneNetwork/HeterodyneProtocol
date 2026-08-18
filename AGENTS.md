@@ -20,6 +20,8 @@ artifacts:
   [`docs/spec/schemas/`](docs/spec/schemas/), and
   [`docs/spec/vectors/`](docs/spec/vectors/): normative machine-readable
   artifacts.
+- [`docs/spec/releases/`](docs/spec/releases/): the content-addressed family
+  release manifest and its schema.
 
 The family composition direction is below. Workspace requires Core+Comms;
 its Control and Social compositions are optional.

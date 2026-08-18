@@ -6,6 +6,10 @@ import { writeWorkspaceSchemas } from "./workspace-schemas.js";
 import { verifyVectorTree } from "./verify.js";
 import { writeCoverage } from "./coverage.js";
 import { authorRegistryRevision } from "./registry.js";
+import {
+  validateFamilyReleaseManifest,
+  writeFamilyReleaseManifest,
+} from "./release.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultVectorRoot = resolve(here, "..", "..");
@@ -52,9 +56,21 @@ if (command === "author") {
   const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
   const written = writeWorkspaceSchemas(repositoryRoot);
   console.log(`generated ${written.length} Workspace schemas`);
+} else if (command === "release-author") {
+  const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
+  console.log(`authored family release manifest ${writeFamilyReleaseManifest(repositoryRoot)}`);
+} else if (command === "release-check") {
+  const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
+  const issues = validateFamilyReleaseManifest(repositoryRoot);
+  if (issues.length > 0) {
+    for (const issue of issues) console.error(issue);
+    process.exitCode = 1;
+  } else {
+    console.log("validated family release manifest");
+  }
 } else {
   console.error(
-    "usage: tsx src/cli.ts <author|verify|family-check|coverage|registry-author|workspace-schemas> [root] [revision]",
+    "usage: tsx src/cli.ts <author|verify|family-check|coverage|registry-author|workspace-schemas|release-author|release-check> [root] [revision]",
   );
   process.exitCode = 2;
 }

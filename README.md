@@ -50,6 +50,12 @@ The five documents are sections of one release: they carry the same version
 and pin the same registry revision. The split exists so the blast radius of a
 change stays inside one section.
 
+The single family release manifest at
+[`docs/spec/releases/family/0.5.0.json`](docs/spec/releases/family/0.5.0.json)
+pins the complete normative corpus by repository-relative path and SHA-256.
+Its status remains `unreleased`; it is validated against the closed
+[`family release manifest schema`](docs/spec/releases/family-release-manifest.schema.json).
+
 ## What the family provides
 
 - **Portable identity.** A persona is anchored by a cold-root Nostr npub and
@@ -124,6 +130,7 @@ exactly; semantic similarity is not conformance.
 | [docs/spec/heterodyne-social.md](docs/spec/heterodyne-social.md) | Social normative document |
 | [docs/spec/heterodyne-workspace.md](docs/spec/heterodyne-workspace.md) | Workspace normative document |
 | [docs/spec/registry](docs/spec/registry/) | Kind, profile, reason-code, invariant, feature, object, and proof-domain registry, with the single revision pin in `manifest.json` |
+| [docs/spec/releases](docs/spec/releases/) | Content-addressed manifest for the one family release |
 | [docs/spec/vectors](docs/spec/vectors/) | Normative conformance vectors and verification tooling |
 | [docs/architecture.md](docs/architecture.md) | Non-normative family architecture and rationale |
 | [docs/glossary.md](docs/glossary.md) | Non-normative term index |
