@@ -1,6 +1,6 @@
 # ADR-046: Stabilize the single-family simplification
 
-**Status:** Proposed  
+**Status:** Proposed
 **Date:** 2026-08-17
 
 ## Context
