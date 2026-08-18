@@ -311,7 +311,7 @@ const CASES: Case[] = [
     vector_id: "versioning/qualified-version-unqualified-rejected",
     description: "Bare and document-qualified values are not family versions.",
     direction: "round-trip",
-    input: { values: ["0.5.0", { document: "core", semver: "0.5.0" }] },
+    input: { values: ["0.5.0", "core/0.5.0"] },
     expected_output: { valid: false, error: "invalid_family_version" },
   },
   {

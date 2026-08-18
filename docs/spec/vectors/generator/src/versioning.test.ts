@@ -17,7 +17,11 @@ describe("authored versioning vectors", () => {
       .toEqual({ valid: true, semver: "0.5.0" });
     expect(byId("versioning/exact-family-version-negotiation").input)
       .toEqual({ local: ["heterodyne/0.5.0"], remote: ["heterodyne/0.5.0"] });
-    expect(JSON.stringify(versionVectors)).not.toMatch(
+    expect(byId("versioning/qualified-version-unqualified-rejected").input)
+      .toEqual({ values: ["0.5.0", "core/0.5.0"] });
+    expect(JSON.stringify(versionVectors.filter(
+      ({ vector_id }) => vector_id !== "versioning/qualified-version-unqualified-rejected",
+    ))).not.toMatch(
       /(?:core|comms|control|social|workspace)\/[0-9]/,
     );
   }, 30_000);
