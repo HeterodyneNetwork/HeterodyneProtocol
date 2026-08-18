@@ -57,7 +57,8 @@ export type FamilyDocIssue = {
     | "retired-authoring-model"
     | "missing-current-vector-metadata"
     | "vector-count-drift"
-    | "missing-release-command";
+    | "missing-release-command"
+    | "profile-revision-registry-context-missing";
   message: string;
 };
 
@@ -654,7 +655,10 @@ export function lintReleaseReadiness(repoRoot: string): FamilyDocIssue[] {
 }
 
 /** Lint the maintained authoring guides against the single-family model. */
-export function lintMaintainedGuides(repoRoot: string): FamilyDocIssue[] {
+export function lintMaintainedGuides(
+  repoRoot: string,
+  contentOverrides: Readonly<Record<string, string>> = {},
+): FamilyDocIssue[] {
   const issues: FamilyDocIssue[] = [];
   const guides = [
     "docs/spec/vectors/README.md",
@@ -663,7 +667,10 @@ export function lintMaintainedGuides(repoRoot: string): FamilyDocIssue[] {
     "docs/security/threat-model.md",
   ];
   const contents = new Map(
-    guides.map((path) => [path, readFileSync(resolve(repoRoot, path), "utf8")]),
+    guides.map((path) => [
+      path,
+      contentOverrides[path] ?? readFileSync(resolve(repoRoot, path), "utf8"),
+    ]),
   );
   const lineFor = (text: string, offset: number) =>
     text.slice(0, offset).split(/\r?\n/).length;
@@ -718,6 +725,26 @@ export function lintMaintainedGuides(repoRoot: string): FamilyDocIssue[] {
         line: 1,
         code: "missing-release-command",
         message: `vector README must document ${command}`,
+      });
+    }
+  }
+
+  const registryRevision = loadRegistry(repoRoot).manifest.revision;
+  const profileRevisionIsFrozenAtTwo =
+    /`profile_revision`[\s\S]{0,80}?(?:frozen at|value)\s*`2`/;
+  const namesCurrentRegistryRevision = new RegExp(
+    `distinct from[^.\n]*current family registry revision ${registryRevision}\\b`,
+  );
+  for (const path of ["docs/glossary.md", "docs/security/threat-model.md"]) {
+    const text = contents.get(path)!;
+    if (!profileRevisionIsFrozenAtTwo.test(text)
+      || !namesCurrentRegistryRevision.test(text)) {
+      issues.push({
+        path,
+        line: 1,
+        code: "profile-revision-registry-context-missing",
+        message:
+          `guide must state frozen profile_revision 2 and its distinction from current family registry revision ${registryRevision}`,
       });
     }
   }

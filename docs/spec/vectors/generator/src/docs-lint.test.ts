@@ -29,6 +29,33 @@ describe("canonical family documentation", () => {
     expect(vectorReadme).toContain(`${vectors.length} normative vectors`);
   });
 
+  it("requires the frozen profile revision to name the current registry revision", () => {
+    const { revision } = JSON.parse(
+      read("docs/spec/registry/manifest.json"),
+    ) as { revision: number };
+    const currentRegistryRevision = `current family registry revision ${revision}`;
+    const issues = lintMaintainedGuides(repositoryRoot, {
+      "docs/glossary.md": read("docs/glossary.md").replace(
+        currentRegistryRevision,
+        "`2`; it is a fixed allocation snapshot.",
+      ),
+      "docs/security/threat-model.md": read("docs/security/threat-model.md").replace(
+        currentRegistryRevision,
+        "(a fixed allocation snapshot)",
+      ),
+    });
+    expect(issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: "docs/glossary.md",
+        code: "profile-revision-registry-context-missing",
+      }),
+      expect.objectContaining({
+        path: "docs/security/threat-model.md",
+        code: "profile-revision-registry-context-missing",
+      }),
+    ]));
+  });
+
   it("keeps live specifications independent of noncanonical decision records", () => {
     for (const document of ["core", "comms", "control", "social", "workspace"]) {
       const text = read(`docs/spec/heterodyne-${document}.md`);

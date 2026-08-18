@@ -44,7 +44,7 @@ independently of the family version and is pinned in exactly one place,
 
 **Profile revision.** A fixed allocation snapshot embedded in a versioned wire
 profile. In v1 claims the JSON member is `profile_revision` and is frozen at
-`2`; it is distinct from the family release registry revision.
+`2`; it is distinct from the current family registry revision 12.
 
 **Feature catalog.** The registry-owned allocation of globally unique dotted
 and versioned feature IDs, their document owners, first versions, status,
