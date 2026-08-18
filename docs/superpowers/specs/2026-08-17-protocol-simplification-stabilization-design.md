@@ -1,7 +1,7 @@
 # Protocol Simplification Stabilization Design
 
-**Date:** 2026-08-17  
-**Status:** Approved for implementation planning  
+**Date:** 2026-08-17<br>
+**Status:** Approved for implementation planning<br>
 **Scope:** Complete and stabilize the in-progress single-version, deduplication,
 and optional-feature simplification
 
