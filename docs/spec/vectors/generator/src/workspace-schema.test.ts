@@ -259,5 +259,12 @@ describe("Workspace authority object schemas", () => {
         value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
       },
     })).not.toBeNull();
+    expect(validate("resource-key-envelope-v1", {
+      ...envelope,
+      recipient: {
+        type: "marmot-mls-leaf",
+        value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+      },
+    })).not.toBeNull();
   });
 });

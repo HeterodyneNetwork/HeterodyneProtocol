@@ -6,10 +6,10 @@
     "heterodyne:0.5.0#core-registry"
   ],
   "vector_id": "registry/downref-nonfrozen-rejected",
-  "description": "A 1.0 document cannot require a non-frozen registry entry.",
+  "description": "A 1.0 family release cannot require a non-frozen registry entry.",
   "direction": "round-trip",
   "input": {
-    "document_version": "heterodyne/1.0.0",
+    "family_version": "heterodyne/1.0.0",
     "required_entry_status": "stable"
   },
   "expected_output": {

@@ -262,7 +262,7 @@ export function evaluateKeyRequest(input: {
 }): WorkspaceVerdict {
   if (!/^[0-9a-f]{64}$/.test(input.target_device)
     || input.recipient.type !== "marmot-mls-leaf"
-    || !/^[A-Za-z0-9_-]{43}$/.test(input.recipient.value)) {
+    || !isCanonicalMarmotLeaf(input.recipient.value)) {
     return rejected("workspace_schema_invalid");
   }
   if (!input.resource_known) return rejected("resource_unknown");
@@ -282,6 +282,12 @@ export function evaluateKeyRequest(input: {
     device_bound: true,
     idempotent: true,
   });
+}
+
+function isCanonicalMarmotLeaf(value: string): boolean {
+  if (!/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(value)) return false;
+  const decoded = Buffer.from(value, "base64url");
+  return decoded.length === 32 && decoded.toString("base64url") === value;
 }
 
 export function evaluateFreshness(input: {

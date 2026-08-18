@@ -325,7 +325,7 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
         required: ["type", "value"],
         properties: {
           type: { const: "marmot-mls-leaf" },
-          value: { type: "string", pattern: "^[A-Za-z0-9_-]{43}$" },
+          value: { type: "string", pattern: "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$" },
         },
       },
       role_id: h64,

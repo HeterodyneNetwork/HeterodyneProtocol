@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   CREDENTIAL_CONTINUITY_SCHEMA_FILES,
   CREDENTIAL_CONTINUITY_SCHEMAS,
+  KEY_CLAIM_REVOCATION_SCHEMA,
+  KEY_CLAIM_SCHEMA,
   validateClaimRevocationSchemaOrThrow,
   validateCredentialContinuitySchemaOrThrow,
   validateKeyClaimSchemaOrThrow,
@@ -9,6 +11,18 @@ import {
   validateOneTimeInviteSchemaOrThrow,
   validateVectorOrThrow,
 } from "./schema.js";
+
+describe("claim profile revision schema documentation", () => {
+  it("names the frozen profile revision without registry-revision or duplicated terminology", () => {
+    for (const schema of [KEY_CLAIM_SCHEMA, KEY_CLAIM_REVOCATION_SCHEMA]) {
+      const description = (schema as {
+        properties: { profile_revision: { description: string } };
+      }).properties.profile_revision.description;
+      expect(description).toMatch(/profile revision/i);
+      expect(description).not.toMatch(/profile_profile_revision|profile registry revision/i);
+    }
+  });
+});
 
 describe("one-time invite schemas", () => {
   const descriptor = {

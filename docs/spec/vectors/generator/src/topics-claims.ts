@@ -357,9 +357,9 @@ export async function buildClaimVectors(fixtures: Fixtures): Promise<AuthoredVec
       name: "legacy-comms-version",
       semantic: { ...missingRevocationVersion, comms_version: "heterodyne/0.5.0" },
     },
-    { name: "missing-registry-revision", semantic: missingRevocationRevision },
+    { name: "missing-profile-revision", semantic: missingRevocationRevision },
     { name: "wrong-spec-version", semantic: { ...selfRevocation, spec_version: "heterodyne/0.5.1" } },
-    { name: "wrong-registry-revision", semantic: { ...selfRevocation, profile_revision: 1 } },
+    { name: "wrong-profile-revision", semantic: { ...selfRevocation, profile_revision: 1 } },
   ];
   const revocationMutations = [
     ...await Promise.all(tagMutationCases.map(async ({ name, tags }) => ({

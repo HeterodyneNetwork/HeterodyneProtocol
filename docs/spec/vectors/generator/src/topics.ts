@@ -29,7 +29,7 @@ import {
   type VectorFactory,
   type VectorBody,
 } from "./vector-helpers.js";
-import type { Fixtures } from "./fixtures.js";
+import { CURRENT_REGISTRY_SHA256, type Fixtures } from "./fixtures.js";
 import type { Vector, AuthoredVector } from "./types.js";
 
 export const TOPIC_SPECS = {
@@ -866,8 +866,8 @@ const ADDITIONAL_COVERAGE_CASES: ConsumeCase[] = [
       vector_id: "versioning/capabilities-roundtrip",
       spec_refs: ["§12", "§14.3"],
       description: "The complete heterodyne-capabilities-v1 object round-trips with one family version.",
-      input: { capabilities: { descriptor: "heterodyne-capabilities-v1", spec_version: "heterodyne/0.5.0", registry_sha256: "a2a902c616a5671bf058c1d9a0e2ed91ee15c7915593fac5fa551e3f41a805f4", implementation_role: "public-reader", supported_documents: ["core"], required_features: ["core.nostr-relay-read.v1"], strict_profiles: [] } },
-      expected_output: { verdict: "accept", normalized: { capabilities: { descriptor: "heterodyne-capabilities-v1", spec_version: "heterodyne/0.5.0", registry_sha256: "a2a902c616a5671bf058c1d9a0e2ed91ee15c7915593fac5fa551e3f41a805f4", implementation_role: "public-reader", supported_documents: ["core"], required_features: ["core.nostr-relay-read.v1"], strict_profiles: [] } } },
+      input: { capabilities: { descriptor: "heterodyne-capabilities-v1", spec_version: "heterodyne/0.5.0", registry_sha256: CURRENT_REGISTRY_SHA256, implementation_role: "public-reader", supported_documents: ["core"], required_features: ["core.nostr-relay-read.v1"], strict_profiles: [] } },
+      expected_output: { verdict: "accept", normalized: { capabilities: { descriptor: "heterodyne-capabilities-v1", spec_version: "heterodyne/0.5.0", registry_sha256: CURRENT_REGISTRY_SHA256, implementation_role: "public-reader", supported_documents: ["core"], required_features: ["core.nostr-relay-read.v1"], strict_profiles: [] } } },
     },
   },
   {

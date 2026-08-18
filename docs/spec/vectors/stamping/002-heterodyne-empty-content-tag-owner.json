@@ -10,10 +10,17 @@
   "direction": "round-trip",
   "input": {
     "kind": 31001,
-    "content_is_heterodyne_json": false
+    "content_is_heterodyne_json": false,
+    "tags": [
+      [
+        "spec_version",
+        "heterodyne/0.5.0"
+      ]
+    ]
   },
   "expected_output": {
     "owner": "core",
-    "placement": "tag"
+    "placement": "tag",
+    "value": "heterodyne/0.5.0"
   }
 }

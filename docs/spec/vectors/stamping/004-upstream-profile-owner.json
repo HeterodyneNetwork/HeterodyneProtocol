@@ -11,10 +11,17 @@
   "direction": "round-trip",
   "input": {
     "kind": 10000,
-    "profile_id": "heterodyne-social-mute-list-v1"
+    "profile_id": "heterodyne-social-mute-list-v1",
+    "tags": [
+      [
+        "spec_version",
+        "heterodyne/0.5.0"
+      ]
+    ]
   },
   "expected_output": {
     "owner": "social",
-    "placement": "tag"
+    "placement": "tag",
+    "value": "heterodyne/0.5.0"
   }
 }

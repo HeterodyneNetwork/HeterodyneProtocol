@@ -15,10 +15,10 @@ import {
   validateControlTokenUse,
 } from "./control-profile.js";
 
-const client = "11".repeat(32);
+const client = "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
 const node = "22".repeat(32);
 const group = "33".repeat(32);
-const jkt = "A".repeat(43);
+const jkt = "2JF8vg9etJzjFwZwmkvhBLLZ0bfMVVOPivYR5lFtcec";
 
 describe("Marmot Control invitation and entitlement", () => {
   const invitation = {
@@ -112,39 +112,52 @@ describe("Marmot Control invitation and entitlement", () => {
 });
 
 describe("node-scoped Marmot-bound tokens", () => {
+  const object = { class: "config_namespace" as const, id: "ui" };
   const currentEntitlement = {
     record_id: "44".repeat(32),
-    state: "active" as const,
+    persona: "aa".repeat(32),
     client_key: client,
-    client_id: "agent-newsletter",
     client_class: "automated" as const,
-    scopes: ["control.read"],
-    methods: ["config.get"],
-    objects: ["config:ui"],
-    limits: { content_bytes: 1_024, requests_per_hour: 10 },
-    registry_checkpoint: "55".repeat(32),
-    agent_role: "newsletter",
-    max_token_lifetime_seconds: 3_600,
+    approving_node: node,
+    approving_authority: "fixture-local-approval",
+    methods: ["config.get", "config.put"],
+    objects: [object],
+    limits: {
+      max_content_bytes: 1_024,
+      rate_window_seconds: 3_600,
+      rate_count: 10,
+      burst: 2,
+      max_media_bytes: 2_048,
+    },
+    capabilities: [] as Array<"control.token.extended">,
+    token_lifetime_default_seconds: 300 as const,
+    token_lifetime_max_seconds: 3_600,
+    inbound_execution: false,
+    agent_role: "agent:newsletter",
+    predecessor: null,
+    state: "active" as const,
+    created_at: 900,
+    expires_at: null,
+    signer: node,
+    signature: "66".repeat(64),
   };
   const issuance = {
-    client_jkt: jkt,
     group_id: group,
     issuer: "https://node.example/oidc/persona",
     audience: "urn:heterodyne:control:node-a",
     node_key: node,
+    registry_checkpoint: "55".repeat(32),
+    issuance_nonce: "77".repeat(32),
     requested_lifetime_seconds: 300,
     node_policy_max_seconds: 3600,
-    extended_capability: false,
     now: 1_000,
     authorization_view_authenticated: true,
     authorization_view_conflicted: false,
     authorization_view_age_seconds: 0,
     methods: ["config.get"],
-    objects: ["config:ui"],
+    objects: [object],
     entitlement: currentEntitlement,
-    scopes: ["control.read"],
-    limits: { content_bytes: 1_024, requests_per_hour: 10 },
-    agent_role: "newsletter",
+    limits: { max_content_bytes: 1_024, rate_count: 10 },
   };
 
   it("issues five minutes by default, permits explicit extension, and never refreshes", () => {
@@ -152,16 +165,22 @@ describe("node-scoped Marmot-bound tokens", () => {
       verdict: "accept", lifetime_seconds: 300, refresh_token: null,
       token: {
         authorization_id: currentEntitlement.record_id,
-        client_id: currentEntitlement.client_id,
+        client_id: currentEntitlement.client_key,
         client_class: currentEntitlement.client_class,
-        scope: "control.read",
-        limits: currentEntitlement.limits,
-        registry_checkpoint: currentEntitlement.registry_checkpoint,
+        scope: "control",
+        limits: issuance.limits,
+        registry_checkpoint: issuance.registry_checkpoint,
         agent_role: currentEntitlement.agent_role,
+        cnf: { jkt },
       },
     });
     expect(issueControlToken({
-      ...issuance, requested_lifetime_seconds: 3_600, extended_capability: true,
+      ...issuance,
+      entitlement: {
+        ...currentEntitlement,
+        capabilities: ["control.token.extended" as const],
+      },
+      requested_lifetime_seconds: 3_600,
     })).toMatchObject({ verdict: "accept", lifetime_seconds: 3_600, refresh_token: null });
     expect(issueControlToken({ ...issuance, requested_lifetime_seconds: 301 }))
       .toEqual({ verdict: "reject", reason_code: "control-token-invalid" });
@@ -183,11 +202,12 @@ describe("node-scoped Marmot-bound tokens", () => {
       authorization_view_conflicted: false,
       authorization_view_age_seconds: 100,
       method: "config.get",
-      object: "config:ui",
+      object,
       current_entitlement: currentEntitlement,
-      required_scope: "control.read",
-      usage: { content_bytes: 512, requests_per_hour: 1 },
-      required_agent_role: "newsletter",
+      current_registry_checkpoint: issuance.registry_checkpoint,
+      required_scope: "control",
+      usage: { max_content_bytes: 512, rate_count: 1 },
+      required_agent_role: "agent:newsletter",
     };
     expect(validateControlTokenUse(use)).toEqual({ verdict: "accept" });
     expect(validateControlTokenUse({ ...use, authenticated_sender_jkt: "B".repeat(43) }))
@@ -216,22 +236,22 @@ describe("node-scoped Marmot-bound tokens", () => {
       authorization_view_conflicted: false,
       authorization_view_age_seconds: 100,
       method: "config.get",
-      object: "config:ui",
+      object,
       current_entitlement: currentEntitlement,
-      required_scope: "control.read",
-      usage: { content_bytes: 512, requests_per_hour: 1 },
-      required_agent_role: "newsletter",
+      current_registry_checkpoint: issuance.registry_checkpoint,
+      required_scope: "control",
+      usage: { max_content_bytes: 512, rate_count: 1 },
+      required_agent_role: "agent:newsletter",
     };
     for (const current_entitlement of [
       { ...currentEntitlement, record_id: "66".repeat(32) },
-      { ...currentEntitlement, client_id: "other-client" },
+      { ...currentEntitlement, client_key: "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5" },
       { ...currentEntitlement, client_class: "human-light" as const },
-      { ...currentEntitlement, scopes: [] },
       { ...currentEntitlement, methods: [] },
       { ...currentEntitlement, objects: [] },
-      { ...currentEntitlement, limits: { content_bytes: 256, requests_per_hour: 10 } },
-      { ...currentEntitlement, registry_checkpoint: "77".repeat(32) },
-      { ...currentEntitlement, agent_role: "moderator" },
+      { ...currentEntitlement, limits: { ...currentEntitlement.limits, max_content_bytes: 256 } },
+      { ...currentEntitlement, capabilities: ["control.token.extended" as const] },
+      { ...currentEntitlement, agent_role: "agent:moderator" },
     ]) {
       expect(validateControlTokenUse({ ...use, current_entitlement })).toEqual({
         verdict: "reject",

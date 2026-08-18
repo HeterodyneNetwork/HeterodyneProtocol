@@ -35,9 +35,8 @@ Every vector validates against
 The schema requires each actual vector's `spec_version` to be the scalar
 family version. A `spec_version` inside a tested event's `input` or
 `expected_output` is part of that event's wire format and is not the vector
-envelope version. The current unreleased corpus contains 495 normative vectors.
-Ten
-transport-independent credential-continuity draft evaluations explicitly set
+envelope version. The current unreleased corpus contains 498 normative vectors.
+Ten transport-independent credential-continuity draft evaluations explicitly set
 `conformance_claimable:false`; they do not activate a wire or recovery profile.
 Historical released vectors and the signed behavior they describe MUST NOT be
 rewritten. Unreleased 0.x vectors may be changed or retired in place under an

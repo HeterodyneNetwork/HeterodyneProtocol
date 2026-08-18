@@ -1255,6 +1255,15 @@
     ]
   },
   {
+    "vector_id": "control/token-cross-bound-client-key",
+    "owner_document": "control",
+    "spec_version": "heterodyne/0.5.0",
+    "profile": "heterodyne-control-marmot-frame-v1",
+    "spec_refs": [
+      "heterodyne:0.5.0#control-token"
+    ]
+  },
+  {
     "vector_id": "control/token-current-lifetime-mismatch",
     "owner_document": "control",
     "spec_version": "heterodyne/0.5.0",
@@ -1355,6 +1364,15 @@
   },
   {
     "vector_id": "control/token-registry-checkpoint-mismatch",
+    "owner_document": "control",
+    "spec_version": "heterodyne/0.5.0",
+    "profile": "heterodyne-control-marmot-frame-v1",
+    "spec_refs": [
+      "heterodyne:0.5.0#control-token"
+    ]
+  },
+  {
+    "vector_id": "control/token-same-second-differing-grant",
     "owner_document": "control",
     "spec_version": "heterodyne/0.5.0",
     "profile": "heterodyne-control-marmot-frame-v1",
@@ -3920,6 +3938,14 @@
   },
   {
     "vector_id": "workspace-key/keypackage-readmission",
+    "owner_document": "workspace",
+    "spec_version": "heterodyne/0.5.0",
+    "spec_refs": [
+      "heterodyne:0.5.0#workspace-key-delivery"
+    ]
+  },
+  {
+    "vector_id": "workspace-key/noncanonical-recipient-rejected",
     "owner_document": "workspace",
     "spec_version": "heterodyne/0.5.0",
     "spec_refs": [

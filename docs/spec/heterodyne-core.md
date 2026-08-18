@@ -175,18 +175,20 @@ the parsed object.
 <a id="core-version-stamps"></a>
 ### 3.2 Owner stamps and historical bytes
 
-An event carries at most one Heterodyne version stamp. The registry defines
-these exhaustive classes:
+An event carries at most one Heterodyne version stamp. Ownership selects the
+applicable base schema or registered profile and the stamp placement only; it
+does not select a separate version lineage. Every stamped class below carries
+the exact family version `heterodyne/0.5.0`. The registry defines these
+exhaustive classes:
 
-1. Heterodyne-defined JSON `content` MUST contain the qualified
-   `spec_version` of the base-schema owner.
+1. Heterodyne-defined JSON `content` MUST contain the exact family
+   `spec_version`.
 2. A Heterodyne-allocated kind whose `content` is empty or non-JSON MUST carry
-   `['spec_version', '<owner>/<semver>']`. The registry base-schema owner
-   supplies `<owner>`.
+   `['spec_version', 'heterodyne/0.5.0']`.
 3. An adopted upstream kind is unstamped unless an immutable registered
    stamping profile opts it in. A stamping profile uses its in-band
-   discriminator and carries the profile owner's qualified version in the
-   version tag without changing the upstream content shape.
+   discriminator and carries the exact family version in the version tag
+   without changing the upstream content shape.
 4. A registered non-stamping profile changes no signed byte and adds no
    marker. The Core breadcrumb profiles
    `heterodyne-core-rotation-breadcrumb-profile-v1` and
@@ -205,9 +207,10 @@ these exhaustive classes:
    NIP-59 seal supplies responder authentication and it MUST NOT be
    interpreted as a signed standalone addressable event.
 
-An unqualified or unrecognized owner stamp names no registered owner. A
-consumer MUST NOT infer an owner from the event kind alone, and MUST reject an
-event whose stamp does not resolve to a registered document version.
+An unqualified or unrecognized family stamp names no supported protocol
+version. A consumer MUST NOT use the stamp value to infer an owner, and MUST
+reject a stamped event unless its value is the exact supported family version
+and its base schema or profile resolves through the registry.
 
 <a id="core-wire-keys"></a>
 ### 3.3 Canonical wire keys

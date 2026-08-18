@@ -14,73 +14,96 @@
       "typ": "at+jwt",
       "iss": "https://node.example/oidc/persona",
       "aud": "urn:heterodyne:control:node-a",
-      "sub": "1111111111111111111111111111111111111111111111111111111111111111",
-      "jti": "2e0663f96040e8af42d5841579a94b89eddce82467516de7cb828fa372380a0c",
+      "sub": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
       "iat": 1000,
-      "exp": 1300,
+      "exp": 4600,
       "cnf": {
-        "jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "jkt": "2JF8vg9etJzjFwZwmkvhBLLZ0bfMVVOPivYR5lFtcec"
       },
       "group_id": "3333333333333333333333333333333333333333333333333333333333333333",
       "authorization_id": "4444444444444444444444444444444444444444444444444444444444444444",
-      "client_id": "agent-newsletter",
+      "client_id": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
       "client_class": "automated",
-      "scope": "control.read",
+      "scope": "control control.token.extended",
       "methods": [
         "config.get"
       ],
       "objects": [
-        "config:ui"
+        {
+          "class": "config_namespace",
+          "id": "ui"
+        }
       ],
       "limits": {
-        "content_bytes": 1024,
-        "requests_per_hour": 10
+        "max_content_bytes": 1024,
+        "rate_count": 10
       },
       "registry_checkpoint": "5555555555555555555555555555555555555555555555555555555555555555",
+      "issuance_nonce": "7878787878787878787878787878787878787878787878787878787878787878",
       "node_key": "2222222222222222222222222222222222222222222222222222222222222222",
-      "agent_role": "newsletter"
+      "agent_role": "agent:newsletter",
+      "jti": "f1ad5a13fc75597c1812be8cc1312e895c65c9f625b7d2165830b2c30067c7c1"
     },
     "signature_valid": true,
     "now": 1100,
     "expected_issuer": "https://node.example/oidc/persona",
     "expected_audience": "urn:heterodyne:control:node-a",
     "expected_node_key": "2222222222222222222222222222222222222222222222222222222222222222",
-    "authenticated_sender_jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "authenticated_sender_jkt": "2JF8vg9etJzjFwZwmkvhBLLZ0bfMVVOPivYR5lFtcec",
     "group_id": "3333333333333333333333333333333333333333333333333333333333333333",
     "current_entitlement": {
       "record_id": "4444444444444444444444444444444444444444444444444444444444444444",
-      "state": "active",
-      "client_key": "1111111111111111111111111111111111111111111111111111111111111111",
-      "client_id": "agent-newsletter",
+      "persona": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "client_key": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
       "client_class": "automated",
-      "scopes": [
-        "control.read"
-      ],
+      "approving_node": "2222222222222222222222222222222222222222222222222222222222222222",
+      "approving_authority": "fixture-local-approval",
       "methods": [
-        "config.get"
+        "config.get",
+        "config.put"
       ],
       "objects": [
-        "config:ui"
+        {
+          "class": "config_namespace",
+          "id": "ui"
+        }
       ],
       "limits": {
-        "content_bytes": 1024,
-        "requests_per_hour": 10
+        "max_content_bytes": 1024,
+        "rate_window_seconds": 3600,
+        "rate_count": 10,
+        "burst": 2,
+        "max_media_bytes": 2048
       },
-      "registry_checkpoint": "5555555555555555555555555555555555555555555555555555555555555555",
-      "agent_role": "newsletter",
-      "max_token_lifetime_seconds": 299
+      "capabilities": [
+        "control.token.extended"
+      ],
+      "token_lifetime_default_seconds": 300,
+      "token_lifetime_max_seconds": 300,
+      "inbound_execution": false,
+      "agent_role": "agent:newsletter",
+      "predecessor": null,
+      "state": "active",
+      "created_at": 900,
+      "expires_at": null,
+      "signer": "2222222222222222222222222222222222222222222222222222222222222222",
+      "signature": "66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666"
     },
     "authorization_view_authenticated": true,
     "authorization_view_conflicted": false,
     "authorization_view_age_seconds": 100,
-    "required_scope": "control.read",
+    "current_registry_checkpoint": "5555555555555555555555555555555555555555555555555555555555555555",
+    "required_scope": "control",
     "method": "config.get",
-    "object": "config:ui",
-    "usage": {
-      "content_bytes": 512,
-      "requests_per_hour": 1
+    "object": {
+      "class": "config_namespace",
+      "id": "ui"
     },
-    "required_agent_role": "newsletter"
+    "usage": {
+      "max_content_bytes": 512,
+      "rate_count": 1
+    },
+    "required_agent_role": "agent:newsletter"
   },
   "expected_output": {
     "verdict": "reject",

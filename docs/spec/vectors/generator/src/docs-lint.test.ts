@@ -29,6 +29,29 @@ describe("canonical family documentation", () => {
     expect(vectorReadme).toContain(`${vectors.length} normative vectors`);
   });
 
+  it.each([
+    ["docs/architecture.md", "The five documents are independently versioned."],
+    ["docs/security/threat-model.md", "This analyzes five independently versioned documents."],
+    ["CHANGELOG.md", "Deleted docs/spec/releases/ and all release metadata."],
+    ["CHANGELOG.md", "comms.node-scoped-jwt.v1 owns the node-local token."],
+    ["CHANGELOG.md", "Each key-envelope site supplies exactly four things."],
+    ["CHANGELOG.md", "The fixed v1 claim profile registry revision is 2."],
+  ])("rejects retired live model prose in %s", (path, retiredText) => {
+    const issues = lintMaintainedGuides(repositoryRoot, {
+      [path]: `${read(path)}\n${retiredText}\n`,
+    });
+    expect(issues).toContainEqual(expect.objectContaining({
+      path,
+      code: "retired-authoring-model",
+    }));
+  });
+
+  it("states Social conformance through Core layering and the one family version", () => {
+    const social = read("docs/spec/heterodyne-social.md");
+    expect(social).not.toMatch(/dependency versions above/i);
+    expect(social).toMatch(/Core-defined layering[\s\S]{0,160}same family version/i);
+  });
+
   it("requires every guide to state each profile-revision fact", () => {
     const { revision } = JSON.parse(
       read("docs/spec/registry/manifest.json"),

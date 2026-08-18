@@ -12,53 +12,65 @@
   "input": {
     "entitlement": {
       "record_id": "4444444444444444444444444444444444444444444444444444444444444444",
-      "state": "active",
-      "client_key": "1111111111111111111111111111111111111111111111111111111111111111",
-      "client_id": "agent-newsletter",
+      "persona": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "client_key": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
       "client_class": "automated",
-      "scopes": [
-        "control.read"
-      ],
+      "approving_node": "2222222222222222222222222222222222222222222222222222222222222222",
+      "approving_authority": "fixture-local-approval",
       "methods": [
-        "config.get"
+        "config.get",
+        "config.put"
       ],
       "objects": [
-        "config:ui"
+        {
+          "class": "config_namespace",
+          "id": "ui"
+        }
       ],
       "limits": {
-        "content_bytes": 1024,
-        "requests_per_hour": 10
+        "max_content_bytes": 1024,
+        "rate_window_seconds": 3600,
+        "rate_count": 10,
+        "burst": 2,
+        "max_media_bytes": 2048
       },
-      "registry_checkpoint": "5555555555555555555555555555555555555555555555555555555555555555",
-      "agent_role": "newsletter",
-      "max_token_lifetime_seconds": 3600
+      "capabilities": [],
+      "token_lifetime_default_seconds": 300,
+      "token_lifetime_max_seconds": 3600,
+      "inbound_execution": false,
+      "agent_role": "agent:newsletter",
+      "predecessor": null,
+      "state": "active",
+      "created_at": 900,
+      "expires_at": null,
+      "signer": "2222222222222222222222222222222222222222222222222222222222222222",
+      "signature": "66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666"
     },
-    "client_jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     "group_id": "3333333333333333333333333333333333333333333333333333333333333333",
     "issuer": "https://node.example/oidc/persona",
     "audience": "urn:heterodyne:control:node-a",
     "node_key": "2222222222222222222222222222222222222222222222222222222222222222",
+    "registry_checkpoint": "5555555555555555555555555555555555555555555555555555555555555555",
+    "issuance_nonce": "7777777777777777777777777777777777777777777777777777777777777777",
     "requested_lifetime_seconds": 301,
     "node_policy_max_seconds": 3600,
-    "extended_capability": false,
     "now": 1000,
     "authorization_view_authenticated": true,
     "authorization_view_conflicted": false,
     "authorization_view_age_seconds": 0,
-    "scopes": [
-      "control.read"
-    ],
     "methods": [
       "config.get"
     ],
     "objects": [
-      "config:ui"
+      {
+        "class": "config_namespace",
+        "id": "ui"
+      }
     ],
     "limits": {
-      "content_bytes": 1024,
-      "requests_per_hour": 10
-    },
-    "agent_role": "newsletter"
+      "max_content_bytes": 1024,
+      "rate_count": 10
+    }
   },
   "expected_output": {
     "verdict": "reject",

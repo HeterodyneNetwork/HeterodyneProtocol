@@ -4,9 +4,9 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 
 - core: 138
 - comms: 203
-- control: 64
+- control: 66
 - social: 51
-- workspace: 39
+- workspace: 40
 
 | Vector | Owner | Profile | Spec references |
 |---|---|---|---|
@@ -159,6 +159,7 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `control/token-client-class-mismatch` | control | `heterodyne-control-marmot-frame-v1` | `heterodyne:0.5.0#control-token` |
 | `control/token-client-id-mismatch` | control | `heterodyne-control-marmot-frame-v1` | `heterodyne:0.5.0#control-token` |
 | `control/token-client-key-mismatch` | control | `heterodyne-control-marmot-frame-v1` | `heterodyne:0.5.0#control-token` |
+| `control/token-cross-bound-client-key` | control | `heterodyne-control-marmot-frame-v1` | `heterodyne:0.5.0#control-token` |
 | `control/token-current-lifetime-mismatch` | control | `heterodyne-control-marmot-frame-v1` | `heterodyne:0.5.0#control-token` |
 | `control/token-current-limit-mismatch` | control | `heterodyne-control-marmot-frame-v1` | `heterodyne:0.5.0#control-token` |
 | `control/token-current-method-mismatch` | control | `heterodyne-control-marmot-frame-v1` | `heterodyne:0.5.0#control-token` |
@@ -171,6 +172,7 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `control/token-human-role-omitted` | control | `heterodyne-control-marmot-frame-v1` | `heterodyne:0.5.0#control-token` |
 | `control/token-over-sixty-minutes-rejected` | control | `heterodyne-control-marmot-frame-v1` | `heterodyne:0.5.0#control-token` |
 | `control/token-registry-checkpoint-mismatch` | control | `heterodyne-control-marmot-frame-v1` | `heterodyne:0.5.0#control-token` |
+| `control/token-same-second-differing-grant` | control | `heterodyne-control-marmot-frame-v1` | `heterodyne:0.5.0#control-token` |
 | `control/token-scope-rejected` | control | `heterodyne-control-marmot-frame-v1` | `heterodyne:0.5.0#control-token` |
 | `control/token-stale-authorization-view` | control | `heterodyne-control-marmot-frame-v1` | `heterodyne:0.5.0#control-token` |
 | `control/token-valid` | control | `heterodyne-control-marmot-frame-v1` | `heterodyne:0.5.0#control-token` |
@@ -489,6 +491,7 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `workspace-key/from-admission-denied` | workspace | — | `heterodyne:0.5.0#workspace-key-delivery` |
 | `workspace-key/full-history` | workspace | — | `heterodyne:0.5.0#workspace-key-delivery` |
 | `workspace-key/keypackage-readmission` | workspace | — | `heterodyne:0.5.0#workspace-key-delivery` |
+| `workspace-key/noncanonical-recipient-rejected` | workspace | — | `heterodyne:0.5.0#workspace-key-delivery` |
 | `workspace-key/revoked-device` | workspace | — | `heterodyne:0.5.0#workspace-key-delivery` |
 | `workspace-key/selected-snapshot` | workspace | — | `heterodyne:0.5.0#workspace-key-delivery` |
 | `workspace-key/unauthorized-host` | workspace | — | `heterodyne:0.5.0#workspace-key-delivery` |

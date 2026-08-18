@@ -12,53 +12,64 @@
   "input": {
     "entitlement": {
       "record_id": "4444444444444444444444444444444444444444444444444444444444444444",
-      "state": "active",
-      "client_key": "1111111111111111111111111111111111111111111111111111111111111111",
-      "client_id": "human-light-client",
+      "persona": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "client_key": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
       "client_class": "human-light",
-      "scopes": [
-        "control.read"
-      ],
+      "approving_node": "2222222222222222222222222222222222222222222222222222222222222222",
+      "approving_authority": "fixture-local-approval",
       "methods": [
-        "config.get"
+        "config.get",
+        "config.put"
       ],
       "objects": [
-        "config:ui"
+        {
+          "class": "config_namespace",
+          "id": "ui"
+        }
       ],
       "limits": {
-        "content_bytes": 1024,
-        "requests_per_hour": 10
+        "max_content_bytes": 1024,
+        "rate_window_seconds": 3600,
+        "rate_count": 10,
+        "burst": 2,
+        "max_media_bytes": 2048
       },
-      "registry_checkpoint": "5555555555555555555555555555555555555555555555555555555555555555",
-      "agent_role": null,
-      "max_token_lifetime_seconds": 3600
+      "capabilities": [],
+      "token_lifetime_default_seconds": 300,
+      "token_lifetime_max_seconds": 3600,
+      "inbound_execution": false,
+      "predecessor": null,
+      "state": "active",
+      "created_at": 900,
+      "expires_at": null,
+      "signer": "2222222222222222222222222222222222222222222222222222222222222222",
+      "signature": "66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666"
     },
-    "client_jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     "group_id": "3333333333333333333333333333333333333333333333333333333333333333",
     "issuer": "https://node.example/oidc/persona",
     "audience": "urn:heterodyne:control:node-a",
     "node_key": "2222222222222222222222222222222222222222222222222222222222222222",
+    "registry_checkpoint": "5555555555555555555555555555555555555555555555555555555555555555",
+    "issuance_nonce": "7979797979797979797979797979797979797979797979797979797979797979",
     "requested_lifetime_seconds": 300,
     "node_policy_max_seconds": 3600,
-    "extended_capability": false,
     "now": 1000,
     "authorization_view_authenticated": true,
     "authorization_view_conflicted": false,
     "authorization_view_age_seconds": 0,
-    "scopes": [
-      "control.read"
-    ],
     "methods": [
       "config.get"
     ],
     "objects": [
-      "config:ui"
+      {
+        "class": "config_namespace",
+        "id": "ui"
+      }
     ],
     "limits": {
-      "content_bytes": 1024,
-      "requests_per_hour": 10
-    },
-    "agent_role": null
+      "max_content_bytes": 1024,
+      "rate_count": 10
+    }
   },
   "expected_output": {
     "verdict": "accept",
@@ -68,30 +79,34 @@
       "typ": "at+jwt",
       "iss": "https://node.example/oidc/persona",
       "aud": "urn:heterodyne:control:node-a",
-      "sub": "1111111111111111111111111111111111111111111111111111111111111111",
-      "jti": "2e0663f96040e8af42d5841579a94b89eddce82467516de7cb828fa372380a0c",
+      "sub": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
       "iat": 1000,
       "exp": 1300,
       "cnf": {
-        "jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "jkt": "2JF8vg9etJzjFwZwmkvhBLLZ0bfMVVOPivYR5lFtcec"
       },
       "group_id": "3333333333333333333333333333333333333333333333333333333333333333",
       "authorization_id": "4444444444444444444444444444444444444444444444444444444444444444",
-      "client_id": "human-light-client",
+      "client_id": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
       "client_class": "human-light",
-      "scope": "control.read",
+      "scope": "control",
       "methods": [
         "config.get"
       ],
       "objects": [
-        "config:ui"
+        {
+          "class": "config_namespace",
+          "id": "ui"
+        }
       ],
       "limits": {
-        "content_bytes": 1024,
-        "requests_per_hour": 10
+        "max_content_bytes": 1024,
+        "rate_count": 10
       },
       "registry_checkpoint": "5555555555555555555555555555555555555555555555555555555555555555",
-      "node_key": "2222222222222222222222222222222222222222222222222222222222222222"
+      "issuance_nonce": "7979797979797979797979797979797979797979797979797979797979797979",
+      "node_key": "2222222222222222222222222222222222222222222222222222222222222222",
+      "jti": "397bbd62b1466ff34e594aabbbdfa30c0e1ad0deb5fd5be280c870d0bbf7dbef"
     }
   }
 }

@@ -100,7 +100,7 @@ describe("family release manifest", () => {
       sha256(readFileSync(resolve(repositoryRoot, "docs/spec/registry/manifest.json"))),
     );
     expect(manifest.artifacts.filter((artifact) => artifact.role === "specification")).toHaveLength(5);
-    expect(manifest.artifacts.filter((artifact) => artifact.role === "vector")).toHaveLength(495);
+    expect(manifest.artifacts.filter((artifact) => artifact.role === "vector")).toHaveLength(498);
     expect(manifest.artifacts.filter((artifact) => artifact.role === "schema")).toHaveLength(63);
     expect(manifest.artifacts.map((artifact) => artifact.path)).toEqual(
       [...manifest.artifacts.map((artifact) => artifact.path)].sort(),

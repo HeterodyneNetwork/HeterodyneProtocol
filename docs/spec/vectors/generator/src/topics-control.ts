@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   authorizeInvitation,
   evaluateEntitlementUpdate,
@@ -12,19 +13,33 @@ import {
   processControlOperation,
   retentionDecision,
   validateControlTokenUse,
+  type ControlAuthorizationRecord,
+  type ControlToken,
   type Entitlement,
   type OperationInput,
-  type TokenEntitlementState,
   type TokenIssuanceInput,
   type TokenUseInput,
 } from "./control-profile.js";
+import { jcsCanonicalize } from "./jcs.js";
 import { baseVector } from "./vector-helpers.js";
 import type { AuthoredVector } from "./types.js";
 
-const client = "11".repeat(32);
+const client = "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
+const otherClient = "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5";
 const node = "22".repeat(32);
 const group = "33".repeat(32);
-const jkt = "A".repeat(43);
+const jkt = "2JF8vg9etJzjFwZwmkvhBLLZ0bfMVVOPivYR5lFtcec";
+const otherJkt = "GKeBJdbiPSiSZ8qwiPH8NBmmtrLcKCZ7gYOzX0hwzlM";
+
+function withRecomputedJti(token: ControlToken): ControlToken {
+  const { jti: _jti, ...claims } = token;
+  return {
+    ...claims,
+    jti: createHash("sha256")
+      .update(`heterodyne-control-token-jti-v1\0${jcsCanonicalize(claims)}`)
+      .digest("hex"),
+  };
+}
 
 export function buildControlVectors(): AuthoredVector[] {
   const vectors: AuthoredVector[] = [];
@@ -99,55 +114,86 @@ export function buildControlVectors(): AuthoredVector[] {
     add(number, id, `Private Control entitlement decision: ${id}.`, { current: entitlement, next }, evaluateEntitlementUpdate(entitlement, next));
   }
 
-  const tokenEntitlement: TokenEntitlementState = {
+  const object = { class: "config_namespace" as const, id: "ui" };
+  const tokenEntitlement: ControlAuthorizationRecord = {
     record_id: "44".repeat(32),
-    state: "active",
+    persona: "aa".repeat(32),
     client_key: client,
-    client_id: "agent-newsletter",
     client_class: "automated",
-    scopes: ["control.read"],
-    methods: ["config.get"],
-    objects: ["config:ui"],
-    limits: { content_bytes: 1_024, requests_per_hour: 10 },
-    registry_checkpoint: "55".repeat(32),
-    agent_role: "newsletter",
-    max_token_lifetime_seconds: 3_600,
+    approving_node: node,
+    approving_authority: "fixture-local-approval",
+    methods: ["config.get", "config.put"],
+    objects: [object],
+    limits: {
+      max_content_bytes: 1_024,
+      rate_window_seconds: 3_600,
+      rate_count: 10,
+      burst: 2,
+      max_media_bytes: 2_048,
+    },
+    capabilities: [],
+    token_lifetime_default_seconds: 300,
+    token_lifetime_max_seconds: 3_600,
+    inbound_execution: false,
+    agent_role: "agent:newsletter",
+    predecessor: null,
+    state: "active",
+    created_at: 900,
+    expires_at: null,
+    signer: node,
+    signature: "66".repeat(64),
   };
-  const issuance = {
+  const extendedTokenEntitlement: ControlAuthorizationRecord = {
+    ...tokenEntitlement,
+    capabilities: ["control.token.extended"],
+  };
+  const { agent_role: _agentRole, ...tokenEntitlementWithoutRole } = tokenEntitlement;
+  const humanTokenEntitlement: ControlAuthorizationRecord = {
+    ...tokenEntitlementWithoutRole,
+    client_class: "human-light",
+  };
+  const issuance: TokenIssuanceInput = {
     entitlement: tokenEntitlement,
-    client_jkt: jkt,
     group_id: group,
     issuer: "https://node.example/oidc/persona",
     audience: "urn:heterodyne:control:node-a",
     node_key: node,
+    registry_checkpoint: "55".repeat(32),
+    issuance_nonce: "77".repeat(32),
     requested_lifetime_seconds: 300,
     node_policy_max_seconds: 3_600,
-    extended_capability: false,
     now: 1_000,
     authorization_view_authenticated: true,
     authorization_view_conflicted: false,
     authorization_view_age_seconds: 0,
-    scopes: ["control.read"],
     methods: ["config.get"],
-    objects: ["config:ui"],
-    limits: { content_bytes: 1_024, requests_per_hour: 10 },
-    agent_role: "newsletter",
+    objects: [object],
+    limits: { max_content_bytes: 1_024, rate_count: 10 },
   };
   const issued = issueControlToken(issuance);
   if (issued.verdict !== "accept") throw new Error("Control token fixture failed");
+  const issuedExtended = issueControlToken({
+    ...issuance,
+    entitlement: extendedTokenEntitlement,
+    requested_lifetime_seconds: 3_600,
+    issuance_nonce: "78".repeat(32),
+  });
+  if (issuedExtended.verdict !== "accept") {
+    throw new Error("Extended Control token fixture failed");
+  }
   const tokenIssuanceCases: Array<[string, string, TokenIssuanceInput]> = [
     ["008", "token-default-five-minutes", issuance],
-    ["009", "token-explicit-sixty-minutes", { ...issuance, requested_lifetime_seconds: 3_600, extended_capability: true }],
+    ["009", "token-explicit-sixty-minutes", {
+      ...issuance,
+      entitlement: extendedTokenEntitlement,
+      requested_lifetime_seconds: 3_600,
+      issuance_nonce: "78".repeat(32),
+    }],
     ["010", "token-extension-missing-capability", { ...issuance, requested_lifetime_seconds: 301 }],
     ["064", "token-human-role-omitted", {
       ...issuance,
-      entitlement: {
-        ...tokenEntitlement,
-        client_id: "human-light-client",
-        client_class: "human-light",
-        agent_role: null,
-      },
-      agent_role: null,
+      entitlement: humanTokenEntitlement,
+      issuance_nonce: "79".repeat(32),
     }],
   ];
   for (const [number, id, value] of tokenIssuanceCases) {
@@ -159,7 +205,7 @@ export function buildControlVectors(): AuthoredVector[] {
   ] as const) {
     add(number, id, `Enrollment-only lifetime: ${id}.`, value, evaluatePendingEnrollment(value));
   }
-  const tokenUse = {
+  const tokenUse: TokenUseInput = {
     token: issued.token,
     signature_valid: true,
     now: 1_100,
@@ -172,15 +218,20 @@ export function buildControlVectors(): AuthoredVector[] {
     authorization_view_authenticated: true,
     authorization_view_conflicted: false,
     authorization_view_age_seconds: 100,
-    required_scope: "control.read",
+    current_registry_checkpoint: issuance.registry_checkpoint,
+    required_scope: "control",
     method: "config.get",
-    object: "config:ui",
-    usage: { content_bytes: 512, requests_per_hour: 1 },
-    required_agent_role: "newsletter",
+    object,
+    usage: { max_content_bytes: 512, rate_count: 1 },
+    required_agent_role: "agent:newsletter",
   };
+  const crossBoundToken = withRecomputedJti({
+    ...issued.token,
+    cnf: { jkt: otherJkt },
+  });
   const tokenUseCases: Array<[string, string, TokenUseInput]> = [
     ["011", "token-valid", tokenUse],
-    ["012", "token-wrong-sender", { ...tokenUse, authenticated_sender_jkt: "B".repeat(43) }],
+    ["012", "token-wrong-sender", { ...tokenUse, authenticated_sender_jkt: otherJkt }],
     ["013", "token-wrong-group", { ...tokenUse, group_id: "99".repeat(32) }],
     ["014", "token-wrong-node", { ...tokenUse, expected_audience: "urn:heterodyne:control:node-b" }],
     ["015", "token-scope-rejected", { ...tokenUse, method: "config.put" }],
@@ -195,11 +246,11 @@ export function buildControlVectors(): AuthoredVector[] {
     }],
     ["054", "token-client-id-mismatch", {
       ...tokenUse,
-      current_entitlement: { ...tokenEntitlement, client_id: "other-client" },
+      token: { ...tokenUse.token, client_id: otherClient },
     }],
     ["062", "token-client-key-mismatch", {
       ...tokenUse,
-      current_entitlement: { ...tokenEntitlement, client_key: "88".repeat(32) },
+      current_entitlement: { ...tokenEntitlement, client_key: otherClient },
     }],
     ["055", "token-client-class-mismatch", {
       ...tokenUse,
@@ -207,7 +258,7 @@ export function buildControlVectors(): AuthoredVector[] {
     }],
     ["056", "token-current-scope-mismatch", {
       ...tokenUse,
-      current_entitlement: { ...tokenEntitlement, scopes: ["control.write"] },
+      current_entitlement: extendedTokenEntitlement,
     }],
     ["057", "token-current-method-mismatch", {
       ...tokenUse,
@@ -215,31 +266,63 @@ export function buildControlVectors(): AuthoredVector[] {
     }],
     ["058", "token-current-object-mismatch", {
       ...tokenUse,
-      current_entitlement: { ...tokenEntitlement, objects: ["config:feeds"] },
+      current_entitlement: {
+        ...tokenEntitlement,
+        objects: [{ class: "config_namespace", id: "feeds" }],
+      },
     }],
     ["059", "token-current-limit-mismatch", {
       ...tokenUse,
       current_entitlement: {
         ...tokenEntitlement,
-        limits: { content_bytes: 256, requests_per_hour: 10 },
+        limits: { ...tokenEntitlement.limits, max_content_bytes: 256 },
       },
     }],
     ["060", "token-registry-checkpoint-mismatch", {
       ...tokenUse,
-      current_entitlement: { ...tokenEntitlement, registry_checkpoint: "77".repeat(32) },
+      current_registry_checkpoint: "77".repeat(32),
     }],
     ["061", "token-agent-role-mismatch", {
       ...tokenUse,
-      current_entitlement: { ...tokenEntitlement, agent_role: "moderator" },
+      current_entitlement: { ...tokenEntitlement, agent_role: "agent:moderator" },
     }],
     ["063", "token-current-lifetime-mismatch", {
       ...tokenUse,
-      current_entitlement: { ...tokenEntitlement, max_token_lifetime_seconds: 299 },
+      token: issuedExtended.token,
+      current_entitlement: {
+        ...extendedTokenEntitlement,
+        token_lifetime_max_seconds: 300,
+      },
+    }],
+    ["065", "token-cross-bound-client-key", {
+      ...tokenUse,
+      token: crossBoundToken,
+      authenticated_sender_jkt: otherJkt,
     }],
   ];
   for (const [number, id, value] of tokenUseCases) {
     add(number, id, `Marmot-bound Control token use: ${id}.`, value, validateControlTokenUse(value));
   }
+
+  const differingGrantIssuance: TokenIssuanceInput = {
+    ...issuance,
+    methods: ["config.put"],
+    issuance_nonce: "88".repeat(32),
+  };
+  const differingGrant = issueControlToken(differingGrantIssuance);
+  if (differingGrant.verdict !== "accept") {
+    throw new Error("Differing Control grant fixture failed");
+  }
+  add(
+    "066",
+    "token-same-second-differing-grant",
+    "Same-second Control token grants have distinct issuance identifiers.",
+    { first: issuance, second: differingGrantIssuance },
+    {
+      verdict: issued.token.jti === differingGrant.token.jti ? "reject" : "accept",
+      distinct_jti: issued.token.jti !== differingGrant.token.jti,
+    },
+  );
 
   const deviceAuthorization = {
     device_code_entropy_bits: 128,

@@ -17,6 +17,7 @@
   },
   "expected_output": {
     "owner": "core",
-    "placement": "content.spec_version"
+    "placement": "content.spec_version",
+    "value": "heterodyne/0.5.0"
   }
 }

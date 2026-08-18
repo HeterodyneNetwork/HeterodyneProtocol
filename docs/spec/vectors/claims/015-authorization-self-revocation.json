@@ -430,7 +430,7 @@
         "reason_code": "claim-schema-invalid"
       },
       {
-        "name": "missing-registry-revision",
+        "name": "missing-profile-revision",
         "event": {
           "pubkey": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556",
           "created_at": 1767227615,
@@ -466,7 +466,7 @@
         "reason_code": "claim-schema-invalid"
       },
       {
-        "name": "wrong-registry-revision",
+        "name": "wrong-profile-revision",
         "event": {
           "pubkey": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556",
           "created_at": 1767227615,
@@ -544,7 +544,7 @@
           "reason_code": "claim-schema-invalid"
         },
         {
-          "name": "missing-registry-revision",
+          "name": "missing-profile-revision",
           "reason_code": "claim-schema-invalid"
         },
         {
@@ -552,7 +552,7 @@
           "reason_code": "claim-schema-invalid"
         },
         {
-          "name": "wrong-registry-revision",
+          "name": "wrong-profile-revision",
           "reason_code": "claim-schema-invalid"
         }
       ]

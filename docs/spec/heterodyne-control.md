@@ -321,7 +321,20 @@ exact resource audience, validity interval, and predecessor.
 After validating the current entitlement and group, the node issues an RFC
 9068 JWT access token whose protected `typ` is exactly `at+jwt` and whose
 signature and required `iss`, `sub`, `aud`, `exp`, `iat`, `jti`, `client_id`,
-and `scope` claims validate. It additionally binds:
+and `scope` claims validate. The token is an exact projection of the current
+record conforming to
+`docs/spec/schemas/control/control-client-authorization-v1.schema.json`:
+
+- `sub` and `client_id` are both the record's exact `client_key`;
+- `authorization_id` is `record_id`, and `client_class` is copied exactly;
+- `scope` is the single-ASCII-space-joined, lexicographically sorted, unique
+  set containing `control` and every current `capabilities` member;
+- requested `methods`, `objects`, and `limits` are normalized subsets of the
+  corresponding record members and MUST NOT add authority; and
+- `agent_role` is copied exactly for an automated client and is absent for a
+  human-light client.
+
+It additionally binds:
 
 - an audience naming only the issuing node's Control resource;
 - `cnf.jkt`, the RFC 7638 thumbprint of the client's full secp256k1 JWK;
@@ -333,15 +346,39 @@ and `scope` claims validate. It additionally binds:
 
 The Nostr x-only public key maps to the unique even-Y secp256k1 point defined
 by BIP-340. Its uncompressed `x` and `y` form the RFC 8812 JWK used for the
-thumbprint.
+thumbprint. The issuer constructs that full JWK from the authorization
+record's exact `client_key`, computes its RFC 7638 SHA-256 thumbprint, and
+places the canonical unpadded base64url value in `cnf.jkt`. A caller-supplied
+thumbprint cannot override this derivation. Minting and use MUST reject an
+invalid x-coordinate, a noncanonical thumbprint encoding, or any mismatch
+among the current `client_key`, derived thumbprint, `cnf.jkt`, and
+authenticated Marmot sender.
+
+Every issuance contains `issuance_nonce`, 32 freshly generated random bytes
+encoded as 64 lowercase hexadecimal characters. An issuer MUST NOT reuse an
+issuance nonce. Let `C` be the complete JSON token claim set, including every
+identity and authority claim and `issuance_nonce`, but excluding `jti`.
+The token identifier is exactly:
+
+```text
+lowerhex(SHA-256(UTF-8("heterodyne-control-token-jti-v1") || 0x00 || UTF-8(JCS(C))))
+```
+
+`JCS` is RFC 8785 canonicalization. A consumer MUST recompute this identifier
+from the received claims and reject a mismatch. Consequently, same-second
+tokens with different grants or fresh issuance nonces have distinct token
+identifiers.
 
 Marmot Control does not synthesize DPoP HTTP values. For every privileged
 frame the receiver verifies that the application event and sender leaf are
 valid, the authenticated sender account's JWK thumbprint equals `cnf.jkt`,
 the frame arrived in the token-bound group, and the token type, signature,
 issuer, exact node audience, times, token ID, client, scope, entitlement, and
-limits remain valid. Another full node MUST reject the token and issue its own
-only after independently validating the same persona-wide entitlement. A
+limits remain valid against the exact current authorization record. The
+private-registry checkpoint is taken from the authenticated current registry
+view, not from the authorization record. Another full node MUST reject the
+token and issue its own only after independently validating the same
+persona-wide entitlement. A
 separately exposed HTTPS API MAY use ordinary RFC 9449 DPoP with
 registered `ES256K`; that API is not baseline Control.
 
@@ -351,9 +388,12 @@ The effective token lifetime is:
 min(requested lifetime, entitlement maximum, node-policy maximum, 60 minutes)
 ```
 
-The default is five minutes. A lifetime above five minutes requires the
-separately consented `control.token.extended` capability. Sixty minutes is an
-absolute maximum. The issuer MUST NOT issue a refresh token. An entitled
+The default is five minutes. A lifetime above five minutes requires
+`control.token.extended` in the current authorization record's
+`capabilities`; an input flag cannot substitute for it. Minting rejects the
+absence of that capability, and every use rejects a token above five minutes
+if the current record no longer contains it. Sixty minutes is an absolute maximum.
+The issuer MUST NOT issue a refresh token. An entitled
 client obtains a new node-local token over its established group, including
 after failover. A token is checked when a request is accepted; expiry does not
 interrupt an already accepted side effect, but every later request or MCP tool

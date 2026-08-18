@@ -106,6 +106,13 @@ const RETIRED_MAINTAINED_GUIDE_PATTERNS = [
   /heterodyne:(?:core|comms|control|social|workspace)\//,
   /run release-manifests/,
   /JSON member remains named\s+`registry_revision`/,
+  /five documents are independently versioned/i,
+  /five independently versioned documents/i,
+  /deleted\s+`?docs\/spec\/releases\//i,
+  /comms\.node-scoped-jwt\.v1/,
+  /supplies exactly four things/i,
+  /claim profile registry revision/i,
+  /dependency versions above/i,
 ];
 
 function displayPath(repoRoot: string, path: string): string {
@@ -665,6 +672,9 @@ export function lintMaintainedGuides(
     "docs/spec/extensions/nips/README.md",
     "docs/glossary.md",
     "docs/security/threat-model.md",
+    "docs/architecture.md",
+    "docs/spec/heterodyne-social.md",
+    "CHANGELOG.md",
   ];
   const contents = new Map(
     guides.map((path) => [

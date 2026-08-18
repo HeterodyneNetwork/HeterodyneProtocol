@@ -420,6 +420,8 @@ control/token-registry-checkpoint-mismatch
 control/token-agent-role-mismatch
 control/token-current-lifetime-mismatch
 control/token-human-role-omitted
+control/token-cross-bound-client-key
+control/token-same-second-differing-grant
 control/device-code-hardened
 control/device-code-exhausted
 control/device-code-node-rate-limited
@@ -479,6 +481,7 @@ workspace-key/selected-snapshot
 workspace-key/unauthorized-host
 workspace-key/revoked-device
 workspace-key/keypackage-readmission
+workspace-key/noncanonical-recipient-rejected
 workspace-freshness/ordinary-boundary
 workspace-freshness/ordinary-stale
 workspace-freshness/authority-boundary

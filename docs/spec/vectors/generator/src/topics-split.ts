@@ -3,7 +3,7 @@ import { nip19, nip44 } from "nostr-tools";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { canonicalNip01, getEventId, getPublicKey, signEvent, verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
 import { AUX_RAND, baseVector } from "./vector-helpers.js";
-import type { Fixtures } from "./fixtures.js";
+import { CURRENT_REGISTRY_SHA256, type Fixtures } from "./fixtures.js";
 import type { AuthoredVector, VectorDirection } from "./types.js";
 
 type Case = {
@@ -318,7 +318,7 @@ const CASES: Case[] = [
     path: "versioning/007-core-capability-bootstrap.json",
     vector_id: "versioning/core-capability-bootstrap",
     description: "The complete Core capability bootstrap object is accepted without a higher-document carrier.",
-    input: { descriptor: "heterodyne-capabilities-v1", spec_version: "heterodyne/0.5.0", registry_sha256: "a2a902c616a5671bf058c1d9a0e2ed91ee15c7915593fac5fa551e3f41a805f4", implementation_role: "public-reader", supported_documents: ["core"], required_features: ["core.nostr-relay-read.v1"], strict_profiles: [] },
+    input: { descriptor: "heterodyne-capabilities-v1", spec_version: "heterodyne/0.5.0", registry_sha256: CURRENT_REGISTRY_SHA256, implementation_role: "public-reader", supported_documents: ["core"], required_features: ["core.nostr-relay-read.v1"], strict_profiles: [] },
     expected_output: { verdict: "accept", normalized: { bootstrap_owner: "core", higher_carrier_required: false, family_version: "heterodyne/0.5.0" } },
   },
   {
@@ -340,9 +340,9 @@ const CASES: Case[] = [
   {
     path: "registry/001-downref-nonfrozen-rejected.json",
     vector_id: "registry/downref-nonfrozen-rejected",
-    description: "A 1.0 document cannot require a non-frozen registry entry.",
+    description: "A 1.0 family release cannot require a non-frozen registry entry.",
     direction: "round-trip",
-    input: { document_version: "heterodyne/1.0.0", required_entry_status: "stable" },
+    input: { family_version: "heterodyne/1.0.0", required_entry_status: "stable" },
     expected_output: { valid: false, error: "requires_frozen_registry_entry" },
   },
   {
@@ -414,12 +414,12 @@ function profileCases(): Case[] {
 
 function stampCases(): Case[] {
   const values: Array<[string, string, Record<string, unknown>, Record<string, unknown>]> = [
-    ["001-heterodyne-json-content-owner", "heterodyne-json-content-owner", { kind: 31003, content_is_heterodyne_json: true, content: { spec_version: "heterodyne/0.5.0" } }, { owner: "core", placement: "content.spec_version" }],
-    ["002-heterodyne-empty-content-tag-owner", "heterodyne-empty-content-tag-owner", { kind: 31001, content_is_heterodyne_json: false }, { owner: "core", placement: "tag" }],
+    ["001-heterodyne-json-content-owner", "heterodyne-json-content-owner", { kind: 31003, content_is_heterodyne_json: true, content: { spec_version: "heterodyne/0.5.0" } }, { owner: "core", placement: "content.spec_version", value: "heterodyne/0.5.0" }],
+    ["002-heterodyne-empty-content-tag-owner", "heterodyne-empty-content-tag-owner", { kind: 31001, content_is_heterodyne_json: false, tags: [["spec_version", "heterodyne/0.5.0"]] }, { owner: "core", placement: "tag", value: "heterodyne/0.5.0" }],
     ["003-upstream-unstamped", "upstream-unstamped", { kind: 10000 }, { owner: null, placement: null }],
-    ["004-upstream-profile-owner", "upstream-profile-owner", { kind: 10000, profile_id: "heterodyne-social-mute-list-v1" }, { owner: "social", placement: "tag" }],
+    ["004-upstream-profile-owner", "upstream-profile-owner", { kind: 10000, profile_id: "heterodyne-social-mute-list-v1", tags: [["spec_version", "heterodyne/0.5.0"]] }, { owner: "social", placement: "tag", value: "heterodyne/0.5.0" }],
     ["005-non-stamping-profile-unchanged", "non-stamping-profile-unchanged", { kind: 0, profile_id: "heterodyne-core-rotation-breadcrumb-profile-v1" }, { owner: null, bytes_changed: false }],
-    ["006-tier3-profile-owner", "tier3-profile-owner", { kind: 1, profile_id: "heterodyne-comms-tier3-wrapped-content-kind-1-v1", content_is_heterodyne_json: false }, { owner: "comms", placement: "tag" }],
+    ["006-tier3-profile-owner", "tier3-profile-owner", { kind: 1, profile_id: "heterodyne-comms-tier3-wrapped-content-kind-1-v1", content_is_heterodyne_json: false, tags: [["spec_version", "heterodyne/0.5.0"]] }, { owner: "comms", placement: "tag", value: "heterodyne/0.5.0" }],
   ];
   return values.map(([file, id, input, expected_output]) => ({
     path: `stamping/${file}.json`,

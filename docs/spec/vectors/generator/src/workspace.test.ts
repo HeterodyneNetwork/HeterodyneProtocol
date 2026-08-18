@@ -219,6 +219,13 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
         value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
       },
     })).toEqual({ verdict: "reject", reason_code: "workspace_schema_invalid" });
+    expect(evaluateKeyRequest({
+      ...base,
+      recipient: {
+        type: "marmot-mls-leaf",
+        value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+      },
+    })).toEqual({ verdict: "reject", reason_code: "workspace_schema_invalid" });
     expect(evaluateKeyRequest({ ...base, history_mode: "from-admission", requested_epoch: 3 }))
       .toEqual({ verdict: "reject", reason_code: "history_denied" });
     expect(evaluateKeyRequest({ ...base, history_mode: "selected-snapshots", requested_epoch: 3, selected_epochs: [3] }))

@@ -87,9 +87,10 @@ family map, and the single registry pin is
   `heterodyne:0.5.0#core-document-conventions`; the other four documents
   reference it instead of restating it. The generic conformance-report
   requirements now live only in `heterodyne:0.5.0#core-conformance`.
-- Deleted `docs/spec/releases/` and `docs/spec/registry/history/`. Per-document
-  release manifests were a byproduct of per-document versions, and pre-1.0
-  history snapshots enforce immutability over revisions that never shipped.
+- Deleted the five per-document release manifests and
+  `docs/spec/registry/history/`. The former release metadata is replaced by
+  one content-addressed family release manifest; pre-1.0 registry history
+  snapshots would enforce immutability over revisions that never shipped.
 - Qualified references are now `heterodyne:<semver>#<anchor>`. The anchor
   prefix already names the owning document, so a reference no longer names it
   twice, and the layering check reads the prefix.
@@ -113,12 +114,10 @@ family map, and the single registry pin is
   envelope, tier, and delivery invariants, and the OIDC stack becomes
   mandatory exactly where something requires it, which for Comms means
   `comms.agent-authorship.v1`.
-- Split `comms.node-scoped-jwt.v1` out of `comms.oidc-jwt-projection.v1`.
-  Comms section 9.1 issues a node-local `at+jwt` that only its own issuer ever
-  verifies, and needs no HTTPS discovery, JWKS, continuity manifest, or status
-  list; sections 12 to 14 exist for third-party relying parties.
-  `control.node-scoped-token.v1` required the whole OIDC feature for a token
-  in the first category, so baseline Control pulled in the second.
+- Moved the node-local `at+jwt` contract entirely to
+  `control.node-scoped-token.v1`. Control's own issuer is the only verifier and
+  needs no HTTPS discovery, published JWKS, continuity manifest, or status
+  list; Comms retains only generic third-party OIDC/JWT projection.
 - Strict profiles no longer carry feature-bound invariants, and a lint rejects
   one that does. A strict claim is a hardening posture; it was also acting as
   a second, hidden way to require features. Comms strict went from 20 added
@@ -130,11 +129,11 @@ family map, and the single registry pin is
   claim-ledger reader keys, and Workspace resource-key envelopes solved the
   same problem, with the same rotate-on-removal semantics and the same
   non-erasure caveat, in three sets of prose. Each site now supplies exactly
-  four things: the recipient-set rule, the typed-key reference and wrapping
-  profile, the carrier, and any extra rotation trigger. The generation
-  identifier is deliberately either an opaque `key_id` or a resource-scoped
-  `key_epoch`, because the three carriers already differ there and forcing one
-  form would have changed signed bytes for no gain.
+  five choices: the recipient-set rule, the typed-key reference and wrapping
+  profile, the carrier, the generation-identifier form, and any extra rotation
+  trigger. The generation identifier is deliberately either an opaque
+  `key_id` or a resource-scoped `key_epoch`, because the carriers differ there
+  and forcing one form would have changed signed bytes for no gain.
 - Consolidated 18 fine-grained reason codes into 6, taking the registry from
   169 to 151. Control section 11 requires that errors "MUST NOT reveal whether
   an unauthorized private object, entitlement, or recovery resource exists,"
@@ -221,7 +220,7 @@ is reviewed in [PR #23](https://github.com/HeterodyneNetwork/HeterodyneProtocol/
   one-time invites with purpose-bound NIP-59 KeyPackage responses.
 - Made Tier 3 recipients active delegated device keys, froze the adopted
   Marmot specification bytes in a closed local archive, and distinguished the
-  fixed v1 claim profile registry revision from the current family revision.
+  frozen v1 claim profile revision from the current family registry revision.
 
 ### Control
 

@@ -27,6 +27,7 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `workspace-key/from-admission-denied` | workspace | — | `heterodyne:0.5.0#workspace-key-delivery` |
 | `workspace-key/full-history` | workspace | — | `heterodyne:0.5.0#workspace-key-delivery` |
 | `workspace-key/keypackage-readmission` | workspace | — | `heterodyne:0.5.0#workspace-key-delivery` |
+| `workspace-key/noncanonical-recipient-rejected` | workspace | — | `heterodyne:0.5.0#workspace-key-delivery` |
 | `workspace-key/revoked-device` | workspace | — | `heterodyne:0.5.0#workspace-key-delivery` |
 | `workspace-key/selected-snapshot` | workspace | — | `heterodyne:0.5.0#workspace-key-delivery` |
 | `workspace-key/unauthorized-host` | workspace | — | `heterodyne:0.5.0#workspace-key-delivery` |

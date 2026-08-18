@@ -66,13 +66,23 @@ describe("OIDC and node-scoped Control vector ownership", () => {
     const valid = vectors.find(({ vector }) => vector.vector_id === "control/token-valid")?.vector;
     if (valid === undefined) throw new Error("missing valid Control token vector");
     expect(valid.input.token).toMatchObject({
-      client_id: "agent-newsletter",
+      client_id: "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      sub: "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
       client_class: "automated",
-      scope: "control.read",
-      limits: { content_bytes: 1024, requests_per_hour: 10 },
-      agent_role: "newsletter",
+      scope: "control",
+      limits: { max_content_bytes: 1024, rate_count: 10 },
+      agent_role: "agent:newsletter",
     });
-    expect(valid.input).toHaveProperty("current_entitlement");
+    expect(valid.input.current_entitlement).toMatchObject({
+      capabilities: [],
+      token_lifetime_default_seconds: 300,
+      token_lifetime_max_seconds: 3_600,
+    });
+    for (const phantom of [
+      "client_id", "scopes", "registry_checkpoint", "max_token_lifetime_seconds",
+    ]) {
+      expect(valid.input.current_entitlement).not.toHaveProperty(phantom);
+    }
 
     for (const vectorId of [
       "control/token-over-sixty-minutes-rejected",
@@ -87,6 +97,7 @@ describe("OIDC and node-scoped Control vector ownership", () => {
       "control/token-registry-checkpoint-mismatch",
       "control/token-agent-role-mismatch",
       "control/token-current-lifetime-mismatch",
+      "control/token-cross-bound-client-key",
     ]) {
       const authored = vectors.find(({ vector }) => vector.vector_id === vectorId)?.vector;
       expect(authored, vectorId).toBeDefined();
@@ -106,5 +117,13 @@ describe("OIDC and node-scoped Control vector ownership", () => {
       token: { client_class: "human-light" },
     });
     expect(human?.expected_output.token).not.toHaveProperty("agent_role");
+
+    const collision = vectors.find(({ vector }) =>
+      vector.vector_id === "control/token-same-second-differing-grant",
+    )?.vector;
+    expect(collision?.expected_output).toEqual({
+      verdict: "accept",
+      distinct_jti: true,
+    });
   });
 });

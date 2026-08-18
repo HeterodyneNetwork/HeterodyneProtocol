@@ -13,7 +13,7 @@
     "purpose": "control-enrollment",
     "approval_mode": "preauthorized",
     "client_class": "automated",
-    "expected_client_pubkey": "1111111111111111111111111111111111111111111111111111111111111111",
+    "expected_client_pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
     "unbound_bearer_enabled": false,
     "node_allows_unbound_bearer": false,
     "methods": [

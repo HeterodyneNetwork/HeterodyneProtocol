@@ -3,9 +3,10 @@
 **Status:** Draft, non-normative security analysis for the 0.x family.
 
 [`docs/spec/heterodyne.md`](../spec/heterodyne.md) is the non-normative family
-map. Security requirements are owned by the five versioned documents below.
+map. Security requirements are owned by the five documents below, which share
+one exact family version.
 
-This document analyzes the five independently versioned documents:
+This document analyzes the five family documents:
 
 - [Heterodyne Core](../spec/heterodyne-core.md) — identity, verification,
   registry, node roles, and repository substrate;

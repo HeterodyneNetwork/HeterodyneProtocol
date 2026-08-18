@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
+import { secp256k1 } from "@noble/curves/secp256k1";
 import { jcsCanonicalize } from "./jcs.js";
+import { validateControlClientAuthorizationSchemaOrThrow } from "./schema.js";
 
 type Reject = { verdict: "reject"; reason_code: string };
 
@@ -126,47 +128,69 @@ export type ControlToken = {
   client_class: "human-light" | "automated";
   scope: string;
   methods: string[];
-  objects: string[];
+  objects: ControlAuthorizationObject[];
   limits: Record<string, number>;
   registry_checkpoint: string;
+  issuance_nonce: string;
   agent_role?: string;
   node_key: string;
 };
 
-export type TokenEntitlementState = {
+export type ControlAuthorizationObject = {
+  class:
+    | "none"
+    | "session"
+    | "repository"
+    | "config_namespace"
+    | "marmot_group"
+    | "feed"
+    | "media"
+    | "device";
+  id: string;
+};
+
+export type ControlAuthorizationRecord = {
   record_id: string;
-  state: "active" | "revoked";
+  persona: string;
   client_key: string;
-  client_id: string;
   client_class: "human-light" | "automated";
-  scopes: string[];
+  approving_node: string;
+  approving_authority: string;
   methods: string[];
-  objects: string[];
+  objects: ControlAuthorizationObject[];
   limits: Record<string, number>;
-  registry_checkpoint: string;
-  agent_role: string | null;
-  max_token_lifetime_seconds: number;
+  capabilities: Array<
+    "control.token.extended" | "control.inbound-execution" | "control.approve"
+  >;
+  token_lifetime_default_seconds: 300;
+  token_lifetime_max_seconds: number;
+  inbound_execution: boolean;
+  agent_role?: string;
+  predecessor: string | null;
+  state: "active" | "revoked";
+  created_at: number;
+  expires_at: number | null;
+  signer: string;
+  signature: string;
 };
 
 export type TokenIssuanceInput = {
-  entitlement: TokenEntitlementState;
-  client_jkt: string;
+  entitlement: ControlAuthorizationRecord;
   group_id: string;
   issuer: string;
   audience: string;
   node_key: string;
+  registry_checkpoint: string;
+  issuance_nonce: string;
   requested_lifetime_seconds: number;
   node_policy_max_seconds: number;
-  extended_capability: boolean;
   now: number;
   authorization_view_authenticated: boolean;
   authorization_view_conflicted: boolean;
   authorization_view_age_seconds: number;
-  scopes: string[];
   methods: string[];
-  objects: string[];
+  objects: ControlAuthorizationObject[];
   limits: Record<string, number>;
-  agent_role: string | null;
 };
 
 function normalizedValues(values: string[]): string[] {
@@ -177,8 +201,31 @@ function normalizedLimits(limits: Record<string, number>): Record<string, number
   return Object.fromEntries(Object.entries(limits).sort(([left], [right]) => left.localeCompare(right)));
 }
 
+function objectKey(value: ControlAuthorizationObject): string {
+  return jcsCanonicalize(value);
+}
+
+function normalizedObjects(values: ControlAuthorizationObject[]): ControlAuthorizationObject[] {
+  return [...values]
+    .sort((left, right) => objectKey(left).localeCompare(objectKey(right)))
+    .map((value) => ({ ...value }));
+}
+
 function valuesAreAuthorized(requested: string[], authorized: string[]): boolean {
-  return requested.length > 0 && requested.every((value) => authorized.includes(value));
+  return requested.length > 0
+    && new Set(requested).size === requested.length
+    && requested.every((value) => authorized.includes(value));
+}
+
+function objectsAreAuthorized(
+  requested: ControlAuthorizationObject[],
+  authorized: ControlAuthorizationObject[],
+): boolean {
+  const requestedKeys = requested.map(objectKey);
+  const authorizedKeys = new Set(authorized.map(objectKey));
+  return requestedKeys.length > 0
+    && new Set(requestedKeys).size === requestedKeys.length
+    && requestedKeys.every((value) => authorizedKeys.has(value));
 }
 
 function limitsAreFinite(limits: Record<string, number>): boolean {
@@ -197,12 +244,71 @@ function limitsAreAuthorized(
   });
 }
 
+function validAuthorization(
+  authorization: ControlAuthorizationRecord,
+  now: number,
+): boolean {
+  try {
+    validateControlClientAuthorizationSchemaOrThrow(authorization);
+  } catch {
+    return false;
+  }
+  return authorization.state === "active"
+    && authorization.created_at <= now
+    && (authorization.expires_at === null || now < authorization.expires_at);
+}
+
+function authorizationScope(authorization: ControlAuthorizationRecord): string {
+  return normalizedValues(["control", ...authorization.capabilities]).join(" ");
+}
+
+function controlClientJkt(clientKey: string): string | null {
+  if (!/^[0-9a-f]{64}$/.test(clientKey)) return null;
+  try {
+    const point = secp256k1.ProjectivePoint.fromHex(`02${clientKey}`);
+    const uncompressed = Buffer.from(point.toRawBytes(false));
+    if (uncompressed.length !== 65 || uncompressed[0] !== 0x04) return null;
+    const jwk = {
+      crv: "secp256k1",
+      kty: "EC",
+      x: uncompressed.subarray(1, 33).toString("base64url"),
+      y: uncompressed.subarray(33, 65).toString("base64url"),
+    };
+    return createHash("sha256")
+      .update(jcsCanonicalize(jwk))
+      .digest("base64url");
+  } catch {
+    return null;
+  }
+}
+
+function canonicalBase64urlSha256(value: string): boolean {
+  if (!/^[A-Za-z0-9_-]{43}$/.test(value)) return false;
+  const decoded = Buffer.from(value, "base64url");
+  return decoded.length === 32 && decoded.toString("base64url") === value;
+}
+
+function canonicalHex256(value: string): boolean {
+  return /^[0-9a-f]{64}$/.test(value);
+}
+
+type ControlTokenIdentityClaims = Omit<ControlToken, "jti">;
+
+function controlTokenIdentityClaims(token: ControlToken): ControlTokenIdentityClaims {
+  const { jti: _jti, ...claims } = token;
+  return claims;
+}
+
+function controlTokenJti(claims: ControlTokenIdentityClaims): string {
+  return sha256(`heterodyne-control-token-jti-v1\0${jcsCanonicalize(claims)}`);
+}
+
 export function issueControlToken(input: TokenIssuanceInput):
   | { verdict: "accept"; lifetime_seconds: number; refresh_token: null; token: ControlToken }
   | Reject {
   const entitlement = input.entitlement;
-  if (entitlement.state !== "active") {
-    return { verdict: "reject", reason_code: "control-entitlement-conflict" };
+  if (!validAuthorization(entitlement, input.now)) {
+    return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   const freshness = evaluateAuthorizationFreshness({
     authenticated: input.authorization_view_authenticated,
@@ -212,53 +318,55 @@ export function issueControlToken(input: TokenIssuanceInput):
     immediate_sync_succeeded: false,
   });
   if (freshness.verdict === "reject") return freshness;
-  if (!valuesAreAuthorized(input.scopes, entitlement.scopes)
+  const clientJkt = controlClientJkt(entitlement.client_key);
+  if (clientJkt === null
+    || !canonicalHex256(input.group_id)
+    || !canonicalHex256(input.node_key)
+    || !canonicalHex256(input.registry_checkpoint)
+    || !canonicalHex256(input.issuance_nonce)
+    || input.issuer.length === 0
+    || input.audience.length === 0
     || !valuesAreAuthorized(input.methods, entitlement.methods)
-    || !valuesAreAuthorized(input.objects, entitlement.objects)
+    || !objectsAreAuthorized(input.objects, entitlement.objects)
     || !limitsAreAuthorized(input.limits, entitlement.limits)
-    || input.agent_role !== entitlement.agent_role
-    || (entitlement.client_class === "automated" && input.agent_role === null)
-    || (entitlement.client_class === "human-light" && input.agent_role !== null)) {
+    || (entitlement.client_class === "automated" && entitlement.agent_role === undefined)
+    || (entitlement.client_class === "human-light" && entitlement.agent_role !== undefined)) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   const ceiling = Math.min(
-    entitlement.max_token_lifetime_seconds,
+    entitlement.token_lifetime_max_seconds,
     input.node_policy_max_seconds,
     3_600,
   );
-  const allowed = input.extended_capability ? ceiling : Math.min(300, ceiling);
+  const extended = entitlement.capabilities.includes("control.token.extended");
+  const allowed = extended ? ceiling : Math.min(300, ceiling);
   if (input.requested_lifetime_seconds <= 0 || input.requested_lifetime_seconds > allowed) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
-  const jti = sha256(jcsCanonicalize({
-    authorization_id: entitlement.record_id,
-    audience: input.audience,
-    client_key: entitlement.client_key,
-    group_id: input.group_id,
-    issued_at: input.now,
-    node_key: input.node_key,
-    registry_checkpoint: entitlement.registry_checkpoint,
-  }));
-  const token = {
-    typ: "at+jwt" as const,
+  const claims: ControlTokenIdentityClaims = {
+    typ: "at+jwt",
     iss: input.issuer,
     aud: input.audience,
     sub: entitlement.client_key,
-    jti,
     iat: input.now,
     exp: input.now + input.requested_lifetime_seconds,
-    cnf: { jkt: input.client_jkt },
+    cnf: { jkt: clientJkt },
     group_id: input.group_id,
     authorization_id: entitlement.record_id,
-    client_id: entitlement.client_id,
+    client_id: entitlement.client_key,
     client_class: entitlement.client_class,
-    scope: normalizedValues(input.scopes).join(" "),
+    scope: authorizationScope(entitlement),
     methods: normalizedValues(input.methods),
-    objects: normalizedValues(input.objects),
+    objects: normalizedObjects(input.objects),
     limits: normalizedLimits(input.limits),
-    registry_checkpoint: entitlement.registry_checkpoint,
+    registry_checkpoint: input.registry_checkpoint,
+    issuance_nonce: input.issuance_nonce,
     node_key: input.node_key,
-    ...(input.agent_role === null ? {} : { agent_role: input.agent_role }),
+    ...(entitlement.agent_role === undefined ? {} : { agent_role: entitlement.agent_role }),
+  };
+  const token = {
+    ...claims,
+    jti: controlTokenJti(claims),
   };
   return {
     verdict: "accept",
@@ -277,13 +385,14 @@ export type TokenUseInput = {
   expected_node_key: string;
   authenticated_sender_jkt: string;
   group_id: string;
-  current_entitlement: TokenEntitlementState;
+  current_entitlement: ControlAuthorizationRecord;
+  current_registry_checkpoint: string;
   authorization_view_authenticated: boolean;
   authorization_view_conflicted: boolean;
   authorization_view_age_seconds: number;
   required_scope: string;
   method: string;
-  object: string;
+  object: ControlAuthorizationObject;
   usage: Record<string, number>;
   required_agent_role: string | null;
 };
@@ -300,15 +409,17 @@ export function validateControlTokenUse(input: TokenUseInput): { verdict: "accep
   if (token.aud !== input.expected_audience || token.node_key !== input.expected_node_key) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
-  if (token.cnf.jkt !== input.authenticated_sender_jkt || token.sub.length !== 64) {
+  if (!canonicalHex256(token.issuance_nonce)
+    || !canonicalHex256(token.jti)
+    || controlTokenJti(controlTokenIdentityClaims(token)) !== token.jti) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   if (token.group_id !== input.group_id) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   const entitlement = input.current_entitlement;
-  if (entitlement.state !== "active") {
-    return { verdict: "reject", reason_code: "control-entitlement-conflict" };
+  if (!validAuthorization(entitlement, input.now)) {
+    return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   const freshness = evaluateAuthorizationFreshness({
     authenticated: input.authorization_view_authenticated,
@@ -318,24 +429,37 @@ export function validateControlTokenUse(input: TokenUseInput): { verdict: "accep
     immediate_sync_succeeded: false,
   });
   if (freshness.verdict === "reject") return freshness;
+  const clientJkt = controlClientJkt(entitlement.client_key);
   const scopes = token.scope.split(" ");
   const tokenRole = token.agent_role ?? null;
-  if (token.authorization_id !== entitlement.record_id
+  const entitlementRole = entitlement.agent_role ?? null;
+  const tokenObjectKeys = token.objects.map(objectKey);
+  const normalizedTokenObjectKeys = normalizedObjects(token.objects).map(objectKey);
+  if (clientJkt === null
+    || !canonicalBase64urlSha256(token.cnf.jkt)
+    || token.cnf.jkt !== clientJkt
+    || input.authenticated_sender_jkt !== clientJkt
+    || token.authorization_id !== entitlement.record_id
     || token.sub !== entitlement.client_key
-    || token.client_id !== entitlement.client_id
+    || token.client_id !== entitlement.client_key
     || token.client_class !== entitlement.client_class
-    || token.registry_checkpoint !== entitlement.registry_checkpoint
-    || token.exp - token.iat > entitlement.max_token_lifetime_seconds
+    || token.registry_checkpoint !== input.current_registry_checkpoint
+    || !canonicalHex256(input.current_registry_checkpoint)
+    || token.exp - token.iat > entitlement.token_lifetime_max_seconds
+    || (token.exp - token.iat > 300
+      && !entitlement.capabilities.includes("control.token.extended"))
+    || token.scope !== authorizationScope(entitlement)
     || normalizedValues(scopes).join(" ") !== token.scope
-    || !valuesAreAuthorized(scopes, entitlement.scopes)
     || !valuesAreAuthorized(token.methods, entitlement.methods)
-    || !valuesAreAuthorized(token.objects, entitlement.objects)
+    || normalizedValues(token.methods).join("\0") !== token.methods.join("\0")
+    || !objectsAreAuthorized(token.objects, entitlement.objects)
+    || normalizedTokenObjectKeys.join("\0") !== tokenObjectKeys.join("\0")
     || !limitsAreAuthorized(token.limits, entitlement.limits)
-    || tokenRole !== entitlement.agent_role
+    || tokenRole !== entitlementRole
     || tokenRole !== input.required_agent_role
     || !scopes.includes(input.required_scope)
     || !token.methods.includes(input.method)
-    || !token.objects.includes(input.object)
+    || !tokenObjectKeys.includes(objectKey(input.object))
     || !limitsAreAuthorized(input.usage, token.limits)
     || !limitsAreAuthorized(input.usage, entitlement.limits)) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
