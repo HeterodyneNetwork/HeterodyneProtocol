@@ -1,7 +1,11 @@
 # ADR-046: Stabilize the single-family simplification
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-08-17
+
+This archived record captures the decision at acceptance time. It is
+non-canonical; the live specification family and normative artifacts contain
+the complete protocol.
 
 ## Context
 
@@ -33,6 +37,6 @@ artifacts stand on their own and govern if they differ from this record.
 The family has one version and one release record, while Core owns the shared
 key-envelope contract and Control owns its node-scoped token profile. Workspace
 resource delivery names an exact typed MLS leaf, and stale versioning and
-terminology cannot pass the maintained authoring checks. The ADR remains
-proposed until the integrated normative patch is accepted; it must then be
-marked accepted and moved to `docs/adr/archive/`.
+terminology cannot pass the maintained authoring checks. The ADR remained
+proposed until the integrated normative patch passed its acceptance gates; it
+was then accepted and archived.
