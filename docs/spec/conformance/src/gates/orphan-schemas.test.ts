@@ -53,6 +53,24 @@ describe("findOrphanSchemaFailures", () => {
     ]);
   });
 
+  it("requires a complete repository-relative prose path token", () => {
+    const input = corpus(
+      [
+        "Exact: docs/spec/schemas/core/prose-bound-v1.schema.json.",
+        "Longer: docs/spec/schemas/core/orphan-v1.schema.json.backup",
+      ].join("\n"),
+      {
+        nested: {
+          schema_path: "docs/spec/schemas/core/vector-bound-v1.schema.json",
+        },
+      },
+    );
+
+    expect(findOrphanSchemaFailures(input)).toEqual([
+      "docs/spec/schemas/core/orphan-v1.schema.json",
+    ]);
+  });
+
   it("does not accept basename-only prose or vector references", () => {
     const input = corpus(
       "The schemas are prose-bound-v1.schema.json and orphan-v1.schema.json.",
