@@ -72,11 +72,10 @@ function hasValidContextSemantics(
     eventIds.add(entry.event_id);
   }
 
-  const head = context.kel.at(-1)!;
-  if (
-    context.pointer.kel_head.event_id !== head.event_id
-    || context.pointer.kel_head.sequence !== head.sequence
-  ) {
+  const pointerHeadOnKel = context.kel.some((entry) =>
+    context.pointer.kel_head.event_id === entry.event_id
+    && context.pointer.kel_head.sequence === entry.sequence);
+  if (!pointerHeadOnKel) {
     return false;
   }
 
@@ -107,6 +106,48 @@ function resolveContext(
   return hasValidContextSemantics(resolved.value, event) ? resolved.value : undefined;
 }
 
+function topLevelJsonObjectMemberNames(source: string): string[] | undefined {
+  const firstToken = source.search(/\S/u);
+  if (firstToken < 0 || source[firstToken] !== "{") {
+    return [];
+  }
+
+  const names: string[] = [];
+  let depth = 0;
+  for (let index = firstToken; index < source.length; index += 1) {
+    const character = source[index]!;
+    if (character === "{" || character === "[") {
+      depth += 1;
+    } else if (character === "}" || character === "]") {
+      depth -= 1;
+    } else if (character === '"') {
+      const start = index;
+      index += 1;
+      while (index < source.length && source[index] !== '"') {
+        if (source[index] === "\\") {
+          index += 1;
+        }
+        index += 1;
+      }
+      if (index >= source.length) {
+        return undefined;
+      }
+      let next = index + 1;
+      while (/\s/u.test(source[next] ?? "")) {
+        next += 1;
+      }
+      if (depth === 1 && source[next] === ":") {
+        try {
+          names.push(JSON.parse(source.slice(start, index + 1)) as string);
+        } catch {
+          return undefined;
+        }
+      }
+    }
+  }
+  return names;
+}
+
 function hasValidVersionStamp(
   event: NostrSignedEvent,
   policy: CoreVerificationContextV1["version_policy"],
@@ -123,6 +164,13 @@ function hasValidVersionStamp(
       && !Array.isArray(content)
       && Object.hasOwn(content, "spec_version")
     ) {
+      const memberNames = topLevelJsonObjectMemberNames(event.content);
+      if (
+        memberNames === undefined
+        || memberNames.filter((name) => name === "spec_version").length !== 1
+      ) {
+        return false;
+      }
       stamps.push((content as Record<string, unknown>).spec_version);
     }
   } catch {
@@ -166,10 +214,8 @@ function kelHeadFailure(
   if (!Number.isSafeInteger(sequence)) {
     return "kel_head_missing";
   }
-  if (
-    tag[1] !== context.pointer.kel_head.event_id
-    || sequence !== context.pointer.kel_head.sequence
-  ) {
+  const namedEntry = context.kel.find((entry) => entry.event_id === tag[1]);
+  if (namedEntry === undefined || sequence !== namedEntry.sequence) {
     return "kel_head_mismatch";
   }
   return undefined;
@@ -294,6 +340,9 @@ function nidDelegationFailure(
   context: CoreVerificationContextV1,
   nidPublicKey: string,
 ): string | undefined {
+  if (context.signer.type !== "epoch") {
+    return "delegation_mismatch";
+  }
   const d = singleTag(event, "d");
   const discriminator = singleTag(event, "heterodyne");
   const nidTag = singleTag(event, "radicle_nid");
@@ -324,7 +373,8 @@ function nidDelegationFailure(
     validUntil[1] !== ""
     && (!/^(?:0|[1-9][0-9]*)$/u.test(validUntil[1]!)
       || !Number.isSafeInteger(Number(validUntil[1]))
-      || Number(validUntil[1]) <= event.created_at)
+      || Number(validUntil[1])
+        <= context.evaluation_time - context.nid_clock_skew_allowance)
   ) {
     return "expired_delegation";
   }
@@ -342,6 +392,7 @@ function nidDelegationFailure(
 
 function nodeAdvertisementFailure(
   event: NostrSignedEvent,
+  context: CoreVerificationContextV1,
   nidPublicKey: string,
 ): string | undefined {
   const d = singleTag(event, "d");
@@ -382,6 +433,15 @@ function nodeAdvertisementFailure(
   if (expiry - event.created_at > 86_400) {
     return "node-advert-lifetime-exceeded";
   }
+  if (context.clock_uncertainty > 300) {
+    return "node-advert-clock-uncertain";
+  }
+  if (Math.abs(event.created_at - context.evaluation_time) > 300) {
+    return "node-advert-clock-skew";
+  }
+  if (context.evaluation_time >= expiry) {
+    return "node_advert_expired";
+  }
 
   const nid = nidTag[1]!;
   if (!nidMatchesPublicKey(nid, nidPublicKey)) {
@@ -408,7 +468,7 @@ function subtypeFailure(
   }
   return context.subtype_policy.mode === "nid-delegation"
     ? nidDelegationFailure(event, context, context.subtype_policy.nid_pubkey)
-    : nodeAdvertisementFailure(event, context.subtype_policy.nid_pubkey);
+    : nodeAdvertisementFailure(event, context, context.subtype_policy.nid_pubkey);
 }
 
 export function checkCoreSignedEvent(

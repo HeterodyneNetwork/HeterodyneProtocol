@@ -160,6 +160,9 @@ When `context_pointer` is present, it resolves to one closed
 ```json
 {
   "persona": "<64-lowercase-hex>",
+  "evaluation_time": 0,
+  "nid_clock_skew_allowance": 0,
+  "clock_uncertainty": 0,
   "pointer": {
     "persona": "<64-lowercase-hex>",
     "kel_head": { "event_id": "<64-lowercase-hex>", "sequence": 0 }
@@ -194,6 +197,18 @@ head identifies one exact `kel` entry. KEL entries are sequence-contiguous,
 link through `prior_event_id`, and define the epoch key's inclusive lower and
 exclusive upper authority bounds. A non-null `compromise_since` truncates that
 entry's authority at the named time.
+
+Every v1 context carries explicit verifier-clock evidence. `evaluation_time`
+is the JSON-safe non-negative Unix second used as the verification clock.
+`nid_clock_skew_allowance` is an explicit non-negative allowance capped at 300
+seconds; there is no implicit or unbounded NID grace period.
+`clock_uncertainty` is a JSON-safe non-negative number of seconds. NID
+delegation expiry is evaluated strictly against
+`evaluation_time - nid_clock_skew_allowance`. A first-accepted node
+advertisement must have `created_at` within plus or minus 300 seconds of
+`evaluation_time`, `evaluation_time` must be strictly before its `expiry`, and
+`clock_uncertainty` greater than 300 seconds fails closed. Intrinsic node-ad
+rules (`expiry > created_at` and lifetime at most 86,400 seconds) still apply.
 
 `signer.type` is `epoch` or `delegated`. An epoch signer has a null
 `delegation` and must equal the authoritative KEL entry's `epoch_pubkey`. A

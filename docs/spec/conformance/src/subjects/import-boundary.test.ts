@@ -7,6 +7,7 @@ import {
   realpathSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -16,31 +17,76 @@ import ts from "typescript";
 import { afterEach, describe, expect, it } from "vitest";
 
 type ImportEdge = { importer: string; specifier: string; resolved: string };
+type ImportKind = "import" | "require" | "module.require" | "require.resolve";
+type ImportReference = { kind: ImportKind; specifier?: string };
 
 const repositoryRoot = fileURLToPath(new URL("../../../../../", import.meta.url));
 const conformanceRoot = resolve(repositoryRoot, "docs/spec/conformance");
 const generatorRoot = resolve(repositoryRoot, "docs/spec/vectors/generator");
 const temporaryRoots: string[] = [];
+const sourceExtensions = new Set([".ts", ".tsx", ".js", ".mjs", ".cjs"]);
 
 function isWithin(root: string, candidate: string): boolean {
   const path = relative(root, candidate);
   return path === "" || (!path.startsWith("..") && !path.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`));
 }
 
-function sourceFiles(root: string): string[] {
+function sourceFiles(root: string, visitedDirectories = new Set<string>()): string[] {
+  const canonicalRoot = realpathSync(root);
+  if (visitedDirectories.has(canonicalRoot)) {
+    return [];
+  }
+  visitedDirectories.add(canonicalRoot);
+
   const files: string[] = [];
-  for (const entry of readdirSync(root, { withFileTypes: true })) {
-    const path = join(root, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...sourceFiles(path));
-    } else if (entry.isFile() && [".ts", ".tsx", ".js", ".mjs", ".cjs"].includes(extname(entry.name))) {
+  for (const entry of readdirSync(canonicalRoot, { withFileTypes: true })) {
+    const path = realpathSync(join(canonicalRoot, entry.name));
+    const status = statSync(path);
+    if (status.isDirectory()) {
+      files.push(...sourceFiles(path, visitedDirectories));
+    } else if (status.isFile() && sourceExtensions.has(extname(path))) {
       files.push(path);
     }
   }
   return files.sort();
 }
 
-function importSpecifiers(path: string): string[] {
+function commonJsImportKind(expression: ts.Expression): ImportKind | undefined {
+  if (ts.isIdentifier(expression) && expression.text === "require") {
+    return "require";
+  }
+  if (ts.isPropertyAccessExpression(expression)) {
+    if (expression.name.text === "require") {
+      return "module.require";
+    }
+    if (
+      expression.name.text === "resolve"
+      && ts.isIdentifier(expression.expression)
+      && expression.expression.text === "require"
+    ) {
+      return "require.resolve";
+    }
+  }
+  if (
+    ts.isElementAccessExpression(expression)
+    && expression.argumentExpression !== undefined
+    && ts.isStringLiteralLike(expression.argumentExpression)
+  ) {
+    if (expression.argumentExpression.text === "require") {
+      return "module.require";
+    }
+    if (
+      expression.argumentExpression.text === "resolve"
+      && ts.isIdentifier(expression.expression)
+      && expression.expression.text === "require"
+    ) {
+      return "require.resolve";
+    }
+  }
+  return undefined;
+}
+
+function importReferences(path: string): ImportReference[] {
   const source = ts.createSourceFile(
     path,
     readFileSync(path, "utf8"),
@@ -48,34 +94,41 @@ function importSpecifiers(path: string): string[] {
     true,
     path.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
   );
-  const specifiers: string[] = [];
+  const references: ImportReference[] = [];
   const visit = (node: ts.Node): void => {
     if (
       (ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
       && node.moduleSpecifier !== undefined
       && ts.isStringLiteralLike(node.moduleSpecifier)
     ) {
-      specifiers.push(node.moduleSpecifier.text);
+      references.push({ kind: "import", specifier: node.moduleSpecifier.text });
     } else if (
       ts.isImportEqualsDeclaration(node)
       && ts.isExternalModuleReference(node.moduleReference)
       && node.moduleReference.expression !== undefined
       && ts.isStringLiteralLike(node.moduleReference.expression)
     ) {
-      specifiers.push(node.moduleReference.expression.text);
+      references.push({ kind: "require", specifier: node.moduleReference.expression.text });
     } else if (
       ts.isCallExpression(node)
-      && node.arguments.length >= 1
-      && ts.isStringLiteralLike(node.arguments[0]!)
-      && (node.expression.kind === ts.SyntaxKind.ImportKeyword
-        || (ts.isIdentifier(node.expression) && node.expression.text === "require"))
     ) {
-      specifiers.push(node.arguments[0]!.text);
+      const kind = node.expression.kind === ts.SyntaxKind.ImportKeyword
+        ? "import"
+        : commonJsImportKind(node.expression);
+      if (kind !== undefined) {
+        const firstArgument = node.arguments[0];
+        references.push({
+          kind,
+          ...(firstArgument !== undefined && ts.isStringLiteralLike(firstArgument)
+            ? { specifier: firstArgument.text }
+            : {}),
+        });
+      }
     }
     ts.forEachChild(node, visit);
   };
   visit(source);
-  return specifiers;
+  return references;
 }
 
 function resolveRelativeImport(importer: string, specifier: string): string | undefined {
@@ -97,11 +150,10 @@ function resolveRelativeImport(importer: string, specifier: string): string | un
 
 function forbiddenImportEdges(
   sourceRoot: string,
-  packageRoot: string,
+  _packageRoot: string,
   forbiddenRoot: string,
   forbiddenPackageName: string,
 ): ImportEdge[] {
-  const canonicalPackageRoot = realpathSync(packageRoot);
   const canonicalForbiddenRoot = realpathSync(forbiddenRoot);
   const pending = sourceFiles(sourceRoot);
   const visited = new Set<string>();
@@ -113,8 +165,21 @@ function forbiddenImportEdges(
       continue;
     }
     visited.add(importer);
+    if (isWithin(canonicalForbiddenRoot, importer)) {
+      forbidden.push({ importer, specifier: "<source-entry>", resolved: importer });
+      continue;
+    }
 
-    for (const specifier of importSpecifiers(importer)) {
+    for (const reference of importReferences(importer)) {
+      if (reference.specifier === undefined) {
+        forbidden.push({
+          importer,
+          specifier: `<nonliteral:${reference.kind}>`,
+          resolved: "<nonliteral>",
+        });
+        continue;
+      }
+      const specifier = reference.specifier;
       if (!specifier.startsWith(".")) {
         if (specifier === forbiddenPackageName || specifier.startsWith(`${forbiddenPackageName}/`)) {
           forbidden.push({ importer, specifier, resolved: forbiddenPackageName });
@@ -127,7 +192,7 @@ function forbiddenImportEdges(
         forbidden.push({ importer, specifier, resolved: "<unresolved>" });
       } else if (isWithin(canonicalForbiddenRoot, resolved)) {
         forbidden.push({ importer, specifier, resolved });
-      } else if (isWithin(canonicalPackageRoot, resolved) && [".ts", ".tsx", ".js", ".mjs", ".cjs"].includes(extname(resolved))) {
+      } else if (sourceExtensions.has(extname(resolved))) {
         pending.push(resolved);
       }
     }
@@ -211,5 +276,103 @@ describe("reciprocal package import boundary", () => {
       realpathSync(join(right, "src", "value.mjs")),
       "@right",
     ].sort());
+  });
+
+  it("follows a source symlink whose real target reaches the forbidden package", () => {
+    const root = mkdtempSync(join(tmpdir(), "heterodyne-import-boundary-"));
+    temporaryRoots.push(root);
+    const left = join(root, "left");
+    const right = join(root, "right");
+    const shared = join(root, "shared");
+    mkdirSync(join(left, "src"), { recursive: true });
+    mkdirSync(join(right, "src"), { recursive: true });
+    mkdirSync(shared, { recursive: true });
+    writeFileSync(join(right, "src", "value.ts"), "export const value = 1;\n");
+    writeFileSync(join(shared, "helper.ts"), 'import "../right/src/value.js";\n');
+    symlinkSync(join(shared, "helper.ts"), join(left, "src", "linked.ts"));
+
+    const edges = forbiddenImportEdges(join(left, "src"), left, right, "@right");
+    expect(edges.map((edge) => edge.resolved)).toEqual([
+      realpathSync(join(right, "src", "value.ts")),
+    ]);
+  });
+
+  it("rejects a source symlink whose target is itself in the forbidden package", () => {
+    const root = mkdtempSync(join(tmpdir(), "heterodyne-import-boundary-"));
+    temporaryRoots.push(root);
+    const left = join(root, "left");
+    const right = join(root, "right");
+    mkdirSync(join(left, "src"), { recursive: true });
+    mkdirSync(join(right, "src"), { recursive: true });
+    writeFileSync(join(right, "src", "value.ts"), "export const value = 1;\n");
+    symlinkSync(join(right, "src", "value.ts"), join(left, "src", "linked.ts"));
+
+    const edges = forbiddenImportEdges(join(left, "src"), left, right, "@right");
+    expect(edges.map((edge) => edge.resolved)).toEqual([
+      realpathSync(join(right, "src", "value.ts")),
+    ]);
+  });
+
+  it("follows a two-hop relative import through a helper outside both packages", () => {
+    const root = mkdtempSync(join(tmpdir(), "heterodyne-import-boundary-"));
+    temporaryRoots.push(root);
+    const left = join(root, "left");
+    const right = join(root, "right");
+    const shared = join(root, "shared");
+    mkdirSync(join(left, "src"), { recursive: true });
+    mkdirSync(join(right, "src"), { recursive: true });
+    mkdirSync(shared, { recursive: true });
+    writeFileSync(join(left, "src", "index.ts"), 'import "../../shared/helper.js";\n');
+    writeFileSync(join(shared, "helper.ts"), 'import "../right/src/value.js";\n');
+    writeFileSync(join(right, "src", "value.ts"), "export const value = 1;\n");
+
+    const edges = forbiddenImportEdges(join(left, "src"), left, right, "@right");
+    expect(edges.map((edge) => edge.resolved)).toEqual([
+      realpathSync(join(right, "src", "value.ts")),
+    ]);
+  });
+
+  it("fails closed on nonliteral import and CommonJS require variants", () => {
+    const root = mkdtempSync(join(tmpdir(), "heterodyne-import-boundary-"));
+    temporaryRoots.push(root);
+    const left = join(root, "left");
+    const right = join(root, "right");
+    mkdirSync(join(left, "src"), { recursive: true });
+    mkdirSync(join(right, "src"), { recursive: true });
+    writeFileSync(
+      join(left, "src", "index.ts"),
+      'const target = "../../right/src/value.js";\nvoid import(target);\nrequire(target);\nmodule.require(target);\nmodule["require"](target);\nrequire.resolve(target);\nmodule.require("../../right/src/value.js");\nrequire.resolve("../../right/src/value.js");\n',
+    );
+    writeFileSync(join(right, "src", "value.ts"), "export const value = 1;\n");
+
+    const edges = forbiddenImportEdges(join(left, "src"), left, right, "@right");
+    expect(edges.map((edge) => edge.resolved).sort()).toEqual([
+      "<nonliteral>",
+      "<nonliteral>",
+      "<nonliteral>",
+      "<nonliteral>",
+      "<nonliteral>",
+      realpathSync(join(right, "src", "value.ts")),
+      realpathSync(join(right, "src", "value.ts")),
+    ].sort());
+  });
+
+  it("allows legitimate reachable local and external helper imports", () => {
+    const root = mkdtempSync(join(tmpdir(), "heterodyne-import-boundary-"));
+    temporaryRoots.push(root);
+    const left = join(root, "left");
+    const right = join(root, "right");
+    const shared = join(root, "shared");
+    mkdirSync(join(left, "src"), { recursive: true });
+    mkdirSync(right, { recursive: true });
+    mkdirSync(shared, { recursive: true });
+    writeFileSync(
+      join(left, "src", "index.ts"),
+      'import "./local.js";\nimport "../../shared/helper.js";\n',
+    );
+    writeFileSync(join(left, "src", "local.ts"), "export const local = 1;\n");
+    writeFileSync(join(shared, "helper.ts"), "export const shared = 1;\n");
+
+    expect(forbiddenImportEdges(join(left, "src"), left, right, "@right")).toEqual([]);
   });
 });

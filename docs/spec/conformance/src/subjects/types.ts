@@ -32,6 +32,9 @@ export type CoreKelEntryV1 = {
 
 export type CoreVerificationContextV1 = {
   persona: string;
+  evaluation_time: number;
+  nid_clock_skew_allowance: number;
+  clock_uncertainty: number;
   pointer: {
     persona: string;
     kel_head: { event_id: string; sequence: number };

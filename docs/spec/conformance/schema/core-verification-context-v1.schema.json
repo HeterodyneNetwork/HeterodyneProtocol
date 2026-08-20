@@ -6,6 +6,9 @@
   "additionalProperties": false,
   "required": [
     "persona",
+    "evaluation_time",
+    "nid_clock_skew_allowance",
+    "clock_uncertainty",
     "pointer",
     "kel",
     "signer",
@@ -15,6 +18,13 @@
   ],
   "properties": {
     "persona": { "$ref": "#/$defs/hex32" },
+    "evaluation_time": { "$ref": "#/$defs/safe_unix_second" },
+    "nid_clock_skew_allowance": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 300
+    },
+    "clock_uncertainty": { "$ref": "#/$defs/safe_unix_second" },
     "pointer": { "$ref": "#/$defs/pointer" },
     "kel": {
       "type": "array",

@@ -91,6 +91,9 @@ function validFixture(): Fixture {
       vector_context: {
         core_verification: {
           persona: PERSONA,
+          evaluation_time: 100,
+          nid_clock_skew_allowance: 0,
+          clock_uncertainty: 0,
           pointer: {
             persona: PERSONA,
             kel_head: { event_id: KEL_EVENT_ID, sequence: 0 },
@@ -143,11 +146,15 @@ function signEd25519Proof(domain: string, canonicalClaim: string): string {
   return hex(ed25519.sign(message, NID_SECRET));
 }
 
-function configureNidDelegation(fixture: Fixture): void {
+function configureNidDelegation(
+  fixture: Fixture,
+  fields: { secretKey?: string; validUntil?: string } = {},
+): void {
   const publishingKey = "d0".repeat(32);
   const canonicalClaim = `{"cold_root":"${PERSONA}","nid":"${NID}"}`;
   const nidProof = signEd25519Proof("heterodyne-nid-binding-v1", canonicalClaim);
   replaceSignedInput(fixture, {
+    secretKey: fields.secretKey,
     kind: 31_001,
     content: "",
     tags: [
@@ -158,7 +165,7 @@ function configureNidDelegation(fixture: Fixture): void {
       ["cold_root", PERSONA],
       ["nid_proof", nidProof],
       ["kel_head", KEL_EVENT_ID, "0"],
-      ["valid_until", ""],
+      ["valid_until", fields.validUntil ?? ""],
       ["spec_version", "heterodyne/0.5.0"],
     ],
   });
@@ -167,11 +174,11 @@ function configureNidDelegation(fixture: Fixture): void {
 
 function configureNodeAdvertisement(
   fixture: Fixture,
-  fields: { endpoint?: string } = {},
+  fields: { createdAt?: number; endpoint?: string; expiry?: string } = {},
 ): void {
   const rid = "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1";
   const endpoint = fields.endpoint ?? "wss://node.example/relay";
-  const expiry = "200";
+  const expiry = fields.expiry ?? "200";
   const repoHead = "4a19af7f069f3c32d4235c726f666fc8cd0175fa";
   const canonicalClaim = JSON.stringify({
     endpoint,
@@ -182,6 +189,7 @@ function configureNodeAdvertisement(
   });
   const nidProof = signEd25519Proof("heterodyne-node-advert-v1", canonicalClaim);
   replaceSignedInput(fixture, {
+    created_at: fields.createdAt,
     kind: 31_010,
     content: "",
     tags: [
@@ -235,6 +243,46 @@ function configureTwoEpochKel(fixture: Fixture, signerSecret: string): void {
     },
   ];
   context.signer = { type: "epoch", pubkey: signerPubkey, delegation: null };
+}
+
+function configureHistoricalTwoEpochKel(
+  fixture: Fixture,
+  fields: { createdAt: number; pointer: "historical" | "current"; transition: number },
+): void {
+  replaceSignedInput(fixture, {
+    created_at: fields.createdAt,
+    tags: [
+      ["spec_version", "heterodyne/0.5.0"],
+      ["kel_head", KEL_EVENT_ID, "0"],
+    ],
+  });
+  const context = contextOf(fixture);
+  context.pointer = {
+    persona: PERSONA,
+    kel_head: fields.pointer === "historical"
+      ? { event_id: KEL_EVENT_ID, sequence: 0 }
+      : { event_id: SECOND_KEL_EVENT_ID, sequence: 1 },
+  };
+  context.kel = [
+    {
+      event_id: KEL_EVENT_ID,
+      sequence: 0,
+      prior_event_id: null,
+      epoch_pubkey: EVENT_PUBKEY,
+      effective_from: 0,
+      effective_until: fields.transition,
+      compromise_since: null,
+    },
+    {
+      event_id: SECOND_KEL_EVENT_ID,
+      sequence: 1,
+      prior_event_id: KEL_EVENT_ID,
+      epoch_pubkey: SECOND_EVENT_PUBKEY,
+      effective_from: fields.transition,
+      effective_until: null,
+      compromise_since: null,
+    },
+  ];
 }
 
 function configureDelegatedSigner(fixture: Fixture): void {
@@ -468,6 +516,66 @@ describe("raw binding and context consumption", () => {
     expectTerminal(nestedFixture, "persona_resolution");
   });
 
+  it("requires explicit evaluation time, NID skew allowance, and clock uncertainty", () => {
+    for (const field of [
+      "evaluation_time",
+      "nid_clock_skew_allowance",
+      "clock_uncertainty",
+    ]) {
+      const fixture = validFixture();
+      delete contextOf(fixture)[field];
+      expectTerminal(fixture, "persona_resolution");
+    }
+  });
+
+  it("accepts only closed safe-integer clock evidence and a bounded NID allowance", () => {
+    const validClockFixture = validFixture();
+    Object.assign(contextOf(validClockFixture), {
+      evaluation_time: 100,
+      nid_clock_skew_allowance: 0,
+      clock_uncertainty: 0,
+    });
+
+    const unsafeTimeFixture = validFixture();
+    Object.assign(contextOf(unsafeTimeFixture), {
+      evaluation_time: Number.MAX_SAFE_INTEGER + 1,
+      nid_clock_skew_allowance: 0,
+      clock_uncertainty: 0,
+    });
+
+    const unboundedAllowanceFixture = validFixture();
+    Object.assign(contextOf(unboundedAllowanceFixture), {
+      evaluation_time: 100,
+      nid_clock_skew_allowance: 301,
+      clock_uncertainty: 0,
+    });
+
+    const negativeUncertaintyFixture = validFixture();
+    Object.assign(contextOf(negativeUncertaintyFixture), {
+      evaluation_time: 100,
+      nid_clock_skew_allowance: 0,
+      clock_uncertainty: -1,
+    });
+
+    const unknownClockFixture = validFixture();
+    Object.assign(contextOf(unknownClockFixture), {
+      evaluation_time: 100,
+      nid_clock_skew_allowance: 0,
+      clock_uncertainty: 0,
+      inferred_clock_source: "wall",
+    });
+
+    expectTerminal(validClockFixture, "accept");
+    for (const fixture of [
+      unsafeTimeFixture,
+      unboundedAllowanceFixture,
+      negativeUncertaintyFixture,
+      unknownClockFixture,
+    ]) {
+      expectTerminal(fixture, "persona_resolution");
+    }
+  });
+
   it("does not invent reason codes outside the closed registry", () => {
     const structureFixture = validFixture();
     delete (structureFixture.vector.input.event as Record<string, unknown>).sig;
@@ -551,6 +659,17 @@ describe("explicit version and KEL-head policies", () => {
     expectTerminal(forbiddenFixture, "version_stamp");
   });
 
+  it("rejects duplicate spec_version members in JSON content", () => {
+    const fixture = validFixture();
+    replaceSignedInput(fixture, {
+      content:
+        '{"spec_\\u0076ersion":"heterodyne/0.5.0","spec_version":"heterodyne/0.5.0"}',
+      tags: [["kel_head", KEL_EVENT_ID, "0"]],
+    });
+
+    expectTerminal(fixture, "version_stamp");
+  });
+
   it("accepts optional and forbidden absent heads", () => {
     const optionalFixture = validFixture();
     contextOf(optionalFixture).kel_head_policy = { mode: "optional" };
@@ -591,6 +710,28 @@ describe("explicit version and KEL-head policies", () => {
     for (const fixture of [missingFixture, duplicateFixture, malformedFixture, forbiddenFixture]) {
       expectTerminal(fixture, "kel_head");
     }
+  });
+
+  it("accepts a pointer head that exactly identifies a non-final KEL entry", () => {
+    const fixture = validFixture();
+    configureHistoricalTwoEpochKel(fixture, {
+      createdAt: 100,
+      pointer: "historical",
+      transition: 200,
+    });
+
+    expectTerminal(fixture, "accept");
+  });
+
+  it("accepts a historical event head that is stale but on the accepted KEL", () => {
+    const fixture = validFixture();
+    configureHistoricalTwoEpochKel(fixture, {
+      createdAt: 99,
+      pointer: "current",
+      transition: 100,
+    });
+
+    expectTerminal(fixture, "accept");
   });
 });
 
@@ -672,6 +813,47 @@ describe("Ed25519 NID subtype proofs", () => {
     expectTerminal(fixture, "accept");
   });
 
+  it("rejects a kind 31001 outer-signed by a delegated publisher", () => {
+    const fixture = validFixture();
+    configureNidDelegation(fixture, { secretKey: SECOND_EVENT_SECRET });
+    contextOf(fixture).signer = {
+      type: "delegated",
+      pubkey: SECOND_EVENT_PUBKEY,
+      delegation: {
+        persona: PERSONA,
+        publisher_pubkey: SECOND_EVENT_PUBKEY,
+        valid_from: 0,
+        valid_until: null,
+        revoked_at: null,
+      },
+    };
+
+    expectTerminal(fixture, "subtype_nid");
+    expect(checkCoreSignedEvent(fixture.vector, fixture.check).reasonCode)
+      .toBe("delegation_mismatch");
+  });
+
+  it("evaluates NID expiry against evaluation time minus the explicit allowance", () => {
+    const expiredFixture = validFixture();
+    Object.assign(contextOf(expiredFixture), {
+      evaluation_time: 200,
+      nid_clock_skew_allowance: 5,
+    });
+    configureNidDelegation(expiredFixture, { validUntil: "195" });
+
+    const futureFixture = validFixture();
+    Object.assign(contextOf(futureFixture), {
+      evaluation_time: 200,
+      nid_clock_skew_allowance: 5,
+    });
+    configureNidDelegation(futureFixture, { validUntil: "196" });
+
+    expectTerminal(expiredFixture, "subtype_nid");
+    expect(checkCoreSignedEvent(expiredFixture.vector, expiredFixture.check).reasonCode)
+      .toBe("expired_delegation");
+    expectTerminal(futureFixture, "accept");
+  });
+
   it("rejects an invalid NID-delegation proof or mismatched NID key", () => {
     const proofFixture = validFixture();
     configureNidDelegation(proofFixture);
@@ -716,7 +898,7 @@ describe("Ed25519 NID subtype proofs", () => {
     expectTerminal(fixture, "subtype_nid");
   });
 
-  it("rejects nonempty delegation content and a delegation expired at creation", () => {
+  it("rejects nonempty delegation content and expiry at the evaluation cutoff", () => {
     const contentFixture = validFixture();
     configureNidDelegation(contentFixture);
     const contentTags = structuredClone(
@@ -741,6 +923,59 @@ describe("Ed25519 NID subtype proofs", () => {
     configureNodeAdvertisement(fixture);
 
     expectTerminal(fixture, "accept");
+  });
+
+  it("enforces the inclusive plus-or-minus 300-second first-acceptance window", () => {
+    const lowerBoundaryFixture = validFixture();
+    contextOf(lowerBoundaryFixture).evaluation_time = 400;
+    configureNodeAdvertisement(lowerBoundaryFixture, { expiry: "500" });
+
+    const tooOldFixture = validFixture();
+    contextOf(tooOldFixture).evaluation_time = 401;
+    configureNodeAdvertisement(tooOldFixture, { expiry: "500" });
+
+    const upperBoundaryFixture = validFixture();
+    configureNodeAdvertisement(upperBoundaryFixture, { createdAt: 400, expiry: "500" });
+
+    const tooFutureFixture = validFixture();
+    configureNodeAdvertisement(tooFutureFixture, { createdAt: 401, expiry: "500" });
+
+    expectTerminal(lowerBoundaryFixture, "accept");
+    expectTerminal(tooOldFixture, "subtype_nid");
+    expect(checkCoreSignedEvent(tooOldFixture.vector, tooOldFixture.check).reasonCode)
+      .toBe("node-advert-clock-skew");
+    expectTerminal(upperBoundaryFixture, "accept");
+    expectTerminal(tooFutureFixture, "subtype_nid");
+  });
+
+  it("requires evaluation time to be strictly before node-advert expiry", () => {
+    const beforeExpiryFixture = validFixture();
+    contextOf(beforeExpiryFixture).evaluation_time = 199;
+    configureNodeAdvertisement(beforeExpiryFixture);
+
+    const atExpiryFixture = validFixture();
+    contextOf(atExpiryFixture).evaluation_time = 200;
+    configureNodeAdvertisement(atExpiryFixture);
+
+    expectTerminal(beforeExpiryFixture, "accept");
+    expectTerminal(atExpiryFixture, "subtype_nid");
+    expect(checkCoreSignedEvent(atExpiryFixture.vector, atExpiryFixture.check).reasonCode)
+      .toBe("node_advert_expired");
+  });
+
+  it("fails closed when node-advert clock uncertainty exceeds 300 seconds", () => {
+    const boundaryFixture = validFixture();
+    contextOf(boundaryFixture).clock_uncertainty = 300;
+    configureNodeAdvertisement(boundaryFixture);
+
+    const uncertainFixture = validFixture();
+    contextOf(uncertainFixture).clock_uncertainty = 301;
+    configureNodeAdvertisement(uncertainFixture);
+
+    expectTerminal(boundaryFixture, "accept");
+    expectTerminal(uncertainFixture, "subtype_nid");
+    expect(checkCoreSignedEvent(uncertainFixture.vector, uncertainFixture.check).reasonCode)
+      .toBe("node-advert-clock-uncertain");
   });
 
   it("rejects a node advertisement with nonempty content or an excessive lifetime", () => {
