@@ -110,6 +110,7 @@ describe("family release manifest", () => {
     expect(manifest.artifacts.map((artifact) => artifact.path)).not.toContain("docs/spec/vectors/fixtures.json");
     expect(manifest.artifacts.map((artifact) => artifact.path)).not.toContain("docs/spec/vectors/coverage/manifest.json");
     expect(manifest.artifacts.map((artifact) => artifact.path)).not.toContain("docs/spec/vectors/schema/reason-codes.json");
+    expect(manifest.artifacts.some((artifact) => artifact.path.startsWith("docs/spec/conformance/"))).toBe(false);
     expect(manifest.artifacts).toContainEqual({
       path: "docs/spec/vectors/schema/vector.schema.json",
       role: "schema",
