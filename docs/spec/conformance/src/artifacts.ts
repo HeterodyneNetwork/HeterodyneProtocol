@@ -32,6 +32,12 @@ const specificationPaths = [
   "docs/spec/heterodyne-social.md",
   "docs/spec/heterodyne-workspace.md",
 ] as const;
+const requiredArtifactRoles = new Map<string, string>([
+  ...specificationPaths.map((path) => [path, "specification"] as const),
+  [registryManifestPath, "registry"],
+  [reasonCodesPath, "registry"],
+  [securityInvariantsPath, "registry"],
+]);
 
 const ownerDocuments = new Set(["core", "comms", "control", "social", "workspace"]);
 const directions = new Set(["consume", "produce", "round-trip"]);
@@ -306,32 +312,34 @@ function parseRegistryManifest(value: unknown): RegistryDocument["manifest"] | u
   return value as RegistryDocument["manifest"];
 }
 
-function parseReasonCodes(value: unknown): RegistryDocument["reason_codes"] | undefined {
-  if (
-    !isRecord(value)
-    || !Array.isArray(value.reason_codes)
-    || !value.reason_codes.every((entry) => isRecord(entry) && typeof entry.code === "string")
-  ) {
-    return undefined;
+type ParsedRegistryEntries<T> = { entries: T[]; valid: boolean };
+
+function parseReasonCodes(
+  value: unknown,
+): ParsedRegistryEntries<{ code: string }> {
+  if (!isRecord(value) || !Array.isArray(value.reason_codes)) {
+    return { entries: [], valid: false };
   }
-  return value.reason_codes as RegistryDocument["reason_codes"];
+  const entries = value.reason_codes.filter(
+    (entry): entry is { code: string } => isRecord(entry) && typeof entry.code === "string",
+  );
+  return { entries, valid: entries.length === value.reason_codes.length };
 }
 
 function parseSecurityInvariants(
   value: unknown,
-): RegistryDocument["security_invariants"] | undefined {
-  if (
-    !isRecord(value)
-    || !Array.isArray(value.security_invariants)
-    || !value.security_invariants.every((entry) =>
+): ParsedRegistryEntries<{ id: string; owner: string; feature?: string }> {
+  if (!isRecord(value) || !Array.isArray(value.security_invariants)) {
+    return { entries: [], valid: false };
+  }
+  const entries = value.security_invariants.filter(
+    (entry): entry is { id: string; owner: string; feature?: string } =>
       isRecord(entry)
       && typeof entry.id === "string"
       && typeof entry.owner === "string"
-      && (entry.feature === undefined || typeof entry.feature === "string"))
-  ) {
-    return undefined;
-  }
-  return value.security_invariants as RegistryDocument["security_invariants"];
+      && (entry.feature === undefined || typeof entry.feature === "string"),
+  );
+  return { entries, valid: entries.length === value.security_invariants.length };
 }
 
 function reportDuplicates(
@@ -369,6 +377,16 @@ export function loadCorpus(repositoryRoot: string): {
     return { issues: sortIssues(issues) };
   }
 
+  const fixturesValue = readJson(canonicalRoot, fixturesPath, issues, true);
+  let fixtures: Record<string, unknown> | undefined;
+  if (fixturesValue !== undefined) {
+    if (isRecord(fixturesValue)) {
+      fixtures = fixturesValue;
+    } else {
+      shapeIssue(issues, fixturesPath, "fixtures must be an object");
+    }
+  }
+
   const manifestValue = readJson(canonicalRoot, familyManifestPath, issues, true);
   if (manifestValue === undefined) {
     return { issues: sortIssues(issues) };
@@ -390,9 +408,12 @@ export function loadCorpus(repositoryRoot: string): {
     artifactPaths.add(artifact.path);
   }
 
-  for (const path of [...specificationPaths, registryManifestPath, reasonCodesPath, securityInvariantsPath]) {
-    if (!artifactPaths.has(path)) {
+  for (const [path, requiredRole] of requiredArtifactRoles) {
+    const artifact = manifest.artifacts.find((candidate) => candidate.path === path);
+    if (artifact === undefined) {
       issues.push({ code: "missing-required-root", path, message: "required release artifact is absent" });
+    } else if (artifact.role !== requiredRole) {
+      shapeIssue(issues, path, `required artifact role must be ${requiredRole}`);
     }
   }
   if (manifest.registry.path !== undefined && !artifactPaths.has(manifest.registry.path)) {
@@ -409,7 +430,11 @@ export function loadCorpus(repositoryRoot: string): {
   const parsedJson = new Map<string, unknown>();
   const textArtifacts = new Map<string, string>();
   for (const artifact of manifest.artifacts) {
-    if (artifact.path.endsWith(".json")) {
+    const jsonArtifact = artifact.role === "registry"
+      || artifact.role === "schema"
+      || artifact.role === "vector"
+      || (artifact.role !== "specification" && artifact.path.endsWith(".json"));
+    if (jsonArtifact) {
       const value = readJson(canonicalRoot, artifact.path, issues);
       if (value !== undefined && !parsedJson.has(artifact.path)) {
         parsedJson.set(artifact.path, value);
@@ -466,45 +491,31 @@ export function loadCorpus(repositoryRoot: string): {
     shapeIssue(issues, registryManifestPath, "registry manifest must pin revision 13 and schema 3.0.0");
   }
   const reasonCodes = parseReasonCodes(parsedJson.get(reasonCodesPath));
-  if (reasonCodes === undefined && parsedJson.has(reasonCodesPath)) {
+  if (!reasonCodes.valid && parsedJson.has(reasonCodesPath)) {
     shapeIssue(issues, reasonCodesPath, "reason_codes must contain entries with string codes");
   }
   const securityInvariants = parseSecurityInvariants(parsedJson.get(securityInvariantsPath));
-  if (securityInvariants === undefined && parsedJson.has(securityInvariantsPath)) {
+  if (!securityInvariants.valid && parsedJson.has(securityInvariantsPath)) {
     shapeIssue(
       issues,
       securityInvariantsPath,
       "security_invariants must contain id and owner strings with optional feature strings",
     );
   }
-  if (reasonCodes !== undefined) {
-    reportDuplicates(reasonCodes.map(({ code }) => code), reasonCodesPath, "reason code", issues);
-  }
-  if (securityInvariants !== undefined) {
-    reportDuplicates(
-      securityInvariants.map(({ id }) => id),
-      securityInvariantsPath,
-      "security invariant",
-      issues,
-    );
-  }
-
-  const fixturesValue = readJson(canonicalRoot, fixturesPath, issues, true);
-  let fixtures: Record<string, unknown> | undefined;
-  if (fixturesValue !== undefined) {
-    if (isRecord(fixturesValue)) {
-      fixtures = fixturesValue;
-    } else {
-      shapeIssue(issues, fixturesPath, "fixtures must be an object");
-    }
-  }
+  reportDuplicates(reasonCodes.entries.map(({ code }) => code), reasonCodesPath, "reason code", issues);
+  reportDuplicates(
+    securityInvariants.entries.map(({ id }) => id),
+    securityInvariantsPath,
+    "security invariant",
+    issues,
+  );
 
   sortIssues(issues);
   if (
     issues.length > 0
     || registryManifest === undefined
-    || reasonCodes === undefined
-    || securityInvariants === undefined
+    || !reasonCodes.valid
+    || !securityInvariants.valid
     || fixtures === undefined
   ) {
     return { issues };
@@ -512,8 +523,8 @@ export function loadCorpus(repositoryRoot: string): {
 
   const registry: RegistryDocument = {
     manifest: registryManifest,
-    reason_codes: reasonCodes,
-    security_invariants: securityInvariants,
+    reason_codes: reasonCodes.entries,
+    security_invariants: securityInvariants.entries,
   };
   return {
     corpus: {

@@ -4,6 +4,7 @@ import { loadCorpus } from "./artifacts.js";
 import {
   createTestRepository,
   familyManifestPath,
+  fixturesPath,
   readTestManifest,
   reasonCodesPath,
   vectorPath,
@@ -57,6 +58,17 @@ describe("loadCorpus", () => {
     ]);
   });
 
+  it("reports malformed fixtures when the family manifest is also malformed", () => {
+    const root = repository();
+    writeText(root, familyManifestPath, "{ malformed manifest\n");
+    writeText(root, fixturesPath, "{ malformed fixtures\n");
+
+    expect(loadCorpus(root).issues.map(({ code, path }) => ({ code, path }))).toEqual([
+      { code: "invalid-json", path: familyManifestPath },
+      { code: "invalid-json", path: fixturesPath },
+    ]);
+  });
+
   it("keeps parsing artifacts after a top-level manifest shape issue", () => {
     const root = repository();
     const manifest = readTestManifest(root);
@@ -106,6 +118,25 @@ describe("loadCorpus", () => {
     ]);
   });
 
+  it("rejects a required specification declared with the schema role", () => {
+    const root = repository();
+    const corePath = "docs/spec/heterodyne-core.md";
+    const manifest = readTestManifest(root);
+    const artifacts = manifest.artifacts as Array<Record<string, unknown>>;
+    const core = artifacts.find((artifact) => artifact.path === corePath);
+    if (core === undefined) {
+      throw new Error("Core specification is absent from synthetic manifest");
+    }
+    core.role = "schema";
+    writeText(root, corePath, "{}\n");
+    writeJson(root, familyManifestPath, manifest);
+
+    expect(loadCorpus(root).issues.map(({ code, path }) => ({ code, path }))).toEqual([
+      { code: "invalid-document-shape", path: corePath },
+    ]);
+    expect(loadCorpus(root).corpus).toBeUndefined();
+  });
+
   it("reports duplicate vector IDs instead of silently overwriting them", () => {
     const root = repository();
     const duplicatePath = "docs/spec/vectors/core/002-duplicate.json";
@@ -138,6 +169,22 @@ describe("loadCorpus", () => {
 
     expect(loadCorpus(root).issues.map(({ code }) => code)).toEqual([
       "duplicate-registry-entry",
+    ]);
+  });
+
+  it("reports duplicate reason codes even when another entry is malformed", () => {
+    const root = repository();
+    writeJson(root, reasonCodesPath, {
+      reason_codes: [
+        { code: "bad_signature" },
+        { malformed: true },
+        { code: "bad_signature" },
+      ],
+    });
+
+    expect(loadCorpus(root).issues.map(({ code }) => code)).toEqual([
+      "duplicate-registry-entry",
+      "invalid-document-shape",
     ]);
   });
 
