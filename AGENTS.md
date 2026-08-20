@@ -76,4 +76,11 @@ Run from the repository root:
 ```bash
 npm --prefix docs/spec/vectors/generator run family:check
 npm --prefix docs/spec/vectors/generator run check
+npm --prefix docs/spec/conformance run check
 ```
+
+The normal verification path is read-only. Before merging a Radicle patch,
+require a green `scripts/conformance-ci.sh` run through a delegate-operated,
+isolated podman adapter. GitHub repository administrators should configure the
+stable `conformance` check as required; changing that remote setting is outside
+repository verification and must not be performed by agents working here.

@@ -167,3 +167,23 @@ npm --prefix docs/spec/vectors/generator run check
 Running `author` also regenerates `fixtures.json`, the vector JSON schema, and
 the compatibility reason-code projections from their authoritative sources.
 Running `coverage` then regenerates the manifest and all Markdown views.
+
+## Independent conformance harness
+
+[`../conformance/`](../conformance/) independently checks the committed
+specification family, registries, schemas, release metadata, and every
+normative vector. Its normal verification command is read-only:
+
+```bash
+npm --prefix docs/spec/conformance run check
+```
+
+Baseline and report authoring are explicit maintainer operations, excluded
+from normal verification and CI:
+
+```bash
+npm --prefix docs/spec/conformance run baseline-author
+npm --prefix docs/spec/conformance run report-author
+```
+
+After reviewing intended authoring changes, run the read-only check again.

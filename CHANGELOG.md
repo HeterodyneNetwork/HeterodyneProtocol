@@ -24,6 +24,11 @@ family map, and the single registry pin is
   [vector schema](docs/spec/vectors/schema/vector.schema.json), and the
   [conformance package](docs/spec/conformance/). These links identify the
   implementation and normative owners without duplicating their rules.
+- Added one repository-local `scripts/conformance-ci.sh` job body shared by
+  GitHub and Radicle. It installs both locked tool packages and runs the
+  generator and independent conformance checks in a fixed, fail-fast order.
+  The gate performs no publishing, deployment, release, tag, push, or remote
+  configuration operation.
 
 ### Accepted protocol stabilization
 

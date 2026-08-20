@@ -132,6 +132,7 @@ exactly; semantic similarity is not conformance.
 | [docs/spec/registry](docs/spec/registry/) | Kind, profile, reason-code, invariant, feature, object, and proof-domain registry, with the single revision pin in `manifest.json` |
 | [docs/spec/releases](docs/spec/releases/) | Content-addressed manifest for the one family release |
 | [docs/spec/vectors](docs/spec/vectors/) | Normative conformance vectors and verification tooling |
+| [docs/spec/conformance](docs/spec/conformance/) | Independent read-only conformance harness, ratcheted baselines, and reports |
 | [docs/architecture.md](docs/architecture.md) | Non-normative family architecture and rationale |
 | [docs/glossary.md](docs/glossary.md) | Non-normative term index |
 | [docs/security/threat-model.md](docs/security/threat-model.md) | Family threat analysis |
@@ -150,7 +151,14 @@ Useful checks:
 ```bash
 npm --prefix docs/spec/vectors/generator run family:check
 npm --prefix docs/spec/vectors/generator run check
+npm --prefix docs/spec/conformance run check
 ```
+
+The shared local and hosted acceptance gate is
+`scripts/conformance-ci.sh`. GitHub should require its stable `conformance`
+check. Before a Radicle patch is merged, delegates require a green run through
+an isolated podman adapter; delegate-node and remote-repository configuration
+remain outside this repository.
 
 ## Standards
 
