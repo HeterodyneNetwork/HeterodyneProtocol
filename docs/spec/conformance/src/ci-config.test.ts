@@ -30,20 +30,25 @@ function readRepositoryFile(relativePath: string): string {
 
 function hasOnlyReadContentsPermission(workflow: string): boolean {
   const lines = workflow.split("\n");
-  const declarationIndexes = lines.flatMap((line, index) => (
-    /^\s*permissions\s*:/.test(line) ? [index] : []
-  ));
-  if (declarationIndexes.length !== 1) {
+  const declarations = lines.flatMap((line, index) => {
+    const match = line.match(/^(\s*)(?:permissions|"permissions"|'permissions')\s*:(.*)$/);
+    return match === null ? [] : [{ index, indentation: match[1], value: match[2] }];
+  });
+  if (declarations.length !== 1) {
     return false;
   }
 
-  const permissionsIndex = declarationIndexes[0];
-  if (permissionsIndex === undefined || lines[permissionsIndex] !== "permissions:") {
+  const declaration = declarations[0];
+  if (
+    declaration === undefined
+    || declaration.indentation !== ""
+    || declaration.value?.trim() !== ""
+  ) {
     return false;
   }
 
   const entries: string[] = [];
-  for (const line of lines.slice(permissionsIndex + 1)) {
+  for (const line of lines.slice(declaration.index + 1)) {
     if (line.trim() === "" || line.trimStart().startsWith("#")) {
       continue;
     }
@@ -156,12 +161,51 @@ fi
         "    permissions: write-all\n    name: conformance",
       ),
     ],
+    [
+      "a double-quoted write-all permissions key",
+      (workflow: string) => workflow.replace(
+        "    name: conformance",
+        '    "permissions": write-all\n    name: conformance',
+      ),
+    ],
+    [
+      "a double-quoted permissions mapping override",
+      (workflow: string) => workflow.replace(
+        "    name: conformance",
+        '    "permissions":\n      contents: write\n    name: conformance',
+      ),
+    ],
+    [
+      "a single-quoted write-all permissions key",
+      (workflow: string) => workflow.replace(
+        "    name: conformance",
+        "    'permissions': write-all\n    name: conformance",
+      ),
+    ],
+    [
+      "a single-quoted permissions mapping override",
+      (workflow: string) => workflow.replace(
+        "    name: conformance",
+        "    'permissions':\n      contents: write\n    name: conformance",
+      ),
+    ],
   ])("rejects %s", (_label, mutate) => {
     const workflow = readRepositoryFile(".github/workflows/conformance.yml");
     const unsafeWorkflow = mutate(workflow);
 
     expect(unsafeWorkflow).not.toBe(workflow);
     expect(hasOnlyReadContentsPermission(unsafeWorkflow)).toBe(false);
+  });
+
+  it.each([
+    ["double-quoted", '"permissions":'],
+    ["single-quoted", "'permissions':"],
+  ])("accepts a safe %s root permissions key", (_label, quotedKey) => {
+    const workflow = readRepositoryFile(".github/workflows/conformance.yml");
+    const equivalentWorkflow = workflow.replace(/^permissions:$/m, quotedKey);
+
+    expect(equivalentWorkflow).not.toBe(workflow);
+    expect(hasOnlyReadContentsPermission(equivalentWorkflow)).toBe(true);
   });
 
   it("keeps the Radicle wrapper byte-exact and free of duplicated job logic", () => {
