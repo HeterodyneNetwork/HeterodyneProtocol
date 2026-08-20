@@ -20,7 +20,7 @@ Every vector validates against
 ```json
 {
   "vector_id": "<topic>/<stable-id>",
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "1.1.0",
   "owner_document": "core | comms | control | social | workspace",
   "spec_version": "heterodyne/0.5.0",
   "profile": "<optional immutable profile id>",
@@ -41,6 +41,37 @@ Ten transport-independent credential-continuity draft evaluations explicitly set
 Historical released vectors and the signed behavior they describe MUST NOT be
 rewritten. Unreleased 0.x vectors may be changed or retired in place under an
 accepted specification change.
+
+### Explicit checker applicability
+
+A vector may carry an optional top-level `conformance_checks` array. It is
+non-wire checker evidence: it neither changes nor appears within the protocol
+input or expected output. The current 498-vector corpus uses schema 1.1.0 but
+does not yet declare any checks.
+
+Each declaration is a closed object with this shape:
+
+```json
+{
+  "profile": "core-signed-event-v1",
+  "event_pointer": "/input/event",
+  "nip01_raw_pointer": "/input/nip01_raw",
+  "context_pointer": "/input/vector_context",
+  "expected_terminal_stage": "signature"
+}
+```
+
+The event and raw pointers are required RFC 6901 pointers. The context pointer
+is optional for checks terminating before persona resolution and required when
+the ordered checker reaches persona resolution or a later stage. The terminal
+stage is exactly one of `event_structure`, `nip01_raw`, `identifier`,
+`signature`, `persona_resolution`, `version_stamp`, `kel_head`,
+`epoch_authority`, `subtype_nid`, or `accept`. A checker runs only explicitly
+declared profiles and never infers applicability from the vector topic,
+description, object shape, or decision trace. Unknown profiles or members,
+malformed pointers, duplicate declarations, and a missing event target are
+failures. A missing raw target is reported by the independent raw-binding gate
+so existing exact-byte debt can be ratcheted.
 
 Family layering follows this DAG:
 

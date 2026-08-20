@@ -1798,10 +1798,27 @@ Wire conformance is byte-exact throughout the family: semantically similar
 encodings do not conform, and normative vectors compare canonical bytes and
 exact verdicts. Each vector carries an ID, a schema version, the owner
 document that owns the requirement, the family version, an optional profile,
-qualified spec references, a direction, an input, and an expected output. Time-sensitive vectors use a simulated clock and production
-vectors pin randomness. During 0.x, an accepted specification change MAY
-change or retire an unreleased current vector in place. Released artifact sets
-preserve their exact historical bytes. Vector-ID immutability begins at 1.0.
+qualified spec references, a direction, an input, and an expected output.
+Time-sensitive vectors use a simulated clock and production vectors pin
+randomness. During 0.x, an accepted specification change MAY change or retire
+an unreleased current vector in place. Released artifact sets preserve their
+exact historical bytes. Vector-ID immutability begins at 1.0.
+
+A vector MAY carry a top-level `conformance_checks` array of explicit,
+non-wire checker evidence. This metadata does not alter the vector's protocol
+input or expected output. A checker MUST execute `core-signed-event-v1` only
+when that exact profile is declared and MUST NOT infer applicability from a
+topic, description, object shape, or decision trace. Each declaration is a
+closed object containing that profile, required RFC 6901 `event_pointer` and
+`nip01_raw_pointer` members, an optional RFC 6901 `context_pointer`, and one
+`expected_terminal_stage`: `event_structure`, `nip01_raw`, `identifier`,
+`signature`, `persona_resolution`, `version_stamp`, `kel_head`,
+`epoch_authority`, `subtype_nid`, or `accept`. The context pointer is required
+when execution reaches `persona_resolution` or a later stage. Unknown
+profiles or members, malformed pointers, duplicate declarations, and a
+missing event target are conformance failures. A missing raw target is checker
+debt rather than an invalid declaration so that the corpus can ratchet it
+explicitly.
 
 When this document declares a behavior conformant, an implementation MUST
 produce or accept it as specified. NIP-01 events have only the canonical

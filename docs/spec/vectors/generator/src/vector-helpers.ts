@@ -2,7 +2,7 @@ import type { Fixtures } from "./fixtures.js";
 import type { AuthoredVector, Vector } from "./types.js";
 import { vectorMetadata } from "./vector-metadata.js";
 
-export const SCHEMA_VERSION = "1.0.0";
+export const SCHEMA_VERSION = "1.1.0";
 export const AUX_RAND = "00".repeat(32);
 
 export type VectorFactory = (fixtures: Fixtures) => Promise<AuthoredVector> | AuthoredVector;
@@ -16,7 +16,7 @@ type VectorContextMetadata = {
 
 export type VectorBody = Pick<
   Vector,
-  "vector_id" | "spec_refs" | "description" | "input" | "expected_output"
+  "vector_id" | "conformance_checks" | "spec_refs" | "description" | "input" | "expected_output"
 > & VectorContextMetadata;
 
 type DirectionalVectorBody = VectorBody & { direction: Vector["direction"] };

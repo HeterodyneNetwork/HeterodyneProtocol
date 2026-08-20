@@ -113,6 +113,30 @@ describe("vector schema", () => {
     expected_output: { verdict: "accept" },
   });
 
+  it("accepts only the closed Core signed-event checker declaration", () => {
+    const check = {
+      profile: "core-signed-event-v1",
+      event_pointer: "/input/event",
+      nip01_raw_pointer: "/input/nip01_raw",
+      expected_terminal_stage: "signature",
+    };
+    expect(() => validateVectorOrThrow({
+      ...valid("core"), vector_schema_version: "1.1.0", conformance_checks: [check],
+    })).not.toThrow();
+    for (const invalid of [
+      { ...check, profile: "generator-v1" },
+      { ...check, event_pointer: "input/event" },
+      { ...check, inferred: true },
+    ]) {
+      expect(() => validateVectorOrThrow({
+        ...valid("core"), vector_schema_version: "1.1.0", conformance_checks: [invalid],
+      })).toThrow();
+    }
+    expect(() => validateVectorOrThrow({
+      ...valid("core"), vector_schema_version: "1.1.0", conformance_checks: [check, check],
+    })).toThrow();
+  });
+
   it("accepts the qualified family vector envelope", () => {
     expect(() =>
       validateVectorOrThrow({

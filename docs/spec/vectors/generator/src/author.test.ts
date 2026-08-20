@@ -33,6 +33,12 @@ describe("author mode", () => {
     const result = await verifyVectorTree(outputDir);
     expect(result.validFiles).toBe(written.length);
     expect(result.errors).toEqual([]);
+    expect(written).toHaveLength(498);
+    for (const path of written) {
+      const vector = JSON.parse(await readFile(join(outputDir, ...path.split("/")), "utf8"));
+      expect(vector.vector_schema_version).toBe("1.1.0");
+      expect(vector).not.toHaveProperty("conformance_checks");
+    }
     // The corpus authors exactly one current form per behavior: no archived
     // monolith consume twin, and no `-v050` produce twin derived from it.
     expect(written.filter((path) => /-v050\.json$/.test(path))).toEqual([]);
