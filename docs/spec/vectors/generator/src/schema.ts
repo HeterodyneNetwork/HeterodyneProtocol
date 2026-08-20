@@ -52,7 +52,6 @@ export const VECTOR_SCHEMA = {
     {
       if: {
         properties: {
-          direction: { const: "consume" },
           expected_output: {
             type: "object",
             properties: {
@@ -61,7 +60,7 @@ export const VECTOR_SCHEMA = {
             required: ["verdict"],
           },
         },
-        required: ["direction", "expected_output"],
+        required: ["expected_output"],
       },
       then: {
         properties: {

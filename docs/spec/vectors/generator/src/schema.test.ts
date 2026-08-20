@@ -205,25 +205,14 @@ describe("vector schema", () => {
     ).toThrow();
   });
 
-  it("requires reason_code on consume rejects", () => {
-    expect(() =>
-      validateVectorOrThrow({
-        vector_id: "verification/bad-sig-rejects",
-        vector_schema_version: "1.0.0",
-        owner_document: "core",
-        owner_version: "heterodyne/0.5.0",
-        dependency_versions: {},
-        profile_revision: 1,
-        spec_refs: ["heterodyne:0.5.0#core-verification"],
-        description: "bad signature rejects",
-        direction: "consume",
-        input: { event: {} },
-        expected_output: {
-          verdict: "reject",
-        },
-      }),
-    ).toThrow(/reason_code/);
-  });
+  it.each(["consume", "produce", "round-trip"] as const)(
+    "requires reason_code on %s rejects",
+    (direction) => expect(() => validateVectorOrThrow({
+      ...valid("core"),
+      direction,
+      expected_output: { verdict: "reject" },
+    })).toThrow(/reason_code/),
+  );
 });
 
 describe("credential-continuity schema registry", () => {

@@ -49,6 +49,6 @@
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "compromise_rotation"
+    "reason_code": "compromise_rotation_breadcrumb_forbidden"
   }
 }

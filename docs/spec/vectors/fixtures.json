@@ -1,7 +1,7 @@
 {
   "vector_schema_version": "1.0.0",
   "spec_version": "heterodyne/0.5.0",
-  "registry_sha256": "34ceba7979cd2dda1bf7443588cc035ef0939b2163e6db367da545028c4694d6",
+  "registry_sha256": "e3c93355e1ddf2696b5d7eca3cf4662b80274afdbbfdebe361cfbdbaf49db1b5",
   "test_epoch": 1767225600,
   "pinned_randomness": {
     "schnorr_aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",

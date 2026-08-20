@@ -136,6 +136,23 @@ describe("canonical family documentation", () => {
     expect(core).toMatch(/light-only Control principal[\s\S]*not a Core device/i);
   });
 
+  it("binds independent-checker refusal codes at their owning Core sections", () => {
+    const core = read("docs/spec/heterodyne-core.md");
+    const rotation = core.slice(
+      core.indexOf('<a id="core-kel-rotation"></a>'),
+      core.indexOf('<a id="core-kel-verification"></a>'),
+    );
+    const verification = core.slice(
+      core.indexOf('<a id="core-verification"></a>'),
+      core.indexOf('<a id="core-retired-key-observation"></a>'),
+    );
+
+    expect(rotation).toContain("successor_persona_mismatch");
+    expect(rotation).toContain("retiring_key_nip05_invalid");
+    expect(rotation).toContain("compromise_rotation_breadcrumb_forbidden");
+    expect(verification).toContain("nip01_raw_mismatch");
+  });
+
   it("closes the follow-up hardening documentation and archive rules", () => {
     const issues = lintFamilyDocs(repositoryRoot);
     expect(issues.filter(({ code }) => [

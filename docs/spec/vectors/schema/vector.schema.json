@@ -75,9 +75,6 @@
     {
       "if": {
         "properties": {
-          "direction": {
-            "const": "consume"
-          },
           "expected_output": {
             "type": "object",
             "properties": {
@@ -91,7 +88,6 @@
           }
         },
         "required": [
-          "direction",
           "expected_output"
         ]
       },
@@ -111,6 +107,10 @@
                 "type": "string",
                 "enum": [
                   "bad_signature",
+                  "nip01_raw_mismatch",
+                  "successor_persona_mismatch",
+                  "retiring_key_nip05_invalid",
+                  "compromise_rotation_breadcrumb_forbidden",
                   "delegation_mismatch",
                   "revoked_key_post_revoked_at",
                   "expired_delegation",

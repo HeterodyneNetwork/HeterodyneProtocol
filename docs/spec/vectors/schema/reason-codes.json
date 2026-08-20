@@ -11,6 +11,46 @@
       ]
     },
     {
+      "code": "nip01_raw_mismatch",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Missing or non-byte-equal raw NIP-01 input.",
+      "spec_refs": [
+        "heterodyne:0.5.0#core-verification"
+      ]
+    },
+    {
+      "code": "successor_persona_mismatch",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "A rotation breadcrumb names a successor outside the accepted rotation.",
+      "spec_refs": [
+        "heterodyne:0.5.0#core-kel-rotation"
+      ]
+    },
+    {
+      "code": "retiring_key_nip05_invalid",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "A retiring profile carries a NIP-05 identifier already repointed to the successor.",
+      "spec_refs": [
+        "heterodyne:0.5.0#core-kel-rotation"
+      ]
+    },
+    {
+      "code": "compromise_rotation_breadcrumb_forbidden",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "A compromise-driven rotation attempts to produce a v1 breadcrumb.",
+      "spec_refs": [
+        "heterodyne:0.5.0#core-kel-rotation"
+      ]
+    },
+    {
       "code": "delegation_mismatch",
       "owner": "core",
       "status": "draft",

@@ -560,9 +560,10 @@ Both events MUST omit `kel_head` and every Heterodyne wire marker. Their
 `pubkey` fields remain the retiring key's 32-byte lowercase hexadecimal Nostr
 public key; only human-readable fields use bech32 `npub`. The retiring
 profile MUST NOT carry a NIP-05 identifier that has already been repointed to
-the successor, because it would no longer validate for the signing key. The
-successor's `kind:0` SHOULD identify the predecessor, and a persona-controlled
-NIP-05 identifier SHOULD be repointed to the successor.
+the successor, because it would no longer validate for the signing key; an
+attempt MUST be rejected with `retiring_key_nip05_invalid`. The successor's
+`kind:0` SHOULD identify the predecessor, and a persona-controlled NIP-05
+identifier SHOULD be repointed to the successor.
 
 The v1 profile classification exists only inside the producer's trusted
 rotation workflow. Before producing either event, the implementation MUST bind
@@ -577,9 +578,11 @@ these inputs as one candidate:
 
 The cold root MUST be identical across the prior and successor state, and both
 candidate events MUST be signed by the retiring key. A compromise-driven
-rotation, an unrelated successor, a candidate substitution, publication
-before KEL acceptance, or publication after retiring-secret destruction MUST
-produce no v1 breadcrumb.
+rotation MUST produce no v1 breadcrumb and MUST be rejected with
+`compromise_rotation_breadcrumb_forbidden`. An unrelated successor MUST be
+rejected with `successor_persona_mismatch`. A candidate substitution,
+publication before KEL acceptance, or publication after retiring-secret
+destruction MUST produce no v1 breadcrumb.
 
 The producer SHOULD attempt the exact pair on every selected write relay after
 KEL acceptance and record per-relay outcomes. A partial relay failure does not
@@ -1292,6 +1295,10 @@ implementation MUST:
 7. return `accept`, `accept_provisional`, `equivocation_flagged`, or a closed
    registry reason code.
 
+Where exact `nip01_raw` applies, a missing raw input or one that is not
+byte-equal to the signed NIP-01 input MUST be rejected with
+`nip01_raw_mismatch`.
+
 An object whose identity inputs are provisional MUST NOT be reported final.
 Failed verification MUST be exposed as a rejection or explicit security
 warning; it MUST NOT silently become trusted content.
@@ -1624,7 +1631,7 @@ Every capability advertisement uses this Core-parsable bootstrap object:
 {
   "descriptor": "heterodyne-capabilities-v1",
   "spec_version": "heterodyne/0.5.0",
-  "registry_sha256": "34ceba7979cd2dda1bf7443588cc035ef0939b2163e6db367da545028c4694d6",
+  "registry_sha256": "e3c93355e1ddf2696b5d7eca3cf4662b80274afdbbfdebe361cfbdbaf49db1b5",
   "implementation_role": "public-reader",
   "supported_documents": [
     "core"

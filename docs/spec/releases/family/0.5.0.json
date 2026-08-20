@@ -4,7 +4,7 @@
   "status": "unreleased",
   "registry": {
     "path": "docs/spec/registry/manifest.json",
-    "sha256": "26f7c7c92d521a4b04002de7293a56d8add93a1d96381f1c75d56facc839bd1b"
+    "sha256": "dc85e785bb0efe50c57f11ccecb68ccb816f4107cef11c28a970731f682d0172"
   },
   "artifacts": [
     {
@@ -25,7 +25,7 @@
     {
       "path": "docs/spec/heterodyne-core.md",
       "role": "specification",
-      "sha256": "f5316b1269e140434ab5a400c16ddbc5ad9a39a9f23fb9afaee40a6d23634e8e"
+      "sha256": "87a2ea5650710ac903da0579be5f3832c327711b9cee8d0f806f4df9dd732f53"
     },
     {
       "path": "docs/spec/heterodyne-social.md",
@@ -50,7 +50,7 @@
     {
       "path": "docs/spec/registry/manifest.json",
       "role": "registry",
-      "sha256": "26f7c7c92d521a4b04002de7293a56d8add93a1d96381f1c75d56facc839bd1b"
+      "sha256": "dc85e785bb0efe50c57f11ccecb68ccb816f4107cef11c28a970731f682d0172"
     },
     {
       "path": "docs/spec/registry/objects.json",
@@ -65,7 +65,7 @@
     {
       "path": "docs/spec/registry/reason-codes.json",
       "role": "registry",
-      "sha256": "88f8223de32e4a15f995b6b2127b509fc6dc6164f916902e08dcaf769efe9304"
+      "sha256": "d77d6f9d3a96cacd2d02f3b1cf17c22a3e1b2d4464950b60ef0ac00f79a42a24"
     },
     {
       "path": "docs/spec/registry/registry.schema.json",
@@ -695,7 +695,7 @@
     {
       "path": "docs/spec/vectors/breadcrumbs/002-compromise-rotation-not-produced.json",
       "role": "vector",
-      "sha256": "d1897f14865baaa375f93ef139ef9d5c0efa4afc1b5eb9c8e2f87539c975f049"
+      "sha256": "5a9162531516aa808ffd24216e2df2567f7c06501563af1e0f145b3b48274b78"
     },
     {
       "path": "docs/spec/vectors/breadcrumbs/003-repointed-nip05-rejected.json",
@@ -2495,7 +2495,7 @@
     {
       "path": "docs/spec/vectors/schema/vector.schema.json",
       "role": "schema",
-      "sha256": "d2ce39a9070552e2f1429ca69da90b7a701fab7b538fa8ba69fb2c1eb259edea"
+      "sha256": "13e81366324e903cda99bdf9d83a4720c8c76c8a644c444b2be3acc300724cad"
     },
     {
       "path": "docs/spec/vectors/social-recovery/002-three-tier-caching.json",
@@ -2650,7 +2650,7 @@
     {
       "path": "docs/spec/vectors/versioning/003-capabilities-roundtrip.json",
       "role": "vector",
-      "sha256": "7495f2ae2cabbed4cbbc641a3579f428e0b9216955c4816fe98aa3f610dd14c1"
+      "sha256": "f1884bbb45485271bcd10de09db56e753833eff1338e3e03086350f43dba904d"
     },
     {
       "path": "docs/spec/vectors/versioning/004-unknown-room-kind-tolerance.json",
@@ -2670,7 +2670,7 @@
     {
       "path": "docs/spec/vectors/versioning/007-core-capability-bootstrap.json",
       "role": "vector",
-      "sha256": "7d67644d90dffc64ffc7ee7d132e27eb6a0a564956c59ab22334bf5480d8ee4c"
+      "sha256": "29bbc352f13a52c8a5d389d4c0793fbb4afad39e7b31a89abca064ca327fdefd"
     },
     {
       "path": "docs/spec/vectors/versioning/008-exact-family-version-negotiation.json",

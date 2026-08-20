@@ -300,6 +300,25 @@ describe("revisioned protocol registry", () => {
     ]));
   });
 
+  it("allocates independent-checker reasons at revision 13", () => {
+    expect(registry.manifest.revision).toBe(13);
+    const reasons = new Map(
+      registry.reason_codes.map((entry) => [entry.code, entry]),
+    );
+    for (const code of [
+      "nip01_raw_mismatch",
+      "successor_persona_mismatch",
+      "retiring_key_nip05_invalid",
+      "compromise_rotation_breadcrumb_forbidden",
+    ]) {
+      expect(reasons.get(code)).toMatchObject({
+        owner: "core",
+        status: "draft",
+        first_version: "heterodyne/0.5.0",
+      });
+    }
+  });
+
   it("commits the canonical digest of the current entry set", () => {
     expect(computeRegistryDigest(registry)).toMatch(/^[0-9a-f]{64}$/);
     expect(registry.manifest.entry_set_sha256).toBe(

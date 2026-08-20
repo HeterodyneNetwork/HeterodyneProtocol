@@ -5,6 +5,10 @@ Generated compatibility projection. The authoritative allocation container is `d
 | Code | Owner | Status | First version | Spec refs | Meaning |
 |---|---|---|---|---|---|
 | `bad_signature` | core | draft | `heterodyne/0.5.0` | heterodyne:0.5.0#core-conformance | Nostr event id or BIP-340 signature verification failed. |
+| `nip01_raw_mismatch` | core | draft | `heterodyne/0.5.0` | heterodyne:0.5.0#core-verification | Missing or non-byte-equal raw NIP-01 input. |
+| `successor_persona_mismatch` | core | draft | `heterodyne/0.5.0` | heterodyne:0.5.0#core-kel-rotation | A rotation breadcrumb names a successor outside the accepted rotation. |
+| `retiring_key_nip05_invalid` | core | draft | `heterodyne/0.5.0` | heterodyne:0.5.0#core-kel-rotation | A retiring profile carries a NIP-05 identifier already repointed to the successor. |
+| `compromise_rotation_breadcrumb_forbidden` | core | draft | `heterodyne/0.5.0` | heterodyne:0.5.0#core-kel-rotation | A compromise-driven rotation attempts to produce a v1 breadcrumb. |
 | `delegation_mismatch` | core | draft | `heterodyne/0.5.0` | heterodyne:0.5.0#core-nid-delegation | The presented publishing key, subject, role, or delegation identifier does not match the active Core delegation. |
 | `revoked_key_post_revoked_at` | core | draft | `heterodyne/0.5.0` | heterodyne:0.5.0#core-conformance | An event signed by a revoked epoch key was created after revoked_at. |
 | `expired_delegation` | core | draft | `heterodyne/0.5.0` | heterodyne:0.5.0#core-conformance | The verifier clock is after the delegation valid_until bound. |

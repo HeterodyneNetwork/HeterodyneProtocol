@@ -236,7 +236,10 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
         candidate_event: breadcrumbProfile,
         publication_relays: breadcrumbWriteRelays,
       },
-      expected_output: { verdict: "reject", reason_code: "compromise_rotation" },
+      expected_output: {
+        verdict: "reject",
+        reason_code: "compromise_rotation_breadcrumb_forbidden",
+      },
     },
     {
       path: "breadcrumbs/003-repointed-nip05-rejected.json",
