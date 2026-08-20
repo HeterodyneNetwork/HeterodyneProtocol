@@ -106,8 +106,11 @@ by the family manifest.
 
 ## Explicit checker applicability
 
-The vector schema gains an optional closed `conformance_checks` array. An
-entry has exactly these members:
+The vector schema advances from `1.0.0` to `1.1.0` and gains an optional
+closed `conformance_checks` array. The minor version reflects a
+backward-compatible optional envelope member; every unreleased current vector
+is regenerated with the new schema version. An entry has exactly these
+members:
 
 ```json
 {
