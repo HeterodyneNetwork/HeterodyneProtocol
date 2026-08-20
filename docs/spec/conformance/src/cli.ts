@@ -1,10 +1,14 @@
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
+  realpathSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import type { Dirent } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { ALL_GATES, type GateId } from "./gates/index.js";
 import {
@@ -61,10 +65,111 @@ function writeProjection(repositoryRoot: string, path: string, contents: string)
   }
 }
 
+function canonicalRepositoryRoot(repositoryRoot: string): string | undefined {
+  try {
+    const canonicalRoot = realpathSync(repositoryRoot);
+    return lstatSync(canonicalRoot).isDirectory()
+      && existsSync(join(canonicalRoot, FAMILY_MANIFEST))
+      ? canonicalRoot
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function firstUnsafeProjectionComponent(
+  repositoryRoot: string,
+  repositoryPath: string,
+): string | undefined {
+  const segments = repositoryPath.split("/");
+  if (
+    segments.some((segment) => segment.length === 0 || segment === "." || segment === "..")
+    || resolve(repositoryRoot, repositoryPath) !== join(repositoryRoot, repositoryPath)
+  ) {
+    return repositoryPath;
+  }
+
+  let absolutePath = repositoryRoot;
+  let relativePath = "";
+  for (const [index, segment] of segments.entries()) {
+    absolutePath = join(absolutePath, segment);
+    relativePath = relativePath.length === 0 ? segment : `${relativePath}/${segment}`;
+    try {
+      const entry = lstatSync(absolutePath);
+      if (
+        entry.isSymbolicLink()
+        || (index < segments.length - 1 && !entry.isDirectory())
+        || (index === segments.length - 1 && !entry.isFile())
+      ) {
+        return relativePath;
+      }
+    } catch (error) {
+      const code = error !== null && typeof error === "object" && "code" in error
+        ? error.code
+        : undefined;
+      return code === "ENOENT" ? undefined : relativePath;
+    }
+  }
+  return undefined;
+}
+
+function authoringPreflightMessages(
+  repositoryRoot: string,
+  paths: readonly string[],
+): string[] {
+  const unsafe = new Set(paths.flatMap((path) => {
+    const component = firstUnsafeProjectionComponent(repositoryRoot, path);
+    return component === undefined ? [] : [component];
+  }));
+  return [...unsafe]
+    .sort()
+    .map((path) => `authoring failure :: unsafe projection path :: ${path}`);
+}
+
+function baselineDirectoryMessages(repositoryRoot: string): string[] {
+  const directoryPath = `${CONFORMANCE_DIRECTORY}/baselines`;
+  let entries: Dirent[];
+  try {
+    entries = readdirSync(join(repositoryRoot, directoryPath), { withFileTypes: true })
+      .sort((left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0);
+  } catch (error) {
+    const code = error !== null && typeof error === "object" && "code" in error
+      ? error.code
+      : undefined;
+    return code === "ENOENT"
+      ? []
+      : [`baseline directory unreadable :: ${directoryPath}`];
+  }
+  const expectedNames = new Set(BASELINE_FILES.map(({ path }) => basename(path)));
+  return entries.flatMap((entry) => {
+    const path = `${directoryPath}/${entry.name}`;
+    if (!expectedNames.has(entry.name)) {
+      return [`baseline directory unexpected entry :: ${path}`];
+    }
+    return entry.isFile() ? [] : [`baseline directory invalid entry :: ${path}`];
+  });
+}
+
 export function authorBaselines(repositoryRoot: string): CommandResult {
   const run = runConformance(repositoryRoot);
-  if (run.issues.length > 0) {
-    return failed(corpusIssueMessages(run));
+  const canonicalRoot = canonicalRepositoryRoot(repositoryRoot);
+  if (canonicalRoot === undefined) {
+    return failed([
+      ...corpusIssueMessages(run),
+      "authoring failure :: repository root is not canonical",
+    ]);
+  }
+  const pathMessages = authoringPreflightMessages(
+    canonicalRoot,
+    BASELINE_FILES.map(({ path }) => path),
+  );
+  const preflightMessages = [
+    ...corpusIssueMessages(run),
+    ...pathMessages,
+    ...(pathMessages.length > 0 ? [] : baselineDirectoryMessages(canonicalRoot)),
+  ];
+  if (preflightMessages.length > 0) {
+    return failed(preflightMessages);
   }
 
   const messages: string[] = [];
@@ -75,7 +180,7 @@ export function authorBaselines(repositoryRoot: string): CommandResult {
       continue;
     }
     const error = writeProjection(
-      repositoryRoot,
+      canonicalRoot,
       baselineFile.path,
       serializeBaseline(result.id, result.failures),
     );
@@ -88,13 +193,24 @@ export function authorBaselines(repositoryRoot: string): CommandResult {
 
 export function authorReport(repositoryRoot: string): CommandResult {
   const run = runConformance(repositoryRoot);
-  if (run.issues.length > 0) {
-    return failed(corpusIssueMessages(run));
+  const canonicalRoot = canonicalRepositoryRoot(repositoryRoot);
+  if (canonicalRoot === undefined) {
+    return failed([
+      ...corpusIssueMessages(run),
+      "authoring failure :: repository root is not canonical",
+    ]);
+  }
+  const preflightMessages = [
+    ...corpusIssueMessages(run),
+    ...authoringPreflightMessages(canonicalRoot, [REPORT_PATH, DEBT_PATH]),
+  ];
+  if (preflightMessages.length > 0) {
+    return failed(preflightMessages);
   }
 
   const messages = [
-    writeProjection(repositoryRoot, REPORT_PATH, renderReportJson(run)),
-    writeProjection(repositoryRoot, DEBT_PATH, renderDebtMarkdown(run)),
+    writeProjection(canonicalRoot, REPORT_PATH, renderReportJson(run)),
+    writeProjection(canonicalRoot, DEBT_PATH, renderDebtMarkdown(run)),
   ].filter((message): message is string => message !== undefined);
   return messages.length === 0 ? { exitCode: 0, messages } : failed(messages);
 }
@@ -107,13 +223,109 @@ function readProjection(repositoryRoot: string, path: string): string | undefine
   }
 }
 
-export function checkRepository(repositoryRoot: string): CommandResult {
-  const run = runConformance(repositoryRoot);
-  if (run.issues.length > 0) {
-    return failed(corpusIssueMessages(run));
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  return Object.keys(value).sort().join(",") === [...keys].sort().join(",");
+}
+
+function isSortedUniqueStrings(value: unknown): value is string[] {
+  return Array.isArray(value)
+    && value.every((item) => typeof item === "string")
+    && value.every((item, index) => index === 0 || value[index - 1]! < item);
+}
+
+function isReportProjection(value: unknown): boolean {
+  if (
+    !isRecord(value)
+    || !hasExactKeys(value, [
+      "family_version",
+      "registry_revision",
+      "registry_digest",
+      "gates",
+      "totals",
+    ])
+    || typeof value.family_version !== "string"
+    || value.family_version.length === 0
+    || !Number.isSafeInteger(value.registry_revision)
+    || (value.registry_revision as number) < 0
+    || typeof value.registry_digest !== "string"
+    || !/^[0-9a-f]{64}$/u.test(value.registry_digest)
+    || !Array.isArray(value.gates)
+    || value.gates.length !== BASELINE_FILES.length
+  ) {
+    return false;
   }
 
+  let failureTotal = 0;
+  let gatesWithFailures = 0;
+  for (const [index, gate] of value.gates.entries()) {
+    const expected = BASELINE_FILES[index]!;
+    if (
+      !isRecord(gate)
+      || !hasExactKeys(gate, ["gate", "name", "count", "failures"])
+      || gate.gate !== expected.gate
+      || gate.name !== expected.name
+      || !Number.isSafeInteger(gate.count)
+      || (gate.count as number) < 0
+      || !isSortedUniqueStrings(gate.failures)
+      || gate.count !== gate.failures.length
+    ) {
+      return false;
+    }
+    failureTotal += gate.failures.length;
+    gatesWithFailures += gate.failures.length === 0 ? 0 : 1;
+  }
+
+  return isRecord(value.totals)
+    && hasExactKeys(value.totals, ["gates", "gates_with_failures", "failures"])
+    && value.totals.gates === BASELINE_FILES.length
+    && value.totals.gates_with_failures === gatesWithFailures
+    && value.totals.failures === failureTotal;
+}
+
+function reportProjectionMessages(source: string, path: string): string[] {
+  let value: unknown;
+  try {
+    value = JSON.parse(source);
+  } catch {
+    return [`projection invalid :: ${path} :: must be valid JSON`];
+  }
   const messages: string[] = [];
+  if (!isReportProjection(value)) {
+    messages.push(`projection invalid :: ${path} :: invalid report shape`);
+  }
+  if (source !== `${JSON.stringify(value, null, 2)}\n`) {
+    messages.push(`projection is not canonical :: ${path}`);
+  }
+  return messages;
+}
+
+function debtProjectionMessages(source: string, path: string): string[] {
+  const messages: string[] = [];
+  if (!source.endsWith("\n") || source.endsWith("\n\n")) {
+    messages.push(`projection is not canonical :: ${path}`);
+  }
+  const gates = source
+    .split("\n")
+    .flatMap((line) => {
+      const match = /^\| (G(?:[1-9]|1[01])) \|/u.exec(line);
+      return match === null ? [] : [match[1]!];
+    });
+  if (gates.join(",") !== BASELINE_FILES.map(({ gate }) => gate).join(",")) {
+    messages.push(`projection invalid :: ${path} :: must contain exactly one G1-G11 row`);
+  }
+  return messages;
+}
+
+export function checkRepository(repositoryRoot: string): CommandResult {
+  const run = runConformance(repositoryRoot);
+  const messages = [
+    ...corpusIssueMessages(run),
+    ...baselineDirectoryMessages(repositoryRoot),
+  ];
   for (const baselineFile of BASELINE_FILES) {
     const source = readProjection(repositoryRoot, baselineFile.path);
     if (source === undefined) {
@@ -129,7 +341,6 @@ export function checkRepository(repositoryRoot: string): CommandResult {
         messages.push(
           `${baselineFile.gate} ${baselineFile.name} baseline is not canonical :: ${baselineFile.path}`,
         );
-        continue;
       }
     } catch (error) {
       const detail = error instanceof Error ? error.message : "invalid baseline";
@@ -139,7 +350,9 @@ export function checkRepository(repositoryRoot: string): CommandResult {
 
     const result = run.results.find(({ id }) => id === baselineFile.gate);
     if (result === undefined) {
-      messages.push(`${baselineFile.gate} ${baselineFile.name} result missing`);
+      if (run.issues.length === 0) {
+        messages.push(`${baselineFile.gate} ${baselineFile.name} result missing`);
+      }
       continue;
     }
     const comparison = compareBaseline(result.failures, failures);
@@ -149,13 +362,23 @@ export function checkRepository(repositoryRoot: string): CommandResult {
       `${result.id} ${result.name} stale debt :: ${failure}`));
   }
 
-  const expectedReport = renderReportJson(run);
-  if (readProjection(repositoryRoot, REPORT_PATH) !== expectedReport) {
-    messages.push(`projection drift :: ${REPORT_PATH}`);
+  const reportSource = readProjection(repositoryRoot, REPORT_PATH);
+  if (reportSource === undefined) {
+    messages.push(`projection missing :: ${REPORT_PATH}`);
+  } else {
+    messages.push(...reportProjectionMessages(reportSource, REPORT_PATH));
+    if (run.results.length > 0 && reportSource !== renderReportJson(run)) {
+      messages.push(`projection drift :: ${REPORT_PATH}`);
+    }
   }
-  const expectedDebt = renderDebtMarkdown(run);
-  if (readProjection(repositoryRoot, DEBT_PATH) !== expectedDebt) {
-    messages.push(`projection drift :: ${DEBT_PATH}`);
+  const debtSource = readProjection(repositoryRoot, DEBT_PATH);
+  if (debtSource === undefined) {
+    messages.push(`projection missing :: ${DEBT_PATH}`);
+  } else {
+    messages.push(...debtProjectionMessages(debtSource, DEBT_PATH));
+    if (run.results.length > 0 && debtSource !== renderDebtMarkdown(run)) {
+      messages.push(`projection drift :: ${DEBT_PATH}`);
+    }
   }
 
   return messages.length === 0 ? { exitCode: 0, messages } : failed(messages);
@@ -165,7 +388,7 @@ function findRepositoryRoot(start: string): string | undefined {
   let candidate = resolve(start);
   while (true) {
     if (existsSync(join(candidate, FAMILY_MANIFEST))) {
-      return candidate;
+      return canonicalRepositoryRoot(candidate);
     }
     const parent = dirname(candidate);
     if (parent === candidate) {

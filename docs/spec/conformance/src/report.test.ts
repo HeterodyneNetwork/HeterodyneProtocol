@@ -79,4 +79,25 @@ describe("report projections", () => {
     expect(rendered.endsWith("\n")).toBe(true);
     expect(rendered.endsWith("\n\n")).toBe(false);
   });
+
+  it("encodes pipe, CR, and LF content without injecting Markdown table structure", () => {
+    const run = fixtureRun();
+    run.results[0] = {
+      id: "G1",
+      name: "anchor|resolution\r\nname",
+      failures: ["key|pipe", "line\rbreak", "line\nbreak"],
+    };
+
+    const rendered = renderDebtMarkdown(run);
+    const gateRows = rendered.split("\n").filter((line) => /^\| G(?:[1-9]|1[01]) \|/u.test(line));
+
+    expect(gateRows).toHaveLength(11);
+    expect(gateRows[0]).toBe(
+      "| G1 | anchor&#124;resolution&#13;&#10;name | 3 | "
+      + "<code>key&#124;pipe</code><br><code>line&#13;break</code>"
+      + "<br><code>line&#10;break</code> |",
+    );
+    expect(gateRows.every((row) => row.split("|").length === 6)).toBe(true);
+    expect(rendered).not.toContain("\r");
+  });
 });

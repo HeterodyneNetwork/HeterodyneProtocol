@@ -44,13 +44,16 @@ export function renderReportJson(run: ConformanceRun): string {
   return `${JSON.stringify(buildReport(run), null, 2)}\n`;
 }
 
-function escapeHtml(value: string): string {
+function encodeTableCell(value: string): string {
   return value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+    .replaceAll("'", "&#39;")
+    .replaceAll("|", "&#124;")
+    .replaceAll("\r", "&#13;")
+    .replaceAll("\n", "&#10;");
 }
 
 export function renderDebtMarkdown(run: ConformanceRun): string {
@@ -58,8 +61,8 @@ export function renderDebtMarkdown(run: ConformanceRun): string {
   const rows = report.gates.map(({ gate, name, count, failures }) => {
     const keys = failures.length === 0
       ? "—"
-      : failures.map((failure) => `<code>${escapeHtml(failure)}</code>`).join("<br>");
-    return `| ${gate} | ${name} | ${count} | ${keys} |`;
+      : failures.map((failure) => `<code>${encodeTableCell(failure)}</code>`).join("<br>");
+    return `| ${encodeTableCell(gate)} | ${encodeTableCell(name)} | ${count} | ${keys} |`;
   });
   const gateWord = report.totals.gates_with_failures === 1 ? "gate" : "gates";
   return [
