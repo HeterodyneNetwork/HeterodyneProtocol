@@ -102,6 +102,7 @@ describe("loadCorpus", () => {
       "invalid-document-shape",
       "invalid-document-shape",
       "invalid-document-shape",
+      "invalid-document-shape",
       "invalid-json",
     ]);
   });
@@ -159,6 +160,23 @@ describe("loadCorpus", () => {
     writeJson(root, familyManifestPath, manifest);
 
     expect(loadCorpus(root).issues.map(({ code }) => code)).toEqual(["duplicate-vector-id"]);
+  });
+
+  it("rejects a normative vector declared as normative support", () => {
+    const root = repository();
+    const manifest = readTestManifest(root);
+    const artifacts = manifest.artifacts as Array<Record<string, unknown>>;
+    const vector = artifacts.find((artifact) => artifact.path === vectorPath);
+    if (vector === undefined) {
+      throw new Error("test vector is absent from synthetic manifest");
+    }
+    vector.role = "normative-support";
+    writeJson(root, familyManifestPath, manifest);
+
+    expect(loadCorpus(root).issues.map(({ code, path }) => ({ code, path }))).toEqual([
+      { code: "invalid-document-shape", path: vectorPath },
+    ]);
+    expect(loadCorpus(root).corpus).toBeUndefined();
   });
 
   it("reports duplicate registry entries", () => {

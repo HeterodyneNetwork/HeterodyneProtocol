@@ -127,6 +127,16 @@ function shapeIssue(issues: CorpusIssue[], path: string, message: string): void 
   issues.push({ code: "invalid-document-shape", path, message });
 }
 
+function isNormativeVectorPath(path: string): boolean {
+  return path.startsWith("docs/spec/vectors/")
+    && path.endsWith(".json")
+    && path !== "docs/spec/vectors/fixtures.json"
+    && path !== "docs/spec/vectors/manifest.json"
+    && !path.startsWith("docs/spec/vectors/coverage/")
+    && !path.startsWith("docs/spec/vectors/generator/")
+    && !path.startsWith("docs/spec/vectors/schema/");
+}
+
 function readText(
   repositoryRoot: string,
   path: string,
@@ -226,6 +236,9 @@ function parseFamilyManifest(value: unknown, issues: CorpusIssue[]): FamilyManif
     }
     if (!artifactRoles.has(artifact.role)) {
       shapeIssue(issues, artifact.path, `unknown artifact role: ${artifact.role}`);
+    }
+    if (isNormativeVectorPath(artifact.path) && artifact.role !== "vector") {
+      shapeIssue(issues, artifact.path, "normative vector artifact role must be vector");
     }
     if (typeof artifact.sha256 !== "string" || !sha256Pattern.test(artifact.sha256)) {
       shapeIssue(issues, artifact.path, "artifact sha256 must be lowercase SHA-256 hex");
