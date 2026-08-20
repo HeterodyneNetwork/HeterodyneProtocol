@@ -15,6 +15,16 @@ explicit release approval.
 family map, and the single registry pin is
 [`docs/spec/registry/manifest.json`](docs/spec/registry/manifest.json).
 
+### Proposed independent conformance CI
+
+- [ADR-045](docs/adr/2026-08-15-045-conformance-harness-independence.md)
+  proposes an independent, read-only conformance gate: Core verification is
+  anchored by the [Core specification](docs/spec/heterodyne-core.md), the
+  [registry manifest](docs/spec/registry/manifest.json), the
+  [vector schema](docs/spec/vectors/schema/vector.schema.json), and the
+  [conformance package](docs/spec/conformance/). These links identify the
+  implementation and normative owners without duplicating their rules.
+
 ### Accepted protocol stabilization
 
 - [ADR-046](docs/adr/archive/2026-08-17-046-stabilize-single-family-simplification.md)
