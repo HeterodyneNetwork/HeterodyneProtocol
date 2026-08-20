@@ -134,6 +134,7 @@ Generated from [manifest.json](manifest.json); do not edit by hand.
 | `verification/bad-signature-rejects` | core | — | `heterodyne:0.5.0#core-verification` |
 | `verification/delegation-mismatch-rejects` | core | — | `heterodyne:0.5.0#core-verification` |
 | `verification/revoked-key-rejects` | core | — | `heterodyne:0.5.0#core-verification` |
+| `verification/valid-core-signed-event-accepts` | core | — | `heterodyne:0.5.0#core-verification` |
 | `versioning/capabilities-roundtrip` | core | — | `heterodyne:0.5.0#core-versioning` |
 | `versioning/core-capability-bootstrap` | core | — | `heterodyne:0.5.0#core-versioning` |
 | `versioning/exact-family-version-negotiation` | core | — | `heterodyne:0.5.0#core-versioning` |

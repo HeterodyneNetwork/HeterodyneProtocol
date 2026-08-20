@@ -383,8 +383,17 @@ export async function buildV04Vectors(fixtures: Fixtures): Promise<AuthoredVecto
       vector_id: "node-advert/outer-sig-invalid-rejected",
       spec_refs: ["§7.0", "§14.3"],
       description: "A kind:31010 advertisement whose outer BIP-340 Nostr signature does not verify is rejected.",
-      input: { event: { ...currentAdvEvent, sig: "22".repeat(64) } },
+      input: {
+        event: { ...currentAdvEvent, sig: "22".repeat(64) },
+        nip01_raw: canonicalNip01(currentAdvEvent),
+      },
       expected_output: { verdict: "reject", reason_code: "bad_signature" },
+      conformance_checks: [{
+        profile: "core-signed-event-v1",
+        event_pointer: "/input/event",
+        nip01_raw_pointer: "/input/nip01_raw",
+        expected_terminal_stage: "signature",
+      }],
       decision_trace: ["validate_nip01_id", "verify_outer_bip340_signature"],
     }),
   );

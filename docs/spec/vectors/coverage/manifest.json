@@ -3689,6 +3689,14 @@
     ]
   },
   {
+    "vector_id": "verification/valid-core-signed-event-accepts",
+    "owner_document": "core",
+    "spec_version": "heterodyne/0.5.0",
+    "spec_refs": [
+      "heterodyne:0.5.0#core-verification"
+    ]
+  },
+  {
     "vector_id": "versioning/capabilities-roundtrip",
     "owner_document": "core",
     "spec_version": "heterodyne/0.5.0",

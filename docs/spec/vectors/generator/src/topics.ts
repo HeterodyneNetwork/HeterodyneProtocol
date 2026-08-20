@@ -1,5 +1,5 @@
 import { withKelHead } from "./kel.js";
-import { canonicalNip01, getPublicKey, signEvent } from "./nostr.js";
+import { canonicalNip01, getEventId, getPublicKey, signEvent } from "./nostr.js";
 import { buildKeriAuthorityWireVectors } from "./topics-keri-authority.js";
 import { buildKeriAuthorityBehavioralVectors } from "./topics-keri-authority-b.js";
 import { buildKeriAuthorityMaterializedVectors } from "./topics-keri-authority-c.js";
@@ -105,6 +105,14 @@ export async function buildAllVectors(fixtures: Fixtures): Promise<AuthoredVecto
   return vectors;
 }
 
+const BAD_SIGNATURE_UNSIGNED_EVENT = {
+  pubkey: "11".repeat(32),
+  created_at: 1767225600,
+  kind: 1,
+  tags: [] as string[][],
+  content: "tampered",
+};
+
 const VECTOR_FACTORIES: VectorFactory[] = [
   async (fixtures) => {
     const persona = fixtures.personas.alice;
@@ -170,21 +178,87 @@ const VECTOR_FACTORIES: VectorFactory[] = [
     description: "A Nostr event with a mismatched signature is rejected before delegation checks.",
     input: {
       event: {
-        id: "00".repeat(32),
-        pubkey: "11".repeat(32),
-        created_at: 1767225600,
-        kind: 1,
-        tags: [],
-        content: "tampered",
+        ...BAD_SIGNATURE_UNSIGNED_EVENT,
+        id: getEventId(BAD_SIGNATURE_UNSIGNED_EVENT),
         sig: "22".repeat(64),
       },
+      nip01_raw: canonicalNip01(BAD_SIGNATURE_UNSIGNED_EVENT),
     },
     expected_output: {
       verdict: "reject",
       reason_code: "bad_signature",
     },
+    conformance_checks: [{
+      profile: "core-signed-event-v1",
+      event_pointer: "/input/event",
+      nip01_raw_pointer: "/input/nip01_raw",
+      expected_terminal_stage: "signature",
+    }],
     decision_trace: ["validate_nip01_id", "verify_bip340_signature"],
   }),
+  async (fixtures) => {
+    const persona = fixtures.personas.alice;
+    const epoch = persona.epoch_keys.epoch_1;
+    const kelHead = fixtures.kel.alice.head;
+    const evaluationTime = fixtures.test_epoch + 60;
+    const event = await signEvent({
+      secretKey: epoch.private_key,
+      created_at: evaluationTime,
+      kind: 1,
+      tags: [
+        ["kel_head", kelHead.id, String(kelHead.seq)],
+        ["spec_version", "heterodyne/0.5.0"],
+      ],
+      content: "valid-core-signed-event",
+      auxRand: AUX_RAND,
+    });
+    return {
+      relativePath: "verification/005-valid-core-signed-event-accepts.json",
+      vector: baseVector({
+        vector_id: "verification/valid-core-signed-event-accepts",
+        spec_refs: ["§4.5"],
+        description: "A deterministic epoch-key-signed generic event passes the complete Core verification prefix.",
+        direction: "consume",
+        input: {
+          event,
+          nip01_raw: canonicalNip01(event),
+          vector_context: {
+            core_verification: {
+              persona: persona.cold_root.pubkey,
+              evaluation_time: evaluationTime,
+              nid_clock_skew_allowance: 0,
+              clock_uncertainty: 0,
+              pointer: {
+                persona: persona.cold_root.pubkey,
+                kel_head: { event_id: kelHead.id, sequence: kelHead.seq },
+              },
+              kel: [{
+                event_id: kelHead.id,
+                sequence: kelHead.seq,
+                prior_event_id: null,
+                epoch_pubkey: epoch.pubkey,
+                effective_from: epoch.valid_from,
+                effective_until: null,
+                compromise_since: null,
+              }],
+              signer: { type: "epoch", pubkey: epoch.pubkey, delegation: null },
+              version_policy: { mode: "required", value: "heterodyne/0.5.0" },
+              kel_head_policy: { mode: "required" },
+              subtype_policy: { mode: "generic", nid_pubkey: null },
+            },
+          },
+        },
+        expected_output: { verdict: "accept" },
+        conformance_checks: [{
+          profile: "core-signed-event-v1",
+          event_pointer: "/input/event",
+          nip01_raw_pointer: "/input/nip01_raw",
+          context_pointer: "/input/vector_context/core_verification",
+          expected_terminal_stage: "accept",
+        }],
+      }),
+    };
+  },
   consume("outbox/001-scoped-outbox.json", {
     vector_id: "outbox/scoped-outbox",
     spec_refs: ["§7", "§14.3"],

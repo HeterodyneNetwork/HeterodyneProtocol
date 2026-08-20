@@ -1875,7 +1875,7 @@
     {
       "path": "docs/spec/vectors/node-advert/002-outer-sig-invalid-rejected.json",
       "role": "vector",
-      "sha256": "2a72aaad4adece195d57a5f12adcd85777351e7db531a084cb8d1fa8e8bbce7d"
+      "sha256": "9b45e3d45dbf4344b715e6fb2aac2d1d943564ab66a0e3f75289edbbac8e2dc1"
     },
     {
       "path": "docs/spec/vectors/node-advert/003-nid-proof-invalid-rejected.json",
@@ -2620,7 +2620,7 @@
     {
       "path": "docs/spec/vectors/verification/001-bad-signature-rejects.json",
       "role": "vector",
-      "sha256": "16d4b163ec82159648791c6398bb08ec714224cadaf6a4fa67b346d4fa2a4dfe"
+      "sha256": "6c230098e93ed222f4a5c6ae97fbf11a80b48f2fd2de1db7e9b6ebc2b5fbe037"
     },
     {
       "path": "docs/spec/vectors/verification/002-delegation-mismatch-rejects.json",
@@ -2636,6 +2636,11 @@
       "path": "docs/spec/vectors/verification/004-backdated-event-suspicion-window.json",
       "role": "vector",
       "sha256": "a61ea7a5ee1e4386eeac49a0beca63f8cbdcb99575d935cc2e61bf5033f0ef6c"
+    },
+    {
+      "path": "docs/spec/vectors/verification/005-valid-core-signed-event-accepts.json",
+      "role": "vector",
+      "sha256": "d874625e58801ed70e1508b0918a3d0e84c100505b17e96bd7fa69a790ee9618"
     },
     {
       "path": "docs/spec/vectors/versioning/001-unknown-major-placeholder.json",

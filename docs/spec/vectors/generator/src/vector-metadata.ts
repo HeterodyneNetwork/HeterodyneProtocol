@@ -107,6 +107,7 @@ verification/backdated-event-suspicion-window
 verification/bad-signature-rejects
 verification/delegation-mismatch-rejects
 verification/revoked-key-rejects
+verification/valid-core-signed-event-accepts
 versioning/capabilities-roundtrip
 versioning/older-receiver-newer-sender
 versioning/unknown-major-placeholder
@@ -556,6 +557,9 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
 }
 
 function referenceFor(vectorId: string, owner: DocumentId): string {
+  if (vectorId === "verification/valid-core-signed-event-accepts") {
+    return "core-verification";
+  }
   if (vectorId.startsWith("marmot-radicle/")) {
     const id = vectorId.slice("marmot-radicle/".length);
     if (/kind445-exact|media-exact/.test(id)) {

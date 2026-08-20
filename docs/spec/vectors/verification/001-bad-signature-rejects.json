@@ -9,14 +9,15 @@
   "description": "A Nostr event with a mismatched signature is rejected before delegation checks.",
   "input": {
     "event": {
-      "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "pubkey": "1111111111111111111111111111111111111111111111111111111111111111",
       "created_at": 1767225600,
       "kind": 1,
       "tags": [],
       "content": "tampered",
+      "id": "762b00f96409915a2afce5e93e143188eb80aadb56f13240cd0b1af07cecd35e",
       "sig": "22222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222"
     },
+    "nip01_raw": "[0,\"1111111111111111111111111111111111111111111111111111111111111111\",1767225600,1,[],\"tampered\"]",
     "vector_context": {
       "decision_trace": [
         "validate_nip01_id",
@@ -28,5 +29,13 @@
     "verdict": "reject",
     "reason_code": "bad_signature"
   },
+  "conformance_checks": [
+    {
+      "profile": "core-signed-event-v1",
+      "event_pointer": "/input/event",
+      "nip01_raw_pointer": "/input/nip01_raw",
+      "expected_terminal_stage": "signature"
+    }
+  ],
   "direction": "consume"
 }

@@ -1,0 +1,87 @@
+{
+  "vector_schema_version": "1.1.0",
+  "owner_document": "core",
+  "spec_version": "heterodyne/0.5.0",
+  "spec_refs": [
+    "heterodyne:0.5.0#core-verification"
+  ],
+  "vector_id": "verification/valid-core-signed-event-accepts",
+  "description": "A deterministic epoch-key-signed generic event passes the complete Core verification prefix.",
+  "direction": "consume",
+  "input": {
+    "event": {
+      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+      "created_at": 1767225660,
+      "kind": 1,
+      "tags": [
+        [
+          "kel_head",
+          "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
+          "0"
+        ],
+        [
+          "spec_version",
+          "heterodyne/0.5.0"
+        ]
+      ],
+      "content": "valid-core-signed-event",
+      "id": "0a6ef156aa1561171a866231ee3fc723e020ae26147909b543e8ceeaa4a55440",
+      "sig": "53b2dbd363e1d475d03fed84235406911ffaf232639234dc757af6298f9f2463a85084c77ad74db2b8c99d489344afde6a77bb3981de31c81296dc194b70907a"
+    },
+    "nip01_raw": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225660,1,[[\"kel_head\",\"7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf\",\"0\"],[\"spec_version\",\"heterodyne/0.5.0\"]],\"valid-core-signed-event\"]",
+    "vector_context": {
+      "core_verification": {
+        "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "evaluation_time": 1767225660,
+        "nid_clock_skew_allowance": 0,
+        "clock_uncertainty": 0,
+        "pointer": {
+          "persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+          "kel_head": {
+            "event_id": "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
+            "sequence": 0
+          }
+        },
+        "kel": [
+          {
+            "event_id": "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
+            "sequence": 0,
+            "prior_event_id": null,
+            "epoch_pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+            "effective_from": 1767225600,
+            "effective_until": null,
+            "compromise_since": null
+          }
+        ],
+        "signer": {
+          "type": "epoch",
+          "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+          "delegation": null
+        },
+        "version_policy": {
+          "mode": "required",
+          "value": "heterodyne/0.5.0"
+        },
+        "kel_head_policy": {
+          "mode": "required"
+        },
+        "subtype_policy": {
+          "mode": "generic",
+          "nid_pubkey": null
+        }
+      }
+    }
+  },
+  "expected_output": {
+    "verdict": "accept"
+  },
+  "conformance_checks": [
+    {
+      "profile": "core-signed-event-v1",
+      "event_pointer": "/input/event",
+      "nip01_raw_pointer": "/input/nip01_raw",
+      "context_pointer": "/input/vector_context/core_verification",
+      "expected_terminal_stage": "accept"
+    }
+  ]
+}
