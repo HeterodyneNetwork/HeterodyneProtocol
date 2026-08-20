@@ -28,6 +28,33 @@ function readRepositoryFile(relativePath: string): string {
   return existsSync(absolutePath) ? readFileSync(absolutePath, "utf8") : "";
 }
 
+function hasOnlyReadContentsPermission(workflow: string): boolean {
+  const lines = workflow.split("\n");
+  const declarationIndexes = lines.flatMap((line, index) => (
+    /^\s*permissions\s*:/.test(line) ? [index] : []
+  ));
+  if (declarationIndexes.length !== 1) {
+    return false;
+  }
+
+  const permissionsIndex = declarationIndexes[0];
+  if (permissionsIndex === undefined || lines[permissionsIndex] !== "permissions:") {
+    return false;
+  }
+
+  const entries: string[] = [];
+  for (const line of lines.slice(permissionsIndex + 1)) {
+    if (line.trim() === "" || line.trimStart().startsWith("#")) {
+      continue;
+    }
+    if (!line.startsWith(" ")) {
+      break;
+    }
+    entries.push(line);
+  }
+  return entries.length === 1 && entries[0] === "  contents: read";
+}
+
 describe("shared conformance CI configuration", () => {
   it("keeps the complete job body in one strict repository-rooted script", () => {
     const script = readRepositoryFile("scripts/conformance-ci.sh");
@@ -90,7 +117,7 @@ fi
     const workflow = readRepositoryFile(".github/workflows/conformance.yml");
 
     expect(workflow).toMatch(/^on:\n {2}pull_request:\n {2}push:\n {4}branches: \[main\]$/m);
-    expect(workflow).toMatch(/^permissions:\n {2}contents: read$/m);
+    expect(hasOnlyReadContentsPermission(workflow)).toBe(true);
     expect(workflow).toContain("group: ${{ github.workflow }}-${{ github.ref }}");
     expect(workflow).toContain("cancel-in-progress: true");
     expect(workflow).toMatch(/^ {2}conformance:\n {4}name: conformance$/m);
@@ -105,6 +132,36 @@ fi
     expect(workflow).not.toContain("pull_request_target");
     expect(workflow).not.toContain("secrets");
     expect(workflow).not.toMatch(/^\s+ref:/m);
+  });
+
+  it.each([
+    [
+      "an added top-level write permission",
+      (workflow: string) => workflow.replace(
+        "  contents: read",
+        "  contents: read\n  pull-requests: write",
+      ),
+    ],
+    [
+      "a job-level permissions override",
+      (workflow: string) => workflow.replace(
+        "    name: conformance",
+        "    permissions:\n      pull-requests: write\n    name: conformance",
+      ),
+    ],
+    [
+      "write-all",
+      (workflow: string) => workflow.replace(
+        "    name: conformance",
+        "    permissions: write-all\n    name: conformance",
+      ),
+    ],
+  ])("rejects %s", (_label, mutate) => {
+    const workflow = readRepositoryFile(".github/workflows/conformance.yml");
+    const unsafeWorkflow = mutate(workflow);
+
+    expect(unsafeWorkflow).not.toBe(workflow);
+    expect(hasOnlyReadContentsPermission(unsafeWorkflow)).toBe(false);
   });
 
   it("keeps the Radicle wrapper byte-exact and free of duplicated job logic", () => {
