@@ -70,8 +70,17 @@ stage is exactly one of `event_structure`, `nip01_raw`, `identifier`,
 declared profiles and never infers applicability from the vector topic,
 description, object shape, or decision trace. Unknown profiles or members,
 malformed pointers, duplicate declarations, and a missing event target are
-failures. A missing raw target is reported by the independent raw-binding gate
-so existing exact-byte debt can be ratcheted.
+failures. A declared context pointer must also resolve when present. A missing
+raw target is reported by the independent raw-binding gate so existing
+exact-byte debt can be ratcheted.
+
+G10 raw-binding debt uses the stable locator
+`<vector-file> :: event-sha256:<64-lowercase-hex>`. The digest is SHA-256 over
+the UTF-8 JSON serialization of the fixed semantic signed-event tuple
+`[id,pubkey,created_at,kind,tags,content,sig]`. The checker retains RFC 6901
+pointers internally for sibling and declared-raw resolution, but array indexes
+do not enter failure keys; byte-identical duplicate signed events in one vector
+therefore collapse to one locator.
 
 Family layering follows this DAG:
 

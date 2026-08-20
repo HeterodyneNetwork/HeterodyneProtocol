@@ -2,7 +2,8 @@ import { ed25519 } from "@noble/curves/ed25519";
 import { schnorr } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha2";
 import { describe, expect, it } from "vitest";
-import type { ConformanceCheckDocument, VectorDocument } from "../types.js";
+import type { ArtifactCorpus, ConformanceCheckDocument, VectorDocument } from "../types.js";
+import { findNegativeHygieneFailures } from "../gates/negative-hygiene.js";
 import { checkCoreSignedEvent } from "./reference-checker.js";
 import type { CheckerStage } from "./types.js";
 
@@ -107,6 +108,7 @@ function validFixture(): Fixture {
             effective_until: null,
             compromise_since: null,
           }],
+          kel_refresh: { status: "not-needed" },
           signer: { type: "epoch", pubkey: EVENT_PUBKEY, delegation: null },
           version_policy: { mode: "required", value: "heterodyne/0.5.0" },
           kel_head_policy: { mode: "required" },
@@ -148,12 +150,13 @@ function signEd25519Proof(domain: string, canonicalClaim: string): string {
 
 function configureNidDelegation(
   fixture: Fixture,
-  fields: { secretKey?: string; validUntil?: string } = {},
+  fields: { createdAt?: number; secretKey?: string; validUntil?: string } = {},
 ): void {
   const publishingKey = "d0".repeat(32);
   const canonicalClaim = `{"cold_root":"${PERSONA}","nid":"${NID}"}`;
   const nidProof = signEd25519Proof("heterodyne-nid-binding-v1", canonicalClaim);
   replaceSignedInput(fixture, {
+    created_at: fields.createdAt,
     secretKey: fields.secretKey,
     kind: 31_001,
     content: "",
@@ -174,9 +177,9 @@ function configureNidDelegation(
 
 function configureNodeAdvertisement(
   fixture: Fixture,
-  fields: { createdAt?: number; endpoint?: string; expiry?: string } = {},
+  fields: { createdAt?: number; endpoint?: string; expiry?: string; rid?: string } = {},
 ): void {
-  const rid = "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1";
+  const rid = fields.rid ?? "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1";
   const endpoint = fields.endpoint ?? "wss://node.example/relay";
   const expiry = fields.expiry ?? "200";
   const repoHead = "4a19af7f069f3c32d4235c726f666fc8cd0175fa";
@@ -256,10 +259,18 @@ function configureHistoricalTwoEpochKel(
       ["kel_head", KEL_EVENT_ID, "0"],
     ],
   });
+  configureHistoricalTwoEpochKelContext(fixture, fields.transition, fields.pointer);
+}
+
+function configureHistoricalTwoEpochKelContext(
+  fixture: Fixture,
+  transition: number,
+  pointer: "historical" | "current" = "current",
+): void {
   const context = contextOf(fixture);
   context.pointer = {
     persona: PERSONA,
-    kel_head: fields.pointer === "historical"
+    kel_head: pointer === "historical"
       ? { event_id: KEL_EVENT_ID, sequence: 0 }
       : { event_id: SECOND_KEL_EVENT_ID, sequence: 1 },
   };
@@ -270,7 +281,7 @@ function configureHistoricalTwoEpochKel(
       prior_event_id: null,
       epoch_pubkey: EVENT_PUBKEY,
       effective_from: 0,
-      effective_until: fields.transition,
+      effective_until: transition,
       compromise_since: null,
     },
     {
@@ -278,7 +289,7 @@ function configureHistoricalTwoEpochKel(
       sequence: 1,
       prior_event_id: KEL_EVENT_ID,
       epoch_pubkey: SECOND_EVENT_PUBKEY,
-      effective_from: fields.transition,
+      effective_from: transition,
       effective_until: null,
       compromise_since: null,
     },
@@ -308,6 +319,20 @@ function expectTerminal(fixture: Fixture, stage: CheckerStage): void {
     stage,
     verdict: stage === "accept" ? "pass" : "reject",
   });
+}
+
+function base58(bytes: Uint8Array): string {
+  const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+  let value = 0n;
+  for (const byte of bytes) value = value * 256n + BigInt(byte);
+  let encoded = "";
+  while (value > 0n) {
+    encoded = alphabet[Number(value % 58n)]! + encoded;
+    value /= 58n;
+  }
+  let zeroes = 0;
+  while (bytes[zeroes] === 0) zeroes += 1;
+  return "1".repeat(zeroes) + encoded;
 }
 
 describe("independent Core signed-event checker", () => {
@@ -365,16 +390,18 @@ describe("independent Core signed-event checker", () => {
     expectTerminal(fixture, "persona_resolution");
   });
 
-  it("rejects a non-exact required family stamp at version_stamp", () => {
+  it("rejects an incompatible future major at version_stamp with its registered reason", () => {
     const fixture = validFixture();
     replaceSignedInput(fixture, {
       tags: [
-        ["spec_version", "heterodyne/0.4.0"],
+        ["spec_version", "heterodyne/1.0.0"],
         ["kel_head", KEL_EVENT_ID, "0"],
       ],
     });
 
     expectTerminal(fixture, "version_stamp");
+    expect(checkCoreSignedEvent(fixture.vector, fixture.check).reasonCode)
+      .toBe("unknown_major_version");
   });
 
   it("rejects a head that does not exactly bind the supplied pointer at kel_head", () => {
@@ -382,7 +409,7 @@ describe("independent Core signed-event checker", () => {
     replaceSignedInput(fixture, {
       tags: [
         ["spec_version", "heterodyne/0.5.0"],
-        ["kel_head", "c0".repeat(32), "0"],
+        ["kel_head", KEL_EVENT_ID, "1"],
       ],
     });
 
@@ -450,14 +477,14 @@ describe("independent Core signed-event checker", () => {
     (personaContext.pointer as Record<string, unknown>).persona = "c0".repeat(32);
     replaceSignedInput(fixtures[5]!, {
       tags: [
-        ["spec_version", "heterodyne/0.4.0"],
+        ["spec_version", "heterodyne/1.0.0"],
         ["kel_head", KEL_EVENT_ID, "0"],
       ],
     });
     replaceSignedInput(fixtures[6]!, {
       tags: [
         ["spec_version", "heterodyne/0.5.0"],
-        ["kel_head", "c0".repeat(32), "0"],
+        ["kel_head", KEL_EVENT_ID, "1"],
       ],
     });
     const authorityContext = ((fixtures[7]!.vector.input.vector_context as Record<string, unknown>)
@@ -477,6 +504,48 @@ describe("independent Core signed-event checker", () => {
       expect(result.stages.slice(0, -1).every((stage) => stage.verdict === "pass")).toBe(true);
       expect(result.stages.at(-1)!.verdict).toBe(index === 9 ? "pass" : "reject");
     });
+    const expectedReasons = [
+      "bad_signature",
+      "nip01_raw_mismatch",
+      "bad_signature",
+      "bad_signature",
+      "delegation_mismatch",
+      "unknown_major_version",
+      "kel_head_mismatch",
+      "retired-key-authority-window-invalid",
+      "nid_binding_missing_signature",
+    ];
+    expect(results.slice(0, -1).map((result) => result.reasonCode)).toEqual(expectedReasons);
+
+    fixtures.forEach((fixture, index) => {
+      fixture.check.expected_terminal_stage = orderedStages[index]!;
+      fixture.vector.expected_output = index === orderedStages.length - 1
+        ? { verdict: "accept" }
+        : { verdict: "reject", reason_code: expectedReasons[index] };
+    });
+    const corpus: ArtifactCorpus = {
+      repositoryRoot: "/synthetic",
+      familyVersion: "heterodyne/0.5.0",
+      registryRevision: 13,
+      registryDigest: "00".repeat(32),
+      specifications: new Map(),
+      schemas: new Map(),
+      vectors: fixtures.map((fixture, index) => ({
+        path: `docs/spec/vectors/test/${index}.json`,
+        value: fixture.vector,
+      })),
+      fixtures: {},
+      registry: {
+        manifest: {
+          revision: 13,
+          schema_version: "3.0.0",
+          entry_set_sha256: "00".repeat(32),
+        },
+        reason_codes: [],
+        security_invariants: [],
+      },
+    };
+    expect(findNegativeHygieneFailures(corpus)).toEqual([]);
   });
 });
 
@@ -576,23 +645,34 @@ describe("raw binding and context consumption", () => {
     }
   });
 
-  it("does not invent reason codes outside the closed registry", () => {
+  it("maps structure and future-major failures to existing Core reasons", () => {
     const structureFixture = validFixture();
     delete (structureFixture.vector.input.event as Record<string, unknown>).sig;
 
     const versionFixture = validFixture();
     replaceSignedInput(versionFixture, {
       tags: [
-        ["spec_version", "heterodyne/0.4.0"],
+        ["spec_version", "heterodyne/1.0.0"],
         ["kel_head", KEL_EVENT_ID, "0"],
       ],
     });
 
-    for (const fixture of [structureFixture, versionFixture]) {
-      const result = checkCoreSignedEvent(fixture.vector, fixture.check);
-      expect(result.reasonCode).toBeUndefined();
-      expect(result.stages.at(-1)?.reasonCode).toBeUndefined();
-    }
+    const malformedVersionFixture = validFixture();
+    replaceSignedInput(malformedVersionFixture, {
+      tags: [
+        ["spec_version", "heterodyne/1.invalid"],
+        ["kel_head", KEL_EVENT_ID, "0"],
+      ],
+    });
+
+    expect(checkCoreSignedEvent(structureFixture.vector, structureFixture.check).reasonCode)
+      .toBe("bad_signature");
+    expect(checkCoreSignedEvent(versionFixture.vector, versionFixture.check).reasonCode)
+      .toBe("unknown_major_version");
+    expect(checkCoreSignedEvent(
+      malformedVersionFixture.vector,
+      malformedVersionFixture.check,
+    ).reasonCode).toBeUndefined();
   });
 
   it("rejects noncontiguous KEL sequence, prior links, and pointer heads", () => {
@@ -733,6 +813,74 @@ describe("explicit version and KEL-head policies", () => {
 
     expectTerminal(fixture, "accept");
   });
+
+  it("classifies a well-formed off-KEL head as equivocation rather than permanent reject", () => {
+    const fixture = validFixture();
+    contextOf(fixture).kel_refresh = { status: "not-needed" };
+    replaceSignedInput(fixture, {
+      tags: [
+        ["spec_version", "heterodyne/0.5.0"],
+        ["kel_head", "d0".repeat(32), "0"],
+      ],
+    });
+
+    const result = checkCoreSignedEvent(fixture.vector, fixture.check);
+    expect(result).toMatchObject({
+      terminalStage: "kel_head",
+      verdict: "equivocation_flagged",
+    });
+    expect(result.stages.at(-1)).toEqual({
+      stage: "kel_head",
+      verdict: "equivocation_flagged",
+    });
+  });
+
+  it.each(["pending", "failed"] as const)(
+    "classifies a sequence-ahead head with %s refresh as provisional before off-KEL",
+    (status) => {
+      const fixture = validFixture();
+      contextOf(fixture).kel_refresh = { status };
+      replaceSignedInput(fixture, {
+        tags: [
+          ["spec_version", "heterodyne/0.5.0"],
+          ["kel_head", "d0".repeat(32), "1"],
+        ],
+      });
+
+      const result = checkCoreSignedEvent(fixture.vector, fixture.check);
+      expect(result).toMatchObject({ terminalStage: "accept", verdict: "accept_provisional" });
+      expect(result.stages).toContainEqual({ stage: "kel_head", verdict: "provisional" });
+      expect(result.stages.at(-1)).toEqual({ stage: "accept", verdict: "provisional" });
+    },
+  );
+
+  it("flags a still-off-chain ahead head after a completed refresh", () => {
+    const fixture = validFixture();
+    contextOf(fixture).kel_refresh = { status: "succeeded" };
+    replaceSignedInput(fixture, {
+      tags: [
+        ["spec_version", "heterodyne/0.5.0"],
+        ["kel_head", "d0".repeat(32), "1"],
+      ],
+    });
+
+    expect(checkCoreSignedEvent(fixture.vector, fixture.check)).toMatchObject({
+      terminalStage: "kel_head",
+      verdict: "equivocation_flagged",
+    });
+  });
+
+  it("uses the final accepted KEL entry rather than the supplied pointer as accepted head", () => {
+    const fixture = validFixture();
+    configureTwoEpochKel(fixture, SECOND_EVENT_SECRET);
+    contextOf(fixture).pointer = {
+      persona: PERSONA,
+      kel_head: { event_id: KEL_EVENT_ID, sequence: 0 },
+    };
+    contextOf(fixture).kel_refresh = { status: "succeeded" };
+
+    expectTerminal(fixture, "accept");
+  });
 });
 
 describe("epoch and delegated authority", () => {
@@ -747,13 +895,13 @@ describe("epoch and delegated authority", () => {
     expectTerminal(retiredFixture, "epoch_authority");
   });
 
-  it("truncates authority at compromise_since", () => {
+  it("applies effective_compromise_since minus 300 at the exact boundary", () => {
     const beforeFixture = validFixture();
     replaceSignedInput(beforeFixture, { created_at: 99 });
-    ((contextOf(beforeFixture).kel as Record<string, unknown>[])[0]!).compromise_since = 100;
+    ((contextOf(beforeFixture).kel as Record<string, unknown>[])[0]!).compromise_since = 400;
 
     const cutoffFixture = validFixture();
-    ((contextOf(cutoffFixture).kel as Record<string, unknown>[])[0]!).compromise_since = 100;
+    ((contextOf(cutoffFixture).kel as Record<string, unknown>[])[0]!).compromise_since = 400;
 
     expectTerminal(beforeFixture, "accept");
     expectTerminal(cutoffFixture, "epoch_authority");
@@ -764,6 +912,21 @@ describe("epoch and delegated authority", () => {
     ((contextOf(fixture).kel as Record<string, unknown>[])[0]!).epoch_pubkey = SECOND_EVENT_PUBKEY;
 
     expectTerminal(fixture, "epoch_authority");
+  });
+
+  it("requires a kind 31001 epoch signer to remain authoritative at evaluation time", () => {
+    const beforeRotation = validFixture();
+    configureNidDelegation(beforeRotation, { createdAt: 99 });
+    configureHistoricalTwoEpochKelContext(beforeRotation, 100);
+    contextOf(beforeRotation).evaluation_time = 99;
+
+    const atRotation = validFixture();
+    configureNidDelegation(atRotation, { createdAt: 99 });
+    configureHistoricalTwoEpochKelContext(atRotation, 100);
+    contextOf(atRotation).evaluation_time = 100;
+
+    expectTerminal(beforeRotation, "accept");
+    expectTerminal(atRotation, "epoch_authority");
   });
 
   it("accepts a delegated signer at valid_from and enforces exclusive expiry and revocation", () => {
@@ -923,6 +1086,30 @@ describe("Ed25519 NID subtype proofs", () => {
     configureNodeAdvertisement(fixture);
 
     expectTerminal(fixture, "accept");
+  });
+
+  it("accepts exactly canonical rad:z Base58BTC encodings of 20 raw RID bytes", () => {
+    const validLeadingZero = new Uint8Array(20);
+    validLeadingZero[19] = 1;
+    const validFixtureWithZero = validFixture();
+    configureNodeAdvertisement(validFixtureWithZero, {
+      rid: `rad:z${base58(validLeadingZero)}`,
+    });
+    expectTerminal(validFixtureWithZero, "accept");
+
+    const validRid = "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1";
+    const invalidRids = [
+      validRid.replace("rad:z", "repo:z"),
+      "rad:z0malformed",
+      `rad:z1${validRid.slice("rad:z".length)}`,
+      `rad:z${base58(new Uint8Array(19).fill(1))}`,
+      `rad:z${NID.slice("did:key:z".length)}`,
+    ];
+    for (const rid of invalidRids) {
+      const fixture = validFixture();
+      configureNodeAdvertisement(fixture, { rid });
+      expectTerminal(fixture, "subtype_nid");
+    }
   });
 
   it("enforces the inclusive plus-or-minus 300-second first-acceptance window", () => {

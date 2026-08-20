@@ -67,6 +67,24 @@ export const VECTOR_SCHEMA = {
             ],
           },
         },
+        allOf: [{
+          if: {
+            properties: {
+              expected_terminal_stage: {
+                enum: [
+                  "persona_resolution",
+                  "version_stamp",
+                  "kel_head",
+                  "epoch_authority",
+                  "subtype_nid",
+                  "accept",
+                ],
+              },
+            },
+            required: ["expected_terminal_stage"],
+          },
+          then: { required: ["context_pointer"] },
+        }],
       },
     },
     spec_refs: {

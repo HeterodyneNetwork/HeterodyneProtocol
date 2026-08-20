@@ -5,9 +5,13 @@ export type CheckerStage =
 
 export type SubjectResult = {
   terminalStage: CheckerStage;
-  verdict: "accept" | "reject";
+  verdict: "accept" | "accept_provisional" | "equivocation_flagged" | "reject";
   reasonCode?: string;
-  stages: { stage: CheckerStage; verdict: "pass" | "reject"; reasonCode?: string }[];
+  stages: {
+    stage: CheckerStage;
+    verdict: "pass" | "provisional" | "equivocation_flagged" | "reject";
+    reasonCode?: string;
+  }[];
 };
 
 export type NostrSignedEvent = {
@@ -40,6 +44,9 @@ export type CoreVerificationContextV1 = {
     kel_head: { event_id: string; sequence: number };
   };
   kel: CoreKelEntryV1[];
+  kel_refresh: {
+    status: "not-needed" | "succeeded" | "pending" | "failed";
+  };
   signer:
     | { type: "epoch"; pubkey: string; delegation: null }
     | {

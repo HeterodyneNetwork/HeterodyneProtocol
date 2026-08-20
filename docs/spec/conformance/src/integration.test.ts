@@ -20,6 +20,7 @@ import {
 } from "./cli.js";
 import {
   createTestRepository,
+  refreshReleaseDigests,
   vectorPath,
   writeJson,
   writeText,
@@ -128,9 +129,12 @@ describe("ratcheted conformance integration", () => {
     const output: string[] = [];
 
     expect(runCli(["check", root], { writeLine: (line) => output.push(line) })).toBe(1);
-    expect(output).toHaveLength(4);
-    expect(output[0]).toContain(`corpus issue :: invalid-json :: ${vectorPath} ::`);
-    expect(output.slice(1)).toEqual([
+    expect(output).toHaveLength(5);
+    expect(output[0]).toBe(
+      `corpus issue :: artifact-digest-mismatch :: ${vectorPath} :: release artifact sha256 does not match exact file bytes`,
+    );
+    expect(output[1]).toContain(`corpus issue :: invalid-json :: ${vectorPath} ::`);
+    expect(output.slice(2)).toEqual([
       "G1 anchor-resolution baseline invalid :: baseline must be valid JSON",
       "projection invalid :: docs/spec/conformance/report.json :: invalid report shape",
       "projection missing :: docs/spec/conformance/DEBT.md",
@@ -200,6 +204,7 @@ describe("ratcheted conformance integration", () => {
       reason_code: "unregistered-test-reason",
     };
     writeJson(root, vectorPath, vector);
+    refreshReleaseDigests(root);
 
     expect(checkRepository(root)).toMatchObject({
       exitCode: 1,
@@ -216,6 +221,7 @@ describe("ratcheted conformance integration", () => {
       "docs/spec/heterodyne-core.md",
       '# core\n<a id="core-conformance"></a>\n',
     );
+    refreshReleaseDigests(root);
 
     expect(checkRepository(root)).toMatchObject({
       exitCode: 1,

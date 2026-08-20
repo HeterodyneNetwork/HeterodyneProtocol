@@ -1,4 +1,6 @@
+import { createHash } from "node:crypto";
 import {
+  readdirSync,
   readFileSync,
   realpathSync,
   statSync,
@@ -10,7 +12,8 @@ import {
   resolve,
   sep,
 } from "node:path";
-import { parseJsonPointer } from "./json-pointer.js";
+import { Ajv, type AnySchema } from "ajv";
+import { parseJsonPointer, resolveJsonPointer } from "./json-pointer.js";
 import type {
   ArtifactCorpus,
   ConformanceCheckDocument,
@@ -23,8 +26,15 @@ import type {
 const familyManifestPath = "docs/spec/releases/family/0.5.0.json";
 const fixturesPath = "docs/spec/vectors/fixtures.json";
 const registryManifestPath = "docs/spec/registry/manifest.json";
+const featuresPath = "docs/spec/registry/features.json";
+const kindsPath = "docs/spec/registry/kinds.json";
+const objectsPath = "docs/spec/registry/objects.json";
+const proofDomainsPath = "docs/spec/registry/proof-domains.json";
 const reasonCodesPath = "docs/spec/registry/reason-codes.json";
+const registrySchemaPath = "docs/spec/registry/registry.schema.json";
 const securityInvariantsPath = "docs/spec/registry/security-invariants.json";
+const vectorSchemaPath = "docs/spec/vectors/schema/vector.schema.json";
+const marmotManifestPath = "docs/spec/external/marmot/manifest.json";
 const specificationPaths = [
   "docs/spec/heterodyne-comms.md",
   "docs/spec/heterodyne-control.md",
@@ -34,15 +44,23 @@ const specificationPaths = [
 ] as const;
 const requiredArtifactRoles = new Map<string, string>([
   ...specificationPaths.map((path) => [path, "specification"] as const),
+  [featuresPath, "registry"],
+  [kindsPath, "registry"],
   [registryManifestPath, "registry"],
+  [objectsPath, "registry"],
+  [proofDomainsPath, "registry"],
   [reasonCodesPath, "registry"],
+  [registrySchemaPath, "registry"],
   [securityInvariantsPath, "registry"],
+  [vectorSchemaPath, "schema"],
+  [marmotManifestPath, "normative-support"],
 ]);
 
 const ownerDocuments = new Set(["core", "comms", "control", "social", "workspace"]);
 const directions = new Set(["consume", "produce", "round-trip"]);
 const artifactRoles = new Set(["normative-support", "registry", "schema", "specification", "vector"]);
 const sha256Pattern = /^[0-9a-f]{64}$/u;
+const releasePathCharacters = /^[A-Za-z0-9._/-]+$/u;
 const terminalStages = new Set<ExpectedTerminalStage>([
   "event_structure",
   "nip01_raw",
@@ -55,14 +73,29 @@ const terminalStages = new Set<ExpectedTerminalStage>([
   "subtype_nid",
   "accept",
 ]);
+const contextRequiredStages = new Set<ExpectedTerminalStage>([
+  "persona_resolution",
+  "version_stamp",
+  "kel_head",
+  "epoch_authority",
+  "subtype_nid",
+  "accept",
+]);
+const declarationMembers = new Set([
+  "profile",
+  "event_pointer",
+  "nip01_raw_pointer",
+  "context_pointer",
+  "expected_terminal_stage",
+]);
 
 class UnsafeRepositoryPathError extends Error {}
 
-type FamilyArtifact = { path: string; role: string };
+type FamilyArtifact = { path: string; role: string; sha256?: string };
 
 type FamilyManifest = {
   family_version: "heterodyne/0.5.0";
-  registry: { path?: string };
+  registry: { path?: string; sha256?: string };
   artifacts: FamilyArtifact[];
 };
 
@@ -123,6 +156,28 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
+function isReleasePath(value: string): boolean {
+  return releasePathCharacters.test(value)
+    && !value.startsWith("/")
+    && !value.endsWith("/")
+    && !value.includes("//")
+    && value.split("/").every((segment) => segment !== "." && segment !== "..");
+}
+
+function reportUnexpectedMembers(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  issues: CorpusIssue[],
+  path: string,
+  label: string,
+): void {
+  for (const key of Object.keys(value)) {
+    if (!allowed.includes(key)) {
+      shapeIssue(issues, path, `${label} has unexpected member: ${key}`);
+    }
+  }
+}
+
 function shapeIssue(issues: CorpusIssue[], path: string, message: string): void {
   issues.push({ code: "invalid-document-shape", path, message });
 }
@@ -135,6 +190,89 @@ function isNormativeVectorPath(path: string): boolean {
     && !path.startsWith("docs/spec/vectors/coverage/")
     && !path.startsWith("docs/spec/vectors/generator/")
     && !path.startsWith("docs/spec/vectors/schema/");
+}
+
+function filesUnder(repositoryRoot: string, directory: string): string[] {
+  const root = resolve(repositoryRoot, directory);
+  const visit = (current: string): string[] => readdirSync(current, { withFileTypes: true })
+    .flatMap((entry) => {
+      const target = resolve(current, entry.name);
+      if (entry.isDirectory()) {
+        return visit(target);
+      }
+      if (!entry.isFile()) {
+        return [];
+      }
+      return [relative(repositoryRoot, target).replaceAll("\\", "/")];
+    });
+  return visit(root).sort(compareText);
+}
+
+function expectedReleaseArtifacts(repositoryRoot: string): ReadonlyMap<string, string> {
+  const entries: Array<readonly [string, string]> = [
+    ...specificationPaths.map((path) => [path, "specification"] as const),
+    ...filesUnder(repositoryRoot, "docs/spec/registry")
+      .filter((path) => path.endsWith(".json"))
+      .filter((path) => !path.startsWith("docs/spec/registry/history/"))
+      .map((path) => [path, "registry"] as const),
+    ...filesUnder(repositoryRoot, "docs/spec/schemas")
+      .filter((path) => path.endsWith(".json"))
+      .map((path) => [path, "schema"] as const),
+    [vectorSchemaPath, "schema"],
+    ...filesUnder(repositoryRoot, "docs/spec/vectors")
+      .filter(isNormativeVectorPath)
+      .map((path) => [path, "vector"] as const),
+    [marmotManifestPath, "normative-support"],
+  ];
+  return new Map(entries.sort(([left], [right]) => compareText(left, right)));
+}
+
+function sha256File(repositoryRoot: string, path: string): string | undefined {
+  try {
+    const target = safeRepositoryPath(repositoryRoot, path);
+    if (!statSync(target).isFile()) return undefined;
+    return createHash("sha256").update(readFileSync(target)).digest("hex");
+  } catch {
+    return undefined;
+  }
+}
+
+function canonicalize(value: unknown): string {
+  if (value === null || typeof value === "boolean" || typeof value === "string") {
+    return JSON.stringify(value);
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new Error("non-finite number is not valid JCS");
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => canonicalize(item)).join(",")}]`;
+  }
+  if (isRecord(value)) {
+    return `{${Object.keys(value)
+      .sort(compareText)
+      .map((key) => `${JSON.stringify(key)}:${canonicalize(value[key])}`)
+      .join(",")}}`;
+  }
+  throw new Error(`unsupported JCS value: ${typeof value}`);
+}
+
+function registryEntrySet(parsedJson: ReadonlyMap<string, unknown>): Record<string, unknown> | undefined {
+  const documents = [
+    [kindsPath, "kinds"],
+    [reasonCodesPath, "reason_codes"],
+    [securityInvariantsPath, "security_invariants"],
+    [featuresPath, "features"],
+    [objectsPath, "objects"],
+    [proofDomainsPath, "proof_domains"],
+  ] as const;
+  const entrySet: Record<string, unknown> = {};
+  for (const [path, member] of documents) {
+    const document = parsedJson.get(path);
+    if (!isRecord(document) || !Array.isArray(document[member])) return undefined;
+    entrySet[member] = document[member];
+  }
+  return entrySet;
 }
 
 function readText(
@@ -204,6 +342,13 @@ function parseFamilyManifest(value: unknown, issues: CorpusIssue[]): FamilyManif
     shapeIssue(issues, familyManifestPath, "family release manifest must be an object");
     return undefined;
   }
+  reportUnexpectedMembers(
+    value,
+    ["schema_version", "family_version", "status", "registry", "artifacts"],
+    issues,
+    familyManifestPath,
+    "family release manifest",
+  );
   if (value.schema_version !== "1.0.0") {
     shapeIssue(issues, familyManifestPath, "schema_version must be 1.0.0");
   }
@@ -216,11 +361,25 @@ function parseFamilyManifest(value: unknown, issues: CorpusIssue[]): FamilyManif
   const registryPath = isRecord(value.registry) && typeof value.registry.path === "string"
     ? value.registry.path
     : undefined;
+  const registrySha256 = isRecord(value.registry) && typeof value.registry.sha256 === "string"
+    && sha256Pattern.test(value.registry.sha256)
+    ? value.registry.sha256
+    : undefined;
+  if (isRecord(value.registry)) {
+    reportUnexpectedMembers(
+      value.registry,
+      ["path", "sha256"],
+      issues,
+      familyManifestPath,
+      "registry pin",
+    );
+  }
   if (registryPath === undefined) {
     shapeIssue(issues, familyManifestPath, "registry.path must be a string");
+  } else if (!isReleasePath(registryPath)) {
+    shapeIssue(issues, familyManifestPath, "registry.path must match the release path syntax");
   }
-  if (!isRecord(value.registry) || typeof value.registry.sha256 !== "string"
-    || !sha256Pattern.test(value.registry.sha256)) {
+  if (registrySha256 === undefined) {
     shapeIssue(issues, familyManifestPath, "registry.sha256 must be lowercase SHA-256 hex");
   }
   if (!Array.isArray(value.artifacts)) {
@@ -234,20 +393,31 @@ function parseFamilyManifest(value: unknown, issues: CorpusIssue[]): FamilyManif
       shapeIssue(issues, familyManifestPath, "each artifact must have string path and role members");
       continue;
     }
+    reportUnexpectedMembers(
+      artifact,
+      ["path", "role", "sha256"],
+      issues,
+      artifact.path,
+      "release artifact",
+    );
+    if (!isReleasePath(artifact.path)) {
+      shapeIssue(issues, artifact.path, "artifact path must match the release path syntax");
+    }
     if (!artifactRoles.has(artifact.role)) {
       shapeIssue(issues, artifact.path, `unknown artifact role: ${artifact.role}`);
     }
-    if (isNormativeVectorPath(artifact.path) && artifact.role !== "vector") {
-      shapeIssue(issues, artifact.path, "normative vector artifact role must be vector");
-    }
-    if (typeof artifact.sha256 !== "string" || !sha256Pattern.test(artifact.sha256)) {
+    const artifactSha256 = typeof artifact.sha256 === "string"
+      && sha256Pattern.test(artifact.sha256)
+      ? artifact.sha256
+      : undefined;
+    if (artifactSha256 === undefined) {
       shapeIssue(issues, artifact.path, "artifact sha256 must be lowercase SHA-256 hex");
     }
-    artifacts.push({ path: artifact.path, role: artifact.role });
+    artifacts.push({ path: artifact.path, role: artifact.role, sha256: artifactSha256 });
   }
   return {
     family_version: "heterodyne/0.5.0",
-    registry: { path: registryPath },
+    registry: { path: registryPath, sha256: registrySha256 },
     artifacts,
   };
 }
@@ -266,9 +436,13 @@ function validateStandaloneManifestPath(
   }
 }
 
-function parseConformanceCheck(value: unknown): ConformanceCheckDocument | undefined {
+function parseConformanceCheck(
+  value: unknown,
+  vector: Record<string, unknown>,
+): ConformanceCheckDocument | undefined {
   if (
     !isRecord(value)
+    || Object.keys(value).some((key) => !declarationMembers.has(key))
     || value.profile !== "core-signed-event-v1"
     || typeof value.event_pointer !== "string"
     || typeof value.nip01_raw_pointer !== "string"
@@ -278,6 +452,10 @@ function parseConformanceCheck(value: unknown): ConformanceCheckDocument | undef
   ) {
     return undefined;
   }
+  const stage = value.expected_terminal_stage as ExpectedTerminalStage;
+  if (contextRequiredStages.has(stage) && value.context_pointer === undefined) {
+    return undefined;
+  }
   try {
     parseJsonPointer(value.event_pointer);
     parseJsonPointer(value.nip01_raw_pointer);
@@ -285,6 +463,11 @@ function parseConformanceCheck(value: unknown): ConformanceCheckDocument | undef
       parseJsonPointer(value.context_pointer);
     }
   } catch {
+    return undefined;
+  }
+  if (!resolveJsonPointer(vector, value.event_pointer).found) return undefined;
+  if (value.context_pointer !== undefined
+    && !resolveJsonPointer(vector, value.context_pointer).found) {
     return undefined;
   }
   return value as ConformanceCheckDocument;
@@ -300,13 +483,17 @@ function parseVector(value: unknown): VectorDocument | undefined {
     || !ownerDocuments.has(value.owner_document)
     || value.spec_version !== "heterodyne/0.5.0"
     || !isStringArray(value.spec_refs)
+    || typeof value.description !== "string"
+    || value.description.length === 0
     || typeof value.direction !== "string"
     || !directions.has(value.direction)
     || !isRecord(value.input)
     || !isRecord(value.expected_output)
     || (value.conformance_checks !== undefined
       && (!Array.isArray(value.conformance_checks)
-        || !value.conformance_checks.every((check) => parseConformanceCheck(check) !== undefined)))
+        || !value.conformance_checks.every((check) => parseConformanceCheck(check, value) !== undefined)
+        || new Set(value.conformance_checks.map((check) => canonicalize(check))).size
+          !== value.conformance_checks.length))
   ) {
     return undefined;
   }
@@ -421,12 +608,53 @@ export function loadCorpus(repositoryRoot: string): {
     artifactPaths.add(artifact.path);
   }
 
-  for (const [path, requiredRole] of requiredArtifactRoles) {
+  const expectedArtifacts = expectedReleaseArtifacts(canonicalRoot);
+  for (const [path, role] of expectedArtifacts) {
+    const artifact = manifest.artifacts.find((candidate) => candidate.path === path);
+    if (artifact === undefined) {
+      issues.push({
+        code: "missing-release-artifact",
+        path,
+        message: "normative file is absent from the family release manifest",
+      });
+    } else if (artifact.role !== role) {
+      shapeIssue(issues, path, `normative artifact role must be ${role}`);
+    }
+  }
+  for (const artifact of manifest.artifacts) {
+    let safe = true;
+    try {
+      safeRepositoryPath(canonicalRoot, artifact.path);
+    } catch {
+      safe = false;
+    }
+    if (safe && !expectedArtifacts.has(artifact.path)) {
+      issues.push({
+        code: "unexpected-release-artifact",
+        path: artifact.path,
+        message: "file is not part of the closed normative release artifact set",
+      });
+    }
+    const digest = sha256File(canonicalRoot, artifact.path);
+    if (digest !== undefined && artifact.sha256 !== undefined && digest !== artifact.sha256) {
+      issues.push({
+        code: "artifact-digest-mismatch",
+        path: artifact.path,
+        message: "release artifact sha256 does not match exact file bytes",
+      });
+    }
+  }
+  for (let index = 1; index < manifest.artifacts.length; index += 1) {
+    if (compareText(manifest.artifacts[index - 1]!.path, manifest.artifacts[index]!.path) > 0) {
+      shapeIssue(issues, familyManifestPath, "artifacts must be strictly sorted by path");
+      break;
+    }
+  }
+
+  for (const [path] of requiredArtifactRoles) {
     const artifact = manifest.artifacts.find((candidate) => candidate.path === path);
     if (artifact === undefined) {
       issues.push({ code: "missing-required-root", path, message: "required release artifact is absent" });
-    } else if (artifact.role !== requiredRole) {
-      shapeIssue(issues, path, `required artifact role must be ${requiredRole}`);
     }
   }
   if (manifest.registry.path !== undefined && !artifactPaths.has(manifest.registry.path)) {
@@ -438,6 +666,16 @@ export function loadCorpus(repositoryRoot: string): {
       path: registryManifestPath,
       message: `family registry path is ${manifest.registry.path ?? "missing"}`,
     });
+  }
+  if (manifest.registry.path !== undefined && manifest.registry.sha256 !== undefined) {
+    const registryDigest = sha256File(canonicalRoot, manifest.registry.path);
+    if (registryDigest !== undefined && registryDigest !== manifest.registry.sha256) {
+      issues.push({
+        code: "registry-digest-mismatch",
+        path: manifest.registry.path,
+        message: "registry pin sha256 does not match exact registry manifest bytes",
+      });
+    }
   }
 
   const parsedJson = new Map<string, unknown>();
@@ -504,17 +742,7 @@ export function loadCorpus(repositoryRoot: string): {
     shapeIssue(issues, registryManifestPath, "registry manifest must pin revision 13 and schema 3.0.0");
   }
   const reasonCodes = parseReasonCodes(parsedJson.get(reasonCodesPath));
-  if (!reasonCodes.valid && parsedJson.has(reasonCodesPath)) {
-    shapeIssue(issues, reasonCodesPath, "reason_codes must contain entries with string codes");
-  }
   const securityInvariants = parseSecurityInvariants(parsedJson.get(securityInvariantsPath));
-  if (!securityInvariants.valid && parsedJson.has(securityInvariantsPath)) {
-    shapeIssue(
-      issues,
-      securityInvariantsPath,
-      "security_invariants must contain id and owner strings with optional feature strings",
-    );
-  }
   reportDuplicates(reasonCodes.entries.map(({ code }) => code), reasonCodesPath, "reason code", issues);
   reportDuplicates(
     securityInvariants.entries.map(({ id }) => id),
@@ -522,6 +750,27 @@ export function loadCorpus(repositoryRoot: string): {
     "security invariant",
     issues,
   );
+
+  const entrySet = registryEntrySet(parsedJson);
+  if (entrySet === undefined) {
+    shapeIssue(issues, registryManifestPath, "complete registry entry documents are required");
+  } else {
+    const digest = createHash("sha256").update(canonicalize(entrySet), "utf8").digest("hex");
+    if (registryManifest !== undefined && digest !== registryManifest.entry_set_sha256) {
+      issues.push({
+        code: "registry-entry-set-digest-mismatch",
+        path: registryManifestPath,
+        message: "registry entry_set_sha256 does not match the complete current entry set",
+      });
+    }
+    const schema = parsedJson.get(registrySchemaPath);
+    if (isRecord(schema) && registryManifest !== undefined) {
+      const validate = new Ajv({ allErrors: true, strict: false }).compile(schema as AnySchema);
+      if (!validate({ manifest: registryManifest, ...entrySet })) {
+        shapeIssue(issues, registryManifestPath, "registry documents do not match registry.schema.json");
+      }
+    }
+  }
 
   sortIssues(issues);
   if (

@@ -167,6 +167,7 @@ describe("author mode", () => {
           effective_until: null,
           compromise_since: null,
         }],
+        kel_refresh: { status: "not-needed" },
         signer: {
           type: "epoch",
           pubkey: "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",

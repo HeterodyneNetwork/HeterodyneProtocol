@@ -224,8 +224,14 @@ A consumer MUST reject an uppercase, bech32, truncated, or otherwise
 non-canonical value rather than normalizing it. Every document in the family
 inherits this rule; none restates it.
 
-Radicle NIDs use the canonical Ed25519 `did:key:z...` encoding and RIDs the
-canonical `rad:z...` encoding, likewise exactly and without normalization.
+Radicle NIDs use the canonical Ed25519 `did:key:z...` encoding. A canonical
+RID is the literal prefix `rad:z` followed by the Base58BTC encoding of exactly
+the 20 raw bytes of its Git SHA-1 repository object identifier. The RID body
+has no multicodec prefix. Decoding and re-encoding MUST reproduce the exact
+body, including only those leading zero-byte markers present in the decoded
+20-byte identifier. Other prefixes, malformed Base58BTC, added leading-zero
+markers, multicodec-prefixed bodies, and other decoded lengths MUST be
+rejected rather than normalized.
 
 <a id="core-canonical-json"></a>
 ### 3.4 Canonical JSON
@@ -1299,6 +1305,14 @@ Where exact `nip01_raw` applies, a missing raw input or one that is not
 byte-equal to the signed NIP-01 input MUST be rejected with
 `nip01_raw_mismatch`.
 
+A purported signed event whose required NIP-01 event members are absent or
+malformed cannot complete identifier or signature verification and MUST be
+rejected with `bad_signature`. A syntactically valid version stamp that names
+an incompatible future protocol major MUST be rejected with
+`unknown_major_version`. These bindings use the existing Core reason-code
+vocabulary; malformed stamps that do not establish a future major remain
+ordinary `version_stamp` failures without a new wire reason.
+
 An object whose identity inputs are provisional MUST NOT be reported final.
 Failed verification MUST be exposed as a rejection or explicit security
 warning; it MUST NOT silently become trusted content.
@@ -1320,9 +1334,10 @@ existence. Provisional retired-key content MAY be displayed with that state,
 but MUST NOT authorize, replace canonical profile state, migrate an address,
 or enter a canonical feed index without an accepted anchor.
 
-The accepted `compromise_since` cutoff remains stronger: content at or after
-that cutoff is rejected even if a later repository or local receipt purports
-to anchor it. This provisional state never weakens compromise handling.
+The accepted `effective_compromise_since - 300` cutoff remains stronger:
+content at or after that cutoff is rejected even if a later repository or
+local receipt purports to anchor it. This provisional state never weakens
+compromise handling.
 
 `kel_head` handling has three distinct non-success paths. A required tag that
 is absent, duplicated, or malformed is rejection; a forbidden tag is
@@ -1816,9 +1831,9 @@ closed object containing that profile, required RFC 6901 `event_pointer` and
 `epoch_authority`, `subtype_nid`, or `accept`. The context pointer is required
 when execution reaches `persona_resolution` or a later stage. Unknown
 profiles or members, malformed pointers, duplicate declarations, and a
-missing event target are conformance failures. A missing raw target is checker
-debt rather than an invalid declaration so that the corpus can ratchet it
-explicitly.
+missing event target or declared context target are conformance failures. A
+missing raw target is checker debt rather than an invalid declaration so that
+the corpus can ratchet it explicitly.
 
 When this document declares a behavior conformant, an implementation MUST
 produce or accept it as specified. NIP-01 events have only the canonical

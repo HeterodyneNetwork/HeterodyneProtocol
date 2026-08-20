@@ -25,7 +25,7 @@
     {
       "path": "docs/spec/heterodyne-core.md",
       "role": "specification",
-      "sha256": "c0107d244220769d3cf0754983aac4ed1723e380a9f64fa50bf7316ca4b3ed2c"
+      "sha256": "22ea7f2a3b4d3510e41d856c6f401d81e636febc40484f78fcd5850f4d4a0c52"
     },
     {
       "path": "docs/spec/heterodyne-social.md",
@@ -2495,7 +2495,7 @@
     {
       "path": "docs/spec/vectors/schema/vector.schema.json",
       "role": "schema",
-      "sha256": "d3df87db6d9433a83acf59a71481228a03eac716c36afc200e9e138f74aa51c2"
+      "sha256": "ddbe1b063484a763267d70025484e5d1af93c89d5d57149cd014f0962ae24432"
     },
     {
       "path": "docs/spec/vectors/social-recovery/002-three-tier-caching.json",
@@ -2640,7 +2640,7 @@
     {
       "path": "docs/spec/vectors/verification/005-valid-core-signed-event-accepts.json",
       "role": "vector",
-      "sha256": "d874625e58801ed70e1508b0918a3d0e84c100505b17e96bd7fa69a790ee9618"
+      "sha256": "dcb15a6321be2963128eeb200b20915325a1dd977640eac3fbd28f71c921fbbf"
     },
     {
       "path": "docs/spec/vectors/versioning/001-unknown-major-placeholder.json",

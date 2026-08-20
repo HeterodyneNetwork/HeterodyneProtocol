@@ -1,6 +1,4 @@
 {
   "gate": "G5",
-  "failures": [
-    "/vector_schema_version"
-  ]
+  "failures": []
 }

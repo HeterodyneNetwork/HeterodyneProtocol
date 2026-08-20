@@ -142,14 +142,15 @@ stage.
 - `accept`
 
 Unknown profiles, unknown members, malformed pointers, duplicate declarations,
-and a missing event target are schema or conformance failures. A missing raw
-target is reported by G10 rather than treated as an invalid declaration, so
-existing raw-byte debt can be ratcheted. Context is required only when the
-ordered checker reaches a stage that consumes it.
+and a missing event target or declared context target are schema or
+conformance failures. A missing raw target is reported by G10 rather than
+treated as an invalid declaration, so existing raw-byte debt can be ratcheted.
+Context is required only when the ordered checker reaches a stage that consumes
+it.
 
 The initial `ReferenceCheckerSubject` runs only vectors carrying this explicit
 profile. It never infers applicability from topic names, descriptions, object
-shape, or `decision_trace`. Static gates still inspect all 498 vectors.
+shape, or `decision_trace`. Static gates still inspect all 499 vectors.
 
 ### Checker context
 
@@ -178,6 +179,7 @@ When `context_pointer` is present, it resolves to one closed
       "compromise_since": null
     }
   ],
+  "kel_refresh": { "status": "not-needed" },
   "signer": {
     "type": "epoch",
     "pubkey": "<64-lowercase-hex>",
@@ -195,8 +197,18 @@ When `context_pointer` is present, it resolves to one closed
 All objects reject unknown members. `pointer.persona` equals `persona`, and its
 head identifies one exact `kel` entry. KEL entries are sequence-contiguous,
 link through `prior_event_id`, and define the epoch key's inclusive lower and
-exclusive upper authority bounds. A non-null `compromise_since` truncates that
-entry's authority at the named time.
+exclusive upper authority bounds. The final array entry is the accepted head;
+the pointer may name an older on-KEL entry without redefining that head. A
+non-null `compromise_since` truncates authority at
+`effective_compromise_since - 300`, including the exact boundary.
+
+`kel_refresh.status` is closed evidence with value `not-needed`, `succeeded`,
+`pending`, or `failed`. Sequence-ahead classification precedes off-KEL
+classification. Pending or failed refresh continues the ordered checks but
+caps a successful result at `accept_provisional`; a completed refresh that
+still leaves the named head off the accepted KEL produces
+`equivocation_flagged`. A stale head that names any accepted KEL entry remains
+a normal success.
 
 Every v1 context carries explicit verifier-clock evidence. `evaluation_time`
 is the JSON-safe non-negative Unix second used as the verification clock.
@@ -236,7 +248,9 @@ specification rather than calling generator evaluators:
 5. resolve the persona through supplied pointer, KEL, and delegation evidence;
 6. enforce the version stamp;
 7. classify and validate `kel_head`;
-8. establish epoch authority at `created_at`, including compromise windows;
+8. establish epoch authority at `created_at`, including compromise windows,
+   and for `kind:31001` establish the same epoch signer's authority again at
+   `evaluation_time`;
 9. enforce subtype and NID proof rules; and
 10. return the exact vector verdict.
 
@@ -266,13 +280,16 @@ after an unrelated edit.
 | G7 orphan schemas | Every normative schema is bound by specification prose or a vector. | `<repository-relative-schema-path>` |
 | G8 identifier integrity | Each declared case has the correct identifier unless `identifier` is its expected terminal stage. | `<vector_id> :: <event_pointer>` |
 | G9 signature integrity | Each declared case has a valid BIP-340 signature unless `signature` is its expected terminal stage. | `<vector_id> :: <event_pointer>` |
-| G10 `nip01_raw` binding | Every signed Nostr event discovered anywhere in the corpus has required exact raw bytes, and declared raw pointers bind byte-for-byte. | `<vector-file> :: <event-pointer>` |
+| G10 `nip01_raw` binding | Every signed Nostr event discovered anywhere in the corpus has required exact raw bytes, and declared raw pointers bind byte-for-byte. | `<vector-file> :: event-sha256:<digest>` |
 | G11 negative-vector hygiene | A declared negative case passes every stage before its expected terminal stage. | `<vector_id> :: <event_pointer>` |
 
 G10 discovers signed Nostr events structurally by the complete NIP-01 event
-member set, records their exact JSON pointers, and cross-checks explicit
-declarations where present. New event-shaped objects therefore cannot evade
-the raw-byte gate merely by omitting `conformance_checks`.
+member set, retains exact JSON pointers internally, and cross-checks explicit
+declarations where present. Its stable suffix is SHA-256 over the UTF-8 JSON
+serialization of `[id,pubkey,created_at,kind,tags,content,sig]`; array indexes
+never enter the key and identical events may collapse. New event-shaped
+objects therefore cannot evade the raw-byte gate merely by omitting
+`conformance_checks`.
 
 The implementation computes current failure sets before authoring baselines.
 The obsolete counts from the earlier design are not copied forward. A gate

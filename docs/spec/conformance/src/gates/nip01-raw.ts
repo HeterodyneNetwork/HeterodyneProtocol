@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { resolveJsonPointer } from "../json-pointer.js";
 import type { ArtifactCorpus, VectorDocument } from "../types.js";
 
@@ -67,20 +68,42 @@ function rawMatches(event: EventShape, raw: unknown): boolean {
   }
 }
 
-function declaredRawMatches(
+function eventFingerprint(event: EventShape): string {
+  const semanticTuple = [
+    event.id,
+    event.pubkey,
+    event.created_at,
+    event.kind,
+    event.tags,
+    event.content,
+    event.sig,
+  ];
+  return createHash("sha256")
+    .update(JSON.stringify(semanticTuple), "utf8")
+    .digest("hex");
+}
+
+function failureKey(path: string, event: EventShape): string {
+  return `${path} :: event-sha256:${eventFingerprint(event)}`;
+}
+
+function declaredRawResult(
   vector: VectorDocument,
   eventPointer: string,
   rawPointer: string,
-): boolean | undefined {
+): { event: EventShape; matches: boolean } | undefined {
   try {
     const event = resolveJsonPointer(vector, eventPointer);
     if (!event.found || !isEventShape(event.value)) {
       return undefined;
     }
     const raw = resolveJsonPointer(vector, rawPointer);
-    return rawMatches(event.value, raw.found ? raw.value : undefined);
+    return {
+      event: event.value,
+      matches: rawMatches(event.value, raw.found ? raw.value : undefined),
+    };
   } catch {
-    return false;
+    return undefined;
   }
 }
 
@@ -90,18 +113,19 @@ export function findNip01RawFailures(corpus: ArtifactCorpus): string[] {
   for (const { path, value: vector } of corpus.vectors) {
     const events: DiscoveredEvent[] = [];
     discoverEvents(vector, "", undefined, events);
-    for (const { event, parent, pointer } of events) {
+    for (const { event, parent } of events) {
       const siblingRaw = isRecord(parent) && Object.hasOwn(parent, "nip01_raw")
         ? parent.nip01_raw
         : undefined;
       if (!rawMatches(event, siblingRaw)) {
-        failures.add(`${path} :: ${pointer}`);
+        failures.add(failureKey(path, event));
       }
     }
 
     for (const check of vector.conformance_checks ?? []) {
-      if (declaredRawMatches(vector, check.event_pointer, check.nip01_raw_pointer) === false) {
-        failures.add(`${path} :: ${check.event_pointer}`);
+      const result = declaredRawResult(vector, check.event_pointer, check.nip01_raw_pointer);
+      if (result !== undefined && !result.matches) {
+        failures.add(failureKey(path, result.event));
       }
     }
   }

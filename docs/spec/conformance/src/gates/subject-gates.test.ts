@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -37,6 +38,20 @@ function signedEvent(): Record<string, unknown> {
     content: "fixture",
     sig: VALID_SIGNATURE,
   };
+}
+
+function eventLocator(event: Record<string, unknown>): string {
+  const semanticTuple = [
+    event.id,
+    event.pubkey,
+    event.created_at,
+    event.kind,
+    event.tags,
+    event.content,
+    event.sig,
+  ];
+  return `event-sha256:${createHash("sha256")
+    .update(JSON.stringify(semanticTuple), "utf8").digest("hex")}`;
 }
 
 function vector(
@@ -230,7 +245,7 @@ describe("G10 NIP-01 raw discovery and binding", () => {
     ]);
 
     expect(findNip01RawFailures(missingRawCorpus)).toEqual([
-      "docs/spec/vectors/sample.json :: /input/event",
+      `docs/spec/vectors/sample.json :: ${eventLocator(signedEvent())}`,
     ]);
   });
 
@@ -244,7 +259,7 @@ describe("G10 NIP-01 raw discovery and binding", () => {
     expect(findNip01RawFailures(input)).toEqual([]);
   });
 
-  it("records escaped RFC 6901 event pointers and sorts stable file keys", () => {
+  it("uses semantic event fingerprints and sorts stable file keys", () => {
     const input = corpus([
       corpusVector(vector("z-sample", {
         "nested/key~part": { event: signedEvent() },
@@ -255,8 +270,8 @@ describe("G10 NIP-01 raw discovery and binding", () => {
     ]);
 
     expect(findNip01RawFailures(input)).toEqual([
-      "docs/spec/vectors/a-sample.json :: /input/event",
-      "docs/spec/vectors/z-sample.json :: /input/nested~1key~0part/event",
+      `docs/spec/vectors/a-sample.json :: ${eventLocator(signedEvent())}`,
+      `docs/spec/vectors/z-sample.json :: ${eventLocator(signedEvent())}`,
     ]);
   });
 
@@ -274,7 +289,34 @@ describe("G10 NIP-01 raw discovery and binding", () => {
     ]);
 
     expect(findNip01RawFailures(input)).toEqual([
-      "docs/spec/vectors/sample.json :: /input/event",
+      `docs/spec/vectors/sample.json :: ${eventLocator(signedEvent())}`,
+    ]);
+  });
+
+  it("keeps a failure key stable when an unrelated array item is inserted", () => {
+    const event = signedEvent();
+    const before = corpus([
+      corpusVector(vector("sample", { records: [{ event }] }), "docs/spec/vectors/sample.json"),
+    ]);
+    const after = corpus([
+      corpusVector(vector("sample", {
+        records: [{ unrelated: true }, { event }],
+      }), "docs/spec/vectors/sample.json"),
+    ]);
+
+    expect(findNip01RawFailures(before)).toEqual(findNip01RawFailures(after));
+    expect(findNip01RawFailures(after)[0]).not.toMatch(/\/records\/\d/u);
+  });
+
+  it("collapses duplicate semantic signed events in one vector", () => {
+    const event = signedEvent();
+    const input = corpus([
+      corpusVector(vector("sample", { records: [{ event }, { event }] }),
+        "docs/spec/vectors/sample.json"),
+    ]);
+
+    expect(findNip01RawFailures(input)).toEqual([
+      `docs/spec/vectors/sample.json :: ${eventLocator(event)}`,
     ]);
   });
 });

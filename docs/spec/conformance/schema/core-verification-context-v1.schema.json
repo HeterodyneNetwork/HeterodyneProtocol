@@ -11,6 +11,7 @@
     "clock_uncertainty",
     "pointer",
     "kel",
+    "kel_refresh",
     "signer",
     "version_policy",
     "kel_head_policy",
@@ -32,6 +33,7 @@
       "uniqueItems": true,
       "items": { "$ref": "#/$defs/kel_entry" }
     },
+    "kel_refresh": { "$ref": "#/$defs/kel_refresh" },
     "signer": { "$ref": "#/$defs/signer" },
     "version_policy": { "$ref": "#/$defs/version_policy" },
     "kel_head_policy": { "$ref": "#/$defs/kel_head_policy" },
@@ -104,6 +106,14 @@
         "effective_from": { "$ref": "#/$defs/safe_unix_second" },
         "effective_until": { "$ref": "#/$defs/nullable_safe_unix_second" },
         "compromise_since": { "$ref": "#/$defs/nullable_safe_unix_second" }
+      }
+    },
+    "kel_refresh": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["not-needed", "succeeded", "pending", "failed"] }
       }
     },
     "delegation": {

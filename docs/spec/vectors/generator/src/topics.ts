@@ -241,6 +241,7 @@ const VECTOR_FACTORIES: VectorFactory[] = [
                 effective_until: null,
                 compromise_since: null,
               }],
+              kel_refresh: { status: "not-needed" },
               signer: { type: "epoch", pubkey: epoch.pubkey, delegation: null },
               version_policy: { mode: "required", value: "heterodyne/0.5.0" },
               kel_head_policy: { mode: "required" },

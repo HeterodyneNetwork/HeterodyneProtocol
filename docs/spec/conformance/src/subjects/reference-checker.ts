@@ -21,6 +21,8 @@ type StageResult = SubjectResult["stages"][number];
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 const validateCoreContext = ajv.compile<CoreVerificationContextV1>(coreVerificationContextSchema);
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const QUALIFIED_HETERODYNE_VERSION =
+  /^heterodyne\/(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
 
 function reject(
   stages: StageResult[],
@@ -42,6 +44,14 @@ function reject(
     verdict: "reject",
     reasonCode,
     stages: [...stages, terminal],
+  };
+}
+
+function equivocation(stages: StageResult[]): SubjectResult {
+  return {
+    terminalStage: "kel_head",
+    verdict: "equivocation_flagged",
+    stages: [...stages, { stage: "kel_head", verdict: "equivocation_flagged" }],
   };
 }
 
@@ -148,10 +158,10 @@ function topLevelJsonObjectMemberNames(source: string): string[] | undefined {
   return names;
 }
 
-function hasValidVersionStamp(
+function versionStampFailure(
   event: NostrSignedEvent,
   policy: CoreVerificationContextV1["version_policy"],
-): boolean {
+): { invalid: boolean; reasonCode?: string } {
   const stamps: unknown[] = event.tags
     .filter((tag) => tag[0] === "spec_version")
     .map((tag) => tag.length === 2 ? tag[1] : undefined);
@@ -169,7 +179,7 @@ function hasValidVersionStamp(
         memberNames === undefined
         || memberNames.filter((name) => name === "spec_version").length !== 1
       ) {
-        return false;
+        return { invalid: true };
       }
       stamps.push((content as Record<string, unknown>).spec_version);
     }
@@ -178,28 +188,46 @@ function hasValidVersionStamp(
   }
 
   if (policy.mode === "forbidden") {
-    return stamps.length === 0;
+    return { invalid: stamps.length !== 0 };
   }
   if (stamps.some((stamp) => stamp !== policy.value)) {
-    return false;
+    const hasFutureMajor = stamps.some((stamp) => {
+      if (typeof stamp !== "string") return false;
+      const match = QUALIFIED_HETERODYNE_VERSION.exec(stamp);
+      return match !== null && Number(match[1]) > 0;
+    });
+    return hasFutureMajor
+      ? { invalid: true, reasonCode: "unknown_major_version" }
+      : { invalid: true };
   }
-  return policy.mode === "required" ? stamps.length === 1 : stamps.length <= 1;
+  return {
+    invalid: policy.mode === "required" ? stamps.length !== 1 : stamps.length > 1,
+  };
 }
 
-function kelHeadFailure(
+type KelHeadResult =
+  | { verdict: "pass" | "provisional" }
+  | { verdict: "reject"; reasonCode: string }
+  | { verdict: "equivocation_flagged" };
+
+function classifyKelHead(
   event: NostrSignedEvent,
   context: CoreVerificationContextV1,
-): string | undefined {
+): KelHeadResult {
   const tags = event.tags.filter((tag) => tag[0] === "kel_head");
   const mode = context.kel_head_policy.mode;
   if (mode === "forbidden") {
-    return tags.length === 0 ? undefined : "kel_head_forbidden";
+    return tags.length === 0
+      ? { verdict: "pass" }
+      : { verdict: "reject", reasonCode: "kel_head_forbidden" };
   }
   if (tags.length === 0) {
-    return mode === "required" ? "kel_head_missing" : undefined;
+    return mode === "required"
+      ? { verdict: "reject", reasonCode: "kel_head_missing" }
+      : { verdict: "pass" };
   }
   if (tags.length !== 1) {
-    return "kel_head_missing";
+    return { verdict: "reject", reasonCode: "kel_head_missing" };
   }
 
   const tag = tags[0]!;
@@ -208,37 +236,71 @@ function kelHeadFailure(
     || !/^[0-9a-f]{64}$/u.test(tag[1]!)
     || !/^(?:0|[1-9][0-9]*)$/u.test(tag[2]!)
   ) {
-    return "kel_head_missing";
+    return { verdict: "reject", reasonCode: "kel_head_missing" };
   }
   const sequence = Number(tag[2]);
   if (!Number.isSafeInteger(sequence)) {
-    return "kel_head_missing";
+    return { verdict: "reject", reasonCode: "kel_head_missing" };
   }
   const namedEntry = context.kel.find((entry) => entry.event_id === tag[1]);
-  if (namedEntry === undefined || sequence !== namedEntry.sequence) {
-    return "kel_head_mismatch";
+  if (namedEntry !== undefined && sequence !== namedEntry.sequence) {
+    return { verdict: "reject", reasonCode: "kel_head_mismatch" };
   }
-  return undefined;
+  const acceptedHead = context.kel.at(-1)!;
+  if (sequence > acceptedHead.sequence) {
+    return context.kel_refresh.status === "succeeded"
+      ? { verdict: "equivocation_flagged" }
+      : { verdict: "provisional" };
+  }
+  return namedEntry === undefined
+    ? { verdict: "equivocation_flagged" }
+    : { verdict: "pass" };
+}
+
+function effectiveCompromiseCutoff(
+  entry: CoreVerificationContextV1["kel"][number],
+): number | undefined {
+  if (entry.compromise_since === null) return undefined;
+  const effectiveCompromiseSince = entry.effective_until === null
+    ? entry.compromise_since
+    : Math.min(entry.compromise_since, entry.effective_until);
+  return effectiveCompromiseSince - 300;
+}
+
+function epochEntryAt(
+  context: CoreVerificationContextV1,
+  at: number,
+): { entry?: CoreVerificationContextV1["kel"][number]; reasonCode?: string } {
+  const entry = context.kel.find((candidate) =>
+    at >= candidate.effective_from
+    && (candidate.effective_until === null || at < candidate.effective_until));
+  if (entry === undefined) return { reasonCode: "retired-key-authority-window-invalid" };
+  const cutoff = effectiveCompromiseCutoff(entry);
+  if (cutoff !== undefined && at >= cutoff) {
+    return { reasonCode: "signing_key_compromised_at_created_at" };
+  }
+  return { entry };
 }
 
 function authorityFailure(
   event: NostrSignedEvent,
   context: CoreVerificationContextV1,
 ): string | undefined {
-  const entry = context.kel.find((candidate) =>
-    event.created_at >= candidate.effective_from
-    && (candidate.effective_until === null || event.created_at < candidate.effective_until));
-  if (entry === undefined) {
-    return "retired-key-authority-window-invalid";
-  }
-  if (entry.compromise_since !== null && event.created_at >= entry.compromise_since) {
-    return "signing_key_compromised_at_created_at";
-  }
+  const atEvent = epochEntryAt(context, event.created_at);
+  if (atEvent.reasonCode !== undefined) return atEvent.reasonCode;
+  const entry = atEvent.entry!;
 
   if (context.signer.type === "epoch") {
-    return context.signer.pubkey === entry.epoch_pubkey
-      ? undefined
-      : "retired-key-authority-window-invalid";
+    if (context.signer.pubkey !== entry.epoch_pubkey) {
+      return "retired-key-authority-window-invalid";
+    }
+    if (event.kind === 31_001) {
+      const atEvaluation = epochEntryAt(context, context.evaluation_time);
+      if (atEvaluation.entry?.epoch_pubkey !== context.signer.pubkey) {
+        return "retired-key-authority-window-invalid";
+      }
+    }
+    return undefined;
   }
 
   const delegation = context.signer.delegation;
@@ -278,6 +340,26 @@ function decodeBase58(value: string): Uint8Array | undefined {
   const decoded = new Uint8Array(zeroes + body.length);
   decoded.set(body, zeroes);
   return decoded;
+}
+
+function encodeBase58(value: Uint8Array): string {
+  let number = 0n;
+  for (const byte of value) number = number * 256n + BigInt(byte);
+  let encoded = "";
+  while (number > 0n) {
+    encoded = BASE58_ALPHABET[Number(number % 58n)]! + encoded;
+    number /= 58n;
+  }
+  let zeroes = 0;
+  while (value[zeroes] === 0) zeroes += 1;
+  return "1".repeat(zeroes) + encoded;
+}
+
+function isCanonicalRadicleRid(value: string): boolean {
+  if (!value.startsWith("rad:z")) return false;
+  const body = value.slice("rad:z".length);
+  const decoded = decodeBase58(body);
+  return decoded !== undefined && decoded.length === 20 && encodeBase58(decoded) === body;
 }
 
 function nidMatchesPublicKey(nid: string, publicKey: string): boolean {
@@ -410,6 +492,7 @@ function nodeAdvertisementFailure(
     || discriminator?.length !== 2
     || discriminator[1] !== "node_advert"
     || ridTag?.length !== 2
+    || !isCanonicalRadicleRid(ridTag[1]!)
     || d[1] !== ridTag[1]
     || nidTag?.length !== 2
     || endpointTag?.length !== 2
@@ -480,10 +563,10 @@ export function checkCoreSignedEvent(
   try {
     resolved = resolveJsonPointer(vector, check.event_pointer);
   } catch {
-    return reject(stages, "event_structure");
+    return reject(stages, "event_structure", "bad_signature");
   }
   if (!resolved.found || !isNostrSignedEvent(resolved.value)) {
-    return reject(stages, "event_structure");
+    return reject(stages, "event_structure", "bad_signature");
   }
   const event = resolved.value;
   stages.push({ stage: "event_structure", verdict: "pass" });
@@ -518,16 +601,21 @@ export function checkCoreSignedEvent(
   }
   stages.push({ stage: "persona_resolution", verdict: "pass" });
 
-  if (!hasValidVersionStamp(event, context.version_policy)) {
-    return reject(stages, "version_stamp");
+  const versionFailure = versionStampFailure(event, context.version_policy);
+  if (versionFailure.invalid) {
+    return reject(stages, "version_stamp", versionFailure.reasonCode);
   }
   stages.push({ stage: "version_stamp", verdict: "pass" });
 
-  const headFailure = kelHeadFailure(event, context);
-  if (headFailure !== undefined) {
-    return reject(stages, "kel_head", headFailure);
+  const head = classifyKelHead(event, context);
+  if (head.verdict === "reject") {
+    return reject(stages, "kel_head", head.reasonCode);
   }
-  stages.push({ stage: "kel_head", verdict: "pass" });
+  if (head.verdict === "equivocation_flagged") {
+    return equivocation(stages);
+  }
+  const provisional = head.verdict === "provisional";
+  stages.push({ stage: "kel_head", verdict: provisional ? "provisional" : "pass" });
 
   const authorityReason = authorityFailure(event, context);
   if (authorityReason !== undefined) {
@@ -540,6 +628,10 @@ export function checkCoreSignedEvent(
     return reject(stages, "subtype_nid", subtypeReason);
   }
   stages.push({ stage: "subtype_nid", verdict: "pass" });
-  stages.push({ stage: "accept", verdict: "pass" });
-  return { terminalStage: "accept", verdict: "accept", stages };
+  stages.push({ stage: "accept", verdict: provisional ? "provisional" : "pass" });
+  return {
+    terminalStage: "accept",
+    verdict: provisional ? "accept_provisional" : "accept",
+    stages,
+  };
 }

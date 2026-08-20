@@ -1,12 +1,18 @@
-import { rmSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { loadCorpus } from "./artifacts.js";
 import {
   createTestRepository,
   familyManifestPath,
   fixturesPath,
+  refreshReleaseDigests,
+  refreshRegistryEntrySetDigest,
   readTestManifest,
+  registryEntrySetDigest,
+  registryManifestPath,
   reasonCodesPath,
+  sha256File,
   vectorPath,
   writeJson,
   writeText,
@@ -26,6 +32,36 @@ function repository(): string {
   return root;
 }
 
+function readJson(root: string, path: string): Record<string, unknown> {
+  return JSON.parse(readFileSync(resolve(root, path), "utf8")) as Record<string, unknown>;
+}
+
+function writeVector(root: string, value: Record<string, unknown>): void {
+  writeJson(root, vectorPath, value);
+  refreshReleaseDigests(root);
+}
+
+function declaredVector(): Record<string, unknown> {
+  return {
+    vector_id: "core.declared",
+    vector_schema_version: "1.1.0",
+    owner_document: "core",
+    spec_version: "heterodyne/0.5.0",
+    spec_refs: ["heterodyne:0.5.0#core-conformance"],
+    description: "synthetic independently loaded declaration",
+    direction: "consume",
+    input: { event: {}, context: {} },
+    expected_output: { verdict: "accept" },
+    conformance_checks: [{
+      profile: "core-signed-event-v1",
+      event_pointer: "/input/event",
+      nip01_raw_pointer: "/input/nip01_raw",
+      context_pointer: "/input/context",
+      expected_terminal_stage: "accept",
+    }],
+  };
+}
+
 describe("loadCorpus", () => {
   it("loads a valid synthetic corpus from its family manifest", () => {
     const result = loadCorpus(repository());
@@ -34,11 +70,177 @@ describe("loadCorpus", () => {
     expect(result.corpus).toMatchObject({
       familyVersion: "heterodyne/0.5.0",
       registryRevision: 13,
-      registryDigest: "aa".repeat(32),
+      registryDigest: registryEntrySetDigest,
     });
     expect(result.corpus?.specifications).toHaveLength(5);
-    expect(result.corpus?.schemas).toHaveLength(1);
+    expect(result.corpus?.schemas).toHaveLength(2);
     expect(result.corpus?.vectors.map(({ value }) => value.vector_id)).toEqual(["core.valid"]);
+  });
+
+  it("hashes exact artifact bytes and rejects a changed file", () => {
+    const root = repository();
+    const corePath = "docs/spec/heterodyne-core.md";
+    writeText(root, corePath, "# core changed by one byte\n");
+
+    expect(loadCorpus(root).issues).toContainEqual({
+      code: "artifact-digest-mismatch",
+      path: corePath,
+      message: "release artifact sha256 does not match exact file bytes",
+    });
+  });
+
+  it("rejects a stale syntactically valid artifact digest in the release manifest", () => {
+    const root = repository();
+    const manifest = readTestManifest(root);
+    const artifacts = manifest.artifacts as Array<Record<string, unknown>>;
+    const vector = artifacts.find((artifact) => artifact.path === vectorPath)!;
+    vector.sha256 = "00".repeat(32);
+    writeJson(root, familyManifestPath, manifest);
+
+    expect(loadCorpus(root).issues).toContainEqual({
+      code: "artifact-digest-mismatch",
+      path: vectorPath,
+      message: "release artifact sha256 does not match exact file bytes",
+    });
+  });
+
+  it("rejects a stale registry-file hash even when its artifact entry is current", () => {
+    const root = repository();
+    const manifest = readTestManifest(root);
+    (manifest.registry as Record<string, unknown>).sha256 = "00".repeat(32);
+    writeJson(root, familyManifestPath, manifest);
+
+    expect(loadCorpus(root).issues).toContainEqual({
+      code: "registry-digest-mismatch",
+      path: registryManifestPath,
+      message: "registry pin sha256 does not match exact registry manifest bytes",
+    });
+  });
+
+  it("recomputes the complete registry entry-set digest independently", () => {
+    const root = repository();
+    const reasons = readJson(root, reasonCodesPath);
+    (reasons.reason_codes as unknown[]).push({
+      code: "second_reason",
+      owner: "core",
+      status: "draft",
+      first_version: "heterodyne/0.5.0",
+      description: "A second valid synthetic reason.",
+      spec_refs: ["heterodyne:0.5.0#core-conformance"],
+    });
+    writeJson(root, reasonCodesPath, reasons);
+    refreshReleaseDigests(root);
+
+    expect(loadCorpus(root).issues).toContainEqual({
+      code: "registry-entry-set-digest-mismatch",
+      path: registryManifestPath,
+      message: "registry entry_set_sha256 does not match the complete current entry set",
+    });
+  });
+
+  it("enforces closed release, registry-pin, and artifact member shapes", () => {
+    const root = repository();
+    const manifest = readTestManifest(root);
+    manifest.unexpected = true;
+    (manifest.registry as Record<string, unknown>).unexpected = true;
+    ((manifest.artifacts as Array<Record<string, unknown>>)[0]!).unexpected = true;
+    writeJson(root, familyManifestPath, manifest);
+
+    expect(loadCorpus(root).issues.filter(({ code }) => code === "invalid-document-shape"))
+      .toHaveLength(3);
+  });
+
+  it("enforces the release schema's exact repository-path syntax", () => {
+    const root = repository();
+    const manifest = readTestManifest(root);
+    const artifact = (manifest.artifacts as Array<Record<string, unknown>>)[0]!;
+    const invalidPath = "docs/spec/bad name.json";
+    artifact.path = invalidPath;
+    writeText(root, invalidPath, "{}\n");
+    artifact.sha256 = sha256File(root, invalidPath);
+    (manifest.artifacts as Array<Record<string, unknown>>)
+      .sort((left, right) => String(left.path).localeCompare(String(right.path)));
+    writeJson(root, familyManifestPath, manifest);
+
+    expect(loadCorpus(root).issues).toContainEqual(expect.objectContaining({
+      code: "invalid-document-shape",
+      path: invalidPath,
+    }));
+  });
+
+  it("rejects an incomplete release artifact set instead of trusting omissions", () => {
+    const root = repository();
+    const manifest = readTestManifest(root);
+    manifest.artifacts = (manifest.artifacts as Array<Record<string, unknown>>)
+      .filter((artifact) => artifact.path !== vectorPath);
+    writeJson(root, familyManifestPath, manifest);
+
+    expect(loadCorpus(root).issues).toContainEqual({
+      code: "missing-release-artifact",
+      path: vectorPath,
+      message: "normative file is absent from the family release manifest",
+    });
+  });
+
+  it("rejects extra declaration members and duplicate declarations", () => {
+    const root = repository();
+    const vector = declaredVector();
+    const check = (vector.conformance_checks as Array<Record<string, unknown>>)[0]!;
+    check.inferred = true;
+    writeVector(root, vector);
+    expect(loadCorpus(root).issues).toContainEqual(expect.objectContaining({
+      code: "invalid-document-shape",
+      path: vectorPath,
+    }));
+
+    delete check.inferred;
+    vector.conformance_checks = [check, { ...check }];
+    writeVector(root, vector);
+    expect(loadCorpus(root).issues).toContainEqual(expect.objectContaining({
+      code: "invalid-document-shape",
+      path: vectorPath,
+    }));
+  });
+
+  it("requires context_pointer for persona resolution and later stages", () => {
+    const root = repository();
+    const vector = declaredVector();
+    const check = (vector.conformance_checks as Array<Record<string, unknown>>)[0]!;
+    check.expected_terminal_stage = "persona_resolution";
+    delete check.context_pointer;
+    writeVector(root, vector);
+
+    expect(loadCorpus(root).issues).toContainEqual(expect.objectContaining({
+      code: "invalid-document-shape",
+      path: vectorPath,
+    }));
+  });
+
+  it("requires declared event and context targets to exist", () => {
+    const root = repository();
+    const vector = declaredVector();
+    const check = (vector.conformance_checks as Array<Record<string, unknown>>)[0]!;
+    check.event_pointer = "/input/missing_event";
+    writeVector(root, vector);
+    expect(loadCorpus(root).issues).toContainEqual(expect.objectContaining({
+      code: "invalid-document-shape",
+      path: vectorPath,
+    }));
+
+    check.event_pointer = "/input/event";
+    check.context_pointer = "/input/missing_context";
+    writeVector(root, vector);
+    expect(loadCorpus(root).issues).toContainEqual(expect.objectContaining({
+      code: "invalid-document-shape",
+      path: vectorPath,
+    }));
+  });
+
+  it("leaves an absent raw target for G10 discovery debt", () => {
+    const root = repository();
+    writeVector(root, declaredVector());
+
+    expect(loadCorpus(root).issues).toEqual([]);
   });
 
   it("accumulates an unsafe manifest path and malformed vector deterministically", () => {
@@ -49,10 +251,16 @@ describe("loadCorpus", () => {
       role: "schema",
       sha256: "aa".repeat(32),
     });
-    writeJson(root, familyManifestPath, manifest);
     writeText(root, vectorPath, "{ malformed\n");
+    const vector = (manifest.artifacts as Array<Record<string, unknown>>)
+      .find((artifact) => artifact.path === vectorPath)!;
+    vector.sha256 = sha256File(root, vectorPath);
+    (manifest.artifacts as Array<Record<string, unknown>>)
+      .sort((left, right) => String(left.path).localeCompare(String(right.path)));
+    writeJson(root, familyManifestPath, manifest);
 
     expect(loadCorpus(root).issues.map(({ code }) => code)).toEqual([
+      "invalid-document-shape",
       "invalid-json",
       "unsafe-artifact-path",
     ]);
@@ -73,8 +281,11 @@ describe("loadCorpus", () => {
     const root = repository();
     const manifest = readTestManifest(root);
     manifest.family_version = "heterodyne/9.9.9";
-    writeJson(root, familyManifestPath, manifest);
     writeText(root, vectorPath, "{ malformed\n");
+    const vector = (manifest.artifacts as Array<Record<string, unknown>>)
+      .find((artifact) => artifact.path === vectorPath)!;
+    vector.sha256 = sha256File(root, vectorPath);
+    writeJson(root, familyManifestPath, manifest);
 
     expect(loadCorpus(root).issues.map(({ code }) => code)).toEqual([
       "invalid-document-shape",
@@ -114,6 +325,7 @@ describe("loadCorpus", () => {
     writeJson(root, familyManifestPath, manifest);
 
     expect(loadCorpus(root).issues.map(({ code }) => code)).toEqual([
+      "invalid-document-shape",
       "missing-required-root",
       "unsafe-artifact-path",
     ]);
@@ -131,6 +343,7 @@ describe("loadCorpus", () => {
     core.role = "schema";
     writeText(root, corePath, "{}\n");
     writeJson(root, familyManifestPath, manifest);
+    refreshReleaseDigests(root);
 
     expect(loadCorpus(root).issues.map(({ code, path }) => ({ code, path }))).toEqual([
       { code: "invalid-document-shape", path: corePath },
@@ -148,6 +361,7 @@ describe("loadCorpus", () => {
       owner_document: "core",
       spec_version: "heterodyne/0.5.0",
       spec_refs: ["heterodyne:0.5.0#core-conformance"],
+      description: "duplicate synthetic vector identifier",
       direction: "consume",
       input: {},
       expected_output: { verdict: "accept" },
@@ -155,8 +369,10 @@ describe("loadCorpus", () => {
     (manifest.artifacts as unknown[]).push({
       path: duplicatePath,
       role: "vector",
-      sha256: "aa".repeat(32),
+      sha256: sha256File(root, duplicatePath),
     });
+    (manifest.artifacts as Array<Record<string, unknown>>)
+      .sort((left, right) => String(left.path).localeCompare(String(right.path)));
     writeJson(root, familyManifestPath, manifest);
 
     expect(loadCorpus(root).issues.map(({ code }) => code)).toEqual(["duplicate-vector-id"]);
@@ -181,9 +397,11 @@ describe("loadCorpus", () => {
 
   it("reports duplicate registry entries", () => {
     const root = repository();
-    writeJson(root, reasonCodesPath, {
-      reason_codes: [{ code: "bad_signature" }, { code: "bad_signature" }],
-    });
+    const reasons = readJson(root, reasonCodesPath);
+    const entry = (reasons.reason_codes as unknown[])[0]!;
+    writeJson(root, reasonCodesPath, { reason_codes: [entry, entry] });
+    refreshRegistryEntrySetDigest(root);
+    refreshReleaseDigests(root);
 
     expect(loadCorpus(root).issues.map(({ code }) => code)).toEqual([
       "duplicate-registry-entry",
@@ -192,13 +410,17 @@ describe("loadCorpus", () => {
 
   it("reports duplicate reason codes even when another entry is malformed", () => {
     const root = repository();
+    const reasons = readJson(root, reasonCodesPath);
+    const entry = (reasons.reason_codes as unknown[])[0]!;
     writeJson(root, reasonCodesPath, {
       reason_codes: [
-        { code: "bad_signature" },
+        entry,
         { malformed: true },
-        { code: "bad_signature" },
+        entry,
       ],
     });
+    refreshRegistryEntrySetDigest(root);
+    refreshReleaseDigests(root);
 
     expect(loadCorpus(root).issues.map(({ code }) => code)).toEqual([
       "duplicate-registry-entry",

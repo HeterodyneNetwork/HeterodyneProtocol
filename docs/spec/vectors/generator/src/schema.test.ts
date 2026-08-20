@@ -137,6 +137,37 @@ describe("vector schema", () => {
     })).toThrow();
   });
 
+  it("requires context for persona resolution and every later terminal stage", () => {
+    const baseCheck = {
+      profile: "core-signed-event-v1",
+      event_pointer: "/input/event",
+      nip01_raw_pointer: "/input/nip01_raw",
+    };
+    for (const expected_terminal_stage of [
+      "persona_resolution",
+      "version_stamp",
+      "kel_head",
+      "epoch_authority",
+      "subtype_nid",
+      "accept",
+    ]) {
+      expect(() => validateVectorOrThrow({
+        ...valid("core"),
+        vector_schema_version: "1.1.0",
+        conformance_checks: [{ ...baseCheck, expected_terminal_stage }],
+      })).toThrow(/context_pointer|required/);
+      expect(() => validateVectorOrThrow({
+        ...valid("core"),
+        vector_schema_version: "1.1.0",
+        conformance_checks: [{
+          ...baseCheck,
+          context_pointer: "/input/context",
+          expected_terminal_stage,
+        }],
+      })).not.toThrow();
+    }
+  });
+
   it("accepts the qualified family vector envelope", () => {
     expect(() =>
       validateVectorOrThrow({
