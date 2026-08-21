@@ -3,6 +3,8 @@ import { Ajv2020 } from "ajv/dist/2020.js";
 import { lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 import snapshotManifestSchema from "../../snapshot.schema.json" with { type: "json" };
+import snapshotManifestMetaSchema from "../../snapshot.meta.schema.json" with { type: "json" };
+import uniqueByPathMetaSchema from "../../snapshot-unique-by-path.meta.schema.json" with { type: "json" };
 
 export type SnapshotArtifact = {
   path: string;
@@ -40,32 +42,38 @@ const EXCLUDED_TOP_LEVEL_DIRECTORIES = new Set(["coverage", "generator", "schema
 const EXCLUDED_TOP_LEVEL_FILES = new Set([
   "fixtures.json",
   "snapshot.json",
+  "snapshot.meta.schema.json",
   "snapshot.schema.json",
+  "snapshot-unique-by-path.meta.schema.json",
 ]);
 const snapshotManifestAjv = new Ajv2020({ allErrors: true, strict: true });
-snapshotManifestAjv.addKeyword({
+snapshotManifestAjv.addVocabulary([{
   keyword: "x-unique-by",
   type: "array",
   schemaType: "string",
   metaSchema: { const: "path" },
   errors: false,
-  validate(property: string, value: unknown): boolean {
-    if (!Array.isArray(value)) return true;
-    const seen = new Set<unknown>();
-    for (const item of value) {
-      if (!isRecord(item) || !Object.hasOwn(item, property)) continue;
-      const key = item[property];
-      if (seen.has(key)) return false;
-      seen.add(key);
-    }
-    return true;
-  },
-});
+  validate: uniqueByProperty,
+}]);
+snapshotManifestAjv.addMetaSchema(uniqueByPathMetaSchema);
+snapshotManifestAjv.addMetaSchema(snapshotManifestMetaSchema);
 const validateSnapshotManifestValue = snapshotManifestAjv.compile(snapshotManifestSchema);
 
 /** Generic schema gate; canonical parsing and repository-byte checks remain runtime-authoritative. */
 export function validateSnapshotManifestSchema(value: unknown): boolean {
   return validateSnapshotManifestValue(value);
+}
+
+function uniqueByProperty(property: string, value: unknown): boolean {
+  if (!Array.isArray(value)) return true;
+  const seen = new Set<unknown>();
+  for (const item of value) {
+    if (!isRecord(item) || !Object.hasOwn(item, property)) continue;
+    const key = item[property];
+    if (seen.has(key)) return false;
+    seen.add(key);
+  }
+  return true;
 }
 
 export function loadSnapshotManifest(repoRoot: string): SnapshotManifest {

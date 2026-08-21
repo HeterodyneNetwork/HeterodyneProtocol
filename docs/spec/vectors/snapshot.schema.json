@@ -1,7 +1,8 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "https://heterodyne.network/schemas/vector-snapshot-manifest-meta-v1.schema.json",
   "$id": "https://heterodyne.network/schemas/vector-snapshot-manifest-v1.schema.json",
   "title": "Heterodyne rolling vector snapshot manifest",
+  "description": "Requires the unique-by-path-v1 vocabulary declared by its custom Draft 2020-12 meta-schema; unsupported validators must refuse this schema.",
   "type": "object",
   "additionalProperties": false,
   "required": [

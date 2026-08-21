@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import {
   mkdirSync,
   mkdtempSync,
@@ -8,8 +9,9 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import snapshotManifestSchema from "../../snapshot.schema.json" with { type: "json" };
 import {
   buildSnapshotManifest,
   loadSnapshotManifest,
@@ -36,6 +38,11 @@ const VECTOR_PATHS = [
   "workspace/001-second.json",
 ] as const;
 const SOURCE_COMMIT = "1".repeat(40);
+const SNAPSHOT_META_SCHEMA_ID =
+  "https://heterodyne.network/schemas/vector-snapshot-manifest-meta-v1.schema.json";
+const UNIQUE_BY_PATH_VOCABULARY_ID =
+  "https://heterodyne.network/vocab/unique-by-path-v1";
+const repositoryRoot = resolve(import.meta.dirname, "../../../../../");
 const temps: string[] = [];
 
 afterEach(() => {
@@ -54,6 +61,10 @@ function canonical(value: unknown): string {
 
 function sha256(bytes: string): string {
   return createHash("sha256").update(bytes).digest("hex");
+}
+
+function readRepositoryJson(path: string): Record<string, unknown> {
+  return JSON.parse(readFileSync(resolve(repositoryRoot, path), "utf8")) as Record<string, unknown>;
 }
 
 function repository(): string {
@@ -75,7 +86,9 @@ function repository(): string {
   }
   write(root, "README.md", "not snapshot data\n");
   write(root, "generator/package.json", "{}\n");
+  write(root, "snapshot.meta.schema.json", "{}\n");
   write(root, "snapshot.schema.json", "{}\n");
+  write(root, "snapshot-unique-by-path.meta.schema.json", "{}\n");
   return root;
 }
 
@@ -115,7 +128,9 @@ describe("snapshot manifest", () => {
       `${VECTOR_ROOT}/README.md`,
       `${VECTOR_ROOT}/generator/package.json`,
       `${VECTOR_ROOT}/snapshot.json`,
+      `${VECTOR_ROOT}/snapshot.meta.schema.json`,
       `${VECTOR_ROOT}/snapshot.schema.json`,
+      `${VECTOR_ROOT}/snapshot-unique-by-path.meta.schema.json`,
     ]));
   });
 
@@ -216,5 +231,45 @@ describe("snapshot manifest", () => {
     const rootAlias = join(aliasParent, "repository");
     symlinkSync(rootTarget, rootAlias, "dir");
     expect(() => buildSnapshotManifest(rootAlias, SOURCE_COMMIT)).toThrow(/symbolic link/);
+  });
+
+  it("publishes valid and closed snapshot dialect and unique-by-path vocabulary meta-schemas", () => {
+    const vocabularyMeta = readRepositoryJson(
+      "docs/spec/vectors/snapshot-unique-by-path.meta.schema.json",
+    );
+    const dialectMeta = readRepositoryJson("docs/spec/vectors/snapshot.meta.schema.json");
+    const stock = new Ajv2020({ allErrors: true, strict: true });
+
+    expect(stock.validateSchema(vocabularyMeta)).toBe(true);
+    expect(stock.validateSchema(dialectMeta)).toBe(true);
+    expect((vocabularyMeta.$vocabulary as Record<string, unknown>)[UNIQUE_BY_PATH_VOCABULARY_ID])
+      .toBe(true);
+    expect((dialectMeta.$vocabulary as Record<string, unknown>)[UNIQUE_BY_PATH_VOCABULARY_ID])
+      .toBe(true);
+    stock.addMetaSchema(vocabularyMeta);
+    const validateVocabularySchema = stock.getSchema(String(vocabularyMeta.$id));
+    if (validateVocabularySchema === undefined) throw new Error("vocabulary meta-schema not registered");
+    expect(validateVocabularySchema({ "x-unique-by": "path" })).toBe(true);
+    expect(validateVocabularySchema({ "x-unique-by": "sha256" })).toBe(false);
+    expect(validateVocabularySchema({ "x-undeclared": true })).toBe(false);
+  });
+
+  it("fails closed when a validator lacks the required unique-by-path vocabulary", () => {
+    expect(snapshotManifestSchema.$schema).toBe(SNAPSHOT_META_SCHEMA_ID);
+    const unsupported = new Ajv2020({ allErrors: true, strict: true });
+    expect(() => unsupported.compile(snapshotManifestSchema)).toThrow(SNAPSHOT_META_SCHEMA_ID);
+
+    const vocabularyMeta = readRepositoryJson(
+      "docs/spec/vectors/snapshot-unique-by-path.meta.schema.json",
+    );
+    const dialectMeta = readRepositoryJson("docs/spec/vectors/snapshot.meta.schema.json");
+    unsupported.addMetaSchema(vocabularyMeta);
+    unsupported.addMetaSchema(dialectMeta);
+    expect(() => unsupported.compile(snapshotManifestSchema)).toThrow(/unknown keyword.*x-unique-by/);
+  });
+
+  it("compiles the supported strict snapshot schema validation path", () => {
+    const root = repository();
+    expect(validateSnapshotManifestSchema(buildSnapshotManifest(root, SOURCE_COMMIT))).toBe(true);
   });
 });
