@@ -8,20 +8,12 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { packageSnapshot } from "./author.js";
-import {
-  buildSnapshotManifest,
-  serializeSnapshotManifest,
-} from "./snapshot-manifest.js";
-import {
-  checkSnapshot,
-  type CommandRunner,
-  withMaterializedCommit,
-} from "./snapshot-orchestrator.js";
+import { authorSnapshot, checkSnapshot } from "./snapshot-orchestrator.js";
 
 const SNAPSHOT_PATH = "docs/spec/vectors/snapshot.json";
+const repositoryRoot = resolve(import.meta.dirname, "../../../../../");
 const temporaryDirectories: string[] = [];
 
 afterEach(() => {
@@ -31,205 +23,183 @@ afterEach(() => {
 });
 
 describe("rolling snapshot lifecycle", () => {
-  it("keeps an ordinary specification-only commit independent of the snapshot", async () => {
-    const { root, sourceCommit } = repository();
-    writeSnapshot(root, sourceCommit);
-    const snapshotCommit = commit(root, "first reconciliation");
-    const firstCommands: string[] = [];
+  it("executes authoring and checking across ordinary, replacement, and squash commits", async () => {
+    const root = sourceRepository();
+    installConformanceDependencies(root);
+    const sourceCommit = git(root, ["rev-parse", "HEAD"]);
 
-    const before = await checkSnapshot(root, { run: acceptingRunner(firstCommands) });
-    expect(firstCommands).toHaveLength(5);
-    expect(before).toMatchObject({ sourceCommit, snapshotCommit });
-
-    write(root, "docs/spec/heterodyne-core.md", "# Draft-only specification edit\n");
-    commit(root, "ordinary specification edit");
-    const laterCommands: string[] = [];
-    const after = await checkSnapshot(root, { run: acceptingRunner(laterCommands) });
-
-    expect(laterCommands).toHaveLength(5);
-    expect(after).toMatchObject({ sourceCommit, snapshotCommit });
-    expect(git(root, [
-      "diff", "--name-only", snapshotCommit, "HEAD", "--", "docs/spec/vectors",
-    ])).toBe("");
-  });
-
-  it("checks first and replacement reconciliations only after each is committed", async () => {
-    const { root, sourceCommit } = repository();
-    const commands: string[] = [];
-    const run = acceptingRunner(commands);
-
-    writeSnapshot(root, sourceCommit, "first");
-    await expect(checkSnapshot(root, { run })).rejects.toThrow(/no committed snapshot manifest/);
-    expect(commands).toEqual([]);
-
+    await authorSnapshot(root, sourceCommit);
+    await expect(checkSnapshot(root)).rejects.toThrow(/no committed snapshot manifest/);
     const firstSnapshotCommit = commit(root, "first reconciliation");
-    expect(await checkSnapshot(root, { run })).toMatchObject({
+    expect(await checkSnapshot(root)).toMatchObject({ sourceCommit, snapshotCommit: firstSnapshotCommit });
+
+    write(
+      root,
+      "docs/spec/heterodyne-core.md",
+      `${readFileSync(join(root, "docs/spec/heterodyne-core.md"), "utf8")}`
+        + "\n<!-- lifecycle test: ordinary draft-only edit -->\n",
+    );
+    const replacementSourceCommit = commit(root, "ordinary specification edit");
+    expect(git(root, [
+      "diff", "--name-only", firstSnapshotCommit, replacementSourceCommit,
+      "--", "docs/spec/vectors",
+    ])).toBe("");
+    expect(await checkSnapshot(root)).toMatchObject({
       sourceCommit,
       snapshotCommit: firstSnapshotCommit,
     });
-    expect(commands).toHaveLength(5);
 
-    commands.length = 0;
-    writeSnapshot(root, sourceCommit, "replacement");
-    await expect(checkSnapshot(root, { run })).rejects.toThrow(/manifest bytes differ/);
-    expect(commands).toEqual([]);
+    await authorSnapshot(root, replacementSourceCommit);
+    const firstAuthoringBytes = snapshotOwnedBytes(root);
+    expect(firstAuthoringBytes.map(({ path }) => path)).toEqual(expect.arrayContaining([
+      SNAPSHOT_PATH,
+      "docs/spec/conformance/DEBT.md",
+      "docs/spec/conformance/report.json",
+    ]));
+    expect(firstAuthoringBytes.some(({ path }) =>
+      path.startsWith("docs/spec/conformance/baselines/"))).toBe(true);
+    await expect(checkSnapshot(root)).rejects.toThrow(/manifest bytes differ/);
 
+    await authorSnapshot(root, replacementSourceCommit);
+    expect(snapshotOwnedBytes(root)).toEqual(firstAuthoringBytes);
     const replacementSnapshotCommit = commit(root, "replacement reconciliation");
-    expect(await checkSnapshot(root, { run })).toMatchObject({
-      sourceCommit,
+    expect(await checkSnapshot(root)).toMatchObject({
+      sourceCommit: replacementSourceCommit,
       snapshotCommit: replacementSnapshotCommit,
     });
-    expect(commands).toHaveLength(5);
-  });
 
-  it("checks a squash-shaped final snapshot tree", async () => {
-    const { root, sourceCommit } = repository();
-    writeSnapshot(root, sourceCommit);
-    write(root, "docs/spec/heterodyne-core.md", "# Squashed specification and snapshot\n");
-    git(root, ["add", "--all", "--"]);
-    const tree = git(root, ["write-tree"]);
-    const squashCommit = git(root, ["commit-tree", tree, "-p", sourceCommit], {
+    const finalTree = git(root, ["rev-parse", `${replacementSnapshotCommit}^{tree}`]);
+    const squashCommit = git(root, [
+      "commit-tree", finalTree, "-p", replacementSourceCommit,
+    ], {
       GIT_AUTHOR_NAME: "Snapshot Lifecycle Test",
       GIT_AUTHOR_EMAIL: "snapshot@example.invalid",
       GIT_COMMITTER_NAME: "Snapshot Lifecycle Test",
       GIT_COMMITTER_EMAIL: "snapshot@example.invalid",
     });
     git(root, ["reset", "--quiet", "--hard", squashCommit, "--"]);
-    const commands: string[] = [];
 
-    const history = await checkSnapshot(root, { run: acceptingRunner(commands) });
-
-    expect(commands).toHaveLength(5);
-    expect(history).toMatchObject({ sourceCommit, snapshotCommit: squashCommit });
-  });
-
-  it("packages byte-identical reconciliations from the same pinned source", async () => {
-    const { root } = repository();
-    writeRawPackageInput(root, "raw");
-    const sourceCommit = commit(root, "reconciliation source");
-    const first = temporaryDirectory("heterodyne-lifecycle-first-");
-    const second = temporaryDirectory("heterodyne-lifecycle-second-");
-
-    await withMaterializedCommit(root, sourceCommit, async (sourceRoot) => {
-      await packageSnapshot(join(sourceRoot, "raw"), first, sourceCommit);
-      await packageSnapshot(join(sourceRoot, "raw"), second, sourceCommit);
+    expect(await checkSnapshot(root)).toMatchObject({
+      sourceCommit: replacementSourceCommit,
+      snapshotCommit: squashCommit,
     });
-
-    expect(fileBytes(first)).toEqual(fileBytes(second));
-    expect(JSON.parse(readFileSync(join(first, SNAPSHOT_PATH), "utf8"))).toMatchObject({
-      source_commit: sourceCommit,
-      vector_count: 1,
-    });
-  });
+    expect(git(root, ["status", "--porcelain=v1", "--untracked-files=no"])).toBe("");
+  }, 300_000);
 });
 
-function repository(): { root: string; sourceCommit: string } {
+function sourceRepository(): string {
   const root = temporaryDirectory("heterodyne-snapshot-lifecycle-");
+  const archiveRoot = temporaryDirectory("heterodyne-snapshot-archive-");
+  const archivePath = join(archiveRoot, "source.tar");
+  execFileSync("git", ["archive", "--format=tar", "--output", archivePath, "HEAD"], {
+    cwd: repositoryRoot,
+  });
+  execFileSync("tar", ["-xf", archivePath, "-C", root]);
+  rmSync(join(root, SNAPSHOT_PATH));
+  installPinnedSourceFixture(root);
   git(root, ["init", "--quiet"]);
   git(root, ["config", "user.email", "snapshot@example.invalid"]);
   git(root, ["config", "user.name", "Snapshot Lifecycle Test"]);
-  write(root, "source.txt", "source bytes\n");
-  return { root, sourceCommit: commit(root, "source") };
+  commit(root, "source without snapshot history");
+  return root;
 }
 
-function acceptingRunner(commands: string[]): CommandRunner {
-  return async (command, args) => {
-    commands.push([command, ...args].join(" "));
+function installPinnedSourceFixture(root: string): void {
+  const generatorRoot = join(root, "docs/spec/vectors/generator");
+  const packagePath = join(generatorRoot, "package.json");
+  const packageJson = JSON.parse(readFileSync(packagePath, "utf8")) as {
+    scripts: Record<string, string>;
   };
+  packageJson.scripts.author = "node lifecycle-author.mjs";
+  writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`, "utf8");
+
+  const files = {
+    "schema/vector.schema.json": `${JSON.stringify({
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "vector_id", "vector_schema_version", "owner_document", "spec_version",
+        "spec_refs", "description", "direction", "input", "expected_output",
+      ],
+      properties: {
+        vector_id: { type: "string" },
+        vector_schema_version: { const: "1.0.0" },
+        owner_document: { const: "core" },
+        spec_version: { type: "string" },
+        spec_refs: { type: "array", items: { type: "string" } },
+        description: { type: "string" },
+        direction: { enum: ["produce", "consume", "round-trip"] },
+        input: { type: "object" },
+        expected_output: { type: "object" },
+      },
+    }, null, 2)}\n`,
+    "schema/reason-codes.json": `${JSON.stringify({
+      reason_codes: [{
+        code: "example",
+        owner: "core",
+        status: "draft",
+        first_version: "heterodyne/0.5.0",
+        description: "example reason",
+        spec_refs: ["heterodyne:0.5.0#core-conformance"],
+      }],
+    }, null, 2)}\n`,
+    "schema/reason-codes.md": "# Reason codes\n\nheterodyne:0.5.0#core-conformance\n",
+    "fixtures.json": `${JSON.stringify({
+      vector_schema_version: "1.0.0",
+      spec_version: "heterodyne/0.5.0",
+    }, null, 2)}\n`,
+    "identity/001-example.json": `${JSON.stringify({
+      vector_id: "identity/example",
+      vector_schema_version: "1.0.0",
+      owner_document: "core",
+      spec_version: "heterodyne/0.5.0",
+      spec_refs: ["heterodyne:0.5.0#core-root-attestation"],
+      description: "lifecycle integration fixture",
+      direction: "produce",
+      input: { value: "input" },
+      expected_output: { value: "output" },
+    }, null, 2)}\n`,
+  };
+  writeFileSync(join(generatorRoot, "lifecycle-author.mjs"), [
+    'import { mkdir, writeFile } from "node:fs/promises";',
+    'import { dirname, join, resolve } from "node:path";',
+    `const files = ${JSON.stringify(files)};`,
+    "const outputRoot = resolve(process.argv[2]);",
+    "for (const [path, bytes] of Object.entries(files)) {",
+    "  const target = join(outputRoot, ...path.split('/'));",
+    "  await mkdir(dirname(target), { recursive: true });",
+    "  await writeFile(target, bytes, 'utf8');",
+    "}",
+    "console.log(`authored ${Object.keys(files).filter((path) => path.startsWith('identity/')).length} vectors under ${outputRoot}`);",
+    "",
+  ].join("\n"), "utf8");
 }
 
-function writeSnapshot(root: string, sourceCommit: string, marker = "one"): void {
-  const vectorRoot = "docs/spec/vectors";
-  write(root, `${vectorRoot}/fixtures.json`, `${marker} fixtures\n`);
-  write(root, `${vectorRoot}/schema/vector.schema.json`, `${JSON.stringify({
-    properties: { vector_schema_version: { const: "2.0.0" } },
-  }, null, 2)}\n`);
-  for (const path of [
-    "schema/reason-codes.json",
-    "schema/reason-codes.md",
-    "coverage/manifest.json",
-    "coverage/core.md",
-    "coverage/comms.md",
-    "coverage/control.md",
-    "coverage/social.md",
-    "coverage/workspace.md",
-    "coverage/family.md",
-  ]) {
-    write(root, `${vectorRoot}/${path}`, `${marker} ${path}\n`);
-  }
-  write(root, `${vectorRoot}/core/001-vector.json`, `${JSON.stringify({
-    vector_id: `${marker}-vector`,
-    vector_schema_version: "2.0.0",
-  }, null, 2)}\n`);
-  const manifest = buildSnapshotManifest(root, sourceCommit);
-  write(root, SNAPSHOT_PATH, serializeSnapshotManifest(manifest));
+function installConformanceDependencies(root: string): void {
+  execFileSync("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], {
+    cwd: join(root, "docs/spec/conformance"),
+    stdio: "pipe",
+  });
 }
 
-function writeRawPackageInput(root: string, prefix: string): void {
-  write(root, `${prefix}/schema/vector.schema.json`, `${JSON.stringify({
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "vector_id", "vector_schema_version", "owner_document", "spec_version",
-      "spec_refs", "description", "direction", "input", "expected_output",
-    ],
-    properties: {
-      vector_id: { type: "string" },
-      vector_schema_version: { const: "1.0.0" },
-      owner_document: { const: "core" },
-      spec_version: { type: "string" },
-      spec_refs: { type: "array", items: { type: "string" } },
-      description: { type: "string" },
-      direction: { enum: ["produce", "consume", "round-trip"] },
-      input: { type: "object" },
-      expected_output: { type: "object" },
-    },
-  }, null, 2)}\n`);
-  write(root, `${prefix}/schema/reason-codes.json`, `${JSON.stringify({
-    reason_codes: [{
-      code: "example",
-      owner: "core",
-      status: "draft",
-      first_version: "heterodyne/0.5.0",
-      description: "example reason",
-      spec_refs: ["heterodyne:0.5.0#core-conformance"],
-    }],
-  }, null, 2)}\n`);
-  write(
-    root,
-    `${prefix}/schema/reason-codes.md`,
-    "# Reason codes\n\nheterodyne:0.5.0#core-conformance\n",
-  );
-  write(root, `${prefix}/fixtures.json`, `${JSON.stringify({
-    vector_schema_version: "1.0.0",
-    spec_version: "heterodyne/0.5.0",
-    nested: { spec_version: "behavioral-version" },
-  }, null, 2)}\n`);
-  write(root, `${prefix}/identity/001-example.json`, `${JSON.stringify({
-    vector_id: "identity/example",
-    vector_schema_version: "1.0.0",
-    owner_document: "core",
-    spec_version: "heterodyne/0.5.0",
-    spec_refs: ["heterodyne:0.5.0#core-root-attestation"],
-    description: "example",
-    direction: "produce",
-    input: { spec_version: "behavioral-input-version" },
-    expected_output: { spec_version: "behavioral-output-version" },
-  }, null, 2)}\n`);
-}
-
-function fileBytes(root: string): Array<{ path: string; bytes: Buffer }> {
+function snapshotOwnedBytes(root: string): Array<{ path: string; bytes: Buffer }> {
   const files: Array<{ path: string; bytes: Buffer }> = [];
-  const visit = (directory: string): void => {
-    for (const entry of readdirSync(directory, { withFileTypes: true })
+  const visit = (path: string): void => {
+    for (const entry of readdirSync(path, { withFileTypes: true })
       .sort((left, right) => left.name.localeCompare(right.name))) {
-      const path = join(directory, entry.name);
-      if (entry.isDirectory()) visit(path);
-      else if (entry.isFile()) files.push({ path: relative(root, path), bytes: readFileSync(path) });
+      const absolute = join(path, entry.name);
+      const repositoryPath = relative(root, absolute).split("\\").join("/");
+      if (repositoryPath.startsWith("docs/spec/vectors/generator/")) continue;
+      if (entry.isDirectory()) visit(absolute);
+      else if (entry.isFile()) files.push({ path: repositoryPath, bytes: readFileSync(absolute) });
     }
   };
-  visit(root);
-  return files;
+  visit(join(root, "docs/spec/vectors"));
+  visit(join(root, "docs/spec/conformance/baselines"));
+  for (const path of ["docs/spec/conformance/DEBT.md", "docs/spec/conformance/report.json"]) {
+    files.push({ path, bytes: readFileSync(join(root, path)) });
+  }
+  return files.sort((left, right) => left.path.localeCompare(right.path));
 }
 
 function write(root: string, path: string, bytes: string): void {
