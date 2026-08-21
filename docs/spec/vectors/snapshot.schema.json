@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heterodyne.network/schemas/vector-snapshot-manifest-v1.schema.json",
+  "title": "Heterodyne rolling vector snapshot manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "snapshot_schema",
+    "source_commit",
+    "vector_schema_version",
+    "vector_count",
+    "artifacts"
+  ],
+  "properties": {
+    "snapshot_schema": {
+      "const": "1"
+    },
+    "source_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "vector_schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "vector_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^docs/spec/vectors/[A-Za-z0-9._/-]+$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  }
+}
