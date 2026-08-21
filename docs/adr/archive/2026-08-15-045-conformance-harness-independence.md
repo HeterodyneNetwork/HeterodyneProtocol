@@ -1,9 +1,9 @@
 # ADR-045: Independent conformance harness and shared CI gate
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-08-15
 
-This proposed record is non-canonical. The live specification family and
+This record is non-canonical. The live specification family and
 normative artifacts contain the complete protocol.
 
 ## Decision
@@ -71,10 +71,10 @@ publish packages or reports, create a release or tag, push to a remote
 repository, change GitHub branch protection, or configure Radicle brokers,
 nodes, containers, or delegates.
 
-## Acceptance and archive condition
+## Acceptance and archive
 
-This ADR remains Proposed while the amended lifecycle and integrated
-implementation are reviewed. It may be accepted and moved to
-`docs/adr/archive/` only after the implementation and review gates pass. The
-specification and normative machine-readable artifacts must stand on their own
-and must not depend on this record.
+The amended lifecycle, integrated implementation, security and specification
+review waves, and clean acceptance matrix passed before this record was
+accepted and moved to `docs/adr/archive/`. The specification and normative
+machine-readable artifacts stand on their own and do not depend on this
+record.

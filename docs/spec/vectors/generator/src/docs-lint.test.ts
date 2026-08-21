@@ -77,7 +77,7 @@ describe("canonical family documentation", () => {
         + "and conformance vectors.",
     ],
     [
-      "docs/adr/2026-08-15-045-conformance-harness-independence.md",
+      "docs/adr/archive/2026-08-15-045-conformance-harness-independence.md",
       "- The conformance package, its baselines, and its reports are tooling rather\n"
         + "  than normative family artifacts. The live specifications, registry, schemas,\n"
         + "  release metadata, and vectors remain the protocol authority.",
