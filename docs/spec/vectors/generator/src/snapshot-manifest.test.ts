@@ -34,6 +34,7 @@ const SUPPORT_PATHS = [
   "coverage/family.md",
 ] as const;
 const VECTOR_PATHS = [
+  "top-level.json",
   "core/001-first.json",
   "workspace/001-second.json",
 ] as const;
@@ -120,7 +121,7 @@ describe("snapshot manifest", () => {
       snapshot_schema: "1",
       source_commit: SOURCE_COMMIT,
       vector_schema_version: "2.0.0",
-      vector_count: 2,
+      vector_count: 3,
       artifacts: expectedPaths.map((path) => ({
         path,
         sha256: sha256(readFileSync(join(root, path), "utf8")),

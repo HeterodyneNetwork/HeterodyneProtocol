@@ -46,6 +46,10 @@ const EXCLUDED_TOP_LEVEL_FILES = new Set([
   "snapshot.schema.json",
   "snapshot-unique-by-path.meta.schema.json",
 ]);
+
+export function isSnapshotTopLevelVectorFile(name: string): boolean {
+  return name.endsWith(".json") && !EXCLUDED_TOP_LEVEL_FILES.has(name);
+}
 const snapshotManifestAjv = new Ajv2020({ allErrors: true, strict: true });
 snapshotManifestAjv.addVocabulary([{
   keyword: "x-unique-by",
@@ -213,7 +217,7 @@ function listVectorPaths(vectorRoot: string): string[] {
       if (EXCLUDED_TOP_LEVEL_DIRECTORIES.has(entry.name)) return [];
       return listJsonFiles(vectorRoot, join(vectorRoot, entry.name));
     }
-    if (!entry.isFile() || EXCLUDED_TOP_LEVEL_FILES.has(entry.name) || !entry.name.endsWith(".json")) {
+    if (!entry.isFile() || !isSnapshotTopLevelVectorFile(entry.name)) {
       return [];
     }
     return [`${VECTOR_ROOT}/${entry.name}`];

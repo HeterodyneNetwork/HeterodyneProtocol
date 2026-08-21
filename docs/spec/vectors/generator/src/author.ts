@@ -15,6 +15,7 @@ import { REASON_CODES } from "./reason-codes.js";
 import { VECTOR_SCHEMA, validateVectorOrThrow } from "./schema.js";
 import {
   buildSnapshotManifest,
+  isSnapshotTopLevelVectorFile,
   serializeSnapshotManifest,
   type SnapshotManifest,
 } from "./snapshot-manifest.js";
@@ -212,6 +213,8 @@ async function replacementPaths(repositoryRoot: string, stagedRoot: string): Pro
         && entry.name !== "generator"
         && entry.name !== "schema"
       ) {
+        paths.add(`${SNAPSHOT_VECTOR_ROOT}/${entry.name}`);
+      } else if (entry.isFile() && isSnapshotTopLevelVectorFile(entry.name)) {
         paths.add(`${SNAPSHOT_VECTOR_ROOT}/${entry.name}`);
       }
     }
