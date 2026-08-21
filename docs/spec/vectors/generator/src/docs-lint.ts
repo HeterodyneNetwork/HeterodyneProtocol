@@ -117,6 +117,7 @@ const RETIRED_MAINTAINED_GUIDE_PATTERNS = [
   /one\s+content-addressed\s+family\s+release\s+record/i,
   /protocol\s+authority\s+is\s+the\s+versioned\s+specification\s+family\s+and\s+its\s+normative\s+registries,\s+schemas,\s+release\s+metadata,\s+and\s+conformance\s+vectors/i,
   /live\s+specifications,\s+registry,\s+schemas,\s+release\s+metadata,\s+and\s+vectors\s+remain\s+the\s+protocol\s+authority/i,
+  /generator-owned\s+protocol\s+inputs:\s+live\s+normative\s+machine-readable\s+artifacts/i,
   /recheck the named family release/i,
 ];
 

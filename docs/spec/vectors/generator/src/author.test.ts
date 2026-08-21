@@ -1,11 +1,12 @@
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   authorAllVectors,
   packageSnapshot,
   replaceSnapshotData,
+  SnapshotReplacementRecoveryError,
 } from "./author.js";
 import { buildAllVectors, TOPIC_SPECS } from "./topics.js";
 import { verifyVectorTree } from "./verify.js";
@@ -268,6 +269,48 @@ describe("author mode", () => {
       .toBe("old fixtures\n");
     expect(await readFile(join(repositoryRoot, "docs/spec/conformance/report.json"), "utf8"))
       .toBe("old report\n");
+  });
+
+  it("retains prior bytes and a recovery path when rollback is incomplete", async () => {
+    const repositoryRoot = await mkdtemp(join(tmpdir(), "heterodyne-replace-repo-"));
+    const stagedRoot = await mkdtemp(join(tmpdir(), "heterodyne-replace-stage-"));
+    tempDirs.push(repositoryRoot, stagedRoot);
+    const target = join(repositoryRoot, "docs/spec/vectors/fixtures.json");
+    const staged = join(stagedRoot, "docs/spec/vectors/fixtures.json");
+    await writeTreeFile(repositoryRoot, "docs/spec/vectors/fixtures.json", "old fixtures\n");
+    await writeTreeFile(stagedRoot, "docs/spec/vectors/fixtures.json", "new fixtures\n");
+
+    let failure: unknown;
+    try {
+      await replaceSnapshotData(repositoryRoot, stagedRoot, {
+        async rename(from, to) {
+          if (from === staged) {
+            await mkdir(target);
+            throw new Error("injected install failure");
+          }
+          const { rename } = await import("node:fs/promises");
+          await rename(from, to);
+        },
+      });
+    } catch (error) {
+      failure = error;
+    }
+
+    const recoveryDirectories = (await readdir(dirname(repositoryRoot)))
+      .filter((name) => name.startsWith(".heterodyne-snapshot-backup-"));
+    expect(recoveryDirectories).toHaveLength(1);
+    expect(failure).toBeInstanceOf(SnapshotReplacementRecoveryError);
+    const recovery = failure as SnapshotReplacementRecoveryError;
+    expect(recovery.errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ message: "injected install failure" }),
+      expect.objectContaining({ message: expect.stringMatching(/rollback failed/) }),
+    ]));
+    expect(recovery.message).toContain(recovery.recoveryPath);
+    tempDirs.push(recovery.recoveryPath);
+    expect(await readFile(
+      join(recovery.recoveryPath, "docs/spec/vectors/fixtures.json"),
+      "utf8",
+    )).toBe("old fixtures\n");
   });
 
   it("authors at least one schema-valid vector for every required topic", async () => {

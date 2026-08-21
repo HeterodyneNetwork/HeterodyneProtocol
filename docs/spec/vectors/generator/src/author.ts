@@ -144,6 +144,23 @@ export type ReplacementOperations = {
   rename?: (from: string, to: string) => Promise<void>;
 };
 
+export class SnapshotReplacementRecoveryError extends AggregateError {
+  readonly recoveryPath: string;
+
+  constructor(
+    originalError: unknown,
+    rollbackErrors: readonly Error[],
+    recoveryPath: string,
+  ) {
+    super(
+      [asError(originalError), ...rollbackErrors],
+      `snapshot replacement failed and rollback was incomplete; recover prior bytes from ${recoveryPath}`,
+    );
+    this.name = "SnapshotReplacementRecoveryError";
+    this.recoveryPath = recoveryPath;
+  }
+}
+
 export async function replaceSnapshotData(
   repositoryRoot: string,
   stagedRoot: string,
@@ -170,6 +187,7 @@ export async function replaceSnapshotData(
   }
   const backupRoot = await mkdtemp(join(dirname(repository), ".heterodyne-snapshot-backup-"));
   const applied: Array<{ path: string; oldMoved: boolean; newMoved: boolean }> = [];
+  let retainBackup = false;
   try {
     for (const path of paths) {
       const target = join(repository, ...path.split("/"));
@@ -190,24 +208,55 @@ export async function replaceSnapshotData(
       }
     }
   } catch (error) {
+    const rollbackErrors: Error[] = [];
     for (const state of [...applied].reverse()) {
       const target = join(repository, ...state.path.split("/"));
       const staged = join(staging, ...state.path.split("/"));
       const backup = join(backupRoot, ...state.path.split("/"));
-      if (state.newMoved && await pathExists(target)) {
-        await mkdir(dirname(staged), { recursive: true });
-        await assertSafeDestinationParent(repository, dirname(target));
-        await rename(target, staged);
+      let installedBytesRecovered = true;
+      if (state.newMoved) {
+        try {
+          if (!await pathExists(target)) {
+            throw new Error(`installed snapshot bytes missing during rollback: ${state.path}`);
+          }
+          await mkdir(dirname(staged), { recursive: true });
+          await assertSafeDestinationParent(repository, dirname(target));
+          await rename(target, staged);
+        } catch (rollbackError) {
+          installedBytesRecovered = false;
+          rollbackErrors.push(new Error(
+            `rollback failed while recovering installed bytes: ${state.path}`,
+            { cause: rollbackError },
+          ));
+        }
       }
-      if (state.oldMoved && await pathExists(backup)) {
-        await assertSafeDestinationParent(repository, dirname(target));
-        await rename(backup, target);
+      if (state.oldMoved && installedBytesRecovered) {
+        try {
+          if (!await pathExists(backup)) {
+            throw new Error(`prior snapshot backup missing during rollback: ${state.path}`);
+          }
+          await assertSafeDestinationParent(repository, dirname(target));
+          await rename(backup, target);
+        } catch (rollbackError) {
+          rollbackErrors.push(new Error(
+            `rollback failed while restoring prior bytes: ${state.path}`,
+            { cause: rollbackError },
+          ));
+        }
       }
+    }
+    if (rollbackErrors.length > 0) {
+      retainBackup = true;
+      throw new SnapshotReplacementRecoveryError(error, rollbackErrors, backupRoot);
     }
     throw error;
   } finally {
-    await rm(backupRoot, { recursive: true, force: true });
+    if (!retainBackup) await rm(backupRoot, { recursive: true, force: true });
   }
+}
+
+function asError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
 }
 
 async function assertSafeDestinationParent(

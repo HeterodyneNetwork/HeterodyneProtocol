@@ -28,6 +28,12 @@ describe("canonical family documentation", () => {
     ["CHANGELOG.md", "comms.node-scoped-jwt.v1 owns the node-local token."],
     ["CHANGELOG.md", "Each key-envelope site supplies exactly four things."],
     ["CHANGELOG.md", "The fixed v1 claim profile registry revision is 2."],
+    [
+      "AGENTS.md",
+      "- [`docs/spec/registry/`](docs/spec/registry/),\n"
+        + "  [`docs/spec/schemas/`](docs/spec/schemas/), and generator-owned protocol\n"
+        + "  inputs: live normative machine-readable artifacts for the current draft.",
+    ],
   ])("rejects retired live model prose in %s", (path, retiredText) => {
     const issues = lintMaintainedGuides(repositoryRoot, {
       [path]: `${read(path)}\n${retiredText}\n`,

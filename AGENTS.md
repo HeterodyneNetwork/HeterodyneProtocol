@@ -16,9 +16,13 @@ artifacts:
 - [`docs/spec/heterodyne-workspace.md`](docs/spec/heterodyne-workspace.md):
   workspace identity, roles, private discovery, federation, hosting, and
   resource-key delivery.
-- [`docs/spec/registry/`](docs/spec/registry/),
-  [`docs/spec/schemas/`](docs/spec/schemas/), and generator-owned protocol
-  inputs: live normative machine-readable artifacts for the current draft.
+- [`docs/spec/registry/`](docs/spec/registry/) and
+  [`docs/spec/schemas/`](docs/spec/schemas/): live normative machine-readable
+  artifacts for the current draft.
+
+Generator-owned protocol inputs are non-normative current-draft authoring
+inputs kept synchronized with the affected normative specifications, registry
+entries, and protocol schemas.
 
 [`docs/spec/vectors/`](docs/spec/vectors/) is the one rolling, non-normative
 pre-1.0 validation snapshot. No pre-1.0 release manifest exists, and the
