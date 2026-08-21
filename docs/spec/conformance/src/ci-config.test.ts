@@ -121,6 +121,23 @@ function hasOnlyReadContentsPermission(workflow: string): boolean {
   return entries.length === 1 && entries[0] === "  contents: read";
 }
 
+function hasOnlyAllowedWorkflowActions(workflow: string): boolean {
+  const actions = Array.from(
+    workflow.matchAll(/^\s*(?:-\s*)?(?:uses|"uses"|'uses')\s*:\s*["']?([^"'#\s]+)["']?/gm),
+    (match) => match[1],
+  );
+  return actions.length === 2
+    && actions[0] === "actions/checkout@v4"
+    && actions[1] === "actions/setup-node@v4";
+}
+
+const FORBIDDEN_EXECUTABLE_CONTENT =
+  /(?:npm\s+(?:publish|run\s+(?:author|deploy|publish|release|tag))|git\s+(?:add|commit|rm|tag|push|checkout|reset|clean)|snapshot-author|(?:^|[\n;&|])\s*(?:(?:run|"run"|'run')\s*:\s*)?(?:rm|publish|deploy|tag|push)(?:\s|$))/im;
+
+function hasForbiddenExecutableContent(content: string): boolean {
+  return FORBIDDEN_EXECUTABLE_CONTENT.test(content);
+}
+
 describe("shared conformance CI configuration", () => {
   it("keeps gate and subject unit tests independent of live vector documents", () => {
     const unitRoots = [
@@ -226,6 +243,53 @@ fi`);
     expect(result.stderr).toMatch(/mutated tracked or index state/i);
   });
 
+  it("allows an unchanged preexisting staged and unstaged dirty tree", () => {
+    const root = initializeTemporaryRepository();
+    writeFileSync(join(root, "tracked.txt"), "staged-before\n");
+    const staged = spawnSync("git", ["add", "tracked.txt"], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    expect(staged.status, staged.stderr).toBe(0);
+    writeFileSync(join(root, "tracked.txt"), "unstaged-before\n");
+    const fake = installFakeNpm(root);
+
+    const result = spawnSync(join(root, "scripts/conformance-ci.sh"), [], {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HETERODYNE_TEST_CALL_LOG: fake.callLog,
+        PATH: fake.path,
+      },
+    });
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(readFileSync(join(root, "tracked.txt"), "utf8")).toBe("unstaged-before\n");
+  });
+
+  it("fails when validation changes bytes of an already-dirty unstaged file", () => {
+    const root = initializeTemporaryRepository();
+    writeFileSync(join(root, "tracked.txt"), "dirty-before\n");
+    const fake = installFakeNpm(root, `
+if [[ "$*" == "--prefix docs/spec/conformance test" ]]; then
+  printf 'dirty-after\\n' > tracked.txt
+fi`);
+
+    const result = spawnSync(join(root, "scripts/conformance-ci.sh"), [], {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HETERODYNE_TEST_CALL_LOG: fake.callLog,
+        PATH: fake.path,
+      },
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/mutated tracked or index state/i);
+  });
+
   it("keeps the GitHub wrapper read-only and limited to the shared script", () => {
     const workflow = readRepositoryFile(".github/workflows/conformance.yml");
 
@@ -246,15 +310,38 @@ fi`);
     expect(workflow).not.toContain("pull_request_target");
     expect(workflow).not.toContain("secrets");
     expect(workflow).not.toMatch(/^\s+ref:/m);
+    expect(hasOnlyAllowedWorkflowActions(workflow)).toBe(true);
 
     const executableJobBodies = [
       readRepositoryFile("scripts/conformance-ci.sh"),
       readRepositoryFile(".radicle/native.yaml"),
-      ...(workflow.match(/^\s+run:.*$/gm) ?? []),
+      workflow,
     ].join("\n");
-    expect(executableJobBodies).not.toMatch(
-      /(?:\b(?:publish|deploy)\b|npm\s+run\s+(?:author|release|tag)|git\s+(?:add|commit|tag|push|checkout|reset|clean)|snapshot-author)/i,
+    expect(hasForbiddenExecutableContent(executableJobBodies)).toBe(false);
+  });
+
+  it("rejects a publishing or deployment workflow action", () => {
+    const workflow = readRepositoryFile(".github/workflows/conformance.yml");
+    const unsafeWorkflow = workflow.replace(
+      "      - uses: actions/setup-node@v4",
+      "      - uses: softprops/action-gh-release@v2\n      - uses: actions/setup-node@v4",
     );
+
+    expect(unsafeWorkflow).not.toBe(workflow);
+    expect(hasOnlyAllowedWorkflowActions(unsafeWorkflow)).toBe(false);
+  });
+
+  it.each([
+    ["git rm", "git rm tracked.txt"],
+    ["shell rm", "rm tracked.txt"],
+  ])("rejects %s in executable content", (_label, unsafeCommand) => {
+    const executableContent = [
+      readRepositoryFile("scripts/conformance-ci.sh"),
+      readRepositoryFile(".radicle/native.yaml"),
+      unsafeCommand,
+    ].join("\n");
+
+    expect(hasForbiddenExecutableContent(executableContent)).toBe(true);
   });
 
   it.each([
