@@ -86,10 +86,9 @@ function validFixture(): Fixture {
   const { event, nip01_raw } = signedEvent();
   const vector: VectorDocument = {
     vector_id: "test/reference-checker",
-    vector_schema_version: "1.1.0",
+    vector_schema_version: "2.0.0",
     owner_document: "core",
-    spec_version: "heterodyne/0.5.0",
-    spec_refs: ["heterodyne:0.5.0#core-verification"],
+    spec_refs: ["heterodyne:core#core-verification"],
     direction: "consume",
     input: {
       event,
@@ -548,12 +547,14 @@ describe("independent Core signed-event checker", () => {
         : { verdict: "reject", reason_code: expectedReasons[index] };
     });
     const corpus: ArtifactCorpus = {
-      repositoryRoot: "/synthetic",
-      familyVersion: "heterodyne/0.5.0",
-      registryRevision: 13,
-      registryDigest: "00".repeat(32),
+      sourceRoot: "/synthetic/source",
+      snapshotRoot: "/synthetic/snapshot",
+      sourceCommit: "1".repeat(40),
+      snapshotCommit: "2".repeat(40),
+      vectorSchemaVersion: "2.0.0",
       specifications: new Map(),
       schemas: new Map(),
+      vectorSchema: {},
       vectors: fixtures.map((fixture, index) => ({
         path: `docs/spec/vectors/test/${index}.json`,
         value: fixture.vector,
@@ -805,12 +806,14 @@ describe("raw binding and context consumption", () => {
 
     const digest = "00".repeat(32);
     const corpus: ArtifactCorpus = {
-      repositoryRoot: "/synthetic",
-      familyVersion: "heterodyne/0.5.0",
-      registryRevision: 13,
-      registryDigest: digest,
+      sourceRoot: "/synthetic/source",
+      snapshotRoot: "/synthetic/snapshot",
+      sourceCommit: "1".repeat(40),
+      snapshotCommit: "2".repeat(40),
+      vectorSchemaVersion: "2.0.0",
       specifications: new Map(),
       schemas: new Map(),
+      vectorSchema: {},
       vectors: fixtures.map((fixture, index) => ({
         path: `docs/spec/vectors/test/version-${index}.json`,
         value: fixture.vector,

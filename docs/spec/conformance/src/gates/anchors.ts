@@ -17,8 +17,24 @@ export function extractExplicitAnchors(specification: string): ReadonlySet<strin
   return anchors;
 }
 
-export function ownerForAnchor(anchor: string): SpecificationOwner | undefined {
-  return owners.find((owner) => anchor.startsWith(`${owner}-`));
+export type SpecificationReference = {
+  owner: SpecificationOwner;
+  anchor: string;
+};
+
+export function parseSpecificationReference(reference: string): SpecificationReference | undefined {
+  const match = /^heterodyne:(core|comms|control|social|workspace)#([a-z0-9][a-z0-9-]*)$/u
+    .exec(reference);
+  return match === null
+    ? undefined
+    : { owner: match[1] as SpecificationOwner, anchor: match[2]! };
+}
+
+export function formatSpecificationReference(
+  owner: SpecificationOwner,
+  anchor: string,
+): string {
+  return `heterodyne:${owner}#${anchor}`;
 }
 
 export function ownerForSpecificationPath(path: string): SpecificationOwner | undefined {

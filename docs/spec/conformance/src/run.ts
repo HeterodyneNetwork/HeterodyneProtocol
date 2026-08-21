@@ -1,4 +1,4 @@
-import { loadCorpus } from "./artifacts.js";
+import { loadCorpus, type LoadCorpusOptions } from "./artifacts.js";
 import { ALL_GATES, type GateResult } from "./gates/index.js";
 import type { CorpusIssue } from "./types.js";
 
@@ -14,8 +14,8 @@ function compareText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
-export function runConformance(repositoryRoot: string): ConformanceRun {
-  const loaded = loadCorpus(repositoryRoot);
+export function runConformance(options: LoadCorpusOptions): ConformanceRun {
+  const loaded = loadCorpus(options);
   if (loaded.corpus === undefined) {
     return {
       familyVersion: "",
@@ -28,9 +28,9 @@ export function runConformance(repositoryRoot: string): ConformanceRun {
 
   const { corpus } = loaded;
   return {
-    familyVersion: corpus.familyVersion,
-    registryRevision: corpus.registryRevision,
-    registryDigest: corpus.registryDigest,
+    familyVersion: "snapshot",
+    registryRevision: corpus.registry.manifest.revision,
+    registryDigest: corpus.registry.manifest.entry_set_sha256,
     results: ALL_GATES.map(({ id, name, evaluate }) => ({
       id,
       name,

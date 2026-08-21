@@ -9,12 +9,14 @@ function corpus(
   securityInvariants: readonly Invariant[],
 ): ArtifactCorpus {
   return {
-    repositoryRoot: "/synthetic",
-    familyVersion: "heterodyne/0.5.0",
-    registryRevision: 13,
-    registryDigest: "aa".repeat(32),
+    sourceRoot: "/synthetic/source",
+    snapshotRoot: "/synthetic/snapshot",
+    sourceCommit: "1".repeat(40),
+    snapshotCommit: "2".repeat(40),
+    vectorSchemaVersion: "2.0.0",
     specifications: new Map(Object.entries(specifications)),
     schemas: new Map(),
+    vectorSchema: {},
     vectors: [],
     fixtures: {},
     registry: {

@@ -10,7 +10,6 @@ const fixtureKeys = new Set([
   "pinned_randomness",
   "radicle_rids",
   "registry_sha256",
-  "spec_version",
   "test_epoch",
   "vector_schema_version",
 ]);
@@ -37,13 +36,10 @@ export function findFixturesConsistencyFailures(corpus: ArtifactCorpus): string[
     }
   }
 
-  if (corpus.fixtures.spec_version !== corpus.familyVersion) {
-    failures.add("/spec_version");
-  }
-  if (corpus.fixtures.vector_schema_version !== "1.1.0") {
+  if (corpus.fixtures.vector_schema_version !== corpus.vectorSchemaVersion) {
     failures.add("/vector_schema_version");
   }
-  if (corpus.fixtures.registry_sha256 !== corpus.registryDigest) {
+  if (corpus.fixtures.registry_sha256 !== corpus.registry.manifest.entry_set_sha256) {
     failures.add("/registry_sha256");
   }
 

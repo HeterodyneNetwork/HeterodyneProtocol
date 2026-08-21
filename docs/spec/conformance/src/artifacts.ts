@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import {
+  lstatSync,
   readdirSync,
   readFileSync,
   realpathSync,
@@ -23,7 +24,27 @@ import type {
   VectorDocument,
 } from "./types.js";
 
-const familyManifestPath = "docs/spec/releases/family/0.5.0.json";
+export type LoadCorpusOptions = {
+  sourceRoot: string;
+  snapshotRoot: string;
+  sourceCommit: string;
+  snapshotCommit: string;
+};
+
+export type LoadCorpusResult = {
+  corpus?: ArtifactCorpus;
+  issues: CorpusIssue[];
+};
+
+type SnapshotArtifact = { path: string; sha256?: string };
+type SnapshotManifest = {
+  sourceCommit?: string;
+  vectorSchemaVersion?: string;
+  vectorCount?: number;
+  artifacts: SnapshotArtifact[];
+};
+
+const snapshotManifestPath = "docs/spec/vectors/snapshot.json";
 const fixturesPath = "docs/spec/vectors/fixtures.json";
 const registryManifestPath = "docs/spec/registry/manifest.json";
 const featuresPath = "docs/spec/registry/features.json";
@@ -34,7 +55,6 @@ const reasonCodesPath = "docs/spec/registry/reason-codes.json";
 const registrySchemaPath = "docs/spec/registry/registry.schema.json";
 const securityInvariantsPath = "docs/spec/registry/security-invariants.json";
 const vectorSchemaPath = "docs/spec/vectors/schema/vector.schema.json";
-const marmotManifestPath = "docs/spec/external/marmot/manifest.json";
 const specificationPaths = [
   "docs/spec/heterodyne-comms.md",
   "docs/spec/heterodyne-control.md",
@@ -42,25 +62,37 @@ const specificationPaths = [
   "docs/spec/heterodyne-social.md",
   "docs/spec/heterodyne-workspace.md",
 ] as const;
-const requiredArtifactRoles = new Map<string, string>([
-  ...specificationPaths.map((path) => [path, "specification"] as const),
-  [featuresPath, "registry"],
-  [kindsPath, "registry"],
-  [registryManifestPath, "registry"],
-  [objectsPath, "registry"],
-  [proofDomainsPath, "registry"],
-  [reasonCodesPath, "registry"],
-  [registrySchemaPath, "registry"],
-  [securityInvariantsPath, "registry"],
-  [vectorSchemaPath, "schema"],
-  [marmotManifestPath, "normative-support"],
-]);
+const snapshotSupportPaths = [
+  fixturesPath,
+  vectorSchemaPath,
+  "docs/spec/vectors/schema/reason-codes.json",
+  "docs/spec/vectors/schema/reason-codes.md",
+  "docs/spec/vectors/coverage/manifest.json",
+  "docs/spec/vectors/coverage/core.md",
+  "docs/spec/vectors/coverage/comms.md",
+  "docs/spec/vectors/coverage/control.md",
+  "docs/spec/vectors/coverage/social.md",
+  "docs/spec/vectors/coverage/workspace.md",
+  "docs/spec/vectors/coverage/family.md",
+] as const;
+const requiredRegistryPaths = [
+  featuresPath,
+  kindsPath,
+  registryManifestPath,
+  objectsPath,
+  proofDomainsPath,
+  reasonCodesPath,
+  registrySchemaPath,
+  securityInvariantsPath,
+] as const;
 
 const ownerDocuments = new Set(["core", "comms", "control", "social", "workspace"]);
 const directions = new Set(["consume", "produce", "round-trip"]);
-const artifactRoles = new Set(["normative-support", "registry", "schema", "specification", "vector"]);
+const fullCommitPattern = /^[0-9a-f]{40}$/u;
 const sha256Pattern = /^[0-9a-f]{64}$/u;
-const releasePathCharacters = /^[A-Za-z0-9._/-]+$/u;
+const semverPattern = /^\d+\.\d+\.\d+$/u;
+const snapshotReferencePattern =
+  /^heterodyne:(core|comms|control|social|workspace)#[a-z0-9][a-z0-9-]*$/u;
 const terminalStages = new Set<ExpectedTerminalStage>([
   "event_structure",
   "nip01_raw",
@@ -91,14 +123,6 @@ const declarationMembers = new Set([
 
 class UnsafeRepositoryPathError extends Error {}
 
-type FamilyArtifact = { path: string; role: string; sha256?: string };
-
-type FamilyManifest = {
-  family_version: "heterodyne/0.5.0";
-  registry: { path?: string; sha256?: string };
-  artifacts: FamilyArtifact[];
-};
-
 function compareText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
@@ -108,6 +132,38 @@ function sortIssues(issues: CorpusIssue[]): CorpusIssue[] {
     compareText(left.code, right.code)
       || compareText(left.path, right.path)
       || compareText(left.message, right.message));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function isMissingFileError(error: unknown): boolean {
+  return isRecord(error) && error.code === "ENOENT";
+}
+
+function shapeIssue(issues: CorpusIssue[], path: string, message: string): void {
+  issues.push({ code: "invalid-document-shape", path, message });
+}
+
+function reportUnexpectedMembers(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  issues: CorpusIssue[],
+  path: string,
+  label: string,
+): void {
+  for (const key of Object.keys(value)) {
+    if (!allowed.includes(key)) shapeIssue(issues, path, `${label} has unexpected member: ${key}`);
+  }
 }
 
 function isContained(root: string, target: string): boolean {
@@ -126,7 +182,6 @@ export function safeRepositoryPath(repositoryRoot: string, repositoryPath: strin
   ) {
     throw new UnsafeRepositoryPathError(`unsafe repository path: ${repositoryPath}`);
   }
-
   const segments = repositoryPath.split("/");
   if (
     segments.some((segment) => segment === "" || segment === "." || segment === "..")
@@ -134,13 +189,18 @@ export function safeRepositoryPath(repositoryRoot: string, repositoryPath: strin
   ) {
     throw new UnsafeRepositoryPathError(`non-normalized repository path: ${repositoryPath}`);
   }
-
   const root = realpathSync(repositoryRoot);
+  let current = root;
+  for (const segment of segments) {
+    current = resolve(current, segment);
+    if (lstatSync(current).isSymbolicLink()) {
+      throw new UnsafeRepositoryPathError(`repository path contains symbolic link: ${repositoryPath}`);
+    }
+  }
   const lexicalTarget = resolve(root, repositoryPath);
   if (!isContained(root, lexicalTarget)) {
     throw new UnsafeRepositoryPathError(`repository path escapes root: ${repositoryPath}`);
   }
-
   const resolvedTarget = realpathSync(lexicalTarget);
   if (!isContained(root, resolvedTarget)) {
     throw new UnsafeRepositoryPathError(`repository path resolves outside root: ${repositoryPath}`);
@@ -148,81 +208,54 @@ export function safeRepositoryPath(repositoryRoot: string, repositoryPath: strin
   return resolvedTarget;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
-}
-
-function isReleasePath(value: string): boolean {
-  return releasePathCharacters.test(value)
-    && !value.startsWith("/")
-    && !value.endsWith("/")
-    && !value.includes("//")
-    && value.split("/").every((segment) => segment !== "." && segment !== "..");
-}
-
-function reportUnexpectedMembers(
-  value: Record<string, unknown>,
-  allowed: readonly string[],
+function canonicalRoot(
+  value: string,
+  label: "source" | "snapshot",
   issues: CorpusIssue[],
-  path: string,
-  label: string,
-): void {
-  for (const key of Object.keys(value)) {
-    if (!allowed.includes(key)) {
-      shapeIssue(issues, path, `${label} has unexpected member: ${key}`);
-    }
+): string | undefined {
+  try {
+    const status = lstatSync(value);
+    if (status.isSymbolicLink()) throw new Error(`${label} root is a symbolic link`);
+    const root = realpathSync(value);
+    if (!statSync(root).isDirectory()) throw new Error(`${label} root is not a directory`);
+    return root;
+  } catch (error) {
+    issues.push({
+      code: "missing-required-root",
+      path: `${label}:.`,
+      message: errorMessage(error),
+    });
+    return undefined;
   }
 }
 
-function shapeIssue(issues: CorpusIssue[], path: string, message: string): void {
-  issues.push({ code: "invalid-document-shape", path, message });
-}
-
-function isNormativeVectorPath(path: string): boolean {
-  return path.startsWith("docs/spec/vectors/")
-    && path.endsWith(".json")
-    && path !== "docs/spec/vectors/fixtures.json"
-    && path !== "docs/spec/vectors/manifest.json"
-    && !path.startsWith("docs/spec/vectors/coverage/")
-    && !path.startsWith("docs/spec/vectors/generator/")
-    && !path.startsWith("docs/spec/vectors/schema/");
-}
-
 function filesUnder(
-  repositoryRoot: string,
+  root: string,
   directory: string,
   issues: CorpusIssue[],
   excludedDirectories: ReadonlySet<string> = new Set(),
 ): string[] {
-  const root = resolve(repositoryRoot, directory);
+  const absoluteRoot = resolve(root, directory);
   const visit = (current: string): string[] => readdirSync(current, { withFileTypes: true })
     .flatMap((entry) => {
       const target = resolve(current, entry.name);
-      const repositoryPath = relative(repositoryRoot, target).replaceAll("\\", "/");
-      if (excludedDirectories.has(repositoryPath)) {
-        return [];
-      }
-      if (entry.isDirectory()) {
-        return visit(target);
-      }
+      const path = relative(root, target).replaceAll("\\", "/");
+      if (excludedDirectories.has(path)) return [];
+      if (entry.isDirectory()) return visit(target);
       if (!entry.isFile()) {
         issues.push({
           code: "unsafe-artifact-path",
-          path: repositoryPath,
+          path,
           message: entry.isSymbolicLink()
             ? "normative inventory entry is a symbolic link"
             : "normative inventory entry is not a regular file or directory",
         });
         return [];
       }
-      return [repositoryPath];
+      return [path];
     });
   try {
-    return visit(root).sort(compareText);
+    return visit(absoluteRoot).sort(compareText);
   } catch (error) {
     const code = isRecord(error) && typeof error.code === "string" ? error.code : undefined;
     const message = code === "ENOENT"
@@ -232,106 +265,21 @@ function filesUnder(
         : code === "EACCES" || code === "EPERM"
           ? "required corpus root is unreadable"
           : undefined;
-    if (message === undefined) {
-      throw error;
-    }
+    if (message === undefined) throw error;
     issues.push({ code: "missing-required-root", path: directory, message });
     return [];
   }
 }
 
-function expectedReleaseArtifacts(
-  repositoryRoot: string,
-  issues: CorpusIssue[],
-): ReadonlyMap<string, string> {
-  const entries: Array<readonly [string, string]> = [
-    ...specificationPaths.map((path) => [path, "specification"] as const),
-    ...filesUnder(
-      repositoryRoot,
-      "docs/spec/registry",
-      issues,
-      new Set(["docs/spec/registry/history"]),
-    )
-      .filter((path) => path.endsWith(".json"))
-      .map((path) => [path, "registry"] as const),
-    ...filesUnder(repositoryRoot, "docs/spec/schemas", issues)
-      .filter((path) => path.endsWith(".json"))
-      .map((path) => [path, "schema"] as const),
-    [vectorSchemaPath, "schema"],
-    ...filesUnder(
-      repositoryRoot,
-      "docs/spec/vectors",
-      issues,
-      new Set([
-        "docs/spec/vectors/coverage",
-        "docs/spec/vectors/generator",
-        "docs/spec/vectors/schema",
-      ]),
-    )
-      .filter(isNormativeVectorPath)
-      .map((path) => [path, "vector"] as const),
-    [marmotManifestPath, "normative-support"],
-  ];
-  return new Map(entries.sort(([left], [right]) => compareText(left, right)));
-}
-
-function sha256File(repositoryRoot: string, path: string): string | undefined {
-  try {
-    const target = safeRepositoryPath(repositoryRoot, path);
-    if (!statSync(target).isFile()) return undefined;
-    return createHash("sha256").update(readFileSync(target)).digest("hex");
-  } catch {
-    return undefined;
-  }
-}
-
-function canonicalize(value: unknown): string {
-  if (value === null || typeof value === "boolean" || typeof value === "string") {
-    return JSON.stringify(value);
-  }
-  if (typeof value === "number") {
-    if (!Number.isFinite(value)) throw new Error("non-finite number is not valid JCS");
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => canonicalize(item)).join(",")}]`;
-  }
-  if (isRecord(value)) {
-    return `{${Object.keys(value)
-      .sort(compareText)
-      .map((key) => `${JSON.stringify(key)}:${canonicalize(value[key])}`)
-      .join(",")}}`;
-  }
-  throw new Error(`unsupported JCS value: ${typeof value}`);
-}
-
-function registryEntrySet(parsedJson: ReadonlyMap<string, unknown>): Record<string, unknown> | undefined {
-  const documents = [
-    [kindsPath, "kinds"],
-    [reasonCodesPath, "reason_codes"],
-    [securityInvariantsPath, "security_invariants"],
-    [featuresPath, "features"],
-    [objectsPath, "objects"],
-    [proofDomainsPath, "proof_domains"],
-  ] as const;
-  const entrySet: Record<string, unknown> = {};
-  for (const [path, member] of documents) {
-    const document = parsedJson.get(path);
-    if (!isRecord(document) || !Array.isArray(document[member])) return undefined;
-    entrySet[member] = document[member];
-  }
-  return entrySet;
-}
-
 function readText(
-  repositoryRoot: string,
+  root: string,
   path: string,
   issues: CorpusIssue[],
   requiredRoot = false,
 ): string | undefined {
   let target: string;
   try {
-    target = safeRepositoryPath(repositoryRoot, path);
+    target = safeRepositoryPath(root, path);
   } catch (error) {
     if (error instanceof UnsafeRepositoryPathError) {
       issues.push({ code: "unsafe-artifact-path", path, message: error.message });
@@ -339,14 +287,13 @@ function readText(
       issues.push({
         code: requiredRoot ? "missing-required-root" : "missing-artifact",
         path,
-        message: requiredRoot ? "required corpus root is missing" : "release artifact is missing",
+        message: requiredRoot ? "required corpus root is missing" : "snapshot artifact is missing",
       });
     } else {
       issues.push({ code: "artifact-read-error", path, message: errorMessage(error) });
     }
     return undefined;
   }
-
   try {
     if (!statSync(target).isFile()) {
       issues.push({ code: "artifact-read-error", path, message: "artifact is not a regular file" });
@@ -360,15 +307,13 @@ function readText(
 }
 
 function readJson(
-  repositoryRoot: string,
+  root: string,
   path: string,
   issues: CorpusIssue[],
   requiredRoot = false,
 ): unknown | undefined {
-  const text = readText(repositoryRoot, path, issues, requiredRoot);
-  if (text === undefined) {
-    return undefined;
-  }
+  const text = readText(root, path, issues, requiredRoot);
+  if (text === undefined) return undefined;
   try {
     return JSON.parse(text) as unknown;
   } catch (error) {
@@ -377,111 +322,160 @@ function readJson(
   }
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+function snapshotArtifactDigest(
+  root: string,
+  path: string,
+  issues: CorpusIssue[],
+): string | undefined {
+  try {
+    const target = safeRepositoryPath(root, path);
+    if (!statSync(target).isFile()) {
+      issues.push({ code: "artifact-read-error", path, message: "artifact is not a regular file" });
+      return undefined;
+    }
+    return createHash("sha256").update(readFileSync(target)).digest("hex");
+  } catch (error) {
+    if (error instanceof UnsafeRepositoryPathError) {
+      issues.push({ code: "unsafe-artifact-path", path, message: error.message });
+    } else if (isMissingFileError(error)) {
+      issues.push({ code: "missing-artifact", path, message: "snapshot artifact is missing" });
+    } else {
+      issues.push({ code: "artifact-read-error", path, message: errorMessage(error) });
+    }
+    return undefined;
+  }
 }
 
-function isMissingFileError(error: unknown): boolean {
-  return isRecord(error) && error.code === "ENOENT";
+function canonicalize(value: unknown): string {
+  if (value === null || typeof value === "boolean" || typeof value === "string") {
+    return JSON.stringify(value);
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new Error("non-finite number is not valid JCS");
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) return `[${value.map(canonicalize).join(",")}]`;
+  if (isRecord(value)) {
+    return `{${Object.keys(value).sort(compareText)
+      .map((key) => `${JSON.stringify(key)}:${canonicalize(value[key])}`).join(",")}}`;
+  }
+  throw new Error(`unsupported JCS value: ${typeof value}`);
 }
 
-function parseFamilyManifest(value: unknown, issues: CorpusIssue[]): FamilyManifest | undefined {
+function parseSnapshotManifest(
+  value: unknown,
+  source: string | undefined,
+  issues: CorpusIssue[],
+): SnapshotManifest | undefined {
   if (!isRecord(value)) {
-    shapeIssue(issues, familyManifestPath, "family release manifest must be an object");
+    shapeIssue(issues, snapshotManifestPath, "snapshot manifest must be an object");
     return undefined;
   }
   reportUnexpectedMembers(
     value,
-    ["schema_version", "family_version", "status", "registry", "artifacts"],
+    ["snapshot_schema", "source_commit", "vector_schema_version", "vector_count", "artifacts"],
     issues,
-    familyManifestPath,
-    "family release manifest",
+    snapshotManifestPath,
+    "snapshot manifest",
   );
-  if (value.schema_version !== "1.0.0") {
-    shapeIssue(issues, familyManifestPath, "schema_version must be 1.0.0");
-  }
-  if (value.family_version !== "heterodyne/0.5.0") {
-    shapeIssue(issues, familyManifestPath, "family_version must be heterodyne/0.5.0");
-  }
-  if (value.status !== "unreleased") {
-    shapeIssue(issues, familyManifestPath, "status must be unreleased");
-  }
-  const registryPath = isRecord(value.registry) && typeof value.registry.path === "string"
-    ? value.registry.path
+  if (value.snapshot_schema !== "1") shapeIssue(issues, snapshotManifestPath, "snapshot_schema must be 1");
+  const sourceCommit = typeof value.source_commit === "string" && fullCommitPattern.test(value.source_commit)
+    ? value.source_commit
     : undefined;
-  const registrySha256 = isRecord(value.registry) && typeof value.registry.sha256 === "string"
-    && sha256Pattern.test(value.registry.sha256)
-    ? value.registry.sha256
+  if (sourceCommit === undefined) {
+    shapeIssue(issues, snapshotManifestPath, "source_commit must be 40-lowercase-hex");
+  }
+  const vectorSchemaVersion = typeof value.vector_schema_version === "string"
+    && semverPattern.test(value.vector_schema_version)
+    ? value.vector_schema_version
     : undefined;
-  if (isRecord(value.registry)) {
-    reportUnexpectedMembers(
-      value.registry,
-      ["path", "sha256"],
-      issues,
-      familyManifestPath,
-      "registry pin",
-    );
+  if (vectorSchemaVersion === undefined) {
+    shapeIssue(issues, snapshotManifestPath, "vector_schema_version must use semantic version syntax");
   }
-  if (registryPath === undefined) {
-    shapeIssue(issues, familyManifestPath, "registry.path must be a string");
-  } else if (!isReleasePath(registryPath)) {
-    shapeIssue(issues, familyManifestPath, "registry.path must match the release path syntax");
-  }
-  if (registrySha256 === undefined) {
-    shapeIssue(issues, familyManifestPath, "registry.sha256 must be lowercase SHA-256 hex");
+  const vectorCount = Number.isSafeInteger(value.vector_count) && (value.vector_count as number) >= 0
+    ? value.vector_count as number
+    : undefined;
+  if (vectorCount === undefined) {
+    shapeIssue(issues, snapshotManifestPath, "vector_count must be a non-negative safe integer");
   }
   if (!Array.isArray(value.artifacts)) {
-    shapeIssue(issues, familyManifestPath, "artifacts must be an array");
-    return undefined;
+    shapeIssue(issues, snapshotManifestPath, "artifacts must be an array");
+    return { sourceCommit, vectorSchemaVersion, vectorCount, artifacts: [] };
   }
-
-  const artifacts: FamilyArtifact[] = [];
-  for (const artifact of value.artifacts) {
-    if (!isRecord(artifact) || typeof artifact.path !== "string" || typeof artifact.role !== "string") {
-      shapeIssue(issues, familyManifestPath, "each artifact must have string path and role members");
+  const artifacts: SnapshotArtifact[] = [];
+  const seen = new Set<string>();
+  for (const [index, artifact] of value.artifacts.entries()) {
+    if (!isRecord(artifact)) {
+      shapeIssue(issues, snapshotManifestPath, `snapshot artifact ${index} must be an object`);
       continue;
     }
-    reportUnexpectedMembers(
-      artifact,
-      ["path", "role", "sha256"],
-      issues,
-      artifact.path,
-      "release artifact",
-    );
-    if (!isReleasePath(artifact.path)) {
-      shapeIssue(issues, artifact.path, "artifact path must match the release path syntax");
+    reportUnexpectedMembers(artifact, ["path", "sha256"], issues, snapshotManifestPath, "snapshot artifact");
+    if (typeof artifact.path !== "string") {
+      shapeIssue(issues, snapshotManifestPath, `snapshot artifact ${index} path must be a string`);
+      continue;
     }
-    if (!artifactRoles.has(artifact.role)) {
-      shapeIssue(issues, artifact.path, `unknown artifact role: ${artifact.role}`);
+    const path = artifact.path;
+    if (!path.startsWith("docs/spec/vectors/") || !isSafeRepositoryPathSyntax(path)) {
+      issues.push({ code: "unsafe-artifact-path", path, message: `unsafe snapshot artifact path: ${path}` });
     }
-    const artifactSha256 = typeof artifact.sha256 === "string"
-      && sha256Pattern.test(artifact.sha256)
+    if (seen.has(path)) {
+      issues.push({ code: "duplicate-artifact-path", path, message: "snapshot manifest repeats an artifact path" });
+    }
+    seen.add(path);
+    const sha256 = typeof artifact.sha256 === "string" && sha256Pattern.test(artifact.sha256)
       ? artifact.sha256
       : undefined;
-    if (artifactSha256 === undefined) {
-      shapeIssue(issues, artifact.path, "artifact sha256 must be lowercase SHA-256 hex");
-    }
-    artifacts.push({ path: artifact.path, role: artifact.role, sha256: artifactSha256 });
+    if (sha256 === undefined) shapeIssue(issues, path, "artifact sha256 must be lowercase SHA-256 hex");
+    artifacts.push({ path, sha256 });
   }
-  return {
-    family_version: "heterodyne/0.5.0",
-    registry: { path: registryPath, sha256: registrySha256 },
-    artifacts,
-  };
+  if (artifacts.some((artifact, index) => index > 0 && artifacts[index - 1]!.path >= artifact.path)) {
+    shapeIssue(issues, snapshotManifestPath, "artifacts must be unique and strictly sorted by path");
+  }
+  if (source !== undefined && sourceCommit !== undefined) {
+    const canonical = `${JSON.stringify({
+      snapshot_schema: "1",
+      source_commit: sourceCommit,
+      vector_schema_version: vectorSchemaVersion,
+      vector_count: vectorCount,
+      artifacts: artifacts.map(({ path, sha256 }) => ({ path, sha256 })),
+    }, null, 2)}\n`;
+    if (canonical !== source) {
+      shapeIssue(issues, snapshotManifestPath, "snapshot manifest must be canonical two-space JSON with one trailing LF");
+    }
+  }
+  return { sourceCommit, vectorSchemaVersion, vectorCount, artifacts };
 }
 
-function validateStandaloneManifestPath(
-  repositoryRoot: string,
-  path: string,
-  issues: CorpusIssue[],
-): void {
-  try {
-    safeRepositoryPath(repositoryRoot, path);
-  } catch (error) {
-    if (error instanceof UnsafeRepositoryPathError) {
-      issues.push({ code: "unsafe-artifact-path", path, message: error.message });
-    }
-  }
+function isSafeRepositoryPathSyntax(path: string): boolean {
+  return path.length > 0
+    && /^[A-Za-z0-9._/-]+$/u.test(path)
+    && !path.startsWith("/")
+    && !path.endsWith("/")
+    && !path.includes("//")
+    && path.split("/").every((segment) => segment !== "." && segment !== "..");
+}
+
+function snapshotVectorPaths(snapshotRoot: string, issues: CorpusIssue[]): string[] {
+  return filesUnder(
+    snapshotRoot,
+    "docs/spec/vectors",
+    issues,
+    new Set([
+      "docs/spec/vectors/coverage",
+      "docs/spec/vectors/generator",
+      "docs/spec/vectors/schema",
+    ]),
+  ).filter((path) =>
+    path.endsWith(".json")
+      && path !== fixturesPath
+      && path !== snapshotManifestPath
+      && path !== "docs/spec/vectors/snapshot.meta.schema.json"
+      && path !== "docs/spec/vectors/snapshot.schema.json"
+      && path !== "docs/spec/vectors/snapshot-unique-by-path.meta.schema.json");
+}
+
+function expectedSnapshotPaths(snapshotRoot: string, issues: CorpusIssue[]): string[] {
+  return [...snapshotVectorPaths(snapshotRoot, issues), ...snapshotSupportPaths].sort(compareText);
 }
 
 function parseConformanceCheck(
@@ -497,25 +491,18 @@ function parseConformanceCheck(
     || (value.context_pointer !== undefined && typeof value.context_pointer !== "string")
     || typeof value.expected_terminal_stage !== "string"
     || !terminalStages.has(value.expected_terminal_stage as ExpectedTerminalStage)
-  ) {
-    return undefined;
-  }
+  ) return undefined;
   const stage = value.expected_terminal_stage as ExpectedTerminalStage;
-  if (contextRequiredStages.has(stage) && value.context_pointer === undefined) {
-    return undefined;
-  }
+  if (contextRequiredStages.has(stage) && value.context_pointer === undefined) return undefined;
   try {
     parseJsonPointer(value.event_pointer);
     parseJsonPointer(value.nip01_raw_pointer);
-    if (value.context_pointer !== undefined) {
-      parseJsonPointer(value.context_pointer);
-    }
+    if (value.context_pointer !== undefined) parseJsonPointer(value.context_pointer);
   } catch {
     return undefined;
   }
   if (!resolveJsonPointer(vector, value.event_pointer).found) return undefined;
-  if (value.context_pointer !== undefined
-    && !resolveJsonPointer(vector, value.context_pointer).found) {
+  if (value.context_pointer !== undefined && !resolveJsonPointer(vector, value.context_pointer).found) {
     return undefined;
   }
   return value as ConformanceCheckDocument;
@@ -524,13 +511,14 @@ function parseConformanceCheck(
 function parseVector(value: unknown): VectorDocument | undefined {
   if (
     !isRecord(value)
+    || Object.hasOwn(value, "spec_version")
     || typeof value.vector_id !== "string"
     || value.vector_id.length === 0
-    || value.vector_schema_version !== "1.1.0"
+    || value.vector_schema_version !== "2.0.0"
     || typeof value.owner_document !== "string"
     || !ownerDocuments.has(value.owner_document)
-    || value.spec_version !== "heterodyne/0.5.0"
     || !isStringArray(value.spec_refs)
+    || !value.spec_refs.every((reference) => snapshotReferencePattern.test(reference))
     || typeof value.description !== "string"
     || value.description.length === 0
     || typeof value.direction !== "string"
@@ -540,34 +528,28 @@ function parseVector(value: unknown): VectorDocument | undefined {
     || (value.conformance_checks !== undefined
       && (!Array.isArray(value.conformance_checks)
         || !value.conformance_checks.every((check) => parseConformanceCheck(check, value) !== undefined)
-        || new Set(value.conformance_checks.map((check) => canonicalize(check))).size
-          !== value.conformance_checks.length))
-  ) {
-    return undefined;
-  }
+        || new Set(value.conformance_checks.map(canonicalize)).size !== value.conformance_checks.length))
+  ) return undefined;
   return value as VectorDocument;
 }
 
 function parseRegistryManifest(value: unknown): RegistryDocument["manifest"] | undefined {
   if (
     !isRecord(value)
-    || value.revision !== 13
-    || value.schema_version !== "3.0.0"
+    || !Number.isSafeInteger(value.revision)
+    || (value.revision as number) < 0
+    || typeof value.schema_version !== "string"
+    || !semverPattern.test(value.schema_version)
     || typeof value.entry_set_sha256 !== "string"
-  ) {
-    return undefined;
-  }
+    || !sha256Pattern.test(value.entry_set_sha256)
+  ) return undefined;
   return value as RegistryDocument["manifest"];
 }
 
 type ParsedRegistryEntries<T> = { entries: T[]; valid: boolean };
 
-function parseReasonCodes(
-  value: unknown,
-): ParsedRegistryEntries<{ code: string }> {
-  if (!isRecord(value) || !Array.isArray(value.reason_codes)) {
-    return { entries: [], valid: false };
-  }
+function parseReasonCodes(value: unknown): ParsedRegistryEntries<{ code: string }> {
+  if (!isRecord(value) || !Array.isArray(value.reason_codes)) return { entries: [], valid: false };
   const entries = value.reason_codes.filter(
     (entry): entry is { code: string } => isRecord(entry) && typeof entry.code === "string",
   );
@@ -599,219 +581,201 @@ function reportDuplicates(
   const seen = new Set<string>();
   for (const value of values) {
     if (seen.has(value)) {
-      issues.push({
-        code: "duplicate-registry-entry",
-        path,
-        message: `duplicate ${kind}: ${value}`,
-      });
+      issues.push({ code: "duplicate-registry-entry", path, message: `duplicate ${kind}: ${value}` });
     }
     seen.add(value);
   }
 }
 
-export function loadCorpus(repositoryRoot: string): {
-  corpus?: ArtifactCorpus;
-  issues: CorpusIssue[];
-} {
+function registryEntrySet(parsedJson: ReadonlyMap<string, unknown>): Record<string, unknown> | undefined {
+  const documents = [
+    [kindsPath, "kinds"],
+    [reasonCodesPath, "reason_codes"],
+    [securityInvariantsPath, "security_invariants"],
+    [featuresPath, "features"],
+    [objectsPath, "objects"],
+    [proofDomainsPath, "proof_domains"],
+  ] as const;
+  const entrySet: Record<string, unknown> = {};
+  for (const [path, member] of documents) {
+    const document = parsedJson.get(path);
+    if (!isRecord(document) || !Array.isArray(document[member])) return undefined;
+    entrySet[member] = document[member];
+  }
+  return entrySet;
+}
+
+export function loadCorpus(options: LoadCorpusOptions): LoadCorpusResult {
   const issues: CorpusIssue[] = [];
-  let canonicalRoot: string;
-  try {
-    canonicalRoot = realpathSync(repositoryRoot);
-    if (!statSync(canonicalRoot).isDirectory()) {
-      throw new Error("repository root is not a directory");
-    }
-  } catch (error) {
-    issues.push({ code: "missing-required-root", path: ".", message: errorMessage(error) });
-    return { issues: sortIssues(issues) };
+  const { sourceCommit, snapshotCommit } = options;
+  if (!fullCommitPattern.test(sourceCommit)) {
+    shapeIssue(issues, "source_commit", "source commit must be 40-lowercase-hex");
   }
-
-  const fixturesValue = readJson(canonicalRoot, fixturesPath, issues, true);
-  let fixtures: Record<string, unknown> | undefined;
-  if (fixturesValue !== undefined) {
-    if (isRecord(fixturesValue)) {
-      fixtures = fixturesValue;
-    } else {
-      shapeIssue(issues, fixturesPath, "fixtures must be an object");
-    }
+  if (!fullCommitPattern.test(snapshotCommit)) {
+    shapeIssue(issues, "snapshot_commit", "snapshot commit must be 40-lowercase-hex");
   }
-
-  const manifestValue = readJson(canonicalRoot, familyManifestPath, issues, true);
-  if (manifestValue === undefined) {
-    return { issues: sortIssues(issues) };
-  }
-  const manifest = parseFamilyManifest(manifestValue, issues);
-  if (manifest === undefined) {
-    return { issues: sortIssues(issues) };
-  }
-
-  const artifactPaths = new Set<string>();
-  for (const artifact of manifest.artifacts) {
-    if (artifactPaths.has(artifact.path)) {
-      issues.push({
-        code: "duplicate-artifact-path",
-        path: artifact.path,
-        message: "family release manifest repeats an artifact path",
-      });
-    }
-    artifactPaths.add(artifact.path);
-  }
-
-  const expectedArtifacts = expectedReleaseArtifacts(canonicalRoot, issues);
-  for (const [path, role] of expectedArtifacts) {
-    const artifact = manifest.artifacts.find((candidate) => candidate.path === path);
-    if (artifact === undefined) {
-      issues.push({
-        code: "missing-release-artifact",
-        path,
-        message: "normative file is absent from the family release manifest",
-      });
-    } else if (artifact.role !== role) {
-      shapeIssue(issues, path, `normative artifact role must be ${role}`);
-    }
-  }
-  for (const artifact of manifest.artifacts) {
-    let safe = true;
-    try {
-      safeRepositoryPath(canonicalRoot, artifact.path);
-    } catch {
-      safe = false;
-    }
-    if (safe && !expectedArtifacts.has(artifact.path)) {
-      issues.push({
-        code: "unexpected-release-artifact",
-        path: artifact.path,
-        message: "file is not part of the closed normative release artifact set",
-      });
-    }
-    const digest = sha256File(canonicalRoot, artifact.path);
-    if (digest !== undefined && artifact.sha256 !== undefined && digest !== artifact.sha256) {
-      issues.push({
-        code: "artifact-digest-mismatch",
-        path: artifact.path,
-        message: "release artifact sha256 does not match exact file bytes",
-      });
-    }
-  }
-  for (let index = 1; index < manifest.artifacts.length; index += 1) {
-    if (compareText(manifest.artifacts[index - 1]!.path, manifest.artifacts[index]!.path) > 0) {
-      shapeIssue(issues, familyManifestPath, "artifacts must be strictly sorted by path");
-      break;
-    }
-  }
-
-  for (const [path] of requiredArtifactRoles) {
-    const artifact = manifest.artifacts.find((candidate) => candidate.path === path);
-    if (artifact === undefined) {
-      issues.push({ code: "missing-required-root", path, message: "required release artifact is absent" });
-    }
-  }
-  if (manifest.registry.path !== undefined && !artifactPaths.has(manifest.registry.path)) {
-    validateStandaloneManifestPath(canonicalRoot, manifest.registry.path, issues);
-  }
-  if (manifest.registry.path !== registryManifestPath) {
-    issues.push({
-      code: "missing-required-root",
-      path: registryManifestPath,
-      message: `family registry path is ${manifest.registry.path ?? "missing"}`,
-    });
-  }
-  if (manifest.registry.path !== undefined && manifest.registry.sha256 !== undefined) {
-    const registryDigest = sha256File(canonicalRoot, manifest.registry.path);
-    if (registryDigest !== undefined && registryDigest !== manifest.registry.sha256) {
-      issues.push({
-        code: "registry-digest-mismatch",
-        path: manifest.registry.path,
-        message: "registry pin sha256 does not match exact registry manifest bytes",
-      });
-    }
-  }
-
-  const parsedJson = new Map<string, unknown>();
-  const textArtifacts = new Map<string, string>();
-  for (const artifact of manifest.artifacts) {
-    const jsonArtifact = artifact.role === "registry"
-      || artifact.role === "schema"
-      || artifact.role === "vector"
-      || (artifact.role !== "specification" && artifact.path.endsWith(".json"));
-    if (jsonArtifact) {
-      const value = readJson(canonicalRoot, artifact.path, issues);
-      if (value !== undefined && !parsedJson.has(artifact.path)) {
-        parsedJson.set(artifact.path, value);
-      }
-    } else {
-      const value = readText(canonicalRoot, artifact.path, issues);
-      if (value !== undefined && !textArtifacts.has(artifact.path)) {
-        textArtifacts.set(artifact.path, value);
-      }
-    }
-  }
+  const sourceRoot = canonicalRoot(options.sourceRoot, "source", issues);
+  const snapshotRoot = canonicalRoot(options.snapshotRoot, "snapshot", issues);
+  if (sourceRoot === undefined || snapshotRoot === undefined) return { issues: sortIssues(issues) };
 
   const specifications = new Map<string, string>();
-  const schemas = new Map<string, unknown>();
-  const vectors: { path: string; value: VectorDocument }[] = [];
-  const vectorIds = new Map<string, string>();
-  const vectorSchema = parsedJson.get(vectorSchemaPath);
-  let validateVectorSchema: ReturnType<Ajv["compile"]> | undefined;
-  if (vectorSchema !== undefined) {
-    if (!isRecord(vectorSchema)) {
-      shapeIssue(issues, vectorSchemaPath, "vector schema must be a JSON object");
-    } else {
-      try {
-        validateVectorSchema = new Ajv({ allErrors: true, strict: false })
-          .compile(vectorSchema as AnySchema);
-      } catch {
-        shapeIssue(issues, vectorSchemaPath, "vector schema is not a compilable JSON Schema");
-      }
+  for (const path of specificationPaths) {
+    const source = readText(sourceRoot, path, issues, true);
+    if (source !== undefined) specifications.set(path, source);
+  }
+
+  const registryPaths = filesUnder(
+    sourceRoot,
+    "docs/spec/registry",
+    issues,
+    new Set(["docs/spec/registry/history"]),
+  ).filter((path) => path.endsWith(".json"));
+  const schemaPaths = filesUnder(sourceRoot, "docs/spec/schemas", issues)
+    .filter((path) => path.endsWith(".json"));
+  for (const path of requiredRegistryPaths) {
+    if (!registryPaths.includes(path)) {
+      issues.push({ code: "missing-required-root", path, message: "required registry artifact is absent" });
     }
   }
-  for (const artifact of manifest.artifacts) {
-    if (artifact.role === "specification") {
-      const value = textArtifacts.get(artifact.path);
-      if (value !== undefined) {
-        specifications.set(artifact.path, value);
-      }
-    } else if (artifact.role === "schema") {
-      if (parsedJson.has(artifact.path)) {
-        schemas.set(artifact.path, parsedJson.get(artifact.path));
-      }
-    } else if (artifact.role === "vector") {
-      const value = parsedJson.get(artifact.path);
-      if (value === undefined) {
-        continue;
-      }
-      if (validateVectorSchema === undefined) {
-        continue;
-      }
-      if (!validateVectorSchema(value)) {
-        shapeIssue(issues, artifact.path, "vector does not match vector.schema.json");
-        continue;
-      }
-      const vector = parseVector(value);
-      if (vector === undefined) {
-        shapeIssue(issues, artifact.path, "vector does not match the 1.1.0 corpus shape");
-        continue;
-      }
-      const firstPath = vectorIds.get(vector.vector_id);
-      if (firstPath !== undefined) {
-        issues.push({
-          code: "duplicate-vector-id",
-          path: artifact.path,
-          message: `vector_id ${vector.vector_id} was first declared at ${firstPath}`,
-        });
-      } else {
-        vectorIds.set(vector.vector_id, artifact.path);
-      }
-      vectors.push({ path: artifact.path, value: vector });
+  const sourceJson = new Map<string, unknown>();
+  for (const path of [...registryPaths, ...schemaPaths]) {
+    const value = readJson(sourceRoot, path, issues);
+    if (value !== undefined) sourceJson.set(path, value);
+  }
+
+  const manifestSource = readText(snapshotRoot, snapshotManifestPath, issues, true);
+  let manifestValue: unknown | undefined;
+  if (manifestSource !== undefined) {
+    try {
+      manifestValue = JSON.parse(manifestSource) as unknown;
+    } catch (error) {
+      issues.push({ code: "invalid-json", path: snapshotManifestPath, message: errorMessage(error) });
     }
+  }
+  const manifest = manifestValue === undefined
+    ? undefined
+    : parseSnapshotManifest(manifestValue, manifestSource, issues);
+  const expectedPaths = expectedSnapshotPaths(snapshotRoot, issues);
+  if (manifest !== undefined) {
+    const declared = new Set(manifest.artifacts.map(({ path }) => path));
+    for (const path of expectedPaths) {
+      if (!declared.has(path)) {
+        issues.push({
+          code: "missing-snapshot-artifact",
+          path,
+          message: "snapshot datum is absent from the closed manifest",
+        });
+      }
+    }
+    const expected = new Set(expectedPaths);
+    for (const artifact of manifest.artifacts) {
+      if (!expected.has(artifact.path)) {
+        issues.push({
+          code: "unexpected-snapshot-artifact",
+          path: artifact.path,
+          message: "manifest entry is not part of the closed snapshot artifact set",
+        });
+      }
+      const digest = snapshotArtifactDigest(snapshotRoot, artifact.path, issues);
+      if (digest !== undefined && artifact.sha256 !== undefined && digest !== artifact.sha256) {
+        issues.push({
+          code: "artifact-digest-mismatch",
+          path: artifact.path,
+          message: "snapshot artifact sha256 does not match exact file bytes",
+        });
+      }
+    }
+    if (manifest.sourceCommit !== undefined && manifest.sourceCommit !== sourceCommit) {
+      issues.push({
+        code: "source-commit-mismatch",
+        path: snapshotManifestPath,
+        message: `snapshot manifest pins ${manifest.sourceCommit} instead of ${sourceCommit}`,
+      });
+    }
+    const actualVectorCount = expectedPaths.filter((path) => !snapshotSupportPaths.includes(
+      path as (typeof snapshotSupportPaths)[number],
+    )).length;
+    if (manifest.vectorCount !== undefined && manifest.vectorCount !== actualVectorCount) {
+      shapeIssue(
+        issues,
+        snapshotManifestPath,
+        `vector_count must be ${actualVectorCount}, found ${manifest.vectorCount}`,
+      );
+    }
+  }
+
+  const fixturesValue = readJson(snapshotRoot, fixturesPath, issues, true);
+  const fixtures = isRecord(fixturesValue) ? fixturesValue : undefined;
+  if (fixturesValue !== undefined && fixtures === undefined) {
+    shapeIssue(issues, fixturesPath, "fixtures must be an object");
+  }
+  const vectorSchemaValue = readJson(snapshotRoot, vectorSchemaPath, issues, true);
+  const vectorSchema = isRecord(vectorSchemaValue) ? vectorSchemaValue : undefined;
+  if (vectorSchemaValue !== undefined && vectorSchema === undefined) {
+    shapeIssue(issues, vectorSchemaPath, "vector schema must be a JSON object");
+  }
+  let validateVectorSchema: ReturnType<Ajv["compile"]> | undefined;
+  if (vectorSchema !== undefined) {
+    try {
+      validateVectorSchema = new Ajv({ allErrors: true, strict: false }).compile(vectorSchema as AnySchema);
+    } catch {
+      shapeIssue(issues, vectorSchemaPath, "vector schema is not a compilable JSON Schema");
+    }
+  }
+  const schemaProperties = vectorSchema === undefined || !isRecord(vectorSchema.properties)
+    ? undefined
+    : vectorSchema.properties;
+  const schemaVersionMember = schemaProperties === undefined
+    || !isRecord(schemaProperties.vector_schema_version)
+    ? undefined
+    : schemaProperties.vector_schema_version.const;
+  if (
+    manifest?.vectorSchemaVersion !== undefined
+    && schemaVersionMember !== manifest.vectorSchemaVersion
+  ) {
+    shapeIssue(issues, vectorSchemaPath, "packaged vector schema version disagrees with snapshot manifest");
+  }
+
+  const vectors: Array<{ path: string; value: VectorDocument }> = [];
+  const vectorIds = new Map<string, string>();
+  for (const path of snapshotVectorPaths(snapshotRoot, [])) {
+    const value = readJson(snapshotRoot, path, issues);
+    if (value === undefined || validateVectorSchema === undefined) continue;
+    if (!validateVectorSchema(value)) {
+      shapeIssue(issues, path, "vector does not match vector.schema.json");
+      continue;
+    }
+    const vector = parseVector(value);
+    if (vector === undefined) {
+      shapeIssue(issues, path, "vector does not match the 2.0.0 snapshot corpus shape");
+      continue;
+    }
+    const firstPath = vectorIds.get(vector.vector_id);
+    if (firstPath !== undefined) {
+      issues.push({
+        code: "duplicate-vector-id",
+        path,
+        message: `vector_id ${vector.vector_id} was first declared at ${firstPath}`,
+      });
+    } else {
+      vectorIds.set(vector.vector_id, path);
+    }
+    vectors.push({ path, value: vector });
   }
   vectors.sort((left, right) => compareText(left.path, right.path));
 
-  const registryManifest = parseRegistryManifest(parsedJson.get(registryManifestPath));
-  if (registryManifest === undefined && parsedJson.has(registryManifestPath)) {
-    shapeIssue(issues, registryManifestPath, "registry manifest must pin revision 13 and schema 3.0.0");
+  const registryManifest = parseRegistryManifest(sourceJson.get(registryManifestPath));
+  if (registryManifest === undefined && sourceJson.has(registryManifestPath)) {
+    shapeIssue(issues, registryManifestPath, "registry manifest has an invalid shape");
   }
-  const reasonCodes = parseReasonCodes(parsedJson.get(reasonCodesPath));
-  const securityInvariants = parseSecurityInvariants(parsedJson.get(securityInvariantsPath));
+  const reasonCodes = parseReasonCodes(sourceJson.get(reasonCodesPath));
+  const securityInvariants = parseSecurityInvariants(sourceJson.get(securityInvariantsPath));
+  if (!reasonCodes.valid && sourceJson.has(reasonCodesPath)) {
+    shapeIssue(issues, reasonCodesPath, "reason code registry has an invalid shape");
+  }
+  if (!securityInvariants.valid && sourceJson.has(securityInvariantsPath)) {
+    shapeIssue(issues, securityInvariantsPath, "security invariant registry has an invalid shape");
+  }
   reportDuplicates(reasonCodes.entries.map(({ code }) => code), reasonCodesPath, "reason code", issues);
   reportDuplicates(
     securityInvariants.entries.map(({ id }) => id),
@@ -819,13 +783,11 @@ export function loadCorpus(repositoryRoot: string): {
     "security invariant",
     issues,
   );
-
-  const registrySchema = parsedJson.get(registrySchemaPath);
+  const registrySchema = sourceJson.get(registrySchemaPath);
   if (registrySchema !== undefined && !isRecord(registrySchema)) {
     shapeIssue(issues, registrySchemaPath, "registry schema must be a JSON object");
   }
-
-  const entrySet = registryEntrySet(parsedJson);
+  const entrySet = registryEntrySet(sourceJson);
   if (entrySet === undefined) {
     shapeIssue(issues, registryManifestPath, "complete registry entry documents are required");
   } else {
@@ -834,20 +796,18 @@ export function loadCorpus(repositoryRoot: string): {
       issues.push({
         code: "registry-entry-set-digest-mismatch",
         path: registryManifestPath,
-        message: "registry entry_set_sha256 does not match the complete current entry set",
+        message: "registry entry_set_sha256 does not match the complete pinned entry set",
       });
     }
     if (isRecord(registrySchema) && registryManifest !== undefined) {
-      let validateRegistrySchema: ReturnType<Ajv["compile"]> | undefined;
       try {
-        validateRegistrySchema = new Ajv({ allErrors: true, strict: false })
+        const validateRegistry = new Ajv({ allErrors: true, strict: false })
           .compile(registrySchema as AnySchema);
+        if (!validateRegistry({ manifest: registryManifest, ...entrySet })) {
+          shapeIssue(issues, registryManifestPath, "registry documents do not match registry.schema.json");
+        }
       } catch {
         shapeIssue(issues, registrySchemaPath, "registry schema is not a compilable JSON Schema");
-      }
-      if (validateRegistrySchema !== undefined
-        && !validateRegistrySchema({ manifest: registryManifest, ...entrySet })) {
-        shapeIssue(issues, registryManifestPath, "registry documents do not match registry.schema.json");
       }
     }
   }
@@ -855,30 +815,35 @@ export function loadCorpus(repositoryRoot: string): {
   sortIssues(issues);
   if (
     issues.length > 0
+    || manifest?.vectorSchemaVersion === undefined
     || registryManifest === undefined
     || !reasonCodes.valid
     || !securityInvariants.valid
     || fixtures === undefined
-  ) {
-    return { issues };
-  }
+    || vectorSchema === undefined
+  ) return { issues };
 
-  const registry: RegistryDocument = {
-    manifest: registryManifest,
-    reason_codes: reasonCodes.entries,
-    security_invariants: securityInvariants.entries,
-  };
+  const schemas = new Map<string, unknown>();
+  for (const path of schemaPaths) {
+    if (sourceJson.has(path)) schemas.set(path, sourceJson.get(path));
+  }
   return {
     corpus: {
-      repositoryRoot: canonicalRoot,
-      familyVersion: "heterodyne/0.5.0",
-      registryRevision: 13,
-      registryDigest: registryManifest.entry_set_sha256,
+      sourceRoot,
+      snapshotRoot,
+      sourceCommit,
+      snapshotCommit,
+      vectorSchemaVersion: manifest.vectorSchemaVersion,
       specifications,
       schemas,
+      vectorSchema,
       vectors,
       fixtures,
-      registry,
+      registry: {
+        manifest: registryManifest,
+        reason_codes: reasonCodes.entries,
+        security_invariants: securityInvariants.entries,
+      },
     },
     issues,
   };

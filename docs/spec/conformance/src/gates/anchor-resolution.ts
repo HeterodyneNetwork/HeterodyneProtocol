@@ -1,8 +1,8 @@
 import type { ArtifactCorpus } from "../types.js";
 import {
   extractExplicitAnchors,
-  ownerForAnchor,
   ownerForSpecificationPath,
+  parseSpecificationReference,
   type SpecificationOwner,
 } from "./anchors.js";
 
@@ -24,19 +24,12 @@ function anchorsByOwner(corpus: ArtifactCorpus): ReadonlyMap<SpecificationOwner,
 export function findAnchorResolutionFailures(corpus: ArtifactCorpus): string[] {
   const failures = new Set<string>();
   const availableAnchors = anchorsByOwner(corpus);
-  const referencePrefix = `${corpus.familyVersion.replace("/", ":")}#`;
-
   for (const { value: vector } of corpus.vectors) {
     for (const specRef of vector.spec_refs) {
-      const anchor = specRef.startsWith(referencePrefix)
-        ? specRef.slice(referencePrefix.length)
-        : undefined;
-      const owner = anchor === undefined ? undefined : ownerForAnchor(anchor);
+      const parsed = parseSpecificationReference(specRef);
       if (
-        anchor === undefined
-        || anchor.length === 0
-        || owner === undefined
-        || !availableAnchors.get(owner)?.has(anchor)
+        parsed === undefined
+        || !availableAnchors.get(parsed.owner)?.has(parsed.anchor)
       ) {
         failures.add(`${vector.vector_id} :: ${specRef}`);
       }

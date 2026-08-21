@@ -15,9 +15,8 @@ export type ConformanceCheckDocument = {
 
 export type VectorDocument = {
   vector_id: string;
-  vector_schema_version: "1.1.0";
+  vector_schema_version: "2.0.0";
   owner_document: "core" | "comms" | "control" | "social" | "workspace";
-  spec_version: "heterodyne/0.5.0";
   spec_refs: string[];
   direction: "consume" | "produce" | "round-trip";
   input: Record<string, unknown>;
@@ -26,18 +25,20 @@ export type VectorDocument = {
 };
 
 export type RegistryDocument = {
-  manifest: { revision: 13; schema_version: "3.0.0"; entry_set_sha256: string };
+  manifest: { revision: number; schema_version: string; entry_set_sha256: string };
   reason_codes: readonly { code: string }[];
   security_invariants: readonly { id: string; owner: string; feature?: string }[];
 };
 
 export type ArtifactCorpus = {
-  repositoryRoot: string;
-  familyVersion: "heterodyne/0.5.0";
-  registryRevision: 13;
-  registryDigest: string;
+  sourceRoot: string;
+  snapshotRoot: string;
+  sourceCommit: string;
+  snapshotCommit: string;
+  vectorSchemaVersion: string;
   specifications: ReadonlyMap<string, string>;
   schemas: ReadonlyMap<string, unknown>;
+  vectorSchema: Record<string, unknown>;
   vectors: readonly { path: string; value: VectorDocument }[];
   fixtures: Record<string, unknown>;
   registry: RegistryDocument;

@@ -1,20 +1,19 @@
-import { mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { readFileSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { loadCorpus } from "./artifacts.js";
 import {
-  createTestRepository,
-  familyManifestPath,
+  createTestCorpus,
   fixturesPath,
-  refreshReleaseDigests,
-  refreshRegistryEntrySetDigest,
+  protocolSchemaPath,
+  readJson,
   readTestManifest,
-  registryEntrySetDigest,
-  registryManifestPath,
-  registrySchemaPath,
   reasonCodesPath,
-  sha256File,
+  refreshSnapshotManifest,
+  registryManifestPath,
+  snapshotManifestPath,
+  sourceCommit,
+  type TestCorpus,
   vectorPath,
   vectorSchemaPath,
   writeJson,
@@ -24,604 +23,212 @@ import {
 const temps: string[] = [];
 
 afterEach(() => {
-  for (const path of temps.splice(0)) {
-    rmSync(path, { recursive: true, force: true });
-  }
+  for (const path of temps.splice(0)) rmSync(path, { recursive: true, force: true });
 });
 
-function repository(): string {
-  const root = createTestRepository();
-  temps.push(root);
-  return root;
+function corpus(options: { withVector?: boolean } = {}): TestCorpus {
+  const value = createTestCorpus(options);
+  temps.push(value.root);
+  return value;
 }
 
-function readJson(root: string, path: string): Record<string, unknown> {
-  return JSON.parse(readFileSync(resolve(root, path), "utf8")) as Record<string, unknown>;
-}
+describe("loadCorpus split roots", () => {
+  it("reads source-owned and snapshot-owned artifacts from their authoritative roots", () => {
+    const input = corpus();
+    writeText(input.snapshotRoot, "docs/spec/heterodyne-core.md", "current-head-conflict\n");
+    writeJson(input.snapshotRoot, reasonCodesPath, { reason_codes: [{ code: "wrong-root" }] });
+    writeJson(input.snapshotRoot, protocolSchemaPath, { title: "wrong-root" });
+    writeJson(input.sourceRoot, vectorSchemaPath, { title: "wrong-root" });
+    writeJson(input.sourceRoot, fixturesPath, { wrong_root: true });
 
-function writeVector(root: string, value: Record<string, unknown>): void {
-  writeJson(root, vectorPath, value);
-  refreshReleaseDigests(root);
-}
+    const loaded = loadCorpus(input);
 
-function declaredVector(): Record<string, unknown> {
-  return {
-    vector_id: "core.declared",
-    vector_schema_version: "1.1.0",
-    owner_document: "core",
-    spec_version: "heterodyne/0.5.0",
-    spec_refs: ["heterodyne:0.5.0#core-conformance"],
-    description: "synthetic independently loaded declaration",
-    direction: "consume",
-    input: { event: {}, context: {} },
-    expected_output: { verdict: "accept" },
-    conformance_checks: [{
-      profile: "core-signed-event-v1",
-      event_pointer: "/input/event",
-      nip01_raw_pointer: "/input/nip01_raw",
-      context_pointer: "/input/context",
-      expected_terminal_stage: "accept",
-    }],
-  };
-}
-
-describe("loadCorpus", () => {
-  it("loads a valid synthetic corpus from its family manifest", () => {
-    const result = loadCorpus(repository());
-
-    expect(result.issues).toEqual([]);
-    expect(result.corpus).toMatchObject({
-      familyVersion: "heterodyne/0.5.0",
-      registryRevision: 13,
-      registryDigest: registryEntrySetDigest,
+    expect(loaded.issues).toEqual([]);
+    expect(loaded.corpus?.sourceRoot).toBe(realpathSync(input.sourceRoot));
+    expect(loaded.corpus?.snapshotRoot).toBe(realpathSync(input.snapshotRoot));
+    expect(loaded.corpus?.sourceCommit).toBe(input.sourceCommit);
+    expect(loaded.corpus?.snapshotCommit).toBe(input.snapshotCommit);
+    expect(loaded.corpus?.specifications.get("docs/spec/heterodyne-core.md"))
+      .toContain("core-conformance");
+    expect(loaded.corpus?.registry.reason_codes.map(({ code }) => code)).toEqual(["bad_signature"]);
+    expect(loaded.corpus?.schemas.get(protocolSchemaPath)).toEqual({
+      type: "object",
+      title: "pinned-source-schema",
     });
-    expect(result.corpus?.specifications).toHaveLength(5);
-    expect(result.corpus?.schemas).toHaveLength(2);
-    expect(result.corpus?.vectors.map(({ value }) => value.vector_id)).toEqual(["core.valid"]);
+    expect(loaded.corpus?.vectorSchema).toEqual(readJson(input.snapshotRoot, vectorSchemaPath));
+    expect(loaded.corpus?.fixtures).toEqual(readJson(input.snapshotRoot, fixturesPath));
   });
 
-  it("hashes exact artifact bytes and rejects a changed file", () => {
-    const root = repository();
-    const corePath = "docs/spec/heterodyne-core.md";
-    writeText(root, corePath, "# core changed by one byte\n");
+  it("loads a schema-2 snapshot without family release authority", () => {
+    const input = corpus();
+    const loaded = loadCorpus(input);
 
-    expect(loadCorpus(root).issues).toContainEqual({
-      code: "artifact-digest-mismatch",
-      path: corePath,
-      message: "release artifact sha256 does not match exact file bytes",
+    expect(loaded.issues).toEqual([]);
+    expect(loaded.corpus).not.toHaveProperty("familyVersion");
+    expect(loaded.corpus).not.toHaveProperty("registryRevision");
+    expect(loaded.corpus).not.toHaveProperty("registryDigest");
+    expect(loaded.corpus?.vectorSchemaVersion).toBe("2.0.0");
+    expect(loaded.corpus?.vectors.map(({ value }) => value.vector_id)).toEqual(["core.valid"]);
+  });
+
+  it("rejects a legacy version reference even when a permissive snapshot schema allows it", () => {
+    const input = corpus();
+    const schema = readJson(input.snapshotRoot, vectorSchemaPath);
+    const properties = schema.properties as Record<string, Record<string, unknown>>;
+    properties.spec_refs = { type: "array", minItems: 1, items: { type: "string" } };
+    writeJson(input.snapshotRoot, vectorSchemaPath, schema);
+    const vector = readJson(input.snapshotRoot, vectorPath);
+    vector.spec_refs = ["heterodyne:0.5.0#core-conformance"];
+    writeJson(input.snapshotRoot, vectorPath, vector);
+    refreshSnapshotManifest(input.snapshotRoot);
+
+    expect(loadCorpus(input).issues).toContainEqual({
+      code: "invalid-document-shape",
+      path: vectorPath,
+      message: "vector does not match the 2.0.0 snapshot corpus shape",
     });
   });
 
-  it("rejects a stale syntactically valid artifact digest in the release manifest", () => {
-    const root = repository();
-    const manifest = readTestManifest(root);
+  it("accumulates snapshot digest, malformed vector, and source registry diagnostics", () => {
+    const input = corpus();
+    const manifest = readTestManifest(input.snapshotRoot);
+    const artifact = (manifest.artifacts as Array<Record<string, unknown>>)
+      .find(({ path }) => path === fixturesPath)!;
+    artifact.sha256 = "0".repeat(64);
+    writeJson(input.snapshotRoot, snapshotManifestPath, manifest);
+    writeText(input.snapshotRoot, vectorPath, "{ malformed\n");
+    writeJson(input.sourceRoot, registryManifestPath, { malformed: true });
+
+    expect(loadCorpus(input).issues.map(({ code, path }) => ({ code, path }))).toEqual([
+      { code: "artifact-digest-mismatch", path: vectorPath },
+      { code: "artifact-digest-mismatch", path: fixturesPath },
+      { code: "invalid-document-shape", path: registryManifestPath },
+      { code: "invalid-json", path: vectorPath },
+    ]);
+  });
+
+  it("rejects snapshot source identity disagreement", () => {
+    const input = corpus();
+    input.sourceCommit = "3".repeat(40);
+
+    expect(loadCorpus(input).issues).toContainEqual({
+      code: "source-commit-mismatch",
+      path: snapshotManifestPath,
+      message: `snapshot manifest pins ${sourceCommit} instead of ${input.sourceCommit}`,
+    });
+  });
+
+  it("rejects a missing, extra, duplicated, and unsorted snapshot inventory", () => {
+    const input = corpus();
+    const manifest = readTestManifest(input.snapshotRoot);
     const artifacts = manifest.artifacts as Array<Record<string, unknown>>;
-    const vector = artifacts.find((artifact) => artifact.path === vectorPath)!;
-    vector.sha256 = "00".repeat(32);
-    writeJson(root, familyManifestPath, manifest);
+    artifacts.pop();
+    artifacts.push({ path: "docs/spec/vectors/extra.json", sha256: "a".repeat(64) });
+    artifacts.push({ ...artifacts[0] });
+    writeJson(input.snapshotRoot, snapshotManifestPath, manifest);
 
-    expect(loadCorpus(root).issues).toContainEqual({
+    const codes = loadCorpus(input).issues.map(({ code }) => code);
+    expect(codes).toEqual(expect.arrayContaining([
+      "duplicate-artifact-path",
+      "invalid-document-shape",
+      "missing-snapshot-artifact",
+      "unexpected-snapshot-artifact",
+    ]));
+  });
+
+  it("rejects exact-byte drift in a current snapshot artifact", () => {
+    const input = corpus();
+    writeText(input.snapshotRoot, fixturesPath, `${readFileSync(
+      resolve(input.snapshotRoot, fixturesPath),
+      "utf8",
+    )}\n`);
+
+    expect(loadCorpus(input).issues).toContainEqual({
       code: "artifact-digest-mismatch",
-      path: vectorPath,
-      message: "release artifact sha256 does not match exact file bytes",
+      path: fixturesPath,
+      message: "snapshot artifact sha256 does not match exact file bytes",
     });
   });
 
-  it("rejects a stale registry-file hash even when its artifact entry is current", () => {
-    const root = repository();
-    const manifest = readTestManifest(root);
-    (manifest.registry as Record<string, unknown>).sha256 = "00".repeat(32);
-    writeJson(root, familyManifestPath, manifest);
-
-    expect(loadCorpus(root).issues).toContainEqual({
-      code: "registry-digest-mismatch",
-      path: registryManifestPath,
-      message: "registry pin sha256 does not match exact registry manifest bytes",
-    });
-  });
-
-  it("recomputes the complete registry entry-set digest independently", () => {
-    const root = repository();
-    const reasons = readJson(root, reasonCodesPath);
-    (reasons.reason_codes as unknown[]).push({
-      code: "second_reason",
-      owner: "core",
-      status: "draft",
-      first_version: "heterodyne/0.5.0",
-      description: "A second valid synthetic reason.",
-      spec_refs: ["heterodyne:0.5.0#core-conformance"],
-    });
-    writeJson(root, reasonCodesPath, reasons);
-    refreshReleaseDigests(root);
-
-    expect(loadCorpus(root).issues).toContainEqual({
-      code: "registry-entry-set-digest-mismatch",
-      path: registryManifestPath,
-      message: "registry entry_set_sha256 does not match the complete current entry set",
-    });
-  });
-
-  it("rejects a non-object registry schema instead of returning a clean corpus", () => {
-    const root = repository();
-    writeJson(root, registrySchemaPath, []);
-    refreshReleaseDigests(root);
-
-    expect(loadCorpus(root)).toEqual({
-      issues: [{
-        code: "invalid-document-shape",
-        path: registrySchemaPath,
-        message: "registry schema must be a JSON object",
-      }],
-    });
-  });
-
-  it("accumulates an unresolvable registry schema with another readable artifact issue", () => {
-    const root = repository();
-    writeJson(root, registrySchemaPath, { $ref: "missing.json" });
-    writeText(root, vectorPath, "{ malformed\n");
-    refreshReleaseDigests(root);
-
-    expect(loadCorpus(root).issues).toEqual([
-      {
-        code: "invalid-document-shape",
-        path: registrySchemaPath,
-        message: "registry schema is not a compilable JSON Schema",
-      },
-      expect.objectContaining({
-        code: "invalid-json",
-        path: vectorPath,
-      }),
-    ]);
-  });
-
-  it("accumulates a non-object registry schema with incomplete entry documents", () => {
-    const root = repository();
-    writeJson(root, reasonCodesPath, {});
-    writeJson(root, registrySchemaPath, null);
-    refreshReleaseDigests(root);
-
-    expect(loadCorpus(root).issues).toEqual([
-      {
-        code: "invalid-document-shape",
-        path: registryManifestPath,
-        message: "complete registry entry documents are required",
-      },
-      {
-        code: "invalid-document-shape",
-        path: registrySchemaPath,
-        message: "registry schema must be a JSON object",
-      },
-    ]);
-  });
-
-  it("enforces closed release, registry-pin, and artifact member shapes", () => {
-    const root = repository();
-    const manifest = readTestManifest(root);
-    manifest.unexpected = true;
-    (manifest.registry as Record<string, unknown>).unexpected = true;
-    ((manifest.artifacts as Array<Record<string, unknown>>)[0]!).unexpected = true;
-    writeJson(root, familyManifestPath, manifest);
-
-    expect(loadCorpus(root).issues.filter(({ code }) => code === "invalid-document-shape"))
-      .toHaveLength(3);
-  });
-
-  it("enforces the release schema's exact repository-path syntax", () => {
-    const root = repository();
-    const manifest = readTestManifest(root);
-    const artifact = (manifest.artifacts as Array<Record<string, unknown>>)[0]!;
-    const invalidPath = "docs/spec/bad name.json";
-    artifact.path = invalidPath;
-    writeText(root, invalidPath, "{}\n");
-    artifact.sha256 = sha256File(root, invalidPath);
-    (manifest.artifacts as Array<Record<string, unknown>>)
-      .sort((left, right) => String(left.path).localeCompare(String(right.path)));
-    writeJson(root, familyManifestPath, manifest);
-
-    expect(loadCorpus(root).issues).toContainEqual(expect.objectContaining({
-      code: "invalid-document-shape",
-      path: invalidPath,
-    }));
-  });
-
-  it("rejects an incomplete release artifact set instead of trusting omissions", () => {
-    const root = repository();
-    const manifest = readTestManifest(root);
-    manifest.artifacts = (manifest.artifacts as Array<Record<string, unknown>>)
-      .filter((artifact) => artifact.path !== vectorPath);
-    writeJson(root, familyManifestPath, manifest);
-
-    expect(loadCorpus(root).issues).toContainEqual({
-      code: "missing-release-artifact",
-      path: vectorPath,
-      message: "normative file is absent from the family release manifest",
-    });
-  });
-
-  it("rejects extra declaration members and duplicate declarations", () => {
-    const root = repository();
-    const vector = declaredVector();
-    const check = (vector.conformance_checks as Array<Record<string, unknown>>)[0]!;
-    check.inferred = true;
-    writeVector(root, vector);
-    expect(loadCorpus(root).issues).toContainEqual(expect.objectContaining({
-      code: "invalid-document-shape",
-      path: vectorPath,
-    }));
-
-    delete check.inferred;
-    vector.conformance_checks = [check, { ...check }];
-    writeVector(root, vector);
-    expect(loadCorpus(root).issues).toContainEqual(expect.objectContaining({
-      code: "invalid-document-shape",
-      path: vectorPath,
-    }));
-  });
-
-  it("applies the normative vector schema to reject unknown envelope members", () => {
-    const root = repository();
-    const vector = declaredVector();
+  it("applies the packaged vector schema from the snapshot root", () => {
+    const input = corpus();
+    const vector = readJson(input.snapshotRoot, vectorPath);
     vector.unregistered = true;
-    writeVector(root, vector);
+    writeJson(input.snapshotRoot, vectorPath, vector);
+    refreshSnapshotManifest(input.snapshotRoot);
 
-    expect(loadCorpus(root).issues).toContainEqual({
+    expect(loadCorpus(input).issues).toContainEqual({
       code: "invalid-document-shape",
       path: vectorPath,
       message: "vector does not match vector.schema.json",
     });
   });
 
-  it.each([
-    [] as string[],
-    ["heterodyne:0.5.0#core-conformance", "heterodyne:0.5.0#core-verification"],
-  ])("applies the normative vector schema spec_refs cardinality: %j", (specRefs) => {
-    const root = repository();
-    const vector = declaredVector();
-    vector.spec_refs = specRefs;
-    writeVector(root, vector);
-
-    expect(loadCorpus(root).issues).toContainEqual({
-      code: "invalid-document-shape",
-      path: vectorPath,
-      message: "vector does not match vector.schema.json",
-    });
-  });
-
-  it("fails closed when the normative vector schema is not an object", () => {
-    const root = repository();
-    writeJson(root, vectorSchemaPath, []);
-    refreshReleaseDigests(root);
-
-    expect(loadCorpus(root).issues).toContainEqual({
-      code: "invalid-document-shape",
-      path: vectorSchemaPath,
-      message: "vector schema must be a JSON object",
-    });
-    expect(loadCorpus(root).corpus).toBeUndefined();
-  });
-
-  it("fails closed when the normative vector schema cannot compile", () => {
-    const root = repository();
-    writeJson(root, vectorSchemaPath, { $ref: "missing.json" });
-    refreshReleaseDigests(root);
-
-    expect(loadCorpus(root).issues).toContainEqual({
-      code: "invalid-document-shape",
-      path: vectorSchemaPath,
-      message: "vector schema is not a compilable JSON Schema",
-    });
-    expect(loadCorpus(root).corpus).toBeUndefined();
-  });
-
-  it("requires context_pointer for persona resolution and later stages", () => {
-    const root = repository();
-    const vector = declaredVector();
-    const check = (vector.conformance_checks as Array<Record<string, unknown>>)[0]!;
-    check.expected_terminal_stage = "persona_resolution";
-    delete check.context_pointer;
-    writeVector(root, vector);
-
-    expect(loadCorpus(root).issues).toContainEqual(expect.objectContaining({
-      code: "invalid-document-shape",
-      path: vectorPath,
-    }));
-  });
-
-  it("requires declared event and context targets to exist", () => {
-    const root = repository();
-    const vector = declaredVector();
-    const check = (vector.conformance_checks as Array<Record<string, unknown>>)[0]!;
-    check.event_pointer = "/input/missing_event";
-    writeVector(root, vector);
-    expect(loadCorpus(root).issues).toContainEqual(expect.objectContaining({
-      code: "invalid-document-shape",
-      path: vectorPath,
-    }));
-
-    check.event_pointer = "/input/event";
-    check.context_pointer = "/input/missing_context";
-    writeVector(root, vector);
-    expect(loadCorpus(root).issues).toContainEqual(expect.objectContaining({
-      code: "invalid-document-shape",
-      path: vectorPath,
-    }));
-  });
-
-  it("leaves an absent raw target for G10 discovery debt", () => {
-    const root = repository();
-    writeVector(root, declaredVector());
-
-    expect(loadCorpus(root).issues).toEqual([]);
-  });
-
-  it("accumulates an unsafe manifest path and malformed vector deterministically", () => {
-    const root = repository();
-    const manifest = readTestManifest(root);
-    (manifest.artifacts as unknown[]).push({
-      path: "../escape.json",
-      role: "schema",
-      sha256: "aa".repeat(32),
-    });
-    writeText(root, vectorPath, "{ malformed\n");
-    const vector = (manifest.artifacts as Array<Record<string, unknown>>)
-      .find((artifact) => artifact.path === vectorPath)!;
-    vector.sha256 = sha256File(root, vectorPath);
-    (manifest.artifacts as Array<Record<string, unknown>>)
-      .sort((left, right) => String(left.path).localeCompare(String(right.path)));
-    writeJson(root, familyManifestPath, manifest);
-
-    expect(loadCorpus(root).issues.map(({ code }) => code)).toEqual([
-      "invalid-document-shape",
-      "invalid-json",
-      "unsafe-artifact-path",
-    ]);
-  });
-
-  it("reports malformed fixtures when the family manifest is also malformed", () => {
-    const root = repository();
-    writeText(root, familyManifestPath, "{ malformed manifest\n");
-    writeText(root, fixturesPath, "{ malformed fixtures\n");
-
-    expect(loadCorpus(root).issues.map(({ code, path }) => ({ code, path }))).toEqual([
-      { code: "invalid-json", path: familyManifestPath },
-      { code: "invalid-json", path: fixturesPath },
-    ]);
-  });
-
-  it("keeps parsing artifacts after a top-level manifest shape issue", () => {
-    const root = repository();
-    const manifest = readTestManifest(root);
-    manifest.family_version = "heterodyne/9.9.9";
-    writeText(root, vectorPath, "{ malformed\n");
-    const vector = (manifest.artifacts as Array<Record<string, unknown>>)
-      .find((artifact) => artifact.path === vectorPath)!;
-    vector.sha256 = sha256File(root, vectorPath);
-    writeJson(root, familyManifestPath, manifest);
-
-    expect(loadCorpus(root).issues.map(({ code }) => code)).toEqual([
-      "invalid-document-shape",
-      "invalid-json",
-    ]);
-  });
-
-  it("rejects malformed release metadata while continuing artifact parsing", () => {
-    const root = repository();
-    const manifest = readTestManifest(root);
-    manifest.schema_version = "9.9.9";
-    manifest.status = "published";
-    const artifacts = manifest.artifacts as Array<Record<string, unknown>>;
-    const vector = artifacts.find((artifact) => artifact.path === vectorPath);
-    if (vector === undefined) {
-      throw new Error("test vector is absent from synthetic manifest");
-    }
-    vector.role = "executable";
-    vector.sha256 = "invalid";
-    writeJson(root, familyManifestPath, manifest);
-    writeText(root, vectorPath, "{ malformed\n");
-
-    expect(loadCorpus(root).issues.map(({ code }) => code)).toEqual([
-      "invalid-document-shape",
-      "invalid-document-shape",
-      "invalid-document-shape",
-      "invalid-document-shape",
-      "invalid-document-shape",
-      "invalid-json",
-    ]);
-  });
-
-  it("validates the standalone registry manifest path for escape", () => {
-    const root = repository();
-    const manifest = readTestManifest(root);
-    manifest.registry = { path: "../registry.json", sha256: "aa".repeat(32) };
-    writeJson(root, familyManifestPath, manifest);
-
-    expect(loadCorpus(root).issues.map(({ code }) => code)).toEqual([
-      "invalid-document-shape",
-      "missing-required-root",
-      "unsafe-artifact-path",
-    ]);
-  });
-
-  it("rejects a required specification declared with the schema role", () => {
-    const root = repository();
-    const corePath = "docs/spec/heterodyne-core.md";
-    const manifest = readTestManifest(root);
-    const artifacts = manifest.artifacts as Array<Record<string, unknown>>;
-    const core = artifacts.find((artifact) => artifact.path === corePath);
-    if (core === undefined) {
-      throw new Error("Core specification is absent from synthetic manifest");
-    }
-    core.role = "schema";
-    writeText(root, corePath, "{}\n");
-    writeJson(root, familyManifestPath, manifest);
-    refreshReleaseDigests(root);
-
-    expect(loadCorpus(root).issues.map(({ code, path }) => ({ code, path }))).toEqual([
-      { code: "invalid-document-shape", path: corePath },
-    ]);
-    expect(loadCorpus(root).corpus).toBeUndefined();
-  });
-
-  it("reports duplicate vector IDs instead of silently overwriting them", () => {
-    const root = repository();
-    const duplicatePath = "docs/spec/vectors/core/002-duplicate.json";
-    const manifest = readTestManifest(root);
-    writeJson(root, duplicatePath, {
-      vector_id: "core.valid",
-      vector_schema_version: "1.1.0",
-      owner_document: "core",
-      spec_version: "heterodyne/0.5.0",
-      spec_refs: ["heterodyne:0.5.0#core-conformance"],
-      description: "duplicate synthetic vector identifier",
-      direction: "consume",
-      input: {},
-      expected_output: { verdict: "accept" },
-    });
-    (manifest.artifacts as unknown[]).push({
-      path: duplicatePath,
-      role: "vector",
-      sha256: sha256File(root, duplicatePath),
-    });
-    (manifest.artifacts as Array<Record<string, unknown>>)
-      .sort((left, right) => String(left.path).localeCompare(String(right.path)));
-    writeJson(root, familyManifestPath, manifest);
-
-    expect(loadCorpus(root).issues.map(({ code }) => code)).toEqual(["duplicate-vector-id"]);
-  });
-
-  it("rejects a normative vector declared as normative support", () => {
-    const root = repository();
-    const manifest = readTestManifest(root);
-    const artifacts = manifest.artifacts as Array<Record<string, unknown>>;
-    const vector = artifacts.find((artifact) => artifact.path === vectorPath);
-    if (vector === undefined) {
-      throw new Error("test vector is absent from synthetic manifest");
-    }
-    vector.role = "normative-support";
-    writeJson(root, familyManifestPath, manifest);
-
-    expect(loadCorpus(root).issues.map(({ code, path }) => ({ code, path }))).toEqual([
-      { code: "invalid-document-shape", path: vectorPath },
-    ]);
-    expect(loadCorpus(root).corpus).toBeUndefined();
-  });
-
-  it("reports duplicate registry entries", () => {
-    const root = repository();
-    const reasons = readJson(root, reasonCodesPath);
+  it("reports duplicate vector and registry identifiers", () => {
+    const input = corpus();
+    const duplicateVectorPath = "docs/spec/vectors/core/002-duplicate.json";
+    writeText(
+      input.snapshotRoot,
+      duplicateVectorPath,
+      readFileSync(resolve(input.snapshotRoot, vectorPath), "utf8"),
+    );
+    refreshSnapshotManifest(input.snapshotRoot);
+    const reasons = readJson(input.sourceRoot, reasonCodesPath);
     const entry = (reasons.reason_codes as unknown[])[0]!;
-    writeJson(root, reasonCodesPath, { reason_codes: [entry, entry] });
-    refreshRegistryEntrySetDigest(root);
-    refreshReleaseDigests(root);
+    writeJson(input.sourceRoot, reasonCodesPath, { reason_codes: [entry, entry] });
 
-    expect(loadCorpus(root).issues.map(({ code }) => code)).toEqual([
+    expect(loadCorpus(input).issues.map(({ code }) => code)).toEqual([
       "duplicate-registry-entry",
+      "duplicate-vector-id",
+      "registry-entry-set-digest-mismatch",
     ]);
   });
 
-  it("reports duplicate reason codes even when another entry is malformed", () => {
-    const root = repository();
-    const reasons = readJson(root, reasonCodesPath);
-    const entry = (reasons.reason_codes as unknown[])[0]!;
-    writeJson(root, reasonCodesPath, {
-      reason_codes: [
-        entry,
-        { malformed: true },
-        entry,
-      ],
-    });
-    refreshRegistryEntrySetDigest(root);
-    refreshReleaseDigests(root);
+  it("rejects special entries in source and snapshot-owned inventories", () => {
+    const input = corpus();
+    symlinkSync("manifest.json", resolve(input.sourceRoot, "docs/spec/registry/manifest-link.json"));
+    symlinkSync(
+      "001-valid.json",
+      resolve(input.snapshotRoot, "docs/spec/vectors/core/002-link.json"),
+    );
+    const specificationPath = "docs/spec/heterodyne-core.md";
+    rmSync(resolve(input.sourceRoot, specificationPath));
+    symlinkSync("heterodyne-comms.md", resolve(input.sourceRoot, specificationPath));
+    const supportPath = "docs/spec/vectors/coverage/core.md";
+    rmSync(resolve(input.snapshotRoot, supportPath));
+    symlinkSync("family.md", resolve(input.snapshotRoot, supportPath));
 
-    expect(loadCorpus(root).issues.map(({ code }) => code)).toEqual([
-      "duplicate-registry-entry",
-      "invalid-document-shape",
-    ]);
+    expect(loadCorpus(input).issues).toEqual(expect.arrayContaining([
+      {
+        code: "unsafe-artifact-path",
+        path: "docs/spec/registry/manifest-link.json",
+        message: "normative inventory entry is a symbolic link",
+      },
+      {
+        code: "unsafe-artifact-path",
+        path: "docs/spec/vectors/core/002-link.json",
+        message: "normative inventory entry is a symbolic link",
+      },
+      {
+        code: "unsafe-artifact-path",
+        path: specificationPath,
+        message: expect.stringContaining("symbolic link"),
+      },
+      {
+        code: "unsafe-artifact-path",
+        path: supportPath,
+        message: expect.stringContaining("symbolic link"),
+      },
+    ]));
   });
 
-  it("reports a missing family manifest as a required root issue", () => {
-    const root = repository();
-    rmSync(`${root}/${familyManifestPath}`);
+  it("accepts a zero-vector snapshot while retaining the full static corpus", () => {
+    const input = corpus({ withVector: false });
+    const loaded = loadCorpus(input);
 
-    expect(loadCorpus(root).issues.map(({ code }) => code)).toEqual([
-      "missing-required-root",
-    ]);
-    expect(loadCorpus(root).corpus).toBeUndefined();
-  });
-
-  it.each([
-    "docs/spec/registry",
-    "docs/spec/schemas",
-    "docs/spec/vectors",
-  ])("reports a missing required inventory root without throwing: %s", (requiredRoot) => {
-    const root = repository();
-    rmSync(resolve(root, requiredRoot), { recursive: true, force: true });
-
-    const result = loadCorpus(root);
-
-    expect(result.issues).toContainEqual({
-      code: "missing-required-root",
-      path: requiredRoot,
-      message: "required corpus root is missing",
-    });
-    expect(result.corpus).toBeUndefined();
-  });
-
-  it("reports a required inventory root that is not a readable directory", () => {
-    const root = repository();
-    const requiredRoot = "docs/spec/schemas";
-    rmSync(resolve(root, requiredRoot), { recursive: true, force: true });
-    writeText(root, requiredRoot, "not a directory\n");
-
-    const result = loadCorpus(root);
-
-    expect(result.issues).toContainEqual({
-      code: "missing-required-root",
-      path: requiredRoot,
-      message: "required corpus root is not a directory",
-    });
-    expect(result.corpus).toBeUndefined();
-  });
-
-  it("reports an in-root JSON symlink under a normative inventory without following it", () => {
-    const root = repository();
-    const linkPath = "docs/spec/registry/manifest-link.json";
-    symlinkSync("manifest.json", resolve(root, linkPath));
-
-    const result = loadCorpus(root);
-
-    expect(result.issues).toContainEqual({
-      code: "unsafe-artifact-path",
-      path: linkPath,
-      message: "normative inventory entry is a symbolic link",
-    });
-    expect(result.corpus).toBeUndefined();
-  });
-
-  it("reports an escaping JSON symlink under a normative inventory without following it", () => {
-    const root = repository();
-    const external = mkdtempSync(join(tmpdir(), "heterodyne-conformance-external-"));
-    temps.push(external);
-    writeJson(external, "outside.json", { escaped: true });
-    const linkPath = "docs/spec/schemas/escaping.json";
-    symlinkSync(resolve(external, "outside.json"), resolve(root, linkPath));
-
-    const result = loadCorpus(root);
-
-    expect(result.issues).toContainEqual({
-      code: "unsafe-artifact-path",
-      path: linkPath,
-      message: "normative inventory entry is a symbolic link",
-    });
-    expect(result.corpus).toBeUndefined();
-  });
-
-  it("does not inventory symlinks inside the explicitly non-normative generator subtree", () => {
-    const root = repository();
-    const linkPath = "docs/spec/vectors/generator/node_modules/.bin/tool";
-    writeText(root, "docs/spec/vectors/generator/node_modules/.bin/.keep", "");
-    symlinkSync(resolve(root, vectorPath), resolve(root, linkPath));
-
-    expect(loadCorpus(root).issues).toEqual([]);
+    expect(loaded.issues).toEqual([]);
+    expect(loaded.corpus?.vectors).toEqual([]);
+    expect(loaded.corpus?.specifications).toHaveLength(5);
+    expect(loaded.corpus?.schemas).toHaveLength(1);
   });
 });

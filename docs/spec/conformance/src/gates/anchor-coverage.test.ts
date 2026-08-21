@@ -6,9 +6,8 @@ import { STATIC_GATES } from "./index.js";
 function vector(vector_id: string, spec_refs: string[]): VectorDocument {
   return {
     vector_id,
-    vector_schema_version: "1.1.0",
+    vector_schema_version: "2.0.0",
     owner_document: "core",
-    spec_version: "heterodyne/0.5.0",
     spec_refs,
     direction: "consume",
     input: {},
@@ -18,10 +17,11 @@ function vector(vector_id: string, spec_refs: string[]): VectorDocument {
 
 function corpus(vectors: VectorDocument[]): ArtifactCorpus {
   return {
-    repositoryRoot: "/synthetic",
-    familyVersion: "heterodyne/0.5.0",
-    registryRevision: 13,
-    registryDigest: "aa".repeat(32),
+    sourceRoot: "/synthetic/source",
+    snapshotRoot: "/synthetic/snapshot",
+    sourceCommit: "1".repeat(40),
+    snapshotCommit: "2".repeat(40),
+    vectorSchemaVersion: "2.0.0",
     specifications: new Map([
       ["docs/spec/heterodyne-core.md", '<a id="core-covered"></a>\n<a id="core-uncovered"></a>\n'],
       ["docs/spec/heterodyne-comms.md", '<a id="comms-covered"></a>\n'],
@@ -31,6 +31,7 @@ function corpus(vectors: VectorDocument[]): ArtifactCorpus {
       ["docs/spec/not-family.md", '<a id="core-not-normative"></a>\n'],
     ]),
     schemas: new Map(),
+    vectorSchema: {},
     vectors: vectors.map((value) => ({ path: `${value.vector_id}.json`, value })),
     fixtures: {},
     registry: {
@@ -45,14 +46,14 @@ describe("findAnchorCoverageFailures", () => {
   it("reports each family anchor that no vector references", () => {
     const input = corpus([
       vector("sample/covered", [
-        "heterodyne:0.5.0#core-covered",
-        "heterodyne:0.5.0#comms-covered",
-        "heterodyne:0.5.0#comms-covered",
+        "heterodyne:core#core-covered",
+        "heterodyne:comms#comms-covered",
+        "heterodyne:comms#comms-covered",
       ]),
     ]);
 
     expect(findAnchorCoverageFailures(input)).toEqual([
-      "heterodyne:0.5.0#core-uncovered",
+      "heterodyne:core#core-uncovered",
     ]);
   });
 });

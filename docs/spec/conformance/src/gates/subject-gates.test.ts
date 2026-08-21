@@ -81,10 +81,9 @@ function vector(
 ): VectorDocument {
   return {
     vector_id: vectorId,
-    vector_schema_version: "1.1.0",
+    vector_schema_version: "2.0.0",
     owner_document: "core",
-    spec_version: "heterodyne/0.5.0",
-    spec_refs: ["heterodyne:0.5.0#core-verification"],
+    spec_refs: ["heterodyne:core#core-verification"],
     direction: "consume",
     input,
     expected_output: {
@@ -112,12 +111,14 @@ function check(
 
 function corpus(vectors: CorpusVector[]): ArtifactCorpus {
   return {
-    repositoryRoot: "/synthetic",
-    familyVersion: "heterodyne/0.5.0",
-    registryRevision: 13,
-    registryDigest: DIGEST,
+    sourceRoot: "/synthetic/source",
+    snapshotRoot: "/synthetic/snapshot",
+    sourceCommit: "1".repeat(40),
+    snapshotCommit: "2".repeat(40),
+    vectorSchemaVersion: "2.0.0",
     specifications: new Map(),
     schemas: new Map(),
+    vectorSchema: {},
     vectors,
     fixtures: {},
     registry: {

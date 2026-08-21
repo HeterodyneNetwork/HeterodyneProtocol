@@ -8,9 +8,8 @@ function vector(
 ): VectorDocument {
   return {
     vector_id,
-    vector_schema_version: "1.1.0",
+    vector_schema_version: "2.0.0",
     owner_document: "core",
-    spec_version: "heterodyne/0.5.0",
     spec_refs: [],
     direction: "consume",
     input: {},
@@ -21,12 +20,14 @@ function vector(
 function corpus(vectors: VectorDocument[]): ArtifactCorpus {
   const digest = "aa".repeat(32);
   return {
-    repositoryRoot: "/synthetic",
-    familyVersion: "heterodyne/0.5.0",
-    registryRevision: 13,
-    registryDigest: digest,
+    sourceRoot: "/synthetic/source",
+    snapshotRoot: "/synthetic/snapshot",
+    sourceCommit: "1".repeat(40),
+    snapshotCommit: "2".repeat(40),
+    vectorSchemaVersion: "2.0.0",
     specifications: new Map(),
     schemas: new Map(),
+    vectorSchema: {},
     vectors: vectors.map((value) => ({ path: `${value.vector_id}.json`, value })),
     fixtures: {},
     registry: {

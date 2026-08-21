@@ -15,20 +15,21 @@ function completeFixtures(): Record<string, unknown> {
     pinned_randomness: {},
     radicle_rids: {},
     registry_sha256: digest,
-    spec_version: "heterodyne/0.5.0",
     test_epoch: 0,
-    vector_schema_version: "1.1.0",
+    vector_schema_version: "2.0.0",
   };
 }
 
 function corpus(fixtures: Record<string, unknown>): ArtifactCorpus {
   return {
-    repositoryRoot: "/synthetic",
-    familyVersion: "heterodyne/0.5.0",
-    registryRevision: 13,
-    registryDigest: digest,
+    sourceRoot: "/synthetic/source",
+    snapshotRoot: "/synthetic/snapshot",
+    sourceCommit: "1".repeat(40),
+    snapshotCommit: "2".repeat(40),
+    vectorSchemaVersion: "2.0.0",
     specifications: new Map(),
     schemas: new Map(),
+    vectorSchema: {},
     vectors: [],
     fixtures,
     registry: {
@@ -54,12 +55,10 @@ describe("findFixturesConsistencyFailures", () => {
   it("reports missing allowlisted keys and all mismatched pinned versions", () => {
     const fixtures = completeFixtures();
     delete fixtures.kel;
-    fixtures.spec_version = "heterodyne/0.4.0";
     fixtures.vector_schema_version = "1.0.0";
 
     expect(findFixturesConsistencyFailures(corpus(fixtures))).toEqual([
       "/kel",
-      "/spec_version",
       "/vector_schema_version",
     ]);
   });

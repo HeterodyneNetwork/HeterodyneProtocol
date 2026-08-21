@@ -5,9 +5,8 @@ import { findOrphanSchemaFailures } from "./orphan-schemas.js";
 function vector(input: Record<string, unknown>): VectorDocument {
   return {
     vector_id: "sample/schema-binding",
-    vector_schema_version: "1.1.0",
+    vector_schema_version: "2.0.0",
     owner_document: "core",
-    spec_version: "heterodyne/0.5.0",
     spec_refs: [],
     direction: "consume",
     input,
@@ -21,16 +20,18 @@ function corpus(
 ): ArtifactCorpus {
   const digest = "aa".repeat(32);
   return {
-    repositoryRoot: "/synthetic",
-    familyVersion: "heterodyne/0.5.0",
-    registryRevision: 13,
-    registryDigest: digest,
+    sourceRoot: "/synthetic/source",
+    snapshotRoot: "/synthetic/snapshot",
+    sourceCommit: "1".repeat(40),
+    snapshotCommit: "2".repeat(40),
+    vectorSchemaVersion: "2.0.0",
     specifications: new Map([["docs/spec/heterodyne-core.md", specification]]),
     schemas: new Map([
       ["docs/spec/schemas/core/prose-bound-v1.schema.json", {}],
       ["docs/spec/schemas/core/vector-bound-v1.schema.json", {}],
       ["docs/spec/schemas/core/orphan-v1.schema.json", {}],
     ]),
+    vectorSchema: {},
     vectors: [{ path: "docs/spec/vectors/sample/schema-binding.json", value: vector(vectorInput) }],
     fixtures: {},
     registry: {

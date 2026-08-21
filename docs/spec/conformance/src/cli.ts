@@ -10,6 +10,7 @@ import {
 import type { Dirent } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import type { LoadCorpusOptions } from "./artifacts.js";
 import { ALL_GATES, type GateId } from "./gates/index.js";
 import {
   compareBaseline,
@@ -20,10 +21,10 @@ import { renderDebtMarkdown, renderReportJson } from "./report.js";
 import { runConformance, type ConformanceRun } from "./run.js";
 
 const CONFORMANCE_DIRECTORY = "docs/spec/conformance";
-const FAMILY_MANIFEST = "docs/spec/releases/family/0.5.0.json";
+const SNAPSHOT_MANIFEST = "docs/spec/vectors/snapshot.json";
 const REPORT_PATH = `${CONFORMANCE_DIRECTORY}/report.json`;
 const DEBT_PATH = `${CONFORMANCE_DIRECTORY}/DEBT.md`;
-const USAGE = "usage: cli.ts <check|baseline-author|report-author> [repository-root]";
+const USAGE = "usage: cli.ts check --source-root <path> --snapshot-root <path> --source-commit <sha> --snapshot-commit <sha>";
 
 export const BASELINE_FILES: readonly {
   gate: GateId;
@@ -69,7 +70,7 @@ function canonicalRepositoryRoot(repositoryRoot: string): string | undefined {
   try {
     const canonicalRoot = realpathSync(repositoryRoot);
     return lstatSync(canonicalRoot).isDirectory()
-      && existsSync(join(canonicalRoot, FAMILY_MANIFEST))
+      && existsSync(join(canonicalRoot, SNAPSHOT_MANIFEST))
       ? canonicalRoot
       : undefined;
   } catch {
@@ -150,9 +151,9 @@ function baselineDirectoryMessages(repositoryRoot: string): string[] {
   });
 }
 
-export function authorBaselines(repositoryRoot: string): CommandResult {
-  const run = runConformance(repositoryRoot);
-  const canonicalRoot = canonicalRepositoryRoot(repositoryRoot);
+export function authorBaselines(options: LoadCorpusOptions): CommandResult {
+  const run = runConformance(options);
+  const canonicalRoot = canonicalRepositoryRoot(options.snapshotRoot);
   if (canonicalRoot === undefined) {
     return failed([
       ...corpusIssueMessages(run),
@@ -191,9 +192,9 @@ export function authorBaselines(repositoryRoot: string): CommandResult {
   return messages.length === 0 ? { exitCode: 0, messages } : failed(messages);
 }
 
-export function authorReport(repositoryRoot: string): CommandResult {
-  const run = runConformance(repositoryRoot);
-  const canonicalRoot = canonicalRepositoryRoot(repositoryRoot);
+export function authorReport(options: LoadCorpusOptions): CommandResult {
+  const run = runConformance(options);
+  const canonicalRoot = canonicalRepositoryRoot(options.snapshotRoot);
   if (canonicalRoot === undefined) {
     return failed([
       ...corpusIssueMessages(run),
@@ -320,8 +321,9 @@ function debtProjectionMessages(source: string, path: string): string[] {
   return messages;
 }
 
-export function checkRepository(repositoryRoot: string): CommandResult {
-  const run = runConformance(repositoryRoot);
+export function checkRepository(options: LoadCorpusOptions): CommandResult {
+  const run = runConformance(options);
+  const repositoryRoot = options.snapshotRoot;
   const messages = [
     ...corpusIssueMessages(run),
     ...baselineDirectoryMessages(repositoryRoot),
@@ -384,43 +386,52 @@ export function checkRepository(repositoryRoot: string): CommandResult {
   return messages.length === 0 ? { exitCode: 0, messages } : failed(messages);
 }
 
-function findRepositoryRoot(start: string): string | undefined {
-  let candidate = resolve(start);
-  while (true) {
-    if (existsSync(join(candidate, FAMILY_MANIFEST))) {
-      return canonicalRepositoryRoot(candidate);
-    }
-    const parent = dirname(candidate);
-    if (parent === candidate) {
-      return undefined;
-    }
-    candidate = parent;
+function parseCorpusOptions(args: readonly string[]): {
+  command: "check" | "baseline-author" | "report-author";
+  options: LoadCorpusOptions;
+} | undefined {
+  const command = args[0];
+  if (command !== "check" && command !== "baseline-author" && command !== "report-author") {
+    return undefined;
   }
+  if (args.length !== 9) return undefined;
+  const values = new Map<string, string>();
+  for (let index = 1; index < args.length; index += 2) {
+    const flag = args[index];
+    const value = args[index + 1];
+    if (
+      flag === undefined
+      || value === undefined
+      || values.has(flag)
+      || !["--source-root", "--snapshot-root", "--source-commit", "--snapshot-commit"].includes(flag)
+    ) return undefined;
+    values.set(flag, value);
+  }
+  const sourceRoot = values.get("--source-root");
+  const snapshotRoot = values.get("--snapshot-root");
+  const sourceCommit = values.get("--source-commit");
+  const snapshotCommit = values.get("--snapshot-commit");
+  if (
+    sourceRoot === undefined
+    || snapshotRoot === undefined
+    || sourceCommit === undefined
+    || snapshotCommit === undefined
+  ) return undefined;
+  return { command, options: { sourceRoot, snapshotRoot, sourceCommit, snapshotCommit } };
 }
 
 export function runCli(args: readonly string[], options: CliOptions = {}): 0 | 1 | 2 {
   const writeLine = options.writeLine ?? ((line: string) => console.error(line));
-  const [command, explicitRoot] = args;
-  if (
-    args.length < 1
-    || args.length > 2
-    || (command !== "check" && command !== "baseline-author" && command !== "report-author")
-  ) {
+  const parsed = parseCorpusOptions(args);
+  if (parsed === undefined) {
     writeLine(USAGE);
     return 2;
   }
-
-  const repositoryRoot = explicitRoot ?? findRepositoryRoot(options.cwd ?? process.cwd());
-  if (repositoryRoot === undefined) {
-    writeLine("corpus issue :: missing-required-root :: . :: repository root not found");
-    return 1;
-  }
-
-  const result = command === "check"
-    ? checkRepository(repositoryRoot)
-    : command === "baseline-author"
-      ? authorBaselines(repositoryRoot)
-      : authorReport(repositoryRoot);
+  const result = parsed.command === "check"
+    ? checkRepository(parsed.options)
+    : parsed.command === "baseline-author"
+      ? authorBaselines(parsed.options)
+      : authorReport(parsed.options);
   for (const message of result.messages) {
     writeLine(message);
   }
