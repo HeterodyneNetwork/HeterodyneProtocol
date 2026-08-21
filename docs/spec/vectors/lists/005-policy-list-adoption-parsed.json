@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#social-lists"
+    "heterodyne:social#social-lists"
   ],
   "vector_id": "lists/policy-list-adoption-parsed",
   "description": "A community's kind:34550 definition declares adopted NIP-51 policy lists via one [\"p\", <policy persona>, <relay>, \"policy\"] tag per policy persona and one [\"a\", ...] tag per adopted set; a client parses the adopted sources.",

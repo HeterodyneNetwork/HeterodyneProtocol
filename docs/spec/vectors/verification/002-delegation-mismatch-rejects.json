@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-verification"
+    "heterodyne:core#core-verification"
   ],
   "vector_id": "verification/delegation-mismatch-rejects",
   "description": "An event signed by a publishing key not covered by the active NID delegation rejects.",

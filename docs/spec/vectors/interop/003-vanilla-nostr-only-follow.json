@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#social-following"
+    "heterodyne:social#social-following"
   ],
   "vector_id": "interop/vanilla-nostr-only-follow",
   "description": "A valid vanilla Nostr author is a first-class manual follow target through NIP-65, with external-identity and reduced-assurance DM presentation.",

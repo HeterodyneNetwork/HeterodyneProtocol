@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { authorAllVectors } from "./author.js";
 import { writeCoverage } from "./coverage.js";
 import { verifyVectorTree } from "./verify.js";
+import { verifyPackagedSnapshot } from "./verify.js";
 
 const dirs: string[] = [];
 afterEach(async () => Promise.all(dirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true }))));
@@ -18,6 +19,17 @@ async function authoredTree(): Promise<string> {
 }
 
 describe("closed deterministic vector tree verification", () => {
+  it("rejects packaged snapshot bytes that differ from a regenerated staging tree", async () => {
+    const expected = await authoredTree();
+    const actual = await mkdtemp(join(tmpdir(), "heterodyne-verify-actual-"));
+    dirs.push(actual);
+    const { cp } = await import("node:fs/promises");
+    await cp(expected, actual, { recursive: true });
+    await writeFile(join(actual, "fixtures.json"), "changed\n", "utf8");
+
+    await expect(verifyPackagedSnapshot(expected, actual)).rejects.toThrow(/fixtures\.json/);
+  }, 30_000);
+
   it("rejects an extra committed vector file", async () => {
     const dir = await authoredTree();
     const source = await readFile(join(dir, "versioning", "005-qualified-version-valid.json"), "utf8");

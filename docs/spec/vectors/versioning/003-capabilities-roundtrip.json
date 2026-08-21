@@ -1,43 +1,26 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-versioning"
+    "heterodyne:core#core-versioning"
   ],
   "vector_id": "versioning/capabilities-roundtrip",
-  "description": "The complete heterodyne-capabilities-v1 object round-trips with one family version.",
+  "description": "Capabilities event round-trips supported feature flags.",
   "input": {
-    "capabilities": {
-      "descriptor": "heterodyne-capabilities-v1",
-      "spec_version": "heterodyne/0.5.0",
-      "registry_sha256": "e1dc51e9a64c334eb416e0f635b6375f39bff25f9cdc87be25b700245a41561a",
-      "implementation_role": "public-reader",
-      "supported_documents": [
-        "core"
-      ],
-      "required_features": [
-        "core.nostr-relay-read.v1"
-      ],
-      "strict_profiles": []
-    }
+    "capabilities": [
+      "baseline",
+      "tor",
+      "strict-mode"
+    ]
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "capabilities": {
-        "descriptor": "heterodyne-capabilities-v1",
-        "spec_version": "heterodyne/0.5.0",
-        "registry_sha256": "e1dc51e9a64c334eb416e0f635b6375f39bff25f9cdc87be25b700245a41561a",
-        "implementation_role": "public-reader",
-        "supported_documents": [
-          "core"
-        ],
-        "required_features": [
-          "core.nostr-relay-read.v1"
-        ],
-        "strict_profiles": []
-      }
+      "capabilities": [
+        "baseline",
+        "tor",
+        "strict-mode"
+      ]
     }
   },
   "direction": "consume"

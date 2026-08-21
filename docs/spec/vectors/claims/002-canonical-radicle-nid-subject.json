@@ -1,10 +1,9 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-comms-key-claim-radicle-ed25519-v1",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-key-claims"
+    "heterodyne:comms#comms-key-claims"
   ],
   "vector_id": "claims/canonical-radicle-nid-subject",
   "description": "Canonical kind:31013 bytes use a typed radicle-ed25519-nid subject and a fresh radicle-ed25519-v1 subject proof.",

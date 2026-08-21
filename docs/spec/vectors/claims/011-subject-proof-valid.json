@@ -1,10 +1,9 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-comms-key-claim-jwk-jws-v1",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-claim-verification"
+    "heterodyne:comms#comms-claim-verification"
   ],
   "vector_id": "claims/subject-proof-valid",
   "description": "Fresh BIP-340, Ed25519, and EdDSA JWS proofs bind exact claim, audience, resource, operation, nonce, and sixty-second window.",

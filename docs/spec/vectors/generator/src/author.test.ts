@@ -1,10 +1,15 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { authorAllVectors } from "./author.js";
+import {
+  authorAllVectors,
+  packageSnapshot,
+  replaceSnapshotData,
+} from "./author.js";
 import { buildAllVectors, TOPIC_SPECS } from "./topics.js";
 import { verifyVectorTree } from "./verify.js";
+import { snapshotPackageCheck } from "./verify.js";
 import { verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
 import { writeCoverage } from "./coverage.js";
 import { buildFixtures } from "./fixtures.js";
@@ -36,6 +41,147 @@ afterEach(async () => {
 });
 
 describe("author mode", () => {
+  it("validates raw schema before normalization and schema 2 after packaging", async () => {
+    const rawRoot = await mkdtemp(join(tmpdir(), "heterodyne-raw-package-"));
+    const snapshotRoot = await mkdtemp(join(tmpdir(), "heterodyne-snapshot-package-"));
+    tempDirs.push(rawRoot, snapshotRoot);
+    await writeRawPackageInput(rawRoot, {
+      type: "object",
+      required: ["raw_schema_marker"],
+      properties: { raw_schema_marker: { const: true } },
+    }, rawVector());
+
+    await expect(packageSnapshot(rawRoot, snapshotRoot, "1".repeat(40)))
+      .rejects.toThrow(/identity\/001-example\.json.*raw-vector-invalid/);
+
+  });
+
+  it("packages versionless schema-2 vectors, fixtures, coverage, and exact behavior", async () => {
+    const rawRoot = await mkdtemp(join(tmpdir(), "heterodyne-raw-package-"));
+    const snapshotRoot = await mkdtemp(join(tmpdir(), "heterodyne-snapshot-package-"));
+    tempDirs.push(rawRoot, snapshotRoot);
+    const raw = rawVector();
+    await writeRawPackageInput(rawRoot, rawVectorSchema(), raw);
+
+    const manifest = await packageSnapshot(rawRoot, snapshotRoot, "1".repeat(40));
+    const packaged = JSON.parse(await readFile(
+      join(snapshotRoot, "docs/spec/vectors/identity/001-example.json"),
+      "utf8",
+    ));
+    const fixtures = JSON.parse(await readFile(
+      join(snapshotRoot, "docs/spec/vectors/fixtures.json"),
+      "utf8",
+    ));
+    const coverage = JSON.parse(await readFile(
+      join(snapshotRoot, "docs/spec/vectors/coverage/manifest.json"),
+      "utf8",
+    ));
+
+    expect(manifest.vector_count).toBe(1);
+    expect(packaged).toMatchObject({
+      vector_id: raw.vector_id,
+      vector_schema_version: "2.0.0",
+      spec_refs: ["heterodyne:core#core-root-attestation"],
+      input: raw.input,
+      expected_output: raw.expected_output,
+    });
+    expect(packaged).not.toHaveProperty("spec_version");
+    expect(packaged).not.toHaveProperty("conformance_checks");
+    expect(fixtures).toEqual({
+      vector_schema_version: "2.0.0",
+      nested: { spec_version: "behavioral-version" },
+    });
+    expect(coverage).toEqual([{
+      vector_id: raw.vector_id,
+      owner_document: "core",
+      spec_refs: ["heterodyne:core#core-root-attestation"],
+    }]);
+    const reasonCodes = JSON.parse(await readFile(
+      join(snapshotRoot, "docs/spec/vectors/schema/reason-codes.json"),
+      "utf8",
+    ));
+    const reasonMarkdown = await readFile(
+      join(snapshotRoot, "docs/spec/vectors/schema/reason-codes.md"),
+      "utf8",
+    );
+    expect(reasonCodes.reason_codes[0]).toMatchObject({
+      first_version: "heterodyne/0.5.0",
+      spec_refs: ["heterodyne:core#core-conformance"],
+    });
+    expect(reasonMarkdown).toContain("heterodyne:core#core-conformance");
+    expect(reasonMarkdown).not.toContain("heterodyne:0.5.0#core-conformance");
+  });
+
+  it("retains source-native behavioral vocabulary in the schema-2 envelope", async () => {
+    const rawRoot = await mkdtemp(join(tmpdir(), "heterodyne-raw-package-"));
+    const snapshotRoot = await mkdtemp(join(tmpdir(), "heterodyne-snapshot-package-"));
+    tempDirs.push(rawRoot, snapshotRoot);
+    const schema = rawVectorSchema();
+    (schema.properties as Record<string, unknown>).expected_output = {
+      type: "object",
+      required: ["verdict", "reason_code"],
+      properties: {
+        verdict: { const: "reject" },
+        reason_code: { const: "source-only-reason" },
+      },
+    };
+    await writeRawPackageInput(rawRoot, schema, {
+      ...rawVector(),
+      expected_output: { verdict: "reject", reason_code: "source-only-reason" },
+    });
+
+    await expect(packageSnapshot(rawRoot, snapshotRoot, "1".repeat(40))).resolves.toMatchObject({
+      vector_schema_version: "2.0.0",
+      vector_count: 1,
+    });
+    const packagedSchema = JSON.parse(await readFile(
+      join(snapshotRoot, "docs/spec/vectors/schema/vector.schema.json"),
+      "utf8",
+    ));
+    expect(packagedSchema.properties.expected_output.properties.reason_code)
+      .toEqual({ const: "source-only-reason" });
+  });
+
+  it("repackages and compares a snapshot without history orchestration", async () => {
+    const rawRoot = await mkdtemp(join(tmpdir(), "heterodyne-raw-package-"));
+    const snapshotRoot = await mkdtemp(join(tmpdir(), "heterodyne-snapshot-package-"));
+    tempDirs.push(rawRoot, snapshotRoot);
+    await writeRawPackageInput(rawRoot, rawVectorSchema(), rawVector());
+    await packageSnapshot(rawRoot, snapshotRoot, "1".repeat(40));
+
+    await expect(snapshotPackageCheck(rawRoot, snapshotRoot)).resolves.toBeUndefined();
+    await writeRawPackageInput(rawRoot, rawVectorSchema(), {
+      ...rawVector(),
+      input: { changed: true },
+    });
+    await expect(snapshotPackageCheck(rawRoot, snapshotRoot)).rejects.toThrow(/regenerated bytes differ/);
+  });
+
+  it("rolls back snapshot data and measured projections after a partial replacement", async () => {
+    const repositoryRoot = await mkdtemp(join(tmpdir(), "heterodyne-replace-repo-"));
+    const stagedRoot = await mkdtemp(join(tmpdir(), "heterodyne-replace-stage-"));
+    tempDirs.push(repositoryRoot, stagedRoot);
+    await writeTreeFile(repositoryRoot, "docs/spec/vectors/fixtures.json", "old fixtures\n");
+    await writeTreeFile(repositoryRoot, "docs/spec/conformance/report.json", "old report\n");
+    await writeTreeFile(stagedRoot, "docs/spec/vectors/fixtures.json", "new fixtures\n");
+    await writeTreeFile(stagedRoot, "docs/spec/conformance/report.json", "new report\n");
+    let renames = 0;
+
+    await expect(replaceSnapshotData(repositoryRoot, stagedRoot, {
+      async rename(from, to) {
+        renames += 1;
+        if (renames === 3) throw new Error("injected partial replacement");
+        const { rename } = await import("node:fs/promises");
+        await rename(from, to);
+      },
+    })).rejects.toThrow("injected partial replacement");
+
+    expect(await readFile(join(repositoryRoot, "docs/spec/vectors/fixtures.json"), "utf8"))
+      .toBe("old fixtures\n");
+    expect(await readFile(join(repositoryRoot, "docs/spec/conformance/report.json"), "utf8"))
+      .toBe("old report\n");
+  });
+
   it("authors at least one schema-valid vector for every required topic", async () => {
     const outputDir = await mkdtemp(join(tmpdir(), "heterodyne-vectors-"));
     tempDirs.push(outputDir);
@@ -248,3 +394,74 @@ describe("author mode", () => {
     });
   }, 30_000);
 });
+
+function rawVector(): Record<string, unknown> {
+  return {
+    vector_id: "identity/example",
+    vector_schema_version: "1.0.0",
+    owner_document: "core",
+    spec_version: "heterodyne/0.5.0",
+    spec_refs: ["heterodyne:0.5.0#core-root-attestation"],
+    description: "example",
+    direction: "produce",
+    input: { spec_version: "behavioral-input-version" },
+    expected_output: { spec_version: "behavioral-output-version" },
+  };
+}
+
+function rawVectorSchema(): Record<string, unknown> {
+  return {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "vector_id", "vector_schema_version", "owner_document", "spec_version",
+      "spec_refs", "description", "direction", "input", "expected_output",
+    ],
+    properties: {
+      vector_id: { type: "string" },
+      vector_schema_version: { const: "1.0.0" },
+      owner_document: { const: "core" },
+      spec_version: { type: "string" },
+      spec_refs: { type: "array", items: { type: "string" } },
+      description: { type: "string" },
+      direction: { enum: ["produce", "consume", "round-trip"] },
+      input: { type: "object" },
+      expected_output: { type: "object" },
+    },
+  };
+}
+
+async function writeRawPackageInput(
+  root: string,
+  schema: Record<string, unknown>,
+  vector: Record<string, unknown>,
+): Promise<void> {
+  await writeTreeFile(root, "schema/vector.schema.json", `${JSON.stringify(schema, null, 2)}\n`);
+  await writeTreeFile(root, "schema/reason-codes.json", `${JSON.stringify({
+    reason_codes: [{
+      code: "example",
+      owner: "core",
+      status: "draft",
+      first_version: "heterodyne/0.5.0",
+      description: "example reason",
+      spec_refs: ["heterodyne:0.5.0#core-conformance"],
+    }],
+  }, null, 2)}\n`);
+  await writeTreeFile(
+    root,
+    "schema/reason-codes.md",
+    "# Reason codes\n\nheterodyne:0.5.0#core-conformance\n",
+  );
+  await writeTreeFile(root, "fixtures.json", `${JSON.stringify({
+    vector_schema_version: "1.0.0",
+    spec_version: "heterodyne/0.5.0",
+    nested: { spec_version: "behavioral-version" },
+  }, null, 2)}\n`);
+  await writeTreeFile(root, "identity/001-example.json", `${JSON.stringify(vector, null, 2)}\n`);
+}
+
+async function writeTreeFile(root: string, path: string, contents: string): Promise<void> {
+  const target = join(root, ...path.split("/"));
+  await mkdir(join(target, ".."), { recursive: true });
+  await writeFile(target, contents, "utf8");
+}

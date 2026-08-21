@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-node-roles"
+    "heterodyne:core#core-node-roles"
   ],
   "vector_id": "role-capabilities/full-node-tor-default",
   "description": "A full node routes every declared outbound backend through Tor by default.",

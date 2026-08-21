@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "workspace",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#workspace-key-delivery"
+    "heterodyne:workspace#workspace-key-delivery"
   ],
   "vector_id": "workspace-key/keypackage-readmission",
   "description": "A currently authorized device missing the role epoch is re-admitted with a fresh KeyPackage before permitted keys are delivered.",

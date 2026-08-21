@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-issuer-continuity"
+    "heterodyne:comms#comms-issuer-continuity"
   ],
   "vector_id": "token-status/https-outage-radicle-fallback",
   "description": "A Heterodyne verifier may use validated canonical-main continuity during HTTPS outage; ordinary OIDC does not auto-follow it.",

@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "workspace",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#workspace-key-delivery"
+    "heterodyne:workspace#workspace-key-delivery"
   ],
   "vector_id": "workspace-key/from-admission-denied",
   "description": "From-admission policy denies a pre-admission resource epoch.",
@@ -17,12 +16,7 @@
     "current_epoch": 6,
     "admission_epoch": 4,
     "history_mode": "from-admission",
-    "selected_epochs": [],
-    "target_device": "2222222222222222222222222222222222222222222222222222222222222222",
-    "recipient": {
-      "type": "marmot-mls-leaf",
-      "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-    }
+    "selected_epochs": []
   },
   "expected_output": {
     "verdict": "reject",

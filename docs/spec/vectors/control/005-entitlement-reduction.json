@@ -1,10 +1,9 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "control",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-control-marmot-frame-v1",
   "spec_refs": [
-    "heterodyne:0.5.0#control-entitlement"
+    "heterodyne:control#control-entitlement"
   ],
   "vector_id": "control/entitlement-reduction",
   "description": "Private Control entitlement decision: entitlement-reduction.",
@@ -12,7 +11,7 @@
   "input": {
     "current": {
       "record_id": "4444444444444444444444444444444444444444444444444444444444444444",
-      "client_key": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "client_key": "1111111111111111111111111111111111111111111111111111111111111111",
       "predecessor": null,
       "state": "active",
       "methods": [
@@ -28,7 +27,7 @@
     },
     "next": {
       "record_id": "4545454545454545454545454545454545454545454545454545454545454545",
-      "client_key": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "client_key": "1111111111111111111111111111111111111111111111111111111111111111",
       "predecessor": "4444444444444444444444444444444444444444444444444444444444444444",
       "state": "active",
       "methods": [
@@ -45,7 +44,7 @@
   "expected_output": {
     "verdict": "accept",
     "record_id": "4545454545454545454545454545454545454545454545454545454545454545",
-    "client_key": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "client_key": "1111111111111111111111111111111111111111111111111111111111111111",
     "predecessor": "4444444444444444444444444444444444444444444444444444444444444444",
     "state": "active",
     "methods": [

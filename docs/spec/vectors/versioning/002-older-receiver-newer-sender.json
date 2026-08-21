@@ -1,23 +1,25 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-versioning"
+    "heterodyne:core#core-versioning"
   ],
   "vector_id": "versioning/older-receiver-newer-sender",
-  "description": "A peer offering heterodyne/0.4.0 cannot negotiate the exact supported family version.",
+  "description": "Older receiver tolerates a newer compatible 0.x sender with unknown optional fields.",
   "input": {
-    "local": [
-      "heterodyne/0.5.0"
-    ],
-    "remote": [
-      "heterodyne/0.4.0"
+    "receiver_version": "0.3.0",
+    "sender_version": "0.4.0",
+    "unknown_optional_fields": [
+      "x-new"
     ]
   },
   "expected_output": {
-    "valid": false,
-    "error": "unsupported_family_version"
+    "verdict": "accept",
+    "normalized": {
+      "ignored_unknown_optional_fields": [
+        "x-new"
+      ]
+    }
   },
   "direction": "consume"
 }

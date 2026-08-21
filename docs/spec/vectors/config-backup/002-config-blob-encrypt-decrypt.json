@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-config-repository"
+    "heterodyne:comms#comms-config-repository"
   ],
   "vector_id": "config-backup/config-blob-encrypt-decrypt",
   "description": "A config-repository blob is Tier 3 content: encrypted under post_key = HKDF-SHA256(config_audience_key, salt=key_id, info=heterodyne-post-key-v1, 32) using the NIP-44 v2 symmetric layer, committed on the enc/<key_id> branch.",

@@ -11,7 +11,11 @@
     "registry-author": "tsx src/cli.ts registry-author",
     "workspace-schemas": "tsx src/cli.ts workspace-schemas",
     "coverage": "tsx src/cli.ts coverage",
-    "draft:check": "npm run build && npm test && npm run family:check"
+    "snapshot-author": "tsx src/cli.ts snapshot-author",
+    "snapshot-package-check": "tsx src/cli.ts snapshot-package-check",
+    "snapshot-check": "tsx src/cli.ts snapshot-check",
+    "draft:check": "npm run build && npm test && npm run family:check",
+    "check": "npm run draft:check && npm run snapshot-check"
   },
   "dependencies": {
     "@noble/ciphers": "^1.3.0",

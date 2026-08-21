@@ -1,10 +1,9 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-social-agent-policy-receipt-v1",
   "spec_refs": [
-    "heterodyne:0.5.0#social-agent-policy-receipts"
+    "heterodyne:social#social-agent-policy-receipts"
   ],
   "vector_id": "agent-moderation/receipt-valid",
   "description": "A signed NIP-32 agent-policy receipt has exact namespace, label, event, device-key, and closed body bindings.",

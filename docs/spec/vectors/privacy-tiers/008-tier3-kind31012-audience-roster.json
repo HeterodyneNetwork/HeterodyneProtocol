@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-privacy-tiers"
+    "heterodyne:comms#comms-privacy-tiers"
   ],
   "vector_id": "privacy-tiers/tier3-kind31012-audience-roster",
   "description": "Tier 3 kind:31012 audience roster: an epoch-key-signed replaceable event keyed by key_id enumerating the recipient device publishing keys with one p tag each.",

@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-privacy-tiers"
+    "heterodyne:comms#comms-privacy-tiers"
   ],
   "vector_id": "privacy-tiers/tier2-private-repo-not-encrypted",
   "description": "Tier 2 private repo grants plaintext read via visibility.allow, is not published to public relays, and MUST NOT be described as encrypted or confidential against members.",

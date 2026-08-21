@@ -1,10 +1,9 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-comms-claim-revocation-jwk-jws-v1",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-key-claims"
+    "heterodyne:comms#comms-key-claims"
   ],
   "vector_id": "claims/canonical-jwk-thumbprint-subject",
   "description": "A canonical JWK-thumbprint subject claim and a positive native EdDSA JWK revocation fixture bind the embedded public JWK to the same RFC 7638 thumbprint.",

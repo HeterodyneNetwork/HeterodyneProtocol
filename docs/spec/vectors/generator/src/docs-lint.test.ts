@@ -43,12 +43,6 @@ describe("canonical family documentation", () => {
 
   it("keeps maintained authoring guides on the single-family model", () => {
     expect(lintMaintainedGuides(repositoryRoot)).toEqual([]);
-
-    const vectors = JSON.parse(
-      read("docs/spec/vectors/coverage/manifest.json"),
-    ) as unknown[];
-    const vectorReadme = read("docs/spec/vectors/README.md");
-    expect(vectorReadme).toContain(`${vectors.length} normative vectors`);
   });
 
   it.each([

@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#social-atproto-resolution"
+    "heterodyne:social#social-atproto-resolution"
   ],
   "vector_id": "atproto/connection-pinning-unavailable",
   "description": "A runtime unable to bind the selected address and inspect the peer reports the optional feature unavailable without claiming conformance.",

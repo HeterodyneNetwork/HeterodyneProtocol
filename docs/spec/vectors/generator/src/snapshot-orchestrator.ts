@@ -1,8 +1,12 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import {
+  packageSnapshot as packageSnapshotData,
+  replaceSnapshotData as replaceSnapshotDataTransaction,
+} from "./author.js";
 import {
   loadSnapshotManifest,
   SNAPSHOT_MANIFEST_PATH,
@@ -19,6 +23,207 @@ export type SnapshotHistory = {
   sourceCommit: string;
   snapshotCommit: string;
 };
+
+export type CommandRunner = (
+  command: string,
+  args: string[],
+  options: { cwd: string },
+) => Promise<void>;
+
+type SnapshotWorkflowDependencies = {
+  run?: CommandRunner;
+  packageSnapshot?: (
+    rawRoot: string,
+    snapshotRoot: string,
+    sourceCommit: string,
+  ) => Promise<unknown>;
+  replaceSnapshotData?: typeof replaceSnapshotDataTransaction;
+};
+
+export function assertSourceCommitAncestor(repoRoot: string, sourceCommit: string): void {
+  const repositoryRoot = resolve(repoRoot);
+  assertCommitAvailable(repositoryRoot, sourceCommit);
+  preflightCommitTree(repositoryRoot, sourceCommit);
+  const result = git(repositoryRoot, [
+    "merge-base",
+    "--is-ancestor",
+    sourceCommit,
+    "HEAD",
+    "--",
+  ]);
+  if (result.status === 1) throw new Error("snapshot source commit is not an ancestor of HEAD");
+  if (result.status !== 0) throw gitError("unable to validate source ancestry", result);
+}
+
+export async function runConformanceCommand(
+  repositoryRoot: string,
+  command: "baseline-author" | "report-author" | "check",
+  sourceRoot: string,
+  snapshotRoot: string,
+  sourceCommit: string,
+  snapshotCommit: string,
+  run: CommandRunner = runCommand,
+): Promise<void> {
+  const conformanceRoot = resolve(repositoryRoot, "docs/spec/conformance");
+  const explicitArguments = [
+    "--source-root",
+    resolve(sourceRoot),
+    "--snapshot-root",
+    resolve(snapshotRoot),
+    "--source-commit",
+    sourceCommit,
+    "--snapshot-commit",
+    snapshotCommit,
+  ];
+  if (command === "check") {
+    await run(
+      resolve(conformanceRoot, "node_modules/.bin/tsx"),
+      ["src/cli.ts", command, ...explicitArguments],
+      { cwd: conformanceRoot },
+    );
+  } else {
+    await run("npm", ["run", command, "--", ...explicitArguments], { cwd: conformanceRoot });
+  }
+}
+
+export async function authorSnapshot(
+  repoRoot: string,
+  sourceCommit: string,
+  dependencies: SnapshotWorkflowDependencies = {},
+): Promise<void> {
+  const repositoryRoot = resolve(repoRoot);
+  const run = dependencies.run ?? runCommand;
+  const packageSnapshot = dependencies.packageSnapshot ?? packageSnapshotData;
+  const replaceSnapshotData = dependencies.replaceSnapshotData ?? replaceSnapshotDataTransaction;
+  assertSourceCommitAncestor(repositoryRoot, sourceCommit);
+
+  const rawRoot = await mkdtemp(join(tmpdir(), "heterodyne-snapshot-raw-"));
+  const stagingRoot = await mkdtemp(join(dirname(repositoryRoot), ".heterodyne-snapshot-stage-"));
+  try {
+    await withMaterializedCommit(repositoryRoot, sourceCommit, async (sourceRoot) => {
+      await generateSourceVectors(sourceRoot, rawRoot, run);
+      await packageSnapshot(rawRoot, stagingRoot, sourceCommit);
+      const authoringSnapshotIdentity = "0".repeat(40);
+      await runConformanceCommand(
+        repositoryRoot,
+        "baseline-author",
+        sourceRoot,
+        stagingRoot,
+        sourceCommit,
+        authoringSnapshotIdentity,
+        run,
+      );
+      await runConformanceCommand(
+        repositoryRoot,
+        "report-author",
+        sourceRoot,
+        stagingRoot,
+        sourceCommit,
+        authoringSnapshotIdentity,
+        run,
+      );
+      await runConformanceCommand(
+        repositoryRoot,
+        "check",
+        sourceRoot,
+        stagingRoot,
+        sourceCommit,
+        authoringSnapshotIdentity,
+        run,
+      );
+      await replaceSnapshotData(repositoryRoot, stagingRoot);
+    });
+  } finally {
+    await Promise.all([
+      rm(rawRoot, { recursive: true, force: true }),
+      rm(stagingRoot, { recursive: true, force: true }),
+    ]);
+  }
+}
+
+export async function checkSnapshot(
+  repoRoot: string,
+  dependencies: Pick<SnapshotWorkflowDependencies, "run"> = {},
+): Promise<SnapshotHistory> {
+  const repositoryRoot = resolve(repoRoot);
+  const history = resolveSnapshotHistory(repositoryRoot);
+  const run = dependencies.run ?? runCommand;
+  const rawRoot = await mkdtemp(join(tmpdir(), "heterodyne-snapshot-raw-"));
+  try {
+    await withMaterializedCommit(repositoryRoot, history.sourceCommit, async (sourceRoot) => {
+      await generateSourceVectors(sourceRoot, rawRoot, run);
+      await withMaterializedCommit(repositoryRoot, history.snapshotCommit, async (snapshotRoot) => {
+        await runHistoricalPackageCheck(snapshotRoot, rawRoot, repositoryRoot, run);
+      });
+      await runConformanceCommand(
+        repositoryRoot,
+        "check",
+        sourceRoot,
+        repositoryRoot,
+        history.sourceCommit,
+        history.snapshotCommit,
+        run,
+      );
+    });
+  } finally {
+    await rm(rawRoot, { recursive: true, force: true });
+  }
+  return history;
+}
+
+export async function generateSourceVectors(
+  sourceRoot: string,
+  rawRoot: string,
+  run: CommandRunner = runCommand,
+): Promise<void> {
+  const generatorRoot = resolve(sourceRoot, "docs/spec/vectors/generator");
+  await run("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], {
+    cwd: generatorRoot,
+  });
+  await run("npm", ["run", "author", "--", resolve(rawRoot)], { cwd: generatorRoot });
+}
+
+export async function runHistoricalPackageCheck(
+  snapshotRoot: string,
+  rawRoot: string,
+  repositoryRoot: string,
+  run: CommandRunner = runCommand,
+): Promise<void> {
+  const generatorRoot = resolve(snapshotRoot, "docs/spec/vectors/generator");
+  await run("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], {
+    cwd: generatorRoot,
+  });
+  await run("npm", [
+    "run",
+    "snapshot-package-check",
+    "--",
+    "--raw-root",
+    resolve(rawRoot),
+    "--snapshot-root",
+    resolve(repositoryRoot),
+  ], { cwd: generatorRoot });
+}
+
+async function runCommand(
+  command: string,
+  args: string[],
+  options: { cwd: string },
+): Promise<void> {
+  await new Promise<void>((resolvePromise, reject) => {
+    const child = spawn(command, args, {
+      cwd: options.cwd,
+      stdio: "inherit",
+      env: process.env,
+    });
+    child.once("error", reject);
+    child.once("exit", (code, signal) => {
+      if (code === 0) resolvePromise();
+      else reject(new Error(
+        `${command} ${args.join(" ")} failed (${signal ?? `exit ${String(code)}`})`,
+      ));
+    });
+  });
+}
 
 export function deriveSnapshotCommit(repoRoot: string): string {
   const result = git(repoRoot, [

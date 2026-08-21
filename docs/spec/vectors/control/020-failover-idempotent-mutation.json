@@ -1,10 +1,9 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "control",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-control-marmot-frame-v1",
   "spec_refs": [
-    "heterodyne:0.5.0#control-failover"
+    "heterodyne:control#control-failover"
   ],
   "vector_id": "control/failover-idempotent-mutation",
   "description": "Control operation/failover decision: failover-idempotent-mutation.",

@@ -1,17 +1,14 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-versioning"
+    "heterodyne:core#core-versioning"
   ],
   "vector_id": "versioning/unknown-major-placeholder",
   "description": "Future incompatible major versions render as placeholders rather than being misinterpreted.",
   "input": {
-    "receiver_supported_versions": [
-      "heterodyne/0.5.0"
-    ],
-    "sender_version": "heterodyne/1.0.0",
+    "receiver_supported_major": 0,
+    "sender_version": "1.0.0",
     "event_kind": 31007
   },
   "expected_output": {

@@ -1,10 +1,9 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-comms-claim-revocation-nostr-bip340-v1",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-claim-revocation"
+    "heterodyne:comms#comms-claim-revocation"
   ],
   "vector_id": "claims/authorization-self-revocation",
   "description": "The exact authorization subject BIP-340 signer self-revokes immediately, before repository finality can leave the delivered grant provisional.",
@@ -430,7 +429,7 @@
         "reason_code": "claim-schema-invalid"
       },
       {
-        "name": "missing-profile-revision",
+        "name": "missing-registry-revision",
         "event": {
           "pubkey": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556",
           "created_at": 1767227615,
@@ -466,7 +465,7 @@
         "reason_code": "claim-schema-invalid"
       },
       {
-        "name": "wrong-profile-revision",
+        "name": "wrong-registry-revision",
         "event": {
           "pubkey": "fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556",
           "created_at": 1767227615,
@@ -544,7 +543,7 @@
           "reason_code": "claim-schema-invalid"
         },
         {
-          "name": "missing-profile-revision",
+          "name": "missing-registry-revision",
           "reason_code": "claim-schema-invalid"
         },
         {
@@ -552,7 +551,7 @@
           "reason_code": "claim-schema-invalid"
         },
         {
-          "name": "wrong-profile-revision",
+          "name": "wrong-registry-revision",
           "reason_code": "claim-schema-invalid"
         }
       ]

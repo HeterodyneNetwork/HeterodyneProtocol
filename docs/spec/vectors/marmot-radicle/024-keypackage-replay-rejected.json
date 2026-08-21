@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-marmot-persona-inbox"
+    "heterodyne:comms#comms-marmot-persona-inbox"
   ],
   "vector_id": "marmot-radicle/keypackage-replay-rejected",
   "description": "A public-inbox bundle that reuses a consumed KeyPackage is discarded in quarantine.",

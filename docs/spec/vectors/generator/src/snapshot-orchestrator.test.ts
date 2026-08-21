@@ -13,7 +13,13 @@ import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildSnapshotManifest } from "./snapshot-manifest.js";
 import {
+  assertSourceCommitAncestor,
+  authorSnapshot,
+  checkSnapshot,
   deriveSnapshotCommit,
+  generateSourceVectors,
+  runHistoricalPackageCheck,
+  runConformanceCommand,
   resolveSnapshotHistory,
   withMaterializedCommit,
 } from "./snapshot-orchestrator.js";
@@ -81,6 +87,156 @@ function writeSnapshot(root: string, sourceCommit: string, marker = "one"): void
 }
 
 describe("snapshot history", () => {
+  it("accepts first-snapshot authoring from an ancestor without deriving a snapshot commit", () => {
+    const { root, sourceCommit } = repository();
+
+    expect(() => assertSourceCommitAncestor(root, sourceCommit)).not.toThrow();
+    expect(() => deriveSnapshotCommit(root)).toThrow(/no committed snapshot manifest/);
+  });
+
+  it("runs current conformance against the explicit staging snapshot root", async () => {
+    const commands: Array<{ cwd: string; args: string[] }> = [];
+    await runConformanceCommand(
+      "/working/repository",
+      "baseline-author",
+      "/materialized/source",
+      "/owned/staging",
+      "1".repeat(40),
+      "0".repeat(40),
+      async (_command, args, options) => {
+        commands.push({ cwd: options.cwd, args });
+      },
+    );
+
+    expect(commands).toEqual([{
+      cwd: "/working/repository/docs/spec/conformance",
+      args: [
+        "run", "baseline-author", "--",
+        "--source-root", "/materialized/source",
+        "--snapshot-root", "/owned/staging",
+        "--source-commit", "1".repeat(40),
+        "--snapshot-commit", "0".repeat(40),
+      ],
+    }]);
+  });
+
+  it("runs the explicit-root conformance CLI without entering its repository-bound test suite", async () => {
+    const commands: Array<{ command: string; cwd: string; args: string[] }> = [];
+    await runConformanceCommand(
+      "/working/repository",
+      "check",
+      "/materialized/source",
+      "/owned/staging",
+      "1".repeat(40),
+      "0".repeat(40),
+      async (command, args, options) => {
+        commands.push({ command, cwd: options.cwd, args });
+      },
+    );
+
+    expect(commands).toEqual([expect.objectContaining({
+      command: "/working/repository/docs/spec/conformance/node_modules/.bin/tsx",
+      cwd: "/working/repository/docs/spec/conformance",
+      args: expect.arrayContaining([
+        "src/cli.ts", "check", "--source-root", "/materialized/source",
+        "--snapshot-root", "/owned/staging",
+      ]),
+    })]);
+    expect(commands[0]?.args).not.toContain("test");
+  });
+
+  it("authors projections in staging before one snapshot replacement", async () => {
+    const { root, sourceCommit } = repository();
+    const commands: string[] = [];
+    let packagedRoot = "";
+    let replacementRoot = "";
+
+    await authorSnapshot(root, sourceCommit, {
+      run: async (_command, args) => {
+        commands.push(args.slice(0, 2).join(" "));
+      },
+      packageSnapshot: async (_rawRoot, stagingRoot) => {
+        packagedRoot = stagingRoot;
+      },
+      replaceSnapshotData: async (_repositoryRoot, stagingRoot) => {
+        replacementRoot = stagingRoot;
+      },
+    });
+
+    expect(packagedRoot).not.toBe(root);
+    expect(replacementRoot).toBe(packagedRoot);
+    expect(commands).toEqual([
+      "ci --ignore-scripts",
+      "run author",
+      "run baseline-author",
+      "run report-author",
+      "src/cli.ts check",
+    ]);
+  });
+
+  it("checks with the historical packager and current conformance without recursion", async () => {
+    const { root, sourceCommit } = repository();
+    writeSnapshot(root, sourceCommit);
+    commit(root, "snapshot");
+    const commands: Array<{ cwd: string; args: string[] }> = [];
+
+    await checkSnapshot(root, {
+      run: async (_command, args, options) => {
+        commands.push({ cwd: options.cwd, args });
+      },
+    });
+
+    expect(commands.filter(({ args }) => args[0] === "ci")).toHaveLength(2);
+    const historical = commands.find(({ args }) => args.includes("snapshot-package-check"));
+    expect(historical?.cwd).not.toContain(root);
+    expect(commands.flatMap(({ args }) => args)).not.toContain("snapshot-check");
+    expect(commands.at(-1)).toMatchObject({
+      cwd: join(root, "docs/spec/conformance"),
+      args: expect.arrayContaining([
+        "check", "--source-root", expect.stringContaining("heterodyne-snapshot-commit-"),
+      ]),
+    });
+  });
+
+  it("installs source and historical snapshot lockfiles in separate materialized roots", async () => {
+    const commands: Array<{ cwd: string; args: string[] }> = [];
+    const run = async (_command: string, args: string[], options: { cwd: string }) => {
+      commands.push({ cwd: options.cwd, args });
+    };
+
+    await generateSourceVectors("/materialized/source", "/owned/raw", run);
+    await runHistoricalPackageCheck(
+      "/materialized/snapshot",
+      "/owned/raw",
+      "/working/repository",
+      run,
+    );
+
+    expect(commands).toEqual([
+      {
+        cwd: "/materialized/source/docs/spec/vectors/generator",
+        args: ["ci", "--ignore-scripts", "--no-audit", "--no-fund"],
+      },
+      {
+        cwd: "/materialized/source/docs/spec/vectors/generator",
+        args: ["run", "author", "--", "/owned/raw"],
+      },
+      {
+        cwd: "/materialized/snapshot/docs/spec/vectors/generator",
+        args: ["ci", "--ignore-scripts", "--no-audit", "--no-fund"],
+      },
+      {
+        cwd: "/materialized/snapshot/docs/spec/vectors/generator",
+        args: [
+          "run", "snapshot-package-check", "--",
+          "--raw-root", "/owned/raw",
+          "--snapshot-root", "/working/repository",
+        ],
+      },
+    ]);
+    expect(commands.flatMap(({ args }) => args)).not.toContain("snapshot-check");
+  });
+
   it("rejects missing source objects without substituting HEAD", () => {
     const { root } = repository();
     const missing = "f".repeat(40);

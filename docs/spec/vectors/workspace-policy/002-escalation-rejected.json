@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "workspace",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#workspace-role-policy"
+    "heterodyne:workspace#workspace-role-policy"
   ],
   "vector_id": "workspace-policy/escalation-rejected",
   "description": "A child role cannot widen the effective capability intersection.",

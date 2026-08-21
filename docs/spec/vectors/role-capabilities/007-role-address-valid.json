@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-role-delegation"
+    "heterodyne:core#core-role-delegation"
   ],
   "vector_id": "role-capabilities/role-address-valid",
   "description": "A registered agent role address uses the exact lowercase 64-hex identifier syntax.",

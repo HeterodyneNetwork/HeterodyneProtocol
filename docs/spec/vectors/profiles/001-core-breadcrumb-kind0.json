@@ -1,10 +1,9 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-core-rotation-breadcrumb-profile-v1",
   "spec_refs": [
-    "heterodyne:0.5.0#core-kel-rotation"
+    "heterodyne:core#core-kel-rotation"
   ],
   "vector_id": "profiles/core-breadcrumb-kind0",
   "description": "A trusted routine-rotation workflow produces the exact unstamped old-key kind:0 successor profile after KEL acceptance and before retiring-secret destruction.",

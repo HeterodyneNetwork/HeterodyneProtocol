@@ -1,18 +1,14 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#social-discussion-rooms"
+    "heterodyne:social#social-discussion-rooms"
   ],
   "vector_id": "versioning/unknown-room-kind-tolerance",
-  "description": "An unknown optional room kind is tolerated only at the same supported family version.",
+  "description": "Unknown room kind from a compatible sender is tolerated with placeholder rendering.",
   "input": {
     "room_kind": "future_kind",
-    "receiver_supported_versions": [
-      "heterodyne/0.5.0"
-    ],
-    "sender_version": "heterodyne/0.5.0"
+    "sender_version": "0.4.0"
   },
   "expected_output": {
     "verdict": "accept",

@@ -1,10 +1,9 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-comms-tier3-wrapped-content-kind-1063-v1",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-tier-three-profile"
+    "heterodyne:comms#comms-tier-three-profile"
   ],
   "vector_id": "profiles/tier3-kind-1063",
   "description": "The active Tier-3 kind:1063 profile uses the exact opaque carrier tags and Comms owner stamp.",

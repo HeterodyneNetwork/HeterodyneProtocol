@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "workspace",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#workspace-key-delivery"
+    "heterodyne:workspace#workspace-key-delivery"
   ],
   "vector_id": "workspace-key/full-history",
   "description": "Full-history policy returns an idempotent device-bound historical key envelope.",
@@ -17,22 +16,12 @@
     "current_epoch": 6,
     "admission_epoch": 4,
     "history_mode": "full",
-    "selected_epochs": [],
-    "target_device": "2222222222222222222222222222222222222222222222222222222222222222",
-    "recipient": {
-      "type": "marmot-mls-leaf",
-      "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-    }
+    "selected_epochs": []
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
       "key_epoch": 4,
-      "target_device": "2222222222222222222222222222222222222222222222222222222222222222",
-      "recipient": {
-        "type": "marmot-mls-leaf",
-        "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-      },
       "device_bound": true,
       "idempotent": true
     }

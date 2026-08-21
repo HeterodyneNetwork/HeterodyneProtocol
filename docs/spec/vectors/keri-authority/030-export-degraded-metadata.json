@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-keri-export"
+    "heterodyne:core#core-keri-export"
   ],
   "vector_id": "keri-authority/export-degraded-metadata",
   "description": "A non-security metadata omission is emitted with status degraded plus an explicit warning code and MUST NOT be labeled complete; security-relevant state is intact.",

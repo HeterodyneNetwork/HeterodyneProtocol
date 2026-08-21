@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-claim-chain"
+    "heterodyne:comms#comms-claim-chain"
   ],
   "vector_id": "claims/chain-widening-rejected",
   "description": "A child that changes the atomic namespace is rejected even when its issuer equals the parent subject.",

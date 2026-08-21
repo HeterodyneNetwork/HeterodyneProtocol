@@ -1,59 +1,26 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "control",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-control-marmot-frame-v1",
   "spec_refs": [
-    "heterodyne:0.5.0#control-token"
+    "heterodyne:control#control-token"
   ],
   "vector_id": "control/token-extension-missing-capability",
   "description": "Node-scoped Control token issuance: token-extension-missing-capability.",
   "direction": "consume",
   "input": {
-    "entitlement": {
-      "record_id": "4444444444444444444444444444444444444444444444444444444444444444",
-      "persona": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "client_key": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "client_class": "automated",
-      "approving_node": "2222222222222222222222222222222222222222222222222222222222222222",
-      "approving_authority": "fixture-local-approval",
-      "methods": [
-        "config.get",
-        "config.put"
-      ],
-      "objects": [
-        {
-          "class": "config_namespace",
-          "id": "ui"
-        }
-      ],
-      "limits": {
-        "max_content_bytes": 1024,
-        "rate_window_seconds": 3600,
-        "rate_count": 10,
-        "burst": 2,
-        "max_media_bytes": 2048
-      },
-      "capabilities": [],
-      "token_lifetime_default_seconds": 300,
-      "token_lifetime_max_seconds": 3600,
-      "inbound_execution": false,
-      "agent_role": "agent:newsletter",
-      "predecessor": null,
-      "state": "active",
-      "created_at": 900,
-      "expires_at": null,
-      "signer": "2222222222222222222222222222222222222222222222222222222222222222",
-      "signature": "66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666"
-    },
+    "entitlement_state": "active",
+    "client_key": "1111111111111111111111111111111111111111111111111111111111111111",
+    "client_jkt": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     "group_id": "3333333333333333333333333333333333333333333333333333333333333333",
     "issuer": "https://node.example/oidc/persona",
     "audience": "urn:heterodyne:control:node-a",
     "node_key": "2222222222222222222222222222222222222222222222222222222222222222",
-    "registry_checkpoint": "5555555555555555555555555555555555555555555555555555555555555555",
-    "issuance_nonce": "7777777777777777777777777777777777777777777777777777777777777777",
+    "authorization_id": "4444444444444444444444444444444444444444444444444444444444444444",
     "requested_lifetime_seconds": 301,
+    "entitlement_max_seconds": 3600,
     "node_policy_max_seconds": 3600,
+    "extended_capability": false,
     "now": 1000,
     "authorization_view_authenticated": true,
     "authorization_view_conflicted": false,
@@ -62,15 +29,8 @@
       "config.get"
     ],
     "objects": [
-      {
-        "class": "config_namespace",
-        "id": "ui"
-      }
-    ],
-    "limits": {
-      "max_content_bytes": 1024,
-      "rate_count": 10
-    }
+      "config:ui"
+    ]
   },
   "expected_output": {
     "verdict": "reject",

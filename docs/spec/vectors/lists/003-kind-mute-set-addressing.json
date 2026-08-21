@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#social-lists"
+    "heterodyne:social#social-lists"
   ],
   "vector_id": "lists/kind-mute-set-addressing",
   "description": "NIP-51 kind:30007 kind-mute set: an addressable (pubkey, kind, d) set event; one such event per (kind, d) pair forms the persona's sets file.",

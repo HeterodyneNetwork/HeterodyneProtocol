@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-multiwriter-minting"
+    "heterodyne:comms#comms-multiwriter-minting"
   ],
   "vector_id": "claim-ledger/multiwriter-status-allocation",
   "description": "Two synchronized authorized writers sharing one signing key mint from executable authority/key evidence and durably reserve collision-free NID-derived status indexes.",

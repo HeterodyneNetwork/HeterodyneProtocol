@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#social-moderation"
+    "heterodyne:social#social-moderation"
   ],
   "vector_id": "moderation/repo-anchor-asof-before-removal-counts",
   "description": "Repo-anchored as-of resolution: an approval anchored (by its introducing commit) before a moderator's removal counts, because the newest kind:34550 revision reachable in the anchor commit's ancestor history still lists the moderator.",

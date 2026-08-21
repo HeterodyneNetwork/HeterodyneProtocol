@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-token-status"
+    "heterodyne:comms#comms-token-status"
   ],
   "vector_id": "token-status/stale-status-list-rejected",
   "description": "TTL equality, expiration, bad signature, malformed ZLIB, and out-of-range indexes fail closed.",

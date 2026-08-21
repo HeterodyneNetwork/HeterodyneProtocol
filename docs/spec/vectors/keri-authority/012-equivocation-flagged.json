@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-kel-verification"
+    "heterodyne:core#core-kel-verification"
   ],
   "vector_id": "keri-authority/equivocation-flagged",
   "description": "A structurally valid kel_head names an event that is not on the persona's accepted KEL; the verifier produces the equivocation-flagged outcome and surfaces it through the §13 security-warning interface.",

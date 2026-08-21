@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-kel-verification"
+    "heterodyne:core#core-kel-verification"
   ],
   "vector_id": "keri-authority/dependent-events-unresolved",
   "description": "When a key-material acceptance is withdrawn (per §4.5.2), the verifier withdraws the acceptance signal, flags per §13, and marks dependent events (posts verified under that key state) unresolved until reverified.",

@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import { VECTOR_SCHEMA } from "./schema.js";
 import type { RawVector } from "./types.js";
 import {
+  buildSnapshotVectorSchema,
+  normalizeSnapshotFixtures,
   preservesVectorBehavior,
   normalizeSnapshotVector,
+  snapshotVectorValidator,
   validateRawVector,
   validateSnapshotVector,
 } from "./snapshot-envelope.js";
@@ -23,6 +26,21 @@ function rawVector(): RawVector {
 }
 
 describe("snapshot envelope", () => {
+  it("removes only the fixture envelope draft version", () => {
+    const fixtures = normalizeSnapshotFixtures({
+      vector_schema_version: "1.0.0",
+      spec_version: "heterodyne/0.5.0",
+      protocol_versions: { spec_version: "behavioral-version" },
+      nested: { input: { spec_version: "wire-value" } },
+    });
+
+    expect(fixtures).toEqual({
+      vector_schema_version: "2.0.0",
+      protocol_versions: { spec_version: "behavioral-version" },
+      nested: { input: { spec_version: "wire-value" } },
+    });
+  });
+
   it("removes draft version and qualifies one legacy ref", () => {
     const raw = rawVector();
     expect(() => validateRawVector(raw, VECTOR_SCHEMA)).not.toThrow();
@@ -90,7 +108,8 @@ describe("snapshot envelope", () => {
   });
 
   it("rejects spec_version in schema 2", () => {
-    expect(() => validateSnapshotVector({
+    const validatePackaged = snapshotVectorValidator(buildSnapshotVectorSchema(VECTOR_SCHEMA));
+    expect(() => validatePackaged({
       ...normalizeSnapshotVector(rawVector()),
       spec_version: "heterodyne/0.5.0",
     })).toThrow(/additional/);

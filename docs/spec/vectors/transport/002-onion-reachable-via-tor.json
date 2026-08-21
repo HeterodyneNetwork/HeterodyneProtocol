@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-tor-reachability"
+    "heterodyne:core#core-tor-reachability"
   ],
   "vector_id": "transport/onion-reachable-via-tor",
   "description": ".onion relay is reachable through embedded Tor.",

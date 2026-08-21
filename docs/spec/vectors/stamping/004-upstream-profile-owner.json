@@ -1,27 +1,19 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-social-mute-list-v1",
   "spec_refs": [
-    "heterodyne:0.5.0#core-version-stamps"
+    "heterodyne:core#core-version-stamps"
   ],
   "vector_id": "stamping/upstream-profile-owner",
   "description": "Owner-stamp conformance class: upstream profile owner.",
   "direction": "round-trip",
   "input": {
     "kind": 10000,
-    "profile_id": "heterodyne-social-mute-list-v1",
-    "tags": [
-      [
-        "spec_version",
-        "heterodyne/0.5.0"
-      ]
-    ]
+    "profile_id": "heterodyne-social-mute-list-v1"
   },
   "expected_output": {
     "owner": "social",
-    "placement": "tag",
-    "value": "heterodyne/0.5.0"
+    "placement": "tag"
   }
 }

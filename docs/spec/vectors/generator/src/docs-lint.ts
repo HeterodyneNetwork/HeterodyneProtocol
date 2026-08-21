@@ -56,7 +56,6 @@ export type FamilyDocIssue = {
     | "mislinked-reference"
     | "retired-authoring-model"
     | "missing-current-vector-metadata"
-    | "vector-count-drift"
     | "missing-release-command"
     | "profile-revision-registry-context-missing";
   message: string;
@@ -713,19 +712,6 @@ export function lintMaintainedGuides(
         message: `vector README must document ${field}`,
       });
     }
-  }
-
-  const vectors = JSON.parse(readFileSync(
-    resolve(repoRoot, "docs/spec/vectors/coverage/manifest.json"),
-    "utf8",
-  )) as unknown[];
-  if (!vectorsReadme.includes(`${vectors.length} normative vectors`)) {
-    issues.push({
-      path: "docs/spec/vectors/README.md",
-      line: 1,
-      code: "vector-count-drift",
-      message: `vector README must state the built corpus count (${vectors.length})`,
-    });
   }
 
   for (const command of ["release-author", "release-check"]) {

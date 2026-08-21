@@ -1,4 +1,6 @@
 {
+  "source_commit": "2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43",
+  "artifact_set_sha256": "61305c2468f8ff68c5b6fab1704d702f971aa756db9935002a8e4436e13ac2a7",
   "gate": "G10",
   "failures": [
     "docs/spec/vectors/agent-authorship/001-delegation-valid.json :: event-sha256:ebdc671b23d315c9c030608bb93f92de615be53ea2cf1ee5670d1d11e8676095",
@@ -130,6 +132,7 @@
     "docs/spec/vectors/nid-binding/002-missing-nid-proof-rejected.json :: event-sha256:b7feb50d787d38a70f3285b90e7e029d962fcad818ec82fa8717e3044a0a708f",
     "docs/spec/vectors/nid-binding/003-invalid-nid-proof-rejected.json :: event-sha256:6c18adc5184be7271f62aa60835c2436c2e3106e95c93edda9b23015ecd743ac",
     "docs/spec/vectors/node-advert/001-valid-dual-signed.json :: event-sha256:932003c323d825cfbca95cee3eac3a183aee41ad045caf8325c12e527cabfd07",
+    "docs/spec/vectors/node-advert/002-outer-sig-invalid-rejected.json :: event-sha256:8c6adf14667eb39ebce2d3fb6e0804a2197c61cf5ceffc76b87b00462b7ca4b8",
     "docs/spec/vectors/node-advert/003-nid-proof-invalid-rejected.json :: event-sha256:908c60eaf23d6831ee6e0dcf55bdfff3c8741dffc14e5065eb3af3ce208ddd7a",
     "docs/spec/vectors/node-advert/004-expired-rejected.json :: event-sha256:b7cb87b4301de48b562efebd25b0136b696914c6ef8e9aa8827545571f78cc6f",
     "docs/spec/vectors/oidc/003-authorization-code-pkce.json :: event-sha256:5cb697e6f62b208086492bbb5f86a5d42f77882bdbe37d06ecaf90c203305a39",
@@ -239,6 +242,7 @@
     "docs/spec/vectors/token-status/009-signing-key-compromise.json :: event-sha256:9a656879d42af49ec1951d188bb04935239cf5b9ea8e0ba27dc0a4827b2531d2",
     "docs/spec/vectors/token-status/009-signing-key-compromise.json :: event-sha256:a16fd92a7e960073b0f3278df216bc3046410d5a732a73633e80132e36f90cce",
     "docs/spec/vectors/token-status/009-signing-key-compromise.json :: event-sha256:b68252dba5e30aa4dff201cc02318622782d7225174be479a4214f2d7fa620c8",
-    "docs/spec/vectors/token-status/009-signing-key-compromise.json :: event-sha256:e2c6e277e2ba698dbcd55899d74c2b7b7e7cc68110d2c45918785dddfc1a7483"
+    "docs/spec/vectors/token-status/009-signing-key-compromise.json :: event-sha256:e2c6e277e2ba698dbcd55899d74c2b7b7e7cc68110d2c45918785dddfc1a7483",
+    "docs/spec/vectors/verification/001-bad-signature-rejects.json :: event-sha256:c63266cd18a497139c0d8c880fe82d6f1450215c9bccb3831dc125e0fd85f5d2"
   ]
 }

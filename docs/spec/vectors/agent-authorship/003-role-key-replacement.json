@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-agent-delegation"
+    "heterodyne:comms#comms-agent-delegation"
   ],
   "vector_id": "agent-authorship/role-key-replacement",
   "description": "Replacing the current key at one stable agent role address deauthorizes only the prior role key.",

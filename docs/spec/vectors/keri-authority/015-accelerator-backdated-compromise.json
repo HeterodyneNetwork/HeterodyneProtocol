@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-kel-verification"
+    "heterodyne:core#core-kel-verification"
   ],
   "vector_id": "keri-authority/accelerator-backdated-compromise",
   "description": "A backdated event signed by a superseded epoch key is caught by effective_compromise_since. With compromise_since=T+200 and rotation created_at=T+500, effective_compromise_since=min(200,500)=T+200; the -300s skew makes the key non-authoritative for any created_at >= T-100, so the event at T+100 is rejected under both replay and the accelerator.",

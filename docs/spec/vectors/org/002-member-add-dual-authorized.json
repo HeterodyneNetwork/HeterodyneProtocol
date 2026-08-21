@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-threshold-authority"
+    "heterodyne:core#core-threshold-authority"
   ],
   "vector_id": "org/member-add-dual-authorized",
   "description": "Adding a member NID to an org is authorized only when BOTH the member's own KEL kind:31001 and the org admin delegate threshold authorize it.",

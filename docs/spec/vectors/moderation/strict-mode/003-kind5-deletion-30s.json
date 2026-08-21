@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#social-moderation"
+    "heterodyne:social#social-moderation"
   ],
   "vector_id": "moderation/strict-mode-kind5-deletion-30s",
   "description": "Strict mode initiates kind:5 subscription or polling within 30 seconds and records retry availability separately from observation.",

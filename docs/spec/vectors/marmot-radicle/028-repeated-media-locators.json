@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-marmot-media"
+    "heterodyne:comms#comms-marmot-media"
   ],
   "vector_id": "marmot-radicle/repeated-media-locators",
   "description": "A message may carry radicle-v1 and standard media locators; an unsupported locator is skipped without invalidating the message.",

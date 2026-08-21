@@ -17,8 +17,7 @@ const OWNER_DOCUMENTS = new Set<DocumentId>([
 ]);
 const LEGACY_REF = /^heterodyne:[^#]+#([a-z0-9][a-z0-9-]*)$/;
 
-const snapshotAjv = new Ajv({ allErrors: true, strict: false });
-const validateSnapshot = snapshotAjv.compile(snapshotVectorSchema);
+const validateDefaultSnapshot = snapshotVectorValidator(snapshotVectorSchema);
 
 export function validateRawVector(
   raw: unknown,
@@ -34,11 +33,44 @@ export function validateRawVector(
 export function validateSnapshotVector(
   packaged: unknown,
 ): asserts packaged is SnapshotVector {
-  if (!validateSnapshot(packaged)) {
-    throw new Error(
-      `snapshot-vector-invalid: ${formatErrors(validateSnapshot.errors ?? [])}`,
-    );
+  validateDefaultSnapshot(packaged);
+}
+
+export function snapshotVectorValidator(sourceSchema: AnySchema): (packaged: unknown) => void {
+  const ajv = new Ajv({ allErrors: true, strict: false });
+  const validate = ajv.compile(sourceSchema);
+  return (packaged: unknown): void => {
+    if (!validate(packaged)) {
+      throw new Error(
+        `snapshot-vector-invalid: ${formatErrors(validate.errors ?? [])}`,
+      );
+    }
+  };
+}
+
+export function buildSnapshotVectorSchema(sourceSchema: unknown): AnySchema {
+  if (!isRecord(sourceSchema) || !isRecord(sourceSchema.properties)) {
+    throw new Error("raw-vector-schema-invalid: schema must define properties");
   }
+  const schema = structuredClone(sourceSchema);
+  if (!isRecord(schema) || !isRecord(schema.properties)) {
+    throw new Error("raw-vector-schema-invalid: schema must define properties");
+  }
+  const properties = schema.properties;
+  delete properties.spec_version;
+  properties.vector_schema_version = { const: SNAPSHOT_SCHEMA_VERSION };
+  const sourceRefs = isRecord(properties.spec_refs) ? properties.spec_refs : {};
+  properties.spec_refs = {
+    ...sourceRefs,
+    items: {
+      type: "string",
+      pattern: "^heterodyne:(core|comms|control|social|workspace)#[a-z0-9][a-z0-9-]*$",
+    },
+  };
+  if (Array.isArray(schema.required)) {
+    schema.required = schema.required.filter((name) => name !== "spec_version");
+  }
+  return schema;
 }
 
 export function normalizeSnapshotVector(raw: unknown): SnapshotVector {
@@ -63,6 +95,12 @@ export function normalizeSnapshotVector(raw: unknown): SnapshotVector {
     owner_document: ownerDocument as DocumentId,
     spec_refs: [`heterodyne:${ownerDocument}#${match[1]}`],
   } as SnapshotVector;
+}
+
+export function normalizeSnapshotFixtures(raw: unknown): Record<string, unknown> {
+  if (!isRecord(raw)) throw new Error("raw-fixtures-invalid: fixtures must be an object");
+  const { spec_version: _draftVersion, ...fixtures } = raw;
+  return { ...fixtures, vector_schema_version: SNAPSHOT_SCHEMA_VERSION };
 }
 
 export function preservesVectorBehavior(

@@ -1,10 +1,9 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-social-mute-list-v1",
   "spec_refs": [
-    "heterodyne:0.5.0#social-mute-profile"
+    "heterodyne:social#social-mute-profile"
   ],
   "vector_id": "lists/stale-list-rollback-rejected",
   "description": "A relay serving an older kind:10000 revision than one reachable in the repo's canonical git history is a stale-list rollback; the client rejects the stale copy and prefers the newest verifiable revision.",

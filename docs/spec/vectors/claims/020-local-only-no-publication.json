@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-key-claims"
+    "heterodyne:comms#comms-key-claims"
   ],
   "vector_id": "claims/local-only-no-publication",
   "description": "A local-only assertion remains application state and creates no signed claim, relay, DR, repository, discovery, or OIDC protocol artifact.",

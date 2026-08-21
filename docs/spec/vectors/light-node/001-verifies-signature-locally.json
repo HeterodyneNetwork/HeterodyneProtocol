@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-client-responsibilities"
+    "heterodyne:core#core-client-responsibilities"
   ],
   "vector_id": "light-node/verifies-signature-locally",
   "description": "A light node verifies a fetched event's Nostr signature locally and accepts it on a valid signature regardless of which (untrusted) host served it.",
