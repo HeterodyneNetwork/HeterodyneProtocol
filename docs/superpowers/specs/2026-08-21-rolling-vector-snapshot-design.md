@@ -68,14 +68,18 @@ claiming that the older snapshot describes current HEAD.
 - **Draft specification:** the specification, registry, and schema files at
   current HEAD. They may change without a vector update.
 - **Source commit:** the full Git commit whose specification, registry,
-  schemas, generator, and authoring inputs produced the latest vector snapshot.
+  protocol schemas, behavioral generator, and authoring inputs define the
+  behavior in the latest vector snapshot. The source's legacy vector-envelope
+  schema is raw generator input, not the schema applied to the packaged
+  snapshot.
 - **Vector snapshot:** the current committed vector corpus, projections, and
   snapshot manifest under `docs/spec/vectors/`.
 - **Reconciliation:** the explicit operation that replaces the current vector
   snapshot with output generated from a selected source commit.
 - **Snapshot commit:** the later commit that stores generated vectors and the
-  manifest. Its identity is supplied by Git and is not embedded in its own
-  contents.
+  manifest, plus the behavior-neutral snapshot packager that normalizes the
+  envelope and inventories exact output bytes. Its identity is supplied by Git
+  and is not embedded in its own contents or committed reports.
 
 Until 1.0, live draft specifications remain the primary design authority and
 vectors are non-normative validation evidence. A snapshot proves what the
@@ -113,15 +117,24 @@ Its conceptual shape is:
 
 `source_commit` is the binding source identity. The manifest carries no draft
 protocol version or snapshot sequence because neither has compatibility
-meaning before 1.0. The artifact array covers vector JSON files and
-deterministic snapshot projections, but not the generator source, installed
-dependencies, or the manifest itself. Paths are repository-relative, safe,
-unique, and strictly sorted; digests cover exact bytes.
+meaning before 1.0. The artifact array is closed over every file consumed as
+snapshot data: vector JSON files, `fixtures.json`, the packaged
+vector-envelope schema, reason-code and coverage projections, and any later
+deterministic snapshot projection. It does not cover documentation, generator
+or checker source, installed dependencies, or the manifest itself. Paths are
+repository-relative, safe, unique, and strictly sorted; digests cover exact
+bytes. `vector_count` counts only vector documents, not fixtures, schemas, or
+projections.
 
 The manifest does not contain the snapshot commit SHA because a commit cannot
 contain its own content-addressed identity. Consumers identify the snapshot
-commit through Git and use `source_commit` to identify the inputs that were
-reconciled.
+commit as the last commit that changed `snapshot.json`, and use
+`source_commit` to identify the behavioral inputs that were reconciled. This
+derived identity remains valid after a squash merge: the merge commit becomes
+the snapshot commit while preserving the reviewed packager and snapshot bytes.
+Committed baselines and reports likewise carry `source_commit` and a digest of
+the snapshot artifact set, not `snapshot_commit`; the derived snapshot commit
+is runtime output only.
 
 ## Vector envelope metadata
 
@@ -132,6 +145,9 @@ authority.
 During migration:
 
 - remove the per-vector scalar `spec_version`;
+- remove the fixture-envelope `spec_version` and coverage-entry
+  `spec_version`, while preserving nested schema property names and version
+  values that are part of behavioral vector inputs or outputs;
 - keep `vector_schema_version`, because it identifies the vector envelope
   shape rather than a protocol release;
 - keep `owner_document`, direction, profile, and conformance declarations;
@@ -144,6 +160,11 @@ During migration:
 The schema, generator, coverage, and checker migrate to the reference syntax
 together. For example, `heterodyne:core#core-verification` identifies the Core
 anchor, while the snapshot source commit supplies the historical dimension.
+The source generator's native `Vector` type and schema remain raw-authoring
+contracts. Raw output is validated against the schema materialized from the
+source commit, normalized into a distinct `SnapshotVector`, and then validated
+against the packaged snapshot schema. Schema-2 output is never validated with
+the source's schema-1 contract.
 
 ## Manifest and release separation
 
@@ -190,15 +211,31 @@ This lane validates the latest snapshot against `source_commit`:
 1. Parse the closed snapshot manifest and verify every exact artifact digest.
 2. Require the source commit object to exist locally and to be an ancestor of
    the snapshot commit.
-3. Materialize the specification, registry, schemas, generator, and authoring
-   inputs from the source commit into a temporary isolated checkout.
-4. Install the pinned generator dependencies from that checkout and generate
-   a fresh corpus into a separate temporary output directory.
-5. Compare the generated file set and exact bytes with the current snapshot.
-6. Run static vector gates and executable subjects using a split read model:
-   specifications and normative inputs come from the source checkout, while
-   vector artifacts come from the snapshot checkout.
-7. Verify that normal check commands leave the current working tree unchanged.
+3. Derive the snapshot commit as the last commit that changed
+   `docs/spec/vectors/snapshot.json`; require the working snapshot manifest
+   bytes to equal that commit's manifest bytes; and materialize its snapshot
+   packager and pinned lockfile separately from current HEAD.
+4. Materialize the specification, registry, schemas, behavioral generator,
+   and authoring inputs from the source commit into a temporary isolated
+   checkout.
+5. Install the source generator's pinned dependencies and generate its native
+   corpus into a temporary raw-output directory.
+6. Separately install the snapshot commit's pinned generator dependencies and
+   run its behavior-neutral packager over the raw output. Neither tool resolves
+   dependencies from current HEAD. The packager
+   removes pre-1.0 draft-version metadata, converts references to the closed
+   document-qualified syntax, builds snapshot projections, and MUST NOT alter
+   `input`, `expected_output`, vector identity, direction, or profile behavior.
+   The historical entry point is a nonrecursive package-and-compare command;
+   it does not derive commits or invoke the outer snapshot checker.
+7. Compare the packaged file set and exact bytes with the current snapshot.
+8. While the source checkout exists, the snapshot-check orchestrator invokes
+   the independent current conformance CLI with explicit source and snapshot
+   roots. Specifications, the registry, and protocol schemas come from the
+   source checkout; vectors, fixtures, the packaged vector-envelope schema,
+   and snapshot projections come from the snapshot checkout. Neither package
+   imports the other.
+9. Verify that normal check commands leave the current working tree unchanged.
 
 The lane never resolves snapshot `spec_refs` against current HEAD. A later
 draft edit can rename or remove an anchor without invalidating an older
@@ -208,6 +245,13 @@ The shared CI entry point may run both lanes on every change for simplicity.
 The snapshot lane remains stable during ordinary spec edits because its inputs
 are pinned. Path-based skipping is optional optimization and is not required
 for the initial implementation.
+
+The orchestrator owns all temporary paths. It accepts only validated full
+commit SHAs, creates directories with `mkdtemp`, rejects symlink, submodule,
+special, absolute, and traversal tree entries before extraction, never removes
+a caller-owned path, and cleans its temporary tree on success or failure.
+Authoring stages a complete sibling snapshot tree and swaps it into place only
+after validation, with rollback on failure.
 
 ## Reconciliation workflow
 
@@ -224,12 +268,41 @@ The normal workflow is:
 4. Generate vectors using only inputs materialized from the source commit.
 5. Replace the current snapshot files and projections in place.
 6. Write `snapshot.json` with the source commit and exact artifact inventory.
-7. Run the draft and snapshot lanes, review measured conformance debt, and
-   merge the reconciliation change.
+7. Validate author-time bytes and idempotence without pretending that an
+   uncommitted manifest already has a snapshot commit.
+8. Commit the reconciliation, then run the history-bound snapshot lane,
+   review measured conformance debt, and merge the reconciliation change.
 
 If generator work is needed to express the new draft behavior, it lands before
 the selected source commit. This makes the source commit sufficient to recover
-all generation inputs and avoids a separate generator pin.
+all behavioral generation inputs and avoids a separate embedded generator pin.
+Envelope-only migration remains the snapshot packager's responsibility and is
+tested to preserve every behavioral field byte-for-byte at the parsed JSON
+value boundary.
+
+### Bootstrap snapshot for the current draft branch
+
+The first rolling snapshot pins
+`2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`, an existing commit on
+`spec/dedupe-and-delete-machinery`. That commit carries registry revision 11,
+vector envelope schema 1.0.0, and 482 authored vector files. The bootstrap
+reconciliation runs that commit's generator, then applies the new
+behavior-neutral packager to produce the snapshot envelope and manifest.
+
+This intentionally replaces the current branch's same-change 499-vector
+corpus with a checkpoint for the already-stable target-branch idea. The newer
+draft specification and checker work remain at current HEAD without claiming
+that the snapshot covers them. After the infrastructure merges, a later
+periodic reconciliation may select the merge commit or any newer stable target
+commit and replace the rolling snapshot again.
+
+The bootstrap source predates executable `conformance_checks` declarations, so
+the first 482-vector snapshot executes zero declared reference-checker cases.
+This is visible, not silent: validation and reports assert and display the
+executed declaration count. Corpus-wide static gates still run. A later
+reconciliation that selects a source carrying declarations ratchets the count
+upward; the snapshot packager does not invent declarations absent from its
+source behavior.
 
 Old snapshots need not remain addressable through current paths or CI. They
 remain inspectable in Git history, with no promise of continued tooling support
@@ -263,8 +336,14 @@ Unit tests cover:
 
 - closed snapshot-manifest shape, full-SHA syntax, path safety, ordering,
   duplicate paths, counts, and exact digests;
-- rejection of missing, non-ancestor, or transient/unavailable source commits;
+- rejection of missing, non-ancestor, or unavailable source commits;
 - source-versus-snapshot root separation;
+- snapshot-commit derivation before and after a simulated squash-shaped
+  history;
+- behavior-neutral normalization of a schema-1.0 source vector into the
+  schema-2.0 snapshot envelope;
+- exact agreement among every vector's envelope version, the packaged vector
+  schema, and the manifest's `vector_schema_version`;
 - spec-reference resolution at the pinned commit despite conflicting current
   HEAD anchors;
 - byte regeneration from pinned generator inputs;
@@ -277,7 +356,9 @@ Integration tests prove:
 - the same edit does not silently change the pinned snapshot's interpretation;
 - a reconciliation from a stable source commit updates the rolling snapshot;
 - current generator changes do not affect an older snapshot until selected in
-  a later source commit; and
+  a later source commit;
+- first-snapshot and replacement-snapshot authoring followed by history-bound
+  checking, including a synthetic squash-shaped final tree; and
 - GitHub and Radicle invoke the same two-lane entry point.
 
 ## Migration of the current draft PR
