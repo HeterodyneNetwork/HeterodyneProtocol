@@ -40,6 +40,8 @@ const VECTOR_PATHS = [
 const SOURCE_COMMIT = "1".repeat(40);
 const SNAPSHOT_META_SCHEMA_ID =
   "https://heterodyne.network/schemas/vector-snapshot-manifest-meta-v1.schema.json";
+const DRAFT_2020_12_CORE_VOCABULARY_ID =
+  "https://json-schema.org/draft/2020-12/vocab/core";
 const UNIQUE_BY_PATH_VOCABULARY_ID =
   "https://heterodyne.network/vocab/unique-by-path-v1";
 const repositoryRoot = resolve(import.meta.dirname, "../../../../../");
@@ -242,8 +244,6 @@ describe("snapshot manifest", () => {
 
     expect(stock.validateSchema(vocabularyMeta)).toBe(true);
     expect(stock.validateSchema(dialectMeta)).toBe(true);
-    expect((vocabularyMeta.$vocabulary as Record<string, unknown>)[UNIQUE_BY_PATH_VOCABULARY_ID])
-      .toBe(true);
     expect((dialectMeta.$vocabulary as Record<string, unknown>)[UNIQUE_BY_PATH_VOCABULARY_ID])
       .toBe(true);
     stock.addMetaSchema(vocabularyMeta);
@@ -252,6 +252,20 @@ describe("snapshot manifest", () => {
     expect(validateVocabularySchema({ "x-unique-by": "path" })).toBe(true);
     expect(validateVocabularySchema({ "x-unique-by": "sha256" })).toBe(false);
     expect(validateVocabularySchema({ "x-undeclared": true })).toBe(false);
+  });
+
+  it("requires Core in every published vocabulary declaration", () => {
+    const metaSchemas = [
+      readRepositoryJson("docs/spec/vectors/snapshot-unique-by-path.meta.schema.json"),
+      readRepositoryJson("docs/spec/vectors/snapshot.meta.schema.json"),
+    ];
+
+    for (const metaSchema of metaSchemas) {
+      if (metaSchema.$vocabulary === undefined) continue;
+      expect(metaSchema.$vocabulary).toEqual(expect.objectContaining({
+        [DRAFT_2020_12_CORE_VOCABULARY_ID]: true,
+      }));
+    }
   });
 
   it("fails closed when a validator lacks the required unique-by-path vocabulary", () => {
