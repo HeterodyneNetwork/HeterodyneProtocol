@@ -36,9 +36,9 @@ The three isolated roots have different authority:
   only the packager and its lockfile for historical package validation.
 
 The manifest does not assert its own snapshot commit. `snapshot-check` derives
-that runtime identity as the last commit that changed `snapshot.json`
-(currently `5d4bb5fb58b35c88d8a9db120a09f1087237f35c`), requires the working
-manifest bytes to match that commit, and passes explicit source/snapshot roots
+and prints that runtime identity as the last commit that changed `snapshot.json`;
+it may change when commits are squashed. The check requires the working
+manifest bytes to match that commit and passes explicit source/snapshot roots
 and both commit identities to the independent conformance runtime. The pinned
 source predates executable `conformance_checks`, so this bootstrap executes
 zero declared reference-checker cases. Corpus-wide static gates still execute.

@@ -187,6 +187,21 @@ function hasForbiddenExecutableContent(content: string): boolean {
   return FORBIDDEN_EXECUTABLE_CONTENT.test(content);
 }
 
+function hasCrossPackageImport(
+  source: string,
+  forbiddenPackage: string,
+  forbiddenPath: string,
+): boolean {
+  const moduleSpecifiers = source.matchAll(
+    /\b(?:from\s+|import\s*(?:\(\s*)?)(["'])([^"'\n]+)\1/gu,
+  );
+  return [...moduleSpecifiers].some(([, , specifier]) =>
+    specifier === forbiddenPackage
+    || specifier?.startsWith(`${forbiddenPackage}/`) === true
+    || specifier?.includes(forbiddenPath) === true
+  );
+}
+
 describe("shared conformance CI configuration", () => {
   it("keeps gate and subject unit tests independent of live vector documents", () => {
     const unitRoots = [
@@ -217,11 +232,37 @@ describe("shared conformance CI configuration", () => {
       join(repositoryRoot, "docs/spec/vectors/generator/src"),
     );
     expect(conformanceSources.filter((path) =>
-      /(?:from\s+|import\()["'][^"']*vectors\/generator/u.test(readFileSync(path, "utf8"))
+      hasCrossPackageImport(
+        readFileSync(path, "utf8"),
+        "@heterodyne/vector-generator",
+        "vectors/generator",
+      )
     )).toEqual([]);
     expect(generatorSources.filter((path) =>
-      /(?:from\s+|import\()["'][^"']*conformance/u.test(readFileSync(path, "utf8"))
+      hasCrossPackageImport(
+        readFileSync(path, "utf8"),
+        "@heterodyne/conformance",
+        "conformance",
+      )
     )).toEqual([]);
+  });
+
+  it.each([
+    ["the generator package name", 'import value from "@heterodyne/vector-' + 'generator"'],
+    [
+      "whitespace before a dynamic import paren",
+      'const value = await import ("../vectors/' + 'generator/src/author.js")',
+    ],
+    [
+      "whitespace after a dynamic import paren",
+      'const value = await import(  "../vectors/' + 'generator/src/author.js")',
+    ],
+  ])("detects cross-package imports through %s", (_label, source) => {
+    expect(hasCrossPackageImport(
+      source,
+      "@heterodyne/vector-generator",
+      "vectors/generator",
+    )).toBe(true);
   });
 
   it("runs locked installs, draft validation, snapshot validation, build, and tests in order", () => {

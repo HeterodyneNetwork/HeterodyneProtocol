@@ -17,6 +17,7 @@ import {
   authorSnapshot,
   checkSnapshot,
   deriveSnapshotCommit,
+  formatSnapshotCheckSuccess,
   generateSourceVectors,
   runHistoricalPackageCheck,
   runConformanceCommand,
@@ -87,6 +88,16 @@ function writeSnapshot(root: string, sourceCommit: string, marker = "one"): void
 }
 
 describe("snapshot history", () => {
+  it("reports the pinned source commit in snapshot-check success output", () => {
+    expect(formatSnapshotCheckSuccess({
+      manifest: { vector_count: 482 } as never,
+      sourceCommit: "1".repeat(40),
+      snapshotCommit: "2".repeat(40),
+    })).toBe(
+      `verified 482 vectors from source ${"1".repeat(40)} at snapshot ${"2".repeat(40)}`,
+    );
+  });
+
   it("accepts first-snapshot authoring from an ancestor without deriving a snapshot commit", () => {
     const { root, sourceCommit } = repository();
 

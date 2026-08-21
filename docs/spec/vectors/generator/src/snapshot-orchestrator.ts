@@ -24,6 +24,11 @@ export type SnapshotHistory = {
   snapshotCommit: string;
 };
 
+export function formatSnapshotCheckSuccess(history: SnapshotHistory): string {
+  return `verified ${history.manifest.vector_count} vectors from source ${history.sourceCommit}`
+    + ` at snapshot ${history.snapshotCommit}`;
+}
+
 export type CommandRunner = (
   command: string,
   args: string[],

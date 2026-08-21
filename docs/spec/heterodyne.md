@@ -50,11 +50,9 @@ the one registry revision recorded in
 normative authority at these repository paths. All prepared artifacts remain
 unreleased pending explicit release approval.
 
-The one content-addressed family release record is
-[`releases/family/0.5.0.json`](releases/family/0.5.0.json). It pins the complete
-normative corpus by repository-relative path and SHA-256 under the closed
-[`family release manifest schema`](releases/family-release-manifest.schema.json);
-it does not release the five sections independently.
+No pre-1.0 release manifest exists. The five specifications, protocol schemas,
+and registry remain the current authority; release and compatibility metadata
+is deferred to the future 1.0 policy.
 
 ## Conformance classes
 
@@ -91,9 +89,8 @@ canonical policy lists affect local visibility.
 ## Machine-readable material
 
 - Current registry pin: [`registry/manifest.json`](registry/manifest.json)
-- Family release manifest: [`releases/family/0.5.0.json`](releases/family/0.5.0.json)
 - Registry entries and schemas: [`registry/`](registry/)
-- Normative vector corpus: [`vectors/`](vectors/)
+- Rolling non-normative validation snapshot: [`vectors/`](vectors/)
 - Machine-readable family vector coverage: [`vectors/coverage/manifest.json`](vectors/coverage/manifest.json)
 - Human-readable family vector coverage: [`vectors/coverage/family.md`](vectors/coverage/family.md)
 - Per-document coverage maps: [`vectors/coverage/`](vectors/coverage/)

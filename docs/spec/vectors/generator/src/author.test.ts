@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -181,6 +181,39 @@ describe("author mode", () => {
       .toBe("new manifest\n");
     expect(await readFile(join(repositoryRoot, "docs/spec/vectors/snapshot.schema.json"), "utf8"))
       .toBe("meta schema\n");
+  });
+
+  it("rejects a symlinked destination parent before the first move", async () => {
+    const repositoryRoot = await mkdtemp(join(tmpdir(), "heterodyne-replace-repo-"));
+    const stagedRoot = await mkdtemp(join(tmpdir(), "heterodyne-replace-stage-"));
+    const outsideRoot = await mkdtemp(join(tmpdir(), "heterodyne-replace-outside-"));
+    tempDirs.push(repositoryRoot, stagedRoot, outsideRoot);
+    await writeTreeFile(repositoryRoot, "docs/spec/vectors/fixtures.json", "old fixtures\n");
+    await writeTreeFile(repositoryRoot, "docs/spec/vectors/schema/placeholder", "inside\n");
+    await rm(join(repositoryRoot, "docs/spec/vectors/schema"), { recursive: true });
+    await writeTreeFile(outsideRoot, "vector.schema.json", "outside sentinel\n");
+    await symlink(outsideRoot, join(repositoryRoot, "docs/spec/vectors/schema"), "dir");
+    await writeTreeFile(stagedRoot, "docs/spec/vectors/fixtures.json", "new fixtures\n");
+    await writeTreeFile(
+      stagedRoot,
+      "docs/spec/vectors/schema/vector.schema.json",
+      "new schema\n",
+    );
+    let moves = 0;
+
+    await expect(replaceSnapshotData(repositoryRoot, stagedRoot, {
+      async rename(from, to) {
+        moves += 1;
+        const { rename } = await import("node:fs/promises");
+        await rename(from, to);
+      },
+    })).rejects.toThrow(/unsafe snapshot destination parent.*symbolic link/i);
+
+    expect(moves).toBe(0);
+    expect(await readFile(join(outsideRoot, "vector.schema.json"), "utf8"))
+      .toBe("outside sentinel\n");
+    expect(await readFile(join(repositoryRoot, "docs/spec/vectors/fixtures.json"), "utf8"))
+      .toBe("old fixtures\n");
   });
 
   it("rolls back a newly installed top-level vector when a later move fails", async () => {

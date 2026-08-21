@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { Registry } from "./registry.js";
 import type { DocumentId } from "./types.js";
 
-/** Registry allocations awaiting normative vectors. */
+/** Registry allocations awaiting current-draft vectors. */
 export const PENDING_PROFILE_IDS = [] as const;
 
 /** Registered profiles intentionally excluded from conformance. */

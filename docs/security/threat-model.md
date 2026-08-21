@@ -58,7 +58,7 @@ Pre-1.0 validation uses two read-only lanes so stale evidence cannot silently
 override the live draft. The current-draft lane checks current prose, registry,
 protocol schemas, and generator inputs. The history-bound lane checks the one
 rolling non-normative snapshot against its exact source. Ordinary draft changes
-do not mutate snapshot or release metadata.
+do not mutate snapshot evidence.
 
 The closed `docs/spec/vectors/snapshot.json` manifest pins
 `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43` and digest-binds 493 artifacts,

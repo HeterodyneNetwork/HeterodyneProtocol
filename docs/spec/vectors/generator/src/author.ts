@@ -155,8 +155,20 @@ export async function replaceSnapshotData(
     throw new Error("snapshot staging root must be outside the repository");
   }
   const move = operations.rename ?? rename;
-  const backupRoot = await mkdtemp(join(dirname(repository), ".heterodyne-snapshot-backup-"));
   const paths = await replacementPaths(repository, staging);
+  const targetParents = [...new Set(paths.map((path) =>
+    dirname(join(repository, ...path.split("/")))
+  ))];
+  // Inspect the complete destination set before creating a directory or moving
+  // a byte. Otherwise an early valid target can be installed before a later
+  // symlinked parent is discovered.
+  for (const parent of targetParents) {
+    await assertSafeDestinationParent(repository, parent, true);
+  }
+  for (const parent of targetParents) {
+    await ensureSafeDestinationParent(repository, parent);
+  }
+  const backupRoot = await mkdtemp(join(dirname(repository), ".heterodyne-snapshot-backup-"));
   const applied: Array<{ path: string; oldMoved: boolean; newMoved: boolean }> = [];
   try {
     for (const path of paths) {
@@ -165,13 +177,14 @@ export async function replaceSnapshotData(
       const backup = join(backupRoot, ...path.split("/"));
       const state = { path, oldMoved: false, newMoved: false };
       applied.push(state);
+      await assertSafeDestinationParent(repository, dirname(target));
       if (await pathExists(target)) {
         await mkdir(dirname(backup), { recursive: true });
         await move(target, backup);
         state.oldMoved = true;
       }
       if (await pathExists(staged)) {
-        await mkdir(dirname(target), { recursive: true });
+        await assertSafeDestinationParent(repository, dirname(target));
         await move(staged, target);
         state.newMoved = true;
       }
@@ -183,16 +196,85 @@ export async function replaceSnapshotData(
       const backup = join(backupRoot, ...state.path.split("/"));
       if (state.newMoved && await pathExists(target)) {
         await mkdir(dirname(staged), { recursive: true });
+        await assertSafeDestinationParent(repository, dirname(target));
         await rename(target, staged);
       }
       if (state.oldMoved && await pathExists(backup)) {
-        await mkdir(dirname(target), { recursive: true });
+        await assertSafeDestinationParent(repository, dirname(target));
         await rename(backup, target);
       }
     }
     throw error;
   } finally {
     await rm(backupRoot, { recursive: true, force: true });
+  }
+}
+
+async function assertSafeDestinationParent(
+  repositoryRoot: string,
+  parent: string,
+  allowMissing = false,
+): Promise<void> {
+  const relativeParent = relative(repositoryRoot, parent);
+  if (
+    relativeParent === ".."
+    || relativeParent.startsWith(`..${sep}`)
+    || resolve(repositoryRoot, relativeParent) !== resolve(parent)
+  ) {
+    throw new Error(`unsafe snapshot destination parent escapes repository: ${parent}`);
+  }
+
+  const components = relativeParent === "" ? [] : relativeParent.split(sep);
+  let current = repositoryRoot;
+  for (const component of ["", ...components]) {
+    if (component !== "") current = join(current, component);
+    let entry;
+    try {
+      entry = await lstat(current);
+    } catch (error) {
+      if (
+        allowMissing
+        && error !== null
+        && typeof error === "object"
+        && "code" in error
+        && error.code === "ENOENT"
+      ) {
+        return;
+      }
+      throw error;
+    }
+    if (entry.isSymbolicLink()) {
+      throw new Error(`unsafe snapshot destination parent is a symbolic link: ${current}`);
+    }
+    if (!entry.isDirectory()) {
+      throw new Error(`unsafe snapshot destination parent is not a directory: ${current}`);
+    }
+  }
+}
+
+async function ensureSafeDestinationParent(
+  repositoryRoot: string,
+  parent: string,
+): Promise<void> {
+  const relativeParent = relative(repositoryRoot, parent);
+  const components = relativeParent === "" ? [] : relativeParent.split(sep);
+  let current = repositoryRoot;
+  await assertSafeDestinationParent(repositoryRoot, current);
+  for (const component of components) {
+    current = join(current, component);
+    try {
+      await mkdir(current);
+    } catch (error) {
+      if (
+        error === null
+        || typeof error !== "object"
+        || !("code" in error)
+        || error.code !== "EEXIST"
+      ) {
+        throw error;
+      }
+    }
+    await assertSafeDestinationParent(repositoryRoot, current);
   }
 }
 

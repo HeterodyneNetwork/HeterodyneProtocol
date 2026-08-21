@@ -106,9 +106,16 @@ const RETIRED_MAINTAINED_GUIDE_PATTERNS = [
   /supplies exactly four things/i,
   /claim profile registry revision/i,
   /dependency versions above/i,
-  /conformance vectors are normative for current draft behavior/i,
+  /(?:committed JSON |conformance )?vectors? (?:are|is) the normative artifacts?/i,
+  /normative vector corpus/i,
   /wire-level changes require corresponding normative vector changes/i,
-  /run release-author and release-check before merging/i,
+  /npm --prefix docs\/spec\/vectors\/generator run release-(?:author|check|manifests)/i,
+  /(?:docs\/spec\/)?releases\/family\/0\.5\.0\.json/i,
+  /family-release-manifest\.schema\.json/i,
+  /family release manifest/i,
+  /one content-addressed family release record/i,
+  /protocol authority[^\n]*release metadata[^\n]*conformance vectors/i,
+  /recheck the named family release/i,
 ];
 
 function displayPath(repoRoot: string, path: string): string {
@@ -599,7 +606,10 @@ export function lintMaintainedGuides(
   const guides = [
     "AGENTS.md",
     "README.md",
+    "docs/adr/README.md",
+    "docs/spec/heterodyne.md",
     "docs/spec/vectors/README.md",
+    "docs/spec/vectors/generator/README.md",
     "docs/spec/extensions/nips/README.md",
     "docs/glossary.md",
     "docs/security/threat-model.md",

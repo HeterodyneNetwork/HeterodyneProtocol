@@ -56,7 +56,7 @@ profile, or Social. Claims also name required features.
 **Current-draft lane.** The read-only check of current specification prose,
 registry, protocol schemas, and generator inputs. It is independent of the
 rolling snapshot, so an ordinary pre-1.0 draft change does not regenerate
-vectors or release metadata.
+snapshot vectors.
 
 **Rolling validation snapshot.** The one supported, non-normative pre-1.0
 vector checkpoint under `docs/spec/vectors/`. Its closed `snapshot.json`

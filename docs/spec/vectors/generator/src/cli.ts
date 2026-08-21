@@ -6,7 +6,11 @@ import { writeWorkspaceSchemas } from "./workspace-schemas.js";
 import { verifyVectorTree } from "./verify.js";
 import { writeCoverage } from "./coverage.js";
 import { authorRegistryRevision } from "./registry.js";
-import { authorSnapshot, checkSnapshot } from "./snapshot-orchestrator.js";
+import {
+  authorSnapshot,
+  checkSnapshot,
+  formatSnapshotCheckSuccess,
+} from "./snapshot-orchestrator.js";
 import { snapshotPackageCheck } from "./verify.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -64,7 +68,7 @@ if (command === "author") {
 } else if (command === "snapshot-check") {
   const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
   const history = await checkSnapshot(repositoryRoot);
-  console.log(`verified ${history.manifest.vector_count} vectors at ${history.snapshotCommit}`);
+  console.log(formatSnapshotCheckSuccess(history));
 } else if (command === "snapshot-package-check") {
   const flags = parseFlags(process.argv.slice(3));
   const rawRoot = flags?.get("--raw-root");

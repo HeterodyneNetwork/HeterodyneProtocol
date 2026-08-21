@@ -29,9 +29,10 @@ corpus-wide structural coverage and an explicit boundary for executable Core
 signed-event verification.
 
 The approved design therefore introduces `docs/spec/conformance/` as an
-independent, read-only checker. It reads committed specifications, registry
-entries, schemas, fixtures, release metadata, and vectors, but does not import
-source, build output, fixtures, helpers, or runtime values from the generator.
+independent, read-only checker. It reads specifications and authoritative
+registry and schema inputs from the pinned source commit, then fixtures and
+vectors from the rolling snapshot, but does not import source, build output,
+fixtures, helpers, or runtime values from the generator.
 Its gates report stable failure keys, and measured debt is retained in
 ratcheted baselines so new or silently resolved debt cannot pass unnoticed.
 The optional `conformance_checks` declaration makes Core checker applicability
@@ -54,8 +55,12 @@ pre-1.0 compatibility promise.
 - GitHub Actions and Radicle share one read-only shell gate, reducing drift in
   integration checks while leaving existing generator checks intact.
 - The conformance package, its baselines, and its reports are tooling rather
-  than normative family artifacts. The live specifications, registry, schemas,
-  release metadata, and vectors remain the protocol authority.
+  than normative family artifacts. The live specifications, registry, and
+  protocol schemas remain the protocol authority; the rolling vectors are
+  non-normative evidence for their pinned source commit.
+- No pre-1.0 release manifest exists. Periodic reconciliation is author,
+  review, commit, then `snapshot-check`; ordinary specification changes are
+  independent of that cycle.
 - This record does not create compatibility semantics for pre-1.0 snapshots,
   and it does not authorize deployment or publishing.
 

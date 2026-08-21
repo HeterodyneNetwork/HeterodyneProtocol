@@ -21,9 +21,8 @@ artifacts:
   inputs: live normative machine-readable artifacts for the current draft.
 
 [`docs/spec/vectors/`](docs/spec/vectors/) is the one rolling, non-normative
-pre-1.0 validation snapshot. [`docs/spec/releases/`](docs/spec/releases/)
-contains prepared release metadata, but neither tree adds authority to the
-current draft.
+pre-1.0 validation snapshot. No pre-1.0 release manifest exists, and the
+snapshot does not add authority to the current draft.
 
 The family composition direction is below. Workspace requires Core+Comms;
 its Control and Social compositions are optional.
@@ -49,8 +48,7 @@ governs.
    branch and patch or pull request.
 3. Update only affected live draft artifacts: specification prose, registry
    entries, protocol schemas, and source generator inputs. An ordinary
-   pre-1.0 change does not update vectors, snapshot metadata, or release
-   metadata.
+   pre-1.0 change does not update vectors or snapshot metadata.
 4. Review the ADR, when present, and complete specification patch together.
 5. Once an ADR is accepted, mark it accepted and move it to
    [`docs/adr/archive/`](docs/adr/archive/) before merge.

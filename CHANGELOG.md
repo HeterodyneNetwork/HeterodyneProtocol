@@ -27,6 +27,11 @@ family map, and the single registry pin is
   generator and independent conformance checks in a fixed, fail-fast order.
   The gate performs no publishing, deployment, release, tag, push, or remote
   configuration operation.
+- No pre-1.0 release manifest exists. The rolling, non-normative snapshot pins
+  source commit `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43` and contains 482
+  vectors, 493 digest-bound artifacts, and zero executable declarations.
+  Reconciliation is author, review, commit, then `snapshot-check`; ordinary
+  draft changes remain independent of it.
 
 ### Accepted protocol stabilization
 
@@ -35,7 +40,8 @@ family map, and the single registry pin is
   owners are [Core versioning](docs/spec/heterodyne-core.md#core-versioning),
   [Core key envelope](docs/spec/heterodyne-core.md#core-key-envelope),
   [Control token](docs/spec/heterodyne-control.md#control-token), and the
-  [family release manifest](docs/spec/releases/family/0.5.0.json).
+  current registry pin in
+  [`docs/spec/registry/manifest.json`](docs/spec/registry/manifest.json).
 
 ### Deduplication and single sources of truth
 
@@ -100,10 +106,9 @@ family map, and the single registry pin is
   `heterodyne:0.5.0#core-document-conventions`; the other four documents
   reference it instead of restating it. The generic conformance-report
   requirements now live only in `heterodyne:0.5.0#core-conformance`.
-- Deleted the five per-document release manifests and
-  `docs/spec/registry/history/`. The former release metadata is replaced by
-  one content-addressed family release manifest; pre-1.0 registry history
-  snapshots would enforce immutability over revisions that never shipped.
+- Deleted the five per-document manifests and `docs/spec/registry/history/`.
+  No pre-1.0 release manifest replaces them; pre-1.0 registry history snapshots
+  would enforce immutability over revisions that never shipped.
 - Qualified references are now `heterodyne:<semver>#<anchor>`. The anchor
   prefix already names the owning document, so a reference no longer names it
   twice, and the layering check reads the prefix.

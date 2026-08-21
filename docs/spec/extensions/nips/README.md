@@ -12,8 +12,8 @@ Family documents are
 and [Workspace](../../heterodyne-workspace.md).
 
 The family version and permanent anchor in each row replace stale monolith
-section references. A proposal must recheck the named family release before
-extracting behavior.
+section references. A proposal must recheck the current specification anchor
+and registry allocation before extracting behavior.
 
 ## Candidate extractions
 

@@ -28,10 +28,48 @@ describe("canonical family documentation", () => {
     ["CHANGELOG.md", "comms.node-scoped-jwt.v1 owns the node-local token."],
     ["CHANGELOG.md", "Each key-envelope site supplies exactly four things."],
     ["CHANGELOG.md", "The fixed v1 claim profile registry revision is 2."],
-    ["README.md", "Conformance vectors are normative for current draft behavior."],
-    ["AGENTS.md", "Wire-level changes require corresponding normative vector changes."],
-    ["docs/spec/vectors/README.md", "Run release-author and release-check before merging."],
   ])("rejects retired live model prose in %s", (path, retiredText) => {
+    const issues = lintMaintainedGuides(repositoryRoot, {
+      [path]: `${read(path)}\n${retiredText}\n`,
+    });
+    expect(issues).toContainEqual(expect.objectContaining({
+      path,
+      code: "retired-authoring-model",
+    }));
+  });
+
+  it.each([
+    [
+      "README.md",
+      "The prepared family release manifest at `docs/spec/releases/family/0.5.0.json` pins the complete normative corpus.",
+    ],
+    ["AGENTS.md", "Wire-level changes require corresponding normative vector changes."],
+    [
+      "docs/spec/heterodyne.md",
+      "The one content-addressed family release record is `releases/family/0.5.0.json`.",
+    ],
+    [
+      "docs/spec/vectors/README.md",
+      "npm --prefix docs/spec/vectors/generator run release-author\n"
+        + "npm --prefix docs/spec/vectors/generator run release-check",
+    ],
+    [
+      "docs/spec/vectors/generator/README.md",
+      "The committed JSON vectors are the normative artifact.",
+    ],
+    [
+      "docs/adr/README.md",
+      "The current protocol authority is the versioned specification family and its normative registries, schemas, release metadata, and conformance vectors.",
+    ],
+    [
+      "docs/spec/extensions/nips/README.md",
+      "A proposal must recheck the named family release before extracting behavior.",
+    ],
+    [
+      "CHANGELOG.md",
+      "[family release manifest](docs/spec/releases/family/0.5.0.json)",
+    ],
+  ])("rejects former release-coupled snapshot guidance in %s", (path, retiredText) => {
     const issues = lintMaintainedGuides(repositoryRoot, {
       [path]: `${read(path)}\n${retiredText}\n`,
     });
