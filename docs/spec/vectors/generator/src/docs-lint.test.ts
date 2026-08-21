@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -6,17 +6,39 @@ import {
   findStrictProfileClosureIssues,
   lintFamilyDocs,
   lintMaintainedGuides,
-  lintReleaseReadiness,
 } from "./docs-lint.js";
 import { loadRegistry } from "./registry.js";
 
 const repositoryRoot = resolve(import.meta.dirname, "../../../../../");
 const read = (path: string) => readFileSync(resolve(repositoryRoot, path), "utf8");
 
+function filesUnder(path: string): string[] {
+  const absolute = resolve(repositoryRoot, path);
+  return readdirSync(absolute, { withFileTypes: true }).flatMap((entry) => {
+    const child = `${path}/${entry.name}`;
+    return entry.isDirectory() ? filesUnder(child) : entry.isFile() ? [child] : [];
+  });
+}
+
 describe("canonical family documentation", () => {
-  it("passes layering, anchor, and release-readiness lint", () => {
+  it("keeps the draft package command independent of obsolete release readiness", () => {
+    const packageJson = JSON.parse(read("docs/spec/vectors/generator/package.json")) as {
+      scripts: Record<string, string>;
+    };
+    const obsoleteInvocation = ["lint", "Release", "Readiness"].join("");
+    const entrypoints = [
+      "docs/spec/vectors/generator/src/cli.ts",
+      ...filesUnder("docs/spec/vectors/generator/src")
+        .filter((path) => path.endsWith(".test.ts")),
+    ];
+
+    expect(packageJson.scripts["draft:check"])
+      .toBe("npm run build && npm test && npm run family:check");
+    expect(entrypoints.filter((path) => read(path).includes(obsoleteInvocation))).toEqual([]);
+  });
+
+  it("passes layering and anchor lint", () => {
     expect(lintFamilyDocs(repositoryRoot)).toEqual([]);
-    expect(lintReleaseReadiness(repositoryRoot)).toEqual([]);
   });
 
   it("keeps maintained authoring guides on the single-family model", () => {
