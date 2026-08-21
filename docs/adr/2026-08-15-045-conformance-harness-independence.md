@@ -1,19 +1,23 @@
 # ADR-045: Independent conformance harness and shared CI gate
 
-**Status:** Accepted
+**Status:** Proposed
 **Date:** 2026-08-15
 
-This archived record captures the decision at acceptance time. It is
-non-canonical; the live specification family and normative artifacts contain
-the complete protocol.
+This proposed record is non-canonical. The live specification family and
+normative artifacts contain the complete protocol.
 
 ## Decision
 
-Add a standalone conformance package that imports no generator code, applies
-corpus-wide gates, runs explicitly declared Core signed-event checks, and
-ratchets measured debt. GitHub and Radicle invoke one read-only shell gate.
-Registry revision 13 and vector schema 1.1.0 ship in the same patch; live
-specifications and artifacts remain authoritative.
+Maintain a standalone conformance package that imports no generator code,
+applies corpus-wide gates, runs explicitly declared Core signed-event checks,
+and ratchets measured debt. The checks cover the current repository HEAD as a
+draft and can also validate an exact-commit snapshot. GitHub and Radicle invoke
+one read-only shell gate.
+
+During the pre-1.0 phase, maintain one rolling snapshot at a time. Replacing
+that snapshot does not establish compatibility semantics, and no pre-1.0
+snapshot is an immutable compatibility target. This decision does not deploy,
+publish, release, tag, push, or configure a remote service.
 
 ## Context
 
@@ -33,6 +37,11 @@ ratcheted baselines so new or silently resolved debt cannot pass unnoticed.
 The optional `conformance_checks` declaration makes Core checker applicability
 explicit rather than inferred from vector topic, description, or shape.
 
+The lifecycle is intentionally rolling before 1.0: draft checks describe the
+current HEAD, while exact-commit checks provide a reproducible snapshot. The
+rolling snapshot may be replaced as the protocol evolves; it is not a
+pre-1.0 compatibility promise.
+
 ## Consequences
 
 - The conformance package deliberately duplicates some generator coverage so
@@ -40,14 +49,15 @@ explicit rather than inferred from vector topic, description, or shape.
 - Every committed vector remains subject to static corpus-wide gates, while
   only vectors carrying the declared Core signed-event profile are executed by
   the initial reference subject.
-- Registry revision 13 and vector schema 1.1.0 are coupled to the patch; the
-  family version remains `heterodyne/0.5.0` and its release remains
-  unreleased.
+- Current-HEAD draft checks and exact-commit snapshot checks are both
+  reproducible within the repository's pre-1.0 rolling lifecycle.
 - GitHub Actions and Radicle share one read-only shell gate, reducing drift in
   integration checks while leaving existing generator checks intact.
 - The conformance package, its baselines, and its reports are tooling rather
   than normative family artifacts. The live specifications, registry, schemas,
   release metadata, and vectors remain the protocol authority.
+- This record does not create compatibility semantics for pre-1.0 snapshots,
+  and it does not authorize deployment or publishing.
 
 ## No-deployment scope
 
@@ -58,10 +68,8 @@ nodes, containers, or delegates.
 
 ## Acceptance and archive condition
 
-This ADR remained proposed while the integrated implementation was reviewed.
-Once the standalone package, registry revision 13, vector schema 1.1.0,
-coupled vectors, shared CI gate, and repository guidance were complete and the
-family and conformance checks passed, the record was accepted and moved to
-`docs/adr/archive/`. The accepted ADR is historical context only;
-the specification and normative machine-readable artifacts must stand on
-their own and must not depend on this record.
+This ADR remains Proposed while the amended lifecycle and integrated
+implementation are reviewed. It may be accepted and moved to
+`docs/adr/archive/` only after the implementation and review gates pass. The
+specification and normative machine-readable artifacts must stand on their own
+and must not depend on this record.

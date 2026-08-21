@@ -15,16 +15,13 @@ explicit release approval.
 family map, and the single registry pin is
 [`docs/spec/registry/manifest.json`](docs/spec/registry/manifest.json).
 
-### Accepted independent conformance CI
+### Proposed rolling conformance snapshot lifecycle
 
-- [ADR-045](docs/adr/archive/2026-08-15-045-conformance-harness-independence.md)
-  records the accepted independent, read-only conformance gate: Core
-  verification is anchored by the
-  [Core specification](docs/spec/heterodyne-core.md), the
-  [registry manifest](docs/spec/registry/manifest.json), the
-  [vector schema](docs/spec/vectors/schema/vector.schema.json), and the
-  [conformance package](docs/spec/conformance/). These links identify the
-  implementation and normative owners without duplicating their rules.
+- [ADR-045](docs/adr/2026-08-15-045-conformance-harness-independence.md) is
+  proposed while the independent conformance gate is integrated and reviewed.
+  Its lifecycle covers current-HEAD draft checks and reproducible exact-commit
+  checks, with one rolling pre-1.0 snapshot. Replacing that snapshot does not
+  establish pre-1.0 compatibility semantics.
 - Added one repository-local `scripts/conformance-ci.sh` job body shared by
   GitHub and Radicle. It installs both locked tool packages and runs the
   generator and independent conformance checks in a fixed, fail-fast order.
