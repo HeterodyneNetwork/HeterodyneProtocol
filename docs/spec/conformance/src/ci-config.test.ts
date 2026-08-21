@@ -14,6 +14,7 @@ import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
+import { parse } from "yaml";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
 const temporaryDirectories: string[] = [];
@@ -121,18 +122,66 @@ function hasOnlyReadContentsPermission(workflow: string): boolean {
   return entries.length === 1 && entries[0] === "  contents: read";
 }
 
+type WorkflowExecutables = {
+  actions: string[];
+  runs: string[];
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function collectWorkflowExecutables(workflow: string): WorkflowExecutables | undefined {
+  let document: unknown;
+  try {
+    document = parse(workflow, { merge: true }) as unknown;
+  } catch {
+    return undefined;
+  }
+  if (!isRecord(document) || !isRecord(document.jobs)) return undefined;
+
+  const actions: string[] = [];
+  const runs: string[] = [];
+  const collect = (value: Record<string, unknown>): boolean => {
+    if (Object.hasOwn(value, "uses")) {
+      if (typeof value.uses !== "string") return false;
+      actions.push(value.uses);
+    }
+    if (Object.hasOwn(value, "run")) {
+      if (typeof value.run !== "string") return false;
+      runs.push(value.run);
+    }
+    return true;
+  };
+
+  for (const job of Object.values(document.jobs)) {
+    if (!isRecord(job) || !collect(job)) return undefined;
+    if (job.steps === undefined) continue;
+    if (!Array.isArray(job.steps)) return undefined;
+    for (const step of job.steps) {
+      if (!isRecord(step) || !collect(step)) return undefined;
+    }
+  }
+  return { actions, runs };
+}
+
 function hasOnlyAllowedWorkflowActions(workflow: string): boolean {
-  const actions = Array.from(
-    workflow.matchAll(/^\s*(?:-\s*)?(?:uses|"uses"|'uses')\s*:\s*["']?([^"'#\s]+)["']?/gm),
-    (match) => match[1],
-  );
-  return actions.length === 2
-    && actions[0] === "actions/checkout@v4"
-    && actions[1] === "actions/setup-node@v4";
+  const executables = collectWorkflowExecutables(workflow);
+  return executables !== undefined
+    && executables.actions.length === 2
+    && executables.actions[0] === "actions/checkout@v4"
+    && executables.actions[1] === "actions/setup-node@v4";
+}
+
+function hasOnlyAllowedWorkflowRuns(workflow: string): boolean {
+  const executables = collectWorkflowExecutables(workflow);
+  return executables !== undefined
+    && executables.runs.length === 1
+    && executables.runs[0] === "scripts/conformance-ci.sh";
 }
 
 const FORBIDDEN_EXECUTABLE_CONTENT =
-  /(?:npm\s+(?:publish|run\s+(?:author|deploy|publish|release|tag))|git\s+(?:add|commit|rm|tag|push|checkout|reset|clean)|snapshot-author|(?:^|[\n;&|])\s*(?:(?:run|"run"|'run')\s*:\s*)?(?:rm|publish|deploy|tag|push)(?:\s|$))/im;
+  /(?:\b(?:rm|publish|deploy|snapshot-author)\b|npm\s+run\s+(?:author|release|tag)|git\s+(?:add|commit|tag|push|checkout|reset|clean)|(?:^|[\n;&|])\s*(?:tag|push)(?:\s|$))/im;
 
 function hasForbiddenExecutableContent(content: string): boolean {
   return FORBIDDEN_EXECUTABLE_CONTENT.test(content);
@@ -311,11 +360,14 @@ fi`);
     expect(workflow).not.toContain("secrets");
     expect(workflow).not.toMatch(/^\s+ref:/m);
     expect(hasOnlyAllowedWorkflowActions(workflow)).toBe(true);
+    expect(hasOnlyAllowedWorkflowRuns(workflow)).toBe(true);
 
+    const workflowExecutables = collectWorkflowExecutables(workflow);
+    expect(workflowExecutables).toBeDefined();
     const executableJobBodies = [
       readRepositoryFile("scripts/conformance-ci.sh"),
       readRepositoryFile(".radicle/native.yaml"),
-      workflow,
+      ...(workflowExecutables?.runs ?? []),
     ].join("\n");
     expect(hasForbiddenExecutableContent(executableJobBodies)).toBe(false);
   });
@@ -329,6 +381,47 @@ fi`);
 
     expect(unsafeWorkflow).not.toBe(workflow);
     expect(hasOnlyAllowedWorkflowActions(unsafeWorkflow)).toBe(false);
+  });
+
+  it("treats flow-style and ordinary executable steps identically", () => {
+    const equivalentWorkflow = `jobs:
+  conformance:
+    steps:
+      - { uses: actions/checkout@v4 }
+      - uses: actions/setup-node@v4
+      - { run: scripts/conformance-ci.sh }
+`;
+
+    expect(hasOnlyAllowedWorkflowActions(equivalentWorkflow)).toBe(true);
+    expect(hasOnlyAllowedWorkflowRuns(equivalentWorkflow)).toBe(true);
+  });
+
+  it("rejects a flow-style publishing or deployment workflow action", () => {
+    const workflow = readRepositoryFile(".github/workflows/conformance.yml");
+    const unsafeWorkflow = workflow.replace(
+      "      - uses: actions/setup-node@v4",
+      "      - { uses: softprops/action-gh-release@v2 }\n      - uses: actions/setup-node@v4",
+    );
+
+    expect(unsafeWorkflow).not.toBe(workflow);
+    expect(hasOnlyAllowedWorkflowActions(unsafeWorkflow)).toBe(false);
+  });
+
+  it.each([
+    ["git rm", "git rm tracked.txt"],
+    ["shell rm", "rm tracked.txt"],
+  ])("rejects a flow-style %s workflow run", (_label, unsafeCommand) => {
+    const workflow = readRepositoryFile(".github/workflows/conformance.yml");
+    const unsafeWorkflow = workflow.replace(
+      "      - name: Run conformance",
+      `      - { run: "${unsafeCommand}" }\n      - name: Run conformance`,
+    );
+
+    expect(unsafeWorkflow).not.toBe(workflow);
+    expect(hasOnlyAllowedWorkflowRuns(unsafeWorkflow)).toBe(false);
+    const executables = collectWorkflowExecutables(unsafeWorkflow);
+    expect(executables).toBeDefined();
+    expect(hasForbiddenExecutableContent((executables?.runs ?? []).join("\n"))).toBe(true);
   });
 
   it.each([
