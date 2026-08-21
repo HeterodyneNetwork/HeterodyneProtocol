@@ -1,4 +1,7 @@
 import {
+  createHash,
+} from "node:crypto";
+import {
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -23,6 +26,7 @@ import { ALL_GATES, STATIC_GATES } from "./gates/index.js";
 import { runConformance } from "./run.js";
 import {
   createTestCorpus,
+  readTestManifest,
   vectorPath,
   vectorSchemaPath,
   writeText,
@@ -96,6 +100,21 @@ describe("split-root conformance integration", () => {
     expect(before.issues).toEqual([]);
   });
 
+  it("hashes only the sorted snapshot artifact array for projection identity", () => {
+    const input = corpus();
+    const artifacts = readTestManifest(input.snapshotRoot).artifacts;
+    const expected = createHash("sha256")
+      .update(`${JSON.stringify(artifacts, null, 2)}\n`, "utf8")
+      .digest("hex");
+    const before = runConformance(input);
+
+    writeText(input.sourceRoot, "docs/spec/heterodyne-core.md", "changed current draft bytes\n");
+    const after = runConformance(input);
+
+    expect(before.artifactSetSha256).toBe(expected);
+    expect(after.artifactSetSha256).toBe(expected);
+  });
+
   it("rejects current snapshot vector and packaged-schema edits by exact digest", () => {
     const input = corpus();
     writeText(input.snapshotRoot, vectorPath, `${readFileSync(join(
@@ -136,6 +155,8 @@ describe("split-root conformance integration", () => {
     expect(run.results.slice(STATIC_GATES.length)).toHaveLength(4);
     expect(run.results.slice(STATIC_GATES.length).every(({ failures }) => failures.length === 0))
       .toBe(true);
+    expect(run.vectorCount).toBe(1);
+    expect(run.executedDeclarationCount).toBe(0);
   });
 
   it("fails before conformance when history inputs are absent instead of substituting HEAD", () => {
@@ -176,6 +197,30 @@ describe("split-root conformance integration", () => {
       "G1 anchor-resolution baseline invalid :: baseline must be valid JSON",
       "projection invalid :: docs/spec/conformance/report.json :: invalid report shape",
       "projection missing :: docs/spec/conformance/DEBT.md",
+    ]));
+  });
+
+  it("rejects stale baseline identity and snapshot commits in committed projections", () => {
+    const input = projectedCorpus();
+    const baselinePath = "docs/spec/conformance/baselines/G1-anchor-resolution.json";
+    const baseline = JSON.parse(
+      readFileSync(join(input.snapshotRoot, baselinePath), "utf8"),
+    ) as Record<string, unknown>;
+    baseline.source_commit = "3".repeat(40);
+    baseline.artifact_set_sha256 = "b".repeat(64);
+    writeText(input.snapshotRoot, baselinePath, `${JSON.stringify(baseline, null, 2)}\n`);
+    const debtPath = "docs/spec/conformance/DEBT.md";
+    writeText(
+      input.snapshotRoot,
+      debtPath,
+      readFileSync(join(input.snapshotRoot, debtPath), "utf8")
+        .replace("# Conformance debt\n", `# Conformance debt\n\nsnapshot_commit: ${input.snapshotCommit}\n`),
+    );
+
+    expect(checkRepository(input).messages).toEqual(expect.arrayContaining([
+      "G1 anchor-resolution baseline source commit drift",
+      "G1 anchor-resolution baseline artifact set drift",
+      `projection invalid :: ${debtPath} :: snapshot_commit is runtime-only`,
     ]));
   });
 

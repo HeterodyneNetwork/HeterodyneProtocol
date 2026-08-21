@@ -28,20 +28,23 @@ function fixtureRun(): ConformanceRun {
     failures: index === 0 ? ["a", "b"] : [],
   }));
   return {
-    familyVersion: "heterodyne/0.5.0",
-    registryRevision: 13,
-    registryDigest: "aa".repeat(32),
+    sourceCommit: "1".repeat(40),
+    snapshotCommit: "2".repeat(40),
+    artifactSetSha256: "a".repeat(64),
+    vectorCount: 23,
+    executedDeclarationCount: 0,
     results,
     issues: [],
   };
 }
 
 describe("report projections", () => {
-  it("records registry identity, every measured key, and aggregate totals", () => {
+  it("records snapshot artifact identity, counts, every measured key, and aggregate totals", () => {
     expect(buildReport(fixtureRun())).toEqual({
-      family_version: "heterodyne/0.5.0",
-      registry_revision: 13,
-      registry_digest: "aa".repeat(32),
+      source_commit: "1".repeat(40),
+      artifact_set_sha256: "a".repeat(64),
+      vector_count: 23,
+      executed_declaration_count: 0,
       gates: gateNames.map((name, index) => ({
         gate: `G${index + 1}`,
         name,
@@ -61,7 +64,15 @@ describe("report projections", () => {
     const rendered = renderReportJson(fixtureRun());
 
     expect(rendered).toBe(`${JSON.stringify(expected, null, 2)}\n`);
-    expect(rendered).toContain('\n  "family_version"');
+    expect(rendered).not.toContain("snapshot_commit");
+    expect(Object.keys(JSON.parse(rendered) as Record<string, unknown>)).toEqual([
+      "source_commit",
+      "artifact_set_sha256",
+      "vector_count",
+      "executed_declaration_count",
+      "gates",
+      "totals",
+    ]);
     expect(rendered.endsWith("\n")).toBe(true);
     expect(rendered.endsWith("\n\n")).toBe(false);
   });
@@ -76,6 +87,11 @@ describe("report projections", () => {
         : `| G${index + 1} | ${name} | 0 | — |`,
     ));
     expect(rendered).toContain("Total failures: **2** across **1** gate.");
+    expect(rendered).toContain(`Source commit: \`${"1".repeat(40)}\``);
+    expect(rendered).toContain(`Artifact set SHA-256: \`${"a".repeat(64)}\``);
+    expect(rendered).toContain("Vector count: **23**");
+    expect(rendered).toContain("Executed declaration count: **0**");
+    expect(rendered).not.toContain("snapshot_commit");
     expect(rendered.endsWith("\n")).toBe(true);
     expect(rendered.endsWith("\n\n")).toBe(false);
   });

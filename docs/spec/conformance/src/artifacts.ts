@@ -31,10 +31,19 @@ export type LoadCorpusOptions = {
   snapshotCommit: string;
 };
 
-export type LoadCorpusResult = {
-  corpus?: ArtifactCorpus;
-  issues: CorpusIssue[];
-};
+export type LoadCorpusResult =
+  | {
+    corpus?: undefined;
+    artifactSetSha256?: undefined;
+    vectorCount?: undefined;
+    issues: CorpusIssue[];
+  }
+  | {
+    corpus: ArtifactCorpus;
+    artifactSetSha256: string;
+    vectorCount: number;
+    issues: CorpusIssue[];
+  };
 
 type SnapshotReadBoundary = Readonly<{
   readFile(path: string): Buffer;
@@ -874,7 +883,11 @@ export function loadCorpus(
   sortIssues(issues);
   if (
     issues.length > 0
+    || manifest === undefined
+    || manifest.sourceCommit === undefined
     || manifest?.vectorSchemaVersion === undefined
+    || manifest.vectorCount === undefined
+    || manifest.artifacts.some(({ sha256 }) => sha256 === undefined)
     || registryManifest === undefined
     || !reasonCodes.valid
     || !securityInvariants.valid
@@ -882,11 +895,17 @@ export function loadCorpus(
     || vectorSchema === undefined
   ) return { issues };
 
+  const artifactSetSha256 = createHash("sha256")
+    .update(`${JSON.stringify(manifest.artifacts, null, 2)}\n`, "utf8")
+    .digest("hex");
+
   const schemas = new Map<string, unknown>();
   for (const path of schemaPaths) {
     if (sourceJson.has(path)) schemas.set(path, sourceJson.get(path));
   }
   return {
+    artifactSetSha256,
+    vectorCount: manifest.vectorCount,
     corpus: {
       sourceRoot,
       snapshotRoot,

@@ -9,9 +9,10 @@ export type ReportGate = {
 };
 
 export type ReportDocument = {
-  family_version: string;
-  registry_revision: number;
-  registry_digest: string;
+  source_commit: string;
+  artifact_set_sha256: string;
+  vector_count: number;
+  executed_declaration_count: number;
   gates: ReportGate[];
   totals: {
     gates: number;
@@ -28,9 +29,10 @@ export function buildReport(run: ConformanceRun): ReportDocument {
     failures: [...failures],
   }));
   return {
-    family_version: run.familyVersion,
-    registry_revision: run.registryRevision,
-    registry_digest: run.registryDigest,
+    source_commit: run.sourceCommit,
+    artifact_set_sha256: run.artifactSetSha256,
+    vector_count: run.vectorCount,
+    executed_declaration_count: run.executedDeclarationCount,
     gates,
     totals: {
       gates: gates.length,
@@ -68,8 +70,10 @@ export function renderDebtMarkdown(run: ConformanceRun): string {
   return [
     "# Conformance debt",
     "",
-    `Family: \`${report.family_version}\``,
-    `Registry: revision **${report.registry_revision}**, digest \`${report.registry_digest}\``,
+    `Source commit: \`${report.source_commit}\``,
+    `Artifact set SHA-256: \`${report.artifact_set_sha256}\``,
+    `Vector count: **${report.vector_count}**`,
+    `Executed declaration count: **${report.executed_declaration_count}**`,
     "",
     "| Gate | Name | Count | Failure keys |",
     "| --- | --- | ---: | --- |",

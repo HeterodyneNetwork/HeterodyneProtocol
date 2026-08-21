@@ -44,6 +44,7 @@ export type CommandResult = {
 type CliOptions = {
   cwd?: string;
   writeLine?: (line: string) => void;
+  writeOutput?: (line: string) => void;
 };
 
 function corpusIssueMessages(run: ConformanceRun): string[] {
@@ -183,7 +184,12 @@ export function authorBaselines(options: LoadCorpusOptions): CommandResult {
     const error = writeProjection(
       canonicalRoot,
       baselineFile.path,
-      serializeBaseline(result.id, result.failures),
+      serializeBaseline(
+        run.sourceCommit,
+        run.artifactSetSha256,
+        result.id,
+        result.failures,
+      ),
     );
     if (error !== undefined) {
       messages.push(error);
@@ -242,18 +248,21 @@ function isReportProjection(value: unknown): boolean {
   if (
     !isRecord(value)
     || !hasExactKeys(value, [
-      "family_version",
-      "registry_revision",
-      "registry_digest",
+      "source_commit",
+      "artifact_set_sha256",
+      "vector_count",
+      "executed_declaration_count",
       "gates",
       "totals",
     ])
-    || typeof value.family_version !== "string"
-    || value.family_version.length === 0
-    || !Number.isSafeInteger(value.registry_revision)
-    || (value.registry_revision as number) < 0
-    || typeof value.registry_digest !== "string"
-    || !/^[0-9a-f]{64}$/u.test(value.registry_digest)
+    || typeof value.source_commit !== "string"
+    || !/^[0-9a-f]{40}$/u.test(value.source_commit)
+    || typeof value.artifact_set_sha256 !== "string"
+    || !/^[0-9a-f]{64}$/u.test(value.artifact_set_sha256)
+    || !Number.isSafeInteger(value.vector_count)
+    || (value.vector_count as number) < 0
+    || !Number.isSafeInteger(value.executed_declaration_count)
+    || (value.executed_declaration_count as number) < 0
     || !Array.isArray(value.gates)
     || value.gates.length !== BASELINE_FILES.length
   ) {
@@ -306,6 +315,9 @@ function reportProjectionMessages(source: string, path: string): string[] {
 
 function debtProjectionMessages(source: string, path: string): string[] {
   const messages: string[] = [];
+  if (/\bsnapshot_commit\b/u.test(source)) {
+    messages.push(`projection invalid :: ${path} :: snapshot_commit is runtime-only`);
+  }
   if (!source.endsWith("\n") || source.endsWith("\n\n")) {
     messages.push(`projection is not canonical :: ${path}`);
   }
@@ -339,9 +351,24 @@ export function checkRepository(options: LoadCorpusOptions): CommandResult {
     try {
       const baseline = parseBaseline(source, baselineFile.gate);
       failures = baseline.failures;
-      if (source !== serializeBaseline(baseline.gate, baseline.failures)) {
+      if (source !== serializeBaseline(
+        baseline.sourceCommit,
+        baseline.artifactSetSha256,
+        baseline.gate,
+        baseline.failures,
+      )) {
         messages.push(
           `${baselineFile.gate} ${baselineFile.name} baseline is not canonical :: ${baselineFile.path}`,
+        );
+      }
+      if (baseline.sourceCommit !== run.sourceCommit) {
+        messages.push(
+          `${baselineFile.gate} ${baselineFile.name} baseline source commit drift`,
+        );
+      }
+      if (baseline.artifactSetSha256 !== run.artifactSetSha256) {
+        messages.push(
+          `${baselineFile.gate} ${baselineFile.name} baseline artifact set drift`,
         );
       }
     } catch (error) {
@@ -422,6 +449,7 @@ function parseCorpusOptions(args: readonly string[]): {
 
 export function runCli(args: readonly string[], options: CliOptions = {}): 0 | 1 | 2 {
   const writeLine = options.writeLine ?? ((line: string) => console.error(line));
+  const writeOutput = options.writeOutput ?? ((line: string) => console.log(line));
   const parsed = parseCorpusOptions(args);
   if (parsed === undefined) {
     writeLine(USAGE);
@@ -435,6 +463,7 @@ export function runCli(args: readonly string[], options: CliOptions = {}): 0 | 1
   for (const message of result.messages) {
     writeLine(message);
   }
+  writeOutput(`snapshot_commit: ${parsed.options.snapshotCommit}`);
   return result.exitCode;
 }
 

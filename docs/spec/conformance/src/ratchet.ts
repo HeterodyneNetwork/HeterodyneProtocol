@@ -1,6 +1,8 @@
 import type { GateId } from "./gates/index.js";
 
 export type Baseline = {
+  sourceCommit: string;
+  artifactSetSha256: string;
   gate: GateId;
   failures: string[];
 };
@@ -34,8 +36,18 @@ export function compareBaseline(
   };
 }
 
-export function serializeBaseline(gate: GateId, failures: readonly string[]): string {
-  return `${JSON.stringify({ gate, failures: sortedUnique(failures) }, null, 2)}\n`;
+export function serializeBaseline(
+  sourceCommit: string,
+  artifactSetSha256: string,
+  gate: GateId,
+  failures: readonly string[],
+): string {
+  return `${JSON.stringify({
+    source_commit: sourceCommit,
+    artifact_set_sha256: artifactSetSha256,
+    gate,
+    failures: sortedUnique(failures),
+  }, null, 2)}\n`;
 }
 
 export function parseBaseline(source: string, expectedGate: GateId): Baseline {
@@ -47,9 +59,21 @@ export function parseBaseline(source: string, expectedGate: GateId): Baseline {
   }
   if (
     !isRecord(value)
-    || Object.keys(value).sort(compareText).join(",") !== "failures,gate"
+    || Object.keys(value).sort(compareText).join(",")
+      !== "artifact_set_sha256,failures,gate,source_commit"
   ) {
-    throw new Error("baseline must contain exactly gate and failures");
+    throw new Error(
+      "baseline must contain exactly source_commit, artifact_set_sha256, gate, and failures",
+    );
+  }
+  if (typeof value.source_commit !== "string" || !/^[0-9a-f]{40}$/u.test(value.source_commit)) {
+    throw new Error("baseline source_commit must be 40-lowercase-hex");
+  }
+  if (
+    typeof value.artifact_set_sha256 !== "string"
+    || !/^[0-9a-f]{64}$/u.test(value.artifact_set_sha256)
+  ) {
+    throw new Error("baseline artifact_set_sha256 must be 64-lowercase-hex");
   }
   if (value.gate !== expectedGate) {
     throw new Error(`baseline must identify ${expectedGate}`);
@@ -61,5 +85,10 @@ export function parseBaseline(source: string, expectedGate: GateId): Baseline {
   if (failures.some((failure, index) => index > 0 && failures[index - 1]! >= failure)) {
     throw new Error("baseline failures must be sorted unique strings");
   }
-  return { gate: expectedGate, failures: [...failures] };
+  return {
+    sourceCommit: value.source_commit,
+    artifactSetSha256: value.artifact_set_sha256,
+    gate: expectedGate,
+    failures: [...failures],
+  };
 }

@@ -1,6 +1,6 @@
 import { rmSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
-import { runCli } from "./cli.js";
+import { authorBaselines, authorReport, runCli } from "./cli.js";
 import {
   createTestCorpus,
   sourceCommit,
@@ -36,6 +36,29 @@ describe("conformance CLI split-root boundary", () => {
     expect(exitCode).toBe(1);
     expect(output).not.toContain(expect.stringContaining("missing-required-root"));
     expect(output).not.toContain(expect.stringContaining("usage:"));
+  });
+
+  it("prints the derived snapshot commit only to runtime stdout", () => {
+    const input = corpus();
+    const stderr: string[] = [];
+    const stdout: string[] = [];
+    expect(authorBaselines(input)).toEqual({ exitCode: 0, messages: [] });
+    expect(authorReport(input)).toEqual({ exitCode: 0, messages: [] });
+
+    const exitCode = runCli([
+      "check",
+      "--source-root", input.sourceRoot,
+      "--snapshot-root", input.snapshotRoot,
+      "--source-commit", sourceCommit,
+      "--snapshot-commit", snapshotCommit,
+    ], {
+      writeLine: (line) => stderr.push(line),
+      writeOutput: (line) => stdout.push(line),
+    });
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toEqual([]);
+    expect(stdout).toEqual([`snapshot_commit: ${snapshotCommit}`]);
   });
 
   it("does not discover roots or substitute current HEAD when explicit history is absent", () => {

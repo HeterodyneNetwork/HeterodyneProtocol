@@ -3,9 +3,11 @@ import { ALL_GATES, type GateResult } from "./gates/index.js";
 import type { CorpusIssue } from "./types.js";
 
 export type ConformanceRun = {
-  familyVersion: string;
-  registryRevision: number;
-  registryDigest: string;
+  sourceCommit: string;
+  snapshotCommit: string;
+  artifactSetSha256: string;
+  vectorCount: number;
+  executedDeclarationCount: number;
   results: GateResult[];
   issues: CorpusIssue[];
 };
@@ -18,9 +20,11 @@ export function runConformance(options: LoadCorpusOptions): ConformanceRun {
   const loaded = loadCorpus(options);
   if (loaded.corpus === undefined) {
     return {
-      familyVersion: "",
-      registryRevision: 0,
-      registryDigest: "",
+      sourceCommit: options.sourceCommit,
+      snapshotCommit: options.snapshotCommit,
+      artifactSetSha256: "",
+      vectorCount: 0,
+      executedDeclarationCount: 0,
       results: [],
       issues: loaded.issues,
     };
@@ -28,9 +32,14 @@ export function runConformance(options: LoadCorpusOptions): ConformanceRun {
 
   const { corpus } = loaded;
   return {
-    familyVersion: "snapshot",
-    registryRevision: corpus.registry.manifest.revision,
-    registryDigest: corpus.registry.manifest.entry_set_sha256,
+    sourceCommit: corpus.sourceCommit,
+    snapshotCommit: corpus.snapshotCommit,
+    artifactSetSha256: loaded.artifactSetSha256,
+    vectorCount: loaded.vectorCount,
+    executedDeclarationCount: corpus.vectors.reduce(
+      (count, { value }) => count + (value.conformance_checks?.length ?? 0),
+      0,
+    ),
     results: ALL_GATES.map(({ id, name, evaluate }) => ({
       id,
       name,
