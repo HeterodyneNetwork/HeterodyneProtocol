@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { Ajv2020 } from "ajv/dist/2020.js";
 import {
   mkdirSync,
   mkdtempSync,
@@ -11,10 +10,10 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import snapshotManifestSchema from "../../snapshot.schema.json" with { type: "json" };
 import {
   buildSnapshotManifest,
   loadSnapshotManifest,
+  validateSnapshotManifestSchema,
   type SnapshotManifest,
 } from "./snapshot-manifest.js";
 
@@ -161,7 +160,6 @@ describe("snapshot manifest", () => {
   });
 
   it("keeps schema and runtime path and uniqueness rules aligned", () => {
-    const validateSchema = new Ajv2020({ allErrors: true }).compile(snapshotManifestSchema);
     for (const unsafePath of [
       "docs/spec/vectors/core/../outside.json",
       "docs/spec/vectors/",
@@ -171,15 +169,19 @@ describe("snapshot manifest", () => {
       const root = repository();
       const manifest = buildSnapshotManifest(root, SOURCE_COMMIT);
       manifest.artifacts[0] = { ...manifest.artifacts[0]!, path: unsafePath };
-      expect(validateSchema(manifest), unsafePath).toBe(false);
+      expect(validateSnapshotManifestSchema(manifest), unsafePath).toBe(false);
       writeManifest(root, manifest);
       expect(() => loadSnapshotManifest(root), unsafePath).toThrow(/unsafe artifact path/);
     }
 
     const root = repository();
     const duplicate = buildSnapshotManifest(root, SOURCE_COMMIT);
-    duplicate.artifacts[1] = { ...duplicate.artifacts[0]! };
-    expect(validateSchema(duplicate)).toBe(false);
+    duplicate.artifacts[1] = {
+      path: duplicate.artifacts[0]!.path,
+      sha256: "0".repeat(64),
+    };
+    expect(duplicate.artifacts[1]!.sha256).not.toBe(duplicate.artifacts[0]!.sha256);
+    expect(validateSnapshotManifestSchema(duplicate)).toBe(false);
     writeManifest(root, duplicate);
     expect(() => loadSnapshotManifest(root)).toThrow(/duplicate artifact path/);
   });

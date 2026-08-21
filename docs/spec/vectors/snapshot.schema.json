@@ -30,6 +30,7 @@
     "artifacts": {
       "type": "array",
       "uniqueItems": true,
+      "x-unique-by": "path",
       "items": {
         "type": "object",
         "additionalProperties": false,

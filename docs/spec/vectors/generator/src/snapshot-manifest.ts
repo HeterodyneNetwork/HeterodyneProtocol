@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import { lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
+import snapshotManifestSchema from "../../snapshot.schema.json" with { type: "json" };
 
 export type SnapshotArtifact = {
   path: string;
@@ -40,6 +42,31 @@ const EXCLUDED_TOP_LEVEL_FILES = new Set([
   "snapshot.json",
   "snapshot.schema.json",
 ]);
+const snapshotManifestAjv = new Ajv2020({ allErrors: true, strict: true });
+snapshotManifestAjv.addKeyword({
+  keyword: "x-unique-by",
+  type: "array",
+  schemaType: "string",
+  metaSchema: { const: "path" },
+  errors: false,
+  validate(property: string, value: unknown): boolean {
+    if (!Array.isArray(value)) return true;
+    const seen = new Set<unknown>();
+    for (const item of value) {
+      if (!isRecord(item) || !Object.hasOwn(item, property)) continue;
+      const key = item[property];
+      if (seen.has(key)) return false;
+      seen.add(key);
+    }
+    return true;
+  },
+});
+const validateSnapshotManifestValue = snapshotManifestAjv.compile(snapshotManifestSchema);
+
+/** Generic schema gate; canonical parsing and repository-byte checks remain runtime-authoritative. */
+export function validateSnapshotManifestSchema(value: unknown): boolean {
+  return validateSnapshotManifestValue(value);
+}
 
 export function loadSnapshotManifest(repoRoot: string): SnapshotManifest {
   const repositoryRoot = resolve(repoRoot);
