@@ -1322,7 +1322,7 @@ warning; it MUST NOT silently become trusted content.
 ### 9.1 Retired-key late observation
 
 An event signed by a routinely superseded epoch or delegated publisher key
-and first observed after retirement is repo-confirmed pre-retirement content
+and first observed at or after retirement is repo-confirmed pre-retirement content
 only when its introducing commit is an ancestor of a trusted repository
 checkpoint bound into, or accepted before, the retiring rotation. A trusted
 local receipt or checkpoint recorded before retirement may establish the same
@@ -1348,6 +1348,10 @@ accepted KEL SHOULD trigger a repo-relay-first refresh; a pending or failed
 refresh caps the result at provisional. A well-formed head naming an event off
 the accepted KEL MUST produce `equivocation_flagged` and an explicit security
 warning rather than silent deletion.
+
+Closed verification evidence MUST NOT pair a sequence-ahead head with a
+`not-needed` refresh status. That contradictory state is a `kel_head_mismatch`,
+not a provisional success.
 
 Head classification order is normative. The verifier MUST test
 `seq_ahead_of_accepted_head` before `off_accepted_kel`; this rule is identified
@@ -1835,6 +1839,21 @@ profiles or members, malformed pointers, duplicate declarations, and a
 missing event target or declared context target are conformance failures. A
 missing raw target is checker debt rather than an invalid declaration so that
 the corpus can ratchet it explicitly.
+
+A `core-signed-event-v1` declaration that reaches persona resolution consumes
+one closed verifier-evidence object. Its required `retired_key_evidence`
+contains `first_observed_at` and a nullable `prior_anchor`. The anchor type is
+exactly `repository-checkpoint`, `local-receipt`, or `local-checkpoint`, and it
+carries `established_at`. `repository-checkpoint` means the verifier has
+already established that the event's introducing commit is an ancestor of the
+trusted checkpoint described in §9.1; the local forms mean the named trusted
+local evidence was recorded by that verifier. A repository anchor may be
+established no later than routine retirement, while either local form MUST be
+established before retirement. An absent or later anchor cannot convert a
+first-post-retirement observation into final acceptance, and no anchor can
+override the compromise cutoff. Neither `first_observed_at` nor an anchor's
+`established_at` may be later than the context's `evaluation_time`. This object
+is checker input only and is not a protocol wire object.
 
 When this document declares a behavior conformant, an implementation MUST
 produce or accept it as specified. NIP-01 events have only the canonical

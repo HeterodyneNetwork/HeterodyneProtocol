@@ -25,7 +25,7 @@
     {
       "path": "docs/spec/heterodyne-core.md",
       "role": "specification",
-      "sha256": "1e98f41999ba53409f4cb6c76c4b15e28b10cb5f90b79ed9d3ac7966f0e9f45a"
+      "sha256": "7c8552c3c6a14e71d048c8055a5d9ed2922051d81a38d8622b737dfcaa8d0f73"
     },
     {
       "path": "docs/spec/heterodyne-social.md",
@@ -2640,7 +2640,7 @@
     {
       "path": "docs/spec/vectors/verification/005-valid-core-signed-event-accepts.json",
       "role": "vector",
-      "sha256": "dcb15a6321be2963128eeb200b20915325a1dd977640eac3fbd28f71c921fbbf"
+      "sha256": "3b13df803267130b856aff991705e4e15d7c79be12c8bd5a439db882098efa75"
     },
     {
       "path": "docs/spec/vectors/versioning/001-unknown-major-placeholder.json",

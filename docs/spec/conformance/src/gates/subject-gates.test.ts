@@ -21,6 +21,11 @@ const VALID_RAW =
 const VALID_ID = "74fed57cc8f0d83a0e01c12cb0a1cae66acfc6326b254c4783226e1a17121c83";
 const VALID_SIGNATURE =
   "6044a1b015173a9e853867e61b2545554406c1c78e6944802fc0bd1e1484e998dfdb5e228e4d2b6adc5cb1066ef29ae3232d915d97975af48a88d68d3c6ab858";
+const ALTERNATE_ESCAPE_RAW =
+  '[0,"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",100,31008,[["spec_version","heterodyne/0.5.0"],["kel_head","b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0","0"]],"fi\\u0078ture"]';
+const ALTERNATE_ESCAPE_ID = "49ee55f141662471402e659860126cd908ccbfcc52560567715a3c75fb86d2f8";
+const ALTERNATE_ESCAPE_SIGNATURE =
+  "564b09765b0de0fb660d9fafc5b5ab55bed535082ce8b45016bc8c230be46af2518fe3e59385a5e6de75df324e335e828d46e6c5f168b94495640422a8708015";
 
 type CorpusVector = { path: string; value: VectorDocument };
 const REPOSITORY_ROOT = resolve(import.meta.dirname, "../../../../../");
@@ -37,6 +42,21 @@ function signedEvent(): Record<string, unknown> {
     ],
     content: "fixture",
     sig: VALID_SIGNATURE,
+  };
+}
+
+function alternateEscapeEvent(): Record<string, unknown> {
+  return {
+    id: ALTERNATE_ESCAPE_ID,
+    pubkey: "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+    created_at: 100,
+    kind: 31_008,
+    tags: [
+      ["spec_version", "heterodyne/0.5.0"],
+      ["kel_head", "b0".repeat(32), "0"],
+    ],
+    content: "fixture",
+    sig: ALTERNATE_ESCAPE_SIGNATURE,
   };
 }
 
@@ -236,6 +256,17 @@ describe("declared Core signed-event gates", () => {
 });
 
 describe("G10 NIP-01 raw discovery and binding", () => {
+  it("accepts a sibling raw value with an RFC 8259 alternate escape spelling", () => {
+    const input = corpus([
+      corpusVector(vector("sample", {
+        event: alternateEscapeEvent(),
+        nip01_raw: ALTERNATE_ESCAPE_RAW,
+      }), "docs/spec/vectors/sample.json"),
+    ]);
+
+    expect(findNip01RawFailures(input)).toEqual([]);
+  });
+
   it("recursively discovers an undeclared signed event with no sibling raw value", () => {
     const missingRawCorpus = corpus([
       corpusVector(

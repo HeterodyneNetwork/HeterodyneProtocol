@@ -9,6 +9,7 @@
     "evaluation_time",
     "nid_clock_skew_allowance",
     "clock_uncertainty",
+    "retired_key_evidence",
     "pointer",
     "kel",
     "kel_refresh",
@@ -26,6 +27,7 @@
       "maximum": 300
     },
     "clock_uncertainty": { "$ref": "#/$defs/safe_unix_second" },
+    "retired_key_evidence": { "$ref": "#/$defs/retired_key_evidence" },
     "pointer": { "$ref": "#/$defs/pointer" },
     "kel": {
       "type": "array",
@@ -54,6 +56,31 @@
         { "$ref": "#/$defs/safe_unix_second" },
         { "type": "null" }
       ]
+    },
+    "retired_key_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["first_observed_at", "prior_anchor"],
+      "properties": {
+        "first_observed_at": { "$ref": "#/$defs/safe_unix_second" },
+        "prior_anchor": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/prior_anchor" }
+          ]
+        }
+      }
+    },
+    "prior_anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "established_at"],
+      "properties": {
+        "type": {
+          "enum": ["repository-checkpoint", "local-receipt", "local-checkpoint"]
+        },
+        "established_at": { "$ref": "#/$defs/safe_unix_second" }
+      }
     },
     "kel_head": {
       "type": "object",

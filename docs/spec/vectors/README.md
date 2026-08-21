@@ -74,6 +74,15 @@ failures. A declared context pointer must also resolve when present. A missing
 raw target is reported by the independent raw-binding gate so existing
 exact-byte debt can be ratcheted.
 
+For checks that reach persona resolution, the closed context carries explicit
+`retired_key_evidence`: `first_observed_at` plus a nullable `prior_anchor`.
+Anchor objects use type `repository-checkpoint`, `local-receipt`, or
+`local-checkpoint` and an `established_at` time. They represent already
+verified Core §9.1 evidence; they are not wire fields. A post-retirement
+observation is final only with a timely permitted anchor, and the compromise
+cutoff remains stronger than every anchor. Observation and anchor times later
+than the context evaluation time are contradictory evidence.
+
 G10 raw-binding debt uses the stable locator
 `<vector-file> :: event-sha256:<64-lowercase-hex>`. The digest is SHA-256 over
 the UTF-8 JSON serialization of the fixed semantic signed-event tuple

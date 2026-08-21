@@ -7,6 +7,7 @@ export type SubjectResult = {
   terminalStage: CheckerStage;
   verdict: "accept" | "accept_provisional" | "equivocation_flagged" | "reject";
   reasonCode?: string;
+  state?: "provisional-retired-key";
   stages: {
     stage: CheckerStage;
     verdict: "pass" | "provisional" | "equivocation_flagged" | "reject";
@@ -34,11 +35,20 @@ export type CoreKelEntryV1 = {
   compromise_since: number | null;
 };
 
+export type RetiredKeyEvidenceV1 = {
+  first_observed_at: number;
+  prior_anchor: null | {
+    type: "repository-checkpoint" | "local-receipt" | "local-checkpoint";
+    established_at: number;
+  };
+};
+
 export type CoreVerificationContextV1 = {
   persona: string;
   evaluation_time: number;
   nid_clock_skew_allowance: number;
   clock_uncertainty: number;
+  retired_key_evidence: RetiredKeyEvidenceV1;
   pointer: {
     persona: string;
     kel_head: { event_id: string; sequence: number };

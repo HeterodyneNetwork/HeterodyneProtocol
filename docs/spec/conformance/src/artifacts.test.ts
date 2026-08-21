@@ -1,5 +1,6 @@
-import { readFileSync, rmSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { loadCorpus } from "./artifacts.js";
 import {
@@ -15,6 +16,7 @@ import {
   reasonCodesPath,
   sha256File,
   vectorPath,
+  vectorSchemaPath,
   writeJson,
   writeText,
 } from "./test-support.js";
@@ -153,6 +155,25 @@ describe("loadCorpus", () => {
     });
   });
 
+  it("accumulates an unresolvable registry schema with another readable artifact issue", () => {
+    const root = repository();
+    writeJson(root, registrySchemaPath, { $ref: "missing.json" });
+    writeText(root, vectorPath, "{ malformed\n");
+    refreshReleaseDigests(root);
+
+    expect(loadCorpus(root).issues).toEqual([
+      {
+        code: "invalid-document-shape",
+        path: registrySchemaPath,
+        message: "registry schema is not a compilable JSON Schema",
+      },
+      expect.objectContaining({
+        code: "invalid-json",
+        path: vectorPath,
+      }),
+    ]);
+  });
+
   it("accumulates a non-object registry schema with incomplete entry documents", () => {
     const root = repository();
     writeJson(root, reasonCodesPath, {});
@@ -235,6 +256,61 @@ describe("loadCorpus", () => {
       code: "invalid-document-shape",
       path: vectorPath,
     }));
+  });
+
+  it("applies the normative vector schema to reject unknown envelope members", () => {
+    const root = repository();
+    const vector = declaredVector();
+    vector.unregistered = true;
+    writeVector(root, vector);
+
+    expect(loadCorpus(root).issues).toContainEqual({
+      code: "invalid-document-shape",
+      path: vectorPath,
+      message: "vector does not match vector.schema.json",
+    });
+  });
+
+  it.each([
+    [] as string[],
+    ["heterodyne:0.5.0#core-conformance", "heterodyne:0.5.0#core-verification"],
+  ])("applies the normative vector schema spec_refs cardinality: %j", (specRefs) => {
+    const root = repository();
+    const vector = declaredVector();
+    vector.spec_refs = specRefs;
+    writeVector(root, vector);
+
+    expect(loadCorpus(root).issues).toContainEqual({
+      code: "invalid-document-shape",
+      path: vectorPath,
+      message: "vector does not match vector.schema.json",
+    });
+  });
+
+  it("fails closed when the normative vector schema is not an object", () => {
+    const root = repository();
+    writeJson(root, vectorSchemaPath, []);
+    refreshReleaseDigests(root);
+
+    expect(loadCorpus(root).issues).toContainEqual({
+      code: "invalid-document-shape",
+      path: vectorSchemaPath,
+      message: "vector schema must be a JSON object",
+    });
+    expect(loadCorpus(root).corpus).toBeUndefined();
+  });
+
+  it("fails closed when the normative vector schema cannot compile", () => {
+    const root = repository();
+    writeJson(root, vectorSchemaPath, { $ref: "missing.json" });
+    refreshReleaseDigests(root);
+
+    expect(loadCorpus(root).issues).toContainEqual({
+      code: "invalid-document-shape",
+      path: vectorSchemaPath,
+      message: "vector schema is not a compilable JSON Schema",
+    });
+    expect(loadCorpus(root).corpus).toBeUndefined();
   });
 
   it("requires context_pointer for persona resolution and later stages", () => {
@@ -505,5 +581,47 @@ describe("loadCorpus", () => {
       message: "required corpus root is not a directory",
     });
     expect(result.corpus).toBeUndefined();
+  });
+
+  it("reports an in-root JSON symlink under a normative inventory without following it", () => {
+    const root = repository();
+    const linkPath = "docs/spec/registry/manifest-link.json";
+    symlinkSync("manifest.json", resolve(root, linkPath));
+
+    const result = loadCorpus(root);
+
+    expect(result.issues).toContainEqual({
+      code: "unsafe-artifact-path",
+      path: linkPath,
+      message: "normative inventory entry is a symbolic link",
+    });
+    expect(result.corpus).toBeUndefined();
+  });
+
+  it("reports an escaping JSON symlink under a normative inventory without following it", () => {
+    const root = repository();
+    const external = mkdtempSync(join(tmpdir(), "heterodyne-conformance-external-"));
+    temps.push(external);
+    writeJson(external, "outside.json", { escaped: true });
+    const linkPath = "docs/spec/schemas/escaping.json";
+    symlinkSync(resolve(external, "outside.json"), resolve(root, linkPath));
+
+    const result = loadCorpus(root);
+
+    expect(result.issues).toContainEqual({
+      code: "unsafe-artifact-path",
+      path: linkPath,
+      message: "normative inventory entry is a symbolic link",
+    });
+    expect(result.corpus).toBeUndefined();
+  });
+
+  it("does not inventory symlinks inside the explicitly non-normative generator subtree", () => {
+    const root = repository();
+    const linkPath = "docs/spec/vectors/generator/node_modules/.bin/tool";
+    writeText(root, "docs/spec/vectors/generator/node_modules/.bin/.keep", "");
+    symlinkSync(resolve(root, vectorPath), resolve(root, linkPath));
+
+    expect(loadCorpus(root).issues).toEqual([]);
   });
 });

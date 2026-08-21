@@ -22,6 +22,7 @@ import {
   createTestRepository,
   refreshReleaseDigests,
   vectorPath,
+  vectorSchemaPath,
   writeJson,
   writeText,
 } from "./test-support.js";
@@ -204,6 +205,17 @@ describe("ratcheted conformance integration", () => {
       reason_code: "unregistered-test-reason",
     };
     writeJson(root, vectorPath, vector);
+    const vectorSchema = JSON.parse(
+      readFileSync(join(root, vectorSchemaPath), "utf8"),
+    ) as Record<string, unknown>;
+    const rejectionRule = (vectorSchema.allOf as Array<Record<string, unknown>>)[0]!;
+    const thenProperties = (rejectionRule.then as Record<string, unknown>)
+      .properties as Record<string, unknown>;
+    const outputProperties = (thenProperties.expected_output as Record<string, unknown>)
+      .properties as Record<string, unknown>;
+    const reasonSchema = outputProperties.reason_code as Record<string, unknown>;
+    (reasonSchema.enum as string[]).push("unregistered-test-reason");
+    writeJson(root, vectorSchemaPath, vectorSchema);
     refreshReleaseDigests(root);
 
     expect(checkRepository(root)).toMatchObject({

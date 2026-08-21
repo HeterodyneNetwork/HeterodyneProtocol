@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { resolveJsonPointer } from "../json-pointer.js";
+import { bindNip01Raw } from "../subjects/nip01.js";
 import type { ArtifactCorpus, VectorDocument } from "../types.js";
 
 const EVENT_MEMBERS = ["id", "pubkey", "created_at", "kind", "tags", "content", "sig"] as const;
@@ -51,21 +52,7 @@ function discoverEvents(
 }
 
 function rawMatches(event: EventShape, raw: unknown): boolean {
-  if (typeof raw !== "string") {
-    return false;
-  }
-  try {
-    return raw === JSON.stringify([
-      0,
-      event.pubkey,
-      event.created_at,
-      event.kind,
-      event.tags,
-      event.content,
-    ]);
-  } catch {
-    return false;
-  }
+  return bindNip01Raw(event, raw) !== undefined;
 }
 
 function eventFingerprint(event: EventShape): string {

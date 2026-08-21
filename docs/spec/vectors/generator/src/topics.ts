@@ -205,10 +205,7 @@ const VECTOR_FACTORIES: VectorFactory[] = [
       secretKey: epoch.private_key,
       created_at: evaluationTime,
       kind: 1,
-      tags: [
-        ["kel_head", kelHead.id, String(kelHead.seq)],
-        ["spec_version", "heterodyne/0.5.0"],
-      ],
+      tags: [],
       content: "valid-core-signed-event",
       auxRand: AUX_RAND,
     });
@@ -228,6 +225,10 @@ const VECTOR_FACTORIES: VectorFactory[] = [
               evaluation_time: evaluationTime,
               nid_clock_skew_allowance: 0,
               clock_uncertainty: 0,
+              retired_key_evidence: {
+                first_observed_at: evaluationTime,
+                prior_anchor: null,
+              },
               pointer: {
                 persona: persona.cold_root.pubkey,
                 kel_head: { event_id: kelHead.id, sequence: kelHead.seq },
@@ -243,8 +244,8 @@ const VECTOR_FACTORIES: VectorFactory[] = [
               }],
               kel_refresh: { status: "not-needed" },
               signer: { type: "epoch", pubkey: epoch.pubkey, delegation: null },
-              version_policy: { mode: "required", value: "heterodyne/0.5.0" },
-              kel_head_policy: { mode: "required" },
+              version_policy: { mode: "forbidden", value: "heterodyne/0.5.0" },
+              kel_head_policy: { mode: "forbidden" },
               subtype_policy: { mode: "generic", nid_pubkey: null },
             },
           },

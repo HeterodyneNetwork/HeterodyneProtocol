@@ -164,6 +164,10 @@ When `context_pointer` is present, it resolves to one closed
   "evaluation_time": 0,
   "nid_clock_skew_allowance": 0,
   "clock_uncertainty": 0,
+  "retired_key_evidence": {
+    "first_observed_at": 0,
+    "prior_anchor": null
+  },
   "pointer": {
     "persona": "<64-lowercase-hex>",
     "kel_head": { "event_id": "<64-lowercase-hex>", "sequence": 0 }
@@ -208,7 +212,20 @@ classification. Pending or failed refresh continues the ordered checks but
 caps a successful result at `accept_provisional`; a completed refresh that
 still leaves the named head off the accepted KEL produces
 `equivocation_flagged`. A stale head that names any accepted KEL entry remains
-a normal success.
+a normal success. A sequence-ahead head paired with `not-needed` is
+contradictory evidence and rejects as `kel_head_mismatch`.
+
+`retired_key_evidence.first_observed_at` records the verifier's explicit first
+observation time. Its nullable `prior_anchor` is a closed object with `type`
+equal to `repository-checkpoint`, `local-receipt`, or `local-checkpoint`, plus
+`established_at`. The repository type represents an already verified
+introducing-commit ancestry proof under Core §9.1 and is timely no later than
+routine retirement; either local type is timely only before retirement. A
+post-retirement observation without a timely anchor caps a successful result
+at `accept_provisional` with state `provisional-retired-key`. Compromise
+rejection remains absorbing. Observation and anchor times later than
+`evaluation_time` are contradictory verifier evidence and reject at
+`persona_resolution`.
 
 Every v1 context carries explicit verifier-clock evidence. `evaluation_time`
 is the JSON-safe non-negative Unix second used as the verification clock.
@@ -249,7 +266,8 @@ specification rather than calling generator evaluators:
 6. enforce the version stamp;
 7. classify and validate `kel_head`;
 8. establish epoch authority at `created_at`, including compromise windows,
-   and for `kind:31001` establish the same epoch signer's authority again at
+   classify retired epoch or delegated-key observation evidence, and for
+   `kind:31001` establish the same epoch signer's authority again at
    `evaluation_time`;
 9. enforce subtype and NID proof rules; and
 10. return the exact vector verdict.

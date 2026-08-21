@@ -54,6 +54,15 @@ function hasValidContextSemantics(
     return false;
   }
 
+  const retiredKeyAnchor = context.retired_key_evidence.prior_anchor;
+  if (
+    context.retired_key_evidence.first_observed_at > context.evaluation_time
+    || (retiredKeyAnchor !== null
+      && retiredKeyAnchor.established_at > context.evaluation_time)
+  ) {
+    return false;
+  }
+
   const eventIds = new Set<string>();
   for (let index = 0; index < context.kel.length; index += 1) {
     const entry = context.kel[index]!;
@@ -153,6 +162,17 @@ function versionStampFailure(
   event: NostrSignedEvent,
   policy: CoreVerificationContextV1["version_policy"],
 ): { invalid: false } | { invalid: true; reasonCode: string } {
+  if (event.kind === 1) {
+    const tier3StampingProfile = event.tags.some((tag) =>
+      tag.length === 2
+      && tag[0] === "heterodyne_wrap"
+      && tag[1] === "room_key.v2");
+    const requiredMode = tier3StampingProfile ? "required" : "forbidden";
+    if (policy.mode !== requiredMode) {
+      return { invalid: true, reasonCode: "version_stamp_invalid" };
+    }
+  }
+
   const stamps: unknown[] = event.tags
     .filter((tag) => tag[0] === "spec_version")
     .map((tag) => tag.length === 2 ? tag[1] : undefined);
@@ -245,9 +265,13 @@ function classifyKelHead(
   }
   const acceptedHead = context.kel.at(-1)!;
   if (sequence > acceptedHead.sequence) {
-    return context.kel_refresh.status === "succeeded"
-      ? { verdict: "equivocation_flagged" }
-      : { verdict: "provisional" };
+    if (context.kel_refresh.status === "succeeded") {
+      return { verdict: "equivocation_flagged" };
+    }
+    if (context.kel_refresh.status === "not-needed") {
+      return { verdict: "reject", reasonCode: "kel_head_mismatch" };
+    }
+    return { verdict: "provisional" };
   }
   return namedEntry === undefined
     ? { verdict: "equivocation_flagged" }
@@ -279,38 +303,76 @@ function epochEntryAt(
   return { entry };
 }
 
-function authorityFailure(
+type AuthorityResult = {
+  reasonCode?: string;
+  provisionalRetiredKey: boolean;
+};
+
+function retirementAt(
+  context: CoreVerificationContextV1,
+  entry: CoreVerificationContextV1["kel"][number],
+): number | undefined {
+  if (context.signer.type === "epoch") {
+    return entry.effective_until ?? undefined;
+  }
+  const bounds = [
+    context.signer.delegation.valid_until,
+    context.signer.delegation.revoked_at,
+  ].filter((value): value is number => value !== null);
+  return bounds.length === 0 ? undefined : Math.min(...bounds);
+}
+
+function hasTimelyPriorAnchor(
+  context: CoreVerificationContextV1,
+  retiredAt: number,
+): boolean {
+  const anchor = context.retired_key_evidence.prior_anchor;
+  if (anchor === null) return false;
+  return anchor.type === "repository-checkpoint"
+    ? anchor.established_at <= retiredAt
+    : anchor.established_at < retiredAt;
+}
+
+function authorityResult(
   event: NostrSignedEvent,
   context: CoreVerificationContextV1,
-): string | undefined {
+): AuthorityResult {
   const atEvent = epochEntryAt(context, event.created_at);
-  if (atEvent.reasonCode !== undefined) return atEvent.reasonCode;
+  if (atEvent.reasonCode !== undefined) {
+    return { reasonCode: atEvent.reasonCode, provisionalRetiredKey: false };
+  }
   const entry = atEvent.entry!;
 
   if (context.signer.type === "epoch") {
     if (context.signer.pubkey !== entry.epoch_pubkey) {
-      return "retired-key-authority-window-invalid";
+      return { reasonCode: "retired-key-authority-window-invalid", provisionalRetiredKey: false };
     }
     if (event.kind === 31_001) {
       const atEvaluation = epochEntryAt(context, context.evaluation_time);
       if (atEvaluation.entry?.epoch_pubkey !== context.signer.pubkey) {
-        return "retired-key-authority-window-invalid";
+        return { reasonCode: "retired-key-authority-window-invalid", provisionalRetiredKey: false };
       }
     }
-    return undefined;
+  } else {
+    const delegation = context.signer.delegation;
+    if (event.created_at < delegation.valid_from) {
+      return { reasonCode: "delegation_mismatch", provisionalRetiredKey: false };
+    }
+    if (delegation.valid_until !== null && event.created_at >= delegation.valid_until) {
+      return { reasonCode: "expired_delegation", provisionalRetiredKey: false };
+    }
+    if (delegation.revoked_at !== null && event.created_at >= delegation.revoked_at) {
+      return { reasonCode: "revoked_key_post_revoked_at", provisionalRetiredKey: false };
+    }
   }
 
-  const delegation = context.signer.delegation;
-  if (event.created_at < delegation.valid_from) {
-    return "delegation_mismatch";
-  }
-  if (delegation.valid_until !== null && event.created_at >= delegation.valid_until) {
-    return "expired_delegation";
-  }
-  if (delegation.revoked_at !== null && event.created_at >= delegation.revoked_at) {
-    return "revoked_key_post_revoked_at";
-  }
-  return undefined;
+  const retiredAt = retirementAt(context, entry);
+  const observedAfterRetirement = retiredAt !== undefined
+    && context.evaluation_time >= retiredAt
+    && context.retired_key_evidence.first_observed_at >= retiredAt;
+  return {
+    provisionalRetiredKey: observedAfterRetirement && !hasTimelyPriorAnchor(context, retiredAt),
+  };
 }
 
 function singleTag(event: NostrSignedEvent, name: string): string[] | undefined {
@@ -611,24 +673,31 @@ export function checkCoreSignedEvent(
   if (head.verdict === "equivocation_flagged") {
     return equivocation(stages);
   }
-  const provisional = head.verdict === "provisional";
-  stages.push({ stage: "kel_head", verdict: provisional ? "provisional" : "pass" });
+  const headProvisional = head.verdict === "provisional"
+    || context.kel_refresh.status === "pending"
+    || context.kel_refresh.status === "failed";
+  stages.push({ stage: "kel_head", verdict: headProvisional ? "provisional" : "pass" });
 
-  const authorityReason = authorityFailure(event, context);
-  if (authorityReason !== undefined) {
-    return reject(stages, "epoch_authority", authorityReason);
+  const authority = authorityResult(event, context);
+  if (authority.reasonCode !== undefined) {
+    return reject(stages, "epoch_authority", authority.reasonCode);
   }
-  stages.push({ stage: "epoch_authority", verdict: "pass" });
+  stages.push({
+    stage: "epoch_authority",
+    verdict: authority.provisionalRetiredKey ? "provisional" : "pass",
+  });
 
   const subtypeReason = subtypeFailure(event, context);
   if (subtypeReason !== undefined) {
     return reject(stages, "subtype_nid", subtypeReason);
   }
   stages.push({ stage: "subtype_nid", verdict: "pass" });
+  const provisional = headProvisional || authority.provisionalRetiredKey;
   stages.push({ stage: "accept", verdict: provisional ? "provisional" : "pass" });
   return {
     terminalStage: "accept",
     verdict: provisional ? "accept_provisional" : "accept",
+    ...(authority.provisionalRetiredKey ? { state: "provisional-retired-key" as const } : {}),
     stages,
   };
 }

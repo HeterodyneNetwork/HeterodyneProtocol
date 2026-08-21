@@ -28,7 +28,7 @@ const BAD_SIGNATURE_RAW =
 const NODE_ADVERT_RAW =
   '[0,"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",1767311700,31010,[["d","rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1"],["heterodyne","node_advert"],["rid","rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1"],["nid","did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC"],["endpoint","wss://node-a.example/relay"],["repo_head","4a19af7f069f3c32d4235c726f666fc8cd0175fa"],["expiry","1767312000"],["nid_proof","500a6491bc4bf613a6b1fb765cf940917f1a1351c764bce07676860ed2c986b1881c23d4093b078d99a1311f077abe1caac0188f0aff933b58e0e6f6dd44ff00"],["kel_head","7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf","0"],["spec_version","heterodyne/0.5.0"]],""]';
 const ACCEPTED_RAW =
-  '[0,"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",1767225660,1,[["kel_head","7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf","0"],["spec_version","heterodyne/0.5.0"]],"valid-core-signed-event"]';
+  '[0,"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",1767225660,1,[],"valid-core-signed-event"]';
 
 afterEach(async () => {
   await Promise.all(tempDirs.map((dir) => rm(dir, { recursive: true, force: true })));
@@ -135,13 +135,10 @@ describe("author mode", () => {
       pubkey: "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
       created_at: 1767225660,
       kind: 1,
-      tags: [
-        ["kel_head", "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf", "0"],
-        ["spec_version", "heterodyne/0.5.0"],
-      ],
+      tags: [],
       content: "valid-core-signed-event",
-      id: "0a6ef156aa1561171a866231ee3fc723e020ae26147909b543e8ceeaa4a55440",
-      sig: "53b2dbd363e1d475d03fed84235406911ffaf232639234dc757af6298f9f2463a85084c77ad74db2b8c99d489344afde6a77bb3981de31c81296dc194b70907a",
+      id: "87205a88f5d332b9556faf13347575ed8b71baaa9e7a58596ad3618b974a9b65",
+      sig: "6fa07764015c24bc03ec439225b6c0647f1050029b24f5c3fa5f880cacfd8fbd52371327913877caf5cdbccdcbab079773b84813bdc803b66d2664675406379c",
     });
     expect(accepted.input.nip01_raw).toBe(ACCEPTED_RAW);
     expect(verifyEventSignature(accepted.input.event as NostrSignedEvent)).toBe(true);
@@ -151,6 +148,10 @@ describe("author mode", () => {
         evaluation_time: 1767225660,
         nid_clock_skew_allowance: 0,
         clock_uncertainty: 0,
+        retired_key_evidence: {
+          first_observed_at: 1767225660,
+          prior_anchor: null,
+        },
         pointer: {
           persona: "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
           kel_head: {
@@ -173,8 +174,8 @@ describe("author mode", () => {
           pubkey: "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
           delegation: null,
         },
-        version_policy: { mode: "required", value: "heterodyne/0.5.0" },
-        kel_head_policy: { mode: "required" },
+        version_policy: { mode: "forbidden", value: "heterodyne/0.5.0" },
+        kel_head_policy: { mode: "forbidden" },
         subtype_policy: { mode: "generic", nid_pubkey: null },
       },
     });

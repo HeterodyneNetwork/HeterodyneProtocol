@@ -196,18 +196,30 @@ function filesUnder(
   repositoryRoot: string,
   directory: string,
   issues: CorpusIssue[],
+  excludedDirectories: ReadonlySet<string> = new Set(),
 ): string[] {
   const root = resolve(repositoryRoot, directory);
   const visit = (current: string): string[] => readdirSync(current, { withFileTypes: true })
     .flatMap((entry) => {
       const target = resolve(current, entry.name);
+      const repositoryPath = relative(repositoryRoot, target).replaceAll("\\", "/");
+      if (excludedDirectories.has(repositoryPath)) {
+        return [];
+      }
       if (entry.isDirectory()) {
         return visit(target);
       }
       if (!entry.isFile()) {
+        issues.push({
+          code: "unsafe-artifact-path",
+          path: repositoryPath,
+          message: entry.isSymbolicLink()
+            ? "normative inventory entry is a symbolic link"
+            : "normative inventory entry is not a regular file or directory",
+        });
         return [];
       }
-      return [relative(repositoryRoot, target).replaceAll("\\", "/")];
+      return [repositoryPath];
     });
   try {
     return visit(root).sort(compareText);
@@ -234,15 +246,28 @@ function expectedReleaseArtifacts(
 ): ReadonlyMap<string, string> {
   const entries: Array<readonly [string, string]> = [
     ...specificationPaths.map((path) => [path, "specification"] as const),
-    ...filesUnder(repositoryRoot, "docs/spec/registry", issues)
+    ...filesUnder(
+      repositoryRoot,
+      "docs/spec/registry",
+      issues,
+      new Set(["docs/spec/registry/history"]),
+    )
       .filter((path) => path.endsWith(".json"))
-      .filter((path) => !path.startsWith("docs/spec/registry/history/"))
       .map((path) => [path, "registry"] as const),
     ...filesUnder(repositoryRoot, "docs/spec/schemas", issues)
       .filter((path) => path.endsWith(".json"))
       .map((path) => [path, "schema"] as const),
     [vectorSchemaPath, "schema"],
-    ...filesUnder(repositoryRoot, "docs/spec/vectors", issues)
+    ...filesUnder(
+      repositoryRoot,
+      "docs/spec/vectors",
+      issues,
+      new Set([
+        "docs/spec/vectors/coverage",
+        "docs/spec/vectors/generator",
+        "docs/spec/vectors/schema",
+      ]),
+    )
       .filter(isNormativeVectorPath)
       .map((path) => [path, "vector"] as const),
     [marmotManifestPath, "normative-support"],
@@ -725,6 +750,20 @@ export function loadCorpus(repositoryRoot: string): {
   const schemas = new Map<string, unknown>();
   const vectors: { path: string; value: VectorDocument }[] = [];
   const vectorIds = new Map<string, string>();
+  const vectorSchema = parsedJson.get(vectorSchemaPath);
+  let validateVectorSchema: ReturnType<Ajv["compile"]> | undefined;
+  if (vectorSchema !== undefined) {
+    if (!isRecord(vectorSchema)) {
+      shapeIssue(issues, vectorSchemaPath, "vector schema must be a JSON object");
+    } else {
+      try {
+        validateVectorSchema = new Ajv({ allErrors: true, strict: false })
+          .compile(vectorSchema as AnySchema);
+      } catch {
+        shapeIssue(issues, vectorSchemaPath, "vector schema is not a compilable JSON Schema");
+      }
+    }
+  }
   for (const artifact of manifest.artifacts) {
     if (artifact.role === "specification") {
       const value = textArtifacts.get(artifact.path);
@@ -738,6 +777,13 @@ export function loadCorpus(repositoryRoot: string): {
     } else if (artifact.role === "vector") {
       const value = parsedJson.get(artifact.path);
       if (value === undefined) {
+        continue;
+      }
+      if (validateVectorSchema === undefined) {
+        continue;
+      }
+      if (!validateVectorSchema(value)) {
+        shapeIssue(issues, artifact.path, "vector does not match vector.schema.json");
         continue;
       }
       const vector = parseVector(value);
@@ -774,8 +820,8 @@ export function loadCorpus(repositoryRoot: string): {
     issues,
   );
 
-  const schema = parsedJson.get(registrySchemaPath);
-  if (schema !== undefined && !isRecord(schema)) {
+  const registrySchema = parsedJson.get(registrySchemaPath);
+  if (registrySchema !== undefined && !isRecord(registrySchema)) {
     shapeIssue(issues, registrySchemaPath, "registry schema must be a JSON object");
   }
 
@@ -791,9 +837,16 @@ export function loadCorpus(repositoryRoot: string): {
         message: "registry entry_set_sha256 does not match the complete current entry set",
       });
     }
-    if (isRecord(schema) && registryManifest !== undefined) {
-      const validate = new Ajv({ allErrors: true, strict: false }).compile(schema as AnySchema);
-      if (!validate({ manifest: registryManifest, ...entrySet })) {
+    if (isRecord(registrySchema) && registryManifest !== undefined) {
+      let validateRegistrySchema: ReturnType<Ajv["compile"]> | undefined;
+      try {
+        validateRegistrySchema = new Ajv({ allErrors: true, strict: false })
+          .compile(registrySchema as AnySchema);
+      } catch {
+        shapeIssue(issues, registrySchemaPath, "registry schema is not a compilable JSON Schema");
+      }
+      if (validateRegistrySchema !== undefined
+        && !validateRegistrySchema({ manifest: registryManifest, ...entrySet })) {
         shapeIssue(issues, registryManifestPath, "registry documents do not match registry.schema.json");
       }
     }

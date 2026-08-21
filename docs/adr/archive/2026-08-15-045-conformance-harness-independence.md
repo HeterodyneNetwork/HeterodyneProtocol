@@ -58,10 +58,10 @@ nodes, containers, or delegates.
 
 ## Acceptance and archive condition
 
-This ADR remains proposed while the integrated implementation is reviewed.
-After the standalone package, registry revision 13, vector schema 1.1.0,
-coupled vectors, shared CI gate, and repository guidance are complete and the
-family and conformance checks pass, accept this record and move it to
-`docs/adr/archive/` before merge. The accepted ADR is historical context only;
+This ADR remained proposed while the integrated implementation was reviewed.
+Once the standalone package, registry revision 13, vector schema 1.1.0,
+coupled vectors, shared CI gate, and repository guidance were complete and the
+family and conformance checks passed, the record was accepted and moved to
+`docs/adr/archive/`. The accepted ADR is historical context only;
 the specification and normative machine-readable artifacts must stand on
 their own and must not depend on this record.
