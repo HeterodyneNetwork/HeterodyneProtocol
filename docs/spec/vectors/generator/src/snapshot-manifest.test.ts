@@ -1,14 +1,17 @@
 import { createHash } from "node:crypto";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import snapshotManifestSchema from "../../snapshot.schema.json" with { type: "json" };
 import {
   buildSnapshotManifest,
   loadSnapshotManifest,
@@ -155,5 +158,61 @@ describe("snapshot manifest", () => {
     expect(() => loadSnapshotManifest(root)).toThrow(
       `artifact digest mismatch: ${VECTOR_ROOT}/fixtures.json`,
     );
+  });
+
+  it("keeps schema and runtime path and uniqueness rules aligned", () => {
+    const validateSchema = new Ajv2020({ allErrors: true }).compile(snapshotManifestSchema);
+    for (const unsafePath of [
+      "docs/spec/vectors/core/../outside.json",
+      "docs/spec/vectors/",
+      "docs/spec/vectors/core//vector.json",
+      "docs/spec/vectors/core/./vector.json",
+    ]) {
+      const root = repository();
+      const manifest = buildSnapshotManifest(root, SOURCE_COMMIT);
+      manifest.artifacts[0] = { ...manifest.artifacts[0]!, path: unsafePath };
+      expect(validateSchema(manifest), unsafePath).toBe(false);
+      writeManifest(root, manifest);
+      expect(() => loadSnapshotManifest(root), unsafePath).toThrow(/unsafe artifact path/);
+    }
+
+    const root = repository();
+    const duplicate = buildSnapshotManifest(root, SOURCE_COMMIT);
+    duplicate.artifacts[1] = { ...duplicate.artifacts[0]! };
+    expect(validateSchema(duplicate)).toBe(false);
+    writeManifest(root, duplicate);
+    expect(() => loadSnapshotManifest(root)).toThrow(/duplicate artifact path/);
+  });
+
+  it("rejects support artifacts reached through escaping and in-root symlinks", () => {
+    const escapingRoot = repository();
+    const outside = mkdtempSync(join(tmpdir(), "heterodyne-snapshot-outside-test-"));
+    temps.push(outside);
+    const outsideFile = join(outside, "fixtures.json");
+    writeFileSync(outsideFile, "outside bytes\n", "utf8");
+    rmSync(join(escapingRoot, VECTOR_ROOT, "fixtures.json"));
+    symlinkSync(outsideFile, join(escapingRoot, VECTOR_ROOT, "fixtures.json"));
+    expect(() => buildSnapshotManifest(escapingRoot, SOURCE_COMMIT)).toThrow(/symbolic link/);
+
+    const inRoot = repository();
+    const inRootFile = join(inRoot, "fixtures-target.json");
+    writeFileSync(inRootFile, "in-root bytes\n", "utf8");
+    rmSync(join(inRoot, VECTOR_ROOT, "fixtures.json"));
+    symlinkSync(inRootFile, join(inRoot, VECTOR_ROOT, "fixtures.json"));
+    expect(() => buildSnapshotManifest(inRoot, SOURCE_COMMIT)).toThrow(/symbolic link/);
+
+    const directoryRoot = repository();
+    const coverageTarget = join(directoryRoot, "coverage-target");
+    mkdirSync(coverageTarget);
+    rmSync(join(directoryRoot, VECTOR_ROOT, "coverage"), { recursive: true });
+    symlinkSync(coverageTarget, join(directoryRoot, VECTOR_ROOT, "coverage"), "dir");
+    expect(() => buildSnapshotManifest(directoryRoot, SOURCE_COMMIT)).toThrow(/symbolic link/);
+
+    const rootTarget = repository();
+    const aliasParent = mkdtempSync(join(tmpdir(), "heterodyne-snapshot-root-alias-test-"));
+    temps.push(aliasParent);
+    const rootAlias = join(aliasParent, "repository");
+    symlinkSync(rootTarget, rootAlias, "dir");
+    expect(() => buildSnapshotManifest(rootAlias, SOURCE_COMMIT)).toThrow(/symbolic link/);
   });
 });

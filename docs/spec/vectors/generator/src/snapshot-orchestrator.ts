@@ -97,7 +97,7 @@ type GitResult = {
 };
 
 function git(repoRoot: string, args: string[]): GitResult {
-  const result = spawnSync("git", ["-C", resolve(repoRoot), ...args], {
+  const result = spawnSync("git", ["--no-replace-objects", "-C", resolve(repoRoot), ...args], {
     encoding: "buffer",
     maxBuffer: MAX_GIT_OUTPUT,
   });

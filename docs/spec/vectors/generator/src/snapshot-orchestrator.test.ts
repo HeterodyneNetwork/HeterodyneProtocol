@@ -225,4 +225,20 @@ describe("snapshot history", () => {
       expect(readFileSync(join(ownedRoot, "substituted.txt"), "utf8")).toBe("$Format:%H$\n");
     });
   });
+
+  it("materializes the exact original commit and blobs despite replacement refs", async () => {
+    const { root, sourceCommit } = repository();
+    const originalBlob = git(root, ["rev-parse", `${sourceCommit}:source.txt`]);
+    write(root, "source.txt", "replacement commit bytes\n");
+    write(root, "replacement-only.txt", "must not materialize\n");
+    const replacementCommit = commit(root, "replacement commit");
+    const replacementBlob = git(root, ["rev-parse", `${replacementCommit}:source.txt`]);
+    git(root, ["replace", originalBlob, replacementBlob]);
+    git(root, ["replace", sourceCommit, replacementCommit]);
+
+    await withMaterializedCommit(root, sourceCommit, (ownedRoot) => {
+      expect(readFileSync(join(ownedRoot, "source.txt"), "utf8")).toBe("source bytes\n");
+      expect(existsSync(join(ownedRoot, "replacement-only.txt"))).toBe(false);
+    });
+  });
 });

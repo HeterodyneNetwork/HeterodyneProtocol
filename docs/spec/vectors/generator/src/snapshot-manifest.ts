@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync, readdirSync } from "node:fs";
+import { lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 
 export type SnapshotArtifact = {
@@ -81,10 +81,14 @@ export function buildSnapshotManifest(
   }
   const repositoryRoot = resolve(repoRoot);
   const vectorRoot = resolve(repositoryRoot, VECTOR_ROOT);
+  assertContainedDirectory(repositoryRoot, VECTOR_ROOT);
   const vectorPaths = listVectorPaths(vectorRoot);
   const vectorSchemaVersion = readPackagedVectorSchemaVersion(repositoryRoot);
   for (const path of vectorPaths) {
-    const value = readJson(resolve(repositoryRoot, path), `snapshot vector ${path}`);
+    const value = readJsonBytes(
+      readContainedRegularFile(repositoryRoot, path),
+      `snapshot vector ${path}`,
+    );
     if (!isRecord(value) || value.vector_schema_version !== vectorSchemaVersion) {
       throw new Error(
         `snapshot schema version disagreement: ${path} does not use ${vectorSchemaVersion}`,
@@ -98,7 +102,7 @@ export function buildSnapshotManifest(
   ].sort(compareStrings);
   const artifacts = paths.map((path) => ({
     path,
-    sha256: digest(readFileSync(resolve(repositoryRoot, path))),
+    sha256: digest(readContainedRegularFile(repositoryRoot, path)),
   }));
   return {
     snapshot_schema: "1",
@@ -167,15 +171,12 @@ function parseSnapshotManifest(value: unknown): SnapshotManifest {
 
 function listVectorPaths(vectorRoot: string): string[] {
   return readdirSync(vectorRoot, { withFileTypes: true }).flatMap((entry) => {
+    if (entry.isSymbolicLink()) {
+      throw new Error(`snapshot path must not be a symbolic link: ${entry.name}`);
+    }
     if (entry.isDirectory()) {
       if (EXCLUDED_TOP_LEVEL_DIRECTORIES.has(entry.name)) return [];
       return listJsonFiles(vectorRoot, join(vectorRoot, entry.name));
-    }
-    if (entry.isSymbolicLink()) {
-      if (entry.name.endsWith(".json") && !EXCLUDED_TOP_LEVEL_FILES.has(entry.name)) {
-        throw new Error(`unsupported snapshot vector entry: ${entry.name}`);
-      }
-      return [];
     }
     if (!entry.isFile() || EXCLUDED_TOP_LEVEL_FILES.has(entry.name) || !entry.name.endsWith(".json")) {
       return [];
@@ -187,15 +188,12 @@ function listVectorPaths(vectorRoot: string): string[] {
 function listJsonFiles(root: string, current: string): string[] {
   return readdirSync(current, { withFileTypes: true }).flatMap((entry) => {
     const absolute = join(current, entry.name);
-    if (entry.isDirectory()) return listJsonFiles(root, absolute);
     if (entry.isSymbolicLink()) {
-      if (entry.name.endsWith(".json")) {
-        throw new Error(
-          `unsupported snapshot vector entry: ${relative(root, absolute).split(sep).join("/")}`,
-        );
-      }
-      return [];
+      throw new Error(
+        `snapshot path must not be a symbolic link: ${relative(root, absolute).split(sep).join("/")}`,
+      );
     }
+    if (entry.isDirectory()) return listJsonFiles(root, absolute);
     if (!entry.isFile() || !entry.name.endsWith(".json")) return [];
     const relativePath = relative(root, absolute).split(sep).join("/");
     return [`${VECTOR_ROOT}/${relativePath}`];
@@ -204,7 +202,10 @@ function listJsonFiles(root: string, current: string): string[] {
 
 function readPackagedVectorSchemaVersion(repositoryRoot: string): string {
   const schemaPath = `${VECTOR_ROOT}/schema/vector.schema.json`;
-  const schema = readJson(resolve(repositoryRoot, schemaPath), "packaged vector schema");
+  const schema = readJsonBytes(
+    readContainedRegularFile(repositoryRoot, schemaPath),
+    "packaged vector schema",
+  );
   if (!isRecord(schema) || !isRecord(schema.properties)) {
     throw new Error("packaged vector schema has no properties object");
   }
@@ -248,9 +249,64 @@ function isSafeArtifactPath(path: string): boolean {
   return path.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..");
 }
 
-function readJson(path: string, label: string): unknown {
+function readContainedRegularFile(repositoryRoot: string, path: string): Buffer {
+  assertRepositoryRoot(repositoryRoot);
+  const rootRealPath = realpathSync(repositoryRoot);
+  const segments = path.split("/");
+  let current = repositoryRoot;
+  for (const [index, segment] of segments.entries()) {
+    current = join(current, segment);
+    const status = lstatSync(current);
+    if (status.isSymbolicLink()) {
+      throw new Error(`snapshot path must not be a symbolic link: ${path}`);
+    }
+    const final = index === segments.length - 1;
+    if (final ? !status.isFile() : !status.isDirectory()) {
+      throw new Error(
+        final
+          ? `snapshot artifact must be a regular file: ${path}`
+          : `snapshot artifact parent must be a directory: ${path}`,
+      );
+    }
+  }
+  const realPath = realpathSync(current);
+  const relativePath = relative(rootRealPath, realPath);
+  if (relativePath === ".." || relativePath.startsWith(`..${sep}`) || resolve(realPath) === rootRealPath) {
+    throw new Error(`snapshot artifact escapes repository root: ${path}`);
+  }
+  return readFileSync(current);
+}
+
+function assertContainedDirectory(repositoryRoot: string, path: string): void {
+  assertRepositoryRoot(repositoryRoot);
+  const rootRealPath = realpathSync(repositoryRoot);
+  let current = repositoryRoot;
+  for (const segment of path.split("/")) {
+    current = join(current, segment);
+    const status = lstatSync(current);
+    if (status.isSymbolicLink()) {
+      throw new Error(`snapshot path must not be a symbolic link: ${path}`);
+    }
+    if (!status.isDirectory()) throw new Error(`snapshot path must be a directory: ${path}`);
+  }
+  const realPath = realpathSync(current);
+  const relativePath = relative(rootRealPath, realPath);
+  if (relativePath === ".." || relativePath.startsWith(`..${sep}`)) {
+    throw new Error(`snapshot directory escapes repository root: ${path}`);
+  }
+}
+
+function assertRepositoryRoot(repositoryRoot: string): void {
+  const status = lstatSync(repositoryRoot);
+  if (status.isSymbolicLink()) {
+    throw new Error("snapshot repository root must not be a symbolic link");
+  }
+  if (!status.isDirectory()) throw new Error("snapshot repository root must be a directory");
+}
+
+function readJsonBytes(bytes: Buffer, label: string): unknown {
   try {
-    return JSON.parse(readFileSync(path, "utf8")) as unknown;
+    return JSON.parse(bytes.toString("utf8")) as unknown;
   } catch (error) {
     throw new Error(`${label} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
   }
