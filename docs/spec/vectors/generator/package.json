@@ -5,6 +5,7 @@
   "scripts": {
     "build": "tsc --noEmit",
     "test": "vitest run",
+    "test:lifecycle": "vitest run src/snapshot-lifecycle.test.ts",
     "author": "tsx src/cli.ts author",
     "verify": "tsx src/cli.ts verify",
     "family:check": "tsx src/cli.ts family-check",
