@@ -1,6 +1,4 @@
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import type {
   ArtifactCorpus,
@@ -8,7 +6,6 @@ import type {
   ExpectedTerminalStage,
   VectorDocument,
 } from "../types.js";
-import { checkCoreSignedEvent } from "../subjects/reference-checker.js";
 import { findIdentifierIntegrityFailures } from "./identifier-integrity.js";
 import { ALL_GATES } from "./index.js";
 import { findNegativeHygieneFailures } from "./negative-hygiene.js";
@@ -28,7 +25,6 @@ const ALTERNATE_ESCAPE_SIGNATURE =
   "564b09765b0de0fb660d9fafc5b5ab55bed535082ce8b45016bc8c230be46af2518fe3e59385a5e6de75df324e335e828d46e6c5f168b94495640422a8708015";
 
 type CorpusVector = { path: string; value: VectorDocument };
-const REPOSITORY_ROOT = resolve(import.meta.dirname, "../../../../../");
 
 function signedEvent(): Record<string, unknown> {
   return {
@@ -368,65 +364,5 @@ describe("ALL_GATES", () => {
       "G10:nip01-raw",
       "G11:negative-hygiene",
     ]);
-  });
-});
-
-describe("declared normative Core signed-event cases", () => {
-  it("isolates both signature negatives and executes the accepted ten-stage trace", () => {
-    const relativePaths = [
-      "docs/spec/vectors/node-advert/002-outer-sig-invalid-rejected.json",
-      "docs/spec/vectors/verification/001-bad-signature-rejects.json",
-      "docs/spec/vectors/verification/005-valid-core-signed-event-accepts.json",
-    ];
-    const vectors = relativePaths.map((path) => {
-      const absolutePath = resolve(REPOSITORY_ROOT, path);
-      expect(existsSync(absolutePath), `missing ${path}`).toBe(true);
-      return {
-        path,
-        value: JSON.parse(readFileSync(absolutePath, "utf8")) as VectorDocument,
-      };
-    });
-    const declaredCorpus = corpus(vectors);
-
-    const signatureTrace = [
-      { stage: "event_structure", verdict: "pass" },
-      { stage: "nip01_raw", verdict: "pass" },
-      { stage: "identifier", verdict: "pass" },
-      { stage: "signature", verdict: "reject", reasonCode: "bad_signature" },
-    ];
-    for (const { value } of vectors.slice(0, 2)) {
-      expect(value.conformance_checks).toHaveLength(1);
-      expect(checkCoreSignedEvent(value, value.conformance_checks![0]!)).toEqual({
-        terminalStage: "signature",
-        verdict: "reject",
-        reasonCode: "bad_signature",
-        stages: signatureTrace,
-      });
-    }
-
-    const accepted = vectors[2]!.value;
-    expect(accepted.expected_output).toEqual({ verdict: "accept" });
-    expect(accepted.conformance_checks).toHaveLength(1);
-    expect(checkCoreSignedEvent(accepted, accepted.conformance_checks![0]!)).toEqual({
-      terminalStage: "accept",
-      verdict: "accept",
-      stages: [
-        { stage: "event_structure", verdict: "pass" },
-        { stage: "nip01_raw", verdict: "pass" },
-        { stage: "identifier", verdict: "pass" },
-        { stage: "signature", verdict: "pass" },
-        { stage: "persona_resolution", verdict: "pass" },
-        { stage: "version_stamp", verdict: "pass" },
-        { stage: "kel_head", verdict: "pass" },
-        { stage: "epoch_authority", verdict: "pass" },
-        { stage: "subtype_nid", verdict: "pass" },
-        { stage: "accept", verdict: "pass" },
-      ],
-    });
-
-    expect(findIdentifierIntegrityFailures(declaredCorpus)).toEqual([]);
-    expect(findSignatureIntegrityFailures(declaredCorpus)).toEqual([]);
-    expect(findNip01RawFailures(declaredCorpus)).toEqual([]);
-    expect(findNegativeHygieneFailures(declaredCorpus)).toEqual([]);
   });
 });

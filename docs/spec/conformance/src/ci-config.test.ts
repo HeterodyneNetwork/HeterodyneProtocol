@@ -4,6 +4,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -26,6 +27,14 @@ function readRepositoryFile(relativePath: string): string {
   const absolutePath = join(repositoryRoot, relativePath);
   expect(existsSync(absolutePath), `${relativePath} must exist`).toBe(true);
   return existsSync(absolutePath) ? readFileSync(absolutePath, "utf8") : "";
+}
+
+function listTestFiles(root: string): string[] {
+  return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) return listTestFiles(path);
+    return entry.isFile() && entry.name.endsWith(".test.ts") ? [path] : [];
+  });
 }
 
 function hasOnlyReadContentsPermission(workflow: string): boolean {
@@ -61,6 +70,27 @@ function hasOnlyReadContentsPermission(workflow: string): boolean {
 }
 
 describe("shared conformance CI configuration", () => {
+  it("keeps gate and subject unit tests independent of live vector documents", () => {
+    const unitRoots = [
+      join(repositoryRoot, "docs/spec/conformance/src/gates"),
+      join(repositoryRoot, "docs/spec/conformance/src/subjects"),
+    ];
+    const hardcodedVectorDocument =
+      /["'`]docs\/spec\/vectors\/(?!generator\/)[^"'`\n]*\.json["'`]/u;
+    const importsFileSystem = /from\s+["']node:fs(?:\/promises)?["']/u;
+    const derivesRepositoryRoot = /import\.meta\.(?:dirname|url)/u;
+    const offenders = unitRoots.flatMap(listTestFiles).flatMap((path) => {
+      const source = readFileSync(path, "utf8");
+      return importsFileSystem.test(source)
+        && derivesRepositoryRoot.test(source)
+        && hardcodedVectorDocument.test(source)
+        ? [path.slice(repositoryRoot.length + 1)]
+        : [];
+    });
+
+    expect(offenders).toEqual([]);
+  });
+
   it("keeps the complete job body in one strict repository-rooted script", () => {
     const script = readRepositoryFile("scripts/conformance-ci.sh");
     const significantLines = script.split("\n").filter((line) => line.length > 0);
