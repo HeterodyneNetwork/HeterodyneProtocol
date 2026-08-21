@@ -20,6 +20,7 @@ Generated compatibility projection. The authoritative allocation container is `d
 | `unauthorized_cache_content` | core | draft | `heterodyne/0.5.0` | heterodyne:0.5.0#core-conformance | Friend-cache content was not owner-signed non-KERI content. |
 | `relay_profile_mutation` | core | draft | `heterodyne/0.5.0` | heterodyne:0.5.0#core-conformance | A Heterodyne-aware relay profile changed vanilla NIP-01 read/write behavior. |
 | `unknown_major_version` | core | draft | `heterodyne/0.5.0` | heterodyne:0.5.0#core-conformance | A receiver encountered an incompatible future major version. |
+| `version_stamp_invalid` | core | draft | `heterodyne/0.5.0` | heterodyne:0.5.0#core-verification | Version-stamp policy failed because a required stamp was absent; a present stamp was duplicated, malformed, or not the exact supported non-future-major family version; or the event class forbids any stamp. |
 | `nid_binding_missing_signature` | core | draft | `heterodyne/0.5.0` | heterodyne:0.5.0#core-conformance | A kind:31001 NID delegation lacked the epoch-key Schnorr sig or the NID Ed25519 nid_proof. |
 | `nid_proof_invalid` | core | draft | `heterodyne/0.5.0` | heterodyne:0.5.0#core-conformance | An Ed25519 nid_proof did not verify against the advertised NID over the pinned binding payload. |
 | `node_advert_expired` | core | draft | `heterodyne/0.5.0` | heterodyne:0.5.0#core-conformance | A kind:31010 node advertisement was past its expiry. |

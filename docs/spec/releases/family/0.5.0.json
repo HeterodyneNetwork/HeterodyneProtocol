@@ -4,7 +4,7 @@
   "status": "unreleased",
   "registry": {
     "path": "docs/spec/registry/manifest.json",
-    "sha256": "dc85e785bb0efe50c57f11ccecb68ccb816f4107cef11c28a970731f682d0172"
+    "sha256": "e905eaaa6183700832e9bb0e6d58d719ca348c21058e32c22d79243c94f8a178"
   },
   "artifacts": [
     {
@@ -25,7 +25,7 @@
     {
       "path": "docs/spec/heterodyne-core.md",
       "role": "specification",
-      "sha256": "22ea7f2a3b4d3510e41d856c6f401d81e636febc40484f78fcd5850f4d4a0c52"
+      "sha256": "1e98f41999ba53409f4cb6c76c4b15e28b10cb5f90b79ed9d3ac7966f0e9f45a"
     },
     {
       "path": "docs/spec/heterodyne-social.md",
@@ -50,7 +50,7 @@
     {
       "path": "docs/spec/registry/manifest.json",
       "role": "registry",
-      "sha256": "dc85e785bb0efe50c57f11ccecb68ccb816f4107cef11c28a970731f682d0172"
+      "sha256": "e905eaaa6183700832e9bb0e6d58d719ca348c21058e32c22d79243c94f8a178"
     },
     {
       "path": "docs/spec/registry/objects.json",
@@ -65,7 +65,7 @@
     {
       "path": "docs/spec/registry/reason-codes.json",
       "role": "registry",
-      "sha256": "d77d6f9d3a96cacd2d02f3b1cf17c22a3e1b2d4464950b60ef0ac00f79a42a24"
+      "sha256": "b83723e166f32c9e7534319b07147afca3fae02bc96f5e108000f8cea9d2e5e5"
     },
     {
       "path": "docs/spec/registry/registry.schema.json",
@@ -2495,7 +2495,7 @@
     {
       "path": "docs/spec/vectors/schema/vector.schema.json",
       "role": "schema",
-      "sha256": "ddbe1b063484a763267d70025484e5d1af93c89d5d57149cd014f0962ae24432"
+      "sha256": "28476aecb88dd753025efd88fc415e33cea17d3e85b4b6467a01d7c93c4683d9"
     },
     {
       "path": "docs/spec/vectors/social-recovery/002-three-tier-caching.json",
@@ -2655,7 +2655,7 @@
     {
       "path": "docs/spec/vectors/versioning/003-capabilities-roundtrip.json",
       "role": "vector",
-      "sha256": "7fb399f40250a1dd5088037fbc4189f43ab2b2c8b0fccbb9f499df62d966800c"
+      "sha256": "0214c658abe6d412659206f1001eac5ee8b369332837e947b2fdd4bd932e6cc3"
     },
     {
       "path": "docs/spec/vectors/versioning/004-unknown-room-kind-tolerance.json",
@@ -2675,7 +2675,7 @@
     {
       "path": "docs/spec/vectors/versioning/007-core-capability-bootstrap.json",
       "role": "vector",
-      "sha256": "1b970b933fb43a2819cd3da201fe0bae72a11c73ba793a82f3c7e4c669b73248"
+      "sha256": "73fbe26a8dc044f3315ff9048d7b7b72e85ad081fae023ff1f70177ae013c18c"
     },
     {
       "path": "docs/spec/vectors/versioning/008-exact-family-version-negotiation.json",
@@ -2685,7 +2685,7 @@
     {
       "path": "docs/spec/vectors/versioning/009-unknown-asynchronous-stamp-rejected.json",
       "role": "vector",
-      "sha256": "5e9deb6e173c33047732af0de08c064b921f770dbd3f6162b2e7157fbce65869"
+      "sha256": "f22c57bbcb43a87ed6c04aefebfd607767c9d4d1aaaea11bbf46452db5e1d91c"
     },
     {
       "path": "docs/spec/vectors/workspace-device/001-independent-leaf-removal.json",

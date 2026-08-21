@@ -192,7 +192,11 @@ function isNormativeVectorPath(path: string): boolean {
     && !path.startsWith("docs/spec/vectors/schema/");
 }
 
-function filesUnder(repositoryRoot: string, directory: string): string[] {
+function filesUnder(
+  repositoryRoot: string,
+  directory: string,
+  issues: CorpusIssue[],
+): string[] {
   const root = resolve(repositoryRoot, directory);
   const visit = (current: string): string[] => readdirSync(current, { withFileTypes: true })
     .flatMap((entry) => {
@@ -205,21 +209,40 @@ function filesUnder(repositoryRoot: string, directory: string): string[] {
       }
       return [relative(repositoryRoot, target).replaceAll("\\", "/")];
     });
-  return visit(root).sort(compareText);
+  try {
+    return visit(root).sort(compareText);
+  } catch (error) {
+    const code = isRecord(error) && typeof error.code === "string" ? error.code : undefined;
+    const message = code === "ENOENT"
+      ? "required corpus root is missing"
+      : code === "ENOTDIR"
+        ? "required corpus root is not a directory"
+        : code === "EACCES" || code === "EPERM"
+          ? "required corpus root is unreadable"
+          : undefined;
+    if (message === undefined) {
+      throw error;
+    }
+    issues.push({ code: "missing-required-root", path: directory, message });
+    return [];
+  }
 }
 
-function expectedReleaseArtifacts(repositoryRoot: string): ReadonlyMap<string, string> {
+function expectedReleaseArtifacts(
+  repositoryRoot: string,
+  issues: CorpusIssue[],
+): ReadonlyMap<string, string> {
   const entries: Array<readonly [string, string]> = [
     ...specificationPaths.map((path) => [path, "specification"] as const),
-    ...filesUnder(repositoryRoot, "docs/spec/registry")
+    ...filesUnder(repositoryRoot, "docs/spec/registry", issues)
       .filter((path) => path.endsWith(".json"))
       .filter((path) => !path.startsWith("docs/spec/registry/history/"))
       .map((path) => [path, "registry"] as const),
-    ...filesUnder(repositoryRoot, "docs/spec/schemas")
+    ...filesUnder(repositoryRoot, "docs/spec/schemas", issues)
       .filter((path) => path.endsWith(".json"))
       .map((path) => [path, "schema"] as const),
     [vectorSchemaPath, "schema"],
-    ...filesUnder(repositoryRoot, "docs/spec/vectors")
+    ...filesUnder(repositoryRoot, "docs/spec/vectors", issues)
       .filter(isNormativeVectorPath)
       .map((path) => [path, "vector"] as const),
     [marmotManifestPath, "normative-support"],
@@ -608,7 +631,7 @@ export function loadCorpus(repositoryRoot: string): {
     artifactPaths.add(artifact.path);
   }
 
-  const expectedArtifacts = expectedReleaseArtifacts(canonicalRoot);
+  const expectedArtifacts = expectedReleaseArtifacts(canonicalRoot, issues);
   for (const [path, role] of expectedArtifacts) {
     const artifact = manifest.artifacts.find((candidate) => candidate.path === path);
     if (artifact === undefined) {
@@ -751,6 +774,11 @@ export function loadCorpus(repositoryRoot: string): {
     issues,
   );
 
+  const schema = parsedJson.get(registrySchemaPath);
+  if (schema !== undefined && !isRecord(schema)) {
+    shapeIssue(issues, registrySchemaPath, "registry schema must be a JSON object");
+  }
+
   const entrySet = registryEntrySet(parsedJson);
   if (entrySet === undefined) {
     shapeIssue(issues, registryManifestPath, "complete registry entry documents are required");
@@ -763,7 +791,6 @@ export function loadCorpus(repositoryRoot: string): {
         message: "registry entry_set_sha256 does not match the complete current entry set",
       });
     }
-    const schema = parsedJson.get(registrySchemaPath);
     if (isRecord(schema) && registryManifest !== undefined) {
       const validate = new Ajv({ allErrors: true, strict: false }).compile(schema as AnySchema);
       if (!validate({ manifest: registryManifest, ...entrySet })) {

@@ -334,9 +334,9 @@ const CASES: Case[] = [
   {
     path: "versioning/009-unknown-asynchronous-stamp-rejected.json",
     vector_id: "versioning/unknown-asynchronous-stamp-rejected",
-    description: "An unsupported asynchronous family stamp is rejected without presumed negotiation.",
-    input: { received_stamp: "heterodyne/9.0.0", negotiated_session: false, degraded_mode_declared: false },
-    expected_output: { verdict: "reject", reason_code: "unknown_major_version" },
+    description: "An unsupported non-future-major asynchronous family stamp is rejected without presumed negotiation.",
+    input: { received_stamp: "heterodyne/0.4.0", negotiated_session: false, degraded_mode_declared: false },
+    expected_output: { verdict: "reject", reason_code: "version_stamp_invalid" },
   },
   ...profileCases(),
   ...stampCases(),

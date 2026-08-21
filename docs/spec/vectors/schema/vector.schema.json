@@ -194,6 +194,7 @@
                   "unauthorized_cache_content",
                   "relay_profile_mutation",
                   "unknown_major_version",
+                  "version_stamp_invalid",
                   "nid_binding_missing_signature",
                   "nid_proof_invalid",
                   "node_advert_expired",

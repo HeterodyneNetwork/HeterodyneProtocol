@@ -11,6 +11,7 @@ import {
   readTestManifest,
   registryEntrySetDigest,
   registryManifestPath,
+  registrySchemaPath,
   reasonCodesPath,
   sha256File,
   vectorPath,
@@ -136,6 +137,40 @@ describe("loadCorpus", () => {
       path: registryManifestPath,
       message: "registry entry_set_sha256 does not match the complete current entry set",
     });
+  });
+
+  it("rejects a non-object registry schema instead of returning a clean corpus", () => {
+    const root = repository();
+    writeJson(root, registrySchemaPath, []);
+    refreshReleaseDigests(root);
+
+    expect(loadCorpus(root)).toEqual({
+      issues: [{
+        code: "invalid-document-shape",
+        path: registrySchemaPath,
+        message: "registry schema must be a JSON object",
+      }],
+    });
+  });
+
+  it("accumulates a non-object registry schema with incomplete entry documents", () => {
+    const root = repository();
+    writeJson(root, reasonCodesPath, {});
+    writeJson(root, registrySchemaPath, null);
+    refreshReleaseDigests(root);
+
+    expect(loadCorpus(root).issues).toEqual([
+      {
+        code: "invalid-document-shape",
+        path: registryManifestPath,
+        message: "complete registry entry documents are required",
+      },
+      {
+        code: "invalid-document-shape",
+        path: registrySchemaPath,
+        message: "registry schema must be a JSON object",
+      },
+    ]);
   });
 
   it("enforces closed release, registry-pin, and artifact member shapes", () => {
@@ -436,5 +471,39 @@ describe("loadCorpus", () => {
       "missing-required-root",
     ]);
     expect(loadCorpus(root).corpus).toBeUndefined();
+  });
+
+  it.each([
+    "docs/spec/registry",
+    "docs/spec/schemas",
+    "docs/spec/vectors",
+  ])("reports a missing required inventory root without throwing: %s", (requiredRoot) => {
+    const root = repository();
+    rmSync(resolve(root, requiredRoot), { recursive: true, force: true });
+
+    const result = loadCorpus(root);
+
+    expect(result.issues).toContainEqual({
+      code: "missing-required-root",
+      path: requiredRoot,
+      message: "required corpus root is missing",
+    });
+    expect(result.corpus).toBeUndefined();
+  });
+
+  it("reports a required inventory root that is not a readable directory", () => {
+    const root = repository();
+    const requiredRoot = "docs/spec/schemas";
+    rmSync(resolve(root, requiredRoot), { recursive: true, force: true });
+    writeText(root, requiredRoot, "not a directory\n");
+
+    const result = loadCorpus(root);
+
+    expect(result.issues).toContainEqual({
+      code: "missing-required-root",
+      path: requiredRoot,
+      message: "required corpus root is not a directory",
+    });
+    expect(result.corpus).toBeUndefined();
   });
 });

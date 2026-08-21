@@ -645,7 +645,7 @@ describe("raw binding and context consumption", () => {
     }
   });
 
-  it("maps structure and future-major failures to existing Core reasons", () => {
+  it("maps structure and future-major failures to their exact Core reasons", () => {
     const structureFixture = validFixture();
     delete (structureFixture.vector.input.event as Record<string, unknown>).sig;
 
@@ -657,22 +657,111 @@ describe("raw binding and context consumption", () => {
       ],
     });
 
-    const malformedVersionFixture = validFixture();
-    replaceSignedInput(malformedVersionFixture, {
+    expect(checkCoreSignedEvent(structureFixture.vector, structureFixture.check).reasonCode)
+      .toBe("bad_signature");
+    expect(checkCoreSignedEvent(versionFixture.vector, versionFixture.check).reasonCode)
+      .toBe("unknown_major_version");
+  });
+
+  it("returns version_stamp_invalid for every structural or policy rejection path", () => {
+    const missing = validFixture();
+    replaceSignedInput(missing, { tags: [["kel_head", KEL_EVENT_ID, "0"]] });
+
+    const duplicateTags = validFixture();
+    replaceSignedInput(duplicateTags, {
+      tags: [
+        ["spec_version", "heterodyne/0.5.0"],
+        ["spec_version", "heterodyne/0.5.0"],
+        ["kel_head", KEL_EVENT_ID, "0"],
+      ],
+    });
+
+    const duplicateWithFutureMajor = validFixture();
+    replaceSignedInput(duplicateWithFutureMajor, {
+      tags: [
+        ["spec_version", "heterodyne/0.5.0"],
+        ["spec_version", "heterodyne/1.0.0"],
+        ["kel_head", KEL_EVENT_ID, "0"],
+      ],
+    });
+
+    const duplicateContentMembers = validFixture();
+    replaceSignedInput(duplicateContentMembers, {
+      content:
+        '{"spec_\\u0076ersion":"heterodyne/0.5.0","spec_version":"heterodyne/0.5.0"}',
+      tags: [["kel_head", KEL_EVENT_ID, "0"]],
+    });
+
+    const malformed = validFixture();
+    replaceSignedInput(malformed, {
       tags: [
         ["spec_version", "heterodyne/1.invalid"],
         ["kel_head", KEL_EVENT_ID, "0"],
       ],
     });
 
-    expect(checkCoreSignedEvent(structureFixture.vector, structureFixture.check).reasonCode)
-      .toBe("bad_signature");
-    expect(checkCoreSignedEvent(versionFixture.vector, versionFixture.check).reasonCode)
-      .toBe("unknown_major_version");
-    expect(checkCoreSignedEvent(
-      malformedVersionFixture.vector,
-      malformedVersionFixture.check,
-    ).reasonCode).toBeUndefined();
+    const mismatched = validFixture();
+    replaceSignedInput(mismatched, {
+      tags: [
+        ["spec_version", "heterodyne/0.6.0"],
+        ["kel_head", KEL_EVENT_ID, "0"],
+      ],
+    });
+
+    const forbidden = validFixture();
+    contextOf(forbidden).version_policy = {
+      mode: "forbidden",
+      value: "heterodyne/0.5.0",
+    };
+
+    const fixtures = [
+      missing,
+      duplicateTags,
+      duplicateWithFutureMajor,
+      duplicateContentMembers,
+      malformed,
+      mismatched,
+      forbidden,
+    ];
+    for (const fixture of fixtures) {
+      const result = checkCoreSignedEvent(fixture.vector, fixture.check);
+      expect(result).toMatchObject({
+        terminalStage: "version_stamp",
+        verdict: "reject",
+        reasonCode: "version_stamp_invalid",
+      });
+      expect(result.stages.at(-1)).toEqual({
+        stage: "version_stamp",
+        verdict: "reject",
+        reasonCode: "version_stamp_invalid",
+      });
+      fixture.check.expected_terminal_stage = "version_stamp";
+      fixture.vector.expected_output = {
+        verdict: "reject",
+        reason_code: "version_stamp_invalid",
+      };
+    }
+
+    const digest = "00".repeat(32);
+    const corpus: ArtifactCorpus = {
+      repositoryRoot: "/synthetic",
+      familyVersion: "heterodyne/0.5.0",
+      registryRevision: 13,
+      registryDigest: digest,
+      specifications: new Map(),
+      schemas: new Map(),
+      vectors: fixtures.map((fixture, index) => ({
+        path: `docs/spec/vectors/test/version-${index}.json`,
+        value: fixture.vector,
+      })),
+      fixtures: {},
+      registry: {
+        manifest: { revision: 13, schema_version: "3.0.0", entry_set_sha256: digest },
+        reason_codes: [{ code: "version_stamp_invalid" }],
+        security_invariants: [],
+      },
+    };
+    expect(findNegativeHygieneFailures(corpus)).toEqual([]);
   });
 
   it("rejects noncontiguous KEL sequence, prior links, and pointer heads", () => {

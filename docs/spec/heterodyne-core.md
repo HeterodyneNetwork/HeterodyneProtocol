@@ -1309,9 +1309,10 @@ A purported signed event whose required NIP-01 event members are absent or
 malformed cannot complete identifier or signature verification and MUST be
 rejected with `bad_signature`. A syntactically valid version stamp that names
 an incompatible future protocol major MUST be rejected with
-`unknown_major_version`. These bindings use the existing Core reason-code
-vocabulary; malformed stamps that do not establish a future major remain
-ordinary `version_stamp` failures without a new wire reason.
+`unknown_major_version`. Every other version-stamp policy failure—including a
+missing required stamp, a duplicate or malformed stamp, a non-future-major
+exact-version mismatch, or a stamp forbidden for that event class—MUST be
+rejected with `version_stamp_invalid`.
 
 An object whose identity inputs are provisional MUST NOT be reported final.
 Failed verification MUST be exposed as a rejection or explicit security
@@ -1646,7 +1647,7 @@ Every capability advertisement uses this Core-parsable bootstrap object:
 {
   "descriptor": "heterodyne-capabilities-v1",
   "spec_version": "heterodyne/0.5.0",
-  "registry_sha256": "e3c93355e1ddf2696b5d7eca3cf4662b80274afdbbfdebe361cfbdbaf49db1b5",
+  "registry_sha256": "e1dc51e9a64c334eb416e0f635b6375f39bff25f9cdc87be25b700245a41561a",
   "implementation_role": "public-reader",
   "supported_documents": [
     "core"

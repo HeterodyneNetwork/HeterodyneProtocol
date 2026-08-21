@@ -27,18 +27,9 @@ const QUALIFIED_HETERODYNE_VERSION =
 function reject(
   stages: StageResult[],
   stage: CheckerStage,
-  reasonCode?: string,
+  reasonCode: string,
 ): SubjectResult {
-  const terminal: StageResult = reasonCode === undefined
-    ? { stage, verdict: "reject" }
-    : { stage, verdict: "reject", reasonCode };
-  if (reasonCode === undefined) {
-    return {
-      terminalStage: stage,
-      verdict: "reject",
-      stages: [...stages, terminal],
-    };
-  }
+  const terminal: StageResult = { stage, verdict: "reject", reasonCode };
   return {
     terminalStage: stage,
     verdict: "reject",
@@ -161,7 +152,7 @@ function topLevelJsonObjectMemberNames(source: string): string[] | undefined {
 function versionStampFailure(
   event: NostrSignedEvent,
   policy: CoreVerificationContextV1["version_policy"],
-): { invalid: boolean; reasonCode?: string } {
+): { invalid: false } | { invalid: true; reasonCode: string } {
   const stamps: unknown[] = event.tags
     .filter((tag) => tag[0] === "spec_version")
     .map((tag) => tag.length === 2 ? tag[1] : undefined);
@@ -179,7 +170,7 @@ function versionStampFailure(
         memberNames === undefined
         || memberNames.filter((name) => name === "spec_version").length !== 1
       ) {
-        return { invalid: true };
+        return { invalid: true, reasonCode: "version_stamp_invalid" };
       }
       stamps.push((content as Record<string, unknown>).spec_version);
     }
@@ -188,7 +179,15 @@ function versionStampFailure(
   }
 
   if (policy.mode === "forbidden") {
-    return { invalid: stamps.length !== 0 };
+    return stamps.length === 0
+      ? { invalid: false }
+      : { invalid: true, reasonCode: "version_stamp_invalid" };
+  }
+  if (
+    (policy.mode === "required" && stamps.length !== 1)
+    || (policy.mode === "optional" && stamps.length > 1)
+  ) {
+    return { invalid: true, reasonCode: "version_stamp_invalid" };
   }
   if (stamps.some((stamp) => stamp !== policy.value)) {
     const hasFutureMajor = stamps.some((stamp) => {
@@ -198,11 +197,9 @@ function versionStampFailure(
     });
     return hasFutureMajor
       ? { invalid: true, reasonCode: "unknown_major_version" }
-      : { invalid: true };
+      : { invalid: true, reasonCode: "version_stamp_invalid" };
   }
-  return {
-    invalid: policy.mode === "required" ? stamps.length !== 1 : stamps.length > 1,
-  };
+  return { invalid: false };
 }
 
 type KelHeadResult =
