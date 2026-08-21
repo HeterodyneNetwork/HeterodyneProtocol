@@ -50,16 +50,37 @@ describe("canonical family documentation", () => {
     ],
     [
       "docs/spec/vectors/README.md",
-      "npm --prefix docs/spec/vectors/generator run release-author\n"
-        + "npm --prefix docs/spec/vectors/generator run release-check",
+      "npm --prefix docs/spec/vectors/generator run release-author",
+    ],
+    [
+      "docs/spec/vectors/README.md",
+      "npm --prefix docs/spec/vectors/generator run release-check",
+    ],
+    [
+      "docs/spec/vectors/README.md",
+      "Vectors are normative for the behavior they cover: failing an authored\n"
+        + "vector means a Heterodyne client is non-conformant for the corresponding\n"
+        + "vector category.",
     ],
     [
       "docs/spec/vectors/generator/README.md",
-      "The committed JSON vectors are the normative artifact.",
+      "This package is non-normative tooling for authoring and checking the JSON\n"
+        + "vectors in `docs/spec/vectors/`. The committed JSON vectors are the normative\n"
+        + "artifact; implementations do not need Node.js, TypeScript, `nostr-tools`, or\n"
+        + "`@noble/*` to claim conformance.",
     ],
     [
       "docs/adr/README.md",
-      "The current protocol authority is the versioned specification family and its normative registries, schemas, release metadata, and conformance vectors.",
+      "ADRs are non-canonical, point-in-time records of decisions proposed for the\n"
+        + "Heterodyne specification. The current protocol authority is the versioned\n"
+        + "specification family and its normative registries, schemas, release metadata,\n"
+        + "and conformance vectors.",
+    ],
+    [
+      "docs/adr/2026-08-15-045-conformance-harness-independence.md",
+      "- The conformance package, its baselines, and its reports are tooling rather\n"
+        + "  than normative family artifacts. The live specifications, registry, schemas,\n"
+        + "  release metadata, and vectors remain the protocol authority.",
     ],
     [
       "docs/spec/extensions/nips/README.md",
