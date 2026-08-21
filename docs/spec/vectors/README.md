@@ -1,30 +1,61 @@
 # Test vectors
 
-This directory contains the normative conformance vectors for the Heterodyne
-protocol family. A vector is owned by exactly one family document; directory
-names do not imply ownership.
+This directory contains the one rolling, non-normative pre-1.0 validation
+snapshot for the Heterodyne protocol family. A vector is owned by exactly one
+family document; directory names do not imply ownership. The live
+specifications, registry, and protocol schemas remain the current draft
+authority even when they have advanced beyond this snapshot.
 
 When a vector exists for a behavior, an implementation claiming that vector's
 coverage MUST reproduce `produce` output byte-for-byte, MUST accept and
 validate `consume` input as specified, and MUST preserve the declared
-comparison surface for `round-trip` input. During 0.x, current vector IDs and
-behaviors MAY change or be retired before release. Released artifact sets and
-their exact bytes remain historical records; vector-ID immutability begins at
-1.0.
+comparison surface for `round-trip` input at the pinned source commit. During
+0.x, a later periodic reconciliation may replace vector IDs and behavior in
+place. Vector-ID immutability, retained historical sets, and release
+compatibility are deferred to the future 1.0 release policy.
 
-## Family metadata
+## Closed snapshot and bootstrap
 
-Every vector validates against
-[`schema/vector.schema.json`](schema/vector.schema.json) and carries:
+[`snapshot.json`](snapshot.json) is a closed, canonical manifest containing one
+full source commit, one packaged vector-schema version, the vector count, and a
+strictly sorted inventory of every artifact path and SHA-256 digest. It pins
+source commit `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`. The bootstrap contains
+482 vectors and 493 manifest-listed artifacts: the vectors plus fixtures, the
+packaged vector-envelope schema, reason-code projections, and coverage
+manifest/projections. The schema-2.0.0 bootstrap is a behavior-neutral package
+of the source commit's schema-1.0.0 output.
+
+The three isolated roots have different authority:
+
+- The **source root**, materialized from the exact source pin, supplies the
+  five specifications, registry, protocol schemas, and all behavioral
+  generator inputs.
+- The **snapshot root** supplies the committed vectors, fixtures, packaged
+  vector schema, reason/coverage projections, and closed manifest.
+- The **snapshot-tool root**, materialized from the snapshot commit, supplies
+  only the packager and its lockfile for historical package validation.
+
+The manifest does not assert its own snapshot commit. `snapshot-check` derives
+that runtime identity as the last commit that changed `snapshot.json`
+(currently `5d4bb5fb58b35c88d8a9db120a09f1087237f35c`), requires the working
+manifest bytes to match that commit, and passes explicit source/snapshot roots
+and both commit identities to the independent conformance runtime. The pinned
+source predates executable `conformance_checks`, so this bootstrap executes
+zero declared reference-checker cases. Corpus-wide static gates still execute.
+
+## Snapshot envelope
+
+Every packaged vector validates against
+[`schema/vector.schema.json`](schema/vector.schema.json) and carries the closed
+schema-2 envelope:
 
 ```json
 {
   "vector_id": "<topic>/<stable-id>",
-  "vector_schema_version": "1.1.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core | comms | control | social | workspace",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "<optional immutable profile id>",
-  "spec_refs": ["heterodyne:0.5.0#<permanent-anchor>"],
+  "spec_refs": ["heterodyne:<document>#<permanent-anchor>"],
   "description": "<behavior>",
   "direction": "produce | consume | round-trip",
   "input": {},
@@ -32,22 +63,17 @@ Every vector validates against
 }
 ```
 
-The schema requires each actual vector's `spec_version` to be the scalar
-family version. A `spec_version` inside a tested event's `input` or
-`expected_output` is part of that event's wire format and is not the vector
-envelope version. The current unreleased corpus contains 499 normative vectors.
-Ten transport-independent credential-continuity draft evaluations explicitly set
-`conformance_claimable:false`; they do not activate a wire or recovery profile.
-Historical released vectors and the signed behavior they describe MUST NOT be
-rewritten. Unreleased 0.x vectors may be changed or retired in place under an
-accepted specification change.
+Any `spec_version` inside a tested event's `input` or `expected_output` is part
+of that event's wire format, not snapshot-envelope authority. The current-draft
+generator can author 499 vectors, while this independently pinned snapshot has
+482. Draft count changes do not require or imply a snapshot update.
 
 ### Explicit checker applicability
 
-A vector may carry an optional top-level `conformance_checks` array. It is
+A later snapshot vector may carry an optional top-level `conformance_checks`
+array. It is
 non-wire checker evidence: it neither changes nor appears within the protocol
-input or expected output. The current 499-vector corpus uses schema 1.1.0 and
-declares exactly three checks.
+input or expected output. The bootstrap snapshot declares none.
 
 Each declaration is a closed object with this shape:
 
@@ -129,7 +155,7 @@ particular:
   retention, and node-mediated agent operations.
 
 Four Comms-owned claims/OIDC groups retain their profile-specific allocation
-semantics while their vector envelopes carry the current family version:
+semantics within the pinned source interpretation:
 
 - `claims/` covers canonical IDs and typed keys, issuer/trust decisions,
   attenuation, proof of possession, visibility, and revocation;
@@ -169,31 +195,39 @@ without redefining upstream MLS or application-event semantics.
 
 ## Generator
 
-[`generator/`](generator/) is non-normative TypeScript authoring and
-verification tooling. The committed JSON vectors are the normative artifacts.
+[`generator/`](generator/) is non-normative TypeScript authoring,
+reconciliation, and verification tooling. Ordinary pre-1.0 draft changes do
+not run snapshot authoring.
 
-From the repository root:
+Both normal lanes are read-only:
 
 ```bash
-npm --prefix docs/spec/vectors/generator run author
-npm --prefix docs/spec/vectors/generator run coverage
-npm --prefix docs/spec/vectors/generator run release-author
-npm --prefix docs/spec/vectors/generator run release-check
-npm --prefix docs/spec/vectors/generator run check
+npm --prefix docs/spec/vectors/generator run draft:check -- "$PWD"
+npm --prefix docs/spec/vectors/generator run snapshot-check -- "$PWD"
 ```
 
-Running `author` also regenerates `fixtures.json`, the vector JSON schema, and
-the compatibility reason-code projections from their authoritative sources.
-Running `coverage` then regenerates the manifest and all Markdown views.
+Only a dedicated periodic reconciliation chooses a stable full source commit
+and runs:
+
+```bash
+npm --prefix docs/spec/vectors/generator run snapshot-author -- "$PWD" <source-commit>
+```
+
+The maintainer reviews the complete transactional replacement and measured
+projections, commits it, and then runs `snapshot-check`. That
+author → commit → check order is mandatory because the check derives the
+snapshot commit from history. The author command is never part of CI.
 
 ## Independent conformance harness
 
-[`../conformance/`](../conformance/) independently checks the committed
-specification family, registries, schemas, release metadata, and every
-normative vector. Its normal verification command is read-only:
+[`../conformance/`](../conformance/) independently checks the materialized
+source and snapshot roots without importing generator code. Runtime checks are
+invoked by `snapshot-check` with explicit roots and commit identities; direct
+root selection is an internal interface rather than the contributor workflow.
+The shared read-only acceptance gate is:
 
 ```bash
-npm --prefix docs/spec/conformance run check
+scripts/conformance-ci.sh
 ```
 
 Baseline and report authoring are explicit maintainer operations, excluded

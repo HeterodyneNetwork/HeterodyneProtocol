@@ -4,6 +4,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   readdirSync,
   rmSync,
   writeFileSync,
@@ -35,6 +36,57 @@ function listTestFiles(root: string): string[] {
     if (entry.isDirectory()) return listTestFiles(path);
     return entry.isFile() && entry.name.endsWith(".test.ts") ? [path] : [];
   });
+}
+
+function listTypeScriptFiles(root: string): string[] {
+  return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) return listTypeScriptFiles(path);
+    return entry.isFile() && entry.name.endsWith(".ts") ? [path] : [];
+  });
+}
+
+function initializeTemporaryRepository(): string {
+  const root = mkdtempSync(join(tmpdir(), "heterodyne-ci-config-"));
+  temporaryDirectories.push(root);
+  mkdirSync(join(root, "scripts"));
+  writeFileSync(join(root, "tracked.txt"), "before\n");
+  writeFileSync(
+    join(root, "scripts/conformance-ci.sh"),
+    readRepositoryFile("scripts/conformance-ci.sh"),
+    { mode: 0o755 },
+  );
+  for (const args of [["init"], ["add", "."], [
+    "-c",
+    "user.name=CI Test",
+    "-c",
+    "user.email=ci@example.invalid",
+    "commit",
+    "-m",
+    "fixture",
+  ]]) {
+    const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+    expect(result.status, result.stderr).toBe(0);
+  }
+  return realpathSync(root);
+}
+
+function installFakeNpm(root: string, body = ""): { callLog: string; path: string } {
+  const fakeBin = join(root, "bin");
+  const callLog = join(root, "npm-calls.log");
+  const fakeNpm = join(fakeBin, "npm");
+  mkdirSync(fakeBin);
+  writeFileSync(
+    fakeNpm,
+    `#!/usr/bin/env bash
+set -u
+printf '%s\\t%s\\n' "$PWD" "$*" >> "$HETERODYNE_TEST_CALL_LOG"
+${body}
+`,
+    { mode: 0o755 },
+  );
+  chmodSync(fakeNpm, 0o755);
+  return { callLog, path: `${fakeBin}:${process.env.PATH ?? ""}` };
 }
 
 function hasOnlyReadContentsPermission(workflow: string): boolean {
@@ -91,61 +143,87 @@ describe("shared conformance CI configuration", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("keeps the complete job body in one strict repository-rooted script", () => {
-    const script = readRepositoryFile("scripts/conformance-ci.sh");
-    const significantLines = script.split("\n").filter((line) => line.length > 0);
-
-    expect(significantLines).toEqual([
-      "#!/usr/bin/env bash",
-      "set -euo pipefail",
-      'repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"',
-      'cd "$repository_root"',
-      "npm --prefix docs/spec/vectors/generator ci",
-      "npm --prefix docs/spec/conformance ci",
-      "npm --prefix docs/spec/vectors/generator run family:check",
-      "npm --prefix docs/spec/vectors/generator run check",
-      'npm --prefix docs/spec/conformance run check -- "$repository_root"',
-    ]);
+  it("keeps generator and conformance imports independent", () => {
+    const conformanceSources = listTypeScriptFiles(
+      join(repositoryRoot, "docs/spec/conformance/src"),
+    );
+    const generatorSources = listTypeScriptFiles(
+      join(repositoryRoot, "docs/spec/vectors/generator/src"),
+    );
+    expect(conformanceSources.filter((path) =>
+      /(?:from\s+|import\()["'][^"']*vectors\/generator/u.test(readFileSync(path, "utf8"))
+    )).toEqual([]);
+    expect(generatorSources.filter((path) =>
+      /(?:from\s+|import\()["'][^"']*conformance/u.test(readFileSync(path, "utf8"))
+    )).toEqual([]);
   });
 
-  it("stops with the second check failure and never invokes the third check", () => {
-    const temporaryDirectory = mkdtempSync(join(tmpdir(), "heterodyne-ci-config-"));
-    temporaryDirectories.push(temporaryDirectory);
-    const fakeBin = join(temporaryDirectory, "bin");
-    const callLog = join(temporaryDirectory, "npm-calls.log");
-    const fakeNpm = join(fakeBin, "npm");
-    mkdirSync(fakeBin);
-    writeFileSync(
-      fakeNpm,
-      `#!/usr/bin/env bash
-set -u
-printf '%s\\t%s\\n' "$PWD" "$*" >> "$HETERODYNE_TEST_CALL_LOG"
-if [[ "$*" == "--prefix docs/spec/vectors/generator run check" ]]; then
-  exit 23
-fi
-`,
-      { mode: 0o755 },
-    );
-    chmodSync(fakeNpm, 0o755);
-
-    const result = spawnSync(join(repositoryRoot, "scripts/conformance-ci.sh"), [], {
-      cwd: temporaryDirectory,
+  it("runs locked installs, draft validation, snapshot validation, build, and tests in order", () => {
+    const root = initializeTemporaryRepository();
+    const fake = installFakeNpm(root);
+    const result = spawnSync(join(root, "scripts/conformance-ci.sh"), [], {
+      cwd: root,
       encoding: "utf8",
       env: {
         ...process.env,
-        HETERODYNE_TEST_CALL_LOG: callLog,
-        PATH: `${fakeBin}:${process.env.PATH ?? ""}`,
+        HETERODYNE_TEST_CALL_LOG: fake.callLog,
+        PATH: fake.path,
+      },
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.status, result.stderr).toBe(0);
+    expect(readFileSync(fake.callLog, "utf8").trimEnd().split("\n")).toEqual([
+      `${root}\t--prefix docs/spec/vectors/generator ci`,
+      `${root}\t--prefix docs/spec/conformance ci`,
+      `${root}\t--prefix docs/spec/vectors/generator run draft:check -- ${root}`,
+      `${root}\t--prefix docs/spec/vectors/generator run snapshot-check -- ${root}`,
+      `${root}\t--prefix docs/spec/conformance run build`,
+      `${root}\t--prefix docs/spec/conformance test`,
+    ]);
+  });
+
+  it("stops with a snapshot failure before independent conformance runs", () => {
+    const root = initializeTemporaryRepository();
+    const fake = installFakeNpm(root, `
+if [[ "$*" == "--prefix docs/spec/vectors/generator run snapshot-check -- $PWD" ]]; then
+  exit 23
+fi`);
+    const result = spawnSync(join(root, "scripts/conformance-ci.sh"), [], {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HETERODYNE_TEST_CALL_LOG: fake.callLog,
+        PATH: fake.path,
       },
     });
 
     expect(result.error).toBeUndefined();
     expect(result.status).toBe(23);
-    expect(readFileSync(callLog, "utf8").trimEnd().split("\n")).toEqual([
-      `${repositoryRoot}\t--prefix docs/spec/vectors/generator ci`,
-      `${repositoryRoot}\t--prefix docs/spec/conformance ci`,
-      `${repositoryRoot}\t--prefix docs/spec/vectors/generator run family:check`,
-      `${repositoryRoot}\t--prefix docs/spec/vectors/generator run check`,
-    ]);
+    expect(readFileSync(fake.callLog, "utf8")).not.toContain("conformance run build");
+  });
+
+  it("fails when a validation stage mutates tracked or staged state", () => {
+    const root = initializeTemporaryRepository();
+    const fake = installFakeNpm(root, `
+if [[ "$*" == "--prefix docs/spec/conformance test" ]]; then
+  printf 'after\\n' > tracked.txt
+  printf 'staged\\n' > staged.txt
+  git add staged.txt
+fi`);
+    const result = spawnSync(join(root, "scripts/conformance-ci.sh"), [], {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HETERODYNE_TEST_CALL_LOG: fake.callLog,
+        PATH: fake.path,
+      },
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/mutated tracked or index state/i);
   });
 
   it("keeps the GitHub wrapper read-only and limited to the shared script", () => {
@@ -157,6 +235,7 @@ fi
     expect(workflow).toContain("cancel-in-progress: true");
     expect(workflow).toMatch(/^ {2}conformance:\n {4}name: conformance$/m);
     expect(workflow).toContain("uses: actions/checkout@v4");
+    expect(workflow).toMatch(/uses: actions\/checkout@v4\n {8}with:\n {10}fetch-depth: 0/);
     expect(workflow).toContain("uses: actions/setup-node@v4");
     expect(workflow).toMatch(/^ {10}node-version: 22$/m);
     expect(workflow).toContain("docs/spec/vectors/generator/package-lock.json");
@@ -167,6 +246,15 @@ fi
     expect(workflow).not.toContain("pull_request_target");
     expect(workflow).not.toContain("secrets");
     expect(workflow).not.toMatch(/^\s+ref:/m);
+
+    const executableJobBodies = [
+      readRepositoryFile("scripts/conformance-ci.sh"),
+      readRepositoryFile(".radicle/native.yaml"),
+      ...(workflow.match(/^\s+run:.*$/gm) ?? []),
+    ].join("\n");
+    expect(executableJobBodies).not.toMatch(
+      /(?:\b(?:publish|deploy)\b|npm\s+run\s+(?:author|release|tag)|git\s+(?:add|commit|tag|push|checkout|reset|clean)|snapshot-author)/i,
+    );
   });
 
   it.each([

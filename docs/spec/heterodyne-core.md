@@ -1782,10 +1782,11 @@ restates them.
 A claim MUST state the exact family version, the registry revision or digest
 read from [`registry/manifest.json`](registry/manifest.json), the documents
 claimed, the supported feature IDs, the strict-profile IDs, and the
-implementation role. Protocol conformance and vector conformance are distinct
-claims. The pinned registry entry files and the vector corpus MUST agree
-exactly. Optional Control recovery profiles remain independently claimable and
-do not alter baseline Core conformance.
+implementation role. Protocol conformance claims and snapshot validation
+reports are distinct. A rolling pre-1.0 snapshot report is evidence about its pinned source
+commit, not authority over the current draft. The registry manifest and entry
+files MUST agree exactly. Optional Control recovery profiles remain
+independently claimable and do not alter baseline Core conformance.
 
 Claimed features MUST resolve: every same-owner prerequisite of a claimed
 feature MUST also be claimed, and every cross-document prerequisite MUST be
@@ -1809,20 +1810,18 @@ baseline; the pinned `security-invariants.json` is the sole authority.
 A conformance report MUST, for each strict-profile ID, list the profile's
 state, conformance class, prerequisite profile IDs, the required-invariant
 closure computed under [§12.2](#core-strict-profile), required features,
-applicable strict-vector results, and any gaps. It MUST NOT report a
+applicable validation results, and any gaps. It MUST NOT report a
 profile as met while any required invariant, obligation, feature, prerequisite
-profile, or vector is unmet. A partial report may describe an unknown or unmet
+profile, or claimed validation case is unmet. A partial report may describe an unknown or unmet
 profile but MUST NOT advertise it in `strict_profiles`.
 
 Wire conformance is byte-exact throughout the family: semantically similar
-encodings do not conform, and normative vectors compare canonical bytes and
-exact verdicts. Each vector carries an ID, a schema version, the owner
-document that owns the requirement, the family version, an optional profile,
-qualified spec references, a direction, an input, and an expected output.
-Time-sensitive vectors use a simulated clock and production vectors pin
-randomness. During 0.x, an accepted specification change MAY change or retire
-an unreleased current vector in place. Released artifact sets preserve their
-exact historical bytes. Vector-ID immutability begins at 1.0.
+encodings do not conform. Validation vectors therefore compare canonical bytes
+and exact verdicts, but they do not create requirements. Each packaged vector
+carries an ID, a schema version, the owner document, optional profile,
+source-relative specification references, direction, input, and expected
+output. Time-sensitive vectors use a simulated clock and production vectors
+pin randomness.
 
 A vector MAY carry a top-level `conformance_checks` array of explicit,
 non-wire checker evidence. This metadata does not alter the vector's protocol
@@ -1857,21 +1856,44 @@ is checker input only and is not a protocol wire object.
 
 When this document declares a behavior conformant, an implementation MUST
 produce or accept it as specified. NIP-01 events have only the canonical
-serialization defined in Section 3.1. For a producer vector, the generated
-canonical bytes MUST equal the expected bytes exactly. For a consumer vector,
-the verdict and reason code MUST equal the expected values exactly. A
-repo-relay round trip MUST preserve the accepted signed-event bytes exactly.
+serialization defined in Section 3.1. A snapshot report compares producer
+bytes, consumer verdicts and reason codes, and repo-relay round-trip bytes
+exactly against the snapshot interpreted at its source commit.
 
 The Core minimum set covers NIP-01 bytes, KEL inception/rotation and authority
 windows, root freshness, NID dual proof, pointer resolution, node ads,
 repo-authority finality, materialized KEL derivation, routing/light roles,
 repo-relay client behavior, Tor reachability, keys-repository protection,
-version negotiation, and each Core invariant. A skipped REQUIRED vector bars
-a full Core vector-conformance claim; partial reports MUST list every gap and
-rationale.
+version negotiation, and each Core invariant. A snapshot report lists every
+evaluated case, skip, gap, and rationale without turning coverage into current
+draft authority.
 
-Vector JSON under `docs/spec/vectors/` is normative for the behavior it covers.
-Generator code is non-normative authoring and verification tooling.
+<a id="core-rolling-snapshot"></a>
+### Rolling pre-1.0 validation snapshot
+
+Vector JSON under `docs/spec/vectors/` and its generator are non-normative
+validation artifacts. The closed `snapshot.json` manifest pins one full source
+commit and the exact path/digest inventory. The bootstrap pins
+`2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`, contains 482 vectors among 493
+manifest-listed artifacts, and executes zero declared reference-checker cases;
+corpus-wide gates still execute.
+
+Validation keeps three roots separate. The source root provides the five
+specifications, registry, protocol schemas, and behavioral generator inputs.
+The snapshot root provides vectors, fixtures, packaged vector schema,
+reason/coverage projections, and manifest. The snapshot-tool root provides
+the historical packager and lockfile. The runtime snapshot commit is not a
+manifest field: the checker derives it from the last commit that changed the
+manifest and supplies both explicit roots and both commit identities to the
+independent harness.
+
+Ordinary 0.x specification changes do not update the snapshot. A dedicated
+periodic reconciliation selects a stable source commit, authors and reviews a
+complete replacement, commits it, and only then runs the read-only history
+check. Current-draft and snapshot checks are independent read-only lanes. The
+rules for immutable vector IDs and bytes, historical retention, release
+composition, compatibility, and support begin with a future 1.0 policy; this
+0.x document does not define them.
 
 <a id="core-reason-codes"></a>
 Diagnostic reason codes are registry vocabulary, not a wire API, and this is

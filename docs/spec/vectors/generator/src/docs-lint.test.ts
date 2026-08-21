@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -12,31 +12,7 @@ import { loadRegistry } from "./registry.js";
 const repositoryRoot = resolve(import.meta.dirname, "../../../../../");
 const read = (path: string) => readFileSync(resolve(repositoryRoot, path), "utf8");
 
-function filesUnder(path: string): string[] {
-  const absolute = resolve(repositoryRoot, path);
-  return readdirSync(absolute, { withFileTypes: true }).flatMap((entry) => {
-    const child = `${path}/${entry.name}`;
-    return entry.isDirectory() ? filesUnder(child) : entry.isFile() ? [child] : [];
-  });
-}
-
 describe("canonical family documentation", () => {
-  it("keeps the draft package command independent of obsolete release readiness", () => {
-    const packageJson = JSON.parse(read("docs/spec/vectors/generator/package.json")) as {
-      scripts: Record<string, string>;
-    };
-    const obsoleteInvocation = ["lint", "Release", "Readiness"].join("");
-    const entrypoints = [
-      "docs/spec/vectors/generator/src/cli.ts",
-      ...filesUnder("docs/spec/vectors/generator/src")
-        .filter((path) => path.endsWith(".test.ts")),
-    ];
-
-    expect(packageJson.scripts["draft:check"])
-      .toBe("npm run build && npm test && npm run family:check");
-    expect(entrypoints.filter((path) => read(path).includes(obsoleteInvocation))).toEqual([]);
-  });
-
   it("passes layering and anchor lint", () => {
     expect(lintFamilyDocs(repositoryRoot)).toEqual([]);
   });
@@ -52,6 +28,9 @@ describe("canonical family documentation", () => {
     ["CHANGELOG.md", "comms.node-scoped-jwt.v1 owns the node-local token."],
     ["CHANGELOG.md", "Each key-envelope site supplies exactly four things."],
     ["CHANGELOG.md", "The fixed v1 claim profile registry revision is 2."],
+    ["README.md", "Conformance vectors are normative for current draft behavior."],
+    ["AGENTS.md", "Wire-level changes require corresponding normative vector changes."],
+    ["docs/spec/vectors/README.md", "Run release-author and release-check before merging."],
   ])("rejects retired live model prose in %s", (path, retiredText) => {
     const issues = lintMaintainedGuides(repositoryRoot, {
       [path]: `${read(path)}\n${retiredText}\n`,

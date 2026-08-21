@@ -52,6 +52,33 @@ substitute for local signature, KEL, delegation, or schema verification.
 Availability from multiple carriers reduces withholding risk but does not make
 any carrier authoritative for persona identity.
 
+### 1.1 Validation-snapshot trust boundary
+
+Pre-1.0 validation uses two read-only lanes so stale evidence cannot silently
+override the live draft. The current-draft lane checks current prose, registry,
+protocol schemas, and generator inputs. The history-bound lane checks the one
+rolling non-normative snapshot against its exact source. Ordinary draft changes
+do not mutate snapshot or release metadata.
+
+The closed `docs/spec/vectors/snapshot.json` manifest pins
+`2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43` and digest-binds 493 artifacts,
+including 482 vectors. Its source root contains the five specifications,
+registry, protocol schemas, and behavioral generator inputs. Its snapshot root
+contains vectors, fixtures, packaged vector schema, reason/coverage
+projections, and the manifest. A separate snapshot-tool root supplies the
+packager and locked dependencies from the derived runtime snapshot commit. The
+manifest does not choose that commit; the checker derives the last commit that
+changed the manifest and passes both explicit roots and both commit identities
+to independent conformance code.
+
+The bootstrap pin predates executable checker declarations, so it executes
+zero declared reference-checker cases while corpus-wide static gates continue
+to run. A reconciliation maintainer authors from a stable full source commit,
+reviews, commits, and only then runs the history-bound check. CI does not
+author, publish, deploy, tag, or push. Vector immutability, historical-set
+retention, release composition, compatibility, and support windows remain
+deferred to a future 1.0 policy.
+
 ## 2. Registry-bound invariants
 
 The descriptions below reproduce the pinned registry exactly.
@@ -400,10 +427,11 @@ material but cannot mint authority outside the KEL.
 ## 7. Claims and OIDC assurance coverage
 
 Claims and OIDC requirements are defined entirely by the permanent Comms
-anchors, pinned registry entries, schemas, security invariants, and normative
-vector groups. The threat table above maps each risk directly to those current
-artifacts. Historical decision records are not required to interpret or
-validate this coverage.
+anchors, pinned registry entries, schemas, and security invariants. Rolling
+snapshot vector groups are validation evidence for their pinned source, not an
+additional requirement source. The threat table above maps each risk directly
+to the live normative artifacts. Historical decision records are not required
+to interpret or validate this coverage.
 
 The authoritative surfaces are
 `heterodyne:0.5.0#comms-key-claims`,

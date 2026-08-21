@@ -50,11 +50,14 @@ The five documents are sections of one release: they carry the same version
 and pin the same registry revision. The split exists so the blast radius of a
 change stays inside one section.
 
-The single family release manifest at
+The prepared family release manifest at
 [`docs/spec/releases/family/0.5.0.json`](docs/spec/releases/family/0.5.0.json)
 pins the complete normative corpus by repository-relative path and SHA-256.
 Its status remains `unreleased`; it is validated against the closed
 [`family release manifest schema`](docs/spec/releases/family-release-manifest.schema.json).
+It is not the pre-1.0 vector-snapshot authority, and ordinary draft changes do
+not update it. The release and compatibility model for 1.0 is intentionally
+deferred to a later protocol decision.
 
 ## What the family provides
 
@@ -115,9 +118,11 @@ or digest, and any strict profiles. The stable strict IDs are:
 Each profile declares only its prerequisites and the invariants it adds; the
 required set is the transitive closure.
 
-Conformance vectors in [docs/spec/vectors](docs/spec/vectors/) are normative
-for the behavior they cover. Canonical bytes and expected verdicts must match
-exactly; semantic similarity is not conformance.
+The vectors in [docs/spec/vectors](docs/spec/vectors/) are the latest rolling,
+non-normative pre-1.0 validation snapshot. They provide byte-exact evidence for
+their pinned source commit without changing the authority of the current draft.
+The current generator can describe 499 draft vectors, while the bootstrap
+snapshot contains 482 vectors; those counts are intentionally independent.
 
 ## Repository map
 
@@ -130,8 +135,8 @@ exactly; semantic similarity is not conformance.
 | [docs/spec/heterodyne-social.md](docs/spec/heterodyne-social.md) | Social normative document |
 | [docs/spec/heterodyne-workspace.md](docs/spec/heterodyne-workspace.md) | Workspace normative document |
 | [docs/spec/registry](docs/spec/registry/) | Kind, profile, reason-code, invariant, feature, object, and proof-domain registry, with the single revision pin in `manifest.json` |
-| [docs/spec/releases](docs/spec/releases/) | Content-addressed manifest for the one family release |
-| [docs/spec/vectors](docs/spec/vectors/) | Normative conformance vectors and verification tooling |
+| [docs/spec/releases](docs/spec/releases/) | Prepared pre-1.0 release metadata; not the rolling-snapshot authority |
+| [docs/spec/vectors](docs/spec/vectors/) | Rolling validation snapshot, closed manifest, and snapshot tooling |
 | [docs/spec/conformance](docs/spec/conformance/) | Independent read-only conformance harness, ratcheted baselines, and reports |
 | [docs/architecture.md](docs/architecture.md) | Non-normative family architecture and rationale |
 | [docs/glossary.md](docs/glossary.md) | Non-normative term index |
@@ -142,17 +147,40 @@ exactly; semantic similarity is not conformance.
 ## Working on Heterodyne
 
 Start with the family document that owns the behavior you are changing, then
-read the relevant ADR and registry entry. Wire changes require corresponding
-conformance vectors. Material decisions require an ADR. Files under
-`research/sources/` are preserved research artifacts and must not be edited.
+read the relevant registry entry and any explanatory ADR. An ordinary pre-1.0
+change updates only affected draft prose, registry entries, protocol schemas,
+and source generator inputs. It does not update the rolling snapshot or
+prepared release metadata. Files under `research/sources/` are preserved
+research artifacts and must not be edited.
 
-Useful checks:
+Normal checks are read-only and deliberately separate current draft quality
+from reproducibility of the pinned snapshot:
 
 ```bash
-npm --prefix docs/spec/vectors/generator run family:check
-npm --prefix docs/spec/vectors/generator run check
-npm --prefix docs/spec/conformance run check
+npm --prefix docs/spec/vectors/generator run draft:check -- "$PWD"
+npm --prefix docs/spec/vectors/generator run snapshot-check -- "$PWD"
 ```
+
+The snapshot manifest is the closed
+[`docs/spec/vectors/snapshot.json`](docs/spec/vectors/snapshot.json) inventory.
+The bootstrap pins source commit
+`2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`: its source root supplies the five
+specifications, registry, protocol schemas, and behavioral generator inputs.
+The snapshot root supplies 482 packaged vectors plus fixtures, packaged schema,
+reason/coverage projections, and the manifest—493 digest-bound artifacts in
+all. The snapshot-tool root comes from the derived snapshot commit (currently
+`5d4bb5fb58b35c88d8a9db120a09f1087237f35c`) and supplies the packager and its
+locked dependencies. Runtime conformance receives the explicit source and
+snapshot roots plus both commit identities. Because the bootstrap source
+predates checker declarations, it executes zero declared reference-checker
+cases while corpus-wide gates still run.
+
+Only a dedicated periodic reconciliation replaces that snapshot. The safe
+sequence is: choose a stable full source commit, run `snapshot-author`, review
+the complete replacement, commit it, then run `snapshot-check`. The check
+derives the snapshot commit from Git history, so checking uncommitted snapshot
+bytes is invalid. Snapshot authoring, publishing, deployment, tagging, and
+pushing are absent from both hosted lanes.
 
 The shared local and hosted acceptance gate is
 `scripts/conformance-ci.sh`. GitHub should require its stable `conformance`

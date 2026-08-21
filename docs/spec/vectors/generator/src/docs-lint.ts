@@ -38,11 +38,7 @@ export type FamilyDocIssue = {
     | "unresolved-reference"
     | "forbidden-dependency"
     | "bare-normative-link"
-    | "missing-cutover-artifact"
-    | "overview-normative-language"
-    | "extraction-banner"
     | "noncanonical-decision-reference"
-    | "premature-release-claim"
     | "marmot-archive-invalid"
     | "generic-repo-relay-server-claim"
     | "ambiguous-nostr-wire-key"
@@ -55,8 +51,6 @@ export type FamilyDocIssue = {
     | "unregistered-proof-domain"
     | "mislinked-reference"
     | "retired-authoring-model"
-    | "missing-current-vector-metadata"
-    | "missing-release-command"
     | "profile-revision-registry-context-missing";
   message: string;
 };
@@ -112,6 +106,9 @@ const RETIRED_MAINTAINED_GUIDE_PATTERNS = [
   /supplies exactly four things/i,
   /claim profile registry revision/i,
   /dependency versions above/i,
+  /conformance vectors are normative for current draft behavior/i,
+  /wire-level changes require corresponding normative vector changes/i,
+  /run release-author and release-check before merging/i,
 ];
 
 function displayPath(repoRoot: string, path: string): string {
@@ -593,73 +590,6 @@ export function findStrictProfileClosureIssues(
   }
   return issues.sort();
 }
-export function lintReleaseReadiness(repoRoot: string): FamilyDocIssue[] {
-  const issues: FamilyDocIssue[] = [];
-  const overviewPath = resolve(repoRoot, "docs/spec/heterodyne.md");
-  if (!existsSync(overviewPath)) {
-    return [{
-      path: displayPath(repoRoot, overviewPath),
-      line: 1,
-      code: "missing-cutover-artifact",
-      message: "the family overview is missing",
-    }];
-  }
-
-  const overview = readFileSync(overviewPath, "utf8");
-  if (BCP14_KEYWORD.test(overview)) {
-    issues.push({
-      path: displayPath(repoRoot, overviewPath),
-      line: 1,
-      code: "overview-normative-language",
-      message: "the non-normative family overview contains an uppercase BCP 14 keyword",
-    });
-  }
-  if (
-    !/prepared documents/i.test(overview) ||
-    !/unreleased[\s\S]*explicit\s+release\s+approval/i.test(
-      overview,
-    ) ||
-    /current release|release records/i.test(overview)
-  ) {
-    issues.push({
-      path: displayPath(repoRoot, overviewPath),
-      line: 1,
-      code: "premature-release-claim",
-      message: "overview must distinguish current normative authority from the prepared, unreleased 0.x artifacts",
-    });
-  }
-
-  const changelogPath = resolve(repoRoot, "CHANGELOG.md");
-  if (existsSync(changelogPath)) {
-    const changelog = readFileSync(changelogPath, "utf8");
-    const current = changelog.split("### Historical 0.4.0", 1)[0];
-    if (
-      !/^## \[Unreleased\]$/m.test(current) ||
-      !/prepared[\s\S]*0\.5\.0/i.test(current) ||
-      /## 0\.5\.0 document releases|\bPublished\b/.test(current)
-    ) {
-      issues.push({
-        path: displayPath(repoRoot, changelogPath),
-        line: 1,
-        code: "premature-release-claim",
-        message: "0.5.0 must remain in Unreleased pending explicit approval",
-      });
-    }
-  }
-  for (const document of loadFamilyDocuments(repoRoot)) {
-    if (/pre-release extraction draft/i.test(document.lines.join("\n"))) {
-      issues.push({
-        path: document.displayPath,
-        line: 1,
-        code: "extraction-banner",
-        message: "pre-release extraction banner remains after cutover",
-      });
-    }
-  }
-
-  return issues;
-}
-
 /** Lint the maintained authoring guides against the single-family model. */
 export function lintMaintainedGuides(
   repoRoot: string,
@@ -667,6 +597,8 @@ export function lintMaintainedGuides(
 ): FamilyDocIssue[] {
   const issues: FamilyDocIssue[] = [];
   const guides = [
+    "AGENTS.md",
+    "README.md",
     "docs/spec/vectors/README.md",
     "docs/spec/extensions/nips/README.md",
     "docs/glossary.md",
@@ -695,33 +627,6 @@ export function lintMaintainedGuides(
           message: `retired authoring terminology: ${match[0]}`,
         });
       }
-    }
-  }
-
-  const vectorsReadme = contents.get("docs/spec/vectors/README.md")!;
-  for (const [field, pattern] of [
-    ["owner_document", /"owner_document"\s*:/],
-    ["scalar spec_version", /"spec_version"\s*:\s*"heterodyne\/0\.5\.0"/],
-    ["one spec_refs entry", /"spec_refs"\s*:\s*\[\s*"heterodyne:0\.5\.0#<permanent-anchor>"\s*\]/],
-  ] as const) {
-    if (!pattern.test(vectorsReadme)) {
-      issues.push({
-        path: "docs/spec/vectors/README.md",
-        line: 1,
-        code: "missing-current-vector-metadata",
-        message: `vector README must document ${field}`,
-      });
-    }
-  }
-
-  for (const command of ["release-author", "release-check"]) {
-    if (!new RegExp(`run ${command}`).test(vectorsReadme)) {
-      issues.push({
-        path: "docs/spec/vectors/README.md",
-        line: 1,
-        code: "missing-release-command",
-        message: `vector README must document ${command}`,
-      });
     }
   }
 

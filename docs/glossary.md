@@ -53,6 +53,34 @@ specification anchors, and acyclic prerequisites.
 **Conformance class.** One of Core, Core+Comms (a Heterodyne persona), Control
 profile, or Social. Claims also name required features.
 
+**Current-draft lane.** The read-only check of current specification prose,
+registry, protocol schemas, and generator inputs. It is independent of the
+rolling snapshot, so an ordinary pre-1.0 draft change does not regenerate
+vectors or release metadata.
+
+**Rolling validation snapshot.** The one supported, non-normative pre-1.0
+vector checkpoint under `docs/spec/vectors/`. Its closed `snapshot.json`
+manifest pins source commit
+`2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43` and inventories 493 exact
+artifacts, including 482 vectors. That bootstrap source has zero executable
+checker declarations; the corpus-wide gates still run. A future 1.0 decision,
+not this snapshot, will define immutable vector/release and compatibility
+rules.
+
+**Snapshot roots.** Three isolated inputs to reconciliation and validation.
+The source root contains the five specifications, registry, protocol schemas,
+and behavioral generator inputs. The snapshot root contains vectors, fixtures,
+the packaged vector schema, reason/coverage projections, and manifest. The
+snapshot-tool root contains the packager and lockfile from the runtime snapshot
+commit.
+
+**Snapshot commit.** The runtime commit derived from the last commit that
+changed `snapshot.json`, not a value stored by that manifest. `snapshot-check`
+passes the source and snapshot roots plus both commit identities explicitly to
+the independent harness. A reconciliation follows author → review → commit →
+read-only check; checking an uncommitted replacement cannot establish this
+history identity.
+
 **Strict profile.** An additive, stable conformance profile with exact
 invariant membership and prerequisite profiles. Unknown profile IDs confer no
 capability. The current IDs are `heterodyne-core-strict-v1`,
