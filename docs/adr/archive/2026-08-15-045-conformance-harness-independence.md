@@ -1,7 +1,11 @@
 # ADR-045: Independent conformance harness and shared CI gate
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-08-15
+
+This archived record captures the decision at acceptance time. It is
+non-canonical; the live specification family and normative artifacts contain
+the complete protocol.
 
 ## Decision
 
