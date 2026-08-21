@@ -1,4 +1,4 @@
-import { readFileSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { loadCorpus } from "./artifacts.js";
@@ -147,6 +147,53 @@ describe("loadCorpus split roots", () => {
       code: "artifact-digest-mismatch",
       path: fixturesPath,
       message: "snapshot artifact sha256 does not match exact file bytes",
+    });
+  });
+
+  it("binds evaluation to the snapshot inventory and bytes captured for authentication", () => {
+    const input = corpus();
+    const changedVector = readJson(input.snapshotRoot, vectorPath);
+    changedVector.vector_id = "core.changed-after-capture";
+    const addedVectorPath = "docs/spec/vectors/core/002-added-after-capture.json";
+    const addedVector = { ...changedVector, vector_id: "core.added-after-capture" };
+    const absoluteSchemaPath = realpathSync(resolve(input.snapshotRoot, vectorSchemaPath));
+    let schemaReads = 0;
+    let captures = 0;
+    const loaded = loadCorpus(input, {
+      readFile(path: string): Buffer {
+        if (path === absoluteSchemaPath) schemaReads += 1;
+        return readFileSync(path);
+      },
+      afterCapture(): void {
+        captures += 1;
+        if (captures === 1) {
+          writeJson(input.snapshotRoot, vectorPath, changedVector);
+          rmSync(resolve(input.snapshotRoot, fixturesPath));
+          writeJson(input.snapshotRoot, addedVectorPath, addedVector);
+        }
+      },
+    });
+
+    expect(captures).toBe(1);
+    expect(schemaReads).toBe(1);
+    expect(loaded.issues).toEqual([]);
+    expect(loaded.corpus?.vectors.map(({ value }) => value.vector_id)).toEqual(["core.valid"]);
+    expect(readJson(input.snapshotRoot, vectorPath).vector_id).toBe("core.changed-after-capture");
+    expect(readJson(input.snapshotRoot, addedVectorPath).vector_id).toBe("core.added-after-capture");
+    expect(existsSync(resolve(input.snapshotRoot, fixturesPath))).toBe(false);
+  });
+
+  it("reports vectors present in the captured inventory but absent from the manifest", () => {
+    const input = corpus();
+    const addedVectorPath = "docs/spec/vectors/core/002-present-at-capture.json";
+    const addedVector = readJson(input.snapshotRoot, vectorPath);
+    addedVector.vector_id = "core.present-at-capture";
+    writeJson(input.snapshotRoot, addedVectorPath, addedVector);
+
+    expect(loadCorpus(input).issues).toContainEqual({
+      code: "missing-snapshot-artifact",
+      path: addedVectorPath,
+      message: "snapshot datum is absent from the closed manifest",
     });
   });
 

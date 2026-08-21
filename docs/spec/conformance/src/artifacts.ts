@@ -36,6 +36,11 @@ export type LoadCorpusResult = {
   issues: CorpusIssue[];
 };
 
+type SnapshotReadBoundary = Readonly<{
+  readFile(path: string): Buffer;
+  afterCapture?(): void;
+}>;
+
 type SnapshotArtifact = { path: string; sha256?: string };
 type SnapshotManifest = {
   sourceCommit?: string;
@@ -322,18 +327,23 @@ function readJson(
   }
 }
 
-function snapshotArtifactDigest(
+const nodeSnapshotReadBoundary: SnapshotReadBoundary = {
+  readFile: (path) => readFileSync(path),
+};
+
+function readSnapshotBytes(
   root: string,
   path: string,
   issues: CorpusIssue[],
-): string | undefined {
+  boundary: SnapshotReadBoundary,
+): Buffer | undefined {
   try {
     const target = safeRepositoryPath(root, path);
     if (!statSync(target).isFile()) {
       issues.push({ code: "artifact-read-error", path, message: "artifact is not a regular file" });
       return undefined;
     }
-    return createHash("sha256").update(readFileSync(target)).digest("hex");
+    return Buffer.from(boundary.readFile(target));
   } catch (error) {
     if (error instanceof UnsafeRepositoryPathError) {
       issues.push({ code: "unsafe-artifact-path", path, message: error.message });
@@ -342,6 +352,35 @@ function snapshotArtifactDigest(
     } else {
       issues.push({ code: "artifact-read-error", path, message: errorMessage(error) });
     }
+    return undefined;
+  }
+}
+
+function captureSnapshotArtifacts(
+  root: string,
+  paths: readonly string[],
+  issues: CorpusIssue[],
+  boundary: SnapshotReadBoundary,
+): ReadonlyMap<string, Buffer> {
+  const captured = new Map<string, Buffer>();
+  for (const path of paths) {
+    const bytes = readSnapshotBytes(root, path, issues, boundary);
+    if (bytes !== undefined) captured.set(path, bytes);
+  }
+  return captured;
+}
+
+function parseCapturedJson(
+  captured: ReadonlyMap<string, Buffer>,
+  path: string,
+  issues: CorpusIssue[],
+): unknown | undefined {
+  const bytes = captured.get(path);
+  if (bytes === undefined) return undefined;
+  try {
+    return JSON.parse(bytes.toString("utf8")) as unknown;
+  } catch (error) {
+    issues.push({ code: "invalid-json", path, message: errorMessage(error) });
     return undefined;
   }
 }
@@ -474,10 +513,6 @@ function snapshotVectorPaths(snapshotRoot: string, issues: CorpusIssue[]): strin
       && path !== "docs/spec/vectors/snapshot-unique-by-path.meta.schema.json");
 }
 
-function expectedSnapshotPaths(snapshotRoot: string, issues: CorpusIssue[]): string[] {
-  return [...snapshotVectorPaths(snapshotRoot, issues), ...snapshotSupportPaths].sort(compareText);
-}
-
 function parseConformanceCheck(
   value: unknown,
   vector: Record<string, unknown>,
@@ -605,7 +640,10 @@ function registryEntrySet(parsedJson: ReadonlyMap<string, unknown>): Record<stri
   return entrySet;
 }
 
-export function loadCorpus(options: LoadCorpusOptions): LoadCorpusResult {
+export function loadCorpus(
+  options: LoadCorpusOptions,
+  snapshotReadBoundary: SnapshotReadBoundary = nodeSnapshotReadBoundary,
+): LoadCorpusResult {
   const issues: CorpusIssue[] = [];
   const { sourceCommit, snapshotCommit } = options;
   if (!fullCommitPattern.test(sourceCommit)) {
@@ -643,7 +681,13 @@ export function loadCorpus(options: LoadCorpusOptions): LoadCorpusResult {
     if (value !== undefined) sourceJson.set(path, value);
   }
 
-  const manifestSource = readText(snapshotRoot, snapshotManifestPath, issues, true);
+  const manifestBytes = readSnapshotBytes(
+    snapshotRoot,
+    snapshotManifestPath,
+    issues,
+    snapshotReadBoundary,
+  );
+  const manifestSource = manifestBytes?.toString("utf8");
   let manifestValue: unknown | undefined;
   if (manifestSource !== undefined) {
     try {
@@ -655,7 +699,19 @@ export function loadCorpus(options: LoadCorpusOptions): LoadCorpusResult {
   const manifest = manifestValue === undefined
     ? undefined
     : parseSnapshotManifest(manifestValue, manifestSource, issues);
-  const expectedPaths = expectedSnapshotPaths(snapshotRoot, issues);
+  const vectorPaths = snapshotVectorPaths(snapshotRoot, issues);
+  const expectedPaths = [...vectorPaths, ...snapshotSupportPaths].sort(compareText);
+  const snapshotPaths = [...new Set([
+    ...expectedPaths,
+    ...(manifest?.artifacts.map(({ path }) => path) ?? []),
+  ])].sort(compareText);
+  const snapshotArtifacts = captureSnapshotArtifacts(
+    snapshotRoot,
+    snapshotPaths,
+    issues,
+    snapshotReadBoundary,
+  );
+  snapshotReadBoundary.afterCapture?.();
   if (manifest !== undefined) {
     const declared = new Set(manifest.artifacts.map(({ path }) => path));
     for (const path of expectedPaths) {
@@ -676,7 +732,10 @@ export function loadCorpus(options: LoadCorpusOptions): LoadCorpusResult {
           message: "manifest entry is not part of the closed snapshot artifact set",
         });
       }
-      const digest = snapshotArtifactDigest(snapshotRoot, artifact.path, issues);
+      const bytes = snapshotArtifacts.get(artifact.path);
+      const digest = bytes === undefined
+        ? undefined
+        : createHash("sha256").update(bytes).digest("hex");
       if (digest !== undefined && artifact.sha256 !== undefined && digest !== artifact.sha256) {
         issues.push({
           code: "artifact-digest-mismatch",
@@ -704,12 +763,12 @@ export function loadCorpus(options: LoadCorpusOptions): LoadCorpusResult {
     }
   }
 
-  const fixturesValue = readJson(snapshotRoot, fixturesPath, issues, true);
+  const fixturesValue = parseCapturedJson(snapshotArtifacts, fixturesPath, issues);
   const fixtures = isRecord(fixturesValue) ? fixturesValue : undefined;
   if (fixturesValue !== undefined && fixtures === undefined) {
     shapeIssue(issues, fixturesPath, "fixtures must be an object");
   }
-  const vectorSchemaValue = readJson(snapshotRoot, vectorSchemaPath, issues, true);
+  const vectorSchemaValue = parseCapturedJson(snapshotArtifacts, vectorSchemaPath, issues);
   const vectorSchema = isRecord(vectorSchemaValue) ? vectorSchemaValue : undefined;
   if (vectorSchemaValue !== undefined && vectorSchema === undefined) {
     shapeIssue(issues, vectorSchemaPath, "vector schema must be a JSON object");
@@ -738,8 +797,8 @@ export function loadCorpus(options: LoadCorpusOptions): LoadCorpusResult {
 
   const vectors: Array<{ path: string; value: VectorDocument }> = [];
   const vectorIds = new Map<string, string>();
-  for (const path of snapshotVectorPaths(snapshotRoot, [])) {
-    const value = readJson(snapshotRoot, path, issues);
+  for (const path of vectorPaths) {
+    const value = parseCapturedJson(snapshotArtifacts, path, issues);
     if (value === undefined || validateVectorSchema === undefined) continue;
     if (!validateVectorSchema(value)) {
       shapeIssue(issues, path, "vector does not match vector.schema.json");
