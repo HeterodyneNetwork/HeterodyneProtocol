@@ -5,7 +5,6 @@
     "vector_id",
     "vector_schema_version",
     "owner_document",
-    "spec_version",
     "spec_refs",
     "description",
     "direction",
@@ -18,8 +17,7 @@
       "minLength": 1
     },
     "vector_schema_version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+      "const": "2.0.0"
     },
     "owner_document": {
       "type": "string",
@@ -30,10 +28,6 @@
         "social",
         "workspace"
       ]
-    },
-    "spec_version": {
-      "type": "string",
-      "const": "heterodyne/0.5.0"
     },
     "profile": {
       "type": "string",
@@ -117,7 +111,7 @@
       "maxItems": 1,
       "items": {
         "type": "string",
-        "pattern": "^heterodyne:0\\.5\\.0#[a-z0-9]+(?:-[a-z0-9]+)*$"
+        "pattern": "^heterodyne:(core|comms|control|social|workspace)#[a-z0-9][a-z0-9-]*$"
       }
     },
     "description": {

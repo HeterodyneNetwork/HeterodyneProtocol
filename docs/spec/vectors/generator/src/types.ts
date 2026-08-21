@@ -15,7 +15,7 @@ export type ConformanceCheck = {
   expected_terminal_stage: ExpectedTerminalStage;
 };
 
-export type Vector = {
+export type RawVector = {
   vector_id: string;
   vector_schema_version: string;
   /** The document that owns the requirement, for coverage reporting only. */
@@ -28,6 +28,17 @@ export type Vector = {
   direction: VectorDirection;
   input: Record<string, unknown>;
   expected_output: Record<string, unknown>;
+};
+
+/** Current draft generator input, retained independently from snapshot output. */
+export type Vector = RawVector;
+
+export type SnapshotVector = Omit<
+  RawVector,
+  "vector_schema_version" | "spec_version" | "spec_refs"
+> & {
+  vector_schema_version: "2.0.0";
+  spec_refs: string[];
 };
 
 export type AuthoredVector = {

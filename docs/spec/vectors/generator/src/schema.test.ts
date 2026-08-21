@@ -4,6 +4,7 @@ import {
   CREDENTIAL_CONTINUITY_SCHEMAS,
   KEY_CLAIM_REVOCATION_SCHEMA,
   KEY_CLAIM_SCHEMA,
+  VECTOR_SCHEMA,
   validateClaimRevocationSchemaOrThrow,
   validateCredentialContinuitySchemaOrThrow,
   validateKeyClaimSchemaOrThrow,
@@ -185,6 +186,12 @@ describe("vector schema", () => {
         },
       }),
     ).not.toThrow();
+  });
+
+  it("keeps the generator schema as the draft raw-authoring contract", () => {
+    expect(VECTOR_SCHEMA.required).toContain("spec_version");
+    expect((VECTOR_SCHEMA.properties.vector_schema_version as { pattern: string }).pattern)
+      .toBe("^\\d+\\.\\d+\\.\\d+$");
   });
 
   it("rejects an unqualified version and a bare section reference", () => {
