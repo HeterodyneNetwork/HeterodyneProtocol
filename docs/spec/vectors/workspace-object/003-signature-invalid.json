@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "workspace",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#workspace-object-types"
+    "heterodyne:workspace#workspace-object-types"
   ],
   "vector_id": "workspace-object/signature-invalid",
   "description": "A Workspace object with a mutated signature is rejected before policy.",

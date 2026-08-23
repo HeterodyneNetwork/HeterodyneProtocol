@@ -107,6 +107,7 @@ verification/backdated-event-suspicion-window
 verification/bad-signature-rejects
 verification/delegation-mismatch-rejects
 verification/revoked-key-rejects
+verification/valid-core-signed-event-accepts
 versioning/capabilities-roundtrip
 versioning/older-receiver-newer-sender
 versioning/unknown-major-placeholder
@@ -115,7 +116,7 @@ core-redundancy/stale-seed-does-not-remove-durability
 versioning/qualified-version-valid
 versioning/qualified-version-unqualified-rejected
 versioning/core-capability-bootstrap
-versioning/per-document-negotiation
+versioning/exact-family-version-negotiation
 versioning/unknown-asynchronous-stamp-rejected
 persona-profile/designated-publisher-valid
 persona-profile/nip05-mismatch-rejected
@@ -407,6 +408,21 @@ control/token-wrong-group
 control/token-wrong-node
 control/token-scope-rejected
 control/token-stale-authorization-view
+control/token-over-sixty-minutes-rejected
+control/token-entitlement-id-mismatch
+control/token-client-key-mismatch
+control/token-client-id-mismatch
+control/token-client-class-mismatch
+control/token-current-scope-mismatch
+control/token-current-method-mismatch
+control/token-current-object-mismatch
+control/token-current-limit-mismatch
+control/token-registry-checkpoint-mismatch
+control/token-agent-role-mismatch
+control/token-current-lifetime-mismatch
+control/token-human-role-omitted
+control/token-cross-bound-client-key
+control/token-same-second-differing-grant
 control/device-code-hardened
 control/device-code-exhausted
 control/device-code-node-rate-limited
@@ -466,6 +482,7 @@ workspace-key/selected-snapshot
 workspace-key/unauthorized-host
 workspace-key/revoked-device
 workspace-key/keypackage-readmission
+workspace-key/noncanonical-recipient-rejected
 workspace-freshness/ordinary-boundary
 workspace-freshness/ordinary-stale
 workspace-freshness/authority-boundary
@@ -540,6 +557,9 @@ export function vectorMetadata(vectorId: string): VectorMetadata {
 }
 
 function referenceFor(vectorId: string, owner: DocumentId): string {
+  if (vectorId === "verification/valid-core-signed-event-accepts") {
+    return "core-verification";
+  }
   if (vectorId.startsWith("marmot-radicle/")) {
     const id = vectorId.slice("marmot-radicle/".length);
     if (/kind445-exact|media-exact/.test(id)) {
@@ -727,10 +747,10 @@ function anchorFor(vectorId: string, owner: DocumentId): string {
             ? "control-token"
             : vectorId.includes("invite-preauthorization-")
               ? "control-one-time-invites"
-        : vectorId.includes("entitlement-")
-          ? "control-entitlement"
-          : vectorId.includes("token-")
-            ? "control-token"
+        : vectorId.includes("token-")
+          ? "control-token"
+          : vectorId.includes("entitlement-")
+            ? "control-entitlement"
             : vectorId.includes("operation-")
               ? "control-request-processing"
               : vectorId.includes("failover-")

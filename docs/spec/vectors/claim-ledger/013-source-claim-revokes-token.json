@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-claim-revocation"
+    "heterodyne:comms#comms-claim-revocation"
   ],
   "vector_id": "claim-ledger/source-claim-revokes-token",
   "description": "An authorized writer deterministically creates signed source-revocation and signing-key-compromise invalidation records; both merge orders converge only after the exact records become canonical.",

@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-kel-verification"
+    "heterodyne:core#core-kel-verification"
   ],
   "vector_id": "keri-authority/accelerator-decision-equivalent",
   "description": "The §4.5.1 accelerator accepts when all of (a)-(d) hold: the referenced head is on the accepted KEL, created_at is inside its authority window, no later event retroactively invalidates the signing key, and no pending KEL refresh exists. The result is decision-equivalent to a full §3.5.3 replay.",

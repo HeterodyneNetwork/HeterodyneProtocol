@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-nid-delegation"
+    "heterodyne:core#core-nid-delegation"
   ],
   "vector_id": "identity/kind31005-race-tiebreaker-core",
   "description": "kind:31005 conflicting-binding tiebreaker: discard an invalid cold-root signature, prefer the KEL-consistent binding, then the highest created_at, then the lexicographically smallest event id.",

@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-privacy-tiers"
+    "heterodyne:comms#comms-privacy-tiers"
   ],
   "vector_id": "privacy-tiers/tier3-prev-page-hash-mismatch",
   "description": "A Tier 3 index page whose decrypted prev_page_hash does not match the prior page's canonical serialization indicates relay-side page substitution; the chain is broken.",

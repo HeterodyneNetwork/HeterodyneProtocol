@@ -175,18 +175,20 @@ the parsed object.
 <a id="core-version-stamps"></a>
 ### 3.2 Owner stamps and historical bytes
 
-An event carries at most one Heterodyne version stamp. The registry defines
-these exhaustive classes:
+An event carries at most one Heterodyne version stamp. Ownership selects the
+applicable base schema or registered profile and the stamp placement only; it
+does not select a separate version lineage. Every stamped class below carries
+the exact family version `heterodyne/0.5.0`. The registry defines these
+exhaustive classes:
 
-1. Heterodyne-defined JSON `content` MUST contain the qualified
-   `spec_version` of the base-schema owner.
+1. Heterodyne-defined JSON `content` MUST contain the exact family
+   `spec_version`.
 2. A Heterodyne-allocated kind whose `content` is empty or non-JSON MUST carry
-   `['spec_version', '<owner>/<semver>']`. The registry base-schema owner
-   supplies `<owner>`.
+   `['spec_version', 'heterodyne/0.5.0']`.
 3. An adopted upstream kind is unstamped unless an immutable registered
    stamping profile opts it in. A stamping profile uses its in-band
-   discriminator and carries the profile owner's qualified version in the
-   version tag without changing the upstream content shape.
+   discriminator and carries the exact family version in the version tag
+   without changing the upstream content shape.
 4. A registered non-stamping profile changes no signed byte and adds no
    marker. The Core breadcrumb profiles
    `heterodyne-core-rotation-breadcrumb-profile-v1` and
@@ -205,9 +207,10 @@ these exhaustive classes:
    NIP-59 seal supplies responder authentication and it MUST NOT be
    interpreted as a signed standalone addressable event.
 
-An unqualified or unrecognized owner stamp names no registered owner. A
-consumer MUST NOT infer an owner from the event kind alone, and MUST reject an
-event whose stamp does not resolve to a registered document version.
+An unqualified or unrecognized family stamp names no supported protocol
+version. A consumer MUST NOT use the stamp value to infer an owner, and MUST
+reject a stamped event unless its value is the exact supported family version
+and its base schema or profile resolves through the registry.
 
 <a id="core-wire-keys"></a>
 ### 3.3 Canonical wire keys
@@ -221,8 +224,14 @@ A consumer MUST reject an uppercase, bech32, truncated, or otherwise
 non-canonical value rather than normalizing it. Every document in the family
 inherits this rule; none restates it.
 
-Radicle NIDs use the canonical Ed25519 `did:key:z...` encoding and RIDs the
-canonical `rad:z...` encoding, likewise exactly and without normalization.
+Radicle NIDs use the canonical Ed25519 `did:key:z...` encoding. A canonical
+RID is the literal prefix `rad:z` followed by the Base58BTC encoding of exactly
+the 20 raw bytes of its Git SHA-1 repository object identifier. The RID body
+has no multicodec prefix. Decoding and re-encoding MUST reproduce the exact
+body, including only those leading zero-byte markers present in the decoded
+20-byte identifier. Other prefixes, malformed Base58BTC, added leading-zero
+markers, multicodec-prefixed bodies, and other decoded lengths MUST be
+rejected rather than normalized.
 
 <a id="core-canonical-json"></a>
 ### 3.4 Canonical JSON
@@ -269,6 +278,7 @@ initial reference types are:
 | `nostr-secp256k1` | 32-byte x-only secp256k1 public key as 64 lowercase hexadecimal characters | BIP-340 |
 | `radicle-ed25519-nid` | canonical Ed25519 `did:key:z...` Radicle NID | Ed25519 |
 | `jwk-thumbprint` | unpadded base64url SHA-256 RFC 7638 thumbprint | JWS with a public JWK whose recomputed thumbprint is identical |
+| `marmot-mls-leaf` | unpadded base64url SHA-256 of the exact TLS-serialized MLS `LeafNode` in its authenticated group epoch | MLS leaf signature plus Marmot `marmot.member.account-identity-proof.v2` and membership in the bound group context |
 
 A parser MUST reject an unknown type, a non-canonical value, private JWK
 members, remote JWK key references, or a proof whose suite does not match the
@@ -556,9 +566,10 @@ Both events MUST omit `kel_head` and every Heterodyne wire marker. Their
 `pubkey` fields remain the retiring key's 32-byte lowercase hexadecimal Nostr
 public key; only human-readable fields use bech32 `npub`. The retiring
 profile MUST NOT carry a NIP-05 identifier that has already been repointed to
-the successor, because it would no longer validate for the signing key. The
-successor's `kind:0` SHOULD identify the predecessor, and a persona-controlled
-NIP-05 identifier SHOULD be repointed to the successor.
+the successor, because it would no longer validate for the signing key; an
+attempt MUST be rejected with `retiring_key_nip05_invalid`. The successor's
+`kind:0` SHOULD identify the predecessor, and a persona-controlled NIP-05
+identifier SHOULD be repointed to the successor.
 
 The v1 profile classification exists only inside the producer's trusted
 rotation workflow. Before producing either event, the implementation MUST bind
@@ -573,9 +584,11 @@ these inputs as one candidate:
 
 The cold root MUST be identical across the prior and successor state, and both
 candidate events MUST be signed by the retiring key. A compromise-driven
-rotation, an unrelated successor, a candidate substitution, publication
-before KEL acceptance, or publication after retiring-secret destruction MUST
-produce no v1 breadcrumb.
+rotation MUST produce no v1 breadcrumb and MUST be rejected with
+`compromise_rotation_breadcrumb_forbidden`. An unrelated successor MUST be
+rejected with `successor_persona_mismatch`. A candidate substitution,
+publication before KEL acceptance, or publication after retiring-secret
+destruction MUST produce no v1 breadcrumb.
 
 The producer SHOULD attempt the exact pair on every selected write relay after
 KEL acceptance and record per-relay outcomes. A partial relay failure does not
@@ -1247,8 +1260,10 @@ the issuing authority before unwrapping.
 
 Membership change is asymmetric:
 
-- Adding a recipient publishes an envelope for the **current** generation and
-  MUST NOT rotate. The new holder receives what the audience already has.
+- Adding a recipient alone publishes an envelope for the **current** generation
+  and does not cause a rotation. The new holder receives what the audience
+  already has. A simultaneous independent rotation trigger supplied by the
+  instantiating document still applies.
 - Removing a recipient MUST derive a fresh secret under a new generation
   identifier and publish envelopes only to the remaining recipients.
 - After a removal rotation, a producer MUST reject the retired generation for
@@ -1261,13 +1276,14 @@ present it as erasure; the bound above at
 [`heterodyne:0.5.0#core-non-erasure`](#core-non-erasure) governs what stays
 observable.
 
-An instantiating document supplies exactly four things: the rule that fixes
+An instantiating document supplies exactly five things: the rule that fixes
 the recipient set, the typed-key reference type and wrapping profile, the
-carrier that transports the envelope, and any rotation trigger beyond
-recipient removal. It MAY tighten these rules and MUST NOT weaken them. The
-distribution graph is not private by default: unless the instantiating
-document states otherwise, envelope addressing exposes recipients, generation
-linkage, and change timing to a carrier observer.
+carrier that transports the envelope, the generation-identifier form, and any
+rotation trigger beyond recipient removal. The fifth value is `none` when
+removal is the only rotation trigger. It MAY tighten these rules and MUST NOT
+weaken them. The distribution graph is not private by default: unless the
+instantiating document states otherwise, envelope addressing exposes
+recipients, generation linkage, and change timing to a carrier observer.
 
 <a id="core-verification"></a>
 ## 9. Verification algorithm
@@ -1285,6 +1301,19 @@ implementation MUST:
 7. return `accept`, `accept_provisional`, `equivocation_flagged`, or a closed
    registry reason code.
 
+Where exact `nip01_raw` applies, a missing raw input or one that is not
+byte-equal to the signed NIP-01 input MUST be rejected with
+`nip01_raw_mismatch`.
+
+A purported signed event whose required NIP-01 event members are absent or
+malformed cannot complete identifier or signature verification and MUST be
+rejected with `bad_signature`. A syntactically valid version stamp that names
+an incompatible future protocol major MUST be rejected with
+`unknown_major_version`. Every other version-stamp policy failure—including a
+missing required stamp, a duplicate or malformed stamp, a non-future-major
+exact-version mismatch, or a stamp forbidden for that event class—MUST be
+rejected with `version_stamp_invalid`.
+
 An object whose identity inputs are provisional MUST NOT be reported final.
 Failed verification MUST be exposed as a rejection or explicit security
 warning; it MUST NOT silently become trusted content.
@@ -1293,7 +1322,7 @@ warning; it MUST NOT silently become trusted content.
 ### 9.1 Retired-key late observation
 
 An event signed by a routinely superseded epoch or delegated publisher key
-and first observed after retirement is repo-confirmed pre-retirement content
+and first observed at or after retirement is repo-confirmed pre-retirement content
 only when its introducing commit is an ancestor of a trusted repository
 checkpoint bound into, or accepted before, the retiring rotation. A trusted
 local receipt or checkpoint recorded before retirement may establish the same
@@ -1306,9 +1335,10 @@ existence. Provisional retired-key content MAY be displayed with that state,
 but MUST NOT authorize, replace canonical profile state, migrate an address,
 or enter a canonical feed index without an accepted anchor.
 
-The accepted `compromise_since` cutoff remains stronger: content at or after
-that cutoff is rejected even if a later repository or local receipt purports
-to anchor it. This provisional state never weakens compromise handling.
+The accepted `effective_compromise_since - 300` cutoff remains stronger:
+content at or after that cutoff is rejected even if a later repository or
+local receipt purports to anchor it. This provisional state never weakens
+compromise handling.
 
 `kel_head` handling has three distinct non-success paths. A required tag that
 is absent, duplicated, or malformed is rejection; a forbidden tag is
@@ -1318,6 +1348,10 @@ accepted KEL SHOULD trigger a repo-relay-first refresh; a pending or failed
 refresh caps the result at provisional. A well-formed head naming an event off
 the accepted KEL MUST produce `equivocation_flagged` and an explicit security
 warning rather than silent deletion.
+
+Closed verification evidence MUST NOT pair a sequence-ahead head with a
+`not-needed` refresh status. That contradictory state is a `kel_head_mismatch`,
+not a provisional success.
 
 Head classification order is normative. The verifier MUST test
 `seq_ahead_of_accepted_head` before `off_accepted_kel`; this rule is identified
@@ -1617,7 +1651,7 @@ Every capability advertisement uses this Core-parsable bootstrap object:
 {
   "descriptor": "heterodyne-capabilities-v1",
   "spec_version": "heterodyne/0.5.0",
-  "registry_sha256": "a2a902c616a5671bf058c1d9a0e2ed91ee15c7915593fac5fa551e3f41a805f4",
+  "registry_sha256": "e1dc51e9a64c334eb416e0f635b6375f39bff25f9cdc87be25b700245a41561a",
   "implementation_role": "public-reader",
   "supported_documents": [
     "core"
@@ -1644,7 +1678,7 @@ claimed role and its required feature set MUST agree.
 whose complete invariant, obligation, feature, vector, and
 prerequisite-profile sets are actually met by the advertiser. A composed profile
 MUST advertise every prerequisite profile in the same object and MUST
-advertise the document versions and required features on which those profiles
+advertise the family version and required features on which those profiles
 depend. An unknown strict-profile ID MUST be retained or ignored safely and
 MUST NOT be used to infer conformance, grant a capability, or satisfy a known
 profile. An unknown claimed Core feature MUST fail capability negotiation;
@@ -1748,10 +1782,11 @@ restates them.
 A claim MUST state the exact family version, the registry revision or digest
 read from [`registry/manifest.json`](registry/manifest.json), the documents
 claimed, the supported feature IDs, the strict-profile IDs, and the
-implementation role. Protocol conformance and vector conformance are distinct
-claims. The pinned registry entry files and the vector corpus MUST agree
-exactly. Optional Control recovery profiles remain independently claimable and
-do not alter baseline Core conformance.
+implementation role. Protocol conformance claims and snapshot validation
+reports are distinct. A rolling pre-1.0 snapshot report is evidence about its pinned source
+commit, not authority over the current draft. The registry manifest and entry
+files MUST agree exactly. Optional Control recovery profiles remain
+independently claimable and do not alter baseline Core conformance.
 
 Claimed features MUST resolve: every same-owner prerequisite of a claimed
 feature MUST also be claimed, and every cross-document prerequisite MUST be
@@ -1775,37 +1810,90 @@ baseline; the pinned `security-invariants.json` is the sole authority.
 A conformance report MUST, for each strict-profile ID, list the profile's
 state, conformance class, prerequisite profile IDs, the required-invariant
 closure computed under [§12.2](#core-strict-profile), required features,
-applicable strict-vector results, and any gaps. It MUST NOT report a
+applicable validation results, and any gaps. It MUST NOT report a
 profile as met while any required invariant, obligation, feature, prerequisite
-profile, or vector is unmet. A partial report may describe an unknown or unmet
+profile, or claimed validation case is unmet. A partial report may describe an unknown or unmet
 profile but MUST NOT advertise it in `strict_profiles`.
 
 Wire conformance is byte-exact throughout the family: semantically similar
-encodings do not conform, and normative vectors compare canonical bytes and
-exact verdicts. Each vector carries an ID, a schema version, the owner
-document that owns the requirement, the family version, an optional profile,
-qualified spec references, a direction, an input, and an expected output. Time-sensitive vectors use a simulated clock and production
-vectors pin randomness. During 0.x, an accepted specification change MAY
-change or retire an unreleased current vector in place. Released artifact sets
-preserve their exact historical bytes. Vector-ID immutability begins at 1.0.
+encodings do not conform. Validation vectors therefore compare canonical bytes
+and exact verdicts, but they do not create requirements. Each packaged vector
+carries an ID, a schema version, the owner document, optional profile,
+source-relative specification references, direction, input, and expected
+output. Time-sensitive vectors use a simulated clock and production vectors
+pin randomness.
+
+A vector MAY carry a top-level `conformance_checks` array of explicit,
+non-wire checker evidence. This metadata does not alter the vector's protocol
+input or expected output. A checker MUST execute `core-signed-event-v1` only
+when that exact profile is declared and MUST NOT infer applicability from a
+topic, description, object shape, or decision trace. Each declaration is a
+closed object containing that profile, required RFC 6901 `event_pointer` and
+`nip01_raw_pointer` members, an optional RFC 6901 `context_pointer`, and one
+`expected_terminal_stage`: `event_structure`, `nip01_raw`, `identifier`,
+`signature`, `persona_resolution`, `version_stamp`, `kel_head`,
+`epoch_authority`, `subtype_nid`, or `accept`. The context pointer is required
+when execution reaches `persona_resolution` or a later stage. Unknown
+profiles or members, malformed pointers, duplicate declarations, and a
+missing event target or declared context target are conformance failures. A
+missing raw target is checker debt rather than an invalid declaration so that
+the corpus can ratchet it explicitly.
+
+A `core-signed-event-v1` declaration that reaches persona resolution consumes
+one closed verifier-evidence object. Its required `retired_key_evidence`
+contains `first_observed_at` and a nullable `prior_anchor`. The anchor type is
+exactly `repository-checkpoint`, `local-receipt`, or `local-checkpoint`, and it
+carries `established_at`. `repository-checkpoint` means the verifier has
+already established that the event's introducing commit is an ancestor of the
+trusted checkpoint described in §9.1; the local forms mean the named trusted
+local evidence was recorded by that verifier. A repository anchor may be
+established no later than routine retirement, while either local form MUST be
+established before retirement. An absent or later anchor cannot convert a
+first-post-retirement observation into final acceptance, and no anchor can
+override the compromise cutoff. Neither `first_observed_at` nor an anchor's
+`established_at` may be later than the context's `evaluation_time`. This object
+is checker input only and is not a protocol wire object.
 
 When this document declares a behavior conformant, an implementation MUST
 produce or accept it as specified. NIP-01 events have only the canonical
-serialization defined in Section 3.1. For a producer vector, the generated
-canonical bytes MUST equal the expected bytes exactly. For a consumer vector,
-the verdict and reason code MUST equal the expected values exactly. A
-repo-relay round trip MUST preserve the accepted signed-event bytes exactly.
+serialization defined in Section 3.1. A snapshot report compares producer
+bytes, consumer verdicts and reason codes, and repo-relay round-trip bytes
+exactly against the snapshot interpreted at its source commit.
 
 The Core minimum set covers NIP-01 bytes, KEL inception/rotation and authority
 windows, root freshness, NID dual proof, pointer resolution, node ads,
 repo-authority finality, materialized KEL derivation, routing/light roles,
 repo-relay client behavior, Tor reachability, keys-repository protection,
-version negotiation, and each Core invariant. A skipped REQUIRED vector bars
-a full Core vector-conformance claim; partial reports MUST list every gap and
-rationale.
+version negotiation, and each Core invariant. A snapshot report lists every
+evaluated case, skip, gap, and rationale without turning coverage into current
+draft authority.
 
-Vector JSON under `docs/spec/vectors/` is normative for the behavior it covers.
-Generator code is non-normative authoring and verification tooling.
+<a id="core-rolling-snapshot"></a>
+### Rolling pre-1.0 validation snapshot
+
+Vector JSON under `docs/spec/vectors/` and its generator are non-normative
+validation artifacts. The closed `snapshot.json` manifest pins one full source
+commit and the exact path/digest inventory. The bootstrap pins
+`2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`, contains 482 vectors among 493
+manifest-listed artifacts, and executes zero declared reference-checker cases;
+corpus-wide gates still execute.
+
+Validation keeps three roots separate. The source root provides the five
+specifications, registry, protocol schemas, and behavioral generator inputs.
+The snapshot root provides vectors, fixtures, packaged vector schema,
+reason/coverage projections, and manifest. The snapshot-tool root provides
+the historical packager and lockfile. The runtime snapshot commit is not a
+manifest field: the checker derives it from the last commit that changed the
+manifest and supplies both explicit roots and both commit identities to the
+independent harness.
+
+Ordinary 0.x specification changes do not update the snapshot. A dedicated
+periodic reconciliation selects a stable source commit, authors and reviews a
+complete replacement, commits it, and only then runs the read-only history
+check. Current-draft and snapshot checks are independent read-only lanes. The
+rules for immutable vector IDs and bytes, historical retention, release
+composition, compatibility, and support begin with a future 1.0 policy; this
+0.x document does not define them.
 
 <a id="core-reason-codes"></a>
 Diagnostic reason codes are registry vocabulary, not a wire API, and this is

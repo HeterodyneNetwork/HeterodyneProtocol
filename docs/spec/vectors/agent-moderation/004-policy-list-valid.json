@@ -1,10 +1,9 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-social-agent-policy-list-v1",
   "spec_refs": [
-    "heterodyne:0.5.0#social-agent-policy-list"
+    "heterodyne:social#social-agent-policy-list"
   ],
   "vector_id": "agent-moderation/policy-list-valid",
   "description": "A current NIP-51 agent policy list binds each device-key mute to one verified receipt and reason.",

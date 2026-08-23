@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#social-recovery-binding"
+    "heterodyne:social#social-recovery-binding"
   ],
   "vector_id": "social-recovery/three-tier-caching",
   "description": "Follower MAY, mutual SHOULD, and witness MUST cache identity-room state.",

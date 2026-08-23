@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#social-moderation"
+    "heterodyne:social#social-moderation"
   ],
   "vector_id": "moderation/kind34550-approvals-required",
   "description": "A NIP-72 kind:34550 community definition signed by the community persona's epoch key, listing moderators by permanent cold-root npub and carrying the Heterodyne [\"approvals_required\",\"N\"] extension tag.",

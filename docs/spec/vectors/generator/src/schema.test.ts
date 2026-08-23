@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   CREDENTIAL_CONTINUITY_SCHEMA_FILES,
   CREDENTIAL_CONTINUITY_SCHEMAS,
+  KEY_CLAIM_REVOCATION_SCHEMA,
+  KEY_CLAIM_SCHEMA,
+  VECTOR_SCHEMA,
   validateClaimRevocationSchemaOrThrow,
   validateCredentialContinuitySchemaOrThrow,
   validateKeyClaimSchemaOrThrow,
@@ -9,6 +12,18 @@ import {
   validateOneTimeInviteSchemaOrThrow,
   validateVectorOrThrow,
 } from "./schema.js";
+
+describe("claim profile revision schema documentation", () => {
+  it("names the frozen profile revision without registry-revision or duplicated terminology", () => {
+    for (const schema of [KEY_CLAIM_SCHEMA, KEY_CLAIM_REVOCATION_SCHEMA]) {
+      const description = (schema as {
+        properties: { profile_revision: { description: string } };
+      }).properties.profile_revision.description;
+      expect(description).toMatch(/profile revision/i);
+      expect(description).not.toMatch(/profile_profile_revision|profile registry revision/i);
+    }
+  });
+});
 
 describe("one-time invite schemas", () => {
   const descriptor = {
@@ -99,6 +114,61 @@ describe("vector schema", () => {
     expected_output: { verdict: "accept" },
   });
 
+  it("accepts only the closed Core signed-event checker declaration", () => {
+    const check = {
+      profile: "core-signed-event-v1",
+      event_pointer: "/input/event",
+      nip01_raw_pointer: "/input/nip01_raw",
+      expected_terminal_stage: "signature",
+    };
+    expect(() => validateVectorOrThrow({
+      ...valid("core"), vector_schema_version: "1.1.0", conformance_checks: [check],
+    })).not.toThrow();
+    for (const invalid of [
+      { ...check, profile: "generator-v1" },
+      { ...check, event_pointer: "input/event" },
+      { ...check, inferred: true },
+    ]) {
+      expect(() => validateVectorOrThrow({
+        ...valid("core"), vector_schema_version: "1.1.0", conformance_checks: [invalid],
+      })).toThrow();
+    }
+    expect(() => validateVectorOrThrow({
+      ...valid("core"), vector_schema_version: "1.1.0", conformance_checks: [check, check],
+    })).toThrow();
+  });
+
+  it("requires context for persona resolution and every later terminal stage", () => {
+    const baseCheck = {
+      profile: "core-signed-event-v1",
+      event_pointer: "/input/event",
+      nip01_raw_pointer: "/input/nip01_raw",
+    };
+    for (const expected_terminal_stage of [
+      "persona_resolution",
+      "version_stamp",
+      "kel_head",
+      "epoch_authority",
+      "subtype_nid",
+      "accept",
+    ]) {
+      expect(() => validateVectorOrThrow({
+        ...valid("core"),
+        vector_schema_version: "1.1.0",
+        conformance_checks: [{ ...baseCheck, expected_terminal_stage }],
+      })).toThrow(/context_pointer|required/);
+      expect(() => validateVectorOrThrow({
+        ...valid("core"),
+        vector_schema_version: "1.1.0",
+        conformance_checks: [{
+          ...baseCheck,
+          context_pointer: "/input/context",
+          expected_terminal_stage,
+        }],
+      })).not.toThrow();
+    }
+  });
+
   it("accepts the qualified family vector envelope", () => {
     expect(() =>
       validateVectorOrThrow({
@@ -116,6 +186,12 @@ describe("vector schema", () => {
         },
       }),
     ).not.toThrow();
+  });
+
+  it("keeps the generator schema as the draft raw-authoring contract", () => {
+    expect(VECTOR_SCHEMA.required).toContain("spec_version");
+    expect((VECTOR_SCHEMA.properties.vector_schema_version as { pattern: string }).pattern)
+      .toBe("^\\d+\\.\\d+\\.\\d+$");
   });
 
   it("rejects an unqualified version and a bare section reference", () => {
@@ -191,25 +267,14 @@ describe("vector schema", () => {
     ).toThrow();
   });
 
-  it("requires reason_code on consume rejects", () => {
-    expect(() =>
-      validateVectorOrThrow({
-        vector_id: "verification/bad-sig-rejects",
-        vector_schema_version: "1.0.0",
-        owner_document: "core",
-        owner_version: "heterodyne/0.5.0",
-        dependency_versions: {},
-        profile_revision: 1,
-        spec_refs: ["heterodyne:0.5.0#core-verification"],
-        description: "bad signature rejects",
-        direction: "consume",
-        input: { event: {} },
-        expected_output: {
-          verdict: "reject",
-        },
-      }),
-    ).toThrow(/reason_code/);
-  });
+  it.each(["consume", "produce", "round-trip"] as const)(
+    "requires reason_code on %s rejects",
+    (direction) => expect(() => validateVectorOrThrow({
+      ...valid("core"),
+      direction,
+      expected_output: { verdict: "reject" },
+    })).toThrow(/reason_code/),
+  );
 });
 
 describe("credential-continuity schema registry", () => {

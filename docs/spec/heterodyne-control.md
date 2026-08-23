@@ -58,8 +58,11 @@ required for baseline Control.
 Control requires the standard Marmot group and transport rules at
 [`heterodyne:0.5.0#comms-marmot`](heterodyne-comms.md#comms-marmot), the Core full-node metadata at
 [`heterodyne:0.5.0#core-full-node-control`](heterodyne-core.md#core-full-node-control), and Comms authorization and
-OIDC rules at [`heterodyne:0.5.0#comms-control-registry`](heterodyne-comms.md#comms-control-registry) and
-[`heterodyne:0.5.0#comms-control-token`](heterodyne-comms.md#comms-control-token).
+freshness rules at [`heterodyne:0.5.0#comms-control-registry`](heterodyne-comms.md#comms-control-registry) and
+[`heterodyne:0.5.0#comms-authorization-freshness`](heterodyne-comms.md#comms-authorization-freshness).
+The standards-facing OAuth enrollment feature additionally composes the
+third-party OIDC/JWT projection at
+[`heterodyne:0.5.0#comms-oidc-endpoints`](heterodyne-comms.md#comms-oidc-endpoints).
 
 Marmot owns KeyPackages, Welcome processing, MLS membership and epochs,
 sender authentication, application encryption, `kind:445` transport,
@@ -304,32 +307,79 @@ client.
 <a id="control-token"></a>
 ## 7. Node-scoped Marmot-bound access tokens
 
-Each full node has its own issuer signing key and exact Control resource
-audience. Issuer keys and tokens MUST NOT be copied to another node. Current
-public issuer state needed for verification and audit is authenticated in the
-private Control registry.
+This section is `control.node-scoped-token.v1` and is the sole definition of
+the node-local Control `at+jwt` contract. It requires no HTTPS discovery,
+published JWKS, continuity manifest, or distributed status list when the
+issuing node is the only resource that consumes the token.
+
+Each full node is an independent RFC 9068 issuer with its own node-local
+issuer signing key and exact Control resource audience. Issuer keys and tokens
+MUST NOT be copied to another node. Authenticated public issuer state in the
+private Control registry binds the issuer URL, current JWKs, node device key,
+exact resource audience, validity interval, and predecessor.
 
 After validating the current entitlement and group, the node issues an RFC
-9068 JWT access token with `typ: at+jwt` and the required `iss`, `sub`, `aud`,
-`exp`, `iat`, `jti`, `client_id`, and `scope` claims. It additionally binds:
+9068 JWT access token whose protected `typ` is exactly `at+jwt` and whose
+signature and required `iss`, `sub`, `aud`, `exp`, `iat`, `jti`, `client_id`,
+and `scope` claims validate. The token is an exact projection of the current
+record conforming to
+`docs/spec/schemas/control/control-client-authorization-v1.schema.json`:
+
+- `sub` and `client_id` are both the record's exact `client_key`;
+- `authorization_id` is `record_id`, and `client_class` is copied exactly;
+- `scope` is the single-ASCII-space-joined, lexicographically sorted, unique
+  set containing `control` and every current `capabilities` member;
+- requested `methods`, `objects`, and `limits` are normalized subsets of the
+  corresponding record members and MUST NOT add authority; and
+- `agent_role` is copied exactly for an automated client and is absent for a
+  human-light client.
+
+It additionally binds:
 
 - an audience naming only the issuing node's Control resource;
 - `cnf.jkt`, the RFC 7638 thumbprint of the client's full secp256k1 JWK;
 - the exact Marmot Control group identifier;
-- the authorization-record identifier and client class;
-- method, object, agent role, and finite-limit scope; and
+- the exact client identifier, entitlement/authorization-record identifier,
+  and client class;
+- exact methods, objects, finite limits, and an optional agent role; and
 - the current private-registry generation or checkpoint.
 
 The Nostr x-only public key maps to the unique even-Y secp256k1 point defined
 by BIP-340. Its uncompressed `x` and `y` form the RFC 8812 JWK used for the
-thumbprint.
+thumbprint. The issuer constructs that full JWK from the authorization
+record's exact `client_key`, computes its RFC 7638 SHA-256 thumbprint, and
+places the canonical unpadded base64url value in `cnf.jkt`. A caller-supplied
+thumbprint cannot override this derivation. Minting and use MUST reject an
+invalid x-coordinate, a noncanonical thumbprint encoding, or any mismatch
+among the current `client_key`, derived thumbprint, `cnf.jkt`, and
+authenticated Marmot sender.
+
+Every issuance contains `issuance_nonce`, 32 freshly generated random bytes
+encoded as 64 lowercase hexadecimal characters. An issuer MUST NOT reuse an
+issuance nonce. Let `C` be the complete JSON token claim set, including every
+identity and authority claim and `issuance_nonce`, but excluding `jti`.
+The token identifier is exactly:
+
+```text
+lowerhex(SHA-256(UTF-8("heterodyne-control-token-jti-v1") || 0x00 || UTF-8(JCS(C))))
+```
+
+`JCS` is RFC 8785 canonicalization. A consumer MUST recompute this identifier
+from the received claims and reject a mismatch. Consequently, same-second
+tokens with different grants or fresh issuance nonces have distinct token
+identifiers.
 
 Marmot Control does not synthesize DPoP HTTP values. For every privileged
 frame the receiver verifies that the application event and sender leaf are
 valid, the authenticated sender account's JWK thumbprint equals `cnf.jkt`,
-the frame arrived in the token-bound group, and the issuer, node audience,
-signature, times, token ID, client, scope, entitlement, and limits remain
-valid. A separately exposed HTTPS API MAY use ordinary RFC 9449 DPoP with
+the frame arrived in the token-bound group, and the token type, signature,
+issuer, exact node audience, times, token ID, client, scope, entitlement, and
+limits remain valid against the exact current authorization record. The
+private-registry checkpoint is taken from the authenticated current registry
+view, not from the authorization record. Another full node MUST reject the
+token and issue its own only after independently validating the same
+persona-wide entitlement. A
+separately exposed HTTPS API MAY use ordinary RFC 9449 DPoP with
 registered `ES256K`; that API is not baseline Control.
 
 The effective token lifetime is:
@@ -338,19 +388,23 @@ The effective token lifetime is:
 min(requested lifetime, entitlement maximum, node-policy maximum, 60 minutes)
 ```
 
-The default is five minutes. A lifetime above five minutes requires the
-separately consented `control.token.extended` capability. Sixty minutes is an
-absolute maximum. The issuer MUST NOT issue a refresh token. An entitled
+The default is five minutes. A lifetime above five minutes requires
+`control.token.extended` in the current authorization record's
+`capabilities`; an input flag cannot substitute for it. Minting rejects the
+absence of that capability, and every use rejects a token above five minutes
+if the current record no longer contains it. Sixty minutes is an absolute maximum.
+The issuer MUST NOT issue a refresh token. An entitled
 client obtains a new node-local token over its established group, including
 after failover. A token is checked when a request is accepted; expiry does not
 interrupt an already accepted side effect, but every later request or MCP tool
 call requires a current token.
 
-Nodes check current entitlement on every request rather than requiring a
-distributed Token Status List. Minting and every privileged request are bound
-by [`heterodyne:0.5.0#comms-authorization-freshness`](heterodyne-comms.md#comms-authorization-freshness). Once a node observes
-revocation, it rejects all associated tokens and terminates the affected group
-locally.
+Nodes revalidate the current entitlement on every request rather than
+requiring a distributed Token Status List. A projected token never replaces
+private-registry authority. Minting and every privileged request are bound by
+[`heterodyne:0.5.0#comms-authorization-freshness`](heterodyne-comms.md#comms-authorization-freshness). Once a node observes
+revocation, it rejects all associated tokens regardless of remaining `exp` and
+terminates the affected group locally.
 
 <a id="control-request-processing"></a>
 ## 8. Request processing and execution
@@ -399,10 +453,13 @@ expansion methods require their specified fresh local confirmation.
 ### 8.2 Automated principals and MCP
 
 An AI or programmatic principal uses profile `agent-mcp` and the MCP
-2025-11-25 data layer. It uses the same node-scoped Control access token as
-its OIDC workload token; no nested second token exists. Its entitlement and
-token identify the automated client class, exact `agent:<role-id>`, tools,
-methods, kinds, objects, media, rate, size, burst, and expiry.
+2025-11-25 data layer. It uses the node-scoped Control access token defined in
+§7. If its identity originated in the optional third-party OIDC workload
+projection, the node maps the current issuer, subject, client, and role tuple
+to the entitlement during enrollment; that projected token neither authorizes
+Control frames nor replaces the §7 token. The entitlement and Control token
+identify the automated client class, exact `agent:<role-id>`, tools, methods,
+kinds, objects, media, rate, size, burst, and expiry.
 
 MCP `initialize`, `notifications/initialized`, `tools/list`, `tools/call`,
 `notifications/cancelled`, result, and error objects MUST validate against
@@ -603,7 +660,7 @@ The list below is descriptive:
 - **CONTROL-I-CLIENT-KEY-CONFINEMENT:** a light client receives no persona, device, epoch, NID, repository, MLS-leaf, or agent-role private key.
 - **CONTROL-I-MARMOT-SENDER-BINDING:** every privileged token is bound to the authenticated Marmot account and exact group.
 - **CONTROL-I-ENTITLEMENT-FRESHNESS:** every privileged request uses current, non-conflicted private entitlement state and absorbing revocation.
-- **CONTROL-I-NODE-AUDIENCE:** a node-issued Control token is accepted only by its exact issuing-node audience.
+- **CONTROL-I-NODE-AUDIENCE:** a node-issued Control token is accepted only when its protected typ is exactly at+jwt, signature and issuer validate, time bounds hold, and audience is the exact issuing-node resource.
 - **CONTROL-I-OPERATION-AT-MOST-ONCE:** mutation reservation precedes effects and cross-node retry is limited to provably safe cases.
 - **CONTROL-I-AGENT-NO-KEY-RELEASE:** an automated principal never receives or directly exercises a persona, epoch, NID, human-device, or agent-role private key.
 - **CONTROL-I-AGENT-INTENT-ONLY:** an automated principal publishes only through the intent-level agent method, and raw signing, human-profile fallback, and attribution bypass fail closed.

@@ -169,6 +169,10 @@ const values: Record<string, Record<string, unknown>> = {
     key_epoch: 3,
     target_persona: H64,
     target_device: H64_B,
+    recipient: {
+      type: "marmot-mls-leaf",
+      value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    },
     role_id: H64,
     checkpoint_id: H64_B,
     host_id: H64,
@@ -225,6 +229,42 @@ describe("Workspace authority object schemas", () => {
     })).not.toBeNull();
     expect(validate("workspace-policy-v1", {
       ...values["workspace-policy-v1"], ordinary_write_max_age: 86_401,
+    })).not.toBeNull();
+  });
+
+  it("requires an exact Marmot MLS leaf recipient on resource key envelopes", () => {
+    const envelope = values["resource-key-envelope-v1"];
+    const missingRecipient = { ...envelope };
+    delete missingRecipient.recipient;
+
+    expect(validate("resource-key-envelope-v1", missingRecipient)).not.toBeNull();
+    expect(validate("resource-key-envelope-v1", {
+      ...envelope,
+      recipient: {
+        type: "nostr-secp256k1",
+        value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      },
+    })).not.toBeNull();
+    expect(validate("resource-key-envelope-v1", {
+      ...envelope,
+      recipient: {
+        type: "marmot-mls-leaf",
+        value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      },
+    })).not.toBeNull();
+    expect(validate("resource-key-envelope-v1", {
+      ...envelope,
+      recipient: {
+        type: "marmot-mls-leaf",
+        value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      },
+    })).not.toBeNull();
+    expect(validate("resource-key-envelope-v1", {
+      ...envelope,
+      recipient: {
+        type: "marmot-mls-leaf",
+        value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+      },
     })).not.toBeNull();
   });
 });

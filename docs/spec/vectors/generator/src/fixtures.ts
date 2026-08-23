@@ -1,9 +1,17 @@
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { QUALIFIED_VERSION } from "./family.js";
 import { inceptionTemplate } from "./kel.js";
 import { getEventId, getPublicKey } from "./nostr.js";
 import { didKeyFromEd25519, ed25519PublicKey, fixtureRid } from "./radicle.js";
+import { loadRegistry } from "./registry.js";
+import { SCHEMA_VERSION } from "./vector-helpers.js";
 
 const TEST_EPOCH = 1767225600;
+export const CURRENT_REGISTRY_SHA256 = loadRegistry(resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../registry",
+)).manifest.entry_set_sha256;
 
 const key = (n: number) => n.toString(16).padStart(64, "0");
 
@@ -104,8 +112,9 @@ export function buildFixtures() {
     carol: kelFor(personas.carol.cold_root.pubkey, personas.carol.epoch_keys.epoch_1.pubkey),
   };
   return {
-    vector_schema_version: "1.0.0",
+    vector_schema_version: SCHEMA_VERSION,
     spec_version: QUALIFIED_VERSION,
+    registry_sha256: CURRENT_REGISTRY_SHA256,
     test_epoch: TEST_EPOCH,
     pinned_randomness: {
       schnorr_aux_rand: "00".repeat(32),

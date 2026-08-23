@@ -38,11 +38,7 @@ export type FamilyDocIssue = {
     | "unresolved-reference"
     | "forbidden-dependency"
     | "bare-normative-link"
-    | "missing-cutover-artifact"
-    | "overview-normative-language"
-    | "extraction-banner"
     | "noncanonical-decision-reference"
-    | "premature-release-claim"
     | "marmot-archive-invalid"
     | "generic-repo-relay-server-claim"
     | "ambiguous-nostr-wire-key"
@@ -53,7 +49,9 @@ export type FamilyDocIssue = {
     | "registry-digest-drift"
     | "unregistered-feature-id"
     | "unregistered-proof-domain"
-    | "mislinked-reference";
+    | "mislinked-reference"
+    | "retired-authoring-model"
+    | "profile-revision-registry-context-missing";
   message: string;
 };
 
@@ -95,6 +93,33 @@ const EXPLICIT_NORMATIVE =
 const LIST_ITEM = /^\s{0,3}(?:[-+*]|\d+[.)])\s+/;
 const TABLE_ROW = /^\s*\|.*\|\s*$/;
 const WRAPPED_DEPENDENCY_DECLARATION = /^\s*Normative dependencies\s*:\s*$/i;
+const RETIRED_MAINTAINED_GUIDE_PATTERNS = [
+  /owner_version/,
+  /dependency_versions/,
+  /heterodyne:(?:core|comms|control|social|workspace)\//,
+  /run release-manifests/,
+  /JSON member remains named\s+`registry_revision`/,
+  /five documents are independently versioned/i,
+  /five independently versioned documents/i,
+  /deleted\s+`?docs\/spec\/releases\//i,
+  /comms\.node-scoped-jwt\.v1/,
+  /supplies exactly four things/i,
+  /claim profile registry revision/i,
+  /dependency versions above/i,
+  /(?:committed\s+JSON\s+|conformance\s+)?vectors?\s+(?:are|is)\s+the\s+normative\s+artifacts?/i,
+  /vectors?\s+are\s+normative\s+for\s+the\s+behavior\s+they\s+cover/i,
+  /normative\s+vector\s+corpus/i,
+  /wire-level changes require corresponding normative vector changes/i,
+  /npm --prefix docs\/spec\/vectors\/generator run release-(?:author|check|manifests)/i,
+  /(?:docs\/spec\/)?releases\/family\/0\.5\.0\.json/i,
+  /family-release-manifest\.schema\.json/i,
+  /family\s+release\s+manifest/i,
+  /one\s+content-addressed\s+family\s+release\s+record/i,
+  /protocol\s+authority\s+is\s+the\s+versioned\s+specification\s+family\s+and\s+its\s+normative\s+registries,\s+schemas,\s+release\s+metadata,\s+and\s+conformance\s+vectors/i,
+  /live\s+specifications,\s+registry,\s+schemas,\s+release\s+metadata,\s+and\s+vectors\s+remain\s+the\s+protocol\s+authority/i,
+  /generator-owned\s+protocol\s+inputs:\s+live\s+normative\s+machine-readable\s+artifacts/i,
+  /recheck the named family release/i,
+];
 
 function displayPath(repoRoot: string, path: string): string {
   return relative(repoRoot, path).split(sep).join("/");
@@ -575,66 +600,73 @@ export function findStrictProfileClosureIssues(
   }
   return issues.sort();
 }
-export function lintReleaseReadiness(repoRoot: string): FamilyDocIssue[] {
+/** Lint the maintained authoring guides against the single-family model. */
+export function lintMaintainedGuides(
+  repoRoot: string,
+  contentOverrides: Readonly<Record<string, string>> = {},
+): FamilyDocIssue[] {
   const issues: FamilyDocIssue[] = [];
-  const overviewPath = resolve(repoRoot, "docs/spec/heterodyne.md");
-  if (!existsSync(overviewPath)) {
-    return [{
-      path: displayPath(repoRoot, overviewPath),
-      line: 1,
-      code: "missing-cutover-artifact",
-      message: "the family overview is missing",
-    }];
-  }
+  const guides = [
+    "AGENTS.md",
+    "README.md",
+    "docs/adr/archive/2026-08-15-045-conformance-harness-independence.md",
+    "docs/adr/README.md",
+    "docs/spec/heterodyne.md",
+    "docs/spec/vectors/README.md",
+    "docs/spec/vectors/generator/README.md",
+    "docs/spec/extensions/nips/README.md",
+    "docs/glossary.md",
+    "docs/security/threat-model.md",
+    "docs/architecture.md",
+    "docs/spec/heterodyne-social.md",
+    "CHANGELOG.md",
+  ];
+  const contents = new Map(
+    guides.map((path) => [
+      path,
+      contentOverrides[path] ?? readFileSync(resolve(repoRoot, path), "utf8"),
+    ]),
+  );
+  const lineFor = (text: string, offset: number) =>
+    text.slice(0, offset).split(/\r?\n/).length;
 
-  const overview = readFileSync(overviewPath, "utf8");
-  if (BCP14_KEYWORD.test(overview)) {
-    issues.push({
-      path: displayPath(repoRoot, overviewPath),
-      line: 1,
-      code: "overview-normative-language",
-      message: "the non-normative family overview contains an uppercase BCP 14 keyword",
-    });
-  }
-  if (
-    !/prepared documents/i.test(overview) ||
-    !/unreleased[\s\S]*explicit\s+release\s+approval/i.test(
-      overview,
-    ) ||
-    /current release|release records/i.test(overview)
-  ) {
-    issues.push({
-      path: displayPath(repoRoot, overviewPath),
-      line: 1,
-      code: "premature-release-claim",
-      message: "overview must distinguish current normative authority from the prepared, unreleased 0.x artifacts",
-    });
-  }
-
-  const changelogPath = resolve(repoRoot, "CHANGELOG.md");
-  if (existsSync(changelogPath)) {
-    const changelog = readFileSync(changelogPath, "utf8");
-    const current = changelog.split("### Historical 0.4.0", 1)[0];
-    if (
-      !/^## \[Unreleased\]$/m.test(current) ||
-      !/prepared[\s\S]*0\.5\.0/i.test(current) ||
-      /## 0\.5\.0 document releases|\bPublished\b/.test(current)
-    ) {
-      issues.push({
-        path: displayPath(repoRoot, changelogPath),
-        line: 1,
-        code: "premature-release-claim",
-        message: "0.5.0 must remain in Unreleased pending explicit approval",
-      });
+  for (const [path, text] of contents) {
+    for (const pattern of RETIRED_MAINTAINED_GUIDE_PATTERNS) {
+      const match = pattern.exec(text);
+      if (match !== null) {
+        issues.push({
+          path,
+          line: lineFor(text, match.index),
+          code: "retired-authoring-model",
+          message: `retired authoring terminology: ${match[0]}`,
+        });
+      }
     }
   }
-  for (const document of loadFamilyDocuments(repoRoot)) {
-    if (/pre-release extraction draft/i.test(document.lines.join("\n"))) {
+
+  const registryRevision = loadRegistry(repoRoot).manifest.revision;
+  const namesCurrentRegistryRevision = new RegExp(
+    `distinct from[^.\n]*current family registry revision ${registryRevision}\\b`,
+  );
+  for (const path of ["docs/glossary.md", "docs/security/threat-model.md"]) {
+    const text = contents.get(path)!;
+    const profileRevisionIndex = text.indexOf("`profile_revision`");
+    const namesProfileRevision = profileRevisionIndex >= 0;
+    const profileRevisionContext = namesProfileRevision
+      ? text.slice(Math.max(0, profileRevisionIndex - 80), profileRevisionIndex + 160)
+      : "";
+    const statesFrozenStatus = /\bfrozen\b/i.test(profileRevisionContext);
+    const statesValueTwo = /`2`/.test(profileRevisionContext);
+    if (!namesProfileRevision
+      || !statesFrozenStatus
+      || !statesValueTwo
+      || !namesCurrentRegistryRevision.test(text)) {
       issues.push({
-        path: document.displayPath,
+        path,
         line: 1,
-        code: "extraction-banner",
-        message: "pre-release extraction banner remains after cutover",
+        code: "profile-revision-registry-context-missing",
+        message:
+          `guide must state profile_revision, its frozen value 2, and its distinction from current family registry revision ${registryRevision}`,
       });
     }
   }

@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-tor-reachability"
+    "heterodyne:core#core-tor-reachability"
   ],
   "vector_id": "transport/onion-no-clearnet-dns-leak",
   "description": ".onion relay discovery must not send the host to a clearnet resolver.",

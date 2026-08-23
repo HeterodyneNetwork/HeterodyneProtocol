@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-kel-head"
+    "heterodyne:core#core-kel-head"
   ],
   "vector_id": "keri-authority/kel-head-seq-mismatch-rejected",
   "description": "A well-formed kel_head names the inception event (s=0) but declares seq 1; once the named event is resolved on the accepted KEL its s (0) does not equal the tag's decimal seq (1).",

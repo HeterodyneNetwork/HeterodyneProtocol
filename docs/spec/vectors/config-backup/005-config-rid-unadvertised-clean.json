@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-keys-repository"
+    "heterodyne:core#core-keys-repository"
   ],
   "vector_id": "config-backup/config-rid-unadvertised-clean",
   "description": "A negative surface scan: the config repository RID appears on none of the persona's published surfaces (kind:31005, kind:31010, kind:0 profile, NIP-65 relays, NIP-51 lists), which reference only the public RID.",

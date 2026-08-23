@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-marmot-directory"
+    "heterodyne:comms#comms-marmot-directory"
   ],
   "vector_id": "marmot-radicle/directory-sensitive-fields-encrypted",
   "description": "A discoverable directory keeps public profile fields clear and routing, membership, and administration encrypted.",

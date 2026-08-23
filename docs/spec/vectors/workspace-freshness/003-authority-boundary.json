@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "workspace",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#workspace-freshness"
+    "heterodyne:workspace#workspace-freshness"
   ],
   "vector_id": "workspace-freshness/authority-boundary",
   "description": "An authority mutation is accepted at the exact 300-second default boundary.",

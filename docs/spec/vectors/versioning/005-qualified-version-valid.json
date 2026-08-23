@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-versioning"
+    "heterodyne:core#core-versioning"
   ],
   "vector_id": "versioning/qualified-version-valid",
   "description": "A qualified family version parses into its document and semver suffix.",

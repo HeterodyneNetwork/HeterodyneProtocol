@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-verification"
+    "heterodyne:core#core-verification"
   ],
   "vector_id": "verification/bad-signature-rejects",
   "description": "A Nostr event with a mismatched signature is rejected before delegation checks.",

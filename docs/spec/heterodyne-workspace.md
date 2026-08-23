@@ -323,14 +323,20 @@ through each role.
 
 A `resource-key-envelope-v1` is one
 [`heterodyne:0.5.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
-key envelope. Workspace supplies the four instantiation choices:
+key envelope. Workspace supplies the five instantiation choices:
 
 | Choice | Workspace value |
 |---|---|
 | Recipient set | every device leaf currently eligible through a qualifying role |
-| Reference and wrapping | the device leaf under wrapping profile `marmot-mls-application-v1` |
+| Reference and wrapping | `marmot-mls-leaf`, under wrapping profile `marmot-mls-application-v1` |
 | Carrier | the role Marmot control group, committed to the active event repository |
 | Generation identifier | `key_epoch`, scoped to `resource_id` |
+| Extra rotation triggers | `none` |
+
+The envelope's `target_device` is the Workspace policy and device-registry
+identifier. Its separate `recipient` member is the exact cryptographic
+`marmot-mls-leaf` that receives the envelope in the authenticated role-group
+epoch.
 
 Key distribution is push-first. After a key change, signed authority state
 records the epoch, each eligible device leaf receives its envelope in the role

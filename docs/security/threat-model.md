@@ -3,9 +3,10 @@
 **Status:** Draft, non-normative security analysis for the 0.x family.
 
 [`docs/spec/heterodyne.md`](../spec/heterodyne.md) is the non-normative family
-map. Security requirements are owned by the five versioned documents below.
+map. Security requirements are owned by the five documents below, which share
+one exact family version.
 
-This document analyzes the five independently versioned documents:
+This document analyzes the five family documents:
 
 - [Heterodyne Core](../spec/heterodyne-core.md) — identity, verification,
   registry, node roles, and repository substrate;
@@ -50,6 +51,33 @@ location, social relationships, moderation labels, and repository state never
 substitute for local signature, KEL, delegation, or schema verification.
 Availability from multiple carriers reduces withholding risk but does not make
 any carrier authoritative for persona identity.
+
+### 1.1 Validation-snapshot trust boundary
+
+Pre-1.0 validation uses two read-only lanes so stale evidence cannot silently
+override the live draft. The current-draft lane checks current prose, registry,
+protocol schemas, and generator inputs. The history-bound lane checks the one
+rolling non-normative snapshot against its exact source. Ordinary draft changes
+do not mutate snapshot evidence.
+
+The closed `docs/spec/vectors/snapshot.json` manifest pins
+`2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43` and digest-binds 493 artifacts,
+including 482 vectors. Its source root contains the five specifications,
+registry, protocol schemas, and behavioral generator inputs. Its snapshot root
+contains vectors, fixtures, packaged vector schema, reason/coverage
+projections, and the manifest. A separate snapshot-tool root supplies the
+packager and locked dependencies from the derived runtime snapshot commit. The
+manifest does not choose that commit; the checker derives the last commit that
+changed the manifest and passes both explicit roots and both commit identities
+to independent conformance code.
+
+The bootstrap pin predates executable checker declarations, so it executes
+zero declared reference-checker cases while corpus-wide static gates continue
+to run. A reconciliation maintainer authors from a stable full source commit,
+reviews, commits, and only then runs the history-bound check. CI does not
+author, publish, deploy, tag, or push. Vector immutability, historical-set
+retention, release composition, compatibility, and support windows remain
+deferred to a future 1.0 policy.
 
 ## 2. Registry-bound invariants
 
@@ -102,7 +130,7 @@ false invariant merely for uniformity.
 - **CONTROL-I-CLIENT-KEY-CONFINEMENT:** A light client receives no persona, device, epoch, NID, repository, MLS-leaf, or agent-role private key.
 - **CONTROL-I-MARMOT-SENDER-BINDING:** Every privileged token is bound to the authenticated Marmot account and exact group.
 - **CONTROL-I-ENTITLEMENT-FRESHNESS:** Every privileged request uses current, non-conflicted private entitlement state and absorbing revocation.
-- **CONTROL-I-NODE-AUDIENCE:** A node-issued Control token is accepted only by its exact issuing-node audience.
+- **CONTROL-I-NODE-AUDIENCE:** A node-issued Control token is accepted only when its protected typ is exactly at+jwt, signature and issuer validate, time bounds hold, and audience is the exact issuing-node resource.
 - **CONTROL-I-OPERATION-AT-MOST-ONCE:** Mutation reservation precedes effects and cross-node retry is limited to provably safe cases.
 - **CONTROL-I-AGENT-NO-KEY-RELEASE:** An automated principal never receives or directly exercises a persona, epoch, NID, human-device, or agent-role private key.
 - **CONTROL-I-AGENT-INTENT-ONLY:** An automated principal publishes only through the intent-level agent method, and raw signing, human-profile fallback, and attribution bypass fail closed.
@@ -252,7 +280,7 @@ guarantee as another's.
 | Removed member receives future private repository data | Remove its NID from future replication, rotate membership and routing in the required two-stage sequence, and encrypt new directory records to remaining members (COMMS-I-RADICLE-ROUTING-AUTHORITY). |
 | Retention UI promises erasure | Stop advertising and serving expired archives and garbage-collect locally where possible, while explicitly disclosing that clones, Git objects, exports, and backups can survive (COMMS-I-RADICLE-NON-ERASURE). |
 | Public persona inbox causes unbounded fetch or media download | Fetch a bounded manifest into quarantine, reject replayed KeyPackages and invalid artifacts, and require policy or user action before media retrieval. |
-| Claim forgery or semantic malleation | Recompute the RFC 8785/JCS `claim_id`, verify the exact event, issuer authority, typed key and native proof, and reject address reuse unless the semantic object is byte-identical. A `kind:31014` reduction additionally requires `heterodyne/0.5.0`, registry revision 2, the exact single `[["d","<claim_id>"]]` tag, and a native proof that binds the owning Comms profile and registry revision. See `heterodyne:0.5.0#comms-key-claims`, `claims/004-claim-id-mismatch`, and `claims/015-authorization-self-revocation`; COMMS-I-CLAIM-AUTHENTICITY. |
+| Claim forgery or semantic malleation | Recompute the RFC 8785/JCS `claim_id`, verify the exact event, issuer authority, typed key and native proof, and reject address reuse unless the semantic object is byte-identical. A `kind:31014` reduction additionally requires `heterodyne/0.5.0`, the frozen `profile_revision` value `2` (distinct from the current family registry revision 13), the exact single `[["d","<claim_id>"]]` tag, and a native proof that binds the owning Comms profile and profile revision. See `heterodyne:0.5.0#comms-key-claims`, `claims/004-claim-id-mismatch`, and `claims/015-authorization-self-revocation`; COMMS-I-CLAIM-AUTHENTICITY. |
 | Compromised or stale claim issuer | Evaluate the issuer's Core/KEL authority at the claim's `issued_at`, apply compromise and revocation state, and keep a cryptographically valid but untrusted third-party issuer non-authorizing; compromised OIDC signing keys invalidate affected tokens and status. See `heterodyne:0.5.0#comms-claim-verification`, `claims/007-third-party-issuer-untrusted`, and `token-status/009-signing-key-compromise`; COMMS-I-CLAIM-AUTHENTICITY and COMMS-I-STATUS-INTEGRITY. |
 | Delegation-chain amplification | Require explicit issuance authority, strict narrowing of every scope dimension, cycle detection, and no more than eight issuance edges. See `heterodyne:0.5.0#comms-claim-chain` and `claims/010-chain-depth-exceeded`; COMMS-I-CLAIM-ATTENUATION. |
 | Subject-proof replay | Bind a fresh single-use challenge to claim, purpose, audience, resource, operation, nonce, and verifier context; an event signature or earlier proof cannot substitute. See `heterodyne:0.5.0#comms-claim-verification` and `claims/012-copied-proof-rejected`; COMMS-I-CLAIM-AUTHENTICITY. |
@@ -399,10 +427,11 @@ material but cannot mint authority outside the KEL.
 ## 7. Claims and OIDC assurance coverage
 
 Claims and OIDC requirements are defined entirely by the permanent Comms
-anchors, pinned registry entries, schemas, security invariants, and normative
-vector groups. The threat table above maps each risk directly to those current
-artifacts. Historical decision records are not required to interpret or
-validate this coverage.
+anchors, pinned registry entries, schemas, and security invariants. Rolling
+snapshot vector groups are validation evidence for their pinned source, not an
+additional requirement source. The threat table above maps each risk directly
+to the live normative artifacts. Historical decision records are not required
+to interpret or validate this coverage.
 
 The authoritative surfaces are
 `heterodyne:0.5.0#comms-key-claims`,

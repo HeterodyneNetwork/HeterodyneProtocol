@@ -264,7 +264,7 @@ hosts, and repository relays can observe metadata and can omit, delay, or
 reorder traffic. Local signature, KERI, MLS, grant, and repository-binding
 verification remains mandatory.
 
-The five documents are independently versioned. Exact document versions,
-registry revision or digest, features, and strict profiles must travel with
-every conformance claim. The family is in its 0.x phase and may make breaking
-changes before 1.0.
+The five documents share one exact family version. The family version,
+registry digest, features, and strict profiles travel with every conformance
+claim. The family is in its 0.x phase and may make breaking changes before
+1.0.

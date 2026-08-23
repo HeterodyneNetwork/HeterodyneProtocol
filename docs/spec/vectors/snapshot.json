@@ -1,0 +1,1980 @@
+{
+  "snapshot_schema": "1",
+  "source_commit": "2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43",
+  "vector_schema_version": "2.0.0",
+  "vector_count": 482,
+  "artifacts": [
+    {
+      "path": "docs/spec/vectors/acceptance-gating/001-authentication-before-policy.json",
+      "sha256": "563f8a01b75227f63edb576c669bb53d67df3963b520bfccc7644e19735500d7"
+    },
+    {
+      "path": "docs/spec/vectors/acceptance-gating/002-message-request-no-receipt.json",
+      "sha256": "d2c01ac311c99a2e20e93e5f5b787ed22db706b3544e8e4336764ca6467b775c"
+    },
+    {
+      "path": "docs/spec/vectors/acceptance-gating/003-social-mute-tightens.json",
+      "sha256": "b02bcacbec751b2e71a04f3fe4086654c8aee782f40eb2f3afb78dc4f9f5be72"
+    },
+    {
+      "path": "docs/spec/vectors/acceptance-gating/004-social-policy-cannot-loosen.json",
+      "sha256": "75b909a37ffc9efb87c09d4915af7d26bd5095c47031e205ba9c7131b10a788c"
+    },
+    {
+      "path": "docs/spec/vectors/acceptance-gating/005-established-ordinary-accept.json",
+      "sha256": "b3876e9c93d11db66f2223f5b79047924d88d66ee88957a7f8690c30fdaf15e6"
+    },
+    {
+      "path": "docs/spec/vectors/acceptance-gating/006-new-ordinary-hold.json",
+      "sha256": "3c8ce70bd8b74bbacbf4dfaaf4cd10321346842a109ef48890d0eed4e0495ba5"
+    },
+    {
+      "path": "docs/spec/vectors/acceptance-gating/007-authentication-reject.json",
+      "sha256": "e824b391744e24280efd46ef6a8d90b5b7dc06d30247c38c0017808715fbcdd1"
+    },
+    {
+      "path": "docs/spec/vectors/acceptance-gating/008-dm-invite-accept.json",
+      "sha256": "3f3c53ea86ab5de122441935f743b2cfdc1cc6e64a9e921193e1cd558b3291ee"
+    },
+    {
+      "path": "docs/spec/vectors/acceptance-gating/009-ordinary-explicit-reject.json",
+      "sha256": "ebe6601136ec0619463c8ea248d0e1aec931c77146e2f93d327f4b25bce57f84"
+    },
+    {
+      "path": "docs/spec/vectors/acceptance-gating/010-control-default-off-reject.json",
+      "sha256": "05cd69c61a5fa25e74eacfa75a2fdc066ea8999138df39e0359e458de4fe681a"
+    },
+    {
+      "path": "docs/spec/vectors/acceptance-gating/011-control-permanent-enrollment-only.json",
+      "sha256": "7551558ba23aeb280d5beb36f9621ae7e6334b0a7357e2021a0ac724f429b9c9"
+    },
+    {
+      "path": "docs/spec/vectors/acceptance-gating/012-control-entitled-authorized.json",
+      "sha256": "f1b55bbfeca3e2aa4f41f5969f8e598494a7444281836db8056d7ca65b314761"
+    },
+    {
+      "path": "docs/spec/vectors/acceptance-gating/013-control-entitlement-conflict-reject.json",
+      "sha256": "eaff383a30e607485fb396dac138a3b331c263582da6e321a4f22d2c54a4f635"
+    },
+    {
+      "path": "docs/spec/vectors/acceptance-gating/014-social-wot-tightens-only.json",
+      "sha256": "0b675a5310438aab40a80f0fb624aa5848c78b73126fc52976383e13dc5c6a07"
+    },
+    {
+      "path": "docs/spec/vectors/acceptance-gating/015-social-wot-cannot-loosen.json",
+      "sha256": "9499c3c6e8261f0a7f98fdde6ef23319f450e53c8ca8d7b6e0f8f2cf6a53c8cd"
+    },
+    {
+      "path": "docs/spec/vectors/acceptance-gating/016-control-capacity-reject.json",
+      "sha256": "d465debeb048c4f49e24b2195a85745768452de71f0d1353848ca13322d36adc"
+    },
+    {
+      "path": "docs/spec/vectors/acceptance-gating/017-control-explicit-reject-absorbing.json",
+      "sha256": "e4e8bb6d22fa0a0cce5408ea0cb62143b2afce89f419b38788e545397b3f7a61"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/001-delegation-valid.json",
+      "sha256": "30287674a76840027b743a5bd86a901912572e53c8232a7db28f6cc3c06ab006"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/002-delegation-key-proof-invalid.json",
+      "sha256": "0a820c190efe6e111c69d8fc92d7971af60be2ff729cd1d3f5cd9b904bccdcb9"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/003-role-key-replacement.json",
+      "sha256": "d08a91a0c62a1d6d22077cb76f0d995c291909674f866468f49025d64e344fad"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/004-multiple-roles-one-nid.json",
+      "sha256": "5db4f09ef2f5e5b80f0cfe14154c39b4b5c3e9640e4065c32aa649dab2bd34d9"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/005-stable-identity-renewal.json",
+      "sha256": "078c672edf9bcc112dcca082cbd55840e35bd83d227420a3f6c1a8cb782631a6"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/006-cross-persona-unlinkable.json",
+      "sha256": "8ee13b7e13b0d658525c9310121d3ff699ef04b1a92632fe9def6095c86e06b1"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/007-workload-registration-valid.json",
+      "sha256": "05a39f3b95488efe1cb038816057b0904ceabc4cb8a06bbd81cfa527a4df5a15"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/008-workload-registration-unbounded-rejected.json",
+      "sha256": "dc760b8e3c68dd86316295f491af03f00d01aefb235ea5161a353150b848b40c"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/009-token-valid.json",
+      "sha256": "994e26dfbc1bd2cb5ef468b3f6c010aad0c3958310068d62ec6eae10b1700a43"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/010-token-expired.json",
+      "sha256": "23504fbc87113eb9c2d8a92eeda6d675ede7fac7bfefb112893633e7dd5316af"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/011-token-revoked.json",
+      "sha256": "a4d80aa6a13d3034772dbc399e03bf7b25b48ac29778646b658f7105363e6343"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/012-token-audience-invalid.json",
+      "sha256": "0e57f6f9fd4de94cc5d84990f192f63cf8efb2695183461bd67482da54944706"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/013-token-sender-proof-invalid.json",
+      "sha256": "fdff88e34604dbcbb71bd20fbc867d86dc294feb79abdd149b701025f879c514"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/014-token-role-mismatch.json",
+      "sha256": "f521d6c82e579e7dc581e3963f7415af8dde65bb2b8396eb74e001ada5ce223f"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/015-attribution-kind-1.json",
+      "sha256": "148b747c0b9bfd3b1ed5abbae3a215df3e3ab08df59272fa9fceab6899dea679"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/016-attribution-kind-6.json",
+      "sha256": "b588da2aaf21e38b0665a1fc1fdde43885eb832149885e4afc9972f3afc19cbd"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/017-attribution-kind-7.json",
+      "sha256": "7a31976d883f23234d49bd136831ccbab8cbeece31c73529bf577bbed8163728"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/018-attribution-kind-16.json",
+      "sha256": "853e0a7637fe1fd32c4df4234d71828cdafa4454d8c1a481f382f715b0feeea8"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/019-attribution-kind-1063.json",
+      "sha256": "f3e610035f18ad105d0b69b92a05a544003a72d36d6222da15d90574a272c1bc"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/020-attribution-kind-1985.json",
+      "sha256": "3638d69da5fd567493a9fadff4a7f1c3e90b44bb561ec0f03f8547c467ddb109"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/021-attribution-kind-4550.json",
+      "sha256": "ff72855eb5f88c9f870d64b719cab1da178282b58849c6d7d016ab92b11af37d"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/022-attribution-kind-30023.json",
+      "sha256": "70fd36e49112e296c180f05d29de1c162d7774bd31491b535b5157a454c715c0"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/023-caller-forgery-replaced.json",
+      "sha256": "23491aed08d58e13463394f7144f9e51c1cfb5c978384a97bc0745bf4183b90f"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/024-human-review-preserves-agent-label.json",
+      "sha256": "835260d9b05ea17f1c03cb53de16016ce230ebdf289e24be6d2a84645da7b3e3"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/025-tier3-inner-only.json",
+      "sha256": "0165202628c974e94f35059f6f0a99403dd5999c3e8d36d08500223f83dc570a"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/026-profile-unavailable-rejected.json",
+      "sha256": "32e9f121f85e66b5302a1681648a2fc18308573abe1e06dbda58a18221f759d4"
+    },
+    {
+      "path": "docs/spec/vectors/agent-authorship/027-idempotent-retry-reuses-event.json",
+      "sha256": "0ca1c5200af6d703b739094552bc6fa5cea82f57f23a466ec8e3bc51dc19e79a"
+    },
+    {
+      "path": "docs/spec/vectors/agent-moderation/001-receipt-valid.json",
+      "sha256": "c04484a95a30bdbcefcf296c800ab7ff959d771abe206c910d179ff523af06c8"
+    },
+    {
+      "path": "docs/spec/vectors/agent-moderation/002-receipt-malformed.json",
+      "sha256": "1e2806c99676da86b59b550263cfac47de404b70f3ddef8bfa158c0d48b55bcc"
+    },
+    {
+      "path": "docs/spec/vectors/agent-moderation/003-receipt-private-leakage.json",
+      "sha256": "38c15a2e8400209dcb34605a95db5ba89b0d4a310e260d6237b430e1afc7e13d"
+    },
+    {
+      "path": "docs/spec/vectors/agent-moderation/004-policy-list-valid.json",
+      "sha256": "2eb60429963bfcc05d00379457dc0954b92dd6a63c7d42f96ee97660f0df1c51"
+    },
+    {
+      "path": "docs/spec/vectors/agent-moderation/005-policy-binding-mismatch.json",
+      "sha256": "b96a7344ced9980f3aeffb11b058c3d8c2e66ffc013ac1c3902ef931e9086a85"
+    },
+    {
+      "path": "docs/spec/vectors/agent-moderation/006-subscribed-canonical-mutes.json",
+      "sha256": "e78a102bfc040209f21b74b7d74f14fd79d41ae9f31e150320b0d7bb3002c9d2"
+    },
+    {
+      "path": "docs/spec/vectors/agent-moderation/007-unsubscribed-no-effect.json",
+      "sha256": "545c4f42a510b11b30849e847323f1f2cbcaeba60b73a207bd1f946b5047ec5e"
+    },
+    {
+      "path": "docs/spec/vectors/agent-moderation/008-relay-only-no-effect.json",
+      "sha256": "a65caf1d2b4cca80b7cd2ca339e91763859c3bc79860f754639fc3943f2876d9"
+    },
+    {
+      "path": "docs/spec/vectors/agent-moderation/009-unmerged-pr-no-effect.json",
+      "sha256": "772945f4c791317822fa29686926aea1c7177cf3250cc212c876fd12d6eda21c"
+    },
+    {
+      "path": "docs/spec/vectors/agent-moderation/010-default-visible-removable.json",
+      "sha256": "c2e3955422b14578171c137a6c70414802d04d4f3f8da49069b006084cb9c4d6"
+    },
+    {
+      "path": "docs/spec/vectors/agent-moderation/011-replacement-key-independent.json",
+      "sha256": "fab8eddcebcadfb87d383a365f0d7ade97dd49e84a262ac98adc41812beddc80"
+    },
+    {
+      "path": "docs/spec/vectors/agent-moderation/012-correction-valid.json",
+      "sha256": "0851ab9566562c7a243decc826ee24545506c89379fb715eea231b22ae984c64"
+    },
+    {
+      "path": "docs/spec/vectors/agent-moderation/013-correction-list-retained.json",
+      "sha256": "45d8635bfb8990472f1859206e5e1f99429fc7480ba4044534120a47ff95471c"
+    },
+    {
+      "path": "docs/spec/vectors/agent-moderation/014-correction-list-removed.json",
+      "sha256": "17bf101d550d5256b48890ce23594520c202f1069479379368f6811128e2cbf7"
+    },
+    {
+      "path": "docs/spec/vectors/atproto/001-pinned-public-hop.json",
+      "sha256": "9a530f19bfcb43fb0b963988158d3e510b45a5c57ce39278231ccb6453788bd6"
+    },
+    {
+      "path": "docs/spec/vectors/atproto/002-connection-pinning-unavailable.json",
+      "sha256": "794bc45f20f3d2c391aa50c5e11cc4dc26ba27d723b4dd82ab88ce082436ee75"
+    },
+    {
+      "path": "docs/spec/vectors/breadcrumbs/001-unrelated-successor-rejected.json",
+      "sha256": "5ad2001af1895d2bbc49ced5b831aef58226fd28129433cfb2a2ad9cde7184d0"
+    },
+    {
+      "path": "docs/spec/vectors/breadcrumbs/002-compromise-rotation-not-produced.json",
+      "sha256": "33629bf0c1df34064b09c1afeb2ce4de2b294f0873c66b1542d4319c8d244cc3"
+    },
+    {
+      "path": "docs/spec/vectors/breadcrumbs/003-repointed-nip05-rejected.json",
+      "sha256": "ab5fbf86105ca989122bb0d1d9e55b12aec011182f1e0b77a5a4d91919776d04"
+    },
+    {
+      "path": "docs/spec/vectors/breadcrumbs/004-ordinary-consumer-no-profile-inference.json",
+      "sha256": "40112494ad7eea4d8d7030f2025de1a85149d40596c4017573c81722b6782d59"
+    },
+    {
+      "path": "docs/spec/vectors/claim-ledger/001-reader-nid-authorized.json",
+      "sha256": "457b9ce38166da2ad6c46041b74cb6ec892638142c78f1d402ca9d8e0f925c6b"
+    },
+    {
+      "path": "docs/spec/vectors/claim-ledger/002-nidless-reader-denied.json",
+      "sha256": "644e282cc1f5900b78aeed2773e409698ee4b344b14f858bc088e7669f905e2a"
+    },
+    {
+      "path": "docs/spec/vectors/claim-ledger/003-delivered-grant-provisional.json",
+      "sha256": "bd17de46c1aa20ad8edee651fbf50f00aec38b6bd0b2bfbe3fe7369bd01c04bb"
+    },
+    {
+      "path": "docs/spec/vectors/claim-ledger/004-immediate-revocation.json",
+      "sha256": "4f6de92002eb11d186dd86958abb6c33ee3320db8c38e82d4dd4dada94305716"
+    },
+    {
+      "path": "docs/spec/vectors/claim-ledger/005-multiwriter-revocation-wins.json",
+      "sha256": "5a2f8660117f5ca4e4df93f4a2577638e8fca45983aae9397d39dc5d2eddd711"
+    },
+    {
+      "path": "docs/spec/vectors/claim-ledger/006-authority-reduction-wins.json",
+      "sha256": "fc28854ca9830b8ab0c128ec92b6c7b770a9faa8bf3cdb33ddaee91b4cb0a324"
+    },
+    {
+      "path": "docs/spec/vectors/claim-ledger/007-nonmonotonic-conflict-blocks.json",
+      "sha256": "ec88a743f18e3b10d14998c47d4e626a8efa0b812265673842344278dd305edb"
+    },
+    {
+      "path": "docs/spec/vectors/claim-ledger/008-checkpoint-rollback-rejected.json",
+      "sha256": "c65be3f366f5758faeccadf0cc12ac46d793ed16c2a67fb69e2144f94bffc680"
+    },
+    {
+      "path": "docs/spec/vectors/claim-ledger/009-keyed-path-metadata-private.json",
+      "sha256": "d62a15eda3e36259dfb3dc161b7004f8aa12574832107f2fdbe6247035c90639"
+    },
+    {
+      "path": "docs/spec/vectors/claim-ledger/010-reader-removal-key-rotation.json",
+      "sha256": "81ca17e7770a1cca740ce309ce74e25a2b721071405de3f690219edf3da51c94"
+    },
+    {
+      "path": "docs/spec/vectors/claim-ledger/011-multiwriter-status-allocation.json",
+      "sha256": "a28bc0d010e6db393f0f033ce8e5d3a1d78b1f6a8c4acc9ad5b06884ff65bb7f"
+    },
+    {
+      "path": "docs/spec/vectors/claim-ledger/012-stale-minter-denied.json",
+      "sha256": "7300c6bc00f24c2d8ea1807eeb021b782a1a31a5c7c7e170b8893a0b8b30052d"
+    },
+    {
+      "path": "docs/spec/vectors/claim-ledger/013-source-claim-revokes-token.json",
+      "sha256": "27e9338289b9cbbe8c5a5002eddeee42aa4c51c00c43dce6260befde6c90bfa2"
+    },
+    {
+      "path": "docs/spec/vectors/claims/001-canonical-nostr-subject.json",
+      "sha256": "4e662e3869645d84069f6967bc09bd3220c1cab256fdfa82ee729e04fb3b2b98"
+    },
+    {
+      "path": "docs/spec/vectors/claims/002-canonical-radicle-nid-subject.json",
+      "sha256": "f008358f03cfbd0f75d69ca853149ea7582a61cb3bb3a575abf005686bda165c"
+    },
+    {
+      "path": "docs/spec/vectors/claims/003-canonical-jwk-thumbprint-subject.json",
+      "sha256": "38aa0ac7c2c9b0c9350676d3ce2e577b2510dc21b8b9dd2c49d16bbf9db9e952"
+    },
+    {
+      "path": "docs/spec/vectors/claims/004-claim-id-mismatch.json",
+      "sha256": "d55e1e05ec03baa515f8ce270cc3081618bf91f653626388ba83a1e4a3f506b7"
+    },
+    {
+      "path": "docs/spec/vectors/claims/005-persona-issuance-active.json",
+      "sha256": "60dceb25d631cd0453b336b2584de41e746f102d81d4cc04add77917b996211f"
+    },
+    {
+      "path": "docs/spec/vectors/claims/006-delegated-issuance-active.json",
+      "sha256": "0e0e6dc104fdde630e599537a9b9390b91f94b53d2b74fdb1d3d7af2e6e9d74f"
+    },
+    {
+      "path": "docs/spec/vectors/claims/007-third-party-issuer-untrusted.json",
+      "sha256": "2c9dc75193a76c7200cdaacccbd181be8e7e928898570d71bbc487f2c3a5c204"
+    },
+    {
+      "path": "docs/spec/vectors/claims/008-chain-attenuation-valid.json",
+      "sha256": "f93bcad6503961053f2fdcf2569ae8eded9d392e9e7c8330e0f072645f688218"
+    },
+    {
+      "path": "docs/spec/vectors/claims/009-chain-widening-rejected.json",
+      "sha256": "ff3a7ace6649924ad14b0adb35f16619e585078e2b08c400966da06a91d13611"
+    },
+    {
+      "path": "docs/spec/vectors/claims/010-chain-depth-exceeded.json",
+      "sha256": "3ac3e15bbb6ce2a1ba3429e4e794f707a196a46fb14041e7f704a64c4bbec125"
+    },
+    {
+      "path": "docs/spec/vectors/claims/011-subject-proof-valid.json",
+      "sha256": "4d8fef4b1b016fa6bedf1fc7d7f54543568846aed07f7e470759479cccea63eb"
+    },
+    {
+      "path": "docs/spec/vectors/claims/012-copied-proof-rejected.json",
+      "sha256": "0249a071a9a5fa08b8c2b072b5236c5fc16b09d2a8cbb82bf7bd7bdd97cf137a"
+    },
+    {
+      "path": "docs/spec/vectors/claims/013-provisional-authorization-denied.json",
+      "sha256": "9de415a22e8d761f9d40af53fbaf6b11adfd6bf670d3c1de0bfb327dd8146882"
+    },
+    {
+      "path": "docs/spec/vectors/claims/014-repository-confirmed-active.json",
+      "sha256": "93897cef52549760c3d27dc54bcaceebeaf0f8389232c50fca772838a327755f"
+    },
+    {
+      "path": "docs/spec/vectors/claims/015-authorization-self-revocation.json",
+      "sha256": "8e3a47f6ed226d58fa22c8e97b4bafc1221a8241544f899404fa9fbf2f012525"
+    },
+    {
+      "path": "docs/spec/vectors/claims/016-descriptive-subject-rejection.json",
+      "sha256": "ad10d220aff27aa74813b4281fe61da5788365921d935d58619b13de167a55a4"
+    },
+    {
+      "path": "docs/spec/vectors/claims/017-public-claim-publication.json",
+      "sha256": "6393b5e71cf03b91b5e1b995d9c0c790c2b762aaad297a0a3b8ad0f358a50817"
+    },
+    {
+      "path": "docs/spec/vectors/claims/018-pairwise-private-marmot-delivery.json",
+      "sha256": "446ac270983cd6f9b414d4b0c63f289a13b21fcc496ad723ce1240e0b4348f52"
+    },
+    {
+      "path": "docs/spec/vectors/claims/019-repository-private-encryption.json",
+      "sha256": "28a9082d2a20ebb73eb035a5a5c8916be6e2a550eecad7800864bcdf0157b386"
+    },
+    {
+      "path": "docs/spec/vectors/claims/020-local-only-no-publication.json",
+      "sha256": "76355d5adb413e3a777a1259471f74c3cc510873bc5e7c23893a0216bb7b5733"
+    },
+    {
+      "path": "docs/spec/vectors/config-backup/001-key-id-derivation.json",
+      "sha256": "9b4462fce8063471077a406608195ea57cb87387ce7307f6e522de865a655413"
+    },
+    {
+      "path": "docs/spec/vectors/config-backup/002-config-blob-encrypt-decrypt.json",
+      "sha256": "22c53331f3e2fa6bd4c747eaa8a58e88ebde7503761eeb245d30fac6743ad51b"
+    },
+    {
+      "path": "docs/spec/vectors/config-backup/003-key-rotation-ref-delta.json",
+      "sha256": "fda3e8ae43786fa85a70c113c843f95b436699e932bd34d687a61164fd4e89d6"
+    },
+    {
+      "path": "docs/spec/vectors/config-backup/004-nip49-nsec-wrap.json",
+      "sha256": "3c12a90ea0e9c1a631b615b126f8df79a7c5e98f11724209850cd50f5c45b3c8"
+    },
+    {
+      "path": "docs/spec/vectors/config-backup/005-config-rid-unadvertised-clean.json",
+      "sha256": "82abec9b5f7d3000cce08ef7bada8cbe01bcab56ecce3b0edd050e06bcf93a0a"
+    },
+    {
+      "path": "docs/spec/vectors/config-backup/006-config-rid-advertised-rejected.json",
+      "sha256": "76f8712ecc522b0b1f37650a90f3b6361e13e8347b6a7be56ab4a6adbb634e76"
+    },
+    {
+      "path": "docs/spec/vectors/control/001-invitation-enrollment-only.json",
+      "sha256": "861e25b580c4b853b1deebe0dba09185e055fd27be3a9ae3b4c3e18d789741e3"
+    },
+    {
+      "path": "docs/spec/vectors/control/002-invitation-disabled.json",
+      "sha256": "668c69f7bed9347d99eab6f1f52c275fb5f3564f7d5efd245cb9763d74cc5606"
+    },
+    {
+      "path": "docs/spec/vectors/control/003-invitation-revoked.json",
+      "sha256": "9b961afbfac02de6ee1944441851fe1b04c597610a50a44f7b17c13fee1be96b"
+    },
+    {
+      "path": "docs/spec/vectors/control/004-invitation-nonenrollment-rejected.json",
+      "sha256": "b9c0ea4e35fa6466ee49cde9475379757ddb8053033c5536a1bab75b612b5f3d"
+    },
+    {
+      "path": "docs/spec/vectors/control/005-entitlement-reduction.json",
+      "sha256": "286942bb56f4e70e01198714291f04a7a462ac316db9749ad4807f6089a43029"
+    },
+    {
+      "path": "docs/spec/vectors/control/006-entitlement-expansion-rejected.json",
+      "sha256": "ce6687dc2ad267f164b14a36fe7ef6cf77831d74c66ce4d5af17c7e375e86d70"
+    },
+    {
+      "path": "docs/spec/vectors/control/007-entitlement-revocation-absorbing.json",
+      "sha256": "5bb11cc180a50511f73a1be5543beaff4af0e50d98cb85cd94c2d2b8c818bb45"
+    },
+    {
+      "path": "docs/spec/vectors/control/008-token-default-five-minutes.json",
+      "sha256": "46efc1585d15d60d6c3809a5e82d7117982a3fdb4b8a9054888042f9ad749ef1"
+    },
+    {
+      "path": "docs/spec/vectors/control/009-token-explicit-sixty-minutes.json",
+      "sha256": "e0f308f3ae62a362ca0cc948f51812183aa730519fb953f3ad83d970116b8546"
+    },
+    {
+      "path": "docs/spec/vectors/control/010-token-extension-missing-capability.json",
+      "sha256": "24e60a4ab3f90fdbfa63884f7a143085e6239b57bf637484e69a1ea63f804731"
+    },
+    {
+      "path": "docs/spec/vectors/control/011-token-valid.json",
+      "sha256": "1c158ac504ae86c3d77c8d7bf7d75ec0adf9cf71979dc19bc872aa568ad507fc"
+    },
+    {
+      "path": "docs/spec/vectors/control/012-token-wrong-sender.json",
+      "sha256": "204b178fe03a29532df1c707db494f87cdd58a9366a9a2da4e781557238c7c20"
+    },
+    {
+      "path": "docs/spec/vectors/control/013-token-wrong-group.json",
+      "sha256": "656f4e26a069bd1c18015539c603fec75af0255d517097f24f9eae352c3cf00d"
+    },
+    {
+      "path": "docs/spec/vectors/control/014-token-wrong-node.json",
+      "sha256": "d37e25f772b403ad995de1e151f7f8469a151f28f3a8ce76869a98a2b21aa8f9"
+    },
+    {
+      "path": "docs/spec/vectors/control/015-token-scope-rejected.json",
+      "sha256": "642a1eb847717d52b62e6da0609faa05ec5a872409bf29fa7e6efdd5873f02b5"
+    },
+    {
+      "path": "docs/spec/vectors/control/016-operation-first-reservation.json",
+      "sha256": "331bad9cc460d765d4b28e8d25f9a4e56595b36fd947d674f6582d8a29e9c042"
+    },
+    {
+      "path": "docs/spec/vectors/control/017-operation-identical-join.json",
+      "sha256": "825acc84a3f89ae518455080d24c8bbe8e3df73bbb7892dcf0262dbead45a633"
+    },
+    {
+      "path": "docs/spec/vectors/control/018-operation-conflicting-bytes.json",
+      "sha256": "94cce7d926d117021dbc499085a535496aabbb73d5666fbf3f9f129d70960fbc"
+    },
+    {
+      "path": "docs/spec/vectors/control/019-failover-read.json",
+      "sha256": "228a827e1a16b3bfce8f4068e98564abd5f789633c44144e68864ad61cf5bbad"
+    },
+    {
+      "path": "docs/spec/vectors/control/020-failover-idempotent-mutation.json",
+      "sha256": "0c46ff2c2f35d0aacec6fa46639520d359763570f3597f8645291412f4c6cc0a"
+    },
+    {
+      "path": "docs/spec/vectors/control/021-failover-indeterminate-mutation.json",
+      "sha256": "68475fc677d135074f6eb917e27b2490f869196377542d20b944c18f13740692"
+    },
+    {
+      "path": "docs/spec/vectors/control/022-retention-ceiling-and-backup-exclusion.json",
+      "sha256": "8f36b3d06fe85d1d8334e7796741348ba76067d4535967435072121960919393"
+    },
+    {
+      "path": "docs/spec/vectors/control/023-epoch-locked.json",
+      "sha256": "ce7e9e5b277ba34a9b8141ade9d6c2b1e757b244787bb3ff037e32c1816dfb81"
+    },
+    {
+      "path": "docs/spec/vectors/control/024-epoch-prepare-and-relock.json",
+      "sha256": "fa5e5427a443a982bad7ad0503564633aef0f2fe0f0a6c4f2ff4df3b6680bac6"
+    },
+    {
+      "path": "docs/spec/vectors/control/025-epoch-exact-activation.json",
+      "sha256": "2d1b8091deaa6111c5485f10245d386bd8bf9514fd359f4bc5047a0e7619e3f4"
+    },
+    {
+      "path": "docs/spec/vectors/control/026-epoch-activation-mismatch.json",
+      "sha256": "091a962a939a7808d8f70e8b65de6ec3f7e7ea5ff9b05c2887483c459e6b7ff5"
+    },
+    {
+      "path": "docs/spec/vectors/control/027-recovery-grant-accepted.json",
+      "sha256": "133bf2d8d8b285ee9810bc1413ae6b468f187cffd43ae89b89a3878620dd57c4"
+    },
+    {
+      "path": "docs/spec/vectors/control/028-recovery-grant-confined.json",
+      "sha256": "9d2c53c2c1105e677bb2a61caa87cd261ebe6a39413bf0c7a1c945ec0690683f"
+    },
+    {
+      "path": "docs/spec/vectors/control/029-sftp-grant-accepted.json",
+      "sha256": "1f5c1f11fabb4ecc6047d4ac94570af336175637b8b2f5bb15d1b5b993cd1f68"
+    },
+    {
+      "path": "docs/spec/vectors/control/030-sftp-address-separated.json",
+      "sha256": "7e239cb0d021cd19c6cde49bd98de3f7ac8789a3ffee964e0b7440f865cb8135"
+    },
+    {
+      "path": "docs/spec/vectors/control/031-sftp-root-confined.json",
+      "sha256": "a3cb19a24f2bd0441ac91e0c893f153a3812185be01e8786908a676c9769bf52"
+    },
+    {
+      "path": "docs/spec/vectors/control/032-sftp-grant-expired.json",
+      "sha256": "279326ce8e3147768002a9a195d922df5bf89ac5ea19d13e65dbc5258c415b17"
+    },
+    {
+      "path": "docs/spec/vectors/control/033-invitation-account-cap.json",
+      "sha256": "fca5b5fa8bc763a9d1f533c4e4d32f1432013b21c4c9e11b5d8be42a49a0dbc2"
+    },
+    {
+      "path": "docs/spec/vectors/control/034-invitation-global-cap.json",
+      "sha256": "df3548baa8f6d849bcb04ece862b7622579ab006317fa332bb45dc24ef94919b"
+    },
+    {
+      "path": "docs/spec/vectors/control/035-invitation-rate-limited.json",
+      "sha256": "395c363b24e4017517157a561d01122c5e3df6256a5b2a236083bf147dadb39b"
+    },
+    {
+      "path": "docs/spec/vectors/control/036-invitation-replenishment-paused.json",
+      "sha256": "e910a284a9965ef5d43aa4ad19e1588ba00022a0b11ef3f73cbf6e208762d6fd"
+    },
+    {
+      "path": "docs/spec/vectors/control/037-invitation-reserved-slot.json",
+      "sha256": "805816c48e72233faaa1ba7da6a4bf4b75d3a179400402493c75f892cb747542"
+    },
+    {
+      "path": "docs/spec/vectors/control/038-token-stale-authorization-view.json",
+      "sha256": "8367de0240b378087deaa7391d5bbf43df7dd9575042424a4da2e2431e556785"
+    },
+    {
+      "path": "docs/spec/vectors/control/039-device-code-hardened.json",
+      "sha256": "944db1fb98541611132ee4bfa505b8928751ea38816e21b3d8b3fd0740124122"
+    },
+    {
+      "path": "docs/spec/vectors/control/040-device-code-exhausted.json",
+      "sha256": "a761a09d34bb366973b5c8a3565773994774c7c246c7721682e4f54978e2bd21"
+    },
+    {
+      "path": "docs/spec/vectors/control/041-device-code-node-rate-limited.json",
+      "sha256": "1c66ad156820bbe171aca08ad64c13f9200adb38bc4ecae30e24317e09ef63d6"
+    },
+    {
+      "path": "docs/spec/vectors/control/042-device-code-display-mismatch.json",
+      "sha256": "fcb392f498ff4cafaddfa4ac44d19507574f1fc80b459011911bb21137521dc6"
+    },
+    {
+      "path": "docs/spec/vectors/control/043-authorization-fresh-read.json",
+      "sha256": "468d40c731de7c81ac8335735cc628ab6d4616ad101120a073aaa07d66415326"
+    },
+    {
+      "path": "docs/spec/vectors/control/044-authorization-stale-read.json",
+      "sha256": "222d52cb52fc2af52c0e561ea8dd473a4dbe75d43305097580f0db2ac6c7d6b3"
+    },
+    {
+      "path": "docs/spec/vectors/control/045-authorization-mutation-sync-failed.json",
+      "sha256": "59d0a25390500558e21786b9a57b54137e8b0fc5f520bafde8c7336cab9cb676"
+    },
+    {
+      "path": "docs/spec/vectors/control/046-invite-preauthorization-key-bound.json",
+      "sha256": "d3ffaa78a0d62fd76b5a79166752d6ce6eee780dddc36443757d6f9b346464b9"
+    },
+    {
+      "path": "docs/spec/vectors/control/047-invite-preauthorization-unbound-rejected.json",
+      "sha256": "a9a76bc1d5d578a6576cedfea6dc57479b375458ba4f1ba1e5044801ceece383"
+    },
+    {
+      "path": "docs/spec/vectors/control/048-invite-preauthorization-keri-rejected.json",
+      "sha256": "1cfbed7770b6acf086c9ca4f67259d093b71b61c8298db0694d84d47a6eac3e0"
+    },
+    {
+      "path": "docs/spec/vectors/control/049-invite-preauthorization-unbound-higher-risk.json",
+      "sha256": "90ee8c76d7be417fc6c90a668e063627957d8d45b2e653003c2315e30a08f386"
+    },
+    {
+      "path": "docs/spec/vectors/control/050-pending-enrollment-live.json",
+      "sha256": "f8e931e145c81a52028eb4735dbbea0a446dfefb6b7bdd67254811f89cbee89f"
+    },
+    {
+      "path": "docs/spec/vectors/control/051-pending-enrollment-expired.json",
+      "sha256": "bf7ce5ad07aeadb879f74ae904a24f2b0d21d65a1aafa484fc8f50cf8a682273"
+    },
+    {
+      "path": "docs/spec/vectors/core-redundancy/001-radicle-multihost-replication.json",
+      "sha256": "10cecf8cd595fce36ec7ee1044c8bd16e9fa7faf7d4f450e12f9f58ba4bfac43"
+    },
+    {
+      "path": "docs/spec/vectors/core-redundancy/002-stale-seed-does-not-remove-durability.json",
+      "sha256": "d53997d5c256a5f07ac6fedbf886b1a91bb3b6efc73b18cdf0acb8f44666529f"
+    },
+    {
+      "path": "docs/spec/vectors/coverage/comms.md",
+      "sha256": "82533e5a4891b72f0a85ebe53feb903f20716f4ed3075b24359f711a7c91628c"
+    },
+    {
+      "path": "docs/spec/vectors/coverage/control.md",
+      "sha256": "8dec03ab42b75d88bec0be3fba167c0e3af20ddacad635aab80822edca626922"
+    },
+    {
+      "path": "docs/spec/vectors/coverage/core.md",
+      "sha256": "887cca132a19d376538a6cc426be164ee56f9a955ae81608fcf7186f0711702f"
+    },
+    {
+      "path": "docs/spec/vectors/coverage/family.md",
+      "sha256": "df3a2f2c1ac44b642f77b5d0562757fd23aba048abc5aa2662c48d0e166bccce"
+    },
+    {
+      "path": "docs/spec/vectors/coverage/manifest.json",
+      "sha256": "92a8c6e08d95c2641a1927b1a1973192f63b135fbc7bbfe2d7126d3f29eedccb"
+    },
+    {
+      "path": "docs/spec/vectors/coverage/social.md",
+      "sha256": "0d7779aaef5454ca85f5a60f24f4e9ea7c63928a938a9577db09766366831e20"
+    },
+    {
+      "path": "docs/spec/vectors/coverage/workspace.md",
+      "sha256": "fc9634a6aca3944721224805bb492b4d947ad67ed3f5ebee12dec91c64d2a652"
+    },
+    {
+      "path": "docs/spec/vectors/credential-continuity/001-checkpoint-genesis.json",
+      "sha256": "e6cb97b9c3cb352e0e0fde2c273f62029232b79e73f9467677e82d36787da1c5"
+    },
+    {
+      "path": "docs/spec/vectors/credential-continuity/002-stale-generation.json",
+      "sha256": "6d6bea7e2240f136f6d4084206dedf598405d36362fee96fef184c4ac385fc90"
+    },
+    {
+      "path": "docs/spec/vectors/credential-continuity/003-pending-retirement-conservative.json",
+      "sha256": "b6cbb59aed13760d6707e3451430bf3f00b763d3b86bdf65fef01c2cdb3aa5b9"
+    },
+    {
+      "path": "docs/spec/vectors/credential-continuity/004-retention-inventory-genesis.json",
+      "sha256": "72dec24bafd6a06e60f0e70985fd961afe361a41e47fd726372504f7ef33fdef"
+    },
+    {
+      "path": "docs/spec/vectors/credential-continuity/005-governed-obligation-equation.json",
+      "sha256": "4b8ec600a18c5439df94b6d55566b9a5b85d5d9aa77f16102bbda7e678add0b3"
+    },
+    {
+      "path": "docs/spec/vectors/credential-continuity/006-routine-removal-complete.json",
+      "sha256": "12dd6704f061d85ab2d539c363727ddcc5c1550280c7be79f28dec6f0008dd92"
+    },
+    {
+      "path": "docs/spec/vectors/credential-continuity/007-cold-root-exposure-migrates.json",
+      "sha256": "308a7b83acbc26aa5e74eae2a05b86377d94840ab250c1fade3cf5e35a5bccdc"
+    },
+    {
+      "path": "docs/spec/vectors/credential-continuity/008-candidate-exact-tip-append.json",
+      "sha256": "506be1b0b13c5f6745fb8cd76ecdeb1160ae179e4d4d2f5d21322ec23a4f9a2d"
+    },
+    {
+      "path": "docs/spec/vectors/credential-continuity/009-config-git-raw-projection.json",
+      "sha256": "b9b142bfa0c98ec42f21a51318350ae3954a4bbc0ae3425c600fd6359f928f90"
+    },
+    {
+      "path": "docs/spec/vectors/credential-continuity/010-seventeen-schemas-draft.json",
+      "sha256": "7d934bb4bd86558ff281c6ecd577dca09c68b7c5507ed70ebd9a1f72577adebf"
+    },
+    {
+      "path": "docs/spec/vectors/discussion/001-reaction-reply-bare-not-indexed.json",
+      "sha256": "c4a4761754eeb3ce1743506c91d47f0f8bff98c5fb6dede88a188685e4ad5701"
+    },
+    {
+      "path": "docs/spec/vectors/fixtures.json",
+      "sha256": "66c0e65668fc90ebe6f3b7d5863c9678203952847aaed531125f8ed77858b65c"
+    },
+    {
+      "path": "docs/spec/vectors/identity-doc/001-kel-revoked-nid-rejected.json",
+      "sha256": "30be0e2a00bbfc6be02d48b79a2ed16828bcf44226ff9cfc8538eeb89f427b30"
+    },
+    {
+      "path": "docs/spec/vectors/identity-doc/002-add-before-remove.json",
+      "sha256": "3f3f005fe93949d413cb514ad91c6f7ec4c6633cc8c42bb9a3e215942ddc828a"
+    },
+    {
+      "path": "docs/spec/vectors/identity-doc/003-emergency-reanchor.json",
+      "sha256": "9d6ded2f2e4a8061f1a3f2884feb9e6dacb83fc6d45bd0c4e42136c5039ae2d0"
+    },
+    {
+      "path": "docs/spec/vectors/identity/001-root-attestation-valid.json",
+      "sha256": "322c46b372f2a7e0759aff8e7b0809d9ae30519d05a69b45dc33761013ca547b"
+    },
+    {
+      "path": "docs/spec/vectors/identity/002-delegation-active.json",
+      "sha256": "1a8aa04ae895e71756587b2d1061877c20c8f5cb2566abb39c4858f7740363e3"
+    },
+    {
+      "path": "docs/spec/vectors/identity/003-delegation-expired.json",
+      "sha256": "0af23970a77738d4ac9eb555ae5067655705920d55bd92d6c888c6bbcc86dee0"
+    },
+    {
+      "path": "docs/spec/vectors/identity/004-delegation-revoked.json",
+      "sha256": "75899d58a4232a36ff60ec55007ff5fae3f0504cfeb21a5532900051177796d2"
+    },
+    {
+      "path": "docs/spec/vectors/identity/005-revocation-post-window.json",
+      "sha256": "e8be8b60603ab4b4b9b6bbdb3baa5e32f0c43d49a3f3c8268e48ca6588461471"
+    },
+    {
+      "path": "docs/spec/vectors/identity/006-identity-room-full-state.json",
+      "sha256": "43f0971a08d9b17868e6beef14e6dc0a8cb206d7e1b6115b36baaddb3a7342af"
+    },
+    {
+      "path": "docs/spec/vectors/identity/007-kind31005-race-tiebreaker-core.json",
+      "sha256": "cfaadb0969f8c308d2fa7c815a43003c1d42ebde324b69149bdacb14af7519f5"
+    },
+    {
+      "path": "docs/spec/vectors/index/002-prev-page-hash.json",
+      "sha256": "e63fa0facd16814c4d430dd6ff2e5e0f19d828337ee7640167112022b7de159f"
+    },
+    {
+      "path": "docs/spec/vectors/index/003-complete-fetch-attempt.json",
+      "sha256": "91d00c9741e60133ccd3bde9a52d92ce032b265c9e715597b0f809ccfda16587"
+    },
+    {
+      "path": "docs/spec/vectors/index/004-missing-predecessor-structured-outcome.json",
+      "sha256": "1f78b0973455bb2e8f5381c75f00de7306db69c6e64fe7c2397a1031ca4b825b"
+    },
+    {
+      "path": "docs/spec/vectors/interop/003-vanilla-nostr-only-follow.json",
+      "sha256": "6f12e06668c6b46fd943253d15e5d43831f49bf664393ddb70acee06fd6fe53a"
+    },
+    {
+      "path": "docs/spec/vectors/interop/004-kind31005-identity-pointer.json",
+      "sha256": "1a0f5c0d4bacc6d2850ec557be809669326c833d8dd5f3bfa783f04f84b9611c"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/001-kel-head-absent-rejected.json",
+      "sha256": "49246335843500dfbbd8c57ad7d19d7e074753eabe6db0d93474e98b6d4fc817"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/002-kel-head-duplicate-rejected.json",
+      "sha256": "9153ab62ac4282345a083752ba459466e7613b41c75a4879b720249f459883f6"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/003-kel-head-malformed-rejected.json",
+      "sha256": "a562a579a6541c6bff8203d1a952429c57a3345576840c80675ef9c201ea4138"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/004-kel-head-seq-mismatch-rejected.json",
+      "sha256": "868a900254f3c55d40763fd45e62a28b8394c81ffd7a8a84855d4c08e0cc5e89"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/005-kel-head-forbidden-on-inception.json",
+      "sha256": "d377a5944c960df2a1c4607b481b840c50627c15928c5c3b3da0a85a8644959f"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/006-kel-head-forbidden-on-rotation.json",
+      "sha256": "f2faf54753c83f882dfc0bcb015557135f7d230e62394e1a6022ae08424b0cb8"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/009-kel-head-mandatory-on-root.json",
+      "sha256": "143f92a9a7373113dc04b80b5d9fadc2de10f5ee8c2cafc46f9ee4c6990ebc58"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/010-kel-head-mandatory-on-delegation.json",
+      "sha256": "00e741f838b5ad9a1fe79bc3c39cc2a5fbefee907f17914fc461ca3265d6e9e4"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/012-equivocation-flagged.json",
+      "sha256": "63e9dd3d0efbb3a8e1963b51ca28ae86bdbdfb503bef20bc9a203cfaea9ebb75"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/013-keri10json-cesr-wire-rejected.json",
+      "sha256": "a4bf6a48fe333af8b853135c03fcc757bb6ab8865e56233d0c43bcf386f0c624"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/014-accelerator-decision-equivalent.json",
+      "sha256": "1d6d6a173403f656a529d9fe2bb804e03567d6429528555aa79dfa970b1e5d94"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/015-accelerator-backdated-compromise.json",
+      "sha256": "4993c7fecaec87267f4a48a2f063eff78c51286102978c367f8f40a2a26acb09"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/016-refresh-failed-not-condition-d.json",
+      "sha256": "8757c242e2df5ee90675d16dc49c2b20e1bd3fc640e8e5a8ebf71eb709bed616"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/017-provisional-not-hardened-repo-unreachable.json",
+      "sha256": "46d07e5beeb42c103ba131944dfbdd7b0c224e7fc62e910cb77a212ffdf111b8"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/018-withdrawal-causally-behind-no-withdraw.json",
+      "sha256": "a7b7e67ebb371f0da46312494f9a98ec8236aaf6c50b335817a48a8667a87966"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/019-withdrawal-converged-head.json",
+      "sha256": "617ba940eda3acda11ad600e8dbb5998fe94f32f5d4f4ae51bb26eb07ad90a39"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/020-delegation-conflict-repo-wins.json",
+      "sha256": "1062798daee16a298f4315e95274451556a5f67314f35f97200b1184d37a6f24"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/021-dependent-events-unresolved.json",
+      "sha256": "ed0e62c1afcb257e33f00b5a6d972b0046ae8ed0d12c3116444a41123143d231"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/022-repo-head-regression-rejected.json",
+      "sha256": "0ede0baaf44ce498f9cde215e3daf4eb789662b2cf395957176f205e18bb534f"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/023-materialized-refs-not-authority.json",
+      "sha256": "ac04127aec92af83e87eab86b514601326239bbf0365de5ed1580dd7a8f7254d"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/024-materialized-log-derivation.json",
+      "sha256": "17c581c79421fba7e949a47d7b55a76507fd02311e73c98f1774f3e5011b2a3a"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/025-materialized-state-derivation.json",
+      "sha256": "82fd20df42f013db3e6cd9378c0b1669d4d8c95d5d44f18f3d50f34365824a1a"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/026-materialized-empty-kel-deletion.json",
+      "sha256": "043a4ce24b1525dead6920bee05a4b4708f074cd42017bd74ea9f9218fd38895"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/027-materialized-atomic-rebuild.json",
+      "sha256": "9d9895df8362f39e711fa4983d314a21c3997281b2f28f4f13acc1db93220147"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/028-export-aid-digest-anchoring.json",
+      "sha256": "43cd5046f9d362dc85820cd43b815b877de8d713a1c75e6af40e715736d9d1bb"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/029-export-origin-absent-not-failure.json",
+      "sha256": "286cf9de6cd7ddd2e825c2e5c4a0c9785135bc0b99a049dbdd733ec9f8e67c44"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/030-export-degraded-metadata.json",
+      "sha256": "55eaf1e89cdc6f35d36059640a4d7a19b532d4c936b6843afd838f44647e1bf1"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/031-export-unmappable-feature.json",
+      "sha256": "f78316bee54ed1ef9284369fc4c70b748eafccff043589c1aa05474e39c2d46b"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/032-export-unsupported-crypto-suite.json",
+      "sha256": "6471c5e9c8d6e2729334a9fc3f41dde7c910bcbb21beeb1e47139be1f1e3fbb3"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/033-export-incomplete.json",
+      "sha256": "0cc94d7c4b0e68aa0b2fb41f9a6c8dadf8653c793d35795188836c85afc5b52f"
+    },
+    {
+      "path": "docs/spec/vectors/keri-authority/034-export-aid-substituted-for-npub-rejected.json",
+      "sha256": "610230d74481cc7767911c9c461b4d1f054ed8087ce6f64a4885933862cc5d92"
+    },
+    {
+      "path": "docs/spec/vectors/keri/001-informal-vouch-not-counted.json",
+      "sha256": "2b558b031295261b39ef84ebff3bc5d2e450d7d7a7b211bda8cdee9072a169a5"
+    },
+    {
+      "path": "docs/spec/vectors/keri/002-inception-event.json",
+      "sha256": "7b7301f0a091b3b04fbb8a705c67126c1083f6d425af7b777d82f8a59991a188"
+    },
+    {
+      "path": "docs/spec/vectors/keri/003-rotation-committed-strategy.json",
+      "sha256": "da983b85135099f09763939764fd2235d351fd6c9054b9a2a6edd10e99e9effc"
+    },
+    {
+      "path": "docs/spec/vectors/keri/004-rotation-none-witness-threshold.json",
+      "sha256": "314957d816d6ff5d2de06adef09fe6bb38ffc160e4f967d7b760694669677450"
+    },
+    {
+      "path": "docs/spec/vectors/keri/005-first-seen-ordering.json",
+      "sha256": "775a1bfdb8eb79b631732def416f585dc21587a81eccaeadc468c625daa1b832"
+    },
+    {
+      "path": "docs/spec/vectors/keri/006-fork-resolution-conflicting-rotations.json",
+      "sha256": "25c77a331ef3b887befc3262eabf8852a5aff392d30823482f95e7fc0b547196"
+    },
+    {
+      "path": "docs/spec/vectors/keri/007-didkey-witness-no-network.json",
+      "sha256": "560b96ffcf59b2b2af1ac3b23c901f05e9847f3fba8143aebf13bd48a3816aa2"
+    },
+    {
+      "path": "docs/spec/vectors/key-retirement/001-repo-anchored-pre-retirement.json",
+      "sha256": "199475dcd2dce1f10044a2fc2868ddcca0166cbd56dc1cd3cb93b7097358602c"
+    },
+    {
+      "path": "docs/spec/vectors/key-retirement/002-local-receipt-pre-retirement.json",
+      "sha256": "10d12910cdcb8b08df8f7c1e12ed6a8960a3a66a844d720e2d6a32d1ccd43db9"
+    },
+    {
+      "path": "docs/spec/vectors/key-retirement/003-relay-only-provisional.json",
+      "sha256": "6d0164d01e2116c11b477f371e52f47eb5b44b40a5ae9b0fcadaf005bbf4c466"
+    },
+    {
+      "path": "docs/spec/vectors/key-retirement/004-compromise-cutoff-rejected.json",
+      "sha256": "32602a2aa58cf8346216f940276dba4f1380a9412a3d1cf44d0a1bbf495bd3d9"
+    },
+    {
+      "path": "docs/spec/vectors/light-node/001-verifies-signature-locally.json",
+      "sha256": "9614ccf83616ae9b3b62d44d2193f7e186d706c15584378ffbf27b53a1d40699"
+    },
+    {
+      "path": "docs/spec/vectors/light-node/002-content-not-through-routing-node.json",
+      "sha256": "4029f5458ea226698f8ada6adef4857ed2cdce64fc75a3c9b0fe53ab03a414ea"
+    },
+    {
+      "path": "docs/spec/vectors/light-node/003-route-around-withholding-host.json",
+      "sha256": "a46bac68efa494fcdac6156c7cf5316b5fa4f9d41216c1f96787ca0b80e05574"
+    },
+    {
+      "path": "docs/spec/vectors/lists/001-mute-list-public-roundtrip.json",
+      "sha256": "5ed59ac9c3dae029c59ffb08b94175ad927d472e94bf5450d2758dbef18627b8"
+    },
+    {
+      "path": "docs/spec/vectors/lists/002-mute-list-private-items-encrypted-to-self.json",
+      "sha256": "be8a0ebfe9079cfe23e697571ccbaad38cf67adc5cde0a9336bf52fe8aef6590"
+    },
+    {
+      "path": "docs/spec/vectors/lists/003-kind-mute-set-addressing.json",
+      "sha256": "020535764c2097546997be12af5da805a985d0bad3e31bff72989ece4d2bbd2c"
+    },
+    {
+      "path": "docs/spec/vectors/lists/004-stale-list-rollback-rejected.json",
+      "sha256": "e9a40bdd97501150ccdae0f5c542ddd7da56a246ae412fbaca1c51c2108aba1f"
+    },
+    {
+      "path": "docs/spec/vectors/lists/005-policy-list-adoption-parsed.json",
+      "sha256": "bd4bf4d438835466d64a70e780015781504e340267a897b06a9932b535d30584"
+    },
+    {
+      "path": "docs/spec/vectors/lists/006-private-items-reencrypt-on-rotation.json",
+      "sha256": "b5e5d2c525ab1c5e39cea3d3f8d903866b98493a826c033a35c127e170eb19cd"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/001-kind445-exact-bytes.json",
+      "sha256": "8b99816f233a415a110dfced37d8fe34cbbb4605872e6165bb58c05ef11cc996"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/002-media-exact-bytes.json",
+      "sha256": "f00cc37878d3a8fea0d7ad857aaf327b766073c326cc6ebb83348e3b873799fd"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/003-standard-marmot-interop.json",
+      "sha256": "0e5e33a7d3827e76f0e4288b5f84a776297db463f6ed32a11422693ac727d25a"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/004-private-group-radicle-required.json",
+      "sha256": "8649926f38c871ae667bd6e015138b377dbee89c17cb7c62ae0dd0d5f560c7a9"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/005-directory-sensitive-fields-encrypted.json",
+      "sha256": "e8f979cdaeb899059fca9ddeb722521ea8d1e4cde3c65b6c766f7f4de709f8e1"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/006-invites-individually-sealed.json",
+      "sha256": "89295cec31a653b55236c5d98e1581eb653d0770ca4e78d3144eb9b33ac7f91a"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/007-routing-binding-valid.json",
+      "sha256": "5fcda32ee31b07d054dbe5517545b9f1ebd699e8264b96b674e36bfcb23b1573"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/008-routing-genesis-mismatch.json",
+      "sha256": "596c17f0b686a046dc6259c03cd1def837564a392bf17e4fd4ad0a15d5c7c498"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/009-writer-ref-union-dedup.json",
+      "sha256": "b85dab73a0a3c33b6b5ded3f4eef09d770111746f3fb5ba24a760da6fd702714"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/010-unauthorized-ref-rejected.json",
+      "sha256": "f869fce9fc04c61696b1aa06009c7ee8fc0dec1e2aa21765c17cb5a645d4c27b"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/011-relay-routes-by-h-only.json",
+      "sha256": "5d885d2e9951173d8d4b1b4c3ae5759a947bf92177ae435a1719ab5319fa7ce4"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/012-concurrent-routing-marmot-wins.json",
+      "sha256": "45997f9dfe6286620f7da4866cde070cd758d430e661024a9b13e575aabbf87f"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/013-canonical-h-equivocation.json",
+      "sha256": "7aec3aa22f40f9d4f7737972d799660da035b488e6c6503059ec7ef14d7415c7"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/014-removal-before-routing-rotation.json",
+      "sha256": "33cb199fe6c203d6eb9e38fd36877a6bf0ac89ca06b831dd769a510c0f591aab"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/015-logical-size-cap-control-open.json",
+      "sha256": "3cbfe992050ec69ca35a9b738f8fdb77cdc2fec50d4b9ad8b13180273ebb50e4"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/016-radicle-durable-ack.json",
+      "sha256": "4db1fdc2ad021de71f73afd66c3c6cbf61c2f5a7b388ce59818d61c122c1bfc1"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/017-relay-ack-before-durable-rejected.json",
+      "sha256": "797f60a993a37fedee4f3b7ae5f7f55c6a0441e8a414e0227140f22ae337493a"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/018-failover-delivery.json",
+      "sha256": "c4687c75e0c44165a36cbf93c25ed052cd7ac1980a8d2accc16eaff8f054b11f"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/019-redundant-delivery-dedup.json",
+      "sha256": "1b78aab0d7169967d1980d9ffe270d9d718d75b2aaf217716b7ae5fb104a26c6"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/020-retained-routing-overlap.json",
+      "sha256": "5e0771f63bd7e1134f50adc876de048f33aca4fee3bd5459ebc5bf154dcf8abc"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/021-expiration-is-not-erasure.json",
+      "sha256": "c5b55f96c5a8eadcbe00ca90a4f4d4eae1447d3820f31f36492c5756880bbaf2"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/022-persona-inbox-atomic-bootstrap.json",
+      "sha256": "c211744bb9635c151acb9ffea90070e4079ab7530e08c528029cbdb5896a3b56"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/023-private-inbox-nid-required.json",
+      "sha256": "5ad8bf7dc7ea0cb23a1656c740dc9e7a2316a20872f9a5b379ab4b003a04eedd"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/024-keypackage-replay-rejected.json",
+      "sha256": "f9736dab2f96dd5873d4d46e4a2b9ca9b3bdd59f177aec5d7e88bd29b1711dc1"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/025-public-inbox-lazy-media.json",
+      "sha256": "b2459106dc4c20b4a65bb3fc2b121e7b2655d74d467da67ba24df72662bc15a4"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/026-agent-group-attribution.json",
+      "sha256": "4cba2e649b9b875d9db6592b9e405a815196aea8664ecea1e7bf20caca291f18"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/027-agent-group-scope-denied.json",
+      "sha256": "e0893c98a8353656901d83d676661e05ceb96e1dd4a444cd6fcc0b933229d3e9"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/028-repeated-media-locators.json",
+      "sha256": "57ad4655012a3762013d2add9813ec7263e6252f5b5d2217535ae44b8e9eb7cd"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/029-direct-member-history-boundary.json",
+      "sha256": "1d0465d20f9a194c40a8b0b6f58a12ce3dd7c06138dc637df895744c9cb029b7"
+    },
+    {
+      "path": "docs/spec/vectors/marmot-radicle/030-node-mediated-secret-confinement.json",
+      "sha256": "d6cd1df0e18d9b74c2b91d398022390438d3a6aad7da598777dcd6ac9eaed6c7"
+    },
+    {
+      "path": "docs/spec/vectors/moderation/001-contributor-implicit-rejection-window.json",
+      "sha256": "1081e0125e48c3b1fe59dd3a338dc125f8ad33b5e1e7fca55525018b8b1432ed"
+    },
+    {
+      "path": "docs/spec/vectors/moderation/002-nip72-approval.json",
+      "sha256": "73bb515a4abcdb0e28a57b23ed74245864dce8fbf42e7512d9ec0eec55ef2dc3"
+    },
+    {
+      "path": "docs/spec/vectors/moderation/003-multi-mod-requirement.json",
+      "sha256": "74f2f346df95aa1ebe77eb71874e2a2627648d94ce608c8443d276bb83dd5444"
+    },
+    {
+      "path": "docs/spec/vectors/moderation/004-moderator-rotation-through-kel.json",
+      "sha256": "3a550093eb91984a671bb5d7376d129663d0a09725feda76af12ec54684c4ad6"
+    },
+    {
+      "path": "docs/spec/vectors/moderation/005-redaction-of-approved-post.json",
+      "sha256": "261bcdf8d055e06051eae5d35556bee8075cec4edc5dadaeabec176d62f2a0b9"
+    },
+    {
+      "path": "docs/spec/vectors/moderation/006-radicle-editorial-gating.json",
+      "sha256": "28b933e56bca7f2c354d6127d9dd28c65a6284935ff56caeeeb1f444eaa61d4e"
+    },
+    {
+      "path": "docs/spec/vectors/moderation/007-kind34550-approvals-required.json",
+      "sha256": "131ef4660281e6d8aaec7016502dbbb1802e682901da27e327cdde606b5bb462"
+    },
+    {
+      "path": "docs/spec/vectors/moderation/008-approvals-required-absent-default-one.json",
+      "sha256": "51417d68dccb84d1d5189abd405e4aae316f47796b1c311a34bb69008a58659f"
+    },
+    {
+      "path": "docs/spec/vectors/moderation/009-repo-anchor-asof-before-removal-counts.json",
+      "sha256": "90393447d54d98059d563bf6fae9bb1e887b81ef7152538487fa818650e6faa8"
+    },
+    {
+      "path": "docs/spec/vectors/moderation/010-repo-anchor-asof-after-removal-rejected.json",
+      "sha256": "1f5c84da9b05cfa2b82ada38658106fb20b4d3d6d48bb82be638518bdbe5af6d"
+    },
+    {
+      "path": "docs/spec/vectors/moderation/011-relay-only-created-at-fallback.json",
+      "sha256": "3753b6235594c2f494bd228614a0e1089c3515c76d65b434a4f2caa198fe57f0"
+    },
+    {
+      "path": "docs/spec/vectors/moderation/strict-mode/001-invalid-event-signature.json",
+      "sha256": "8b31a7ebbf3e122ecdd433f1ffc7008e6e6297517539dec7e895fbd64e51f6df"
+    },
+    {
+      "path": "docs/spec/vectors/moderation/strict-mode/002-bare-not-hidden.json",
+      "sha256": "c114f324f741653cbd674c685fb253d8bfbdb3dc98de8448ce829d7b60a7348e"
+    },
+    {
+      "path": "docs/spec/vectors/moderation/strict-mode/003-kind5-deletion-30s.json",
+      "sha256": "404d7ce6962d86870b181283f3f7f93e4dcdc2d9467a6fd039a8a29841fba674"
+    },
+    {
+      "path": "docs/spec/vectors/moderation/strict-mode/004-state-downgrade-warning.json",
+      "sha256": "5bc339d683d2f6df062eea27cc07a66bf8608aa87d8f39660b6a2cd0b4b6ce1d"
+    },
+    {
+      "path": "docs/spec/vectors/nid-binding/001-bidirectional-valid.json",
+      "sha256": "23e93e3a22a3bebb7c9ab3e0c7513b6bd6a3a7a9c684c4aeb46799d269e45583"
+    },
+    {
+      "path": "docs/spec/vectors/nid-binding/002-missing-nid-proof-rejected.json",
+      "sha256": "4bef6ea95bd378944a93aebbbda4f4fffe28fc988413dd17cc68b7135ced3440"
+    },
+    {
+      "path": "docs/spec/vectors/nid-binding/003-invalid-nid-proof-rejected.json",
+      "sha256": "bebdae86696d46b4dda28094066b322eecdea3f7e9291dd91cb359d4fa855831"
+    },
+    {
+      "path": "docs/spec/vectors/node-advert/001-valid-dual-signed.json",
+      "sha256": "8d904e46364c2919db7f1a393c6abc98978a8bb4cd9651e136a5d1d3c0a1b25e"
+    },
+    {
+      "path": "docs/spec/vectors/node-advert/002-outer-sig-invalid-rejected.json",
+      "sha256": "33f422e0a47a3d228180460113893e474d8ddde33364054a43e1913eee24dc78"
+    },
+    {
+      "path": "docs/spec/vectors/node-advert/003-nid-proof-invalid-rejected.json",
+      "sha256": "97b33b1cef501f2fcbec50022115f9577d5a32aa9c76c8af8464e0dfb3f23a0e"
+    },
+    {
+      "path": "docs/spec/vectors/node-advert/004-expired-rejected.json",
+      "sha256": "6f0414715fcea8992e56333ab8ce72048c32bc33e378860adecdd37bb2fabdd9"
+    },
+    {
+      "path": "docs/spec/vectors/node-advert/006-maximum-lifetime.json",
+      "sha256": "d397fe8655757c426236b0a3ace8e16119eb62725a191e3ab92e1ca0e41f744f"
+    },
+    {
+      "path": "docs/spec/vectors/node-advert/007-excessive-lifetime.json",
+      "sha256": "32f0acbb5bcfe034c05e4db92bf2ac916ade27886f35bf64877ec0d8abb2aaaa"
+    },
+    {
+      "path": "docs/spec/vectors/node-advert/008-future-clock-skew.json",
+      "sha256": "3e29650e7ec5d5091f0d638e8aeeeee59ccedb3df6090f681c875b54052ac666"
+    },
+    {
+      "path": "docs/spec/vectors/node-advert/009-past-clock-skew.json",
+      "sha256": "5546dffcfa64bb302d02f918a90ae30349fa909b3edecb00554c82071f9b0cd8"
+    },
+    {
+      "path": "docs/spec/vectors/node-advert/010-expiry-not-after-created.json",
+      "sha256": "443ef8ba197a365fd2bc0f0548b352fecf38090651436118b5654c9f0967dd60"
+    },
+    {
+      "path": "docs/spec/vectors/node-advert/011-refresh-by-twelve-hours.json",
+      "sha256": "3ac30502bd04a700fe76cdd3a2597886c22c399d2d5f87d160c2972e28ef789d"
+    },
+    {
+      "path": "docs/spec/vectors/node-advert/012-uncertain-clock-rejected.json",
+      "sha256": "f4bb9d0977b28f6905315f2f40094b214a225408a0e0172613a613d0cd6d5055"
+    },
+    {
+      "path": "docs/spec/vectors/node-advert/013-previously-accepted-within-expiry.json",
+      "sha256": "6807bc95c84b81896394a876e941b3672ccbcf878fc7f39573f2b60b1093f846"
+    },
+    {
+      "path": "docs/spec/vectors/node-advert/014-provisional-observation-does-not-bypass-skew.json",
+      "sha256": "c2fc51046a34a1956174464a0c41e41d9b229c1ab67e12df2557e015cc43c4f1"
+    },
+    {
+      "path": "docs/spec/vectors/oidc/001-discovery-exact-issuer.json",
+      "sha256": "cb6ee7e9370226768496385ceddade160d4f9d01d4085bad612d39b52dc95bd8"
+    },
+    {
+      "path": "docs/spec/vectors/oidc/002-issuer-mismatch-rejected.json",
+      "sha256": "e08a31be35eaa5220f6f27a0abfbd17fb13084ade9492c17b6622424c1492115"
+    },
+    {
+      "path": "docs/spec/vectors/oidc/003-authorization-code-pkce.json",
+      "sha256": "7dd3f7f3263827aeb8cb51334fbaa4524e1111dfa9130e7dd2911cc552bd9f3d"
+    },
+    {
+      "path": "docs/spec/vectors/oidc/004-device-authorization.json",
+      "sha256": "9c2614e8a65006b6f8b952e7413639cf2ecd88967793bbca4707eef39be2e294"
+    },
+    {
+      "path": "docs/spec/vectors/oidc/005-prohibited-grants.json",
+      "sha256": "62cfc12937e602c61b191f7b3c737abd5b45a8820e5ff08c33f28e80dc0388c9"
+    },
+    {
+      "path": "docs/spec/vectors/oidc/006-pairwise-subject.json",
+      "sha256": "faf49169b90c1927ba6cb311d599c6950b0bea87eddc41db7c0d39f1204f163a"
+    },
+    {
+      "path": "docs/spec/vectors/oidc/007-stable-key-consent-gated.json",
+      "sha256": "e79f65ad56b8ba67b2ee735fee13fa43f482848edac7f20bf281528bc24dfab1"
+    },
+    {
+      "path": "docs/spec/vectors/oidc/008-id-token-valid.json",
+      "sha256": "fa488d44a94e0c9da088cdada5dc1885c64fc187723d4b57dde711f296490ed8"
+    },
+    {
+      "path": "docs/spec/vectors/oidc/009-rfc9068-access-token-valid.json",
+      "sha256": "6617a612ae26a775066be8791aa9023347d0ce059bb055886bfe103f80843c68"
+    },
+    {
+      "path": "docs/spec/vectors/oidc/010-token-type-confusion-rejected.json",
+      "sha256": "71002c51ce3be7872922a140b5bfbcc922f571442c5324baf16733ef3f5c2241"
+    },
+    {
+      "path": "docs/spec/vectors/oidc/011-dpop-confirmation-bound.json",
+      "sha256": "bb88eddab64c290ccdfa31315f1da44b90aa8af56c61dc76b95341a2174d4ec2"
+    },
+    {
+      "path": "docs/spec/vectors/oidc/012-registered-jwt-assertion.json",
+      "sha256": "947bb27c1b290d85c15dd11cda7af8f791006c6041443124909cd109042f4fe9"
+    },
+    {
+      "path": "docs/spec/vectors/oidc/013-mtls-confirmation-bound.json",
+      "sha256": "5c4a40c95515125ccba292a55fd0ac9bdcd747fc8a00230062df79e372fea2e4"
+    },
+    {
+      "path": "docs/spec/vectors/one-time-invite/001-descriptor-and-fragment.json",
+      "sha256": "c0c716a44f5eabe1cd5de24e6d591b32d6d783832248c745cf5401dd317ef20b"
+    },
+    {
+      "path": "docs/spec/vectors/one-time-invite/002-response-proof.json",
+      "sha256": "36063f1e8e12b04659f54f1c0ad6ff1a8742a17be176a6b487fb80ec126a68d1"
+    },
+    {
+      "path": "docs/spec/vectors/one-time-invite/003-purpose-mismatch.json",
+      "sha256": "98973e90ff6496b88471e5d2c180c06c9b54182d4dd4a2faf5016ae8b53366d4"
+    },
+    {
+      "path": "docs/spec/vectors/one-time-invite/004-expired.json",
+      "sha256": "f79b13827498c60325b396057c0658a6134f809c40913d5d361376fc0d340aa8"
+    },
+    {
+      "path": "docs/spec/vectors/one-time-invite/005-first-valid-reservation.json",
+      "sha256": "41287806cdbde183f1fcebba8b58d06d0a3136bdb157d276dbc35a04f4a67cbb"
+    },
+    {
+      "path": "docs/spec/vectors/one-time-invite/006-reserved-responder-retry.json",
+      "sha256": "8c1dbe8f52419b79852b5c6d3978996a0bf2ebe877a32918fc000548b152cac5"
+    },
+    {
+      "path": "docs/spec/vectors/one-time-invite/007-reservation-race-rejected.json",
+      "sha256": "ef25a8fa53f7d39943d43536a1c68b7779167ac61365717bbc0416df749cab23"
+    },
+    {
+      "path": "docs/spec/vectors/one-time-invite/008-invalid-keypackage-no-reservation.json",
+      "sha256": "a2bfd3108afeeeefd3f913da2fdc3098c36cbbe67a5db10a083012ad5db49776"
+    },
+    {
+      "path": "docs/spec/vectors/org/001-threshold-delegate-governance.json",
+      "sha256": "21ff72d91632574639c47dd1e51d64b640e530a6e35ab05496d97700f7fe4cac"
+    },
+    {
+      "path": "docs/spec/vectors/org/002-member-add-dual-authorized.json",
+      "sha256": "f846c4ebb97059306a79a9232c18e0b7fa81fa456469ba14309082934d69f2e9"
+    },
+    {
+      "path": "docs/spec/vectors/org/003-member-add-single-authorization-insufficient.json",
+      "sha256": "8619c04220bd54ee05fa75fd90526b3c46a8d6f95365288a5e8b5ac9cb7814d1"
+    },
+    {
+      "path": "docs/spec/vectors/org/004-canonical-branch-reachability.json",
+      "sha256": "d64b321e8a921a424c6ec232dd1583ac94d602f7a347088cd95ed7b1a66465b8"
+    },
+    {
+      "path": "docs/spec/vectors/outbox/001-scoped-outbox.json",
+      "sha256": "9efc0d6350da5114d96d0929c625da9541e7354974382721f44b72134aa5004d"
+    },
+    {
+      "path": "docs/spec/vectors/outbox/002-full-public-outbox.json",
+      "sha256": "4a6366543ce5947552646545c00d9dffccd689dc55d152175231f03a84a684f6"
+    },
+    {
+      "path": "docs/spec/vectors/outbox/003-transitive-discovery-walk.json",
+      "sha256": "b89fef7fbe6db40bbbea93600b1108f847e5840dc868b54d21d0540b53ef0791"
+    },
+    {
+      "path": "docs/spec/vectors/outbox/004-cross-persona-attestation-valid.json",
+      "sha256": "d7733aec7726dedc5116c355fbb1c5072b3edfa0139c1e53e0b202f841eb2c4a"
+    },
+    {
+      "path": "docs/spec/vectors/outbox/005-cross-persona-attestation-invalid.json",
+      "sha256": "510d34759731d6098d980b771e1e9761f3b8795073931bc3288c1d5e3b1b9224"
+    },
+    {
+      "path": "docs/spec/vectors/outbox/006-cross-backend-reply-dedup.json",
+      "sha256": "c0968673709a06da4251133d0d83614073ab0e6be2240d91856ba057583a49de"
+    },
+    {
+      "path": "docs/spec/vectors/persona-profile/001-designated-publisher-valid.json",
+      "sha256": "c9c34eed06e15c6fe9e890b031a5dd7d2d0db394dbd82104d47867e97c1ee114"
+    },
+    {
+      "path": "docs/spec/vectors/persona-profile/002-nip05-mismatch-rejected.json",
+      "sha256": "0e1bb2099855db55d91edf8323dde3c5e3793726a77aab26af340532a7071b80"
+    },
+    {
+      "path": "docs/spec/vectors/persona-profile/003-successor-address-republished.json",
+      "sha256": "404a5f6e10b8197547a4b9e8edfa34b337a4a476d6029441ad053b81cf7f6797"
+    },
+    {
+      "path": "docs/spec/vectors/persona-profile/004-exact-author-set-discovery.json",
+      "sha256": "5f8d2e34bbbdd22655544b7f72de968e7edccf18feceda8fd317d31c12073fd7"
+    },
+    {
+      "path": "docs/spec/vectors/persona-profile/005-relay-only-replacement-rejected.json",
+      "sha256": "fcc29cc8bd3dd4bdbbeb7848f7ec9852921e66db3655cb614c383a474bb4bbfe"
+    },
+    {
+      "path": "docs/spec/vectors/privacy-tiers/001-tier1-public-plaintext-both-backends.json",
+      "sha256": "45833dc5163c1cfee5096f73bf78a4c4b82d9eeb89a20d313df120c4f26bc3b0"
+    },
+    {
+      "path": "docs/spec/vectors/privacy-tiers/002-tier2-private-repo-not-encrypted.json",
+      "sha256": "79f67733dca1ac88f4b95a6c48b5126466b2a317515759a2aee43beb7927d9a2"
+    },
+    {
+      "path": "docs/spec/vectors/privacy-tiers/003-tier3-kind31011-audience-key-wrap.json",
+      "sha256": "37ae521a6e9b8dd6cebfba3af2c2b68a783c6d5fa29c49490d5ef11d19dbe147"
+    },
+    {
+      "path": "docs/spec/vectors/privacy-tiers/004-tier3-index-key-derivation-and-encryption.json",
+      "sha256": "101e6e152d5c73b29b38c231e1d42f60c2adcd1e146e8bfbdca37945a9d7b164"
+    },
+    {
+      "path": "docs/spec/vectors/privacy-tiers/005-tier3-prev-page-hash-valid.json",
+      "sha256": "328e4959d1bfa90ba6f15df959188d1faa86ebbc44b2d971501ec2af131a698a"
+    },
+    {
+      "path": "docs/spec/vectors/privacy-tiers/006-all-active-devices.json",
+      "sha256": "c11dae3419b8e81a03906c0ae99aa38f4ab113738bd7eba6b110db74d64058d9"
+    },
+    {
+      "path": "docs/spec/vectors/privacy-tiers/006-tier3-prev-page-hash-mismatch.json",
+      "sha256": "f1fe19529961cc63d243d9f878ac4a30df122802ccead8cd66656d35b8da0a13"
+    },
+    {
+      "path": "docs/spec/vectors/privacy-tiers/007-complete-fetch-attempt.json",
+      "sha256": "2cf68d90ad8da548dcc38a14f27d689b20686d02cb3a415b32e67a9fe0375795"
+    },
+    {
+      "path": "docs/spec/vectors/privacy-tiers/007-selected-device-narrowing.json",
+      "sha256": "17969b747c48afc54a7ba79de3995009516feb49ac27d9ec57775dab4b5642c3"
+    },
+    {
+      "path": "docs/spec/vectors/privacy-tiers/008-cold-root-recipient-rejected.json",
+      "sha256": "d5438a2583fc3722214240f7e28a3b13047bbcf36c719f103b9a0a74b8a27140"
+    },
+    {
+      "path": "docs/spec/vectors/privacy-tiers/008-tier3-kind31012-audience-roster.json",
+      "sha256": "0c5a70c72b437c81d4de1c2ce282abcdd2e541a435fda0201c750772c83c0352"
+    },
+    {
+      "path": "docs/spec/vectors/privacy-tiers/009-epoch-recipient-rejected.json",
+      "sha256": "e43069bbb5afb008ed47ccfc66e0bb687c94733663a6cf835eec3ed9a3f160a0"
+    },
+    {
+      "path": "docs/spec/vectors/privacy-tiers/009-non-circular-bootstrap.json",
+      "sha256": "5f60cf7fdad9a503a4e3669dc49a2ba3757cbd5ce1987812d6956000057b454b"
+    },
+    {
+      "path": "docs/spec/vectors/privacy-tiers/010-audience-key-rotation-on-removal.json",
+      "sha256": "4732ca62f67ae3971f75e3563d7b7222cfcd7acd65aca6efff8894f3bf5ada13"
+    },
+    {
+      "path": "docs/spec/vectors/privacy-tiers/010-revoked-device-rejected.json",
+      "sha256": "90f30ec0166e661ba7eab3f779d10c6bf82f9e80fda0d96189c73cd531bde198"
+    },
+    {
+      "path": "docs/spec/vectors/privacy-tiers/011-light-device-decryption.json",
+      "sha256": "46a083b124e821eaff9734d4bd1677fb52cc2bf01baa518ae059d016ed72ecbc"
+    },
+    {
+      "path": "docs/spec/vectors/privacy-tiers/012-device-removal-rotates-generation.json",
+      "sha256": "344fba2b8d7410fdcba93abdbcfb95bd8c6ada1e6ad35fa7d2acdc40d9bd13b2"
+    },
+    {
+      "path": "docs/spec/vectors/privacy-tiers/015-tier3-membership-metadata-disclosed.json",
+      "sha256": "9544649b4f4bb6eca0d34e317336ef1d41ed54bba8ff5d42063989864860e954"
+    },
+    {
+      "path": "docs/spec/vectors/profiles/001-core-breadcrumb-kind0.json",
+      "sha256": "403c07c7ce4433fffe3ab5a25062a3e3c49ea64524704ebcc93125530dded4a6"
+    },
+    {
+      "path": "docs/spec/vectors/profiles/002-core-breadcrumb-kind1.json",
+      "sha256": "fcd2b09a1bbe147368d43fa238921d245e80c122a24a333839e3ef00db2c7906"
+    },
+    {
+      "path": "docs/spec/vectors/profiles/003-tier3-kind-1.json",
+      "sha256": "833e4bbf38ac6a8e0f0e8cfcc39fa35181bd82e99f878441551c9aae52b528fd"
+    },
+    {
+      "path": "docs/spec/vectors/profiles/004-tier3-kind-6.json",
+      "sha256": "18848a51078b133c373d36ad41bad8c6e63e8ae30a0d55c0be38aad5ede57029"
+    },
+    {
+      "path": "docs/spec/vectors/profiles/005-tier3-kind-16.json",
+      "sha256": "9e6ef0f63457cf48f5d059f0ebfcfd2f154f329bcc65bf76b08352233c3e074d"
+    },
+    {
+      "path": "docs/spec/vectors/profiles/006-tier3-kind-1063.json",
+      "sha256": "87ccc663c9310f34d227655ae05a08ad9afbfbfd639ec2b2ca83e437b2bb361d"
+    },
+    {
+      "path": "docs/spec/vectors/profiles/007-tier3-kind-30023.json",
+      "sha256": "711f9937131160807512826bbe85be80d239e4497810feca3401360aeb03d665"
+    },
+    {
+      "path": "docs/spec/vectors/profiles/008-tier3-kind-30402.json",
+      "sha256": "dbe05c15bfa89f3124059bab477b126678bc7159ffe7c0e2280c485ad40fa5b3"
+    },
+    {
+      "path": "docs/spec/vectors/profiles/010-social-org-feed-kind31007.json",
+      "sha256": "d2d4e31f61d5dd7a60f53604ea20d3a9de931d2e232fdade8b6aa19dee7fa0a7"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/001-launcher-persona-roundtrip.json",
+      "sha256": "1651f874cfd738073af54c5a4346f1fc340012d38eb5c3a9f5a9b2f66be11562"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/002-launcher-event-roundtrip.json",
+      "sha256": "157092b1dcd7b07e4dc2cc0e3add1c36d27a0576b8c4b5448162e168c267a036"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/003-launcher-address-roundtrip.json",
+      "sha256": "3c9914694a31db9b59da1c0509f58039a097a9d3bdd08614670d962642fe1992"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/004-target-absent-from-http-path.json",
+      "sha256": "37579e86e7b55df15c22849bce79d4d3a1bc3f8a9436b7a8c1ca8183b9c9800d"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/005-unknown-version-no-network.json",
+      "sha256": "308c6d9112133ca0b6fc4eabc64144250bb30eb8a095430cca8157561f813936"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/006-malformed-entity-no-network.json",
+      "sha256": "deff9d9a083d68429b0789631ffd26fabd9416bc8a7149fa1ebfa8a6f813bc6c"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/007-oversized-fragment-no-network.json",
+      "sha256": "f460faa1e762e024568bcc93b1feed5f25bb30d132ff6c5cf9ce1c55013dc832"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/008-credential-relay-hint-rejected.json",
+      "sha256": "6f5d705e93b10089daa777538d22eea5b5dbe13f7d5c1d6cdb88c36632ccf63a"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/009-localhost-relay-hint-rejected.json",
+      "sha256": "bc78fc5f0d33d9f6e87dfd70128036afa0fae897b2fc65412f4b2f8ab28889da"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/010-private-resolved-relay-hint-rejected.json",
+      "sha256": "e31d75d39e11b7c97690b960acc9f1729dbe5b8ab3b31cbc1e4cebba6c06f439"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/011-onion-hint-tor-required.json",
+      "sha256": "eb25d3ba630bc60d82153cb761c856e22cbfdc5626cfc6aa8e69d7bd3f507e05"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/012-nip65-refresh-replaces-stale-hint.json",
+      "sha256": "c75248158bedb05622821b18c7d82254bbec258ef3233b68e63653752e7da020"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/013-resolution-canonical.json",
+      "sha256": "32c42a0d0b951fd75d4e61d332cd8f9f88ad170b13860ce808d62c253dd71c19"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/014-resolution-provisional-canonical.json",
+      "sha256": "4fa6c8774ff058367946f98b0138086e3f0dc7ac727b01c9ea9a6a3c0e2efcb3"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/015-resolution-unindexed-signed-event.json",
+      "sha256": "1ee6f97f38ff7fe1bf644408c6601f80814159d4e2ed77283d25dde07a5b8853"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/016-resolution-conflicted.json",
+      "sha256": "4e9278a9ac6b39642172b880dcd903d0f67ff10c941353e0b7e4f07eafe87e15"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/017-resolution-unavailable.json",
+      "sha256": "5bb1b5acf1f09877c36f12a3fea2d04e4d821094717563651a479cc6f6000733"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/018-resolution-private.json",
+      "sha256": "5c52a4ee9486ddf3adc7cef9f1a9d0a340cdda9b165908e23320fe769eeed6a8"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/019-tier3-refused.json",
+      "sha256": "a09f1d7ae12c398446bc2b485596804712d78a8f2e3fcbdd490e01a439c8e35b"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/020-external-media-disclosure.json",
+      "sha256": "bbecc054b4236d60317bbb79551d928c98237f90feaaf3156d502bf29a3899a0"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/021-transition-without-reload.json",
+      "sha256": "18c423ed8101ea4c3659fa3200d53124a0375900ef6b95ee0149a10e3bdc6fe4"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/022-logout-cleanup.json",
+      "sha256": "be0ddb32c4dc1046148d0f2c86071b942e159343c40804bb66f47b45c67516b7"
+    },
+    {
+      "path": "docs/spec/vectors/public-reader/023-failed-revocation-expiry.json",
+      "sha256": "e743e54f61eb9f6a618217fe7e4b274446646d1a323117789110955a5b0459a4"
+    },
+    {
+      "path": "docs/spec/vectors/registry/001-downref-nonfrozen-rejected.json",
+      "sha256": "4d716ebe5fea30003324e84d79671477ff5516b5a8833c9ad62fc6b19d4d974f"
+    },
+    {
+      "path": "docs/spec/vectors/registry/002-frozen-entry-immutable.json",
+      "sha256": "a8cae9c6799b7f3774c8a5d3fe8ff19a4a1ed156a37e97679d31737603b52a4f"
+    },
+    {
+      "path": "docs/spec/vectors/registry/003-feature-dependency-exact.json",
+      "sha256": "333ccb5fcf23cddcc898ab90ed4ffeea138f2c4936392236bb0c44750c01152b"
+    },
+    {
+      "path": "docs/spec/vectors/registry/004-feature-dependency-unprovided-rejected.json",
+      "sha256": "dd7be992135a8035ec8656ef8767e9ee97ea73f3d11f0ad6a97995a8139f3c73"
+    },
+    {
+      "path": "docs/spec/vectors/registry/005-control-strict-profile-flattened.json",
+      "sha256": "cc9eb1831f6aab4101c69ff6c2fd50d250028b79bef4f87855b9062ece6f05d0"
+    },
+    {
+      "path": "docs/spec/vectors/relay-interop/001-nip42-auth-current-epoch-key.json",
+      "sha256": "811c1315f084b2f09e232d848067070883ee56798cf9dcab3cecb7ee63fa71af"
+    },
+    {
+      "path": "docs/spec/vectors/relay-interop/002-auth-rejection-permanent.json",
+      "sha256": "abbf459947e1cde22526f476e02745527217284274eba5337ed008e4f4c1acb6"
+    },
+    {
+      "path": "docs/spec/vectors/relay-interop/003-keri-rotation-auth-new-key.json",
+      "sha256": "dd68240c2930311822d1d545bb1e4b0e325604668ffd29d5709367fde7f4f1c4"
+    },
+    {
+      "path": "docs/spec/vectors/relay-profile/001-vanilla-nip01-unaffected.json",
+      "sha256": "bd242b9164df311495016ec56ded27d97a8fe3f5ae99681d2fd2e7317ada1d2b"
+    },
+    {
+      "path": "docs/spec/vectors/relay-profile/002-nip11-capability-advert.json",
+      "sha256": "f06480926ad17773fbf6d38ee7d25edd76f091b2b7e1b79d631f03a28074b7ad"
+    },
+    {
+      "path": "docs/spec/vectors/relay-profile/003-kel-aware-reputation-continuity.json",
+      "sha256": "5c7d5d88230affd1747e1bd476a9b5dcfaf3e0825fc0105a546dbe3c817ec843"
+    },
+    {
+      "path": "docs/spec/vectors/relay-profile/004-passive-witness-store-signs-nothing.json",
+      "sha256": "f136d0f94c853f9e6df20c0f58780c9126b46614f24210f9195b47bab5a21a1c"
+    },
+    {
+      "path": "docs/spec/vectors/repo-relay/001-nip01-read-write-roundtrip.json",
+      "sha256": "05f6d9941b4ac0f0a697a1ac104fd0cceb16f174711d43763225b44d9919a908"
+    },
+    {
+      "path": "docs/spec/vectors/repo-relay/002-invalid-signature-rejected.json",
+      "sha256": "3805d21ce40cc1b2173c3be42d45eadbbc50d85e0f5e6acac6d37da1c715e1d7"
+    },
+    {
+      "path": "docs/spec/vectors/repo-relay/003-light-node-submit-write-path.json",
+      "sha256": "f38184d72155fe07b32e4777107fda55a01335a7e2dd17e935b66b3d0730c508"
+    },
+    {
+      "path": "docs/spec/vectors/role-capabilities/001-public-reader-reduced-assurance.json",
+      "sha256": "91eba0dc60308bfd6d0589a030076b9f2123c6256bf176fcdc7badf4c08480e5"
+    },
+    {
+      "path": "docs/spec/vectors/role-capabilities/002-strict-missing-tor-rejected.json",
+      "sha256": "07cae1dff7142455b516be28a32d7fddbe0690b39f772b902857b832ea04556b"
+    },
+    {
+      "path": "docs/spec/vectors/role-capabilities/003-full-node-feature-set-required.json",
+      "sha256": "675bdb7d75ba447ef9593fd1f03c36ebe3d22826cf113ee713b791278d490428"
+    },
+    {
+      "path": "docs/spec/vectors/role-capabilities/004-full-node-onion-advertised.json",
+      "sha256": "a2752d927353489e69eaf7a09fc83302024d98a60ca25e77a70a0265f8a58e21"
+    },
+    {
+      "path": "docs/spec/vectors/role-capabilities/005-browser-shared-relay-required.json",
+      "sha256": "86726c6c30bdef44865691ebef20c68999b0bf334d0d7a5e39cb2558d2212a82"
+    },
+    {
+      "path": "docs/spec/vectors/role-capabilities/006-full-node-tor-default.json",
+      "sha256": "ccac99ec1d320da0103fdcefd7d1d0d9c047552656bca7d1d7ae957287986c52"
+    },
+    {
+      "path": "docs/spec/vectors/role-capabilities/007-role-address-valid.json",
+      "sha256": "be443ab2d121c8b06fd6b6306c18bfdba4951c6929ff182c71909d0cc27dee36"
+    },
+    {
+      "path": "docs/spec/vectors/role-capabilities/008-role-address-invalid.json",
+      "sha256": "f5005629c2b5b6c40251f7af28fcfaa2b2451f44791b56faa4dc054d21e71438"
+    },
+    {
+      "path": "docs/spec/vectors/routing-node/001-repo-location-from-ads-only.json",
+      "sha256": "aae7fa9a0cbdc36bae0b702af256a884c7cd0f0172908ffe3ef9702f992e96e7"
+    },
+    {
+      "path": "docs/spec/vectors/routing-node/002-expired-advert-discarded.json",
+      "sha256": "b943602a507797e8caa437298de101b4b1ab0378e224188a825f3d3d4d9addf2"
+    },
+    {
+      "path": "docs/spec/vectors/routing-node/003-unverifiable-advert-discarded.json",
+      "sha256": "904498e7531ec88bc9c0e924516dbc3e6094c5358899ec66dbc706203370f2f3"
+    },
+    {
+      "path": "docs/spec/vectors/schema/reason-codes.json",
+      "sha256": "b46372641316dd9656a14b3b6b51f358d762d061ced3f7b62246c0ee9d8801a9"
+    },
+    {
+      "path": "docs/spec/vectors/schema/reason-codes.md",
+      "sha256": "0bc7dee9fa85c009ce275133f05e6de12cfcbeb8e2885cee34827cfa304c4a73"
+    },
+    {
+      "path": "docs/spec/vectors/schema/vector.schema.json",
+      "sha256": "4331e2c8ae53d89bfdec913bd43c85d9f0ebeadcc3ad42950e08050a6284a1d6"
+    },
+    {
+      "path": "docs/spec/vectors/social-recovery/002-three-tier-caching.json",
+      "sha256": "34cb0469cf6f7f3178672226ea6345dcf66889f75e976ba0c7aa8f657c2dc8d2"
+    },
+    {
+      "path": "docs/spec/vectors/social-recovery/003-retention-30-days.json",
+      "sha256": "3809e21119a9e6293068376bb1c349f6a484e9829969446b958cc1b64aea8744"
+    },
+    {
+      "path": "docs/spec/vectors/social-recovery/004-cold-root-reanchor-authoritative.json",
+      "sha256": "58fbbbc1c4219c3baf88b07935b161b11c7276a610dbb73c867539e1d40c5d20"
+    },
+    {
+      "path": "docs/spec/vectors/social-recovery/005-cache-sourced-marked-stale.json",
+      "sha256": "32145991688150af01c95ba7e2b2ee3e11f50fdc8c6334ff8e732c1e1cf0be83"
+    },
+    {
+      "path": "docs/spec/vectors/stamping/001-heterodyne-json-content-owner.json",
+      "sha256": "230a57d3a2f8359b788fdc5e4930f8ee375912275087292c033a64094bbb89a4"
+    },
+    {
+      "path": "docs/spec/vectors/stamping/002-heterodyne-empty-content-tag-owner.json",
+      "sha256": "4bb36fcd17c6bc18770874fb6a5dd092b834e8b32eab1866fd158990ab0efc16"
+    },
+    {
+      "path": "docs/spec/vectors/stamping/003-upstream-unstamped.json",
+      "sha256": "6cb21a6eb367a1d14508a7b266d32d78edbcdc7a0be9a867fb50e2c08f952f2c"
+    },
+    {
+      "path": "docs/spec/vectors/stamping/004-upstream-profile-owner.json",
+      "sha256": "15855b0119764acc8b790fed02fb1619af261f860e9eec072340a5efd0814d8a"
+    },
+    {
+      "path": "docs/spec/vectors/stamping/005-non-stamping-profile-unchanged.json",
+      "sha256": "9cb7a5d8f6835f86d418a57e795a5e3a9f3805cec1b66e41c5372a871692f538"
+    },
+    {
+      "path": "docs/spec/vectors/stamping/006-tier3-profile-owner.json",
+      "sha256": "347e8d011a0c1361a2a57afddd678c5211f35d42dbf63d8d2ec4462b11997558"
+    },
+    {
+      "path": "docs/spec/vectors/token-status/001-valid-status-list.json",
+      "sha256": "ebc967e2697aa942cb85f10465020b0255882026ee2bd2f592d2282708025817"
+    },
+    {
+      "path": "docs/spec/vectors/token-status/002-invalidated-token.json",
+      "sha256": "5bfbde1ec6740283210e934f3eabb574de9914d5337588d70973c9dbc376efca"
+    },
+    {
+      "path": "docs/spec/vectors/token-status/003-stale-status-list-rejected.json",
+      "sha256": "868173f53cc5fb285f478d657893cf94a4b0954bbb1fcea0c8b3e9088597eece"
+    },
+    {
+      "path": "docs/spec/vectors/token-status/004-writer-index-collision-rejected.json",
+      "sha256": "272a9c94f855e3b509f043d1386d769128346d1ab32f9f71276b60d9f85e1a9a"
+    },
+    {
+      "path": "docs/spec/vectors/token-status/005-https-radicle-byte-identity.json",
+      "sha256": "06af2967c11c19a27f3bf3982d45f1f64a77f89e2959d3946ecfb650fe4d5629"
+    },
+    {
+      "path": "docs/spec/vectors/token-status/006-radicle-digest-mismatch.json",
+      "sha256": "c57eaf3c7808bdea46f7f6d12d80c28a2d69597dfabda8d3a1222fea62c2539f"
+    },
+    {
+      "path": "docs/spec/vectors/token-status/007-https-outage-radicle-fallback.json",
+      "sha256": "b96b34404c7cf6ac245158eb4a9176390b73a6984fbc054e8fbd67735e7ff869"
+    },
+    {
+      "path": "docs/spec/vectors/token-status/008-issuer-successor.json",
+      "sha256": "4f67d7f36ab2414c8788b93180709fdd2139861e81dd3e5fb9104be80092e1fa"
+    },
+    {
+      "path": "docs/spec/vectors/token-status/009-signing-key-compromise.json",
+      "sha256": "9f873661482a619d9d44e5298cf209c13420db20f8b91aa5d50a4859e203b996"
+    },
+    {
+      "path": "docs/spec/vectors/transport/001-onion-no-clearnet-dns-leak.json",
+      "sha256": "2df2f66a2336619fafeda6f82897c262ac3520a7d17b1aede9f2a679f6d3076e"
+    },
+    {
+      "path": "docs/spec/vectors/transport/002-onion-reachable-via-tor.json",
+      "sha256": "10ff1bc11069ba6eb2191401acfa37bfa919f672d6616778e5a09782addb1f4a"
+    },
+    {
+      "path": "docs/spec/vectors/transport/003-wasm-bridge-no-bridge-indicator.json",
+      "sha256": "46881f058345c0ff92baf01ab575d680bbd00e2014e9a54e16033c76189bb28c"
+    },
+    {
+      "path": "docs/spec/vectors/transport/004-egress-tor-off-default-indicator.json",
+      "sha256": "6ecc5c642e299e47dae53e17cb105e02f55e49b53b84f8b543a47c7f50a8f5a1"
+    },
+    {
+      "path": "docs/spec/vectors/transport/strict-mode/001-egress-tor-default-on.json",
+      "sha256": "b3fa35f18c2a9c6e7a1b09ee7f2f3ca60f4480fe0cfecd91e6319320ce6fce05"
+    },
+    {
+      "path": "docs/spec/vectors/verification/001-bad-signature-rejects.json",
+      "sha256": "da83c18b6f6a2032b75e304fc43de6d54532ee2f0766d51573acc0b1d55736f8"
+    },
+    {
+      "path": "docs/spec/vectors/verification/002-delegation-mismatch-rejects.json",
+      "sha256": "4a22499d27e23aef8ef3cb93bf4de2a799470500a07edeb1366cea42ce37ae37"
+    },
+    {
+      "path": "docs/spec/vectors/verification/003-revoked-key-rejects.json",
+      "sha256": "cfa9e51291e93121d4c50a6c66bcfaafc218b67cd7df4685bf0491dabeb519fc"
+    },
+    {
+      "path": "docs/spec/vectors/verification/004-backdated-event-suspicion-window.json",
+      "sha256": "bb6b975223e7eea7cf4153a0de119fa1f3f45635ce9dcce11897296a6baa21fb"
+    },
+    {
+      "path": "docs/spec/vectors/versioning/001-unknown-major-placeholder.json",
+      "sha256": "52816afd3c84bb8a1592ebddb6f1e1d75def90177a07cb2929410ad41a4aef58"
+    },
+    {
+      "path": "docs/spec/vectors/versioning/002-older-receiver-newer-sender.json",
+      "sha256": "1015edf1369f7b7ca3c414aa872a81f20d3aa42563960cb79b209fe9e9872777"
+    },
+    {
+      "path": "docs/spec/vectors/versioning/003-capabilities-roundtrip.json",
+      "sha256": "f0c4baa1b8dc30fe246ce5d03bd6525ba67bdce175f8c17ab17fa4de3ab84573"
+    },
+    {
+      "path": "docs/spec/vectors/versioning/004-unknown-room-kind-tolerance.json",
+      "sha256": "1aacbe7a06cb18771ba469ef4cf729b5de2b355a6cb945ae4ec1b32d207a380e"
+    },
+    {
+      "path": "docs/spec/vectors/versioning/005-qualified-version-valid.json",
+      "sha256": "ed2b7a70b8d95de7f36283988c91878a364b80fb976889ab9692bca71ae2b85b"
+    },
+    {
+      "path": "docs/spec/vectors/versioning/006-qualified-version-unqualified-rejected.json",
+      "sha256": "8b78a1fa69e400bb8e8dac4b60ad0090b00e6123ddb34f5bef217e59fcecc206"
+    },
+    {
+      "path": "docs/spec/vectors/versioning/007-core-capability-bootstrap.json",
+      "sha256": "2f4f1668659277bcf331f870ad11b855ac121aef354f536daf81f644134e295a"
+    },
+    {
+      "path": "docs/spec/vectors/versioning/008-per-document-negotiation.json",
+      "sha256": "0ccb431d30bde82052c206adb2636beb96149f5c6116a16d6c611ddf88ada456"
+    },
+    {
+      "path": "docs/spec/vectors/versioning/009-unknown-asynchronous-stamp-rejected.json",
+      "sha256": "57e172230abd345e0ecc04abc6a9b038e6c4191329a3d26e65aaf9f52e8c05cb"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-device/001-independent-leaf-removal.json",
+      "sha256": "c34977e6772327bfc3c363a8340539b2f7222af8d303794b81d9ff1b519fc7c7"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-device/002-persona-removes-all-leaves.json",
+      "sha256": "be46d8347e2d3ca85f2998cab3837e44316498988af35a4d63b82a3e1a08ad70"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-events/001-mls-epoch-rotation.json",
+      "sha256": "3e1bbab11c2131aaeb127a93a89ae7f356cdd625297f651af4b75ae681704856"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-events/002-size-rotation.json",
+      "sha256": "da1508efe38674259ca856447f28e68a560ef2c4afd89c0b850507b001ae6192"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-events/003-exact-bytes.json",
+      "sha256": "8e0a62c9317d7884f5ee274833e35647185c7fd6b535181f8d16782a11dea512"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-events/004-mutated-bytes-rejected.json",
+      "sha256": "35b00267aef111bee4d1760653fcf81838dac7ddedd20202bb17142d72f1ee32"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-events/005-nostr-radicle-equivalent.json",
+      "sha256": "94538bc349b1e95939e68291c1a1335b69518a289aa3c7126e40c689d6d264f2"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-freshness/001-ordinary-boundary.json",
+      "sha256": "712adf558728f02428f39d15512ea618fc2064022e12efc3aec1134a70c8f14c"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-freshness/002-ordinary-stale.json",
+      "sha256": "67f09b322ead33a283f77bd9cede192cbd2828d69bf12dc881495e83654a7d02"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-freshness/003-authority-boundary.json",
+      "sha256": "d9cdda47e603a2daa80ee514faf584cab13add1edd0efec1491dd04fe1ff9a30"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-freshness/004-authority-stale.json",
+      "sha256": "1995393a45e7a482f22f74ad82b3c12dcb3bbc6aee093b49638309b596b41aca"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-grant/001-single-actor-active.json",
+      "sha256": "1ab132f7a52d6d0f6134c1ced09bb7c142b7e6ee2a5744f222bd1219fb6a9ba6"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-grant/002-multi-approval-insufficient.json",
+      "sha256": "fe5cb1548c381bd9c1af12cf22c5978472213ab0fbc2b80b71a172ce984ccb6d"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-grant/003-invite-replay-rejected.json",
+      "sha256": "a31f33c94fc586e47aa7151e328d819fc0f3a520d1d9af27781bb5a93201ae04"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-grant/004-admin-no-governance.json",
+      "sha256": "e0420f0d642943a7f52400e27910c62a88b19c13bf2ffa02aa749ba7438100dc"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-host/001-inherited-failover.json",
+      "sha256": "112285da9018999225baa3f62731359df0876366c2474c9e23bf039d69ca0079"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-host/002-replace-retains-backstop.json",
+      "sha256": "f608495a1da5dcbab05297800e84bf391966966dccc64e7a4f2343f4ca7c8d59"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-host/003-no-backstop-rejected.json",
+      "sha256": "44fb96ea1b196ca1565c01fbd0edb759e3cfb382049186b061762b0a203a040d"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-joint/001-threshold-valid.json",
+      "sha256": "f987aa7492129c9daefd250a6ef5ba36eff0b948449d3b8a3fdb55652a288320"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-joint/002-host-not-authority.json",
+      "sha256": "2637062bfd2182d9f5c618e4d7b2170a5049f7eeb78f28e5f0e173f314384af2"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-key/001-full-history.json",
+      "sha256": "e71580b6f05b0874e1cb4c58ab7cb90b658017a4b2f97f739fec35418eefc374"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-key/002-from-admission-denied.json",
+      "sha256": "52b6311d4c930a4978f09f137aab9f8bb7ed3aca42b69a0228f993e46e42b83c"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-key/003-selected-snapshot.json",
+      "sha256": "c56e679b7c1b8415d58f609cd88ffd6f81efd9f23254825f0b81284f84150fdd"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-key/004-unauthorized-host.json",
+      "sha256": "604bab4c7ab64feffd20dc5fb1180b97c2262882f957f10aa688ed8133d47243"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-key/005-revoked-device.json",
+      "sha256": "2db290b6b0dd9b8b4f039352a2fe677496ba4264756276237d3a92c3f1332ec8"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-key/006-keypackage-readmission.json",
+      "sha256": "5fbca7db0f803e1efc5a519d247b9c14b9728f48d9662c9df86742ff82487a55"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-object/001-canonical-valid.json",
+      "sha256": "a70a30dad730f3eeb2012027769add9ad3b580adfe896917e4fe70187528cc6c"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-object/002-unknown-member-rejected.json",
+      "sha256": "c3895f95db08eba2197190e44b1dfd65bd89c8864bdc48727064f6ac4c6d5daf"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-object/003-signature-invalid.json",
+      "sha256": "e84e816deb812938cdd9754bb1167b07bc2b567122738ca15970eff2528da46f"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-policy/001-intersection-valid.json",
+      "sha256": "1dc6402ca1f32325721f9c36ff8f8eea9ea87c4346efc63ab472a17f7d76ae0d"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-policy/002-escalation-rejected.json",
+      "sha256": "ac58cf7babfa6bb9499d4fae32f38019ab4b1569081698dc72eea656b99a712a"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-policy/003-denial-wins.json",
+      "sha256": "a77f74a8ea56f985b0be25c11b244d1597ead0c915039c829c96d55af520a7ef"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-policy/004-conflict-rejected.json",
+      "sha256": "a9d2b6c6fd05ebf367efbd9da4464a42476d667b9f5de0c18e24990bea969b11"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-privacy/001-public-clean.json",
+      "sha256": "47e056d25d06ce2ea564c2a382eba93e3b87683b524fef9b06c17055dacbec62"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-privacy/002-concealed-correlation-rejected.json",
+      "sha256": "1d1795967b1a2dba732243415785ff119098d618c78d7e941bfeb70d0f3ac410"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-relationship/001-bilateral-valid.json",
+      "sha256": "7266e154f9230a5337922ca6122ea3d7168407024e68d92454b9c33364ac8014"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-relationship/002-grace-boundary.json",
+      "sha256": "d1ab9a1d25114a9480255396061449aed66ea29c5cdf85469e99451e10b688c9"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-relationship/003-stale-rejected.json",
+      "sha256": "8209e209b47bae3fad4e5ce27bc37b239431d3af678f5bf210f0245d89337af3"
+    },
+    {
+      "path": "docs/spec/vectors/workspace-relationship/004-mismatched-signatures.json",
+      "sha256": "35575460bfaeb9994444be778b8cc0ddbf6d439a1186f2473850018a756e1fef"
+    }
+  ]
+}

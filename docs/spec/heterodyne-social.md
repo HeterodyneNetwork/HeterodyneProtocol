@@ -20,8 +20,9 @@ feed assets, stable links, citations, public community presentation,
 moderation, and discovery. Private conversation and group-scoped content use
 Marmot under Comms.
 
-There is one `Social` conformance class. It requires the exact dependency
-versions above and every applicable section of this document.
+There is one `Social` conformance class. It follows the Core-defined layering
+closure and requires every claimed document to use the same family version,
+plus every applicable section of this document.
 
 <a id="social-interactions"></a>
 ## 2. Replies, reactions, threading, and mixed-tier fan-out

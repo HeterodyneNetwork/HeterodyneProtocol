@@ -20,6 +20,7 @@
     "key_epoch",
     "target_persona",
     "target_device",
+    "recipient",
     "role_id",
     "checkpoint_id",
     "host_id",
@@ -87,6 +88,23 @@
     "target_device": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
+    },
+    "recipient": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "const": "marmot-mls-leaf"
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$"
+        }
+      }
     },
     "role_id": {
       "type": "string",

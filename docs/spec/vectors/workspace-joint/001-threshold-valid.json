@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "workspace",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#workspace-relationships"
+    "heterodyne:workspace#workspace-relationships"
   ],
   "vector_id": "workspace-joint/threshold-valid",
   "description": "A separate joint workspace identity accepts its own delegate threshold.",

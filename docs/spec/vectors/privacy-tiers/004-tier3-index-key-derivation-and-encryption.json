@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-privacy-tiers"
+    "heterodyne:comms#comms-privacy-tiers"
   ],
   "vector_id": "privacy-tiers/tier3-index-key-derivation-and-encryption",
   "description": "Tier 3 kind:31007 index: index_key = HKDF-SHA256(audience_key, salt=key_id, info=heterodyne-index-key-v1, 32); content is NIP-44 v2 symmetric encryption of the index payload under index_key; relay-visible tags carry only heterodyne_wrap, key_id, cold_root and an opaque d.",

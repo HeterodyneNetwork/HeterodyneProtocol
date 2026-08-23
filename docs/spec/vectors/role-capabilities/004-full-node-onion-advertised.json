@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-node-roles"
+    "heterodyne:core#core-node-roles"
   ],
   "vector_id": "role-capabilities/full-node-onion-advertised",
   "description": "A full node is accepted when it has a persistent v3 onion service, Tor-default outbound backends, and the required feature set.",

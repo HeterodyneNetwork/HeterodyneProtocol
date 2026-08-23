@@ -3,7 +3,7 @@ import { nip19, nip44 } from "nostr-tools";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { canonicalNip01, getEventId, getPublicKey, signEvent, verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
 import { AUX_RAND, baseVector } from "./vector-helpers.js";
-import type { Fixtures } from "./fixtures.js";
+import { CURRENT_REGISTRY_SHA256, type Fixtures } from "./fixtures.js";
 import type { AuthoredVector, VectorDirection } from "./types.js";
 
 type Case = {
@@ -236,7 +236,10 @@ export async function buildSplitVectors(fixtures: Fixtures): Promise<AuthoredVec
         candidate_event: breadcrumbProfile,
         publication_relays: breadcrumbWriteRelays,
       },
-      expected_output: { verdict: "reject", reason_code: "compromise_rotation" },
+      expected_output: {
+        verdict: "reject",
+        reason_code: "compromise_rotation_breadcrumb_forbidden",
+      },
     },
     {
       path: "breadcrumbs/003-repointed-nip05-rejected.json",
@@ -301,48 +304,48 @@ const CASES: Case[] = [
   {
     path: "versioning/005-qualified-version-valid.json",
     vector_id: "versioning/qualified-version-valid",
-    description: "A qualified family version parses into its document and semver suffix.",
+    description: "A qualified family version parses into its semver suffix.",
     direction: "round-trip",
     input: { value: "heterodyne/0.5.0" },
-    expected_output: { valid: true, document: "comms", semver: "0.5.0" },
+    expected_output: { valid: true, semver: "0.5.0" },
   },
   {
     path: "versioning/006-qualified-version-unqualified-rejected.json",
     vector_id: "versioning/qualified-version-unqualified-rejected",
-    description: "An unqualified scalar semver is not a protocol-family document version.",
+    description: "Bare and document-qualified values are not family versions.",
     direction: "round-trip",
-    input: { value: "0.5.0" },
-    expected_output: { valid: false, error: "invalid_qualified_version" },
+    input: { values: ["0.5.0", "core/0.5.0"] },
+    expected_output: { valid: false, error: "invalid_family_version" },
   },
   {
     path: "versioning/007-core-capability-bootstrap.json",
     vector_id: "versioning/core-capability-bootstrap",
-    description: "The Core capability descriptor is discoverable without a higher-document carrier.",
-    input: { descriptor: "heterodyne-capabilities-v1", bootstrap_version: "heterodyne/0.5.0", profile_revision: 1 },
-    expected_output: { verdict: "accept", normalized: { bootstrap_owner: "core", higher_carrier_required: false } },
+    description: "The complete Core capability bootstrap object is accepted without a higher-document carrier.",
+    input: { descriptor: "heterodyne-capabilities-v1", spec_version: "heterodyne/0.5.0", registry_sha256: CURRENT_REGISTRY_SHA256, implementation_role: "public-reader", supported_documents: ["core"], required_features: ["core.nostr-relay-read.v1"], strict_profiles: [] },
+    expected_output: { verdict: "accept", normalized: { bootstrap_owner: "core", higher_carrier_required: false, family_version: "heterodyne/0.5.0" } },
   },
   {
-    path: "versioning/008-per-document-negotiation.json",
-    vector_id: "versioning/per-document-negotiation",
-    description: "Peers negotiate each document version independently before using its stamp.",
-    input: { local: { core: ["heterodyne/0.5.0"], comms: ["heterodyne/0.5.0"] }, remote: { core: ["heterodyne/0.5.0"], comms: [] } },
-    expected_output: { verdict: "accept", normalized: { core: "heterodyne/0.5.0", comms: null, may_stamp_comms: false } },
+    path: "versioning/008-exact-family-version-negotiation.json",
+    vector_id: "versioning/exact-family-version-negotiation",
+    description: "Peers select one exact family version before sending stamped events.",
+    input: { local: ["heterodyne/0.5.0"], remote: ["heterodyne/0.5.0"] },
+    expected_output: { verdict: "accept", normalized: { selected_version: "heterodyne/0.5.0" } },
   },
   {
     path: "versioning/009-unknown-asynchronous-stamp-rejected.json",
     vector_id: "versioning/unknown-asynchronous-stamp-rejected",
-    description: "An unsupported asynchronous owner stamp is rejected without presumed negotiation.",
-    input: { received_stamp: "comms/9.0.0", negotiated_session: false, degraded_mode_declared: false },
-    expected_output: { verdict: "reject", reason_code: "unknown_major_version" },
+    description: "An unsupported non-future-major asynchronous family stamp is rejected without presumed negotiation.",
+    input: { received_stamp: "heterodyne/0.4.0", negotiated_session: false, degraded_mode_declared: false },
+    expected_output: { verdict: "reject", reason_code: "version_stamp_invalid" },
   },
   ...profileCases(),
   ...stampCases(),
   {
     path: "registry/001-downref-nonfrozen-rejected.json",
     vector_id: "registry/downref-nonfrozen-rejected",
-    description: "A 1.0 document cannot require a non-frozen registry entry.",
+    description: "A 1.0 family release cannot require a non-frozen registry entry.",
     direction: "round-trip",
-    input: { document_version: "core/1.0.0", required_entry_status: "stable" },
+    input: { family_version: "heterodyne/1.0.0", required_entry_status: "stable" },
     expected_output: { valid: false, error: "requires_frozen_registry_entry" },
   },
   {
@@ -414,12 +417,12 @@ function profileCases(): Case[] {
 
 function stampCases(): Case[] {
   const values: Array<[string, string, Record<string, unknown>, Record<string, unknown>]> = [
-    ["001-heterodyne-json-content-owner", "heterodyne-json-content-owner", { kind: 31003, content_is_heterodyne_json: true, content: { spec_version: "heterodyne/0.5.0" } }, { owner: "core", placement: "content.spec_version" }],
-    ["002-heterodyne-empty-content-tag-owner", "heterodyne-empty-content-tag-owner", { kind: 31001, content_is_heterodyne_json: false }, { owner: "core", placement: "tag" }],
+    ["001-heterodyne-json-content-owner", "heterodyne-json-content-owner", { kind: 31003, content_is_heterodyne_json: true, content: { spec_version: "heterodyne/0.5.0" } }, { owner: "core", placement: "content.spec_version", value: "heterodyne/0.5.0" }],
+    ["002-heterodyne-empty-content-tag-owner", "heterodyne-empty-content-tag-owner", { kind: 31001, content_is_heterodyne_json: false, tags: [["spec_version", "heterodyne/0.5.0"]] }, { owner: "core", placement: "tag", value: "heterodyne/0.5.0" }],
     ["003-upstream-unstamped", "upstream-unstamped", { kind: 10000 }, { owner: null, placement: null }],
-    ["004-upstream-profile-owner", "upstream-profile-owner", { kind: 10000, profile_id: "heterodyne-social-mute-list-v1" }, { owner: "social", placement: "tag" }],
+    ["004-upstream-profile-owner", "upstream-profile-owner", { kind: 10000, profile_id: "heterodyne-social-mute-list-v1", tags: [["spec_version", "heterodyne/0.5.0"]] }, { owner: "social", placement: "tag", value: "heterodyne/0.5.0" }],
     ["005-non-stamping-profile-unchanged", "non-stamping-profile-unchanged", { kind: 0, profile_id: "heterodyne-core-rotation-breadcrumb-profile-v1" }, { owner: null, bytes_changed: false }],
-    ["006-tier3-profile-owner", "tier3-profile-owner", { kind: 1, profile_id: "heterodyne-comms-tier3-wrapped-content-kind-1-v1", content_is_heterodyne_json: false }, { owner: "comms", placement: "tag" }],
+    ["006-tier3-profile-owner", "tier3-profile-owner", { kind: 1, profile_id: "heterodyne-comms-tier3-wrapped-content-kind-1-v1", content_is_heterodyne_json: false, tags: [["spec_version", "heterodyne/0.5.0"]] }, { owner: "comms", placement: "tag", value: "heterodyne/0.5.0" }],
   ];
   return values.map(([file, id, input, expected_output]) => ({
     path: `stamping/${file}.json`,

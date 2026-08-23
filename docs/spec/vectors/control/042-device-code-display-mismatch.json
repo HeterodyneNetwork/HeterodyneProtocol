@@ -1,10 +1,9 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "control",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-control-marmot-frame-v1",
   "spec_refs": [
-    "heterodyne:0.5.0#control-device-authorization"
+    "heterodyne:control#control-device-authorization"
   ],
   "vector_id": "control/device-code-display-mismatch",
   "description": "OAuth Device Authorization decision: device-code-display-mismatch.",

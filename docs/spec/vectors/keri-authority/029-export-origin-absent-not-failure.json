@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-keri-export"
+    "heterodyne:core#core-keri-export"
   ],
   "vector_id": "keri-authority/export-origin-absent-not-failure",
   "description": "With no operator web origin configured, a full node still produces the origin-independent export package (the export AID's CESR stream plus the anchored-digest map). The absence of did:webs artifacts (did.json, keri.cesr, the did:webs identifier) is NOT an export failure.",

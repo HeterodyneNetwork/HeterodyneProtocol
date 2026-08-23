@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-config-repository"
+    "heterodyne:comms#comms-config-repository"
   ],
   "vector_id": "config-backup/key-rotation-ref-delta",
   "description": "On audience-key rotation the publisher creates enc/<key_id'>, force-deletes the retired enc/<key_id>, and publishes updated signed refs; the retired branch is absent from the new signed ref set.",

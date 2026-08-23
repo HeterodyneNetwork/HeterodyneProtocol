@@ -13,7 +13,7 @@ This review used `semble` semantic searches across the specification and researc
 ## 1. High Priority Gaps & Inconsistencies
 
 ### 1.1 Normative Vector Drift from 0.5.0 Specifications
-**Observation:** The specification mandates byte-exact canonicalization and strict schema enforcement. However, the normative test vectors (specifically `keri/*` and `fixtures.json`) do not reflect the Core 0.5.0 requirements. 
+**Observation:** The specification mandates byte-exact canonicalization and strict schema enforcement. However, the normative test vectors (specifically `keri/*` and `fixtures.json`) do not reflect the Core 0.5.0 requirements.
 - The `inception` and `delegation` fixtures lack the mandatory `["spec_version", "core/0.5.0"]` tags required by Core §3.2.
 - The rotation fixture carries `content: "[]"`, which violates Core §4.3's requirement of `{"spec_version":"core/0.5.0","receipts":[...]}`.
 **Impact:** A strict conformant implementation will fail the normative test vectors, because the vectors test against legacy-inferable or invalid formats rather than pure 0.5.0 bytes.

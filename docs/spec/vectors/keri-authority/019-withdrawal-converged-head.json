@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-kel-verification"
+    "heterodyne:core#core-kel-verification"
   ],
   "vector_id": "keri-authority/withdrawal-converged-head",
   "description": "Convergence-gated withdrawal: a provisional KEL event at seq 2 is withdrawn once the verified repo-carried head reaches seq 3 (>= 2) and the event at seq 2 differs from the provisional one. The hash chain makes seq a true causality marker.",

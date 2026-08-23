@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-kel-rotation"
+    "heterodyne:core#core-kel-rotation"
   ],
   "vector_id": "breadcrumbs/compromise-rotation-not-produced",
   "description": "A compromise-driven rotation cannot produce a trustworthy old-key breadcrumb profile.",

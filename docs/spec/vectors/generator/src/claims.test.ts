@@ -1356,8 +1356,8 @@ describe("normative claim vector authoring", () => {
     expect(revocationMutations.map(({ name }) => name)).toEqual([
       "revocation-extra-tag-after", "revocation-extra-tag-before", "revocation-duplicate-d",
       "revocation-malformed-d", "revocation-misordered-d", "missing-spec-version",
-      "legacy-comms-version", "missing-registry-revision", "wrong-spec-version",
-      "wrong-registry-revision",
+      "legacy-comms-version", "missing-profile-revision", "wrong-spec-version",
+      "wrong-profile-revision",
     ]);
     const jwkMutations = byId.get("claims/canonical-jwk-thumbprint-subject")!
       .input.jwk_rejection_mutations as Array<{

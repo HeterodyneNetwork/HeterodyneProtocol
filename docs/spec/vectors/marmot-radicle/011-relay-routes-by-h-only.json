@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-marmot-relay"
+    "heterodyne:comms#comms-marmot-relay"
   ],
   "vector_id": "marmot-radicle/relay-routes-by-h-only",
   "description": "A Radicle-backed relay routes by h without group identity, membership, static repository, or MLS epoch knowledge.",

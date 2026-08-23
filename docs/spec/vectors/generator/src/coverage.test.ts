@@ -28,9 +28,9 @@ describe("family coverage", () => {
       [...coverage.map(({ vector_id }) => vector_id)].sort(),
     );
     expect(new Set(coverage.map(({ vector_id }) => vector_id)).size).toBe(vectors.length);
-    expect(coverage.every(({ spec_version }) => spec_version === "heterodyne/0.5.0")).toBe(true);
-    expect(coverage.filter(({ owner_document }) => owner_document === "control")).toHaveLength(51);
-    expect(coverage.filter(({ owner_document }) => owner_document === "workspace")).toHaveLength(39);
+    expect(coverage.every((entry) => !Object.hasOwn(entry, "spec_version"))).toBe(true);
+    expect(coverage.filter(({ owner_document }) => owner_document === "control")).toHaveLength(66);
+    expect(coverage.filter(({ owner_document }) => owner_document === "workspace")).toHaveLength(40);
     expect(coverage).toContainEqual(expect.objectContaining({
       vector_id: "control/invitation-enrollment-only",
       profile: "heterodyne-control-marmot-frame-v1",
@@ -45,6 +45,20 @@ describe("family coverage", () => {
     expect(PENDING_PROFILE_IDS).toEqual([]);
     expect(INACTIVE_PROFILE_IDS).toEqual([]);
   }, 30_000);
+
+  it("keeps qualified snapshot references without adding version metadata", () => {
+    const coverage = buildCoverage([{
+      vector_id: "identity/example",
+      owner_document: "core",
+      spec_refs: ["heterodyne:core#core-root-attestation"],
+    }]);
+
+    expect(coverage).toEqual([{
+      vector_id: "identity/example",
+      owner_document: "core",
+      spec_refs: ["heterodyne:core#core-root-attestation"],
+    }]);
+  });
 
   it("rejects an unlisted uncovered profile", async () => {
     const coverage = buildCoverage(

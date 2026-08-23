@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#social-moderation"
+    "heterodyne:social#social-moderation"
   ],
   "vector_id": "moderation/contributor-implicit-rejection-window",
   "description": "A contributor submission remains pending until the seven-day implicit-rejection window elapses.",

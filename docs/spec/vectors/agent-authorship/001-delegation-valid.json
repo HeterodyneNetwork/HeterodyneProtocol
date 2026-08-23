@@ -1,10 +1,9 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-comms-agent-signing-delegation-v1",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-agent-delegation"
+    "heterodyne:comms#comms-agent-delegation"
   ],
   "vector_id": "agent-authorship/delegation-valid",
   "description": "A complete Core-stamped agent role delegation verifies the epoch, NID, and dedicated role-key proofs over one exact binding.",

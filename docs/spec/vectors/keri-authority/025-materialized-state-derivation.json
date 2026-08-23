@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-materialized-kel"
+    "heterodyne:core#core-materialized-kel"
   ],
   "vector_id": "keri-authority/materialized-state-derivation",
   "description": "refs/xyz.heterodyne.keri/state derivation: each state commit's tree holds one entry mode 100644 path state.json, the key state after applying the log event, canonicalized per RFC 8785 (JCS) against the §10.1.2 schema. Parents are, in order, the prior state commit then the producing log commit; the first state commit has the inception log commit as sole parent.",

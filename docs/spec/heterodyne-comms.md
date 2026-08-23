@@ -104,7 +104,7 @@ timing, size, count, publication, and fetch-cadence metadata.
 
 An audience key is one
 [`heterodyne:0.5.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
-key generation. Comms supplies the four instantiation choices that primitive
+key generation. Comms supplies the five instantiation choices that primitive
 requires and adds nothing else to its distribution and rotation rules:
 
 | Choice | Comms value |
@@ -113,6 +113,7 @@ requires and adds nothing else to its distribution and rotation rules:
 | Reference and wrapping | `nostr-secp256k1`, NIP-44 wrapped to the device publishing key |
 | Carrier | one `kind:31011` per recipient, with the replaceable `kind:31012` roster |
 | Generation identifier | opaque `key_id` |
+| Extra rotation triggers | `none` |
 
 An audience key is 32 uniformly random bytes. A narrowing policy MUST NOT add
 an inactive, revoked, unverified, non-device, cold-root, or epoch key. The same
@@ -1184,7 +1185,7 @@ with them only as encrypted repository records and MUST report them as
 non-claimable drafts.
 
 <a id="comms-control-registry"></a>
-## 9. Private Control registry and token projection
+## 9. Private Control registry integration
 
 Each persona has an encrypted private Radicle Control registry shared by
 authorized full nodes. It is logically separate from public device metadata
@@ -1212,40 +1213,8 @@ and validating that commit. Another node acts only after fetching and
 validating the record and approving authority. The repository is evidence
 replication, not distributed consensus or a cross-node execution lock.
 
-<a id="comms-control-token"></a>
-### 9.1 Node-scoped JWT projection
-
-This section is `comms.node-scoped-jwt.v1` and stands alone. It requires no
-HTTPS discovery, no published JWKS, no continuity manifest, and no status
-list: a node that only issues tokens its own resource will consume needs
-nothing from §§12-14.
-
-Each full node is an independent RFC 9068 issuer for its exact Control
-resource. Issuer signing keys MUST remain node-local. Authenticated issuer
-public state in the private Control registry binds the issuer URL, current
-JWKs, node device key, exact resource audience, validity interval, and
-predecessor.
-
-A Control token has protected `typ` exactly `at+jwt`, all mandatory RFC
-9068 claims, `cnf.jkt`, the exact Marmot group, client class, authorization
-record, private-registry checkpoint, methods, objects, finite limits, and
-optional agent role. Its audience names only the issuing node. Another full
-node MUST reject it and issue a new token after independently validating the
-same persona-wide entitlement.
-
-For Marmot carriage the authenticated sender account and MLS sender leaf are
-the proof bound to `cnf.jkt`; Comms MUST NOT invent HTTP method or URI values.
-A separately exposed HTTPS endpoint may apply RFC 9449. The default lifetime
-is five minutes. A separately consented `control.token.extended` grant may
-increase it, but no token may exceed sixty minutes. No refresh token is
-issued.
-
-Every request rechecks current entitlement. A projected token never replaces
-private repository authority. Once revocation is observed, every associated
-token fails regardless of its remaining `exp`.
-
 <a id="comms-control-bootstrap"></a>
-### 9.2 Locked epoch inbox and recovery records
+### 9.1 Locked epoch inbox and recovery records
 
 The epoch-key NIP-59 inbox exists only for prospective full/recovery-node
 registration when no authorized device Control channel is available. Public
@@ -1265,7 +1234,7 @@ Private-Radicle recovery and SFTP overflow are optional Control profiles.
 Neither is a prerequisite for Comms or baseline Control conformance.
 
 <a id="comms-authorization-freshness"></a>
-### 9.3 Authorization-view freshness
+### 9.2 Authorization-view freshness
 
 This bound governs every Comms-derived authorization decision and every
 document that composes one; no other document restates it.
@@ -1482,13 +1451,14 @@ reachable from canonical state remains provisional.
 
 The dedicated ledger audience key is a second
 [`heterodyne:0.5.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
-instantiation: its recipient set is the `active` `claim-ledger-reader`
-authorizations, its recipients are named by `radicle-ed25519-nid`, its carrier
-is the private repository, and its generation identifier is a `key_id`. Reader
-removal is the Core removal rotation with three Comms additions performed in
-order: record the authority reduction, remove Radicle access, and, after the
-rotation, advance the checkpoint and retire prior ciphertext under the
-cooperative scrub profile.
+instantiation. Its five choices are: the recipient set is the `active`
+`claim-ledger-reader` authorizations; the reference and wrapping profile are
+`radicle-ed25519-nid` and `heterodyne-claim-ledger-key-wrap-v1`; the carrier is
+the private repository; the generation identifier is a `key_id`; and the
+extra rotation trigger is `none`. Reader removal is the Core removal rotation
+with three Comms additions performed in order: record the authority reduction,
+remove Radicle access, and, after the rotation, advance the checkpoint and
+retire prior ciphertext under the cooperative scrub profile.
 
 <a id="comms-multiwriter-minting"></a>
 ### 11.1 Multi-writer minting and issuer-key confinement
@@ -1498,19 +1468,23 @@ authorized writer can mint. A node may mint for the persona only when it has
 all three of: a separately envelope-encrypted usable signing JWK, an `active`
 `oidc-token-issuer` claim, and a canonical checkpoint whose age is within the
 continuity manifest bound. That bound MUST NOT exceed the window in
-[§9.3](#comms-authorization-freshness). Loss or reduction of any condition
+[§9.2](#comms-authorization-freshness). Loss or reduction of any condition
 stops minting immediately.
 
 The signing key MUST NOT be encrypted by or released merely with the ledger
 audience key. It is a third
 [`heterodyne:0.5.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
-instantiation whose recipient set is the NIDs holding active
-`oidc-token-issuer` authority, named by `radicle-ed25519-nid`, carried in the
-private repository under a monotonic key epoch. Beyond the members Core
-requires, its envelope binds the credential-ledger generation, the JWK
-thumbprint, and the exact active issuer-authority record set. Removing an
-issuer is the Core removal rotation. A node MUST unwrap only after replaying
-the exact bound authority set, generation, and checkpoint.
+instantiation. Its five choices are: the recipient set is the NIDs holding
+active `oidc-token-issuer` authority; the reference and wrapping profile are
+`radicle-ed25519-nid` and `heterodyne-oidc-issuer-key-wrap-v1`; the carrier is
+the private repository; the generation identifier is a monotonic `key_epoch`
+scoped to the stable `credential_ledger_persona` identifier; and the extra
+rotation triggers are routine issuer-signing-key rotation and shared-key
+compromise. Beyond the members Core requires, its envelope binds the
+credential-ledger generation, the JWK thumbprint, and the exact active
+issuer-authority record set. Removing an issuer is the Core removal rotation.
+A node MUST unwrap only after replaying the exact bound authority set,
+generation, and checkpoint.
 
 Before returning a JWT, a writer durably commits an issuance reservation with
 credential-ledger generation, `jti`, client and request/release digests,
@@ -1892,35 +1866,25 @@ personas. An optional software, vendor, model, or pipeline claim is descriptive
 only and grants no authority.
 
 <a id="comms-agent-token"></a>
-### 15.3 Sender-constrained workload token
+### 15.3 Third-party OIDC workload projection
 
-Marmot Control is the standard issuance carrier, but token construction,
-validation, and private-ledger authority remain Comms semantics and create no
-Comms dependency on Control. After an initialized agent profile and validated
-Marmot account binding, an authorized built-in issuer returns the node-scoped
-RFC 9068 access token defined by §9.1 with:
+When `comms.oidc-jwt-projection.v1` is enabled, an authorized issuer MAY
+project an active workload registration to an ordinary third-party resource
+server as the RFC 9068 access token defined by §12.2. This is an interoperable
+projection of private-ledger authority, not a node-local command credential.
+In addition to the generic §12.2 claims, it carries
+`https://heterodyne.network/jwt/agent-role-id` equal to the registration's one
+role. Its exact `aud` and normalized `scope` MUST be allowed by that workload
+registration and the compatible client registration and consent.
 
-- protected `typ` exactly `at+jwt`;
-- `iss`, pairwise `sub`, one exact `aud`, `exp`, `iat`, collision-resistant
-  `jti`, `client_id`, normalized `scope`, `credential_ledger_persona`, and
-  `credential_ledger_generation`;
-- mandatory `cnf.jkt`;
-- the existing ledger-checkpoint and status-mirror bindings; and
-- `https://heterodyne.network/jwt/agent-role-id` equal to the one registered
-  role.
-
-The default lifetime is five minutes; an explicitly consented
-`control.token.extended` capability may permit up to sixty minutes. The token
-MUST issue no refresh token and MUST NOT outlive its Control group binding,
-workload registration, consent, or source authorization. It authorizes only
-registered scopes and resources. Every side effect authenticates the Marmot
-sender whose JWK thumbprint equals `cnf.jkt` and binds the token `jti`, group,
-request and operation IDs, method, and canonical payload digest.
-
-Before authorizing an intent, the full node MUST validate exact issuer,
-subject, audience, client, scope, role, time, signature, Control-group binding,
-ledger checkpoint, status binding, source claims, and authenticated sender. A
-projected JWT never replaces canonical private-ledger state. Client
+If the client registration selects sender constraint, the token uses only the
+standard DPoP or mutual-TLS confirmation form defined by §12.2. Its validity
+MUST NOT outlive the workload registration, consent, source authorization, or
+the issuer's applicable third-party token policy. Before claim use, a resource
+server validates the complete §12.2 type, issuer, audience, signature, time,
+client, scope, confirmation, checkpoint, status, and source-claim contract,
+plus exact equality between the projected role and current registration.
+A projected JWT never replaces canonical private-ledger state. Client
 Credentials remains prohibited; a separately integrated sender-constrained
 HTTPS workload profile is required before that grant can be added.
 
@@ -2083,11 +2047,11 @@ and every baseline Comms invariant. One that advertises DMs MUST implement all
 applicable Marmot rules in §7. Transport-independent credential-continuity
 definitions remain non-claimable at the pinned registry revision.
 
-Typed key claims, the private claim ledger, node-scoped JWTs, the OIDC issuer,
-token status, the public reader, Marmot conversations, Radicle Marmot storage
-and relays, and agent authorship are each a separately claimed feature, not an
-entry requirement. A base Comms implementation therefore does not need an
-RFC 9068 issuer, JWKS discovery, a continuity manifest, or status lists. The
+Typed key claims, the private claim ledger, the OIDC issuer, token status, the
+public reader, Marmot conversations, Radicle Marmot storage and relays, and
+agent authorship are each a separately claimed feature, not an entry
+requirement. A base Comms implementation therefore does not need an RFC 9068
+issuer, JWKS discovery, a continuity manifest, or status lists. The
 invariant scoping in
 [`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope) governs what each
 claim owes. `comms.oidc-jwt-projection.v1` becomes mandatory exactly when an

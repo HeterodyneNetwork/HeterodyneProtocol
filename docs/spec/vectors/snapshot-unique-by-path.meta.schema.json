@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heterodyne.network/schemas/unique-by-path-v1.meta.schema.json",
+  "$dynamicAnchor": "meta",
+  "title": "Heterodyne unique-by-path vocabulary meta-schema",
+  "description": "Defines the required x-unique-by assertion vocabulary. Version 1 is closed to the path property and reserves all x-* keywords in this dialect.",
+  "type": [
+    "object",
+    "boolean"
+  ],
+  "properties": {
+    "x-unique-by": {
+      "const": "path",
+      "description": "Requires array entries to have pairwise-distinct path property values."
+    }
+  },
+  "patternProperties": {
+    "^x-(?!unique-by$)": false
+  }
+}

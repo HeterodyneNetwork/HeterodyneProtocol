@@ -1,10 +1,9 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "control",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-control-marmot-frame-v1",
   "spec_refs": [
-    "heterodyne:0.5.0#control-entitlement"
+    "heterodyne:control#control-entitlement"
   ],
   "vector_id": "control/entitlement-revocation-absorbing",
   "description": "Private Control entitlement decision: entitlement-revocation-absorbing.",

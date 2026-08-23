@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-agent-token"
+    "heterodyne:comms#comms-agent-token"
   ],
   "vector_id": "agent-authorship/token-role-mismatch",
   "description": "The sender-constrained workload-token decision is token-role-mismatch.",

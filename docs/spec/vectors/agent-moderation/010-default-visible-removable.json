@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#social-agent-policy-list"
+    "heterodyne:social#social-agent-policy-list"
   ],
   "vector_id": "agent-moderation/default-visible-removable",
   "description": "A default policy subscription is conforming only when its source is visible and the user can disable it.",

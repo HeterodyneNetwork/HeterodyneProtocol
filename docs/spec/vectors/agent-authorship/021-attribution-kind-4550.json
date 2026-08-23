@@ -1,10 +1,9 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-comms-agent-attribution-kind-4550-v1",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-agent-attribution"
+    "heterodyne:comms#comms-agent-attribution"
   ],
   "vector_id": "agent-authorship/attribution-kind-4550",
   "description": "A deterministic kind:4550 role-key-signed event carries the exact ordered canonical agent attribution profile.",

@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-feed-index"
+    "heterodyne:comms#comms-feed-index"
   ],
   "vector_id": "index/prev-page-hash",
   "description": "prev_page_hash links each feed-index page to the canonical bytes of the previous page.",

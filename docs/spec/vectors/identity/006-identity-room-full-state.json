@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#social-identity-room"
+    "heterodyne:social#social-identity-room"
   ],
   "vector_id": "identity/identity-room-full-state",
   "description": "Identity room full state exposes root, delegation, KERI, and pointer facts.",

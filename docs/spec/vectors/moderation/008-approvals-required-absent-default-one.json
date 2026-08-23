@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#social-moderation"
+    "heterodyne:social#social-moderation"
   ],
   "vector_id": "moderation/approvals-required-absent-default-one",
   "description": "A kind:34550 community definition with no approvals_required tag defaults the threshold to 1.",

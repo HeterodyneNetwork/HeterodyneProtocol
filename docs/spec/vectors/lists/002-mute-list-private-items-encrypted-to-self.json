@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#social-lists"
+    "heterodyne:social#social-lists"
   ],
   "vector_id": "lists/mute-list-private-items-encrypted-to-self",
   "description": "NIP-51 kind:10000 mute list carrying private items: a JSON array of tag-shaped arrays, NIP-44 v2 encrypted-to-self under the persona's current epoch key, in content alongside the public tags.",

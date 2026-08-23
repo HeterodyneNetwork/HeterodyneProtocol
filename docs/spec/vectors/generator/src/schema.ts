@@ -34,6 +34,59 @@ export const VECTOR_SCHEMA = {
     owner_document: { type: "string", enum: ["core", "comms", "control", "social", "workspace"] },
     spec_version: { type: "string", const: QUALIFIED_VERSION },
     profile: { type: "string", minLength: 1 },
+    conformance_checks: {
+      type: "array",
+      uniqueItems: true,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "profile",
+          "event_pointer",
+          "nip01_raw_pointer",
+          "expected_terminal_stage",
+        ],
+        properties: {
+          profile: { const: "core-signed-event-v1" },
+          event_pointer: { type: "string", pattern: "^(?:/(?:[^~/]|~[01])*)+$" },
+          nip01_raw_pointer: { type: "string", pattern: "^(?:/(?:[^~/]|~[01])*)+$" },
+          context_pointer: { type: "string", pattern: "^(?:/(?:[^~/]|~[01])*)+$" },
+          expected_terminal_stage: {
+            type: "string",
+            enum: [
+              "event_structure",
+              "nip01_raw",
+              "identifier",
+              "signature",
+              "persona_resolution",
+              "version_stamp",
+              "kel_head",
+              "epoch_authority",
+              "subtype_nid",
+              "accept",
+            ],
+          },
+        },
+        allOf: [{
+          if: {
+            properties: {
+              expected_terminal_stage: {
+                enum: [
+                  "persona_resolution",
+                  "version_stamp",
+                  "kel_head",
+                  "epoch_authority",
+                  "subtype_nid",
+                  "accept",
+                ],
+              },
+            },
+            required: ["expected_terminal_stage"],
+          },
+          then: { required: ["context_pointer"] },
+        }],
+      },
+    },
     spec_refs: {
       type: "array",
       minItems: 1,
@@ -52,7 +105,6 @@ export const VECTOR_SCHEMA = {
     {
       if: {
         properties: {
-          direction: { const: "consume" },
           expected_output: {
             type: "object",
             properties: {
@@ -61,7 +113,7 @@ export const VECTOR_SCHEMA = {
             required: ["verdict"],
           },
         },
-        required: ["direction", "expected_output"],
+        required: ["expected_output"],
       },
       then: {
         properties: {

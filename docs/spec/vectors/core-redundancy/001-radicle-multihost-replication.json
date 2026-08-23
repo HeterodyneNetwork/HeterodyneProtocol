@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-multi-host-seeding"
+    "heterodyne:core#core-multi-host-seeding"
   ],
   "vector_id": "core-redundancy/radicle-multihost-replication",
   "description": "Two independent Radicle seeds replicate the same signed canonical repository head.",

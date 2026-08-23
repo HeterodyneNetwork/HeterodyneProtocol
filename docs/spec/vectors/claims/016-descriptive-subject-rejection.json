@@ -1,10 +1,9 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "profile": "heterodyne-comms-claim-revocation-radicle-ed25519-v1",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-claim-revocation"
+    "heterodyne:comms#comms-claim-revocation"
   ],
   "vector_id": "claims/descriptive-subject-rejection",
   "description": "A named Radicle Ed25519 revoker can revoke a descriptive assertion; the subject's separately signed rejection preserves the original provenance rather than erasing it.",

@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-marmot-exact-bytes"
+    "heterodyne:comms#comms-marmot-exact-bytes"
   ],
   "vector_id": "marmot-radicle/media-exact-bytes",
   "description": "Every advertised media interface returns the same encrypted-media v2 ciphertext.",

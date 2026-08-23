@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-registry"
+    "heterodyne:core#core-registry"
   ],
   "vector_id": "registry/feature-dependency-unprovided-rejected",
   "description": "A catalog entry does not satisfy a required feature unless the exact dependency release provides it.",

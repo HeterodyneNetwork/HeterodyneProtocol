@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-kel-rotation"
+    "heterodyne:core#core-kel-rotation"
   ],
   "vector_id": "breadcrumbs/unrelated-successor-rejected",
   "description": "A retiring key that points at another persona's epoch key is not a conforming v1 breadcrumb producer workflow.",

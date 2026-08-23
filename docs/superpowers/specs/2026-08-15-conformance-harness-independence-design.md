@@ -1,373 +1,459 @@
-# Conformance Harness Independence Design
+# Conformance Harness Independence and CI Design
 
-**Date:** 2026-08-15
-**Status:** Approved for implementation planning; amended 2026-08-15 after the
-per-document versioning machinery was deleted
-**Protocol owners:** Core (registry and reason codes only)
-**Registry target:** revision 10
-**Decision record:** ADR-045
-
-> **Amendment.** This design was written against five per-document version
-> lineages, per-document release manifests, and a `registry/history/` snapshot
-> chain. All three are gone: there is one family version `heterodyne/0.5.0`,
-> one registry pin in `registry/manifest.json`, and no history directory until
-> it restarts at 1.0. The gate rules and key forms below are corrected for
-> that. The `fixtures.json` corrections this design specified are already
-> applied, and seven structural checks landed in `docs-lint.ts` ahead of the
-> harness; see "Already live" below.
+**Date:** 2026-08-15<br>
+**Reconciled:** 2026-08-19<br>
+**Status:** Approved for implementation planning<br>
+**Protocol owners:** Core for registry reason codes, vector metadata, and the
+verification contract<br>
+**Registry transition:** revision 12 to revision 13<br>
+**Decision record:** ADR-045, proposed during implementation and archived only
+after the integrated patch passes
 
 ## Goal
 
-Give the specification family an executable conformance harness that is
-independent of the vector generator, that fails closed on the classes of drift
-a 2026-08-14 manual review found, and that runs as an acceptance gate on every
-inbound patch.
+Build an executable conformance harness that is independent of the vector
+generator, fails closed on specification/artifact drift, ratchets known debt
+without allowing silent growth, and runs as the same acceptance gate for
+GitHub and Radicle patches.
 
-This is track 4 of a four-track remediation. It ships first because it
-converts the remaining findings from prose into enforced, counted debt. Tracks
-1 through 3 then burn that debt down against a harness that cannot silently
-lose ground.
+This is continuous-delivery readiness, not deployment. The implementation does
+not publish packages or reports, create a release, push a tag, or mutate a
+remote repository setting.
 
-## Motivation
+## Current baseline
 
-Both existing verification commands pass on the current tree. Neither detects
-any of the following, all confirmed by hand:
+The repository now has one family version, `heterodyne/0.5.0`; one registry
+manifest at revision 12; one family release manifest; and 498 normative vector
+files. The generator package authors and byte-compares those vectors, validates
+the family and release manifest, and runs 540 tests. It still checks generated
+output largely against itself and has no independent subject boundary.
 
-- three vectors expect reason codes absent from the registry and from every
-  specification document;
-- three vectors cite specification anchors that no longer exist;
-- `vectors/fixtures.json` declares `registry_revision: 1`, omits `workspace`
-  from `document_versions`, and still carries `matrix_rooms` from the retired
-  room architecture;
-- twelve registered security invariants belong to no strict profile, including
-  the two Control invariants that keep automated principals away from persona
-  keys;
-- 83 of 184 normative anchors have no vector, while Core §14 asserts the
-  minimum set covers version negotiation and every Core invariant;
-- 94 of the 99 vector files that embed signed events omit the sibling
-  `nip01_raw` that Core §3.1 makes mandatory.
-
-The decisive evidence is historical. The ADR-037 design of 2026-07-31 already
-recorded "Verifier independence: regeneration compares the generator with
-itself" and "Stale Matrix artifacts: remove them from the current corpus." The
-first was resolved as an either/or that produced the `evidence_classification`
-escape hatch now used by seven KERI vectors. The second was applied to the
-vector corpus but never to `fixtures.json`, which still carries `matrix_rooms`
-after seven subsequent decision cycles, ADR-038 through ADR-044, none of which
-noticed. An accepted remediation eroded because nothing was watching. Fixes
-without gates do not hold.
-
-A second motivation is forward-looking. The intended end state is a reference
-client plus forkable Radicle repositories that third parties use to
-demonstrate interoperability. That requires a runner which consumes only
-published artifacts and accepts a pluggable subject under test. Building it now
-means the gates and the future interoperability kit are the same program.
+The prior design predated the single-family stabilization. Its revision-10
+target, per-document release assumptions, old vector count, and fixed debt
+counts are obsolete. Its proposed data corrections have already landed, and
+several structural checks are already present in the generator's
+`docs-lint.ts`. No `docs/spec/conformance/`, shared CI script, GitHub workflow,
+or Radicle job exists on the reconciled baseline.
 
 ## Scope
 
-In scope: a new independent conformance package, its gate suite, the ratchet
-mechanism, registry revision 10 for four reason codes, the minimal Core prose
-edits that revision requires, the data corrections needed to keep day-one
-baselines small, and the patch-time CI gate on both intake paths.
+In scope:
 
-Out of scope and deferred, with the track that owns each:
+- a standalone TypeScript conformance package with no imports to or from the
+  vector generator;
+- corpus-wide static gates over committed specifications, registry entries,
+  schemas, fixtures, release metadata, and all normative vectors;
+- explicit per-vector declarations for the Core signed-event cases executed by
+  the initial reference subject;
+- ratcheted baselines and deterministic report projections;
+- registry revision 13 and its coupled Core/vector changes;
+- one shared CI job used by GitHub Actions and Radicle; and
+- repository guidance requiring green CI before integration.
 
-| Deferred finding | Track |
-|---|---|
-| Registry-revision drift in Core §3 and §12.1; duplicate §6.1.3; three semantic cross-references; `workspace` missing from Core's version grammar; "five feature IDs"; strict-fixture shape inconsistency | 1 |
-| kind:10000 double allocation; twelve orphan invariants; Comms/Control token-status contradiction; the undefined "Comms deletion points" obligation; Social npub-versus-hex `p` tags; reason-code naming convention | 2 |
-| Device sign/ECDH key separation; Tier 3 opaque `d` derivation; Workspace `actor`/`kel_head` ambiguity; SHA-256 authority digest alongside SHA-1 `repository_head` | 3 |
+Out of scope:
 
-Track 4 detects and counts all of these. It fixes only what it must to keep
-its own baselines honest.
+- full semantic execution of Control, Comms, Social, Workspace, OIDC,
+  recovery, or other topic-specific behavior;
+- a reference client or Radicle repository subject;
+- publishing, deployment, release creation, or tag creation;
+- GitHub branch-protection changes; and
+- Radicle broker, node, container-runtime, or delegate-host configuration.
 
 ## Architecture
 
-A new package at `docs/spec/conformance/` with its own `package.json` and no
-import path to `docs/spec/vectors/generator/`. Two layers.
+### Independent package
 
-### Corpus gates
+`docs/spec/conformance/` is a standalone package with its own `package.json`,
+lockfile, TypeScript configuration, source, tests, baselines, and generated
+reports. It may read committed repository artifacts. It must not import any
+source, build output, package export, test helper, fixture builder, or runtime
+value from `docs/spec/vectors/generator/`. The generator likewise must not
+import the conformance package.
 
-Pure static analysis over repository artifacts: vectors, registry, schemas,
-and specification markdown. No subject, no cryptography, no
-network. Each gate is a module exporting a single function from artifact paths
-to a sorted array of stable failure keys.
+The package has these focused units:
 
-### Runner
+| Unit | Responsibility |
+|---|---|
+| `src/artifacts.ts` | Resolve repository-relative paths safely, parse committed artifacts, and expose a deterministic read model. |
+| `src/json-pointer.ts` | Parse and resolve RFC 6901 pointers without prototype traversal or path inference. |
+| `src/gates/` | One pure module per G1-G11 gate, each returning sorted stable failure keys. |
+| `src/ratchet.ts` | Compare actual failures with committed baselines in both directions. |
+| `src/subjects/reference-checker.ts` | Execute the declared Core signed-event verification stages. |
+| `src/report.ts` | Build canonical `report.json` and `DEBT.md` projections. |
+| `src/cli.ts` | Provide read-only `check` and explicit authoring commands. |
 
-Executes vectors against a subject:
+The existing generator and its checks remain intact. Overlapping rules are
+independently implemented from the normative artifacts instead of being moved
+or shared. This duplication is intentional evidence of checker independence.
 
-```ts
-type Verdict = { verdict: string; reason_code?: string };
+### Artifact intake
 
-interface Subject {
-  readonly name: string;
-  consume(vector: Vector): Promise<Verdict>;
-  produce(vector: Vector): Promise<{ bytes: Uint8Array } | { refused: Verdict }>;
+The artifact loader starts from the repository root and the single family
+release manifest. Every manifest path must be relative, normalized, free of
+`..`, and resolve inside the repository after symlink resolution. The loader
+also reads non-normative authoring inputs needed by specific gates, such as
+`vectors/fixtures.json`, but does not classify those files as release
+artifacts.
+
+Parse and shape errors are accumulated. One malformed file does not hide
+problems in other readable files. Duplicate vector IDs, duplicate registry
+entries, unsafe paths, and missing required roots are explicit failures.
+
+The conformance package, baselines, and reports are non-normative tooling and
+are excluded from the family release manifest. The registry, vector schema,
+and vector JSON changes made for this feature are normative and remain covered
+by the family manifest.
+
+## Explicit checker applicability
+
+The vector schema advances from `1.0.0` to `1.1.0` and gains an optional
+closed `conformance_checks` array. The minor version reflects a
+backward-compatible optional envelope member; every unreleased current vector
+is regenerated with the new schema version. An entry has exactly these
+members:
+
+```json
+{
+  "profile": "core-signed-event-v1",
+  "event_pointer": "/input/event",
+  "nip01_raw_pointer": "/input/nip01_raw",
+  "context_pointer": "/input/vector_context",
+  "expected_terminal_stage": "signature"
 }
 ```
 
-One implementation ships now: `ReferenceCheckerSubject`, a spec-derived
-implementation of Core §9's ordered pipeline — canonical NIP-01 serialization,
-SHA-256 identifier, BIP-340 verification, `nip01_raw` binding, version-stamp and
-`kel_head` classes, epoch authority — written from the prose and importing only
-`@noble/*` and `ajv`. Later subjects, `ReferenceClientSubject` and
-`RadicleRepoSubject`, implement the same interface without changing vectors or
-gates.
+`profile` is exactly `core-signed-event-v1` in this release.
+`event_pointer` and `nip01_raw_pointer` are required RFC 6901 pointers.
+`context_pointer` is optional for cases that terminate before persona
+resolution and required when execution reaches persona resolution or a later
+stage.
 
-Independence is structural rather than asserted. The generator authors bytes,
-the conformance package validates them from a separate reading, and agreement
-across the whole corpus is the differential Core §4.4 requires. A test resolves
-every import under `conformance/` and fails if any path reaches the generator.
+`expected_terminal_stage` is one of:
 
-### Existing lint relocation
+- `event_structure`
+- `nip01_raw`
+- `identifier`
+- `signature`
+- `persona_resolution`
+- `version_stamp`
+- `kel_head`
+- `epoch_authority`
+- `subtype_nid`
+- `accept`
 
-`docs-lint.ts` is 903 lines and already contains registry and profile lints
-that belong in the gate layer. `findInvariantEvidenceIssues`,
-`findStrictProfileClosureIssues`, and the release-manifest pin validators move
-to `conformance/`, bringing the file under the 500-line limit and consolidating
-conformance checks in one place.
+Unknown profiles, unknown members, malformed pointers, duplicate declarations,
+and a missing event target or declared context target are schema or
+conformance failures. A missing raw target is reported by G10 rather than
+treated as an invalid declaration, so existing raw-byte debt can be ratcheted.
+Context is required only when the ordered checker reaches a stage that consumes
+it.
+
+The initial `ReferenceCheckerSubject` runs only vectors carrying this explicit
+profile. It never infers applicability from topic names, descriptions, object
+shape, or `decision_trace`. Static gates still inspect all 499 vectors.
+
+### Checker context
+
+When `context_pointer` is present, it resolves to one closed
+`CoreVerificationContextV1` object validated by
+`schema/core-verification-context-v1.schema.json` in the conformance package:
+
+```json
+{
+  "persona": "<64-lowercase-hex>",
+  "evaluation_time": 0,
+  "nid_clock_skew_allowance": 0,
+  "clock_uncertainty": 0,
+  "retired_key_evidence": {
+    "first_observed_at": 0,
+    "prior_anchor": null
+  },
+  "pointer": {
+    "persona": "<64-lowercase-hex>",
+    "kel_head": { "event_id": "<64-lowercase-hex>", "sequence": 0 }
+  },
+  "kel": [
+    {
+      "event_id": "<64-lowercase-hex>",
+      "sequence": 0,
+      "prior_event_id": null,
+      "epoch_pubkey": "<64-lowercase-hex>",
+      "effective_from": 0,
+      "effective_until": null,
+      "compromise_since": null
+    }
+  ],
+  "kel_refresh": { "status": "not-needed" },
+  "signer": {
+    "type": "epoch",
+    "pubkey": "<64-lowercase-hex>",
+    "delegation": null
+  },
+  "version_policy": {
+    "mode": "required",
+    "value": "heterodyne/0.5.0"
+  },
+  "kel_head_policy": { "mode": "required" },
+  "subtype_policy": { "mode": "generic", "nid_pubkey": null }
+}
+```
+
+All objects reject unknown members. `pointer.persona` equals `persona`, and its
+head identifies one exact `kel` entry. KEL entries are sequence-contiguous,
+link through `prior_event_id`, and define the epoch key's inclusive lower and
+exclusive upper authority bounds. The final array entry is the accepted head;
+the pointer may name an older on-KEL entry without redefining that head. A
+non-null `compromise_since` truncates authority at
+`effective_compromise_since - 300`, including the exact boundary.
+
+`kel_refresh.status` is closed evidence with value `not-needed`, `succeeded`,
+`pending`, or `failed`. Sequence-ahead classification precedes off-KEL
+classification. Pending or failed refresh continues the ordered checks but
+caps a successful result at `accept_provisional`; a completed refresh that
+still leaves the named head off the accepted KEL produces
+`equivocation_flagged`. A stale head that names any accepted KEL entry remains
+a normal success. A sequence-ahead head paired with `not-needed` is
+contradictory evidence and rejects as `kel_head_mismatch`.
+
+`retired_key_evidence.first_observed_at` records the verifier's explicit first
+observation time. Its nullable `prior_anchor` is a closed object with `type`
+equal to `repository-checkpoint`, `local-receipt`, or `local-checkpoint`, plus
+`established_at`. The repository type represents an already verified
+introducing-commit ancestry proof under Core §9.1 and is timely no later than
+routine retirement; either local type is timely only before retirement. A
+post-retirement observation without a timely anchor caps a successful result
+at `accept_provisional` with state `provisional-retired-key`. Compromise
+rejection remains absorbing. Observation and anchor times later than
+`evaluation_time` are contradictory verifier evidence and reject at
+`persona_resolution`.
+
+Every v1 context carries explicit verifier-clock evidence. `evaluation_time`
+is the JSON-safe non-negative Unix second used as the verification clock.
+`nid_clock_skew_allowance` is an explicit non-negative allowance capped at 300
+seconds; there is no implicit or unbounded NID grace period.
+`clock_uncertainty` is a JSON-safe non-negative number of seconds. NID
+delegation expiry is evaluated strictly against
+`evaluation_time - nid_clock_skew_allowance`. A first-accepted node
+advertisement must have `created_at` within plus or minus 300 seconds of
+`evaluation_time`, `evaluation_time` must be strictly before its `expiry`, and
+`clock_uncertainty` greater than 300 seconds fails closed. Intrinsic node-ad
+rules (`expiry > created_at` and lifetime at most 86,400 seconds) still apply.
+
+`signer.type` is `epoch` or `delegated`. An epoch signer has a null
+`delegation` and must equal the authoritative KEL entry's `epoch_pubkey`. A
+delegated signer carries an object with exact `persona`, `publisher_pubkey`,
+`valid_from`, nullable `valid_until`, and nullable `revoked_at` members; the
+event key must equal `publisher_pubkey`, and all identity and time bounds must
+hold.
+
+`version_policy.mode` and `kel_head_policy.mode` are each `required`,
+`optional`, or `forbidden`. The only version value in this release is
+`heterodyne/0.5.0`. `subtype_policy.mode` is `generic`, `nid-delegation`, or
+`node-advertisement`; `nid_pubkey` is null for `generic` and a lowercase
+Ed25519 public-key hex string for the two NID-proof modes. This context is test
+evidence, not a protocol wire object.
+
+## Reference checker
+
+The subject implements the ordered Core verification prefix from the
+specification rather than calling generator evaluators:
+
+1. validate the signed-event structure;
+2. bind and parse exact `nip01_raw` bytes;
+3. recompute the SHA-256 NIP-01 identifier;
+4. verify the BIP-340 signature;
+5. resolve the persona through supplied pointer, KEL, and delegation evidence;
+6. enforce the version stamp;
+7. classify and validate `kel_head`;
+8. establish epoch authority at `created_at`, including compromise windows,
+   classify retired epoch or delegated-key observation evidence, and for
+   `kind:31001` establish the same epoch signer's authority again at
+   `evaluation_time`;
+9. enforce subtype and NID proof rules; and
+10. return the exact vector verdict.
+
+For a negative case, every stage before `expected_terminal_stage` must pass and
+that exact stage must produce the vector's expected rejection. For an accepted
+case, every stage must pass. A case that rejects earlier than claimed is a G11
+failure even when its final verdict happens to match.
+
+The implementation depends only on its own code, `ajv`, and the required
+`@noble/*` primitives. Future subjects implement the same declared-check
+dispatch boundary without changing existing vectors or gates.
 
 ## Gate catalogue
 
-Structural gates over repository artifacts:
+Every gate returns a canonically sorted array of stable keys. No key contains a
+line number, filesystem-dependent absolute path, or array index that can move
+after an unrelated edit.
 
-| Gate | Rule | Day-one baseline |
+| Gate | Rule | Stable key |
 |---|---|---|
-| G1 anchor-resolution | every vector `spec_ref` resolves to a real `<a id>` in the document its anchor prefix names | 3 |
-| G2 reason-code closure | every `expected_output.reason_code` is registered, unconditionally | 0 after this track |
-| G3 invariant completeness | every registered invariant appears in at least one strict profile | 12 |
-| G4 anchor coverage | every normative anchor has at least one vector | 83 |
-| G5 fixtures consistency | `spec_version` matches `family.ts`; no key outside a declared allowlist | 0 after this track |
-| G6 dead vocabulary | registered reason codes exercised by no vector | 54 |
-| G7 orphan schemas | every schema file bound by specification prose or a vector | 36 |
+| G1 anchor-resolution | Every vector `spec_ref` resolves to an anchor owned by the referenced family document. | `<vector_id> :: <spec_ref>` |
+| G2 reason-code closure | Every rejecting vector in every direction carries a registered reason code. | `<vector_id> :: <reason_code>` |
+| G3 invariant completeness | Every registered invariant belongs to at least one applicable strict-profile closure. | `<invariant_id>` |
+| G4 anchor coverage | Every normative anchor has at least one vector. | `heterodyne:<version>#<anchor>` |
+| G5 fixtures consistency | Fixture metadata matches the family and contains only its closed allowlist. | `<json-pointer>` |
+| G6 dead vocabulary | Every registered reason code is exercised by a vector. | `<reason_code>` |
+| G7 orphan schemas | Every normative schema is bound by specification prose or a vector. | `<repository-relative-schema-path>` |
+| G8 identifier integrity | Each declared case has the correct identifier unless `identifier` is its expected terminal stage. | `<vector_id> :: <event_pointer>` |
+| G9 signature integrity | Each declared case has a valid BIP-340 signature unless `signature` is its expected terminal stage. | `<vector_id> :: <event_pointer>` |
+| G10 `nip01_raw` binding | Every signed Nostr event discovered anywhere in the corpus has required exact raw bytes, and declared raw pointers bind byte-for-byte. | `<vector-file> :: event-sha256:<digest>` |
+| G11 negative-vector hygiene | A declared negative case passes every stage before its expected terminal stage. | `<vector_id> :: <event_pointer>` |
 
-Cryptographic gates through `ReferenceCheckerSubject`:
+G10 discovers signed Nostr events structurally by the complete NIP-01 event
+member set, retains exact JSON pointers internally, and cross-checks explicit
+declarations where present. Its stable suffix is SHA-256 over the UTF-8 JSON
+serialization of `[id,pubkey,created_at,kind,tags,content,sig]`; array indexes
+never enter the key and identical events may collapse. New event-shaped
+objects therefore cannot evade the raw-byte gate merely by omitting
+`conformance_checks`.
 
-| Gate | Rule | Day-one baseline |
-|---|---|---|
-| G8 identifier integrity | recomputed SHA-256 of the canonical serialization equals the declared `id` | 0 |
-| G9 signature | BIP-340 verifies over that identifier | 0 |
-| G10 `nip01_raw` | present, byte-equal to re-serialization, every parsed field matching | 94 |
-| G11 negative-vector hygiene | a vector expecting failure at step *N* of Core §9 passes steps 1 through *N*-1 | 2 |
+The implementation computes current failure sets before authoring baselines.
+The obsolete counts from the earlier design are not copied forward. A gate
+that is clean receives an empty baseline; a gate with known current debt
+receives exactly the measured stable keys.
 
-G6's baseline is 54 rather than the 53 currently unexercised codes, because
-`nip01_raw_mismatch` is allocated by this track but has no vector until track 1
-or 2 adds one. The three breadcrumb codes are exercised the moment they are
-registered and so never enter the baseline.
+## Ratchet and projections
 
-G8 and G9 evaluate "fails exactly where expected," not "fails." An independent
-check of the current corpus confirms 341 of 343 embedded event identifiers and
-340 of 343 signatures verify, with every exception an intentional negative
-case, so these two gates start clean.
+Each `baselines/G<n>-<name>.json` contains the gate ID and its sorted failure
+keys. Default checking is read-only and enforces both conditions:
 
-G11 generalises a real defect. `vectors/repo-relay/002-invalid-signature-rejected.json`
-and `vectors/verification/001-bad-signature-rejects.json` both zero the event
-`id` and corrupt the signature, so a conforming verifier rejects at identifier
-mismatch and never reaches BIP-340, while each vector's own `decision_trace`
-claims both steps run. `vectors/node-advert/002-outer-sig-invalid-rejected.json`
-is the correct pattern: valid identifier, corrupted signature only.
+1. an actual key absent from the baseline is new debt and fails; and
+2. a baseline key absent from actual results is stale debt and fails until the
+   baseline is reduced.
 
-### Root cause to fix in G2
+`npm run baseline-author` is the only command that writes baselines. It
+recomputes all gates and writes deterministic two-space JSON plus one final LF.
+It is never called by `check` or CI.
 
-`schema.ts` lines 83 to 110 already constrain `reason_code` to the registry
-enum, but the enclosing `if` requires `direction === "consume"`. The corpus
-contains exactly three `direction: "produce"` reject vectors, and those three
-carry the unregistered codes. G2 removes the `direction` condition so the
-constraint applies to every rejecting vector regardless of direction.
+`report.json` records family version, registry revision and digest, gate counts,
+failure keys, and aggregate totals. `DEBT.md` renders the same information as a
+review table. `npm run report-author` writes both projections. `npm run check`
+rebuilds them in memory and byte-compares them with the committed files.
 
-## Ratchet mechanism
+The CLI uses exit code 0 for success, 1 for validation or ratchet failures, and
+2 for invalid invocation. It prints every issue in stable gate/key order.
 
-One baseline per gate at `conformance/baselines/<gate-id>.json`, a sorted array
-of stable failure keys. Keys never reference line numbers or array indices, so
-unrelated edits do not churn them:
+## Registry revision 13
 
-| Gate | Key form |
-|---|---|
-| G1 | `<vector_id> :: <spec_ref>` |
-| G2 | `<vector_id> :: <reason_code>` |
-| G3 | `<invariant_id>` |
-| G4 | `heterodyne:<version>#<anchor>` |
-| G5 | `<json pointer>` |
-| G6 | `<reason_code>` |
-| G7 | `<repository-relative schema path>` |
-| G10 | `<vector file> :: <json pointer to event>` |
-| G11 | `<vector_id>` |
-
-Two assertions per gate, both failing the build:
-
-1. **No new failures.** Actual failures must be a subset of the baseline. New
-   entries are reported individually.
-2. **No stale entries.** A baseline entry that no longer fails is reported for
-   deletion. Baselines shrink only, so the debt count stays honest and progress
-   cannot be masked by an unrelated regression.
-
-`npm run conformance:baseline` regenerates baselines canonically sorted, so
-diffs are reviewable and the burn-down is legible in history. Two generated
-projections are byte-compared in the build exactly as `coverage/*.md` are
-today: `conformance/report.json`, which later becomes the report a third party
-submits, and `conformance/DEBT.md`, a human-readable table of outstanding debt
-per gate.
-
-## Registry revision 10
-
-Four Core-owned reason codes, snake_case to match Core's existing convention:
+Revision 13 adds four Core-owned reason codes:
 
 | Code | Purpose |
 |---|---|
-| `nip01_raw_mismatch` | Core §3.1 makes a `nip01_raw` absence or mismatch a mandatory rejection, and Core §9 requires a closed registry code. None exists. |
-| `successor_persona_mismatch` | breadcrumb pair naming a successor outside the accepted rotation, Core §4.3.1 |
-| `retiring_key_nip05_invalid` | retiring profile carrying a NIP-05 identifier already repointed to the successor, Core §4.3.1 |
-| `compromise_rotation_breadcrumb_forbidden` | compromise-driven rotation must produce no v1 breadcrumb, Core §4.3.1 |
+| `nip01_raw_mismatch` | Missing or non-byte-equal raw NIP-01 input. |
+| `successor_persona_mismatch` | A rotation breadcrumb names a successor outside the accepted rotation. |
+| `retiring_key_nip05_invalid` | A retiring profile carries a NIP-05 identifier already repointed to the successor. |
+| `compromise_rotation_breadcrumb_forbidden` | A compromise-driven rotation attempts to produce a v1 breadcrumb. |
 
-The last is renamed from the bare `compromise_rotation` used by
-`vectors/breadcrumbs/002`, which reads as a state rather than a rejection
-reason. Core §14 permits changing an unreleased vector in place during 0.x.
+The existing breadcrumb vector reason `compromise_rotation` is replaced by
+`compromise_rotation_breadcrumb_forbidden`. Core names all four refusal codes
+at their owning requirements. Vector rejection-schema enforcement is widened
+from consume-only to every rejecting `consume`, `produce`, or `round-trip`
+vector.
 
-### Coupled specification edits
+Registry authoring advances from revision 12 to 13, recomputes the entry-set
+digest, updates the Core capability example, regenerates registry-derived
+vector projections, and refreshes the single family release manifest only
+after all normative edits are final.
 
-AGENTS.md requires complete specification integration in the same patch, so
-the bump carries prose. All edits are in Core:
+ADR-045 is proposed with this integration. Once the complete protocol,
+artifact, harness, and CI patch passes and is accepted, the ADR is marked
+accepted and moved to `docs/adr/archive/`. The live specification and
+machine-readable artifacts remain authoritative.
 
-- §3.1 names `nip01_raw_mismatch` as the rejection code.
-- §4.3.1 names the three breadcrumb codes in the sentence already enumerating
-  those refusal conditions.
-- The revision bump is now a one-file edit. The four disagreeing sites this
-  design set out to reconcile - the document header, §3, the §12.1 capability
-  example, and §14, reading `8`, `6`, `7`, and `8` - no longer exist: no
-  document states the revision, and `registry-author` recomputes
-  `manifest.json`. The §12.1 example still carries the entry-set digest, which
-  `registry-digest-drift` reconciles.
+## CI and delivery-readiness gate
 
-### Mechanical sweep
+`scripts/conformance-ci.sh` is the sole job body. It resolves the repository
+root from its own path, enables `set -euo pipefail`, performs `npm ci` from both
+committed lockfiles, and runs in this order:
 
-Superseded. The sweep this design specified covered artifacts that no longer
-exist: `registry/history/9.json`, the registry-revision header of all five
-documents, five release manifests, and a `registry_revision` field on every
-vector. What remains is `registry/manifest.json` (revision and recomputed
-`entry_set_sha256`), the digest in Core's capability example, and the coverage
-manifest. `registry-digest-drift` now polices the second against the first.
+1. generator `family:check`;
+2. generator `check`;
+3. conformance package `check`.
 
-## Data corrections
+The script accepts no command fragments or artifact paths from environment
+variables. Any command failure stops the run and preserves that exit status.
 
-Applied. `fixtures.json` carries `spec_version` and `vector_schema_version` in
-place of `registry_revision` and `document_versions`, and `matrix_rooms` is
-gone along with the rest of the room architecture. The three dangling anchors
-were resolved as predicted except that `identity/identity-room-full-state` was
-de-Matrixed and kept rather than retired, because it still covers a live
-normative requirement.
+`.github/workflows/conformance.yml` runs on every pull request and every push
+to `main`. Its stable job/check name is `conformance`. It uses Node 22,
+`contents: read`, no repository secrets, no `pull_request_target`, and
+concurrency cancellation by workflow and ref. The workflow only checks out the
+submitted commit and invokes `scripts/conformance-ci.sh`.
 
-## Already live
+`.radicle/native.yaml` invokes the same script and contains no duplicated job
+logic. The intended Radicle execution adapter is a podman container because
+dependency installation executes code from untrusted patches. Broker,
+container, database, report-directory, and filter configuration remain
+delegate-node concerns rather than repository files.
 
-Seven structural checks landed in `docs-lint.ts` before the harness, each
-failing `family-check` today rather than entering a baseline:
-
-| Check | Rule |
-|---|---|
-| `unresolved-reference` | a qualified reference resolves to a real anchor and respects layering |
-| `mislinked-reference` | a link's text anchor, target anchor, and owning document agree |
-| `unresolved-section-reference` | a numeric section reference names a real heading |
-| `registry-digest-drift` | the digest in Core's capability example equals `manifest.json` |
-| `unregistered-feature-id` | a cited feature ID is allocated |
-| `unregistered-proof-domain` | a cited proof domain is allocated, and an allocated one is specified |
-| `strict-profile-closure-invalid` | prerequisites resolve, additions are registered and owned, nothing is inherited twice |
-
-These overlap G1 and G5 and reduce their day-one baselines. The harness still
-owns them independently: `docs-lint.ts` is part of the generator, and the
-point of this track is a checker that does not share code with the thing it
-checks.
-
-## Patch acceptance gate
-
-### How Radicle CI works
-
-A broker subscribes to node events and dispatches an adapter that performs the
-run. Broker configuration is node-side YAML — `default_adapter`, `db`,
-`report_dir`, `adapters`, and filters such as `!Repository`, `!Branch`,
-`!AnyPatchRef`, `!And`, `!Or` — and is not part of the repository. The only
-repository-side artifact is `.radicle/native.yaml`.
-
-### Adapter choice
-
-The native adapter runs without isolation; its own documentation warns against
-using it for code that is not trusted. That is disqualifying here, because the
-purpose is acceptance-testing patches from unknown contributors. `node_modules`
-is gitignored, so any job must run `npm ci`, and this toolchain installs
-`esbuild`, `rolldown`, `lightningcss`, and `fsevents`, all with install-time
-native-binary steps. A hostile patch editing `package.json` would obtain code
-execution on a delegate's seed node.
-
-The podman-container adapter is therefore the target. It provides per-run
-container isolation and reads `.radicle/native.yaml` for compatibility, so the
-repository file remains valid if an operator later moves to Ambient CI.
-
-### One definition, two intake paths
-
-The job body lives in `scripts/conformance-ci.sh`: pinned `npm ci` from the
-committed lockfiles, then `family:check`, the generator `check`, and the
-conformance `check` including ratchet assertions. Both entry points invoke that
-script and nothing else.
-
-```yaml
-# .radicle/native.yaml
-shell: |
-  scripts/conformance-ci.sh
-```
-
-A GitHub Actions workflow invokes the same script. The repository is
-dual-homed and recent merges arrived as GitHub pull requests, so gating only
-the Radicle path would leave the more-used path open. GitHub additionally
-offers enforceable required checks, which Radicle cannot provide.
-
-### Limitation to record
-
-Radicle has no server-side required checks. The broker posts a run result to
-the patch and delegates decide whether to merge, and CI runs only on nodes
-whose operators configured a broker. Enforcement is therefore delegate policy,
-so AGENTS.md gains an explicit rule: no patch merges without a green
-conformance run on a delegate-operated node.
+Radicle does not provide a server-side required-check mechanism. `AGENTS.md`
+therefore requires a green isolated conformance run on a delegate-operated node
+before a Radicle patch is merged. GitHub branch protection should require the
+stable `conformance` check, but applying that remote setting is an explicit
+repository-administrator action outside this patch.
 
 ## Testing strategy
 
-Each gate is built test-first. Before a gate is written against real data it
-gets a synthetic fixture that must trip it: a vector citing a nonexistent
-anchor, one carrying an unregistered code, one omitting `nip01_raw`, one whose
-declared failure step is later than its actual failure step. Only once that
-test fails for the right reason is the gate implemented.
+Every gate is developed against a synthetic failing corpus before being run on
+the real repository. Unit tests cover malformed JSON, unsafe paths, invalid
+JSON pointers, duplicate IDs, unknown profiles, deterministic ordering, and
+the exact stable-key form.
 
-Beyond per-gate unit tests:
+Reference-checker tests use known-answer BIP-340 cases and isolate one mutation
+at each terminal stage. A regression test proves a signature-negative vector
+retains a valid identifier; another proves an identifier-negative vector is
+not mislabeled as a signature failure.
 
-- a full-corpus integration run producing `report.json` and `DEBT.md`;
-- ratchet tests covering both directions, a newly introduced failure and a
-  baseline entry that has been fixed;
-- the import-boundary test forbidding any resolution from `conformance/` into
-  the generator;
-- a differential test asserting `ReferenceCheckerSubject` agrees with every
-  committed expectation across the corpus.
+Ratchet tests cover new failure keys, stale baseline keys, clean empty
+baselines, and canonical authoring. Projection tests compare in-memory output
+with committed `report.json` and `DEBT.md` bytes.
+
+An import-boundary test resolves every local import reachable from the
+conformance package and rejects any path under the generator. A reciprocal
+test over generator source rejects imports under conformance.
+
+Integration tests run all gates and declared subject cases over the full
+current corpus. Script tests assert installation/check order and failure
+propagation, followed by an end-to-end run of the real shared script.
+
+## Acceptance
+
+The implementation is complete only when all of these pass from the repository
+root:
+
+```bash
+npm --prefix docs/spec/vectors/generator run family:check
+npm --prefix docs/spec/vectors/generator run check
+npm --prefix docs/spec/conformance run check
+scripts/conformance-ci.sh
+git diff --check
+```
+
+The final review also confirms:
+
+- every G1-G11 requirement has a direct test;
+- baseline files equal the measured current failure sets;
+- no read-only `check` or CI command writes tracked files;
+- the conformance and generator import graphs remain disjoint;
+- registry revision 13, its digest, vectors, Core prose, and family release
+  manifest agree;
+- GitHub and Radicle contain no job logic beyond invoking the shared script;
+  and
+- no publish, deploy, release, tag, push, branch-protection, or Radicle-node
+  mutation occurred.
 
 ## Deliverables
 
 | Path | Contents |
 |---|---|
-| `docs/adr/2026-08-15-045-conformance-harness-independence.md` | decision record, archived before merge |
-| `docs/spec/conformance/` | package, gates, runner, subjects, baselines, tests |
-| `docs/spec/conformance/DEBT.md`, `report.json` | generated projections |
-| `scripts/conformance-ci.sh` | single gate definition |
-| `.radicle/native.yaml` | Radicle entry point |
-| `.github/workflows/conformance.yml` | GitHub entry point |
-| `docs/spec/registry/` | revision 10, four new reason codes |
-| `docs/spec/heterodyne-core.md` | §3.1 and §4.3.1 |
-| `AGENTS.md` | third verification command, delegate merge rule |
-
-## Non-goals
-
-This track does not add vectors for the 83 uncovered anchors, add `nip01_raw`
-to the 94 affected vector files, resolve the twelve orphan invariants, or
-change any wire format. It records each as counted debt and leaves the work to
-the tracks that own it.
-
-It does not build the reference client or the forkable Radicle conformance
-repositories. It establishes the `Subject` boundary those will implement.
-
-It does not introduce a second deliberately divergent checker. The
-authoring-versus-checking split already provides the differential property.
+| `docs/adr/2026-08-15-045-conformance-harness-independence.md`, then `docs/adr/archive/2026-08-15-045-conformance-harness-independence.md` | Proposed decision record, archived only after acceptance. |
+| `docs/spec/conformance/` | Independent package, gates, runner, tests, baselines, and projections. |
+| `docs/spec/vectors/schema/vector.schema.json` and affected vectors | Closed checker applicability and corrected rejection metadata. |
+| `docs/spec/registry/` | Revision 13 and four Core reason codes. |
+| `docs/spec/heterodyne-core.md` | Checker metadata contract and reason-code ownership. |
+| `docs/spec/releases/family/0.5.0.json` | Refreshed normative corpus digests. |
+| `scripts/conformance-ci.sh` | Shared read-only delivery-readiness gate. |
+| `.github/workflows/conformance.yml` | GitHub intake wrapper. |
+| `.radicle/native.yaml` | Radicle intake wrapper. |
+| `AGENTS.md`, `README.md`, `CHANGELOG.md` | Contributor workflow, package navigation, and change record. |

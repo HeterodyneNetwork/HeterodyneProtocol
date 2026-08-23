@@ -4,6 +4,7 @@ import {
   assertCurrentFamilyVersion,
   DOCUMENT_LAYERING,
   FAMILY_VERSION,
+  negotiateExactFamilyVersion,
   parseFamilyVersion,
   QUALIFIED_VERSION,
 } from "./family.js";
@@ -26,6 +27,21 @@ describe("protocol document family", () => {
     expect(() => assertCurrentFamilyVersion("heterodyne/0.4.0")).toThrow(
       QUALIFIED_VERSION,
     );
+  });
+
+  it("negotiates only the exact current family version", () => {
+    expect(negotiateExactFamilyVersion(
+      ["heterodyne/0.5.0"],
+      ["heterodyne/0.5.0"],
+    )).toBe("heterodyne/0.5.0");
+    expect(negotiateExactFamilyVersion(
+      ["heterodyne/0.5.0"],
+      ["heterodyne/0.4.0"],
+    )).toBeNull();
+    expect(negotiateExactFamilyVersion(
+      ["core/0.5.0"],
+      ["core/0.5.0"],
+    )).toBeNull();
   });
 
   it("enforces the document layering DAG", () => {

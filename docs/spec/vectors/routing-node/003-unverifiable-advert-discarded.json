@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-node-roles"
+    "heterodyne:core#core-node-roles"
   ],
   "vector_id": "routing-node/unverifiable-advert-discarded",
   "description": "A routing node discards a kind:31010 advertisement whose nid_proof does not verify and returns only the verifiable host hints.",

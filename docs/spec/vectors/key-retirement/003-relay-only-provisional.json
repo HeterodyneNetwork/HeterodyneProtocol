@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-retired-key-observation"
+    "heterodyne:core#core-retired-key-observation"
   ],
   "vector_id": "key-retirement/relay-only-provisional",
   "description": "Retired-key late discovery: relay only provisional.",

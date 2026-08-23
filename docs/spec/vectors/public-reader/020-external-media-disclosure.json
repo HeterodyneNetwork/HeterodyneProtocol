@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#comms-public-reader-security"
+    "heterodyne:comms#comms-public-reader-security"
   ],
   "vector_id": "public-reader/external-media-disclosure",
   "description": "A non-Tor public reader strips credentials and referrer data and warns before an external-media request.",

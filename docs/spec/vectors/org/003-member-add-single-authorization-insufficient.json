@@ -1,9 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "spec_version": "heterodyne/0.5.0",
   "spec_refs": [
-    "heterodyne:0.5.0#core-threshold-authority"
+    "heterodyne:core#core-threshold-authority"
   ],
   "vector_id": "org/member-add-single-authorization-insufficient",
   "description": "An org member NID add carrying only the org admin threshold (no member KEL kind:31001) is rejected: either authorization alone is insufficient.",
