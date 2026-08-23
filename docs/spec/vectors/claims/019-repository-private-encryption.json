@@ -1,13 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-key-claims"
+    "heterodyne:comms#comms-key-claims"
   ],
   "vector_id": "claims/repository-private-encryption",
   "description": "Repository-private claim bytes and keyed path are opaque under a dedicated ledger audience key.",
@@ -16,7 +11,7 @@
     "rid": "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1",
     "branch": "main",
     "commit": {
-      "tree_sha256": "3583d4735b5657bb242c220aa5bb6cf6e7615c54ba326f36b4a8a3bde0bf79d6",
+      "tree_sha256": "563e1ac1a1057e8ef36aa25d45591258b90da87b80de7aa71eaf68b6d764aafd",
       "parent": "8484848484848484848484848484848484848484",
       "author_nid": "did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC",
       "message": "update encrypted claim ledger object"
@@ -24,13 +19,13 @@
     "tree": [
       {
         "mode": "100644",
-        "path": "objects/69/221a72d5b884f41cc9649bbdc40ca3962abbfd449185b67652dcc1f341143d",
-        "blob_sha256": "7bc0facb4b7d5ea47dce40ea316ab265cb0f2b7639a8b76a589b217d83c29aa3",
+        "path": "objects/2c/a3fa9f65ba4abbe63ae39b2ecdfadc5790f02e479c097ccdd25400c203776b",
+        "blob_sha256": "b1cc97481c9df7c1596c578379c86b6f4be3b1a8cc26c70179dccac8bf0690d2",
         "size": 2140
       }
     ],
     "blobs": {
-      "objects/69/221a72d5b884f41cc9649bbdc40ca3962abbfd449185b67652dcc1f341143d": "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"
+      "objects/2c/a3fa9f65ba4abbe63ae39b2ecdfadc5790f02e479c097ccdd25400c203776b": "AoODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4OD0O4AUkRgrsocglQ0qUQ464pK4Jwo1mRlNcAOhrP5WTuW13gGepe5tIPIvB1tdSuMD5X8/FPbbEZ6gywgroV9JFJNm2sSvtPrOH2EEQlwANsSulXprkofRJkIDjnN/q1/q0wrX/L0N0XA9kbdmLJT2odiLoq2LJrzmFQNhA9q1q/cDMDRz523VnF9jBG/u0+sVsZgrWmrAcFuPs3I4gefZ/yQ3ZL8KjhNWcU9gRS7qIvqlMG8TFXogT4FgvBIIVPbfdw0oOVvjJbQQnrSdfNtm+aPwd9OMfSsC58jY6v9JK1uGSafnHHCuCrP0CPisUmG9ic31BKsOP6fJ8g4XexSiau6RIHDS6vbElahtops9E67mo+uBiLsd54ofRMs2rJMFYWgbzifo+FkfwhMN0ArGH603sc/+5Exd8ALIZxIIFrKb2wDoZumuPy8DExKQ0tHlwl9Qr0/roS0EdL0erSo0s+gLqJRgauC/1acCsGO/Uo0gE+JGoeXMhqTpSL3D/F3k3ssV23UDFwij7g2Lo/Zid8Od7t175ztKiNyVpAh4aFl3ukyiVfoYTjHCAfd6KakafIkZ7gKU6c56w0rmor0UtC0QWWw9YzMjT8BSNxCdYWih4WuRBZRxuiyLwnWsi8ilWhXmDdAUBqAhjefv15pDYJscvAPRuctzZYOQ6vh4AYYwjJ1F0qwlNx4rvLazQUVVI101Z3d5sfTMxV/U4DFVCLi7Ptr3Gun43XfacRkleqa+Sfa7oqwAKQ5zlKKqPwcYzjtasH5Blht/dyyY3y97R5gVrF7s4XrSZgyRJExgLWEEACS86YlEniLgJVNdo9s3AuUaoP3Qic/F9QFWH5dCqh2A0Drq6ZqBq2Qgwhk37G4db0M7/MYzj6TuqGZI9JOYN59T/hHe3Uj1z8uic70LljN6ptySwdFR+/724yrKZOhwNE4qBwwrzutIpDLPAuGsSDZpvsTSEiMM5FmmTNAm+Rk8AGHp44/h0p9o4YiU0B7OzRqiiL//fMqrqYN6OvBdNSN3PMhkUHSJDPZ/0/vZ2Y228+z4cFyMbADaFVkFsenq+fw5+nyFngp2jLPlt6pmAvuDyL6PBnV98dcMXH0rgPd8hNPUFQ/zGJhlRTwC+LpcCWEjgyTDhbAdUPAgRwntWOYYCMa93CEn5ftbVwNILPLBSbOjLz5JoZhtkSy3Ac/puYLipzkOwHmqYUGUNErQOorbVbdRf4X5lOGAE5mf00Q+fKvWHN+wubAUiKok1HAikIptbGM+sC1YZCrZ87NeupTAPuSswgdJI91xBNFtfJNh03RO4haN5P8fd7VVAHw0a1FiveQStO9NrQmiXL4teL+e8f0Ju8v9eLPc0Go3WAlQuiVJU6PXs2zz2D5bHvfJkjHkNf8/2iW5pTlurYQ1Sl2zY2gNLF+CWZ/vSACnMUDtjLoudHlrFa4SuLGuTroQ3AJmwpktu2e0Jwamyg/4BTe/Xow9Og1n9V//fMSW5zvW7HZiUWvstiiKAOKGeTtIE663I1W+tj6ab9o5XKbIU7FUEalSyTPWYeETv2pqvo4D95gynhrsvnq2qv+Yvl/S/Pk1DjF8qbB2Z07sIOdRfvSxDHBj4c9ut+M83wTwVHYbCxzQeN3hi1udyvvAVAl57rd6YrMBFiwc4iIRkPweuLSokAcEADH8XpY2oW0mPBTzn5Fj/jMGg5Y6rBWoyrfVt8bRU3fexM0ZLfMVMVZF7DDbcAzqiDwQssJuOHBfFimpAY1yE5jrRfT4gjqnC6+7sqcimwZJs5FMLcmDzHqvyyK1PbgathFBohtsR9BA9RmSfEen8RGSHCLq6uU1UXHwY9J1wBfi/LKw9WTbhWnZkHYy6n2wfyV54sOdOe0qLEWJ5YHMX+Jf+g8nguSsh0K3B3rMpINfygizkD3G/DH8Frxv9lV0opx6DzJzS/1TUgJWcphl/YKmKXryPOrTkRv/i1flyZq8MN2YGwa0kZhpaju4CmH6jnJ0IIZIL5FePmobcBJ4u9hGdQ/jyz01Q2Ds5Mq8R40t4GtcLnvvA+XBbcXEqZUiwU1wN5OLqMw90xbAkpn6SQEV8ejhzboo+88nQ=="
     },
     "key_id": "claim-ledger-audience-v1",
     "fixture_audience_key": "8282828282828282828282828282828282828282828282828282828282828282",
@@ -40,7 +35,7 @@
     "verdict": "accept",
     "normalized": {
       "visibility": "repository-private",
-      "inner_claim_id": "3d1b1094917c643c97940251be43c1a61a3b839a744a8d384c5119b984832e20",
+      "inner_claim_id": "ea8af3e11b0b959d31aec34792fe83c89e29b55d256cb032e657960eeb51cf7c",
       "plaintext_metadata_in_path": false,
       "plaintext_metadata_in_commit": false,
       "encrypted_before_storage": true

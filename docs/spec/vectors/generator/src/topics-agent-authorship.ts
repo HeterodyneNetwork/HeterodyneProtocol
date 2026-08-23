@@ -38,15 +38,15 @@ export async function buildAgentAuthorshipVectors(
   const vectors: AuthoredVector[] = [];
   const persona = fixtures.personas.alice;
   const nid = fixtures.ed25519_nids.alice_device_1;
-  const proofBytes = agentBindingMessage(
+  const bindingBytes = agentBindingMessage(
     persona.cold_root.pubkey,
     nid.did_key,
     roleId,
     rolePublicKey,
   );
-  const nidProof = ed25519Sign(proofBytes, nid.private_key);
+  const nidProof = ed25519Sign(bindingBytes, nid.private_key);
   const keyProof = bytesToHex(schnorr.sign(
-    sha256(utf8Bytes(proofBytes)),
+    sha256(bindingBytes),
     hexToBytes(rolePrivateKey),
     hexToBytes(AUX_RAND),
   ));
@@ -64,7 +64,7 @@ export async function buildAgentAuthorshipVectors(
       ["key_proof", keyProof],
       ["kel_head", fixtures.kel.alice.head.id, "0"],
       ["valid_until", String(fixtures.test_epoch + 3_600)],
-      ["spec_version", "core/0.5.0"],
+      ["spec_version", "heterodyne/0.5.0"],
     ],
     content: "",
     auxRand: AUX_RAND,
@@ -78,7 +78,7 @@ export async function buildAgentAuthorshipVectors(
     role_id: roleId,
     publishing_key: rolePublicKey,
     address: `agent:${roleId}`,
-    proof_bytes: proofBytes,
+    proof_bytes: bytesToHex(bindingBytes),
     outer_epoch_signature_valid: verifyEventSignature(delegation),
     nid_proof_valid: true,
     key_proof_valid: true,
@@ -90,7 +90,7 @@ export async function buildAgentAuthorshipVectors(
     "agent-authorship/001-delegation-valid.json",
     "agent-authorship/delegation-valid",
     "A complete Core-stamped agent role delegation verifies the epoch, NID, and dedicated role-key proofs over one exact binding.",
-    { event: delegation, proof_bytes: proofBytes, nid_proof: nidProof, key_proof: keyProof },
+    { event: delegation, proof_bytes: bytesToHex(bindingBytes), nid_proof: nidProof, key_proof: keyProof },
     validateAgentDelegation(delegationInput),
     "round-trip",
   ));

@@ -3,7 +3,12 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Ajv, type AnySchema, type ErrorObject, type JSONSchemaType } from "ajv";
 import { reasonCodeValues } from "./reason-codes.js";
-import { parseQualifiedVersion } from "./family.js";
+import {
+  assertCurrentFamilyVersion,
+  DOCUMENT_LAYERING,
+  FAMILY_VERSION,
+  QUALIFIED_VERSION,
+} from "./family.js";
 import { jcsCanonicalize } from "./jcs.js";
 import type { DocumentId, Vector } from "./types.js";
 
@@ -16,9 +21,7 @@ export const VECTOR_SCHEMA = {
     "vector_id",
     "vector_schema_version",
     "owner_document",
-    "owner_version",
-    "dependency_versions",
-    "registry_revision",
+    "spec_version",
     "spec_refs",
     "description",
     "direction",
@@ -29,31 +32,68 @@ export const VECTOR_SCHEMA = {
     vector_id: { type: "string", minLength: 1 },
     vector_schema_version: { type: "string", pattern: "^\\d+\\.\\d+\\.\\d+$" },
     owner_document: { type: "string", enum: ["core", "comms", "control", "social", "workspace"] },
-    owner_version: {
-      type: "string",
-      enum: ["core/0.5.0", "comms/0.5.0", "control/0.5.0", "social/0.5.0", "workspace/0.1.0"],
-    },
-    dependency_versions: {
-      type: "object",
-      required: [],
-      additionalProperties: false,
-      properties: {
-        core: { type: "string", const: "core/0.5.0" },
-        comms: { type: "string", const: "comms/0.5.0" },
-        control: { type: "string", const: "control/0.5.0" },
-        social: { type: "string", const: "social/0.5.0" },
-        workspace: { type: "string", const: "workspace/0.1.0" },
+    spec_version: { type: "string", const: QUALIFIED_VERSION },
+    profile: { type: "string", minLength: 1 },
+    conformance_checks: {
+      type: "array",
+      uniqueItems: true,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "profile",
+          "event_pointer",
+          "nip01_raw_pointer",
+          "expected_terminal_stage",
+        ],
+        properties: {
+          profile: { const: "core-signed-event-v1" },
+          event_pointer: { type: "string", pattern: "^(?:/(?:[^~/]|~[01])*)+$" },
+          nip01_raw_pointer: { type: "string", pattern: "^(?:/(?:[^~/]|~[01])*)+$" },
+          context_pointer: { type: "string", pattern: "^(?:/(?:[^~/]|~[01])*)+$" },
+          expected_terminal_stage: {
+            type: "string",
+            enum: [
+              "event_structure",
+              "nip01_raw",
+              "identifier",
+              "signature",
+              "persona_resolution",
+              "version_stamp",
+              "kel_head",
+              "epoch_authority",
+              "subtype_nid",
+              "accept",
+            ],
+          },
+        },
+        allOf: [{
+          if: {
+            properties: {
+              expected_terminal_stage: {
+                enum: [
+                  "persona_resolution",
+                  "version_stamp",
+                  "kel_head",
+                  "epoch_authority",
+                  "subtype_nid",
+                  "accept",
+                ],
+              },
+            },
+            required: ["expected_terminal_stage"],
+          },
+          then: { required: ["context_pointer"] },
+        }],
       },
     },
-    registry_revision: { type: "integer", minimum: 1 },
-    profile: { type: "string", minLength: 1 },
     spec_refs: {
       type: "array",
       minItems: 1,
       maxItems: 1,
       items: {
         type: "string",
-        pattern: "^heterodyne:(?:(?:core|comms|control|social)/0\\.5\\.0|workspace/0\\.1\\.0)#[a-z0-9]+(?:-[a-z0-9]+)*$",
+        pattern: `^heterodyne:${FAMILY_VERSION.replaceAll(".", "\\.")}#[a-z0-9]+(?:-[a-z0-9]+)*$`,
       },
     },
     description: { type: "string", minLength: 1 },
@@ -62,28 +102,9 @@ export const VECTOR_SCHEMA = {
     expected_output: { type: "object", additionalProperties: true, required: [] },
   },
   allOf: [
-    ...([
-      ["core", "core/0.5.0", {}],
-      ["comms", "comms/0.5.0", { core: "core/0.5.0" }],
-      ["social", "social/0.5.0", { core: "core/0.5.0", comms: "comms/0.5.0" }],
-      ["control", "control/0.5.0", { core: "core/0.5.0", comms: "comms/0.5.0" }],
-      ["workspace", "workspace/0.1.0", {
-        core: "core/0.5.0",
-        comms: "comms/0.5.0",
-      }],
-    ] as const).map(([owner, ownerVersion, dependencies]) => ({
-      if: { properties: { owner_document: { const: owner } }, required: ["owner_document"] },
-      then: {
-        properties: {
-          owner_version: { const: ownerVersion },
-          dependency_versions: { const: dependencies },
-        },
-      },
-    })),
     {
       if: {
         properties: {
-          direction: { const: "consume" },
           expected_output: {
             type: "object",
             properties: {
@@ -92,7 +113,7 @@ export const VECTOR_SCHEMA = {
             required: ["verdict"],
           },
         },
-        required: ["direction", "expected_output"],
+        required: ["expected_output"],
       },
       then: {
         properties: {
@@ -428,33 +449,18 @@ function assertJcsInput(value: unknown): void {
 }
 
 function validateFamilyMetadata(vector: Vector): void {
-  const exactDependencies: Record<DocumentId, Partial<Record<DocumentId, string>>> = {
-    core: {},
-    comms: { core: "core/0.5.0" },
-    social: { core: "core/0.5.0", comms: "comms/0.5.0" },
-    control: { core: "core/0.5.0", comms: "comms/0.5.0" },
-    workspace: {
-      core: "core/0.5.0",
-      comms: "comms/0.5.0",
-    },
-  };
-  const ownerVersion = parseQualifiedVersion(vector.owner_version);
-  const expectedOwnerVersion = vector.owner_document === "workspace"
-    ? "workspace/0.1.0"
-    : `${vector.owner_document}/0.5.0`;
-  if (ownerVersion.document !== vector.owner_document || vector.owner_version !== expectedOwnerVersion) {
-    throw new Error("owner_version does not match owner_document");
-  }
-  const expected = exactDependencies[vector.owner_document];
-  if (JSON.stringify(vector.dependency_versions) !== JSON.stringify(expected)) {
-    throw new Error(`dependency_versions do not exactly match ${vector.owner_document}`);
-  }
-  const allowedRefs = new Set([vector.owner_document, ...Object.keys(expected)]);
+  assertCurrentFamilyVersion(vector.spec_version);
+  // Anchors are prefixed with their owning document, so a reference outside
+  // the owner's layering closure is detectable from the anchor alone.
+  const allowed = new Set<string>([
+    vector.owner_document,
+    ...DOCUMENT_LAYERING[vector.owner_document],
+  ]);
   for (const ref of vector.spec_refs) {
-    const match = /^heterodyne:(?:(core|comms|control|social)\/0\.5\.0|(workspace)\/0\.1\.0)#[a-z0-9]+(?:-[a-z0-9]+)*$/.exec(ref);
-    const referencedDocument = match?.[1] ?? match?.[2];
-    if (match === null || referencedDocument === undefined || !allowedRefs.has(referencedDocument)) {
-      throw new Error(`spec_ref is outside the owner dependency closure: ${ref}`);
+    const anchor = /#([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec(ref)?.[1];
+    const referencedDocument = anchor?.split("-", 1)[0];
+    if (referencedDocument === undefined || !allowed.has(referencedDocument)) {
+      throw new Error(`spec_ref is outside the owner layering closure: ${ref}`);
     }
   }
 }

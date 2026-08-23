@@ -1,13 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-claim-chain"
+    "heterodyne:comms#comms-claim-chain"
   ],
   "vector_id": "claims/chain-attenuation-valid",
   "description": "A two-edge-capable chain narrows time and keeps all semantic, audience, resource, and remaining-depth dimensions within the parent.",
@@ -15,7 +10,7 @@
   "input": {
     "chain": [
       {
-        "claim_id": "950bdf1050d53365139d58cd176ae7acdac487508053643dae786ade0d83c9cd",
+        "claim_id": "9440857e490386d157f87481b6ca9b5ab64e72d24779f9252dd4c111d8ac43ac",
         "issuer": {
           "type": "nostr-secp256k1",
           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -40,8 +35,8 @@
           "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
         ],
         "visibility": "repository-private",
-        "spec_version": "comms/0.5.0",
-        "registry_revision": 2,
+        "spec_version": "heterodyne/0.5.0",
+        "profile_revision": 2,
         "constraints": {
           "namespaces": [
             "heterodyne.device"
@@ -56,7 +51,7 @@
         }
       },
       {
-        "claim_id": "c6bc203bb8947ec6fc30ca35e38ba18de74b34cb6d7f6bbdb9727e3ef7609131",
+        "claim_id": "a2c2e7b383fac2019a86ad0246df1f11100920bc7f2915a32342878d5682fe9b",
         "issuer": {
           "type": "nostr-secp256k1",
           "value": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
@@ -81,9 +76,9 @@
           "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
         ],
         "visibility": "repository-private",
-        "spec_version": "comms/0.5.0",
-        "registry_revision": 2,
-        "parent_claim_id": "950bdf1050d53365139d58cd176ae7acdac487508053643dae786ade0d83c9cd",
+        "spec_version": "heterodyne/0.5.0",
+        "profile_revision": 2,
+        "parent_claim_id": "9440857e490386d157f87481b6ca9b5ab64e72d24779f9252dd4c111d8ac43ac",
         "constraints": {
           "namespaces": [
             "heterodyne.device"

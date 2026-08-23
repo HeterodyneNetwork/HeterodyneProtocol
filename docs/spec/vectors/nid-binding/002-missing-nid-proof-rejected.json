@@ -1,11 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-nid-delegation"
+    "heterodyne:core#core-nid-delegation"
   ],
   "vector_id": "nid-binding/missing-nid-proof-rejected",
   "description": "A kind:31001 NID delegation that lacks the NID Ed25519 nid_proof is rejected: the binding MUST carry both signatures.",
@@ -37,7 +34,7 @@
         ],
         [
           "kel_head",
-          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+          "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
           "0"
         ],
         [
@@ -46,12 +43,12 @@
         ],
         [
           "spec_version",
-          "core/0.5.0"
+          "heterodyne/0.5.0"
         ]
       ],
       "content": "",
-      "id": "d31bc5ae5cfae0aacd37999639fca23fa6a82a7d76bd3f95de6521a82a228bd1",
-      "sig": "7b9c5ae032e5cbc6ccd29596b88db9696f6d2d2da86d88807bf3f9dacd05523e1fb6eebdd2099c769a8396a54c86ff338234fcbd159bbe12366ac11db5e9f79d"
+      "id": "ce673fa85c07aa4be180389d8a3615512e1694f0fc63990fac3910af1824b05b",
+      "sig": "29a679414a4e85c69ed82a6b52ea717f2f05463dd0027c64780877135a9041907f8c071f1f9e0857d38159cf702acf02083672eb96254671acefa409809794b3"
     },
     "vector_context": {
       "decision_trace": [

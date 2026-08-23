@@ -1,14 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "workspace",
-  "owner_version": "workspace/0.1.0",
-  "dependency_versions": {
-    "core": "core/0.5.0",
-    "comms": "comms/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:workspace/0.1.0#workspace-role-policy"
+    "heterodyne:workspace#workspace-role-policy"
   ],
   "vector_id": "workspace-policy/intersection-valid",
   "description": "A request inside every workspace, role-path, subject, device, and resource ceiling is accepted.",

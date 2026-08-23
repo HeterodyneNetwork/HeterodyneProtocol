@@ -1,32 +1,15 @@
 # Heterodyne Social Protocol Specification
 
-Document ID: `social`<br>
-Version: `social/0.5.0`<br>
-Registry revision: `8`
+Document ID: `social`
 
-Normative dependencies:
-
-- `heterodyne:core/0.5.0#core-conformance`
-- `heterodyne:comms/0.5.0#comms-conformance`
-
-This document prepares Social's first 0.5.0 release, descended from the
-Heterodyne 0.4.x monolith. It is current normative authority at this repository
-path but remains unreleased pending explicit release approval. It is not a
-synchronized family version. While Social is
-0.x, a
-conformance claim MUST pin the exact Social, Core, and Comms versions; any 0.x
-release MAY break an earlier one. The key words MUST, MUST NOT, REQUIRED,
-SHALL, SHALL NOT, SHOULD, SHOULD NOT, RECOMMENDED, NOT RECOMMENDED, MAY, and
-OPTIONAL are to be interpreted as described by BCP 14 when, and only when,
-they appear in all capitals.
-
-Permanent anchors use the literal `social-` prefix and lowercase ASCII
-kebab-case. Generated heading IDs are not stable protocol references.
+Social is a section of the Heterodyne specification and is governed by
+[`heterodyne:0.5.0#core-document-conventions`](heterodyne-core.md#core-document-conventions), which fixes the family version,
+the registry pin, release status, BCP 14 usage, and the anchor and reference
+forms.
 
 <a id="social-scope"></a>
 ## 1. Scope and conformance features
 
-<!-- Monolith provenance: public Social and policy portions only. -->
 
 Social defines following, replies, reactions, threading, social discovery,
 cross-persona advertisements, reply inboxes, feed presentation, community and
@@ -37,13 +20,13 @@ feed assets, stable links, citations, public community presentation,
 moderation, and discovery. Private conversation and group-scoped content use
 Marmot under Comms.
 
-There is one `Social` conformance class. It requires the exact dependency
-versions above and every applicable section of this document.
+There is one `Social` conformance class. It follows the Core-defined layering
+closure and requires every claimed document to use the same family version,
+plus every applicable section of this document.
 
 <a id="social-interactions"></a>
 ## 2. Replies, reactions, threading, and mixed-tier fan-out
 
-<!-- Monolith provenance: §4.4, §6.5-§6.6, §6.8-§6.8.1. -->
 
 Because a persona's repository is writable only by its authorized delegates,
 a replier MUST NOT require write access to another persona's repository.
@@ -52,10 +35,10 @@ Replies and reactions use the Nostr outbox model:
 - A reply is a NIP-10 event and a reaction is a NIP-25 `kind:7` event written
   to the replier's own Comms outbox. It carries the standard `e`/`p` references
   to the target id and author and is published under
-  `heterodyne:comms/0.5.0#comms-publishing`.
+  [`heterodyne:0.5.0#comms-publishing`](heterodyne-comms.md#comms-publishing).
 - Thread assembly is scatter-gather over repliers' repo relays and ordinary
   relays. A client MUST locally verify every event through
-  `heterodyne:comms/0.5.0#comms-envelope` and MUST deduplicate by event id.
+  [`heterodyne:0.5.0#comms-envelope`](heterodyne-comms.md#comms-envelope) and MUST deduplicate by event id.
 - A full node MAY materialize `xyz.heterodyne.thread` as a Radicle
   Collaborative Object, but a client MUST treat it only as an optimization.
   The verified scatter-gathered events remain authoritative.
@@ -71,9 +54,9 @@ Kind `30024` is a non-indexed draft. Unknown persistent addressable content
 SHOULD default indexed; other unknown kinds SHOULD default non-indexed.
 
 A private reply or reaction MUST use a Marmot conversation under
-`heterodyne:comms/0.5.0#comms-marmot`. If no suitable two-member group exists,
+[`heterodyne:0.5.0#comms-marmot`](heterodyne-comms.md#comms-marmot). If no suitable two-member group exists,
 it uses the persona-inbox bootstrap at
-`heterodyne:comms/0.5.0#comms-marmot-persona-inbox`. The Marmot application
+[`heterodyne:0.5.0#comms-marmot-persona-inbox`](heterodyne-comms.md#comms-marmot-persona-inbox). The Marmot application
 event MAY reference the stable Social asset ID, but the private response is
 not added to the public Social outbox unless the user separately publishes it.
 
@@ -81,7 +64,7 @@ not added to the public Social outbox unless the user separately publishes it.
 ### 2.1 Mixed-tier fan-out and reply inboxes
 
 A Social UI MAY compose one intent across multiple Comms destinations, but it
-MUST preserve `heterodyne:comms/0.5.0#comms-privacy-tiers`: Tier 2 plaintext
+MUST preserve [`heterodyne:0.5.0#comms-privacy-tiers`](heterodyne-comms.md#comms-privacy-tiers): Tier 2 plaintext
 MUST NOT reach a public relay, and Tier 3 MUST remain ciphertext at every
 destination. A client SHOULD warn before a user expands a Tier 2, Tier 3, or
 private-discussion intent to a public destination. The warning never permits
@@ -101,13 +84,12 @@ for real-time push.
 <a id="social-discovery"></a>
 ## 3. Following and social discovery
 
-<!-- Monolith provenance: §7.3-§7.6 and §11.4. -->
 
 Social discovery starts only after Core has resolved npub to RID to serving
 node and Comms has located the generic feed/outbox. A follower MUST:
 
 1. resolve the target npub through
-   `heterodyne:core/0.5.0#core-identity-discovery`;
+   [`heterodyne:0.5.0#core-identity-discovery`](heterodyne-core.md#core-identity-discovery);
 2. read and verify the target's public Comms `kind:31007` indexes and select
    topic feeds;
 3. for Tier 2, establish access through the repository allow list; for Tier 3,
@@ -141,7 +123,7 @@ A client MAY publish a NIP-02 `kind:3` follow list for vanilla interop, but
 MUST NOT require a public follow list. Private follows, feed preferences,
 followed-repository locators, private mutes, and UI preferences are
 Social-owned records. They MUST be encrypted at rest in the config-repository
-profile of `heterodyne:comms/0.5.0#comms-config-repository` or retained in
+profile of [`heterodyne:0.5.0#comms-config-repository`](heterodyne-comms.md#comms-config-repository) or retained in
 local encrypted storage. A followed-repositories record stored through the
 Core keys-repository protection mechanism remains a Social payload; storage
 location does not transfer semantic ownership.
@@ -179,7 +161,7 @@ attestations. A's `other_npub` MUST be B's cold-root npub and B's
 ['relation','same_holder|endorses|endorsed_by|linked']
 ['cold_root','<signing persona cold-root hex>']
 ['kel_head','<accepted KEL event id>','<seq>']
-['spec_version','social/0.5.0']
+['spec_version','heterodyne/0.5.0']
 ```
 
 Both signatures and both personas' Core key authority MUST verify. A
@@ -208,7 +190,7 @@ relationship event cannot erase prior observations or copies.
     "pubkey": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
     "created_at": 1710000000,
     "kind": 31004,
-    "tags": [["d","endorses:4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766"],["heterodyne","related_persona"],["other_npub","4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766"],["relation","endorses"],["scope","professional"],["cold_root","1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"],["kel_head","3333333333333333333333333333333333333333333333333333333333333333","0"],["spec_version","social/0.5.0"]],
+    "tags": [["d","endorses:4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766"],["heterodyne","related_persona"],["other_npub","4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766"],["relation","endorses"],["scope","professional"],["cold_root","1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"],["kel_head","3333333333333333333333333333333333333333333333333333333333333333","0"],["spec_version","heterodyne/0.5.0"]],
     "content": "",
     "id": "89a6a1bf0345535482d296e6910b5115a623dbafe8b9cdd5011af28f686eb45d",
     "sig": "7ff8bd7d316fd67820547ed4d92c60a556ed1fd089afd6aafe30190c2fe9812e34f81b3bf8200eb1437e3ccdcc74bfa874d9014d6cd924efb6ad1072dfd1a3ff"
@@ -217,7 +199,7 @@ relationship event cannot erase prior observations or copies.
     "pubkey": "4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766",
     "created_at": 1710000001,
     "kind": 31004,
-    "tags": [["d","endorsed_by:1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"],["heterodyne","related_persona"],["other_npub","1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"],["relation","endorsed_by"],["scope","professional"],["cold_root","4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766"],["kel_head","4444444444444444444444444444444444444444444444444444444444444444","0"],["spec_version","social/0.5.0"]],
+    "tags": [["d","endorsed_by:1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"],["heterodyne","related_persona"],["other_npub","1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"],["relation","endorsed_by"],["scope","professional"],["cold_root","4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766"],["kel_head","4444444444444444444444444444444444444444444444444444444444444444","0"],["spec_version","heterodyne/0.5.0"]],
     "content": "",
     "id": "5781bb1481f0872b2f30cb814504ff2d88a6f3e7698ef5d282efd408181fa135",
     "sig": "dff1363b0c75c624a849bea8251eb8404fe1cc0972aa7e68663737351dcaea6138d146eee98ce3bdefbe20de8765d0d017596910f96128c451cf9690e7d8a1b0"
@@ -250,10 +232,9 @@ user's own follows or mutes.
 <a id="social-recovery-binding"></a>
 ## 4. Social binding of Core recovery roles
 
-<!-- Monolith provenance: §3.12.1-§3.12.4. -->
 
 Core defines recovery peers, declared witnesses, cached identity material,
-and cold-root re-anchor at `heterodyne:core/0.5.0#core-recovery`. Social MAY
+and cold-root re-anchor at [`heterodyne:0.5.0#core-recovery`](heterodyne-core.md#core-recovery). Social MAY
 select recovery peers from follows, mutual follows, and friends:
 
 - any follower MAY cache permitted identity material;
@@ -293,7 +274,7 @@ An informal vouch has this Social-owned addressable shape:
     ["vouched_key", "<new epoch or cold key hex>"],
     ["s", "<KEL sequence>"],
     ["kel_head", "<voucher accepted KEL event id>", "<seq>"],
-    ["spec_version", "social/0.5.0"]
+    ["spec_version", "heterodyne/0.5.0"]
   ],
   "content": "<optional free-text note>",
   "sig": "<BIP-340 signature by voucher epoch key>"
@@ -311,14 +292,13 @@ explicit user action and MUST NOT influence the Core accept/reject verdict.
 <a id="social-feed-presentation"></a>
 ## 5. Feed and organization presentation
 
-<!-- Monolith provenance: §5.6, §6.7.0/§6.7.6, §6.8-§6.8.1, §7.1-§7.2. -->
 
 Comms owns feed storage, ordering, paging, retrieval, and threshold
 authorization. Social turns those verified inputs into topic subscriptions,
 curated views, community pages, reply counters, moderation views, and
 organization presentation. A Social renderer MUST NOT show an org post or
 index as canonical until it passes
-`heterodyne:comms/0.5.0#comms-org-authorization`.
+[`heterodyne:0.5.0#comms-org-authorization`](heterodyne-comms.md#comms-org-authorization).
 
 A persona MAY operate multiple topic feeds and multiple audience feeds. A
 client SHOULD support topic-selective subscription and MAY present a union as
@@ -330,29 +310,24 @@ persona's curated feed.
 <a id="social-org-feed-profile"></a>
 ### 5.1 Registered Social org-feed profile
 
-The registry defines the stamping profile
-`heterodyne-social-org-feed-v1` on the Comms-owned `kind:31007`, with immutable
-discriminator `content.profile=heterodyne.social.org-feed.v1`. An event opting
-into this profile MUST otherwise validate the complete Comms feed-index schema.
-The immutable profile permits it only in Tier 1 and Tier 2; Tier 3 use and
-ciphertext are forbidden. It replaces the ordinary Comms empty content with
-exactly this canonical compact JSON string, including member order and with no
-unknown members:
+The registry allocates the stamping profile `heterodyne-social-org-feed-v1`
+on the Comms-owned `kind:31007`. Social supplies the content object it stamps;
+[`heterodyne:0.5.0#comms-feed-index`](heterodyne-comms.md#comms-feed-index)
+governs everything else, including the discriminator's authority, the
+stamp-location and version-tag rules, and the Tier 3 prohibition. An event
+opting into this profile MUST otherwise validate the complete Comms
+feed-index schema. The content object is closed, has no unknown members, and
+is exactly:
 
 ```json
 {
   "profile": "heterodyne.social.org-feed.v1",
-  "spec_version": "social/0.5.0"
+  "spec_version": "heterodyne/0.5.0"
 }
 ```
 
-Because the profile is stamping, the Social stamp is the event's sole owner
-stamp and occurs only in `content`; the event MUST NOT carry either a Comms or
-Social version tag. All Comms tags, paging, thresholds, page-size, publication,
-retrieval, signature, and KEL requirements remain in force. It MUST NOT carry
-`heterodyne_wrap` or `key_id`. A Comms `kind:31007` without the exact
-discriminator remains a Comms event and MUST NOT be interpreted as this Social
-profile.
+A Comms `kind:31007` without the exact discriminator remains a Comms event and
+MUST NOT be interpreted as this Social profile.
 
 <!-- fixture:social-org-feed-index -->
 ```json
@@ -361,21 +336,19 @@ profile.
   "created_at": 1710000000,
   "kind": 31007,
   "tags": [["d","org-news:page-2"],["heterodyne","feed_index"],["cold_root","2222222222222222222222222222222222222222222222222222222222222222"],["rid","rad:zExample"],["feed_label","Org news"],["e","3333333333333333333333333333333333333333333333333333333333333333","wss://relay.example"],["previous_index","4444444444444444444444444444444444444444444444444444444444444444"],["prev_page_hash","5555555555555555555555555555555555555555555555555555555555555555"],["kel_head","6666666666666666666666666666666666666666666666666666666666666666","7"]],
-  "content": "{\"profile\":\"heterodyne.social.org-feed.v1\",\"spec_version\":\"social/0.5.0\"}",
+  "content": "{\"profile\":\"heterodyne.social.org-feed.v1\",\"spec_version\":\"heterodyne/0.5.0\"}",
   "sig": "77777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777"
 }
 ```
 
 The profile controls only org/community/editorial presentation. It MUST NOT
 weaken the requirement that both the org post and index be reachable from the
-delegate-threshold-approved canonical feed branch. The optional per-ref
-`xyz.radicle.crefs` refinement MAY further scope editorial refs, but baseline
-canonicity MUST NOT depend on it.
+delegate-threshold-approved canonical feed branch. Any `xyz.radicle.crefs` refinement of editorial refs
+is bounded by [`heterodyne:0.5.0#core-threshold-authority`](heterodyne-core.md#core-threshold-authority).
 
 <a id="social-moderation"></a>
 ## 6. Moderation and editorial gating
 
-<!-- Monolith provenance: §8.0-§8.4 and §8.7-§8.9. -->
 
 Social defines two independent editorial-gating mechanisms:
 
@@ -409,23 +382,25 @@ intervals for the first 30 minutes, then MAY use exponential backoff of 5, 10,
 30, then 60 minutes. It MUST stop on approval or when the seven-day
 implicit-rejection window expires. If no approval appears within seven days
 (604800 seconds) of candidate `created_at`, conforming clients MUST treat the
-candidate as implicitly rejected and surface a localizable structured outcome
-with class `moderation-approval-window-expired`, candidate, approval and
-community identifiers, submission identity, attempt/deadline/last-attempt
-timestamps, retry state, terminal cause, and allowed actions: abandon, edited
-republication with a new id, or intentional unchanged republication. This
+candidate as implicitly rejected and surface a
+[`heterodyne:0.5.0#core-structured-outcome`](heterodyne-core.md#core-structured-outcome)
+with `outcome_class` `moderation-approval-window-expired`, a `subject` binding
+the candidate, approval, and community identifiers and the submission
+identity, and `allowed_actions` of `abandon`, `edited-republication` with a
+new id, and `unchanged-republication`. This
 release defines no explicit moderator-rejection event; silence is rejection.
 After three consecutive implicit rejections from one community, the client
-SHOULD surface a structured advisory with class
+SHOULD surface a second such outcome with `outcome_class`
 `moderation-repeated-implicit-rejection`. English renderings such as “post not
 approved within 7-day window” are examples, not normative strings.
 
 Every moderated community MUST publish a NIP-72 `kind:34550` addressable
 community definition on the Core/Comms backends. It lists each moderator's
-permanent cold-root npub as:
+permanent cold root as a wire key per
+[`heterodyne:0.5.0#core-wire-keys`](heterodyne-core.md#core-wire-keys):
 
 ```text
-['p','<moderator cold-root npub>','<relay hint>','moderator']
+['p','<moderator cold-root 64-lowercase-hex>','<relay hint>','moderator']
 ```
 
 and MAY carry `['approvals_required','<positive integer>']`; absence means 1.
@@ -495,9 +470,7 @@ that threshold. A client MUST NOT require `kind:4550` in this mode. Conversely,
 it MUST NOT impose branch reachability on a NIP-72-mode view.
 
 Post-hoc removal uses `kind:5` plus a new canonical index omitting the post.
-Immutable git history means this changes the live view but does not erase the
-old bytes. `xyz.radicle.crefs` MAY refine per-ref authority; the baseline MUST
-remain evaluable without it.
+It changes the live view only, under [`heterodyne:0.5.0#core-non-erasure`](heterodyne-core.md#core-non-erasure).
 
 <a id="social-labels"></a>
 ### 6.5 Reports and labels
@@ -550,7 +523,6 @@ removes the original binding.
 <a id="social-lists"></a>
 ## 7. Personal lists, community policy, and web of trust
 
-<!-- Monolith provenance: §3.8 private Social payloads and §8.5-§8.6/§8.10. -->
 
 NIP-51 is an adopted upstream Social profile, not a Core or Comms construct.
 Public NIP-51 items are tags. Private items are tag-shaped arrays encoded as a
@@ -568,19 +540,19 @@ exactly one of each profile tag:
 
 ```json
 ["heterodyne", "social-mute-list-v1"]
-["spec_version", "social/0.5.0"]
+["spec_version", "heterodyne/0.5.0"]
 ```
 
-The profile is stamping, so `social/0.5.0` is its sole owner stamp. Public
+The profile is stamping, so `heterodyne/0.5.0` is its sole owner stamp. Public
 mute entries use upstream `p`, `t`, `word`, and `e` tags. Private entries keep
 the upstream NIP-51 encrypted-content shape; the profile MUST NOT change that
 shape. A client MUST verify the signer through Core and re-encrypt private
 items under the new authoritative epoch key on the next list write after
 rotation.
 
-A plain upstream NIP-51 event without the exact Social discriminator MUST remain unstamped.
-It is an interoperability input and MUST NOT be legacy-
-inferred, stamped during ingestion, or represented as this Social profile.
+A plain upstream NIP-51 event without the exact Social discriminator MUST
+remain unstamped. It is an interoperability input and MUST NOT be stamped
+during ingestion or represented as this Social profile.
 
 <a id="social-agent-policy-list"></a>
 ### 7.2 Subscriber-local agent policy
@@ -591,7 +563,7 @@ The registry defines the stamping
 
 ```text
 ["heterodyne", "social-agent-policy-list-v1"]
-["spec_version", "social/0.5.0"]
+["spec_version", "heterodyne/0.5.0"]
 ```
 
 For each adopted receipt, the list contains one upstream
@@ -657,7 +629,8 @@ NIP-51 event.
 
 A policy persona MAY publish community block/allow policy using `kind:10000`,
 `kind:30007`, and `kind:30000`. A community adopts it through `a` tags for
-sets or `['p','<policy npub>','<relay hint>','policy']` in `kind:34550`.
+sets or `['p','<policy cold-root 64-lowercase-hex>','<relay hint>','policy']`
+in `kind:34550`.
 Clients computing that community's view SHOULD apply adopted sources after
 verifying their signatures and current KEL authority. A follower MAY subscribe
 to additional policy personas independently.
@@ -666,7 +639,7 @@ to additional policy personas independently.
 ### 7.5 Web-of-trust and the Comms acceptance hook
 
 Social implements mute and web-of-trust admission only through
-`heterodyne:comms/0.5.0#comms-acceptance-hook`. Authentication and all Comms
+[`heterodyne:0.5.0#comms-acceptance-hook`](heterodyne-comms.md#comms-acceptance-hook). Authentication and all Comms
 cryptographic checks run first. An explicit user decision is an input to a
 fresh Comms hook evaluation, not a Social override: the client MUST first
 recompute the Comms-native outcome with that locally authenticated decision,
@@ -684,9 +657,9 @@ change `reject` to either other outcome.
 {"accept":["accept","hold-as-message-request","reject"],"hold-as-message-request":["hold-as-message-request","reject"],"reject":["reject"]}
 ```
 
-Before acceptance, `hold-as-message-request` emits no receipt, retry hint,
-typing signal, read marker, presence update, or other sender-observable
-response. A Social policy MUST preserve that no-signal rule. Muting or
+A Social policy MUST preserve the no-signal rule that
+[`heterodyne:0.5.0#comms-ordinary-conversation-admission`](heterodyne-comms.md#comms-ordinary-conversation-admission)
+places on `hold-as-message-request`. Muting or
 blocking a sender maps an otherwise acceptable ordinary Marmot conversation
 to `reject`; it never authenticates a sender. This lattice applies only to
 the Comms ordinary-conversation hook. It does not consume or alter a Control
@@ -700,7 +673,6 @@ NIP-72-approved, or Radicle-editorially approved.
 <a id="social-atproto"></a>
 ## 8. Optional ATProto attached outbox
 
-<!-- Monolith provenance: §11.6.1-§11.6.9. -->
 
 ATProto is an OPTIONAL decorative public outbox and witness surface. It is not
 the persona identity, a required transport, or recovery authority. The npub,
@@ -744,7 +716,7 @@ Social-owned `kind:31009` `atproto_link` event's content cover the same
 canonical compact JSON object:
 
 ```json
-{"spec_version":"social/0.5.0","did":"<DID>","did_signing_key_id":"<key id>","npub":"<cold-root hex>","rid":"<canonical RID>","established_at":0}
+{"spec_version":"heterodyne/0.5.0","did":"<DID>","did_signing_key_id":"<key id>","npub":"<cold-root hex>","rid":"<canonical RID>","established_at":0}
 ```
 
 `rid` is omitted only if no RID exists. Transport-specific account
@@ -782,14 +754,14 @@ finally require the two payloads to be identical.
     "created_at": 1710000000,
     "kind": 31009,
     "tags": [["d","did:web:alice.example"],["heterodyne","atproto_link"],["cold_root","531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337"],["did","did:web:alice.example"],["kel_head","5555555555555555555555555555555555555555555555555555555555555555","0"]],
-    "content": "{\"spec_version\":\"social/0.5.0\",\"did\":\"did:web:alice.example\",\"did_signing_key_id\":\"did:web:alice.example#atproto\",\"npub\":\"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337\",\"rid\":\"rad:zAlice\",\"established_at\":1710000000}",
+    "content": "{\"spec_version\":\"heterodyne/0.5.0\",\"did\":\"did:web:alice.example\",\"did_signing_key_id\":\"did:web:alice.example#atproto\",\"npub\":\"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337\",\"rid\":\"rad:zAlice\",\"established_at\":1710000000}",
     "id": "cd41c76501b0b7145c8dd115503473553e0e8a31c8e5849822aa7c87d19c6bf6",
     "sig": "a63775bd44e0b09a9400ed900aa13cdae9b239237056fe9b2bc87b24297af117d562a61f80a5d522680fc8d683b6ffa1f3d5e963a7c99635bdf0385ea80b03d5"
   },
   "pds_record": {
     "collection": "social.heterodyne.identityLink",
     "rkey": "self",
-    "value": {"spec_version":"social/0.5.0","did":"did:web:alice.example","did_signing_key_id":"did:web:alice.example#atproto","npub":"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337","rid":"rad:zAlice","established_at":1710000000},
+    "value": {"spec_version":"heterodyne/0.5.0","did":"did:web:alice.example","did_signing_key_id":"did:web:alice.example#atproto","npub":"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337","rid":"rad:zAlice","established_at":1710000000},
     "algorithm": "Ed25519",
     "public_key": "ca93ac1705187071d67b83c7ff0efe8108e8ec4530575d7726879333dbdabe7c",
     "signed_payload_hash": "6adf242345b2ac833ec54689e1eb6607d84897a5a116ef00df447646c5c541a0",
@@ -816,13 +788,13 @@ requires both signatures.
     "created_at": 1710000100,
     "kind": 31009,
     "tags": [["d","did:web:alice.example"],["heterodyne","atproto_link_revocation"],["did","did:web:alice.example"],["cold_root","531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337"],["kel_head","5555555555555555555555555555555555555555555555555555555555555555","0"]],
-    "content": "{\"spec_version\":\"social/0.5.0\",\"record_type\":\"atproto_link_revocation\",\"did\":\"did:web:alice.example\",\"npub\":\"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337\",\"binding_hash\":\"6adf242345b2ac833ec54689e1eb6607d84897a5a116ef00df447646c5c541a0\",\"revoked_at\":1710000100}",
+    "content": "{\"spec_version\":\"heterodyne/0.5.0\",\"record_type\":\"atproto_link_revocation\",\"did\":\"did:web:alice.example\",\"npub\":\"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337\",\"binding_hash\":\"6adf242345b2ac833ec54689e1eb6607d84897a5a116ef00df447646c5c541a0\",\"revoked_at\":1710000100}",
     "sig": "66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666"
   },
   "atproto": {
     "collection": "social.heterodyne.identityLink",
     "rkey": "self",
-    "value": {"spec_version":"social/0.5.0","record_type":"atproto_link_revocation","did":"did:web:alice.example","npub":"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337","binding_hash":"6adf242345b2ac833ec54689e1eb6607d84897a5a116ef00df447646c5c541a0","revoked_at":1710000100},
+    "value": {"spec_version":"heterodyne/0.5.0","record_type":"atproto_link_revocation","did":"did:web:alice.example","npub":"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337","binding_hash":"6adf242345b2ac833ec54689e1eb6607d84897a5a116ef00df447646c5c541a0","revoked_at":1710000100},
     "signature": "did-revocation-signature-base64url"
   }
 }
@@ -853,9 +825,11 @@ both halves of the binding verify.
 <a id="social-security"></a>
 ## 9. Security invariants
 
-<!-- Monolith provenance: public Social policy portions. -->
 
-The registry binds these exact Social invariants:
+The registry binds these exact Social invariants. An entry the registry binds to a feature is owed only by an implementation
+claiming that feature, under
+[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope).
+The list below is descriptive:
 
 - **SOCIAL-I-PRIVATE-STATE-AT-REST:** Private mute, feed-preference, followed-repository, and other Social state are encrypted at rest using the owning Social or bound Comms profile.
 - **SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH:** Following, transitive discovery, and social-graph evaluation do not depend on a centralized follow-graph oracle.
@@ -870,8 +844,11 @@ attached public outbox and optional witness, never persona authority.
 <a id="social-strict-profiles"></a>
 ### 9.1 Social strict profiles
 
-The Social strict profile composes the Core, Comms, and applicable Social
-invariant sets.
+The Social strict profile composes the Core and Comms strict closures and adds
+the baseline Social invariants. The agent-policy invariants are bound to
+`social.agent-policy-moderation.v1` and are owed under
+[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope) whenever that
+feature is claimed, so the profile does not restate them.
 
 <!-- fixture:social-strict-profile -->
 ```json
@@ -880,122 +857,51 @@ invariant sets.
   "conformance_class": "Social",
   "state": "active",
   "requires_profiles": [
-    "heterodyne-core-strict-v1",
     "heterodyne-comms-strict-v1"
   ],
-  "required_invariants": [
-    "CORE-I-IDENTITY-INTEGRITY",
-    "CORE-I-NID-DELEGATION-DUAL-PROOF",
-    "CORE-I-VERIFY-BEFORE-USE",
-    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
-    "CORE-I-KEY-MATERIAL-AT-REST",
-    "COMMS-I-TIER3-BLIND-CARRIER",
-    "COMMS-I-TIER2-HONESTY",
-    "COMMS-I-CONFIG-AT-REST",
-    "COMMS-I-CLIENT-SIDE-DELIVERY",
-    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
-    "COMMS-I-CLAIM-AUTHENTICITY",
-    "COMMS-I-CLAIM-ATTENUATION",
-    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
-    "COMMS-I-CLAIM-REVOCATION",
-    "COMMS-I-LEDGER-CONFINEMENT",
-    "COMMS-I-ISSUER-KEY-CONFINEMENT",
-    "COMMS-I-MINT-FRESHNESS",
-    "COMMS-I-ISSUER-CONTINUITY",
-    "COMMS-I-CLAIM-RELEASE",
-    "COMMS-I-JWT-TYPE-AUDIENCE",
-    "COMMS-I-STATUS-INTEGRITY",
+  "adds_invariants": [
     "SOCIAL-I-PRIVATE-STATE-AT-REST",
     "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH"
   ]
 }
 ```
 
-This profile additionally requires a valid signed event to pass baseline
-verification before Social policy, initiation of subscription or polling for
-a valid `kind:5` deletion within 30 seconds on an active source with retry and
-availability evidence until a terminal condition, and a visible warning when
-a previously met strict requirement becomes unmet. A carrier partition does
-not itself make an otherwise conforming consumer nonconformant.
-
-<!-- fixture:social-strict-profile-v2 -->
-```json
-{
-  "profile_id": "heterodyne-social-strict-v2",
-  "conformance_class": "Social",
-  "state": "active",
-  "requires_profiles": ["heterodyne-comms-strict-v2"],
-  "required_invariants": [
-    "CORE-I-IDENTITY-INTEGRITY",
-    "CORE-I-NID-DELEGATION-DUAL-PROOF",
-    "CORE-I-VERIFY-BEFORE-USE",
-    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
-    "CORE-I-KEY-MATERIAL-AT-REST",
-    "COMMS-I-TIER3-BLIND-CARRIER",
-    "COMMS-I-TIER2-HONESTY",
-    "COMMS-I-CONFIG-AT-REST",
-    "COMMS-I-CLIENT-SIDE-DELIVERY",
-    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
-    "COMMS-I-CLAIM-AUTHENTICITY",
-    "COMMS-I-CLAIM-ATTENUATION",
-    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
-    "COMMS-I-CLAIM-REVOCATION",
-    "COMMS-I-LEDGER-CONFINEMENT",
-    "COMMS-I-ISSUER-KEY-CONFINEMENT",
-    "COMMS-I-MINT-FRESHNESS",
-    "COMMS-I-ISSUER-CONTINUITY",
-    "COMMS-I-CLAIM-RELEASE",
-    "COMMS-I-JWT-TYPE-AUDIENCE",
-    "COMMS-I-STATUS-INTEGRITY",
-    "COMMS-I-PUBLIC-READER-TIER1-ONLY",
-    "COMMS-I-AGENT-ROLE-BINDING",
-    "COMMS-I-AGENT-ATTRIBUTION",
-    "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT",
-    "SOCIAL-I-PRIVATE-STATE-AT-REST",
-    "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
-    "SOCIAL-I-AGENT-POLICY-LOCAL",
-    "SOCIAL-I-AGENT-REMEDIATION-SCOPED"
-  ]
-}
-```
-
-`heterodyne-social-strict-v2` inherits the v1 operational obligations and
-additionally requires exact receipt/list binding, subscribed-policy
-transparency, and device-key-scoped remediation.
+Beyond its inherited obligations this profile requires a valid signed event to
+pass baseline verification before Social policy is applied; initiation of
+subscription or polling for a valid `kind:5` deletion within 30 seconds on an
+active source, with retry and availability evidence until a terminal
+condition; exact receipt/list binding; subscribed-policy transparency;
+device-key-scoped remediation; and a visible warning when a previously met
+strict requirement becomes unmet. A carrier partition does not itself make an
+otherwise conforming consumer nonconformant.
 
 <a id="social-conformance"></a>
 ## 10. Conformance
 
-<!-- Monolith provenance: §11.7 Social policy and §14. -->
 
-A `Social` report MUST name `social/0.5.0`, pin `core/0.5.0` and
-`comms/0.5.0`, pin registry revision 8 or its immutable digest, enumerate
-supported features and strict profiles, and implement §§1-9. It MUST
+A `Social` report follows the family requirements in
+[`heterodyne:0.5.0#core-conformance`](heterodyne-core.md#core-conformance), claims Core+Comms+Social, and implements
+§§1-9. It MUST
 include async replies/reactions, following and transitive discovery,
 cross-persona advertisements, reply inboxes, mixed-tier Social fan-out,
 moderation, NIP-51 Social profiles, community policy, Social recovery binding,
 feed/org presentation, ATProto behavior when advertised, the acceptance-hook
 policy, subscriber-local agent-policy moderation when
-`social.agent-policy-moderation.v1` is advertised, and all registered Social
-invariants.
+`social.agent-policy-moderation.v1` is advertised, and every Social invariant
+its claim scopes in under
+[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope).
 
 Social presentation of persona name, avatar, biography, website, or NIP-05
 MUST begin from the canonical Core persona-profile record. The delegated
 `kind:0` mirror provides vanilla interoperability, but a competing relay event
 or repointed NIP-05 MUST NOT replace canonical repository state.
 
-The registry revision 8 entry set, history snapshot, release manifest, and
-vector metadata MUST match exactly. Optional lower-layer profiles are claimed
-only when their owning documents' requirements and vectors are satisfied.
+Optional lower-layer profiles are claimed only when their owning documents'
+requirements and vectors are satisfied.
 
-A Social conformance report that claims a strict profile MUST reproduce its
-exact membership, prerequisite results, and applicable strict-vector results.
-It MUST use the conformance class stated in the profile fixture.
-
-Wire conformance is byte-exact. Existing signed 0.4 events MUST NOT be
-restamped. Plain upstream NIP-51 and NIP-72 events remain unstamped; only the
-exact immutable Social profiles opt into a Social stamp. During 0.x, an
-accepted specification change may change or retire an unreleased current
-vector in place; vector-ID immutability begins at 1.0. Unsupported Social
-versions or profiles MUST be rejected or explicitly degraded under Core's
-version rules, never silently interpreted as this release.
+Report contents, byte-exact wire conformance, vector-ID immutability, and
+unknown-version handling are family-wide rules stated once by
+[`heterodyne:0.5.0#core-conformance`](heterodyne-core.md#core-conformance) and [`heterodyne:0.5.0#core-versioning`](heterodyne-core.md#core-versioning).
+Social adds one stamping rule: plain upstream NIP-51 and NIP-72 events remain
+unstamped, and only the exact immutable Social profiles opt into a Social
+stamp.

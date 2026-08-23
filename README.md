@@ -17,20 +17,20 @@ The project is specification-first and implementation-agnostic. All current
 documents are 0.x drafts and may make breaking changes before 1.0.
 
 [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is the non-normative
-family map. Normative authority is divided among the five versioned documents
-below; the former 0.4.0 monolith is frozen in the archive.
+family map. Normative authority is divided among the five documents below.
 
 ## Protocol family
 
-The family has five independently versioned documents:
+The specification is published as five documents at one version,
+`heterodyne/0.5.0`:
 
-| Document | Prepared version | Responsibility |
-|---|---:|---|
-| [Heterodyne Core](docs/spec/heterodyne-core.md) | `core/0.5.0` | Persona identity, KEL verification, canonical Nostr bytes, Radicle delegation, node roles, repository substrate, registry, versioning, and base conformance. |
-| [Heterodyne Comms](docs/spec/heterodyne-comms.md) | `comms/0.5.0` | Nostr-native envelopes, privacy tiers, publishing, Marmot conversations and media, Radicle conversation storage, atomic key claims, the private claim ledger, and the OIDC/JWT projection. |
-| [Heterodyne Control](docs/spec/heterodyne-control.md) | `control/0.5.0` | Active own-device enrollment, grants, RPC, node-mediated Marmot access, and agentic sessions as a Comms profile. |
-| [Heterodyne Social](docs/spec/heterodyne-social.md) | `social/0.5.0` | Public following, interactions, moderation, lists, social discovery, durable assets, and ATProto attachment. |
-| [Heterodyne Workspace](docs/spec/heterodyne-workspace.md) | `workspace/0.1.0` | Independently governed workspaces, roles, private discovery, federation, hosting, and resource-key delivery. |
+| Document | Responsibility |
+|---|---|
+| [Heterodyne Core](docs/spec/heterodyne-core.md) | Persona identity, KEL verification, canonical Nostr bytes, Radicle delegation, node roles, repository substrate, registry, versioning, and base conformance. |
+| [Heterodyne Comms](docs/spec/heterodyne-comms.md) | Nostr-native envelopes, privacy tiers, publishing, Marmot conversations and media, Radicle conversation storage, atomic key claims, the private claim ledger, and the OIDC/JWT projection. |
+| [Heterodyne Control](docs/spec/heterodyne-control.md) | Active own-device enrollment, grants, RPC, node-mediated Marmot access, and agentic sessions as a Comms profile. |
+| [Heterodyne Social](docs/spec/heterodyne-social.md) | Public following, interactions, moderation, lists, social discovery, durable assets, and ATProto attachment. |
+| [Heterodyne Workspace](docs/spec/heterodyne-workspace.md) | Independently governed workspaces, roles, private discovery, federation, hosting, and resource-key delivery. |
 
 The allowed composition graph is exactly; Workspace's solid base dependency
 is Core+Comms, while its Control and Social edges are optional:
@@ -46,12 +46,15 @@ Social <- Workspace
 These prepared 0.x documents are current normative authority in the
 repository, but remain unreleased pending explicit release approval.
 
-Versions are qualified per document. `core/0.5.0` and `social/0.5.0`, for
-example, are independent releases rather than one synchronized family version.
-The frozen [0.4.0 archive](docs/spec/archive/heterodyne-0.4.0.md) preserves the
-former monolith bytes. The complete
-[old-section anchor map](docs/spec/archive/heterodyne-0.4.0-anchor-map.md)
-redirects historical section links.
+The five documents share one draft family version and pin the same registry
+revision. The split exists so the blast radius of a change stays inside one
+section.
+
+No pre-1.0 release manifest exists. The five specifications, protocol schemas,
+and registry are the current authority. The rolling validation snapshot is
+non-normative evidence for one pinned source commit, and ordinary draft changes
+do not update it. The release and compatibility model for 1.0 is intentionally
+deferred to a later protocol decision.
 
 ## What the family provides
 
@@ -100,34 +103,37 @@ Social adds public social behavior. Control requires a conformant Core+Comms
 implementation plus the active Control profile. Workspace requires Core+Comms;
 its Control and Social compositions are optional and separately advertised.
 
-Claims name exact qualified versions, required features, registry revision or
-digest, and any strict profiles. The stable strict IDs are:
+Claims name the family version, the required features, the registry revision
+or digest, and any strict profiles. The stable strict IDs are:
 
 - `heterodyne-core-strict-v1`
 - `heterodyne-comms-strict-v1`
-- `heterodyne-comms-strict-v2`
 - `heterodyne-control-strict-v1`
 - `heterodyne-social-strict-v1`
-- `heterodyne-social-strict-v2`
 - `heterodyne-workspace-strict-v1`
 
-Conformance vectors in [docs/spec/vectors](docs/spec/vectors/) are normative
-for the behavior they cover. Canonical bytes and expected verdicts must match
-exactly; semantic similarity is not conformance.
+Each profile declares only its prerequisites and the invariants it adds; the
+required set is the transitive closure.
+
+The vectors in [docs/spec/vectors](docs/spec/vectors/) are the latest rolling,
+non-normative pre-1.0 validation snapshot. They provide byte-exact evidence for
+their pinned source commit without changing the authority of the current draft.
+The current generator can describe 499 draft vectors, while the bootstrap
+snapshot contains 482 vectors; those counts are intentionally independent.
 
 ## Repository map
 
 | Path | Purpose |
 |---|---|
 | [docs/spec/heterodyne.md](docs/spec/heterodyne.md) | Non-normative family overview and document map |
-| [docs/spec/heterodyne-core.md](docs/spec/heterodyne-core.md) | Core 0.5.0 normative document |
-| [docs/spec/heterodyne-comms.md](docs/spec/heterodyne-comms.md) | Comms 0.5.0 normative document |
-| [docs/spec/heterodyne-control.md](docs/spec/heterodyne-control.md) | Active Control 0.5.0 profile |
-| [docs/spec/heterodyne-social.md](docs/spec/heterodyne-social.md) | Social 0.5.0 normative document |
-| [docs/spec/heterodyne-workspace.md](docs/spec/heterodyne-workspace.md) | Workspace 0.1.0 normative document |
-| [docs/spec/registry](docs/spec/registry/) | Core-owned kind, profile, reason-code, and invariant registry |
-| [docs/spec/releases](docs/spec/releases/) | Untagged per-document release manifests pinned to an exact registry snapshot |
-| [docs/spec/vectors](docs/spec/vectors/) | Normative conformance vectors and verification tooling |
+| [docs/spec/heterodyne-core.md](docs/spec/heterodyne-core.md) | Core normative document |
+| [docs/spec/heterodyne-comms.md](docs/spec/heterodyne-comms.md) | Comms normative document |
+| [docs/spec/heterodyne-control.md](docs/spec/heterodyne-control.md) | Active Control profile |
+| [docs/spec/heterodyne-social.md](docs/spec/heterodyne-social.md) | Social normative document |
+| [docs/spec/heterodyne-workspace.md](docs/spec/heterodyne-workspace.md) | Workspace normative document |
+| [docs/spec/registry](docs/spec/registry/) | Kind, profile, reason-code, invariant, feature, object, and proof-domain registry, with the single revision pin in `manifest.json` |
+| [docs/spec/vectors](docs/spec/vectors/) | Rolling validation snapshot, closed manifest, and snapshot tooling |
+| [docs/spec/conformance](docs/spec/conformance/) | Independent read-only conformance harness, ratcheted baselines, and reports |
 | [docs/architecture.md](docs/architecture.md) | Non-normative family architecture and rationale |
 | [docs/glossary.md](docs/glossary.md) | Non-normative term index |
 | [docs/security/threat-model.md](docs/security/threat-model.md) | Family threat analysis |
@@ -137,16 +143,46 @@ exactly; semantic similarity is not conformance.
 ## Working on Heterodyne
 
 Start with the family document that owns the behavior you are changing, then
-read the relevant ADR and registry entry. Wire changes require corresponding
-conformance vectors. Material decisions require an ADR. Files under
-`research/sources/` are preserved research artifacts and must not be edited.
+read the relevant registry entry and any explanatory ADR. An ordinary pre-1.0
+change updates only affected draft prose, registry entries, protocol schemas,
+and source generator inputs. It does not update the rolling snapshot. Files
+under `research/sources/` are preserved
+research artifacts and must not be edited.
 
-Useful checks:
+Normal checks are read-only and deliberately separate current draft quality
+from reproducibility of the pinned snapshot:
 
 ```bash
-npm --prefix docs/spec/vectors/generator run family:check
-npm --prefix docs/spec/vectors/generator run check
+npm --prefix docs/spec/vectors/generator run draft:check -- "$PWD"
+npm --prefix docs/spec/vectors/generator run snapshot-check -- "$PWD"
 ```
+
+The snapshot manifest is the closed
+[`docs/spec/vectors/snapshot.json`](docs/spec/vectors/snapshot.json) inventory.
+The bootstrap pins source commit
+`2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`: its source root supplies the five
+specifications, registry, protocol schemas, and behavioral generator inputs.
+The snapshot root supplies 482 packaged vectors plus fixtures, packaged schema,
+reason/coverage projections, and the manifest—493 digest-bound artifacts in
+all. The snapshot-tool root comes from the snapshot commit derived and printed
+at runtime and supplies the packager and its locked dependencies. That derived
+identity may change when commits are squashed. Runtime conformance receives the
+explicit source and snapshot roots plus both commit identities. Because the bootstrap source
+predates checker declarations, it executes zero declared reference-checker
+cases while corpus-wide gates still run.
+
+Only a dedicated periodic reconciliation replaces that snapshot. The safe
+sequence is: choose a stable full source commit, run `snapshot-author`, review
+the complete replacement, commit it, then run `snapshot-check`. The check
+derives the snapshot commit from Git history, so checking uncommitted snapshot
+bytes is invalid. Snapshot authoring, publishing, deployment, tagging, and
+pushing are absent from both hosted lanes.
+
+The shared local and hosted acceptance gate is
+`scripts/conformance-ci.sh`. GitHub should require its stable `conformance`
+check. Before a Radicle patch is merged, delegates require a green run through
+an isolated podman adapter; delegate-node and remote-repository configuration
+remain outside this repository.
 
 ## Standards
 

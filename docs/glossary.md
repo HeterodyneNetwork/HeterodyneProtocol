@@ -13,8 +13,7 @@ document-local terms are assigned to their owners:
 - [Heterodyne Social](spec/heterodyne-social.md)
 
 The owning version-qualified family document controls any conflict with this
-index. Historical terminology is preserved in the
-[0.4.0 archive](spec/archive/heterodyne-0.4.0.md).
+index.
 
 ## Family and conformance
 
@@ -35,17 +34,17 @@ separately advertised and optional.
 **Social.** The document for public following, interactions, moderation,
 lists, social discovery, presentation, durable assets, and ATProto attachment.
 
-**Qualified version.** A document ID plus semver, such as `core/0.5.0`. The
-whole string is not itself semver. Each family document versions independently.
+**Family version.** `heterodyne/` plus semver, such as `heterodyne/0.5.0`. The
+whole string is not itself semver. All five documents carry this one version.
 
-**Registry revision.** A monotonic snapshot of kind allocations, profile
-discriminators, reason codes, security-invariant IDs, and feature IDs. It is pinned by
-releases, capabilities, reports, and vectors.
+**Registry revision.** A monotonic counter over the kind, profile,
+reason-code, security-invariant, feature, and object allocations. It advances
+independently of the family version and is pinned in exactly one place,
+`docs/spec/registry/manifest.json`.
 
-**Profile registry revision.** A fixed allocation snapshot embedded in a
-versioned wire profile. In v1 claims the JSON member remains named
-`registry_revision` and is exactly `2`; it does not float with the family
-release registry revision.
+**Profile revision.** A fixed allocation snapshot embedded in a versioned wire
+profile. In v1 claims the JSON member is `profile_revision` and is frozen at
+`2`; it is distinct from the current family registry revision 13.
 
 **Feature catalog.** The registry-owned allocation of globally unique dotted
 and versioned feature IDs, their document owners, first versions, status,
@@ -53,6 +52,34 @@ specification anchors, and acyclic prerequisites.
 
 **Conformance class.** One of Core, Core+Comms (a Heterodyne persona), Control
 profile, or Social. Claims also name required features.
+
+**Current-draft lane.** The read-only check of current specification prose,
+registry, protocol schemas, and generator inputs. It is independent of the
+rolling snapshot, so an ordinary pre-1.0 draft change does not regenerate
+snapshot vectors.
+
+**Rolling validation snapshot.** The one supported, non-normative pre-1.0
+vector checkpoint under `docs/spec/vectors/`. Its closed `snapshot.json`
+manifest pins source commit
+`2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43` and inventories 493 exact
+artifacts, including 482 vectors. That bootstrap source has zero executable
+checker declarations; the corpus-wide gates still run. A future 1.0 decision,
+not this snapshot, will define immutable vector/release and compatibility
+rules.
+
+**Snapshot roots.** Three isolated inputs to reconciliation and validation.
+The source root contains the five specifications, registry, protocol schemas,
+and behavioral generator inputs. The snapshot root contains vectors, fixtures,
+the packaged vector schema, reason/coverage projections, and manifest. The
+snapshot-tool root contains the packager and lockfile from the runtime snapshot
+commit.
+
+**Snapshot commit.** The runtime commit derived from the last commit that
+changed `snapshot.json`, not a value stored by that manifest. `snapshot-check`
+passes the source and snapshot roots plus both commit identities explicitly to
+the independent harness. A reconciliation follows author → review → commit →
+read-only check; checking an uncommitted replacement cannot establish this
+history identity.
 
 **Strict profile.** An additive, stable conformance profile with exact
 invariant membership and prerequisite profiles. Unknown profile IDs confer no

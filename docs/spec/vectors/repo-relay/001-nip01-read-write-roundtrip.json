@@ -1,11 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-repo-relay"
+    "heterodyne:core#core-repo-relay"
   ],
   "vector_id": "repo-relay/nip01-read-write-roundtrip",
   "direction": "round-trip",
@@ -26,13 +23,13 @@
           ],
           [
             "kel_head",
-            "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+            "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
             "0"
           ]
         ],
         "content": "posted over a repo relay's NIP-01 wire",
-        "id": "778ed4dd1063851ce5cbfb3fe098934557dbedbb23b68062388d77be783dd428",
-        "sig": "ab112bfd6321706ba4511eb7d046926a03cad18e894d3e45ee9f67e9eec4dc47b963865b088f091627fb3f635d2e44e971c0d410908a10efc9f2448242c53623"
+        "id": "bc8bb306e47c81b427d57907da99dc60d6f682f7efdc903a0066abf5445f6f17",
+        "sig": "e0d5c6cda68399d358ecf180f59b174f1756b70cd9d9c81d28c20c076034862214418497004eca01a4d705bbad0128ea75819cf03b7369f22775d8a3878ded61"
       }
     ],
     "plain_relay_frame": [
@@ -49,13 +46,13 @@
           ],
           [
             "kel_head",
-            "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+            "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
             "0"
           ]
         ],
         "content": "posted over a repo relay's NIP-01 wire",
-        "id": "778ed4dd1063851ce5cbfb3fe098934557dbedbb23b68062388d77be783dd428",
-        "sig": "ab112bfd6321706ba4511eb7d046926a03cad18e894d3e45ee9f67e9eec4dc47b963865b088f091627fb3f635d2e44e971c0d410908a10efc9f2448242c53623"
+        "id": "bc8bb306e47c81b427d57907da99dc60d6f682f7efdc903a0066abf5445f6f17",
+        "sig": "e0d5c6cda68399d358ecf180f59b174f1756b70cd9d9c81d28c20c076034862214418497004eca01a4d705bbad0128ea75819cf03b7369f22775d8a3878ded61"
       }
     ],
     "vector_context": {
@@ -64,27 +61,29 @@
   },
   "expected_output": {
     "comparison_surface": "nip01_canonical_event_serialization",
-    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225640,1,[[\"client\",\"heterodyne\"],[\"kel_head\",\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"0\"]],\"posted over a repo relay's NIP-01 wire\"]",
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225640,1,[[\"client\",\"heterodyne\"],[\"kel_head\",\"7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf\",\"0\"]],\"posted over a repo relay's NIP-01 wire\"]",
     "decoded": {
-      "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-      "created_at": 1767225640,
-      "kind": 1,
-      "tags": [
-        [
-          "client",
-          "heterodyne"
+      "event": {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767225640,
+        "kind": 1,
+        "tags": [
+          [
+            "client",
+            "heterodyne"
+          ],
+          [
+            "kel_head",
+            "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
+            "0"
+          ]
         ],
-        [
-          "kel_head",
-          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
-          "0"
-        ]
-      ],
-      "content": "posted over a repo relay's NIP-01 wire",
-      "id": "778ed4dd1063851ce5cbfb3fe098934557dbedbb23b68062388d77be783dd428",
-      "sig": "ab112bfd6321706ba4511eb7d046926a03cad18e894d3e45ee9f67e9eec4dc47b963865b088f091627fb3f635d2e44e971c0d410908a10efc9f2448242c53623"
+        "content": "posted over a repo relay's NIP-01 wire",
+        "id": "bc8bb306e47c81b427d57907da99dc60d6f682f7efdc903a0066abf5445f6f17",
+        "sig": "e0d5c6cda68399d358ecf180f59b174f1756b70cd9d9c81d28c20c076034862214418497004eca01a4d705bbad0128ea75819cf03b7369f22775d8a3878ded61"
+      }
     },
-    "id": "778ed4dd1063851ce5cbfb3fe098934557dbedbb23b68062388d77be783dd428",
-    "sig": "ab112bfd6321706ba4511eb7d046926a03cad18e894d3e45ee9f67e9eec4dc47b963865b088f091627fb3f635d2e44e971c0d410908a10efc9f2448242c53623"
+    "id": "bc8bb306e47c81b427d57907da99dc60d6f682f7efdc903a0066abf5445f6f17",
+    "sig": "e0d5c6cda68399d358ecf180f59b174f1756b70cd9d9c81d28c20c076034862214418497004eca01a4d705bbad0128ea75819cf03b7369f22775d8a3878ded61"
   }
 }

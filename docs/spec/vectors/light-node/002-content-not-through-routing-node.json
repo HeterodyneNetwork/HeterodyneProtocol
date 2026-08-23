@@ -1,11 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-client-responsibilities"
+    "heterodyne:core#core-client-responsibilities"
   ],
   "vector_id": "light-node/content-not-through-routing-node",
   "description": "A light node queries a routing node only for host hints and fetches content directly from a full node; it pulls no content through the routing node.",

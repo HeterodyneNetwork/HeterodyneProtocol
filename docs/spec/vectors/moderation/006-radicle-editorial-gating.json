@@ -1,14 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "owner_version": "social/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0",
-    "comms": "comms/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:social/0.5.0#social-moderation"
+    "heterodyne:social#social-moderation"
   ],
   "vector_id": "moderation/radicle-editorial-gating",
   "description": "A post is editorially approved in Radicle mode iff it is reachable from the delegate-threshold-approved canonical feed branch, evaluated independently of any kind:4550 approval.",

@@ -128,7 +128,7 @@ const BASE64URL = /^[A-Za-z0-9_-]+$/;
 /** Exact Comms 0.5 profile of draft-ietf-oauth-status-list-21 section 4.1. */
 export function encodeStatusList(statuses: TokenStatus[]): { bits: 1; lst: string } {
   if (!Array.isArray(statuses) || statuses.length === 0 || statuses.some((status) => status !== 0 && status !== 1)) {
-    throw new Error("oidc-status-index-invalid: status list must contain one or more one-bit values");
+    throw new Error("oidc-status-invalid: status list must contain one or more one-bit values");
   }
   const bytes = Buffer.alloc(Math.ceil(statuses.length / 8));
   statuses.forEach((status, index) => { bytes[Math.floor(index / 8)] |= status << (index % 8); });
@@ -148,10 +148,10 @@ export function generateStatusListToken(input: {
   requireSafeTime(input.iat, "iat");
   requireSafeTime(input.exp, "exp");
   if (input.exp <= input.iat || !Number.isFinite(input.ttl) || input.ttl <= 0) {
-    throw new Error("oidc-status-stale: exp and positive finite ttl are required");
+    throw new Error("oidc-status-invalid: exp and positive finite ttl are required");
   }
   if (input.iat < input.state.checkpoint.observed_at) {
-    throw new Error("oidc-status-stale: status iat predates its authoritative ledger checkpoint");
+    throw new Error("oidc-status-invalid: status iat predates its authoritative ledger checkpoint");
   }
   const confirmed = new Set(input.state.repository_confirmed_record_ids ?? []);
   const issuanceRecords = input.state.records
@@ -169,7 +169,7 @@ export function generateStatusListToken(input: {
   const selected = issuances.filter(({ reservation }) => reservation.uri === relativeUri)
     .sort((left, right) => left.reservation.idx - right.reservation.idx);
   if (selected.length === 0 || selected.some(({ reservation }, index) => reservation.idx !== index)) {
-    throw new Error("oidc-status-index-invalid: status URI allocations are absent or non-contiguous");
+    throw new Error("oidc-status-invalid: status URI allocations are absent or non-contiguous");
   }
   const invalidated = new Set(input.state.token_invalidations ?? []);
   const status_list = encodeStatusList(selected.map(({ jti }) => invalidated.has(jti) ? 1 : 0));
@@ -250,7 +250,7 @@ export function validateTokenStatus(
         current.branch !== mirror.branch || typeof mirror.path !== "string" || currentStatus === undefined ||
         currentStatus.uri !== reference.uri ||
         sha256Hex(utf8Bytes(statusListJwt.compact)) !== currentStatus.sha256) {
-      return denied("oidc-status-digest-mismatch");
+      return denied("oidc-status-invalid");
     }
     const jwks = validateManifestJwks(current, jwksBytes);
     const parsed = verifyStatusListCompact(statusListJwt.compact, jwks);
@@ -265,7 +265,7 @@ export function validateTokenStatus(
         typeof claims.ttl !== "number" || !Number.isFinite(claims.ttl) || claims.ttl <= 0 || resolvedAt > now ||
         Number(claims.iat) < current.authority.checkpoint.observed_at || Number(claims.iat) > now ||
         Number(claims.exp) <= now || resolvedAt + claims.ttl < now) {
-      return denied("oidc-status-stale");
+      return denied("oidc-status-invalid");
     }
     const list = objectValue(claims.status_list);
     if (list === null || list.bits !== 1 || typeof list.lst !== "string" || !canonicalBase64url(list.lst)) {
@@ -274,7 +274,7 @@ export function validateTokenStatus(
     const compressed = Buffer.from(list.lst, "base64url");
     const bytes = inflateSync(compressed, { maxOutputLength: MAX_STATUS_LIST_BYTES });
     const idx = Number(reference.idx);
-    if (idx >= bytes.length * 8) return denied("oidc-status-index-invalid");
+    if (idx >= bytes.length * 8) return denied("oidc-status-invalid");
     const status = (bytes[Math.floor(idx / 8)] >> (idx % 8)) & 1;
     return status === 0 ? accepted() : denied("oidc-status-invalid");
   } catch {
@@ -316,11 +316,11 @@ export function buildContinuityTree(
   if (!verifyContinuityProof(manifest)) throw new Error("oidc-issuer-authority-invalid: invalid manifest proof");
   const root = `.well-known/${manifest.cold_root_npub}`;
   const expectedStatus = new Map(manifest.status_lists.map((entry) => [entry.path, entry.sha256]));
-  if (statusTokens.size !== expectedStatus.size) throw new Error("oidc-status-digest-mismatch: status set differs from manifest");
+  if (statusTokens.size !== expectedStatus.size) throw new Error("oidc-status-invalid: status set differs from manifest");
   const publicJwks = validateManifestJwks(manifest, jwksBytes);
   for (const [path, bytes] of statusTokens) {
     if (!path.startsWith(`${root}/status-lists/`) || expectedStatus.get(path) !== sha256Hex(bytes)) {
-      throw new Error("oidc-status-digest-mismatch: status bytes differ from manifest");
+      throw new Error("oidc-status-invalid: status bytes differ from manifest");
     }
     const compact = Buffer.from(bytes).toString("utf8");
     const parsedStatus = verifyStatusListCompact(compact, publicJwks);
@@ -328,7 +328,7 @@ export function buildContinuityTree(
     if (expectedEntry === undefined || parsedStatus.claims.sub !== expectedEntry.uri ||
         !Number.isSafeInteger(parsedStatus.claims.iat) ||
         Number(parsedStatus.claims.iat) < manifest.authority.checkpoint.observed_at) {
-      throw new Error("oidc-status-digest-mismatch: status subject/path differs from manifest");
+      throw new Error("oidc-status-invalid: status subject/path differs from manifest");
     }
   }
   const discoveryBytes = utf8Bytes(jcsCanonicalize(discovery));
@@ -389,7 +389,7 @@ export function resolveIssuerContinuity(
     }
     if (candidate.sequence !== previous.sequence + 1 ||
         candidate.predecessor_digest !== continuityManifestDigest(previous)) {
-      return deniedContinuity("oidc-status-digest-mismatch");
+      return deniedContinuity("oidc-status-invalid");
     }
     validateRetainedStatusProvenance(previous, candidate);
     if (candidate.successor !== null && jcsCanonicalize(candidate.successor) !== jcsCanonicalize(previous.successor) &&
@@ -410,7 +410,7 @@ export function resolveIssuerContinuity(
     return acceptedContinuity(candidate.issuer, "retain-exact-issuer");
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    if (message.includes("digest") || message.includes("retained")) return deniedContinuity("oidc-status-digest-mismatch");
+    if (message.includes("digest") || message.includes("retained")) return deniedContinuity("oidc-status-invalid");
     return deniedContinuity("oidc-issuer-authority-invalid");
   }
 }
@@ -431,7 +431,7 @@ function validKelTransition(
 export function validateIssuerContinuityChain(
   entries: Array<{ manifest: ContinuityManifest; context: ContinuityValidationContext }>,
 ): ValidatedContinuityChainContext {
-  if (entries.length === 0) throw new Error("oidc-status-digest-mismatch: continuity chain is empty");
+  if (entries.length === 0) throw new Error("oidc-status-invalid: continuity chain is empty");
   let previous: ContinuityManifest | null = null;
   const manifests: ContinuityManifest[] = [];
   for (const entry of entries) {
@@ -449,7 +449,7 @@ export function validateIssuerContinuityChain(
 function assertValidatedContinuityChain(context: ValidatedContinuityChainContext): void {
   if (VALIDATED_CONTINUITY_CHAINS.get(context) !== continuityChainFingerprint(context) ||
       context.current !== context.manifests[context.manifests.length - 1]) {
-    throw new Error("oidc-status-digest-mismatch: validated continuity chain is absent or mutated");
+    throw new Error("oidc-status-invalid: validated continuity chain is absent or mutated");
   }
 }
 
@@ -571,7 +571,7 @@ function validateManifestIntrinsic(manifest: ContinuityManifest): void {
       manifest.status_lists.some((entry) => !validStatusEntry(entry, manifest.cold_root_npub)) ||
       (manifest.sequence === 0 && manifest.status_lists.some((entry) => entry.issuer !== manifest.issuer)) ||
       new Set(manifest.status_lists.map(({ path }) => path)).size !== manifest.status_lists.length) {
-    throw new Error("oidc-status-digest-mismatch: manifest set is noncanonical");
+    throw new Error("oidc-status-invalid: manifest set is noncanonical");
   }
 }
 
@@ -590,21 +590,21 @@ function validStatusEntry(
 
 function validateManifestJwks(manifest: ContinuityManifest, jwksBytes: Uint8Array): JsonValue {
   if (!(jwksBytes instanceof Uint8Array)) {
-    throw new Error("oidc-status-digest-mismatch: exact raw JWKS bytes are required");
+    throw new Error("oidc-status-invalid: exact raw JWKS bytes are required");
   }
   let publicJwks: JsonValue;
   try { publicJwks = JSON.parse(Buffer.from(jwksBytes).toString("utf8")) as JsonValue; }
-  catch { throw new Error("oidc-status-digest-mismatch: JWKS bytes are not JSON"); }
+  catch { throw new Error("oidc-status-invalid: JWKS bytes are not JSON"); }
   const jwksObject = objectValue(publicJwks);
   if (jwksObject === null || Object.keys(jwksObject).length !== 1 || !Array.isArray(jwksObject.keys)) {
-    throw new Error("oidc-status-digest-mismatch: JWKS bytes are not the closed public set");
+    throw new Error("oidc-status-invalid: JWKS bytes are not the closed public set");
   }
   if (sha256Hex(jwksBytes) !== manifest.current_jwks_sha256) {
-    throw new Error("oidc-status-digest-mismatch: exact JWKS bytes differ from manifest");
+    throw new Error("oidc-status-invalid: exact JWKS bytes differ from manifest");
   }
   const keys = jwksObject.keys.map((value) => {
     const key = objectValue(value);
-    if (key === null) throw new Error("oidc-status-digest-mismatch: invalid public JWK");
+    if (key === null) throw new Error("oidc-status-invalid: invalid public JWK");
     return exactPublicRsaJwk(key);
   });
   const keyDigests = keys.map((value) => sha256Hex(utf8Bytes(jcsCanonicalize(value)))).sort();
@@ -616,7 +616,7 @@ function validateManifestJwks(manifest: ContinuityManifest, jwksBytes: Uint8Arra
       sha256Hex(utf8Bytes(jcsCanonicalize(currentKey))) !== manifest.current_signing_jwk_sha256 ||
       jcsCanonicalize(keyDigests) !== jcsCanonicalize(expectedKeyDigests) ||
       jcsCanonicalize(keyIds) !== jcsCanonicalize(expectedKeyIds)) {
-    throw new Error("oidc-status-digest-mismatch: current/retiring JWKS keys differ from manifest");
+    throw new Error("oidc-status-invalid: current/retiring JWKS keys differ from manifest");
   }
   return publicJwks;
 }
@@ -697,7 +697,7 @@ function requireExactStatusUri(value: string): void {
   const parsed = new URL(value);
   if (parsed.protocol !== "https:" || parsed.username !== "" || parsed.password !== "" || parsed.search !== "" || parsed.hash !== "" ||
       `${parsed.origin}${parsed.pathname}` !== value || !/^\/oidc\/npub1[^/]+\/status-lists\/[0-9]+\/[0-9a-f]{32}\/[0-9]+\.jwt$/.test(parsed.pathname)) {
-    throw new Error("oidc-status-index-invalid: exact HTTPS status URI required");
+    throw new Error("oidc-status-invalid: exact HTTPS status URI required");
   }
 }
 
@@ -719,10 +719,10 @@ function objectValue(value: unknown): Record<string, JsonValue> | null {
 
 function sha256Hex(value: Uint8Array): string { return createHash("sha256").update(value).digest("hex"); }
 function requireSafeTime(value: number, label: string): void {
-  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`oidc-status-stale: invalid ${label}`);
+  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`oidc-status-invalid: invalid ${label}`);
 }
 function requireFiniteTime(value: number, label: string): void {
-  if (!Number.isFinite(value) || value < 0) throw new Error(`oidc-status-stale: invalid ${label}`);
+  if (!Number.isFinite(value) || value < 0) throw new Error(`oidc-status-invalid: invalid ${label}`);
 }
 function accepted(): AuthorizationDecision { return { allowed: true, state: "active", reason_code: null }; }
 function denied(reason_code: string): AuthorizationDecision { return { allowed: false, state: "invalid", reason_code }; }

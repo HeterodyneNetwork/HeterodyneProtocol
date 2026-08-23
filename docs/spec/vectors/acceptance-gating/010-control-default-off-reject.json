@@ -1,13 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-acceptance-hook"
+    "heterodyne:comms#comms-acceptance-hook"
   ],
   "vector_id": "acceptance-gating/control-default-off-reject",
   "description": "A full node defaults unsolicited Control invitation admission to off.",
@@ -26,10 +21,10 @@
   },
   "expected_output": {
     "verdict": "reject",
-    "reason_code": "control-invitation-disabled",
+    "reason_code": "control-enrollment-unavailable",
     "normalized": {
       "outcome": "reject",
-      "reason_code": "control-invitation-disabled"
+      "reason_code": "control-enrollment-unavailable"
     }
   }
 }

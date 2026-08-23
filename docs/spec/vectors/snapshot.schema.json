@@ -1,0 +1,55 @@
+{
+  "$schema": "https://heterodyne.network/schemas/vector-snapshot-manifest-meta-v1.schema.json",
+  "$id": "https://heterodyne.network/schemas/vector-snapshot-manifest-v1.schema.json",
+  "title": "Heterodyne rolling vector snapshot manifest",
+  "description": "Requires the unique-by-path-v1 vocabulary declared by its custom Draft 2020-12 meta-schema; unsupported validators must refuse this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "snapshot_schema",
+    "source_commit",
+    "vector_schema_version",
+    "vector_count",
+    "artifacts"
+  ],
+  "properties": {
+    "snapshot_schema": {
+      "const": "1"
+    },
+    "source_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "vector_schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "vector_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "artifacts": {
+      "type": "array",
+      "uniqueItems": true,
+      "x-unique-by": "path",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^docs/spec/vectors/(?!\\.{1,2}(?:/|$))[A-Za-z0-9._-]+(?:/(?!\\.{1,2}(?:/|$))[A-Za-z0-9._-]+)*$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

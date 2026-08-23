@@ -1,22 +1,11 @@
 # Heterodyne Core Protocol Specification
 
-Document ID: `core`<br>
-Version: `core/0.5.0`<br>
-Registry revision: `8`
+Document ID: `core`
 
-Normative dependencies: None.
-
-This document prepares Core's first 0.5.0 release, descended from the
-Heterodyne 0.4.x monolith. It is current normative authority at this repository
-path but remains unreleased pending explicit release approval.
-`core/0.5.0` is not a synchronized family version. The key words MUST, MUST
-NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT, RECOMMENDED, NOT
-RECOMMENDED, MAY, and OPTIONAL are to be interpreted as described by BCP 14
-when, and only when, they appear in all capitals.
-
-Permanent anchors use explicit HTML IDs formed by the literal `core-` prefix
-and a lowercase ASCII kebab-case topic. Generated heading IDs are not stable
-protocol references.
+Core is the foundation section of the Heterodyne specification. It owns the
+conventions that every other section follows, including the layering that
+fixes what each section may depend on; see
+[§1.1 Document conventions](#core-document-conventions).
 
 <a id="core-scope"></a>
 ## 1. Scope and non-goals
@@ -43,6 +32,49 @@ semantics, group interaction, moderation, or remote command semantics. It does
 not define a new transport, relay protocol, peer-to-peer network, programming
 language, runtime, or centralized directory. Radicle replication remains
 full-node-to-full-node; browser and mobile clients use NIP-01 endpoints.
+
+<a id="core-document-conventions"></a>
+### 1.1 Document conventions
+
+These conventions govern every document in the family. No other document
+restates them.
+
+**Family version.** The specification is published as five documents at one
+version, `heterodyne/0.5.0`. The five documents are sections of one release,
+not independent lineages: they are versioned, released, and pinned together. A
+conformance claim names this single version.
+
+**Registry pin.** The registry at [`registry/`](registry/) is the allocation
+authority for kind numbers, profile discriminators, reason codes,
+security-invariant IDs, feature IDs, and object types. Its current revision
+and immutable entry-set digest are recorded in exactly one place,
+[`registry/manifest.json`](registry/manifest.json). No document states the
+revision number; a conformance claim reads it from the manifest.
+
+**Release status.** The prepared 0.5.0 documents are current normative
+authority at these repository paths but remain unreleased pending explicit
+release approval.
+
+**BCP 14.** The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD,
+SHOULD NOT, RECOMMENDED, NOT RECOMMENDED, MAY, and OPTIONAL are to be
+interpreted as described by BCP 14 when, and only when, they appear in all
+capitals.
+
+**Anchors.** Every referenceable location carries an explicit HTML ID formed
+by its owning document's literal prefix (`core-`, `comms-`, `control-`,
+`social-`, or `workspace-`) followed by a lowercase ASCII kebab-case topic.
+Generated heading IDs are not stable protocol references.
+
+**Qualified references.** A normative cross-document reference is
+`heterodyne:<semver>#<anchor>`, for example
+[`heterodyne:0.5.0#core-root-attestation`](#core-root-attestation). The anchor prefix names the owning
+document, so a reference resolves and layer-checks without naming it twice.
+
+**Layering.** A document may normatively depend only on the documents beneath
+it. Comms depends on Core; Control and Social depend on Core and Comms;
+Workspace depends on Core and Comms and may optionally compose Control and
+Social. Core depends on nothing. The graph MUST remain acyclic and a document
+MUST NOT normatively reference one above it.
 
 <a id="core-terminology"></a>
 ## 2. Shared terminology
@@ -89,15 +121,14 @@ accepted by more than half of the delegate set that revision replaces.
 Implementations MUST NOT conflate these mechanisms.
 
 <a id="core-registry"></a>
-<!-- Monolith provenance: §3.0. -->
 ## 3. Registry, allocation, and canonical bytes
 
-The separately revisioned Core-owned registry at `docs/spec/registry/` is the
-allocation authority for kind numbers, profile discriminators, reason codes,
-security-invariant IDs, and feature IDs. This release pins registry revision
-`6`; changing a
-non-Core-owned registry entry does not change Core semver. A conformance claim
-MUST pin the registry revision or immutable entry-set digest.
+The registry is separately revisioned from the specification: adding or
+promoting an entry does not change the family version. Its current revision
+and entry-set digest are pinned only in
+[`registry/manifest.json`](registry/manifest.json), as
+[`heterodyne:0.5.0#core-document-conventions`](#core-document-conventions) requires. A conformance claim
+MUST pin that revision or its immutable entry-set digest.
 
 Core owns the base schemas for `kind:31000` root attestations, `kind:31001`
 delegations, `kind:31002` KERI inception, `kind:31003` KERI rotation,
@@ -120,7 +151,6 @@ use catalog IDs exactly; a string absent from the pinned catalog grants no
 feature capability.
 
 <a id="core-canonical-serialization"></a>
-<!-- Monolith provenance: §3.0.1-§3.0.1.1. -->
 ### 3.1 NIP-01 serialization and `nip01_raw`
 
 Every Nostr event MUST be hashed and signed over the UTF-8 bytes of the compact
@@ -143,21 +173,22 @@ mismatch is rejection. A transport MUST NOT reconstruct the signing input from
 the parsed object.
 
 <a id="core-version-stamps"></a>
-<!-- Monolith provenance: §3.0 and §12. -->
 ### 3.2 Owner stamps and historical bytes
 
-An event carries at most one Heterodyne version stamp. The registry defines
-these exhaustive classes:
+An event carries at most one Heterodyne version stamp. Ownership selects the
+applicable base schema or registered profile and the stamp placement only; it
+does not select a separate version lineage. Every stamped class below carries
+the exact family version `heterodyne/0.5.0`. The registry defines these
+exhaustive classes:
 
-1. Heterodyne-defined JSON `content` MUST contain the qualified
-   `spec_version` of the base-schema owner.
+1. Heterodyne-defined JSON `content` MUST contain the exact family
+   `spec_version`.
 2. A Heterodyne-allocated kind whose `content` is empty or non-JSON MUST carry
-   `['spec_version', '<owner>/<semver>']`. The registry base-schema owner
-   supplies `<owner>`.
+   `['spec_version', 'heterodyne/0.5.0']`.
 3. An adopted upstream kind is unstamped unless an immutable registered
    stamping profile opts it in. A stamping profile uses its in-band
-   discriminator and carries the profile owner's qualified version in the
-   version tag without changing the upstream content shape.
+   discriminator and carries the exact family version in the version tag
+   without changing the upstream content shape.
 4. A registered non-stamping profile changes no signed byte and adds no
    marker. The Core breadcrumb profiles
    `heterodyne-core-rotation-breadcrumb-profile-v1` and
@@ -169,41 +200,55 @@ these exhaustive classes:
 5. Adopted Marmot transport kinds `444`, `445`, and `30443` carry no
    Heterodyne marker. Their signed bytes remain upstream-owned.
 6. Control inner application `kind:31017` exists only inside Marmot MLS. Its
-   canonical JSON frame carries `control/0.5.0`; it has no outer Control stamp
+   canonical JSON frame carries `heterodyne/0.5.0`; it has no outer Control stamp
    and MUST NOT be interpreted as a standalone event.
 7. One-time-invite response rumor `kind:31018` exists only as unsigned inner
-   NIP-59 content. Its JCS content carries `comms/0.5.0`; the authenticated
+   NIP-59 content. Its JCS content carries `heterodyne/0.5.0`; the authenticated
    NIP-59 seal supplies responder authentication and it MUST NOT be
    interpreted as a signed standalone addressable event.
 
-The unqualified stamp `0.4.0` denotes the archived monolith. Missing-stamp
-legacy inference is permitted only for a Heterodyne-allocated kind whose 0.4.0
-schema required that monolith stamp. Adopted upstream kinds and post-split
-non-stamping profiles MUST NOT receive legacy inference. Existing signed
-events MUST NOT be restamped, re-signed merely for migration, or represented
-as having different historical bytes.
+An unqualified or unrecognized family stamp names no supported protocol
+version. A consumer MUST NOT use the stamp value to infer an owner, and MUST
+reject a stamped event unless its value is the exact supported family version
+and its base schema or profile resolves through the registry.
 
-**Closed legacy owner-inference table.** This table is exhaustive; numeric
-range membership alone never makes an event eligible.
+<a id="core-wire-keys"></a>
+### 3.3 Canonical wire keys
 
-| Post-split owner | Monolith-stamped eligible kinds |
-|---|---|
-| Core | `31000`, `31001`, `31002`, `31003`, `31005`, `31010` |
-| Comms | `31007`, `31011`, `31012` |
-| Social | `31004`, `31008`, `31009` |
+Every NIP-01 `pubkey`, every `p` tag value, every address coordinate, and
+every other Heterodyne wire field naming a Nostr key is an exact 32-byte
+x-only secp256k1 public key encoded as 64 lowercase hexadecimal characters.
+`npub` names only the NIP-19 bech32 presentation encoding: it MAY appear in
+human-readable text and user interfaces, and MUST NOT appear in a wire field.
+A consumer MUST reject an uppercase, bech32, truncated, or otherwise
+non-canonical value rather than normalizing it. Every document in the family
+inherits this rule; none restates it.
 
-No legacy kind maps to Control. `31006` was only reserved and is not eligible.
-For a kind in the table, an explicit unqualified `0.4.0` stamp selects the
-archived monolith schema. An absent stamp MAY select that schema only when the
-event otherwise validates as that kind's archived monolith form. Owner
-inference then routes parsing and migration diagnostics to the named post-split
-owner; it does not convert the event to that owner's 0.5.0 schema or stamp.
-Unknown Heterodyne kinds, adopted upstream kinds, profile-only events, and any
-event carrying a post-split discriminator MUST NOT receive this inference.
+Radicle NIDs use the canonical Ed25519 `did:key:z...` encoding. A canonical
+RID is the literal prefix `rad:z` followed by the Base58BTC encoding of exactly
+the 20 raw bytes of its Git SHA-1 repository object identifier. The RID body
+has no multicodec prefix. Decoding and re-encoding MUST reproduce the exact
+body, including only those leading zero-byte markers present in the decoded
+20-byte identifier. Other prefixes, malformed Base58BTC, added leading-zero
+markers, multicodec-prefixed bodies, and other decoded lengths MUST be
+rejected rather than normalized.
+
+<a id="core-canonical-json"></a>
+### 3.4 Canonical JSON
+
+Every JSON object this family defines outside a NIP-01 event serializes as
+UTF-8 under RFC 8785 JCS. "Canonical compact JSON" names exactly that
+serialization; no document defines another.
+
+Before signing, a producer MUST reject duplicate member names, non-integer
+numbers where the schema requires integers, unknown members, and any value
+outside the object's closed schema. A consumer MUST validate the applicable
+schema before evaluating authority or acting on the object. Member order is
+fixed by JCS, so a document that shows an object literal is showing the
+canonical order and not imposing a second one.
 
 <a id="core-kel-head"></a>
-<!-- Monolith provenance: §3.0 and §4.5.1. -->
-### 3.3 Registered integrity tags
+### 3.5 Registered integrity tags
 
 `['kel_head', '<64-lowercase-hex event id>', '<decimal seq>']` names the latest
 accepted KEL event known to the signer. It is advisory and never replaces KEL
@@ -222,7 +267,7 @@ event's `s` MUST equal `seq`. Applicability is:
 compromise-declaring rotation and MUST NOT occur on a routine rotation.
 
 <a id="core-typed-key-references"></a>
-### 3.4 Typed-key references and native proof hooks
+### 3.6 Typed-key references and native proof hooks
 
 Core provides a closed syntax and registration hook for higher documents to
 name cryptographic keys without assigning policy meaning to those names. The
@@ -233,6 +278,7 @@ initial reference types are:
 | `nostr-secp256k1` | 32-byte x-only secp256k1 public key as 64 lowercase hexadecimal characters | BIP-340 |
 | `radicle-ed25519-nid` | canonical Ed25519 `did:key:z...` Radicle NID | Ed25519 |
 | `jwk-thumbprint` | unpadded base64url SHA-256 RFC 7638 thumbprint | JWS with a public JWK whose recomputed thumbprint is identical |
+| `marmot-mls-leaf` | unpadded base64url SHA-256 of the exact TLS-serialized MLS `LeafNode` in its authenticated group epoch | MLS leaf signature plus Marmot `marmot.member.account-identity-proof.v2` and membership in the bound group context |
 
 A parser MUST reject an unknown type, a non-canonical value, private JWK
 members, remote JWK key references, or a proof whose suite does not match the
@@ -258,18 +304,52 @@ sole member. Unknown, private, or remote-reference JWK members, an extra
 protected-header member, `none`, an HMAC/HS or `oct` key, a wrong curve, a
 weak RSA modulus, or any algorithm/key-type mismatch MUST be rejected.
 
-The generic native-proof input is a domain-separated canonical byte string
-binding the referenced key, purpose, fresh challenge, audience, resource,
-operation, verifier context, issue time, and expiry. The caller supplies the
-complete bytes and expected reference. Core returns only `valid` or `invalid`
-plus the verified key reference and suite. Freshness, replay, purpose, trust,
-and permission decisions remain the caller's responsibility. For a Radicle
-NID, Core additionally verifies that the public key in the proof encodes to
-the exact canonical NID. For a JWK proof it recomputes the RFC 7638 thumbprint
-before verifying the protected JWS.
+The caller supplies the complete proof bytes and expected reference. Core
+returns only `valid` or `invalid` plus the verified key reference and suite.
+Freshness, replay, purpose, trust, and permission decisions remain the
+caller's responsibility. For a Radicle NID, Core additionally verifies that
+the public key in the proof encodes to the exact canonical NID. For a JWK
+proof it recomputes the RFC 7638 thumbprint before verifying the protected
+JWS.
+
+<a id="core-proof-bytes"></a>
+#### 3.6.1 Domain-separated proof bytes
+
+Every Heterodyne proof that is not an ordinary NIP-01 event signature signs
+exactly these bytes. This is the family's only proof-byte construction and no
+document defines a second one:
+
+```text
+<domain> || 0x00 || JCS(<claim>)
+```
+
+`<domain>` is the US-ASCII proof-domain string. `<claim>` is a JSON object
+holding exactly that domain's bound members and no proof or signature member,
+serialized under RFC 8785 JCS. The single zero byte separates them; a domain
+contains no zero byte, so the boundary is unambiguous. Where a construction is
+defined over a digest, that digest is SHA-256 of these same bytes.
+
+A proof domain is lowercase kebab-case, begins `heterodyne-`, ends `-v<N>`,
+and is allocated with its bound members and permitted suites in
+[`registry/proof-domains.json`](registry/proof-domains.json). Adding,
+removing, or renaming a bound member requires a new domain. A verifier MUST
+reject an unknown domain, a claim carrying a member the domain does not bind,
+a claim missing one, and a suite the domain does not permit.
+
+The suite follows the subject's typed-key reference: BIP-340 for
+`nostr-secp256k1`, Ed25519 for `radicle-ed25519-nid`, and JWS for
+`jwk-thumbprint`. A dual proof over one claim produces one set of bytes signed
+independently by each subject. A domain whose registered suite is
+`hmac-sha256` authenticates the same bytes with a shared secret instead of a
+key reference; the construction is otherwise identical.
+
+Positional and delimiter-joined proof inputs are forbidden. A delimiter that
+can occur inside a bound value lets two distinct claims serialize to identical
+bytes, and a positional form gives a verifier no way to reject an unknown or
+missing member.
 
 <a id="core-authority-interfaces"></a>
-### 3.5 Authority and repository interfaces
+### 3.7 Authority and repository interfaces
 
 Core exposes a point-in-time persona/KEL issuer-authority result containing:
 the cold-root persona, accepted KEL head, candidate signing key, authority
@@ -286,8 +366,9 @@ and accepted KEL head. This interface verifies identity and possession only.
 
 Higher documents may reuse Core's generic protected-repository primitives:
 canonical `main` selection, commit/ref verification, encrypted private-tree
-storage, recipient-key wrapping, reader removal, key rotation, rollback
-detection, and cooperative ciphertext scrubbing. They may also reuse the
+storage, rollback detection, and cooperative ciphertext scrubbing. Recipient
+wrapping, recipient removal, and key rotation are the separate primitive at
+[`heterodyne:0.5.0#core-key-envelope`](#core-key-envelope). They may also reuse the
 public identity repository's canonical-`main` publication and digest-binding
 rules. Those primitives do not assign meaning to repository records or make a
 repository state authoritative for a higher-layer decision.
@@ -296,8 +377,39 @@ Core does not define claims, trust policy, authorization state, OIDC, JWT, or
 token status. Registry hooks identify the owning document and immutable
 profile discriminator; they do not transfer semantic ownership into Core.
 
+<a id="core-structured-outcome"></a>
+### 3.8 Structured client outcomes
+
+Some conditions are visible to a user but allocate no reason code, because
+they describe a client's own retry state rather than a verdict on received
+bytes. A document that defines such a condition uses this exact shape and
+defines only its `outcome_class` and the members of `subject`:
+
+```json
+{
+  "outcome_class": "<stable lowercase kebab-case class>",
+  "subject": {},
+  "attempted_at": 0,
+  "deadline_at": 0,
+  "last_attempt_at": 0,
+  "retry_state": "retrying",
+  "terminal_cause": null,
+  "allowed_actions": []
+}
+```
+
+`retry_state` is exactly `retrying` or `terminal`. `terminal_cause` is a
+string when `retry_state` is `terminal` and `null` otherwise.
+`allowed_actions` is a non-empty array of stable lowercase kebab-case action
+identifiers. All three timestamps are decimal Unix seconds.
+
+The outcome MUST be localizable: the class and action identifiers are stable
+and machine-readable, and any rendered sentence is a presentation choice and
+never normative. An `outcome_class` MUST NOT be a registered reason code, and
+a client MUST NOT invent a reason code or reuse an unrelated registered one to
+stand in for an outcome. No other document restates this shape.
+
 <a id="core-identity-model"></a>
-<!-- Monolith provenance: §3.1 and §3.5. -->
 ## 4. Persona identity and KEL
 
 The cold-root npub is the authoritative subject of every Core attestation. A
@@ -306,7 +418,6 @@ replace it as the persona identity. One operator MAY hold multiple unlinkable
 personas; private local correlation data MUST NOT be published.
 
 <a id="core-kel-primitives"></a>
-<!-- Monolith provenance: §3.5.0. -->
 ### 4.1 KEL primitives and witness keys
 
 The cold root signs inception, committed-strategy rotation, and a changed-RID
@@ -324,7 +435,6 @@ multicodec key material, select the implied signature algorithm, and verify
 locally. It MUST NOT perform network resolution for `did:key`.
 
 <a id="core-kel-inception"></a>
-<!-- Monolith provenance: §3.5.1. -->
 ### 4.2 Inception (`kind:31002`)
 
 ```json
@@ -340,7 +450,7 @@ locally. It MUST NOT perform network resolution for `did:key`.
     ["epoch_key", "<initial epoch key hex>"],
     ["witness", "<identifier>", "<positive integer weight>"],
     ["threshold", "<non-negative integer>"],
-    ["spec_version", "core/0.5.0"]
+    ["spec_version", "heterodyne/0.5.0"]
   ],
   "content": "",
   "sig": "<BIP-340 signature by cold root>"
@@ -356,7 +466,6 @@ a verifier MUST NOT replace it with zero, an ingestion time, a rounded value,
 or another normalized timestamp. The event MUST NOT carry `kel_head`.
 
 <a id="core-kel-rotation"></a>
-<!-- Monolith provenance: §3.5.2. -->
 ### 4.3 Rotation (`kind:31003`)
 
 ```json
@@ -375,16 +484,16 @@ or another normalized timestamp. The event MUST NOT carry `kel_head`.
     ["witness", "<identifier>", "<positive integer weight>"],
     ["threshold", "<non-negative integer>"]
   ],
-  "content": "{\"spec_version\":\"core/0.5.0\",\"receipts\":[]}",
+  "content": "{\"spec_version\":\"heterodyne/0.5.0\",\"receipts\":[]}",
   "sig": "<controller BIP-340 signature>"
 }
 ```
 
 The rotation event `content` MUST be the compact UTF-8 JSON serialization of
 exactly one object with exactly two members in this order:
-`spec_version`, whose value is exactly `core/0.5.0`, and `receipts`, whose
+`spec_version`, whose value is exactly `heterodyne/0.5.0`, and `receipts`, whose
 value is an array of the receipt objects defined below. The byte form is
-`{"spec_version":"core/0.5.0","receipts":[...]}` with no insignificant
+`{"spec_version":"heterodyne/0.5.0","receipts":[...]}` with no insignificant
 whitespace; an empty receipt set is `[]`. Any missing, duplicate, or unknown
 top-level member, a member in the wrong order, a wrong `spec_version`, or a
 non-array `receipts` value MUST be rejected.
@@ -457,9 +566,10 @@ Both events MUST omit `kel_head` and every Heterodyne wire marker. Their
 `pubkey` fields remain the retiring key's 32-byte lowercase hexadecimal Nostr
 public key; only human-readable fields use bech32 `npub`. The retiring
 profile MUST NOT carry a NIP-05 identifier that has already been repointed to
-the successor, because it would no longer validate for the signing key. The
-successor's `kind:0` SHOULD identify the predecessor, and a persona-controlled
-NIP-05 identifier SHOULD be repointed to the successor.
+the successor, because it would no longer validate for the signing key; an
+attempt MUST be rejected with `retiring_key_nip05_invalid`. The successor's
+`kind:0` SHOULD identify the predecessor, and a persona-controlled NIP-05
+identifier SHOULD be repointed to the successor.
 
 The v1 profile classification exists only inside the producer's trusted
 rotation workflow. Before producing either event, the implementation MUST bind
@@ -474,9 +584,11 @@ these inputs as one candidate:
 
 The cold root MUST be identical across the prior and successor state, and both
 candidate events MUST be signed by the retiring key. A compromise-driven
-rotation, an unrelated successor, a candidate substitution, publication
-before KEL acceptance, or publication after retiring-secret destruction MUST
-produce no v1 breadcrumb.
+rotation MUST produce no v1 breadcrumb and MUST be rejected with
+`compromise_rotation_breadcrumb_forbidden`. An unrelated successor MUST be
+rejected with `successor_persona_mismatch`. A candidate substitution,
+publication before KEL acceptance, or publication after retiring-secret
+destruction MUST produce no v1 breadcrumb.
 
 The producer SHOULD attempt the exact pair on every selected write relay after
 KEL acceptance and record per-relay outcomes. A partial relay failure does not
@@ -489,13 +601,11 @@ On consumption, an unstamped `kind:0` or `kind:1` without `kel_head` is
 ordinary upstream Nostr. A consumer verifies its NIP-01 signature but MUST NOT
 infer a v1 profile, KEL succession, or persona authority. A caller-supplied
 role, profile id, expected identity, or similar oracle MUST NOT change that
-classification. Registry histories 1 through 3 and the two v1 discriminators
-remain immutable. Any future machine-recognizable breadcrumb profile MUST
-allocate a v2 discriminator and a signed in-band marker rather than reinterpret
-v1 bytes.
+classification. A machine-recognizable breadcrumb profile MUST carry a signed
+in-band marker; a producer-side discriminator alone never makes one
+recognizable on the wire.
 
 <a id="core-kel-verification"></a>
-<!-- Monolith provenance: §3.5.3. -->
 ### 4.4 KEL verification
 
 A verifier MUST parse and replay independently from the exact raw NIP-01 event
@@ -539,19 +649,7 @@ Only declared witness weight counts. Unregistered advisory attestations MUST
 NOT move a rotation toward acceptance. A cached or exported KEL projection
 MUST NOT displace independent exact-byte replay of accepted source events.
 
-<a id="core-pre-keri-migration"></a>
-<!-- Monolith provenance: §3.5.4. -->
-### 4.5 Pre-KERI identity history
-
-The v0.1.4 successor/predecessor/revoke chain is deprecated. A persona using
-that history MUST publish a cold-root-signed KERI inception before producing
-post-migration identity state. Once a valid inception exists, a verifier MUST
-ignore deprecated chain events for authority. If no inception exists, a reader
-MAY retain archival read compatibility but MUST label the persona `pre-KERI`
-and MUST NOT claim Core 0.5 identity conformance for that state.
-
 <a id="core-threshold-authority"></a>
-<!-- Monolith provenance: §3.3 and §3.9.10. -->
 ## 5. Generic threshold authority
 
 A threshold persona is governed by KEL-authorized NIDs projected into its
@@ -571,17 +669,19 @@ threshold persona MUST have both that NID holder's valid Core delegation
 chain and authorization by the existing persona delegate quorum; either alone
 is insufficient. A higher document instantiating threshold authority MUST use
 this algorithm and MAY add policy checks, but MUST NOT weaken these checks.
-The optional `xyz.radicle.crefs` threshold extension MAY be used only after
-all participating implementations negotiate it explicitly; baseline Core
-authority MUST NOT depend on that extension.
+The optional `xyz.radicle.crefs` extension MAY be used only after all
+participating implementations negotiate it explicitly, whether to raise a
+threshold or to refine per-ref authority. No baseline authority or canonicity
+decision, in Core or in any document above it, may depend on that extension;
+every such decision MUST remain evaluable without it. No other document
+restates this rule.
 
 <a id="core-root-attestation"></a>
-<!-- Monolith provenance: §3.2.1 and §3.3. -->
 ## 6. Root attestation and delegation
 
 A `kind:31000` root attestation is signed by the current epoch key, carries an
 empty `d`, `['heterodyne', 'root']`, the cold-root hex, exactly one `kel_head`,
-and `['spec_version', 'core/0.5.0']`. If embedded in an external container, it
+and `['spec_version', 'heterodyne/0.5.0']`. If embedded in an external container, it
 MAY carry a container-binding tag defined by that profile.
 
 The verifier MUST validate `nip01_raw`, BIP-340 signature, current epoch-key
@@ -593,7 +693,6 @@ other kinds. A container profile MUST reject simultaneously asserted root
 attestations naming different cold roots rather than selecting one silently.
 
 <a id="core-nid-delegation"></a>
-<!-- Monolith provenance: §3.3.1. -->
 ### 6.1 NID delegation (`kind:31001`)
 
 ```json
@@ -610,17 +709,21 @@ attestations naming different cold roots rather than selecting one silently.
     ["nid_proof", "<Ed25519 signature hex>"],
     ["kel_head", "<accepted KEL event id>", "<decimal seq>"],
     ["valid_until", ""],
-    ["spec_version", "core/0.5.0"]
+    ["spec_version", "heterodyne/0.5.0"]
   ],
   "content": "",
   "sig": "<BIP-340 signature by current epoch key>"
 }
 ```
 
-The NID signs these exact UTF-8 bytes, with one ASCII `|` separator:
+The NID signs the proof bytes of [§3.6.1](#core-proof-bytes) for domain
+`heterodyne-nid-binding-v1` over this claim:
 
-```text
-heterodyne-nid-binding-v1|<cold-root-hex>|<nid>|radicle-nid-delegation
+```json
+{
+  "cold_root": "<cold-root-hex>",
+  "nid": "<nid>"
+}
 ```
 
 The outer event signature binds the same values. A verifier MUST require both
@@ -652,7 +755,7 @@ device delegation address and current `kel_head` and contains a closed
 ```json
 {
   "full_node": true,
-  "versions": ["control/0.5.0"],
+  "versions": ["heterodyne/0.5.0"],
   "marmot_account": "<same authorized device Nostr pubkey>",
   "keypackage_slots": ["<standard Marmot KeyPackage address>"],
   "relay_metadata": ["<NIP-65/NIP-17 reference>"],
@@ -683,17 +786,31 @@ MUST omit the entire Control object.
 #### 6.1.2 Role-addressed delegation extension
 
 Core also permits a registered higher-layer profile to address a durable role
-at `kind:31001` without creating a Radicle NID. Such an extension MUST retain
-the epoch-key outer signature, `["heterodyne", "delegation"]`,
-`publishing_key`, `cold_root`, `kel_head`, `valid_until`, empty content, and
-the Core version stamp. It MUST set `d` to a registered
-`<namespace>:<role-id>` address and provide a `key_proof` made by the declared
-`publishing_key`. The registered profile MUST define:
+at `kind:31001` without creating a Radicle NID. Every role-addressed
+delegation carries exactly this base, in this order, and a registered profile
+states only what it adds:
+
+```text
+["d", "<namespace>:<role-id>"]
+["heterodyne", "delegation"]
+["publishing_key", "<role secp256k1 public key hex>"]
+["cold_root", "<persona cold-root hex>"]
+["key_proof", "<BIP-340 proof by publishing_key>"]
+["kel_head", "<accepted KEL event id>", "<decimal sequence>"]
+["valid_until", "<empty or decimal Unix time>"]
+["spec_version", "heterodyne/0.5.0"]
+```
+
+The epoch-key outer signature, empty content, and the Core version stamp are
+retained. The registered profile MUST define exactly four things:
 
 1. the namespace and closed syntax of `role-id`;
-2. the exact proof-domain bytes signed by `publishing_key`;
-3. any additional binding tags and their uniqueness rules; and
+2. the allocated proof domain signed by `publishing_key`;
+3. any additional binding tags, their position, and their uniqueness rules; and
 4. the higher-layer authority and lifecycle semantics of the role.
+
+No profile restates the base tags, the acceptance requirements, or the failure
+codes below.
 
 A verifier MUST resolve the registered profile before interpreting the role.
 An unknown namespace, malformed address, or profile/discriminator mismatch
@@ -740,7 +857,7 @@ only as an exclusive takeover in which the prior instance is deactivated or
 fenced before the restored instance becomes active.
 
 <a id="core-radicle-group-admission"></a>
-#### 6.1.3 Radicle group admission and host attribution
+#### 6.1.4 Radicle group admission and host attribution
 
 Comms may bind a Marmot routing identifier to a private Radicle repository.
 Core's NID delegation and protected-repository primitives provide the
@@ -767,7 +884,6 @@ nor host announcement may create group membership, select Marmot group state,
 or grant group-admin authority.
 
 <a id="core-key-authority"></a>
-<!-- Monolith provenance: §3.9.10.1 and §4.5.2. -->
 ### 6.2 Key-material authority and finality
 
 Key-material events MUST be published to ordinary relays and the repo relay.
@@ -798,7 +914,6 @@ access remains in reduced-assurance `provisional-accept` mode and MUST upgrade
 its view from a repo relay when one becomes reachable.
 
 <a id="core-identity-discovery"></a>
-<!-- Monolith provenance: §3.6. -->
 ## 7. Identity discovery, reconciliation, and recovery
 
 Core discovery ends at npub to RID to serving node to authoritative key
@@ -821,7 +936,6 @@ Sensitive cached identity state MUST use the Core at-rest protection profile.
 Every accelerator cache MUST be rebuilt whenever the accepted KEL changes.
 
 <a id="core-identity-failures"></a>
-<!-- Monolith provenance: §3.7. -->
 ### 7.1 Identity failure handling
 
 If all pointer, KEL, delegation, and root-attestation sources are unreachable,
@@ -839,7 +953,6 @@ new-RID cold-root re-anchor. Implementations MUST expose stalled continuity,
 duplicity, stale verification, and reduced-assurance operation.
 
 <a id="core-identity-pointer"></a>
-<!-- Monolith provenance: §3.2, §3.9.8, and §11.3. -->
 ### 7.2 Identity pointer (`kind:31005`)
 
 ```json
@@ -852,7 +965,7 @@ duplicity, stale verification, and reduced-assurance operation.
     ["heterodyne", "identity_pointer"],
     ["rid", "rad:z..."],
     ["host_hint", "wss://node.example/relay"],
-    ["spec_version", "core/0.5.0"]
+    ["spec_version", "heterodyne/0.5.0"]
   ],
   "content": "",
   "sig": "<BIP-340 signature>"
@@ -878,7 +991,6 @@ refresh is accepted only for the selected RID and only while that epoch is
 authoritative.
 
 <a id="core-node-advertisement"></a>
-<!-- Monolith provenance: §7.0. -->
 ### 7.3 Node advertisement (`kind:31010`)
 
 A node advertisement has `d` equal to RID and exactly one tag each for
@@ -895,10 +1007,17 @@ and, when it claims browser compatibility, shared clearnet Nostr relay hints.
 A clearnet hint is a transport rendezvous and never authorizes direct
 clearnet access to the full node.
 
-The NID proof signs these exact UTF-8 bytes:
+The NID proof signs the proof bytes of [§3.6.1](#core-proof-bytes) for domain
+`heterodyne-node-advert-v1` over this claim:
 
-```text
-heterodyne-node-advert-v1|<rid>|<nid>|<endpoint>|<expiry>|<repo_head>
+```json
+{
+  "endpoint": "<endpoint>",
+  "expiry": "<expiry>",
+  "nid": "<nid>",
+  "repo_head": "<repo_head>",
+  "rid": "<rid>"
+}
 ```
 
 A verifier MUST validate the outer signature, inner Ed25519 proof, equality of
@@ -966,7 +1085,6 @@ the signer's authority window, and only the repository-confirmed index selects
 the live address.
 
 <a id="core-radicle-reconciliation"></a>
-<!-- Monolith provenance: §3.9.10. -->
 ### 7.5 KEL and Radicle reconciliation
 
 The accepted KEL is authoritative over the Radicle identity document. A
@@ -990,7 +1108,6 @@ a compromised cold root requires migration to a new persona and new root; the
 old persona's trustworthy authority cannot be preserved by re-anchor.
 
 <a id="core-recovery"></a>
-<!-- Monolith provenance: §3.7 and §3.12.2. -->
 ### 7.6 Infrastructure-loss recovery
 
 Recovery roles are protocol-neutral: recovery peers retain verified identity
@@ -1033,7 +1150,6 @@ move to a new cold-root persona. This protocol defines no same-persona root
 reset, newly selected social-trustee reconstruction, or witness substitution.
 
 <a id="core-multi-host-seeding"></a>
-<!-- Monolith provenance: §3.11. -->
 ### 7.7 Multi-host seeding
 
 Repository redundancy is opt-in Radicle seeding. A repository is replicated
@@ -1044,7 +1160,6 @@ host count and durable-host status and SHOULD warn when no durable host is
 advertised.
 
 <a id="core-protected-repository"></a>
-<!-- Monolith provenance: §3.8.6. -->
 ## 8. Protected repositories and key storage
 
 Core defines a generic encrypted-repository primitive. An instantiating
@@ -1058,8 +1173,15 @@ application encryption profile.
 The repository identity, access controls, and ciphertext metadata MUST reveal
 no more than the instantiating profile declares. A decryptor MUST authenticate
 ciphertext before parsing. Rotation MUST prevent a retired generation from
-remaining canonical, but deletion from cooperating replicas is not a promise
-of erasure.
+remaining canonical.
+
+<a id="core-non-erasure"></a>
+Deletion, expiry, retraction, and rotation are cooperative hygiene, never
+erasure. Git objects are immutable, and independent peers, exports, backups,
+offline seeds, and ordinary relays may retain bytes indefinitely. Every
+document in the family inherits this bound: no removal mechanism at any layer
+may be specified or presented as erasure, and protocol and interface language
+MUST state the limitation. No other document restates it.
 
 Protected-record ownership is closed for this release:
 
@@ -1073,7 +1195,6 @@ The owner names the plaintext schema and lifecycle. This allocation does not
 create a Core dependency on a higher document.
 
 <a id="core-keys-repository"></a>
-<!-- Monolith provenance: §3.8.7-§3.8.8. -->
 ### 8.1 Core keys-repository protection profile
 
 The keys repository is a local, versioned store. It MUST NOT be a Radicle
@@ -1111,8 +1232,60 @@ repositories. Losing every keys-repository copy can destroy decryptability,
 but it does not change KEL identity continuity. Clients SHOULD state these
 loss consequences plainly before destructive reset or restore.
 
+<a id="core-key-envelope"></a>
+### 8.2 Key envelopes and generations
+
+Several documents deliver one symmetric secret to a set of authorized holders.
+They all instantiate this primitive; no document defines a second one, and the
+carrier is not restricted to a repository.
+
+A **key generation** is one secret together with a generation identifier and
+the exact recipient set entitled to hold it. The generation identifier is
+either an opaque `key_id` carrying at least 128 bits of entropy or a
+monotonically increasing `key_epoch` scoped to a stable resource identifier;
+an instantiating document picks one form and MUST NOT mix both for the same
+secret. A **key envelope** delivers one generation to exactly one recipient
+and binds at least:
+
+- the generation identifier it carries;
+- the recipient, named by a [§3.6](#core-typed-key-references) typed-key
+  reference;
+- the issuing authority and the KEL, checkpoint, or repository evidence
+  current at issuance; and
+- the wrapping profile, nonce, ciphertext, and ciphertext digest.
+
+An envelope MUST NOT carry an unwrapped secret, and one envelope MUST address
+exactly one recipient. A recipient MUST authenticate the ciphertext and verify
+the issuing authority before unwrapping.
+
+Membership change is asymmetric:
+
+- Adding a recipient alone publishes an envelope for the **current** generation
+  and does not cause a rotation. The new holder receives what the audience
+  already has. A simultaneous independent rotation trigger supplied by the
+  instantiating document still applies.
+- Removing a recipient MUST derive a fresh secret under a new generation
+  identifier and publish envelopes only to the remaining recipients.
+- After a removal rotation, a producer MUST reject the retired generation for
+  every new object. Whether existing objects are re-protected under the new
+  generation is the instantiating document's choice and is never implied.
+
+Rotation excludes a removed recipient from later generations only. It cannot
+revoke ciphertext that recipient could already read, and no implementation may
+present it as erasure; the bound above at
+[`heterodyne:0.5.0#core-non-erasure`](#core-non-erasure) governs what stays
+observable.
+
+An instantiating document supplies exactly five things: the rule that fixes
+the recipient set, the typed-key reference type and wrapping profile, the
+carrier that transports the envelope, the generation-identifier form, and any
+rotation trigger beyond recipient removal. The fifth value is `none` when
+removal is the only rotation trigger. It MAY tighten these rules and MUST NOT
+weaken them. The distribution graph is not private by default: unless the
+instantiating document states otherwise, envelope addressing exposes
+recipients, generation linkage, and change timing to a carrier observer.
+
 <a id="core-verification"></a>
-<!-- Monolith provenance: §4.5 and §4.5.2. -->
 ## 9. Verification algorithm
 
 Before rendering, storing, or using a signed object for authorization, a Core
@@ -1128,6 +1301,19 @@ implementation MUST:
 7. return `accept`, `accept_provisional`, `equivocation_flagged`, or a closed
    registry reason code.
 
+Where exact `nip01_raw` applies, a missing raw input or one that is not
+byte-equal to the signed NIP-01 input MUST be rejected with
+`nip01_raw_mismatch`.
+
+A purported signed event whose required NIP-01 event members are absent or
+malformed cannot complete identifier or signature verification and MUST be
+rejected with `bad_signature`. A syntactically valid version stamp that names
+an incompatible future protocol major MUST be rejected with
+`unknown_major_version`. Every other version-stamp policy failure—including a
+missing required stamp, a duplicate or malformed stamp, a non-future-major
+exact-version mismatch, or a stamp forbidden for that event class—MUST be
+rejected with `version_stamp_invalid`.
+
 An object whose identity inputs are provisional MUST NOT be reported final.
 Failed verification MUST be exposed as a rejection or explicit security
 warning; it MUST NOT silently become trusted content.
@@ -1136,7 +1322,7 @@ warning; it MUST NOT silently become trusted content.
 ### 9.1 Retired-key late observation
 
 An event signed by a routinely superseded epoch or delegated publisher key
-and first observed after retirement is repo-confirmed pre-retirement content
+and first observed at or after retirement is repo-confirmed pre-retirement content
 only when its introducing commit is an ancestor of a trusted repository
 checkpoint bound into, or accepted before, the retiring rotation. A trusted
 local receipt or checkpoint recorded before retirement may establish the same
@@ -1149,9 +1335,10 @@ existence. Provisional retired-key content MAY be displayed with that state,
 but MUST NOT authorize, replace canonical profile state, migrate an address,
 or enter a canonical feed index without an accepted anchor.
 
-The accepted `compromise_since` cutoff remains stronger: content at or after
-that cutoff is rejected even if a later repository or local receipt purports
-to anchor it. This provisional state never weakens compromise handling.
+The accepted `effective_compromise_since - 300` cutoff remains stronger:
+content at or after that cutoff is rejected even if a later repository or
+local receipt purports to anchor it. This provisional state never weakens
+compromise handling.
 
 `kel_head` handling has three distinct non-success paths. A required tag that
 is absent, duplicated, or malformed is rejection; a forbidden tag is
@@ -1161,6 +1348,10 @@ accepted KEL SHOULD trigger a repo-relay-first refresh; a pending or failed
 refresh caps the result at provisional. A well-formed head naming an event off
 the accepted KEL MUST produce `equivocation_flagged` and an explicit security
 warning rather than silent deletion.
+
+Closed verification evidence MUST NOT pair a sequence-ahead head with a
+`not-needed` refresh status. That contradictory state is a `kel_head_mismatch`,
+not a provisional success.
 
 Head classification order is normative. The verifier MUST test
 `seq_ahead_of_accepted_head` before `off_accepted_kel`; this rule is identified
@@ -1181,7 +1372,6 @@ judgment. Verification of an embedded signature MUST apply the same head
 ordering, refresh, re-resolution, and `provisional_not_final` rules.
 
 <a id="core-verification-accelerator"></a>
-<!-- Monolith provenance: §4.5.1. -->
 ### 9.2 `kel_head` accelerator
 
 `kel_head` is never sufficient for acceptance. A verifier MAY use materialized
@@ -1196,7 +1386,6 @@ The optional repo projection below may populate a cache only after it matches
 the independently accepted KEL.
 
 <a id="core-node-roles"></a>
-<!-- Monolith provenance: §7.0 and §10.1.1. -->
 ## 10. Node and repo-relay substrate
 
 A full node stores repositories, performs Radicle Noise XK/TCP replication,
@@ -1217,7 +1406,10 @@ browser-based client MAY use a shared clearnet relay because a browser tab
 cannot open arbitrary Tor sockets. That path is reduced assurance and does
 not expose the full node's onion service as a clearnet endpoint.
 
-Core declares three implementation roles and five exact feature IDs:
+Core feature IDs are allocated in
+[`registry/features.json`](registry/features.json), which is the sole
+authority for the set and its prerequisites; the count is not restated here.
+Core declares three implementation roles:
 
 | Role | Required behavior | Tor requirement |
 |---|---|---|
@@ -1246,7 +1438,6 @@ requires a separately negotiated expansion and an explicit security downgrade;
 it is not part of Core 0.5.0.
 
 <a id="core-repo-relay"></a>
-<!-- Monolith provenance: §10.1.2. -->
 ### 10.1 Repo-relay adapter
 
 `core.repo-relay-client.v1` requires a client to read and write ordinary,
@@ -1264,7 +1455,6 @@ Radicle-backed Marmot relay is the only claimable relay server/storage profile
 in this family release.
 
 <a id="core-client-responsibilities"></a>
-<!-- Monolith provenance: §10.2. -->
 ### 10.2 Client responsibilities
 
 A Core implementation MUST meet the requirements of every role and feature it
@@ -1289,7 +1479,6 @@ processed and MUST be comparable with a submission acknowledgement before it
 is used as an absence proof for a delegation.
 
 <a id="core-materialized-kel"></a>
-<!-- Monolith provenance: §10.1.2. -->
 ### 10.3 Materialized-KEL storage profile
 
 This profile is a cache output of the independent exact-byte replay in §4.4.
@@ -1357,7 +1546,6 @@ derived and never authoritative; divergence from repo-carried KEL events
 requires re-derivation, and neither ref is an input to acceptance.
 
 <a id="core-nostr-relay-interop"></a>
-<!-- Monolith provenance: §10.5-§10.6. -->
 ### 10.4 Vanilla relay interoperability
 
 Core clients MUST implement NIP-01 and NIP-42 AUTH. An AUTH event uses the
@@ -1383,7 +1571,6 @@ aware relay being available. No Core conformance verdict depends on this
 profile.
 
 <a id="core-tor-reachability"></a>
-<!-- Monolith provenance: §7.7. -->
 ### 10.5 Onion reachability
 
 An implementation advertising `core.outbound-tor.v1` MUST include
@@ -1406,7 +1593,6 @@ NOT claim strict conformance while that bypass is active. Full-node Radicle
 replication SHOULD support onion peers.
 
 <a id="core-keri-export"></a>
-<!-- Monolith provenance: §11.8. -->
 ## 11. Canonical-KERI export
 
 NIP-01 plus `nip01_raw` is the Core wire and storage form. KERI10JSON or CESR
@@ -1430,19 +1616,18 @@ omitted. Failures are `UNMAPPABLE_FEATURE`, `UNSUPPORTED_CRYPTO_SUITE`, or
 degraded, MUST NOT be labeled complete, and MUST carry explicit warnings.
 
 <a id="core-versioning"></a>
-<!-- Monolith provenance: §12. -->
 ## 12. Versioning, dependencies, and capabilities
 
-A qualified version matches:
+The family version matches:
 
 ```text
-^(core|comms|control|social)/(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$
+^heterodyne/(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$
 ```
 
 The qualified string is not semver; only its suffix is passed to a semver
-parser. Every document begins its independent lineage at 0.5.0. During 0.x,
-any release may break an earlier 0.x release and implementations SHOULD pin
-exact qualified versions. At 1.0 and above:
+parser. All five documents share this one version. During 0.x, any release may
+break an earlier 0.x release and implementations MUST pin the exact version.
+At 1.0 and above:
 
 - PATCH is clarification-only and MUST NOT change wire format;
 - MINOR is additive: optional fields, optional types, or loosened requirements;
@@ -1452,14 +1637,12 @@ exact qualified versions. At 1.0 and above:
 
 Implementations SHOULD increment MINOR for every optional field addition.
 
-Document maturity is ordered `0.x < 1.0+`. A document MUST NOT normatively
-depend on another document at a lower level. Registry maturity is ordered
-`draft < stable < frozen`, permits only monotonic adjacent promotion, and
-forbids semantic change, removal, or reassignment of a frozen entry. A 1.0+
-document MUST NOT normatively require a non-frozen registry entry.
+Registry maturity is ordered `draft < stable < frozen`, permits only monotonic
+adjacent promotion, and forbids semantic change, removal, or reassignment of a
+frozen entry. A 1.0+ specification MUST NOT normatively require a non-frozen
+registry entry.
 
 <a id="core-capabilities"></a>
-<!-- Monolith provenance: §12.2-§12.3. -->
 ### 12.1 Stable capability bootstrap
 
 Every capability advertisement uses this Core-parsable bootstrap object:
@@ -1467,15 +1650,12 @@ Every capability advertisement uses this Core-parsable bootstrap object:
 ```json
 {
   "descriptor": "heterodyne-capabilities-v1",
-  "bootstrap_version": "core/0.5.0",
-  "registry_revision": 7,
+  "spec_version": "heterodyne/0.5.0",
+  "registry_sha256": "e1dc51e9a64c334eb416e0f635b6375f39bff25f9cdc87be25b700245a41561a",
   "implementation_role": "public-reader",
-  "supported_versions": {
-    "core": ["core/0.5.0"],
-    "comms": [],
-    "control": [],
-    "social": []
-  },
+  "supported_documents": [
+    "core"
+  ],
   "required_features": [
     "core.nostr-relay-read.v1"
   ],
@@ -1483,19 +1663,22 @@ Every capability advertisement uses this Core-parsable bootstrap object:
 }
 ```
 
-`descriptor`, `bootstrap_version`, `registry_revision`,
-`implementation_role`, and `core` support are REQUIRED.
+`descriptor`, `spec_version`, `registry_sha256`, `implementation_role`, and
+`supported_documents` are REQUIRED. `spec_version` MUST be a single family
+version and `registry_sha256` MUST be the entry-set digest recorded in
+[`registry/manifest.json`](registry/manifest.json).
 `implementation_role` MUST be exactly `public-reader`, `authenticated-light`,
-or `full-node`. Each supported-version set contains qualified versions for
-that document only. `required_features` uses exact IDs from the pinned
-`features.json`; document names alone do not establish feature conformance. A claimed
-role and its required feature set MUST agree.
+or `full-node`. `supported_documents` MUST contain `core` and MUST be a
+layering-closed subset of `core`, `comms`, `control`, `social`, and
+`workspace`. `required_features` uses exact IDs from the pinned
+`features.json`; document names alone do not establish feature conformance. A
+claimed role and its required feature set MUST agree.
 
 `strict_profiles` contains stable profile IDs. It MUST contain only profiles
 whose complete invariant, obligation, feature, vector, and
 prerequisite-profile sets are actually met by the advertiser. A composed profile
 MUST advertise every prerequisite profile in the same object and MUST
-advertise the document versions and required features on which those profiles
+advertise the family version and required features on which those profiles
 depend. An unknown strict-profile ID MUST be retained or ignored safely and
 MUST NOT be used to infer conformance, grant a capability, or satisfy a known
 profile. An unknown claimed Core feature MUST fail capability negotiation;
@@ -1532,7 +1715,7 @@ membership declaration:
   "conformance_class": "Core",
   "state": "active",
   "requires_profiles": [],
-  "required_invariants": [
+  "adds_invariants": [
     "CORE-I-IDENTITY-INTEGRITY",
     "CORE-I-NID-DELEGATION-DUAL-PROOF",
     "CORE-I-VERIFY-BEFORE-USE",
@@ -1547,16 +1730,22 @@ membership declaration:
 supported network backend, and requires invalid signatures or delegations to
 be rejected rather than rendered with a warning. Disabling or bypassing Tor
 makes the strict profile unmet; it does not silently downgrade a strict claim.
-A claim MUST satisfy every listed invariant at registry revision 8 and every
-applicable strict vector.
+A claim MUST satisfy every listed invariant at the pinned registry revision
+and every applicable strict vector.
 
-Higher-document strict profiles compose by naming prerequisite profile IDs and
-listing their complete flattened invariant membership. A conforming report
-MUST reject a duplicate profile ID with conflicting membership. Profile IDs
-are stable: changing membership or an obligation requires a new ID.
+A strict profile declares only its prerequisite profile IDs and the
+invariants it adds. Its **required invariant set** is the transitive closure
+of its prerequisites' required sets plus its own `adds_invariants`; the
+declaration is the single source of truth and no document restates the
+flattened set. An `adds_invariants` entry MUST be a registered invariant owned
+by the declaring document, MUST NOT already be inherited, and MUST NOT be an
+invariant the registry binds to a feature: a feature-bound invariant is
+required by [§14](#core-conformance) whenever its feature is claimed, so a
+strict profile neither adds it nor forces the feature. A duplicate profile ID
+carrying a conflicting declaration MUST be rejected. From 1.0, profile IDs are
+stable and changing a membership or obligation requires a new ID.
 
 <a id="core-security"></a>
-<!-- Monolith provenance: §9.1 and §13. -->
 ## 13. Core security model
 
 Core assumes endpoint secrets and cryptographic primitives remain secure. Full
@@ -1572,7 +1761,9 @@ serving-node withholding, routing-query metadata, rollback, and key-extraction
 threats. Multiple serving nodes and ordinary-relay access improve availability;
 they never replace local verification.
 
-The registry binds these exact normative invariants:
+The registry binds these exact normative invariants. Which of them a given
+implementation owes is decided by [§14](#core-invariant-scope), not by this
+list:
 
 - **CORE-I-IDENTITY-INTEGRITY:** The cold-root npub and accepted KEL are authoritative for persona identity; downstream caches and delegated identifiers cannot override them.
 - **CORE-I-NID-DELEGATION-DUAL-PROOF:** A Radicle NID delegation is active only after both the persona epoch-key BIP-340 signature and the delegated NID Ed25519 proof verify over the same binding.
@@ -1582,59 +1773,136 @@ The registry binds these exact normative invariants:
 - **CORE-I-MARMOT-ROLE-ATTRIBUTION:** KERI role evidence attributes Marmot accounts and Radicle hosts without selecting MLS state or altering Marmot convergence.
 
 <a id="core-conformance"></a>
-<!-- Monolith provenance: §14. -->
 ## 14. Conformance and vectors
 
-Every Heterodyne implementation claims Core conformance. A claim MUST state
-the exact qualified version, registry revision or digest, supported feature
-IDs, strict-profile IDs, implementation role, and every dependency version.
-Core has no document dependencies. Protocol conformance and vector conformance
-are distinct claims.
+Every Heterodyne implementation claims Core conformance. This section states
+the conformance-report requirements for the whole family; no other document
+restates them.
 
-This document is pinned to registry revision 8 and its immutable digest.
-History revision 8, the current entry files, release manifests, and vector
-metadata MUST agree exactly. Optional Control recovery profiles remain
+A claim MUST state the exact family version, the registry revision or digest
+read from [`registry/manifest.json`](registry/manifest.json), the documents
+claimed, the supported feature IDs, the strict-profile IDs, and the
+implementation role. Protocol conformance claims and snapshot validation
+reports are distinct. A rolling pre-1.0 snapshot report is evidence about its pinned source
+commit, not authority over the current draft. The registry manifest and entry
+files MUST agree exactly. Optional Control recovery profiles remain
 independently claimable and do not alter baseline Core conformance.
 
-A release manifest lists disjoint `provided_features` and
-`required_features`. Every provided ID MUST be owned by that manifest's
-document. Every same-owner prerequisite of a provided feature MUST also be
-provided; every external prerequisite MUST appear in `required_features`.
-Every required ID MUST be owned and provided by the exact declared dependency
-release. Validators MUST resolve the catalog prerequisite graph, reject cycles
-or missing IDs, and reject a requirement supplied only by a different or
-unpinned dependency release.
+Claimed features MUST resolve: every same-owner prerequisite of a claimed
+feature MUST also be claimed, and every cross-document prerequisite MUST be
+supplied by a document the claim also names. Validators MUST resolve the
+catalog prerequisite graph and reject cycles, missing IDs, and a requirement
+supplied only by an unclaimed document.
 
-A conformance report MUST, for each strict-profile ID, list the profile's state,
-conformance class, prerequisite profile IDs, required invariant IDs, required
-features, applicable strict-vector results, and any gaps. It MUST NOT report a
+<a id="core-invariant-scope"></a>
+Security invariants are scoped the same way, and this is the family's only
+rule for it. A registered invariant that carries no `feature` member is
+**baseline**: every implementation claiming its owning document MUST meet it.
+An invariant that carries a `feature` member binds only an implementation
+claiming that feature, and claiming the feature makes it mandatory whether or
+not any strict profile is claimed. Because prerequisites resolve transitively,
+claiming a feature also incurs the invariants bound to everything it requires.
+An implementation MUST NOT expose a mechanism whose invariants it has not
+accepted: exercising a feature's behavior without claiming the feature is
+nonconformance, not an omission. No document restates which invariants are
+baseline; the pinned `security-invariants.json` is the sole authority.
+
+A conformance report MUST, for each strict-profile ID, list the profile's
+state, conformance class, prerequisite profile IDs, the required-invariant
+closure computed under [§12.2](#core-strict-profile), required features,
+applicable validation results, and any gaps. It MUST NOT report a
 profile as met while any required invariant, obligation, feature, prerequisite
-profile, or vector is unmet. A partial report may describe an unknown or unmet
+profile, or claimed validation case is unmet. A partial report may describe an unknown or unmet
 profile but MUST NOT advertise it in `strict_profiles`.
 
-Normative vectors compare canonical bytes and exact verdicts; semantic
-equivalence is insufficient. Each vector has an ID, owner document, owner
-version, registry pin, qualified spec references, direction, input, and
-expected output. Time-sensitive vectors use a simulated clock and production
-vectors pin randomness. During 0.x, an accepted specification change MAY
-change or retire an unreleased current vector in place. Released artifact sets
-preserve their exact historical bytes. Vector-ID immutability begins at 1.0.
+Wire conformance is byte-exact throughout the family: semantically similar
+encodings do not conform. Validation vectors therefore compare canonical bytes
+and exact verdicts, but they do not create requirements. Each packaged vector
+carries an ID, a schema version, the owner document, optional profile,
+source-relative specification references, direction, input, and expected
+output. Time-sensitive vectors use a simulated clock and production vectors
+pin randomness.
+
+A vector MAY carry a top-level `conformance_checks` array of explicit,
+non-wire checker evidence. This metadata does not alter the vector's protocol
+input or expected output. A checker MUST execute `core-signed-event-v1` only
+when that exact profile is declared and MUST NOT infer applicability from a
+topic, description, object shape, or decision trace. Each declaration is a
+closed object containing that profile, required RFC 6901 `event_pointer` and
+`nip01_raw_pointer` members, an optional RFC 6901 `context_pointer`, and one
+`expected_terminal_stage`: `event_structure`, `nip01_raw`, `identifier`,
+`signature`, `persona_resolution`, `version_stamp`, `kel_head`,
+`epoch_authority`, `subtype_nid`, or `accept`. The context pointer is required
+when execution reaches `persona_resolution` or a later stage. Unknown
+profiles or members, malformed pointers, duplicate declarations, and a
+missing event target or declared context target are conformance failures. A
+missing raw target is checker debt rather than an invalid declaration so that
+the corpus can ratchet it explicitly.
+
+A `core-signed-event-v1` declaration that reaches persona resolution consumes
+one closed verifier-evidence object. Its required `retired_key_evidence`
+contains `first_observed_at` and a nullable `prior_anchor`. The anchor type is
+exactly `repository-checkpoint`, `local-receipt`, or `local-checkpoint`, and it
+carries `established_at`. `repository-checkpoint` means the verifier has
+already established that the event's introducing commit is an ancestor of the
+trusted checkpoint described in §9.1; the local forms mean the named trusted
+local evidence was recorded by that verifier. A repository anchor may be
+established no later than routine retirement, while either local form MUST be
+established before retirement. An absent or later anchor cannot convert a
+first-post-retirement observation into final acceptance, and no anchor can
+override the compromise cutoff. Neither `first_observed_at` nor an anchor's
+`established_at` may be later than the context's `evaluation_time`. This object
+is checker input only and is not a protocol wire object.
 
 When this document declares a behavior conformant, an implementation MUST
 produce or accept it as specified. NIP-01 events have only the canonical
-serialization defined in Section 3.1. For a producer vector, the generated
-canonical bytes MUST equal the expected bytes exactly. For a consumer vector,
-the verdict and reason code MUST equal the expected values exactly. A
-repo-relay round trip MUST preserve the accepted signed-event bytes exactly.
+serialization defined in Section 3.1. A snapshot report compares producer
+bytes, consumer verdicts and reason codes, and repo-relay round-trip bytes
+exactly against the snapshot interpreted at its source commit.
 
 The Core minimum set covers NIP-01 bytes, KEL inception/rotation and authority
 windows, root freshness, NID dual proof, pointer resolution, node ads,
 repo-authority finality, materialized KEL derivation, routing/light roles,
 repo-relay client behavior, Tor reachability, keys-repository protection,
-version negotiation, and each Core invariant. A skipped REQUIRED vector bars
-a full Core vector-conformance claim; partial reports MUST list every gap and
-rationale.
+version negotiation, and each Core invariant. A snapshot report lists every
+evaluated case, skip, gap, and rationale without turning coverage into current
+draft authority.
 
-Vector JSON under `docs/spec/vectors/` is normative for the behavior it covers.
-Generator code is non-normative authoring and verification tooling. Diagnostic
-reason codes are registry vocabulary, not a wire API.
+<a id="core-rolling-snapshot"></a>
+### Rolling pre-1.0 validation snapshot
+
+Vector JSON under `docs/spec/vectors/` and its generator are non-normative
+validation artifacts. The closed `snapshot.json` manifest pins one full source
+commit and the exact path/digest inventory. The bootstrap pins
+`2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`, contains 482 vectors among 493
+manifest-listed artifacts, and executes zero declared reference-checker cases;
+corpus-wide gates still execute.
+
+Validation keeps three roots separate. The source root provides the five
+specifications, registry, protocol schemas, and behavioral generator inputs.
+The snapshot root provides vectors, fixtures, packaged vector schema,
+reason/coverage projections, and manifest. The snapshot-tool root provides
+the historical packager and lockfile. The runtime snapshot commit is not a
+manifest field: the checker derives it from the last commit that changed the
+manifest and supplies both explicit roots and both commit identities to the
+independent harness.
+
+Ordinary 0.x specification changes do not update the snapshot. A dedicated
+periodic reconciliation selects a stable source commit, authors and reviews a
+complete replacement, commits it, and only then runs the read-only history
+check. Current-draft and snapshot checks are independent read-only lanes. The
+rules for immutable vector IDs and bytes, historical retention, release
+composition, compatibility, and support begin with a future 1.0 policy; this
+0.x document does not define them.
+
+<a id="core-reason-codes"></a>
+Diagnostic reason codes are registry vocabulary, not a wire API, and this is
+the family's only rule for their granularity. A code names the decision a
+verifier reached, not the internal condition that produced it. Where a
+requester is not authorized to learn the difference, one code MUST cover the
+whole family of conditions: token, grant, enrollment, and recovery refusals
+are reported as a single indistinguishable outcome, and separating them by
+code would let a caller probe state it cannot otherwise observe. The specific
+condition is retained only where the owning document already puts privileged
+detail, which is its encrypted audit record. A document MUST NOT allocate a
+finer code to describe a refusal a coarser registered code already covers.

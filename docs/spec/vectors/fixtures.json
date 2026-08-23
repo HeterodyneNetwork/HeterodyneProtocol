@@ -1,12 +1,5 @@
 {
-  "vector_schema_version": "1.0.0",
-  "document_versions": {
-    "core": "0.5.0",
-    "comms": "0.5.0",
-    "control": "0.5.0",
-    "social": "0.5.0"
-  },
-  "registry_revision": 1,
+  "vector_schema_version": "2.0.0",
   "test_epoch": 1767225600,
   "pinned_randomness": {
     "schnorr_aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -82,13 +75,13 @@
           ],
           [
             "spec_version",
-            "core/0.5.0"
+            "heterodyne/0.5.0"
           ]
         ],
         "content": ""
       },
       "head": {
-        "id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+        "id": "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
         "seq": 0
       }
     },
@@ -120,13 +113,13 @@
           ],
           [
             "spec_version",
-            "core/0.5.0"
+            "heterodyne/0.5.0"
           ]
         ],
         "content": ""
       },
       "head": {
-        "id": "063794fef3e878c6ce475145c2edbf26b1b7799db8585b5f0941943c789d58ad",
+        "id": "2ede1d0072fd5e630bb4093a56db710c733f8088cde71ae11b159157f4f41e06",
         "seq": 0
       }
     },
@@ -158,117 +151,13 @@
           ],
           [
             "spec_version",
-            "core/0.5.0"
+            "heterodyne/0.5.0"
           ]
         ],
         "content": ""
       },
       "head": {
-        "id": "b1edc14e6315018ad8f1eb8acc4c41f4a72097e164ffda2e366097ff02cc1401",
-        "seq": 0
-      }
-    }
-  },
-  "legacy_kel": {
-    "alice": {
-      "inception_event": {
-        "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-        "created_at": 1767225600,
-        "kind": 31002,
-        "tags": [
-          [
-            "d",
-            ""
-          ],
-          [
-            "heterodyne",
-            "keri_inception"
-          ],
-          [
-            "p",
-            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-          ],
-          [
-            "s",
-            "0"
-          ],
-          [
-            "epoch_key",
-            "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
-          ]
-        ],
-        "content": ""
-      },
-      "head": {
-        "id": "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
-        "seq": 0
-      }
-    },
-    "bob": {
-      "inception_event": {
-        "pubkey": "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
-        "created_at": 1767225600,
-        "kind": 31002,
-        "tags": [
-          [
-            "d",
-            ""
-          ],
-          [
-            "heterodyne",
-            "keri_inception"
-          ],
-          [
-            "p",
-            "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
-          ],
-          [
-            "s",
-            "0"
-          ],
-          [
-            "epoch_key",
-            "e493dbf1c10d80f3581e4904930b1404cc6c13900ee0758474fa94abe8c4cd13"
-          ]
-        ],
-        "content": ""
-      },
-      "head": {
-        "id": "3b33f28a2c090282bd4e23b59a18422d15aea63ac0e8f0703f3ea65b1ac93688",
-        "seq": 0
-      }
-    },
-    "carol": {
-      "inception_event": {
-        "pubkey": "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01",
-        "created_at": 1767225600,
-        "kind": 31002,
-        "tags": [
-          [
-            "d",
-            ""
-          ],
-          [
-            "heterodyne",
-            "keri_inception"
-          ],
-          [
-            "p",
-            "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01"
-          ],
-          [
-            "s",
-            "0"
-          ],
-          [
-            "epoch_key",
-            "acd484e2f0c7f65309ad178a9f559abde09796974c57e714c35f110dfc27ccbe"
-          ]
-        ],
-        "content": ""
-      },
-      "head": {
-        "id": "15180a727fb846c711de14d9161710e922edbb68c1500cc31449967ef63700b6",
+        "id": "528caf6a8e2b777cad2bdf6b0116ad71c5490083ae094d85f14af9e49ed405af",
         "seq": 0
       }
     }
@@ -319,19 +208,12 @@
       "key": "4141414141414141414141414141414141414141414141414141414141414141"
     }
   },
-  "matrix_rooms": {
-    "identity_alice": "!alice-identity:example.org",
-    "config_alice": "!alice-config:example.org"
-  },
   "category_keysets": {
     "identity": "alice",
     "keri": "alice",
-    "envelope": "alice",
     "verification": "alice",
-    "discussion": "alice",
     "index": "alice",
     "relay_interop": "alice",
-    "config_room": "alice",
     "nid-binding": "alice",
     "identity-doc": "alice",
     "node-advert": "alice",

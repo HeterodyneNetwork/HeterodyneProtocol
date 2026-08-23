@@ -1,14 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "workspace",
-  "owner_version": "workspace/0.1.0",
-  "dependency_versions": {
-    "core": "core/0.5.0",
-    "comms": "comms/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:workspace/0.1.0#workspace-grants"
+    "heterodyne:workspace#workspace-grants"
   ],
   "vector_id": "workspace-grant/admin-no-governance",
   "description": "Admin and invite capabilities do not imply policy governance.",

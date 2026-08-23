@@ -12,8 +12,8 @@ import { canonicalNip01, signEvent } from "./nostr.js";
 const COLD = "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
 const E1 = "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5";
 const E2 = "1be68a5a028f2601d0e80d468c344ba331d611b96c358b6032e8b4da0547fc11";
-const INC_ID = "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0";
-const ROT_ID = "a1cf4cc9a146b9c2f92defd8d5c9bc816bc321f9adde108d0e26fe0c825a1e52";
+const INC_ID = "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf";
+const ROT_ID = "cee59f50dded06fbd6ca22ef4d582ab398d66fd8817068b32fdbb837c4fec45d";
 const T = 1767225600;
 const AUX_RAND = "00".repeat(32);
 const COLD_SECRET = "1".padStart(64, "0");
@@ -55,12 +55,12 @@ beforeAll(async () => {
 
 describe("materialized-KEL ref derivation (§10.1.2)", () => {
   it("computes a git blob OID", () => {
-    expect(gitBlobOid(utf8Bytes(KEL[0].nip01_raw))).toBe("0ff0af49b1366f819d5ed37335f70fa9b792d95e");
+    expect(gitBlobOid(utf8Bytes(KEL[0].nip01_raw))).toBe("223093c303164038db332d13c76ff1508a68c819");
   });
 
   it("computes a single-entry git tree OID", () => {
-    expect(gitTreeOidSingle("100644", "event.nip01", "0ff0af49b1366f819d5ed37335f70fa9b792d95e")).toBe(
-      "58a5d4bb126e5f6c4f3f493ab6fafed87878662f",
+    expect(gitTreeOidSingle("100644", "event.nip01", "223093c303164038db332d13c76ff1508a68c819")).toBe(
+      "0483d3f17f71923a7e4061328c8241a3d18a7a48",
     );
   });
 
@@ -74,31 +74,31 @@ describe("materialized-KEL ref derivation (§10.1.2)", () => {
     const refs = deriveMaterializedRefs(KEL);
 
     expect(refs.log[0]).toMatchObject({
-      blob: "0ff0af49b1366f819d5ed37335f70fa9b792d95e",
-      tree: "58a5d4bb126e5f6c4f3f493ab6fafed87878662f",
-      commit: "79263458c882b087d18454c78cb00c9784d887ce",
+      blob: "223093c303164038db332d13c76ff1508a68c819",
+      tree: "0483d3f17f71923a7e4061328c8241a3d18a7a48",
+      commit: "dc7abf23d06341585bb74dcd69195b760e311861",
       parents: [],
     });
     expect(refs.log[1]).toMatchObject({
-      blob: "a59a2b655f9381e62de8af171f6e4347e58df5cc",
-      tree: "149146cb5fcaf7fa473fca8b1ca42187be90a404",
-      commit: "f5560bc313a2aff1f54e6c4f2c06fc67963ece53",
-      parents: ["79263458c882b087d18454c78cb00c9784d887ce"],
+      blob: "9311d4190f25663d18ed2b2c8bfb4a78daa8aee3",
+      tree: "f08c4406040852fcb35de99630913c5c94b03e02",
+      commit: "3983f67aa5634438b5179605b5f9e6a7081c61ab",
+      parents: ["dc7abf23d06341585bb74dcd69195b760e311861"],
     });
     expect(refs.state[0]).toMatchObject({
-      blob: "392627d9c791377e50f169c5a9e14ed6662f989e",
-      tree: "5e54ca5321fbf3a032873480daca9a4efe57e45f",
-      commit: "e277cbfbf6ae6e095a077be56363d8a3838436a0",
-      parents: ["79263458c882b087d18454c78cb00c9784d887ce"],
+      blob: "dab8cb496816dcf166cecf647b9779607a67aa5b",
+      tree: "6ebaffd6d7cec02e7fa633df7e7fda647bfbeff6",
+      commit: "33d2cda3a282822f60be424ea78947c92977bcae",
+      parents: ["dc7abf23d06341585bb74dcd69195b760e311861"],
     });
     expect(refs.state[1]).toMatchObject({
-      blob: "d42c51057cb5bf879516ef4cabd1449c25f4398b",
-      tree: "920001c3a494c320674123bc0c143ee4ba9ca50c",
-      commit: "226b5ea88217b6bb9478c195f7e7c26e148b2ede",
-      parents: ["e277cbfbf6ae6e095a077be56363d8a3838436a0", "f5560bc313a2aff1f54e6c4f2c06fc67963ece53"],
+      blob: "6a0762e8b33ab97b136b0b971d3094a3385e205d",
+      tree: "641c86198aaa07bb952043ff6a87d41ffb0eb7a2",
+      commit: "b6835258d88577407cf6539820ee52a8f83e1cf4",
+      parents: ["33d2cda3a282822f60be424ea78947c92977bcae", "3983f67aa5634438b5179605b5f9e6a7081c61ab"],
     });
-    expect(refs.log_tip).toBe("f5560bc313a2aff1f54e6c4f2c06fc67963ece53");
-    expect(refs.state_tip).toBe("226b5ea88217b6bb9478c195f7e7c26e148b2ede");
+    expect(refs.log_tip).toBe("3983f67aa5634438b5179605b5f9e6a7081c61ab");
+    expect(refs.state_tip).toBe("b6835258d88577407cf6539820ee52a8f83e1cf4");
   });
 
   it("derives materialized state only from independently replayed current wire bytes", () => {
@@ -108,10 +108,10 @@ describe("materialized-KEL ref derivation (§10.1.2)", () => {
       head: { id: ROT_ID, seq: 1 },
     });
     expect(KEL[0].event_id).toBe(INC_ID);
-    expect(KEL[0].nip01_raw).toContain('["spec_version","core/0.5.0"]');
+    expect(KEL[0].nip01_raw).toContain('["spec_version","heterodyne/0.5.0"]');
     expect(KEL[1].event_id).toBe(ROT_ID);
     expect(KEL[1].nip01_raw).toContain(
-      '\\"spec_version\\":\\"core/0.5.0\\",\\"receipts\\":[]',
+      '\\"spec_version\\":\\"heterodyne/0.5.0\\",\\"receipts\\":[]',
     );
   });
 

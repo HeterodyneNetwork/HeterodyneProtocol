@@ -1,9 +1,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Registry } from "./registry.js";
-import type { DocumentId, Vector } from "./types.js";
+import type { DocumentId } from "./types.js";
 
-/** Registry allocations awaiting normative vectors. */
+/** Registry allocations awaiting current-draft vectors. */
 export const PENDING_PROFILE_IDS = [] as const;
 
 /** Registered profiles intentionally excluded from conformance. */
@@ -12,14 +12,18 @@ export const INACTIVE_PROFILE_IDS = [] as const;
 export type CoverageEntry = {
   vector_id: string;
   owner_document: DocumentId;
-  owner_version: string;
-  dependency_versions: Partial<Record<DocumentId, string>>;
-  registry_revision: number;
   profile?: string;
   spec_refs: string[];
 };
 
-export function buildCoverage(vectors: Vector[]): CoverageEntry[] {
+type CoverageVector = {
+  vector_id: string;
+  owner_document: DocumentId;
+  profile?: string;
+  spec_refs: string[];
+};
+
+export function buildCoverage(vectors: readonly CoverageVector[]): CoverageEntry[] {
   const seen = new Set<string>();
   return vectors
     .map((vector) => {
@@ -30,9 +34,6 @@ export function buildCoverage(vectors: Vector[]): CoverageEntry[] {
       return {
         vector_id: vector.vector_id,
         owner_document: vector.owner_document,
-        owner_version: vector.owner_version,
-        dependency_versions: vector.dependency_versions,
-        registry_revision: vector.registry_revision,
         ...(vector.profile === undefined ? {} : { profile: vector.profile }),
         spec_refs: vector.spec_refs,
       };
@@ -86,9 +87,17 @@ export function findProfileCoverageIssues(
 export async function writeCoverage(vectorRoot: string): Promise<void> {
   const { buildAllVectors } = await import("./topics.js");
   const { buildFixtures } = await import("./fixtures.js");
-  const entries = buildCoverage(
+  await writeCoverageFromVectors(
+    vectorRoot,
     (await buildAllVectors(buildFixtures())).map(({ vector }) => vector),
   );
+}
+
+export async function writeCoverageFromVectors(
+  vectorRoot: string,
+  vectors: readonly CoverageVector[],
+): Promise<void> {
+  const entries = buildCoverage(vectors);
   const coverageRoot = join(vectorRoot, "coverage");
   await mkdir(coverageRoot, { recursive: true });
   const manifestPath = join(coverageRoot, "manifest.json");
@@ -124,12 +133,9 @@ function renderFamilyView(entries: CoverageEntry[]): string {
 
 function renderTable(entries: CoverageEntry[]): string {
   const rows = entries
-    .map((entry) => {
-      const dependencies = Object.entries(entry.dependency_versions)
-        .map(([document, version]) => `${document}=${version}`)
-        .join(", ") || "—";
-      return `| \`${entry.vector_id}\` | ${entry.owner_document} | \`${entry.owner_version}\` | ${dependencies} | ${entry.registry_revision} | ${entry.profile === undefined ? "—" : `\`${entry.profile}\``} | ${entry.spec_refs.map((ref) => `\`${ref}\``).join("<br>")} |`;
-    })
+    .map((entry) =>
+      `| \`${entry.vector_id}\` | ${entry.owner_document} | ${entry.profile === undefined ? "—" : `\`${entry.profile}\``} | ${entry.spec_refs.map((ref) => `\`${ref}\``).join("<br>")} |`,
+    )
     .join("\n");
-  return `| Vector | Owner | Version | Dependencies | Registry | Profile | Spec references |\n|---|---|---|---|---:|---|---|\n${rows}${rows.length === 0 ? "| — | — | — | — | — | — | — |" : ""}\n`;
+  return `| Vector | Owner | Profile | Spec references |\n|---|---|---|---|\n${rows}${rows.length === 0 ? "| — | — | — | — |" : ""}\n`;
 }

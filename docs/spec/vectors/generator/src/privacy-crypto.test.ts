@@ -4,7 +4,6 @@ import { nip44 } from "nostr-tools";
 import { describe, expect, it } from "vitest";
 import { buildFixtures } from "./fixtures.js";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
-import { remediateHistoricalProduction } from "./legacy-remediation.js";
 import { buildV04Vectors } from "./topics-v04.js";
 import { buildV04bVectors } from "./topics-v04b.js";
 
@@ -29,10 +28,9 @@ function replayHkdf(transcript: HkdfTranscript): Uint8Array {
 
 describe("Tier 3 labeled HKDF transcripts", () => {
   it("recomputes the current index key and uses those exact bytes as the NIP-44 conversation key", async () => {
-    const fixtures = buildFixtures();
-    const vectors = await remediateHistoricalProduction(await buildV04Vectors(fixtures), fixtures);
+    const vectors = await buildV04Vectors(buildFixtures());
     const vector = vectors.find(({ vector: candidate }) =>
-      candidate.vector_id === "privacy-tiers/tier3-index-key-derivation-and-encryption-v050")!.vector;
+      candidate.vector_id === "privacy-tiers/tier3-index-key-derivation-and-encryption")!.vector;
     const derived = replayHkdf(vector.input.hkdf as HkdfTranscript);
     const decoded = vector.expected_output.decoded as Record<string, unknown>;
 

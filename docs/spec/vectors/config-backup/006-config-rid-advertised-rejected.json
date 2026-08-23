@@ -1,11 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-keys-repository"
+    "heterodyne:core#core-keys-repository"
   ],
   "vector_id": "config-backup/config-rid-advertised-rejected",
   "description": "The same negative surface scan detects the config RID leaked into a kind:31010 advertisement and rejects it.",

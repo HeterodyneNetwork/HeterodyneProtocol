@@ -134,7 +134,7 @@ export async function buildOidcScenario(
       ...verification.subject_proof!.challenge, resource, issued_at: s.now + 68, expires_at: s.now + 128,
     };
     const signature = bytesToHex(ed25519.sign(
-      utf8Bytes(subjectProofPayload(challenge)), hexToBytes(claim.reader.private_key),
+      subjectProofPayload(challenge), hexToBytes(claim.reader.private_key),
     ));
     return {
       ...verification, now: s.now + 69, resource, requested_namespace: claim.artifact.semantic.namespace,
@@ -149,7 +149,7 @@ export async function buildOidcScenario(
     record_id: record.record_id, payload_digest: record.payload_digest,
     claim_envelope_context: {
       issuer_authorized: true,
-      registry_revision: 2,
+      profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: s.persona,
         credential_ledger_generation: 0,
@@ -498,10 +498,10 @@ export async function buildOidcVectors(fixtures: Fixtures): Promise<AuthoredVect
   const authored = (path: string, id: string, description: string, input: ReplayInput): AuthoredVector =>
     consumeVector(`oidc/${path}`, { vector_id: `oidc/${id}`, spec_refs: [
       /^discovery|^issuer-mismatch/.test(id)
-        ? "heterodyne:comms/0.5.0#comms-oidc-endpoints"
+        ? "heterodyne:0.5.0#comms-oidc-endpoints"
         : /authorization|grant|pairwise|consent/.test(id)
-          ? "heterodyne:comms/0.5.0#comms-oidc-authorization"
-          : "heterodyne:comms/0.5.0#comms-jwt-projection",
+          ? "heterodyne:0.5.0#comms-oidc-authorization"
+          : "heterodyne:0.5.0#comms-jwt-projection",
     ],
       description, input, expected_output: replayOidcVector(input) as Record<string, unknown> });
   const common = {
@@ -525,7 +525,7 @@ export async function buildOidcVectors(fixtures: Fixtures): Promise<AuthoredVect
     claims.nonce = "";
   }, OIDC_RSA_ONE.private_jwk);
   return [
-    authored("001-discovery-exact-issuer.json", "discovery-exact-issuer", "Exact cold-root-bound issuer discovery.", { operation: "discovery", origin: "https://node.example", cold_root_npub: x.root, identity: x.identity as unknown as JsonValue }),
+    authored("001-discovery-exact-issuer.json", "discovery-exact-issuer", "Exact cold-root-bound third-party issuer discovery.", { operation: "discovery", origin: "https://node.example", cold_root_npub: x.root, identity: x.identity as unknown as JsonValue }),
     authored("002-issuer-mismatch-rejected.json", "issuer-mismatch-rejected", "A valid epoch npub is rejected as an issuer.", { operation: "jwt-validation", ...jwtInput(legacyId, { ...common, token_use: "id_token", nonce: "oidc-vector-nonce", sender_constraint: "none" }), expected_issuer: `https://node.example/oidc/${x.epoch}` }),
     authored("003-authorization-code-pkce.json", "authorization-code-pkce", "Signed registration, consent, nonempty nonce, source replay, S256 and single-use code redemption.", { operation: "oauth-flows", mode: "authorization-code", replay: authorizationReplay }),
     authored("004-device-authorization.json", "device-authorization", "RFC 8628 pending, slow_down, denial, expiry, and successful redemption transitions.", { operation: "oauth-flows", mode: "device-authorization", replay: authorizationReplay }),
@@ -550,7 +550,7 @@ export async function buildOidcVectors(fixtures: Fixtures): Promise<AuthoredVect
       ...jwtInput(id, { ...statusCommon, token_use: "id_token", nonce: "oidc-vector-nonce", sender_constraint: "none" }, true),
       empty_nonce_compact: emptyNonceId,
     }),
-    authored("009-rfc9068-access-token-valid.json", "rfc9068-access-token-valid", "Strict RFC 9068 access-token and pinned draft-21 status validation.", jwtInput(access, { ...statusCommon, token_use: "access_token", sender_constraint: "none" }, true)),
+    authored("009-rfc9068-access-token-valid.json", "rfc9068-access-token-valid", "Strict third-party RFC 9068 access-token and pinned draft-21 status validation.", jwtInput(access, { ...statusCommon, token_use: "access_token", sender_constraint: "none" }, true)),
     authored("010-token-type-confusion-rejected.json", "token-type-confusion-rejected", "Access token rejected as ID Token.", accessAsId),
     authored("011-dpop-confirmation-bound.json", "dpop-confirmation-bound", "DPoP accepts only the exact canonical thumbprint and rejects wrong, mixed, and method-confused confirmation.", jwtCases(dpop, [
       { expected_audience: API, options: { ...common, token_use: "access_token", cnf: dpopCnf, sender_constraint: "dpop" } },
@@ -701,7 +701,7 @@ function replayTokenStatusVectorCore(input: unknown): unknown {
       const expected = new Map((spec.https_bytes as unknown as Array<{ path: string; hex: string }>).map(({ path, hex }) => [path, hex]));
       const identical = [...tree].every(([path, bytes]) => expected.get(path) === Buffer.from(bytes).toString("hex")) && tree.size === expected.size;
       return identical ? { verdict: "accept", normalized: { byte_identical: true,
-        paths: [...tree.keys()].sort() } } : { verdict: "reject", reason_code: "oidc-status-digest-mismatch" };
+        paths: [...tree.keys()].sort() } } : { verdict: "reject", reason_code: "oidc-status-invalid" };
     }
     if (spec.operation === "continuity") {
       const state = ledgerStateFromReplay(spec.ledger_replay);
@@ -717,7 +717,7 @@ function replayTokenStatusVectorCore(input: unknown): unknown {
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     const reason = message.includes("claim-repository-conflict") || message.includes("collision") || message.includes("duplicate") ? "claim-repository-conflict" :
-      message.includes("digest") ? "oidc-status-digest-mismatch" : "oidc-status-invalid";
+      "oidc-status-invalid";
     return { verdict: "reject", reason_code: reason };
   }
 }
@@ -999,8 +999,8 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
   const authored = (path: string, vectorId: string, description: string, input: ReplayInput): AuthoredVector =>
     consumeVector(`token-status/${path}`, { vector_id: `token-status/${vectorId}`,
       spec_refs: [/https-outage|issuer-successor/.test(vectorId)
-        ? "heterodyne:comms/0.5.0#comms-issuer-continuity"
-        : "heterodyne:comms/0.5.0#comms-token-status"], description, input,
+        ? "heterodyne:0.5.0#comms-issuer-continuity"
+        : "heterodyne:0.5.0#comms-token-status"], description, input,
       expected_output: replayTokenStatusVector(input) as Record<string, unknown> });
 
   const root = x.root;
@@ -1247,11 +1247,11 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
       ...statusInput(validStatus, validReferenced, validChain, validStatus.claims.iat + validStatus.claims.ttl),
       mutation_material: staleMutationMaterial,
       mutation_table: mutationTable({ ttl_boundary: expectedDecision("accept", null),
-        expired: expectedDecision("reject", "oidc-status-stale"),
+        expired: expectedDecision("reject", "oidc-status-invalid"),
         bad_signature: expectedDecision("reject", "oidc-status-invalid"),
         malformed_zlib: expectedDecision("reject", "oidc-status-invalid"),
         alternative_zlib: expectedDecision("accept", null),
-        out_of_range: expectedDecision("reject", "oidc-status-index-invalid") }),
+        out_of_range: expectedDecision("reject", "oidc-status-invalid") }),
     }),
     authored("004-writer-index-collision-rejected.json", "writer-index-collision-rejected", "Duplicate writer-namespaced URI/index allocation is rejected before token return.", {
       ...collisionInput, mutation_table: mutationTable({
@@ -1263,18 +1263,18 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
       operation: "mirror", manifest: manifest as unknown as JsonValue, discovery,
       jwks_hex: jwksBytes.toString("hex"), status_tokens: [{ path: statusPath, hex: Buffer.from(validStatus.compact).toString("hex") }],
       https_bytes: treeBytes, mutation_table: mutationTable({
-        jwks_byte: expectedDecision("reject", "oidc-status-digest-mismatch"),
-        status_byte: expectedDecision("reject", "oidc-status-digest-mismatch"),
-        path_case: expectedDecision("reject", "oidc-status-digest-mismatch"),
+        jwks_byte: expectedDecision("reject", "oidc-status-invalid"),
+        status_byte: expectedDecision("reject", "oidc-status-invalid"),
+        path_case: expectedDecision("reject", "oidc-status-invalid"),
         branch_not_main: expectedDecision("reject", "oidc-status-invalid") }),
     }),
     authored("006-radicle-digest-mismatch.json", "radicle-digest-mismatch", "A manifest/JWKS SHA-256 mismatch fails closed even when the public key itself is usable.", {
       operation: "mirror", manifest: corruptedManifest as unknown as JsonValue, discovery,
       jwks_hex: jwksBytes.toString("hex"), status_tokens: [{ path: statusPath, hex: Buffer.from(validStatus.compact).toString("hex") }],
       https_bytes: treeBytes, mutation_table: mutationTable({
-        digest_nibble: expectedDecision("reject", "oidc-status-digest-mismatch"),
-        byte_mismatch: expectedDecision("reject", "oidc-status-digest-mismatch"),
-        extra_status_path: expectedDecision("reject", "oidc-status-digest-mismatch") }),
+        digest_nibble: expectedDecision("reject", "oidc-status-invalid"),
+        byte_mismatch: expectedDecision("reject", "oidc-status-invalid"),
+        extra_status_path: expectedDecision("reject", "oidc-status-invalid") }),
     }),
     authored("007-https-outage-radicle-fallback.json", "https-outage-radicle-fallback", "A Heterodyne verifier may use validated canonical-main continuity during HTTPS outage; ordinary OIDC does not auto-follow it.", {
       ...outageInput, mutation_table: mutationTable({ https_outage: expectedDecision("accept", null),
@@ -1285,7 +1285,7 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
     authored("008-issuer-successor.json", "issuer-successor", "Issuer succession binds predecessor and successor commitments and separately proves persona authority.", {
       ...successionInput, mutation_material: successionMutationMaterial, mutation_table: mutationTable({
         missing_persona_proof: expectedDecision("reject", "oidc-issuer-authority-invalid"),
-        predecessor_nibble: expectedDecision("reject", "oidc-status-digest-mismatch"),
+        predecessor_nibble: expectedDecision("reject", "oidc-status-invalid"),
         wrong_successor_url: expectedDecision("reject", "oidc-issuer-authority-invalid"),
         old_https_issuer: expectedDecision("reject", "oidc-issuer-authority-invalid") }),
     }),
@@ -1306,7 +1306,7 @@ export async function buildTokenStatusVectors(fixtures: Fixtures): Promise<Autho
         compromised_key_bit: expectedDecision("reject", "oidc-status-invalid"),
         shared_key_only_successor: expectedDecision("reject", "oidc-issuer-authority-invalid"),
         retain_compromised_key: expectedDecision("reject", "oidc-issuer-authority-invalid"),
-        drop_status_before_expiry: expectedDecision("reject", "oidc-status-digest-mismatch") }),
+        drop_status_before_expiry: expectedDecision("reject", "oidc-status-invalid") }),
     }),
   ];
 }

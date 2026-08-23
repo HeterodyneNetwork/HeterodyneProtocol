@@ -38,7 +38,7 @@ const vector = (
 
 export function buildWorkspaceVectors(): AuthoredVector[] {
   const signedManifest = signWorkspaceObject({
-    spec_version: "workspace/0.1.0",
+    spec_version: "heterodyne/0.5.0",
     object_type: "workspace-manifest-v1",
     workspace_id: H64,
     kel_head: H64,
@@ -105,6 +105,11 @@ export function buildWorkspaceVectors(): AuthoredVector[] {
     admission_epoch: 4,
     history_mode: "full" as const,
     selected_epochs: [] as number[],
+    target_device: H64_B,
+    recipient: {
+      type: "marmot-mls-leaf",
+      value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    },
   };
   const event = "{\"id\":\"same\",\"content\":\"ciphertext\"}";
 
@@ -212,6 +217,10 @@ export function buildWorkspaceVectors(): AuthoredVector[] {
       "A currently authorized device missing the role epoch is re-admitted with a fresh KeyPackage before permitted keys are delivered.",
       { authorization_current: true, current_leaf_present: false, fresh_key_package_valid: true, history_mode: "from-admission" },
       { verdict: "accept", normalized: { action: "readmit-fresh-leaf", deliver_current_keys: true, deliver_pre_admission_keys: false } }),
+    vector("workspace-key/007-noncanonical-recipient-rejected.json", "workspace-key/noncanonical-recipient-rejected",
+      "A 43-character Marmot MLS leaf reference with nonzero base64url pad bits is rejected as noncanonical.",
+      { ...keyRequest, recipient: { type: "marmot-mls-leaf", value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" } },
+      evaluateKeyRequest({ ...keyRequest, recipient: { type: "marmot-mls-leaf", value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" } })),
 
     vector("workspace-freshness/001-ordinary-boundary.json", "workspace-freshness/ordinary-boundary",
       "An ordinary write is accepted at the exact 86400-second default boundary.",

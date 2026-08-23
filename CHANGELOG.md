@@ -1,20 +1,173 @@
 # Changelog
 
-All notable changes to the Heterodyne protocol family are recorded here.
-Each document is in its **0.x phase**: under Core's version rules, any `0.x`
-document release may break its predecessor. The strict PATCH/MINOR/MAJOR
-compatibility contract takes effect independently when a document reaches
-`1.0.0`.
+All notable changes to the Heterodyne specification are recorded here. The
+specification is in its **0.x phase**: any `0.x` release may break its
+predecessor. The strict PATCH/MINOR/MAJOR compatibility contract takes effect
+when the specification reaches `1.0.0`.
 
 ## [Unreleased]
 
-ADR-033 split the 0.4.0 monolith and prepared four independently versioned
-0.5.0 documents. Their contents are current normative authority at their
-repository paths, but the versions remain untagged and unreleased pending
+The specification is prepared as five documents at one version,
+`heterodyne/0.5.0`. Their contents are current normative authority at their
+repository paths, but the version remains untagged and unreleased pending
 explicit release approval.
-[`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is now the non-normative
-family map. Prepared release combinations and the exact registry digest are
-recorded in [machine-readable manifests](docs/spec/releases/).
+[`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is the non-normative
+family map, and the single registry pin is
+[`docs/spec/registry/manifest.json`](docs/spec/registry/manifest.json).
+
+### Accepted rolling conformance snapshot lifecycle
+
+- [ADR-045](docs/adr/archive/2026-08-15-045-conformance-harness-independence.md)
+  records the accepted independent conformance gate. Acceptance followed
+  implementation, security and specification review waves,
+  temporary-repository lifecycle integration, and a clean acceptance matrix.
+  Its lifecycle covers current-HEAD draft checks and reproducible exact-commit
+  checks, with one rolling pre-1.0 snapshot. Replacing that snapshot does not
+  establish pre-1.0 compatibility semantics.
+- Added one repository-local `scripts/conformance-ci.sh` job body shared by
+  GitHub and Radicle. It installs both locked tool packages and runs the
+  generator and independent conformance checks in a fixed, fail-fast order.
+  The gate performs no publishing, deployment, release, tag, push, or remote
+  configuration operation.
+- No pre-1.0 release manifest exists. The rolling, non-normative snapshot pins
+  source commit `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43` and contains 482
+  vectors, 493 digest-bound artifacts, and zero executable declarations.
+  Reconciliation is author, review, commit, then `snapshot-check`; ordinary
+  draft changes remain independent of it.
+
+### Accepted protocol stabilization
+
+- [ADR-046](docs/adr/archive/2026-08-17-046-stabilize-single-family-simplification.md)
+  records the accepted single-family simplification. Its live specification
+  owners are [Core versioning](docs/spec/heterodyne-core.md#core-versioning),
+  [Core key envelope](docs/spec/heterodyne-core.md#core-key-envelope),
+  [Control token](docs/spec/heterodyne-control.md#control-token), and the
+  current registry pin in
+  [`docs/spec/registry/manifest.json`](docs/spec/registry/manifest.json).
+
+### Deduplication and single sources of truth
+
+- Defined the structured client outcome once in Core section 3.8. Comms and
+  Social each described the same payload independently and had already
+  drifted: the vectors encoded it as `outcome.class` in one place and a flat
+  `outcome_class` in the other, and the documents disagreed on whether
+  `terminal_cause` was conditional.
+
+- Made all 58 normative cross-references clickable. A reference is now
+  ``[`heterodyne:0.5.0#anchor`](heterodyne-<doc>.md#anchor)``, keeping the
+  version in the link text while the target resolves in a rendered document.
+  The lint inverted accordingly: it used to forbid links in normative text,
+  and now requires them and checks that the text anchor, the target anchor,
+  and the anchor's owning document all agree.
+- Defined canonical JSON once in Core section 3.4. "Canonical compact JSON"
+  was used by Comms, Control, and Social without a definition anywhere.
+- Consolidated the role-addressed `kind:31001` contract. Core carries the base
+  tag block; a profile supplies only its namespace, proof domain, additional
+  tags, and semantics.
+
+- Unified every proof-byte construction into one. The family had three
+  incompatible ways to build signed bytes: pipe-joined positional strings
+  (`heterodyne-nid-binding-v1`, `heterodyne-node-advert-v1`,
+  `heterodyne-agent-signing-binding-v1`), domain-prefixed JCS
+  (`heterodyne-workspace-object-v1`, `heterodyne-one-time-invite-v1`), and
+  bare JCS with the domain as an object member (`heterodyne-claim-pop-v1`,
+  `heterodyne-claim-revocation-v1`). Core section 3.6.1 now pins
+  `<domain> || 0x00 || JCS(<claim>)` for all of them. The pipe form was also
+  unsound: a `|` inside a bound value let two distinct claims produce
+  identical bytes, and its positional shape gave a verifier no way to reject
+  an unknown or missing member. Core previously described the input as "a
+  domain-separated canonical byte string" without pinning it, and the
+  node-advertisement serialization was defined only in a vector.
+- Added [`registry/proof-domains.json`](docs/spec/registry/proof-domains.json)
+  so each domain's bound members and permitted suites have one authority.
+  Adding, removing, or renaming a bound member now requires a new domain.
+- Moved the shared rules to a single owner: byte-exact wire conformance,
+  vector-ID immutability, and unknown-version handling live only in Core;
+  the 300-second authorization-view bound lives only in Comms section 9.3,
+  which Control, Workspace, and Comms section 11.1 reference.
+- Deleted the per-document "Normative dependencies" headers, which restated
+  the layering Core section 1.1 fixes, at anchor granularity nothing verified.
+- Pointed Core section 10 and Workspace section 17 at the registry instead of
+  restating feature sets. Workspace named three feature IDs that were never
+  allocated; Core claimed five when six exist.
+- Collapsed the five per-document version lineages into the single family
+  version `heterodyne/0.5.0`. Nothing was independent: every document had to
+  pin its dependencies at exactly the current version and all five pinned the
+  same registry revision, so the dependency graph forced lockstep while giving
+  version five places to disagree. It did: the Core header said registry
+  revision 8, Core section 3 said 6, the capability bootstrap said 7, the
+  claim wire member said 2, and the vector fixtures said 1.
+- Made [`registry/manifest.json`](docs/spec/registry/manifest.json) the only
+  place the registry revision and entry-set digest appear. No document states
+  the number.
+- Renamed the frozen claim-profile wire member `registry_revision` to
+  `profile_revision`, so the two meanings are lexically distinct instead of
+  distinguished by a paragraph of prose.
+- Moved the BCP 14 keywords, anchor convention, qualified-reference form,
+  release status, and layering rule into
+  `heterodyne:0.5.0#core-document-conventions`; the other four documents
+  reference it instead of restating it. The generic conformance-report
+  requirements now live only in `heterodyne:0.5.0#core-conformance`.
+- Deleted the five per-document manifests and `docs/spec/registry/history/`.
+  No pre-1.0 release manifest replaces them; pre-1.0 registry history snapshots
+  would enforce immutability over revisions that never shipped.
+- Qualified references are now `heterodyne:<semver>#<anchor>`. The anchor
+  prefix already names the owning document, so a reference no longer names it
+  twice, and the layering check reads the prefix.
+- Strict profiles now declare only their prerequisites and the invariants they
+  add. The required set is the transitive closure, so the flattened lists are
+  no longer restated seven times across five documents.
+
+### Simplifications
+
+- Took the OIDC issuer out of baseline Comms. The feature catalog listed
+  `comms.oidc-jwt-projection.v1` as an optional capability while Comms
+  section 17 required "all registered Comms invariants" of a base
+  implementation, so reading the two together made an RFC 9068 issuer, RS256
+  with a 2048-bit modulus, JWKS, PKCE, the device-code flow, pairwise
+  subjects, a Radicle continuity manifest, and zlib-packed status lists the
+  price of sending a private message. Each invariant now names its owning
+  feature in the registry; an invariant with no `feature` member is baseline
+  and one with a `feature` member binds only implementations claiming it. The
+  new rule lives once at
+  `heterodyne:0.5.0#core-invariant-scope`. Baseline Comms is now the five
+  envelope, tier, and delivery invariants, and the OIDC stack becomes
+  mandatory exactly where something requires it, which for Comms means
+  `comms.agent-authorship.v1`.
+- Moved the node-local `at+jwt` contract entirely to
+  `control.node-scoped-token.v1`. Control's own issuer is the only verifier and
+  needs no HTTPS discovery, published JWKS, continuity manifest, or status
+  list; Comms retains only generic third-party OIDC/JWT projection.
+- Strict profiles no longer carry feature-bound invariants, and a lint rejects
+  one that does. A strict claim is a hardening posture; it was also acting as
+  a second, hidden way to require features. Comms strict went from 20 added
+  invariants to 5, Social from 4 to 2, and Workspace from 10 to 7, with no
+  obligation lost: a feature's invariants are owed whenever the feature is
+  claimed, strict or not.
+- Unified three key-envelope mechanisms into one Core primitive at
+  `heterodyne:0.5.0#core-key-envelope`. Comms audience keys, Comms
+  claim-ledger reader keys, and Workspace resource-key envelopes solved the
+  same problem, with the same rotate-on-removal semantics and the same
+  non-erasure caveat, in three sets of prose. Each site now supplies exactly
+  five choices: the recipient-set rule, the typed-key reference and wrapping
+  profile, the carrier, the generation-identifier form, and any extra rotation
+  trigger. The generation identifier is deliberately either an opaque
+  `key_id` or a resource-scoped `key_epoch`, because the carriers differ there
+  and forcing one form would have changed signed bytes for no gain.
+- Consolidated 18 fine-grained reason codes into 6, taking the registry from
+  169 to 151. Control section 11 requires that errors "MUST NOT reveal whether
+  an unauthorized private object, entitlement, or recovery resource exists,"
+  yet the vocabulary let a caller distinguish `agent-token-expired` from
+  `-revoked` from `-scope-invalid`, and the same for Control tokens, SFTP
+  grants, enrollment refusals, and status evidence. Each family collapses to
+  one externally visible code, with the specific condition recorded only in
+  the Control section 9.3 encrypted audit; `core-reason-codes` states the
+  granularity rule once. Codes that reveal nothing privileged were kept
+  distinct, including `control-enrollment-rate-limited` and
+  `control-device-code-display-mismatch`.
+
+### Historical decision records
+
 The Marmot/Radicle integration is recorded historically in
 [ADR-040](docs/adr/archive/2026-08-06-040-marmot-radicle-group-messaging.md)
 and was integrated by [PR #19](https://github.com/HeterodyneNetwork/HeterodyneProtocol/pull/19).
@@ -34,9 +187,9 @@ The Workspace role control plane is recorded historically in
 [ADR-044](docs/adr/archive/2026-08-13-044-workspace-role-control-plane.md) and
 is reviewed in [PR #23](https://github.com/HeterodyneNetwork/HeterodyneProtocol/pull/23).
 
-### Core 0.5.0
+### Core
 
-- Prepared [Core](docs/spec/heterodyne-core.md) `core/0.5.0`, owning identity,
+- Prepared [Core](docs/spec/heterodyne-core.md), owning identity,
   KEL verification, canonical bytes, Radicle delegation and repository
   substrate, registry, versioning, and base conformance.
 - Added the Core-owned, separately revisioned registry for kind allocations,
@@ -48,15 +201,15 @@ is reviewed in [PR #23](https://github.com/HeterodyneNetwork/HeterodyneProtocol/
 - Added KERI attribution for stable Marmot human-messaging, group-admin, host,
   and agent roles without changing Marmot validity or MLS convergence.
 - Added registry revision 6's normative, prerequisite-aware feature catalog
-  and exact provided/required feature resolution across release manifests.
+  and exact provided/required feature resolution across the registry.
 - Advanced to registry revision 7, allocating upstream Nostr kinds 1059 and
   22242, bounding node-advertisement time, and defining canonical repository
   persona profiles with delegated vanilla projection and address migration.
 
-### Comms 0.5.0
+### Comms
 
-- Prepared [Comms](docs/spec/heterodyne-comms.md) `comms/0.5.0`, depending on
-  `core/0.5.0` and owning privacy tiers, publishing, feeds, Marmot
+- Prepared [Comms](docs/spec/heterodyne-comms.md), depending on
+  Core and owning privacy tiers, publishing, feeds, Marmot
   conversations and media, Radicle-backed group storage, credential sync, and
   generic subprotocol carriage.
 - Added ADR-034 atomic `kind:31013` typed-key claims and irreversible
@@ -87,11 +240,11 @@ is reviewed in [PR #23](https://github.com/HeterodyneNetwork/HeterodyneProtocol/
   one-time invites with purpose-bound NIP-59 KeyPackage responses.
 - Made Tier 3 recipients active delegated device keys, froze the adopted
   Marmot specification bytes in a closed local archive, and distinguished the
-  fixed v1 claim profile registry revision from the current family revision.
+  frozen v1 claim profile revision from the current family registry revision.
 
-### Control 0.5.0
+### Control
 
-- Prepared [Control](docs/spec/heterodyne-control.md) `control/0.5.0` as an
+- Prepared [Control](docs/spec/heterodyne-control.md) as an
   active Comms profile using standard two-member Marmot groups for enrollment,
   authorization, human JSON-RPC, and MCP agent operations.
 - Added private, persona-wide light-client entitlements; node-audience,
@@ -107,9 +260,9 @@ is reviewed in [PR #23](https://github.com/HeterodyneNetwork/HeterodyneProtocol/
   Welcome processing and KeyPackage replenishment; hardened RFC 8628 codes;
   and capped authorization-view freshness at 300 seconds.
 
-### Social 0.5.0
+### Social
 
-- Prepared [Social](docs/spec/heterodyne-social.md) `social/0.5.0`, depending
+- Prepared [Social](docs/spec/heterodyne-social.md), depending
   on Core and Comms and owning public social behavior, moderation, durable
   assets, and optional ATProto attachment.
 - Added public agent-policy receipts, subscriber-local canonical policy lists,
@@ -118,10 +271,9 @@ is reviewed in [PR #23](https://github.com/HeterodyneNetwork/HeterodyneProtocol/
 - Removed the former optional group-communication layer; private replies and
   reactions now start or reuse Marmot conversations through Comms.
 
-### Workspace 0.1.0
+### Workspace
 
-- Added the independently versioned
-  [Workspace](docs/spec/heterodyne-workspace.md) control plane for
+- Added the [Workspace](docs/spec/heterodyne-workspace.md) control plane for
   organizational roles, private discovery, project and service
   advertisements, cross-workspace allowances, joint governance, host
   inheritance, and independently rotated resource keys.
@@ -131,32 +283,28 @@ is reviewed in [PR #23](https://github.com/HeterodyneNetwork/HeterodyneProtocol/
   future-only revocation semantics.
 - Registered six Workspace feature IDs, thirteen diagnostic reason codes, ten
   security invariants, twelve object types, and the composable
-  `heterodyne-workspace-strict-v1` profile at registry revision 8.
+  `heterodyne-workspace-strict-v1` profile.
 
 ### Family migration and conformance
 
-- Established the family's only normative dependency edges as
+- Established the only normative layering edges as
   `Core <- Comms <- Control`, `Core <- Comms <- Social`,
   `Core <- Comms <- Workspace`, `Control <- Workspace`, and
   `Social <- Workspace`.
-- Advanced all five untagged release manifests to registry revision 8.
-  Comms provides the registered `comms.key-claims.v1`,
-  `comms.private-claim-ledger.v1`, `comms.oidc-jwt-projection.v1`, and
-  `comms.token-status-list-draft-21.v1` features; every external prerequisite
-  resolves through an exact declared dependency release.
-- Added immutable strict-v2 Comms and Social profiles for the ADR-035/036
-  invariants. Corrected `heterodyne-control-strict-v1` during the mutable 0.x
-  phase to its complete 27-invariant flattened Core, Comms, and Control
-  membership.
+- Registered the `comms.key-claims.v1`, `comms.private-claim-ledger.v1`,
+  `comms.oidc-jwt-projection.v1`, and `comms.token-status-list-draft-21.v1`
+  features; every cross-document prerequisite resolves within the registry.
+- Folded the ADR-035/036 invariants into the Comms and Social strict
+  profiles, replacing the strict-v2 pair. Profile IDs become immutable at 1.0,
+  so during 0.x the additions belong in the existing ID rather than a second
+  one restating 21 inherited invariants.
 - Replaced the historical monolith strict mode with composable profile IDs
   for Core, Comms, Control, and Social. The Control strict profile is active
   and claimable when its mandatory conformance requirements are met.
-- Preserved all pre-split normative bytes in
-  [`docs/spec/archive/heterodyne-0.4.0.md`](docs/spec/archive/heterodyne-0.4.0.md)
-  unchanged and added the complete
-  [old-section anchor map](docs/spec/archive/heterodyne-0.4.0-anchor-map.md).
-  The 0.4.0 notes below are historical archive descriptions, not current
-  ownership guidance.
+- Deleted the frozen 0.4.0 monolith archive and its old-section anchor map.
+  Nothing pre-1.0 was ever deployed, so no historical signed bytes need a
+  preserved interpretation. The 0.4.0 notes below are historical changelog
+  entries, not current ownership guidance.
 
 ### Historical 0.4.0 work recorded before the family split
 

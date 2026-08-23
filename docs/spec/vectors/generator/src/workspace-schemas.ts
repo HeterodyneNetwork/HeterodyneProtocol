@@ -35,7 +35,7 @@ const closed = (
 });
 
 const baseProperties = (objectType: string): Record<string, unknown> => ({
-  spec_version: { const: "workspace/0.1.0" },
+  spec_version: { const: "heterodyne/0.5.0" },
   object_type: { const: objectType },
   workspace_id: h64,
   actor: h64,
@@ -309,7 +309,7 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
     "resource-key-envelope-v1",
     [
       "envelope_id", "resource_id", "key_epoch", "target_persona",
-      "target_device", "role_id", "checkpoint_id", "host_id",
+      "target_device", "recipient", "role_id", "checkpoint_id", "host_id",
       "wrapping_profile", "nonce", "ciphertext", "ciphertext_sha256",
       "created_at",
     ],
@@ -319,6 +319,15 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
       key_epoch: nonNegativeInteger,
       target_persona: h64,
       target_device: h64,
+      recipient: {
+        type: "object",
+        additionalProperties: false,
+        required: ["type", "value"],
+        properties: {
+          type: { const: "marmot-mls-leaf" },
+          value: { type: "string", pattern: "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$" },
+        },
+      },
       role_id: h64,
       checkpoint_id: h64,
       host_id: h64,

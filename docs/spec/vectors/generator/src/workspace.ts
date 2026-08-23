@@ -42,11 +42,7 @@ const concatBytes = (...parts: Uint8Array[]): Uint8Array => {
 export function workspaceSigningPayload(object: Record<string, unknown>): Uint8Array {
   const unsigned = { ...object };
   delete unsigned.signature;
-  return concatBytes(
-    utf8Bytes("heterodyne-workspace-object-v1"),
-    new Uint8Array([0]),
-    utf8Bytes(jcsCanonicalize(unsigned)),
-  );
+  return proofBytes("heterodyne-workspace-object-v1", { object: unsigned });
 }
 
 export function workspaceObjectId(object: Record<string, unknown>): string {
@@ -261,7 +257,14 @@ export function evaluateKeyRequest(input: {
   admission_epoch: number;
   history_mode: "full" | "from-admission" | "selected-snapshots";
   selected_epochs: number[];
+  target_device: string;
+  recipient: { type: string; value: string };
 }): WorkspaceVerdict {
+  if (!/^[0-9a-f]{64}$/.test(input.target_device)
+    || input.recipient.type !== "marmot-mls-leaf"
+    || !isCanonicalMarmotLeaf(input.recipient.value)) {
+    return rejected("workspace_schema_invalid");
+  }
   if (!input.resource_known) return rejected("resource_unknown");
   if (!input.host_authorized) return rejected("host_unauthorized");
   if (!input.device_active) return rejected("device_revoked");
@@ -274,9 +277,17 @@ export function evaluateKeyRequest(input: {
   if (!historyAllowed) return rejected("history_denied");
   return accepted({
     key_epoch: input.requested_epoch,
+    target_device: input.target_device,
+    recipient: { ...input.recipient },
     device_bound: true,
     idempotent: true,
   });
+}
+
+function isCanonicalMarmotLeaf(value: string): boolean {
+  if (!/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(value)) return false;
+  const decoded = Buffer.from(value, "base64url");
+  return decoded.length === 32 && decoded.toString("base64url") === value;
 }
 
 export function evaluateFreshness(input: {
@@ -327,4 +338,5 @@ import { sha256 } from "@noble/hashes/sha2";
 import { Ajv } from "ajv";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
+import { proofBytes } from "./proof-bytes.js";
 import { WORKSPACE_SCHEMAS } from "./workspace-schemas.js";

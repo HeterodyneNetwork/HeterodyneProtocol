@@ -1,12 +1,9 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
   "profile": "heterodyne-core-rotation-breadcrumb-note-v1",
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-kel-rotation"
+    "heterodyne:core#core-kel-rotation"
   ],
   "vector_id": "profiles/core-breadcrumb-kind1",
   "description": "The same trusted routine-rotation workflow produces the exact unstamped old-key kind:1 continuation note in the permitted post-acceptance window.",
@@ -15,7 +12,7 @@
     "trusted_rotation_context": {
       "prior_kel_accepted": true,
       "prior_kel_head": {
-        "id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+        "id": "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
         "seq": 0
       },
       "routine_rotation_accepted": true,

@@ -2,15 +2,10 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  expectedReleaseManifests,
   findInvariantEvidenceIssues,
   findStrictProfileClosureIssues,
-  lintFamilyCutover,
   lintFamilyDocs,
-  loadReleaseSchemaRegistryPin,
-  releaseManifestBytes,
-  validateReleaseManifestRegistryPin,
-  validateReleaseFeatureResolution,
+  lintMaintainedGuides,
 } from "./docs-lint.js";
 import { loadRegistry } from "./registry.js";
 
@@ -18,9 +13,133 @@ const repositoryRoot = resolve(import.meta.dirname, "../../../../../");
 const read = (path: string) => readFileSync(resolve(repositoryRoot, path), "utf8");
 
 describe("canonical family documentation", () => {
-  it("passes dependency, anchor, archive, release, and cutover lint", () => {
+  it("passes layering and anchor lint", () => {
     expect(lintFamilyDocs(repositoryRoot)).toEqual([]);
-    expect(lintFamilyCutover(repositoryRoot)).toEqual([]);
+  });
+
+  it("keeps maintained authoring guides on the single-family model", () => {
+    expect(lintMaintainedGuides(repositoryRoot)).toEqual([]);
+  });
+
+  it.each([
+    ["docs/architecture.md", "The five documents are independently versioned."],
+    ["docs/security/threat-model.md", "This analyzes five independently versioned documents."],
+    ["CHANGELOG.md", "Deleted docs/spec/releases/ and all release metadata."],
+    ["CHANGELOG.md", "comms.node-scoped-jwt.v1 owns the node-local token."],
+    ["CHANGELOG.md", "Each key-envelope site supplies exactly four things."],
+    ["CHANGELOG.md", "The fixed v1 claim profile registry revision is 2."],
+    [
+      "AGENTS.md",
+      "- [`docs/spec/registry/`](docs/spec/registry/),\n"
+        + "  [`docs/spec/schemas/`](docs/spec/schemas/), and generator-owned protocol\n"
+        + "  inputs: live normative machine-readable artifacts for the current draft.",
+    ],
+  ])("rejects retired live model prose in %s", (path, retiredText) => {
+    const issues = lintMaintainedGuides(repositoryRoot, {
+      [path]: `${read(path)}\n${retiredText}\n`,
+    });
+    expect(issues).toContainEqual(expect.objectContaining({
+      path,
+      code: "retired-authoring-model",
+    }));
+  });
+
+  it.each([
+    [
+      "README.md",
+      "The prepared family release manifest at `docs/spec/releases/family/0.5.0.json` pins the complete normative corpus.",
+    ],
+    ["AGENTS.md", "Wire-level changes require corresponding normative vector changes."],
+    [
+      "docs/spec/heterodyne.md",
+      "The one content-addressed family release record is `releases/family/0.5.0.json`.",
+    ],
+    [
+      "docs/spec/vectors/README.md",
+      "npm --prefix docs/spec/vectors/generator run release-author",
+    ],
+    [
+      "docs/spec/vectors/README.md",
+      "npm --prefix docs/spec/vectors/generator run release-check",
+    ],
+    [
+      "docs/spec/vectors/README.md",
+      "Vectors are normative for the behavior they cover: failing an authored\n"
+        + "vector means a Heterodyne client is non-conformant for the corresponding\n"
+        + "vector category.",
+    ],
+    [
+      "docs/spec/vectors/generator/README.md",
+      "This package is non-normative tooling for authoring and checking the JSON\n"
+        + "vectors in `docs/spec/vectors/`. The committed JSON vectors are the normative\n"
+        + "artifact; implementations do not need Node.js, TypeScript, `nostr-tools`, or\n"
+        + "`@noble/*` to claim conformance.",
+    ],
+    [
+      "docs/adr/README.md",
+      "ADRs are non-canonical, point-in-time records of decisions proposed for the\n"
+        + "Heterodyne specification. The current protocol authority is the versioned\n"
+        + "specification family and its normative registries, schemas, release metadata,\n"
+        + "and conformance vectors.",
+    ],
+    [
+      "docs/adr/archive/2026-08-15-045-conformance-harness-independence.md",
+      "- The conformance package, its baselines, and its reports are tooling rather\n"
+        + "  than normative family artifacts. The live specifications, registry, schemas,\n"
+        + "  release metadata, and vectors remain the protocol authority.",
+    ],
+    [
+      "docs/spec/extensions/nips/README.md",
+      "A proposal must recheck the named family release before extracting behavior.",
+    ],
+    [
+      "CHANGELOG.md",
+      "[family release manifest](docs/spec/releases/family/0.5.0.json)",
+    ],
+  ])("rejects former release-coupled snapshot guidance in %s", (path, retiredText) => {
+    const issues = lintMaintainedGuides(repositoryRoot, {
+      [path]: `${read(path)}\n${retiredText}\n`,
+    });
+    expect(issues).toContainEqual(expect.objectContaining({
+      path,
+      code: "retired-authoring-model",
+    }));
+  });
+
+  it("states Social conformance through Core layering and the one family version", () => {
+    const social = read("docs/spec/heterodyne-social.md");
+    expect(social).not.toMatch(/dependency versions above/i);
+    expect(social).toMatch(/Core-defined layering[\s\S]{0,160}same family version/i);
+  });
+
+  it("requires every guide to state each profile-revision fact", () => {
+    const { revision } = JSON.parse(
+      read("docs/spec/registry/manifest.json"),
+    ) as { revision: number };
+    const currentRegistryRevision = `current family registry revision ${revision}`;
+    const guides = ["docs/glossary.md", "docs/security/threat-model.md"];
+    const mutations = [
+      ["member", (text: string) => text.replace("profile_revision", "claim_profile_revision")],
+      ["frozen status", (text: string) => text.replace("frozen", "recorded")],
+      ["value", (text: string) => text.replace("`2`", "`3`")],
+      ["registry distinction", (text: string) => text.replace(
+        currentRegistryRevision,
+        `current family registry revision ${revision + 1}`,
+      )],
+    ] as const;
+
+    for (const [, mutate] of mutations) {
+      const issues = lintMaintainedGuides(
+        repositoryRoot,
+        Object.fromEntries(guides.map((path) => [path, mutate(read(path))])),
+      );
+      expect(issues).toEqual(expect.arrayContaining(guides.map((path) =>
+        expect.objectContaining({
+          path,
+          code: "profile-revision-registry-context-missing",
+        }),
+      )));
+    }
   });
 
   it("keeps live specifications independent of noncanonical decision records", () => {
@@ -32,7 +151,6 @@ describe("canonical family documentation", () => {
 
   it("defines active Marmot Control and optional recovery without legacy carriers", () => {
     const control = read("docs/spec/heterodyne-control.md");
-    expect(control).toContain("Status: **0.5.0 draft**");
     expect(control).toContain('"can_claim_control_conformance": true');
     expect(control).toContain('"transport_owner": "marmot"');
     expect(control).toMatch(/default is five minutes/i);
@@ -56,10 +174,43 @@ describe("canonical family documentation", () => {
     expect(comms).toMatch(/credential continuity drafts[\s\S]*not required by baseline Control/i);
   });
 
+  it("keeps Control-shaped node token semantics out of live Comms prose", () => {
+    const comms = read("docs/spec/heterodyne-comms.md");
+    expect(comms).not.toContain("comms.node-scoped-jwt.v1");
+    expect(comms).not.toContain("A Control token has");
+    expect(comms).not.toContain('id="comms-control-token"');
+
+    const agentToken = comms.match(
+      /<a id="comms-agent-token"><\/a>[\s\S]*?(?=<a id="comms-agent-attribution"><\/a>)/,
+    )?.[0];
+    expect(agentToken).toBeDefined();
+    expect(agentToken).toMatch(/third-party OIDC/i);
+    expect(agentToken).not.toMatch(
+      /node-scoped|Marmot|Control|control\.token\.extended|five minutes|sixty minutes|group binding|operation ID/i,
+    );
+  });
+
   it("keeps the full-node registry and recovery contract explicit in Core", () => {
     const core = read("docs/spec/heterodyne-core.md");
     expect(core).toMatch(/full-node Control and recovery metadata/i);
     expect(core).toMatch(/light-only Control principal[\s\S]*not a Core device/i);
+  });
+
+  it("binds independent-checker refusal codes at their owning Core sections", () => {
+    const core = read("docs/spec/heterodyne-core.md");
+    const rotation = core.slice(
+      core.indexOf('<a id="core-kel-rotation"></a>'),
+      core.indexOf('<a id="core-kel-verification"></a>'),
+    );
+    const verification = core.slice(
+      core.indexOf('<a id="core-verification"></a>'),
+      core.indexOf('<a id="core-retired-key-observation"></a>'),
+    );
+
+    expect(rotation).toContain("successor_persona_mismatch");
+    expect(rotation).toContain("retiring_key_nip05_invalid");
+    expect(rotation).toContain("compromise_rotation_breadcrumb_forbidden");
+    expect(verification).toContain("nip01_raw_mismatch");
   });
 
   it("closes the follow-up hardening documentation and archive rules", () => {
@@ -80,98 +231,148 @@ describe("canonical family documentation", () => {
     }
   });
 
-  it("declares complete flattened strict-profile prerequisite membership", () => {
+  it("derives strict-profile membership from prerequisite closures", () => {
     const documents = Object.fromEntries(
       ["core", "comms", "control", "social", "workspace"].map((document) => [
         document,
         read(`docs/spec/heterodyne-${document}.md`),
       ]),
     );
-    expect(findStrictProfileClosureIssues(documents)).toEqual([]);
-    documents.core += `\n<!-- fixture:conflicting-strict-profile -->\n\`\`\`json\n${JSON.stringify({
+    const invariants = loadRegistry(repositoryRoot).security_invariants;
+    expect(findStrictProfileClosureIssues(documents, invariants)).toEqual([]);
+
+    const fixture = (profile: unknown) =>
+      `\n<!-- fixture:extra-strict-profile -->\n\`\`\`json\n${JSON.stringify(profile)}\n\`\`\`\n`;
+    const withFixture = (profile: unknown) =>
+      findStrictProfileClosureIssues(
+        { ...documents, core: documents.core + fixture(profile) },
+        invariants,
+      );
+
+    expect(withFixture({
       profile_id: "heterodyne-core-strict-v1",
       requires_profiles: [],
-      required_invariants: ["CORE-I-IDENTITY-INTEGRITY"],
-    })}\n\`\`\`\n`;
-    expect(findStrictProfileClosureIssues(documents))
-      .toContain("conflicting strict-profile membership: heterodyne-core-strict-v1");
+      adds_invariants: ["CORE-I-IDENTITY-INTEGRITY"],
+    })).toContain("conflicting strict-profile declaration: heterodyne-core-strict-v1");
+
+    expect(withFixture({
+      profile_id: "heterodyne-core-strict-v9",
+      requires_profiles: ["heterodyne-core-strict-v8"],
+      adds_invariants: [],
+    })).toContain(
+      "unknown strict-profile prerequisite: heterodyne-core-strict-v9 -> heterodyne-core-strict-v8",
+    );
+
+    expect(withFixture({
+      profile_id: "heterodyne-core-strict-v9",
+      requires_profiles: ["heterodyne-core-strict-v1"],
+      adds_invariants: ["CORE-I-IDENTITY-INTEGRITY"],
+    })).toContain(
+      "redundant added invariant: heterodyne-core-strict-v9 already inherits CORE-I-IDENTITY-INTEGRITY",
+    );
+
+    expect(withFixture({
+      profile_id: "heterodyne-core-strict-v9",
+      requires_profiles: [],
+      adds_invariants: ["COMMS-I-TIER3-BLIND-CARRIER"],
+    })).toContain(
+      "added invariant is not owned by the declaring document: heterodyne-core-strict-v9 -> COMMS-I-TIER3-BLIND-CARRIER",
+    );
+
+    expect(withFixture({
+      profile_id: "heterodyne-core-strict-v9",
+      requires_profiles: [],
+      adds_invariants: ["CORE-I-NOT-REGISTERED"],
+    })).toContain(
+      "unregistered added invariant: heterodyne-core-strict-v9 -> CORE-I-NOT-REGISTERED",
+    );
+
+    expect(withFixture({
+      profile_id: "heterodyne-core-strict-v9",
+      requires_profiles: [],
+      adds_invariants: ["CORE-I-MARMOT-ROLE-ATTRIBUTION"],
+    })).toContain(
+      "feature-bound added invariant: heterodyne-core-strict-v9 -> CORE-I-MARMOT-ROLE-ATTRIBUTION"
+        + " is bound to core.marmot-role-attribution.v1",
+    );
+  });
+
+  it("scopes every invariant to baseline or one feature its own document owns", () => {
+    const registry = loadRegistry(repositoryRoot);
+    const features = new Set(registry.features.map(({ id }) => id));
+    for (const { id, owner, feature } of registry.security_invariants) {
+      if (feature === undefined) continue;
+      expect(features).toContain(feature);
+      expect(feature.startsWith(`${owner}.`)).toBe(true);
+      expect(id.startsWith(`${owner.toUpperCase()}-I-`)).toBe(true);
+    }
+    // Baseline is what an implementation owes for merely claiming the document,
+    // so the OIDC, status, claim, and agent stacks must all be feature-bound.
+    const baseline = registry.security_invariants
+      .filter(({ feature }) => feature === undefined)
+      .map(({ id }) => id);
+    expect(baseline).not.toContain("COMMS-I-ISSUER-CONTINUITY");
+    expect(baseline).not.toContain("COMMS-I-CLAIM-RELEASE");
+    expect(baseline).not.toContain("COMMS-I-STATUS-INTEGRITY");
+    expect(baseline).not.toContain("COMMS-I-AGENT-ATTRIBUTION");
+    expect(baseline).toContain("COMMS-I-TIER3-BLIND-CARRIER");
+  });
+
+  it("requires the OIDC issuer only through the features that need it", () => {
+    const features = new Map(
+      loadRegistry(repositoryRoot).features.map((entry) => [entry.id, entry]),
+    );
+    const requires = (id: string, target: string): boolean => {
+      const entry = features.get(id);
+      if (entry === undefined) return false;
+      return entry.prerequisites.some(
+        (prerequisite) => prerequisite === target || requires(prerequisite, target),
+      );
+    };
+    const oidc = "comms.oidc-jwt-projection.v1";
+    expect(requires("comms.agent-authorship.v1", oidc)).toBe(true);
+    expect(requires("control.oauth-device-enrollment.v1", oidc)).toBe(true);
+    // A node-scoped token is verified only by its own issuer, so it needs none
+    // of the third-party discovery, continuity, or status machinery.
+    expect(requires("control.node-scoped-token.v1", oidc)).toBe(false);
+    expect(features.has("comms.node-scoped-jwt.v1")).toBe(false);
+    expect(requires("comms.marmot-conversations.v1", oidc)).toBe(false);
+    expect(requires("comms.public-reader.v1", oidc)).toBe(false);
   });
 });
 
-describe("registry-bound release artifacts", () => {
-  it("pins release schema and all manifests to registry revision 8", () => {
-    const pin = loadReleaseSchemaRegistryPin(repositoryRoot);
-    expect(pin.registry_revision).toBe(8);
-    expect(pin.registry_sha256).toMatch(/^[0-9a-f]{64}$/);
-    expect(() => validateReleaseManifestRegistryPin(repositoryRoot, pin)).not.toThrow();
-
-    const expected = expectedReleaseManifests(repositoryRoot);
-    for (const document of ["core", "comms", "control", "social"] as const) {
-      expect(read(`docs/spec/releases/${document}/0.5.0.json`))
-        .toBe(releaseManifestBytes(expected[document]));
+describe("registry-bound artifacts", () => {
+  it("pins one registry revision and digest in exactly one place", () => {
+    const registry = loadRegistry(repositoryRoot);
+    expect(registry.manifest.entry_set_sha256).toMatch(/^[0-9a-f]{64}$/);
+    for (const document of ["core", "comms", "control", "social", "workspace"]) {
+      expect(read(`docs/spec/heterodyne-${document}.md`))
+        .not.toMatch(/^Registry revision:/m);
     }
-    expect(read("docs/spec/releases/workspace/0.1.0.json"))
-      .toBe(releaseManifestBytes(expected.workspace));
   });
 
-  it("publishes the base Workspace release with optional higher-layer dependencies", () => {
-    const manifest = expectedReleaseManifests(repositoryRoot).workspace;
-    expect(manifest.qualified_version).toBe("workspace/0.1.0");
-    expect(manifest.dependencies).toEqual({
-      core: "core/0.5.0",
-      comms: "comms/0.5.0",
-    });
-    expect(manifest.required_features).toEqual([
-      "core.marmot-role-attribution.v1",
-      "core.repo-relay-client.v1",
-      "comms.marmot-conversations.v1",
-      "comms.radicle-marmot-storage.v1",
-      "comms.radicle-backed-marmot-relay.v1",
+  it("carries the single family version on every registry entry", () => {
+    const registry = loadRegistry(repositoryRoot);
+    const versions = new Set([
+      ...registry.kinds.map(({ first_version }) => first_version),
+      ...registry.kinds.flatMap(({ profiles }) =>
+        profiles.map(({ first_version }) => first_version)),
+      ...registry.reason_codes.map(({ first_version }) => first_version),
+      ...registry.security_invariants.map(({ first_version }) => first_version),
+      ...registry.features.map(({ first_version }) => first_version),
+      ...registry.objects.map(({ first_version }) => first_version),
     ]);
+    expect([...versions]).toEqual(["heterodyne/0.5.0"]);
   });
 
-  it("advertises active Control separately from optional recovery features", () => {
-    const manifest = expectedReleaseManifests(repositoryRoot).control;
-    expect(manifest.conformance_status).toBe("conformant");
-    expect(manifest.provided_features).toEqual([
-      "control.marmot.v1",
-      "control.oauth-device-enrollment.v1",
-      "control.private-entitlement.v1",
-      "control.node-scoped-token.v1",
-      "control.agent-workload-publication.v1",
-      "control.node-mediated-marmot.v1",
-      "control.recovery.radicle.v1",
-      "control.recovery.epoch-inbox.v1",
-      "control.recovery.sftp.v1",
-    ]);
-    expect(manifest.required_features).toEqual([
-      "core.repo-relay-client.v1",
-      "comms.agent-authorship.v1",
-      "comms.marmot-conversations.v1",
-      "comms.oidc-jwt-projection.v1",
-      "comms.private-claim-ledger.v1",
-      "comms.radicle-marmot-storage.v1",
-    ]);
-    expect(new Set(manifest.provided_features).size)
-      .toBe(manifest.provided_features.length);
-    expect(new Set(manifest.required_features).size)
-      .toBe(manifest.required_features.length);
-  });
-
-  it("rejects a required feature absent from the exact dependency release", () => {
-    const manifests = structuredClone(expectedReleaseManifests(repositoryRoot));
-    manifests.comms.provided_features = manifests.comms.provided_features
-      .filter((feature) => feature !== "comms.agent-authorship.v1");
-    expect(() => validateReleaseFeatureResolution(loadRegistry(repositoryRoot), manifests))
-      .toThrow(/not provided by exact dependency/);
-  });
-
-  it("rejects a provided feature whose external prerequisite is undeclared", () => {
-    const manifests = structuredClone(expectedReleaseManifests(repositoryRoot));
-    manifests.comms.required_features = manifests.comms.required_features
-      .filter((feature) => feature !== "core.marmot-role-attribution.v1");
-    expect(() => validateReleaseFeatureResolution(loadRegistry(repositoryRoot), manifests))
-      .toThrow(/external prerequisite not required/);
+  it("resolves every feature prerequisite within the registry", () => {
+    const registry = loadRegistry(repositoryRoot);
+    const byId = new Map(registry.features.map((entry) => [entry.id, entry]));
+    for (const feature of registry.features) {
+      for (const prerequisite of feature.prerequisites) {
+        expect(byId.has(prerequisite)).toBe(true);
+      }
+    }
   });
 
   it("mirrors every registered invariant exactly in the threat model", () => {

@@ -1,19 +1,16 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-versioning"
+    "heterodyne:core#core-versioning"
   ],
   "vector_id": "versioning/core-capability-bootstrap",
   "description": "The Core capability descriptor is discoverable without a higher-document carrier.",
   "direction": "consume",
   "input": {
     "descriptor": "heterodyne-capabilities-v1",
-    "bootstrap_version": "core/0.5.0",
-    "registry_revision": 1
+    "bootstrap_version": "heterodyne/0.5.0",
+    "profile_revision": 1
   },
   "expected_output": {
     "verdict": "accept",

@@ -1,13 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-public-transition"
+    "heterodyne:comms#comms-public-transition"
   ],
   "vector_id": "public-reader/transition-without-reload",
   "description": "An explicit user action upgrades one running static client from public reader to an authenticated session without a hosted server session.",

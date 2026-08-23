@@ -1,8 +1,8 @@
 # Heterodyne architecture
 
 This document is a non-normative explanation of the protocol family. The
-versioned documents under [`docs/spec/`](spec/) and their registries, schemas,
-release manifests, and vectors are authoritative.
+documents under [`docs/spec/`](spec/) and their registry, schemas, and vectors
+are authoritative.
 
 The family documents are [Core](spec/heterodyne-core.md),
 [Comms](spec/heterodyne-comms.md), [Control](spec/heterodyne-control.md),
@@ -264,7 +264,7 @@ hosts, and repository relays can observe metadata and can omit, delay, or
 reorder traffic. Local signature, KERI, MLS, grant, and repository-binding
 verification remains mandatory.
 
-The five documents are independently versioned. Exact document versions,
-registry revision or digest, features, and strict profiles must travel with
-every conformance claim. The family is in its 0.x phase and may make breaking
-changes before 1.0.
+The five documents share one exact family version. The family version,
+registry digest, features, and strict profiles travel with every conformance
+claim. The family is in its 0.x phase and may make breaking changes before
+1.0.

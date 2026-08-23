@@ -60,15 +60,19 @@ export async function buildV04bVectors(fixtures: Fixtures): Promise<AuthoredVect
     secretKey: epoch.private_key,
     created_at: T + 100,
     kind: 10000,
-    tags: withKelHead(
-      [
-        ["p", bob.cold_root.pubkey],
-        ["t", "spam"],
-        ["word", "airdrop"],
-        ["e", "aa".repeat(32)],
-      ],
-      fixtures.legacy_kel.alice.head,
-    ),
+    tags: [
+      ...withKelHead(
+        [
+          ["p", bob.cold_root.pubkey],
+          ["t", "spam"],
+          ["word", "airdrop"],
+          ["e", "aa".repeat(32)],
+        ],
+        fixtures.kel.alice.head,
+      ),
+      ["heterodyne", "social-mute-list-v1"],
+      ["spec_version", "heterodyne/0.5.0"],
+    ],
     content: "",
     auxRand: AUX_RAND,
   });
@@ -84,13 +88,17 @@ export async function buildV04bVectors(fixtures: Fixtures): Promise<AuthoredVect
     secretKey: epoch.private_key,
     created_at: T + 101,
     kind: 10000,
-    tags: withKelHead(
-      [
-        ["p", bob.cold_root.pubkey],
-        ["t", "spam"],
-      ],
-      fixtures.legacy_kel.alice.head,
-    ),
+    tags: [
+      ...withKelHead(
+        [
+          ["p", bob.cold_root.pubkey],
+          ["t", "spam"],
+        ],
+        fixtures.kel.alice.head,
+      ),
+      ["heterodyne", "social-mute-list-v1"],
+      ["spec_version", "heterodyne/0.5.0"],
+    ],
     content: privateItemsCipher,
     auxRand: AUX_RAND,
   });

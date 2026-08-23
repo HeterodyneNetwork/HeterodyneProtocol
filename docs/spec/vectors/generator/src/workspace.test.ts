@@ -22,7 +22,7 @@ const H40 = "33".repeat(20);
 describe("Workspace signed objects", () => {
   it("verifies schema, signature, KERI and repository binding, and digest", () => {
     const object = signWorkspaceObject({
-      spec_version: "workspace/0.1.0",
+      spec_version: "heterodyne/0.5.0",
       object_type: "workspace-manifest-v1",
       workspace_id: H64,
       kel_head: H64,
@@ -186,8 +186,46 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
       admission_epoch: 4,
       history_mode: "full" as const,
       selected_epochs: [] as number[],
+      target_device: H64,
+      recipient: {
+        type: "marmot-mls-leaf",
+        value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      },
     };
-    expect(evaluateKeyRequest(base)).toMatchObject({ verdict: "accept" });
+    expect(evaluateKeyRequest(base)).toEqual({
+      verdict: "accept",
+      normalized: {
+        key_epoch: 4,
+        target_device: H64,
+        recipient: {
+          type: "marmot-mls-leaf",
+          value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        },
+        device_bound: true,
+        idempotent: true,
+      },
+    });
+    expect(evaluateKeyRequest({
+      ...base,
+      recipient: {
+        type: "nostr-secp256k1",
+        value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      },
+    })).toEqual({ verdict: "reject", reason_code: "workspace_schema_invalid" });
+    expect(evaluateKeyRequest({
+      ...base,
+      recipient: {
+        type: "marmot-mls-leaf",
+        value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      },
+    })).toEqual({ verdict: "reject", reason_code: "workspace_schema_invalid" });
+    expect(evaluateKeyRequest({
+      ...base,
+      recipient: {
+        type: "marmot-mls-leaf",
+        value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+      },
+    })).toEqual({ verdict: "reject", reason_code: "workspace_schema_invalid" });
     expect(evaluateKeyRequest({ ...base, history_mode: "from-admission", requested_epoch: 3 }))
       .toEqual({ verdict: "reject", reason_code: "history_denied" });
     expect(evaluateKeyRequest({ ...base, history_mode: "selected-snapshots", requested_epoch: 3, selected_epochs: [3] }))

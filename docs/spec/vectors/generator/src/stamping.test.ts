@@ -1,8 +1,11 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { QUALIFIED_VERSION } from "./family.js";
+import { buildFixtures } from "./fixtures.js";
 import { loadRegistry } from "./registry.js";
-import { inferLegacyOwner, stampOwner, type StampInput } from "./stamping.js";
+import { stampOwner, type StampInput } from "./stamping.js";
+import { buildSplitVectors } from "./topics-split.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const registry = loadRegistry(resolve(here, "../../../../../"));
@@ -53,42 +56,22 @@ describe("registry-driven owner stamping", () => {
     expect(stampOwner(stampInput as StampInput, registry)).toBe(expected);
   });
 
-  it("scopes legacy inference to archived monolith forms", () => {
-    expect(
-      inferLegacyOwner({ kind: 31001, stamp: "0.4.0", adopted_upstream: false,
-        archived_form_valid: true, post_split_discriminator: false, profile_only: false }),
-    ).toBe("monolith/0.4.0");
-    expect(
-      inferLegacyOwner({ kind: 31007, adopted_upstream: false,
-        archived_form_valid: true, post_split_discriminator: false, profile_only: false }),
-    ).toBe("monolith/0.4.0");
-    expect(() =>
-      inferLegacyOwner({ kind: 1, adopted_upstream: true,
-        archived_form_valid: true, post_split_discriminator: false, profile_only: false }),
-    ).toThrow("not inferable");
-    expect(() =>
-      inferLegacyOwner({ kind: 31006, adopted_upstream: false,
-        archived_form_valid: true, post_split_discriminator: false, profile_only: false }),
-    ).toThrow("not inferable");
-    expect(() =>
-      inferLegacyOwner({ kind: 31001, stamp: "core/0.5.0", adopted_upstream: false,
-        archived_form_valid: true, post_split_discriminator: false, profile_only: false }),
-    ).toThrow("not inferable");
-  });
+  it("carries the exact family version for every stamped ownership class", async () => {
+    const vectors = (await buildSplitVectors(buildFixtures()))
+      .map(({ vector }) => vector)
+      .filter(({ vector_id }) => vector_id.startsWith("stamping/"));
+    const stamped = vectors.filter(({ expected_output }) =>
+      typeof expected_output.owner === "string");
 
-  it.each([
-    ["malformed archived form", { archived_form_valid: false }],
-    ["post-split discriminator", { post_split_discriminator: true }],
-    ["profile-only form", { profile_only: true }],
-    ["adopted upstream form", { adopted_upstream: true }],
-  ])("does not infer an unstamped %s", (_name, overrides) => {
-    expect(() => inferLegacyOwner({
-      kind: 31001,
-      adopted_upstream: false,
-      archived_form_valid: true,
-      post_split_discriminator: false,
-      profile_only: false,
-      ...overrides,
-    })).toThrow("not inferable");
+    expect(stamped.map(({ vector_id }) => vector_id)).toEqual([
+      "stamping/heterodyne-json-content-owner",
+      "stamping/heterodyne-empty-content-tag-owner",
+      "stamping/upstream-profile-owner",
+      "stamping/tier3-profile-owner",
+    ]);
+    for (const vector of stamped) {
+      expect(vector.expected_output).toMatchObject({ value: QUALIFIED_VERSION });
+      expect(vector.expected_output.value).not.toMatch(/^(?:core|comms|social)\//);
+    }
   });
 });

@@ -21,36 +21,44 @@ afterEach(async () => {
 });
 
 describe("family coverage", () => {
-  it("is a sorted lossless revision-8 projection with active Control coverage", async () => {
+  it("is a sorted lossless projection with active Control coverage", async () => {
     const vectors = (await buildAllVectors(buildFixtures())).map(({ vector }) => vector);
     const coverage = buildCoverage(vectors);
     expect(coverage.map(({ vector_id }) => vector_id)).toEqual(
       [...coverage.map(({ vector_id }) => vector_id)].sort(),
     );
     expect(new Set(coverage.map(({ vector_id }) => vector_id)).size).toBe(vectors.length);
-    expect(coverage.every(({ registry_revision }) => registry_revision === 8)).toBe(true);
-    expect(coverage.filter(({ owner_document }) => owner_document === "control")).toHaveLength(51);
-    const workspace = coverage.filter(({ owner_document }) => owner_document === "workspace");
-    expect(workspace).toHaveLength(39);
-    expect(workspace.every(({ dependency_versions }) =>
-      JSON.stringify(dependency_versions) === JSON.stringify({
-        core: "core/0.5.0",
-        comms: "comms/0.5.0",
-      }))).toBe(true);
+    expect(coverage.every((entry) => !Object.hasOwn(entry, "spec_version"))).toBe(true);
+    expect(coverage.filter(({ owner_document }) => owner_document === "control")).toHaveLength(66);
+    expect(coverage.filter(({ owner_document }) => owner_document === "workspace")).toHaveLength(40);
     expect(coverage).toContainEqual(expect.objectContaining({
       vector_id: "control/invitation-enrollment-only",
       profile: "heterodyne-control-marmot-frame-v1",
-      spec_refs: ["heterodyne:control/0.5.0#control-invitation-policy"],
+      spec_refs: ["heterodyne:0.5.0#control-invitation-policy"],
     }));
     expect(coverage).toContainEqual(expect.objectContaining({
       vector_id: "control/sftp-grant-expired",
-      spec_refs: ["heterodyne:control/0.5.0#control-sftp-recovery"],
+      spec_refs: ["heterodyne:0.5.0#control-sftp-recovery"],
     }));
     const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
     expect(findProfileCoverageIssues(registry, coverage)).toEqual([]);
     expect(PENDING_PROFILE_IDS).toEqual([]);
     expect(INACTIVE_PROFILE_IDS).toEqual([]);
   }, 30_000);
+
+  it("keeps qualified snapshot references without adding version metadata", () => {
+    const coverage = buildCoverage([{
+      vector_id: "identity/example",
+      owner_document: "core",
+      spec_refs: ["heterodyne:core#core-root-attestation"],
+    }]);
+
+    expect(coverage).toEqual([{
+      vector_id: "identity/example",
+      owner_document: "core",
+      spec_refs: ["heterodyne:core#core-root-attestation"],
+    }]);
+  });
 
   it("rejects an unlisted uncovered profile", async () => {
     const coverage = buildCoverage(
@@ -62,7 +70,7 @@ describe("family coverage", () => {
       owner: "comms",
       discriminator: "test:unlisted",
       stamping: false,
-      first_version: "comms/0.5.0",
+      first_version: "heterodyne/0.5.0",
       status: "draft",
     });
     expect(findProfileCoverageIssues(registry, coverage)).toEqual([

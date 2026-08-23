@@ -1,0 +1,131 @@
+{
+  "proof_domains": [
+    {
+      "id": "heterodyne-nid-binding-v1",
+      "owner": "core",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "cold_root",
+        "nid"
+      ],
+      "suites": [
+        "bip340",
+        "ed25519"
+      ],
+      "description": "Dual-proof binding of a Radicle NID to a persona cold root on kind:31001."
+    },
+    {
+      "id": "heterodyne-node-advert-v1",
+      "owner": "core",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "endpoint",
+        "expiry",
+        "nid",
+        "repo_head",
+        "rid"
+      ],
+      "suites": [
+        "ed25519"
+      ],
+      "description": "NID proof over a kind:31010 node and repository advertisement."
+    },
+    {
+      "id": "heterodyne-agent-signing-binding-v1",
+      "owner": "comms",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "cold_root",
+        "nid",
+        "publishing_key",
+        "role_id"
+      ],
+      "suites": [
+        "bip340",
+        "ed25519"
+      ],
+      "description": "Dual proof binding a node-held agent role key to a persona and hosting NID."
+    },
+    {
+      "id": "heterodyne-claim-pop-v1",
+      "owner": "comms",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "audience",
+        "claim_id",
+        "expires_at",
+        "issued_at",
+        "nonce",
+        "operation",
+        "resource"
+      ],
+      "suites": [
+        "bip340",
+        "ed25519",
+        "jws"
+      ],
+      "description": "Single-use proof-of-possession challenge for a typed-key claim subject."
+    },
+    {
+      "id": "heterodyne-claim-revocation-v1",
+      "owner": "comms",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "claim_id",
+        "profile_revision",
+        "reason_code",
+        "revoked_at",
+        "spec_version"
+      ],
+      "suites": [
+        "ed25519",
+        "jws"
+      ],
+      "description": "Revoker proof over a typed-key claim revocation, binding the frozen claim-profile revision."
+    },
+    {
+      "id": "heterodyne-one-time-invite-v1",
+      "owner": "comms",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "descriptor"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "Inviter proof over a complete one-time invite descriptor."
+    },
+    {
+      "id": "heterodyne-one-time-invite-response-v1",
+      "owner": "comms",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "response"
+      ],
+      "suites": [
+        "hmac-sha256"
+      ],
+      "description": "Responder proof over a one-time invite response without its proof member."
+    },
+    {
+      "id": "heterodyne-workspace-object-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "object"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "Actor proof over a signed Workspace object without its signature member."
+    }
+  ]
+}

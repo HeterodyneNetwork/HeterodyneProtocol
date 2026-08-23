@@ -81,13 +81,13 @@ export function controlGroupAdmission(input: ControlAdmissionInput): {
     return { outcome: "reject", reason_code: "control-keypackage-invalid" };
   }
   if (input.explicit_local_decision === "reject") {
-    return { outcome: "reject", reason_code: "control-invitation-disabled" };
+    return { outcome: "reject", reason_code: "control-enrollment-unavailable" };
   }
   if (input.entitlement_state === "revoked" || input.entitlement_state === "conflicted") {
     return { outcome: "reject", reason_code: "control-entitlement-conflict" };
   }
   if (!input.resource_available) {
-    return { outcome: "reject", reason_code: "control-enrollment-capacity" };
+    return { outcome: "reject", reason_code: "control-enrollment-unavailable" };
   }
   if (input.entitlement_state === "active") return { outcome: "accept-authorized" };
   const open = input.invitation_mode === "permanent"
@@ -95,5 +95,5 @@ export function controlGroupAdmission(input: ControlAdmissionInput): {
   if (input.purpose_bound_invite_valid || input.explicit_local_decision === "accept" || open) {
     return { outcome: "accept-enrollment-only" };
   }
-  return { outcome: "reject", reason_code: "control-invitation-disabled" };
+  return { outcome: "reject", reason_code: "control-enrollment-unavailable" };
 }

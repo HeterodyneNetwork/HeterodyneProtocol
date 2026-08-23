@@ -5,7 +5,7 @@
   "additionalProperties": false,
   "required": ["spec_version", "session_id", "request_id", "method", "payload_digest", "agent_identity", "token_jti", "role_id", "role_key", "decision", "created_at"],
   "properties": {
-    "spec_version": {"const": "control/0.5.0"},
+    "spec_version": {"const": "heterodyne/0.5.0"},
     "session_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "request_id": {"type": "string", "minLength": 1, "maxLength": 128},
     "method": {"type": "string", "minLength": 1, "maxLength": 128},

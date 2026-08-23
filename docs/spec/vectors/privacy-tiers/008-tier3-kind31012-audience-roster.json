@@ -1,87 +1,74 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-privacy-tiers"
+    "heterodyne:comms#comms-privacy-tiers"
   ],
   "vector_id": "privacy-tiers/tier3-kind31012-audience-roster",
-  "description": "Verify preserved privacy-tiers/tier3-kind31012-audience-roster bytes as an archived monolith/0.4.0 form; never restamp or resign them.",
-  "direction": "consume",
+  "description": "Tier 3 kind:31012 audience roster: an epoch-key-signed replaceable event keyed by key_id enumerating the recipient device publishing keys with one p tag each.",
   "input": {
-    "source_schema": "monolith/0.4.0",
-    "archived_form_valid": true,
-    "historical_input": {
-      "fixture_persona": "alice",
-      "signer": "epoch_1",
-      "key_id": "aud-2026-05-25-a",
-      "recipients": [
-        "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
-        "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01"
-      ],
-      "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",
-      "vector_context": {
-        "notes": "The roster and the per-recipient kind:31011 wraps share the same key_id."
-      }
-    },
-    "historical_expected_output": {
-      "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225683,31012,[[\"d\",\"aud-2026-05-25-a\"],[\"heterodyne\",\"audience_roster\"],[\"key_id\",\"aud-2026-05-25-a\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"p\",\"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9\"],[\"p\",\"2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01\"],[\"kel_head\",\"2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def\",\"0\"]],\"\"]",
-      "decoded": {
-        "event": {
-          "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
-          "created_at": 1767225683,
-          "kind": 31012,
-          "tags": [
-            [
-              "d",
-              "aud-2026-05-25-a"
-            ],
-            [
-              "heterodyne",
-              "audience_roster"
-            ],
-            [
-              "key_id",
-              "aud-2026-05-25-a"
-            ],
-            [
-              "cold_root",
-              "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-            ],
-            [
-              "p",
-              "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
-            ],
-            [
-              "p",
-              "2f01e5e15cca351daff3843fb70f3c2f0a1bdd05e5af888a67784ef3e10a2a01"
-            ],
-            [
-              "kel_head",
-              "2a182dd311941fa1bc6a9847d700c261d4dc1ef31168b8635aaea8d3d0171def",
-              "0"
-            ]
-          ],
-          "content": "",
-          "id": "00a8f2eaf5696772e87e618be4f9eb97c4b6010a4d6198c38eccc2bbded41438",
-          "sig": "d82a48d350b81305dc1e7ab4bb6e159988134bf68d11907790fd089b1d3a9ce1c3addf8ae97ebadab0ca7c263e03c45e399964b4ef399f74ffe851eb4bd5a425"
-        }
-      },
-      "id": "00a8f2eaf5696772e87e618be4f9eb97c4b6010a4d6198c38eccc2bbded41438",
-      "sig": "d82a48d350b81305dc1e7ab4bb6e159988134bf68d11907790fd089b1d3a9ce1c3addf8ae97ebadab0ca7c263e03c45e399964b4ef399f74ffe851eb4bd5a425"
+    "fixture_persona": "alice",
+    "signer": "epoch_1",
+    "key_id": "aud-2026-05-25-a",
+    "recipients": [
+      "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+      "5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc"
+    ],
+    "recipient_role": "active-delegated-human-device",
+    "aux_rand": "0000000000000000000000000000000000000000000000000000000000000000",
+    "vector_context": {
+      "notes": "The roster and the per-recipient kind:31011 wraps share the same key_id."
     }
   },
   "expected_output": {
-    "verdict": "accept",
-    "normalized": {
-      "owner": "monolith/0.4.0",
-      "direction": "verify",
-      "historical_bytes_preserved": true,
-      "restamped": false
-    }
-  }
+    "canonical_wire": "[0,\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",1767225683,31012,[[\"d\",\"aud-2026-05-25-a\"],[\"heterodyne\",\"audience_roster\"],[\"key_id\",\"aud-2026-05-25-a\"],[\"cold_root\",\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\"],[\"p\",\"2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4\"],[\"p\",\"5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc\"],[\"kel_head\",\"7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf\",\"0\"],[\"spec_version\",\"heterodyne/0.5.0\"]],\"\"]",
+    "decoded": {
+      "event": {
+        "pubkey": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+        "created_at": 1767225683,
+        "kind": 31012,
+        "tags": [
+          [
+            "d",
+            "aud-2026-05-25-a"
+          ],
+          [
+            "heterodyne",
+            "audience_roster"
+          ],
+          [
+            "key_id",
+            "aud-2026-05-25-a"
+          ],
+          [
+            "cold_root",
+            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+          ],
+          [
+            "p",
+            "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4"
+          ],
+          [
+            "p",
+            "5cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc"
+          ],
+          [
+            "kel_head",
+            "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
+            "0"
+          ],
+          [
+            "spec_version",
+            "heterodyne/0.5.0"
+          ]
+        ],
+        "content": "",
+        "id": "0bc8acb31ee3b57e2b1647d20313513b792ccc4cd29b4365233d1f3e87739c76",
+        "sig": "346a8f8158251ef7ef05c19dd9153567853a32490cd8fbc3b7a7ae3bc6ae28692ff413ed1a15f82ac0b69f8dfad833b70a3e1f90684ffa15de699a51a23a16aa"
+      }
+    },
+    "id": "0bc8acb31ee3b57e2b1647d20313513b792ccc4cd29b4365233d1f3e87739c76",
+    "sig": "346a8f8158251ef7ef05c19dd9153567853a32490cd8fbc3b7a7ae3bc6ae28692ff413ed1a15f82ac0b69f8dfad833b70a3e1f90684ffa15de699a51a23a16aa"
+  },
+  "direction": "produce"
 }

@@ -1,13 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-agent-delegation"
+    "heterodyne:comms#comms-agent-delegation"
   ],
   "vector_id": "agent-authorship/delegation-key-proof-invalid",
   "description": "A role delegation with a failed agent-key proof is rejected.",
@@ -21,7 +16,7 @@
     "role_id": "abababababababababababababababababababababababababababababababab",
     "publishing_key": "f76a39d05686e34a4420897e359371836145dd3973e3982568b60f8433adde6e",
     "address": "agent:abababababababababababababababababababababababababababababababab",
-    "proof_bytes": "heterodyne-agent-signing-binding-v1|79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798|did:key:z6MkqZeuNH8HQixdH8KLGc4eyQK3pZSNQZ43BuAGgqSVRUMC|abababababababababababababababababababababababababababababababab|f76a39d05686e34a4420897e359371836145dd3973e3982568b60f8433adde6e",
+    "proof_bytes": "68657465726f64796e652d6167656e742d7369676e696e672d62696e64696e672d7631007b22636f6c645f726f6f74223a2237396265363637656639646362626163353561303632393563653837306230373032396266636462326463653238643935396632383135623136663831373938222c226e6964223a226469643a6b65793a7a364d6b715a65754e4838485169786448384b4c4763346579514b33705a534e515a3433427541476771535652554d43222c227075626c697368696e675f6b6579223a2266373661333964303536383665333461343432303839376533353933373138333631343564643339373365333938323536386236306638343333616464653665222c22726f6c655f6964223a2261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162227d",
     "outer_epoch_signature_valid": true,
     "nid_proof_valid": true,
     "key_proof_valid": false,

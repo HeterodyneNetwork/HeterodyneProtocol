@@ -10,7 +10,7 @@ const H40 = "33".repeat(20);
 const SIG = "44".repeat(64);
 
 const base = (object_type: string) => ({
-  spec_version: "workspace/0.1.0",
+  spec_version: "heterodyne/0.5.0",
   object_type,
   workspace_id: H64,
   actor: H64_B,
@@ -169,6 +169,10 @@ const values: Record<string, Record<string, unknown>> = {
     key_epoch: 3,
     target_persona: H64,
     target_device: H64_B,
+    recipient: {
+      type: "marmot-mls-leaf",
+      value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    },
     role_id: H64,
     checkpoint_id: H64_B,
     host_id: H64,
@@ -225,6 +229,42 @@ describe("Workspace authority object schemas", () => {
     })).not.toBeNull();
     expect(validate("workspace-policy-v1", {
       ...values["workspace-policy-v1"], ordinary_write_max_age: 86_401,
+    })).not.toBeNull();
+  });
+
+  it("requires an exact Marmot MLS leaf recipient on resource key envelopes", () => {
+    const envelope = values["resource-key-envelope-v1"];
+    const missingRecipient = { ...envelope };
+    delete missingRecipient.recipient;
+
+    expect(validate("resource-key-envelope-v1", missingRecipient)).not.toBeNull();
+    expect(validate("resource-key-envelope-v1", {
+      ...envelope,
+      recipient: {
+        type: "nostr-secp256k1",
+        value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      },
+    })).not.toBeNull();
+    expect(validate("resource-key-envelope-v1", {
+      ...envelope,
+      recipient: {
+        type: "marmot-mls-leaf",
+        value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      },
+    })).not.toBeNull();
+    expect(validate("resource-key-envelope-v1", {
+      ...envelope,
+      recipient: {
+        type: "marmot-mls-leaf",
+        value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      },
+    })).not.toBeNull();
+    expect(validate("resource-key-envelope-v1", {
+      ...envelope,
+      recipient: {
+        type: "marmot-mls-leaf",
+        value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+      },
     })).not.toBeNull();
   });
 });

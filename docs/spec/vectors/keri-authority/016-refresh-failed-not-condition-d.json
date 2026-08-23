@@ -1,11 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-kel-verification"
+    "heterodyne:core#core-kel-verification"
   ],
   "vector_id": "keri-authority/refresh-failed-not-condition-d",
   "description": "A kel_head seq ahead of the verifier's accepted head triggers a KEL refresh that FAILS. An attempted-but-failed refresh does not satisfy condition (d), so the accelerator MUST NOT be used; under provisional-accept the event is held provisional and MUST NOT be reported final.",

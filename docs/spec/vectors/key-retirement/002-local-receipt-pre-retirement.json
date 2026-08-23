@@ -1,11 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-retired-key-observation"
+    "heterodyne:core#core-retired-key-observation"
   ],
   "vector_id": "key-retirement/local-receipt-pre-retirement",
   "description": "Retired-key late discovery: local receipt pre retirement.",

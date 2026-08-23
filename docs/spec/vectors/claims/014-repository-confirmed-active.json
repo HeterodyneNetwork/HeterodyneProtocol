@@ -1,20 +1,15 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-claim-ledger"
+    "heterodyne:comms#comms-claim-ledger"
   ],
   "vector_id": "claims/repository-confirmed-active",
   "description": "The identical grant becomes active once its claim ID is reachable from canonical private repository state.",
   "direction": "consume",
   "input": {
     "claim": {
-      "claim_id": "a71a4f6c9c6ec2c418fb2fae5f3b0a588961ca0bdc1cf0c5f2c63bd9caeee6fd",
+      "claim_id": "2978d23d3d0c591e8723253f8e7d7fb167f9e6fec870dcdad5fa5a3e0bae51a6",
       "issuer": {
         "type": "nostr-secp256k1",
         "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -39,16 +34,16 @@
         "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
       ],
       "visibility": "repository-private",
-      "spec_version": "comms/0.5.0",
-      "registry_revision": 2
+      "spec_version": "heterodyne/0.5.0",
+      "profile_revision": 2
     },
     "canonical_repository_claim_ids": [
-      "a71a4f6c9c6ec2c418fb2fae5f3b0a588961ca0bdc1cf0c5f2c63bd9caeee6fd"
+      "2978d23d3d0c591e8723253f8e7d7fb167f9e6fec870dcdad5fa5a3e0bae51a6"
     ],
     "subject_proof": {
       "challenge": {
         "domain": "heterodyne-claim-pop-v1",
-        "claim_id": "a71a4f6c9c6ec2c418fb2fae5f3b0a588961ca0bdc1cf0c5f2c63bd9caeee6fd",
+        "claim_id": "2978d23d3d0c591e8723253f8e7d7fb167f9e6fec870dcdad5fa5a3e0bae51a6",
         "nonce": "71717171717171717171717171717171",
         "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
         "resource": "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims",
@@ -58,7 +53,7 @@
       },
       "proof": {
         "type": "nostr-bip340",
-        "signature": "7343b2f9ef3d0688cf155e176c538b9fd04f57fbe39e9ed83987566f0d4f636c32402f3b28fd69c37c1647f6f9b3bfcddba99ace22e7c75cadc1f9db3cf5b5ba"
+        "signature": "df840fae09cba755217d14f7459570be5323ce4c15c39233edbe26d29ec329240c7251e33e693db67bf5d131d8ae13491580ae142a2089764d8ebe99c156364c"
       }
     }
   },

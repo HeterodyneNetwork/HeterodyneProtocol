@@ -5,7 +5,7 @@
   "additionalProperties": false,
   "required": ["spec_version", "token", "sender_proof", "content", "kind", "resource", "feed", "options"],
   "properties": {
-    "spec_version": {"const": "control/0.5.0"},
+    "spec_version": {"const": "heterodyne/0.5.0"},
     "token": {"type": "string", "minLength": 1, "maxLength": 16384},
     "sender_proof": {"type": "string", "minLength": 1, "maxLength": 16384},
     "content": {"type": "string"},

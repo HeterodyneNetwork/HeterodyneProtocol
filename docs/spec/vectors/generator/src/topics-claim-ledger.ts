@@ -411,8 +411,8 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
       audience: [persona],
       resources: [resource],
       visibility: "repository-private",
-      spec_version: "comms/0.5.0",
-      registry_revision: 2,
+      spec_version: "heterodyne/0.5.0",
+      profile_revision: 2,
       ...overrides,
     };
     const semantic: ClaimSemanticBody = { claim_id: computeClaimId(body), ...body };
@@ -461,7 +461,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
       expires_at: now + 71,
     };
     const signature = bytesToHex(ed25519.sign(
-      utf8Bytes(subjectProofPayload(challenge)),
+      subjectProofPayload(challenge),
       hexToBytes(claim.reader.private_key),
     ));
     const authority: ClaimAuthorityEvidence = {
@@ -505,7 +505,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     claim_record_id: record.record_id,
     envelope_context: {
       issuer_authorized: true,
-      registry_revision: 2,
+      profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: persona,
         credential_ledger_generation: 0,
@@ -604,7 +604,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     payload_digest: record.payload_digest,
     claim_envelope_context: {
       issuer_authorized: true,
-      registry_revision: 2,
+      profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: persona,
         credential_ledger_generation: 0,
@@ -624,7 +624,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     payload_digest: temporalClaimRecord.payload_digest,
     claim_envelope_context: {
       issuer_authorized: true,
-      registry_revision: 2,
+      profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: persona,
         credential_ledger_generation: 0,
@@ -638,7 +638,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     payload_digest: grantOnly.payload_digest,
     claim_envelope_context: {
       issuer_authorized: true,
-      registry_revision: 2,
+      profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: persona,
         credential_ledger_generation: 0,
@@ -692,7 +692,7 @@ export async function buildClaimLedgerScenario(fixtures: Fixtures) {
     payload_digest: record.payload_digest,
     claim_envelope_context: {
       issuer_authorized: true,
-      registry_revision: 2,
+      profile_revision: 2,
       credential_ledger: {
         credential_ledger_persona: persona,
         credential_ledger_generation: 0,
@@ -1179,10 +1179,10 @@ export async function buildClaimLedgerVectors(fixtures: Fixtures): Promise<Autho
   return entries.map(([file, id, description, input, expected_output]) => consumeVector(`claim-ledger/${file}`, {
     vector_id: `claim-ledger/${id}`,
     spec_refs: [id === "source-claim-revokes-token"
-      ? "heterodyne:comms/0.5.0#comms-claim-revocation"
+      ? "heterodyne:0.5.0#comms-claim-revocation"
       : /multiwriter-status-allocation|stale-minter-denied/.test(id)
-        ? "heterodyne:comms/0.5.0#comms-multiwriter-minting"
-        : "heterodyne:comms/0.5.0#comms-claim-ledger"],
+        ? "heterodyne:0.5.0#comms-multiwriter-minting"
+        : "heterodyne:0.5.0#comms-claim-ledger"],
     description,
     input,
     expected_output,

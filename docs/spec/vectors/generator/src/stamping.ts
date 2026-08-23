@@ -32,30 +32,3 @@ export function stampOwner(
   }
   return kind.base_schema_owner;
 }
-
-const LEGACY_MONOLITH_KINDS = new Set([
-  31000, 31001, 31002, 31003, 31005, 31010,
-  31007, 31011, 31012,
-  31004, 31008, 31009,
-]);
-
-export function inferLegacyOwner(input: {
-  kind: number;
-  stamp?: string;
-  adopted_upstream: boolean;
-  archived_form_valid: boolean;
-  post_split_discriminator: boolean;
-  profile_only: boolean;
-}): "monolith/0.4.0" {
-  if (
-    input.adopted_upstream ||
-    input.post_split_discriminator ||
-    input.profile_only ||
-    !LEGACY_MONOLITH_KINDS.has(input.kind) ||
-    (input.stamp !== undefined && input.stamp !== "0.4.0") ||
-    (input.stamp === undefined && !input.archived_form_valid)
-  ) {
-    throw new Error("legacy owner is not inferable");
-  }
-  return "monolith/0.4.0";
-}

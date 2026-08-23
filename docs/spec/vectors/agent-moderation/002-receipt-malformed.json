@@ -1,14 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "owner_version": "social/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0",
-    "comms": "comms/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:social/0.5.0#social-agent-policy-receipts"
+    "heterodyne:social#social-agent-policy-receipts"
   ],
   "vector_id": "agent-moderation/receipt-malformed",
   "description": "An agent-policy receipt without its exact device-key target is rejected.",
@@ -34,9 +28,9 @@
           "wss://relay.example/"
         ]
       ],
-      "content": "{\"profile\":\"heterodyne.social.agent-policy-receipt.v1\",\"spec_version\":\"social/0.5.0\",\"event_id\":\"3333333333333333333333333333333333333333333333333333333333333333\",\"device_key\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"cold_root\":\"4444444444444444444444444444444444444444444444444444444444444444\",\"reason\":\"agent-attribution-missing\",\"observed_at\":1000,\"evidence\":[\"sha256:abcd\"],\"explanation\":\"Automated publication omitted mandatory attribution.\",\"remediation\":\"rotate-device-key\"}",
-      "id": "8a98342001fc3cd0be88b3c8c5ec109c7c63cb7a90e17187b772fa7aa518e53f",
-      "sig": "80d53aa243b337a9f034f2c545a9ede72002b92eb8add9dd21b065799773e4c562aa2ec3ca5172ceefb5a6dd494bc158a7b32362414697b72a22b04c9c7c2885"
+      "content": "{\"profile\":\"heterodyne.social.agent-policy-receipt.v1\",\"spec_version\":\"heterodyne/0.5.0\",\"event_id\":\"3333333333333333333333333333333333333333333333333333333333333333\",\"device_key\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"cold_root\":\"4444444444444444444444444444444444444444444444444444444444444444\",\"reason\":\"agent-attribution-missing\",\"observed_at\":1000,\"evidence\":[\"sha256:abcd\"],\"explanation\":\"Automated publication omitted mandatory attribution.\",\"remediation\":\"rotate-device-key\"}",
+      "id": "4fa4ae0c41de64d88b0c4f5aee864966efb195f3366cfb4c8414735f601279e6",
+      "sig": "b5527b47b0cbc836ef1ec57d0248cd99e9be8ae0dd81938381ee0ce2114a9b37ce0a5607387073d9a6523838b30a481bcdc5bdd120e74f241858a642d47af66d"
     }
   },
   "expected_output": {

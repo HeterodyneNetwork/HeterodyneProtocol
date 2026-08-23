@@ -59,7 +59,7 @@ async function inception(options?: {
     tags.push(["witness", options.witness, "1"]);
     tags.push(["threshold", String(options.threshold ?? 1)]);
   }
-  tags.push(["spec_version", "core/0.5.0"]);
+  tags.push(["spec_version", "heterodyne/0.5.0"]);
   return candidate(
     { created_at: T, kind: 31002, tags, content: "" },
     COLD_SECRET,
@@ -160,7 +160,7 @@ describe("independent exact-byte KEL parser and replayer", () => {
     const stamped = await inception();
     expect(parseKelCandidate(stamped).event.tags.at(-1)).toEqual([
       "spec_version",
-      "core/0.5.0",
+      "heterodyne/0.5.0",
     ]);
     expect(replayKel([stamped])).toMatchObject({
       status: "accepted",
@@ -202,7 +202,7 @@ describe("independent exact-byte KEL parser and replayer", () => {
     const result = replayKel([rotation, inc]);
 
     expect(rotationContent([])).toBe(
-      '{"spec_version":"core/0.5.0","receipts":[]}',
+      '{"spec_version":"heterodyne/0.5.0","receipts":[]}',
     );
     expect(result.status).toBe("accepted");
     expect(result.head).toEqual({ id: rotation.id, seq: 1 });

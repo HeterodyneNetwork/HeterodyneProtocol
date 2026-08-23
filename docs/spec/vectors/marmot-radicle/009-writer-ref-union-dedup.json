@@ -1,13 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-marmot-event-repository"
+    "heterodyne:comms#comms-marmot-event-repository"
   ],
   "vector_id": "marmot-radicle/writer-ref-union-dedup",
   "description": "The logical event repository is the deduplicated union of authorized writer and relay refs.",

@@ -32,7 +32,7 @@ export function buildOneTimeInviteVectors(): AuthoredVector[] {
     schnorr.sign(descriptorDigest(descriptor), inviterSecretKey, new Uint8Array(32)),
   ).toString("hex");
   const responseWithoutProof = {
-    spec_version: "comms/0.5.0",
+    spec_version: "heterodyne/0.5.0",
     purpose: "dm",
     descriptor_digest: digest,
     responder_account: "33".repeat(32),

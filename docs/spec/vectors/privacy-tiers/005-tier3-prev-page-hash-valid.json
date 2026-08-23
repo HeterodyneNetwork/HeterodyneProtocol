@@ -1,22 +1,17 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-privacy-tiers"
+    "heterodyne:comms#comms-privacy-tiers"
   ],
   "vector_id": "privacy-tiers/tier3-prev-page-hash-valid",
   "description": "A Tier 3 index page chains to its predecessor: the decrypted previous_index.prev_page_hash equals the SHA-256 of the prior page's canonical NIP-01 serialization.",
   "input": {
-    "prior_page_id": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28",
-    "prior_page_canonical_hash": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28",
+    "prior_page_id": "a0ea4442a8d1b95c93bebdc1d45e1534f43e2d0044679b19170c20e08f7c1b0e",
+    "prior_page_canonical_hash": "a0ea4442a8d1b95c93bebdc1d45e1534f43e2d0044679b19170c20e08f7c1b0e",
     "current_page_previous_index": {
-      "event_id": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28",
-      "prev_page_hash": "555266049425805e20af6329a9cf4533fea3d1a08261b7f5582ca92bbe2f2d28"
+      "event_id": "a0ea4442a8d1b95c93bebdc1d45e1534f43e2d0044679b19170c20e08f7c1b0e",
+      "prev_page_hash": "a0ea4442a8d1b95c93bebdc1d45e1534f43e2d0044679b19170c20e08f7c1b0e"
     },
     "vector_context": {
       "decision_trace": [

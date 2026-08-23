@@ -1,11 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-materialized-kel"
+    "heterodyne:core#core-materialized-kel"
   ],
   "vector_id": "keri-authority/materialized-state-derivation",
   "description": "refs/xyz.heterodyne.keri/state derivation: each state commit's tree holds one entry mode 100644 path state.json, the key state after applying the log event, canonicalized per RFC 8785 (JCS) against the §10.1.2 schema. Parents are, in order, the prior state commit then the producing log commit; the first state commit has the inception log commit as sole parent.",
@@ -18,7 +15,7 @@
         "epoch_key": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
         "witnesses": [],
         "threshold": 0,
-        "producing_event_id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0"
+        "producing_event_id": "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf"
       },
       {
         "cold_root": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
@@ -26,7 +23,7 @@
         "epoch_key": "1be68a5a028f2601d0e80d468c344ba331d611b96c358b6032e8b4da0547fc11",
         "witnesses": [],
         "threshold": 0,
-        "producing_event_id": "a1cf4cc9a146b9c2f92defd8d5c9bc816bc321f9adde108d0e26fe0c825a1e52"
+        "producing_event_id": "cee59f50dded06fbd6ca22ef4d582ab398d66fd8817068b32fdbb837c4fec45d"
       }
     ],
     "jcs": "RFC 8785: keys sorted by UTF-16 code units; s/threshold/weight are JSON integers; hex lowercase; empty witness set is [].",
@@ -35,37 +32,37 @@
     }
   },
   "expected_output": {
-    "canonical_wire": "226b5ea88217b6bb9478c195f7e7c26e148b2ede",
+    "canonical_wire": "b6835258d88577407cf6539820ee52a8f83e1cf4",
     "decoded": {
       "ref": "refs/xyz.heterodyne.keri/state",
-      "state_tip": "226b5ea88217b6bb9478c195f7e7c26e148b2ede",
-      "log_tip": "f5560bc313a2aff1f54e6c4f2c06fc67963ece53",
+      "state_tip": "b6835258d88577407cf6539820ee52a8f83e1cf4",
+      "log_tip": "3983f67aa5634438b5179605b5f9e6a7081c61ab",
       "commits": [
         {
           "s": 0,
-          "producing_event_id": "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+          "producing_event_id": "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
           "path": "state.json",
           "mode": "100644",
-          "state_json": "{\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"epoch_key\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"producing_event_id\":\"22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0\",\"s\":0,\"threshold\":0,\"witnesses\":[]}",
-          "blob_oid": "392627d9c791377e50f169c5a9e14ed6662f989e",
-          "tree_oid": "5e54ca5321fbf3a032873480daca9a4efe57e45f",
-          "commit_oid": "e277cbfbf6ae6e095a077be56363d8a3838436a0",
+          "state_json": "{\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"epoch_key\":\"c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5\",\"producing_event_id\":\"7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf\",\"s\":0,\"threshold\":0,\"witnesses\":[]}",
+          "blob_oid": "dab8cb496816dcf166cecf647b9779607a67aa5b",
+          "tree_oid": "6ebaffd6d7cec02e7fa633df7e7fda647bfbeff6",
+          "commit_oid": "33d2cda3a282822f60be424ea78947c92977bcae",
           "parents": [
-            "79263458c882b087d18454c78cb00c9784d887ce"
+            "dc7abf23d06341585bb74dcd69195b760e311861"
           ]
         },
         {
           "s": 1,
-          "producing_event_id": "a1cf4cc9a146b9c2f92defd8d5c9bc816bc321f9adde108d0e26fe0c825a1e52",
+          "producing_event_id": "cee59f50dded06fbd6ca22ef4d582ab398d66fd8817068b32fdbb837c4fec45d",
           "path": "state.json",
           "mode": "100644",
-          "state_json": "{\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"epoch_key\":\"1be68a5a028f2601d0e80d468c344ba331d611b96c358b6032e8b4da0547fc11\",\"producing_event_id\":\"a1cf4cc9a146b9c2f92defd8d5c9bc816bc321f9adde108d0e26fe0c825a1e52\",\"s\":1,\"threshold\":0,\"witnesses\":[]}",
-          "blob_oid": "d42c51057cb5bf879516ef4cabd1449c25f4398b",
-          "tree_oid": "920001c3a494c320674123bc0c143ee4ba9ca50c",
-          "commit_oid": "226b5ea88217b6bb9478c195f7e7c26e148b2ede",
+          "state_json": "{\"cold_root\":\"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798\",\"epoch_key\":\"1be68a5a028f2601d0e80d468c344ba331d611b96c358b6032e8b4da0547fc11\",\"producing_event_id\":\"cee59f50dded06fbd6ca22ef4d582ab398d66fd8817068b32fdbb837c4fec45d\",\"s\":1,\"threshold\":0,\"witnesses\":[]}",
+          "blob_oid": "6a0762e8b33ab97b136b0b971d3094a3385e205d",
+          "tree_oid": "641c86198aaa07bb952043ff6a87d41ffb0eb7a2",
+          "commit_oid": "b6835258d88577407cf6539820ee52a8f83e1cf4",
           "parents": [
-            "e277cbfbf6ae6e095a077be56363d8a3838436a0",
-            "f5560bc313a2aff1f54e6c4f2c06fc67963ece53"
+            "33d2cda3a282822f60be424ea78947c92977bcae",
+            "3983f67aa5634438b5179605b5f9e6a7081c61ab"
           ]
         }
       ]

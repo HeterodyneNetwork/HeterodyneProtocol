@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
+import { secp256k1 } from "@noble/curves/secp256k1";
 import { jcsCanonicalize } from "./jcs.js";
+import { validateControlClientAuthorizationSchemaOrThrow } from "./schema.js";
 
 type Reject = { verdict: "reject"; reason_code: string };
 
@@ -35,14 +37,14 @@ export function authorizeInvitation(input: InvitationInput):
   }
   const entitledOrApproved = input.entitlement_state === "active" || input.explicitly_approved;
   if (entitledOrApproved && !input.reserved_slot_available) {
-    return { verdict: "reject", reason_code: "control-enrollment-capacity" };
+    return { verdict: "reject", reason_code: "control-enrollment-unavailable" };
   }
   const open = input.invitation_mode === "permanent"
     || (input.invitation_mode === "temporary"
       && input.temporary_expires_at !== null
       && input.now < input.temporary_expires_at);
   if (!entitledOrApproved && !input.purpose_bound_invite_valid && !open) {
-    return { verdict: "reject", reason_code: "control-invitation-disabled" };
+    return { verdict: "reject", reason_code: "control-enrollment-unavailable" };
   }
   if (input.public_pool_replenishment_requested
     && input.global_pending >= input.global_pending_cap) {
@@ -54,7 +56,7 @@ export function authorizeInvitation(input: InvitationInput):
   }
   if (input.pending_for_account >= 1
     || (!entitledOrApproved && input.global_pending >= input.global_pending_cap)) {
-    return { verdict: "reject", reason_code: "control-enrollment-capacity" };
+    return { verdict: "reject", reason_code: "control-enrollment-unavailable" };
   }
   if (input.entitlement_state === "active") {
     return { verdict: "accept", state: "active", authority: true };
@@ -72,7 +74,7 @@ export function evaluatePendingEnrollment(input: {
   const expiresAt = input.created_at + 1_800;
   return input.now < expiresAt
     ? { verdict: "accept", state: "enrollment-only", expires_at: expiresAt }
-    : { verdict: "reject", reason_code: "control-enrollment-expired" };
+    : { verdict: "reject", reason_code: "control-enrollment-unavailable" };
 }
 
 export type Entitlement = {
@@ -122,37 +124,191 @@ export type ControlToken = {
   cnf: { jkt: string };
   group_id: string;
   authorization_id: string;
+  client_id: string;
+  client_class: "human-light" | "automated";
+  scope: string;
   methods: string[];
-  objects: string[];
+  objects: ControlAuthorizationObject[];
+  limits: Record<string, number>;
+  registry_checkpoint: string;
+  issuance_nonce: string;
+  agent_role?: string;
   node_key: string;
 };
 
-export type TokenIssuanceInput = {
-  entitlement_state: "active" | "revoked";
+export type ControlAuthorizationObject = {
+  class:
+    | "none"
+    | "session"
+    | "repository"
+    | "config_namespace"
+    | "marmot_group"
+    | "feed"
+    | "media"
+    | "device";
+  id: string;
+};
+
+export type ControlAuthorizationRecord = {
+  record_id: string;
+  persona: string;
   client_key: string;
-  client_jkt: string;
+  client_class: "human-light" | "automated";
+  approving_node: string;
+  approving_authority: string;
+  methods: string[];
+  objects: ControlAuthorizationObject[];
+  limits: Record<string, number>;
+  capabilities: Array<
+    "control.token.extended" | "control.inbound-execution" | "control.approve"
+  >;
+  token_lifetime_default_seconds: 300;
+  token_lifetime_max_seconds: number;
+  inbound_execution: boolean;
+  agent_role?: string;
+  predecessor: string | null;
+  state: "active" | "revoked";
+  created_at: number;
+  expires_at: number | null;
+  signer: string;
+  signature: string;
+};
+
+export type TokenIssuanceInput = {
+  entitlement: ControlAuthorizationRecord;
   group_id: string;
   issuer: string;
   audience: string;
   node_key: string;
-  authorization_id: string;
+  registry_checkpoint: string;
+  issuance_nonce: string;
   requested_lifetime_seconds: number;
-  entitlement_max_seconds: number;
   node_policy_max_seconds: number;
-  extended_capability: boolean;
   now: number;
   authorization_view_authenticated: boolean;
   authorization_view_conflicted: boolean;
   authorization_view_age_seconds: number;
   methods: string[];
-  objects: string[];
+  objects: ControlAuthorizationObject[];
+  limits: Record<string, number>;
 };
+
+function normalizedValues(values: string[]): string[] {
+  return [...new Set(values)].sort();
+}
+
+function normalizedLimits(limits: Record<string, number>): Record<string, number> {
+  return Object.fromEntries(Object.entries(limits).sort(([left], [right]) => left.localeCompare(right)));
+}
+
+function objectKey(value: ControlAuthorizationObject): string {
+  return jcsCanonicalize(value);
+}
+
+function normalizedObjects(values: ControlAuthorizationObject[]): ControlAuthorizationObject[] {
+  return [...values]
+    .sort((left, right) => objectKey(left).localeCompare(objectKey(right)))
+    .map((value) => ({ ...value }));
+}
+
+function valuesAreAuthorized(requested: string[], authorized: string[]): boolean {
+  return requested.length > 0
+    && new Set(requested).size === requested.length
+    && requested.every((value) => authorized.includes(value));
+}
+
+function objectsAreAuthorized(
+  requested: ControlAuthorizationObject[],
+  authorized: ControlAuthorizationObject[],
+): boolean {
+  const requestedKeys = requested.map(objectKey);
+  const authorizedKeys = new Set(authorized.map(objectKey));
+  return requestedKeys.length > 0
+    && new Set(requestedKeys).size === requestedKeys.length
+    && requestedKeys.every((value) => authorizedKeys.has(value));
+}
+
+function limitsAreFinite(limits: Record<string, number>): boolean {
+  const entries = Object.entries(limits);
+  return entries.length > 0 && entries.every(([name, value]) =>
+    name.length > 0 && Number.isFinite(value) && Number.isInteger(value) && value > 0);
+}
+
+function limitsAreAuthorized(
+  requested: Record<string, number>,
+  authorized: Record<string, number>,
+): boolean {
+  return limitsAreFinite(requested) && Object.entries(requested).every(([name, value]) => {
+    const ceiling = authorized[name];
+    return ceiling !== undefined && Number.isFinite(ceiling) && value <= ceiling;
+  });
+}
+
+function validAuthorization(
+  authorization: ControlAuthorizationRecord,
+  now: number,
+): boolean {
+  try {
+    validateControlClientAuthorizationSchemaOrThrow(authorization);
+  } catch {
+    return false;
+  }
+  return authorization.state === "active"
+    && authorization.created_at <= now
+    && (authorization.expires_at === null || now < authorization.expires_at);
+}
+
+function authorizationScope(authorization: ControlAuthorizationRecord): string {
+  return normalizedValues(["control", ...authorization.capabilities]).join(" ");
+}
+
+function controlClientJkt(clientKey: string): string | null {
+  if (!/^[0-9a-f]{64}$/.test(clientKey)) return null;
+  try {
+    const point = secp256k1.ProjectivePoint.fromHex(`02${clientKey}`);
+    const uncompressed = Buffer.from(point.toRawBytes(false));
+    if (uncompressed.length !== 65 || uncompressed[0] !== 0x04) return null;
+    const jwk = {
+      crv: "secp256k1",
+      kty: "EC",
+      x: uncompressed.subarray(1, 33).toString("base64url"),
+      y: uncompressed.subarray(33, 65).toString("base64url"),
+    };
+    return createHash("sha256")
+      .update(jcsCanonicalize(jwk))
+      .digest("base64url");
+  } catch {
+    return null;
+  }
+}
+
+function canonicalBase64urlSha256(value: string): boolean {
+  if (!/^[A-Za-z0-9_-]{43}$/.test(value)) return false;
+  const decoded = Buffer.from(value, "base64url");
+  return decoded.length === 32 && decoded.toString("base64url") === value;
+}
+
+function canonicalHex256(value: string): boolean {
+  return /^[0-9a-f]{64}$/.test(value);
+}
+
+type ControlTokenIdentityClaims = Omit<ControlToken, "jti">;
+
+function controlTokenIdentityClaims(token: ControlToken): ControlTokenIdentityClaims {
+  const { jti: _jti, ...claims } = token;
+  return claims;
+}
+
+function controlTokenJti(claims: ControlTokenIdentityClaims): string {
+  return sha256(`heterodyne-control-token-jti-v1\0${jcsCanonicalize(claims)}`);
+}
 
 export function issueControlToken(input: TokenIssuanceInput):
   | { verdict: "accept"; lifetime_seconds: number; refresh_token: null; token: ControlToken }
   | Reject {
-  if (input.entitlement_state !== "active") {
-    return { verdict: "reject", reason_code: "control-entitlement-conflict" };
+  const entitlement = input.entitlement;
+  if (!validAuthorization(entitlement, input.now)) {
+    return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   const freshness = evaluateAuthorizationFreshness({
     authenticated: input.authorization_view_authenticated,
@@ -162,38 +318,61 @@ export function issueControlToken(input: TokenIssuanceInput):
     immediate_sync_succeeded: false,
   });
   if (freshness.verdict === "reject") return freshness;
-  const ceiling = Math.min(input.entitlement_max_seconds, input.node_policy_max_seconds, 3_600);
-  const allowed = input.extended_capability ? ceiling : Math.min(300, ceiling);
-  if (input.requested_lifetime_seconds <= 0 || input.requested_lifetime_seconds > allowed) {
-    return { verdict: "reject", reason_code: "control-token-expired" };
+  const clientJkt = controlClientJkt(entitlement.client_key);
+  if (clientJkt === null
+    || !canonicalHex256(input.group_id)
+    || !canonicalHex256(input.node_key)
+    || !canonicalHex256(input.registry_checkpoint)
+    || !canonicalHex256(input.issuance_nonce)
+    || input.issuer.length === 0
+    || input.audience.length === 0
+    || !valuesAreAuthorized(input.methods, entitlement.methods)
+    || !objectsAreAuthorized(input.objects, entitlement.objects)
+    || !limitsAreAuthorized(input.limits, entitlement.limits)
+    || (entitlement.client_class === "automated" && entitlement.agent_role === undefined)
+    || (entitlement.client_class === "human-light" && entitlement.agent_role !== undefined)) {
+    return { verdict: "reject", reason_code: "control-token-invalid" };
   }
-  const jti = sha256(jcsCanonicalize({
-    authorization_id: input.authorization_id,
-    audience: input.audience,
-    client_key: input.client_key,
+  const ceiling = Math.min(
+    entitlement.token_lifetime_max_seconds,
+    input.node_policy_max_seconds,
+    3_600,
+  );
+  const extended = entitlement.capabilities.includes("control.token.extended");
+  const allowed = extended ? ceiling : Math.min(300, ceiling);
+  if (input.requested_lifetime_seconds <= 0 || input.requested_lifetime_seconds > allowed) {
+    return { verdict: "reject", reason_code: "control-token-invalid" };
+  }
+  const claims: ControlTokenIdentityClaims = {
+    typ: "at+jwt",
+    iss: input.issuer,
+    aud: input.audience,
+    sub: entitlement.client_key,
+    iat: input.now,
+    exp: input.now + input.requested_lifetime_seconds,
+    cnf: { jkt: clientJkt },
     group_id: input.group_id,
-    issued_at: input.now,
+    authorization_id: entitlement.record_id,
+    client_id: entitlement.client_key,
+    client_class: entitlement.client_class,
+    scope: authorizationScope(entitlement),
+    methods: normalizedValues(input.methods),
+    objects: normalizedObjects(input.objects),
+    limits: normalizedLimits(input.limits),
+    registry_checkpoint: input.registry_checkpoint,
+    issuance_nonce: input.issuance_nonce,
     node_key: input.node_key,
-  }));
+    ...(entitlement.agent_role === undefined ? {} : { agent_role: entitlement.agent_role }),
+  };
+  const token = {
+    ...claims,
+    jti: controlTokenJti(claims),
+  };
   return {
     verdict: "accept",
     lifetime_seconds: input.requested_lifetime_seconds,
     refresh_token: null,
-    token: {
-      typ: "at+jwt",
-      iss: input.issuer,
-      aud: input.audience,
-      sub: input.client_key,
-      jti,
-      iat: input.now,
-      exp: input.now + input.requested_lifetime_seconds,
-      cnf: { jkt: input.client_jkt },
-      group_id: input.group_id,
-      authorization_id: input.authorization_id,
-      methods: [...input.methods].sort(),
-      objects: [...input.objects].sort(),
-      node_key: input.node_key,
-    },
+    token,
   };
 }
 
@@ -203,14 +382,19 @@ export type TokenUseInput = {
   now: number;
   expected_issuer: string;
   expected_audience: string;
+  expected_node_key: string;
   authenticated_sender_jkt: string;
   group_id: string;
-  entitlement_state: "active" | "revoked";
+  current_entitlement: ControlAuthorizationRecord;
+  current_registry_checkpoint: string;
   authorization_view_authenticated: boolean;
   authorization_view_conflicted: boolean;
   authorization_view_age_seconds: number;
+  required_scope: string;
   method: string;
-  object: string;
+  object: ControlAuthorizationObject;
+  usage: Record<string, number>;
+  required_agent_role: string | null;
 };
 
 export function validateControlTokenUse(input: TokenUseInput): { verdict: "accept" } | Reject {
@@ -218,20 +402,24 @@ export function validateControlTokenUse(input: TokenUseInput): { verdict: "accep
   if (!input.signature_valid || token.typ !== "at+jwt" || token.iss !== input.expected_issuer) {
     return { verdict: "reject", reason_code: "control-token-invalid" };
   }
-  if (input.now < token.iat || input.now >= token.exp) {
-    return { verdict: "reject", reason_code: "control-token-expired" };
+  if (input.now < token.iat || input.now >= token.exp
+    || token.exp <= token.iat || token.exp - token.iat > 3_600) {
+    return { verdict: "reject", reason_code: "control-token-invalid" };
   }
-  if (token.aud !== input.expected_audience) {
-    return { verdict: "reject", reason_code: "control-token-audience-invalid" };
+  if (token.aud !== input.expected_audience || token.node_key !== input.expected_node_key) {
+    return { verdict: "reject", reason_code: "control-token-invalid" };
   }
-  if (token.cnf.jkt !== input.authenticated_sender_jkt || token.sub.length !== 64) {
-    return { verdict: "reject", reason_code: "control-token-sender-invalid" };
+  if (!canonicalHex256(token.issuance_nonce)
+    || !canonicalHex256(token.jti)
+    || controlTokenJti(controlTokenIdentityClaims(token)) !== token.jti) {
+    return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   if (token.group_id !== input.group_id) {
-    return { verdict: "reject", reason_code: "control-token-group-invalid" };
+    return { verdict: "reject", reason_code: "control-token-invalid" };
   }
-  if (input.entitlement_state !== "active") {
-    return { verdict: "reject", reason_code: "control-entitlement-conflict" };
+  const entitlement = input.current_entitlement;
+  if (!validAuthorization(entitlement, input.now)) {
+    return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   const freshness = evaluateAuthorizationFreshness({
     authenticated: input.authorization_view_authenticated,
@@ -241,8 +429,40 @@ export function validateControlTokenUse(input: TokenUseInput): { verdict: "accep
     immediate_sync_succeeded: false,
   });
   if (freshness.verdict === "reject") return freshness;
-  if (!token.methods.includes(input.method) || !token.objects.includes(input.object)) {
-    return { verdict: "reject", reason_code: "control-token-scope-invalid" };
+  const clientJkt = controlClientJkt(entitlement.client_key);
+  const scopes = token.scope.split(" ");
+  const tokenRole = token.agent_role ?? null;
+  const entitlementRole = entitlement.agent_role ?? null;
+  const tokenObjectKeys = token.objects.map(objectKey);
+  const normalizedTokenObjectKeys = normalizedObjects(token.objects).map(objectKey);
+  if (clientJkt === null
+    || !canonicalBase64urlSha256(token.cnf.jkt)
+    || token.cnf.jkt !== clientJkt
+    || input.authenticated_sender_jkt !== clientJkt
+    || token.authorization_id !== entitlement.record_id
+    || token.sub !== entitlement.client_key
+    || token.client_id !== entitlement.client_key
+    || token.client_class !== entitlement.client_class
+    || token.registry_checkpoint !== input.current_registry_checkpoint
+    || !canonicalHex256(input.current_registry_checkpoint)
+    || token.exp - token.iat > entitlement.token_lifetime_max_seconds
+    || (token.exp - token.iat > 300
+      && !entitlement.capabilities.includes("control.token.extended"))
+    || token.scope !== authorizationScope(entitlement)
+    || normalizedValues(scopes).join(" ") !== token.scope
+    || !valuesAreAuthorized(token.methods, entitlement.methods)
+    || normalizedValues(token.methods).join("\0") !== token.methods.join("\0")
+    || !objectsAreAuthorized(token.objects, entitlement.objects)
+    || normalizedTokenObjectKeys.join("\0") !== tokenObjectKeys.join("\0")
+    || !limitsAreAuthorized(token.limits, entitlement.limits)
+    || tokenRole !== entitlementRole
+    || tokenRole !== input.required_agent_role
+    || !scopes.includes(input.required_scope)
+    || !token.methods.includes(input.method)
+    || !tokenObjectKeys.includes(objectKey(input.object))
+    || !limitsAreAuthorized(input.usage, token.limits)
+    || !limitsAreAuthorized(input.usage, entitlement.limits)) {
+    return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   return { verdict: "accept" };
 }
@@ -280,7 +500,7 @@ export function evaluateDeviceAuthorizationAttempt(input: {
     return { verdict: "reject", reason_code: "control-device-code-invalid", state: "invalidated" };
   }
   if (input.failed_guesses >= 5) {
-    return { verdict: "reject", reason_code: "control-device-code-exhausted", state: "invalidated" };
+    return { verdict: "reject", reason_code: "control-device-code-invalid", state: "invalidated" };
   }
   if (!input.per_code_rate_allowed || !input.node_rate_allowed
     || !input.poll_interval_observed || !input.slow_down_observed) {
@@ -369,7 +589,7 @@ export function processControlOperation(input: OperationInput, prior?: Operation
   | Reject
   | { verdict: "indeterminate"; reason_code: "control-operation-indeterminate" } {
   if (input.now >= input.expires_at) {
-    return { verdict: "reject", reason_code: "control-token-expired" };
+    return { verdict: "reject", reason_code: "control-token-invalid" };
   }
   const reservation: OperationReservation = {
     node_key: input.node_key,
@@ -507,7 +727,7 @@ export function evaluateSftpAccess(input: {
 }): { verdict: "accept" } | Reject {
   const grant = input.grant;
   if (input.now >= grant.expires_at) {
-    return { verdict: "reject", reason_code: "control-sftp-expired" };
+    return { verdict: "reject", reason_code: "control-sftp-denied" };
   }
   const separated = grant.onion_address !== grant.radicle_onion_address
     && grant.service_process_id !== grant.radicle_process_id;
@@ -517,7 +737,7 @@ export function evaluateSftpAccess(input: {
     && input.ssh_client_key === grant.ssh_client_key
     && input.ssh_host_key === grant.ssh_host_key;
   if (!authenticated) {
-    return { verdict: "reject", reason_code: "control-sftp-auth-invalid" };
+    return { verdict: "reject", reason_code: "control-sftp-denied" };
   }
   const resource = grant.resources.find(({ path, direction }) => path === input.path && direction === input.direction);
   const withinRoot = input.path === grant.root || input.path.startsWith(`${grant.root}/`);
@@ -529,7 +749,7 @@ export function evaluateSftpAccess(input: {
     && input.bytes <= grant.byte_ceiling;
   return confined
     ? { verdict: "accept" }
-    : { verdict: "reject", reason_code: "control-sftp-resource-denied" };
+    : { verdict: "reject", reason_code: "control-sftp-denied" };
 }
 
 export function controlPayloadDigest(payload: unknown): string {

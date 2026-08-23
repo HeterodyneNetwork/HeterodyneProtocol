@@ -6,7 +6,7 @@
   "required": ["profile", "spec_version", "event_id", "device_key", "cold_root", "reason", "observed_at", "evidence", "explanation", "remediation"],
   "properties": {
     "profile": {"const": "heterodyne.social.agent-policy-receipt.v1"},
-    "spec_version": {"const": "social/0.5.0"},
+    "spec_version": {"const": "heterodyne/0.5.0"},
     "event_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "device_key": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "cold_root": {"type": "string", "pattern": "^[0-9a-f]{64}$"},

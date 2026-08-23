@@ -1,22 +1,17 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { authorAllVectors } from "./author.js";
-import {
-  assertAllowedDependency,
-  DOCUMENT_DEPENDENCIES,
-  DOCUMENT_VERSIONS,
-  parseQualifiedVersion,
-} from "./family.js";
-import type { DocumentId } from "./types.js";
-import {
-  lintFamilyCutover,
-  lintFamilyDocs,
-  writeReleaseManifests,
-} from "./docs-lint.js";
+import { lintFamilyDocs } from "./docs-lint.js";
 import { writeWorkspaceSchemas } from "./workspace-schemas.js";
 import { verifyVectorTree } from "./verify.js";
 import { writeCoverage } from "./coverage.js";
 import { authorRegistryRevision } from "./registry.js";
+import {
+  authorSnapshot,
+  checkSnapshot,
+  formatSnapshotCheckSuccess,
+} from "./snapshot-orchestrator.js";
+import { snapshotPackageCheck } from "./verify.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultVectorRoot = resolve(here, "..", "..");
@@ -36,17 +31,8 @@ if (command === "author") {
     console.log(`verified ${result.validFiles} vectors under ${root}`);
   }
 } else if (command === "family-check") {
-  for (const document of Object.keys(DOCUMENT_VERSIONS) as DocumentId[]) {
-    parseQualifiedVersion(`${document}/${DOCUMENT_VERSIONS[document]}`);
-    for (const dependency of DOCUMENT_DEPENDENCIES[document]) {
-      assertAllowedDependency(document, dependency);
-    }
-  }
   const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
-  const issues = [
-    ...lintFamilyDocs(repositoryRoot),
-    ...lintFamilyCutover(repositoryRoot),
-  ];
+  const issues = lintFamilyDocs(repositoryRoot);
   if (issues.length > 0) {
     for (const issue of issues) {
       console.error(
@@ -60,10 +46,6 @@ if (command === "author") {
 } else if (command === "coverage") {
   await writeCoverage(root);
   console.log(`generated vector coverage under ${resolve(root, "coverage")}`);
-} else if (command === "release-manifests") {
-  const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
-  const written = writeReleaseManifests(repositoryRoot);
-  console.log(`generated ${written.length} release manifests`);
 } else if (command === "registry-author") {
   const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
   const revision = Number.parseInt(process.argv[4] ?? "6", 10);
@@ -73,9 +55,50 @@ if (command === "author") {
   const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
   const written = writeWorkspaceSchemas(repositoryRoot);
   console.log(`generated ${written.length} Workspace schemas`);
+} else if (command === "snapshot-author") {
+  const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
+  const sourceCommit = process.argv[4];
+  if (sourceCommit === undefined) {
+    console.error("usage: tsx src/cli.ts snapshot-author <repo-root> <source-commit>");
+    process.exitCode = 2;
+  } else {
+    await authorSnapshot(repositoryRoot, sourceCommit);
+    console.log(`authored vector snapshot from ${sourceCommit}`);
+  }
+} else if (command === "snapshot-check") {
+  const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
+  const history = await checkSnapshot(repositoryRoot);
+  console.log(formatSnapshotCheckSuccess(history));
+} else if (command === "snapshot-package-check") {
+  const flags = parseFlags(process.argv.slice(3));
+  const rawRoot = flags?.get("--raw-root");
+  const snapshotRoot = flags?.get("--snapshot-root");
+  if (rawRoot === undefined || snapshotRoot === undefined || flags?.size !== 2) {
+    console.error(
+      "usage: tsx src/cli.ts snapshot-package-check --raw-root <owned-temp> --snapshot-root <repo>",
+    );
+    process.exitCode = 2;
+  } else {
+    await snapshotPackageCheck(resolve(rawRoot), resolve(snapshotRoot));
+    console.log(`verified packaged snapshot under ${resolve(snapshotRoot)}`);
+  }
 } else {
   console.error(
-    "usage: tsx src/cli.ts <author|verify|family-check|coverage|release-manifests|registry-author|workspace-schemas> [root] [revision]",
+    "usage: tsx src/cli.ts <author|verify|family-check|coverage|registry-author|workspace-schemas|snapshot-author|snapshot-check|snapshot-package-check> [arguments]",
   );
   process.exitCode = 2;
+}
+
+function parseFlags(args: string[]): Map<string, string> | undefined {
+  if (args.length % 2 !== 0) return undefined;
+  const flags = new Map<string, string>();
+  for (let index = 0; index < args.length; index += 2) {
+    const flag = args[index];
+    const value = args[index + 1];
+    if (flag === undefined || value === undefined || !flag.startsWith("--") || flags.has(flag)) {
+      return undefined;
+    }
+    flags.set(flag, value);
+  }
+  return flags;
 }

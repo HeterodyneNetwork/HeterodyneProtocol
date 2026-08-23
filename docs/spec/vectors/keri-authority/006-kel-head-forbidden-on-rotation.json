@@ -1,11 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-kel-head"
+    "heterodyne:core#core-kel-head"
   ],
   "vector_id": "keri-authority/kel-head-forbidden-on-rotation",
   "description": "A kind:31003 rotation carrying a kel_head tag is rejected, including committed rotations; freshness comes from replay ordering, never kel_head (§3.5.2).",
@@ -33,7 +30,7 @@
         ],
         [
           "prior_digest",
-          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0"
+          "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf"
         ],
         [
           "strategy",
@@ -45,13 +42,13 @@
         ],
         [
           "kel_head",
-          "22d30c9e60374b4a4c9caeb8ca6993becce42318bb9c4c1fdd316ffeb4ae9ba0",
+          "7e81c45ab6de08b6a1795f60068944db1405fa19c742a6c7b86ee46f2f04f8bf",
           "0"
         ]
       ],
-      "content": "{\"spec_version\":\"core/0.5.0\",\"receipts\":[]}",
-      "id": "b1594b40feedd34429f5ec77ba49f43d5bb213b13e1c8ba6534ddd9a5b0ed462",
-      "sig": "2d92fefb1bbb05387564cb37944291273e6bf66d13a42585eb3d041afdea4fe26ca2c07fc45efebb76b0f7d60cde368cdc66910ea278c32755fd4a0a2681d408"
+      "content": "{\"spec_version\":\"heterodyne/0.5.0\",\"receipts\":[]}",
+      "id": "561f4d21689a49b6f0ab020aa5b6a2bd9146090700fa11013cd45b8861601324",
+      "sig": "4659a95764729b665419022a591fc2cea88e20b92e58f628d06ddfac275a06abfba8e9c8dd6f82e9e368e9bc653a545febcbcc9576155cbc6208e018cbcbf9e6"
     },
     "vector_context": {
       "decision_trace": [

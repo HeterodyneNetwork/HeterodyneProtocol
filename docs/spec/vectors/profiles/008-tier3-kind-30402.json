@@ -1,14 +1,9 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
   "profile": "heterodyne-comms-tier3-wrapped-content-kind-30402-v1",
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-tier-three-profile"
+    "heterodyne:comms#comms-tier-three-profile"
   ],
   "vector_id": "profiles/tier3-kind-30402",
   "description": "The active Tier-3 kind:30402 profile uses the exact opaque carrier tags and Comms owner stamp.",
@@ -36,7 +31,7 @@
         ],
         [
           "spec_version",
-          "comms/0.5.0"
+          "heterodyne/0.5.0"
         ]
       ],
       "content": "AopaqueNIP44fixture"

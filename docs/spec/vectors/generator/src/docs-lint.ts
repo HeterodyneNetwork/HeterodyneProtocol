@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
@@ -8,8 +7,9 @@ import {
 import { relative, resolve, sep } from "node:path";
 import {
   assertAllowedDependency,
-  DOCUMENT_VERSIONS,
-  parseQualifiedVersion,
+  DOCUMENTS,
+  FAMILY_VERSION,
+  QUALIFIED_VERSION,
 } from "./family.js";
 import type { DocumentId } from "./types.js";
 import { computeRegistryDigest, loadRegistry } from "./registry.js";
@@ -37,21 +37,21 @@ export type FamilyDocIssue = {
     | "duplicate-anchor"
     | "unresolved-reference"
     | "forbidden-dependency"
-    | "undeclared-dependency"
     | "bare-normative-link"
-    | "missing-cutover-artifact"
-    | "archive-digest-mismatch"
-    | "archive-map-mismatch"
-    | "overview-normative-language"
-    | "extraction-banner"
     | "noncanonical-decision-reference"
-    | "premature-release-claim"
     | "marmot-archive-invalid"
     | "generic-repo-relay-server-claim"
     | "ambiguous-nostr-wire-key"
     | "claim-profile-revision-ambiguous"
     | "missing-upstream-kind-allocation"
-    | "release-manifest-mismatch";
+    | "strict-profile-closure-invalid"
+    | "unresolved-section-reference"
+    | "registry-digest-drift"
+    | "unregistered-feature-id"
+    | "unregistered-proof-domain"
+    | "mislinked-reference"
+    | "retired-authoring-model"
+    | "profile-revision-registry-context-missing";
   message: string;
 };
 
@@ -62,20 +62,30 @@ type FamilyDocument = {
   lines: string[];
 };
 
-const DOCUMENTS: readonly DocumentId[] = [
-  "core",
-  "comms",
-  "control",
-  "social",
-  "workspace",
-];
-
 const EXPLICIT_ANCHOR = /<a\s+id="([a-z0-9]+(?:-[a-z0-9]+)*)"\s*><\/a>/g;
-const QUALIFIED_REFERENCE =
-  /heterodyne:(core|comms|control|social|workspace)\/((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)#([a-z0-9]+(?:-[a-z0-9]+)*)/g;
-const BARE_FAMILY_LINK =
-  /\]\((?:\.\/)?heterodyne-(core|comms|control|social|workspace)\.md(?:#[^)]+)?\)/i;
+const QUALIFIED_REFERENCE = new RegExp(
+  `heterodyne:((?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?)#([a-z0-9]+(?:-[a-z0-9]+)*)`,
+  "g",
+);
+// A normative cross-reference is a clickable link whose text is its own
+// qualified URI: [`heterodyne:<ver>#<anchor>`](<file>#<anchor>).
+const LINKED_QUALIFIED_REFERENCE = new RegExp(
+  "\\[`heterodyne:[^`]+#([a-z0-9-]+)`\\]"
+    + "\\((?:heterodyne-(core|comms|control|social|workspace)\\.md)?#([a-z0-9-]+)\\)",
+  "g",
+);
+// Within a document [12.2](#anchor) is fine; across one, the version has to
+// travel with the reference.
+const CROSS_DOCUMENT_LINK =
+  /\]\((?:\.\/)?heterodyne-(?:core|comms|control|social|workspace)\.md#[^)]+\)/;
+const LOCAL_ANCHOR_LINK = /\]\(#([a-z0-9-]+)\)/g;
 const NONCANONICAL_DECISION_REFERENCE = /\bADR-\d{3}\b|docs\/adr\//;
+const NUMBERED_HEADING = /^#{2,6}\s+(\d+(?:\.\d+)*)\.?\s/;
+const SECTION_REFERENCE = /§(\d+(?:\.\d+)*)/g;
+const PROOF_DOMAIN = /\bdomain\s+`(heterodyne-[a-z0-9-]*-v[1-9][0-9]*)`/gi;
+const PROOF_DOMAIN_FENCED = /`?<?(heterodyne-[a-z0-9-]*-v[1-9][0-9]*) proof bytes>?`?/g;
+const FEATURE_ID =
+  /`((?:core|comms|control|social|workspace)\.[a-z0-9-]+(?:\.[a-z0-9-]+)*\.v\d+)`/g;
 const BCP14_KEYWORD =
   /\b(?:MUST(?: NOT)?|REQUIRED|SHALL(?: NOT)?|SHOULD(?: NOT)?|RECOMMENDED|NOT RECOMMENDED|MAY|OPTIONAL)\b/;
 const EXPLICIT_NORMATIVE =
@@ -83,8 +93,33 @@ const EXPLICIT_NORMATIVE =
 const LIST_ITEM = /^\s{0,3}(?:[-+*]|\d+[.)])\s+/;
 const TABLE_ROW = /^\s*\|.*\|\s*$/;
 const WRAPPED_DEPENDENCY_DECLARATION = /^\s*Normative dependencies\s*:\s*$/i;
-const ARCHIVE_SHA256 =
-  "357f4082b3dd82e3870859c654c354106267399ff8589cf7e22894ee2033c83d";
+const RETIRED_MAINTAINED_GUIDE_PATTERNS = [
+  /owner_version/,
+  /dependency_versions/,
+  /heterodyne:(?:core|comms|control|social|workspace)\//,
+  /run release-manifests/,
+  /JSON member remains named\s+`registry_revision`/,
+  /five documents are independently versioned/i,
+  /five independently versioned documents/i,
+  /deleted\s+`?docs\/spec\/releases\//i,
+  /comms\.node-scoped-jwt\.v1/,
+  /supplies exactly four things/i,
+  /claim profile registry revision/i,
+  /dependency versions above/i,
+  /(?:committed\s+JSON\s+|conformance\s+)?vectors?\s+(?:are|is)\s+the\s+normative\s+artifacts?/i,
+  /vectors?\s+are\s+normative\s+for\s+the\s+behavior\s+they\s+cover/i,
+  /normative\s+vector\s+corpus/i,
+  /wire-level changes require corresponding normative vector changes/i,
+  /npm --prefix docs\/spec\/vectors\/generator run release-(?:author|check|manifests)/i,
+  /(?:docs\/spec\/)?releases\/family\/0\.5\.0\.json/i,
+  /family-release-manifest\.schema\.json/i,
+  /family\s+release\s+manifest/i,
+  /one\s+content-addressed\s+family\s+release\s+record/i,
+  /protocol\s+authority\s+is\s+the\s+versioned\s+specification\s+family\s+and\s+its\s+normative\s+registries,\s+schemas,\s+release\s+metadata,\s+and\s+conformance\s+vectors/i,
+  /live\s+specifications,\s+registry,\s+schemas,\s+release\s+metadata,\s+and\s+vectors\s+remain\s+the\s+protocol\s+authority/i,
+  /generator-owned\s+protocol\s+inputs:\s+live\s+normative\s+machine-readable\s+artifacts/i,
+  /recheck the named family release/i,
+];
 
 function displayPath(repoRoot: string, path: string): string {
   return relative(repoRoot, path).split(sep).join("/");
@@ -182,52 +217,26 @@ function normativeParagraphLines(lines: readonly string[]): Set<number> {
   return normative;
 }
 
-function declaredNormativeDependencies(
-  lines: readonly string[],
-): Set<string> {
-  const declared = new Set<string>();
-  const addReferences = (line: string): void => {
-    for (const match of line.matchAll(QUALIFIED_REFERENCE)) {
-      declared.add(`${match[1]}/${match[2]}`);
-    }
-  };
-
-  for (const [index, line] of lines.entries()) {
-    if (!/^\s*Normative dependencies\s*:/i.test(line)) continue;
-    addReferences(line);
-    let listStarted = false;
-    for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
-      const candidate = lines[cursor];
-      if (candidate.trim() === "") {
-        if (listStarted) break;
-        continue;
-      }
-      if (LIST_ITEM.test(candidate)) {
-        listStarted = true;
-        addReferences(candidate);
-        continue;
-      }
-      if (listStarted && /^\s+/.test(candidate)) {
-        addReferences(candidate);
-        continue;
-      }
-      break;
-    }
-  }
-  return declared;
-}
-
 export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
   const documents = loadFamilyDocuments(repoRoot);
   const issues: FamilyDocIssue[] = [];
   const anchors = new Map<string, { path: string; line: number }>();
   const documentAnchors = new Set<string>();
+  const sections = new Map<DocumentId, Set<string>>();
+  const anchorOwner = new Map<string, DocumentId>();
 
   for (const document of documents) {
+    sections.set(
+      document.document,
+      new Set(
+        document.lines.flatMap((line) => NUMBERED_HEADING.exec(line)?.[1] ?? []),
+      ),
+    );
     for (const [index, line] of document.lines.entries()) {
       for (const match of line.matchAll(EXPLICIT_ANCHOR)) {
         const anchor = match[1];
         documentAnchors.add(`${document.document}:${anchor}`);
+        anchorOwner.set(anchor, document.document);
         const existing = anchors.get(anchor);
         if (existing !== undefined) {
           issues.push({
@@ -246,9 +255,14 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
     }
   }
 
+  const registry = loadRegistry(repoRoot);
+  const registeredFeatures = new Set(registry.features.map(({ id }) => id));
+  const registeredProofDomains = new Set(
+    registry.proof_domains.map(({ id }) => id),
+  );
+
   for (const document of documents) {
     const normativeLines = normativeParagraphLines(document.lines);
-    const declaredDependencies = declaredNormativeDependencies(document.lines);
     for (const [index, line] of document.lines.entries()) {
       const lineNumber = index + 1;
       const references = [...line.matchAll(QUALIFIED_REFERENCE)];
@@ -264,10 +278,21 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
       }
 
       for (const match of references) {
-        const target = match[1] as DocumentId;
-        const version = match[2];
-        const anchor = match[3];
-        parseQualifiedVersion(`${target}/${version}`);
+        const version = match[1];
+        const anchor = match[2];
+        // The anchor prefix names its owning document, so one qualified
+        // reference form resolves and layer-checks without a per-document
+        // version to carry the owner.
+        const target = anchor.split("-", 1)[0] as DocumentId;
+        if (version !== FAMILY_VERSION) {
+          issues.push({
+            path: document.displayPath,
+            line: lineNumber,
+            code: "unresolved-reference",
+            message: `${match[0]} is not the current family version ${QUALIFIED_VERSION}`,
+          });
+          continue;
+        }
         if (!documentAnchors.has(`${target}:${anchor}`)) {
           issues.push({
             path: document.displayPath,
@@ -275,24 +300,12 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
             code: "unresolved-reference",
             message: `${match[0]} does not resolve to an explicit family anchor`,
           });
+          continue;
         }
-      }
-
-      if (normativeLines.has(index)) {
-        for (const match of references) {
-          const target = match[1] as DocumentId;
-          const targetVersion = `${target}/${match[2]}`;
-          if (
-            target !== document.document &&
-            !declaredDependencies.has(targetVersion)
-          ) {
-            issues.push({
-              path: document.displayPath,
-              line: lineNumber,
-              code: "undeclared-dependency",
-              message: `${document.document} normatively references undeclared dependency ${targetVersion}`,
-            });
-          }
+        if (
+          normativeLines.has(index) &&
+          target !== document.document
+        ) {
           try {
             assertAllowedDependency(document.document, target);
           } catch {
@@ -306,13 +319,69 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
         }
       }
 
-      if (normativeLines.has(index) && BARE_FAMILY_LINK.test(line)) {
+      // The registry is the sole feature-ID authority; prose that invents
+      // an ID reads as a real capability claim and nothing else catches it.
+      for (const match of line.matchAll(FEATURE_ID)) {
+        if (!registeredFeatures.has(match[1])) {
+          issues.push({
+            path: document.displayPath,
+            line: lineNumber,
+            code: "unregistered-feature-id",
+            message: `${match[1]} is not allocated in registry/features.json`,
+          });
+        }
+      }
+
+      // Section numbers are a second naming scheme over the same headings;
+      // without this they rot silently whenever a document is renumbered.
+      for (const match of line.matchAll(SECTION_REFERENCE)) {
+        if (!sections.get(document.document)?.has(match[1])) {
+          issues.push({
+            path: document.displayPath,
+            line: lineNumber,
+            code: "unresolved-section-reference",
+            message: `${match[0]} is not a heading in ${document.document}`,
+          });
+        }
+      }
+
+      // The link text carries the version and the target carries the file;
+      // a mismatch between them is a reference that resolves to the wrong
+      // section while still reading as correct.
+      for (const match of line.matchAll(LINKED_QUALIFIED_REFERENCE)) {
+        const [, textAnchor, targetFile, targetAnchor] = match;
+        const expectedFile = anchorOwner.get(textAnchor);
+        if (textAnchor !== targetAnchor) {
+          issues.push({
+            path: document.displayPath,
+            line: lineNumber,
+            code: "mislinked-reference",
+            message: `link text names ${textAnchor} but targets ${targetAnchor}`,
+          });
+        } else if (expectedFile !== undefined
+          && (targetFile ?? document.document) !== expectedFile) {
+          issues.push({
+            path: document.displayPath,
+            line: lineNumber,
+            code: "mislinked-reference",
+            message: `${textAnchor} is owned by ${expectedFile}, not ${targetFile ?? document.document}`,
+          });
+        }
+      }
+
+      // An unqualified cross-document link drops the version.
+      const withoutQualified = line.replace(LINKED_QUALIFIED_REFERENCE, "");
+      const crossesDocuments = CROSS_DOCUMENT_LINK.test(withoutQualified)
+        || [...withoutQualified.matchAll(LOCAL_ANCHOR_LINK)].some(
+          ([, anchor]) => (anchorOwner.get(anchor) ?? document.document) !== document.document,
+        );
+      if (normativeLines.has(index) && crossesDocuments) {
         issues.push({
           path: document.displayPath,
           line: lineNumber,
           code: "bare-normative-link",
           message:
-            "normative family references must use a qualified heterodyne: URI",
+            "a normative cross-document reference must be [`heterodyne:<version>#<anchor>`](<file>#<anchor>)",
         });
       }
     }
@@ -330,11 +399,10 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
     if (/<recipient npub>|recipient's npub/.test(wire)) {
       issues.push({ path: comms.displayPath, line: wireStart + 1, code: "ambiguous-nostr-wire-key", message: "Tier 3 wire keys must use lowercase 64-hex rather than npub" });
     }
-    if (!/profile registry revision[\s\S]*exactly `2`[\s\S]*current complete registry revision/i.test(comms.lines.join("\n"))) {
-      issues.push({ path: comms.displayPath, line: 1, code: "claim-profile-revision-ambiguous", message: "claim profile and family registry revisions are not distinguished" });
+    if (/\bregistry_revision\b/.test(comms.lines.join("\n"))) {
+      issues.push({ path: comms.displayPath, line: 1, code: "claim-profile-revision-ambiguous", message: "the frozen claim-profile revision must be named profile_revision, distinct from the registry pin" });
     }
   }
-  const registry = loadRegistry(repoRoot);
   for (const kind of [1059, 22242]) {
     if (!registry.kinds.some((entry) => entry.kind === kind && entry.allocation_authority === "nostr")) {
       issues.push({ path: "docs/spec/registry/kinds.json", line: 1, code: "missing-upstream-kind-allocation", message: `missing upstream kind ${kind}` });
@@ -343,45 +411,64 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
   for (const message of verifyMarmotArchive(resolve(repoRoot, "docs/spec/external/marmot"))) {
     issues.push({ path: "docs/spec/external/marmot/manifest.json", line: 1, code: "marmot-archive-invalid", message });
   }
+  // Core's capability example pastes the manifest digest; nothing else
+  // reconciles the two, so a registry regeneration desyncs it silently.
+  if (core !== undefined) {
+    for (const [index, line] of core.lines.entries()) {
+      const pasted = /"registry_sha256"\s*:\s*"([0-9a-f]{64})"/.exec(line)?.[1];
+      if (pasted !== undefined && pasted !== registry.manifest.entry_set_sha256) {
+        issues.push({
+          path: core.displayPath,
+          line: index + 1,
+          code: "registry-digest-drift",
+          message: `registry_sha256 does not match registry/manifest.json entry_set_sha256`,
+        });
+      }
+    }
+  }
+
+  // A proof domain names exact signed bytes; an unallocated one has no
+  // bound-member declaration for an implementer to sign against, and an
+  // allocated one nothing specifies is bytes nobody can produce. The citation
+  // routinely wraps, so scan joined text and recover the line from the offset.
+  const citedProofDomains = new Set<string>();
+  for (const document of documents) {
+    const text = document.lines.join("\n");
+    for (const pattern of [PROOF_DOMAIN, PROOF_DOMAIN_FENCED]) {
+      for (const match of text.matchAll(pattern)) {
+        citedProofDomains.add(match[1]);
+        if (registeredProofDomains.has(match[1])) continue;
+        issues.push({
+          path: document.displayPath,
+          line: text.slice(0, match.index).split("\n").length,
+          code: "unregistered-proof-domain",
+          message: `${match[1]} is not allocated in registry/proof-domains.json`,
+        });
+      }
+    }
+  }
+  for (const entry of registry.proof_domains) {
+    if (!citedProofDomains.has(entry.id)) {
+      issues.push({
+        path: "docs/spec/registry/proof-domains.json",
+        line: 1,
+        code: "unregistered-proof-domain",
+        message: `${entry.id} is allocated but no document specifies its bytes`,
+      });
+    }
+  }
+
+  const strictProfileIssues = findStrictProfileClosureIssues(
+    Object.fromEntries(documents.map(({ document, lines }) => [document, lines.join("\n")])),
+    registry.security_invariants,
+  );
+  for (const message of strictProfileIssues) {
+    issues.push({ path: "docs/spec/heterodyne-core.md", line: 1, code: "strict-profile-closure-invalid", message });
+  }
 
   return issues;
 }
 
-function githubHeadingAnchors(markdown: string): string[] {
-  const anchors: string[] = [];
-  const counts = new Map<string, number>();
-  let fenced = false;
-  for (const line of markdown.split(/\r?\n/)) {
-    if (/^\s*```/.test(line)) {
-      fenced = !fenced;
-      continue;
-    }
-    if (fenced) continue;
-    const heading = line.match(/^#{1,6}\s+(.+?)\s*#*\s*$/)?.[1];
-    if (!heading) continue;
-    const base = heading
-      .toLowerCase()
-      .replace(/<[^>]*>/g, "")
-      .replace(/[^\p{L}\p{N}\s_-]/gu, "")
-      .replace(/ /g, "-");
-    const duplicate = counts.get(base) ?? 0;
-    counts.set(base, duplicate + 1);
-    anchors.push(`#${base}${duplicate === 0 ? "" : `-${duplicate}`}`);
-  }
-  return anchors;
-}
-
-export type ReleaseManifest = {
-  document: DocumentId;
-  version: string;
-  qualified_version: `${DocumentId}/${string}`;
-  registry_revision: number;
-  registry_sha256: string;
-  dependencies: Partial<Record<DocumentId, `${DocumentId}/${string}`>>;
-  provided_features: string[];
-  required_features: string[];
-  conformance_status: "conformant" | "incomplete-draft";
-};
 
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
@@ -392,10 +479,6 @@ function canonicalJson(value: unknown): string {
       .join(",")}}`;
   }
   return JSON.stringify(value);
-}
-
-export function releaseManifestBytes(manifest: ReleaseManifest): string {
-  return `${canonicalJson(manifest)}\n`;
 }
 
 function parseInvariantRows(text: string): Map<string, string> {
@@ -428,11 +511,12 @@ export function findInvariantEvidenceIssues(
 type StrictProfileFixture = {
   profile_id: string;
   requires_profiles: string[];
-  required_invariants: string[];
+  adds_invariants: string[];
 };
 
 export function findStrictProfileClosureIssues(
   documents: Record<string, string>,
+  registeredInvariants?: readonly { id: string; owner: DocumentId; feature?: string }[],
 ): string[] {
   const profiles = new Map<string, StrictProfileFixture>();
   const issues: string[] = [];
@@ -447,457 +531,145 @@ export function findStrictProfileClosureIssues(
         continue;
       }
       const prior = profiles.get(profile.profile_id);
-      if (prior !== undefined
-        && canonicalJson(prior.required_invariants) !== canonicalJson(profile.required_invariants)) {
-        issues.push(`conflicting strict-profile membership: ${profile.profile_id}`);
-      } else {
-        profiles.set(profile.profile_id, profile);
-      }
-      if (new Set(profile.required_invariants).size !== profile.required_invariants.length) {
-        issues.push(`duplicate invariant membership: ${profile.profile_id}`);
-      }
-    }
-  }
-  for (const profile of profiles.values()) {
-    const membership = new Set(profile.required_invariants);
-    for (const prerequisiteId of profile.requires_profiles) {
-      const prerequisite = profiles.get(prerequisiteId);
-      if (prerequisite === undefined) {
-        issues.push(`unknown strict-profile prerequisite: ${profile.profile_id} -> ${prerequisiteId}`);
+      if (prior !== undefined && canonicalJson(prior) !== canonicalJson(profile)) {
+        issues.push(`conflicting strict-profile declaration: ${profile.profile_id}`);
         continue;
       }
-      for (const invariant of prerequisite.required_invariants) {
-        if (!membership.has(invariant)) {
-          issues.push(`incomplete flattened membership: ${profile.profile_id} missing ${invariant}`);
-        }
+      if (new Set(profile.adds_invariants).size !== profile.adds_invariants.length) {
+        issues.push(`duplicate added invariant: ${profile.profile_id}`);
+      }
+      profiles.set(profile.profile_id, profile);
+    }
+  }
+
+  // The required set is the transitive closure of prerequisites plus the
+  // profile's own additions; nothing restates a flattened list.
+  const closures = new Map<string, Set<string>>();
+  const visiting = new Set<string>();
+  const closureOf = (id: string): Set<string> => {
+    const cached = closures.get(id);
+    if (cached !== undefined) return cached;
+    if (visiting.has(id)) {
+      issues.push(`strict-profile prerequisite cycle: ${id}`);
+      return new Set();
+    }
+    visiting.add(id);
+    const profile = profiles.get(id);
+    const required = new Set<string>();
+    for (const prerequisiteId of profile?.requires_profiles ?? []) {
+      if (!profiles.has(prerequisiteId)) {
+        issues.push(`unknown strict-profile prerequisite: ${id} -> ${prerequisiteId}`);
+        continue;
+      }
+      for (const invariant of closureOf(prerequisiteId)) required.add(invariant);
+    }
+    for (const invariant of profile?.adds_invariants ?? []) {
+      if (required.has(invariant)) {
+        issues.push(`redundant added invariant: ${id} already inherits ${invariant}`);
+      }
+      required.add(invariant);
+    }
+    visiting.delete(id);
+    closures.set(id, required);
+    return required;
+  };
+
+  const registered = new Map(
+    (registeredInvariants ?? []).map((entry) => [entry.id, entry]),
+  );
+  for (const profile of profiles.values()) {
+    closureOf(profile.profile_id);
+    if (registeredInvariants === undefined) continue;
+    const declaringOwner = /^heterodyne-([a-z]+)-strict-/.exec(profile.profile_id)?.[1];
+    for (const invariant of profile.adds_invariants) {
+      const entry = registered.get(invariant);
+      if (entry === undefined) {
+        issues.push(`unregistered added invariant: ${profile.profile_id} -> ${invariant}`);
+      } else if (entry.owner !== declaringOwner) {
+        issues.push(
+          `added invariant is not owned by the declaring document: ${profile.profile_id} -> ${invariant}`,
+        );
+      } else if (entry.feature !== undefined) {
+        // A feature-bound invariant is owed whenever its feature is claimed, so
+        // adding it to a profile would make the profile require the feature.
+        issues.push(
+          `feature-bound added invariant: ${profile.profile_id} -> ${invariant} is bound to ${entry.feature}`,
+        );
       }
     }
   }
   return issues.sort();
 }
-
-export function validateReleaseManifestRegistryPin(
+/** Lint the maintained authoring guides against the single-family model. */
+export function lintMaintainedGuides(
   repoRoot: string,
-  manifest: Pick<ReleaseManifest, "registry_revision" | "registry_sha256">,
-): void {
-  const registry = loadRegistry(repoRoot);
-  const entrySet = registry.history.get(manifest.registry_revision);
-  if (entrySet === undefined) {
-    throw new Error(
-      `unknown registry history revision ${manifest.registry_revision}`,
-    );
-  }
-  const expectedDigest = computeRegistryDigest(entrySet);
-  if (manifest.registry_sha256 !== expectedDigest) {
-    throw new Error(
-      `registry digest mismatch for revision ${manifest.registry_revision}`,
-    );
-  }
-}
-
-export function loadReleaseSchemaRegistryPin(
-  repoRoot: string,
-): Pick<ReleaseManifest, "registry_revision" | "registry_sha256"> {
-  const schemaPath = resolve(
-    repoRoot,
-    "docs/spec/releases/release-manifest.schema.json",
-  );
-  const schema = JSON.parse(readFileSync(schemaPath, "utf8")) as {
-    properties?: {
-      registry_revision?: { const?: unknown };
-      registry_sha256?: { const?: unknown };
-    };
-  };
-  const registryRevision = schema.properties?.registry_revision?.const;
-  const registrySha256 = schema.properties?.registry_sha256?.const;
-  if (typeof registryRevision !== "number" || typeof registrySha256 !== "string") {
-    throw new Error("release schema registry pin is incomplete");
-  }
-  const pin = {
-    registry_revision: registryRevision,
-    registry_sha256: registrySha256,
-  };
-  validateReleaseManifestRegistryPin(repoRoot, pin);
-  return pin;
-}
-
-export function validateReleaseManifestSchemaPin(
-  repoRoot: string,
-  manifest: Pick<ReleaseManifest, "registry_revision" | "registry_sha256">,
-): void {
-  const schemaPin = loadReleaseSchemaRegistryPin(repoRoot);
-  if (
-    manifest.registry_revision !== schemaPin.registry_revision ||
-    manifest.registry_sha256 !== schemaPin.registry_sha256
-  ) {
-    throw new Error("release manifest does not match release schema pin");
-  }
-  validateReleaseManifestRegistryPin(repoRoot, manifest);
-}
-
-export function expectedReleaseManifests(
-  repoRoot: string,
-  revision?: number,
-): Record<DocumentId, ReleaseManifest> {
-  const registry = loadRegistry(repoRoot);
-  const registryRevision = revision ?? loadReleaseSchemaRegistryPin(repoRoot).registry_revision;
-  const entrySet = registry.history.get(registryRevision);
-  if (entrySet === undefined) {
-    throw new Error(`unknown registry history revision ${registryRevision}`);
-  }
-  const registrySha256 = computeRegistryDigest(entrySet);
-  const manifests: Record<DocumentId, ReleaseManifest> = {
-    core: {
-      document: "core",
-      version: "0.5.0",
-      qualified_version: "core/0.5.0",
-      registry_revision: registryRevision,
-      registry_sha256: registrySha256,
-      dependencies: {},
-      provided_features: [
-        "core.nostr-relay-read.v1",
-        "core.outbound-tor.v1",
-        "core.repo-relay-client.v1",
-        "core.onion-service-host.v1",
-        "core.browser-shared-relay.v1",
-        "core.marmot-role-attribution.v1",
-      ],
-      required_features: [],
-      conformance_status: "conformant",
-    },
-    comms: {
-      document: "comms",
-      version: "0.5.0",
-      qualified_version: "comms/0.5.0",
-      registry_revision: registryRevision,
-      registry_sha256: registrySha256,
-      dependencies: { core: "core/0.5.0" },
-      provided_features: [
-        "comms.key-claims.v1",
-        "comms.private-claim-ledger.v1",
-        "comms.oidc-jwt-projection.v1",
-        "comms.token-status-list-draft-21.v1",
-        "comms.public-reader.v1",
-        "comms.agent-authorship.v1",
-        "comms.marmot-conversations.v1",
-        "comms.radicle-marmot-storage.v1",
-        "comms.radicle-backed-marmot-relay.v1",
-      ],
-      required_features: [
-        "core.marmot-role-attribution.v1",
-        "core.nostr-relay-read.v1",
-        "core.repo-relay-client.v1",
-      ],
-      conformance_status: "conformant",
-    },
-    control: {
-      document: "control",
-      version: "0.5.0",
-      qualified_version: "control/0.5.0",
-      registry_revision: registryRevision,
-      registry_sha256: registrySha256,
-      dependencies: { core: "core/0.5.0", comms: "comms/0.5.0" },
-      provided_features: [
-        "control.marmot.v1",
-        "control.oauth-device-enrollment.v1",
-        "control.private-entitlement.v1",
-        "control.node-scoped-token.v1",
-        "control.agent-workload-publication.v1",
-        "control.node-mediated-marmot.v1",
-        "control.recovery.radicle.v1",
-        "control.recovery.epoch-inbox.v1",
-        "control.recovery.sftp.v1",
-      ],
-      required_features: [
-        "core.repo-relay-client.v1",
-        "comms.agent-authorship.v1",
-        "comms.marmot-conversations.v1",
-        "comms.oidc-jwt-projection.v1",
-        "comms.private-claim-ledger.v1",
-        "comms.radicle-marmot-storage.v1",
-      ],
-      conformance_status: "conformant",
-    },
-    social: {
-      document: "social",
-      version: "0.5.0",
-      qualified_version: "social/0.5.0",
-      registry_revision: registryRevision,
-      registry_sha256: registrySha256,
-      dependencies: { core: "core/0.5.0", comms: "comms/0.5.0" },
-      provided_features: ["social.agent-policy-moderation.v1"],
-      required_features: [
-        "comms.agent-authorship.v1",
-        "comms.marmot-conversations.v1",
-      ],
-      conformance_status: "conformant",
-    },
-    workspace: {
-      document: "workspace",
-      version: "0.1.0",
-      qualified_version: "workspace/0.1.0",
-      registry_revision: registryRevision,
-      registry_sha256: registrySha256,
-      dependencies: {
-        core: "core/0.5.0",
-        comms: "comms/0.5.0",
-      },
-      provided_features: [
-        "workspace.role-authorization.v1",
-        "workspace.private-role-control.v1",
-        "workspace.radicle-transport-backstop.v1",
-        "workspace.resource-key-delivery.v1",
-        "workspace.bilateral-allowance.v1",
-        "workspace.joint-governance.v1",
-      ],
-      required_features: [
-        "core.marmot-role-attribution.v1",
-        "core.repo-relay-client.v1",
-        "comms.marmot-conversations.v1",
-        "comms.radicle-marmot-storage.v1",
-        "comms.radicle-backed-marmot-relay.v1",
-      ],
-      conformance_status: "conformant",
-    },
-  };
-  validateReleaseFeatureResolution(registry, manifests);
-  return manifests;
-}
-
-export function validateReleaseFeatureResolution(
-  registry: ReturnType<typeof loadRegistry>,
-  manifests: Record<DocumentId, ReleaseManifest>,
-): void {
-  const catalog = new Map(registry.features.map((feature) => [feature.id, feature]));
-  for (const [document, manifest] of Object.entries(manifests) as [DocumentId, ReleaseManifest][]) {
-    const provided = new Set(manifest.provided_features);
-    const required = new Set(manifest.required_features);
-    if (provided.size !== manifest.provided_features.length) {
-      throw new Error(`duplicate provided feature: ${document}`);
-    }
-    if (required.size !== manifest.required_features.length) {
-      throw new Error(`duplicate required feature: ${document}`);
-    }
-    for (const featureId of provided) {
-      if (required.has(featureId)) throw new Error(`feature both provided and required: ${featureId}`);
-      const feature = catalog.get(featureId);
-      if (feature === undefined) throw new Error(`unregistered provided feature: ${featureId}`);
-      if (feature.owner !== document) throw new Error(`provided feature owner mismatch: ${featureId}`);
-      for (const prerequisiteId of feature.prerequisites) {
-        const prerequisite = catalog.get(prerequisiteId);
-        if (prerequisite === undefined) {
-          throw new Error(`unregistered feature prerequisite: ${prerequisiteId}`);
-        }
-        if (prerequisite.owner === document) {
-          if (!provided.has(prerequisiteId)) {
-            throw new Error(`local prerequisite not provided: ${featureId} -> ${prerequisiteId}`);
-          }
-        } else if (!required.has(prerequisiteId)) {
-          throw new Error(`external prerequisite not required: ${featureId} -> ${prerequisiteId}`);
-        }
-      }
-    }
-    for (const featureId of required) {
-      const feature = catalog.get(featureId);
-      if (feature === undefined) throw new Error(`unregistered required feature: ${featureId}`);
-      const dependencyVersion = manifest.dependencies[feature.owner];
-      if (dependencyVersion === undefined) {
-        throw new Error(`required feature owner is not a dependency: ${featureId}`);
-      }
-      const dependency = manifests[feature.owner];
-      if (dependency.qualified_version !== dependencyVersion
-        || !dependency.provided_features.includes(featureId)) {
-        throw new Error(`required feature not provided by exact dependency: ${featureId}`);
-      }
-    }
-  }
-}
-
-export function writeReleaseManifests(repoRoot: string): string[] {
-  const expected = expectedReleaseManifests(repoRoot);
-  const written: string[] = [];
-  for (const document of DOCUMENTS) {
-    const directory = resolve(repoRoot, "docs/spec/releases", document);
-    const path = resolve(directory, `${DOCUMENT_VERSIONS[document]}.json`);
-    mkdirSync(directory, { recursive: true });
-    writeFileSync(path, releaseManifestBytes(expected[document]), "utf8");
-    written.push(path);
-  }
-  return written;
-}
-
-export function lintFamilyCutover(repoRoot: string): FamilyDocIssue[] {
+  contentOverrides: Readonly<Record<string, string>> = {},
+): FamilyDocIssue[] {
   const issues: FamilyDocIssue[] = [];
-  const archivePath = resolve(repoRoot, "docs/spec/archive/heterodyne-0.4.0.md");
-  const mapPath = resolve(
-    repoRoot,
-    "docs/spec/archive/heterodyne-0.4.0-anchor-map.md",
+  const guides = [
+    "AGENTS.md",
+    "README.md",
+    "docs/adr/archive/2026-08-15-045-conformance-harness-independence.md",
+    "docs/adr/README.md",
+    "docs/spec/heterodyne.md",
+    "docs/spec/vectors/README.md",
+    "docs/spec/vectors/generator/README.md",
+    "docs/spec/extensions/nips/README.md",
+    "docs/glossary.md",
+    "docs/security/threat-model.md",
+    "docs/architecture.md",
+    "docs/spec/heterodyne-social.md",
+    "CHANGELOG.md",
+  ];
+  const contents = new Map(
+    guides.map((path) => [
+      path,
+      contentOverrides[path] ?? readFileSync(resolve(repoRoot, path), "utf8"),
+    ]),
   );
-  const overviewPath = resolve(repoRoot, "docs/spec/heterodyne.md");
-  const required = [archivePath, mapPath, overviewPath];
-  for (const path of required) {
-    if (!existsSync(path)) {
-      issues.push({
-        path: displayPath(repoRoot, path),
-        line: 1,
-        code: "missing-cutover-artifact",
-        message: "required family-cutover artifact is missing",
-      });
+  const lineFor = (text: string, offset: number) =>
+    text.slice(0, offset).split(/\r?\n/).length;
+
+  for (const [path, text] of contents) {
+    for (const pattern of RETIRED_MAINTAINED_GUIDE_PATTERNS) {
+      const match = pattern.exec(text);
+      if (match !== null) {
+        issues.push({
+          path,
+          line: lineFor(text, match.index),
+          code: "retired-authoring-model",
+          message: `retired authoring terminology: ${match[0]}`,
+        });
+      }
     }
   }
-  if (issues.length > 0) return issues;
 
-  const archive = readFileSync(archivePath, "utf8");
-  const archiveDigest = createHash("sha256").update(archive, "utf8").digest("hex");
-  if (archiveDigest !== ARCHIVE_SHA256) {
-    issues.push({
-      path: displayPath(repoRoot, archivePath),
-      line: 1,
-      code: "archive-digest-mismatch",
-      message: `expected ${ARCHIVE_SHA256}, got ${archiveDigest}`,
-    });
-  }
-
-  const map = readFileSync(mapPath, "utf8");
-  const expectedOldAnchors = githubHeadingAnchors(archive);
-  const rows = [...map.matchAll(
-    /^\| `(#(?:[^`]+))` \| (Core|Comms|Control|Social) \| `heterodyne:(core|comms|control|social)\/0\.5\.0#([a-z0-9]+(?:-[a-z0-9]+)*)` \|$/gm,
-  )];
-  const mappedAnchors = rows.map((row) => row[1]);
-  const familyDocs = loadFamilyDocuments(repoRoot);
-  const destinations = new Set(
-    familyDocs.flatMap((document) =>
-      document.lines.flatMap((line) =>
-        [...line.matchAll(EXPLICIT_ANCHOR)].map(
-          (match) => `${document.document}:${match[1]}`,
-        ),
-      ),
-    ),
+  const registryRevision = loadRegistry(repoRoot).manifest.revision;
+  const namesCurrentRegistryRevision = new RegExp(
+    `distinct from[^.\n]*current family registry revision ${registryRevision}\\b`,
   );
-  if (
-    !map.includes(`Archive SHA-256: \`${ARCHIVE_SHA256}\``) ||
-    JSON.stringify(mappedAnchors) !== JSON.stringify(expectedOldAnchors) ||
-    new Set(mappedAnchors).size !== expectedOldAnchors.length ||
-    rows.some(
-      (row) =>
-        row[2].toLowerCase() !== row[3] ||
-        !destinations.has(`${row[3]}:${row[4]}`),
-    )
-  ) {
-    issues.push({
-      path: displayPath(repoRoot, mapPath),
-      line: 1,
-      code: "archive-map-mismatch",
-      message: "anchor map must cover every archive heading once with a resolvable owner-qualified destination",
-    });
-  }
-
-  const overview = readFileSync(overviewPath, "utf8");
-  if (BCP14_KEYWORD.test(overview)) {
-    issues.push({
-      path: displayPath(repoRoot, overviewPath),
-      line: 1,
-      code: "overview-normative-language",
-      message: "the non-normative family overview contains an uppercase BCP 14 keyword",
-    });
-  }
-  if (
-    !/prepared documents/i.test(overview) ||
-    !/unreleased[\s\S]*explicit\s+release\s+approval/i.test(
-      overview,
-    ) ||
-    /current release|release records/i.test(overview)
-  ) {
-    issues.push({
-      path: displayPath(repoRoot, overviewPath),
-      line: 1,
-      code: "premature-release-claim",
-      message: "overview must distinguish current normative authority from the prepared, unreleased 0.x artifacts",
-    });
-  }
-
-  const changelogPath = resolve(repoRoot, "CHANGELOG.md");
-  if (existsSync(changelogPath)) {
-    const changelog = readFileSync(changelogPath, "utf8");
-    const current = changelog.split("### Historical 0.4.0", 1)[0];
-    if (
-      !/^## \[Unreleased\]$/m.test(current) ||
-      !/prepared[\s\S]*0\.5\.0/i.test(current) ||
-      /## 0\.5\.0 document releases|\bPublished\b/.test(current)
-    ) {
+  for (const path of ["docs/glossary.md", "docs/security/threat-model.md"]) {
+    const text = contents.get(path)!;
+    const profileRevisionIndex = text.indexOf("`profile_revision`");
+    const namesProfileRevision = profileRevisionIndex >= 0;
+    const profileRevisionContext = namesProfileRevision
+      ? text.slice(Math.max(0, profileRevisionIndex - 80), profileRevisionIndex + 160)
+      : "";
+    const statesFrozenStatus = /\bfrozen\b/i.test(profileRevisionContext);
+    const statesValueTwo = /`2`/.test(profileRevisionContext);
+    if (!namesProfileRevision
+      || !statesFrozenStatus
+      || !statesValueTwo
+      || !namesCurrentRegistryRevision.test(text)) {
       issues.push({
-        path: displayPath(repoRoot, changelogPath),
+        path,
         line: 1,
-        code: "premature-release-claim",
-        message: "0.5.0 must remain in Unreleased pending explicit approval",
-      });
-    }
-  }
-  for (const document of familyDocs) {
-    if (/pre-release extraction draft/i.test(document.lines.join("\n"))) {
-      issues.push({
-        path: document.displayPath,
-        line: 1,
-        code: "extraction-banner",
-        message: "pre-release extraction banner remains after cutover",
+        code: "profile-revision-registry-context-missing",
+        message:
+          `guide must state profile_revision, its frozen value 2, and its distinction from current family registry revision ${registryRevision}`,
       });
     }
   }
 
-  const schemaPath = resolve(repoRoot, "docs/spec/releases/release-manifest.schema.json");
-  if (!existsSync(schemaPath)) {
-    issues.push({
-      path: displayPath(repoRoot, schemaPath),
-      line: 1,
-      code: "missing-cutover-artifact",
-      message: "release manifest schema is missing",
-    });
-    return issues;
-  }
-  let schemaPin: Pick<ReleaseManifest, "registry_revision" | "registry_sha256"> | null = null;
-  try {
-    schemaPin = loadReleaseSchemaRegistryPin(repoRoot);
-  } catch (error) {
-    issues.push({
-      path: displayPath(repoRoot, schemaPath),
-      line: 1,
-      code: "release-manifest-mismatch",
-      message: `release schema has an invalid registry pin: ${error instanceof Error ? error.message : String(error)}`,
-    });
-  }
-  for (const document of DOCUMENTS) {
-    const path = resolve(
-      repoRoot,
-      `docs/spec/releases/${document}/${DOCUMENT_VERSIONS[document]}.json`,
-    );
-    if (!existsSync(path)) {
-      issues.push({
-        path: displayPath(repoRoot, path),
-        line: 1,
-        code: "missing-cutover-artifact",
-        message: `${document} release manifest is missing`,
-      });
-      continue;
-    }
-    const actualBytes = readFileSync(path, "utf8");
-    try {
-      if (schemaPin === null) throw new Error("release schema registry pin is invalid");
-      const actual = JSON.parse(actualBytes) as ReleaseManifest;
-      validateReleaseManifestSchemaPin(repoRoot, actual);
-      const expected = expectedReleaseManifests(
-        repoRoot,
-        schemaPin.registry_revision,
-      )[document];
-      if (actualBytes === releaseManifestBytes(expected)) continue;
-      throw new Error("fields or canonical bytes differ from the pinned form");
-    } catch (error) {
-      issues.push({
-        path: displayPath(repoRoot, path),
-        line: 1,
-        code: "release-manifest-mismatch",
-        message: `${document} release manifest differs from its validated historical registry-derived form: ${error instanceof Error ? error.message : String(error)}`,
-      });
-    }
-  }
   return issues;
 }

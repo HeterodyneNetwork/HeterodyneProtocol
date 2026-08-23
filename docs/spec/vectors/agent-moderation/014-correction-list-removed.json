@@ -1,14 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "owner_version": "social/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0",
-    "comms": "comms/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:social/0.5.0#social-agent-policy-receipts"
+    "heterodyne:social#social-agent-policy-receipts"
   ],
   "vector_id": "agent-moderation/correction-list-removed",
   "description": "A valid correction plus canonical list removal restores subscriber-local visibility.",

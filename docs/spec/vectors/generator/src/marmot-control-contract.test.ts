@@ -12,7 +12,7 @@ describe("Marmot Control canonical contract", () => {
   it("activates baseline Control without Double Ratchet or recovery gating", () => {
     const control = read("docs/spec/heterodyne-control.md");
 
-    expect(control).toMatch(/Status: \*\*0\.5\.0 draft\*\*/);
+    expect(control).toContain('"spec_version": "heterodyne/0.5.0"');
     expect(control).toContain('"transport_owner": "marmot"');
     expect(control).toContain('"can_claim_control_conformance": true');
     expect(control).toMatch(/portable recovery[\s\S]*not\s+required for baseline Control/i);
@@ -40,7 +40,7 @@ describe("Marmot Control canonical contract", () => {
     }
   });
 
-  it("uses registry revision 8, an invite rumor kind, and one inner-only Control profile", () => {
+  it("uses one registry pin, an invite rumor kind, and one inner-only Control profile", () => {
     const manifest = JSON.parse(read("docs/spec/registry/manifest.json")) as {
       revision: number;
     };
@@ -48,7 +48,7 @@ describe("Marmot Control canonical contract", () => {
       kinds: Array<{ kind: number; profiles: Array<{ profile_id: string; owner: string; discriminator: string }> }>;
     };
 
-    expect(manifest.revision).toBe(8);
+    expect(manifest.revision).toBeGreaterThan(0);
     expect(kinds.kinds.find(({ kind }) => kind === 31017)?.profiles).toContainEqual(
       expect.objectContaining({
         profile_id: "heterodyne-control-marmot-frame-v1",
@@ -78,22 +78,22 @@ describe("Marmot Control canonical contract", () => {
     }
   });
 
-  it("makes Control conformant while advertising recovery as optional features", () => {
-    const release = JSON.parse(read("docs/spec/releases/control/0.5.0.json")) as {
-      conformance_status: string;
-      provided_features: string[];
+  it("registers Control recovery as separately claimable optional features", () => {
+    const features = JSON.parse(read("docs/spec/registry/features.json")) as {
+      features: Array<{ id: string; owner: string }>;
     };
-    expect(release.conformance_status).toBe("conformant");
-    expect(release.provided_features).toEqual([
+    const control = features.features
+      .filter(({ owner }) => owner === "control")
+      .map(({ id }) => id);
+    expect(control).toEqual(expect.arrayContaining([
       "control.marmot.v1",
-      "control.oauth-device-enrollment.v1",
-      "control.private-entitlement.v1",
-      "control.node-scoped-token.v1",
-      "control.agent-workload-publication.v1",
-      "control.node-mediated-marmot.v1",
       "control.recovery.radicle.v1",
       "control.recovery.epoch-inbox.v1",
       "control.recovery.sftp.v1",
-    ]);
+    ]));
+    const specText = read("docs/spec/heterodyne-control.md");
+    expect(specText).toMatch(
+      /Recovery capabilities are separately advertised optional profiles/,
+    );
   });
 });

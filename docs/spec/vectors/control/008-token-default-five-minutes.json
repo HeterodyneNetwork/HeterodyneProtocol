@@ -1,15 +1,9 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "control",
-  "owner_version": "control/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0",
-    "comms": "comms/0.5.0"
-  },
-  "registry_revision": 8,
   "profile": "heterodyne-control-marmot-frame-v1",
   "spec_refs": [
-    "heterodyne:control/0.5.0#control-token"
+    "heterodyne:control#control-token"
   ],
   "vector_id": "control/token-default-five-minutes",
   "description": "Node-scoped Control token issuance: token-default-five-minutes.",

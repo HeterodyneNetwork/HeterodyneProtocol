@@ -1,20 +1,15 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-claim-verification"
+    "heterodyne:comms#comms-claim-verification"
   ],
   "vector_id": "claims/copied-proof-rejected",
   "description": "An actual JWK authorization subject proof copied from one verifier challenge to a challenge with a different nonce fails signature and exact expected-nonce binding before local trust.",
   "direction": "consume",
   "input": {
     "claim": {
-      "claim_id": "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7",
+      "claim_id": "4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3",
       "issuer": {
         "type": "nostr-secp256k1",
         "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
@@ -39,13 +34,13 @@
         "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims"
       ],
       "visibility": "repository-private",
-      "spec_version": "comms/0.5.0",
-      "registry_revision": 2
+      "spec_version": "heterodyne/0.5.0",
+      "profile_revision": 2
     },
     "source": {
       "challenge": {
         "domain": "heterodyne-claim-pop-v1",
-        "claim_id": "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7",
+        "claim_id": "4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3",
         "nonce": "73737373737373737373737373737373",
         "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
         "resource": "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims",
@@ -61,13 +56,13 @@
           "x": "pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8"
         },
         "protected": "eyJhbGciOiJFZERTQSJ9",
-        "signature": "UcragRVvO7Xl7RWjGf6oDz6eFDTzd4Hm4nwsG0UvrC746Q3JvkfJ4efLkjQoyM0TYroH8qazyGCijlQT1wq9Dg"
+        "signature": "L9B08oca2FbWrjxinKq6qck1q85m3SLECmB17hTIUs8He0Xn29SZmNYR5q2ezccmlfz-_BrHB9GxAtaDZNTPBg"
       }
     },
     "copied_request": {
       "challenge": {
         "domain": "heterodyne-claim-pop-v1",
-        "claim_id": "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7",
+        "claim_id": "4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3",
         "nonce": "79797979797979797979797979797979",
         "audience": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
         "resource": "rad:rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1:claims",
@@ -83,18 +78,18 @@
           "x": "pRPjDH9lJ1sO-7BE11EnlXVgFOOsre6FNIMaixk1Q_8"
         },
         "protected": "eyJhbGciOiJFZERTQSJ9",
-        "signature": "UcragRVvO7Xl7RWjGf6oDz6eFDTzd4Hm4nwsG0UvrC746Q3JvkfJ4efLkjQoyM0TYroH8qazyGCijlQT1wq9Dg"
+        "signature": "L9B08oca2FbWrjxinKq6qck1q85m3SLECmB17hTIUs8He0Xn29SZmNYR5q2ezccmlfz-_BrHB9GxAtaDZNTPBg"
       },
       "expected_nonce": "79797979797979797979797979797979"
     },
     "claim_authority_evidence": [
       {
-        "claim_id": "d6acd3462ff5e76f7e60fc15d0d38241e3e03e1cd4e85f614f2b6871f10d04c7",
+        "claim_id": "4d5475db314a1de1df9937b6f8e4193c6638649625dfe14394bddb11e77ffbd3",
         "issuer": {
           "type": "nostr-secp256k1",
           "value": "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
         },
-        "event_id": "0b36b1432a5bde63ddd198757d10a2dbe0acdafcdbed670ab044a9beffc2c1f2",
+        "event_id": "afb624e96e08eee7d884e21c5598363cd6bf29f2dc64c053b6b21c419de92b0a",
         "envelope_valid": true,
         "core_kel_authority_valid": true,
         "credential_ledger_persona": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",

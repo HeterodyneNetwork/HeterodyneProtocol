@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["spec_version", "purpose", "descriptor_digest", "responder_account", "mls_key_package", "requested_class", "capabilities", "proof"],
   "properties": {
-    "spec_version": {"const": "comms/0.5.0"},
+    "spec_version": {"const": "heterodyne/0.5.0"},
     "purpose": {"enum": ["dm", "control-enrollment", "device-enrollment"]},
     "descriptor_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "responder_account": {"type": "string", "pattern": "^[0-9a-f]{64}$"},

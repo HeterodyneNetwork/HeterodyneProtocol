@@ -1,20 +1,14 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "workspace",
-  "owner_version": "workspace/0.1.0",
-  "dependency_versions": {
-    "core": "core/0.5.0",
-    "comms": "comms/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:workspace/0.1.0#workspace-object-types"
+    "heterodyne:workspace#workspace-object-types"
   ],
   "vector_id": "workspace-object/unknown-member-rejected",
   "description": "An unknown member violates the closed Workspace object schema.",
   "input": {
     "object": {
-      "spec_version": "workspace/0.1.0",
+      "spec_version": "heterodyne/0.5.0",
       "object_type": "workspace-manifest-v1",
       "workspace_id": "1111111111111111111111111111111111111111111111111111111111111111",
       "kel_head": "1111111111111111111111111111111111111111111111111111111111111111",
@@ -27,10 +21,10 @@
       "visibility": "public",
       "public_roles": [],
       "actor": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
-      "signature": "7346aae30e28c44dd6585c409a31ebbc8440d3889e2e97375b6599e16e773aeddd2e0cd85cb3ca969d6e64f9f33dbc9b29c417285d57717a7df73178ea033142",
+      "signature": "a3bd519dc2a2d1964d5b3cac82c3db536b6997109b6d9e36649017e974e6b046019b804f8bd19d612201d3b6ddd4a09f88e03ab1afafd698c42a7ef93803e31e",
       "unknown": true
     },
-    "expected_object_id": "a77cf077787c8c55c265d67110cc6e61fcab605aee4050e7103d0e37e6b67d3b",
+    "expected_object_id": "3e42f44da67a34540a0af1d55d835f577c2e624a919cbc01c8c62d51c574b075",
     "keri_authoritative": true,
     "repository_reachable": true
   },

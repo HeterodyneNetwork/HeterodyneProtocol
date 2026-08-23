@@ -1,13 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-credential-continuity"
+    "heterodyne:comms#comms-credential-continuity"
   ],
   "vector_id": "credential-continuity/pending-retirement-conservative",
   "description": "A pending retirement removes no assignment from the conservative exposure projection.",
@@ -73,7 +68,7 @@
           "73737373737373737373737373737373"
         ]
       },
-      "selected_registry_revision": 8,
+      "selected_profile_revision": 8,
       "conformance_claimable": false
     }
   }

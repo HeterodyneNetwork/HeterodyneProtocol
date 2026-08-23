@@ -19,7 +19,7 @@
   ],
   "properties": {
     "spec_version": {
-      "const": "comms/0.5.0"
+      "const": "heterodyne/0.5.0"
     },
     "stable_group_id_digest": {
       "type": "string",

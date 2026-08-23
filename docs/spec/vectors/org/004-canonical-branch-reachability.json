@@ -1,13 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-org-authorization"
+    "heterodyne:comms#comms-org-authorization"
   ],
   "vector_id": "org/canonical-branch-reachability",
   "description": "A lone-epoch-key org kind:31007 published to ordinary relays but NOT reachable from the delegate-threshold-approved canonical feed branch is not the org's canonical feed (rogue-epoch-key relay-bypass rejected).",

@@ -1,13 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-credential-continuity"
+    "heterodyne:comms#comms-credential-continuity"
   ],
   "vector_id": "credential-continuity/governed-obligation-equation",
   "description": "The independently derived governed-dependency set equals the active historical-obligation projection exactly.",
@@ -85,7 +80,7 @@
         ],
         "frontier_digest": "91e30997fa350462f0db904eef650c8579e4670ea31751b7a322d2cfe7f3c968"
       },
-      "selected_registry_revision": 8,
+      "selected_profile_revision": 8,
       "conformance_claimable": false
     }
   }

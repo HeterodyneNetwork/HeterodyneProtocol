@@ -1,13 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-agent-workload"
+    "heterodyne:comms#comms-agent-workload"
   ],
   "vector_id": "agent-authorship/workload-registration-unbounded-rejected",
   "description": "A zero-size or otherwise unbounded automated publication registration is rejected.",

@@ -1,33 +1,11 @@
 # Heterodyne Workspace Protocol Specification
 
-Document ID: `workspace`<br>
-Version: `workspace/0.1.0`<br>
-Registry revision: `8`
+Document ID: `workspace`
 
-Normative dependencies:
-
-- `heterodyne:core/0.5.0#core-identity-model`
-- `heterodyne:core/0.5.0#core-materialized-kel`
-- `heterodyne:core/0.5.0#core-repo-relay`
-- `heterodyne:comms/0.5.0#comms-marmot`
-- `heterodyne:comms/0.5.0#comms-marmot-event-repository`
-- `heterodyne:comms/0.5.0#comms-marmot-relay`
-
-Optional composition dependencies:
-
-- `heterodyne:control/0.5.0#control-frame`
-- `heterodyne:social/0.5.0#social-moderation`
-
-This document prepares Workspace's first release. It is current normative
-authority at this repository path but remains unreleased pending explicit
-release approval. The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT,
-SHOULD, SHOULD NOT, RECOMMENDED, NOT RECOMMENDED, MAY, and OPTIONAL are to be
-interpreted as described by BCP 14 when, and only when, they appear in all
-capitals.
-
-Permanent anchors use the literal `workspace-` prefix and lowercase ASCII
-kebab case. Qualified Workspace references combine the document version with
-one of those explicit anchors.
+Workspace is a section of the Heterodyne specification and is governed by
+[`heterodyne:0.5.0#core-document-conventions`](heterodyne-core.md#core-document-conventions), which fixes the family version,
+the registry pin, release status, BCP 14 usage, and the anchor and reference
+forms.
 
 <a id="workspace-scope"></a>
 ## 1. Scope and non-goals
@@ -53,10 +31,7 @@ relays and ordinary Radicle nodes do not interpret Workspace objects.
 <a id="workspace-conventions"></a>
 ## 2. Conventions and data model
 
-All Workspace JSON objects use UTF-8 JSON and the JSON Canonicalization Scheme
-(JCS). A producer MUST reject duplicate member names, non-integer numbers,
-unknown members, and values outside the object's closed schema before signing.
-A consumer MUST validate the applicable schema before evaluating authority.
+Workspace JSON objects follow [`heterodyne:0.5.0#core-canonical-json`](heterodyne-core.md#core-canonical-json).
 
 `workspace_id`, persona identifiers, device keys, and signing keys are
 lowercase 64-character hexadecimal secp256k1 x-only public keys. Human-facing
@@ -65,16 +40,34 @@ in a Workspace object. `kel_head`, `policy_head`, `checkpoint_id`,
 `relationship_id`, `grant_id`, `revocation_id`, `resource_id`, and envelope
 digests are lowercase 64-character SHA-256 values. Radicle repository
 identifiers begin with `rad:`. Git object IDs are lowercase 40-character
-SHA-1 values because the adopted Radicle substrate uses that object format.
+SHA-1 values because the adopted Radicle substrate uses that object format;
+[`heterodyne:0.5.0#core-security`](heterodyne-core.md#core-security) bounds what that format is trusted for.
 
-Every signed object contains `spec_version:"workspace/0.1.0"`, its exact
+Every signed object contains `spec_version:"heterodyne/0.5.0"`, its exact
 `object_type`, `workspace_id`, `actor`, `kel_head`, `authority_sequence`,
 `repository_rid`, `repository_head`, and `issued_at`. The signature covers the
-ASCII domain `heterodyne-workspace-object-v1`, one zero byte, and the JCS bytes
-of the object without its `signature` member. `signature` is a lowercase
-128-character BIP-340 signature. The actor MUST be authoritative at the stated
-KEL head and MUST possess the capability and approval set required by the
-effective policy at the referenced repository head.
+[`heterodyne:0.5.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes) bytes for domain
+`heterodyne-workspace-object-v1`, whose sole bound member `object` is the
+object without its `signature` member. `signature` is a lowercase
+128-character BIP-340 signature.
+
+Three identifiers in that set are distinct and MUST NOT be conflated:
+
+- `workspace_id` is the workspace's own cold root, and its KEL is not
+  referenced by a signed object.
+- `actor` is the exact secp256k1 x-only public key that produced `signature`.
+  It is an epoch key or a delegated device publishing key, never a cold root
+  and never a Radicle NID.
+- `kel_head` is the accepted KEL head of the persona that authorizes `actor`,
+  not the workspace's. A verifier resolves `actor` against that KEL under
+  [`heterodyne:0.5.0#core-kel-verification`](heterodyne-core.md#core-kel-verification).
+
+`repository_head` is a git object ID and therefore the one 40-character value
+in a signed object; every other digest-shaped member is 64-character SHA-256.
+
+The actor MUST be authoritative at the stated KEL head and MUST possess the
+capability and approval set required by the effective policy at the referenced
+repository head.
 
 The SHA-256 digest of the complete JCS object including `signature` is its
 object identifier unless a field-specific identifier is defined. Consumers
@@ -88,7 +81,8 @@ carriers or availability signals, not Workspace authority.
 ## 3. Workspace identity and governance
 
 A workspace is an independently governed Heterodyne identity. Its
-`workspace_id` is the cold-root public key of a separately accepted Core KEL.
+`workspace_id` is the cold-root public key of a separately accepted KEL under
+[`heterodyne:0.5.0#core-identity-model`](heterodyne-core.md#core-identity-model).
 Multiple workspaces operated by one organization remain distinct identities.
 They MAY publish signed parent, peer, or joint relationships, but no
 relationship changes either identity's KEL authority.
@@ -96,7 +90,7 @@ relationship changes either identity's KEL authority.
 The stable workspace repository contains exactly one current
 `workspace-manifest-v1`, the root `workspace-policy-v1`, and the append-only
 history from which both are derived. Its canonical authority branch follows
-Core repository authority. A public workspace MAY advertise this repository
+[`heterodyne:0.5.0#core-threshold-authority`](heterodyne-core.md#core-threshold-authority). A public workspace MAY advertise this repository
 from its public persona profile. A private workspace has no required public
 projection; an invitation or relationship conveys the KEL verification
 material and private locator needed by the recipient.
@@ -157,11 +151,12 @@ role's active and archived event repositories are private Radicle
 repositories as well.
 
 High-volume Marmot traffic MUST NOT accumulate in the stable authority
-repository. It uses the Comms event-repository layout and rotates to a fresh
-repository when either:
+repository. It uses the [`heterodyne:0.5.0#comms-marmot-event-repository`](heterodyne-comms.md#comms-marmot-event-repository)
+layout and rotates to a fresh repository when either:
 
 - a membership-changing MLS commit establishes a new group epoch; or
-- the active repository reaches the Comms maximum repository size.
+- the active repository reaches the maximum size that
+  [`heterodyne:0.5.0#comms-marmot-event-repository`](heterodyne-comms.md#comms-marmot-event-repository) fixes.
 
 The stable role repository records the new active locator, the immediately
 prior overlap locator, and retained archives. At most one active repository
@@ -231,8 +226,9 @@ is a grant with `activation:"subject-acceptance"`, an unguessable one-time
 nonce commitment, expiry, target persona, disclosed role locator, and history
 mode. Acceptance consumes the nonce exactly once and binds the accepted grant
 to the recipient's device KeyPackage. Invitation material for a private role
-is delivered through an authenticated two-member Marmot DM or an existing
-authorized private repository.
+is delivered through an authenticated two-member conversation under
+[`heterodyne:0.5.0#comms-direct-messages`](heterodyne-comms.md#comms-direct-messages) or an existing authorized private
+repository.
 
 A `role-revocation-v1` may revoke a grant, persona, device, relationship, host,
 or resource. A valid revocation is effective at its declared effective time,
@@ -276,7 +272,8 @@ native resource's signatures or state machine.
 clearnet endpoints, supported feature IDs, custody scope, priority, and
 expiry. `service-advertisement-v1` advertises a higher-level service and its
 native profile. Endpoint strings are data, not authorization; consumers MUST
-apply Core locator validation and MUST NOT fetch a locator before its
+apply the locator validation in
+[`heterodyne:0.5.0#core-identity-pointer`](heterodyne-core.md#core-identity-pointer) and MUST NOT fetch a locator before its
 containing private object is authorized and decrypted.
 
 Organization-default hosts are ordered in workspace policy. Roles inherit
@@ -303,10 +300,12 @@ MLS membership alone does not create a role grant, and a role grant without a
 current admitted device leaf does not disclose MLS application secrets.
 
 A grant belongs to a persona. Each authorized device is a separate MLS leaf
-bound to that persona and its current Core device-registry entry. Devices MUST
+bound to that persona and its current device entry under
+[`heterodyne:0.5.0#core-nid-delegation`](heterodyne-core.md#core-nid-delegation). Devices MUST
 NOT share leaf private keys. Removing a device advances the role MLS epoch;
 removing a persona removes all its leaves and advances the epoch. Implementers
-MUST apply the Comms KeyPackage admission, replenishment, pending-group,
+MUST apply the [`heterodyne:0.5.0#comms-marmot-participation`](heterodyne-comms.md#comms-marmot-participation)
+KeyPackage admission, replenishment, pending-group,
 retention, and resource limits.
 
 Public roles MAY omit the private role control group when they distribute no
@@ -322,13 +321,32 @@ it MUST NOT be used as a universal content key. A resource qualifying through
 multiple roles may deliver the same current resource key independently
 through each role.
 
+A `resource-key-envelope-v1` is one
+[`heterodyne:0.5.0#core-key-envelope`](heterodyne-core.md#core-key-envelope)
+key envelope. Workspace supplies the five instantiation choices:
+
+| Choice | Workspace value |
+|---|---|
+| Recipient set | every device leaf currently eligible through a qualifying role |
+| Reference and wrapping | `marmot-mls-leaf`, under wrapping profile `marmot-mls-application-v1` |
+| Carrier | the role Marmot control group, committed to the active event repository |
+| Generation identifier | `key_epoch`, scoped to `resource_id` |
+| Extra rotation triggers | `none` |
+
+The envelope's `target_device` is the Workspace policy and device-registry
+identifier. Its separate `recipient` member is the exact cryptographic
+`marmot-mls-leaf` that receives the envelope in the authenticated role-group
+epoch.
+
 Key distribution is push-first. After a key change, signed authority state
-records the epoch, each eligible device leaf receives a
-`resource-key-envelope-v1` in the role control group, and the exact Marmot
-carrier event is committed to the active event repository directly or through
-an eligible relay. An envelope binds resource, epoch, persona, device,
-wrapping profile, authority checkpoint, host, nonce, ciphertext, and
-ciphertext digest. A raw unprotected resource key MUST NOT be returned.
+records the epoch, each eligible device leaf receives its envelope in the role
+control group, and the exact Marmot carrier event is committed to the active
+event repository directly or through an eligible relay. Beyond the members
+Core requires, the envelope binds the qualifying role, the authority
+checkpoint, and the host. A raw unprotected resource key MUST NOT be returned.
+Workspace does not re-protect existing objects on rotation: each affected
+resource rotates forward independently and prior ciphertext is left as it
+stands.
 
 For pull recovery, a client sends an authenticated request over a standard
 two-member Marmot DM to a resource host, role host, or inherited workspace
@@ -352,10 +370,11 @@ keys plus historical keys permitted by one history mode:
 - `from-admission`: epochs current at or created after the grant's activation;
 - `selected-snapshots`: only explicitly listed snapshots or key epochs.
 
-Removing a persona or device always advances the role MLS membership epoch.
-Each affected resource rotates independently; unrelated resources do not.
-Revocation prevents future delivery and acceptance but cannot erase plaintext
-or keys already copied by a former member.
+Removing a persona or device always advances the role MLS membership epoch and
+is a Core removal rotation for every resource that device could reach.
+Unrelated resources do not rotate. Revocation prevents future delivery and
+acceptance but cannot erase plaintext or keys already copied by a former
+member.
 
 <a id="workspace-lifecycle"></a>
 ## 12. Resource creation, publication, and retention
@@ -377,11 +396,11 @@ global deletion.
 <a id="workspace-freshness"></a>
 ## 13. Freshness, offline work, and conflicts
 
-Workspace defines two maximum authorization-view ages:
-
-- ordinary code, content, and discussion writes: 86,400 seconds;
-- grants, invitations, policy changes, key issuance, publicization,
-  federation, and governance mutations: 300 seconds.
+Authority mutations - grants, invitations, policy changes, key issuance,
+publicization, federation, and governance - use the authorization-view window
+defined by [`heterodyne:0.5.0#comms-authorization-freshness`](heterodyne-comms.md#comms-authorization-freshness). Workspace adds one
+relaxed window for ordinary code, content, and discussion writes: 86,400
+seconds.
 
 A workspace, role, or resource policy MAY shorten or disable either window
 and MUST NOT lengthen it. The operation must reach a conforming validator
@@ -452,7 +471,10 @@ outcomes where disclosure or retry behavior differs.
 <a id="workspace-security"></a>
 ## 16. Security invariants
 
-The registry binds these exact Workspace invariants:
+The registry binds these exact Workspace invariants. An entry the registry binds to a feature is owed only by an implementation
+claiming that feature, under
+[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope).
+The list below is descriptive:
 
 - **WORKSPACE-I-NO-AMBIENT-AUTHORITY:** Workspace affiliation alone grants no role or resource capability.
 - **WORKSPACE-I-INHERITANCE-NARROWS:** Child roles, resources, grants, and bilateral allowances cannot widen an applicable workspace or parent-role ceiling.
@@ -475,78 +497,54 @@ inheritance escalation, and joint-governance capture as explicit threats.
 <a id="workspace-profiles"></a>
 ## 17. Features and conformance profiles
 
-`workspace-base-v1` requires Core KERI/device/repository conformance and the
-Comms Marmot conversation, Radicle event storage, and Radicle-backed relay
-features. It provides workspace identity, role authorization, private role
-control, Radicle transport backstop, resource-key delivery, bilateral
-allowances, and joint governance.
+Workspace feature IDs are allocated in
+[`registry/features.json`](registry/features.json), which is the sole
+authority for the set and for each feature's Core and Comms prerequisites.
+Claimed features resolve under [`heterodyne:0.5.0#core-conformance`](heterodyne-core.md#core-conformance).
 
-`workspace-control-composition-v1` additionally requires a conformant Control
-implementation. It permits an authorized light device to request Workspace
-operations through Control, but Control tokens and RPC carriage do not replace
-Workspace grants or checkpoints.
+A Workspace claim that also names Control permits an authorized light device
+to request Workspace operations through Control; Control tokens and RPC
+carriage do not replace Workspace grants or checkpoints. A Workspace claim
+that also names Social permits verified affiliation presentation and advisory
+moderation signals; Social follows, labels, or lists do not create Workspace
+authority. Neither composition is required for base Workspace conformance.
 
-`workspace-social-composition-v1` additionally requires a conformant Social
-implementation. It permits verified affiliation presentation and advisory
-moderation signals, but Social follows, labels, or lists do not create
-Workspace authority.
-
-The Workspace strict profile composes the complete Core strict v1 and Comms
-strict v2 invariant membership with all Workspace invariants.
+The Workspace strict profile composes the Comms strict closure, which
+transitively includes Core, and adds the baseline Workspace invariants. The
+invariants bound to `workspace.private-role-control.v1`,
+`workspace.resource-key-delivery.v1`, and
+`workspace.radicle-transport-backstop.v1` are owed under
+[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope) whenever those
+features are claimed, so the profile does not restate them.
 
 <!-- fixture:workspace-strict-profile -->
 ```json
 {
   "profile_id": "heterodyne-workspace-strict-v1",
   "conformance_class": "Workspace",
-  "requires_profiles": ["heterodyne-core-strict-v1", "heterodyne-comms-strict-v2"],
-  "required_invariants": [
-    "CORE-I-IDENTITY-INTEGRITY",
-    "CORE-I-NID-DELEGATION-DUAL-PROOF",
-    "CORE-I-VERIFY-BEFORE-USE",
-    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
-    "CORE-I-KEY-MATERIAL-AT-REST",
-    "COMMS-I-TIER3-BLIND-CARRIER",
-    "COMMS-I-TIER2-HONESTY",
-    "COMMS-I-CONFIG-AT-REST",
-    "COMMS-I-CLIENT-SIDE-DELIVERY",
-    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
-    "COMMS-I-CLAIM-AUTHENTICITY",
-    "COMMS-I-CLAIM-ATTENUATION",
-    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
-    "COMMS-I-CLAIM-REVOCATION",
-    "COMMS-I-LEDGER-CONFINEMENT",
-    "COMMS-I-ISSUER-KEY-CONFINEMENT",
-    "COMMS-I-MINT-FRESHNESS",
-    "COMMS-I-ISSUER-CONTINUITY",
-    "COMMS-I-CLAIM-RELEASE",
-    "COMMS-I-JWT-TYPE-AUDIENCE",
-    "COMMS-I-STATUS-INTEGRITY",
-    "COMMS-I-PUBLIC-READER-TIER1-ONLY",
-    "COMMS-I-AGENT-ROLE-BINDING",
-    "COMMS-I-AGENT-ATTRIBUTION",
-    "COMMS-I-WORKLOAD-TOKEN-CONFINEMENT",
+  "state": "active",
+  "requires_profiles": [
+    "heterodyne-comms-strict-v1"
+  ],
+  "adds_invariants": [
     "WORKSPACE-I-NO-AMBIENT-AUTHORITY",
     "WORKSPACE-I-INHERITANCE-NARROWS",
     "WORKSPACE-I-PRIVATE-TOPOLOGY",
     "WORKSPACE-I-CARRIER-NOT-AUTHORITY",
-    "WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS",
     "WORKSPACE-I-REVOCATION-FUTURE-ONLY",
     "WORKSPACE-I-FRESHNESS-BOUNDED",
-    "WORKSPACE-I-HOST-AUTHORITY-SEPARATION",
-    "WORKSPACE-I-RADICLE-BACKSTOP",
-    "WORKSPACE-I-DEVICE-LEAF-SEPARATION"
+    "WORKSPACE-I-HOST-AUTHORITY-SEPARATION"
   ]
 }
 ```
 
-This exact flattened membership is active and claimable only when every base
-Workspace feature and applicable vector is satisfied.
+The computed closure is active and claimable only when every base Workspace
+feature and applicable vector is satisfied.
 
 <a id="workspace-conformance"></a>
 ## 18. Conformance
 
-A Workspace implementation claims the exact `workspace/0.1.0` release,
+A Workspace implementation claims the exact `heterodyne/0.5.0` release,
 registry revision and digest, dependencies, provided and required feature IDs,
 and applicable profile IDs. Base conformance requires successful processing
 of every Workspace-owned vector. Optional Control or Social composition is

@@ -2,9 +2,10 @@ import { createHash, createHmac } from "node:crypto";
 import { schnorr } from "@noble/curves/secp256k1";
 import { hexToBytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
+import { proofBytes } from "./proof-bytes.js";
 
-const DESCRIPTOR_DOMAIN = "heterodyne.one-time-invite.v1";
-const RESPONSE_DOMAIN = "heterodyne.one-time-invite-response.v1";
+const DESCRIPTOR_DOMAIN = "heterodyne-one-time-invite-v1";
+const RESPONSE_DOMAIN = "heterodyne-one-time-invite-response-v1";
 
 export type InvitePurpose = "dm" | "control-enrollment" | "device-enrollment";
 
@@ -30,13 +31,9 @@ export type InviteEnvelope = {
   secret: string;
 };
 
-function domainInput(domain: string, payload: Uint8Array): Uint8Array {
-  return Buffer.concat([Buffer.from(domain, "utf8"), Buffer.from([0]), payload]);
-}
-
 export function descriptorDigest(descriptor: InviteDescriptor): Uint8Array {
   return createHash("sha256")
-    .update(domainInput(DESCRIPTOR_DOMAIN, Buffer.from(jcsCanonicalize(descriptor), "utf8")))
+    .update(proofBytes(DESCRIPTOR_DOMAIN, { descriptor }))
     .digest();
 }
 
@@ -67,11 +64,8 @@ export function responseProof(
   secretHex: string,
   responseWithoutProof: Record<string, unknown>,
 ): string {
-  const responseDigest = createHash("sha256")
-    .update(jcsCanonicalize(responseWithoutProof), "utf8")
-    .digest();
   return createHmac("sha256", hexToBytes(secretHex))
-    .update(domainInput(RESPONSE_DOMAIN, responseDigest))
+    .update(proofBytes(RESPONSE_DOMAIN, { response: responseWithoutProof }))
     .digest("hex");
 }
 

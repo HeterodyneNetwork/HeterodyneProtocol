@@ -1,13 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-one-time-invites"
+    "heterodyne:comms#comms-one-time-invites"
   ],
   "vector_id": "one-time-invite/descriptor-and-fragment",
   "description": "The signed descriptor and secret form a provider-independent fragment envelope.",
@@ -27,14 +22,14 @@
       "secret_sha256": "9a2db2e23f1504cd056606553ac049c5e718e8f9ce9233876df1a7a1821af885",
       "approval_mode": "interactive"
     },
-    "signature": "e262b954274078de29687b2d8eaa02707a53db4b75ceffd896fcde0d81b9c9f2873f4afe170af7882d8bf04695da56ade8deb2435e217a395bcadc1d85fbb844",
+    "signature": "93e88d2df4db659d305928242ac96ac7b0e704d2fca51278885c1de42c41a4cd58453d8d0a0e346c2490a6665e3744388f9d65843f90f77fe51ba0547e3f4864",
     "secret": "abababababababababababababababababababababababababababababababab"
   },
   "expected_output": {
     "verdict": "accept",
     "normalized": {
-      "descriptor_digest": "eae01141735b098722f09313ba8448d0c2c7b80abf24ec37cc28bad4442c572e",
-      "fragment": "#v1.eyJkZXNjcmlwdG9yIjp7ImFwcHJvdmFsX21vZGUiOiJpbnRlcmFjdGl2ZSIsImV4cGlyZXNfYXQiOjg3NDAwLCJpbnZpdGVfaWQiOiIxMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExIiwiaW52aXRlcl9hY2NvdW50IjoiNzliZTY2N2VmOWRjYmJhYzU1YTA2Mjk1Y2U4NzBiMDcwMjliZmNkYjJkY2UyOGQ5NTlmMjgxNWIxNmY4MTc5OCIsImlzc3VlZF9hdCI6MTAwMCwicHVycG9zZSI6ImRtIiwicmVsYXlfaGludHMiOlsid3NzOi8vcmVsYXkuZXhhbXBsZSJdLCJyZW5kZXp2b3VzX3B1YmtleSI6IjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJzZWNyZXRfc2hhMjU2IjoiOWEyZGIyZTIzZjE1MDRjZDA1NjYwNjU1M2FjMDQ5YzVlNzE4ZThmOWNlOTIzMzg3NmRmMWE3YTE4MjFhZjg4NSIsInZlcnNpb24iOjF9LCJzZWNyZXQiOiJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiIiwic2lnbmF0dXJlIjoiZTI2MmI5NTQyNzQwNzhkZTI5Njg3YjJkOGVhYTAyNzA3YTUzZGI0Yjc1Y2VmZmQ4OTZmY2RlMGQ4MWI5YzlmMjg3M2Y0YWZlMTcwYWY3ODgyZDhiZjA0Njk1ZGE1NmFkZThkZWIyNDM1ZTIxN2EzOTViY2FkYzFkODVmYmI4NDQifQ",
+      "descriptor_digest": "cfe907e39bab3cbb35fc4cdebd518eef60b0ba49df48bf7f79c7563388e2fcf3",
+      "fragment": "#v1.eyJkZXNjcmlwdG9yIjp7ImFwcHJvdmFsX21vZGUiOiJpbnRlcmFjdGl2ZSIsImV4cGlyZXNfYXQiOjg3NDAwLCJpbnZpdGVfaWQiOiIxMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExIiwiaW52aXRlcl9hY2NvdW50IjoiNzliZTY2N2VmOWRjYmJhYzU1YTA2Mjk1Y2U4NzBiMDcwMjliZmNkYjJkY2UyOGQ5NTlmMjgxNWIxNmY4MTc5OCIsImlzc3VlZF9hdCI6MTAwMCwicHVycG9zZSI6ImRtIiwicmVsYXlfaGludHMiOlsid3NzOi8vcmVsYXkuZXhhbXBsZSJdLCJyZW5kZXp2b3VzX3B1YmtleSI6IjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJzZWNyZXRfc2hhMjU2IjoiOWEyZGIyZTIzZjE1MDRjZDA1NjYwNjU1M2FjMDQ5YzVlNzE4ZThmOWNlOTIzMzg3NmRmMWE3YTE4MjFhZjg4NSIsInZlcnNpb24iOjF9LCJzZWNyZXQiOiJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiIiwic2lnbmF0dXJlIjoiOTNlODhkMmRmNGRiNjU5ZDMwNTkyODI0MmFjOTZhYzdiMGU3MDRkMmZjYTUxMjc4ODg1YzFkZTQyYzQxYTRjZDU4NDUzZDhkMGEwZTM0NmMyNDkwYTY2NjVlMzc0NDM4OGY5ZDY1ODQzZjkwZjc3ZmU1MWJhMDU0N2UzZjQ4NjQifQ",
       "origin_is_authority": false
     }
   }

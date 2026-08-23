@@ -1,14 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "social",
-  "owner_version": "social/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0",
-    "comms": "comms/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:social/0.5.0#social-moderation"
+    "heterodyne:social#social-moderation"
   ],
   "vector_id": "moderation/contributor-implicit-rejection-window",
   "description": "A contributor submission remains pending until the seven-day implicit-rejection window elapses.",
@@ -26,9 +20,11 @@
     "normalized": {
       "moderation_state": "implicitly-rejected",
       "outcome": {
-        "class": "moderation-approval-window-expired",
-        "candidate_id": "candidate-fixture",
-        "community_id": "34550:community:fixture",
+        "outcome_class": "moderation-approval-window-expired",
+        "subject": {
+          "candidate_id": "candidate-fixture",
+          "community_id": "34550:community:fixture"
+        },
         "attempted_at": 1767225600,
         "deadline_at": 1767830400,
         "last_attempt_at": 1767826800,

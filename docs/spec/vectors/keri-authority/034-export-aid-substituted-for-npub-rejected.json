@@ -1,11 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-keri-export"
+    "heterodyne:core#core-keri-export"
   ],
   "vector_id": "keri-authority/export-aid-substituted-for-npub-rejected",
   "description": "A consumer that substitutes the derived export AID (or its did:webs DID) for the persona npub where the spec requires the npub is rejected: the export identity confers no identifier status and is never an alternate authoritative identity.",

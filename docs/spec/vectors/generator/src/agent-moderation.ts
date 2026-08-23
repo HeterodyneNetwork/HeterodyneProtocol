@@ -151,7 +151,7 @@ export function validateAgentPolicyList(
     || event.content !== ""
     || !verifyEventSignature(event)
     || countExactTag(event, ["heterodyne", "social-agent-policy-list-v1"]) !== 1
-    || countExactTag(event, ["spec_version", "social/0.5.0"]) !== 1
+    || countExactTag(event, ["spec_version", "heterodyne/0.5.0"]) !== 1
   ) {
     throw new Error("agent-policy-binding-invalid");
   }

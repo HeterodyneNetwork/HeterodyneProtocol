@@ -1,8 +1,17 @@
-import { inceptionTemplate, legacyInceptionTemplate } from "./kel.js";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { QUALIFIED_VERSION } from "./family.js";
+import { inceptionTemplate } from "./kel.js";
 import { getEventId, getPublicKey } from "./nostr.js";
 import { didKeyFromEd25519, ed25519PublicKey, fixtureRid } from "./radicle.js";
+import { loadRegistry } from "./registry.js";
+import { SCHEMA_VERSION } from "./vector-helpers.js";
 
 const TEST_EPOCH = 1767225600;
+export const CURRENT_REGISTRY_SHA256 = loadRegistry(resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../registry",
+)).manifest.entry_set_sha256;
 
 const key = (n: number) => n.toString(16).padStart(64, "0");
 
@@ -102,28 +111,10 @@ export function buildFixtures() {
     bob: kelFor(personas.bob.cold_root.pubkey, personas.bob.epoch_keys.epoch_1.pubkey),
     carol: kelFor(personas.carol.cold_root.pubkey, personas.carol.epoch_keys.epoch_1.pubkey),
   };
-  const legacyKelFor = (coldRootPubkey: string, epochPubkey: string) => {
-    const inceptionEvent = legacyInceptionTemplate(coldRootPubkey, epochPubkey, TEST_EPOCH);
-    const id = getEventId(inceptionEvent);
-    return { inception_event: inceptionEvent, head: { id, seq: 0 } };
-  };
-  // Exact pre-stamp heads are retained only for archived 0.4 signing inputs.
-  // Current production code must use kel above.
-  const legacy_kel = {
-    alice: legacyKelFor(personas.alice.cold_root.pubkey, personas.alice.epoch_keys.epoch_1.pubkey),
-    bob: legacyKelFor(personas.bob.cold_root.pubkey, personas.bob.epoch_keys.epoch_1.pubkey),
-    carol: legacyKelFor(personas.carol.cold_root.pubkey, personas.carol.epoch_keys.epoch_1.pubkey),
-  };
-
   return {
-    vector_schema_version: "1.0.0",
-    document_versions: {
-      core: "0.5.0",
-      comms: "0.5.0",
-      control: "0.5.0",
-      social: "0.5.0",
-    },
-    registry_revision: 1,
+    vector_schema_version: SCHEMA_VERSION,
+    spec_version: QUALIFIED_VERSION,
+    registry_sha256: CURRENT_REGISTRY_SHA256,
     test_epoch: TEST_EPOCH,
     pinned_randomness: {
       schnorr_aux_rand: "00".repeat(32),
@@ -131,25 +122,16 @@ export function buildFixtures() {
     },
     personas,
     kel,
-    legacy_kel,
     ed25519_nids,
     device_publishing_keys,
     radicle_rids,
     audience_keys,
-    // OPTIONAL Matrix-layer fixtures (kept for the Matrix-shaped categories).
-    matrix_rooms: {
-      identity_alice: "!alice-identity:example.org",
-      config_alice: "!alice-config:example.org",
-    },
     category_keysets: {
       identity: "alice",
       keri: "alice",
-      envelope: "alice",
       verification: "alice",
-      discussion: "alice",
       index: "alice",
       relay_interop: "alice",
-      config_room: "alice",
       "nid-binding": "alice",
       "identity-doc": "alice",
       "node-advert": "alice",

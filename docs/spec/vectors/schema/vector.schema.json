@@ -5,9 +5,6 @@
     "vector_id",
     "vector_schema_version",
     "owner_document",
-    "owner_version",
-    "dependency_versions",
-    "registry_revision",
     "spec_refs",
     "description",
     "direction",
@@ -20,8 +17,7 @@
       "minLength": 1
     },
     "vector_schema_version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+      "const": "2.0.0"
     },
     "owner_document": {
       "type": "string",
@@ -33,47 +29,6 @@
         "workspace"
       ]
     },
-    "owner_version": {
-      "type": "string",
-      "enum": [
-        "core/0.5.0",
-        "comms/0.5.0",
-        "control/0.5.0",
-        "social/0.5.0",
-        "workspace/0.1.0"
-      ]
-    },
-    "dependency_versions": {
-      "type": "object",
-      "required": [],
-      "additionalProperties": false,
-      "properties": {
-        "core": {
-          "type": "string",
-          "const": "core/0.5.0"
-        },
-        "comms": {
-          "type": "string",
-          "const": "comms/0.5.0"
-        },
-        "control": {
-          "type": "string",
-          "const": "control/0.5.0"
-        },
-        "social": {
-          "type": "string",
-          "const": "social/0.5.0"
-        },
-        "workspace": {
-          "type": "string",
-          "const": "workspace/0.1.0"
-        }
-      }
-    },
-    "registry_revision": {
-      "type": "integer",
-      "minimum": 1
-    },
     "profile": {
       "type": "string",
       "minLength": 1
@@ -84,7 +39,7 @@
       "maxItems": 1,
       "items": {
         "type": "string",
-        "pattern": "^heterodyne:(?:(?:core|comms|control|social)/0\\.5\\.0|workspace/0\\.1\\.0)#[a-z0-9]+(?:-[a-z0-9]+)*$"
+        "pattern": "^heterodyne:(core|comms|control|social|workspace)#[a-z0-9][a-z0-9-]*$"
       }
     },
     "description": {
@@ -111,127 +66,6 @@
     }
   },
   "allOf": [
-    {
-      "if": {
-        "properties": {
-          "owner_document": {
-            "const": "core"
-          }
-        },
-        "required": [
-          "owner_document"
-        ]
-      },
-      "then": {
-        "properties": {
-          "owner_version": {
-            "const": "core/0.5.0"
-          },
-          "dependency_versions": {
-            "const": {}
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "owner_document": {
-            "const": "comms"
-          }
-        },
-        "required": [
-          "owner_document"
-        ]
-      },
-      "then": {
-        "properties": {
-          "owner_version": {
-            "const": "comms/0.5.0"
-          },
-          "dependency_versions": {
-            "const": {
-              "core": "core/0.5.0"
-            }
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "owner_document": {
-            "const": "social"
-          }
-        },
-        "required": [
-          "owner_document"
-        ]
-      },
-      "then": {
-        "properties": {
-          "owner_version": {
-            "const": "social/0.5.0"
-          },
-          "dependency_versions": {
-            "const": {
-              "core": "core/0.5.0",
-              "comms": "comms/0.5.0"
-            }
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "owner_document": {
-            "const": "control"
-          }
-        },
-        "required": [
-          "owner_document"
-        ]
-      },
-      "then": {
-        "properties": {
-          "owner_version": {
-            "const": "control/0.5.0"
-          },
-          "dependency_versions": {
-            "const": {
-              "core": "core/0.5.0",
-              "comms": "comms/0.5.0"
-            }
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "owner_document": {
-            "const": "workspace"
-          }
-        },
-        "required": [
-          "owner_document"
-        ]
-      },
-      "then": {
-        "properties": {
-          "owner_version": {
-            "const": "workspace/0.1.0"
-          },
-          "dependency_versions": {
-            "const": {
-              "core": "core/0.5.0",
-              "comms": "comms/0.5.0"
-            }
-          }
-        }
-      }
-    },
     {
       "if": {
         "properties": {
@@ -336,9 +170,6 @@
                   "oidc-issuer-mismatch",
                   "oidc-token-type-invalid",
                   "oidc-audience-invalid",
-                  "oidc-status-stale",
-                  "oidc-status-digest-mismatch",
-                  "oidc-status-index-invalid",
                   "oidc-status-invalid",
                   "role-delegation-address-invalid",
                   "role-delegation-key-proof-invalid",
@@ -347,11 +178,6 @@
                   "public-reader-private-content",
                   "agent-workload-registration-invalid",
                   "agent-token-invalid",
-                  "agent-token-expired",
-                  "agent-token-revoked",
-                  "agent-token-stale",
-                  "agent-token-audience-invalid",
-                  "agent-token-scope-invalid",
                   "agent-sender-proof-invalid",
                   "agent-role-mismatch",
                   "agent-attribution-invalid",
@@ -362,13 +188,10 @@
                   "invite-authentication-invalid",
                   "invite-already-reserved",
                   "invite-preauthorization-invalid",
-                  "control-invitation-disabled",
-                  "control-enrollment-capacity",
-                  "control-enrollment-expired",
+                  "control-enrollment-unavailable",
                   "control-enrollment-rate-limited",
                   "control-keypackage-replenishment-paused",
                   "control-device-code-invalid",
-                  "control-device-code-exhausted",
                   "control-device-code-rate-limited",
                   "control-device-code-display-mismatch",
                   "control-authorization-view-stale",
@@ -377,11 +200,6 @@
                   "control-frame-invalid",
                   "control-entitlement-conflict",
                   "control-token-invalid",
-                  "control-token-expired",
-                  "control-token-audience-invalid",
-                  "control-token-sender-invalid",
-                  "control-token-group-invalid",
-                  "control-token-scope-invalid",
                   "control-refresh-prohibited",
                   "control-operation-conflict",
                   "control-operation-indeterminate",
@@ -390,9 +208,7 @@
                   "control-activation-mismatch",
                   "control-recovery-grant-invalid",
                   "control-recovery-completion-mismatch",
-                  "control-sftp-auth-invalid",
-                  "control-sftp-resource-denied",
-                  "control-sftp-expired",
+                  "control-sftp-denied",
                   "control-request-expired",
                   "control-request-id-conflict",
                   "agent-method-prohibited",

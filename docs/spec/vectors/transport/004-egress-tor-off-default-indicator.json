@@ -1,11 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-tor-reachability"
+    "heterodyne:core#core-tor-reachability"
   ],
   "vector_id": "transport/egress-tor-off-default-indicator",
   "description": "Base mode defaults egress-over-Tor off and shows active-state indicator when enabled.",

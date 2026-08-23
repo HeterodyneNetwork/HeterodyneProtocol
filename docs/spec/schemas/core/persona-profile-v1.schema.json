@@ -23,7 +23,7 @@
         "nip05": { "type": "string", "minLength": 3, "maxLength": 320 }
       }
     },
-    "spec_version": { "const": "core/0.5.0" }
+    "spec_version": { "const": "heterodyne/0.5.0" }
   },
   "$defs": {
     "hex_key": { "type": "string", "pattern": "^[0-9a-f]{64}$" }

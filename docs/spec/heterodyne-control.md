@@ -2,38 +2,25 @@
 
 Document ID: `control`
 
-Version: `control/0.5.0`
-
-Status: **0.5.0 draft**
-
-Registry revision: `8`
-
-Normative dependencies:
-
-- `heterodyne:core/0.5.0#core-conformance`
-- `heterodyne:comms/0.5.0#comms-conformance`
-- `heterodyne:comms/0.5.0#comms-marmot`
-
-This document is the complete normative definition of Heterodyne Control
-0.5.0. It is prepared but unreleased pending explicit release approval. Its
-conformance expression is **Core + Comms conformant + Control profile**.
-Recovery capabilities are separately advertised optional profiles and are not
-prerequisites for baseline Control conformance.
+Control is a section of the Heterodyne specification and is governed by
+[`heterodyne:0.5.0#core-document-conventions`](heterodyne-core.md#core-document-conventions), which fixes the family version,
+the registry pin, release status, BCP 14 usage, and the anchor and reference
+forms. Its conformance expression is **Core + Comms conformant + Control
+profile**. Recovery capabilities are separately advertised optional profiles
+and are not prerequisites for baseline Control conformance.
 
 <!-- fixture:control-profile-metadata -->
 ```json
 {
   "document_id": "control",
-  "version": "control/0.5.0",
-  "status": "0.5.0 draft",
+  "spec_version": "heterodyne/0.5.0",
   "conformance_expression": "Core + Comms conformant + Control profile",
   "direct_dependencies": [
-    "heterodyne:core/0.5.0#core-conformance",
-    "heterodyne:comms/0.5.0#comms-conformance",
-    "heterodyne:comms/0.5.0#comms-marmot"
+    "heterodyne:0.5.0#core-conformance",
+    "heterodyne:0.5.0#comms-conformance",
+    "heterodyne:0.5.0#comms-marmot"
   ],
-  "supported_comms_versions": ["comms/0.5.0"],
-  "required_comms_features": ["comms.marmot-conversations.v1"],
+  "required_features": ["comms.marmot-conversations.v1"],
   "transport_owner": "marmot",
   "wire_stamp_owner": null
 }
@@ -68,12 +55,14 @@ required for baseline Control.
 <a id="control-comms-contract"></a>
 ## 2. Exact Core, Comms, and Marmot contract
 
-The supported Comms-version set is exactly `{comms/0.5.0}`. Control requires
-the standard Marmot group and transport rules at
-`heterodyne:comms/0.5.0#comms-marmot`, the Core full-node metadata at
-`heterodyne:core/0.5.0#core-full-node-control`, and Comms authorization and
-OIDC rules at `heterodyne:comms/0.5.0#comms-control-registry` and
-`heterodyne:comms/0.5.0#comms-control-token`.
+Control requires the standard Marmot group and transport rules at
+[`heterodyne:0.5.0#comms-marmot`](heterodyne-comms.md#comms-marmot), the Core full-node metadata at
+[`heterodyne:0.5.0#core-full-node-control`](heterodyne-core.md#core-full-node-control), and Comms authorization and
+freshness rules at [`heterodyne:0.5.0#comms-control-registry`](heterodyne-comms.md#comms-control-registry) and
+[`heterodyne:0.5.0#comms-authorization-freshness`](heterodyne-comms.md#comms-authorization-freshness).
+The standards-facing OAuth enrollment feature additionally composes the
+third-party OIDC/JWT projection at
+[`heterodyne:0.5.0#comms-oidc-endpoints`](heterodyne-comms.md#comms-oidc-endpoints).
 
 Marmot owns KeyPackages, Welcome processing, MLS membership and epochs,
 sender authentication, application encryption, `kind:445` transport,
@@ -86,7 +75,8 @@ are valid under the pinned Marmot profile.
 Registry profile `heterodyne-control-marmot-frame-v1` allocates inner
 application `kind:31017`. It is an unsigned Nostr-shaped application event
 inside MLS and MUST NOT be published or interpreted as a standalone Nostr
-event. Its content is the canonical compact JSON defined in §5.
+event. Its content is the [`heterodyne:0.5.0#core-canonical-json`](heterodyne-core.md#core-canonical-json) object
+defined in §5.
 
 <a id="control-authority"></a>
 ## 3. Authority and discovery
@@ -120,7 +110,7 @@ node and may advertise:
 - outbound-Tor, onion-only, and reduced-assurance clearnet reachability;
 - optional `control.recovery.radicle.v1`,
   `control.recovery.epoch-inbox.v1`, and `control.recovery.sftp.v1`; and
-- an epoch-inbox relay set only for recovery bootstrap under §10.2.
+- an epoch-inbox relay set only for recovery bootstrap under §10.1.
 
 A full node reuses its authorized device Nostr account as its Marmot Control
 account. Every pairwise Control group has an independent MLS leaf. Account
@@ -191,7 +181,7 @@ or direct node address is required.
 ### 4.1 Purpose-bound Control and device invites
 
 Control consumes the provider-independent format at
-`heterodyne:comms/0.5.0#comms-one-time-invites`. A
+[`heterodyne:0.5.0#comms-one-time-invites`](heterodyne-comms.md#comms-one-time-invites). A
 `control-enrollment` redemption creates a standard pairwise Control group and
 bypasses only unsolicited-invitation admission by default. Explicit approval
 and a durable private entitlement remain required.
@@ -231,7 +221,7 @@ version, profile, frame_type, request_id, operation_id,
 expires_at, access_token, payload
 ```
 
-`version` is exactly `control/0.5.0`. `profile` is exactly `human-jsonrpc` or
+`version` is exactly `heterodyne/0.5.0`. `profile` is exactly `human-jsonrpc` or
 `agent-mcp`. `frame_type` is one of `initialize`, `request`, `response`,
 `notification`, or `close`. A request has a non-empty `request_id` and an
 application expiry. A mutation also has a stable non-empty `operation_id`.
@@ -302,10 +292,8 @@ persona's encrypted private Radicle Control registry. The signed record binds:
 - predecessor/lineage, creation, optional expiry, and active/revoked state;
 - signing algorithm, signer, signature, and record digest.
 
-The approving node may use the entitlement only after durably committing and
-validating its own record. Another full node accepts it only after fetching
-and validating the record and approving authority. The repository is
-replicated evidence, not a lock or consensus protocol.
+Entitlement records replicate as evidence under
+[`heterodyne:0.5.0#comms-control-registry`](heterodyne-comms.md#comms-control-registry).
 
 Records are append-only. A valid grant reduction takes effect immediately at
 an observing node. A valid revocation is absorbing and wins over every active
@@ -319,32 +307,79 @@ client.
 <a id="control-token"></a>
 ## 7. Node-scoped Marmot-bound access tokens
 
-Each full node has its own issuer signing key and exact Control resource
-audience. Issuer keys and tokens MUST NOT be copied to another node. Current
-public issuer state needed for verification and audit is authenticated in the
-private Control registry.
+This section is `control.node-scoped-token.v1` and is the sole definition of
+the node-local Control `at+jwt` contract. It requires no HTTPS discovery,
+published JWKS, continuity manifest, or distributed status list when the
+issuing node is the only resource that consumes the token.
+
+Each full node is an independent RFC 9068 issuer with its own node-local
+issuer signing key and exact Control resource audience. Issuer keys and tokens
+MUST NOT be copied to another node. Authenticated public issuer state in the
+private Control registry binds the issuer URL, current JWKs, node device key,
+exact resource audience, validity interval, and predecessor.
 
 After validating the current entitlement and group, the node issues an RFC
-9068 JWT access token with `typ: at+jwt` and the required `iss`, `sub`, `aud`,
-`exp`, `iat`, `jti`, `client_id`, and `scope` claims. It additionally binds:
+9068 JWT access token whose protected `typ` is exactly `at+jwt` and whose
+signature and required `iss`, `sub`, `aud`, `exp`, `iat`, `jti`, `client_id`,
+and `scope` claims validate. The token is an exact projection of the current
+record conforming to
+`docs/spec/schemas/control/control-client-authorization-v1.schema.json`:
+
+- `sub` and `client_id` are both the record's exact `client_key`;
+- `authorization_id` is `record_id`, and `client_class` is copied exactly;
+- `scope` is the single-ASCII-space-joined, lexicographically sorted, unique
+  set containing `control` and every current `capabilities` member;
+- requested `methods`, `objects`, and `limits` are normalized subsets of the
+  corresponding record members and MUST NOT add authority; and
+- `agent_role` is copied exactly for an automated client and is absent for a
+  human-light client.
+
+It additionally binds:
 
 - an audience naming only the issuing node's Control resource;
 - `cnf.jkt`, the RFC 7638 thumbprint of the client's full secp256k1 JWK;
 - the exact Marmot Control group identifier;
-- the authorization-record identifier and client class;
-- method, object, agent role, and finite-limit scope; and
+- the exact client identifier, entitlement/authorization-record identifier,
+  and client class;
+- exact methods, objects, finite limits, and an optional agent role; and
 - the current private-registry generation or checkpoint.
 
 The Nostr x-only public key maps to the unique even-Y secp256k1 point defined
 by BIP-340. Its uncompressed `x` and `y` form the RFC 8812 JWK used for the
-thumbprint.
+thumbprint. The issuer constructs that full JWK from the authorization
+record's exact `client_key`, computes its RFC 7638 SHA-256 thumbprint, and
+places the canonical unpadded base64url value in `cnf.jkt`. A caller-supplied
+thumbprint cannot override this derivation. Minting and use MUST reject an
+invalid x-coordinate, a noncanonical thumbprint encoding, or any mismatch
+among the current `client_key`, derived thumbprint, `cnf.jkt`, and
+authenticated Marmot sender.
+
+Every issuance contains `issuance_nonce`, 32 freshly generated random bytes
+encoded as 64 lowercase hexadecimal characters. An issuer MUST NOT reuse an
+issuance nonce. Let `C` be the complete JSON token claim set, including every
+identity and authority claim and `issuance_nonce`, but excluding `jti`.
+The token identifier is exactly:
+
+```text
+lowerhex(SHA-256(UTF-8("heterodyne-control-token-jti-v1") || 0x00 || UTF-8(JCS(C))))
+```
+
+`JCS` is RFC 8785 canonicalization. A consumer MUST recompute this identifier
+from the received claims and reject a mismatch. Consequently, same-second
+tokens with different grants or fresh issuance nonces have distinct token
+identifiers.
 
 Marmot Control does not synthesize DPoP HTTP values. For every privileged
 frame the receiver verifies that the application event and sender leaf are
 valid, the authenticated sender account's JWK thumbprint equals `cnf.jkt`,
-the frame arrived in the token-bound group, and the issuer, node audience,
-signature, times, token ID, client, scope, entitlement, and limits remain
-valid. A separately exposed HTTPS API MAY use ordinary RFC 9449 DPoP with
+the frame arrived in the token-bound group, and the token type, signature,
+issuer, exact node audience, times, token ID, client, scope, entitlement, and
+limits remain valid against the exact current authorization record. The
+private-registry checkpoint is taken from the authenticated current registry
+view, not from the authorization record. Another full node MUST reject the
+token and issue its own only after independently validating the same
+persona-wide entitlement. A
+separately exposed HTTPS API MAY use ordinary RFC 9449 DPoP with
 registered `ES256K`; that API is not baseline Control.
 
 The effective token lifetime is:
@@ -353,22 +388,23 @@ The effective token lifetime is:
 min(requested lifetime, entitlement maximum, node-policy maximum, 60 minutes)
 ```
 
-The default is five minutes. A lifetime above five minutes requires the
-separately consented `control.token.extended` capability. Sixty minutes is an
-absolute maximum. The issuer MUST NOT issue a refresh token. An entitled
+The default is five minutes. A lifetime above five minutes requires
+`control.token.extended` in the current authorization record's
+`capabilities`; an input flag cannot substitute for it. Minting rejects the
+absence of that capability, and every use rejects a token above five minutes
+if the current record no longer contains it. Sixty minutes is an absolute maximum.
+The issuer MUST NOT issue a refresh token. An entitled
 client obtains a new node-local token over its established group, including
 after failover. A token is checked when a request is accepted; expiry does not
 interrupt an already accepted side effect, but every later request or MCP tool
 call requires a current token.
 
-Nodes check current entitlement on every request rather than requiring a
-distributed Token Status List. Token minting and every privileged request
-require an authenticated, non-conflicted private authorization view no more
-than 300 seconds old. A mutation additionally performs an immediate
-synchronization attempt before authorization and fails closed unless it can
-establish that fresh canonical view. Minting a new token MUST NOT extend stale
-authority. Once a node observes revocation, it rejects all associated tokens
-and terminates the affected group locally.
+Nodes revalidate the current entitlement on every request rather than
+requiring a distributed Token Status List. A projected token never replaces
+private-registry authority. Minting and every privileged request are bound by
+[`heterodyne:0.5.0#comms-authorization-freshness`](heterodyne-comms.md#comms-authorization-freshness). Once a node observes
+revocation, it rejects all associated tokens regardless of remaining `exp` and
+terminates the affected group locally.
 
 <a id="control-request-processing"></a>
 ## 8. Request processing and execution
@@ -417,10 +453,13 @@ expansion methods require their specified fresh local confirmation.
 ### 8.2 Automated principals and MCP
 
 An AI or programmatic principal uses profile `agent-mcp` and the MCP
-2025-11-25 data layer. It uses the same node-scoped Control access token as
-its OIDC workload token; no nested second token exists. Its entitlement and
-token identify the automated client class, exact `agent:<role-id>`, tools,
-methods, kinds, objects, media, rate, size, burst, and expiry.
+2025-11-25 data layer. It uses the node-scoped Control access token defined in
+§7. If its identity originated in the optional third-party OIDC workload
+projection, the node maps the current issuer, subject, client, and role tuple
+to the entitlement during enrollment; that projected token neither authorizes
+Control frames nor replaces the §7 token. The entitlement and Control token
+identify the automated client class, exact `agent:<role-id>`, tools, methods,
+kinds, objects, media, rate, size, burst, and expiry.
 
 MCP `initialize`, `notifications/initialized`, `tools/list`, `tools/call`,
 `notifications/cancelled`, result, and error objects MUST validate against
@@ -517,8 +556,10 @@ Every privileged decision records the Control version/profile, client class,
 node and group, request/operation IDs, canonical payload digest, entitlement
 record/checkpoint, token `jti` but not token bytes, method/object authorization,
 finite-limit result, commit evidence, result, and applicable agent role and
-attribution. Audit persistence precedes final response publication. Audit
-material is encrypted at rest and cannot itself replay an operation.
+attribution. A refusal additionally records the exact internal condition behind
+the coarse reason code returned to the requester; that record is the only place
+the distinction exists. Audit persistence precedes final response publication.
+Audit material is encrypted at rest and cannot itself replay an operation.
 
 <a id="control-recovery"></a>
 ## 10. Optional recovery profiles
@@ -610,13 +651,16 @@ port may remain stable and is not a security boundary.
 <a id="control-security"></a>
 ## 11. Security invariants and failure behavior
 
-The registry assigns these Control invariants:
+The registry assigns these Control invariants. An entry the registry binds to a feature is owed only by an implementation
+claiming that feature, under
+[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope).
+The list below is descriptive:
 
 - **CONTROL-I-AUDIT-AT-REST:** authorization and side-effect audit is encrypted and contains no replayable token or transcript.
 - **CONTROL-I-CLIENT-KEY-CONFINEMENT:** a light client receives no persona, device, epoch, NID, repository, MLS-leaf, or agent-role private key.
 - **CONTROL-I-MARMOT-SENDER-BINDING:** every privileged token is bound to the authenticated Marmot account and exact group.
 - **CONTROL-I-ENTITLEMENT-FRESHNESS:** every privileged request uses current, non-conflicted private entitlement state and absorbing revocation.
-- **CONTROL-I-NODE-AUDIENCE:** a node-issued Control token is accepted only by its exact issuing-node audience.
+- **CONTROL-I-NODE-AUDIENCE:** a node-issued Control token is accepted only when its protected typ is exactly at+jwt, signature and issuer validate, time bounds hold, and audience is the exact issuing-node resource.
 - **CONTROL-I-OPERATION-AT-MOST-ONCE:** mutation reservation precedes effects and cross-node retry is limited to provably safe cases.
 - **CONTROL-I-AGENT-NO-KEY-RELEASE:** an automated principal never receives or directly exercises a persona, epoch, NID, human-device, or agent-role private key.
 - **CONTROL-I-AGENT-INTENT-ONLY:** an automated principal publishes only through the intent-level agent method, and raw signing, human-profile fallback, and attribution bypass fail closed.
@@ -631,7 +675,15 @@ conflicted entitlement, scope or limit mismatch, request/operation conflict,
 indeterminate mutation, locked epoch inbox, registration or activation
 mismatch, unauthorized repository access, SFTP identity/resource/time
 mismatch, and incomplete recovery proof. Errors MUST NOT reveal whether an
-unauthorized private object, entitlement, or recovery resource exists.
+unauthorized private object, entitlement, or recovery resource exists. The
+registered vocabulary enforces that under
+[`heterodyne:0.5.0#core-reason-codes`](heterodyne-core.md#core-reason-codes) rather than leaving it
+to implementer discretion: `control-token-invalid` covers every unusable
+Control token, `control-enrollment-unavailable` covers every refused
+enrollment, and `control-sftp-denied` covers every refused overflow transfer.
+A responder MUST NOT reconstruct the finer distinction through a status code,
+timing difference, message string, or retry hint. It records the specific
+condition in the [§9.3](#control-audit) encrypted audit and nowhere else.
 
 <a id="control-strict-profile"></a>
 ### 11.1 Strict profiles
@@ -643,31 +695,9 @@ unauthorized private object, entitlement, or recovery resource exists.
   "conformance_class": "Core+Comms+Control profile",
   "state": "active",
   "requires_profiles": [
-    "heterodyne-core-strict-v1",
     "heterodyne-comms-strict-v1"
   ],
-  "required_invariants": [
-    "CORE-I-IDENTITY-INTEGRITY",
-    "CORE-I-NID-DELEGATION-DUAL-PROOF",
-    "CORE-I-VERIFY-BEFORE-USE",
-    "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
-    "CORE-I-KEY-MATERIAL-AT-REST",
-    "COMMS-I-TIER3-BLIND-CARRIER",
-    "COMMS-I-TIER2-HONESTY",
-    "COMMS-I-CONFIG-AT-REST",
-    "COMMS-I-CLIENT-SIDE-DELIVERY",
-    "COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY",
-    "COMMS-I-CLAIM-AUTHENTICITY",
-    "COMMS-I-CLAIM-ATTENUATION",
-    "COMMS-I-CLAIM-REPOSITORY-AUTHORITY",
-    "COMMS-I-CLAIM-REVOCATION",
-    "COMMS-I-LEDGER-CONFINEMENT",
-    "COMMS-I-ISSUER-KEY-CONFINEMENT",
-    "COMMS-I-MINT-FRESHNESS",
-    "COMMS-I-ISSUER-CONTINUITY",
-    "COMMS-I-CLAIM-RELEASE",
-    "COMMS-I-JWT-TYPE-AUDIENCE",
-    "COMMS-I-STATUS-INTEGRITY",
+  "adds_invariants": [
     "CONTROL-I-AUDIT-AT-REST",
     "CONTROL-I-CLIENT-KEY-CONFINEMENT",
     "CONTROL-I-MARMOT-SENDER-BINDING",
@@ -678,9 +708,11 @@ unauthorized private object, entitlement, or recovery resource exists.
 }
 ```
 
-Optional recovery conformance adds only the recovery invariants applicable to
-the advertised profile. A baseline-only implementation is not penalized for
-omitting them.
+The agent, node-mediated-Marmot, and recovery invariants are bound to their
+features and are owed under
+[`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope) whenever those
+features are claimed, so the profile does not restate them. A baseline-only
+implementation is not penalized for omitting them.
 
 <a id="control-conformance"></a>
 ## 12. Conformance
@@ -694,7 +726,8 @@ Core and Comms conformant and passes every applicable Control vector for:
 - frame canonicalization, human JSON-RPC, MCP, grants, limits, and agents;
 - operation reservation, duplicate handling, failover, retention, and audit;
 - revocation, group loss, and state freshness; and
-- every security invariant required by its conformance class.
+- every security invariant its claim scopes in under
+  [`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope).
 
 Optional recovery claims additionally require every vector for the exact
 advertised recovery feature. Claiming baseline Control does not imply portable

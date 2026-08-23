@@ -1,11 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "core",
-  "owner_version": "core/0.5.0",
-  "dependency_versions": {},
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:core/0.5.0#core-kel-verification"
+    "heterodyne:core#core-kel-verification"
   ],
   "vector_id": "keri-authority/withdrawal-causally-behind-no-withdraw",
   "description": "Convergence-gated withdrawal: a provisional KEL event at seq 2 is not withdrawn when the reachable repo-carried head is only at seq 1. A reachable but causally behind replica leaves provisional status unchanged (absence is not convergence).",

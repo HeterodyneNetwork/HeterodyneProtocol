@@ -1,13 +1,8 @@
 {
-  "vector_schema_version": "1.0.0",
+  "vector_schema_version": "2.0.0",
   "owner_document": "comms",
-  "owner_version": "comms/0.5.0",
-  "dependency_versions": {
-    "core": "core/0.5.0"
-  },
-  "registry_revision": 8,
   "spec_refs": [
-    "heterodyne:comms/0.5.0#comms-agent-attribution"
+    "heterodyne:comms#comms-agent-attribution"
   ],
   "vector_id": "agent-authorship/cross-persona-unlinkable",
   "description": "Distinct persona pairwise secrets prevent one workload from receiving a correlatable subject across personas.",
