@@ -8,6 +8,7 @@ import {
   computeRegistryDigest,
   loadRegistry,
   resolveStampingProfile,
+  type ObjectEntry,
   type Registry,
   type RegistryEntrySet,
   validateRegistry,
@@ -198,6 +199,9 @@ describe("revisioned protocol registry", () => {
       ["nostr-event"],
       ["nostr-event"],
     ]);
+
+    const assuranceCarrier: ObjectEntry["carriers"][number] = "nostr-event";
+    expect(assuranceCarrier).toBe("nostr-event");
 
     const assuranceProofs = registry.proof_domains
       .filter(({ owner }) => owner === "assurance")

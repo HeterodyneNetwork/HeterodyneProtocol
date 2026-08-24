@@ -19,7 +19,7 @@ const input = (overrides: Partial<StampInput>): StampInput => ({
 
 describe("registry-driven owner stamping", () => {
   it.each([
-    ["kind:31001 base", input({}), "core"],
+    ["kind:31001 base", input({}), "assurance"],
     [
       "registered Social NIP-51 profile",
       input({ kind: 10000, profile_id: "heterodyne-social-mute-list-v1" }),
@@ -51,7 +51,7 @@ describe("registry-driven owner stamping", () => {
     ],
     ["unknown kind", input({ kind: 65535 }), null],
     ["unknown profile on allocated kind", input({ profile_id: "unknown-profile" }), null],
-    ["empty or non-JSON allocated kind uses owner tag", input({ content_is_heterodyne_json: false }), "core"],
+    ["empty or non-JSON allocated kind uses owner tag", input({ content_is_heterodyne_json: false }), "assurance"],
   ])("classifies %s", (_name, stampInput, expected) => {
     expect(stampOwner(stampInput as StampInput, registry)).toBe(expected);
   });
