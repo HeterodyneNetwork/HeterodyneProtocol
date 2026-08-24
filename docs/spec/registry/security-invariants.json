@@ -5,14 +5,14 @@
       "owner": "core",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The cold-root npub and accepted KEL are authoritative for persona identity; downstream caches and delegated identifiers cannot override them."
+      "description": "The active persona key and its valid NIP-01 signature are authoritative for baseline persona authorship; hints, repositories, caches, and optional Assurance cannot override them."
     },
     {
       "id": "CORE-I-NID-DELEGATION-DUAL-PROOF",
       "owner": "core",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A Radicle NID delegation is active only after both the persona epoch-key BIP-340 signature and the delegated NID Ed25519 proof verify over the same binding."
+      "description": "A writer NID enters a repository union only after owner authorization and the NID's Ed25519 proof verify over the same exact binding."
     },
     {
       "id": "CORE-I-VERIFY-BEFORE-USE",
@@ -34,6 +34,69 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "Persona nsec, NID secrets, and sensitive cached identity material are protected by the Core keys-repository profile, including NIP-49 wrapping where applicable."
+    },
+    {
+      "id": "ASSURANCE-I-CORE-OPTIONALITY",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Absent, invalid, stale, or withdrawn Assurance cannot invalidate a Core-valid active-key persona or alter NIP-01 or Marmot identity semantics."
+    },
+    {
+      "id": "ASSURANCE-I-RECIPROCAL-ENROLLMENT",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "assurance.continuity.v1",
+      "description": "Assurance attaches only when a cold-root inception and active-key acceptance bind the same exact active key, inception event, and cold-root signature."
+    },
+    {
+      "id": "ASSURANCE-I-PIN-DOWNGRADE",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "assurance.continuity.v1",
+      "description": "A pinned Assurance state survives disappearing or conflicting hints and can be downgraded only by the active key plus current recovery authority."
+    },
+    {
+      "id": "ASSURANCE-I-SUCCESSION-NON-ALIASING",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "assurance.continuity.v1",
+      "description": "A verified successor proves continuity but remains a distinct Nostr author and Marmot account whose authority does not silently inherit."
+    },
+    {
+      "id": "ASSURANCE-I-COMPROMISE-CUTOFF",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "assurance.continuity.v1",
+      "description": "A compromise succession rejects Assurance authority at or after its effective cutoff and carries no subordinate continuation."
+    },
+    {
+      "id": "ASSURANCE-I-NO-IMPLICIT-CONTINUATION",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "assurance.continuity.v1",
+      "description": "Succession transfers no subordinate key, repository, group, delegate, financial, or application authority unless the record explicitly reauthorizes it."
+    },
+    {
+      "id": "ASSURANCE-I-ASSOCIATED-KEY-BOUNDS",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "assurance.associated-keys.v1",
+      "description": "Associated keys are accepted only for their exact head, role, scope, issuer, subject, time bounds, proof requirements, and non-revoked state."
+    },
+    {
+      "id": "ASSURANCE-I-EXPORT-LOSSLESS",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "assurance.keri-export.v1",
+      "description": "KERI export either preserves every security-relevant accepted Assurance semantic or fails without emitting a misleading partial identity."
     },
     {
       "id": "COMMS-I-TIER3-BLIND-CARRIER",
@@ -293,14 +356,6 @@
       "first_version": "heterodyne/0.5.0",
       "feature": "comms.agent-authorship.v1",
       "description": "Workload tokens, token identifiers, private source claims, and sender proofs remain confined to the protected authorization and audit boundary."
-    },
-    {
-      "id": "CORE-I-MARMOT-ROLE-ATTRIBUTION",
-      "owner": "core",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "feature": "core.marmot-role-attribution.v1",
-      "description": "KERI role evidence attributes Marmot accounts and Radicle hosts without selecting MLS state or altering Marmot convergence."
     },
     {
       "id": "COMMS-I-MARMOT-UPSTREAM-AUTHORITY",

@@ -21,73 +21,233 @@
       ]
     },
     {
+      "code": "assurance-schema-invalid",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "An Assurance event content object or required addressable-event binding is not in its exact registered closed profile.",
+      "spec_refs": [
+        "heterodyne:0.5.0#assurance-record-envelope"
+      ]
+    },
+    {
+      "code": "assurance-reciprocal-proof-invalid",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Cold-root inception and active-key acceptance do not reciprocally bind the same exact active key, inception event, and cold-root signature.",
+      "spec_refs": [
+        "heterodyne:0.5.0#assurance-reciprocal-enrollment"
+      ]
+    },
+    {
+      "code": "assurance-predecessor-mismatch",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "An Assurance record predecessor does not equal the event ID required by the accepted chain or associated-key state.",
+      "spec_refs": [
+        "heterodyne:0.5.0#assurance-chain-validation"
+      ]
+    },
+    {
+      "code": "assurance-head-mismatch",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "An Assurance acceptance, succession, or associated-key record binds a head other than the verifier's accepted head.",
+      "spec_refs": [
+        "heterodyne:0.5.0#assurance-chain-validation"
+      ]
+    },
+    {
+      "code": "assurance-authority-invalid",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "The current Assurance policy does not authorize the presented succession, recovery, epoch, or downgrade proof.",
+      "spec_refs": [
+        "heterodyne:0.5.0#assurance-succession"
+      ]
+    },
+    {
+      "code": "assurance-witness-threshold-unsatisfied",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Distinct valid witness receipts do not reach the threshold fixed by the predecessor Assurance state.",
+      "spec_refs": [
+        "heterodyne:0.5.0#assurance-keri-policy"
+      ]
+    },
+    {
+      "code": "assurance-duplicity",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Competing individually authorized successors of one accepted Assurance head cannot be uniquely selected.",
+      "spec_refs": [
+        "heterodyne:0.5.0#assurance-chain-validation"
+      ]
+    },
+    {
+      "code": "assurance-new-key-acceptance-invalid",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "The proposed successor key did not prove acceptance of the exact authorized succession claim.",
+      "spec_refs": [
+        "heterodyne:0.5.0#assurance-succession"
+      ]
+    },
+    {
+      "code": "assurance-compromise-cutoff",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Assurance authority is requested for material at or after the accepted compromise cutoff.",
+      "spec_refs": [
+        "heterodyne:0.5.0#assurance-compromise"
+      ]
+    },
+    {
+      "code": "assurance-subordinate-continuation-forbidden",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "A compromise succession carries a subordinate reauthorization or a consumer attempts an implicit subordinate continuation.",
+      "spec_refs": [
+        "heterodyne:0.5.0#assurance-compromise"
+      ]
+    },
+    {
+      "code": "assurance-associated-key-subject-proof-required",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "A public agent association omits the subject key's required proof of possession and consent.",
+      "spec_refs": [
+        "heterodyne:0.5.0#assurance-associated-keys"
+      ]
+    },
+    {
+      "code": "assurance-associated-key-subject-proof-invalid",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "An associated-key subject proof does not verify over the exact registered Assurance binding.",
+      "spec_refs": [
+        "heterodyne:0.5.0#assurance-associated-keys"
+      ]
+    },
+    {
+      "code": "assurance-associated-key-expired",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Verifier time is at or after an associated key's optional exclusive expiry bound.",
+      "spec_refs": [
+        "heterodyne:0.5.0#assurance-associated-keys"
+      ]
+    },
+    {
+      "code": "assurance-associated-key-revoked",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "The selected head-bound associated-key state is revoked and grants no authority.",
+      "spec_refs": [
+        "heterodyne:0.5.0#assurance-associated-keys"
+      ]
+    },
+    {
+      "code": "assurance-downgrade-consent-required",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "A pinned Assurance downgrade lacks either active-key NIP-01 consent or current recovery-authority proof.",
+      "spec_refs": [
+        "heterodyne:0.5.0#assurance-downgrade-resistance"
+      ]
+    },
+    {
+      "code": "assurance-pin-conflict",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Presented Assurance hints or state conflict with a locally retained valid pin and cannot advance or downgrade it.",
+      "spec_refs": [
+        "heterodyne:0.5.0#assurance-pinning"
+      ]
+    },
+    {
       "code": "successor_persona_mismatch",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A rotation breadcrumb names a successor outside the accepted rotation.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-kel-rotation"
+        "heterodyne:0.5.0#assurance-retired-wire-profiles"
       ]
     },
     {
       "code": "retiring_key_nip05_invalid",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A retiring profile carries a NIP-05 identifier already repointed to the successor.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-kel-rotation"
+        "heterodyne:0.5.0#assurance-retired-wire-profiles"
       ]
     },
     {
       "code": "compromise_rotation_breadcrumb_forbidden",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A compromise-driven rotation attempts to produce a v1 breadcrumb.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-kel-rotation"
+        "heterodyne:0.5.0#assurance-retired-wire-profiles"
       ]
     },
     {
       "code": "delegation_mismatch",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "The presented publishing key, subject, role, or delegation identifier does not match the active Core delegation.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-nid-delegation"
+        "heterodyne:0.5.0#assurance-retired-wire-profiles"
       ]
     },
     {
       "code": "revoked_key_post_revoked_at",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "An event signed by a revoked epoch key was created after revoked_at.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.5.0#assurance-retired-wire-profiles"
       ]
     },
     {
       "code": "expired_delegation",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "The verifier clock is after the delegation valid_until bound.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.5.0#assurance-retired-wire-profiles"
       ]
     },
     {
       "code": "informal_vouch_not_counted",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A KERI threshold is satisfied only if advisory vouches are counted.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.5.0#assurance-keri-policy"
       ]
     },
     {
@@ -172,12 +332,12 @@
     },
     {
       "code": "nid_binding_missing_signature",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A kind:31001 NID delegation lacked the epoch-key Schnorr sig or the NID Ed25519 nid_proof.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.5.0#assurance-retired-wire-profiles"
       ]
     },
     {
@@ -202,12 +362,12 @@
     },
     {
       "code": "kel_revoked_nid",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A NID revoked by the KEL was used as a delegate despite the identity document still listing it.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.5.0#assurance-retired-wire-profiles"
       ]
     },
     {
@@ -292,132 +452,132 @@
     },
     {
       "code": "kel_head_missing",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "An epoch-key-signed Heterodyne event required to carry kel_head does not carry exactly one well-formed instance (absent, duplicate, or malformed).",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.5.0#assurance-retired-wire-profiles"
       ]
     },
     {
       "code": "kel_head_mismatch",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "The kel_head tag's decimal seq does not equal the s value of the KEL event it names once that event is resolved on the accepted KEL.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.5.0#assurance-retired-wire-profiles"
       ]
     },
     {
       "code": "kel_head_forbidden",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A kel_head tag appears on an event class whose Core applicability rules forbid it (kind:31002/31003 KEL events, Marmot outer or inner events, or non-stamping rotation breadcrumbs).",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.5.0#assurance-retired-wire-profiles"
       ]
     },
     {
       "code": "equivocation_flagged",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A structurally valid kel_head names an event that is not on the persona's accepted KEL; the verifier flags equivocation and surfaces it through the \u00a713 security-warning interface.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.5.0#assurance-retired-wire-profiles"
       ]
     },
     {
       "code": "signing_key_compromised_at_created_at",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "The signing epoch key is retroactively non-authoritative at the event's created_at: an accepted compromise-declaring rotation covers created_at under effective_compromise_since - 300 seconds.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.5.0#assurance-retired-wire-profiles"
       ]
     },
     {
       "code": "provisional_not_final",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "Acceptance rests on relay-only key-material state (kind:31002/31003/31001); under deny-until-repo policy the event does not take effect until repo-carried, and provisional-accept results MUST NOT be reported as final.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.5.0#assurance-retired-wire-profiles"
       ]
     },
     {
       "code": "withdrawn_on_reconcile",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A prior provisional or \u00a74.5.1-accelerator acceptance is withdrawn after convergence-gated repo reconciliation, a KEL update, or later full verification contradicts it.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.5.0#assurance-retired-wire-profiles"
       ]
     },
     {
       "code": "repo_head_regression",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A repo presented a key-material head regressing below a previously finalized canonical head without an authenticated re-anchor.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.5.0#assurance-retired-wire-profiles"
       ]
     },
     {
       "code": "export_unmappable_feature",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "did:webs export failed: security-relevant KEL state uses a construct with no semantics-preserving canonical-KERI mapping (UNMAPPABLE_FEATURE).",
+      "description": "KERI export failed because accepted Assurance state uses a construct with no semantics-preserving canonical-KERI mapping (UNMAPPABLE_FEATURE).",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.5.0#assurance-keri-export"
       ]
     },
     {
       "code": "export_unsupported_crypto_suite",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "did:webs export failed: a mapping exists but the target crypto suite is unavailable locally (UNSUPPORTED_CRYPTO_SUITE).",
+      "description": "KERI export failed because a mapping exists but the target cryptographic suite is unavailable locally (UNSUPPORTED_CRYPTO_SUITE).",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.5.0#assurance-keri-export"
       ]
     },
     {
       "code": "export_incomplete",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "did:webs export failed: required source KEL events or attachments are unavailable (INCOMPLETE_EXPORT).",
+      "description": "KERI export failed because required accepted Assurance events or attachments are unavailable (INCOMPLETE_EXPORT).",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.5.0#assurance-keri-export"
       ]
     },
     {
       "code": "keri_wire_format_rejected",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A KEL event or stream was presented in KERI10JSON/CESR on the Heterodyne wire or as storage; NIP-01 with nip01_raw is the only wire and storage format.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.5.0#assurance-keri-export"
       ]
     },
     {
       "code": "export_aid_substituted_for_npub",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "A derived export AID or its did:webs DID was substituted for the persona npub where the spec requires the npub; the export identity is never an alternate authoritative identity.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-conformance"
+        "heterodyne:0.5.0#assurance-keri-export"
       ]
     },
     {
@@ -1383,12 +1543,12 @@
     },
     {
       "code": "revoked_key_post_compromise",
-      "owner": "core",
+      "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "Retired-key content falls at or after the accepted compromise_since cutoff.",
       "spec_refs": [
-        "heterodyne:0.5.0#core-retired-key-observation"
+        "heterodyne:0.5.0#assurance-retired-wire-profiles"
       ]
     },
     {

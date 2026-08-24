@@ -2,7 +2,7 @@
   "proof_domains": [
     {
       "id": "heterodyne-nid-binding-v1",
-      "owner": "core",
+      "owner": "assurance",
       "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
@@ -13,7 +13,61 @@
         "bip340",
         "ed25519"
       ],
-      "description": "Dual-proof binding of a Radicle NID to a persona cold root on kind:31001."
+      "description": "Historical dual-proof binding of a Radicle NID to a persona cold root on pre-redesign kind:31001."
+    },
+    {
+      "id": "heterodyne-assurance-succession-v1",
+      "owner": "assurance",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "active_key",
+        "class",
+        "created_at",
+        "new_active_key",
+        "predecessor",
+        "previous_head"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "Authority, new-key acceptance, and witness proof over one exact Assurance succession claim."
+    },
+    {
+      "id": "heterodyne-assurance-associated-key-subject-v1",
+      "owner": "assurance",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "active_key",
+        "assurance_head",
+        "created_at",
+        "issuer",
+        "role",
+        "scope",
+        "subject_key"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "Public associated-key subject proof over the exact persona, head, role, scope, issuer, and subject binding."
+    },
+    {
+      "id": "heterodyne-assurance-downgrade-v1",
+      "owner": "assurance",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "active_key",
+        "assurance_head",
+        "created_at",
+        "inception_event_id",
+        "predecessor"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "Current recovery-authority consent over an active-key-authored Assurance downgrade."
     },
     {
       "id": "heterodyne-node-advert-v1",
@@ -34,7 +88,7 @@
     },
     {
       "id": "heterodyne-agent-signing-binding-v1",
-      "owner": "comms",
+      "owner": "assurance",
       "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
@@ -47,7 +101,7 @@
         "bip340",
         "ed25519"
       ],
-      "description": "Dual proof binding a node-held agent role key to a persona and hosting NID."
+      "description": "Historical dual proof binding a node-held agent role key to a cold-root persona and hosting NID."
     },
     {
       "id": "heterodyne-claim-pop-v1",

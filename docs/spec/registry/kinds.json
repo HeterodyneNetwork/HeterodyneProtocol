@@ -446,22 +446,31 @@
     {
       "kind": 31000,
       "allocation_authority": "heterodyne",
-      "base_schema_owner": "core",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "profiles": []
-    },
-    {
-      "kind": 31001,
-      "allocation_authority": "heterodyne",
-      "base_schema_owner": "core",
+      "base_schema_owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "profiles": [
         {
-          "profile_id": "heterodyne-comms-agent-signing-delegation-v1",
-          "owner": "comms",
-          "discriminator": "tag:d=agent:<role-id>;tags:key_proof,radicle_nid,nid_proof",
+          "profile_id": "heterodyne-assurance-active-key-acceptance-v1",
+          "owner": "assurance",
+          "discriminator": "content.profile=heterodyne.assurance.active-key-acceptance.v1",
+          "stamping": false,
+          "first_version": "heterodyne/0.5.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "kind": 31001,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-assurance-associated-key-v1",
+          "owner": "assurance",
+          "discriminator": "content.profile=heterodyne.assurance.associated-key.v1",
           "stamping": false,
           "first_version": "heterodyne/0.5.0",
           "status": "draft"
@@ -471,18 +480,36 @@
     {
       "kind": 31002,
       "allocation_authority": "heterodyne",
-      "base_schema_owner": "core",
+      "base_schema_owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "profiles": []
+      "profiles": [
+        {
+          "profile_id": "heterodyne-assurance-enrollment-inception-v1",
+          "owner": "assurance",
+          "discriminator": "content.profile=heterodyne.assurance.enrollment-inception.v1",
+          "stamping": false,
+          "first_version": "heterodyne/0.5.0",
+          "status": "draft"
+        }
+      ]
     },
     {
       "kind": 31003,
       "allocation_authority": "heterodyne",
-      "base_schema_owner": "core",
+      "base_schema_owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "profiles": []
+      "profiles": [
+        {
+          "profile_id": "heterodyne-assurance-succession-v1",
+          "owner": "assurance",
+          "discriminator": "content.profile=heterodyne.assurance.succession.v1",
+          "stamping": false,
+          "first_version": "heterodyne/0.5.0",
+          "status": "draft"
+        }
+      ]
     },
     {
       "kind": 31004,
@@ -506,16 +533,7 @@
       "base_schema_owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "profiles": [
-        {
-          "profile_id": "heterodyne-social-org-feed-v1",
-          "owner": "social",
-          "discriminator": "content.profile=heterodyne.social.org-feed.v1",
-          "stamping": true,
-          "first_version": "heterodyne/0.5.0",
-          "status": "draft"
-        }
-      ]
+      "profiles": []
     },
     {
       "kind": 31008,

@@ -1,3 +1,7 @@
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { Ajv, type AnySchema } from "ajv";
 import { describe, expect, it } from "vitest";
 import {
   CREDENTIAL_CONTINUITY_SCHEMA_FILES,
@@ -12,6 +16,203 @@ import {
   validateOneTimeInviteSchemaOrThrow,
   validateVectorOrThrow,
 } from "./schema.js";
+
+const assuranceSchemasRoot = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../schemas/assurance",
+);
+
+function validateAssuranceSchema(name: string, value: unknown): string | null {
+  const schema = JSON.parse(
+    readFileSync(resolve(assuranceSchemasRoot, name), "utf8"),
+  ) as AnySchema;
+  const validate = new Ajv({ allErrors: true, strict: false }).compile(schema);
+  return validate(value) ? null : JSON.stringify(validate.errors);
+}
+
+const h = (byte: string) => byte.repeat(64);
+const sig = (byte: string) => byte.repeat(128);
+
+const assuranceInception = {
+  profile: "heterodyne.assurance.enrollment-inception.v1",
+  spec_version: "heterodyne/0.5.0",
+  active_key: h("1"),
+  created_at: 1_785_000_000,
+  predecessor: null,
+  cold_root: h("2"),
+  succession_authority: h("3"),
+  epoch_policy: {
+    mode: "pre-rotation",
+    current_keys: [h("4")],
+    next_key_commitments: [h("5")],
+  },
+  witnesses: [{ key: h("6"), weight: 1 }],
+  thresholds: { epoch: 1, witness: 1 },
+};
+
+const assuranceAcceptance = {
+  profile: "heterodyne.assurance.active-key-acceptance.v1",
+  spec_version: "heterodyne/0.5.0",
+  active_key: assuranceInception.active_key,
+  created_at: assuranceInception.created_at + 1,
+  predecessor: h("7"),
+  inception_event_id: h("7"),
+  cold_root: assuranceInception.cold_root,
+  cold_root_signature: sig("8"),
+  assurance_head: h("7"),
+  state: "assured",
+};
+
+const assuranceSuccession = {
+  profile: "heterodyne.assurance.succession.v1",
+  spec_version: "heterodyne/0.5.0",
+  active_key: assuranceInception.active_key,
+  created_at: assuranceInception.created_at + 2,
+  predecessor: h("7"),
+  previous_active_key: assuranceInception.active_key,
+  previous_head: h("7"),
+  new_active_key: h("9"),
+  authorizing_evidence: {
+    authority_class: "succession",
+    authority_proofs: [{
+      authority_key: assuranceInception.succession_authority,
+      signature: sig("a"),
+    }],
+    witness_receipts: [{ witness_key: h("6"), signature: sig("b") }],
+  },
+  new_key_acceptance: { key: h("9"), signature: sig("c") },
+  class: "routine",
+  next_epoch_policy: {
+    mode: "pre-rotation",
+    current_keys: [h("9")],
+    next_key_commitments: [h("a")],
+  },
+  witnesses: [{ key: h("6"), weight: 1 }],
+  thresholds: { epoch: 1, witness: 1 },
+  subordinate_reauthorizations: [{
+    role: "agent",
+    subject_key: h("d"),
+    scope: ["nostr:kind:1"],
+    expires_at: assuranceInception.created_at + 3_600,
+  }],
+};
+
+const assuranceAssociatedKey = {
+  profile: "heterodyne.assurance.associated-key.v1",
+  spec_version: "heterodyne/0.5.0",
+  active_key: assuranceInception.active_key,
+  created_at: assuranceInception.created_at + 3,
+  predecessor: h("e"),
+  assurance_head: h("7"),
+  role: "agent",
+  scope: ["nostr:kind:1"],
+  issuer: assuranceInception.active_key,
+  subject_key: h("f"),
+  expires_at: assuranceInception.created_at + 3_600,
+  visibility: "public",
+  subject_proof: sig("0"),
+  state: "active",
+};
+
+describe("Assurance record schemas", () => {
+  const fixtures = [
+    ["enrollment-inception-v1.schema.json", assuranceInception],
+    ["active-key-acceptance-v1.schema.json", assuranceAcceptance],
+    ["succession-v1.schema.json", assuranceSuccession],
+    ["associated-key-v1.schema.json", assuranceAssociatedKey],
+  ] as const;
+
+  it.each(fixtures)("accepts the exact closed %s record", (name, value) => {
+    expect(validateAssuranceSchema(name, value)).toBeNull();
+    expect(validateAssuranceSchema(name, { ...value, unbound_authority: true }))
+      .toMatch(/additionalProperties/);
+  });
+
+  it("requires reciprocal enrollment and recovery-authority downgrade consent", () => {
+    expect(validateAssuranceSchema(
+      "enrollment-inception-v1.schema.json",
+      { ...assuranceInception, predecessor: h("7") },
+    )).toMatch(/predecessor|type/);
+    const { cold_root_signature: _signature, ...withoutColdRootSignature } = assuranceAcceptance;
+    expect(validateAssuranceSchema(
+      "active-key-acceptance-v1.schema.json",
+      withoutColdRootSignature,
+    )).toMatch(/cold_root_signature|required/);
+    expect(validateAssuranceSchema(
+      "active-key-acceptance-v1.schema.json",
+      { ...assuranceAcceptance, state: "downgraded" },
+    )).toMatch(/downgrade_consent|required/);
+    expect(validateAssuranceSchema(
+      "active-key-acceptance-v1.schema.json",
+      {
+        ...assuranceAcceptance,
+        state: "downgraded",
+        downgrade_consent: {
+          recovery_authority: assuranceInception.cold_root,
+          signature: sig("1"),
+        },
+      },
+    )).toBeNull();
+  });
+
+  it("binds succession to the prior head and closes compromise continuations", () => {
+    const { previous_head: _head, ...withoutHead } = assuranceSuccession;
+    expect(validateAssuranceSchema("succession-v1.schema.json", withoutHead))
+      .toMatch(/previous_head|required/);
+    expect(validateAssuranceSchema("succession-v1.schema.json", {
+      ...assuranceSuccession,
+      class: "routine",
+      compromise_time: assuranceSuccession.created_at - 60,
+    })).toMatch(/compromise_time|not/);
+    expect(validateAssuranceSchema("succession-v1.schema.json", {
+      ...assuranceSuccession,
+      class: "compromise",
+      subordinate_reauthorizations: [],
+    })).toMatch(/compromise_time|required/);
+    expect(validateAssuranceSchema("succession-v1.schema.json", {
+      ...assuranceSuccession,
+      class: "compromise",
+      compromise_time: assuranceSuccession.created_at - 60,
+    })).toMatch(/subordinate_reauthorizations|maxItems/);
+    expect(validateAssuranceSchema("succession-v1.schema.json", {
+      ...assuranceSuccession,
+      class: "compromise",
+      compromise_time: assuranceSuccession.created_at - 60,
+      subordinate_reauthorizations: [],
+    })).toBeNull();
+  });
+
+  it("requires public-agent proof and models expiry and absorbing revocation", () => {
+    const { subject_proof: _proof, ...withoutSubjectProof } = assuranceAssociatedKey;
+    expect(validateAssuranceSchema("associated-key-v1.schema.json", withoutSubjectProof))
+      .toMatch(/subject_proof|required/);
+    expect(validateAssuranceSchema("associated-key-v1.schema.json", {
+      ...withoutSubjectProof,
+      visibility: "private",
+    })).toBeNull();
+    expect(validateAssuranceSchema("associated-key-v1.schema.json", {
+      ...assuranceAssociatedKey,
+      state: "revoked",
+    })).toMatch(/revocation|required/);
+    expect(validateAssuranceSchema("associated-key-v1.schema.json", {
+      ...assuranceAssociatedKey,
+      state: "revoked",
+      revocation: {
+        revoked_at: assuranceAssociatedKey.created_at + 1,
+        reason: "compromise",
+      },
+    })).toBeNull();
+    expect(validateAssuranceSchema("associated-key-v1.schema.json", {
+      ...assuranceAssociatedKey,
+      state: "revoked",
+      revocation: {
+        revoked_at: assuranceAssociatedKey.created_at + 1,
+        reason: "compromise",
+        continue_authority: true,
+      },
+    })).toMatch(/additionalProperties/);
+  });
+});
 
 describe("claim profile revision schema documentation", () => {
   it("names the frozen profile revision without registry-revision or duplicated terminology", () => {

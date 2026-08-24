@@ -81,6 +81,10 @@ describe("revisioned protocol registry", () => {
       ]),
     );
     expect(registry.objects.map((entry) => entry.id)).toEqual([
+      "enrollment-inception-v1",
+      "active-key-acceptance-v1",
+      "succession-v1",
+      "associated-key-v1",
       "workspace-manifest-v1",
       "workspace-policy-v1",
       "role-manifest-v1",
@@ -101,7 +105,7 @@ describe("revisioned protocol registry", () => {
     expect(
       registry.kinds.find((entry) => entry.kind === 31001)
         ?.base_schema_owner,
-    ).toBe("core");
+    ).toBe("assurance");
     expect(
       registry.kinds.find((entry) => entry.kind === 31007)
         ?.base_schema_owner,
@@ -140,6 +144,101 @@ describe("revisioned protocol registry", () => {
     expect(registry.kinds.find((entry) => entry.kind === 30078)).toBeUndefined();
   });
 
+  it("allocates the optional Assurance records without reviving retired discovery kinds", () => {
+    const allocations = [
+      [31002, "heterodyne-assurance-enrollment-inception-v1"],
+      [31000, "heterodyne-assurance-active-key-acceptance-v1"],
+      [31003, "heterodyne-assurance-succession-v1"],
+      [31001, "heterodyne-assurance-associated-key-v1"],
+    ] as const;
+
+    for (const [kindNumber, profileId] of allocations) {
+      const kind = registry.kinds.find((entry) => entry.kind === kindNumber);
+      expect(kind).toMatchObject({
+        allocation_authority: "heterodyne",
+        base_schema_owner: "assurance",
+        status: "draft",
+        first_version: "heterodyne/0.5.0",
+      });
+      expect(kind?.profiles).toContainEqual(expect.objectContaining({
+        profile_id: profileId,
+        owner: "assurance",
+        stamping: false,
+      }));
+    }
+
+    for (const retiredKind of [31005, 31007]) {
+      expect(registry.kinds.find((entry) => entry.kind === retiredKind)).toMatchObject({
+        allocation_authority: "heterodyne",
+        profiles: [],
+      });
+    }
+  });
+
+  it("registers Assurance-owned features, objects, proofs, reasons, and invariants", () => {
+    const assuranceFeatures = registry.features
+      .filter(({ owner }) => owner === "assurance")
+      .map(({ id }) => id);
+    expect(assuranceFeatures).toEqual([
+      "assurance.continuity.v1",
+      "assurance.associated-keys.v1",
+      "assurance.keri-export.v1",
+    ]);
+
+    const assuranceObjects = registry.objects.filter(({ owner }) => owner === "assurance");
+    expect(assuranceObjects.map(({ id }) => id)).toEqual([
+      "enrollment-inception-v1",
+      "active-key-acceptance-v1",
+      "succession-v1",
+      "associated-key-v1",
+    ]);
+    expect(assuranceObjects.map(({ carriers }) => carriers)).toEqual([
+      ["nostr-event"],
+      ["nostr-event"],
+      ["nostr-event"],
+      ["nostr-event"],
+    ]);
+
+    const assuranceProofs = registry.proof_domains
+      .filter(({ owner }) => owner === "assurance")
+      .map(({ id }) => id);
+    expect(assuranceProofs).toEqual(expect.arrayContaining([
+      "heterodyne-assurance-succession-v1",
+      "heterodyne-assurance-associated-key-subject-v1",
+      "heterodyne-assurance-downgrade-v1",
+    ]));
+
+    const assuranceReasons = registry.reason_codes
+      .filter(({ owner }) => owner === "assurance")
+      .map(({ code }) => code);
+    expect(assuranceReasons).toEqual(expect.arrayContaining([
+      "assurance-reciprocal-proof-invalid",
+      "assurance-predecessor-mismatch",
+      "assurance-head-mismatch",
+      "assurance-compromise-cutoff",
+      "assurance-subordinate-continuation-forbidden",
+      "assurance-associated-key-subject-proof-required",
+      "assurance-associated-key-expired",
+      "assurance-associated-key-revoked",
+      "assurance-downgrade-consent-required",
+      "assurance-pin-conflict",
+    ]));
+
+    const assuranceInvariants = registry.security_invariants
+      .filter(({ owner }) => owner === "assurance");
+    expect(assuranceInvariants.length).toBeGreaterThan(0);
+    expect(assuranceInvariants.every(({ id }) => id.startsWith("ASSURANCE-I-")))
+      .toBe(true);
+    expect(assuranceInvariants.map(({ id }) => id)).toEqual(expect.arrayContaining([
+      "ASSURANCE-I-RECIPROCAL-ENROLLMENT",
+      "ASSURANCE-I-PIN-DOWNGRADE",
+      "ASSURANCE-I-SUCCESSION-NON-ALIASING",
+      "ASSURANCE-I-COMPROMISE-CUTOFF",
+      "ASSURANCE-I-NO-IMPLICIT-CONTINUATION",
+      "ASSURANCE-I-ASSOCIATED-KEY-BOUNDS",
+    ]));
+  });
+
   it("registers upstream Marmot transport kinds without Heterodyne stamping", () => {
     for (const kind of [444, 445, 30443]) {
       expect(registry.kinds.find((entry) => entry.kind === kind)).toMatchObject({
@@ -149,9 +248,8 @@ describe("revisioned protocol registry", () => {
     }
   });
 
-  it("allocates the agent delegation, attribution, receipt, and policy-list profiles", () => {
+  it("allocates the agent attribution, receipt, and policy-list profiles", () => {
     const expected = [
-      [31001, "heterodyne-comms-agent-signing-delegation-v1", "comms", false],
       [1, "heterodyne-comms-agent-attribution-kind-1-v1", "comms", false],
       [6, "heterodyne-comms-agent-attribution-kind-6-v1", "comms", false],
       [7, "heterodyne-comms-agent-attribution-kind-7-v1", "comms", false],
@@ -300,19 +398,23 @@ describe("revisioned protocol registry", () => {
     ]));
   });
 
-  it("allocates independent-checker reasons at revision 13", () => {
-    expect(registry.manifest.revision).toBe(13);
+  it("keeps baseline and historical reason ownership at revision 14", () => {
+    expect(registry.manifest.revision).toBe(14);
     const reasons = new Map(
       registry.reason_codes.map((entry) => [entry.code, entry]),
     );
+    expect(reasons.get("nip01_raw_mismatch")).toMatchObject({
+      owner: "core",
+      status: "draft",
+      first_version: "heterodyne/0.5.0",
+    });
     for (const code of [
-      "nip01_raw_mismatch",
       "successor_persona_mismatch",
       "retiring_key_nip05_invalid",
       "compromise_rotation_breadcrumb_forbidden",
     ]) {
       expect(reasons.get(code)).toMatchObject({
-        owner: "core",
+        owner: "assurance",
         status: "draft",
         first_version: "heterodyne/0.5.0",
       });
