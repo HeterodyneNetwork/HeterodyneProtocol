@@ -80,7 +80,20 @@ export async function packageSnapshot(
   sourceCommit: string,
 ): Promise<SnapshotManifest> {
   const rawSchema = JSON.parse(await readFile(join(rawRoot, "schema/vector.schema.json"), "utf8"));
-  const packagedSchema = buildSnapshotVectorSchema(rawSchema);
+  const rawVectors = await Promise.all((await listRawVectorFiles(rawRoot)).map(
+    async (relativePath) => ({
+      relativePath,
+      raw: JSON.parse(
+        await readFile(join(rawRoot, ...relativePath.split("/")), "utf8"),
+      ) as unknown,
+    }),
+  ));
+  const includesAssurance = rawVectors.some(({ raw }) =>
+    typeof raw === "object"
+      && raw !== null
+      && (raw as Record<string, unknown>).owner_document === "assurance"
+  );
+  const packagedSchema = buildSnapshotVectorSchema(rawSchema, includesAssurance);
   const validatePackagedVector = snapshotVectorValidator(packagedSchema);
   const rawFixtures = JSON.parse(await readFile(join(rawRoot, "fixtures.json"), "utf8"));
   const destinationVectorRoot = join(snapshotRoot, SNAPSHOT_VECTOR_ROOT);
@@ -108,8 +121,7 @@ export async function packageSnapshot(
     "utf8",
   );
 
-  for (const relativePath of await listRawVectorFiles(rawRoot)) {
-    const raw = JSON.parse(await readFile(join(rawRoot, ...relativePath.split("/")), "utf8")) as unknown;
+  for (const { relativePath, raw } of rawVectors) {
     let packaged: SnapshotVector;
     try {
       validateRawVector(raw, rawSchema);

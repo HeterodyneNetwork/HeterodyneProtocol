@@ -143,6 +143,73 @@ describe("author mode", () => {
       .toEqual({ const: "source-only-reason" });
   });
 
+  it("keeps five-owner snapshot projections when no Assurance vector is present", async () => {
+    const rawRoot = await mkdtemp(join(tmpdir(), "heterodyne-raw-package-"));
+    const snapshotRoot = await mkdtemp(join(tmpdir(), "heterodyne-snapshot-package-"));
+    tempDirs.push(rawRoot, snapshotRoot);
+    const schema = rawVectorSchema();
+    (schema.properties as Record<string, unknown>).owner_document = {
+      type: "string",
+      enum: ["core", "assurance", "comms", "control", "social", "workspace"],
+    };
+    await writeRawPackageInput(rawRoot, schema, rawVector());
+
+    const manifest = await packageSnapshot(rawRoot, snapshotRoot, "1".repeat(40));
+    const vectorRoot = join(snapshotRoot, "docs/spec/vectors");
+    const packagedSchema = JSON.parse(await readFile(
+      join(vectorRoot, "schema/vector.schema.json"),
+      "utf8",
+    ));
+
+    expect(packagedSchema.properties.owner_document).toEqual({
+      type: "string",
+      enum: ["core", "comms", "control", "social", "workspace"],
+    });
+    expect(packagedSchema.properties.spec_refs.items.pattern)
+      .toBe("^heterodyne:(core|comms|control|social|workspace)#[a-z0-9][a-z0-9-]*$");
+    expect((await readdir(join(vectorRoot, "coverage"))).sort()).toEqual([
+      "comms.md",
+      "control.md",
+      "core.md",
+      "family.md",
+      "manifest.json",
+      "social.md",
+      "workspace.md",
+    ]);
+    expect(manifest.artifacts.map(({ path }) => path))
+      .not.toContain("docs/spec/vectors/coverage/assurance.md");
+  });
+
+  it("emits Assurance snapshot projections when an Assurance vector is present", async () => {
+    const rawRoot = await mkdtemp(join(tmpdir(), "heterodyne-raw-package-"));
+    const snapshotRoot = await mkdtemp(join(tmpdir(), "heterodyne-snapshot-package-"));
+    tempDirs.push(rawRoot, snapshotRoot);
+    const schema = rawVectorSchema();
+    (schema.properties as Record<string, unknown>).owner_document = {
+      type: "string",
+      enum: ["core", "assurance", "comms", "control", "social", "workspace"],
+    };
+    await writeRawPackageInput(rawRoot, schema, {
+      ...rawVector(),
+      owner_document: "assurance",
+      spec_refs: ["heterodyne:0.5.0#assurance-continuity"],
+    });
+
+    const manifest = await packageSnapshot(rawRoot, snapshotRoot, "1".repeat(40));
+    const vectorRoot = join(snapshotRoot, "docs/spec/vectors");
+    const packagedSchema = JSON.parse(await readFile(
+      join(vectorRoot, "schema/vector.schema.json"),
+      "utf8",
+    ));
+
+    expect(packagedSchema.properties.owner_document.enum).toContain("assurance");
+    expect(packagedSchema.properties.spec_refs.items.pattern).toContain("assurance");
+    expect(await readFile(join(vectorRoot, "coverage/assurance.md"), "utf8"))
+      .toContain("identity/example");
+    expect(manifest.artifacts.map(({ path }) => path))
+      .toContain("docs/spec/vectors/coverage/assurance.md");
+  });
+
   it("repackages and compares a snapshot without history orchestration", async () => {
     const rawRoot = await mkdtemp(join(tmpdir(), "heterodyne-raw-package-"));
     const snapshotRoot = await mkdtemp(join(tmpdir(), "heterodyne-snapshot-package-"));

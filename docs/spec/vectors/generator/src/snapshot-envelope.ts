@@ -49,7 +49,10 @@ export function snapshotVectorValidator(sourceSchema: AnySchema): (packaged: unk
   };
 }
 
-export function buildSnapshotVectorSchema(sourceSchema: unknown): AnySchema {
+export function buildSnapshotVectorSchema(
+  sourceSchema: unknown,
+  includesAssurance = true,
+): AnySchema {
   if (!isRecord(sourceSchema) || !isRecord(sourceSchema.properties)) {
     throw new Error("raw-vector-schema-invalid: schema must define properties");
   }
@@ -60,12 +63,21 @@ export function buildSnapshotVectorSchema(sourceSchema: unknown): AnySchema {
   const properties = schema.properties;
   delete properties.spec_version;
   properties.vector_schema_version = { const: SNAPSHOT_SCHEMA_VERSION };
+  if (!includesAssurance && isRecord(properties.owner_document)) {
+    const ownerDocument = properties.owner_document;
+    if (Array.isArray(ownerDocument.enum)) {
+      ownerDocument.enum = ownerDocument.enum.filter((owner) => owner !== "assurance");
+    }
+  }
   const sourceRefs = isRecord(properties.spec_refs) ? properties.spec_refs : {};
+  const referenceOwners = includesAssurance
+    ? "core|assurance|comms|control|social|workspace"
+    : "core|comms|control|social|workspace";
   properties.spec_refs = {
     ...sourceRefs,
     items: {
       type: "string",
-      pattern: "^heterodyne:(core|assurance|comms|control|social|workspace)#[a-z0-9][a-z0-9-]*$",
+      pattern: `^heterodyne:(${referenceOwners})#[a-z0-9][a-z0-9-]*$`,
     },
   };
   if (Array.isArray(schema.required)) {

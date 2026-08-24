@@ -38,6 +38,7 @@ const SUPPORT_PATHS = [
   "coverage/workspace.md",
   "coverage/family.md",
 ] as const;
+const OPTIONAL_ASSURANCE_COVERAGE_PATH = "coverage/assurance.md";
 const EXCLUDED_TOP_LEVEL_DIRECTORIES = new Set(["coverage", "generator", "schema"]);
 const EXCLUDED_TOP_LEVEL_FILES = new Set([
   "fixtures.json",
@@ -135,9 +136,13 @@ export function buildSnapshotManifest(
     }
   }
 
+  const supportPaths: string[] = [...SUPPORT_PATHS];
+  if (repositoryPathExists(repositoryRoot, `${VECTOR_ROOT}/${OPTIONAL_ASSURANCE_COVERAGE_PATH}`)) {
+    supportPaths.push(OPTIONAL_ASSURANCE_COVERAGE_PATH);
+  }
   const paths = [
     ...vectorPaths,
-    ...SUPPORT_PATHS.map((path) => `${VECTOR_ROOT}/${path}`),
+    ...supportPaths.map((path) => `${VECTOR_ROOT}/${path}`),
   ].sort(compareStrings);
   const artifacts = paths.map((path) => ({
     path,
@@ -150,6 +155,21 @@ export function buildSnapshotManifest(
     vector_count: vectorPaths.length,
     artifacts,
   };
+}
+
+function repositoryPathExists(repositoryRoot: string, path: string): boolean {
+  try {
+    lstatSync(resolve(repositoryRoot, path));
+    return true;
+  } catch (error) {
+    if (
+      error !== null
+      && typeof error === "object"
+      && "code" in error
+      && error.code === "ENOENT"
+    ) return false;
+    throw error;
+  }
 }
 
 export function serializeSnapshotManifest(manifest: SnapshotManifest): string {
