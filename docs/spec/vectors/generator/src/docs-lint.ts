@@ -71,13 +71,13 @@ const QUALIFIED_REFERENCE = new RegExp(
 // qualified URI: [`heterodyne:<ver>#<anchor>`](<file>#<anchor>).
 const LINKED_QUALIFIED_REFERENCE = new RegExp(
   "\\[`heterodyne:[^`]+#([a-z0-9-]+)`\\]"
-    + "\\((?:heterodyne-(core|comms|control|social|workspace)\\.md)?#([a-z0-9-]+)\\)",
+    + "\\((?:heterodyne-(core|assurance|comms|control|social|workspace)\\.md)?#([a-z0-9-]+)\\)",
   "g",
 );
 // Within a document [12.2](#anchor) is fine; across one, the version has to
 // travel with the reference.
 const CROSS_DOCUMENT_LINK =
-  /\]\((?:\.\/)?heterodyne-(?:core|comms|control|social|workspace)\.md#[^)]+\)/;
+  /\]\((?:\.\/)?heterodyne-(?:core|assurance|comms|control|social|workspace)\.md#[^)]+\)/;
 const LOCAL_ANCHOR_LINK = /\]\(#([a-z0-9-]+)\)/g;
 const NONCANONICAL_DECISION_REFERENCE = /\bADR-\d{3}\b|docs\/adr\//;
 const NUMBERED_HEADING = /^#{2,6}\s+(\d+(?:\.\d+)*)\.?\s/;
@@ -85,7 +85,7 @@ const SECTION_REFERENCE = /§(\d+(?:\.\d+)*)/g;
 const PROOF_DOMAIN = /\bdomain\s+`(heterodyne-[a-z0-9-]*-v[1-9][0-9]*)`/gi;
 const PROOF_DOMAIN_FENCED = /`?<?(heterodyne-[a-z0-9-]*-v[1-9][0-9]*) proof bytes>?`?/g;
 const FEATURE_ID =
-  /`((?:core|comms|control|social|workspace)\.[a-z0-9-]+(?:\.[a-z0-9-]+)*\.v\d+)`/g;
+  /`((?:core|assurance|comms|control|social|workspace)\.[a-z0-9-]+(?:\.[a-z0-9-]+)*\.v\d+)`/g;
 const BCP14_KEYWORD =
   /\b(?:MUST(?: NOT)?|REQUIRED|SHALL(?: NOT)?|SHOULD(?: NOT)?|RECOMMENDED|NOT RECOMMENDED|MAY|OPTIONAL)\b/;
 const EXPLICIT_NORMATIVE =
@@ -96,7 +96,7 @@ const WRAPPED_DEPENDENCY_DECLARATION = /^\s*Normative dependencies\s*:\s*$/i;
 const RETIRED_MAINTAINED_GUIDE_PATTERNS = [
   /owner_version/,
   /dependency_versions/,
-  /heterodyne:(?:core|comms|control|social|workspace)\//,
+  /heterodyne:(?:core|assurance|comms|control|social|workspace)\//,
   /run release-manifests/,
   /JSON member remains named\s+`registry_revision`/,
   /five documents are independently versioned/i,
@@ -484,7 +484,7 @@ function canonicalJson(value: unknown): string {
 function parseInvariantRows(text: string): Map<string, string> {
   return new Map(
     [...text.matchAll(
-      /^- \*\*((?:CORE|COMMS|CONTROL|SOCIAL|WORKSPACE)-I-[A-Z0-9]+(?:-[A-Z0-9]+)*):\*\* ([^\r\n]+)$/gm,
+      /^- \*\*((?:CORE|ASSURANCE|COMMS|CONTROL|SOCIAL|WORKSPACE)-I-[A-Z0-9]+(?:-[A-Z0-9]+)*):\*\* ([^\r\n]+)$/gm,
     )].map((match) => [match[1], match[2]]),
   );
 }

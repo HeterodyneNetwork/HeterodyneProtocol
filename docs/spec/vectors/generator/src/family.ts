@@ -3,7 +3,7 @@ import type { DocumentId } from "./types.js";
 export type { DocumentId } from "./types.js";
 
 /**
- * The single family version. The five documents are sections of one
+ * The single family version. The six documents are sections of one
  * specification, not independent lineages: every document pins the same
  * version and the same registry revision, so one string is the only source
  * of truth for both.
@@ -14,6 +14,7 @@ export const QUALIFIED_VERSION = `heterodyne/${FAMILY_VERSION}`;
 
 export const DOCUMENTS: readonly DocumentId[] = [
   "core",
+  "assurance",
   "comms",
   "control",
   "social",
@@ -22,11 +23,12 @@ export const DOCUMENTS: readonly DocumentId[] = [
 
 /**
  * Which documents each document may normatively depend on. This is a layering
- * constraint, not a versioning one: the five documents ship as one version,
+ * constraint, not a versioning one: the six documents ship as one version,
  * but Core still MUST NOT reference Social, and the graph MUST stay acyclic.
  */
 export const DOCUMENT_LAYERING: Record<DocumentId, readonly DocumentId[]> = {
   core: [],
+  assurance: ["core"],
   comms: ["core"],
   control: ["core", "comms"],
   social: ["core", "comms"],

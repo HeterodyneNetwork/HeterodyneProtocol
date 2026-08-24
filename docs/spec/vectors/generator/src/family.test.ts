@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertAllowedDependency,
   assertCurrentFamilyVersion,
+  DOCUMENTS,
   DOCUMENT_LAYERING,
   FAMILY_VERSION,
   negotiateExactFamilyVersion,
@@ -45,7 +46,26 @@ describe("protocol document family", () => {
   });
 
   it("enforces the document layering DAG", () => {
+    expect(DOCUMENTS).toEqual([
+      "core",
+      "assurance",
+      "comms",
+      "control",
+      "social",
+      "workspace",
+    ]);
+    expect(DOCUMENT_LAYERING).toEqual({
+      core: [],
+      assurance: ["core"],
+      comms: ["core"],
+      control: ["core", "comms"],
+      social: ["core", "comms"],
+      workspace: ["core", "comms", "control", "social"],
+    });
     expect(() => assertAllowedDependency("core", "comms")).toThrow(
+      "forbidden dependency",
+    );
+    expect(() => assertAllowedDependency("assurance", "comms")).toThrow(
       "forbidden dependency",
     );
     expect(() => assertAllowedDependency("social", "control")).toThrow(
@@ -55,6 +75,7 @@ describe("protocol document family", () => {
       "forbidden dependency",
     );
     for (const [document, dependency] of [
+      ["assurance", "core"],
       ["comms", "core"],
       ["control", "core"],
       ["control", "comms"],
@@ -67,5 +88,8 @@ describe("protocol document family", () => {
       expect(() => assertAllowedDependency(document, dependency)).not.toThrow();
     }
     expect(DOCUMENT_LAYERING.core).toEqual([]);
+    for (const document of ["comms", "control", "social", "workspace"] as const) {
+      expect(DOCUMENT_LAYERING[document]).not.toContain("assurance");
+    }
   });
 });

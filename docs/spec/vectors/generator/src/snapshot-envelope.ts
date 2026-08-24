@@ -10,6 +10,7 @@ import type {
 const SNAPSHOT_SCHEMA_VERSION = "2.0.0" as const;
 const OWNER_DOCUMENTS = new Set<DocumentId>([
   "core",
+  "assurance",
   "comms",
   "control",
   "social",
@@ -64,7 +65,7 @@ export function buildSnapshotVectorSchema(sourceSchema: unknown): AnySchema {
     ...sourceRefs,
     items: {
       type: "string",
-      pattern: "^heterodyne:(core|comms|control|social|workspace)#[a-z0-9][a-z0-9-]*$",
+      pattern: "^heterodyne:(core|assurance|comms|control|social|workspace)#[a-z0-9][a-z0-9-]*$",
     },
   };
   if (Array.isArray(schema.required)) {

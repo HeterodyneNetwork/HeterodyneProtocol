@@ -28,6 +28,23 @@ function corpus(
 }
 
 describe("findInvariantCompletenessFailures", () => {
+  it("accepts an Assurance strict-profile closure for an Assurance invariant", () => {
+    const input = corpus({ "docs/spec/heterodyne-assurance.md": `
+<!-- fixture:assurance-strict-profile -->
+\`\`\`json
+{
+  "profile_id": "heterodyne-assurance-strict-v1",
+  "conformance_class": "Core+Assurance",
+  "state": "active",
+  "requires_profiles": [],
+  "adds_invariants": ["ASSURANCE-I-CONTINUITY"]
+}
+\`\`\`
+` }, [{ id: "ASSURANCE-I-CONTINUITY", owner: "assurance" }]);
+
+    expect(findInvariantCompletenessFailures(input)).toEqual([]);
+  });
+
   it("reports a registered baseline invariant absent from every strict-profile closure", () => {
     const input = corpus({ "docs/spec/heterodyne-core.md": `
 <!-- fixture:core-strict-profile -->

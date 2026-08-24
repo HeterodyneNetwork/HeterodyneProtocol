@@ -70,11 +70,12 @@ const registrySchemaPath = "docs/spec/registry/registry.schema.json";
 const securityInvariantsPath = "docs/spec/registry/security-invariants.json";
 const vectorSchemaPath = "docs/spec/vectors/schema/vector.schema.json";
 const specificationPaths = [
-  "docs/spec/heterodyne-comms.md",
-  "docs/spec/heterodyne-control.md",
-  "docs/spec/heterodyne-core.md",
-  "docs/spec/heterodyne-social.md",
-  "docs/spec/heterodyne-workspace.md",
+  { path: "docs/spec/heterodyne-core.md", required: true },
+  { path: "docs/spec/heterodyne-assurance.md", required: false },
+  { path: "docs/spec/heterodyne-comms.md", required: true },
+  { path: "docs/spec/heterodyne-control.md", required: true },
+  { path: "docs/spec/heterodyne-social.md", required: true },
+  { path: "docs/spec/heterodyne-workspace.md", required: true },
 ] as const;
 const snapshotSupportPaths = [
   fixturesPath,
@@ -100,13 +101,20 @@ const requiredRegistryPaths = [
   securityInvariantsPath,
 ] as const;
 
-const ownerDocuments = new Set(["core", "comms", "control", "social", "workspace"]);
+const ownerDocuments = new Set([
+  "core",
+  "assurance",
+  "comms",
+  "control",
+  "social",
+  "workspace",
+]);
 const directions = new Set(["consume", "produce", "round-trip"]);
 const fullCommitPattern = /^[0-9a-f]{40}$/u;
 const sha256Pattern = /^[0-9a-f]{64}$/u;
 const semverPattern = /^\d+\.\d+\.\d+$/u;
 const snapshotReferencePattern =
-  /^heterodyne:(core|comms|control|social|workspace)#[a-z0-9][a-z0-9-]*$/u;
+  /^heterodyne:(core|assurance|comms|control|social|workspace)#[a-z0-9][a-z0-9-]*$/u;
 const terminalStages = new Set<ExpectedTerminalStage>([
   "event_structure",
   "nip01_raw",
@@ -290,6 +298,7 @@ function readText(
   path: string,
   issues: CorpusIssue[],
   requiredRoot = false,
+  missingAllowed = false,
 ): string | undefined {
   let target: string;
   try {
@@ -298,11 +307,13 @@ function readText(
     if (error instanceof UnsafeRepositoryPathError) {
       issues.push({ code: "unsafe-artifact-path", path, message: error.message });
     } else if (isMissingFileError(error)) {
-      issues.push({
-        code: requiredRoot ? "missing-required-root" : "missing-artifact",
-        path,
-        message: requiredRoot ? "required corpus root is missing" : "snapshot artifact is missing",
-      });
+      if (!missingAllowed) {
+        issues.push({
+          code: requiredRoot ? "missing-required-root" : "missing-artifact",
+          path,
+          message: requiredRoot ? "required corpus root is missing" : "snapshot artifact is missing",
+        });
+      }
     } else {
       issues.push({ code: "artifact-read-error", path, message: errorMessage(error) });
     }
@@ -666,8 +677,8 @@ export function loadCorpus(
   if (sourceRoot === undefined || snapshotRoot === undefined) return { issues: sortIssues(issues) };
 
   const specifications = new Map<string, string>();
-  for (const path of specificationPaths) {
-    const source = readText(sourceRoot, path, issues, true);
+  for (const { path, required } of specificationPaths) {
+    const source = readText(sourceRoot, path, issues, required, !required);
     if (source !== undefined) specifications.set(path, source);
   }
 

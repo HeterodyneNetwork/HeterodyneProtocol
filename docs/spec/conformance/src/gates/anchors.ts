@@ -1,7 +1,9 @@
-export type SpecificationOwner = "core" | "comms" | "control" | "social" | "workspace";
+export type SpecificationOwner =
+  | "core" | "assurance" | "comms" | "control" | "social" | "workspace";
 
 const owners: readonly SpecificationOwner[] = [
   "core",
+  "assurance",
   "comms",
   "control",
   "social",
@@ -23,7 +25,7 @@ export type SpecificationReference = {
 };
 
 export function parseSpecificationReference(reference: string): SpecificationReference | undefined {
-  const match = /^heterodyne:(core|comms|control|social|workspace)#([a-z0-9][a-z0-9-]*)$/u
+  const match = /^heterodyne:(core|assurance|comms|control|social|workspace)#([a-z0-9][a-z0-9-]*)$/u
     .exec(reference);
   return match === null
     ? undefined

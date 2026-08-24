@@ -1,4 +1,5 @@
-export type DocumentId = "core" | "comms" | "control" | "social" | "workspace";
+export type DocumentId =
+  | "core" | "assurance" | "comms" | "control" | "social" | "workspace";
 
 export type VectorDirection = "produce" | "consume" | "round-trip";
 

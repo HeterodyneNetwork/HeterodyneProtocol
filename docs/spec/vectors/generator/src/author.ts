@@ -404,7 +404,10 @@ function normalizeReasonCodeProjection(raw: unknown): {
       const match = typeof ref === "string"
         ? /^heterodyne:[^#]+#([a-z0-9][a-z0-9-]*)$/u.exec(ref)
         : null;
-      if (match === null || !["core", "comms", "control", "social", "workspace"].includes(owner)) {
+      if (
+        match === null
+        || !["core", "assurance", "comms", "control", "social", "workspace"].includes(owner)
+      ) {
         throw new Error(`raw-reason-codes-invalid: reason_codes/${index}/spec_refs`);
       }
       const qualified = `heterodyne:${owner}#${match[1]}`;

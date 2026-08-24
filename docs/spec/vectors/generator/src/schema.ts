@@ -31,7 +31,10 @@ export const VECTOR_SCHEMA = {
   properties: {
     vector_id: { type: "string", minLength: 1 },
     vector_schema_version: { type: "string", pattern: "^\\d+\\.\\d+\\.\\d+$" },
-    owner_document: { type: "string", enum: ["core", "comms", "control", "social", "workspace"] },
+    owner_document: {
+      type: "string",
+      enum: ["core", "assurance", "comms", "control", "social", "workspace"],
+    },
     spec_version: { type: "string", const: QUALIFIED_VERSION },
     profile: { type: "string", minLength: 1 },
     conformance_checks: {

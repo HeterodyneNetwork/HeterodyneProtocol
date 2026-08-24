@@ -1,6 +1,14 @@
-import { readFileSync } from "node:fs";
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   findInvariantEvidenceIssues,
   findStrictProfileClosureIssues,
@@ -11,6 +19,11 @@ import { loadRegistry } from "./registry.js";
 
 const repositoryRoot = resolve(import.meta.dirname, "../../../../../");
 const read = (path: string) => readFileSync(resolve(repositoryRoot, path), "utf8");
+const temps: string[] = [];
+
+afterEach(() => {
+  for (const path of temps.splice(0)) rmSync(path, { recursive: true, force: true });
+});
 
 describe("canonical family documentation", () => {
   it("passes layering and anchor lint", () => {
@@ -19,6 +32,43 @@ describe("canonical family documentation", () => {
 
   it("keeps maintained authoring guides on the single-family model", () => {
     expect(lintMaintainedGuides(repositoryRoot)).toEqual([]);
+  });
+
+  it("recognizes Assurance paths, qualified links, features, and invariant evidence", () => {
+    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-assurance-lint-"));
+    temps.push(root);
+    mkdirSync(resolve(root, "docs/spec"), { recursive: true });
+    cpSync(
+      resolve(repositoryRoot, "docs/spec/registry"),
+      resolve(root, "docs/spec/registry"),
+      { recursive: true },
+    );
+    cpSync(
+      resolve(repositoryRoot, "docs/spec/external/marmot"),
+      resolve(root, "docs/spec/external/marmot"),
+      { recursive: true },
+    );
+    writeFileSync(
+      resolve(root, "docs/spec/heterodyne-core.md"),
+      "# Core\n<a id=\"core-home\"></a>\nCore implementations MUST reject [bare Assurance](heterodyne-assurance.md#assurance-home).\n",
+    );
+    writeFileSync(
+      resolve(root, "docs/spec/heterodyne-assurance.md"),
+      "# Assurance\n<a id=\"assurance-home\"></a>\n<a id=\"assurance-other\"></a>\n"
+        + "See [`heterodyne:0.5.0#assurance-home`](heterodyne-assurance.md#assurance-other).\n"
+        + "Capability `assurance.unregistered.v1`.\n",
+    );
+
+    const issues = lintFamilyDocs(root);
+    expect(issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "docs/spec/heterodyne-core.md", code: "bare-normative-link" }),
+      expect.objectContaining({ path: "docs/spec/heterodyne-assurance.md", code: "mislinked-reference" }),
+      expect.objectContaining({ path: "docs/spec/heterodyne-assurance.md", code: "unregistered-feature-id" }),
+    ]));
+    expect(findInvariantEvidenceIssues(
+      [{ id: "ASSURANCE-I-CONTINUITY", description: "Continuity remains optional." }],
+      "- **ASSURANCE-I-CONTINUITY:** Continuity remains optional.\n",
+    )).not.toContain("missing invariant evidence: ASSURANCE-I-CONTINUITY");
   });
 
   it.each([
