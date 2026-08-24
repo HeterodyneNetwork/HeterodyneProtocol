@@ -2,221 +2,27 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://heterodyne.network/schemas/conformance/core-verification-context-v1.schema.json",
   "title": "CoreVerificationContextV1",
+  "description": "Non-wire evidence for active-key persona resolution and an optional explicitly requested Assurance claim.",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "persona",
-    "evaluation_time",
-    "nid_clock_skew_allowance",
-    "clock_uncertainty",
-    "retired_key_evidence",
-    "pointer",
-    "kel",
-    "kel_refresh",
-    "signer",
-    "version_policy",
-    "kel_head_policy",
-    "subtype_policy"
-  ],
+  "required": ["active_persona_key"],
   "properties": {
-    "persona": { "$ref": "#/$defs/hex32" },
-    "evaluation_time": { "$ref": "#/$defs/safe_unix_second" },
-    "nid_clock_skew_allowance": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 300
-    },
-    "clock_uncertainty": { "$ref": "#/$defs/safe_unix_second" },
-    "retired_key_evidence": { "$ref": "#/$defs/retired_key_evidence" },
-    "pointer": { "$ref": "#/$defs/pointer" },
-    "kel": {
-      "type": "array",
-      "minItems": 1,
-      "uniqueItems": true,
-      "items": { "$ref": "#/$defs/kel_entry" }
-    },
-    "kel_refresh": { "$ref": "#/$defs/kel_refresh" },
-    "signer": { "$ref": "#/$defs/signer" },
-    "version_policy": { "$ref": "#/$defs/version_policy" },
-    "kel_head_policy": { "$ref": "#/$defs/kel_head_policy" },
-    "subtype_policy": { "$ref": "#/$defs/subtype_policy" }
+    "active_persona_key": { "$ref": "#/$defs/hex32" },
+    "assurance": { "$ref": "#/$defs/assurance" }
   },
   "$defs": {
     "hex32": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "safe_unix_second": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 9007199254740991
-    },
-    "nullable_safe_unix_second": {
-      "anyOf": [
-        { "$ref": "#/$defs/safe_unix_second" },
-        { "type": "null" }
-      ]
-    },
-    "retired_key_evidence": {
+    "assurance": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["first_observed_at", "prior_anchor"],
+      "required": ["requested", "verified"],
       "properties": {
-        "first_observed_at": { "$ref": "#/$defs/safe_unix_second" },
-        "prior_anchor": {
-          "oneOf": [
-            { "type": "null" },
-            { "$ref": "#/$defs/prior_anchor" }
-          ]
-        }
+        "requested": { "type": "boolean" },
+        "verified": { "type": "boolean" }
       }
-    },
-    "prior_anchor": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["type", "established_at"],
-      "properties": {
-        "type": {
-          "enum": ["repository-checkpoint", "local-receipt", "local-checkpoint"]
-        },
-        "established_at": { "$ref": "#/$defs/safe_unix_second" }
-      }
-    },
-    "kel_head": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["event_id", "sequence"],
-      "properties": {
-        "event_id": { "$ref": "#/$defs/hex32" },
-        "sequence": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
-        }
-      }
-    },
-    "pointer": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["persona", "kel_head"],
-      "properties": {
-        "persona": { "$ref": "#/$defs/hex32" },
-        "kel_head": { "$ref": "#/$defs/kel_head" }
-      }
-    },
-    "kel_entry": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "event_id",
-        "sequence",
-        "prior_event_id",
-        "epoch_pubkey",
-        "effective_from",
-        "effective_until",
-        "compromise_since"
-      ],
-      "properties": {
-        "event_id": { "$ref": "#/$defs/hex32" },
-        "sequence": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
-        },
-        "prior_event_id": {
-          "anyOf": [
-            { "$ref": "#/$defs/hex32" },
-            { "type": "null" }
-          ]
-        },
-        "epoch_pubkey": { "$ref": "#/$defs/hex32" },
-        "effective_from": { "$ref": "#/$defs/safe_unix_second" },
-        "effective_until": { "$ref": "#/$defs/nullable_safe_unix_second" },
-        "compromise_since": { "$ref": "#/$defs/nullable_safe_unix_second" }
-      }
-    },
-    "kel_refresh": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["status"],
-      "properties": {
-        "status": { "enum": ["not-needed", "succeeded", "pending", "failed"] }
-      }
-    },
-    "delegation": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["persona", "publisher_pubkey", "valid_from", "valid_until", "revoked_at"],
-      "properties": {
-        "persona": { "$ref": "#/$defs/hex32" },
-        "publisher_pubkey": { "$ref": "#/$defs/hex32" },
-        "valid_from": { "$ref": "#/$defs/safe_unix_second" },
-        "valid_until": { "$ref": "#/$defs/nullable_safe_unix_second" },
-        "revoked_at": { "$ref": "#/$defs/nullable_safe_unix_second" }
-      }
-    },
-    "signer": {
-      "oneOf": [
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["type", "pubkey", "delegation"],
-          "properties": {
-            "type": { "const": "epoch" },
-            "pubkey": { "$ref": "#/$defs/hex32" },
-            "delegation": { "type": "null" }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["type", "pubkey", "delegation"],
-          "properties": {
-            "type": { "const": "delegated" },
-            "pubkey": { "$ref": "#/$defs/hex32" },
-            "delegation": { "$ref": "#/$defs/delegation" }
-          }
-        }
-      ]
-    },
-    "version_policy": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["mode", "value"],
-      "properties": {
-        "mode": { "enum": ["required", "optional", "forbidden"] },
-        "value": { "const": "heterodyne/0.5.0" }
-      }
-    },
-    "kel_head_policy": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["mode"],
-      "properties": {
-        "mode": { "enum": ["required", "optional", "forbidden"] }
-      }
-    },
-    "subtype_policy": {
-      "oneOf": [
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["mode", "nid_pubkey"],
-          "properties": {
-            "mode": { "const": "generic" },
-            "nid_pubkey": { "type": "null" }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["mode", "nid_pubkey"],
-          "properties": {
-            "mode": { "enum": ["nid-delegation", "node-advertisement"] },
-            "nid_pubkey": { "$ref": "#/$defs/hex32" }
-          }
-        }
-      ]
     }
   }
 }

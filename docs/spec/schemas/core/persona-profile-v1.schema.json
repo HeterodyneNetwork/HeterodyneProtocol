@@ -1,31 +1,37 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://heterodyne.network/schemas/core/persona-profile-v1.schema.json",
-  "title": "Heterodyne Core canonical persona profile v1",
+  "title": "Heterodyne Core kind-0 profile extension v1",
+  "description": "An upstream-open Nostr kind-0 content object with one optional, closed Heterodyne discovery extension.",
   "type": "object",
-  "additionalProperties": false,
-  "required": ["profile", "cold_root", "publisher", "vanilla_profile", "spec_version"],
+  "additionalProperties": true,
   "properties": {
-    "profile": { "const": "heterodyne-core-persona-profile-v1" },
-    "cold_root": { "$ref": "#/$defs/hex_key" },
-    "publisher": { "$ref": "#/$defs/hex_key" },
-    "vanilla_profile": {
+    "heterodyne": {
       "type": "object",
-      "additionalProperties": true,
-      "required": [],
+      "additionalProperties": false,
+      "required": ["profile"],
       "properties": {
-        "name": { "type": "string", "maxLength": 256 },
-        "display_name": { "type": "string", "maxLength": 256 },
-        "about": { "type": "string", "maxLength": 8192 },
-        "picture": { "type": "string", "format": "uri", "maxLength": 2048 },
-        "banner": { "type": "string", "format": "uri", "maxLength": 2048 },
-        "website": { "type": "string", "format": "uri", "maxLength": 2048 },
-        "nip05": { "type": "string", "minLength": 3, "maxLength": 320 }
+        "profile": { "$ref": "#/$defs/radicle_rid" },
+        "identity_chain": { "$ref": "#/$defs/naddr" },
+        "cold_root": { "$ref": "#/$defs/hex_key" },
+        "succession_authority": { "$ref": "#/$defs/hex_key" }
       }
-    },
-    "spec_version": { "const": "heterodyne/0.5.0" }
+    }
   },
   "$defs": {
-    "hex_key": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+    "hex_key": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "radicle_rid": {
+      "type": "string",
+      "pattern": "^rad:z[1-9A-HJ-NP-Za-km-z]{20,28}$"
+    },
+    "naddr": {
+      "type": "string",
+      "minLength": 70,
+      "maxLength": 8192,
+      "pattern": "^naddr1[023456789acdefghjklmnpqrstuvwxyz]+$"
+    }
   }
 }
