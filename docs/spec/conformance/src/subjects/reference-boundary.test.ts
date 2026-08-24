@@ -1,12 +1,16 @@
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import personaProfileSchema from "../../../schemas/core/persona-profile-v1.schema.json" with { type: "json" };
+import { resolveCoreKind0Extension } from "./reference-checker.js";
 
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 const validatePersonaProfile = ajv.compile(personaProfileSchema);
 const CANONICAL_RID = "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1";
 const CANONICAL_NADDR =
   "naddr1qvzqqqr4gupzqyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3qyw8wumn8ghj7ctyv3ex2umn94ex2mrp0yhx27rpd4cxcef0qqrkzun5d93kceguqvdyu";
+const REGEX_VALID_WRONG_LENGTH_RID = "rad:z111111111111111111111";
+const REGEX_VALID_BAD_CHECKSUM_NADDR =
+  "naddr1qvzqqqr4gupzqyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3qyw8wumn8ghj7ctyv3ex2umn94ex2mrp0yhx27rpd4cxcef0qqrkzun5d93kceguqvdyq";
 
 describe("kind-0 Heterodyne extension schema", () => {
   it("accepts a canonical profile RID inside an otherwise ordinary upstream kind-0 object", () => {
@@ -22,14 +26,34 @@ describe("kind-0 Heterodyne extension schema", () => {
   });
 
   it("accepts every optional extension hint in its canonical representation", () => {
-    expect(validatePersonaProfile({
+    const content = {
       heterodyne: {
         profile: CANONICAL_RID,
         identity_chain: CANONICAL_NADDR,
         cold_root: "ab".repeat(32),
         succession_authority: "cd".repeat(32),
       },
-    })).toBe(true);
+    };
+
+    expect(validatePersonaProfile(content)).toBe(true);
+    expect(resolveCoreKind0Extension(content)).toEqual(content.heterodyne);
+  });
+
+  it.each([
+    ["RID whose Base58 body decodes to 21 bytes", {
+      name: "Ada",
+      heterodyne: { profile: REGEX_VALID_WRONG_LENGTH_RID },
+    }],
+    ["naddr with a corrupted Bech32 checksum", {
+      name: "Ada",
+      heterodyne: {
+        profile: CANONICAL_RID,
+        identity_chain: REGEX_VALID_BAD_CHECKSUM_NADDR,
+      },
+    }],
+  ])("ignores the whole regex-valid extension when it contains a noncanonical %s", (_name, content) => {
+    expect(validatePersonaProfile(content)).toBe(true);
+    expect(resolveCoreKind0Extension(content)).toBeUndefined();
   });
 
   it.each([

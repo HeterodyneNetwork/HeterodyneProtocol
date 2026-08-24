@@ -26,6 +26,10 @@ const ALTERNATE_ESCAPE_RAW =
 const ALTERNATE_ESCAPE_ID = "49ee55f141662471402e659860126cd908ccbfcc52560567715a3c75fb86d2f8";
 const ALTERNATE_ESCAPE_SIGNATURE =
   "564b09765b0de0fb660d9fafc5b5ab55bed535082ce8b45016bc8c230be46af2518fe3e59385a5e6de75df324e335e828d46e6c5f168b94495640422a8708015";
+const CANONICAL_RID = "rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1";
+const REGEX_VALID_WRONG_LENGTH_RID = "rad:z111111111111111111111";
+const REGEX_VALID_BAD_CHECKSUM_NADDR =
+  "naddr1qvzqqqr4gupzqyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3qyw8wumn8ghj7ctyv3ex2umn94ex2mrp0yhx27rpd4cxcef0qqrkzun5d93kceguqvdyq";
 
 type Fixture = {
   vector: VectorDocument;
@@ -99,6 +103,12 @@ function contextOf(fixture: Fixture): Record<string, unknown> {
     .core_verification as Record<string, unknown>);
 }
 
+function replaceSignedEvent(fixture: Fixture, fields: Parameters<typeof signedEvent>[0]): void {
+  const replacement = signedEvent(fields);
+  fixture.vector.input.event = replacement.event;
+  fixture.vector.input.nip01_raw = replacement.nip01_raw;
+}
+
 describe("active-key Core signed-event checker", () => {
   it("verifies official BIP-340 vector 0 exactly", () => {
     expect(schnorr.verify(
@@ -132,6 +142,25 @@ describe("active-key Core signed-event checker", () => {
         { stage: "accept", verdict: "pass" },
       ],
     });
+  });
+
+  it.each([
+    ["RID whose Base58 body decodes to 21 bytes", {
+      name: "Ada",
+      heterodyne: { profile: REGEX_VALID_WRONG_LENGTH_RID },
+    }],
+    ["naddr with a corrupted Bech32 checksum", {
+      name: "Ada",
+      heterodyne: {
+        profile: CANONICAL_RID,
+        identity_chain: REGEX_VALID_BAD_CHECKSUM_NADDR,
+      },
+    }],
+  ])("keeps the surrounding signed kind-0 event valid while ignoring a noncanonical %s", (_name, content) => {
+    const fixture = activeKeyFixture();
+    replaceSignedEvent(fixture, { kind: 0, content: JSON.stringify(content) });
+
+    expect(checkCoreSignedEvent(fixture.vector, fixture.check).verdict).toBe("accept");
   });
 
   it("rejects a malformed event before consuming raw bytes or context", () => {
