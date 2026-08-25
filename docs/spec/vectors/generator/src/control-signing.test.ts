@@ -459,6 +459,26 @@ describe("Control NIP-46 signer grant authorization", () => {
     });
   });
 
+  it("rejects non-string incoming NIP-46 request ids without throwing", () => {
+    for (const id of [null, true, 7]) {
+      expect(() => authorize({
+        request: {
+          ...request,
+          rpc_request: { ...rpcRequest, id } as never,
+        },
+      })).not.toThrow();
+      expect(authorize({
+        request: {
+          ...request,
+          rpc_request: { ...rpcRequest, id } as never,
+        },
+      })).toEqual({
+        verdict: "reject",
+        reason_code: "control-nip46-request-invalid",
+      });
+    }
+  });
+
   it("rejects duplicate or extra EventTemplate members unambiguously", () => {
     const duplicate = `{"kind":1,"kind":30023,"tags":[],"content":"x","created_at":111}`;
     const extra = JSON.stringify({
@@ -1045,6 +1065,175 @@ describe("OIDC activation and automated publication", () => {
     expect(keyOperations).toBe(1);
     expect(first).toMatchObject({ signer_execution_disposition: "executed" });
     expect(second).toMatchObject({ signer_execution_disposition: "cached" });
+  });
+
+  it("verifies signer output against an immutable unsigned-event snapshot", () => {
+    const publication = automatedIntent();
+    const signingRequest = automatedRequest(publication);
+    const result = executePersistedAutomatedSigning({
+      authorization: {
+        grant_candidates: [automationGrant],
+        usage_state: executingUsage(signingRequest),
+        presented_grant: structuredClone(automationGrant),
+        vaults,
+        request: signingRequest,
+        client_metadata: metadata,
+      },
+      publication,
+      signer_execution: referenceSignerExecution((event) => {
+        event.content = "adapter-mutated content";
+        event.tags.push(["adapter", "mutated"]);
+        return signNostrEvent(event);
+      }),
+    });
+    expect(result).toMatchObject({
+      verdict: "indeterminate",
+      reason_code: "control-signer-effect-indeterminate",
+      completion_transition: { reservation_state: "indeterminate" },
+    });
+  });
+
+  it("does not let an adapter graft mutations through caller-owned tag aliases", () => {
+    const publication = automatedIntent({ tags: [["t", "authoritative"]] });
+    const signingRequest = automatedRequest(publication);
+    const result = executePersistedAutomatedSigning({
+      authorization: {
+        grant_candidates: [automationGrant],
+        usage_state: executingUsage(signingRequest),
+        presented_grant: structuredClone(automationGrant),
+        vaults,
+        request: signingRequest,
+        client_metadata: metadata,
+      },
+      publication,
+      signer_execution: referenceSignerExecution((event) => {
+        event.tags[0][1] = "adapter-graft";
+        publication.tags[0][1] = "adapter-graft";
+        return signNostrEvent(event);
+      }),
+    });
+    expect(result).toMatchObject({
+      verdict: "indeterminate",
+      reason_code: "control-signer-effect-indeterminate",
+      completion_transition: { reservation_state: "indeterminate" },
+    });
+  });
+
+  it("isolates cached signer terminals from caller mutation", () => {
+    let keyOperations = 0;
+    const unsigned = {
+      pubkey: agentSigner,
+      created_at: 111,
+      kind: 1,
+      tags: [["t", "immutable-cache"]],
+      content: "immutable terminal",
+    };
+    const fence = referenceSignerExecution((event) => {
+      keyOperations += 1;
+      return signNostrEvent(event);
+    });
+    const first = fence.executeOnce(hex("a"), unsigned, hex("b"));
+    if (first.verdict !== "accept") throw new Error("fixture must execute");
+    first.event.content = "caller-mutated cached event";
+    first.event.tags[0][1] = "caller-mutated-cache";
+    first.event.sig = "0".repeat(128);
+
+    const second = fence.executeOnce(hex("a"), unsigned, hex("b"));
+    expect(second).toMatchObject({
+      verdict: "accept",
+      disposition: "cached",
+      event: {
+        content: "immutable terminal",
+        tags: [["t", "immutable-cache"]],
+      },
+    });
+    expect(keyOperations).toBe(1);
+    if (second.verdict !== "accept") throw new Error("fixture must be cached");
+    expect(second.event).not.toBe(first.event);
+  });
+
+  it("keeps a failed terminal write in irreversible reconciliation state", () => {
+    let keyOperations = 0;
+    const authoritativeStore = new ReferenceSignerExecutionStore<
+      ReturnType<typeof signNostrEvent>
+    >();
+    const terminalFailureStore = {
+      acquire: authoritativeStore.acquire.bind(authoritativeStore),
+      persistTerminal: () => false,
+    };
+    const keyOperation = (event: NostrUnsignedEvent) => {
+      keyOperations += 1;
+      return signNostrEvent(event);
+    };
+    const firstProcessCapability = new ReferenceSignerExecutionFence(
+      terminalFailureStore,
+      keyOperation,
+    );
+    const retryProcessCapability = new ReferenceSignerExecutionFence(
+      terminalFailureStore,
+      keyOperation,
+    );
+    const unsigned = { pubkey: agentSigner, ...rpcUnsignedEvent };
+
+    expect(firstProcessCapability.executeOnce(hex("a"), unsigned, hex("b")))
+      .toMatchObject({ verdict: "reconciliation" });
+    expect(retryProcessCapability.executeOnce(hex("a"), unsigned, hex("b")))
+      .toMatchObject({ verdict: "reconciliation" });
+    expect(keyOperations).toBe(1);
+  });
+
+  it("reports terminal-write failure as reconciliation, never executed", () => {
+    let keyOperations = 0;
+    const publication = automatedIntent();
+    const signingRequest = automatedRequest(publication);
+    const authorization = {
+      grant_candidates: [automationGrant],
+      usage_state: executingUsage(signingRequest),
+      presented_grant: structuredClone(automationGrant),
+      vaults,
+      request: signingRequest,
+      client_metadata: metadata,
+    };
+    const authoritativeStore = new ReferenceSignerExecutionStore<
+      ReturnType<typeof signNostrEvent>
+    >();
+    const terminalFailureStore = {
+      acquire: authoritativeStore.acquire.bind(authoritativeStore),
+      persistTerminal: () => false,
+    };
+    const keyOperation = (event: NostrUnsignedEvent) => {
+      keyOperations += 1;
+      return signNostrEvent(event);
+    };
+    const first = executePersistedAutomatedSigning({
+      authorization,
+      publication,
+      signer_execution: new ReferenceSignerExecutionFence(
+        terminalFailureStore,
+        keyOperation,
+      ),
+    });
+    const retry = executePersistedAutomatedSigning({
+      authorization,
+      publication,
+      signer_execution: new ReferenceSignerExecutionFence(
+        terminalFailureStore,
+        keyOperation,
+      ),
+    });
+    expect(first).toMatchObject({
+      verdict: "indeterminate",
+      signer_execution_disposition: "reconciliation",
+      completion_transition: {
+        reservation_state: "indeterminate",
+        failure_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
+      },
+    });
+    expect(retry).toMatchObject({
+      verdict: "indeterminate",
+      signer_execution_disposition: "reconciliation",
+    });
+    expect(keyOperations).toBe(1);
   });
 
   it("rejects an execution token replayed with different event or request digest", () => {

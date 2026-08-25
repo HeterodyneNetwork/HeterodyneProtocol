@@ -354,19 +354,32 @@ collision-resistant execution token derived from the grant digest, full
 authority tuple, and request digest. The operation processor MUST NOT accept
 or invoke a raw signing callback. Its only signing capability is the signer-side
 `executeOnce(execution_token, unsigned_event, request_digest)` boundary. That
-boundary atomically consumes a previously unseen token together with a
-domain-separated digest of the exact request digest and unsigned event before
-the underlying key operation. It durably stores the resulting signed event or
-indeterminate failure before returning `executed`. A repeated exact binding
-returns the cached terminal result with disposition `cached` and performs no
-key operation. The same token with a different event or request digest fails
-as `control-operation-conflict` and performs no key operation.
+boundary first takes a deep serialized snapshot of the authoritative unsigned
+event and freezes that snapshot. It atomically and durably acquires a
+previously unseen token together with a domain-separated digest of the exact
+request digest and immutable snapshot before the underlying key operation.
+The acquired record is irreversible and already poisoned against another key
+operation. The key adapter receives only an isolated deep copy, never the
+snapshot or caller object. The boundary durably stores a deep serialized copy
+of the resulting signed event or indeterminate failure before returning
+`executed`; every returned terminal is another isolated deep copy. A repeated
+exact binding returns the cached terminal result with disposition `cached`
+and performs no key operation. The same token with a different event or
+request digest fails as `control-operation-conflict` and performs no key
+operation.
 
 The execute-once store MUST be durable and shared across every process or node
 that can reach that signer. Concurrent callers join or wait for the first
 execution and receive its cached terminal result; only the atomic winner may
-invoke the key operation. After a crash, an incomplete token is reconciled at
-that same signer-side boundary and MUST NOT be blindly executed again. A
+invoke the key operation. Acquisition has the explicit outcomes `acquired`,
+`cached`, `reconciliation`, or `conflict`. If terminal persistence fails after
+any possible key effect, the boundary returns `reconciliation`, never
+`executed`, and retains the acquired record as non-reacquirable. Every later
+exact retry also returns `reconciliation` without another key operation;
+different bytes still conflict. After a crash, an incomplete token is
+reconciled at that same signer-side boundary and MUST NOT be blindly executed
+again. This atomic acquire and terminal protocol is a cross-process storage
+contract, not an in-memory mutex or object-identity promise. A
 process-local reference store is suitable only for exercising the pure
 contract, never for production durability. A compare-and-swap performed by
 the operation processor after signing cannot prevent a duplicate signature
@@ -385,10 +398,11 @@ UTF-8(JCS({grant_digest,authority,rpc_request,normalized_event,value_msats}))`, 
 `grant_digest` is SHA-256 over
 `UTF-8("heterodyne-control-signer-grant-state-v1") || 0x00 ||
 UTF-8(JCS(complete-signed-grant))` and `authority` is the exact vault, persona,
-client, audience, signer, and key-class tuple. This profile bounds the standard
-wire `id` to 1–128 printable ASCII characters (`U+0020..U+007E`), including
-nostr-tools `<random>-<serial>` IDs;
-the server derives a separate hex operation ID using domain-separated SHA-256
+client, audience, signer, and key-class tuple. The standard wire `id` MUST be a
+string of 1–128 printable ASCII characters (`U+0020..U+007E`), including
+nostr-tools `<random>-<serial>` IDs; null, boolean, numeric, array, and object
+values fail closed without coercion. The server derives a separate hex
+operation ID using domain-separated SHA-256
 over the grant digest, authority, and exact wire ID. For `sign_event`, `params`
 has exactly one JSON string with
 only the standard EventTemplate members `kind`, `tags`, `content`, and
@@ -443,14 +457,15 @@ usage state and verify that the exact request ID and canonical digest are
 already durably executing after persisted `reserved -> claimed` and `claimed
 -> executing` compare-and-swap transitions. The signer receives the persisted
 execution token as its idempotency key. The capability returns exact
-`executed|cached` disposition with the same terminal event or failure for an
-identical token binding. After the capability returns, the node MUST recompute
-the canonical NIP-01 event ID and verify the returned BIP-340 signature and
-the exact closed NIP-01 event member set and every unsigned event field before
-accepting or committing the result. A valid
-result produces a compare-and-swap transition from that exact executing revision
-to `committed`, binding the request ID, canonical digest, and verified event
-ID. An invalid or uncertain signer effect instead becomes durably
+`executed|cached|reconciliation` disposition. Only a durably stored terminal
+returns `executed|cached`; unresolved acquired state returns `reconciliation`
+and cannot be invoked again. After the capability returns, the node MUST
+recompute the canonical NIP-01 event ID and verify the returned BIP-340 signature and
+the exact closed NIP-01 event member set and every unsigned event field against
+the immutable pre-adapter snapshot before accepting or committing the result.
+A valid result produces a compare-and-swap transition from that exact executing
+revision to `committed`, binding the request ID, canonical digest, and verified
+event ID. An invalid or uncertain signer effect instead becomes durably
 `indeterminate`. The host MUST persist the terminal transition before
 publishing or returning success and MUST never retry an indeterminate effect.
 

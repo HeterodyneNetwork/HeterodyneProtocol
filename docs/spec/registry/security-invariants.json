@@ -230,7 +230,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "An authoritative revisioned per-grant usage record and request reservation precede every effect, and only a durable cross-process signer-side execute-once token fence may invoke the key operation; an exact retry returns its cached terminal result while a different binding conflicts, and no post-signing compare-and-swap substitutes for that fence."
+      "description": "An authoritative revisioned per-grant usage record and request reservation precede every effect, and only a durable cross-process signer-side execute-once token fence over an immutable event snapshot may invoke the key operation; acquisition irreversibly poisons the token before the effect, exact terminal retries return isolated cached copies, unresolved terminal persistence remains non-reacquirable reconciliation, different bindings conflict, and no post-signing compare-and-swap substitutes for that fence."
     },
     {
       "id": "CONTROL-I-MARMOT-LEAF-COMPROMISE",

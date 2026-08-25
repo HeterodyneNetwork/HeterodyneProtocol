@@ -403,6 +403,7 @@ function validateCanonicalNip46Request(
     || typeof request.rpc_request !== "object"
     || Object.keys(request.rpc_request).sort().join("\0")
       !== ["id", "method", "params"].join("\0")
+    || typeof request.rpc_request.id !== "string"
     || !/^[\x20-\x7e]{1,128}$/.test(request.rpc_request.id)
     || !/^[a-z][a-z0-9_]{0,63}$/.test(request.rpc_request.method)
     || !Array.isArray(request.rpc_request.params)
@@ -766,6 +767,7 @@ function grantUsageStateIsValid(
         candidate.request_digest,
       ))
     && /^[0-9a-f]{64}$/.test(candidate.operation_id)
+    && typeof candidate.request_id === "string"
     && /^[\x20-\x7e]{1,128}$/.test(candidate.request_id)
     && /^[0-9a-f]{64}$/.test(candidate.request_digest)
     && ["reserved", "claimed", "executing", "committed", "indeterminate"].includes(candidate.state)
@@ -835,6 +837,7 @@ function grantUsageStateIsValid(
     ).length
     || new Set(usage.reservations.map(({ operation_id }) => operation_id)).size
       !== usage.reservations.length
+    || typeof requestBinding.request_id !== "string"
     || !/^[\x20-\x7e]{1,128}$/.test(requestBinding.request_id)
     || !/^[0-9a-f]{64}$/.test(requestBinding.request_digest)
   );
@@ -1016,6 +1019,7 @@ export type SignerExecutionOutcome<T> =
       disposition: "executed" | "cached";
       failure_digest: string;
     }
+  | { verdict: "reconciliation"; failure_digest: string }
   | { verdict: "conflict" };
 
 export interface DurableSignerExecutionCapability<T> {
@@ -1035,14 +1039,21 @@ type SignerExecutionStoreRecord<T> = {
   terminal: SignerExecutionTerminal<T> | null;
 };
 
+function cloneSerialized<T>(value: T): T {
+  return JSON.parse(jcsCanonicalize(value)) as T;
+}
+
 export interface DurableSignerExecutionStore<T> {
+  /** Atomically installs an irreversible binding before returning acquired. */
   acquire(
     executionToken: string,
     bindingDigest: string,
   ):
     | { verdict: "acquired" }
     | { verdict: "cached"; terminal: SignerExecutionTerminal<T> }
+    | { verdict: "reconciliation" }
     | { verdict: "conflict" };
+  /** A false/throw leaves the acquired binding non-reacquirable for reconciliation. */
   persistTerminal(
     executionToken: string,
     bindingDigest: string,
@@ -1060,6 +1071,7 @@ export class ReferenceSignerExecutionStore<T> implements DurableSignerExecutionS
   ):
     | { verdict: "acquired" }
     | { verdict: "cached"; terminal: SignerExecutionTerminal<T> }
+    | { verdict: "reconciliation" }
     | { verdict: "conflict" } {
     const existing = this.#records.get(executionToken);
     if (existing === undefined) {
@@ -1067,10 +1079,8 @@ export class ReferenceSignerExecutionStore<T> implements DurableSignerExecutionS
       return { verdict: "acquired" };
     }
     if (existing.binding_digest !== bindingDigest) return { verdict: "conflict" };
-    if (existing.terminal === null) {
-      throw new Error("reference signer execution re-entered before terminal persistence");
-    }
-    return { verdict: "cached", terminal: existing.terminal };
+    if (existing.terminal === null) return { verdict: "reconciliation" };
+    return { verdict: "cached", terminal: cloneSerialized(existing.terminal) };
   }
 
   persistTerminal(
@@ -1084,7 +1094,7 @@ export class ReferenceSignerExecutionStore<T> implements DurableSignerExecutionS
       || existing.binding_digest !== bindingDigest
       || existing.terminal !== null
     ) return false;
-    existing.terminal = terminal;
+    existing.terminal = cloneSerialized(terminal);
     return true;
   }
 }
@@ -1099,6 +1109,26 @@ function signerExecutionBindingDigest(
       unsigned_event: unsignedEvent,
     }))
     .digest("hex");
+}
+
+function signerExecutionReconciliationDigest(bindingDigest: string): string {
+  return createHash("sha256")
+    .update(proofBytes("heterodyne-control-signer-reconciliation-v1", {
+      binding_digest: bindingDigest,
+    }))
+    .digest("hex");
+}
+
+function deepFreezeSnapshot<T>(value: T): T {
+  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
+    for (const member of Object.values(value)) deepFreezeSnapshot(member);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+function immutableUnsignedEventSnapshot(unsignedEvent: UnsignedEvent): UnsignedEvent {
+  return deepFreezeSnapshot(cloneSerialized(unsignedEvent));
 }
 
 export class ReferenceSignerExecutionFence<
@@ -1120,27 +1150,32 @@ export class ReferenceSignerExecutionFence<
     unsignedEvent: UnsignedEvent,
     requestDigest: string,
   ): SignerExecutionOutcome<T> {
-    const bindingDigest = signerExecutionBindingDigest(requestDigest, unsignedEvent);
+    const immutableEvent = immutableUnsignedEventSnapshot(unsignedEvent);
+    const bindingDigest = signerExecutionBindingDigest(requestDigest, immutableEvent);
     const acquired = this.#store.acquire(executionToken, bindingDigest);
     if (acquired.verdict === "conflict") return acquired;
+    if (acquired.verdict === "reconciliation") {
+      return {
+        verdict: "reconciliation",
+        failure_digest: signerExecutionReconciliationDigest(bindingDigest),
+      };
+    }
     if (acquired.verdict === "cached") {
       return acquired.terminal.state === "completed"
-        ? { verdict: "accept", disposition: "cached", event: acquired.terminal.event }
+        ? {
+            verdict: "accept",
+            disposition: "cached",
+            event: cloneSerialized(acquired.terminal.event),
+          }
         : {
             verdict: "indeterminate",
             disposition: "cached",
             failure_digest: acquired.terminal.failure_digest,
           };
     }
+    let event: T;
     try {
-      const event = this.#keyOperation(unsignedEvent);
-      if (!this.#store.persistTerminal(executionToken, bindingDigest, {
-        state: "completed",
-        event,
-      })) {
-        throw new Error("signer execution terminal persistence conflict");
-      }
-      return { verdict: "accept", disposition: "executed", event };
+      event = this.#keyOperation(cloneSerialized(immutableEvent));
     } catch (error) {
       const failureDigest = createHash("sha256")
         .update(proofBytes("heterodyne-control-signer-execution-failure-v1", {
@@ -1148,16 +1183,46 @@ export class ReferenceSignerExecutionFence<
           failure_class: error instanceof Error ? error.name : "unknown",
         }))
         .digest("hex");
-      this.#store.persistTerminal(executionToken, bindingDigest, {
-        state: "indeterminate",
-        failure_digest: failureDigest,
+      let persisted = false;
+      try {
+        persisted = this.#store.persistTerminal(executionToken, bindingDigest, {
+          state: "indeterminate",
+          failure_digest: failureDigest,
+        });
+      } catch {
+        persisted = false;
+      }
+      return persisted
+        ? {
+            verdict: "indeterminate",
+            disposition: "executed",
+            failure_digest: failureDigest,
+          }
+        : {
+            verdict: "reconciliation",
+            failure_digest: signerExecutionReconciliationDigest(bindingDigest),
+          };
+    }
+    let persisted = false;
+    try {
+      persisted = this.#store.persistTerminal(executionToken, bindingDigest, {
+        state: "completed",
+        event,
       });
+    } catch {
+      persisted = false;
+    }
+    if (!persisted) {
       return {
-        verdict: "indeterminate",
-        disposition: "executed",
-        failure_digest: failureDigest,
+        verdict: "reconciliation",
+        failure_digest: signerExecutionReconciliationDigest(bindingDigest),
       };
     }
+    return {
+      verdict: "accept",
+      disposition: "executed",
+      event: cloneSerialized(event),
+    };
   }
 }
 
@@ -1418,7 +1483,7 @@ export function executePersistedAutomatedSigning<
   | {
       verdict: "indeterminate";
       reason_code: "control-signer-effect-indeterminate";
-      signer_execution_disposition: "executed" | "cached";
+      signer_execution_disposition: "executed" | "cached" | "reconciliation";
       completion_transition: {
         operation_id: string;
         grant_id: string;
@@ -1451,23 +1516,30 @@ export function executePersistedAutomatedSigning<
   if (persisted.execution_token === null) {
     return reject("control-operation-execution-fence-required");
   }
+  const authoritativeUnsignedEvent = immutableUnsignedEventSnapshot(
+    validated.unsigned_event,
+  );
   let event: T | undefined;
-  let executionDisposition: "executed" | "cached" = "executed";
+  let executionDisposition: "executed" | "cached" | "reconciliation" = "reconciliation";
   let boundaryFailureDigest: string | undefined;
   let failureClass = "execution-capability-threw";
   try {
     const outcome = input.signer_execution.executeOnce(
       persisted.execution_token,
-      validated.unsigned_event,
+      authoritativeUnsignedEvent,
       validated.request_binding.request_digest,
     );
     if (outcome.verdict === "conflict") {
       return reject("control-operation-conflict");
     }
-    executionDisposition = outcome.disposition;
-    if (outcome.verdict === "indeterminate") {
+    if (outcome.verdict === "reconciliation") {
       boundaryFailureDigest = outcome.failure_digest;
     } else {
+      executionDisposition = outcome.disposition;
+    }
+    if (outcome.verdict === "indeterminate") {
+      boundaryFailureDigest = outcome.failure_digest;
+    } else if (outcome.verdict === "accept") {
       event = outcome.event;
     }
     failureClass = "invalid-signed-event";
@@ -1490,18 +1562,18 @@ export function executePersistedAutomatedSigning<
     eventValid = event !== undefined
       && Object.keys(event).sort().join("\0")
         === ["content", "created_at", "id", "kind", "pubkey", "sig", "tags"].join("\0")
-      && event.pubkey === validated.unsigned_event.pubkey
-      && event.created_at === validated.unsigned_event.created_at
-      && event.kind === validated.unsigned_event.kind
-      && event.content === validated.unsigned_event.content
-      && jcsCanonicalize(event.tags) === jcsCanonicalize(validated.unsigned_event.tags)
+      && event.pubkey === authoritativeUnsignedEvent.pubkey
+      && event.created_at === authoritativeUnsignedEvent.created_at
+      && event.kind === authoritativeUnsignedEvent.kind
+      && event.content === authoritativeUnsignedEvent.content
+      && jcsCanonicalize(event.tags) === jcsCanonicalize(authoritativeUnsignedEvent.tags)
       && /^[0-9a-f]{64}$/.test(event.id)
       && /^[0-9a-f]{128}$/.test(event.sig)
       && verifyEventSignature(event);
   } catch {
     eventValid = false;
   }
-  if (!eventValid) {
+  if (!eventValid || executionDisposition === "reconciliation") {
     return {
       verdict: "indeterminate",
       reason_code: "control-signer-effect-indeterminate",
