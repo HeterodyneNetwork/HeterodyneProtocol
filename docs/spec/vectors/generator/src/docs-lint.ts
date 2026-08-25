@@ -121,6 +121,62 @@ const RETIRED_MAINTAINED_GUIDE_PATTERNS = [
   /recheck the named family release/i,
 ];
 
+// These patterns target affirmative live guidance, not historical or explicit
+// retirement/optionality statements. Whitespace is intentionally flexible so
+// Markdown wrapping cannot bypass the maintained-guide gate.
+const RETIRED_NOSTR_FIRST_GUIDE_PATTERNS = [
+  /persona\s+is\s+(?:identified|anchored)\s+by\s+(?:a\s+)?cold[- ]root\s+(?:Nostr\s+)?npub/i,
+  /every\s+persona\s+requires\s+(?:an\s+)?accepted\s+KEL(?:\s+and\s+(?:an\s+)?epoch\s+key)?/i,
+  /(?:human\s+)?Marmot\s+account\s+is\s+separate\s+from\s+the\s+active\s+Nostr\s+key/i,
+  /kind\s*:?\s*`?31005`?\s+is\s+required/i,
+  /kind\s*:?\s*`?31007`?\s+is\s+required/i,
+  /canonical\s+feed\s+index/i,
+  /repository\s+copies?\s+take\s+precedence\s+over\s+(?:newer\s+)?relay\s+events?/i,
+  /full\s+node\s+is\s+(?:a\s+)?required\s+(?:Nostr\s+)?relay/i,
+  /(?:each|one)\s+group\s+has\s+one\s+canonical\s+trusted\s+seed/i,
+  /caller\s+may\s+remove\s+agent\s+attribution\s+before\s+signing/i,
+  /bare\s+(?:active\s+)?key\s+is\s+incomplete\s+without\s+Assurance/i,
+  /vector\s+snapshot\s+defines\s+current-draft\s+conformance/i,
+];
+
+const UNSAFE_AGENT_SECURITY_FRAMING = [
+  /agents?\s+may\s+test\s+live\s+(?:relays|nodes|deployments|identity providers|accounts|third-party systems)\s+without\s+authorization/i,
+  /produce\s+(?:a\s+)?functional\s+exploit\s+payload\s+for\s+deployment/i,
+  /use\s+real\s+credentials\s+and\s+scan\s+third-party\s+systems/i,
+  /add\s+persistence\s*,\s*evasion\s*,\s*and\s+anti-forensics\s+to\s+the\s+proof/i,
+  /agents?\s+(?:may|should|must)\s+(?:build|create|deploy)\s+(?:malware|shells?|phishing|command-and-control|C2)/i,
+  /agents?\s+(?:may|should|must)\s+(?:perform|take)\s+destructive\s+actions?/i,
+  /agents?\s+(?:may|should|must)\s+weaken\s+(?:security\s+)?controls?/i,
+];
+
+const RETIRED_NORMATIVE_CLAIMS = [
+  /require\s+a\s+`?valid`?\s+Core\/KEL\s+authority\s+result/i,
+  /current\s+persona\s+epoch\s+or\s+cold-root\s+authority/i,
+  /KEL\/key\s+revocation\s+(?:is\s+(?!not\b)|remains\s+(?!not\b)|wins\b)/i,
+  /\b(?:may|can|MUST|SHOULD)\s+be\s+justified\s+by\s+a\s+KEL\s+alias/i,
+  /(?<!no\s)epoch-key\s+NIP-59\s+inbox\s+exists/i,
+  /temporary\s+private-repository\s+access\s+only\s+through\s+the\s+optional\s+recovery\s+grants/i,
+  /optional\s+prepared\s+recovery\s+activation\s*,\s*finite\s+recovery\s+grants/i,
+  /writers?\s+still\s+authenticate\s+against\s+current\s+Core\/KER[IL]\s+state/i,
+  /Private-Radicle\s+recovery\s+and\s+SFTP\s+overflow\s+are\s+optional\s+Control\s+profiles/i,
+];
+
+export function findRetiredNormativeClaimIssues(
+  path: string,
+  text: string,
+): FamilyDocIssue[] {
+  return RETIRED_NORMATIVE_CLAIMS.flatMap((pattern) => {
+    const match = pattern.exec(text);
+    if (match === null) return [];
+    return [{
+      path,
+      line: text.slice(0, match.index).split(/\r?\n/).length,
+      code: "retired-authoring-model" as const,
+      message: `retired normative authority: ${match[0]}`,
+    }];
+  });
+}
+
 function displayPath(repoRoot: string, path: string): string {
   return relative(repoRoot, path).split(sep).join("/");
 }
@@ -260,6 +316,13 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
   const registeredProofDomains = new Set(
     registry.proof_domains.map(({ id }) => id),
   );
+
+  for (const document of documents) {
+    issues.push(...findRetiredNormativeClaimIssues(
+      document.displayPath,
+      document.lines.join("\n"),
+    ));
+  }
 
   for (const document of documents) {
     const normativeLines = normativeParagraphLines(document.lines);
@@ -642,6 +705,41 @@ export function lintMaintainedGuides(
         });
       }
     }
+  }
+
+  const liveNostrFirstPaths = [
+    "AGENTS.md",
+    "README.md",
+    "docs/spec/heterodyne.md",
+    "docs/architecture.md",
+    "docs/glossary.md",
+    "docs/security/threat-model.md",
+    "docs/spec/extensions/nips/README.md",
+  ];
+  for (const path of liveNostrFirstPaths) {
+    const text = contents.get(path)!;
+    for (const pattern of RETIRED_NOSTR_FIRST_GUIDE_PATTERNS) {
+      const match = pattern.exec(text);
+      if (match === null) continue;
+      issues.push({
+        path,
+        line: lineFor(text, match.index),
+        code: "retired-authoring-model",
+        message: `retired Nostr-first terminology: ${match[0]}`,
+      });
+    }
+  }
+
+  const agents = contents.get("AGENTS.md")!;
+  for (const pattern of UNSAFE_AGENT_SECURITY_FRAMING) {
+    const match = pattern.exec(agents);
+    if (match === null) continue;
+    issues.push({
+      path: "AGENTS.md",
+      line: lineFor(agents, match.index),
+      code: "retired-authoring-model",
+      message: `unsafe security-task framing: ${match[0]}`,
+    });
   }
 
   const registryRevision = loadRegistry(repoRoot).manifest.revision;

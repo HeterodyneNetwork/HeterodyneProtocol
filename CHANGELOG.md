@@ -7,13 +7,38 @@ when the specification reaches `1.0.0`.
 
 ## [Unreleased]
 
-The specification is prepared as five documents at one version,
+The specification is prepared as six documents at one version,
 `heterodyne/0.5.0`. Their contents are current normative authority at their
 repository paths, but the version remains untagged and unreleased pending
 explicit release approval.
 [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is the non-normative
 family map, and the single registry pin is
 [`docs/spec/registry/manifest.json`](docs/spec/registry/manifest.json).
+
+### Nostr-first family integration
+
+- Made the active Nostr key the baseline persona and standard Marmot account,
+  with a bare active key remaining first-class. Cold-root continuity, recovery
+  authority, associated keys, succession, and KERI export now live in the
+  optional Assurance family document.
+- Aligned the maintained maps, architecture, glossary, threat model, and future
+  NIP extraction index with kind `0`, NIP-05, NIP-65, source-neutral relay and
+  repository selection, warning-only seven-day staleness, concurrent trusted
+  seeds, optional full-node relay service, pre-signing automation attribution,
+  and complete compromise reset.
+- Separated live-draft validation from the 482-vector rolling historical
+  snapshot. Current checks no longer execute the frozen pre-redesign topic
+  projection; `snapshot-check` continues to materialize and verify its pinned
+  historical source independently.
+- Removed residual KEL, epoch, cold-root, and recovery-carrier authority from
+  current Comms claim verification, revocation, registry admission, and OIDC
+  continuity. Those paths now use the exact active event signer, active
+  persona key, current NID delegation, and authenticated ledger generation;
+  optional Assurance remains additional evidence only.
+- Added a defensive assurance boundary for repository-local review: synthetic,
+  deterministic invalid fixtures may demonstrate fail-closed behavior, while
+  external targeting, real credentials, operational payloads, destructive
+  actions, persistence, evasion, and control weakening remain outside scope.
 
 ### Accepted rolling conformance snapshot lifecycle
 

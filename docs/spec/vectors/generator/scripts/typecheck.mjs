@@ -1,9 +1,7 @@
 import ts from "typescript";
 
-const configPath = ts.findConfigFile(process.cwd(), ts.sys.fileExists, "tsconfig.json");
-if (configPath === undefined) {
-  throw new Error("tsconfig.json not found");
-}
+const requestedConfig = process.argv[2] ?? "tsconfig.json";
+const configPath = resolveConfigPath(requestedConfig);
 
 const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
 const parsed = ts.parseJsonConfigFileContent(
@@ -46,4 +44,12 @@ if (diagnostics.length > 0) {
     getNewLine: () => ts.sys.newLine,
   }));
   process.exitCode = 1;
+}
+
+function resolveConfigPath(requested) {
+  const candidate = ts.sys.resolvePath(requested);
+  if (!ts.sys.fileExists(candidate)) {
+    throw new Error(`${requested} not found`);
+  }
+  return candidate;
 }

@@ -81,7 +81,7 @@ describe("registry-author CLI", () => {
     const result = spawnSync(
       resolve(generatorRoot, "node_modules/.bin/tsx"),
       [
-        resolve(copiedGeneratorRoot, "src/cli.ts"),
+        resolve(copiedGeneratorRoot, "src/current-cli.ts"),
         "registry-author",
         repositoryRoot,
         "14",

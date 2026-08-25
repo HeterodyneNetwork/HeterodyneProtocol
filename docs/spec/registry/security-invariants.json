@@ -324,7 +324,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "comms.oidc-jwt-projection.v1",
-      "description": "HTTPS issuer metadata and the root-key-scoped Radicle continuity tree agree on the exact active issuer, keys, status digests, and authorized succession."
+      "description": "HTTPS issuer metadata and the active-persona-key-scoped Radicle continuity tree agree on the exact active issuer, keys, status digests, and authorized succession."
     },
     {
       "id": "COMMS-I-CLAIM-RELEASE",

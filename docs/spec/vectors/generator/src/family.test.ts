@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   assertAllowedDependency,
@@ -10,7 +12,43 @@ import {
   QUALIFIED_VERSION,
 } from "./family.js";
 
+const generatorRoot = resolve(import.meta.dirname, "..");
+
 describe("protocol document family", () => {
+  it("keeps current-draft validation independent of frozen vector projections", () => {
+    const packageJson = JSON.parse(
+      readFileSync(resolve(generatorRoot, "package.json"), "utf8"),
+    ) as { scripts: Record<string, string> };
+    const currentProject = JSON.parse(
+      readFileSync(resolve(generatorRoot, "tsconfig.current.json"), "utf8"),
+    ) as { include: string[] };
+
+    expect(packageJson.scripts["draft:check"])
+      .toBe("npm run build:current && npm run test:current && npm run family:check");
+    expect(packageJson.scripts["test:current"])
+      .toBe("vitest run --config vitest.current.config.ts");
+    expect(packageJson.scripts["build:current"])
+      .toBe("node scripts/typecheck.mjs tsconfig.current.json");
+
+    const currentTests = currentProject.include.filter((path) => path.endsWith(".test.ts"));
+    expect(currentTests).toEqual(expect.arrayContaining([
+      "src/docs-lint.test.ts",
+      "src/family.test.ts",
+      "src/registry.test.ts",
+      "src/schema.test.ts",
+      "src/assurance.test.ts",
+      "src/control-signing.test.ts",
+      "src/social-events.test.ts",
+      "src/trusted-seed.test.ts",
+      "src/workspace.test.ts",
+    ]));
+    for (const path of currentProject.include) {
+      expect(path).not.toMatch(
+        /(?:^|\/)(?:topics(?:-[^/]*)?|author|coverage|verify|versioning|oidc|token-status|fixtures|snapshot-[^/]*)\.test\.ts$/,
+      );
+    }
+  });
+
   it("parses the single family version", () => {
     expect(QUALIFIED_VERSION).toBe(`heterodyne/${FAMILY_VERSION}`);
     expect(parseFamilyVersion("heterodyne/0.5.0")).toBe("0.5.0");

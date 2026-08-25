@@ -1206,12 +1206,13 @@ over an authorized pairwise Control group. A transport message never becomes
 canonical state until the corresponding signed record is reachable from the
 applicable canonical repository head.
 
-A joining full node receives temporary private-repository access only through
-the optional recovery grants at
-[`heterodyne:0.5.0#control-radicle-recovery`](heterodyne-control.md#control-radicle-recovery). An ordinary light client
-receives filtered decisions and configuration, never claim-ledger reader
-authority, repository credentials, audience keys, issuer keys, or unfiltered
-private records.
+A joining full node receives private-repository access only through an active,
+current, non-conflicted reader authorization in the encrypted registry or
+claim ledger, ultimately authorized by the persona active key. Repository
+availability, prior access, hosting, and optional Assurance are not reader
+authority. An ordinary light client receives filtered decisions and
+configuration, never claim-ledger reader authority, repository credentials,
+audience keys, issuer keys, or unfiltered private records.
 
 Credential and configuration state machines remain append-only,
 generation-bound, rollback-resistant, and fail closed on unresolved forks.
@@ -1227,7 +1228,7 @@ governed decrypt-key obligations, checkpoint receipts, secret-source and
 exposure records, reset records, lost-generation handling, and exact Git
 projection are transport-independent draft building blocks. They do not
 define a live wire profile, are not required by baseline Control, and are not
-required by either optional recovery profile. Implementations MAY experiment
+required by optional Assurance. Implementations MAY experiment
 with them only as encrypted repository records and MUST report them as
 non-claimable drafts.
 
@@ -1245,15 +1246,15 @@ The registry contains:
 - authorized full-node issuer public state;
 - minimal operation reservations, results, and commit evidence;
 - encrypted audit records;
-- optional prepared recovery activation, finite recovery grants, and
-  completion receipts; and
+- active-key-authorized reader, issuer, and compromise-reset state; and
 - no raw Control frame, access token, device code, MLS state, epoch secret, or
   replayable transcript.
 
 Comms stores Control client-authorization records as opaque encrypted objects;
 their authority and merge semantics belong to the Control document. Repository
-writers still authenticate against current Core/KERI state, and Comms MUST NOT
-interpret transport arrival order as authorization.
+writers authenticate through current Core NID delegation scoped to the exact
+active persona key, and Comms MUST NOT interpret transport arrival order as
+authorization.
 
 The approving node may act on its own record only after durably committing
 and validating that commit. Another node acts only after fetching and
@@ -1261,24 +1262,19 @@ validating the record and approving authority. The repository is evidence
 replication, not distributed consensus or a cross-node execution lock.
 
 <a id="comms-control-bootstrap"></a>
-### 9.1 Locked epoch inbox and recovery records
+### 9.1 Active-key registry admission
 
-The epoch-key NIP-59 inbox exists only for prospective full/recovery-node
-registration when no authorized device Control channel is available. Public
-Core metadata provides the epoch recipient key and relay hints. The gift-wrap
-rumor, prepared activation, recovery grant, and completion records are defined
-at [`heterodyne:0.5.0#control-epoch-bootstrap`](heterodyne-control.md#control-epoch-bootstrap).
+Comms defines no locked epoch inbox, recovery-node identity, SFTP bootstrap,
+or private-repository recovery carrier. An object enters the private Control
+registry only after its exact active-key, NID-writer, repository-generation,
+and predecessor authority verify from authenticated current state. A transport
+receipt, optional Assurance record, or possession of old repository material
+MUST NOT activate, replace, or widen that authority.
 
-The epoch key stays encrypted and absent from memory except during an explicit
-local approval ceremony. Prepared public and private authority remains
-inactive, and the wrapped epoch envelope remains unreleased, until exact
-repository heads, manifest identity, and required object digests satisfy the
-signed completion condition. Epoch plaintext MUST be erased and relocked
-before any Radicle synchronization, onion-service startup, SFTP process, or
-bulk transfer.
-
-Private-Radicle recovery and SFTP overflow are optional Control profiles.
-Neither is a prerequisite for Comms or baseline Control conformance.
+An implementation MAY use optional Assurance as additional evidence where an
+owning higher-layer profile explicitly permits it, but it MUST first validate
+the active-key-scoped Comms object and MUST NOT make Assurance a baseline
+registry-admission prerequisite.
 
 <a id="comms-authorization-freshness"></a>
 ### 9.2 Authorization-view freshness
@@ -1380,7 +1376,9 @@ Verification is ordered and fail-closed:
 1. validate the closed JSON schema, owner version, profile revision, typed
    references, canonical claim ID, address, exact NIP-01 bytes, event ID, and
    outer signature;
-2. require a `valid` Core/KEL authority result for the issuer at `issued_at`;
+2. require the verified outer event `pubkey` to equal the exact
+   `nostr-secp256k1` issuer at `issued_at`, without substituting continuity,
+   recovery, repository, or cache identity;
 3. resolve and validate the complete chain in §10.2;
 4. enforce time, audience, resource, namespace, operation, and subject-type
    constraints;
@@ -1444,14 +1442,16 @@ native proof binds the owning Comms profile revision as well as the
 revocation.
 
 An authorization claim may be revoked by its issuer, an active superior issuer
-in its verified chain, current persona epoch or cold-root authority, or its
-subject. Subject revocation is self-reduction only. A descriptive claim may be
-revoked only by its issuer, an explicitly listed revoker, or a superior issuer;
-its subject may separately reject the assertion but cannot erase it.
+in its verified chain, the exact active persona key named by its
+`credential_ledger_persona`, or its subject. Subject revocation is
+self-reduction only. A descriptive claim may be revoked only by its issuer, an
+explicitly listed revoker, or a superior issuer; its subject may separately
+reject the assertion but cannot erase it.
 
-Valid direct revocation, ancestor or issuer-authority revocation, KEL/key
-revocation, reader or token-issuer reduction, signing-key compromise, and
-derived-token invalidation are cumulative. A valid reduction is permanent,
+Valid direct revocation, ancestor or issuer-authority revocation,
+credential-ledger generation reset, active-key compromise reset, reader or
+token-issuer reduction, signing-key compromise, and derived-token invalidation
+are cumulative. A valid reduction is permanent,
 takes effect immediately when authenticated, and is later made repository-
 final. Revocation wins concurrent merges. Renewal or correction creates a new
 claim ID; no later grant or `VALID` token bit resurrects the old authority.
@@ -1728,8 +1728,8 @@ the verification time. The named writer authorization and its current Core NID
 proof are evaluated at that `issued_at`, not at fetch time. The verifier
 requires the exact active persona, writer NID, ledger generation, canonical
 checkpoint, sequence, and predecessor digest. A change of active persona key
-creates a different issuer identity; it cannot be accepted as a same-issuer
-manifest update or justified by a KEL alias.
+creates a different issuer identity; continuity or recovery evidence cannot
+turn it into a same-issuer manifest update.
 
 The `jwks.json` input is hashed as raw closed JWKS bytes, and that SHA-256 MUST
 equal `current_jwks_sha256`; parsing or reserialization does not substitute for

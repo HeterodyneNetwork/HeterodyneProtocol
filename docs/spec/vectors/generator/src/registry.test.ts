@@ -57,6 +57,10 @@ describe("revisioned protocol registry", () => {
     expect(featureIds).not.toContain("control.oauth-device-enrollment.v1");
     expect(invariant("COMMS-I-JWT-TYPE-AUDIENCE").feature)
       .toBe("comms.oidc-jwt-projection.v1");
+    expect(invariant("COMMS-I-ISSUER-CONTINUITY").description)
+      .toContain("active-persona-key-scoped Radicle continuity tree");
+    expect(invariant("COMMS-I-ISSUER-CONTINUITY").description)
+      .not.toContain("root-key-scoped");
   });
 
   it("allocates objects with unique features and acyclic prerequisites", () => {

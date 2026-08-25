@@ -157,6 +157,7 @@ function forbiddenImportEdges(
   _packageRoot: string,
   forbiddenRoot: string,
   forbiddenPackageName: string,
+  allowedNonliteralImporters: ReadonlySet<string> = new Set(),
 ): ImportEdge[] {
   const canonicalForbiddenRoot = realpathSync(forbiddenRoot);
   const pending = sourceFiles(sourceRoot);
@@ -176,6 +177,7 @@ function forbiddenImportEdges(
 
     for (const reference of importReferences(importer)) {
       if (reference.specifier === undefined) {
+        if (allowedNonliteralImporters.has(importer)) continue;
         forbidden.push({
           importer,
           specifier: `<nonliteral:${reference.kind}>`,
@@ -223,11 +225,16 @@ describe("reciprocal package import boundary", () => {
   });
 
   it("scans generator source and rejects conformance reachability", () => {
+    const snapshotOnlyNonliteralImporters = new Set([
+      realpathSync(resolve(generatorRoot, "src/snapshot-topic-runtime.ts")),
+      realpathSync(resolve(generatorRoot, "src/snapshot-topic-runtime.test.ts")),
+    ]);
     expect(forbiddenImportEdges(
       resolve(generatorRoot, "src"),
       generatorRoot,
       conformanceRoot,
       "@heterodyne/conformance",
+      snapshotOnlyNonliteralImporters,
     )).toEqual([]);
   });
 
@@ -415,6 +422,42 @@ describe("reciprocal package import boundary", () => {
       realpathSync(join(right, "src", "value.ts")),
       realpathSync(join(right, "src", "value.ts")),
     ].sort());
+  });
+
+  it("allows nonliteral imports only for an exact snapshot-only importer", () => {
+    const root = mkdtempSync(join(tmpdir(), "heterodyne-import-boundary-"));
+    temporaryRoots.push(root);
+    const left = join(root, "left");
+    const right = join(root, "right");
+    mkdirSync(join(left, "src"), { recursive: true });
+    mkdirSync(right, { recursive: true });
+    const snapshotOnly = join(left, "src", "snapshot-only.ts");
+    const current = join(left, "src", "current.ts");
+    writeFileSync(
+      snapshotOnly,
+      'import "@right/runtime";\nvoid import(computedSnapshotPath);\n',
+    );
+    writeFileSync(current, "void import(computedCurrentPath);\n");
+
+    const edges = forbiddenImportEdges(
+      join(left, "src"),
+      left,
+      right,
+      "@right",
+      new Set([realpathSync(snapshotOnly)]),
+    );
+    expect(edges).toEqual([
+      {
+        importer: realpathSync(current),
+        resolved: "<nonliteral>",
+        specifier: "<nonliteral:import>",
+      },
+      {
+        importer: realpathSync(snapshotOnly),
+        resolved: "@right",
+        specifier: "@right/runtime",
+      },
+    ]);
   });
 
   it("allows legitimate reachable local and external helper imports", () => {
