@@ -1886,9 +1886,15 @@
       "spec_refs": ["heterodyne:0.5.0#control-request-processing"]
     },
     {
+      "code": "control-operation-execution-fence-required",
+      "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
+      "description": "The signer invocation was attempted without authoritative persisted executing state and its grant-bound idempotency token.",
+      "spec_refs": ["heterodyne:0.5.0#control-request-processing"]
+    },
+    {
       "code": "control-nip46-request-invalid",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
-      "description": "The presented NIP-46 request is not the exact closed canonical standard request or its sign_event parameter is not one canonical unsigned NIP-01 event for the selected signer.",
+      "description": "The presented NIP-46 request has an invalid bounded wire ID or its sign_event parameter is not one unambiguous closed standard EventTemplate.",
       "spec_refs": ["heterodyne:0.5.0#control-request-processing"]
     },
     {
@@ -1900,7 +1906,7 @@
     {
       "code": "control-signer-effect-indeterminate",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
-      "description": "A claimed signing operation produced an invalid, failed, timed-out, or otherwise uncertain signer effect and requires a durable non-reusable indeterminate transition.",
+      "description": "An executing signing operation produced an invalid, failed, timed-out, or otherwise uncertain signer effect and requires a durable non-reusable indeterminate transition.",
       "spec_refs": ["heterodyne:0.5.0#control-agent-requirements"]
     },
     {

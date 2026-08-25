@@ -309,7 +309,7 @@ describe("multi-persona Control schemas", () => {
       profile: "heterodyne.control.signing-operation.v1",
       spec_version: "heterodyne/0.5.0",
       operation_id: h("b"),
-      request_id: h("c"),
+      request_id: "nostr-tools-1",
       grant_id: grantId,
       grant_digest: h("f"),
       vault_id: vaultId,
@@ -318,10 +318,11 @@ describe("multi-persona Control schemas", () => {
       signer_audience: audience,
       selected_signing_pubkey: signer,
       key_class: "agent",
-      rpc_request: { id: h("c"), method: "sign_event", params: ["{}"] },
+      rpc_request: { id: "nostr-tools-1", method: "sign_event", params: ["{}"] },
       event_kind: 1,
       value_msats: 0,
       request_digest: h("d"),
+      execution_token: h("c"),
       window_started_at: 100,
       attribution_state: "applied",
       signature_state: "produced",
@@ -332,7 +333,7 @@ describe("multi-persona Control schemas", () => {
       commit_evidence: {
         expected_revision: 5,
         next_revision: 6,
-        prior_state: "claimed",
+        prior_state: "executing",
         state: "committed",
         persisted_at: 126,
       },
@@ -406,6 +407,22 @@ describe("multi-persona Control schemas", () => {
       attribution_state: "required",
       signature_state: "produced",
     })).toMatch(/attribution_state|not|const/);
+
+    expect(validateControlSchema("control-operation-record-v1.schema.json", {
+      ...operation,
+      state: "claimed",
+      signature_state: "produced",
+      event_id: h("e"),
+      result_digest: null,
+      failure_digest: null,
+      commit_evidence: {
+        expected_revision: 4,
+        next_revision: 5,
+        prior_state: "reserved",
+        state: "claimed",
+        persisted_at: 125,
+      },
+    })).toMatch(/signature_state|event_id|const|pending/);
   });
 
   it("requires the closed automated attribution contract and permits explicit null association", () => {

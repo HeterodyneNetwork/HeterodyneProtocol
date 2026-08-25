@@ -8,14 +8,14 @@
     "profile", "spec_version", "operation_id", "request_id", "grant_id", "grant_digest",
     "vault_id", "persona_active_key", "nip46_client_pubkey", "signer_audience",
     "selected_signing_pubkey", "key_class", "rpc_request", "event_kind", "value_msats",
-    "request_digest", "window_started_at", "attribution_state", "signature_state", "event_id",
+    "request_digest", "execution_token", "window_started_at", "attribution_state", "signature_state", "event_id",
     "state", "result_digest", "failure_digest", "commit_evidence", "created_at", "updated_at"
   ],
   "properties": {
     "profile": {"const": "heterodyne.control.signing-operation.v1"},
     "spec_version": {"const": "heterodyne/0.5.0"},
     "operation_id": {"$ref": "#/$defs/hex256"},
-    "request_id": {"$ref": "#/$defs/hex256"},
+    "request_id": {"$ref": "#/$defs/nip46RequestId"},
     "grant_id": {"$ref": "#/$defs/hex256"},
     "grant_digest": {"$ref": "#/$defs/hex256"},
     "vault_id": {"$ref": "#/$defs/hex256"},
@@ -28,7 +28,7 @@
       "type": "object", "additionalProperties": false,
       "required": ["id", "method", "params"],
       "properties": {
-        "id": {"$ref": "#/$defs/hex256"},
+        "id": {"$ref": "#/$defs/nip46RequestId"},
         "method": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
         "params": {
           "type": "array", "maxItems": 64,
@@ -43,6 +43,12 @@
       ]
     },
     "request_digest": {"$ref": "#/$defs/hex256"},
+    "execution_token": {
+      "oneOf": [
+        {"$ref": "#/$defs/hex256"},
+        {"type": "null"}
+      ]
+    },
     "value_msats": {"$ref": "#/$defs/time"},
     "window_started_at": {"$ref": "#/$defs/time"},
     "attribution_state": {"enum": ["not-applicable", "required", "applied"]},
@@ -53,7 +59,7 @@
         {"type": "null"}
       ]
     },
-    "state": {"enum": ["reserved", "claimed", "committed", "indeterminate"]},
+    "state": {"enum": ["reserved", "claimed", "executing", "committed", "indeterminate"]},
     "result_digest": {
       "oneOf": [
         {"$ref": "#/$defs/hex256"},
@@ -91,11 +97,14 @@
       "then": {
         "properties": {
           "result_digest": {"$ref": "#/$defs/hex256"},
+          "signature_state": {"const": "produced"},
+          "event_id": {"$ref": "#/$defs/hex256"},
+          "execution_token": {"$ref": "#/$defs/hex256"},
           "failure_digest": {"type": "null"},
           "commit_evidence": {
             "allOf": [
               {"$ref": "#/$defs/transitionEvidence"},
-              {"properties": {"prior_state": {"const": "claimed"}, "state": {"const": "committed"}}}
+              {"properties": {"prior_state": {"const": "executing"}, "state": {"const": "committed"}}}
             ]
           }
         }
@@ -106,6 +115,9 @@
       "then": {
         "properties": {
           "result_digest": {"type": "null"},
+          "signature_state": {"const": "pending"},
+          "event_id": {"type": "null"},
+          "execution_token": {"type": "null"},
           "failure_digest": {"type": "null"},
           "commit_evidence": {"type": "null"}
         }
@@ -116,6 +128,9 @@
       "then": {
         "properties": {
           "result_digest": {"type": "null"},
+          "signature_state": {"const": "pending"},
+          "event_id": {"type": "null"},
+          "execution_token": {"type": "null"},
           "failure_digest": {"type": "null"},
           "commit_evidence": {
             "allOf": [
@@ -127,15 +142,36 @@
       }
     },
     {
+      "if": {"properties": {"state": {"const": "executing"}}, "required": ["state"]},
+      "then": {
+        "properties": {
+          "result_digest": {"type": "null"},
+          "failure_digest": {"type": "null"},
+          "signature_state": {"const": "pending"},
+          "event_id": {"type": "null"},
+          "execution_token": {"$ref": "#/$defs/hex256"},
+          "commit_evidence": {
+            "allOf": [
+              {"$ref": "#/$defs/transitionEvidence"},
+              {"properties": {"prior_state": {"const": "claimed"}, "state": {"const": "executing"}}}
+            ]
+          }
+        }
+      }
+    },
+    {
       "if": {"properties": {"state": {"const": "indeterminate"}}, "required": ["state"]},
       "then": {
         "properties": {
           "result_digest": {"type": "null"},
+          "signature_state": {"const": "indeterminate"},
+          "event_id": {"type": "null"},
+          "execution_token": {"$ref": "#/$defs/hex256"},
           "failure_digest": {"$ref": "#/$defs/hex256"},
           "commit_evidence": {
             "allOf": [
               {"$ref": "#/$defs/transitionEvidence"},
-              {"properties": {"prior_state": {"const": "claimed"}, "state": {"const": "indeterminate"}}}
+              {"properties": {"prior_state": {"const": "executing"}, "state": {"const": "indeterminate"}}}
             ]
           }
         }
@@ -144,6 +180,7 @@
   ],
   "$defs": {
     "hex256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nip46RequestId": {"type": "string", "minLength": 1, "maxLength": 256},
     "time": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
     "transitionEvidence": {
       "type": "object", "additionalProperties": false,
@@ -153,8 +190,8 @@
       "properties": {
         "expected_revision": {"$ref": "#/$defs/time"},
         "next_revision": {"$ref": "#/$defs/time"},
-        "prior_state": {"enum": ["reserved", "claimed"]},
-        "state": {"enum": ["claimed", "committed", "indeterminate"]},
+        "prior_state": {"enum": ["reserved", "claimed", "executing"]},
+        "state": {"enum": ["claimed", "executing", "committed", "indeterminate"]},
         "persisted_at": {"$ref": "#/$defs/time"}
       }
     }

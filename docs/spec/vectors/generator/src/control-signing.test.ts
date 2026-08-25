@@ -9,11 +9,14 @@ import {
   authorizeNip46Signing,
   consumeNip46ConnectionSecret,
   compromiseResetEvidenceBundleDigest,
-  executeClaimedAutomatedSigning,
+  executePersistedAutomatedSigning,
   keyPackageVerificationProofBytes,
   mlsCommitEvidenceProofBytes,
+  nip46OperationId,
+  prepareAutomatedExecution,
   prepareAutomatedSigning,
   resetStateEvidenceProofBytes,
+  signingExecutionToken,
   type AutomatedPublication,
   type CompromiseResetCompletion,
   type CompromiseResetGrant,
@@ -125,7 +128,6 @@ const vaults = [
 ];
 
 const rpcUnsignedEvent = {
-  pubkey: agentSigner,
   created_at: 111,
   kind: 1,
   tags: [] as string[][],
@@ -180,11 +182,18 @@ function testNip46RequestDigest(
   rpc: typeof rpcRequest,
   valueMsats = 0,
 ): string {
+  const parsed = rpc.method === "sign_event" && rpc.params.length === 1
+    ? JSON.parse(rpc.params[0]) as Omit<NostrUnsignedEvent, "pubkey">
+    : null;
   return createHash("sha256")
     .update(proofBytes("heterodyne-control-nip46-request-v1", {
       grant_digest: testGrantDigest(candidate),
       authority: usageStateFor(candidate).authority,
       rpc_request: rpc,
+      normalized_event: parsed === null ? null : {
+        pubkey: candidate.selected_signing_pubkey,
+        ...parsed,
+      },
       value_msats: valueMsats,
     }))
     .digest("hex");
@@ -243,8 +252,7 @@ function automatedRequest(
     tier: policy.tier,
   });
   if (attributed.verdict !== "accept") throw new Error("automation fixture invalid");
-  const unsigned = {
-    pubkey: attributed.author,
+  const template = {
     created_at: publication.created_at,
     kind: publication.kind,
     tags: attributed.tags,
@@ -262,7 +270,7 @@ function automatedRequest(
     rpc_request: {
       id: request.rpc_request.id,
       method: "sign_event",
-      params: [jcsCanonicalize(unsigned)],
+      params: [JSON.stringify(template)],
     },
     value_msats: publication.value_msats,
   };
@@ -278,6 +286,7 @@ function persistedUsage(
     consumed_request_count: 1,
     revision: candidateUsage.revision + 1,
     reservations: [{
+      operation_id: nip46OperationId(candidate, automatedSigningRequest.rpc_request.id),
       request_id: automatedSigningRequest.rpc_request.id,
       request_digest: testNip46RequestDigest(
         candidate,
@@ -289,8 +298,10 @@ function persistedUsage(
       window_started_at: candidateUsage.window_started_at,
       reserved_at: automatedSigningRequest.now,
       claimed_at: null,
+      executing_at: null,
       completed_at: null,
       state: "reserved" as const,
+      execution_token: null,
       result_event_id: null,
       failure_digest: null,
     }],
@@ -309,6 +320,28 @@ function claimedUsage(
       ...reservation,
       state: "claimed" as const,
       claimed_at: automatedSigningRequest.now,
+    })),
+  };
+}
+
+function executingUsage(
+  automatedSigningRequest: ReturnType<typeof automatedRequest>,
+  candidate = automationGrant,
+) {
+  const claimed = claimedUsage(automatedSigningRequest, candidate);
+  const requestDigest = testNip46RequestDigest(
+    candidate,
+    automatedSigningRequest.rpc_request,
+    automatedSigningRequest.value_msats,
+  );
+  return {
+    ...claimed,
+    revision: claimed.revision + 1,
+    reservations: claimed.reservations.map((reservation) => ({
+      ...reservation,
+      state: "executing" as const,
+      executing_at: automatedSigningRequest.now,
+      execution_token: signingExecutionToken(candidate, requestDigest),
     })),
   };
 }
@@ -345,6 +378,7 @@ describe("Control NIP-46 signer grant authorization", () => {
       custody: "local",
       authorization_mode: "reserved",
       usage_transition: {
+        operation_id: nip46OperationId(grant, request.rpc_request.id),
         grant_id: grant.grant_id,
         grant_digest: usageState.grant_digest,
         authority: usageState.authority,
@@ -379,6 +413,51 @@ describe("Control NIP-46 signer grant authorization", () => {
     });
   });
 
+  it("accepts the vanilla nostr-tools request id and EventTemplate wire shape", () => {
+    const standardRpc = {
+      id: "k3j9x7-1",
+      method: "sign_event",
+      params: [JSON.stringify({
+        kind: rpcUnsignedEvent.kind,
+        tags: rpcUnsignedEvent.tags,
+        content: rpcUnsignedEvent.content,
+        created_at: rpcUnsignedEvent.created_at,
+      })],
+    };
+    expect(authorize({
+      request: { ...request, rpc_request: standardRpc },
+    })).toMatchObject({
+      verdict: "accept",
+      usage_transition: {
+        operation_id: expect.stringMatching(/^[0-9a-f]{64}$/),
+        request_id: standardRpc.id,
+        request_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
+      },
+    });
+  });
+
+  it("rejects duplicate or extra EventTemplate members unambiguously", () => {
+    const duplicate = `{"kind":1,"kind":30023,"tags":[],"content":"x","created_at":111}`;
+    const extra = JSON.stringify({
+      kind: 1,
+      tags: [],
+      content: "x",
+      created_at: 111,
+      pubkey: agentSigner,
+    });
+    for (const param of [duplicate, extra]) {
+      expect(authorize({
+        request: {
+          ...request,
+          rpc_request: { id: "nostr-tools-1", method: "sign_event", params: [param] },
+        },
+      })).toEqual({
+        verdict: "reject",
+        reason_code: "control-nip46-request-invalid",
+      });
+    }
+  });
+
   it("uses authoritative window consumption instead of a caller-selected count", () => {
     const reservations = Array.from({ length: grant.limits.request_count }, (_, index) => {
       const historicalRpc = {
@@ -387,6 +466,7 @@ describe("Control NIP-46 signer grant authorization", () => {
         params: [jcsCanonicalize(rpcUnsignedEvent)],
       };
       return {
+        operation_id: nip46OperationId(grant, historicalRpc.id),
         request_id: historicalRpc.id,
         request_digest: testNip46RequestDigest(grant, historicalRpc),
         rpc_request: historicalRpc,
@@ -394,8 +474,10 @@ describe("Control NIP-46 signer grant authorization", () => {
         window_started_at: usageState.window_started_at,
         reserved_at: 101,
         claimed_at: null,
+        executing_at: null,
         completed_at: null,
         state: "reserved" as const,
+        execution_token: null,
         result_event_id: null,
         failure_digest: null,
       };
@@ -418,6 +500,7 @@ describe("Control NIP-46 signer grant authorization", () => {
         ...usageState,
         consumed_request_count: 1,
         reservations: [{
+          operation_id: nip46OperationId(grant, request.rpc_request.id),
           request_id: request.rpc_request.id,
           request_digest: testNip46RequestDigest(grant, rpcRequest),
           rpc_request: rpcRequest,
@@ -425,8 +508,13 @@ describe("Control NIP-46 signer grant authorization", () => {
           window_started_at: usageState.window_started_at,
           reserved_at: 101,
           claimed_at: 102,
+          executing_at: 102,
           completed_at: 103,
           state: "committed",
+          execution_token: signingExecutionToken(
+            grant,
+            testNip46RequestDigest(grant, rpcRequest),
+          ),
           result_event_id: hex("f"),
           failure_digest: null,
         }],
@@ -452,6 +540,7 @@ describe("Control NIP-46 signer grant authorization", () => {
         },
         consumed_request_count: 1,
         reservations: [{
+          operation_id: nip46OperationId(grant, request.rpc_request.id),
           request_id: request.rpc_request.id,
           request_digest: testNip46RequestDigest(grant, rpcRequest),
           rpc_request: rpcRequest,
@@ -459,8 +548,13 @@ describe("Control NIP-46 signer grant authorization", () => {
           window_started_at: usageState.window_started_at,
           reserved_at: 101,
           claimed_at: 102,
+          executing_at: 102,
           completed_at: 103,
           state: "committed",
+          execution_token: signingExecutionToken(
+            grant,
+            testNip46RequestDigest(grant, rpcRequest),
+          ),
           result_event_id: hex("f"),
           failure_digest: null,
         }],
@@ -659,7 +753,7 @@ describe("Control NIP-46 signer grant authorization", () => {
         selected_signing_pubkey: persona,
         rpc_request: {
           ...rpcRequest,
-          params: [jcsCanonicalize({ ...rpcUnsignedEvent, pubkey: persona })],
+          params: [JSON.stringify(rpcUnsignedEvent)],
         },
       },
       client_metadata: metadata,
@@ -707,7 +801,7 @@ describe("Control NIP-46 signer grant authorization", () => {
       key_class: "persona" as const,
       rpc_request: {
         ...rpcRequest,
-        params: [jcsCanonicalize({ ...rpcUnsignedEvent, pubkey: persona })],
+        params: [JSON.stringify(rpcUnsignedEvent)],
       },
     };
     const personaVaults = [{
@@ -850,24 +944,29 @@ describe("OIDC activation and automated publication", () => {
 
   it("injects valid Comms attribution before the signer sees an automated event", () => {
     let signerSawAttribution = false;
+    let signerExecutionToken = "";
     const publication = automatedIntent();
     const signingRequest = automatedRequest(publication);
-    const result = executeClaimedAutomatedSigning({
+    const result = executePersistedAutomatedSigning({
       authorization: {
         grant_candidates: [automationGrant],
-        usage_state: claimedUsage(signingRequest),
+        usage_state: executingUsage(signingRequest),
         presented_grant: structuredClone(automationGrant),
         vaults,
         request: signingRequest,
         client_metadata: metadata,
       },
       publication,
-      sign: (event: { pubkey: string; created_at: number; kind: number; tags: string[][]; content: string }) => {
+      sign: (event: { pubkey: string; created_at: number; kind: number; tags: string[][]; content: string }, executionToken) => {
         signerSawAttribution = matchesAgentAttributionProfile(event.tags);
+        signerExecutionToken = executionToken;
         return signNostrEvent(event);
       },
     });
     expect(signerSawAttribution).toBe(true);
+    expect(signerExecutionToken).toBe(
+      executingUsage(signingRequest).reservations[0].execution_token,
+    );
     expect(result).toMatchObject({
       verdict: "accept",
       completion_transition: {
@@ -877,9 +976,9 @@ describe("OIDC activation and automated publication", () => {
           automationGrant,
           signingRequest.rpc_request,
         ),
-        expected_revision: 6,
-        next_revision: 7,
-        prior_reservation_state: "claimed",
+        expected_revision: 7,
+        next_revision: 8,
+        prior_reservation_state: "executing",
         reservation_state: "committed",
       },
       event: {
@@ -888,14 +987,40 @@ describe("OIDC activation and automated publication", () => {
     });
   });
 
+  it("never invokes the signer from replayable claimed state", () => {
+    let signerCalls = 0;
+    const publication = automatedIntent();
+    const signingRequest = automatedRequest(publication);
+    const result = executePersistedAutomatedSigning({
+      authorization: {
+        grant_candidates: [automationGrant],
+        usage_state: claimedUsage(signingRequest),
+        presented_grant: structuredClone(automationGrant),
+        vaults,
+        request: signingRequest,
+        client_metadata: metadata,
+      },
+      publication,
+      sign: (event) => {
+        signerCalls += 1;
+        return signNostrEvent(event);
+      },
+    });
+    expect(signerCalls).toBe(0);
+    expect(result).toEqual({
+      verdict: "reject",
+      reason_code: "control-operation-execution-fence-required",
+    });
+  });
+
   it("rejects a canonical NIP-46 request copied from a different automated intent", () => {
     const original = automatedIntent();
     const altered = automatedIntent({ content: "different caller-selected content" });
     const signingRequest = automatedRequest(original);
-    const result = executeClaimedAutomatedSigning({
+    const result = executePersistedAutomatedSigning({
       authorization: {
         grant_candidates: [automationGrant],
-        usage_state: claimedUsage(signingRequest),
+        usage_state: executingUsage(signingRequest),
         presented_grant: structuredClone(automationGrant),
         vaults,
         request: signingRequest,
@@ -966,6 +1091,33 @@ describe("OIDC activation and automated publication", () => {
         next_revision: 6,
         prior_reservation_state: "reserved",
         reservation_state: "claimed",
+      },
+    });
+  });
+
+  it("requires an authoritative claimed-to-executing CAS with a signer idempotency token", () => {
+    const publication = automatedIntent();
+    const signingRequest = automatedRequest(publication);
+    const result = prepareAutomatedExecution({
+      authorization: {
+        grant_candidates: [automationGrant],
+        usage_state: claimedUsage(signingRequest),
+        presented_grant: structuredClone(automationGrant),
+        vaults,
+        request: signingRequest,
+        client_metadata: metadata,
+      },
+      publication,
+    });
+    expect(result).toMatchObject({
+      verdict: "accept",
+      authorization_mode: "execution-fence-required",
+      execution_transition: {
+        expected_revision: 6,
+        next_revision: 7,
+        prior_reservation_state: "claimed",
+        reservation_state: "executing",
+        execution_token: expect.stringMatching(/^[0-9a-f]{64}$/),
       },
     });
   });
@@ -1068,7 +1220,7 @@ describe("OIDC activation and automated publication", () => {
           key_class: "persona",
           rpc_request: {
             ...rpcRequest,
-            params: [jcsCanonicalize({ ...rpcUnsignedEvent, pubkey: persona })],
+            params: [JSON.stringify(rpcUnsignedEvent)],
           },
         },
         client_metadata: metadata,
@@ -1124,10 +1276,10 @@ describe("OIDC activation and automated publication", () => {
   it("rejects a shape-valid returned event ID and signature that do not verify", () => {
     const publication = automatedIntent();
     const signingRequest = automatedRequest(publication);
-    const result = executeClaimedAutomatedSigning({
+    const result = executePersistedAutomatedSigning({
       authorization: {
         grant_candidates: [automationGrant],
-        usage_state: claimedUsage(signingRequest),
+        usage_state: executingUsage(signingRequest),
         presented_grant: structuredClone(automationGrant),
         vaults,
         request: signingRequest,
@@ -1140,10 +1292,10 @@ describe("OIDC activation and automated publication", () => {
       verdict: "indeterminate",
       reason_code: "control-signer-effect-indeterminate",
       completion_transition: {
-        prior_reservation_state: "claimed",
+        prior_reservation_state: "executing",
         reservation_state: "indeterminate",
-        expected_revision: 6,
-        next_revision: 7,
+        expected_revision: 7,
+        next_revision: 8,
       },
     });
   });
@@ -1151,10 +1303,10 @@ describe("OIDC activation and automated publication", () => {
   it("rejects extra non-NIP-01 fields on an otherwise valid signed event", () => {
     const publication = automatedIntent();
     const signingRequest = automatedRequest(publication);
-    const result = executeClaimedAutomatedSigning({
+    const result = executePersistedAutomatedSigning({
       authorization: {
         grant_candidates: [automationGrant],
-        usage_state: claimedUsage(signingRequest),
+        usage_state: executingUsage(signingRequest),
         presented_grant: structuredClone(automationGrant),
         vaults,
         request: signingRequest,
@@ -1170,7 +1322,7 @@ describe("OIDC activation and automated publication", () => {
       verdict: "indeterminate",
       reason_code: "control-signer-effect-indeterminate",
       completion_transition: {
-        prior_reservation_state: "claimed",
+        prior_reservation_state: "executing",
         reservation_state: "indeterminate",
       },
     });
@@ -1179,10 +1331,10 @@ describe("OIDC activation and automated publication", () => {
   it("makes a thrown claimed signer effect durably indeterminate", () => {
     const publication = automatedIntent();
     const signingRequest = automatedRequest(publication);
-    const result = executeClaimedAutomatedSigning({
+    const result = executePersistedAutomatedSigning({
       authorization: {
         grant_candidates: [automationGrant],
-        usage_state: claimedUsage(signingRequest),
+        usage_state: executingUsage(signingRequest),
         presented_grant: structuredClone(automationGrant),
         vaults,
         request: signingRequest,
@@ -1197,7 +1349,7 @@ describe("OIDC activation and automated publication", () => {
       verdict: "indeterminate",
       reason_code: "control-signer-effect-indeterminate",
       completion_transition: {
-        prior_reservation_state: "claimed",
+        prior_reservation_state: "executing",
         reservation_state: "indeterminate",
         failure_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
       },
@@ -1293,11 +1445,15 @@ describe("Control compromise reset", () => {
         leaf_index: 0,
         account_key: persona,
         keypackage_id: rid(11),
+      }, {
+        leaf_id: rid(34),
+        leaf_index: 2,
+        account_key: assuranceAuthority,
+        keypackage_id: rid(35),
       }],
     }],
     existing_transition_ids: [rid(7)],
     existing_keypackage_event_ids: [rid(8)],
-    existing_keypackage_ids: [rid(11)],
     authorization_records: [
       { authority_class: "nip46-oidc-grant" as const, subject_id: grant.grant_id, authorization_id: grant.grant_id, authorization_digest: rid(60) },
       { authority_class: "client" as const, subject_id: client, authorization_id: client, authorization_digest: rid(61) },
@@ -1344,7 +1500,7 @@ describe("Control compromise reset", () => {
       subject_nid: requiredReset.trusted_seed_nids[0],
       evidence_id: rid(25),
     }],
-    marmot_leaves: [{ subject_id: rid(4), evidence_id: rid(26) }],
+    marmot_leaves: [{ subject_id: rid(4), evidence_id: rid(27) }],
     groups: [{
       group_id: rid(5),
       prior_epoch: 7,
@@ -1385,11 +1541,12 @@ describe("Control compromise reset", () => {
   ];
   const signStateEvidence = (
     value: Omit<import("./control-signing.js").ResetStateEvidence, "signature">,
+    secret = personaSecret,
   ) => ({
     ...value,
     signature: bytesToHex(schnorr.sign(
       resetStateEvidenceProofBytes(value),
-      hexToBytes(personaSecret),
+      hexToBytes(secret),
       "00".repeat(32),
     )),
   });
@@ -1423,10 +1580,10 @@ describe("Control compromise reset", () => {
       ["d", rid(33)],
       ["mls_protocol_version", "1.0"],
       ["i", rid(30)],
-      ["ciphersuite", "MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519"],
-      ["extensions", "required_capabilities"],
-      ["proposals", "add", "update", "remove"],
-      ["app_components", "marmot"],
+      ["mls_ciphersuite", "0x0001"],
+      ["mls_extensions", "0x0002"],
+      ["mls_proposals", "0x0001", "0x0002", "0x0003"],
+      ["app_components", "0x8009"],
     ],
     content: keyPackageContent.toString("base64"),
   }, otherPersonaSecret) as CompromiseResetCompletion["fresh_keypackages"][number]["event"];
@@ -1450,6 +1607,36 @@ describe("Control compromise reset", () => {
       "00".repeat(32),
     )),
   };
+  const signedFreshKeyPackage = (
+    keypackageId: string,
+    tags = keyPackageEvent.tags.map((tag) => [...tag]),
+  ) => {
+    const eventTags = tags.map((tag) =>
+      tag[0] === "i" ? ["i", keypackageId] : tag
+    );
+    const event = signNostrEvent({
+      pubkey: otherPersona,
+      created_at: keyPackageEvent.created_at,
+      kind: 30443,
+      tags: eventTags,
+      content: keyPackageEvent.content,
+    }, otherPersonaSecret) as typeof keyPackageEvent;
+    const unsigned = {
+      ...freshKeyPackage,
+      keypackage_id: keypackageId,
+      event_id: event.id,
+      event,
+      verification_signature: "",
+    };
+    return {
+      ...unsigned,
+      verification_signature: bytesToHex(schnorr.sign(
+        keyPackageVerificationProofBytes(unsigned),
+        hexToBytes(assuranceSecret),
+        "00".repeat(32),
+      )),
+    };
+  };
   const commitBytes = Buffer.from("verified-mls-remove-commit-v1", "utf8");
   const commitUnsigned = {
     evidence_id: rid(27),
@@ -1462,7 +1649,7 @@ describe("Control compromise reset", () => {
     commit_bytes_base64: commitBytes.toString("base64"),
     commit_sha256: createHash("sha256").update(commitBytes).digest("hex"),
     removed_leaf_ids: [rid(4)],
-    continuing_leaf_ids: [] as string[],
+    continuing_leaf_ids: [rid(34)],
     successor_leaves: [{
       leaf_id: rid(32),
       leaf_index: 1,
@@ -1564,7 +1751,7 @@ describe("Control compromise reset", () => {
     })).toMatchObject({ verdict: "accept" });
   });
 
-  it("accepts only the exact pinned Assurance authority and head", () => {
+  it("rejects old-account-signed invalidation records during Assurance recovery", () => {
     const { signature: _signature, ...unsigned } = recoveryGrant;
     const assuranceGrant = signRecoveryGrant({
       ...unsigned,
@@ -1576,7 +1763,10 @@ describe("Control compromise reset", () => {
     expect(validateReset({
       grant: assuranceGrant,
       pinned_assurance_authority: pin,
-    })).toMatchObject({ verdict: "accept" });
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "control-compromise-reset-evidence-invalid",
+    });
     expect(validateReset({
       grant: assuranceGrant,
       pinned_assurance_authority: { ...pin, head_id: rid(71) },
@@ -1584,6 +1774,44 @@ describe("Control compromise reset", () => {
       verdict: "reject",
       reason_code: "control-compromise-reset-unauthenticated",
     });
+  });
+
+  it("accepts Assurance recovery only with invalidations signed by the pinned authorizer", () => {
+    const { signature: _grantSignature, ...grantUnsigned } = recoveryGrant;
+    const assuranceGrant = signRecoveryGrant({
+      ...grantUnsigned,
+      authorization_class: "assurance-recovery",
+      authorizing_pubkey: assuranceAuthority,
+      assurance_head: rid(70),
+    }, assuranceSecret);
+    const assuranceStateEvidence = stateEvidence.map((record) => {
+      const { signature: _signature, ...unsigned } = record;
+      return signStateEvidence({
+        ...unsigned,
+        signer: assuranceAuthority,
+      }, assuranceSecret);
+    });
+    const assuranceBundle = {
+      ...evidenceBundle,
+      state_transitions: assuranceStateEvidence,
+    };
+    const { signature: _completionSignature, ...completionUnsigned } = completion;
+    const assuranceCompletion = signRecoveryCompletion({
+      ...completionUnsigned,
+      evidence_bundle_digest: compromiseResetEvidenceBundleDigest(assuranceBundle),
+    });
+    expect(validateReset({
+      grant: assuranceGrant,
+      completion: assuranceCompletion,
+      pinned_assurance_authority: {
+        head_id: rid(70),
+        authority_pubkey: assuranceAuthority,
+      },
+      authoritative_evidence: {
+        ...authoritativeEvidence,
+        evidence_bundle: assuranceBundle,
+      },
+    })).toMatchObject({ verdict: "accept" });
   });
 
   it("rejects every incomplete reset category and missing subordinate reauthorization", () => {
@@ -1767,6 +1995,28 @@ describe("Control compromise reset", () => {
     });
   });
 
+  it("binds every Marmot leaf summary to its exact authenticated group Commit", () => {
+    const { signature: _signature, ...completionUnsigned } = completion;
+    const unboundTransitions = {
+      ...completion.transition_evidence,
+      marmot_leaves: [{ subject_id: rid(4), evidence_id: rid(90) }],
+    };
+    const unboundCompletion = signRecoveryCompletion({
+      ...completionUnsigned,
+      transition_evidence: unboundTransitions,
+    });
+    expect(validateReset({
+      completion: unboundCompletion,
+      authoritative_evidence: {
+        ...authoritativeEvidence,
+        transition_evidence: unboundTransitions,
+      },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "control-compromise-reset-evidence-invalid",
+    });
+  });
+
   it("rejects a grafted authoritative invalidation record with no valid state signature", () => {
     const { signature: _signature, ...completionUnsigned } = completion;
     const graftedBundle = {
@@ -1833,6 +2083,68 @@ describe("Control compromise reset", () => {
       authoritative_evidence: {
         ...authoritativeEvidence,
         fresh_keypackages: [invalidPackage],
+      },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "control-compromise-reset-evidence-invalid",
+    });
+  });
+
+  it("rejects nonstandard or extra kind-30443 transport tags", () => {
+    const nonstandardPackage = signedFreshKeyPackage(
+      freshKeyPackage.keypackage_id,
+      [...keyPackageEvent.tags, ["encoding", "base64"]],
+    );
+    const { signature: _signature, ...completionUnsigned } = completion;
+    const nonstandardCompletion = signRecoveryCompletion({
+      ...completionUnsigned,
+      fresh_keypackages: [nonstandardPackage],
+    });
+    expect(validateReset({
+      completion: nonstandardCompletion,
+      authoritative_evidence: {
+        ...authoritativeEvidence,
+        fresh_keypackages: [nonstandardPackage],
+      },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "control-compromise-reset-evidence-invalid",
+    });
+  });
+
+  it("derives prior KeyPackage ids from authoritative leaves and rejects reuse", () => {
+    const reusedPackage = signedFreshKeyPackage(rid(35));
+    const reusedCommitUnsigned = {
+      ...commitUnsigned,
+      successor_leaves: commitUnsigned.successor_leaves.map((leaf) => ({
+        ...leaf,
+        keypackage_id: rid(35),
+      })),
+    };
+    const reusedCommit = {
+      ...reusedCommitUnsigned,
+      verification_signature: bytesToHex(schnorr.sign(
+        mlsCommitEvidenceProofBytes(reusedCommitUnsigned),
+        hexToBytes(assuranceSecret),
+        "00".repeat(32),
+      )),
+    };
+    const reusedBundle = {
+      ...evidenceBundle,
+      group_commits: [reusedCommit],
+    };
+    const { signature: _signature, ...completionUnsigned } = completion;
+    const reusedCompletion = signRecoveryCompletion({
+      ...completionUnsigned,
+      fresh_keypackages: [reusedPackage],
+      evidence_bundle_digest: compromiseResetEvidenceBundleDigest(reusedBundle),
+    });
+    expect(validateReset({
+      completion: reusedCompletion,
+      authoritative_evidence: {
+        ...authoritativeEvidence,
+        fresh_keypackages: [reusedPackage],
+        evidence_bundle: reusedBundle,
       },
     })).toEqual({
       verdict: "reject",

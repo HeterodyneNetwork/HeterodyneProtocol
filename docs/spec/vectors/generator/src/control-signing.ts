@@ -88,6 +88,7 @@ export type GrantUsageState = {
   consumed_request_count: number;
   revision: number;
   reservations: Array<{
+    operation_id: string;
     request_id: string;
     request_digest: string;
     rpc_request: Nip46SigningRequest["rpc_request"];
@@ -95,14 +96,17 @@ export type GrantUsageState = {
     window_started_at: number;
     reserved_at: number;
     claimed_at: number | null;
+    executing_at: number | null;
     completed_at: number | null;
-    state: "reserved" | "claimed" | "committed" | "indeterminate";
+    state: "reserved" | "claimed" | "executing" | "committed" | "indeterminate";
+    execution_token: string | null;
     result_event_id: string | null;
     failure_digest: string | null;
   }>;
 };
 
 export type GrantUsageTransition = {
+  operation_id: string;
   grant_id: string;
   grant_digest: string;
   authority: GrantAuthorityBinding;
@@ -121,6 +125,7 @@ export type GrantUsageTransition = {
 };
 
 export type GrantClaimTransition = {
+  operation_id: string;
   grant_id: string;
   grant_digest: string;
   authority: GrantAuthorityBinding;
@@ -131,6 +136,21 @@ export type GrantClaimTransition = {
   prior_reservation_state: "reserved";
   reservation_state: "claimed";
   claimed_at: number;
+};
+
+export type GrantExecutionTransition = {
+  operation_id: string;
+  grant_id: string;
+  grant_digest: string;
+  authority: GrantAuthorityBinding;
+  request_id: string;
+  request_digest: string;
+  execution_token: string;
+  expected_revision: number;
+  next_revision: number;
+  prior_reservation_state: "claimed";
+  reservation_state: "executing";
+  executing_at: number;
 };
 
 export type GrantAuthorityBinding = {
@@ -210,23 +230,161 @@ function grantAuthorityBinding(grant: SigningGrant): GrantAuthorityBinding {
 }
 
 type ValidatedNip46Request = {
+  operation_id: string;
   request_id: string;
   request_digest: string;
   method: string;
   event_kind: number | null;
   event_bytes: number;
+  normalized_event: UnsignedEvent | null;
 };
+
+function topLevelJsonObjectKeys(source: string): string[] | undefined {
+  let index = 0;
+  const skipWhitespace = () => {
+    while (/\s/.test(source[index] ?? "")) index += 1;
+  };
+  const scanString = (): string | undefined => {
+    const start = index;
+    if (source[index] !== '"') return undefined;
+    index += 1;
+    while (index < source.length) {
+      if (source[index] === "\\") {
+        index += 2;
+      } else if (source[index] === '"') {
+        index += 1;
+        try {
+          return JSON.parse(source.slice(start, index)) as string;
+        } catch {
+          return undefined;
+        }
+      } else {
+        index += 1;
+      }
+    }
+    return undefined;
+  };
+  const skipValue = (): boolean => {
+    let objectDepth = 0;
+    let arrayDepth = 0;
+    let inString = false;
+    let escaped = false;
+    for (; index < source.length; index += 1) {
+      const character = source[index];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (character === "\\") escaped = true;
+        else if (character === '"') inString = false;
+        continue;
+      }
+      if (character === '"') inString = true;
+      else if (character === "{") objectDepth += 1;
+      else if (character === "[") arrayDepth += 1;
+      else if (character === "}") {
+        if (objectDepth === 0 && arrayDepth === 0) return true;
+        objectDepth -= 1;
+      } else if (character === "]") arrayDepth -= 1;
+      else if (character === "," && objectDepth === 0 && arrayDepth === 0) return true;
+      if (objectDepth < 0 || arrayDepth < 0) return false;
+    }
+    return true;
+  };
+  skipWhitespace();
+  if (source[index] !== "{") return undefined;
+  index += 1;
+  const keys: string[] = [];
+  for (;;) {
+    skipWhitespace();
+    if (source[index] === "}") {
+      index += 1;
+      skipWhitespace();
+      return index === source.length ? keys : undefined;
+    }
+    const key = scanString();
+    if (key === undefined || keys.includes(key)) return undefined;
+    keys.push(key);
+    skipWhitespace();
+    if (source[index] !== ":") return undefined;
+    index += 1;
+    skipWhitespace();
+    if (!skipValue()) return undefined;
+    skipWhitespace();
+    if (source[index] === ",") {
+      index += 1;
+      continue;
+    }
+    if (source[index] !== "}") return undefined;
+  }
+}
+
+function parseNip46EventTemplate(
+  grant: SigningGrant,
+  param: string,
+): UnsignedEvent | undefined {
+  const keys = topLevelJsonObjectKeys(param);
+  let event: unknown;
+  try {
+    event = JSON.parse(param);
+  } catch {
+    return undefined;
+  }
+  if (
+    keys === undefined
+    || event === null
+    || typeof event !== "object"
+    || Array.isArray(event)
+    || !hasExactKeys(event, ["content", "created_at", "kind", "tags"])
+  ) return undefined;
+  const template = event as Record<string, unknown>;
+  if (
+    typeof template.content !== "string"
+    || !finiteSafeInteger(template.created_at as number)
+    || !finiteSafeInteger(template.kind as number)
+    || (template.kind as number) > 65535
+    || !Array.isArray(template.tags)
+    || template.tags.some((tag) =>
+      !Array.isArray(tag) || tag.length < 1 || tag.some((member) =>
+        typeof member !== "string"
+      )
+    )
+  ) return undefined;
+  return {
+    pubkey: grant.selected_signing_pubkey,
+    created_at: template.created_at as number,
+    kind: template.kind as number,
+    tags: template.tags as string[][],
+    content: template.content,
+  };
+}
 
 export function nip46RequestDigest(
   grant: SigningGrant,
   request: Nip46SigningRequest,
 ): string {
+  const normalizedEvent = request.rpc_request.method === "sign_event"
+    && request.rpc_request.params.length === 1
+    ? parseNip46EventTemplate(grant, request.rpc_request.params[0]) ?? null
+    : null;
   return createHash("sha256")
     .update(proofBytes("heterodyne-control-nip46-request-v1", {
       grant_digest: signerGrantStateDigest(grant),
       authority: grantAuthorityBinding(grant),
       rpc_request: request.rpc_request,
+      normalized_event: normalizedEvent,
       value_msats: request.value_msats,
+    }))
+    .digest("hex");
+}
+
+export function nip46OperationId(
+  grant: SigningGrant,
+  requestId: string,
+): string {
+  return createHash("sha256")
+    .update(proofBytes("heterodyne-control-nip46-operation-id-v1", {
+      grant_digest: signerGrantStateDigest(grant),
+      authority: grantAuthorityBinding(grant),
+      wire_request_id: requestId,
     }))
     .digest("hex");
 }
@@ -245,7 +403,9 @@ function validateCanonicalNip46Request(
     || typeof request.rpc_request !== "object"
     || Object.keys(request.rpc_request).sort().join("\0")
       !== ["id", "method", "params"].join("\0")
-    || !/^[0-9a-f]{64}$/.test(request.rpc_request.id)
+    || typeof request.rpc_request.id !== "string"
+    || request.rpc_request.id.length < 1
+    || Buffer.byteLength(request.rpc_request.id, "utf8") > 256
     || !/^[a-z][a-z0-9_]{0,63}$/.test(request.rpc_request.method)
     || !Array.isArray(request.rpc_request.params)
     || request.rpc_request.params.length > 64
@@ -257,54 +417,27 @@ function validateCanonicalNip46Request(
   }
   let eventKind: number | null = null;
   let eventBytes = Buffer.byteLength(jcsCanonicalize(request.rpc_request), "utf8");
+  let normalizedEvent: UnsignedEvent | null = null;
   if (request.rpc_request.method === "sign_event") {
     if (request.rpc_request.params.length !== 1) {
       return reject("control-nip46-request-invalid");
     }
     const param = request.rpc_request.params[0];
-    let event: unknown;
-    try {
-      event = JSON.parse(param);
-    } catch {
+    normalizedEvent = parseNip46EventTemplate(grant, param) ?? null;
+    if (normalizedEvent === null) {
       return reject("control-nip46-request-invalid");
     }
-    if (
-      event === null
-      || typeof event !== "object"
-      || Array.isArray(event)
-      || Object.keys(event).sort().join("\0")
-        !== ["content", "created_at", "kind", "pubkey", "tags"].join("\0")
-    ) {
-      return reject("control-nip46-request-invalid");
-    }
-    const unsigned = event as Record<string, unknown>;
-    if (
-      typeof unsigned.content !== "string"
-      || !finiteSafeInteger(unsigned.created_at as number)
-      || !finiteSafeInteger(unsigned.kind as number)
-      || (unsigned.kind as number) > 65535
-      || typeof unsigned.pubkey !== "string"
-      || !/^[0-9a-f]{64}$/.test(unsigned.pubkey)
-      || unsigned.pubkey !== grant.selected_signing_pubkey
-      || !Array.isArray(unsigned.tags)
-      || unsigned.tags.some((tag) =>
-        !Array.isArray(tag) || tag.length < 1 || tag.some((member) =>
-          typeof member !== "string"
-        )
-      )
-      || jcsCanonicalize(unsigned) !== param
-    ) {
-      return reject("control-nip46-request-invalid");
-    }
-    eventKind = unsigned.kind as number;
+    eventKind = normalizedEvent.kind;
     eventBytes = Buffer.byteLength(param, "utf8");
   }
   return {
+    operation_id: nip46OperationId(grant, request.rpc_request.id),
     request_id: request.rpc_request.id,
     request_digest: nip46RequestDigest(grant, request),
     method: request.rpc_request.method,
     event_kind: eventKind,
     event_bytes: eventBytes,
+    normalized_event: normalizedEvent,
   };
 }
 
@@ -535,8 +668,8 @@ function reserveGrantUsage(
   if (!grantUsageStateIsValid(grant, request, usage)) {
     return reject("control-signing-grant-invalid");
   }
-  const prior = usage.reservations.find(({ request_id }) =>
-    request_id === requestBinding.request_id
+  const prior = usage.reservations.find(({ operation_id }) =>
+    operation_id === requestBinding.operation_id
   );
   if (prior !== undefined) {
     if (
@@ -558,6 +691,7 @@ function reserveGrantUsage(
     return reject("control-signing-rate-limited");
   }
   return {
+    operation_id: requestBinding.operation_id,
     grant_id: grant.grant_id,
     grant_digest: usage.grant_digest,
     authority: usage.authority,
@@ -610,7 +744,8 @@ function grantUsageStateIsValid(
       candidate === null
       || typeof candidate !== "object"
       || Object.keys(candidate).sort().join("\0") !== [
-        "claimed_at", "completed_at", "failure_digest", "request_digest",
+        "claimed_at", "completed_at", "executing_at", "execution_token",
+        "failure_digest", "operation_id", "request_digest",
         "request_id", "reserved_at", "result_event_id", "rpc_request",
         "state", "value_msats", "window_started_at",
       ].join("\0")
@@ -625,10 +760,19 @@ function grantUsageStateIsValid(
     const storedBinding = validateCanonicalNip46Request(grant, storedRequest);
     return !("verdict" in storedBinding)
     && storedBinding.request_id === candidate.request_id
+    && storedBinding.operation_id === candidate.operation_id
     && storedBinding.request_digest === candidate.request_digest
-    && /^[0-9a-f]{64}$/.test(candidate.request_id)
+    && (candidate.execution_token === null
+      || candidate.execution_token === signingExecutionToken(
+        grant,
+        candidate.request_digest,
+      ))
+    && /^[0-9a-f]{64}$/.test(candidate.operation_id)
+    && typeof candidate.request_id === "string"
+    && candidate.request_id.length > 0
+    && Buffer.byteLength(candidate.request_id, "utf8") <= 256
     && /^[0-9a-f]{64}$/.test(candidate.request_digest)
-    && ["reserved", "claimed", "committed", "indeterminate"].includes(candidate.state)
+    && ["reserved", "claimed", "executing", "committed", "indeterminate"].includes(candidate.state)
     && jcsCanonicalize(candidate.rpc_request).length > 0
     && finiteSafeInteger(candidate.value_msats)
     && finiteSafeInteger(candidate.window_started_at)
@@ -636,28 +780,44 @@ function grantUsageStateIsValid(
     && candidate.reserved_at >= candidate.window_started_at
     && candidate.reserved_at <= request.now
     && (candidate.claimed_at === null || finiteSafeInteger(candidate.claimed_at))
+    && (candidate.executing_at === null || finiteSafeInteger(candidate.executing_at))
     && (candidate.completed_at === null || finiteSafeInteger(candidate.completed_at))
     && (candidate.claimed_at === null || candidate.claimed_at >= candidate.reserved_at)
+    && (candidate.executing_at === null
+      || candidate.claimed_at !== null && candidate.executing_at >= candidate.claimed_at)
     && (candidate.completed_at === null
-      || candidate.claimed_at !== null && candidate.completed_at >= candidate.claimed_at)
+      || candidate.executing_at !== null && candidate.completed_at >= candidate.executing_at)
     && (candidate.completed_at === null || candidate.completed_at <= request.now)
     && (candidate.state === "reserved"
       ? candidate.claimed_at === null
         && candidate.completed_at === null
+        && candidate.executing_at === null
+        && candidate.execution_token === null
         && candidate.result_event_id === null
         && candidate.failure_digest === null
       : candidate.state === "claimed"
       ? candidate.claimed_at !== null
         && candidate.completed_at === null
+        && candidate.executing_at === null
+        && candidate.execution_token === null
+        && candidate.result_event_id === null
+        && candidate.failure_digest === null
+      : candidate.state === "executing"
+      ? candidate.claimed_at !== null
+        && candidate.executing_at !== null
+        && candidate.completed_at === null
+        && /^[0-9a-f]{64}$/.test(candidate.execution_token ?? "")
         && candidate.result_event_id === null
         && candidate.failure_digest === null
       : candidate.state === "committed"
-      ? candidate.claimed_at !== null
+      ? candidate.executing_at !== null
         && candidate.completed_at !== null
+        && /^[0-9a-f]{64}$/.test(candidate.execution_token ?? "")
         && /^[0-9a-f]{64}$/.test(candidate.result_event_id ?? "")
         && candidate.failure_digest === null
-      : candidate.claimed_at !== null
+      : candidate.executing_at !== null
         && candidate.completed_at !== null
+        && /^[0-9a-f]{64}$/.test(candidate.execution_token ?? "")
         && candidate.result_event_id === null
         && /^[0-9a-f]{64}$/.test(candidate.failure_digest ?? ""));
   };
@@ -677,9 +837,10 @@ function grantUsageStateIsValid(
     || usage.consumed_request_count !== usage.reservations.filter((candidate) =>
       candidate.window_started_at === usage.window_started_at
     ).length
-    || new Set(usage.reservations.map(({ request_id }) => request_id)).size
+    || new Set(usage.reservations.map(({ operation_id }) => operation_id)).size
       !== usage.reservations.length
-    || !/^[0-9a-f]{64}$/.test(requestBinding.request_id)
+    || requestBinding.request_id.length < 1
+    || Buffer.byteLength(requestBinding.request_id, "utf8") > 256
     || !/^[0-9a-f]{64}$/.test(requestBinding.request_digest)
   );
 }
@@ -855,9 +1016,9 @@ type UnsignedEvent = {
 
 function requirePersistedReservation(
   input: Nip46AuthorizationInput,
-  requiredState: "reserved" | "claimed",
+  requiredState: "reserved" | "claimed" | "executing",
 ):
-  | { verdict: "accept"; reservation_revision: number }
+  | { verdict: "accept"; reservation_revision: number; execution_token: string | null }
   | { verdict: "replay"; event_id: string }
   | Reject {
   const grant = input.presented_grant;
@@ -871,8 +1032,8 @@ function requirePersistedReservation(
   if (!grantUsageStateIsValid(grant, request, usage)) {
     return reject("control-signing-grant-invalid");
   }
-  const reservation = usage.reservations.find(({ request_id }) =>
-    request_id === requestBinding.request_id
+  const reservation = usage.reservations.find(({ operation_id }) =>
+    operation_id === requestBinding.operation_id
   );
   if (reservation === undefined || usage.consumed_request_count < 1) {
     return reject("control-operation-reservation-required");
@@ -886,7 +1047,11 @@ function requirePersistedReservation(
   if (reservation.state !== requiredState) {
     return reject("control-operation-indeterminate");
   }
-  return { verdict: "accept", reservation_revision: usage.revision };
+  return {
+    verdict: "accept",
+    reservation_revision: usage.revision,
+    execution_token: reservation.execution_token,
+  };
 }
 
 type ValidatedAutomatedSigning = {
@@ -969,8 +1134,8 @@ function validateAutomatedSigningIntent(input: {
   if (
     input.authorization.request.rpc_request.method !== "sign_event"
     || input.authorization.request.rpc_request.params.length !== 1
-    || input.authorization.request.rpc_request.params[0]
-      !== jcsCanonicalize(unsigned)
+    || requestBinding.normalized_event === null
+    || jcsCanonicalize(requestBinding.normalized_event) !== jcsCanonicalize(unsigned)
   ) {
     return reject("control-operation-conflict");
   }
@@ -1010,6 +1175,7 @@ export function prepareAutomatedSigning(input: {
     authorization_mode: "claim-required",
     unsigned_event: validated.unsigned_event,
     claim_transition: {
+      operation_id: validated.request_binding.operation_id,
       grant_id: validated.grant.grant_id,
       grant_digest: signerGrantStateDigest(validated.grant),
       authority: grantAuthorityBinding(validated.grant),
@@ -1024,17 +1190,72 @@ export function prepareAutomatedSigning(input: {
   };
 }
 
-export function executeClaimedAutomatedSigning<
+export function signingExecutionToken(
+  grant: SigningGrant,
+  requestDigest: string,
+): string {
+  return createHash("sha256")
+    .update(proofBytes("heterodyne-control-signing-execution-token-v1", {
+      grant_digest: signerGrantStateDigest(grant),
+      authority: grantAuthorityBinding(grant),
+      request_digest: requestDigest,
+    }))
+    .digest("hex");
+}
+
+export function prepareAutomatedExecution(input: {
+  authorization: Nip46AuthorizationInput;
+  publication: AutomatedPublication;
+}):
+  | {
+      verdict: "accept";
+      authorization_mode: "execution-fence-required";
+      unsigned_event: UnsignedEvent;
+      execution_transition: GrantExecutionTransition;
+    }
+  | { verdict: "replay"; event_id: string }
+  | Reject {
+  const validated = validateAutomatedSigningIntent(input);
+  if ("verdict" in validated) return validated;
+  const persisted = requirePersistedReservation(input.authorization, "claimed");
+  if (persisted.verdict !== "accept") return persisted;
+  const executionToken = signingExecutionToken(
+    validated.grant,
+    validated.request_binding.request_digest,
+  );
+  return {
+    verdict: "accept",
+    authorization_mode: "execution-fence-required",
+    unsigned_event: validated.unsigned_event,
+    execution_transition: {
+      operation_id: validated.request_binding.operation_id,
+      grant_id: validated.grant.grant_id,
+      grant_digest: signerGrantStateDigest(validated.grant),
+      authority: grantAuthorityBinding(validated.grant),
+      request_id: validated.request_binding.request_id,
+      request_digest: validated.request_binding.request_digest,
+      execution_token: executionToken,
+      expected_revision: persisted.reservation_revision,
+      next_revision: persisted.reservation_revision + 1,
+      prior_reservation_state: "claimed",
+      reservation_state: "executing",
+      executing_at: input.authorization.request.now,
+    },
+  };
+}
+
+export function executePersistedAutomatedSigning<
   T extends UnsignedEvent & { id: string; sig: string },
 >(input: {
   authorization: Nip46AuthorizationInput;
   publication: AutomatedPublication;
-  sign: (event: UnsignedEvent) => T;
+  sign: (event: UnsignedEvent, executionToken: string) => T;
 }):
   | {
       verdict: "accept";
       event: T;
       completion_transition: {
+        operation_id: string;
         grant_id: string;
         grant_digest: string;
         authority: GrantAuthorityBinding;
@@ -1042,7 +1263,7 @@ export function executeClaimedAutomatedSigning<
         request_digest: string;
         expected_revision: number;
         next_revision: number;
-        prior_reservation_state: "claimed";
+        prior_reservation_state: "executing";
         reservation_state: "committed";
         completed_at: number;
         event_id: string;
@@ -1052,6 +1273,7 @@ export function executeClaimedAutomatedSigning<
       verdict: "indeterminate";
       reason_code: "control-signer-effect-indeterminate";
       completion_transition: {
+        operation_id: string;
         grant_id: string;
         grant_digest: string;
         authority: GrantAuthorityBinding;
@@ -1059,7 +1281,7 @@ export function executeClaimedAutomatedSigning<
         request_digest: string;
         expected_revision: number;
         next_revision: number;
-        prior_reservation_state: "claimed";
+        prior_reservation_state: "executing";
         reservation_state: "indeterminate";
         completed_at: number;
         failure_digest: string;
@@ -1069,17 +1291,26 @@ export function executeClaimedAutomatedSigning<
   | Reject {
   const validated = validateAutomatedSigningIntent(input);
   if ("verdict" in validated) return validated;
-  const persisted = requirePersistedReservation(input.authorization, "claimed");
-  if (persisted.verdict !== "accept") return persisted;
+  const persisted = requirePersistedReservation(input.authorization, "executing");
+  if (persisted.verdict !== "accept") {
+    return persisted.verdict === "reject"
+      && persisted.reason_code === "control-operation-indeterminate"
+      ? reject("control-operation-execution-fence-required")
+      : persisted;
+  }
+  if (persisted.execution_token === null) {
+    return reject("control-operation-execution-fence-required");
+  }
   let event: T | undefined;
   let failureClass = "signer-threw";
   try {
-    event = input.sign(validated.unsigned_event);
+    event = input.sign(validated.unsigned_event, persisted.execution_token);
     failureClass = "invalid-signed-event";
   } catch {
     event = undefined;
   }
   const common = {
+    operation_id: validated.request_binding.operation_id,
     grant_id: validated.grant.grant_id,
     grant_digest: signerGrantStateDigest(validated.grant),
     authority: grantAuthorityBinding(validated.grant),
@@ -1111,7 +1342,7 @@ export function executeClaimedAutomatedSigning<
       reason_code: "control-signer-effect-indeterminate",
       completion_transition: {
         ...common,
-        prior_reservation_state: "claimed",
+        prior_reservation_state: "executing",
         reservation_state: "indeterminate",
         failure_digest: createHash("sha256")
           .update(proofBytes("heterodyne-control-signing-failure-v1", {
@@ -1128,7 +1359,7 @@ export function executeClaimedAutomatedSigning<
     event: validEvent,
     completion_transition: {
       ...common,
-      prior_reservation_state: "claimed",
+      prior_reservation_state: "executing",
       reservation_state: "committed",
       event_id: validEvent.id,
     },
@@ -1270,7 +1501,6 @@ export type CompromiseResetInventory = {
   subordinate_authority_ids: string[];
   existing_transition_ids: string[];
   existing_keypackage_event_ids: string[];
-  existing_keypackage_ids: string[];
   authorization_records: Array<{
     authority_class: "nip46-oidc-grant" | "client" | "repository" | "delegate" | "node" | "agent" | "trusted-seed";
     subject_id: string;
@@ -1440,14 +1670,13 @@ export function validateCompromiseReset(input: {
     || !Array.isArray(inventory.subordinate_authority_ids)
     || !Array.isArray(inventory.existing_transition_ids)
     || !Array.isArray(inventory.existing_keypackage_event_ids)
-    || !Array.isArray(inventory.existing_keypackage_ids)
     || evidence.evidence_bundle === null
     || typeof evidence.evidence_bundle !== "object"
     || !Array.isArray(evidence.evidence_bundle.group_commits)
     || !Array.isArray(evidence.evidence_bundle.state_transitions)
     || !hasExactKeys(inventory, [
       "agent_ids", "authorization_records", "client_ids", "delegate_ids",
-      "existing_keypackage_event_ids", "existing_keypackage_ids",
+      "existing_keypackage_event_ids",
       "existing_transition_ids", "inventory_id", "marmot_leaf_ids", "node_ids",
       "observed_at", "persona_active_key", "reachable_groups", "repository_ids",
       "revision", "subordinate_authority_ids", "trusted_seed_nids",
@@ -1475,7 +1704,9 @@ export function validateCompromiseReset(input: {
     || !exactSet(
       inventory.marmot_leaf_ids,
       inventory.reachable_groups.flatMap(({ leaves }) =>
-        leaves.map(({ leaf_id }) => leaf_id)
+        leaves
+          .filter(({ account_key }) => account_key === inventory.persona_active_key)
+          .map(({ leaf_id }) => leaf_id)
       ),
     )
     || !hasExactKeys(evidence, [
@@ -1691,6 +1922,15 @@ function transitionSubjectsMatch(
     && exactSet(evidence.agents.map(({ subject_id }) => subject_id), inventory.agent_ids)
     && exactSet(evidence.trusted_seeds.map(({ subject_nid }) => subject_nid), inventory.trusted_seed_nids)
     && exactSet(evidence.marmot_leaves.map(({ subject_id }) => subject_id), inventory.marmot_leaf_ids)
+    && evidence.marmot_leaves.every((leafEvidence) => {
+      const group = inventory.reachable_groups.find(({ leaves }) =>
+        leaves.some(({ leaf_id }) => leaf_id === leafEvidence.subject_id)
+      );
+      return group !== undefined
+        && evidence.groups.some(({ group_id, evidence_id }) =>
+          group_id === group.group_id && evidence_id === leafEvidence.evidence_id
+        );
+    })
     && exactSet(evidence.groups.map(({ group_id }) => group_id), inventory.reachable_groups.map(({ group_id }) => group_id))
     && exactSet(evidence.stalled_groups.map(({ subject_id }) => subject_id), inventory.unreachable_group_ids);
 }
@@ -1742,11 +1982,7 @@ function authenticatedResetStateEvidenceIsExact(
       && priorDigest !== undefined
       && record.prior_authorization_digest === priorDigest
       && record.recovery_id === grant.recovery_id
-      && (
-        record.signer === grant.persona_active_key
-        || grant.authorization_class === "assurance-recovery"
-          && record.signer === grant.authorizing_pubkey
-      )
+      && record.signer === grant.authorizing_pubkey
       && record.effective_at >= grant.issued_at
       && record.effective_at <= completion.completed_at
       && safeSchnorrVerify(
@@ -1794,7 +2030,7 @@ function authenticatedMlsEvidenceIsExact(
     const commit = matches[0];
     const rawCommit = decodeStrictBase64(commit.commit_bytes_base64);
     const removed = prior.leaves
-      .filter(({ leaf_id }) => grant.required_reset.marmot_leaf_ids.includes(leaf_id))
+      .filter(({ account_key }) => account_key === inventory.persona_active_key)
       .map(({ leaf_id }) => leaf_id);
     const continuing = prior.leaves
       .filter(({ leaf_id }) => !removed.includes(leaf_id))
@@ -1870,6 +2106,17 @@ function freshKeyPackagesAreAuthentic(
       if (tag.length < 2 || tags.has(tag[0])) return false;
       tags.set(tag[0], tag);
     }
+    const singleton = (name: string, pattern: RegExp) => {
+      const tag = tags.get(name);
+      return tag !== undefined && tag.length === 2 && pattern.test(tag[1]);
+    };
+    const idList = (name: string) => {
+      const tag = tags.get(name);
+      return tag !== undefined
+        && tag.length >= 2
+        && tag.slice(1).every((value) => /^0x[0-9a-f]{4}$/.test(value))
+        && new Set(tag.slice(1)).size === tag.length - 1;
+    };
     return content !== undefined
       && event.id === candidate.event_id
       && event.pubkey === grant.successor_active_key
@@ -1878,13 +2125,16 @@ function freshKeyPackagesAreAuthentic(
       && event.created_at <= completion.completed_at
       && getEventId(event) === event.id
       && verifyEventSignature(event)
+      && tags.size === 7
+      && singleton("d", /^[0-9a-f]{64}$/)
+      && singleton("mls_protocol_version", /^1\.0$/)
+      && singleton("i", /^[0-9a-f]+$/)
       && tags.get("i")?.[1] === candidate.keypackage_id
-      && tags.get("mls_protocol_version")?.[1] === "1.0"
-      && tags.has("d")
-      && tags.has("ciphersuite")
-      && tags.has("extensions")
-      && tags.has("proposals")
-      && tags.has("app_components")
+      && idList("mls_ciphersuite")
+      && idList("mls_extensions")
+      && idList("mls_proposals")
+      && idList("app_components")
+      && tags.get("app_components")?.slice(1).includes("0x8009")
       && candidate.content_sha256
         === createHash("sha256").update(content).digest("hex")
       && group !== undefined
@@ -1956,7 +2206,9 @@ function replacementIdsAreFresh(
     ...inventory.subordinate_authority_ids,
     ...inventory.existing_transition_ids,
     ...inventory.existing_keypackage_event_ids,
-    ...inventory.existing_keypackage_ids,
+    ...inventory.reachable_groups.flatMap(({ leaves }) =>
+      leaves.map(({ keypackage_id }) => keypackage_id)
+    ),
     ...inventory.authorization_records.map(({ authorization_id }) => authorization_id),
   ]);
   const transitionEvidence = completion.transition_evidence;
@@ -1968,7 +2220,6 @@ function replacementIdsAreFresh(
     ...transitionEvidence.nodes.map(({ evidence_id }) => evidence_id),
     ...transitionEvidence.agents.map(({ evidence_id }) => evidence_id),
     ...transitionEvidence.trusted_seeds.map(({ evidence_id }) => evidence_id),
-    ...transitionEvidence.marmot_leaves.map(({ evidence_id }) => evidence_id),
     ...transitionEvidence.groups.map(({ evidence_id }) => evidence_id),
     ...transitionEvidence.stalled_groups.map(({ evidence_id }) => evidence_id),
     ...evidence.evidence_bundle.group_commits.flatMap(({ successor_leaves }) =>
