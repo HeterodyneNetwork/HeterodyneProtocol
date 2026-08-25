@@ -403,9 +403,7 @@ function validateCanonicalNip46Request(
     || typeof request.rpc_request !== "object"
     || Object.keys(request.rpc_request).sort().join("\0")
       !== ["id", "method", "params"].join("\0")
-    || typeof request.rpc_request.id !== "string"
-    || request.rpc_request.id.length < 1
-    || Buffer.byteLength(request.rpc_request.id, "utf8") > 256
+    || !/^[\x20-\x7e]{1,128}$/.test(request.rpc_request.id)
     || !/^[a-z][a-z0-9_]{0,63}$/.test(request.rpc_request.method)
     || !Array.isArray(request.rpc_request.params)
     || request.rpc_request.params.length > 64
@@ -768,9 +766,7 @@ function grantUsageStateIsValid(
         candidate.request_digest,
       ))
     && /^[0-9a-f]{64}$/.test(candidate.operation_id)
-    && typeof candidate.request_id === "string"
-    && candidate.request_id.length > 0
-    && Buffer.byteLength(candidate.request_id, "utf8") <= 256
+    && /^[\x20-\x7e]{1,128}$/.test(candidate.request_id)
     && /^[0-9a-f]{64}$/.test(candidate.request_digest)
     && ["reserved", "claimed", "executing", "committed", "indeterminate"].includes(candidate.state)
     && jcsCanonicalize(candidate.rpc_request).length > 0
@@ -839,8 +835,7 @@ function grantUsageStateIsValid(
     ).length
     || new Set(usage.reservations.map(({ operation_id }) => operation_id)).size
       !== usage.reservations.length
-    || requestBinding.request_id.length < 1
-    || Buffer.byteLength(requestBinding.request_id, "utf8") > 256
+    || !/^[\x20-\x7e]{1,128}$/.test(requestBinding.request_id)
     || !/^[0-9a-f]{64}$/.test(requestBinding.request_digest)
   );
 }
@@ -1006,13 +1001,165 @@ export type AutomatedPublication = {
   tier: 1 | 2 | 3;
 };
 
-type UnsignedEvent = {
+export type UnsignedEvent = {
   pubkey: string;
   created_at: number;
   kind: number;
   tags: string[][];
   content: string;
 };
+
+export type SignerExecutionOutcome<T> =
+  | { verdict: "accept"; disposition: "executed" | "cached"; event: T }
+  | {
+      verdict: "indeterminate";
+      disposition: "executed" | "cached";
+      failure_digest: string;
+    }
+  | { verdict: "conflict" };
+
+export interface DurableSignerExecutionCapability<T> {
+  executeOnce(
+    executionToken: string,
+    unsignedEvent: UnsignedEvent,
+    requestDigest: string,
+  ): SignerExecutionOutcome<T>;
+}
+
+type SignerExecutionTerminal<T> =
+  | { state: "completed"; event: T }
+  | { state: "indeterminate"; failure_digest: string };
+
+type SignerExecutionStoreRecord<T> = {
+  binding_digest: string;
+  terminal: SignerExecutionTerminal<T> | null;
+};
+
+export interface DurableSignerExecutionStore<T> {
+  acquire(
+    executionToken: string,
+    bindingDigest: string,
+  ):
+    | { verdict: "acquired" }
+    | { verdict: "cached"; terminal: SignerExecutionTerminal<T> }
+    | { verdict: "conflict" };
+  persistTerminal(
+    executionToken: string,
+    bindingDigest: string,
+    terminal: SignerExecutionTerminal<T>,
+  ): boolean;
+}
+
+/** Process-local conformance store; production hosts must provide durable cross-process storage. */
+export class ReferenceSignerExecutionStore<T> implements DurableSignerExecutionStore<T> {
+  readonly #records = new Map<string, SignerExecutionStoreRecord<T>>();
+
+  acquire(
+    executionToken: string,
+    bindingDigest: string,
+  ):
+    | { verdict: "acquired" }
+    | { verdict: "cached"; terminal: SignerExecutionTerminal<T> }
+    | { verdict: "conflict" } {
+    const existing = this.#records.get(executionToken);
+    if (existing === undefined) {
+      this.#records.set(executionToken, { binding_digest: bindingDigest, terminal: null });
+      return { verdict: "acquired" };
+    }
+    if (existing.binding_digest !== bindingDigest) return { verdict: "conflict" };
+    if (existing.terminal === null) {
+      throw new Error("reference signer execution re-entered before terminal persistence");
+    }
+    return { verdict: "cached", terminal: existing.terminal };
+  }
+
+  persistTerminal(
+    executionToken: string,
+    bindingDigest: string,
+    terminal: SignerExecutionTerminal<T>,
+  ): boolean {
+    const existing = this.#records.get(executionToken);
+    if (
+      existing === undefined
+      || existing.binding_digest !== bindingDigest
+      || existing.terminal !== null
+    ) return false;
+    existing.terminal = terminal;
+    return true;
+  }
+}
+
+function signerExecutionBindingDigest(
+  requestDigest: string,
+  unsignedEvent: UnsignedEvent,
+): string {
+  return createHash("sha256")
+    .update(proofBytes("heterodyne-control-signer-execution-binding-v1", {
+      request_digest: requestDigest,
+      unsigned_event: unsignedEvent,
+    }))
+    .digest("hex");
+}
+
+export class ReferenceSignerExecutionFence<
+  T extends UnsignedEvent & { id: string; sig: string },
+> implements DurableSignerExecutionCapability<T> {
+  readonly #store: DurableSignerExecutionStore<T>;
+  readonly #keyOperation: (event: UnsignedEvent) => T;
+
+  constructor(
+    store: DurableSignerExecutionStore<T>,
+    keyOperation: (event: UnsignedEvent) => T,
+  ) {
+    this.#store = store;
+    this.#keyOperation = keyOperation;
+  }
+
+  executeOnce(
+    executionToken: string,
+    unsignedEvent: UnsignedEvent,
+    requestDigest: string,
+  ): SignerExecutionOutcome<T> {
+    const bindingDigest = signerExecutionBindingDigest(requestDigest, unsignedEvent);
+    const acquired = this.#store.acquire(executionToken, bindingDigest);
+    if (acquired.verdict === "conflict") return acquired;
+    if (acquired.verdict === "cached") {
+      return acquired.terminal.state === "completed"
+        ? { verdict: "accept", disposition: "cached", event: acquired.terminal.event }
+        : {
+            verdict: "indeterminate",
+            disposition: "cached",
+            failure_digest: acquired.terminal.failure_digest,
+          };
+    }
+    try {
+      const event = this.#keyOperation(unsignedEvent);
+      if (!this.#store.persistTerminal(executionToken, bindingDigest, {
+        state: "completed",
+        event,
+      })) {
+        throw new Error("signer execution terminal persistence conflict");
+      }
+      return { verdict: "accept", disposition: "executed", event };
+    } catch (error) {
+      const failureDigest = createHash("sha256")
+        .update(proofBytes("heterodyne-control-signer-execution-failure-v1", {
+          binding_digest: bindingDigest,
+          failure_class: error instanceof Error ? error.name : "unknown",
+        }))
+        .digest("hex");
+      this.#store.persistTerminal(executionToken, bindingDigest, {
+        state: "indeterminate",
+        failure_digest: failureDigest,
+      });
+      return {
+        verdict: "indeterminate",
+        disposition: "executed",
+        failure_digest: failureDigest,
+      };
+    }
+  }
+}
 
 function requirePersistedReservation(
   input: Nip46AuthorizationInput,
@@ -1155,8 +1302,6 @@ function validateAutomatedSigningIntent(input: {
 export function prepareAutomatedSigning(input: {
   authorization: Nip46AuthorizationInput;
   publication: AutomatedPublication;
-  /** Ignored compatibility member: signer invocation is forbidden before claim persistence. */
-  sign?: (event: UnsignedEvent) => unknown;
 }):
   | {
       verdict: "accept";
@@ -1249,11 +1394,12 @@ export function executePersistedAutomatedSigning<
 >(input: {
   authorization: Nip46AuthorizationInput;
   publication: AutomatedPublication;
-  sign: (event: UnsignedEvent, executionToken: string) => T;
+  signer_execution: DurableSignerExecutionCapability<T>;
 }):
   | {
       verdict: "accept";
       event: T;
+      signer_execution_disposition: "executed" | "cached";
       completion_transition: {
         operation_id: string;
         grant_id: string;
@@ -1272,6 +1418,7 @@ export function executePersistedAutomatedSigning<
   | {
       verdict: "indeterminate";
       reason_code: "control-signer-effect-indeterminate";
+      signer_execution_disposition: "executed" | "cached";
       completion_transition: {
         operation_id: string;
         grant_id: string;
@@ -1289,6 +1436,9 @@ export function executePersistedAutomatedSigning<
     }
   | { verdict: "replay"; event_id: string }
   | Reject {
+  if (!hasExactKeys(input, ["authorization", "publication", "signer_execution"])) {
+    return reject("control-operation-execution-fence-required");
+  }
   const validated = validateAutomatedSigningIntent(input);
   if ("verdict" in validated) return validated;
   const persisted = requirePersistedReservation(input.authorization, "executing");
@@ -1302,9 +1452,24 @@ export function executePersistedAutomatedSigning<
     return reject("control-operation-execution-fence-required");
   }
   let event: T | undefined;
-  let failureClass = "signer-threw";
+  let executionDisposition: "executed" | "cached" = "executed";
+  let boundaryFailureDigest: string | undefined;
+  let failureClass = "execution-capability-threw";
   try {
-    event = input.sign(validated.unsigned_event, persisted.execution_token);
+    const outcome = input.signer_execution.executeOnce(
+      persisted.execution_token,
+      validated.unsigned_event,
+      validated.request_binding.request_digest,
+    );
+    if (outcome.verdict === "conflict") {
+      return reject("control-operation-conflict");
+    }
+    executionDisposition = outcome.disposition;
+    if (outcome.verdict === "indeterminate") {
+      boundaryFailureDigest = outcome.failure_digest;
+    } else {
+      event = outcome.event;
+    }
     failureClass = "invalid-signed-event";
   } catch {
     event = undefined;
@@ -1340,11 +1505,12 @@ export function executePersistedAutomatedSigning<
     return {
       verdict: "indeterminate",
       reason_code: "control-signer-effect-indeterminate",
+      signer_execution_disposition: executionDisposition,
       completion_transition: {
         ...common,
         prior_reservation_state: "executing",
         reservation_state: "indeterminate",
-        failure_digest: createHash("sha256")
+        failure_digest: boundaryFailureDigest ?? createHash("sha256")
           .update(proofBytes("heterodyne-control-signing-failure-v1", {
             request_digest: validated.request_binding.request_digest,
             failure_class: failureClass,
@@ -1357,6 +1523,7 @@ export function executePersistedAutomatedSigning<
   return {
     verdict: "accept",
     event: validEvent,
+    signer_execution_disposition: executionDisposition,
     completion_transition: {
       ...common,
       prior_reservation_state: "executing",

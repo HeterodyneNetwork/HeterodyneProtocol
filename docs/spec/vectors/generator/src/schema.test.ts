@@ -423,6 +423,46 @@ describe("multi-persona Control schemas", () => {
         persisted_at: 125,
       },
     })).toMatch(/signature_state|event_id|const|pending/);
+
+    expect(validateControlSchema("control-operation-record-v1.schema.json", {
+      ...operation,
+      state: "executing",
+      attribution_state: "required",
+      signature_state: "pending",
+      event_id: null,
+      result_digest: null,
+      failure_digest: null,
+      commit_evidence: {
+        expected_revision: 5,
+        next_revision: 6,
+        prior_state: "claimed",
+        state: "executing",
+        persisted_at: 126,
+      },
+    })).toMatch(/attribution_state|not-applicable|applied/);
+
+    expect(validateControlSchema("control-operation-record-v1.schema.json", {
+      ...operation,
+      state: "indeterminate",
+      attribution_state: "required",
+      signature_state: "indeterminate",
+      event_id: null,
+      result_digest: null,
+      failure_digest: h("f"),
+      commit_evidence: {
+        expected_revision: 6,
+        next_revision: 7,
+        prior_state: "executing",
+        state: "indeterminate",
+        persisted_at: 127,
+      },
+    })).toMatch(/attribution_state|not-applicable|applied/);
+
+    expect(validateControlSchema("control-operation-record-v1.schema.json", {
+      ...operation,
+      request_id: "🔐-1",
+      rpc_request: { ...operation.rpc_request, id: "🔐-1" },
+    })).toMatch(/request_id|pattern|rpc_request/);
   });
 
   it("requires the closed automated attribution contract and permits explicit null association", () => {

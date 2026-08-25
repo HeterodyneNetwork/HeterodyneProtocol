@@ -148,6 +148,7 @@
           "result_digest": {"type": "null"},
           "failure_digest": {"type": "null"},
           "signature_state": {"const": "pending"},
+          "attribution_state": {"enum": ["not-applicable", "applied"]},
           "event_id": {"type": "null"},
           "execution_token": {"$ref": "#/$defs/hex256"},
           "commit_evidence": {
@@ -165,6 +166,7 @@
         "properties": {
           "result_digest": {"type": "null"},
           "signature_state": {"const": "indeterminate"},
+          "attribution_state": {"enum": ["not-applicable", "applied"]},
           "event_id": {"type": "null"},
           "execution_token": {"$ref": "#/$defs/hex256"},
           "failure_digest": {"$ref": "#/$defs/hex256"},
@@ -180,7 +182,7 @@
   ],
   "$defs": {
     "hex256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "nip46RequestId": {"type": "string", "minLength": 1, "maxLength": 256},
+    "nip46RequestId": {"type": "string", "pattern": "^[ -~]{1,128}$"},
     "time": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
     "transitionEvidence": {
       "type": "object", "additionalProperties": false,

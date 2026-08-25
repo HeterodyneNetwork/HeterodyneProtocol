@@ -15,6 +15,8 @@ import {
   nip46OperationId,
   prepareAutomatedExecution,
   prepareAutomatedSigning,
+  ReferenceSignerExecutionFence,
+  ReferenceSignerExecutionStore,
   resetStateEvidenceProofBytes,
   signingExecutionToken,
   type AutomatedPublication,
@@ -355,6 +357,15 @@ function signNostrEvent(event: NostrUnsignedEvent, secret = agentSignerSecret) {
   };
 }
 
+function referenceSignerExecution<
+  T extends NostrUnsignedEvent & { id: string; sig: string },
+>(keyOperation: (event: NostrUnsignedEvent) => T) {
+  return new ReferenceSignerExecutionFence(
+    new ReferenceSignerExecutionStore<T>(),
+    keyOperation,
+  );
+}
+
 function authorize(overrides: Record<string, unknown> = {}) {
   return authorizeNip46Signing({
     grant_candidates: [grant],
@@ -433,6 +444,18 @@ describe("Control NIP-46 signer grant authorization", () => {
         request_id: standardRpc.id,
         request_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
       },
+    });
+  });
+
+  it("rejects a non-printable-ASCII NIP-46 wire request id", () => {
+    expect(authorize({
+      request: {
+        ...request,
+        rpc_request: { ...rpcRequest, id: "🔐-1" },
+      },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "control-nip46-request-invalid",
     });
   });
 
@@ -944,7 +967,6 @@ describe("OIDC activation and automated publication", () => {
 
   it("injects valid Comms attribution before the signer sees an automated event", () => {
     let signerSawAttribution = false;
-    let signerExecutionToken = "";
     const publication = automatedIntent();
     const signingRequest = automatedRequest(publication);
     const result = executePersistedAutomatedSigning({
@@ -957,16 +979,12 @@ describe("OIDC activation and automated publication", () => {
         client_metadata: metadata,
       },
       publication,
-      sign: (event: { pubkey: string; created_at: number; kind: number; tags: string[][]; content: string }, executionToken) => {
+      signer_execution: referenceSignerExecution((event) => {
         signerSawAttribution = matchesAgentAttributionProfile(event.tags);
-        signerExecutionToken = executionToken;
         return signNostrEvent(event);
-      },
+      }),
     });
     expect(signerSawAttribution).toBe(true);
-    expect(signerExecutionToken).toBe(
-      executingUsage(signingRequest).reservations[0].execution_token,
-    );
     expect(result).toMatchObject({
       verdict: "accept",
       completion_transition: {
@@ -987,6 +1005,91 @@ describe("OIDC activation and automated publication", () => {
     });
   });
 
+  it("executes the underlying key operation once for duplicate persisted executing state", () => {
+    let keyOperations = 0;
+    const publication = automatedIntent();
+    const signingRequest = automatedRequest(publication);
+    const authorization = {
+      grant_candidates: [automationGrant],
+      usage_state: executingUsage(signingRequest),
+      presented_grant: structuredClone(automationGrant),
+      vaults,
+      request: signingRequest,
+      client_metadata: metadata,
+    };
+    const sharedStore = new ReferenceSignerExecutionStore<ReturnType<typeof signNostrEvent>>();
+    const keyOperation = (event: NostrUnsignedEvent) => {
+      keyOperations += 1;
+      return signNostrEvent(event);
+    };
+    const firstProcessCapability = new ReferenceSignerExecutionFence(
+      sharedStore,
+      keyOperation,
+    );
+    const secondProcessCapability = new ReferenceSignerExecutionFence(
+      sharedStore,
+      keyOperation,
+    );
+    const first = executePersistedAutomatedSigning({
+      authorization,
+      publication,
+      signer_execution: firstProcessCapability,
+    });
+    const second = executePersistedAutomatedSigning({
+      authorization,
+      publication,
+      signer_execution: secondProcessCapability,
+    });
+    expect(first).toMatchObject({ verdict: "accept" });
+    expect(second).toMatchObject({ verdict: "accept" });
+    expect(keyOperations).toBe(1);
+    expect(first).toMatchObject({ signer_execution_disposition: "executed" });
+    expect(second).toMatchObject({ signer_execution_disposition: "cached" });
+  });
+
+  it("rejects an execution token replayed with different event or request digest", () => {
+    let keyOperations = 0;
+    const fence = referenceSignerExecution((event) => {
+      keyOperations += 1;
+      return signNostrEvent(event);
+    });
+    const unsigned = { pubkey: agentSigner, ...rpcUnsignedEvent };
+    expect(fence.executeOnce(hex("a"), unsigned, hex("b")))
+      .toMatchObject({ verdict: "accept", disposition: "executed" });
+    expect(fence.executeOnce(hex("a"), { ...unsigned, content: "grafted" }, hex("b")))
+      .toEqual({ verdict: "conflict" });
+    expect(fence.executeOnce(hex("a"), unsigned, hex("c")))
+      .toEqual({ verdict: "conflict" });
+    expect(keyOperations).toBe(1);
+  });
+
+  it("rejects a raw signer callback at the execution API boundary", () => {
+    let rawSignerCalls = 0;
+    const publication = automatedIntent();
+    const signingRequest = automatedRequest(publication);
+    const result = executePersistedAutomatedSigning({
+      authorization: {
+        grant_candidates: [automationGrant],
+        usage_state: executingUsage(signingRequest),
+        presented_grant: structuredClone(automationGrant),
+        vaults,
+        request: signingRequest,
+        client_metadata: metadata,
+      },
+      publication,
+      signer_execution: referenceSignerExecution(signNostrEvent),
+      sign: (event: NostrUnsignedEvent) => {
+        rawSignerCalls += 1;
+        return signNostrEvent(event);
+      },
+    } as never);
+    expect(result).toEqual({
+      verdict: "reject",
+      reason_code: "control-operation-execution-fence-required",
+    });
+    expect(rawSignerCalls).toBe(0);
+  });
+
   it("never invokes the signer from replayable claimed state", () => {
     let signerCalls = 0;
     const publication = automatedIntent();
@@ -1001,10 +1104,10 @@ describe("OIDC activation and automated publication", () => {
         client_metadata: metadata,
       },
       publication,
-      sign: (event) => {
+      signer_execution: referenceSignerExecution((event) => {
         signerCalls += 1;
         return signNostrEvent(event);
-      },
+      }),
     });
     expect(signerCalls).toBe(0);
     expect(result).toEqual({
@@ -1027,7 +1130,7 @@ describe("OIDC activation and automated publication", () => {
         client_metadata: metadata,
       },
       publication: altered,
-      sign: signNostrEvent,
+      signer_execution: referenceSignerExecution(signNostrEvent),
     });
     expect(result).toEqual({
       verdict: "reject",
@@ -1035,8 +1138,7 @@ describe("OIDC activation and automated publication", () => {
     });
   });
 
-  it("does not invoke the signer before the authoritative reservation is persisted", () => {
-    let signerCalled = false;
+  it("rejects automated execution before the authoritative reservation is persisted", () => {
     const publication = automatedIntent();
     const signingRequest = automatedRequest(publication);
     const result = prepareAutomatedSigning({
@@ -1049,20 +1151,14 @@ describe("OIDC activation and automated publication", () => {
         client_metadata: metadata,
       },
       publication,
-      sign: (event) => {
-        signerCalled = true;
-        return signNostrEvent(event);
-      },
     });
     expect(result).toEqual({
       verdict: "reject",
       reason_code: "control-operation-reservation-required",
     });
-    expect(signerCalled).toBe(false);
   });
 
-  it("requires an authoritative reserved-to-claimed CAS before invoking the signer", () => {
-    let signerCalled = false;
+  it("requires an authoritative reserved-to-claimed CAS before execution", () => {
     const publication = automatedIntent();
     const signingRequest = automatedRequest(publication);
     const result = prepareAutomatedSigning({
@@ -1075,12 +1171,7 @@ describe("OIDC activation and automated publication", () => {
         client_metadata: metadata,
       },
       publication,
-      sign: (event) => {
-        signerCalled = true;
-        return signNostrEvent(event);
-      },
     });
-    expect(signerCalled).toBe(false);
     expect(result).toMatchObject({
       verdict: "accept",
       authorization_mode: "claim-required",
@@ -1163,7 +1254,6 @@ describe("OIDC activation and automated publication", () => {
         client_metadata: metadata,
       },
       publication: policyIntent,
-      sign: (event) => ({ ...event, id: hex("d"), sig: "e".repeat(128) }),
     });
     expect(result).toEqual({
       verdict: "reject",
@@ -1226,7 +1316,6 @@ describe("OIDC activation and automated publication", () => {
         client_metadata: metadata,
       },
       publication,
-      sign: (event) => ({ ...event, id: hex("d"), sig: "e".repeat(128) }),
     });
     expect(result).toEqual({
       verdict: "reject",
@@ -1235,7 +1324,6 @@ describe("OIDC activation and automated publication", () => {
   });
 
   it("rejects an unsupported attribution kind at the closed intent boundary", () => {
-    let signerCalled = false;
     const unsupportedGrant = resignGrant({
       ...automationGrant,
       allowed_event_kinds: [2],
@@ -1261,16 +1349,11 @@ describe("OIDC activation and automated publication", () => {
         client_metadata: { ...metadata, requested_event_kinds: [2] },
       },
       publication,
-      sign: (event: { pubkey: string; created_at: number; kind: number; tags: string[][]; content: string }) => {
-        signerCalled = true;
-        return { ...event, id: hex("f"), sig: "0".repeat(128) };
-      },
     });
     expect(result).toEqual({
       verdict: "reject",
       reason_code: "control-agent-intent-invalid",
     });
-    expect(signerCalled).toBe(false);
   });
 
   it("rejects a shape-valid returned event ID and signature that do not verify", () => {
@@ -1286,7 +1369,11 @@ describe("OIDC activation and automated publication", () => {
         client_metadata: metadata,
       },
       publication,
-      sign: (event) => ({ ...event, id: hex("d"), sig: "e".repeat(128) }),
+      signer_execution: referenceSignerExecution((event) => ({
+        ...event,
+        id: hex("d"),
+        sig: "e".repeat(128),
+      })),
     });
     expect(result).toMatchObject({
       verdict: "indeterminate",
@@ -1313,10 +1400,10 @@ describe("OIDC activation and automated publication", () => {
         client_metadata: metadata,
       },
       publication,
-      sign: (event) => ({
+      signer_execution: referenceSignerExecution((event) => ({
         ...signNostrEvent(event),
         grant_id: automationGrant.grant_id,
-      }),
+      })),
     });
     expect(result).toMatchObject({
       verdict: "indeterminate",
@@ -1328,10 +1415,15 @@ describe("OIDC activation and automated publication", () => {
     });
   });
 
-  it("makes a thrown claimed signer effect durably indeterminate", () => {
+  it("makes a thrown executing signer effect durably indeterminate", () => {
+    let keyOperations = 0;
     const publication = automatedIntent();
     const signingRequest = automatedRequest(publication);
-    const result = executePersistedAutomatedSigning({
+    const signerExecution = referenceSignerExecution(() => {
+      keyOperations += 1;
+      throw new Error("remote signer outcome unknown");
+    });
+    const input = {
       authorization: {
         grant_candidates: [automationGrant],
         usage_state: executingUsage(signingRequest),
@@ -1341,23 +1433,32 @@ describe("OIDC activation and automated publication", () => {
         client_metadata: metadata,
       },
       publication,
-      sign: () => {
-        throw new Error("remote signer outcome unknown");
-      },
-    });
-    expect(result).toMatchObject({
+      signer_execution: signerExecution,
+    };
+    const first = executePersistedAutomatedSigning(input);
+    const second = executePersistedAutomatedSigning(input);
+    expect(first).toMatchObject({
       verdict: "indeterminate",
       reason_code: "control-signer-effect-indeterminate",
+      signer_execution_disposition: "executed",
       completion_transition: {
         prior_reservation_state: "executing",
         reservation_state: "indeterminate",
         failure_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
       },
     });
+    if (first.verdict !== "indeterminate") throw new Error("fixture must be indeterminate");
+    expect(second).toMatchObject({
+      verdict: "indeterminate",
+      signer_execution_disposition: "cached",
+      completion_transition: {
+        failure_digest: first.completion_transition.failure_digest,
+      },
+    });
+    expect(keyOperations).toBe(1);
   });
 
   it("enforces the byte limit against the attributed event rather than caller metadata", () => {
-    let signerCalled = false;
     const tinyGrant = resignGrant({
       ...automationGrant,
       limits: { ...grant.limits, max_event_bytes: 8 },
@@ -1379,16 +1480,11 @@ describe("OIDC activation and automated publication", () => {
         client_metadata: metadata,
       },
       publication,
-      sign: (event: { pubkey: string; created_at: number; kind: number; tags: string[][]; content: string }) => {
-        signerCalled = true;
-        return { ...event, id: hex("f"), sig: "0".repeat(128) };
-      },
     });
     expect(result).toEqual({
       verdict: "reject",
       reason_code: "control-signing-grant-invalid",
     });
-    expect(signerCalled).toBe(false);
   });
 });
 

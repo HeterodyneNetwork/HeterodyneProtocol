@@ -327,8 +327,9 @@ attribution state, signature state, event ID when produced, durable
 signer-bound execution token, result or failure digest, commit evidence, and
 timestamps. A `produced` signature state is forbidden while attribution
 remains `required`; reserved, claimed, and executing operations have no
-signature or result, while committed and indeterminate operations carry their
-terminal evidence.
+signature or result. Executing and indeterminate states require attribution
+`not-applicable|applied`, never `required`; committed and indeterminate
+operations carry their terminal evidence.
 
 A request ID or operation ID reused for different bound bytes fails closed.
 A node may replay a previously committed result but MUST NOT repeat an
@@ -350,11 +351,28 @@ invoked, compare-and-swap transitions MUST atomically persist `reserved ->
 claimed` and then `claimed -> executing`. Only reloaded authoritative
 `executing` state permits invocation. The latter transition carries a
 collision-resistant execution token derived from the grant digest, full
-authority tuple, and request digest. The signer boundary MUST be idempotent
-for that token: a retry of the same executing operation returns the same
-effect, while a compare-and-swap loser never invokes the signer. A valid
-result produces `executing -> committed`; a thrown, invalid, timed-out, or
-otherwise uncertain signer effect produces durable `executing -> indeterminate`
+authority tuple, and request digest. The operation processor MUST NOT accept
+or invoke a raw signing callback. Its only signing capability is the signer-side
+`executeOnce(execution_token, unsigned_event, request_digest)` boundary. That
+boundary atomically consumes a previously unseen token together with a
+domain-separated digest of the exact request digest and unsigned event before
+the underlying key operation. It durably stores the resulting signed event or
+indeterminate failure before returning `executed`. A repeated exact binding
+returns the cached terminal result with disposition `cached` and performs no
+key operation. The same token with a different event or request digest fails
+as `control-operation-conflict` and performs no key operation.
+
+The execute-once store MUST be durable and shared across every process or node
+that can reach that signer. Concurrent callers join or wait for the first
+execution and receive its cached terminal result; only the atomic winner may
+invoke the key operation. After a crash, an incomplete token is reconciled at
+that same signer-side boundary and MUST NOT be blindly executed again. A
+process-local reference store is suitable only for exercising the pure
+contract, never for production durability. A compare-and-swap performed by
+the operation processor after signing cannot prevent a duplicate signature
+and MUST NOT be presented as the execution fence. A valid result produces
+`executing -> committed`; a thrown, invalid, timed-out, or otherwise uncertain
+signer-side effect produces durable `executing -> indeterminate`
 and MUST NOT become reusable `reserved` state. A matching committed
 reservation may replay its stored event ID; any other existing nonterminal or
 indeterminate reservation MUST NOT repeat the effect. The same request ID
@@ -367,8 +385,9 @@ UTF-8(JCS({grant_digest,authority,rpc_request,normalized_event,value_msats}))`, 
 `grant_digest` is SHA-256 over
 `UTF-8("heterodyne-control-signer-grant-state-v1") || 0x00 ||
 UTF-8(JCS(complete-signed-grant))` and `authority` is the exact vault, persona,
-client, audience, signer, and key-class tuple. The standard wire `id` is a
-bounded opaque NIP-46 string, including nostr-tools `<random>-<serial>` IDs;
+client, audience, signer, and key-class tuple. This profile bounds the standard
+wire `id` to 1–128 printable ASCII characters (`U+0020..U+007E`), including
+nostr-tools `<random>-<serial>` IDs;
 the server derives a separate hex operation ID using domain-separated SHA-256
 over the grant digest, authority, and exact wire ID. For `sign_event`, `params`
 has exactly one JSON string with
@@ -417,13 +436,15 @@ It derives agent class, association, tier, and scopes only from the signed
 grant; caller values never select policy. The node then invokes the Comms automation
 attribution transform at
 [`heterodyne:0.5.0#comms-agent-authorship`](heterodyne-comms.md#comms-agent-authorship),
-then verifies the resulting attribution, and only then exposes the unsigned
-event to the signer. Before that invocation it MUST also reload authoritative
+then verifies the resulting attribution, and only then passes the unsigned
+event to the signer-side execute-once capability; it never receives or invokes
+a raw signer. Before that invocation it MUST also reload authoritative
 usage state and verify that the exact request ID and canonical digest are
 already durably executing after persisted `reserved -> claimed` and `claimed
 -> executing` compare-and-swap transitions. The signer receives the persisted
-execution token as its idempotency key.
-After the signer returns, the node MUST recompute
+execution token as its idempotency key. The capability returns exact
+`executed|cached` disposition with the same terminal event or failure for an
+identical token binding. After the capability returns, the node MUST recompute
 the canonical NIP-01 event ID and verify the returned BIP-340 signature and
 the exact closed NIP-01 event member set and every unsigned event field before
 accepting or committing the result. A valid
@@ -680,7 +701,8 @@ owed whenever that feature is claimed:
   valid before any automated signature.
 - **CONTROL-I-MARMOT-GRANT-CONFINEMENT:** node-mediated Marmot remains bound to
   one account, leaf, group, and grant.
-- **CONTROL-I-OPERATION-AT-MOST-ONCE:** reservation precedes a side effect.
+- **CONTROL-I-OPERATION-AT-MOST-ONCE:** a durable signer-side execute-once
+  token fence, not a post-signing CAS, prevents repeated key effects.
 - **CONTROL-I-MARMOT-LEAF-COMPROMISE:** active-key compromise assumes old
   account leaves are compromised.
 - **CONTROL-I-COMPROMISE-RESET:** every grant, subordinate authority, seed,
