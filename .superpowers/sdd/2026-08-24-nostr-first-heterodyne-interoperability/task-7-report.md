@@ -565,3 +565,130 @@ registry revision/digest stability, and prohibited paths. `git diff --check`
 was clean. No unresolved design contradiction remains.
 
 Fix-round-3 commit message: `fix: authenticate Social current authority`.
+
+## Fix round 4/5
+
+### Implemented review findings
+
+- Replaced the split pre-sign/post-sign Comms capability flow with one atomic
+  embedding authority. It samples embedding-owned trusted time once, validates
+  complete current registration/token/ledger/status/grant/destination state,
+  injects attribution, freezes the exact unsigned bytes, invokes the
+  structural durable `executeOnce` signer contract, strict-verifies its exact
+  signed result, and returns a one-use opaque signed-publication proof. Signed
+  inputs cannot mint proofs. Social consumes the exact returned event without
+  retroactively consulting later mutable state.
+- Added configured opaque resolver-authority instances. Each instance
+  deep-clones and freezes its anchor set, policy allow list, minimum semantic
+  version, and maximum TTL. Evidence supplies none of that configuration.
+  Resolution capabilities carry exact authority-instance provenance; forged,
+  attacker-authority, cross-authority, mutable-envelope, policy/version
+  downgrade, excessive-TTL, and stale use fail closed.
+- Replaced ephemeral carried resolution capabilities with durable signed
+  `{envelope,signature}` attestations. Fresh verifiers reauthenticate current
+  candidates at trusted current time and historical lineage at each binding
+  event's `created_at`, preserving verification of expired or rotated
+  historical methods without restoring current authority.
+- Expanded durable revocation evaluation to the independently authenticated
+  candidate/history universe. Every valid target for the identity must occur
+  on the selected chain and have a strictly later consecutive recovery.
+  Selected siblings, generation resets/lower forks, and incompatible revoked
+  branches reject even when deterministic current selection chooses another
+  branch.
+
+Registry revision `14` and entry-set digest
+`9839393f2e11430ce9c19bde009228b71dc7f5c7268215960d39ecab0461a6fc`
+remain unchanged. No registry, schema, frozen topic/vector, snapshot,
+projection, baseline/report/debt, or release artifact was modified, and no
+repository authoring command was run.
+
+### Fix-round-4 RED evidence
+
+Every production change followed an executable exploit failure:
+
+```text
+atomic trusted-time Comms signing boundary:
+  new authority/sign API absent; valid, stale, signed-input, and substituted
+  signer-result probes all failed                                      4 failed / 20
+
+Social signed-publication consumption:
+  old Social consumer could not burn the new exact signed proof         1 failed / 11
+  (one test-helper rename error in the same run was corrected before GREEN)
+
+configured resolver authority instance:
+  configured authority producer absent; all authority probes failed     3 failed / 3
+
+persistable historical resolution:
+  durable evidence/current authority interface rejected valid bindings,
+  including expired generation-one history for a fresh verifier         5 failed / 6
+
+branch-independent durable revocation:
+  a newer selected sibling hid the valid revoked branch and accepted    1 failed / 1
+```
+
+The parent approved preserving family layering: Comms defines and consumes
+only the structural durable execute-once capability contract. It does not
+import Control. The embedding owns the durable signer implementation and
+trusted clock. The parent also approved the configured resolver instance and
+authenticated revocation-universe design. The design and implementation plan
+are recorded beside this report.
+
+### Fix-round-4 GREEN and full verification
+
+Fresh completed-patch evidence:
+
+```text
+npm --prefix docs/spec/vectors/generator test -- --run \
+  src/snapshot-topic-runtime.test.ts src/agent-moderation.test.ts \
+  src/agent-authorship.test.ts src/nostr.test.ts \
+  src/social-events.test.ts src/social-nip72.test.ts \
+  src/atproto-did-resolution.test.ts src/social-atproto.test.ts \
+  src/registry.test.ts src/schema.test.ts
+Test Files  10 passed (10)
+Tests       154 passed (154)
+
+npm --prefix docs/spec/vectors/generator run build
+node scripts/typecheck.mjs (exit 0)
+
+npm --prefix docs/spec/vectors/generator run family:check -- "$PWD"
+validated protocol document family (exit 0)
+
+npm --prefix docs/spec/vectors/generator run snapshot-check -- "$PWD"
+verified 482 vectors from source
+2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43 at snapshot
+5d4bb5fb58b35c88d8a9db120a09f1087237f35c (exit 0)
+```
+
+Snapshot verification authored only into its disposable temporary raw root
+and compared read-only with the pinned historical package.
+
+The broader generator suite was also attempted as a non-gating integration
+diagnostic: 50/56 files and 731/769 tests passed. Its 38 failures are outside
+Task 7 ownership and arise in the concurrently unfinished OIDC continuity
+schema/persona migration, maintained guides/Control wording, and dependent
+author/coverage/versioning projections. None reported a Task 7 source or
+focused-test failure; the requested family and exact-482 lanes above remain
+the Task 7 gates.
+
+### Ownership expansion, costs, and self-review
+
+Existing approved Task 7 ownership of `agent-authorship.ts`/tests expanded
+from the superseded two-stage proof to the atomic signed-publication authority.
+The structural contract deliberately duplicates no Control policy or state;
+the cost is a small family-layer-safe interface plus immutable signed-result
+verification. Existing `atproto-did-resolution.ts` ownership expanded to the
+configured authority and durable evidence reconstruction; it adds local
+embedding configuration/evidence, not a global resolver key or registry wire
+authority.
+
+The complete diff was reviewed for one trusted-time sample, final state before
+signing, attribution before the immutable snapshot, one execute-once call,
+strict NIP-01 equality, signed-input rejection, post-sign non-retroactivity,
+proof burning, authority-instance identity, deep cloning/freezing, closed
+evidence/config separation, anchor/policy/version/TTL enforcement, historical
+validation time, current freshness, authenticated-universe coverage,
+sibling/reset/incompatible revocation rejection, registry revision/digest
+stability, and prohibited paths. `git diff --check` was clean. No approved-
+design contradiction or blocker remains.
+
+Fix-round-4 commit message: `fix: bind Social authority instances`.

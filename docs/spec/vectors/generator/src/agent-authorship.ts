@@ -55,15 +55,27 @@ export type AgentAssociation = {
   value: string;
 };
 
-declare const commsSocialAuthorizationBrand: unique symbol;
-export type CommsSocialAuthorization = {
-  readonly [commsSocialAuthorizationBrand]: true;
+declare const commsSocialPublicationAuthorityBrand: unique symbol;
+export type CommsSocialPublicationAuthority = {
+  readonly [commsSocialPublicationAuthorityBrand]: true;
 };
 
-declare const commsSocialAuthorshipBrand: unique symbol;
-export type CommsSocialAuthorship = {
-  readonly [commsSocialAuthorshipBrand]: true;
+declare const commsSocialSignedPublicationBrand: unique symbol;
+export type CommsSocialSignedPublication = {
+  readonly [commsSocialSignedPublicationBrand]: true;
 };
+
+export type CommsSocialSignerExecutionOutcome =
+  | { verdict: "accept"; disposition: "executed" | "cached"; event: NostrSignedEvent }
+  | { verdict: "indeterminate" | "reconciliation" | "conflict" };
+
+export interface CommsSocialSignerExecutionCapability {
+  executeOnce(
+    executionToken: string,
+    unsignedEvent: NostrUnsignedEvent,
+    requestDigest: string,
+  ): CommsSocialSignerExecutionOutcome;
+}
 
 export type AgentTokenValidationInput = {
   typ: string;
@@ -167,19 +179,11 @@ const validateRegistration = ajv.compile<WorkloadRegistration>(
   workloadRegistrationSchema,
 );
 const AGENT_KINDS = new Set([1, 6, 7, 16, 1063, 1985, 4550, 30023]);
-const SOCIAL_AUTHORIZATIONS = new WeakMap<object, {
-  represented_persona: string;
-  event_id: string;
-  signer: string;
-  kind: number;
-  created_at: number;
-  agent_association: AgentAssociation | null;
-  requested_feed: string;
-  requested_resource: string;
-  registration_snapshot: string;
-  token_snapshot: string;
+const SOCIAL_PUBLICATION_AUTHORITIES = new WeakMap<object, {
+  trusted_now: () => number;
+  signer_execution: CommsSocialSignerExecutionCapability;
 }>();
-const SOCIAL_AUTHORSHIPS = new WeakMap<object, {
+const SOCIAL_SIGNED_PUBLICATIONS = new WeakMap<object, {
   represented_persona: string;
   event_id: string;
   signer: string;
@@ -433,21 +437,55 @@ export function injectAgentAttribution(
   };
 }
 
-export function authorizeCommsSocialPublication(input: {
+export function createCommsSocialPublicationAuthority(input: {
+  trusted_now: () => number;
+  signer_execution: CommsSocialSignerExecutionCapability;
+}): CommsSocialPublicationAuthority {
+  const authority = Object.freeze({}) as CommsSocialPublicationAuthority;
+  SOCIAL_PUBLICATION_AUTHORITIES.set(authority, {
+    trusted_now: input.trusted_now,
+    signer_execution: input.signer_execution,
+  });
+  return authority;
+}
+
+export function signCommsSocialPublication(input: {
+  authority: unknown;
   registration: unknown;
   token: AgentTokenValidationInput;
   represented_persona: string;
   event: NostrUnsignedEvent;
   requested_feed: string;
   requested_resource: string;
-}): { verdict: "accept"; authorization: CommsSocialAuthorization } | {
+  execution_token: string;
+  request_digest: string;
+}): {
+  verdict: "accept";
+  event: NostrSignedEvent;
+  publication: CommsSocialSignedPublication;
+} | {
   verdict: "reject";
   reason_code: "agent-signer-mismatch";
 } {
-  const context = validateCommsSocialContext(input);
-  if (context === null) {
+  if (
+    input.authority === null
+    || typeof input.authority !== "object"
+    || Array.isArray(input.authority)
+  ) return denied("agent-signer-mismatch");
+  const authority = SOCIAL_PUBLICATION_AUTHORITIES.get(input.authority);
+  if (authority === undefined) return denied("agent-signer-mismatch");
+  let trustedNow: number;
+  try {
+    trustedNow = authority.trusted_now();
+  } catch {
     return denied("agent-signer-mismatch");
   }
+  const context = validateCommsSocialContext({ ...input, trusted_now: trustedNow });
+  if (
+    context === null
+    || !/^[0-9a-f]{64}$/u.test(input.execution_token)
+    || !/^[0-9a-f]{64}$/u.test(input.request_digest)
+  ) return denied("agent-signer-mismatch");
   const { registration, token, association } = context;
   const attributed = injectAgentAttribution({
     kind: input.event.kind,
@@ -465,77 +503,53 @@ export function authorizeCommsSocialPublication(input: {
   if (
     attributed.verdict !== "accept"
     || attributed.author !== input.event.pubkey
-    || JSON.stringify(attributed.tags) !== JSON.stringify(input.event.tags)
   ) {
     return denied("agent-signer-mismatch");
   }
-  const authorization = Object.freeze({}) as CommsSocialAuthorization;
-  SOCIAL_AUTHORIZATIONS.set(authorization, {
-    represented_persona: input.represented_persona,
-    event_id: getEventId(input.event),
-    signer: input.event.pubkey,
-    kind: input.event.kind,
+  const unsignedEvent = deepFreezeJson({
+    pubkey: input.event.pubkey,
     created_at: input.event.created_at,
+    kind: input.event.kind,
+    tags: attributed.tags,
+    content: input.event.content,
+  });
+  let outcome: CommsSocialSignerExecutionOutcome;
+  try {
+    outcome = authority.signer_execution.executeOnce(
+      input.execution_token,
+      unsignedEvent,
+      input.request_digest,
+    );
+  } catch {
+    return denied("agent-signer-mismatch");
+  }
+  if (
+    outcome.verdict !== "accept"
+    || !isStrictNostrSignedEvent(outcome.event)
+    || outcome.event.id !== getEventId(unsignedEvent)
+    || outcome.event.pubkey !== unsignedEvent.pubkey
+    || outcome.event.created_at !== unsignedEvent.created_at
+    || outcome.event.kind !== unsignedEvent.kind
+    || outcome.event.content !== unsignedEvent.content
+    || stableJson(outcome.event.tags) !== stableJson(unsignedEvent.tags)
+  ) return denied("agent-signer-mismatch");
+  const event = deepFreezeJson(outcome.event);
+  const publication = Object.freeze({}) as CommsSocialSignedPublication;
+  SOCIAL_SIGNED_PUBLICATIONS.set(publication, {
+    represented_persona: input.represented_persona,
+    event_id: event.id,
+    signer: event.pubkey,
+    kind: event.kind,
+    created_at: event.created_at,
     agent_association: association,
     requested_feed: input.requested_feed,
     requested_resource: input.requested_resource,
-    registration_snapshot: stableJson(registration),
-    token_snapshot: stableJson(input.token),
   });
-  return { verdict: "accept", authorization };
+  return { verdict: "accept", event, publication };
 }
 
-export function consumeCommsSocialAuthorization(input: {
-  authorization: unknown;
-  registration: unknown;
-  token: AgentTokenValidationInput;
-  represented_persona: string;
-  event: NostrUnsignedEvent;
-  agent_association: AgentAssociation | null;
-  requested_feed: string;
-  requested_resource: string;
-}): { verdict: "accept"; authorship: CommsSocialAuthorship } | {
-  verdict: "reject";
-  reason_code: "agent-signer-mismatch";
-} {
-  if (
-    input.authorization === null
-    || typeof input.authorization !== "object"
-    || Array.isArray(input.authorization)
-  ) return denied("agent-signer-mismatch");
-  const binding = SOCIAL_AUTHORIZATIONS.get(input.authorization);
-  if (binding === undefined) return denied("agent-signer-mismatch");
-  SOCIAL_AUTHORIZATIONS.delete(input.authorization);
-  const context = validateCommsSocialContext(input);
-  const valid = context !== null
-    && binding.represented_persona === input.represented_persona
-    && binding.event_id === getEventId(input.event)
-    && binding.signer === input.event.pubkey
-    && binding.kind === input.event.kind
-    && binding.created_at === input.event.created_at
-    && equalNullableAssociation(binding.agent_association, input.agent_association)
-    && equalNullableAssociation(context.association, input.agent_association)
-    && binding.requested_feed === input.requested_feed
-    && binding.requested_resource === input.requested_resource
-    && binding.registration_snapshot === stableJson(context.registration)
-    && binding.token_snapshot === stableJson(input.token);
-  if (!valid) return denied("agent-signer-mismatch");
-  const authorship = Object.freeze({}) as CommsSocialAuthorship;
-  SOCIAL_AUTHORSHIPS.set(authorship, {
-    represented_persona: binding.represented_persona,
-    event_id: binding.event_id,
-    signer: binding.signer,
-    kind: binding.kind,
-    created_at: binding.created_at,
-    agent_association: binding.agent_association,
-    requested_feed: binding.requested_feed,
-    requested_resource: binding.requested_resource,
-  });
-  return { verdict: "accept", authorship };
-}
-
-export function consumeCommsSocialAuthorship(input: {
-  authorship: unknown;
+export function consumeCommsSocialSignedPublication(input: {
+  publication: unknown;
   represented_persona: string;
   event: NostrSignedEvent;
   agent_association: AgentAssociation | null;
@@ -543,13 +557,13 @@ export function consumeCommsSocialAuthorship(input: {
   requested_resource: string;
 }): boolean {
   if (
-    input.authorship === null
-    || typeof input.authorship !== "object"
-    || Array.isArray(input.authorship)
+    input.publication === null
+    || typeof input.publication !== "object"
+    || Array.isArray(input.publication)
   ) return false;
-  const binding = SOCIAL_AUTHORSHIPS.get(input.authorship);
+  const binding = SOCIAL_SIGNED_PUBLICATIONS.get(input.publication);
   if (binding === undefined) return false;
-  SOCIAL_AUTHORSHIPS.delete(input.authorship);
+  SOCIAL_SIGNED_PUBLICATIONS.delete(input.publication);
   return isStrictNostrSignedEvent(input.event)
     && binding.represented_persona === input.represented_persona
     && binding.event_id === input.event.id
@@ -568,6 +582,7 @@ function validateCommsSocialContext(input: {
   event: NostrUnsignedEvent;
   requested_feed: string;
   requested_resource: string;
+  trusted_now: number;
 }): {
   registration: WorkloadRegistration;
   token: Extract<AgentTokenDecision, { verdict: "accept" }>;
@@ -579,10 +594,12 @@ function validateCommsSocialContext(input: {
   } catch {
     return null;
   }
-  const token = validateAgentAccessToken(input.token);
+  const token = validateAgentAccessToken({ ...input.token, now: input.trusted_now });
   const association = registration.agent_association ?? null;
   if (
     token.verdict !== "accept"
+    || !Number.isSafeInteger(input.trusted_now)
+    || input.trusted_now < 0
     || !isStrictNostrUnsignedEvent(input.event)
     || registration.persona_key !== input.represented_persona
     || registration.selected_signer !== input.event.pubkey
@@ -601,7 +618,10 @@ function validateCommsSocialContext(input: {
     || input.token.expected_signer_key_class !== registration.signer_key_class
     || !equalAssociation(input.token.expected_agent_association, registration.agent_association)
     || input.token.registration_expires_at !== registration.expires_at
-    || input.event.created_at !== input.token.now
+    || input.trusted_now < registration.not_before
+    || input.trusted_now >= registration.expires_at
+    || input.trusted_now < input.token.iat
+    || input.event.created_at > input.trusted_now
     || input.event.created_at < registration.not_before
     || input.event.created_at >= registration.expires_at
     || input.event.created_at < input.token.iat
@@ -725,6 +745,19 @@ function stableJson(value: unknown): string {
   const record = value as Record<string, unknown>;
   return `{${Object.keys(record).sort().map((key) =>
     `${JSON.stringify(key)}:${stableJson(record[key])}`).join(",")}}`;
+}
+
+function deepFreezeJson<T>(value: T): T {
+  const clone = JSON.parse(stableJson(value)) as T;
+  return deepFreeze(clone);
+}
+
+function deepFreeze<T>(value: T): T {
+  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
+    for (const member of Object.values(value)) deepFreeze(member);
+    Object.freeze(value);
+  }
+  return value;
 }
 
 function isStrictNostrUnsignedEvent(value: unknown): value is NostrUnsignedEvent {

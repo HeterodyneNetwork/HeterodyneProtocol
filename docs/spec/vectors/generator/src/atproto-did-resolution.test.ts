@@ -4,6 +4,7 @@ import { schnorr } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha2";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { AUX_RAND } from "./vector-helpers.js";
+import * as resolutionModule from "./atproto-did-resolution.js";
 
 type Envelope = {
   domain: "heterodyne-atproto-did-resolution-v1";
@@ -22,22 +23,28 @@ type Envelope = {
 };
 
 type ResolutionModule = {
+  createAtprotoResolverAuthority?: (input: {
+    trust_anchors: Array<{ suite: "ed25519" | "bip340"; public_key: string }>;
+    allowed_policies: string[];
+    minimum_version: string;
+    max_ttl: number;
+  }) => object;
   authenticateAtprotoDidResolution?: (input: {
-    envelope: unknown;
-    signature: string;
-    trust_anchor: { suite: "ed25519" | "bip340"; public_key: string };
-    now: number;
+    authority: object;
+    evidence: { envelope: unknown; signature: string };
+    validation_time: number;
   }) => { verdict: "accept"; resolution: object } | {
     verdict: "reject";
     reason_code: string;
   };
   verifyAtprotoDidSignature?: (input: {
+    authority: object;
     resolution: unknown;
     did: string;
     verification_method_id: string;
     payload: string;
     signature: string;
-    now: number;
+    validation_time: number;
   }) => boolean;
 };
 
@@ -69,17 +76,20 @@ const envelope: Envelope = {
   resolved_at: 1_000,
   expires_at: 1_300,
   resolver_policy: "webpki-pinned-redirect-v1",
-  resolver_version: "resolver-1.0.0",
+  resolver_version: "1.0.0",
 };
 
 describe("authenticated ATProto DID resolution", () => {
   it("mints only from a fresh exact resolver attestation and rejects a fake victim document", async () => {
     const api = await loadResolution();
+    const authority = configuredAuthority(api, {
+      suite: "ed25519",
+      public_key: resolverPublic,
+    });
     const valid = api.authenticateAtprotoDidResolution?.({
-      envelope,
-      signature: resolverSignature(envelope, resolverSecret, "ed25519"),
-      trust_anchor: { suite: "ed25519", public_key: resolverPublic },
-      now: 1_100,
+      authority,
+      evidence: attestation(envelope, resolverSecret, "ed25519"),
+      validation_time: 1_100,
     });
     expect(valid).toMatchObject({ verdict: "accept", resolution: expect.any(Object) });
 
@@ -100,29 +110,32 @@ describe("authenticated ATProto DID resolution", () => {
       document_sha256: bytesToHex(sha256(utf8Bytes(fakeDocument))),
     };
     expect(api.authenticateAtprotoDidResolution?.({
-      envelope: fake,
-      signature: resolverSignature(fake, attackerSecret, "ed25519"),
-      trust_anchor: { suite: "ed25519", public_key: resolverPublic },
-      now: 1_100,
+      authority,
+      evidence: attestation(fake, attackerSecret, "ed25519"),
+      validation_time: 1_100,
     })).toEqual({ verdict: "reject", reason_code: "atproto-did-resolution-invalid" });
     expect(api.authenticateAtprotoDidResolution?.({
-      envelope,
-      signature: resolverSignature({ ...envelope, resolver_version: "forged" }, resolverSecret, "ed25519"),
-      trust_anchor: { suite: "ed25519", public_key: resolverPublic },
-      now: 1_100,
+      authority,
+      evidence: {
+        envelope,
+        signature: resolverSignature(
+          { ...envelope, resolver_version: "9.9.9" },
+          resolverSecret,
+          "ed25519",
+        ),
+      },
+      validation_time: 1_100,
     })).toEqual({ verdict: "reject", reason_code: "atproto-did-resolution-invalid" });
     expect(api.authenticateAtprotoDidResolution?.({
-      envelope,
-      signature: resolverSignature(envelope, resolverSecret, "ed25519"),
-      trust_anchor: { suite: "ed25519", public_key: resolverPublic },
-      now: 1_300,
+      authority,
+      evidence: attestation(envelope, resolverSecret, "ed25519"),
+      validation_time: 1_300,
     })).toEqual({ verdict: "reject", reason_code: "atproto-did-resolution-invalid" });
     const wrongUrl = { ...envelope, canonical_https_url: "https://victim.example/did.json" };
     expect(api.authenticateAtprotoDidResolution?.({
-      envelope: wrongUrl,
-      signature: resolverSignature(wrongUrl, resolverSecret, "ed25519"),
-      trust_anchor: { suite: "ed25519", public_key: resolverPublic },
-      now: 1_100,
+      authority,
+      evidence: attestation(wrongUrl, resolverSecret, "ed25519"),
+      validation_time: 1_100,
     })).toEqual({ verdict: "reject", reason_code: "atproto-did-resolution-invalid" });
     const wrongResolutionMethod: Envelope = {
       ...envelope,
@@ -132,10 +145,9 @@ describe("authenticated ATProto DID resolution", () => {
       plc_log_hash: "11".repeat(32),
     };
     expect(api.authenticateAtprotoDidResolution?.({
-      envelope: wrongResolutionMethod,
-      signature: resolverSignature(wrongResolutionMethod, resolverSecret, "ed25519"),
-      trust_anchor: { suite: "ed25519", public_key: resolverPublic },
-      now: 1_100,
+      authority,
+      evidence: attestation(wrongResolutionMethod, resolverSecret, "ed25519"),
+      validation_time: 1_100,
     })).toEqual({ verdict: "reject", reason_code: "atproto-did-resolution-invalid" });
 
     if (valid?.verdict !== "accept") throw new Error("resolution missing");
@@ -145,37 +157,126 @@ describe("authenticated ATProto DID resolution", () => {
       hexToBytes(didSecret),
     ));
     expect(api.verifyAtprotoDidSignature?.({
+      authority,
       resolution: valid.resolution,
       did,
       verification_method_id: method,
       payload,
       signature: didSignature,
-      now: 1_100,
+      validation_time: 1_100,
     })).toBe(true);
     expect(api.verifyAtprotoDidSignature?.({
+      authority,
       resolution: valid.resolution,
       did: "did:web:victim.example",
       verification_method_id: "did:web:victim.example#atproto",
       payload,
       signature: didSignature,
-      now: 1_100,
+      validation_time: 1_100,
     })).toBe(false);
     expect(api.verifyAtprotoDidSignature?.({
+      authority,
       resolution: valid.resolution,
       did,
       verification_method_id: `${did}#other`,
       payload,
       signature: didSignature,
-      now: 1_100,
+      validation_time: 1_100,
     })).toBe(false);
     expect(api.verifyAtprotoDidSignature?.({
+      authority,
       resolution: valid.resolution,
       did,
       verification_method_id: method,
       payload,
       signature: didSignature,
-      now: 1_300,
+      validation_time: 1_300,
     })).toBe(false);
+  });
+
+  it("binds capabilities to deep-frozen configured policy authority", async () => {
+    const api = await loadResolution();
+    const authority = configuredAuthority(api, {
+      suite: "ed25519",
+      public_key: resolverPublic,
+    });
+    const mutableEnvelope = structuredClone(envelope);
+    const valid = api.authenticateAtprotoDidResolution?.({
+      authority,
+      evidence: attestation(mutableEnvelope, resolverSecret, "ed25519"),
+      validation_time: 1_100,
+    });
+    expect(valid).toMatchObject({ verdict: "accept", resolution: expect.any(Object) });
+    if (valid?.verdict !== "accept") throw new Error("resolution missing");
+    mutableEnvelope.canonical_document = JSON.stringify({ id: did, verificationMethod: [] });
+    mutableEnvelope.document_sha256 = bytesToHex(sha256(utf8Bytes(mutableEnvelope.canonical_document)));
+
+    const payload = "immutable resolver evidence";
+    const signature = bytesToHex(ed25519.sign(
+      sha256(utf8Bytes(payload)),
+      hexToBytes(didSecret),
+    ));
+    expect(api.verifyAtprotoDidSignature?.({
+      authority,
+      resolution: valid.resolution,
+      did,
+      verification_method_id: method,
+      payload,
+      signature,
+      validation_time: 1_100,
+    })).toBe(true);
+
+    const attackerSecret = "06".repeat(32);
+    const attackerPublic = bytesToHex(ed25519.getPublicKey(hexToBytes(attackerSecret)));
+    const fakeDocument = JSON.stringify({
+      id: did,
+      verificationMethod: [{
+        controller: did,
+        id: method,
+        publicKeyHex: attackerPublic,
+        type: "Ed25519VerificationKey2020",
+      }],
+    });
+    const fakeEnvelope = {
+      ...envelope,
+      canonical_document: fakeDocument,
+      document_sha256: bytesToHex(sha256(utf8Bytes(fakeDocument))),
+    };
+    const attackerAuthority = configuredAuthority(api, {
+      suite: "ed25519",
+      public_key: attackerPublic,
+    });
+    const fake = api.authenticateAtprotoDidResolution?.({
+      authority: attackerAuthority,
+      evidence: attestation(fakeEnvelope, attackerSecret, "ed25519"),
+      validation_time: 1_100,
+    });
+    expect(fake).toMatchObject({ verdict: "accept", resolution: expect.any(Object) });
+    if (fake?.verdict !== "accept") throw new Error("fake resolution missing");
+    expect(api.verifyAtprotoDidSignature?.({
+      authority,
+      resolution: fake.resolution,
+      did,
+      verification_method_id: method,
+      payload,
+      signature: bytesToHex(ed25519.sign(
+        sha256(utf8Bytes(payload)),
+        hexToBytes(attackerSecret),
+      )),
+      validation_time: 1_100,
+    })).toBe(false);
+
+    for (const rejectedEnvelope of [
+      { ...envelope, resolver_policy: "unapproved-policy" },
+      { ...envelope, resolver_version: "0.9.9" },
+      { ...envelope, expires_at: 1_601 },
+    ]) {
+      expect(api.authenticateAtprotoDidResolution?.({
+        authority,
+        evidence: attestation(rejectedEnvelope as Envelope, resolverSecret, "ed25519"),
+        validation_time: 1_100,
+      })).toEqual({ verdict: "reject", reason_code: "atproto-did-resolution-invalid" });
+    }
   });
 
   it("accepts a BIP340 resolver trust anchor over a verified PLC log envelope", async () => {
@@ -203,20 +304,42 @@ describe("authenticated ATProto DID resolution", () => {
       document_sha256: bytesToHex(sha256(utf8Bytes(plcDocument))),
       selected_verification_method_id: plcMethod,
     };
-    expect(api.authenticateAtprotoDidResolution?.({
-      envelope: plc,
-      signature: resolverSignature(plc, secret, "bip340"),
-      trust_anchor: {
+    const authority = configuredAuthority(api, {
         suite: "bip340",
         public_key: bytesToHex(schnorr.getPublicKey(hexToBytes(secret))),
-      },
-      now: 1_100,
+    });
+    expect(api.authenticateAtprotoDidResolution?.({
+      authority,
+      evidence: attestation(plc, secret, "bip340"),
+      validation_time: 1_100,
     })).toMatchObject({ verdict: "accept", resolution: expect.any(Object) });
   });
 });
 
 async function loadResolution(): Promise<ResolutionModule> {
-  return await import("./atproto-did-resolution.js").catch(() => ({}));
+  return resolutionModule as ResolutionModule;
+}
+
+function configuredAuthority(
+  api: ResolutionModule,
+  anchor: { suite: "ed25519" | "bip340"; public_key: string },
+): object {
+  const authority = api.createAtprotoResolverAuthority?.({
+    trust_anchors: [anchor],
+    allowed_policies: ["webpki-pinned-redirect-v1"],
+    minimum_version: "1.0.0",
+    max_ttl: 600,
+  });
+  if (authority === undefined) throw new Error("resolver authority missing");
+  return authority;
+}
+
+function attestation(
+  value: Envelope,
+  secret: string,
+  suite: "ed25519" | "bip340",
+): { envelope: Envelope; signature: string } {
+  return { envelope: value, signature: resolverSignature(value, secret, suite) };
 }
 
 function resolverSignature(

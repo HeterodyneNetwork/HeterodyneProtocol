@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { schnorr } from "@noble/curves/secp256k1";
 import {
   deriveAgentIdentity,
   injectAgentAttribution,
@@ -9,11 +10,13 @@ import {
 } from "./agent-authorship.js";
 import * as agentAuthorship from "./agent-authorship.js";
 import {
+  getEventId,
   getPublicKey,
   signEvent,
   type NostrSignedEvent,
   type NostrUnsignedEvent,
 } from "./nostr.js";
+import { bytesToHex, hexToBytes } from "./hex.js";
 import { AUX_RAND } from "./vector-helpers.js";
 
 const coldRoot = "11".repeat(32);
@@ -408,7 +411,7 @@ describe("canonical agent attribution", () => {
   });
 });
 
-describe("opaque Comms authorization for Social", () => {
+describe("atomic Comms signed publication for Social", () => {
   const agentSecret = "17".repeat(32);
   const agentKey = getPublicKey(agentSecret);
   const association = { kind: "key" as const, value: agentKey };
@@ -471,185 +474,188 @@ describe("opaque Comms authorization for Social", () => {
     source_authorization_expires_at: 1_300,
   };
 
-  async function event(kind = 1, created_at = 1_100): Promise<NostrSignedEvent> {
-    return await signEvent({
-      secretKey: agentSecret,
-      created_at,
-      kind,
+  const intent: NostrUnsignedEvent = {
+    pubkey: agentKey,
+    created_at: 1_100,
+    kind: 1,
+    tags: [["t", "nostr"]],
+    content: "authorized Social automation",
+  };
+
+  type AtomicApi = typeof agentAuthorship & {
+    createCommsSocialPublicationAuthority?: (input: {
+      trusted_now: () => number;
+      signer_execution: {
+        executeOnce: (
+          executionToken: string,
+          event: NostrUnsignedEvent,
+          requestDigest: string,
+        ) => { verdict: "accept"; disposition: "executed" | "cached"; event: NostrSignedEvent };
+      };
+    }) => object;
+    signCommsSocialPublication?: (input: {
+      authority: object;
+      registration: unknown;
+      token: AgentTokenValidationInput;
+      represented_persona: string;
+      event: NostrUnsignedEvent;
+      requested_feed: string;
+      requested_resource: string;
+      execution_token: string;
+      request_digest: string;
+    }) => { verdict: "accept"; event: NostrSignedEvent; publication: object } | {
+      verdict: "reject";
+      reason_code: string;
+    };
+  };
+
+  function signerExecution(
+    signer: (event: NostrUnsignedEvent) => NostrSignedEvent = signNostrEvent,
+  ) {
+    return {
+      executeOnce: (_token: string, event: NostrUnsignedEvent, _digest: string) => ({
+        verdict: "accept" as const,
+        disposition: "executed" as const,
+        event: signer(event),
+      }),
+    };
+  }
+
+  function atomicInput(authority: object, overrides: Record<string, unknown> = {}) {
+    return {
+      authority,
+      registration,
+      token,
+      represented_persona: coldRoot,
+      event: intent,
+      requested_feed: "main",
+      requested_resource: "feed:main",
+      execution_token: "aa".repeat(32),
+      request_digest: "bb".repeat(32),
+      ...overrides,
+    };
+  }
+
+  it("fixes attribution before one execution and verifies the immutable signed result", () => {
+    const api = agentAuthorship as AtomicApi;
+    let signerCalls = 0;
+    let received: NostrUnsignedEvent | undefined;
+    const authority = api.createCommsSocialPublicationAuthority?.({
+      trusted_now: () => 1_101,
+      signer_execution: signerExecution((event) => {
+        signerCalls += 1;
+        received = event;
+        expect(Object.isFrozen(event)).toBe(true);
+        expect(Object.isFrozen(event.tags)).toBe(true);
+        return signNostrEvent(event);
+      }),
+    });
+    const result = authority === undefined
+      ? undefined
+      : api.signCommsSocialPublication?.(atomicInput(authority));
+    expect(result).toMatchObject({
+      verdict: "accept",
+      event: { id: expect.stringMatching(/^[0-9a-f]{64}$/) },
+      publication: expect.any(Object),
+    });
+    expect(signerCalls).toBe(1);
+    expect(received).toEqual({
+      ...intent,
       tags: [
+        ["t", "nostr"],
         ["L", "network.heterodyne.agent"],
         ["l", "ai", "network.heterodyne.agent"],
         ["heterodyne_agent", "v1", "key", agentKey],
         ["agent_action", "publish"],
       ],
-      content: "authorized Social automation",
-      auxRand: AUX_RAND,
     });
-  }
+  });
 
-  it("produces a module-authenticated capability only for the exact current grant", async () => {
-    const authorize = (agentAuthorship as typeof agentAuthorship & {
-      authorizeCommsSocialPublication?: (input: {
-        registration: unknown;
-        token: AgentTokenValidationInput;
-        represented_persona: string;
-        event: NostrUnsignedEvent;
-        requested_feed: string;
-        requested_resource: string;
-      }) => { verdict: "accept"; authorization: object } | {
-        verdict: "reject";
-        reason_code: string;
-      };
-      consumeCommsSocialAuthorization?: (input: {
-        authorization: unknown;
-        registration: unknown;
-        token: AgentTokenValidationInput;
-        represented_persona: string;
-        event: NostrUnsignedEvent;
-        agent_association: typeof association;
-        requested_feed: string;
-        requested_resource: string;
-      }) => { verdict: "accept"; authorship: object } | {
-        verdict: "reject";
-        reason_code: string;
-      };
-    }).authorizeCommsSocialPublication;
-    const consume = (agentAuthorship as typeof agentAuthorship & {
-      consumeCommsSocialAuthorization?: (input: {
-        authorization: unknown;
-        registration: unknown;
-        token: AgentTokenValidationInput;
-        represented_persona: string;
-        event: NostrUnsignedEvent;
-        agent_association: typeof association;
-        requested_feed: string;
-        requested_resource: string;
-      }) => { verdict: "accept"; authorship: object } | {
-        verdict: "reject";
-        reason_code: string;
-      };
-    }).consumeCommsSocialAuthorization;
-    const validEvent = await event();
-    const unsignedEvent = unsigned(validEvent);
-    const authorized = authorize?.({
-      registration,
-      token,
-      represented_persona: coldRoot,
-      event: unsignedEvent,
-      requested_feed: "main",
-      requested_resource: "feed:main",
+  it("rejects stale current state before invoking the signer", () => {
+    const api = agentAuthorship as AtomicApi;
+    let signerCalls = 0;
+    const execution = signerExecution((event) => {
+      signerCalls += 1;
+      return signNostrEvent(event);
     });
-    expect(authorized).toMatchObject({ verdict: "accept", authorization: expect.any(Object) });
-    expect(authorize?.({
-      registration,
-      token,
-      represented_persona: coldRoot,
-      event: unsigned(await event(7)),
-      requested_feed: "main",
-      requested_resource: "feed:main",
-    })).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
-    expect(authorize?.({
-      registration,
-      token,
-      represented_persona: coldRoot,
-      event: unsigned(await event(1, 1_301)),
-      requested_feed: "main",
-      requested_resource: "feed:main",
-    })).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
-
-    for (const changed of [
-      { registration: { ...registration, audience: "https://other.example/" }, token },
+    const authority = api.createCommsSocialPublicationAuthority?.({
+      trusted_now: () => 1_250,
+      signer_execution: execution,
+    });
+    const result = authority === undefined
+      ? undefined
+      : api.signCommsSocialPublication?.(atomicInput(authority));
+    expect(result).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
+    const currentAuthority = api.createCommsSocialPublicationAuthority?.({
+      trusted_now: () => 1_101,
+      signer_execution: execution,
+    });
+    if (currentAuthority === undefined) throw new Error("publication authority missing");
+    for (const override of [
+      { registration: { ...registration, audience: "https://other.example/" } },
       {
         registration: {
           ...registration,
           subject_jkt: "B".repeat(43),
           subject_proof: { method: "dpop" as const, jkt: "B".repeat(43) },
         },
-        token,
       },
-    ]) {
-      expect(authorize?.({
-        ...changed,
-        represented_persona: coldRoot,
-        event: unsignedEvent,
-        requested_feed: "main",
-        requested_resource: "feed:main",
-      })).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
-    }
-    expect(authorize?.({
-      registration,
-      token,
-      represented_persona: coldRoot,
-      event: unsignedEvent,
-      requested_feed: "other",
-      requested_resource: "feed:main",
-    })).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
-
-    if (authorized?.verdict !== "accept") throw new Error("authorization missing");
-    const current = {
-      authorization: authorized.authorization,
-      registration,
-      token,
-      represented_persona: coldRoot,
-      event: unsignedEvent,
-      agent_association: association,
-      requested_feed: "main",
-      requested_resource: "feed:main",
-    };
-    expect(consume?.(current)).toMatchObject({
-      verdict: "accept",
-      authorship: expect.any(Object),
-    });
-    expect(consume?.(current)).toEqual({
-      verdict: "reject",
-      reason_code: "agent-signer-mismatch",
-    });
-
-    expect(authorize?.({
-      registration,
-      token,
-      represented_persona: coldRoot,
-      event: validEvent,
-      requested_feed: "main",
-      requested_resource: "feed:main",
-    } as unknown as Parameters<NonNullable<typeof authorize>>[0]))
-      .toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
-
-    for (const patch of [
+      { requested_feed: "other" },
       { token: { ...token, status: "SUSPENDED" as const } },
-      {
-        token: {
-          ...token,
-          credential_ledger_generation: 1,
-          expected_credential_ledger_generation: 1,
-        },
-      },
-      { registration: { ...registration, max_content_bytes: 8192 } },
+      { token: { ...token, expected_credential_ledger_generation: 1 } },
     ]) {
-      const fresh = authorize?.({
-        registration,
-        token,
-        represented_persona: coldRoot,
-        event: unsignedEvent,
-        requested_feed: "main",
-        requested_resource: "feed:main",
-      });
-      if (fresh?.verdict !== "accept") throw new Error("authorization missing");
-      expect(consume?.({
-        ...current,
-        authorization: fresh.authorization,
-        ...patch,
-      })).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
+      expect(api.signCommsSocialPublication?.(atomicInput(currentAuthority, override)))
+        .toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
     }
+    expect(signerCalls).toBe(0);
+  });
+
+  it("cannot mint from a signed event by stripping after the fact", async () => {
+    const api = agentAuthorship as AtomicApi;
+    let signerCalls = 0;
+    const authority = api.createCommsSocialPublicationAuthority?.({
+      trusted_now: () => 1_101,
+      signer_execution: signerExecution((event) => {
+        signerCalls += 1;
+        return signNostrEvent(event);
+      }),
+    });
+    const alreadySigned = await signEvent({
+      secretKey: agentSecret,
+      created_at: intent.created_at,
+      kind: intent.kind,
+      tags: intent.tags,
+      content: intent.content,
+      auxRand: AUX_RAND,
+    });
+    const result = authority === undefined
+      ? undefined
+      : api.signCommsSocialPublication?.(atomicInput(authority, { event: alreadySigned }));
+    expect(result).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
+    expect(signerCalls).toBe(0);
+  });
+
+  it("rejects a signer result that differs from the fixed attributed bytes", () => {
+    const api = agentAuthorship as AtomicApi;
+    const authority = api.createCommsSocialPublicationAuthority?.({
+      trusted_now: () => 1_101,
+      signer_execution: signerExecution((event) => signNostrEvent({
+        ...event,
+        content: "substituted after authorization",
+      })),
+    });
+    const result = authority === undefined
+      ? undefined
+      : api.signCommsSocialPublication?.(atomicInput(authority));
+    expect(result).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
   });
 });
 
-function unsigned(event: NostrSignedEvent): NostrUnsignedEvent {
+function signNostrEvent(event: NostrUnsignedEvent): NostrSignedEvent {
+  const id = getEventId(event);
   return {
-    pubkey: event.pubkey,
-    created_at: event.created_at,
-    kind: event.kind,
-    tags: event.tags,
-    content: event.content,
+    ...event,
+    id,
+    sig: bytesToHex(schnorr.sign(id, hexToBytes("17".repeat(32)), AUX_RAND)),
   };
 }

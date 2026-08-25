@@ -1,16 +1,19 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import {
-  authorizeCommsSocialPublication,
-  consumeCommsSocialAuthorization,
+  createCommsSocialPublicationAuthority,
+  signCommsSocialPublication,
   type AgentTokenValidationInput,
-  type CommsSocialAuthorship,
+  type CommsSocialSignedPublication,
 } from "./agent-authorship.js";
+import { schnorr } from "@noble/curves/secp256k1";
 import {
   getPublicKey,
+  getEventId,
   signEvent,
   type NostrSignedEvent,
   type NostrUnsignedEvent,
 } from "./nostr.js";
+import { bytesToHex, hexToBytes } from "./hex.js";
 import { AUX_RAND } from "./vector-helpers.js";
 
 type AgentAssociation = { kind: "key" | "role"; value: string };
@@ -18,7 +21,7 @@ type SocialEventsModule = {
   validateSocialAuthorship?: (input: {
     event: NostrSignedEvent;
     persona_active_key?: string;
-    comms_authorization?: CommsSocialAuthorship;
+    comms_authorization?: CommsSocialSignedPublication;
     requested_feed?: string;
     requested_resource?: string;
     comms_authorized_signers?: Array<{
@@ -66,11 +69,12 @@ function unsigned(event: NostrSignedEvent): NostrUnsignedEvent {
   };
 }
 
-function authorizationFor(
+function publicationFor(
   event: NostrSignedEvent,
   agentAssociation: AgentAssociation | null,
 ): {
-  comms_authorization: CommsSocialAuthorship;
+  event: NostrSignedEvent;
+  comms_authorization: CommsSocialSignedPublication;
   requested_feed: string;
   requested_resource: string;
 } {
@@ -136,28 +140,37 @@ function authorizationFor(
     consent_expires_at: registration.expires_at,
     source_authorization_expires_at: registration.expires_at,
   };
-  const result = authorizeCommsSocialPublication({
+  const authority = createCommsSocialPublicationAuthority({
+    trusted_now: () => event.created_at + 1,
+    signer_execution: {
+      executeOnce: (_executionToken, unsignedEvent, _requestDigest) => ({
+        verdict: "accept",
+        disposition: "executed",
+        event: signAgentEvent(unsignedEvent),
+      }),
+    },
+  });
+  const result = signCommsSocialPublication({
+    authority,
     registration,
     token,
     represented_persona: personaKey,
-    event: unsigned(event),
+    event: {
+      ...unsigned(event),
+      tags: event.tags.filter((tag) =>
+        !["L", "l", "heterodyne_agent", "agent_action", "agent_review"].includes(tag[0])),
+    },
     requested_feed: "main",
     requested_resource: "feed:main",
+    execution_token: event.id,
+    request_digest: "bb".repeat(32),
   });
   if (result.verdict !== "accept") throw new Error(result.reason_code);
-  const consumed = consumeCommsSocialAuthorization({
-    authorization: result.authorization,
-    registration,
-    token,
-    represented_persona: personaKey,
-    event: unsigned(event),
-    agent_association: agentAssociation,
-    requested_feed: "main",
-    requested_resource: "feed:main",
-  });
-  if (consumed.verdict !== "accept") throw new Error(consumed.reason_code);
+  // Later mutable-state revocation cannot retroactively change this signed result.
+  token.status = "SUSPENDED";
   return {
-    comms_authorization: consumed.authorship,
+    event: result.event,
+    comms_authorization: result.publication,
     requested_feed: "main",
     requested_resource: "feed:main",
   };
@@ -242,7 +255,7 @@ describe("ordinary Social authorship", () => {
     });
   });
 
-  it("keeps the actual signer authoritative for direct and attributed organization posts", async () => {
+  it("keeps the actual signer authoritative and honors a proof after later revocation", async () => {
     const social = await loadSocialEvents();
     expect(social.validateSocialAuthorship?.({
       event: directOrganizationPost,
@@ -260,9 +273,8 @@ describe("ordinary Social authorship", () => {
         agent_association: association,
       }],
     })).toEqual({ verdict: "reject", reason_code: "social-author-binding-invalid" });
-    const currentAuthorization = authorizationFor(attributedAgentPost, association);
+    const currentAuthorization = publicationFor(attributedAgentPost, association);
     expect(social.validateSocialAuthorship?.({
-      event: attributedAgentPost,
       persona_active_key: personaKey,
       ...currentAuthorization,
     })).toEqual({
@@ -274,24 +286,21 @@ describe("ordinary Social authorship", () => {
     expect(social.validateSocialAuthorship?.({
       event: attributedAgentPost,
       persona_active_key: personaKey,
-      comms_authorization: {} as CommsSocialAuthorship,
+      comms_authorization: {} as CommsSocialSignedPublication,
     })).toEqual({ verdict: "reject", reason_code: "social-author-binding-invalid" });
 
-    const oneUse = authorizationFor(attributedAgentPost, association);
+    const oneUse = publicationFor(attributedAgentPost, association);
     expect(social.validateSocialAuthorship?.({
-      event: attributedAgentPost,
       persona_active_key: personaKey,
       ...oneUse,
     })).toMatchObject({ verdict: "accept" });
     expect(social.validateSocialAuthorship?.({
-      event: attributedAgentPost,
       persona_active_key: personaKey,
       ...oneUse,
     })).toEqual({ verdict: "reject", reason_code: "social-author-binding-invalid" });
 
-    const wrongDestination = authorizationFor(attributedAgentPost, association);
+    const wrongDestination = publicationFor(attributedAgentPost, association);
     expect(social.validateSocialAuthorship?.({
-      event: attributedAgentPost,
       persona_active_key: personaKey,
       ...wrongDestination,
       requested_resource: "feed:other",
@@ -305,11 +314,11 @@ describe("ordinary Social authorship", () => {
       content: "different event under a replayed capability",
       auxRand: AUX_RAND,
     });
-    const authorization = authorizationFor(attributedAgentPost, association);
+    const authorization = publicationFor(attributedAgentPost, association);
     expect(social.validateSocialAuthorship?.({
+      ...authorization,
       event: differentEvent,
       persona_active_key: personaKey,
-      ...authorization,
     })).toEqual({ verdict: "reject", reason_code: "social-author-binding-invalid" });
   });
 
@@ -379,9 +388,8 @@ describe("ordinary Social authorship", () => {
       auxRand: AUX_RAND,
     });
     expect(social.validateSocialAuthorship?.({
-      event: attributed,
       persona_active_key: personaKey,
-      ...authorizationFor(attributed, null),
+      ...publicationFor(attributed, null),
     })).toEqual({
       verdict: "accept",
       event_author: agentKey,
@@ -401,6 +409,15 @@ describe("ordinary Social authorship", () => {
     })).toEqual({ verdict: "reject", reason_code: "social-event-invalid" });
   });
 });
+
+function signAgentEvent(event: NostrUnsignedEvent): NostrSignedEvent {
+  const id = getEventId(event);
+  return {
+    ...event,
+    id,
+    sig: bytesToHex(schnorr.sign(id, hexToBytes(agentSecret), AUX_RAND)),
+  };
+}
 
 describe("source-neutral Social state", () => {
   it("selects the newest valid replaceable event regardless of relay or repository carrier", async () => {

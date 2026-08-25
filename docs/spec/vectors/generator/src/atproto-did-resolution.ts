@@ -24,6 +24,16 @@ export type AtprotoResolverTrustAnchor = {
   public_key: string;
 };
 
+export type AtprotoResolutionEvidence = {
+  envelope: AtprotoResolutionEnvelope;
+  signature: string;
+};
+
+declare const atprotoResolverAuthorityBrand: unique symbol;
+export type AtprotoResolverAuthority = {
+  readonly [atprotoResolverAuthorityBrand]: true;
+};
+
 declare const atprotoDidResolutionBrand: unique symbol;
 export type AtprotoDidResolution = {
   readonly [atprotoDidResolutionBrand]: true;
@@ -36,8 +46,18 @@ type VerificationMethod = {
   publicKeyHex: string;
 };
 
+type ResolverAuthorityConfig = {
+  trust_anchors: readonly AtprotoResolverTrustAnchor[];
+  allowed_policies: readonly string[];
+  minimum_version: readonly [number, number, number];
+  max_ttl: number;
+};
+
+const RESOLVER_AUTHORITIES = new WeakMap<object, ResolverAuthorityConfig>();
 const RESOLUTIONS = new WeakMap<object, {
+  authority: AtprotoResolverAuthority;
   envelope: AtprotoResolutionEnvelope;
+  document: unknown;
   method: VerificationMethod;
 }>();
 const ENVELOPE_DOMAIN = "heterodyne:atproto-did-resolution:v1\0";
@@ -49,36 +69,87 @@ const ENVELOPE_KEYS = [
   "resolver_policy", "resolver_version", "selected_verification_method_id",
 ].join("\0");
 
+export function createAtprotoResolverAuthority(input: {
+  trust_anchors: AtprotoResolverTrustAnchor[];
+  allowed_policies: string[];
+  minimum_version: string;
+  max_ttl: number;
+}): AtprotoResolverAuthority {
+  const version = parseSemver(input.minimum_version);
+  if (
+    input === null
+    || typeof input !== "object"
+    || Object.keys(input).sort().join("\0")
+      !== "allowed_policies\0max_ttl\0minimum_version\0trust_anchors"
+    || !Array.isArray(input.trust_anchors)
+    || input.trust_anchors.length === 0
+    || !input.trust_anchors.every(validTrustAnchor)
+    || new Set(input.trust_anchors.map((anchor) =>
+      `${anchor.suite}:${anchor.public_key}`)).size !== input.trust_anchors.length
+    || !Array.isArray(input.allowed_policies)
+    || input.allowed_policies.length === 0
+    || !input.allowed_policies.every((policy) =>
+      typeof policy === "string" && /^[A-Za-z0-9._:-]{1,128}$/u.test(policy))
+    || new Set(input.allowed_policies).size !== input.allowed_policies.length
+    || version === null
+    || !Number.isSafeInteger(input.max_ttl)
+    || input.max_ttl < 1
+  ) throw new Error("atproto-resolver-authority-invalid");
+  const authority = Object.freeze({}) as AtprotoResolverAuthority;
+  RESOLVER_AUTHORITIES.set(authority, deepFreeze({
+    trust_anchors: structuredClone(input.trust_anchors),
+    allowed_policies: structuredClone(input.allowed_policies),
+    minimum_version: version,
+    max_ttl: input.max_ttl,
+  }));
+  return authority;
+}
+
 export function authenticateAtprotoDidResolution(input: {
-  envelope: unknown;
-  signature: string;
-  trust_anchor: AtprotoResolverTrustAnchor;
-  now: number;
+  authority: AtprotoResolverAuthority;
+  evidence: AtprotoResolutionEvidence;
+  validation_time: number;
 }): { verdict: "accept"; resolution: AtprotoDidResolution } | {
   verdict: "reject";
   reason_code: "atproto-did-resolution-invalid";
 } {
-  const parsed = parseEnvelope(input.envelope, input.now);
+  if (
+    input === null
+    || typeof input !== "object"
+    || Object.keys(input).sort().join("\0") !== "authority\0evidence\0validation_time"
+    || input.authority === null
+    || typeof input.authority !== "object"
+  ) return { verdict: "reject", reason_code: "atproto-did-resolution-invalid" };
+  const config = RESOLVER_AUTHORITIES.get(input.authority);
+  const evidence = input.evidence;
+  const parsed = config === undefined || !validResolutionEvidence(evidence)
+    ? null
+    : parseEnvelope(evidence.envelope, input.validation_time, config);
   if (
     parsed === null
-    || !validTrustAnchor(input.trust_anchor)
-    || !HEX_64.test(input.signature)
-    || !verifyResolverAttestation(parsed.envelope, input.signature, input.trust_anchor)
+    || !verifyResolverAttestation(parsed.envelope, evidence.signature, config as ResolverAuthorityConfig)
   ) return { verdict: "reject", reason_code: "atproto-did-resolution-invalid" };
+  const snapshot = deepFreeze(structuredClone(parsed));
   const resolution = Object.freeze({}) as AtprotoDidResolution;
-  RESOLUTIONS.set(resolution, parsed);
+  RESOLUTIONS.set(resolution, { authority: input.authority, ...snapshot });
   return { verdict: "accept", resolution };
 }
 
 export function verifyAtprotoDidSignature(input: {
+  authority: AtprotoResolverAuthority;
   resolution: unknown;
   did: string;
   verification_method_id: string;
   payload: string;
   signature: string;
-  now: number;
+  validation_time: number;
 }): boolean {
-  const resolved = resolutionBinding(input.resolution, input.did, input.now);
+  const resolved = resolutionBinding(
+    input.authority,
+    input.resolution,
+    input.did,
+    input.validation_time,
+  );
   if (
     resolved === null
     || resolved.method.id !== input.verification_method_id
@@ -96,15 +167,26 @@ export function verifyAtprotoDidSignature(input: {
 }
 
 export function currentAtprotoDidMethod(input: {
+  authority: AtprotoResolverAuthority;
   resolution: unknown;
   did: string;
-  now: number;
+  validation_time: number;
 }): string | null {
-  return resolutionBinding(input.resolution, input.did, input.now)?.method.id ?? null;
+  return resolutionBinding(
+    input.authority,
+    input.resolution,
+    input.did,
+    input.validation_time,
+  )?.method.id ?? null;
 }
 
-function parseEnvelope(value: unknown, now: number): {
+function parseEnvelope(
+  value: unknown,
+  validationTime: number,
+  config: ResolverAuthorityConfig,
+): {
   envelope: AtprotoResolutionEnvelope;
+  document: unknown;
   method: VerificationMethod;
 } | null {
   if (
@@ -128,15 +210,17 @@ function parseEnvelope(value: unknown, now: number): {
     || !record.selected_verification_method_id.startsWith(`${record.did}#`)
     || !Number.isSafeInteger(record.resolved_at)
     || !Number.isSafeInteger(record.expires_at)
-    || !Number.isSafeInteger(now)
+    || !Number.isSafeInteger(validationTime)
     || (record.resolved_at as number) < 0
     || (record.expires_at as number) <= (record.resolved_at as number)
-    || now < (record.resolved_at as number)
-    || now >= (record.expires_at as number)
+    || validationTime < (record.resolved_at as number)
+    || validationTime >= (record.expires_at as number)
     || typeof record.resolver_policy !== "string"
     || !/^[A-Za-z0-9._:-]{1,128}$/u.test(record.resolver_policy)
     || typeof record.resolver_version !== "string"
-    || !/^[A-Za-z0-9._+-]{1,64}$/u.test(record.resolver_version)
+    || !config.allowed_policies.includes(record.resolver_policy)
+    || compareSemver(record.resolver_version, config.minimum_version) < 0
+    || (record.expires_at as number) - (record.resolved_at as number) > config.max_ttl
   ) return null;
   if (record.resolution_method === "did:web") {
     if (
@@ -164,7 +248,7 @@ function parseEnvelope(value: unknown, now: number): {
   ) return null;
   const method = selectedMethod(document, record.did, record.selected_verification_method_id);
   if (method === null) return null;
-  return { envelope: record as AtprotoResolutionEnvelope, method };
+  return { envelope: record as AtprotoResolutionEnvelope, document, method };
 }
 
 function selectedMethod(
@@ -188,19 +272,27 @@ function selectedMethod(
 }
 
 function resolutionBinding(
+  authority: AtprotoResolverAuthority,
   capability: unknown,
   did: string,
-  now: number,
-): { envelope: AtprotoResolutionEnvelope; method: VerificationMethod } | null {
+  validationTime: number,
+): {
+  authority: AtprotoResolverAuthority;
+  envelope: AtprotoResolutionEnvelope;
+  document: unknown;
+  method: VerificationMethod;
+} | null {
   if (capability === null || typeof capability !== "object" || Array.isArray(capability)) {
     return null;
   }
   const resolved = RESOLUTIONS.get(capability);
   return resolved !== undefined
+    && resolved.authority === authority
+    && RESOLVER_AUTHORITIES.has(authority)
     && resolved.envelope.did === did
-    && Number.isSafeInteger(now)
-    && now >= resolved.envelope.resolved_at
-    && now < resolved.envelope.expires_at
+    && Number.isSafeInteger(validationTime)
+    && validationTime >= resolved.envelope.resolved_at
+    && validationTime < resolved.envelope.expires_at
     ? resolved
     : null;
 }
@@ -208,16 +300,20 @@ function resolutionBinding(
 function verifyResolverAttestation(
   envelope: AtprotoResolutionEnvelope,
   signature: string,
-  trustAnchor: AtprotoResolverTrustAnchor,
+  config: ResolverAuthorityConfig,
 ): boolean {
   const digest = sha256(utf8Bytes(`${ENVELOPE_DOMAIN}${serializeEnvelope(envelope)}`));
-  try {
-    return trustAnchor.suite === "ed25519"
-      ? ed25519.verify(hexToBytes(signature), digest, hexToBytes(trustAnchor.public_key))
-      : schnorr.verify(hexToBytes(signature), digest, hexToBytes(trustAnchor.public_key));
-  } catch {
-    return false;
+  for (const trustAnchor of config.trust_anchors) {
+    try {
+      const valid = trustAnchor.suite === "ed25519"
+        ? ed25519.verify(hexToBytes(signature), digest, hexToBytes(trustAnchor.public_key))
+        : schnorr.verify(hexToBytes(signature), digest, hexToBytes(trustAnchor.public_key));
+      if (valid) return true;
+    } catch {
+      // Try the next locally configured anchor.
+    }
   }
+  return false;
 }
 
 function validTrustAnchor(value: AtprotoResolverTrustAnchor): boolean {
@@ -226,6 +322,42 @@ function validTrustAnchor(value: AtprotoResolverTrustAnchor): boolean {
     && Object.keys(value).sort().join("\0") === "public_key\0suite"
     && (value.suite === "ed25519" || value.suite === "bip340")
     && HEX_32.test(value.public_key);
+}
+
+function validResolutionEvidence(value: unknown): value is AtprotoResolutionEvidence {
+  return value !== null
+    && typeof value === "object"
+    && !Array.isArray(value)
+    && Object.keys(value).sort().join("\0") === "envelope\0signature"
+    && typeof (value as Record<string, unknown>).signature === "string"
+    && HEX_64.test((value as Record<string, unknown>).signature as string);
+}
+
+function parseSemver(value: unknown): [number, number, number] | null {
+  if (typeof value !== "string" || !/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/u.test(value)) {
+    return null;
+  }
+  const members = value.split(".").map(Number);
+  return members.every(Number.isSafeInteger)
+    ? members as [number, number, number]
+    : null;
+}
+
+function compareSemver(value: unknown, minimum: readonly [number, number, number]): number {
+  const parsed = parseSemver(value);
+  if (parsed === null) return -1;
+  for (let index = 0; index < 3; index += 1) {
+    if (parsed[index] !== minimum[index]) return parsed[index] - minimum[index];
+  }
+  return 0;
+}
+
+function deepFreeze<T>(value: T): T {
+  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
+    for (const member of Object.values(value)) deepFreeze(member);
+    Object.freeze(value);
+  }
+  return value;
 }
 
 function serializeEnvelope(value: AtprotoResolutionEnvelope): string {

@@ -2,9 +2,11 @@ import { sha256 } from "@noble/hashes/sha2";
 import { base58 } from "@scure/base";
 import { bytesToHex, utf8Bytes } from "./hex.js";
 import {
+  authenticateAtprotoDidResolution,
   currentAtprotoDidMethod,
   verifyAtprotoDidSignature,
-  type AtprotoDidResolution,
+  type AtprotoResolutionEvidence,
+  type AtprotoResolverAuthority,
 } from "./atproto-did-resolution.js";
 import { isStrictNostrSignedEvent, type NostrSignedEvent } from "./nostr.js";
 
@@ -36,7 +38,7 @@ export type AtprotoBindingEvidence = {
   nostr_event: NostrSignedEvent;
   pds_value: unknown;
   did_signature: string;
-  resolution: AtprotoDidResolution;
+  resolution_evidence: AtprotoResolutionEvidence;
 };
 
 export type AtprotoRevocationEvidence =
@@ -61,12 +63,18 @@ export function validateAtprotoBinding(input: {
   candidates: readonly AtprotoBindingEvidence[];
   lineage: readonly AtprotoBindingEvidence[];
   revocations: readonly AtprotoRevocationEvidence[];
-  current_resolution: AtprotoDidResolution;
+  resolver_authority: AtprotoResolverAuthority;
+  current_resolution: AtprotoResolutionEvidence;
   now: number;
 }): AtprotoBindingDecision {
   const valid = new Map<string, { binding: AtprotoBinding; event: NostrSignedEvent }>();
   for (const candidate of input.candidates) {
-    const checked = validateBindingEvidence(candidate, input.did, input.now);
+    const checked = validateBindingEvidence(
+      candidate,
+      input.did,
+      input.now,
+      input.resolver_authority,
+    );
     if (checked !== null) valid.set(checked.event.id, checked);
   }
   const current = [...valid.values()].sort((left, right) =>
@@ -75,23 +83,42 @@ export function validateAtprotoBinding(input: {
   if (current === undefined) {
     return { verdict: "reject", reason_code: "atproto-binding-invalid" };
   }
-  const chain = validateLineage(current, input.lineage, input.now);
+  const historical = new Map<string, { binding: AtprotoBinding; event: NostrSignedEvent }>();
+  for (const evidence of [...input.candidates, ...input.lineage]) {
+    const checked = validateBindingEvidence(
+      evidence,
+      input.did,
+      evidence.nostr_event.created_at,
+      input.resolver_authority,
+    );
+    if (checked !== null) historical.set(checked.event.id, checked);
+  }
+  const chain = validateLineage(current, historical);
   if (chain === null) {
     return { verdict: "reject", reason_code: "atproto-binding-invalid" };
   }
+  const universe = new Map([...historical, ...valid]);
   const verifiedRevocations = input.revocations.flatMap((evidence) => {
-    const target = chain.find(({ binding }) => revocationTargetsBinding(evidence, binding));
+    const target = [...universe.values()].find(({ binding }) =>
+      revocationTargetsBinding(evidence, binding));
     if (target === undefined) return [];
     const decision = validateAtprotoRevocation({
       evidence,
       binding: target.binding,
+      resolver_authority: input.resolver_authority,
       current_resolution: input.current_resolution,
       now: input.now,
     });
     return decision.verdict === "accept" ? [decision.revocation] : [];
   });
   for (const revocation of verifiedRevocations) {
-    if (revocation.generation === current.binding.generation) {
+    const target = chain.find(({ binding }) =>
+      binding.did === revocation.did
+      && binding.pubkey === revocation.pubkey
+      && binding.generation === revocation.generation
+      && binding.nonce === revocation.nonce
+      && digestAtprotoBinding(binding) === revocation.binding_hash);
+    if (target === undefined || revocation.generation === current.binding.generation) {
       return { verdict: "reject", reason_code: "atproto-binding-revoked" };
     }
     const recovery = chain.find(({ binding }) =>
@@ -114,7 +141,8 @@ export function validateAtprotoBinding(input: {
 export function validateAtprotoRevocation(input: {
   evidence: AtprotoRevocationEvidence;
   binding: AtprotoBinding;
-  current_resolution: AtprotoDidResolution;
+  resolver_authority: AtprotoResolverAuthority;
+  current_resolution: AtprotoResolutionEvidence;
   now: number;
 }): AtprotoRevocationDecision {
   const value = input.evidence.side === "nostr"
@@ -153,20 +181,30 @@ export function validateAtprotoRevocation(input: {
       return { verdict: "reject", reason_code: "atproto-revocation-invalid" };
     }
   } else {
+    const resolution = authenticateAtprotoDidResolution({
+      authority: input.resolver_authority,
+      evidence: input.current_resolution,
+      validation_time: input.now,
+    });
+    if (resolution.verdict !== "accept") {
+      return { verdict: "reject", reason_code: "atproto-revocation-invalid" };
+    }
     const currentMethod = currentAtprotoDidMethod({
-      resolution: input.current_resolution,
+      authority: input.resolver_authority,
+      resolution: resolution.resolution,
       did: input.binding.did,
-      now: input.now,
+      validation_time: input.now,
     });
     if (
       currentMethod === null
       || !verifyAtprotoDidSignature({
-        resolution: input.current_resolution,
+        authority: input.resolver_authority,
+        resolution: resolution.resolution,
         did: input.binding.did,
         verification_method_id: currentMethod,
         payload: canonicalPayload,
         signature: input.evidence.did_signature,
-        now: input.now,
+        validation_time: input.now,
       })
     ) return { verdict: "reject", reason_code: "atproto-revocation-invalid" };
   }
@@ -176,7 +214,8 @@ export function validateAtprotoRevocation(input: {
 function validateBindingEvidence(
   evidence: AtprotoBindingEvidence,
   expectedDid: string,
-  now: number,
+  validationTime: number,
+  resolverAuthority: AtprotoResolverAuthority,
 ): {
   binding: AtprotoBinding;
   event: NostrSignedEvent;
@@ -186,15 +225,22 @@ function validateBindingEvidence(
   if (binding === null) return null;
   const canonicalPayload = serializeAtprotoBinding(binding);
   const event = evidence.nostr_event;
+  const resolution = authenticateAtprotoDidResolution({
+    authority: resolverAuthority,
+    evidence: evidence.resolution_evidence,
+    validation_time: validationTime,
+  });
   if (
     binding.did !== expectedDid
+    || resolution.verdict !== "accept"
     || !verifyAtprotoDidSignature({
-      resolution: evidence.resolution,
+      authority: resolverAuthority,
+      resolution: resolution.verdict === "accept" ? resolution.resolution : null,
       did: binding.did,
       verification_method_id: binding.did_signing_key_id,
       payload: canonicalPayload,
       signature: evidence.did_signature,
-      now,
+      validation_time: validationTime,
     })
     || !isStrictNostrSignedEvent(event)
     || event.kind !== 31009
@@ -211,11 +257,8 @@ function validateBindingEvidence(
 
 function validateLineage(
   current: { binding: AtprotoBinding; event: NostrSignedEvent },
-  lineage: readonly AtprotoBindingEvidence[],
-  now: number,
+  historical: ReadonlyMap<string, { binding: AtprotoBinding; event: NostrSignedEvent }>,
 ): Array<{ binding: AtprotoBinding; event: NostrSignedEvent }> | null {
-  if (lineage.length !== current.binding.generation - 1) return null;
-  const byEventId = new Map(lineage.map((evidence) => [evidence.nostr_event.id, evidence]));
   const chain = [current];
   const used = new Set<string>();
   const nonces = new Set([current.binding.nonce]);
@@ -223,11 +266,9 @@ function validateLineage(
   while (cursor.binding.generation > 1) {
     const predecessor = cursor.binding.predecessor;
     if (predecessor === null || used.has(predecessor.event_id)) return null;
-    const evidence = byEventId.get(predecessor.event_id);
-    if (evidence === undefined) return null;
-    const previous = validateBindingEvidence(evidence, cursor.binding.did, now);
+    const previous = historical.get(predecessor.event_id);
     if (
-      previous === null
+      previous === undefined
       || previous.event.id !== predecessor.event_id
       || digestAtprotoBinding(previous.binding) !== predecessor.binding_hash
       || previous.binding.did !== cursor.binding.did
@@ -241,9 +282,7 @@ function validateLineage(
     chain.push(previous);
     cursor = previous;
   }
-  return cursor.binding.predecessor === null && used.size === lineage.length
-    ? chain
-    : null;
+  return cursor.binding.predecessor === null ? chain : null;
 }
 
 function revocationTargetsBinding(

@@ -298,17 +298,17 @@ An organization post is an ordinary event signed by the organization active
 key. An authorized agent or human persona MAY instead sign with its own key
 only when the event carries the complete mandatory Comms automation
 attribution and current Comms authorization binds that exact signer and
-association. Social consumes only the opaque result of the complete Comms
-registration, access-token, and attribution validation for that exact
-persona, signer, association, event kind, scope, requested feed/resource,
-time, immutable identity/version state, grant bounds, tags, and actual author.
-Comms consumes it once before signing and requires complete current
-registration, token, ledger/status, destination, unsigned-event, and grant
-revalidation; a stale result or state change fails and requires a fresh
-capability. Success yields a separate one-use opaque authorship proof for the
-exact unsigned event. Social burns that proof while matching the resulting
-signed event, so a proof replay also fails. A
-caller-provided tuple or reconstructed plain object grants no authority. A
+association. Comms atomically validates complete current registration, token,
+ledger/status, grant, scope, destination, persona, signer, association, kind,
+event-time, and trusted-current-time state; injects the canonical attribution;
+fixes immutable unsigned bytes; invokes the embedding-owned durable
+execute-once signer; and strict-verifies the exact returned event. Social
+consumes and burns only the resulting opaque signed-publication proof while
+matching that exact event, destination, signer, and association. No API may
+mint the proof from a caller-supplied signed event or reconstructed tuple.
+Revocation before the final trusted-time check prevents signing; revocation
+after a genuinely authorized signature does not retroactively invalidate the
+event. A
 public byline alone grants no such authority. In every case the
 event `pubkey` is the actual author. Association with the organization affects
 presentation and audit; it MUST NOT rewrite the author, signature, address, or
@@ -693,16 +693,26 @@ WebPKI, address, connection, peer, host, and redirect validation above for
 `did:web`, or verify the PLC operation history and current document for
 `did:plc`.
 
-The local Ed25519- or BIP340-signed resolver envelope is closed and domain
-separated. It binds the DID, resolution method, exact canonical `did:web`
+The embedding creates one opaque resolver-authority instance from a
+deep-cloned and deep-frozen configuration: a non-empty Ed25519/BIP340 trust-
+anchor set, exact allowed resolver-policy set, minimum semantic resolver
+version, and positive maximum attestation TTL. Evidence callers cannot add or
+replace any of those values. Resolution capabilities are branded to that
+exact authority instance, and every consumer MUST reject a capability minted
+by a different instance even when its envelope is otherwise valid.
+
+The local signed resolver envelope is closed and domain separated. It binds
+the DID, resolution method, exact canonical `did:web`
 HTTPS URL/path or verified PLC log head and SHA-256, canonical DID-document
 bytes and SHA-256, selected verification-method id, `resolved_at`, expiry,
-resolver policy, and resolver version. A verifier mints a non-serializable
-opaque capability only after validating that complete envelope against its
-configured local trust anchor. The binding and revocation validators accept
-only that capability, require it to be fresh and exact for the requested DID
-and method, and then verify the DID signature directly. A caller document,
-validity boolean, claimed hash, forged envelope, or stale capability grants no
+resolver policy, and resolver version. Its `{envelope,signature}` pair is
+durable evidence. A verifier mints a non-serializable opaque capability only
+after validating the complete envelope against its configured authority,
+including allowed policy, minimum version, maximum TTL, canonical bytes/hash,
+and an anchor signature; it stores only deep-cloned, deep-frozen envelope,
+document, and selected-method state. A caller document, validity boolean,
+claimed hash, attacker-selected anchor, policy downgrade, mutable envelope,
+forged signature, stale capability, or cross-authority capability grants no
 authority.
 
 <a id="social-atproto-binding"></a>
@@ -745,7 +755,7 @@ generation cannot countersign a new one.
 The executable fixture below uses deterministic Ed25519 DID and local resolver
 keys. The PDS record carries only the value and its DID signature. The
 `local_resolution` object is local verifier input, not a PDS or protocol wire
-member; it shows the configured trust anchor and exact signed resolver
+member; it shows the configured resolver authority and exact durable signed resolver
 envelope from which the opaque capability is minted. A verifier MUST recompute
 both hashes and cryptographically verify both signatures rather than treating
 any field as a non-empty marker.
@@ -762,7 +772,12 @@ signature, tags, and byte-exact payload and finally requires the two payloads
 to be identical. For generation greater than 1, a fresh verifier MUST follow
 each predecessor event id and binding hash to generation 1, verifying every
 Nostr event, canonical binding, resolved-DID signature, consecutive
-generation, strictly increasing establishment time, and unique nonce. A
+generation, strictly increasing establishment time, and unique nonce. Current
+candidate resolution MUST be fresh at trusted current time. Each historical
+binding re-verifies its durable resolver-envelope signature, configured
+policy/version/TTL, document hash, selected method, and DID signature at that
+binding event's `created_at`; an expired or rotated historical method can
+therefore authenticate history without regaining current authority. A
 repository SHOULD retain this exact event/PDS history; a verifier fetches
 referenced events from repository history and MAY use ordinary relay fallback.
 Carrier does not affect validity. Missing or forged history fails closed.
@@ -787,9 +802,9 @@ Optional Assurance continuity may be displayed separately.
     "did_signature": "c860d900abd8263339cff0b41843b2321ed0f18bf3cf2732a51f011f4858cbac2c4a704ef5f1601bd9f186f9dc24abd900e024c6b4201d5f81cfe68a22c0860c"
   },
   "local_resolution": {
-    "trust_anchor": {"suite":"ed25519","public_key":"6e7a1cdd29b0b78fd13af4c5598feff4ef2a97166e3ca6f2e4fbfccd80505bf1"},
-    "envelope": {"domain":"heterodyne-atproto-did-resolution-v1","did":"did:web:alice.example","resolution_method":"did:web","canonical_https_url":"https://alice.example/.well-known/did.json","plc_log_head":null,"plc_log_hash":null,"canonical_document":"{\"id\":\"did:web:alice.example\",\"verificationMethod\":[{\"controller\":\"did:web:alice.example\",\"id\":\"did:web:alice.example#atproto\",\"publicKeyHex\":\"ca93ac1705187071d67b83c7ff0efe8108e8ec4530575d7726879333dbdabe7c\",\"type\":\"Ed25519VerificationKey2020\"}]}","document_sha256":"7dd143b56326828af9704a42c98684236691222cb4b7ec6b1d4c5fdec1cbc570","selected_verification_method_id":"did:web:alice.example#atproto","resolved_at":1710000000,"expires_at":1710003600,"resolver_policy":"webpki-pinned-redirect-v1","resolver_version":"resolver-1.0.0"},
-    "signature": "a668a792eda8398c86d7047d2dcc2108a6c65771f68ba23120ac77c5e639fd8928f90251c81e0ae5280b2809f7ce84927b2165c241c7f7c43c05e903fdf86809"
+    "authority_config": {"trust_anchors":[{"suite":"ed25519","public_key":"6e7a1cdd29b0b78fd13af4c5598feff4ef2a97166e3ca6f2e4fbfccd80505bf1"}],"allowed_policies":["webpki-pinned-redirect-v1"],"minimum_version":"1.0.0","max_ttl":3600},
+    "envelope": {"domain":"heterodyne-atproto-did-resolution-v1","did":"did:web:alice.example","resolution_method":"did:web","canonical_https_url":"https://alice.example/.well-known/did.json","plc_log_head":null,"plc_log_hash":null,"canonical_document":"{\"id\":\"did:web:alice.example\",\"verificationMethod\":[{\"controller\":\"did:web:alice.example\",\"id\":\"did:web:alice.example#atproto\",\"publicKeyHex\":\"ca93ac1705187071d67b83c7ff0efe8108e8ec4530575d7726879333dbdabe7c\",\"type\":\"Ed25519VerificationKey2020\"}]}","document_sha256":"7dd143b56326828af9704a42c98684236691222cb4b7ec6b1d4c5fdec1cbc570","selected_verification_method_id":"did:web:alice.example#atproto","resolved_at":1710000000,"expires_at":1710003600,"resolver_policy":"webpki-pinned-redirect-v1","resolver_version":"1.0.0"},
+    "signature": "2354d8428151961d5eec7856482f14175c8049c3e7c0bee23ae7fabe90a30d107bbe9c4fe32f6d2d2e2e187049c8f3761537cbf3425d1cba07c7ce1d1bc7fc0f"
   }
 }
 ```
@@ -806,8 +821,9 @@ the current DID key, to `social.heterodyne.identityLink/self`.
 
 The displayed revocation member order is canonical. A revocation is evidence
 only as either a strict valid Nostr event with the exact tags/content above or
-an Ed25519 signature verified directly through the fresh opaque resolution
-capability's current selected method over SHA-256 of those canonical bytes.
+an Ed25519 signature verified directly through a fresh resolution capability
+minted by the same configured authority at trusted current time and its
+current selected method over SHA-256 of those canonical bytes.
 That method MAY differ from the historical binding method after legitimate DID
 key rotation. A caller-provided body,
 validity boolean, claimed payload hash, or unsigned cached object has no
@@ -823,6 +839,16 @@ countersignature fails. That recovery generation MUST be established after
 the revocation and reference the revoked binding as its authenticated
 predecessor. A pre-existing later event does not retroactively recover from a
 new revocation.
+
+Before accepting selected state, the verifier MUST authenticate the complete
+reachable binding candidate/history universe independently of the selected
+branch and verify every durable revocation that targets a binding of the same
+DID/pubkey. Every such revoked target MUST occur on the selected predecessor
+chain, and the chain MUST contain its next consecutive generation with a
+fresh nonce and establishment strictly after `revoked_at`. A selected sibling,
+reset, lower-generation fork, or incompatible revoked forks fail closed; a
+newer selection cannot hide revocation evidence from another authenticated
+branch.
 
 <!-- fixture:atproto-link-revocations -->
 ```json

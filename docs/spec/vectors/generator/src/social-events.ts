@@ -1,15 +1,15 @@
 import {
   matchesAgentAttributionProfile,
-  consumeCommsSocialAuthorship,
+  consumeCommsSocialSignedPublication,
   type AgentAssociation,
-  type CommsSocialAuthorship,
+  type CommsSocialSignedPublication,
 } from "./agent-authorship.js";
 import { isStrictNostrSignedEvent, type NostrSignedEvent } from "./nostr.js";
 
 export type SocialAuthorshipInput = {
   event: NostrSignedEvent;
   persona_active_key?: string;
-  comms_authorization?: CommsSocialAuthorship;
+  comms_authorization?: CommsSocialSignedPublication;
   requested_feed?: string;
   requested_resource?: string;
 };
@@ -63,8 +63,8 @@ export function validateSocialAuthorship(
     !attribution.valid
     || input.requested_feed === undefined
     || input.requested_resource === undefined
-    || !consumeCommsSocialAuthorship({
-      authorship: input.comms_authorization,
+    || !consumeCommsSocialSignedPublication({
+      publication: input.comms_authorization,
       represented_persona: representedPersona,
       event: input.event,
       agent_association: attribution.association,
