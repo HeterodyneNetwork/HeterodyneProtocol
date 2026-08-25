@@ -14,7 +14,8 @@
     "succession_authority",
     "epoch_policy",
     "witnesses",
-    "thresholds"
+    "thresholds",
+    "associated_key_policy"
   ],
   "properties": {
     "profile": {
@@ -122,6 +123,9 @@
           "maximum": 65535
         }
       }
+    },
+    "associated_key_policy": {
+      "$ref": "#/definitions/associated_key_policy"
     }
   },
   "definitions": {
@@ -133,6 +137,44 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 9007199254740991
+    },
+    "grant_ceiling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "scope"],
+      "properties": {
+        "role": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+        },
+        "scope": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        }
+      }
+    },
+    "associated_key_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["active_key", "epoch_threshold"],
+      "properties": {
+        "active_key": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/grant_ceiling" }
+        },
+        "epoch_threshold": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/grant_ceiling" }
+        }
+      }
     }
   }
 }

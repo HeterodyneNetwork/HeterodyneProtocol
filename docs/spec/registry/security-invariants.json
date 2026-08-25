@@ -51,6 +51,14 @@
       "description": "Assurance attaches only when a cold-root inception and active-key acceptance bind the same exact active key, inception event, and cold-root signature."
     },
     {
+      "id": "ASSURANCE-I-TRANSITION-PROOF-BINDING",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "assurance.continuity.v1",
+      "description": "Every succession authority proof, new-key acceptance, and witness receipt binds one identical digest containing every closed transition member except the proof signature values themselves."
+    },
+    {
       "id": "ASSURANCE-I-PIN-DOWNGRADE",
       "owner": "assurance",
       "status": "draft",
@@ -80,7 +88,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "assurance.continuity.v1",
-      "description": "Succession transfers no subordinate key, repository, group, delegate, financial, or application authority unless the record explicitly reauthorizes it."
+      "description": "Succession transfers no succession authority, associated-key issuance policy, subordinate key, repository, group, delegate, financial, or application authority unless the record explicitly reauthorizes it."
     },
     {
       "id": "ASSURANCE-I-ASSOCIATED-KEY-BOUNDS",
@@ -88,7 +96,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "assurance.associated-keys.v1",
-      "description": "Associated keys are accepted only for their exact head, role, scope, issuer, subject, time bounds, proof requirements, and non-revoked state."
+      "description": "Associated keys are accepted only for their exact head, active-key or epoch-threshold issuance ceiling, narrowed role and scope, issuer, subject, time bounds, active-grant proof requirements, and non-revoked state."
     },
     {
       "id": "ASSURANCE-I-EXPORT-LOSSLESS",

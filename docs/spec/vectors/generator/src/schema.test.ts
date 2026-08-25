@@ -48,6 +48,16 @@ const assuranceInception = {
   },
   witnesses: [{ key: h("6"), weight: 1 }],
   thresholds: { epoch: 1, witness: 1 },
+  associated_key_policy: {
+    active_key: [{
+      role: "agent",
+      scope: ["nostr:kind:1", "nostr:kind:6"],
+    }],
+    epoch_threshold: [{
+      role: "agent",
+      scope: ["nostr:kind:1"],
+    }],
+  },
 };
 
 const assuranceAcceptance = {
@@ -82,6 +92,7 @@ const assuranceSuccession = {
   },
   new_key_acceptance: { key: h("9"), signature: sig("c") },
   class: "routine",
+  next_succession_authority: h("b"),
   next_epoch_policy: {
     mode: "pre-rotation",
     current_keys: [h("9")],
@@ -89,6 +100,7 @@ const assuranceSuccession = {
   },
   witnesses: [{ key: h("6"), weight: 1 }],
   thresholds: { epoch: 1, witness: 1 },
+  next_associated_key_policy: assuranceInception.associated_key_policy,
   subordinate_reauthorizations: [{
     role: "agent",
     subject_key: h("d"),
@@ -107,6 +119,10 @@ const assuranceAssociatedKey = {
   role: "agent",
   scope: ["nostr:kind:1"],
   issuer: assuranceInception.active_key,
+  issuer_authority: {
+    class: "active-key",
+    authority_proofs: [],
+  },
   subject_key: h("f"),
   expires_at: assuranceInception.created_at + 3_600,
   visibility: "public",
@@ -129,6 +145,11 @@ describe("Assurance record schemas", () => {
   });
 
   it("requires reciprocal enrollment and recovery-authority downgrade consent", () => {
+    const { associated_key_policy: _policy, ...withoutIssuancePolicy } = assuranceInception;
+    expect(validateAssuranceSchema(
+      "enrollment-inception-v1.schema.json",
+      withoutIssuancePolicy,
+    )).toMatch(/associated_key_policy|required/);
     expect(validateAssuranceSchema(
       "enrollment-inception-v1.schema.json",
       { ...assuranceInception, predecessor: h("7") },
@@ -156,6 +177,22 @@ describe("Assurance record schemas", () => {
   });
 
   it("binds succession to the prior head and closes compromise continuations", () => {
+    const {
+      next_associated_key_policy: _policy,
+      ...withoutNextIssuancePolicy
+    } = assuranceSuccession;
+    expect(validateAssuranceSchema(
+      "succession-v1.schema.json",
+      withoutNextIssuancePolicy,
+    )).toMatch(/next_associated_key_policy|required/);
+    const {
+      next_succession_authority: _authority,
+      ...withoutNextSuccessionAuthority
+    } = assuranceSuccession;
+    expect(validateAssuranceSchema(
+      "succession-v1.schema.json",
+      withoutNextSuccessionAuthority,
+    )).toMatch(/next_succession_authority|required/);
     const { previous_head: _head, ...withoutHead } = assuranceSuccession;
     expect(validateAssuranceSchema("succession-v1.schema.json", withoutHead))
       .toMatch(/previous_head|required/);
@@ -179,10 +216,21 @@ describe("Assurance record schemas", () => {
       class: "compromise",
       compromise_time: assuranceSuccession.created_at - 60,
       subordinate_reauthorizations: [],
+      authorizing_evidence: {
+        ...assuranceSuccession.authorizing_evidence,
+        authority_class: "recovery",
+      },
     })).toBeNull();
+    expect(validateAssuranceSchema("succession-v1.schema.json", {
+      ...assuranceSuccession,
+      authorizing_evidence: {
+        ...assuranceSuccession.authorizing_evidence,
+        authority_class: "recovery",
+      },
+    })).toMatch(/authority_class|enum/);
   });
 
-  it("requires public-agent proof and models expiry and absorbing revocation", () => {
+  it("requires subject proof only for active public-agent grants", () => {
     const { subject_proof: _proof, ...withoutSubjectProof } = assuranceAssociatedKey;
     expect(validateAssuranceSchema("associated-key-v1.schema.json", withoutSubjectProof))
       .toMatch(/subject_proof|required/);
@@ -195,13 +243,21 @@ describe("Assurance record schemas", () => {
       state: "revoked",
     })).toMatch(/revocation|required/);
     expect(validateAssuranceSchema("associated-key-v1.schema.json", {
-      ...assuranceAssociatedKey,
+      ...withoutSubjectProof,
       state: "revoked",
       revocation: {
         revoked_at: assuranceAssociatedKey.created_at + 1,
         reason: "compromise",
       },
     })).toBeNull();
+    expect(validateAssuranceSchema("associated-key-v1.schema.json", {
+      ...assuranceAssociatedKey,
+      state: "revoked",
+      revocation: {
+        revoked_at: assuranceAssociatedKey.created_at + 1,
+        reason: "compromise",
+      },
+    })).toMatch(/subject_proof|not/);
     expect(validateAssuranceSchema("associated-key-v1.schema.json", {
       ...assuranceAssociatedKey,
       state: "revoked",

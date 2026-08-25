@@ -65,7 +65,7 @@
       "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The current Assurance policy does not authorize the presented succession, recovery, epoch, or downgrade proof.",
+      "description": "The current Assurance policy does not authorize the presented succession, recovery, epoch, associated-key issuer, or downgrade proof.",
       "spec_refs": [
         "heterodyne:0.5.0#assurance-succession"
       ]
@@ -125,7 +125,7 @@
       "owner": "assurance",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A public agent association omits the subject key's required proof of possession and consent.",
+      "description": "An active public-agent grant omits the subject key's required proof of possession and consent; issuer-authorized revocation never requires subject cooperation.",
       "spec_refs": [
         "heterodyne:0.5.0#assurance-associated-keys"
       ]

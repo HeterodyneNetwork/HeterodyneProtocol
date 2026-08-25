@@ -16,25 +16,39 @@
       "description": "Historical dual-proof binding of a Radicle NID to a persona cold root on pre-redesign kind:31001."
     },
     {
-      "id": "heterodyne-assurance-succession-v1",
+      "id": "heterodyne-assurance-succession-transition-v1",
       "owner": "assurance",
       "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
         "active_key",
+        "authorizing_evidence.authority_class",
+        "authorizing_evidence.authority_proofs[].authority_key",
+        "authorizing_evidence.witness_receipts[].witness_key",
         "class",
+        "compromise_time",
         "created_at",
         "new_active_key",
+        "new_key_acceptance.key",
+        "next_associated_key_policy",
+        "next_epoch_policy",
+        "next_succession_authority",
         "predecessor",
-        "previous_head"
+        "previous_active_key",
+        "previous_head",
+        "profile",
+        "spec_version",
+        "subordinate_reauthorizations",
+        "thresholds",
+        "witnesses"
       ],
       "suites": [
         "bip340"
       ],
-      "description": "Authority, new-key acceptance, and witness proof over one exact Assurance succession claim."
+      "description": "Authority, new-key acceptance, and witness proofs bind one identical domain-separated digest of the entire closed succession record except authorizing_evidence.authority_proofs[*].signature, authorizing_evidence.witness_receipts[*].signature, and new_key_acceptance.signature."
     },
     {
-      "id": "heterodyne-assurance-associated-key-subject-v1",
+      "id": "heterodyne-assurance-associated-key-record-v1",
       "owner": "assurance",
       "first_version": "heterodyne/0.5.0",
       "status": "draft",
@@ -42,15 +56,24 @@
         "active_key",
         "assurance_head",
         "created_at",
+        "expires_at",
         "issuer",
+        "issuer_authority.authority_proofs[].authority_key",
+        "issuer_authority.class",
+        "predecessor",
+        "profile",
+        "revocation",
         "role",
         "scope",
-        "subject_key"
+        "spec_version",
+        "state",
+        "subject_key",
+        "visibility"
       ],
       "suites": [
         "bip340"
       ],
-      "description": "Public associated-key subject proof over the exact persona, head, role, scope, issuer, and subject binding."
+      "description": "Epoch-threshold issuer proofs and active public-agent subject proof bind one identical domain-separated digest of the entire closed associated-key record except issuer_authority.authority_proofs[*].signature and subject_proof."
     },
     {
       "id": "heterodyne-assurance-downgrade-v1",

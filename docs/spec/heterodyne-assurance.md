@@ -108,7 +108,10 @@ The kind `31002` inception has `predecessor:null`. Its outer `pubkey` and
 content `cold_root` are identical. The record binds the target `active_key`,
 the cold recovery root, an optional `succession_authority` represented by a
 64-hex key or `null`, one `epoch_policy`, a duplicate-free witness array, and
-the epoch and witness thresholds.
+the epoch and witness thresholds. It also fixes one closed
+`associated_key_policy`. That policy has separate `active_key` and
+`epoch_threshold` arrays of exact role-and-scope grant ceilings; either array
+may be empty, and absence of a ceiling grants nothing.
 
 The inception's event ID and outer signature are called the
 `inception_event_id` and `cold_root_signature`. The cold-root secret SHOULD
@@ -166,6 +169,16 @@ the next accepted head. This is KERI-style pre-rotation and first-seen
 witness evidence expressed in Heterodyne's Nostr event records; KERI wire
 encodings are export formats, not Heterodyne transport objects.
 
+`associated_key_policy.active_key` and
+`associated_key_policy.epoch_threshold` are distinct authority classes. Each
+entry binds one exact `role` and a duplicate-free scope ceiling. An issued
+scope is authorized only when every requested member is contained in one
+entry for that same role and authority class; verifiers MUST NOT union
+ceilings from multiple entries or infer a broader namespace. The inception
+policy applies to the initial accepted head. A succession carries the complete
+replacement as `next_associated_key_policy`; it becomes effective only after
+the new active key accepts that exact succession.
+
 <a id="assurance-chain-validation"></a>
 ## 5. Chain validation and heads
 
@@ -196,34 +209,46 @@ A kind `31003` succession has `active_key === previous_active_key` and
 `predecessor === previous_head`, where both name the accepted state being
 replaced. It binds the distinct `new_active_key`, closed
 `authorizing_evidence`, a `new_key_acceptance`, transition `class`, the next
-epoch and witness policy, and an explicit `subordinate_reauthorizations`
-array.
+succession authority, epoch and witness policy, associated-key issuance
+policy, and an explicit `subordinate_reauthorizations` array.
 
-All `authority_proofs`, the new-key acceptance, and every witness receipt sign
-the Core domain-separated bytes for domain
-`heterodyne-assurance-succession-v1` over exactly this claim:
+All `authority_proofs`, the `new_key_acceptance`, and every witness receipt
+MUST sign the same 32-byte transition digest for proof domain
+`heterodyne-assurance-succession-transition-v1`. The digest input is the
+entire closed succession content object with exactly these signature-value
+locations deleted:
 
-```json
-{
-  "active_key": "<previous active key>",
-  "class": "<routine or compromise>",
-  "created_at": 0,
-  "new_active_key": "<successor active key>",
-  "predecessor": "<previous head event id>",
-  "previous_head": "<previous head event id>"
-}
-```
+- `authorizing_evidence.authority_proofs[*].signature`;
+- `authorizing_evidence.witness_receipts[*].signature`; and
+- `new_key_acceptance.signature`.
+
+The corresponding authority keys, witness keys, acceptance key, profile,
+version, old and new active keys, predecessor and previous head, creation
+time, class and optional compromise time, `next_succession_authority`, entire
+next epoch, witness, threshold, and associated-key policies, and every
+subordinate reauthorization remain in the JCS object. The transition digest
+is the Core domain-separated JCS SHA-256 digest of that object. No producer or
+verifier may omit another member, substitute a per-proof claim, or accept a
+proof made over a different digest. Thus changing any security-relevant
+transition member invalidates every copied authority, acceptance, and witness
+proof.
 
 `new_key_acceptance.key` equals `new_active_key` and its signature verifies
 under that key. A mismatch is `assurance-new-key-acceptance-invalid`.
-For a routine succession, the outer event is signed by `active_key` and the
-authority class is one authorized by the predecessor: `succession` uses the
-designated succession authority, `epoch-threshold` uses the current epoch
-policy, and `recovery` uses the cold root. Missing, duplicate, insufficient,
-or wrong-purpose proof is `assurance-authority-invalid`.
+For a routine succession, the outer event MUST be signed by the old
+`active_key`. Its authority class is either `succession`, using the exact
+designated succession authority, or `epoch-threshold`, using distinct current
+epoch keys that reach the predecessor threshold. `recovery` is forbidden on
+a routine transition. The record explicitly fixes the nullable
+`next_succession_authority`; an old authority never transfers implicitly.
+Missing, duplicate, insufficient, stale, or wrong-purpose proof is
+`assurance-authority-invalid`.
 
-For recovery after loss or compromise of the active key, the cold root signs
-a `recovery` succession and the new key supplies its acceptance proof. The
+Any succession made without the old active key is a compromise/recovery
+transition: `class` is `compromise`, `authority_class` is `recovery`, the
+outer signer is the current cold root, `compromise_time` is present, and
+`subordinate_reauthorizations` is empty. The new key supplies its acceptance
+proof. The
 outer event `pubkey` equals the cold root because it is the actual event
 signer; this does not make the event a Nostr event by the old or new active
 key. The new active key becomes the Core persona only for its own future
@@ -247,9 +272,26 @@ coordinate. The record binds exact `role`, duplicate-free
 `scope`, `issuer`, `subject_key`, creation time, optional exclusive
 `expires_at`, `visibility`, and `state`.
 
-The issuer is authorized only if the accepted Assurance head grants that
-exact role and scope to the active key, current epoch policy, or an explicitly
-reauthorized subordinate issuer. An associated key is active only while its
+The record contains closed `issuer_authority` with class `active-key` or
+`epoch-threshold`. For `active-key`, `issuer` and the outer `pubkey` both equal
+the current active key, `authority_proofs` is empty, and the requested role
+and scope narrow one `associated_key_policy.active_key` ceiling. For
+`epoch-threshold`, `issuer` and the outer `pubkey` equal one key in the current
+epoch set, distinct proof keys are all in that set and reach the current epoch
+threshold, and the role and scope narrow one
+`associated_key_policy.epoch_threshold` ceiling. A subordinate associated key
+is never itself an issuer merely because it is associated or reauthorized.
+
+Epoch-threshold issuer proofs and an active public-agent subject proof use the
+same Core domain-separated JCS digest for domain
+`heterodyne-assurance-associated-key-record-v1`. Its input is the entire
+closed associated-key content object with exactly
+`issuer_authority.authority_proofs[*].signature` and `subject_proof` deleted;
+the proof keys and every other member remain bound. The active-key authority
+class uses only its outer NIP-01 signature and carries no embedded authority
+proof.
+
+An associated key is active only while its
 selected record has `state:"active"`, verifier time is before `expires_at`
 when present, the head is still accepted, and the use is inside every scope
 dimension. Expiry returns `assurance-associated-key-expired`. A selected
@@ -257,25 +299,15 @@ dimension. Expiry returns `assurance-associated-key-expired`. A selected
 `assurance-associated-key-revoked`; revocation is absorbing for that
 predecessor chain and cannot be undone by replaying an earlier grant.
 
-A public `role:"agent"` association requires `subject_proof`. The subject
-key signs Core domain-separated bytes for domain
-`heterodyne-assurance-associated-key-subject-v1` over exactly:
-
-```json
-{
-  "active_key": "<persona active key>",
-  "assurance_head": "<accepted head event id>",
-  "created_at": 0,
-  "issuer": "<issuer key>",
-  "role": "agent",
-  "scope": ["<exact scope>"],
-  "subject_key": "<associated key>"
-}
-```
-
+A public `role:"agent"`, `visibility:"public"`, `state:"active"` grant
+requires `subject_proof` by `subject_key` over that exact record digest.
 Absence and invalidity yield
 `assurance-associated-key-subject-proof-required` and
-`assurance-associated-key-subject-proof-invalid`, respectively. Private
+`assurance-associated-key-subject-proof-invalid`, respectively. A revocation
+MUST omit `subject_proof`: the currently authorized issuer can revoke a
+compromised, unavailable, or unwilling subject without its cooperation. The
+issuer authorization and outer signature still bind the entire revocation,
+and a valid revocation remains absorbing. Private
 client and human-delegate associations SHOULD remain in protected
 repositories unless policy explicitly requires publication; private records
 may omit subject proof. Association never changes the NIP-01 author: when the
@@ -340,14 +372,17 @@ clients retain the prior downgraded pin as history.
 ## 10. Compromise behavior
 
 A succession with `class:"compromise"` requires `compromise_time`; a routine
-succession forbids it. `compromise_time` is no later than the succession
-event's `created_at`. A compromise succession uses `authority_class` equal to
-`recovery`, is outer-signed by the cold root, and otherwise follows the
-recovery rules above. The effective cutoff is `compromise_time`. Assurance
+succession forbids it. The cutoff is ordered
+`current_head.created_at <= compromise_time <= succession.created_at`. A
+compromise succession uses `authority_class` equal to `recovery`, is
+outer-signed by the cold root, and otherwise follows the recovery rules
+above. The effective cutoff is `compromise_time`. Assurance
 does not retroactively change NIP-01 cryptographic validity: events by the old
 key remain valid signatures by that key. For an explicitly requested
-Assurance claim, however, old-key and subordinate authority at or after the
-cutoff is rejected with `assurance-compromise-cutoff`.
+Assurance claim, however, old-key and subordinate authority whose `created_at`
+is at or after the cutoff is rejected with `assurance-compromise-cutoff`. The
+equality case is rejected; only material strictly before the cutoff can
+retain an enhanced claim.
 
 `subordinate_reauthorizations` is exactly empty for compromise. Every agent,
 delegate, client, node, repository writer, application grant, and other
@@ -431,11 +466,12 @@ Assurance implementations preserve these registered invariants:
 
 - **ASSURANCE-I-CORE-OPTIONALITY:** Absent, invalid, stale, or withdrawn Assurance cannot invalidate a Core-valid active-key persona or alter NIP-01 or Marmot identity semantics.
 - **ASSURANCE-I-RECIPROCAL-ENROLLMENT:** Assurance attaches only when a cold-root inception and active-key acceptance bind the same exact active key, inception event, and cold-root signature.
+- **ASSURANCE-I-TRANSITION-PROOF-BINDING:** Every succession authority proof, new-key acceptance, and witness receipt binds one identical digest containing every closed transition member except the proof signature values themselves.
 - **ASSURANCE-I-PIN-DOWNGRADE:** A pinned Assurance state survives disappearing or conflicting hints and can be downgraded only by the active key plus current recovery authority.
 - **ASSURANCE-I-SUCCESSION-NON-ALIASING:** A verified successor proves continuity but remains a distinct Nostr author and Marmot account whose authority does not silently inherit.
 - **ASSURANCE-I-COMPROMISE-CUTOFF:** A compromise succession rejects Assurance authority at or after its effective cutoff and carries no subordinate continuation.
-- **ASSURANCE-I-NO-IMPLICIT-CONTINUATION:** Succession transfers no subordinate key, repository, group, delegate, financial, or application authority unless the record explicitly reauthorizes it.
-- **ASSURANCE-I-ASSOCIATED-KEY-BOUNDS:** Associated keys are accepted only for their exact head, role, scope, issuer, subject, time bounds, proof requirements, and non-revoked state.
+- **ASSURANCE-I-NO-IMPLICIT-CONTINUATION:** Succession transfers no succession authority, associated-key issuance policy, subordinate key, repository, group, delegate, financial, or application authority unless the record explicitly reauthorizes it.
+- **ASSURANCE-I-ASSOCIATED-KEY-BOUNDS:** Associated keys are accepted only for their exact head, active-key or epoch-threshold issuance ceiling, narrowed role and scope, issuer, subject, time bounds, active-grant proof requirements, and non-revoked state.
 - **ASSURANCE-I-EXPORT-LOSSLESS:** KERI export either preserves every security-relevant accepted Assurance semantic or fails without emitting a misleading partial identity.
 
 <a id="assurance-continuity-conformance"></a>
@@ -449,12 +485,17 @@ An implementation claiming `assurance.continuity.v1` MUST implement the four
 record-envelope checks relevant to continuity, reciprocal enrollment, chain
 and head validation, KERI-style epoch and witness policy, routine and
 compromise succession, pin retention, cold-root recovery, and dual-consent
-downgrade. It claims the Assurance document and its applicable registered
-invariants.
+downgrade. Succession validation includes the one exact transition digest,
+old-active routine participation, recovery-only compromise transitions,
+cutoff ordering, current-policy authority and witness proof, and new-key head
+acceptance before policy advancement. It claims the Assurance document and
+its applicable registered invariants.
 
 `assurance.associated-keys.v1` additionally requires the full kind `31001`
-grant/revocation contract, public-agent proof, expiry, absorbing revocation,
-and exact scope evaluation. `assurance.keri-export.v1` additionally requires
+grant/revocation contract, exact active-key and epoch-threshold issuer-policy
+evaluation, narrowed scope, active public-agent proof, issuer-only
+revocation, expiry, and absorbing revocation.
+`assurance.keri-export.v1` additionally requires
 lossless export or the exact defined failures. Both features require
 `assurance.continuity.v1`.
 

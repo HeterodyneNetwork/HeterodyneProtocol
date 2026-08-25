@@ -207,10 +207,56 @@ describe("revisioned protocol registry", () => {
       .filter(({ owner }) => owner === "assurance")
       .map(({ id }) => id);
     expect(assuranceProofs).toEqual(expect.arrayContaining([
-      "heterodyne-assurance-succession-v1",
-      "heterodyne-assurance-associated-key-subject-v1",
+      "heterodyne-assurance-succession-transition-v1",
+      "heterodyne-assurance-associated-key-record-v1",
       "heterodyne-assurance-downgrade-v1",
     ]));
+    expect(assuranceProofs).not.toContain("heterodyne-assurance-succession-v1");
+    expect(assuranceProofs).not.toContain("heterodyne-assurance-associated-key-subject-v1");
+    expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-assurance-succession-transition-v1",
+    )?.bound_members).toEqual([
+      "active_key",
+      "authorizing_evidence.authority_class",
+      "authorizing_evidence.authority_proofs[].authority_key",
+      "authorizing_evidence.witness_receipts[].witness_key",
+      "class",
+      "compromise_time",
+      "created_at",
+      "new_active_key",
+      "new_key_acceptance.key",
+      "next_associated_key_policy",
+      "next_epoch_policy",
+      "next_succession_authority",
+      "predecessor",
+      "previous_active_key",
+      "previous_head",
+      "profile",
+      "spec_version",
+      "subordinate_reauthorizations",
+      "thresholds",
+      "witnesses",
+    ]);
+    expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-assurance-associated-key-record-v1",
+    )?.bound_members).toEqual([
+      "active_key",
+      "assurance_head",
+      "created_at",
+      "expires_at",
+      "issuer",
+      "issuer_authority.authority_proofs[].authority_key",
+      "issuer_authority.class",
+      "predecessor",
+      "profile",
+      "revocation",
+      "role",
+      "scope",
+      "spec_version",
+      "state",
+      "subject_key",
+      "visibility",
+    ]);
 
     const assuranceReasons = registry.reason_codes
       .filter(({ owner }) => owner === "assurance")
@@ -235,6 +281,7 @@ describe("revisioned protocol registry", () => {
       .toBe(true);
     expect(assuranceInvariants.map(({ id }) => id)).toEqual(expect.arrayContaining([
       "ASSURANCE-I-RECIPROCAL-ENROLLMENT",
+      "ASSURANCE-I-TRANSITION-PROOF-BINDING",
       "ASSURANCE-I-PIN-DOWNGRADE",
       "ASSURANCE-I-SUCCESSION-NON-ALIASING",
       "ASSURANCE-I-COMPROMISE-CUTOFF",

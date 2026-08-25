@@ -16,9 +16,11 @@
     "authorizing_evidence",
     "new_key_acceptance",
     "class",
+    "next_succession_authority",
     "next_epoch_policy",
     "witnesses",
     "thresholds",
+    "next_associated_key_policy",
     "subordinate_reauthorizations"
   ],
   "properties": {
@@ -114,6 +116,12 @@
     "compromise_time": {
       "$ref": "#/definitions/unix_time"
     },
+    "next_succession_authority": {
+      "anyOf": [
+        { "$ref": "#/definitions/hex32" },
+        { "type": "null" }
+      ]
+    },
     "next_epoch_policy": {
       "$ref": "#/definitions/epoch_policy"
     },
@@ -126,6 +134,9 @@
     },
     "thresholds": {
       "$ref": "#/definitions/thresholds"
+    },
+    "next_associated_key_policy": {
+      "$ref": "#/definitions/associated_key_policy"
     },
     "subordinate_reauthorizations": {
       "type": "array",
@@ -165,12 +176,26 @@
       "then": {
         "required": ["compromise_time"],
         "properties": {
+          "authorizing_evidence": {
+            "properties": {
+              "authority_class": { "const": "recovery" }
+            }
+          },
           "subordinate_reauthorizations": {
             "maxItems": 0
           }
         }
       },
       "else": {
+        "properties": {
+          "authorizing_evidence": {
+            "properties": {
+              "authority_class": {
+                "enum": ["succession", "epoch-threshold"]
+              }
+            }
+          }
+        },
         "not": {
           "required": ["compromise_time"]
         }
@@ -280,6 +305,32 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 65535
+        }
+      }
+    },
+    "grant_ceiling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "scope"],
+      "properties": {
+        "role": { "$ref": "#/definitions/name" },
+        "scope": { "$ref": "#/definitions/scope" }
+      }
+    },
+    "associated_key_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["active_key", "epoch_threshold"],
+      "properties": {
+        "active_key": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/grant_ceiling" }
+        },
+        "epoch_threshold": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/grant_ceiling" }
         }
       }
     }

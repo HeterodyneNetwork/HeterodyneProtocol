@@ -14,6 +14,7 @@
     "role",
     "scope",
     "issuer",
+    "issuer_authority",
     "subject_key",
     "visibility",
     "state"
@@ -45,6 +46,49 @@
     },
     "issuer": {
       "$ref": "#/definitions/hex32"
+    },
+    "issuer_authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "authority_proofs"],
+      "properties": {
+        "class": {
+          "enum": ["active-key", "epoch-threshold"]
+        },
+        "authority_proofs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["authority_key", "signature"],
+            "properties": {
+              "authority_key": { "$ref": "#/definitions/hex32" },
+              "signature": { "$ref": "#/definitions/signature" }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "class": { "const": "active-key" }
+            },
+            "required": ["class"]
+          },
+          "then": {
+            "properties": {
+              "authority_proofs": { "maxItems": 0 }
+            }
+          },
+          "else": {
+            "properties": {
+              "authority_proofs": { "minItems": 1 }
+            }
+          }
+        }
+      ]
     },
     "subject_key": {
       "$ref": "#/definitions/hex32"
@@ -80,9 +124,10 @@
       "if": {
         "properties": {
           "role": { "const": "agent" },
-          "visibility": { "const": "public" }
+          "visibility": { "const": "public" },
+          "state": { "const": "active" }
         },
-        "required": ["role", "visibility"]
+        "required": ["role", "visibility", "state"]
       },
       "then": {
         "required": ["subject_proof"]
@@ -96,7 +141,10 @@
         "required": ["state"]
       },
       "then": {
-        "required": ["revocation"]
+        "required": ["revocation"],
+        "not": {
+          "required": ["subject_proof"]
+        }
       },
       "else": {
         "not": {
