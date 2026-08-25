@@ -7,10 +7,10 @@
   "required": [
     "spec_version",
     "object_type",
-    "workspace_id",
-    "actor",
-    "kel_head",
-    "authority_sequence",
+    "workspace_key",
+    "policy_head",
+    "predecessor",
+    "authority_checkpoint",
     "repository_rid",
     "repository_head",
     "issued_at",
@@ -18,12 +18,12 @@
     "envelope_id",
     "resource_id",
     "key_epoch",
-    "target_persona",
+    "target_account",
     "target_device",
     "recipient",
     "role_id",
     "checkpoint_id",
-    "host_id",
+    "custody_host_id",
     "wrapping_profile",
     "nonce",
     "ciphertext",
@@ -37,21 +37,28 @@
     "object_type": {
       "const": "resource-key-envelope-v1"
     },
-    "workspace_id": {
+    "workspace_key": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "actor": {
+    "policy_head": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "kel_head": {
+    "predecessor": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "authority_checkpoint": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
-    },
-    "authority_sequence": {
-      "type": "integer",
-      "minimum": 0
     },
     "repository_rid": {
       "type": "string",
@@ -81,7 +88,7 @@
       "type": "integer",
       "minimum": 0
     },
-    "target_persona": {
+    "target_account": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
@@ -114,7 +121,7 @@
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "host_id": {
+    "custody_host_id": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },

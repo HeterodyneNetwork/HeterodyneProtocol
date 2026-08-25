@@ -7,10 +7,10 @@
   "required": [
     "spec_version",
     "object_type",
-    "workspace_id",
-    "actor",
-    "kel_head",
-    "authority_sequence",
+    "workspace_key",
+    "policy_head",
+    "predecessor",
+    "authority_checkpoint",
     "repository_rid",
     "repository_head",
     "issued_at",
@@ -20,8 +20,8 @@
     "service_type",
     "profile_id",
     "endpoints",
-    "policy_head",
     "audience_role_id",
+    "operator_account",
     "expires_at"
   ],
   "properties": {
@@ -31,21 +31,28 @@
     "object_type": {
       "const": "service-advertisement-v1"
     },
-    "workspace_id": {
+    "workspace_key": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "actor": {
+    "policy_head": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "kel_head": {
+    "predecessor": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "authority_checkpoint": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
-    },
-    "authority_sequence": {
-      "type": "integer",
-      "minimum": 0
     },
     "repository_rid": {
       "type": "string",
@@ -89,11 +96,11 @@
         "maxLength": 2048
       }
     },
-    "policy_head": {
+    "audience_role_id": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "audience_role_id": {
+    "operator_account": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },

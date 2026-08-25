@@ -7,16 +7,18 @@
   "required": [
     "spec_version",
     "object_type",
-    "workspace_id",
-    "actor",
-    "kel_head",
-    "authority_sequence",
+    "workspace_key",
+    "policy_head",
+    "predecessor",
+    "authority_checkpoint",
     "repository_rid",
     "repository_head",
     "issued_at",
     "signature",
     "grant_id",
-    "subject",
+    "subject_account",
+    "target_device",
+    "recipient",
     "role_id",
     "capabilities",
     "resource_scope",
@@ -35,21 +37,28 @@
     "object_type": {
       "const": "role-grant-v1"
     },
-    "workspace_id": {
+    "workspace_key": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "actor": {
+    "policy_head": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "kel_head": {
+    "predecessor": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "authority_checkpoint": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
-    },
-    "authority_sequence": {
-      "type": "integer",
-      "minimum": 0
     },
     "repository_rid": {
       "type": "string",
@@ -71,9 +80,30 @@
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "subject": {
+    "subject_account": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
+    },
+    "target_device": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "recipient": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "const": "marmot-mls-leaf"
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$"
+        }
+      }
     },
     "role_id": {
       "type": "string",

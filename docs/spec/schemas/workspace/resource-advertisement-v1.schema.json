@@ -7,10 +7,10 @@
   "required": [
     "spec_version",
     "object_type",
-    "workspace_id",
-    "actor",
-    "kel_head",
-    "authority_sequence",
+    "workspace_key",
+    "policy_head",
+    "predecessor",
+    "authority_checkpoint",
     "repository_rid",
     "repository_head",
     "issued_at",
@@ -20,14 +20,16 @@
     "resource_type",
     "visibility",
     "locators",
-    "policy_head",
     "required_capabilities",
     "key_epoch",
     "history_mode",
     "selected_snapshots",
     "retention_seconds",
     "host_ids",
-    "key_custody_host_ids"
+    "key_custody_host_ids",
+    "repository_owner_key",
+    "repository_writer_nids",
+    "trusted_seed_nids"
   ],
   "properties": {
     "spec_version": {
@@ -36,21 +38,28 @@
     "object_type": {
       "const": "resource-advertisement-v1"
     },
-    "workspace_id": {
+    "workspace_key": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "actor": {
+    "policy_head": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "kel_head": {
+    "predecessor": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "authority_checkpoint": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
-    },
-    "authority_sequence": {
-      "type": "integer",
-      "minimum": 0
     },
     "repository_rid": {
       "type": "string",
@@ -101,10 +110,6 @@
         "minLength": 1,
         "maxLength": 2048
       }
-    },
-    "policy_head": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
     },
     "required_capabilities": {
       "type": "array",
@@ -171,6 +176,26 @@
       "items": {
         "type": "string",
         "pattern": "^[0-9a-f]{64}$"
+      },
+      "uniqueItems": true
+    },
+    "repository_owner_key": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "repository_writer_nids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$"
+      },
+      "uniqueItems": true
+    },
+    "trusted_seed_nids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$"
       },
       "uniqueItems": true
     }

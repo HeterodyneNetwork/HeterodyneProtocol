@@ -216,6 +216,42 @@ describe("revisioned protocol registry", () => {
     ]));
   });
 
+  it("registers active-key Workspace authority and trusted-seed confinement", () => {
+    const workspaceFeatures = registry.features.filter(({ owner }) => owner === "workspace");
+    expect(workspaceFeatures.flatMap(({ prerequisites }) => prerequisites)
+      .some((id) => id.startsWith("assurance."))).toBe(false);
+    expect(registry.features.find(({ id }) => id === "workspace.private-role-control.v1")
+      ?.prerequisites).toEqual([
+        "workspace.role-authorization.v1",
+        "comms.marmot-conversations.v1",
+        "comms.radicle-marmot-storage.v1",
+        "comms.trusted-seed-private-relay.v1",
+      ]);
+    expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-workspace-object-v1",
+    )?.bound_members).toEqual([
+      "authority_checkpoint",
+      "body",
+      "issued_at",
+      "object_type",
+      "policy_head",
+      "predecessor",
+      "repository_head",
+      "repository_rid",
+      "spec_version",
+      "workspace_key",
+    ]);
+
+    expect(registry.reason_codes.find(({ code }) => code === "workspace_signature_invalid")
+      ?.description).not.toMatch(/KEL|cold root|epoch/i);
+    expect(registry.security_invariants.find(
+      ({ id }) => id === "WORKSPACE-I-CARRIER-NOT-AUTHORITY",
+    )?.description).toMatch(/seed|repository writer/i);
+    expect(registry.security_invariants.find(
+      ({ id }) => id === "WORKSPACE-I-DEVICE-LEAF-SEPARATION",
+    )?.description).toMatch(/active account/i);
+  });
+
   it("registers Assurance-owned features, objects, proofs, reasons, and invariants", () => {
     const assuranceFeatures = registry.features
       .filter(({ owner }) => owner === "assurance")

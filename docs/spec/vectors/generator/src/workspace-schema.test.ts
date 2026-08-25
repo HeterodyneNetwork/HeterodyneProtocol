@@ -8,14 +8,17 @@ const H64 = "11".repeat(32);
 const H64_B = "22".repeat(32);
 const H40 = "33".repeat(20);
 const SIG = "44".repeat(64);
+const LEAF = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+const HOST_NID = "did:key:z6MkwQp8f8Y11L3WJYJ4hXa1";
+const SEED_NID = "did:key:z6Mkq7ZBA1Vh9fVhKo2H2iW4";
 
 const base = (object_type: string) => ({
   spec_version: "heterodyne/0.5.0",
   object_type,
-  workspace_id: H64,
-  actor: H64_B,
-  kel_head: H64,
-  authority_sequence: 4,
+  workspace_key: H64,
+  policy_head: H64_B,
+  predecessor: H64,
+  authority_checkpoint: H64_B,
   repository_rid: "rad:zWorkspace",
   repository_head: H40,
   issued_at: 1_720_000_000,
@@ -52,8 +55,8 @@ const values: Record<string, Record<string, unknown>> = {
     allowed_capabilities: ["read", "write", "invite"],
     history_mode: "full",
     selected_snapshots: [],
-    policy_head: H64,
-    mls_group_id: H64_B,
+    administrator_account: H64,
+    marmot_h: "role-routing-id",
     active_event_repository: { repository_rid: "rad:zEvents", mls_epoch: 7 },
     overlap_event_repository: null,
     archived_event_repositories: [],
@@ -61,7 +64,9 @@ const values: Record<string, Record<string, unknown>> = {
   "role-grant-v1": {
     ...base("role-grant-v1"),
     grant_id: H64_B,
-    subject: H64,
+    subject_account: H64,
+    target_device: H64_B,
+    recipient: { type: "marmot-mls-leaf", value: LEAF },
     role_id: H64_B,
     capabilities: ["read", "write"],
     resource_scope: [],
@@ -70,7 +75,11 @@ const values: Record<string, Record<string, unknown>> = {
     activates_at: 1_720_000_000,
     expires_at: null,
     approval_ids: [],
-    invitation: null,
+    invitation: {
+      nonce_commitment: H64,
+      expires_at: 1_720_003_600,
+      history_mode: "full",
+    },
     evidence_ids: [],
   },
   "role-revocation-v1": {
@@ -93,6 +102,7 @@ const values: Record<string, Record<string, unknown>> = {
     revocation_ids: [],
     relationship_ids: [],
     host_ids: [H64],
+    seed_nids: [SEED_NID],
     resource_ids: [H64_B],
     previous_checkpoint: null,
   },
@@ -111,11 +121,15 @@ const values: Record<string, Record<string, unknown>> = {
     retention_seconds: null,
     host_ids: [H64],
     key_custody_host_ids: [H64],
+    repository_owner_key: H64,
+    repository_writer_nids: [HOST_NID],
+    trusted_seed_nids: [SEED_NID],
   },
   "host-advertisement-v1": {
     ...base("host-advertisement-v1"),
     host_id: H64_B,
-    nid: H64,
+    host_nid: HOST_NID,
+    trusted_seed_nids: [SEED_NID],
     radicle_locators: ["rad:zHost"],
     onion_endpoints: ["http://exampleexampleexampleexampleexampleexampleexampleexample.onion"],
     clearnet_endpoints: [],
@@ -134,13 +148,14 @@ const values: Record<string, Record<string, unknown>> = {
     endpoints: ["https://service.example"],
     policy_head: H64,
     audience_role_id: H64,
+    operator_account: H64_B,
     expires_at: 1_720_003_600,
   },
   "workspace-relationship-v1": {
     ...base("workspace-relationship-v1"),
     relationship_id: H64_B,
-    source_workspace_id: H64,
-    receiving_workspace_id: H64_B,
+    source_workspace_key: H64,
+    receiving_workspace_key: H64_B,
     source_role_id: H64,
     receiving_role_id: H64_B,
     capability_ceiling: ["read", "triage"],
@@ -148,14 +163,16 @@ const values: Record<string, Record<string, unknown>> = {
     grace_period: 600,
     expires_at: 1_720_086_400,
     independently_revocable: true,
-    source_signature: SIG,
+    receiving_policy_head: H64,
+    receiving_predecessor: H64_B,
+    receiving_authority_checkpoint: H64,
     receiving_signature: SIG,
   },
   "joint-workspace-relationship-v1": {
     ...base("joint-workspace-relationship-v1"),
     relationship_id: H64_B,
-    joint_workspace_id: H64,
-    participant_workspace_ids: [H64, H64_B],
+    joint_workspace_key: H64,
+    participant_workspace_keys: [H64, H64_B],
     delegate_keys: [H64, H64_B],
     threshold: 2,
     resource_scope: [H64],
@@ -167,15 +184,15 @@ const values: Record<string, Record<string, unknown>> = {
     envelope_id: H64_B,
     resource_id: H64,
     key_epoch: 3,
-    target_persona: H64,
+    target_account: H64,
     target_device: H64_B,
     recipient: {
       type: "marmot-mls-leaf",
-      value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      value: LEAF,
     },
     role_id: H64,
     checkpoint_id: H64_B,
-    host_id: H64,
+    custody_host_id: H64,
     wrapping_profile: "marmot-mls-application-v1",
     nonce: "AAECAwQFBgcICQoLDA0ODw",
     ciphertext: "AQIDBAUGBwgJCgsMDQ4PEA",
@@ -210,7 +227,18 @@ describe("Workspace authority object schemas", () => {
       delete missing.signature;
       expect(validate(name, missing)).not.toBeNull();
       expect(validate(name, { ...value, object_type: "wrong-v1" })).not.toBeNull();
-      expect(validate(name, { ...value, workspace_id: "npub1invalid" })).not.toBeNull();
+      expect(validate(name, { ...value, workspace_key: "npub1invalid" })).not.toBeNull();
+      expect(validate(name, { ...value, kel_head: H64 })).not.toBeNull();
+      for (const member of [
+        "workspace_key",
+        "policy_head",
+        "predecessor",
+        "authority_checkpoint",
+      ]) {
+        const withoutAuthorityMember = { ...value };
+        delete withoutAuthorityMember[member];
+        expect(validate(name, withoutAuthorityMember), `${name}:${member}`).not.toBeNull();
+      }
     });
   }
 
@@ -266,5 +294,17 @@ describe("Workspace authority object schemas", () => {
         value: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
       },
     })).not.toBeNull();
+  });
+
+  it("binds invitations to one active account, device, and canonical Marmot leaf", () => {
+    const grant = values["role-grant-v1"];
+    expect(validate("role-grant-v1", { ...grant, subject_account: H64_B })).toBeNull();
+    for (const changed of [
+      { target_device: "bad" },
+      { recipient: { type: "nostr-secp256k1", value: LEAF } },
+      { recipient: { type: "marmot-mls-leaf", value: `${LEAF}=` } },
+    ]) {
+      expect(validate("role-grant-v1", { ...grant, ...changed })).not.toBeNull();
+    }
   });
 });

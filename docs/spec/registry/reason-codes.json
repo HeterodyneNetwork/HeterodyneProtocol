@@ -1642,7 +1642,7 @@
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A Workspace signature, actor, KEL, or repository binding is invalid.",
+      "description": "A Workspace active-key signature or its exact policy, predecessor, checkpoint, or repository binding is invalid.",
       "spec_refs": [
         "heterodyne:0.5.0#workspace-errors"
       ]

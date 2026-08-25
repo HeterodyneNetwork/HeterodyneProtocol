@@ -254,12 +254,21 @@
       "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
-        "object"
+        "authority_checkpoint",
+        "body",
+        "issued_at",
+        "object_type",
+        "policy_head",
+        "predecessor",
+        "repository_head",
+        "repository_rid",
+        "spec_version",
+        "workspace_key"
       ],
       "suites": [
         "bip340"
       ],
-      "description": "Actor proof over a signed Workspace object without its signature member."
+      "description": "Active workspace-key proof over the closed object body and exact current policy, predecessor, checkpoint, and repository context."
     }
   ]
 }

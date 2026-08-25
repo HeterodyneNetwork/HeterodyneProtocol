@@ -467,7 +467,7 @@
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Workspace affiliation alone grants no role or resource capability."
+      "description": "Workspace affiliation, optional Assurance continuity, or active-key succession alone grants no role, relationship, delegate, seed, or resource capability; each subordinate authority requires explicit current-key reauthorization."
     },
     {
       "id": "WORKSPACE-I-INHERITANCE-NARROWS",
@@ -488,7 +488,7 @@
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Git authorship, Radicle permission, relay acceptance, MLS membership, and host status are never sufficient Workspace authorization evidence."
+      "description": "Git authorship, Radicle repository-writer permission, trusted-seed or host status, relay acceptance, custody, and Marmot membership or group administration are never sufficient Workspace authorization evidence."
     },
     {
       "id": "WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS",
@@ -517,7 +517,7 @@
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Hosting does not grant governance authority, while key-custody hosts remain explicit confidentiality trust boundaries."
+      "description": "Hosting or trusted-seed availability does not grant governance authority, while explicit key-custody hosts remain confidentiality trust boundaries."
     },
     {
       "id": "WORKSPACE-I-RADICLE-BACKSTOP",
@@ -533,7 +533,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "workspace.private-role-control.v1",
-      "description": "Each authorized device has an independently revocable MLS leaf and receives only device-bound resource-key envelopes."
+      "description": "Each active account device has an independently revocable Marmot MLS leaf and receives only envelopes bound to that exact account, device, and leaf."
     }
   ]
 }

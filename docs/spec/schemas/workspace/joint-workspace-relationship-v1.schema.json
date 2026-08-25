@@ -7,17 +7,17 @@
   "required": [
     "spec_version",
     "object_type",
-    "workspace_id",
-    "actor",
-    "kel_head",
-    "authority_sequence",
+    "workspace_key",
+    "policy_head",
+    "predecessor",
+    "authority_checkpoint",
     "repository_rid",
     "repository_head",
     "issued_at",
     "signature",
     "relationship_id",
-    "joint_workspace_id",
-    "participant_workspace_ids",
+    "joint_workspace_key",
+    "participant_workspace_keys",
     "delegate_keys",
     "threshold",
     "resource_scope",
@@ -31,21 +31,28 @@
     "object_type": {
       "const": "joint-workspace-relationship-v1"
     },
-    "workspace_id": {
+    "workspace_key": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "actor": {
+    "policy_head": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "kel_head": {
+    "predecessor": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "authority_checkpoint": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
-    },
-    "authority_sequence": {
-      "type": "integer",
-      "minimum": 0
     },
     "repository_rid": {
       "type": "string",
@@ -67,11 +74,11 @@
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "joint_workspace_id": {
+    "joint_workspace_key": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "participant_workspace_ids": {
+    "participant_workspace_keys": {
       "type": "array",
       "minItems": 2,
       "uniqueItems": true,

@@ -7,16 +7,17 @@
   "required": [
     "spec_version",
     "object_type",
-    "workspace_id",
-    "actor",
-    "kel_head",
-    "authority_sequence",
+    "workspace_key",
+    "policy_head",
+    "predecessor",
+    "authority_checkpoint",
     "repository_rid",
     "repository_head",
     "issued_at",
     "signature",
     "host_id",
-    "nid",
+    "host_nid",
+    "trusted_seed_nids",
     "radicle_locators",
     "onion_endpoints",
     "clearnet_endpoints",
@@ -33,21 +34,28 @@
     "object_type": {
       "const": "host-advertisement-v1"
     },
-    "workspace_id": {
+    "workspace_key": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "actor": {
+    "policy_head": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "kel_head": {
+    "predecessor": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "authority_checkpoint": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
-    },
-    "authority_sequence": {
-      "type": "integer",
-      "minimum": 0
     },
     "repository_rid": {
       "type": "string",
@@ -69,9 +77,17 @@
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "nid": {
+    "host_nid": {
       "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
+      "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$"
+    },
+    "trusted_seed_nids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$"
+      },
+      "uniqueItems": true
     },
     "radicle_locators": {
       "type": "array",
