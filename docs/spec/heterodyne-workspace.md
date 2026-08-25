@@ -112,6 +112,11 @@ The effect-time pass rechecks signatures, policy and role parent chains,
 per-role checkpoints, grants, relationships, resources, effective/expiry
 times, and every revocation whose transition time has arrived. A previously
 valid opaque handle is not a capability token that survives newer state.
+For each accepted workspace/RID ancestry, the resolver also retains an
+immutable map from every observed `envelope_id` to that envelope's canonical
+JCS object identity. A later generation MAY retain or reintroduce the same
+identity, including after an intervening omission, but any conflicting reuse
+of that ID fails closed before the generation becomes current.
 
 The SHA-256 digest of the complete JCS object including `signature` is its
 object identifier unless a field-specific identifier is defined. Consumers
@@ -403,6 +408,10 @@ for a private role is delivered through an authenticated two-member
 conversation under
 [`heterodyne:0.5.0#comms-direct-messages`](heterodyne-comms.md#comms-direct-messages) or an existing authorized private
 repository.
+The commit operation itself samples the resolver authority's configured
+trusted clock immediately before its atomic state transition and rechecks the
+latest view plus signed authority-mutation freshness. It never consumes a
+cached time supplied by its caller.
 
 A `role-revocation-v1` may revoke a grant, account, device, relationship, host,
 or resource. A valid revocation is effective at its declared effective time,
@@ -430,8 +439,11 @@ source policy/predecessor/checkpoint, accepted source repository RID and
 head, and trusted `received_at`. The receiving role checkpoint lists the
 receipt ID. A source relationship not matched by that exact current receipt,
 or a receipt referring to another source view or relationship object, does
-not activate an allowance. Source revocations target the source relationship
-ID; independent receiving revocations target the receipt ID.
+not activate an allowance. Exactly one semantic receipt may exist for a
+relationship, receiving role, and exact current-source tuple; zero matching
+receipts at use or multiple matching receipts in a complete view fail closed.
+Source revocations target the source relationship ID; independent receiving
+revocations target the receipt ID.
 
 An allowance continuously depends on a closed
 `heterodyne.workspace-affiliation-evidence.v1` record signed by the source
@@ -595,6 +607,9 @@ authority checkpoint, and the custody host. Duplicate envelope IDs,
 inconsistent admission epochs for one grant/account/device/leaf path, or a
 grant/envelope/resource mismatch fail closed. A raw unprotected resource key
 MUST NOT be returned.
+Complete-view validation groups envelopes by the exact grant, account,
+device, leaf, resource, and complete role path and requires one and only one
+signed `admission_epoch` for each group before the view is accepted.
 Workspace does not re-protect existing objects on rotation: each affected
 resource rotates forward independently and prior ciphertext is left as it
 stands.
@@ -617,6 +632,9 @@ defined in Section 3; role admission across the same transition requires a
 separate exact `role-membership` record. Neither proof is interchangeable or
 usable under another resolver instance, repository view, role, resource,
 device, or leaf.
+At effect time, a `target_type:"host"` revocation denies both ordinary
+delivery and successor delivery through that custody host from and including
+its signed `effective_at`; it has no effect before that instant.
 
 Before delivery, the responder derives a fresh opaque effective authorization
 for the authenticated account, device, and leaf over the exact request digest:

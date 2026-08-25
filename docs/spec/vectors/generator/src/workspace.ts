@@ -83,6 +83,10 @@ type WorkspaceResolverConfig = Readonly<{
     generation: number;
     state: WorkspaceCurrentState;
     view_id: string;
+    envelope_identity_history: readonly Readonly<{
+      envelope_id: string;
+      object_id: string;
+    }>[];
   }>>;
 }>;
 
@@ -108,6 +112,10 @@ type WorkspaceCurrentStateRecord = Readonly<{
   relationship_receipts: readonly Readonly<Record<string, unknown>>[];
   joint_relationships: readonly Readonly<Record<string, unknown>>[];
   envelopes: readonly Readonly<Record<string, unknown>>[];
+  envelope_identity_history: readonly Readonly<{
+    envelope_id: string;
+    object_id: string;
+  }>[];
 }>;
 
 const WORKSPACE_RESOLVER_AUTHORITIES = new WeakMap<object, WorkspaceResolverConfig>();
@@ -611,6 +619,20 @@ export function authenticateWorkspaceRepositoryView(value: unknown):
     evidence.observed_at,
   );
   if (!complete.ok) return { verdict: "reject", reason_code: complete.reason_code };
+  const priorEnvelopeIdentities = new Map((previous?.envelope_identity_history ?? [])
+    .map((entry) => [entry.envelope_id, entry.object_id]));
+  for (const envelope of complete.value.envelopes) {
+    const envelopeId = String(envelope.envelope_id);
+    const objectId = workspaceObjectId(envelope);
+    const priorObjectId = priorEnvelopeIdentities.get(envelopeId);
+    if (priorObjectId !== undefined && priorObjectId !== objectId) {
+      return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+    }
+    priorEnvelopeIdentities.set(envelopeId, objectId);
+  }
+  const envelopeIdentityHistory = deepFreeze([...priorEnvelopeIdentities.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([envelope_id, object_id]) => ({ envelope_id, object_id })));
   const state = Object.freeze({}) as WorkspaceCurrentState;
   const viewId = workspaceObjectId(evidence);
   const generation = previous === undefined ? 1 : previous.generation + 1;
@@ -624,15 +646,17 @@ export function authenticateWorkspaceRepositoryView(value: unknown):
     view_key: viewKey,
     evidence,
     objects: validatedObjects,
+    envelope_identity_history: envelopeIdentityHistory,
     ...complete.value,
   }));
-  config.accepted_views.set(viewKey, {
+  config.accepted_views.set(viewKey, deepFreeze({
     head: evidence.canonical_head,
     observed_at: evidence.observed_at,
     generation,
     state,
     view_id: viewId,
-  });
+    envelope_identity_history: envelopeIdentityHistory,
+  }));
   return { verdict: "accept", state };
 }
 
@@ -689,12 +713,24 @@ function validateCompleteWorkspaceObjectSet(
   const relationshipIds = [...relationships, ...jointRelationships]
     .map((relationship) => String(relationship.relationship_id));
   const receiptIds = relationshipReceipts.map((receipt) => String(receipt.receipt_id));
+  const semanticReceiptKeys = relationshipReceipts.map((receipt) => jcsCanonicalize({
+    relationship_id: receipt.relationship_id,
+    receiving_role_id: receipt.receiving_role_id,
+    source_workspace_key: receipt.source_workspace_key,
+    source_relationship_object_id: receipt.source_relationship_object_id,
+    source_policy_head: receipt.source_policy_head,
+    source_predecessor: receipt.source_predecessor,
+    source_authority_checkpoint: receipt.source_authority_checkpoint,
+    source_repository_rid: receipt.source_repository_rid,
+    source_repository_head: receipt.source_repository_head,
+  }));
   if (policy.policy_id !== current.policy_head
     || !Array.isArray(allowedRoleTypes)
     || new Set(roleIds).size !== roleIds.length
     || new Set(checkpointIds).size !== checkpointIds.length
     || new Set(relationshipIds).size !== relationshipIds.length
     || new Set(receiptIds).size !== receiptIds.length
+    || new Set(semanticReceiptKeys).size !== semanticReceiptKeys.length
     || !checkpoints.some((candidate) => candidate.checkpoint_id === current.authority_checkpoint)
     || roles.some((role) => !allowedRoleTypes.includes(role.role_type))
     || objects.some((object) => !isSafeNonNegativeInteger(object.issued_at)
@@ -855,6 +891,28 @@ function validateCompleteWorkspaceObjectSet(
       || envelope.key_epoch > resource.key_epoch) {
       return { ok: false, reason_code: "workspace_repository_invalid" };
     }
+  }
+  const admissionEpochsByPath = new Map<string, number>();
+  for (const envelope of envelopes) {
+    const rolePath = resolveWorkspaceRoleChain(roles, String(envelope.role_id));
+    if (!rolePath.ok || !isRecord(envelope.recipient)
+      || !isSafeNonNegativeInteger(envelope.admission_epoch)) {
+      return { ok: false, reason_code: "workspace_repository_invalid" };
+    }
+    const admissionPath = jcsCanonicalize({
+      grant_id: envelope.grant_id,
+      target_account: envelope.target_account,
+      target_device: envelope.target_device,
+      recipient: envelope.recipient,
+      resource_id: envelope.resource_id,
+      role_path_ids: rolePath.value.map((role) => role.role_id),
+    });
+    const existingAdmissionEpoch = admissionEpochsByPath.get(admissionPath);
+    if (existingAdmissionEpoch !== undefined
+      && existingAdmissionEpoch !== envelope.admission_epoch) {
+      return { ok: false, reason_code: "workspace_repository_invalid" };
+    }
+    admissionEpochsByPath.set(admissionPath, envelope.admission_epoch);
   }
   for (const revocation of revocations) {
     if ((revocation.target_type === "grant" && !grantIds.has(revocation.target_id))
@@ -1379,14 +1437,16 @@ function commitWorkspaceInvitationReservation(
   value: WorkspaceInvitationAcceptance,
   authority: WorkspaceRepositoryResolverAuthority,
   currentState: WorkspaceCurrentState,
-  trustedNow: number,
 ): boolean {
   const record = WORKSPACE_INVITATION_ACCEPTANCES.get(value);
   if (record === undefined) return false;
   const store = WORKSPACE_INVITATION_STORES.get(record.store);
+  const trusted = readWorkspaceTrustedNow(authority);
+  const trustedNow = trusted.ok ? trusted.value.now : null;
   const reservation = store?.get(record.token);
   if (record.authority !== authority
     || record.current_state !== currentState
+    || trustedNow === null
     || !requireFreshCurrentView(authority, currentState, trustedNow, "authority").ok
     || reservation?.status !== "reserved"
     || reservation.holder !== value
@@ -1566,7 +1626,6 @@ export function evaluateGrantActivation(value: unknown): WorkspaceVerdict {
       executableInvitationAcceptance as WorkspaceInvitationAcceptance,
       authority as WorkspaceRepositoryResolverAuthority,
       currentState as WorkspaceCurrentState,
-      now,
     )) return rejected("workspace_replay");
   }
   return accepted({
@@ -1612,7 +1671,7 @@ function requireCurrentRelationshipAtEffect(
     checkpoint.role_id === relationshipObject?.source_role_id);
   const receivingCheckpoint = receiving.checkpoints.find((checkpoint) =>
     checkpoint.role_id === relationshipObject?.receiving_role_id);
-  const receipt = receiving.relationship_receipts.find((candidate) =>
+  const matchingReceipts = receiving.relationship_receipts.filter((candidate) =>
     candidate.relationship_id === relationshipId
       && candidate.receiving_role_id === relationshipObject?.receiving_role_id
       && candidate.source_workspace_key === source.state.workspace_key
@@ -1624,6 +1683,7 @@ function requireCurrentRelationshipAtEffect(
       && candidate.source_authority_checkpoint === source.state.authority_checkpoint
       && candidate.source_repository_rid === source.state.repository_rid
       && candidate.source_repository_head === source.state.repository_head);
+  const receipt = matchingReceipts.length === 1 ? matchingReceipts[0] : undefined;
   if (relationshipObject === undefined
     || sourceRole === undefined
     || receivingRole === undefined
@@ -2204,7 +2264,9 @@ function requireSuccessorReauthorizationAtEffect(
             && (revocation.target_id === record.prior_grant_id
               || revocation.target_id === record.pending_grant_id))
           || (revocation.target_type === "resource"
-            && revocation.target_id === record.resource_id)))) {
+            && revocation.target_id === record.resource_id)
+          || (revocation.target_type === "host"
+            && revocation.target_id === record.pending_custody_host_id)))) {
     return { ok: false, reason_code: "policy_denied" };
   }
   return { ok: true, value: { current, reauthorization: record } };
@@ -2790,6 +2852,11 @@ export function evaluateKeyRequest(value: unknown): WorkspaceVerdict {
     if (authorization.actor_account !== input.target_account
       || authorization.actor_device !== input.target_device
       || authorization.actor_leaf !== recipient.value) return rejected("policy_denied");
+    if (current.revocations.some((revocation) =>
+      revocation.target_type === "host"
+        && revocation.target_id === input.custody_host_id
+        && isSafeNonNegativeInteger(revocation.effective_at)
+        && revocation.effective_at <= now)) return rejected("host_unauthorized");
   }
   const historyRank = (mode: unknown): number => mode === "full" ? 2
     : mode === "from-admission" ? 1

@@ -495,7 +495,7 @@
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Every Workspace authority effect consumes only its configured resolver instance's latest accepted generation and revalidates complete signed state, exact requested terms, transition times, role paths, receiving relationship receipts, and revocations at effect time."
+      "description": "Every Workspace authority effect consumes only its configured resolver instance's latest accepted generation and revalidates complete signed state, exact requested terms, transition times, role paths, exactly one semantic receiving relationship receipt, immutable envelope-ID ancestry, and revocations at effect time."
     },
     {
       "id": "WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS",
@@ -510,14 +510,14 @@
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Revocation blocks future authorization and key delivery without claiming erasure of data or keys already obtained."
+      "description": "Revocation blocks future authorization and key delivery, including custody-host delivery from and including the exact effective time, without claiming erasure of data or keys already obtained."
     },
     {
       "id": "WORKSPACE-I-FRESHNESS-BOUNDED",
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Ordinary writes use checkpoints no older than 86400 seconds and authority mutations no older than 300 seconds, with policy able only to shorten those bounds."
+      "description": "Ordinary writes use checkpoints no older than 86400 seconds and authority mutations no older than 300 seconds, with policy able only to shorten those bounds; invitation commit samples trusted time itself immediately before its atomic transition."
     },
     {
       "id": "WORKSPACE-I-HOST-AUTHORITY-SEPARATION",
@@ -540,7 +540,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "workspace.private-role-control.v1",
-      "description": "Each active account device has an independently revocable Marmot MLS leaf and receives only uniquely identified envelopes bound to that exact grant, admission epoch, account, device, leaf, role, resource, checkpoint, and custody host."
+      "description": "Each active account device has an independently revocable Marmot MLS leaf and receives only uniquely identified envelopes bound to that exact grant, single path admission epoch, account, device, leaf, role, resource, checkpoint, and custody host."
     }
   ]
 }

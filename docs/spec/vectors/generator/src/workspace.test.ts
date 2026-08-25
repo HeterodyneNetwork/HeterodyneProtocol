@@ -1503,6 +1503,7 @@ describe("Workspace role authorization", () => {
     expect(api.ReferenceWorkspaceInvitationAcceptanceStore).toBeTypeOf("function");
     expect(api.consumeWorkspaceInvitationAcceptance).toBeTypeOf("function");
     let trustedNow = 1_720_000_400;
+    let commitClock: number[] | null = null;
     const grantId = "ed".repeat(32);
     const nonceOpening = "de".repeat(32);
     const unsignedGrant = {
@@ -1553,7 +1554,7 @@ describe("Workspace role authorization", () => {
       max_ttl: 600,
       max_view_age: 600,
       repositories: [{ workspace_key: WORKSPACE_KEY, repository_rid: "rad:zWorkspace", pinned_head: H40 }],
-      trusted_now: () => trustedNow,
+      trusted_now: () => commitClock?.shift() ?? trustedNow,
       invitation_store: store,
     });
     const state = api.authenticateWorkspaceRepositoryView({ authority, evidence, objects });
@@ -1713,7 +1714,23 @@ describe("Workspace role authorization", () => {
     if (retry?.verdict !== "accept" || retry.acceptance === undefined) {
       throw new Error("fixture invitation reservation was not released");
     }
-    const committedActivation = { ...activation, invitation_acceptance: retry.acceptance };
+    commitClock = [1_720_000_500, 1_720_000_600];
+    expect(evaluateGrantActivation({ ...activation, invitation_acceptance: retry.acceptance }))
+      .toEqual({ verdict: "reject", reason_code: "workspace_replay" });
+    commitClock = null;
+    const finalRetry = api.consumeWorkspaceInvitationAcceptance?.({
+      authority,
+      current_state: state.state,
+      acceptance: retryableAcceptance,
+    });
+    expect(finalRetry).toMatchObject({ verdict: "accept", acceptance: expect.any(Object) });
+    if (finalRetry?.verdict !== "accept" || finalRetry.acceptance === undefined) {
+      throw new Error("fixture atomic commit did not release expired reservation");
+    }
+    const committedActivation = {
+      ...activation,
+      invitation_acceptance: finalRetry.acceptance,
+    };
     expect(evaluateGrantActivation(committedActivation)).toMatchObject({ verdict: "accept" });
     expect(evaluateGrantActivation(committedActivation))
       .toEqual({ verdict: "reject", reason_code: "workspace_replay" });
@@ -1804,6 +1821,28 @@ describe("Workspace relationships and privacy", () => {
     })).toEqual({ verdict: "reject", reason_code: "workspace_repository_invalid" });
 
     const receipt = signedRelationshipReceipt(relationship);
+    const duplicateSemanticReceipt = signWorkspaceObject({
+      ...receipt,
+      receipt_id: "d2".repeat(32),
+    }, OTHER_SECRET);
+    const receivingObjectsWithDuplicateReceipt = [...receivingObjects];
+    receivingObjectsWithDuplicateReceipt[5] = signWorkspaceObject({
+      ...receivingObjectsWithDuplicateReceipt[5],
+      relationship_ids: [receipt.receipt_id, duplicateSemanticReceipt.receipt_id].sort(),
+    }, OTHER_SECRET);
+    receivingObjectsWithDuplicateReceipt.push(receipt, duplicateSemanticReceipt);
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(receivingObjectsWithDuplicateReceipt, {
+        workspace_key: OTHER_KEY,
+        repository_rid: "rad:zReceiving",
+        policy_head: "77".repeat(32),
+        predecessor: "88".repeat(32),
+        authority_checkpoint: "99".repeat(32),
+        observed_at: 1_720_000_201,
+      }),
+      objects: receivingObjectsWithDuplicateReceipt,
+    })).toEqual({ verdict: "reject", reason_code: "workspace_repository_invalid" });
     const receivingObjectsWithReceipt = [...receivingObjects];
     receivingObjectsWithReceipt[5] = signWorkspaceObject({
       ...receivingObjectsWithReceipt[5],
@@ -2202,8 +2241,20 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
       key_epoch: 2,
       key_custody_host_ids: ["dd".repeat(32), "ee".repeat(32)],
     }, WORKSPACE_SECRET);
+    const custodyHostRevocation = signWorkspaceObject({
+      ...authorityObjects[3],
+      revocation_id: "b5".repeat(32),
+      target_type: "host",
+      target_id: "dd".repeat(32),
+      effective_at: 1_720_000_420,
+    }, WORKSPACE_SECRET);
+    authorityObjects[5] = signWorkspaceObject({
+      ...authorityObjects[5],
+      revocation_ids: [REVOCATION_ID, custodyHostRevocation.revocation_id].sort(),
+    }, WORKSPACE_SECRET);
     const objects = [
       ...authorityObjects,
+      custodyHostRevocation,
       pendingGrant,
       decoyPendingGrant,
       decoyActorGrant,
@@ -2252,7 +2303,79 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
       evidence: repositoryViewEvidence(invalidAdmissionObjects, { observed_at: 1_720_000_300 }),
       objects: invalidAdmissionObjects,
     })).toEqual({ verdict: "reject", reason_code: "workspace_repository_invalid" });
+    const conflictingAdmissionEnvelope = signWorkspaceObject({
+      ...actorAdmissionEnvelope,
+      envelope_id: "b6".repeat(32),
+      admission_epoch: 1,
+    }, WORKSPACE_SECRET);
+    const conflictingAdmissionObjects = [...objects, conflictingAdmissionEnvelope];
+    const conflictingAdmissionAuthority = api.createWorkspaceRepositoryResolverAuthority({
+      trust_anchors: [{ suite: "bip340", public_key: RESOLVER_KEY }],
+      allowed_policies: ["radicle-verified-complete-v1"],
+      minimum_version: "1.0.0",
+      max_ttl: 600,
+      max_view_age: 600,
+      repositories: [{ workspace_key: WORKSPACE_KEY, repository_rid: "rad:zWorkspace", pinned_head: H40 }],
+      trusted_now: () => trustedNow,
+    });
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority: conflictingAdmissionAuthority,
+      evidence: repositoryViewEvidence(conflictingAdmissionObjects, {
+        observed_at: 1_720_000_300,
+      }),
+      objects: conflictingAdmissionObjects,
+    })).toEqual({ verdict: "reject", reason_code: "workspace_repository_invalid" });
     const evidence = repositoryViewEvidence(objects, { observed_at: 1_720_000_300 });
+    const ancestryAuthority = api.createWorkspaceRepositoryResolverAuthority({
+      trust_anchors: [{ suite: "bip340", public_key: RESOLVER_KEY }],
+      allowed_policies: ["radicle-verified-complete-v1"],
+      minimum_version: "1.0.0",
+      max_ttl: 600,
+      max_view_age: 600,
+      repositories: [{ workspace_key: WORKSPACE_KEY, repository_rid: "rad:zWorkspace", pinned_head: H40 }],
+      trusted_now: () => trustedNow,
+    });
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority: ancestryAuthority,
+      evidence,
+      objects,
+    })).toMatchObject({ verdict: "accept", state: expect.any(Object) });
+    const retainedEvidence = repositoryViewEvidence(objects, {
+      observed_at: 1_720_000_301,
+      expires_at: 1_720_000_701,
+    });
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority: ancestryAuthority,
+      evidence: retainedEvidence,
+      objects,
+    })).toMatchObject({ verdict: "accept", state: expect.any(Object) });
+    const withoutPendingEnvelope = objects.filter((object) =>
+      object.envelope_id !== pendingEnvelope.envelope_id);
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority: ancestryAuthority,
+      evidence: repositoryViewEvidence(withoutPendingEnvelope, {
+        observed_at: 1_720_000_302,
+        expires_at: 1_720_000_702,
+      }),
+      objects: withoutPendingEnvelope,
+    })).toMatchObject({ verdict: "accept", state: expect.any(Object) });
+    const conflictingReuseObjects = objects.map((object) =>
+      object.object_type === "resource-key-envelope-v1"
+        && object.envelope_id === pendingEnvelope.envelope_id
+        ? signWorkspaceObject({
+          ...object,
+          ciphertext: "BwgJ",
+          ciphertext_sha256: "b7".repeat(32),
+        }, WORKSPACE_SECRET)
+        : object);
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority: ancestryAuthority,
+      evidence: repositoryViewEvidence(conflictingReuseObjects, {
+        observed_at: 1_720_000_303,
+        expires_at: 1_720_000_703,
+      }),
+      objects: conflictingReuseObjects,
+    })).toEqual({ verdict: "reject", reason_code: "workspace_repository_invalid" });
     const authority = api.createWorkspaceRepositoryResolverAuthority({
       trust_anchors: [{ suite: "bip340", public_key: RESOLVER_KEY }],
       allowed_policies: ["radicle-verified-complete-v1"],
@@ -2350,6 +2473,14 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
         idempotent: true,
       },
     });
+    trustedNow = 1_720_000_419;
+    expect(evaluateKeyRequest(request)).toMatchObject({ verdict: "accept" });
+    trustedNow = 1_720_000_420;
+    expect(evaluateKeyRequest(request))
+      .toEqual({ verdict: "reject", reason_code: "policy_denied" });
+    trustedNow = 1_720_000_421;
+    expect(evaluateKeyRequest(request))
+      .toEqual({ verdict: "reject", reason_code: "policy_denied" });
     trustedNow = 1_720_000_460;
     expect(evaluateKeyRequest(request))
       .toEqual({ verdict: "reject", reason_code: "policy_denied" });
@@ -2407,7 +2538,7 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
     const sameAccountRequest = {
       resource_id: RESOURCE_ID,
       custody_host_id: "dd".repeat(32),
-      requested_epoch: 0,
+      requested_epoch: 2,
       requested_snapshot_id: null,
       target_account: OTHER_KEY,
       authenticated_account: OTHER_KEY,
@@ -2429,13 +2560,22 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
     if (sameAccountAuthorization.verdict !== "accept") {
       throw new Error("fixture same-account authorization rejected");
     }
-    expect(evaluateKeyRequest({
+    const ordinaryRequest = {
       authority,
       current_state: state.state,
       authorization: sameAccountAuthorization.authorization,
       successor_reauthorization: null,
       ...sameAccountRequest,
-    })).toEqual({ verdict: "reject", reason_code: "history_denied" });
+    };
+    trustedNow = 1_720_000_419;
+    expect(evaluateKeyRequest(ordinaryRequest)).toMatchObject({ verdict: "accept" });
+    trustedNow = 1_720_000_420;
+    expect(evaluateKeyRequest(ordinaryRequest))
+      .toEqual({ verdict: "reject", reason_code: "host_unauthorized" });
+    trustedNow = 1_720_000_421;
+    expect(evaluateKeyRequest(ordinaryRequest))
+      .toEqual({ verdict: "reject", reason_code: "host_unauthorized" });
+    trustedNow = 1_720_000_400;
     expect(evaluateKeyRequest({ ...request, successor_reauthorized: true }))
       .toEqual({ verdict: "reject", reason_code: "workspace_schema_invalid" });
     let recipientReads = 0;
