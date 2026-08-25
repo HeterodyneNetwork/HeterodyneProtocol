@@ -46,6 +46,33 @@ type ResolutionModule = {
     signature: string;
     validation_time: number;
   }) => boolean;
+  authenticateAtprotoBindingObservation?: (input: {
+    authority: object;
+    evidence: { envelope: unknown; signature: string };
+    resolution_evidence: { envelope: unknown; signature: string };
+    expected_binding: {
+      binding_event_id: string;
+      binding_hash: string;
+      did: string;
+      pubkey: string;
+      generation: number;
+      event_created_at: number;
+    };
+  }) => { verdict: "accept" } | { verdict: "reject"; reason_code: string };
+};
+
+type ObservationEnvelope = {
+  domain: "heterodyne-atproto-binding-observation-v1";
+  binding_event_id: string;
+  binding_hash: string;
+  did: string;
+  pubkey: string;
+  generation: number;
+  observed_at: number;
+  checkpoint_reference: string;
+  resolution_envelope_hash: string;
+  resolver_policy: string;
+  resolver_version: string;
 };
 
 const didSecret = "04".repeat(32);
@@ -80,6 +107,139 @@ const envelope: Envelope = {
 };
 
 describe("authenticated ATProto DID resolution", () => {
+  it("authenticates a closed durable binding observation inside the resolution interval", async () => {
+    const api = await loadResolution();
+    const authority = configuredAuthority(api, {
+      suite: "ed25519",
+      public_key: resolverPublic,
+    });
+    const bindingEventId = "11".repeat(32);
+    const expected = {
+      binding_event_id: bindingEventId,
+      binding_hash: "22".repeat(32),
+      did,
+      pubkey: "33".repeat(32),
+      generation: 1,
+      event_created_at: 1_050,
+    };
+    const observation: ObservationEnvelope = {
+      domain: "heterodyne-atproto-binding-observation-v1",
+      binding_event_id: bindingEventId,
+      binding_hash: expected.binding_hash,
+      did,
+      pubkey: expected.pubkey,
+      generation: 1,
+      observed_at: 1_100,
+      checkpoint_reference: `nostr:event:${bindingEventId}`,
+      resolution_envelope_hash: bytesToHex(sha256(utf8Bytes(canonicalEnvelope(envelope)))),
+      resolver_policy: envelope.resolver_policy,
+      resolver_version: envelope.resolver_version,
+    };
+    const resolutionEvidence = attestation(envelope, resolverSecret, "ed25519");
+    expect(api.authenticateAtprotoBindingObservation?.({
+      authority,
+      evidence: observationAttestation(observation, resolverSecret),
+      resolution_evidence: resolutionEvidence,
+      expected_binding: expected,
+    })).toEqual({ verdict: "accept" });
+
+    const attackerSecret = "06".repeat(32);
+    for (const evidence of [
+      observationAttestation(observation, attackerSecret),
+      observationAttestation({ ...observation, binding_event_id: "44".repeat(32) }, resolverSecret),
+      observationAttestation({ ...observation, binding_hash: "44".repeat(32) }, resolverSecret),
+      observationAttestation({ ...observation, pubkey: "44".repeat(32) }, resolverSecret),
+      observationAttestation({ ...observation, generation: 2 }, resolverSecret),
+      observationAttestation({ ...observation, resolution_envelope_hash: "44".repeat(32) }, resolverSecret),
+      observationAttestation({ ...observation, observed_at: 1_049 }, resolverSecret),
+      observationAttestation({ ...observation, observed_at: 1_300 }, resolverSecret),
+      observationAttestation({ ...observation, resolver_policy: "unapproved-policy" }, resolverSecret),
+      observationAttestation({ ...observation, resolver_version: "0.9.9" }, resolverSecret),
+    ]) {
+      expect(api.authenticateAtprotoBindingObservation?.({
+        authority,
+        evidence,
+        resolution_evidence: resolutionEvidence,
+        expected_binding: expected,
+      })).toEqual({
+        verdict: "reject",
+        reason_code: "atproto-binding-observation-invalid",
+      });
+    }
+  });
+
+  it("rejects accessor-backed resolver and observation envelopes without invoking them", async () => {
+    const api = await loadResolution();
+    const authority = configuredAuthority(api, {
+      suite: "ed25519",
+      public_key: resolverPublic,
+    });
+    let resolutionGetterCalls = 0;
+    const accessorResolution = { ...envelope } as Record<string, unknown>;
+    Object.defineProperty(accessorResolution, "resolver_version", {
+      enumerable: true,
+      get() {
+        resolutionGetterCalls += 1;
+        return envelope.resolver_version;
+      },
+    });
+    expect(api.authenticateAtprotoDidResolution?.({
+      authority,
+      evidence: {
+        envelope: accessorResolution,
+        signature: resolverSignature(envelope, resolverSecret, "ed25519"),
+      },
+      validation_time: 1_100,
+    })).toEqual({ verdict: "reject", reason_code: "atproto-did-resolution-invalid" });
+    expect(resolutionGetterCalls).toBe(0);
+
+    const expected = {
+      binding_event_id: "11".repeat(32),
+      binding_hash: "22".repeat(32),
+      did,
+      pubkey: "33".repeat(32),
+      generation: 1,
+      event_created_at: 1_050,
+    };
+    const signedEnvelope: ObservationEnvelope = {
+      domain: "heterodyne-atproto-binding-observation-v1",
+      binding_event_id: "44".repeat(32),
+      binding_hash: expected.binding_hash,
+      did,
+      pubkey: expected.pubkey,
+      generation: 1,
+      observed_at: 1_100,
+      checkpoint_reference: `nostr:event:${"44".repeat(32)}`,
+      resolution_envelope_hash: bytesToHex(sha256(utf8Bytes(canonicalEnvelope(envelope)))),
+      resolver_policy: envelope.resolver_policy,
+      resolver_version: envelope.resolver_version,
+    };
+    let observationGetterCalls = 0;
+    const accessorObservation = { ...signedEnvelope } as Record<string, unknown>;
+    Object.defineProperty(accessorObservation, "binding_event_id", {
+      enumerable: true,
+      get() {
+        observationGetterCalls += 1;
+        return observationGetterCalls === 1
+          ? expected.binding_event_id
+          : signedEnvelope.binding_event_id;
+      },
+    });
+    expect(api.authenticateAtprotoBindingObservation?.({
+      authority,
+      evidence: {
+        envelope: accessorObservation,
+        signature: observationAttestation(signedEnvelope, resolverSecret).signature,
+      },
+      resolution_evidence: attestation(envelope, resolverSecret, "ed25519"),
+      expected_binding: expected,
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "atproto-binding-observation-invalid",
+    });
+    expect(observationGetterCalls).toBe(0);
+  });
+
   it("mints only from a fresh exact resolver attestation and rejects a fake victim document", async () => {
     const api = await loadResolution();
     const authority = configuredAuthority(api, {
@@ -371,4 +531,29 @@ function canonicalEnvelope(value: Envelope): string {
     resolver_policy: value.resolver_policy,
     resolver_version: value.resolver_version,
   });
+}
+
+function observationAttestation(
+  value: ObservationEnvelope,
+  secret: string,
+): { envelope: ObservationEnvelope; signature: string } {
+  const digest = sha256(utf8Bytes(
+    `heterodyne:atproto-binding-observation:v1\0${JSON.stringify({
+      domain: value.domain,
+      binding_event_id: value.binding_event_id,
+      binding_hash: value.binding_hash,
+      did: value.did,
+      pubkey: value.pubkey,
+      generation: value.generation,
+      observed_at: value.observed_at,
+      checkpoint_reference: value.checkpoint_reference,
+      resolution_envelope_hash: value.resolution_envelope_hash,
+      resolver_policy: value.resolver_policy,
+      resolver_version: value.resolver_version,
+    })}`,
+  ));
+  return {
+    envelope: value,
+    signature: bytesToHex(ed25519.sign(digest, hexToBytes(secret))),
+  };
 }

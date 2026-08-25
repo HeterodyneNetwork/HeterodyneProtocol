@@ -1950,6 +1950,15 @@ token's sole audience, its subject thumbprint/proof MUST equal both token
 confirmation and validated sender proof, and each destination MUST occur in
 its matching registration allow list.
 
+The embedding constructs one publication-authority instance and captures the
+trusted-clock function and a bound `executeOnce` function at that moment.
+Later replacement of a method on the caller's signer object has no effect.
+Every signed-publication proof is branded to the exact authority instance that
+issued it. A Social consumer MUST be constructed with its expected authority
+and MUST reject a proof from every other instance, including an attacker-
+created instance using a backdated clock. There is no authority-agnostic proof
+consumer.
+
 Only after that final current-state check may Comms remove caller attribution,
 inject the canonical block below, deep-copy and freeze the resulting unsigned
 event, and pass those exact bytes to the embedding-owned `executeOnce`
@@ -1963,6 +1972,16 @@ state at the final pre-sign check prevents signing, while revocation after an
 event was genuinely signed does not retroactively invalidate it. A plain or
 reconstructed object grants no authority. The proof is not a wire object and
 MUST NOT be serialized into the event.
+
+The execute-once result is untrusted input. Comms reads each source node's own
+property descriptors once, requires a closed ordinary object/array tree made
+only of data descriptors, and rejects accessors, symbols, sparse arrays, and
+unexpected members. A runtime that cannot generally prove proxy absence MUST
+not claim that it did; any proxy may participate only in that single descriptor
+capture. Comms then constructs and freezes one independent plain-data snapshot
+and never reads the source again. Strict validation, equality comparison,
+proof storage, and the returned event MUST all use that same snapshot. A result
+cannot expose one event for validation and another for return.
 
 <a id="comms-agent-attribution"></a>
 ### 15.4 Mandatory pre-sign attribution

@@ -29,6 +29,25 @@ export type AtprotoResolutionEvidence = {
   signature: string;
 };
 
+export type AtprotoBindingObservationEnvelope = {
+  domain: "heterodyne-atproto-binding-observation-v1";
+  binding_event_id: string;
+  binding_hash: string;
+  did: string;
+  pubkey: string;
+  generation: number;
+  observed_at: number;
+  checkpoint_reference: string;
+  resolution_envelope_hash: string;
+  resolver_policy: string;
+  resolver_version: string;
+};
+
+export type AtprotoBindingObservationEvidence = {
+  envelope: AtprotoBindingObservationEnvelope;
+  signature: string;
+};
+
 declare const atprotoResolverAuthorityBrand: unique symbol;
 export type AtprotoResolverAuthority = {
   readonly [atprotoResolverAuthorityBrand]: true;
@@ -61,12 +80,18 @@ const RESOLUTIONS = new WeakMap<object, {
   method: VerificationMethod;
 }>();
 const ENVELOPE_DOMAIN = "heterodyne:atproto-did-resolution:v1\0";
+const OBSERVATION_DOMAIN = "heterodyne:atproto-binding-observation:v1\0";
 const HEX_32 = /^[0-9a-f]{64}$/u;
 const HEX_64 = /^[0-9a-f]{128}$/u;
 const ENVELOPE_KEYS = [
   "canonical_document", "canonical_https_url", "did", "document_sha256", "domain",
   "expires_at", "plc_log_hash", "plc_log_head", "resolution_method", "resolved_at",
   "resolver_policy", "resolver_version", "selected_verification_method_id",
+].join("\0");
+const OBSERVATION_KEYS = [
+  "binding_event_id", "binding_hash", "checkpoint_reference", "did", "domain",
+  "generation", "observed_at", "pubkey", "resolution_envelope_hash",
+  "resolver_policy", "resolver_version",
 ].join("\0");
 
 export function createAtprotoResolverAuthority(input: {
@@ -121,18 +146,120 @@ export function authenticateAtprotoDidResolution(input: {
     || typeof input.authority !== "object"
   ) return { verdict: "reject", reason_code: "atproto-did-resolution-invalid" };
   const config = RESOLVER_AUTHORITIES.get(input.authority);
-  const evidence = input.evidence;
+  const evidence = snapshotResolverData(input.evidence) as AtprotoResolutionEvidence | null;
   const parsed = config === undefined || !validResolutionEvidence(evidence)
     ? null
     : parseEnvelope(evidence.envelope, input.validation_time, config);
   if (
     parsed === null
+    || evidence === null
     || !verifyResolverAttestation(parsed.envelope, evidence.signature, config as ResolverAuthorityConfig)
   ) return { verdict: "reject", reason_code: "atproto-did-resolution-invalid" };
   const snapshot = deepFreeze(structuredClone(parsed));
   const resolution = Object.freeze({}) as AtprotoDidResolution;
   RESOLUTIONS.set(resolution, { authority: input.authority, ...snapshot });
   return { verdict: "accept", resolution };
+}
+
+export function authenticateAtprotoBindingObservation(input: {
+  authority: AtprotoResolverAuthority;
+  evidence: AtprotoBindingObservationEvidence;
+  resolution_evidence: AtprotoResolutionEvidence;
+  expected_binding: {
+    binding_event_id: string;
+    binding_hash: string;
+    did: string;
+    pubkey: string;
+    generation: number;
+    event_created_at: number;
+  };
+}): { verdict: "accept" } | {
+  verdict: "reject";
+  reason_code: "atproto-binding-observation-invalid";
+} {
+  const rejected = {
+    verdict: "reject" as const,
+    reason_code: "atproto-binding-observation-invalid" as const,
+  };
+  if (
+    input === null
+    || typeof input !== "object"
+    || Object.keys(input).sort().join("\0")
+      !== "authority\0evidence\0expected_binding\0resolution_evidence"
+    || input.authority === null
+    || typeof input.authority !== "object"
+    || input.expected_binding === null
+    || typeof input.expected_binding !== "object"
+    || Object.keys(input.expected_binding).sort().join("\0")
+      !== "binding_event_id\0binding_hash\0did\0event_created_at\0generation\0pubkey"
+  ) return rejected;
+  const config = RESOLVER_AUTHORITIES.get(input.authority);
+  const evidence = snapshotResolverData(
+    input.evidence,
+  ) as AtprotoBindingObservationEvidence | null;
+  const resolutionEvidence = snapshotResolverData(
+    input.resolution_evidence,
+  ) as AtprotoResolutionEvidence | null;
+  const expected = snapshotResolverData(input.expected_binding) as {
+    binding_event_id: string;
+    binding_hash: string;
+    did: string;
+    pubkey: string;
+    generation: number;
+    event_created_at: number;
+  } | null;
+  if (
+    evidence === null
+    || resolutionEvidence === null
+    || expected === null
+    || !validObservationEvidence(evidence)
+    || !validResolutionEvidence(resolutionEvidence)
+  ) return rejected;
+  const observation = evidence.envelope;
+  const resolution = config === undefined
+    ? null
+    : parseEnvelope(
+      resolutionEvidence.envelope,
+      observation.observed_at,
+      config,
+    );
+  if (
+    config === undefined
+    || resolution === null
+    || !verifyResolverAttestation(
+      resolution.envelope,
+      resolutionEvidence.signature,
+      config,
+    )
+    || observation.domain !== "heterodyne-atproto-binding-observation-v1"
+    || observation.binding_event_id !== expected.binding_event_id
+    || observation.binding_hash !== expected.binding_hash
+    || observation.did !== expected.did
+    || observation.pubkey !== expected.pubkey
+    || observation.generation !== expected.generation
+    || !HEX_32.test(observation.binding_event_id)
+    || !HEX_32.test(observation.binding_hash)
+    || !isCanonicalDid(observation.did)
+    || !HEX_32.test(observation.pubkey)
+    || !Number.isSafeInteger(observation.generation)
+    || observation.generation < 1
+    || !Number.isSafeInteger(expected.event_created_at)
+    || expected.event_created_at < 0
+    || !Number.isSafeInteger(observation.observed_at)
+    || observation.observed_at < expected.event_created_at
+    || !validCheckpointReference(
+      observation.checkpoint_reference,
+      observation.binding_event_id,
+      observation.did,
+    )
+    || observation.resolution_envelope_hash !== bytesToHex(sha256(
+      utf8Bytes(serializeEnvelope(resolution.envelope)),
+    ))
+    || observation.resolver_policy !== resolution.envelope.resolver_policy
+    || observation.resolver_version !== resolution.envelope.resolver_version
+    || !verifyResolverObservation(observation, evidence.signature, config)
+  ) return rejected;
+  return { verdict: "accept" };
 }
 
 export function verifyAtprotoDidSignature(input: {
@@ -316,6 +443,27 @@ function verifyResolverAttestation(
   return false;
 }
 
+function verifyResolverObservation(
+  envelope: AtprotoBindingObservationEnvelope,
+  signature: string,
+  config: ResolverAuthorityConfig,
+): boolean {
+  const digest = sha256(utf8Bytes(
+    `${OBSERVATION_DOMAIN}${serializeObservationEnvelope(envelope)}`,
+  ));
+  for (const trustAnchor of config.trust_anchors) {
+    try {
+      const valid = trustAnchor.suite === "ed25519"
+        ? ed25519.verify(hexToBytes(signature), digest, hexToBytes(trustAnchor.public_key))
+        : schnorr.verify(hexToBytes(signature), digest, hexToBytes(trustAnchor.public_key));
+      if (valid) return true;
+    } catch {
+      // Try the next locally configured anchor.
+    }
+  }
+  return false;
+}
+
 function validTrustAnchor(value: AtprotoResolverTrustAnchor): boolean {
   return value !== null
     && typeof value === "object"
@@ -331,6 +479,24 @@ function validResolutionEvidence(value: unknown): value is AtprotoResolutionEvid
     && Object.keys(value).sort().join("\0") === "envelope\0signature"
     && typeof (value as Record<string, unknown>).signature === "string"
     && HEX_64.test((value as Record<string, unknown>).signature as string);
+}
+
+function validObservationEvidence(
+  value: unknown,
+): value is AtprotoBindingObservationEvidence {
+  if (
+    value === null
+    || typeof value !== "object"
+    || Array.isArray(value)
+    || Object.keys(value).sort().join("\0") !== "envelope\0signature"
+  ) return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.signature === "string"
+    && HEX_64.test(record.signature)
+    && record.envelope !== null
+    && typeof record.envelope === "object"
+    && !Array.isArray(record.envelope)
+    && Object.keys(record.envelope).sort().join("\0") === OBSERVATION_KEYS;
 }
 
 function parseSemver(value: unknown): [number, number, number] | null {
@@ -350,6 +516,87 @@ function compareSemver(value: unknown, minimum: readonly [number, number, number
     if (parsed[index] !== minimum[index]) return parsed[index] - minimum[index];
   }
   return 0;
+}
+
+const INVALID_RESOLVER_SNAPSHOT = Symbol("invalid-resolver-snapshot");
+
+function snapshotResolverData<T>(value: T): T | null {
+  const snapshot = snapshotResolverNode(value, new WeakSet());
+  return snapshot === INVALID_RESOLVER_SNAPSHOT
+    ? null
+    : deepFreeze(snapshot) as T;
+}
+
+function snapshotResolverNode(
+  value: unknown,
+  seen: WeakSet<object>,
+): unknown | typeof INVALID_RESOLVER_SNAPSHOT {
+  if (
+    value === null
+    || typeof value === "string"
+    || typeof value === "number"
+    || typeof value === "boolean"
+  ) return value;
+  if (typeof value !== "object" || seen.has(value)) return INVALID_RESOLVER_SNAPSHOT;
+  let prototype: object | null;
+  let descriptors: PropertyDescriptorMap;
+  try {
+    prototype = Object.getPrototypeOf(value) as object | null;
+    descriptors = Object.getOwnPropertyDescriptors(value);
+  } catch {
+    return INVALID_RESOLVER_SNAPSHOT;
+  }
+  const array = Array.isArray(value);
+  if (
+    prototype !== (array ? Array.prototype : Object.prototype)
+    || Reflect.ownKeys(descriptors).some((key) => typeof key !== "string")
+  ) return INVALID_RESOLVER_SNAPSHOT;
+  seen.add(value);
+  try {
+    if (array) {
+      const lengthDescriptor = descriptors.length;
+      if (
+        lengthDescriptor === undefined
+        || !("value" in lengthDescriptor)
+        || !Number.isSafeInteger(lengthDescriptor.value)
+        || lengthDescriptor.value < 0
+      ) return INVALID_RESOLVER_SNAPSHOT;
+      const length = lengthDescriptor.value as number;
+      const keys = Object.keys(descriptors).filter((key) => key !== "length");
+      if (keys.length !== length || keys.some((key, index) => key !== String(index))) {
+        return INVALID_RESOLVER_SNAPSHOT;
+      }
+      const snapshot: unknown[] = [];
+      for (let index = 0; index < length; index += 1) {
+        const descriptor = descriptors[String(index)];
+        if (descriptor === undefined || !("value" in descriptor)) {
+          return INVALID_RESOLVER_SNAPSHOT;
+        }
+        const member = snapshotResolverNode(descriptor.value, seen);
+        if (member === INVALID_RESOLVER_SNAPSHOT) return INVALID_RESOLVER_SNAPSHOT;
+        snapshot.push(member);
+      }
+      return snapshot;
+    }
+    const snapshot: Record<string, unknown> = {};
+    for (const key of Object.keys(descriptors)) {
+      const descriptor = descriptors[key];
+      if (descriptor === undefined || !("value" in descriptor)) {
+        return INVALID_RESOLVER_SNAPSHOT;
+      }
+      const member = snapshotResolverNode(descriptor.value, seen);
+      if (member === INVALID_RESOLVER_SNAPSHOT) return INVALID_RESOLVER_SNAPSHOT;
+      Object.defineProperty(snapshot, key, {
+        value: member,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
+    }
+    return snapshot;
+  } finally {
+    seen.delete(value);
+  }
 }
 
 function deepFreeze<T>(value: T): T {
@@ -376,6 +623,31 @@ function serializeEnvelope(value: AtprotoResolutionEnvelope): string {
     resolver_policy: value.resolver_policy,
     resolver_version: value.resolver_version,
   });
+}
+
+function serializeObservationEnvelope(
+  value: AtprotoBindingObservationEnvelope,
+): string {
+  return JSON.stringify({
+    domain: value.domain,
+    binding_event_id: value.binding_event_id,
+    binding_hash: value.binding_hash,
+    did: value.did,
+    pubkey: value.pubkey,
+    generation: value.generation,
+    observed_at: value.observed_at,
+    checkpoint_reference: value.checkpoint_reference,
+    resolution_envelope_hash: value.resolution_envelope_hash,
+    resolver_policy: value.resolver_policy,
+    resolver_version: value.resolver_version,
+  });
+}
+
+function validCheckpointReference(value: unknown, eventId: string, did: string): boolean {
+  if (typeof value !== "string") return false;
+  if (value === `nostr:event:${eventId}`) return true;
+  const match = /^atproto:repo:(did:(?:web|plc):[^\s]+):([0-9a-f]{64})$/u.exec(value);
+  return match !== null && match[1] === did && isCanonicalDid(match[1]);
 }
 
 function didWebUrl(did: string): string | null {

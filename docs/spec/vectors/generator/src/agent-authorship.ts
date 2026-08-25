@@ -181,9 +181,10 @@ const validateRegistration = ajv.compile<WorkloadRegistration>(
 const AGENT_KINDS = new Set([1, 6, 7, 16, 1063, 1985, 4550, 30023]);
 const SOCIAL_PUBLICATION_AUTHORITIES = new WeakMap<object, {
   trusted_now: () => number;
-  signer_execution: CommsSocialSignerExecutionCapability;
+  execute_once: CommsSocialSignerExecutionCapability["executeOnce"];
 }>();
 const SOCIAL_SIGNED_PUBLICATIONS = new WeakMap<object, {
+  authority: CommsSocialPublicationAuthority;
   represented_persona: string;
   event_id: string;
   signer: string;
@@ -442,9 +443,11 @@ export function createCommsSocialPublicationAuthority(input: {
   signer_execution: CommsSocialSignerExecutionCapability;
 }): CommsSocialPublicationAuthority {
   const authority = Object.freeze({}) as CommsSocialPublicationAuthority;
+  const trustedNow = input.trusted_now;
+  const executeOnce = input.signer_execution.executeOnce.bind(input.signer_execution);
   SOCIAL_PUBLICATION_AUTHORITIES.set(authority, {
-    trusted_now: input.trusted_now,
-    signer_execution: input.signer_execution,
+    trusted_now: trustedNow,
+    execute_once: executeOnce,
   });
   return authority;
 }
@@ -513,9 +516,9 @@ export function signCommsSocialPublication(input: {
     tags: attributed.tags,
     content: input.event.content,
   });
-  let outcome: CommsSocialSignerExecutionOutcome;
+  let rawOutcome: unknown;
   try {
-    outcome = authority.signer_execution.executeOnce(
+    rawOutcome = authority.execute_once(
       input.execution_token,
       unsignedEvent,
       input.request_digest,
@@ -523,8 +526,9 @@ export function signCommsSocialPublication(input: {
   } catch {
     return denied("agent-signer-mismatch");
   }
+  const outcome = snapshotAcceptedSignerOutcome(rawOutcome);
   if (
-    outcome.verdict !== "accept"
+    outcome === null
     || !isStrictNostrSignedEvent(outcome.event)
     || outcome.event.id !== getEventId(unsignedEvent)
     || outcome.event.pubkey !== unsignedEvent.pubkey
@@ -533,9 +537,10 @@ export function signCommsSocialPublication(input: {
     || outcome.event.content !== unsignedEvent.content
     || stableJson(outcome.event.tags) !== stableJson(unsignedEvent.tags)
   ) return denied("agent-signer-mismatch");
-  const event = deepFreezeJson(outcome.event);
+  const event = outcome.event;
   const publication = Object.freeze({}) as CommsSocialSignedPublication;
   SOCIAL_SIGNED_PUBLICATIONS.set(publication, {
+    authority: input.authority as CommsSocialPublicationAuthority,
     represented_persona: input.represented_persona,
     event_id: event.id,
     signer: event.pubkey,
@@ -548,21 +553,37 @@ export function signCommsSocialPublication(input: {
   return { verdict: "accept", event, publication };
 }
 
-export function consumeCommsSocialSignedPublication(input: {
+export type CommsSocialSignedPublicationConsumer = (input: {
   publication: unknown;
   represented_persona: string;
   event: NostrSignedEvent;
   agent_association: AgentAssociation | null;
   requested_feed: string;
   requested_resource: string;
-}): boolean {
+}) => boolean;
+
+export function createCommsSocialSignedPublicationConsumer(input: {
+  authority: CommsSocialPublicationAuthority;
+}): CommsSocialSignedPublicationConsumer {
+  const expectedAuthority = input.authority;
+  if (!SOCIAL_PUBLICATION_AUTHORITIES.has(expectedAuthority)) return () => false;
+  return (publicationInput) => consumeCommsSocialSignedPublication(
+    expectedAuthority,
+    publicationInput,
+  );
+}
+
+function consumeCommsSocialSignedPublication(
+  expectedAuthority: CommsSocialPublicationAuthority,
+  input: Parameters<CommsSocialSignedPublicationConsumer>[0],
+): boolean {
   if (
     input.publication === null
     || typeof input.publication !== "object"
     || Array.isArray(input.publication)
   ) return false;
   const binding = SOCIAL_SIGNED_PUBLICATIONS.get(input.publication);
-  if (binding === undefined) return false;
+  if (binding === undefined || binding.authority !== expectedAuthority) return false;
   SOCIAL_SIGNED_PUBLICATIONS.delete(input.publication);
   return isStrictNostrSignedEvent(input.event)
     && binding.represented_persona === input.represented_persona
@@ -745,6 +766,108 @@ function stableJson(value: unknown): string {
   const record = value as Record<string, unknown>;
   return `{${Object.keys(record).sort().map((key) =>
     `${JSON.stringify(key)}:${stableJson(record[key])}`).join(",")}}`;
+}
+
+const INVALID_SNAPSHOT = Symbol("invalid-signer-outcome-snapshot");
+
+function snapshotAcceptedSignerOutcome(
+  value: unknown,
+): Extract<CommsSocialSignerExecutionOutcome, { verdict: "accept" }> | null {
+  const snapshot = snapshotClosedData(value, new WeakSet());
+  if (
+    snapshot === INVALID_SNAPSHOT
+    || snapshot === null
+    || typeof snapshot !== "object"
+    || Array.isArray(snapshot)
+    || Object.keys(snapshot).sort().join("\0") !== "disposition\0event\0verdict"
+  ) return null;
+  const outcome = snapshot as Record<string, unknown>;
+  if (
+    outcome.verdict !== "accept"
+    || outcome.disposition !== "executed" && outcome.disposition !== "cached"
+    || outcome.event === null
+    || typeof outcome.event !== "object"
+    || Array.isArray(outcome.event)
+    || Object.keys(outcome.event).sort().join("\0")
+      !== "content\0created_at\0id\0kind\0pubkey\0sig\0tags"
+  ) return null;
+  return deepFreeze(snapshot) as Extract<
+    CommsSocialSignerExecutionOutcome,
+    { verdict: "accept" }
+  >;
+}
+
+function snapshotClosedData(
+  value: unknown,
+  seen: WeakSet<object>,
+): unknown | typeof INVALID_SNAPSHOT {
+  if (
+    value === null
+    || typeof value === "string"
+    || typeof value === "number"
+    || typeof value === "boolean"
+  ) return value;
+  if (typeof value !== "object" || seen.has(value)) return INVALID_SNAPSHOT;
+  let prototype: object | null;
+  let descriptors: PropertyDescriptorMap;
+  try {
+    prototype = Object.getPrototypeOf(value) as object | null;
+    descriptors = Object.getOwnPropertyDescriptors(value);
+  } catch {
+    return INVALID_SNAPSHOT;
+  }
+  const array = Array.isArray(value);
+  if (
+    prototype !== (array ? Array.prototype : Object.prototype)
+    || Reflect.ownKeys(descriptors).some((key) => typeof key !== "string")
+  ) return INVALID_SNAPSHOT;
+  seen.add(value);
+  try {
+    if (array) {
+      const lengthDescriptor = descriptors.length;
+      if (
+        lengthDescriptor === undefined
+        || !("value" in lengthDescriptor)
+        || !Number.isSafeInteger(lengthDescriptor.value)
+        || lengthDescriptor.value < 0
+      ) return INVALID_SNAPSHOT;
+      const length = lengthDescriptor.value as number;
+      const keys = Object.keys(descriptors).filter((key) => key !== "length");
+      if (
+        keys.length !== length
+        || keys.some((key, index) => key !== String(index))
+      ) return INVALID_SNAPSHOT;
+      const snapshot: unknown[] = [];
+      for (let index = 0; index < length; index += 1) {
+        const descriptor = descriptors[String(index)];
+        if (descriptor === undefined || !("value" in descriptor)) {
+          return INVALID_SNAPSHOT;
+        }
+        const member = snapshotClosedData(descriptor.value, seen);
+        if (member === INVALID_SNAPSHOT) return INVALID_SNAPSHOT;
+        snapshot.push(member);
+      }
+      return snapshot;
+    }
+    const snapshot: Record<string, unknown> = {};
+    for (const key of Object.keys(descriptors)) {
+      const descriptor = descriptors[key];
+      if (descriptor === undefined || !("value" in descriptor)) {
+        return INVALID_SNAPSHOT;
+      }
+      const member = snapshotClosedData(descriptor.value, seen);
+      if (member === INVALID_SNAPSHOT) return INVALID_SNAPSHOT;
+      Object.defineProperty(snapshot, key, {
+        value: member,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
+    }
+    return snapshot;
+  } finally {
+    seen.delete(value);
+  }
 }
 
 function deepFreezeJson<T>(value: T): T {

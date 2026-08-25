@@ -692,3 +692,142 @@ stability, and prohibited paths. `git diff --check` was clean. No approved-
 design contradiction or blocker remains.
 
 Fix-round-4 commit message: `fix: bind Social authority instances`.
+
+## Fix round 5/5
+
+The final security round closes publication-authority replay, mutable signer
+outcomes, unobserved backdated ATProto history, and cross-pubkey lineage
+influence:
+
+- Comms signed-publication proofs now bind their exact issuing authority.
+  `createSocialAuthorshipValidator` creates the embedding's authority-bound
+  Social validation closure; the authority-agnostic Social entry point cannot
+  consume automation proofs. The Comms authority captures its trusted clock
+  and bound `executeOnce` function at construction, so later caller mutation
+  cannot replace the signer boundary. A backdated attacker authority cannot
+  mint a proof accepted by the expected validator.
+- The execute-once outcome is read once through own property descriptors into
+  one independent closed plain-data snapshot. Accessors, symbols, sparse
+  arrays, extra members, nonordinary prototypes, and cycles reject. All strict
+  NIP-01 validation, exact unsigned comparison, proof state, and return use the
+  same deeply frozen event snapshot. The implementation makes no generic claim
+  that JavaScript can detect every Proxy; a Proxy can participate only in the
+  single descriptor capture and cannot substitute afterward.
+- The configured resolver authority now authenticates a separate durable,
+  domain-separated binding-observation envelope. It commits the exact binding
+  event id/hash, DID, pubkey, generation, observation time, canonical
+  checkpoint reference, referenced resolution-envelope hash, policy, and
+  version. The observation must be at or after event creation and inside the
+  authenticated resolution interval. Historical-only lineage and revocation
+  targets require this evidence; only the single selected current event may
+  rely on a resolution fresh at trusted current time.
+- Resolver and observation evidence themselves cross a one-descriptor-read
+  closed-data snapshot boundary before parsing and signature verification.
+  This was an additional Critical issue found during the required full
+  security self-review: accessor-backed resolution evidence could previously
+  be accepted and reread.
+- Binding validation now receives the exact expected canonical DID and raw
+  lowercase pubkey before selection. Candidates, history, and revocation
+  authority are confined to that coordinate. Another pubkey's same-DID
+  lineage and revocation are independent and cannot suppress the expected
+  coordinate. Raw carrier enums were removed from binding evidence.
+
+Registry revision `14` and entry-set digest
+`9839393f2e11430ce9c19bde009228b71dc7f5c7268215960d39ecab0461a6fc`
+remain unchanged. No registry, schema, frozen topic/vector, snapshot,
+projection, baseline/report/debt, or release artifact was modified, and no
+repository authoring command was run.
+
+### Fix-round-5 RED evidence
+
+Every production behavior change followed an executable exploit failure:
+
+```text
+exact Comms/Social authority instance and immutable executeOnce capture:
+  replacement method was invoked; configured Social validator absent       2 failed / 33
+
+one-read signer-result snapshot:
+  accessor showed valid event A for seven checks then returned event B;
+  open signer result was accepted                                           2 failed / 23
+
+durable resolver-signed observation API:
+  authenticated observation producer/validator absent                       1 failed / 4
+
+historical existence:
+  expired generation-one history without prior observation was accepted     1 failed / 1
+
+exact DID/pubkey coordinate:
+  another pubkey's newer same-DID revoked branch rejected this coordinate   1 failed / 1
+
+security-audit accessor boundary:
+  accessor-backed resolver evidence was accepted and reread                  1 failed / 1
+
+selected-current observation exception:
+  unobserved non-selected sibling gained historical revocation authority    1 failed / 1
+```
+
+The written design records the parent's adjustment that JavaScript cannot
+generally prove Proxy absence. It therefore specifies a single descriptor
+capture and independent snapshot rather than a false proxy-rejection claim.
+The parent approved reuse of the configured resolver authority anchors and
+policy/version boundary for the separate observation domain; no global
+resolver or observation key was introduced.
+
+### Fix-round-5 GREEN and full verification
+
+Fresh completed-patch evidence after the final security-audit fixes:
+
+```text
+npm --prefix docs/spec/vectors/generator test -- --run \
+  src/snapshot-topic-runtime.test.ts src/agent-moderation.test.ts \
+  src/agent-authorship.test.ts src/nostr.test.ts \
+  src/social-events.test.ts src/social-nip72.test.ts \
+  src/atproto-did-resolution.test.ts src/social-atproto.test.ts \
+  src/registry.test.ts src/schema.test.ts
+Test Files  10 passed (10)
+Tests       163 passed (163)
+
+npm --prefix docs/spec/vectors/generator run build
+node scripts/typecheck.mjs (exit 0)
+
+npm --prefix docs/spec/vectors/generator run family:check -- "$PWD"
+validated protocol document family (exit 0)
+
+npm --prefix docs/spec/vectors/generator run snapshot-check -- "$PWD"
+verified 482 vectors from source
+2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43 at snapshot
+5d4bb5fb58b35c88d8a9db120a09f1087237f35c (exit 0)
+```
+
+Snapshot verification authored only into its disposable temporary raw root
+and compared read-only with the pinned historical package.
+
+### Ownership expansion, costs, and final security self-review
+
+Approved Task 7 ownership of `agent-authorship.ts`, `social-events.ts`,
+`atproto-did-resolution.ts`, `social-atproto.ts`, their focused tests, and the
+two affected normative specifications expanded only along their existing
+Comms-to-Social and local resolver boundaries. Two small descriptor snapshot
+implementations remain local to those boundaries to avoid importing Social or
+resolver policy into Comms; the cost is deliberate structural duplication,
+while family layering remains intact and Comms imports no Control module.
+
+The complete final diff was reviewed for exact proof-authority identity,
+wrong-authority non-consumption, one-use burning, immutable function capture,
+one trusted-time sample, no post-sign retroactive denial, a single signer-
+result descriptor capture, no source reread, strict snapshot/event equality,
+closed observation fields and domain, resolver anchor/policy/version/TTL,
+observation timing and resolution hash, selected-current-only exception,
+persistable fresh-verifier history, exact DID/pubkey preselection, independent
+other-pubkey lineages, authenticated revocation universe, sibling/reset/fork
+behavior, current DID-key revocation, family layering, prohibited paths,
+registry revision/digest stability, and frozen artifacts. `git diff --check`
+was clean. No approved-design contradiction or remaining Critical/Important
+Task 7 concern was found.
+
+The required independent-review dispatch was attempted at the final boundary,
+but the collaboration service reported its agent thread limit. The complete
+security review above was therefore performed inline; the parent already has
+the prior broad-suite diagnostic for concurrent non-Task-7 failures.
+
+Fix-round-5 commit message: `fix: close Social authority replay`.

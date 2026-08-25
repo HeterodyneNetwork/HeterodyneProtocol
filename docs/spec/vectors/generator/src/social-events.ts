@@ -1,7 +1,9 @@
 import {
   matchesAgentAttributionProfile,
-  consumeCommsSocialSignedPublication,
+  createCommsSocialSignedPublicationConsumer,
   type AgentAssociation,
+  type CommsSocialPublicationAuthority,
+  type CommsSocialSignedPublicationConsumer,
   type CommsSocialSignedPublication,
 } from "./agent-authorship.js";
 import { isStrictNostrSignedEvent, type NostrSignedEvent } from "./nostr.js";
@@ -43,6 +45,25 @@ const HEX_32 = /^[0-9a-f]{64}$/;
 export function validateSocialAuthorship(
   input: SocialAuthorshipInput,
 ): SocialAuthorshipDecision {
+  return validateSocialAuthorshipWithConsumer(input, null);
+}
+
+export function createSocialAuthorshipValidator(input: {
+  publication_authority: CommsSocialPublicationAuthority;
+}): (publication: SocialAuthorshipInput) => SocialAuthorshipDecision {
+  const consumePublication = createCommsSocialSignedPublicationConsumer({
+    authority: input.publication_authority,
+  });
+  return (publication) => validateSocialAuthorshipWithConsumer(
+    publication,
+    consumePublication,
+  );
+}
+
+function validateSocialAuthorshipWithConsumer(
+  input: SocialAuthorshipInput,
+  consumePublication: CommsSocialSignedPublicationConsumer | null,
+): SocialAuthorshipDecision {
   if (!validSignedEvent(input.event)) {
     return { verdict: "reject", reason_code: "social-event-invalid" };
   }
@@ -63,7 +84,8 @@ export function validateSocialAuthorship(
     !attribution.valid
     || input.requested_feed === undefined
     || input.requested_resource === undefined
-    || !consumeCommsSocialSignedPublication({
+    || consumePublication === null
+    || !consumePublication({
       publication: input.comms_authorization,
       represented_persona: representedPersona,
       event: input.event,

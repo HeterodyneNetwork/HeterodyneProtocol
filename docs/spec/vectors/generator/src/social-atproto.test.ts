@@ -5,6 +5,7 @@ import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { getPublicKey, signEvent, type NostrSignedEvent } from "./nostr.js";
 import {
   createAtprotoResolverAuthority,
+  type AtprotoBindingObservationEvidence,
   type AtprotoResolutionEvidence,
   type AtprotoResolutionEnvelope,
   type AtprotoResolverAuthority,
@@ -35,11 +36,11 @@ type Revocation = {
 };
 
 type BindingEvidence = {
-  carrier: "repository-history" | "relay";
   nostr_event: NostrSignedEvent;
   pds_value: unknown;
   did_signature: string;
   resolution_evidence: AtprotoResolutionEvidence;
+  observation_evidence?: AtprotoBindingObservationEvidence;
 };
 
 type RevocationEvidence =
@@ -53,6 +54,7 @@ type RevocationEvidence =
 type AtprotoModule = {
   validateAtprotoBinding?: (input: {
     did: string;
+    pubkey: string;
     candidates: BindingEvidence[];
     lineage: BindingEvidence[];
     revocations: RevocationEvidence[];
@@ -123,7 +125,7 @@ describe("ATProto active-key binding", () => {
   it("accepts only the canonical raw-pubkey binding through authenticated resolution", async () => {
     const atproto = await loadAtproto();
     expect(atproto.validateAtprotoBinding?.(bindingInput([
-      bindingEvidence(binding, bindingEvent),
+      bindingEvidence(binding, bindingEvent, resolutionEvidenceFor(binding), false),
     ]))).toEqual({ verdict: "accept", binding, selected_event_id: bindingEvent.id });
 
     const legacyValue = {
@@ -138,7 +140,6 @@ describe("ATProto active-key binding", () => {
     };
     const legacyEvent = await bindingNostrEvent(legacyValue, secret, binding.established_at);
     expect(atproto.validateAtprotoBinding?.(bindingInput([{
-      carrier: "relay",
       nostr_event: legacyEvent,
       pds_value: legacyValue,
       did_signature: didPayloadSignature(JSON.stringify(legacyValue)),
@@ -150,8 +151,8 @@ describe("ATProto active-key binding", () => {
     const atproto = await loadAtproto();
     const newer = { ...binding, established_at: 1_100, nonce: "02".repeat(32) };
     const newerEvent = await bindingNostrEvent(newer, secret, newer.established_at);
-    const oldest = bindingEvidence(binding, bindingEvent, "repository-history");
-    const newest = bindingEvidence(newer, newerEvent, "relay");
+    const oldest = bindingEvidence(binding, bindingEvent);
+    const newest = bindingEvidence(newer, newerEvent);
     for (const candidates of [[oldest, newest], [newest, oldest]]) {
       expect(atproto.validateAtprotoBinding?.(bindingInput(candidates)))
         .toEqual({ verdict: "accept", binding: newer, selected_event_id: newerEvent.id });
@@ -165,8 +166,8 @@ describe("ATProto active-key binding", () => {
       ? { binding: tieA, event: eventA }
       : { binding: tieB, event: eventB };
     expect(atproto.validateAtprotoBinding?.(bindingInput([
-      bindingEvidence(tieA, eventA, "repository-history"),
-      bindingEvidence(tieB, eventB, "relay"),
+      bindingEvidence(tieA, eventA),
+      bindingEvidence(tieB, eventB),
     ]))).toEqual({
       verdict: "accept",
       binding: expected.binding,
@@ -242,12 +243,54 @@ describe("ATProto active-key binding", () => {
     );
     expect(atproto.validateAtprotoBinding?.({
       ...bindingInput([
-        bindingEvidence(next, nextEvent, "relay", currentAttestation),
+        bindingEvidence(next, nextEvent, currentAttestation),
       ], [
-        bindingEvidence(binding, bindingEvent, "repository-history", oldAttestation),
+        bindingEvidence(binding, bindingEvent, oldAttestation),
       ]),
       current_resolution: currentAttestation,
     })).toEqual({ verdict: "accept", binding: next, selected_event_id: nextEvent.id });
+  });
+
+  it("rejects expired backdated history that lacks a prior authenticated observation", async () => {
+    const atproto = await loadAtproto();
+    const next = {
+      ...binding,
+      established_at: 1_200,
+      generation: 2,
+      nonce: "06".repeat(32),
+      predecessor: {
+        event_id: bindingEvent.id,
+        binding_hash: digestCanonicalBinding(binding),
+      },
+    };
+    const nextEvent = await bindingNostrEvent(next, secret, next.established_at);
+    const expiredHistoricalResolution = resolutionEvidenceFor(
+      binding,
+      binding.did_signing_key_id,
+      didSecret,
+      900,
+      1_050,
+    );
+    const currentResolution = resolutionEvidenceFor(
+      next,
+      next.did_signing_key_id,
+      didSecret,
+      1_100,
+      1_300,
+    );
+    expect(atproto.validateAtprotoBinding?.({
+      ...bindingInput([
+        bindingEvidence(next, nextEvent, currentResolution),
+      ], [
+        bindingEvidence(
+          binding,
+          bindingEvent,
+          expiredHistoricalResolution,
+          false,
+        ),
+      ]),
+      current_resolution: currentResolution,
+    })).toEqual({ verdict: "reject", reason_code: "atproto-binding-invalid" });
   });
 
   it("uses the current authenticated DID method for ATProto-side revocation after rotation", async () => {
@@ -362,6 +405,32 @@ describe("ATProto active-key binding", () => {
     })).toEqual({ verdict: "reject", reason_code: "atproto-binding-revoked" });
   });
 
+  it("does not treat an unobserved non-selected sibling as historical revocation authority", async () => {
+    const atproto = await loadAtproto();
+    const selected = {
+      ...binding,
+      established_at: 1_120,
+      nonce: "0e".repeat(32),
+    };
+    const selectedEvent = await bindingNostrEvent(
+      selected,
+      secret,
+      selected.established_at,
+    );
+    const oldRevocation = await revocationNostrEvent(revocationFor(binding, 1_100));
+    expect(atproto.validateAtprotoBinding?.({
+      ...bindingInput([
+        bindingEvidence(binding, bindingEvent, resolutionEvidenceFor(binding), false),
+        bindingEvidence(selected, selectedEvent),
+      ]),
+      revocations: [{ side: "nostr", nostr_event: oldRevocation }],
+    })).toEqual({
+      verdict: "accept",
+      binding: selected,
+      selected_event_id: selectedEvent.id,
+    });
+  });
+
   it("rejects forged lineage and noncanonical DID or RID identity", async () => {
     const atproto = await loadAtproto();
     const otherSecret = "18".repeat(32);
@@ -394,6 +463,30 @@ describe("ATProto active-key binding", () => {
         did_signature: didPayloadSignature(canonicalBinding(malformed)),
       }]))).toMatchObject({ verdict: "reject" });
     }
+  });
+
+  it("ignores another pubkey coordinate and its revocation for the same DID", async () => {
+    const atproto = await loadAtproto();
+    const otherSecret = "19".repeat(32);
+    const other = {
+      ...binding,
+      pubkey: getPublicKey(otherSecret),
+      established_at: 1_240,
+      nonce: "19".repeat(32),
+    };
+    const otherEvent = await bindingNostrEvent(other, otherSecret, other.established_at);
+    const otherRevocation = revocationFor(other, 1_245);
+    const otherRevocationEvent = await revocationNostrEvent(
+      otherRevocation,
+      otherSecret,
+    );
+    expect(atproto.validateAtprotoBinding?.({
+      ...bindingInput([
+        bindingEvidence(binding, bindingEvent),
+        bindingEvidence(other, otherEvent),
+      ]),
+      revocations: [{ side: "nostr", nostr_event: otherRevocationEvent }],
+    })).toEqual({ verdict: "accept", binding, selected_event_id: bindingEvent.id });
   });
 });
 
@@ -444,15 +537,17 @@ function digestCanonicalBinding(value: Binding): string {
 function bindingEvidence(
   value: Binding,
   event: NostrSignedEvent,
-  carrier: "repository-history" | "relay" = "relay",
   resolutionEvidence = resolutionEvidenceFor(value),
+  includeObservation = true,
 ): BindingEvidence {
   return {
-    carrier,
     nostr_event: event,
     pds_value: value,
     did_signature: didPayloadSignature(canonicalBinding(value)),
     resolution_evidence: resolutionEvidence,
+    ...(includeObservation
+      ? { observation_evidence: bindingObservation(value, event, resolutionEvidence) }
+      : {}),
   };
 }
 
@@ -461,6 +556,7 @@ function bindingInput(
   lineage: BindingEvidence[] = [],
 ): {
   did: string;
+  pubkey: string;
   candidates: BindingEvidence[];
   lineage: BindingEvidence[];
   revocations: RevocationEvidence[];
@@ -470,6 +566,7 @@ function bindingInput(
 } {
   return {
     did: binding.did,
+    pubkey: binding.pubkey,
     candidates,
     lineage,
     revocations: [],
@@ -503,9 +600,12 @@ async function bindingNostrEvent(
   });
 }
 
-async function revocationNostrEvent(value: Revocation): Promise<NostrSignedEvent> {
+async function revocationNostrEvent(
+  value: Revocation,
+  signingSecret = secret,
+): Promise<NostrSignedEvent> {
   return await signEvent({
-    secretKey: secret,
+    secretKey: signingSecret,
     created_at: value.revoked_at,
     kind: 31009,
     tags: [
@@ -583,4 +683,48 @@ function canonicalResolutionEnvelope(value: AtprotoResolutionEnvelope): string {
     resolver_policy: value.resolver_policy,
     resolver_version: value.resolver_version,
   });
+}
+
+function bindingObservation(
+  value: Binding,
+  event: NostrSignedEvent,
+  resolutionEvidence: AtprotoResolutionEvidence,
+): AtprotoBindingObservationEvidence {
+  const envelope = {
+    domain: "heterodyne-atproto-binding-observation-v1" as const,
+    binding_event_id: event.id,
+    binding_hash: digestCanonicalBinding(value),
+    did: value.did,
+    pubkey: value.pubkey,
+    generation: value.generation,
+    observed_at: event.created_at + 1,
+    checkpoint_reference: `nostr:event:${event.id}`,
+    resolution_envelope_hash: bytesToHex(sha256(utf8Bytes(
+      canonicalResolutionEnvelope(resolutionEvidence.envelope),
+    ))),
+    resolver_policy: resolutionEvidence.envelope.resolver_policy,
+    resolver_version: resolutionEvidence.envelope.resolver_version,
+  };
+  const payload = JSON.stringify({
+    domain: envelope.domain,
+    binding_event_id: envelope.binding_event_id,
+    binding_hash: envelope.binding_hash,
+    did: envelope.did,
+    pubkey: envelope.pubkey,
+    generation: envelope.generation,
+    observed_at: envelope.observed_at,
+    checkpoint_reference: envelope.checkpoint_reference,
+    resolution_envelope_hash: envelope.resolution_envelope_hash,
+    resolver_policy: envelope.resolver_policy,
+    resolver_version: envelope.resolver_version,
+  });
+  return {
+    envelope,
+    signature: bytesToHex(ed25519.sign(
+      sha256(utf8Bytes(
+        `heterodyne:atproto-binding-observation:v1\0${payload}`,
+      )),
+      hexToBytes(resolverSecret),
+    )),
+  };
 }

@@ -2,9 +2,11 @@ import { sha256 } from "@noble/hashes/sha2";
 import { base58 } from "@scure/base";
 import { bytesToHex, utf8Bytes } from "./hex.js";
 import {
+  authenticateAtprotoBindingObservation,
   authenticateAtprotoDidResolution,
   currentAtprotoDidMethod,
   verifyAtprotoDidSignature,
+  type AtprotoBindingObservationEvidence,
   type AtprotoResolutionEvidence,
   type AtprotoResolverAuthority,
 } from "./atproto-did-resolution.js";
@@ -34,11 +36,11 @@ export type AtprotoRevocation = {
 };
 
 export type AtprotoBindingEvidence = {
-  carrier: "repository-history" | "relay";
   nostr_event: NostrSignedEvent;
   pds_value: unknown;
   did_signature: string;
   resolution_evidence: AtprotoResolutionEvidence;
+  observation_evidence?: AtprotoBindingObservationEvidence;
 };
 
 export type AtprotoRevocationEvidence =
@@ -60,6 +62,7 @@ const HEX_32 = /^[0-9a-f]{64}$/;
 
 export function validateAtprotoBinding(input: {
   did: string;
+  pubkey: string;
   candidates: readonly AtprotoBindingEvidence[];
   lineage: readonly AtprotoBindingEvidence[];
   revocations: readonly AtprotoRevocationEvidence[];
@@ -67,13 +70,18 @@ export function validateAtprotoBinding(input: {
   current_resolution: AtprotoResolutionEvidence;
   now: number;
 }): AtprotoBindingDecision {
+  if (!HEX_32.test(input.pubkey)) {
+    return { verdict: "reject", reason_code: "atproto-binding-invalid" };
+  }
   const valid = new Map<string, { binding: AtprotoBinding; event: NostrSignedEvent }>();
   for (const candidate of input.candidates) {
     const checked = validateBindingEvidence(
       candidate,
       input.did,
+      input.pubkey,
       input.now,
       input.resolver_authority,
+      false,
     );
     if (checked !== null) valid.set(checked.event.id, checked);
   }
@@ -88,8 +96,10 @@ export function validateAtprotoBinding(input: {
     const checked = validateBindingEvidence(
       evidence,
       input.did,
+      input.pubkey,
       evidence.nostr_event.created_at,
       input.resolver_authority,
+      evidence.nostr_event.id !== current.event.id,
     );
     if (checked !== null) historical.set(checked.event.id, checked);
   }
@@ -97,7 +107,7 @@ export function validateAtprotoBinding(input: {
   if (chain === null) {
     return { verdict: "reject", reason_code: "atproto-binding-invalid" };
   }
-  const universe = new Map([...historical, ...valid]);
+  const universe = historical;
   const verifiedRevocations = input.revocations.flatMap((evidence) => {
     const target = [...universe.values()].find(({ binding }) =>
       revocationTargetsBinding(evidence, binding));
@@ -214,13 +224,20 @@ export function validateAtprotoRevocation(input: {
 function validateBindingEvidence(
   evidence: AtprotoBindingEvidence,
   expectedDid: string,
+  expectedPubkey: string,
   validationTime: number,
   resolverAuthority: AtprotoResolverAuthority,
+  requireObservation: boolean,
 ): {
   binding: AtprotoBinding;
   event: NostrSignedEvent;
 } | null {
-  if (evidence.carrier !== "repository-history" && evidence.carrier !== "relay") return null;
+  const evidenceKeys = Object.keys(evidence).sort().join("\0");
+  if (
+    evidenceKeys !== "did_signature\0nostr_event\0pds_value\0resolution_evidence"
+    && evidenceKeys
+      !== "did_signature\0nostr_event\0observation_evidence\0pds_value\0resolution_evidence"
+  ) return null;
   const binding = parseBinding(evidence.pds_value);
   if (binding === null) return null;
   const canonicalPayload = serializeAtprotoBinding(binding);
@@ -232,6 +249,7 @@ function validateBindingEvidence(
   });
   if (
     binding.did !== expectedDid
+    || binding.pubkey !== expectedPubkey
     || resolution.verdict !== "accept"
     || !verifyAtprotoDidSignature({
       authority: resolverAuthority,
@@ -251,6 +269,25 @@ function validateBindingEvidence(
     || !hasExactSingletonTag(event, ["heterodyne", "atproto_link"])
     || !hasExactSingletonTag(event, ["pubkey", binding.pubkey])
     || !hasExactSingletonTag(event, ["did", binding.did])
+  ) return null;
+  if (
+    requireObservation
+    && (
+      evidence.observation_evidence === undefined
+      || authenticateAtprotoBindingObservation({
+        authority: resolverAuthority,
+        evidence: evidence.observation_evidence,
+        resolution_evidence: evidence.resolution_evidence,
+        expected_binding: {
+          binding_event_id: event.id,
+          binding_hash: digestAtprotoBinding(binding),
+          did: binding.did,
+          pubkey: binding.pubkey,
+          generation: binding.generation,
+          event_created_at: event.created_at,
+        },
+      }).verdict !== "accept"
+    )
   ) return null;
   return { binding, event };
 }

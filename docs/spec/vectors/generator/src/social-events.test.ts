@@ -3,6 +3,7 @@ import {
   createCommsSocialPublicationAuthority,
   signCommsSocialPublication,
   type AgentTokenValidationInput,
+  type CommsSocialPublicationAuthority,
   type CommsSocialSignedPublication,
 } from "./agent-authorship.js";
 import { schnorr } from "@noble/curves/secp256k1";
@@ -18,6 +19,21 @@ import { AUX_RAND } from "./vector-helpers.js";
 
 type AgentAssociation = { kind: "key" | "role"; value: string };
 type SocialEventsModule = {
+  createSocialAuthorshipValidator?: (input: {
+    publication_authority: CommsSocialPublicationAuthority;
+  }) => (input: {
+    event: NostrSignedEvent;
+    persona_active_key?: string;
+    comms_authorization?: CommsSocialSignedPublication;
+    requested_feed?: string;
+    requested_resource?: string;
+  }) => {
+    verdict: "accept" | "reject";
+    event_author?: string;
+    represented_persona?: string;
+    agent_association?: AgentAssociation;
+    reason_code?: string;
+  };
   validateSocialAuthorship?: (input: {
     event: NostrSignedEvent;
     persona_active_key?: string;
@@ -72,9 +88,11 @@ function unsigned(event: NostrSignedEvent): NostrUnsignedEvent {
 function publicationFor(
   event: NostrSignedEvent,
   agentAssociation: AgentAssociation | null,
+  publicationAuthority?: CommsSocialPublicationAuthority,
 ): {
   event: NostrSignedEvent;
   comms_authorization: CommsSocialSignedPublication;
+  publication_authority: CommsSocialPublicationAuthority;
   requested_feed: string;
   requested_resource: string;
 } {
@@ -140,7 +158,7 @@ function publicationFor(
     consent_expires_at: registration.expires_at,
     source_authorization_expires_at: registration.expires_at,
   };
-  const authority = createCommsSocialPublicationAuthority({
+  const authority = publicationAuthority ?? createCommsSocialPublicationAuthority({
     trusted_now: () => event.created_at + 1,
     signer_execution: {
       executeOnce: (_executionToken, unsignedEvent, _requestDigest) => ({
@@ -171,6 +189,7 @@ function publicationFor(
   return {
     event: result.event,
     comms_authorization: result.publication,
+    publication_authority: authority,
     requested_feed: "main",
     requested_resource: "feed:main",
   };
@@ -230,6 +249,52 @@ beforeAll(async () => {
 });
 
 describe("ordinary Social authorship", () => {
+  it("rejects an automated proof minted by a different backdated authority", async () => {
+    const social = await loadSocialEvents();
+    const expectedAuthority = createCommsSocialPublicationAuthority({
+      trusted_now: () => attributedAgentPost.created_at + 1,
+      signer_execution: {
+        executeOnce: (_token, event, _digest) => ({
+          verdict: "accept",
+          disposition: "executed",
+          event: signAgentEvent(event),
+        }),
+      },
+    });
+    const attackerAuthority = createCommsSocialPublicationAuthority({
+      trusted_now: () => attributedAgentPost.created_at,
+      signer_execution: {
+        executeOnce: (_token, event, _digest) => ({
+          verdict: "accept",
+          disposition: "executed",
+          event: signAgentEvent(event),
+        }),
+      },
+    });
+    const validate = social.createSocialAuthorshipValidator?.({
+      publication_authority: expectedAuthority,
+    });
+    expect(validate).toBeTypeOf("function");
+    const attackerPublication = publicationFor(
+      attributedAgentPost,
+      association,
+      attackerAuthority,
+    );
+    expect(validate?.({
+      persona_active_key: personaKey,
+      ...attackerPublication,
+    })).toEqual({ verdict: "reject", reason_code: "social-author-binding-invalid" });
+    const expectedPublication = publicationFor(
+      attributedAgentPost,
+      association,
+      expectedAuthority,
+    );
+    expect(validate?.({
+      persona_active_key: personaKey,
+      ...expectedPublication,
+    })).toMatchObject({ verdict: "accept" });
+  });
+
   it("accepts a valid bare-key NIP-10 event without Assurance or KEL context", async () => {
     const social = await loadSocialEvents();
     expect(social.validateSocialAuthorship?.({ event: bareReply })).toEqual({
@@ -274,7 +339,10 @@ describe("ordinary Social authorship", () => {
       }],
     })).toEqual({ verdict: "reject", reason_code: "social-author-binding-invalid" });
     const currentAuthorization = publicationFor(attributedAgentPost, association);
-    expect(social.validateSocialAuthorship?.({
+    const validateCurrent = social.createSocialAuthorshipValidator?.({
+      publication_authority: currentAuthorization.publication_authority,
+    });
+    expect(validateCurrent?.({
       persona_active_key: personaKey,
       ...currentAuthorization,
     })).toEqual({
@@ -290,17 +358,23 @@ describe("ordinary Social authorship", () => {
     })).toEqual({ verdict: "reject", reason_code: "social-author-binding-invalid" });
 
     const oneUse = publicationFor(attributedAgentPost, association);
-    expect(social.validateSocialAuthorship?.({
+    const validateOneUse = social.createSocialAuthorshipValidator?.({
+      publication_authority: oneUse.publication_authority,
+    });
+    expect(validateOneUse?.({
       persona_active_key: personaKey,
       ...oneUse,
     })).toMatchObject({ verdict: "accept" });
-    expect(social.validateSocialAuthorship?.({
+    expect(validateOneUse?.({
       persona_active_key: personaKey,
       ...oneUse,
     })).toEqual({ verdict: "reject", reason_code: "social-author-binding-invalid" });
 
     const wrongDestination = publicationFor(attributedAgentPost, association);
-    expect(social.validateSocialAuthorship?.({
+    const validateWrongDestination = social.createSocialAuthorshipValidator?.({
+      publication_authority: wrongDestination.publication_authority,
+    });
+    expect(validateWrongDestination?.({
       persona_active_key: personaKey,
       ...wrongDestination,
       requested_resource: "feed:other",
@@ -315,7 +389,10 @@ describe("ordinary Social authorship", () => {
       auxRand: AUX_RAND,
     });
     const authorization = publicationFor(attributedAgentPost, association);
-    expect(social.validateSocialAuthorship?.({
+    const validateDifferentEvent = social.createSocialAuthorshipValidator?.({
+      publication_authority: authorization.publication_authority,
+    });
+    expect(validateDifferentEvent?.({
       ...authorization,
       event: differentEvent,
       persona_active_key: personaKey,
@@ -387,9 +464,13 @@ describe("ordinary Social authorship", () => {
       content: "association-free attributed automation",
       auxRand: AUX_RAND,
     });
-    expect(social.validateSocialAuthorship?.({
+    const publication = publicationFor(attributed, null);
+    const validate = social.createSocialAuthorshipValidator?.({
+      publication_authority: publication.publication_authority,
+    });
+    expect(validate?.({
       persona_active_key: personaKey,
-      ...publicationFor(attributed, null),
+      ...publication,
     })).toEqual({
       verdict: "accept",
       event_author: agentKey,

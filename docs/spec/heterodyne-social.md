@@ -303,8 +303,10 @@ ledger/status, grant, scope, destination, persona, signer, association, kind,
 event-time, and trusted-current-time state; injects the canonical attribution;
 fixes immutable unsigned bytes; invokes the embedding-owned durable
 execute-once signer; and strict-verifies the exact returned event. Social
-consumes and burns only the resulting opaque signed-publication proof while
-matching that exact event, destination, signer, and association. No API may
+consumes and burns only the resulting opaque signed-publication proof through
+an embedding-created validator bound to the exact expected Comms publication-
+authority instance, while matching that exact event, destination, signer, and
+association. A proof minted by any other authority instance fails. No API may
 mint the proof from a caller-supplied signed event or reconstructed tuple.
 Revocation before the final trusted-time check prevents signing; revocation
 after a genuinely authorized signature does not retroactively invalidate the
@@ -715,6 +717,12 @@ claimed hash, attacker-selected anchor, policy downgrade, mutable envelope,
 forged signature, stale capability, or cross-authority capability grants no
 authority.
 
+Before parsing or signature verification, the local boundary MUST capture one
+closed plain-data snapshot of each resolution or observation evidence tree and
+MUST reject accessors, symbols, sparse arrays, unexpected members, or later
+substitution. All validation and durable reconstruction use only that
+independent immutable snapshot.
+
 <a id="social-atproto-binding"></a>
 ### 8.2 Bidirectional binding
 
@@ -752,6 +760,22 @@ the DID and Nostr `pubkey` MUST remain the same across that lineage, and both
 sides sign that exact new payload. A signature or payload hash from an older
 generation cannot countersign a new one.
 
+Historical existence requires a second durable resolver-signed observation
+envelope under the configured local resolver authority. This closed,
+domain-separated envelope commits the exact Nostr binding event id, canonical
+binding hash, DID, Nostr `pubkey`, generation, integer `observed_at`, canonical
+carrier/checkpoint reference, SHA-256 of the exact signed resolution envelope,
+resolver policy, and resolver semantic version. Its anchor signature,
+policy/version, and resolution-envelope hash MUST verify under that authority;
+`observed_at` MUST be at or after the binding event's `created_at` and inside
+the referenced authenticated resolution interval. A raw carrier name is not
+evidence. A historical key compromised after expiry therefore cannot create a
+new backdated binding without a prior trusted observation. The signed
+resolution and observation pairs are persistable evidence for a fresh
+verifier. A candidate whose resolution is fresh at trusted current time MAY
+omit the historical observation; every entry used only as lineage or as a
+historical revocation target MUST carry it.
+
 The executable fixture below uses deterministic Ed25519 DID and local resolver
 keys. The PDS record carries only the value and its DID signature. The
 `local_resolution` object is local verifier input, not a PDS or protocol wire
@@ -762,9 +786,12 @@ any field as a non-empty marker.
 
 Verification MUST begin from the PDS record and proceed through every binding:
 resolve the DID and verify its named signing key and record signature; read the
-payload's active `pubkey`; locate Social `kind:31009` candidates through that
-author's NIP-65 relays and repository relay hints; union carrier-tagged
-repository and relay candidates; strict-validate and deduplicate them; then
+payload's active `pubkey`; establish that exact canonical DID and lowercase
+32-byte Nostr `pubkey` as the expected coordinate before selection; locate
+Social `kind:31009` candidates through that author's NIP-65 relays and
+repository relay hints; union repository and relay results without treating a
+caller carrier enum as evidence; discard every candidate outside the exact
+`(DID,pubkey)` coordinate; strict-validate and deduplicate the remainder; then
 select greatest `created_at`, breaking a tie by lowest event id without source
 preference. Only that one current event proceeds to lineage validation; two
 forks MUST NOT both be reported current. The verifier checks its active-key
@@ -776,7 +803,8 @@ generation, strictly increasing establishment time, and unique nonce. Current
 candidate resolution MUST be fresh at trusted current time. Each historical
 binding re-verifies its durable resolver-envelope signature, configured
 policy/version/TTL, document hash, selected method, and DID signature at that
-binding event's `created_at`; an expired or rotated historical method can
+binding event's `created_at`, and verifies the durable observation described
+above; an expired or rotated historical method can
 therefore authenticate history without regaining current authority. A
 repository SHOULD retain this exact event/PDS history; a verifier fetches
 referenced events from repository history and MAY use ordinary relay fallback.
@@ -843,7 +871,10 @@ new revocation.
 Before accepting selected state, the verifier MUST authenticate the complete
 reachable binding candidate/history universe independently of the selected
 branch and verify every durable revocation that targets a binding of the same
-DID/pubkey. Every such revoked target MUST occur on the selected predecessor
+DID/pubkey. Candidate, history, and revocation processing is confined to the
+exact expected `(DID,pubkey)` coordinate before selection; another pubkey's
+lineage under the same DID is independent and cannot revoke or suppress this
+coordinate. Every in-coordinate revoked target MUST occur on the selected predecessor
 chain, and the chain MUST contain its next consecutive generation with a
 fresh nonce and establishment strictly after `revoked_at`. A selected sibling,
 reset, lower-generation fork, or incompatible revoked forks fail closed; a

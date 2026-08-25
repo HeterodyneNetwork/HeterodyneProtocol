@@ -571,6 +571,34 @@ describe("atomic Comms signed publication for Social", () => {
     });
   });
 
+  it("captures the embedding execute-once method when the authority is created", () => {
+    const api = agentAuthorship as AtomicApi;
+    let originalCalls = 0;
+    let replacementCalls = 0;
+    const execution = signerExecution((event) => {
+      originalCalls += 1;
+      return signNostrEvent(event);
+    });
+    const authority = api.createCommsSocialPublicationAuthority?.({
+      trusted_now: () => 1_101,
+      signer_execution: execution,
+    });
+    execution.executeOnce = (_token, event, _digest) => {
+      replacementCalls += 1;
+      return {
+        verdict: "accept",
+        disposition: "executed",
+        event: signNostrEvent({ ...event, content: "replacement method" }),
+      };
+    };
+    const result = authority === undefined
+      ? undefined
+      : api.signCommsSocialPublication?.(atomicInput(authority));
+    expect(result).toMatchObject({ verdict: "accept" });
+    expect(originalCalls).toBe(1);
+    expect(replacementCalls).toBe(0);
+  });
+
   it("rejects stale current state before invoking the signer", () => {
     const api = agentAuthorship as AtomicApi;
     let signerCalls = 0;
@@ -648,6 +676,93 @@ describe("atomic Comms signed publication for Social", () => {
       ? undefined
       : api.signCommsSocialPublication?.(atomicInput(authority));
     expect(result).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
+  });
+
+  it("rejects an accessor that substitutes event B after validating event A", () => {
+    const api = agentAuthorship as AtomicApi;
+    let eventReads = 0;
+    const authority = api.createCommsSocialPublicationAuthority?.({
+      trusted_now: () => 1_101,
+      signer_execution: {
+        executeOnce: (_token, event, _digest) => {
+          const valid = signNostrEvent(event);
+          const substituted = signNostrEvent({
+            ...event,
+            content: "event B returned after event A validation",
+          });
+          return Object.defineProperty({
+            verdict: "accept" as const,
+            disposition: "executed" as const,
+          }, "event", {
+            enumerable: true,
+            get() {
+              eventReads += 1;
+              return eventReads <= 7 ? valid : substituted;
+            },
+          }) as unknown as {
+            verdict: "accept";
+            disposition: "executed";
+            event: NostrSignedEvent;
+          };
+        },
+      },
+    });
+    const result = authority === undefined
+      ? undefined
+      : api.signCommsSocialPublication?.(atomicInput(authority));
+    expect(result).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
+    expect(eventReads).toBe(0);
+  });
+
+  it("rejects open or non-data signer result trees", () => {
+    const api = agentAuthorship as AtomicApi;
+    let nestedGetterCalls = 0;
+    const validOutcome = (event: NostrUnsignedEvent) => ({
+      verdict: "accept" as const,
+      disposition: "executed" as const,
+      event: signNostrEvent(event),
+    });
+    const cases: Array<(event: NostrUnsignedEvent) => unknown> = [
+      (event) => ({ ...validOutcome(event), extra: true }),
+      (event) => Object.assign(validOutcome(event), { [Symbol("extra")]: true }),
+      (event) => {
+        const outcome = validOutcome(event);
+        const tags = [...outcome.event.tags];
+        delete tags[0];
+        return { ...outcome, event: { ...outcome.event, tags } };
+      },
+      (event) => {
+        const outcome = validOutcome(event);
+        const accessorEvent = { ...outcome.event } as Record<string, unknown>;
+        Object.defineProperty(accessorEvent, "content", {
+          enumerable: true,
+          get() {
+            nestedGetterCalls += 1;
+            return event.content;
+          },
+        });
+        return { ...outcome, event: accessorEvent };
+      },
+    ];
+    for (const createOutcome of cases) {
+      const authority = api.createCommsSocialPublicationAuthority?.({
+        trusted_now: () => 1_101,
+        signer_execution: {
+          executeOnce: (_token, event, _digest) => {
+            return createOutcome(event) as {
+              verdict: "accept";
+              disposition: "executed";
+              event: NostrSignedEvent;
+            };
+          },
+        },
+      });
+      const result = authority === undefined
+        ? undefined
+        : api.signCommsSocialPublication?.(atomicInput(authority));
+      expect(result).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
+    }
+    expect(nestedGetterCalls).toBe(0);
   });
 });
 
