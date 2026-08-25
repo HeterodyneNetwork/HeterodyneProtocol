@@ -1,7 +1,11 @@
-import { ed25519 } from "@noble/curves/ed25519";
 import { sha256 } from "@noble/hashes/sha2";
 import { base58 } from "@scure/base";
-import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
+import { bytesToHex, utf8Bytes } from "./hex.js";
+import {
+  currentAtprotoDidMethod,
+  verifyAtprotoDidSignature,
+  type AtprotoDidResolution,
+} from "./atproto-did-resolution.js";
 import { isStrictNostrSignedEvent, type NostrSignedEvent } from "./nostr.js";
 
 export type AtprotoBinding = {
@@ -27,33 +31,20 @@ export type AtprotoRevocation = {
   revoked_at: number;
 };
 
-export type AtprotoDidEvidence = {
-  did_document: {
-    id: string;
-    verificationMethod: Array<{
-      id: string;
-      controller: string;
-      type: "Ed25519VerificationKey2020";
-      publicKeyHex: string;
-    }>;
-  };
-  verification_method_id: string;
-  signature: string;
-};
-
 export type AtprotoBindingEvidence = {
   carrier: "repository-history" | "relay";
   nostr_event: NostrSignedEvent;
   pds_value: unknown;
-  did_evidence: AtprotoDidEvidence;
+  did_signature: string;
+  resolution: AtprotoDidResolution;
 };
 
 export type AtprotoRevocationEvidence =
   | { side: "nostr"; nostr_event: NostrSignedEvent }
-  | { side: "atproto"; value: unknown; did_evidence: AtprotoDidEvidence };
+  | { side: "atproto"; value: unknown; did_signature: string };
 
 export type AtprotoBindingDecision =
-  | { verdict: "accept"; binding: AtprotoBinding }
+  | { verdict: "accept"; binding: AtprotoBinding; selected_event_id: string }
   | {
       verdict: "reject";
       reason_code: "atproto-binding-invalid" | "atproto-binding-revoked";
@@ -66,29 +57,37 @@ export type AtprotoRevocationDecision =
 const HEX_32 = /^[0-9a-f]{64}$/;
 
 export function validateAtprotoBinding(input: {
-  nostr_event: NostrSignedEvent;
-  pds_value: unknown;
-  did_evidence: AtprotoDidEvidence;
+  did: string;
+  candidates: readonly AtprotoBindingEvidence[];
   lineage: readonly AtprotoBindingEvidence[];
   revocations: readonly AtprotoRevocationEvidence[];
+  current_resolution: AtprotoDidResolution;
+  now: number;
 }): AtprotoBindingDecision {
-  const current = validateBindingEvidence({
-    carrier: "relay",
-    nostr_event: input.nostr_event,
-    pds_value: input.pds_value,
-    did_evidence: input.did_evidence,
-  });
-  if (current === null) {
+  const valid = new Map<string, { binding: AtprotoBinding; event: NostrSignedEvent }>();
+  for (const candidate of input.candidates) {
+    const checked = validateBindingEvidence(candidate, input.did, input.now);
+    if (checked !== null) valid.set(checked.event.id, checked);
+  }
+  const current = [...valid.values()].sort((left, right) =>
+    right.event.created_at - left.event.created_at
+    || left.event.id.localeCompare(right.event.id))[0];
+  if (current === undefined) {
     return { verdict: "reject", reason_code: "atproto-binding-invalid" };
   }
-  const chain = validateLineage(current, input.lineage);
+  const chain = validateLineage(current, input.lineage, input.now);
   if (chain === null) {
     return { verdict: "reject", reason_code: "atproto-binding-invalid" };
   }
   const verifiedRevocations = input.revocations.flatMap((evidence) => {
     const target = chain.find(({ binding }) => revocationTargetsBinding(evidence, binding));
     if (target === undefined) return [];
-    const decision = validateAtprotoRevocation({ evidence, binding: target.binding });
+    const decision = validateAtprotoRevocation({
+      evidence,
+      binding: target.binding,
+      current_resolution: input.current_resolution,
+      now: input.now,
+    });
     return decision.verdict === "accept" ? [decision.revocation] : [];
   });
   for (const revocation of verifiedRevocations) {
@@ -105,12 +104,18 @@ export function validateAtprotoBinding(input: {
       return { verdict: "reject", reason_code: "atproto-binding-revoked" };
     }
   }
-  return { verdict: "accept", binding: current.binding };
+  return {
+    verdict: "accept",
+    binding: current.binding,
+    selected_event_id: current.event.id,
+  };
 }
 
 export function validateAtprotoRevocation(input: {
   evidence: AtprotoRevocationEvidence;
   binding: AtprotoBinding;
+  current_resolution: AtprotoDidResolution;
+  now: number;
 }): AtprotoRevocationDecision {
   const value = input.evidence.side === "nostr"
     ? parseJson(input.evidence.nostr_event.content)
@@ -147,18 +152,32 @@ export function validateAtprotoRevocation(input: {
     ) {
       return { verdict: "reject", reason_code: "atproto-revocation-invalid" };
     }
-  } else if (!verifyDidEvidence(
-    input.binding.did,
-    input.binding.did_signing_key_id,
-    canonicalPayload,
-    input.evidence.did_evidence,
-  )) {
-    return { verdict: "reject", reason_code: "atproto-revocation-invalid" };
+  } else {
+    const currentMethod = currentAtprotoDidMethod({
+      resolution: input.current_resolution,
+      did: input.binding.did,
+      now: input.now,
+    });
+    if (
+      currentMethod === null
+      || !verifyAtprotoDidSignature({
+        resolution: input.current_resolution,
+        did: input.binding.did,
+        verification_method_id: currentMethod,
+        payload: canonicalPayload,
+        signature: input.evidence.did_signature,
+        now: input.now,
+      })
+    ) return { verdict: "reject", reason_code: "atproto-revocation-invalid" };
   }
   return { verdict: "accept", revocation };
 }
 
-function validateBindingEvidence(evidence: AtprotoBindingEvidence): {
+function validateBindingEvidence(
+  evidence: AtprotoBindingEvidence,
+  expectedDid: string,
+  now: number,
+): {
   binding: AtprotoBinding;
   event: NostrSignedEvent;
 } | null {
@@ -168,12 +187,15 @@ function validateBindingEvidence(evidence: AtprotoBindingEvidence): {
   const canonicalPayload = serializeAtprotoBinding(binding);
   const event = evidence.nostr_event;
   if (
-    !verifyDidEvidence(
-      binding.did,
-      binding.did_signing_key_id,
-      canonicalPayload,
-      evidence.did_evidence,
-    )
+    binding.did !== expectedDid
+    || !verifyAtprotoDidSignature({
+      resolution: evidence.resolution,
+      did: binding.did,
+      verification_method_id: binding.did_signing_key_id,
+      payload: canonicalPayload,
+      signature: evidence.did_signature,
+      now,
+    })
     || !isStrictNostrSignedEvent(event)
     || event.kind !== 31009
     || event.pubkey !== binding.pubkey
@@ -190,6 +212,7 @@ function validateBindingEvidence(evidence: AtprotoBindingEvidence): {
 function validateLineage(
   current: { binding: AtprotoBinding; event: NostrSignedEvent },
   lineage: readonly AtprotoBindingEvidence[],
+  now: number,
 ): Array<{ binding: AtprotoBinding; event: NostrSignedEvent }> | null {
   if (lineage.length !== current.binding.generation - 1) return null;
   const byEventId = new Map(lineage.map((evidence) => [evidence.nostr_event.id, evidence]));
@@ -202,7 +225,7 @@ function validateLineage(
     if (predecessor === null || used.has(predecessor.event_id)) return null;
     const evidence = byEventId.get(predecessor.event_id);
     if (evidence === undefined) return null;
-    const previous = validateBindingEvidence(evidence);
+    const previous = validateBindingEvidence(evidence, cursor.binding.did, now);
     if (
       previous === null
       || previous.event.id !== predecessor.event_id
@@ -334,40 +357,6 @@ export function serializeAtprotoBinding(binding: AtprotoBinding): string {
     nonce: binding.nonce,
     predecessor: binding.predecessor,
   });
-}
-
-function verifyDidEvidence(
-  did: string,
-  verificationMethodId: string,
-  canonicalPayload: string,
-  evidence: AtprotoDidEvidence,
-): boolean {
-  if (
-    evidence === null
-    || typeof evidence !== "object"
-    || evidence.verification_method_id !== verificationMethodId
-    || evidence.did_document?.id !== did
-    || !Array.isArray(evidence.did_document.verificationMethod)
-    || !/^[0-9a-f]{128}$/u.test(evidence.signature)
-  ) return false;
-  const methods = evidence.did_document.verificationMethod.filter((method) =>
-    method.id === verificationMethodId);
-  if (methods.length !== 1) return false;
-  const method = methods[0];
-  if (
-    method.controller !== did
-    || method.type !== "Ed25519VerificationKey2020"
-    || !HEX_32.test(method.publicKeyHex)
-  ) return false;
-  try {
-    return ed25519.verify(
-      hexToBytes(evidence.signature),
-      sha256(utf8Bytes(canonicalPayload)),
-      hexToBytes(method.publicKeyHex),
-    );
-  } catch {
-    return false;
-  }
 }
 
 export function serializeAtprotoRevocation(revocation: AtprotoRevocation): string {

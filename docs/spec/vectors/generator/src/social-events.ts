@@ -1,15 +1,17 @@
 import {
   matchesAgentAttributionProfile,
-  matchesCommsSocialAuthorization,
+  consumeCommsSocialAuthorship,
   type AgentAssociation,
-  type CommsSocialAuthorization,
+  type CommsSocialAuthorship,
 } from "./agent-authorship.js";
 import { isStrictNostrSignedEvent, type NostrSignedEvent } from "./nostr.js";
 
 export type SocialAuthorshipInput = {
   event: NostrSignedEvent;
   persona_active_key?: string;
-  comms_authorization?: CommsSocialAuthorization;
+  comms_authorization?: CommsSocialAuthorship;
+  requested_feed?: string;
+  requested_resource?: string;
 };
 
 export type SocialAuthorshipDecision =
@@ -59,11 +61,15 @@ export function validateSocialAuthorship(
   const attribution = signedAgentAssociation(input.event);
   if (
     !attribution.valid
-    || !matchesCommsSocialAuthorization({
-      authorization: input.comms_authorization,
+    || input.requested_feed === undefined
+    || input.requested_resource === undefined
+    || !consumeCommsSocialAuthorship({
+      authorship: input.comms_authorization,
       represented_persona: representedPersona,
       event: input.event,
       agent_association: attribution.association,
+      requested_feed: input.requested_feed,
+      requested_resource: input.requested_resource,
     })
     || attribution.association?.kind === "key"
       && attribution.association.value !== input.event.pubkey

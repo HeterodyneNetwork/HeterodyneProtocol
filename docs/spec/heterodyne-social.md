@@ -300,9 +300,16 @@ only when the event carries the complete mandatory Comms automation
 attribution and current Comms authorization binds that exact signer and
 association. Social consumes only the opaque result of the complete Comms
 registration, access-token, and attribution validation for that exact
-persona, signer, association, event kind, scope, time, grant bounds, tags, and
-actual author. A caller-provided tuple or reconstructed plain object grants no
-authority. A public byline alone grants no such authority. In every case the
+persona, signer, association, event kind, scope, requested feed/resource,
+time, immutable identity/version state, grant bounds, tags, and actual author.
+Comms consumes it once before signing and requires complete current
+registration, token, ledger/status, destination, unsigned-event, and grant
+revalidation; a stale result or state change fails and requires a fresh
+capability. Success yields a separate one-use opaque authorship proof for the
+exact unsigned event. Social burns that proof while matching the resulting
+signed event, so a proof replay also fails. A
+caller-provided tuple or reconstructed plain object grants no authority. A
+public byline alone grants no such authority. In every case the
 event `pubkey` is the actual author. Association with the organization affects
 presentation and audit; it MUST NOT rewrite the author, signature, address, or
 replaceable namespace. Private delegate authority remains a Workspace concern.
@@ -678,6 +685,26 @@ peer, it MUST report this feature unavailable and MUST NOT claim ATProto
 resolver conformance. It SHOULD warn when a DID's PDS endpoint changes from
 the cached value.
 
+An embedding MAY isolate resolution behind a locally configured resolver
+attester. Such an attester is a client-chosen transport trust boundary, never
+protocol identity authority; no resolver key is global or registered by
+Heterodyne. Before attesting, a production resolver MUST itself complete the
+WebPKI, address, connection, peer, host, and redirect validation above for
+`did:web`, or verify the PLC operation history and current document for
+`did:plc`.
+
+The local Ed25519- or BIP340-signed resolver envelope is closed and domain
+separated. It binds the DID, resolution method, exact canonical `did:web`
+HTTPS URL/path or verified PLC log head and SHA-256, canonical DID-document
+bytes and SHA-256, selected verification-method id, `resolved_at`, expiry,
+resolver policy, and resolver version. A verifier mints a non-serializable
+opaque capability only after validating that complete envelope against its
+configured local trust anchor. The binding and revocation validators accept
+only that capability, require it to be fresh and exact for the requested DID
+and method, and then verify the DID signature directly. A caller document,
+validity boolean, claimed hash, forged envelope, or stale capability grants no
+authority.
+
 <a id="social-atproto-binding"></a>
 ### 8.2 Bidirectional binding
 
@@ -715,20 +742,23 @@ the DID and Nostr `pubkey` MUST remain the same across that lineage, and both
 sides sign that exact new payload. A signature or payload hash from an older
 generation cannot countersign a new one.
 
-The executable fixture below uses a deterministic Ed25519 DID key. Its PDS
-evidence carries the resolved DID document, exact verification-method id, and
-lowercase-hex signature over SHA-256 of the exact compact payload bytes. Those
-evidence members are outside the PDS record `value`; the value remains
-byte-identical to the Nostr content. A verifier MUST recompute the hash, select
-the named method from that document, and cryptographically verify the proof
-rather than treating any field as a non-empty marker.
+The executable fixture below uses deterministic Ed25519 DID and local resolver
+keys. The PDS record carries only the value and its DID signature. The
+`local_resolution` object is local verifier input, not a PDS or protocol wire
+member; it shows the configured trust anchor and exact signed resolver
+envelope from which the opaque capability is minted. A verifier MUST recompute
+both hashes and cryptographically verify both signatures rather than treating
+any field as a non-empty marker.
 
 Verification MUST begin from the PDS record and proceed through every binding:
 resolve the DID and verify its named signing key and record signature; read the
 payload's active `pubkey`; locate Social `kind:31009` candidates through that
-author's NIP-65 relays and repository relay hints; apply ordinary NIP-01
-addressable-event selection; verify the selected event id, active-key
-signature, tags, and byte-exact payload; and finally require the two payloads
+author's NIP-65 relays and repository relay hints; union carrier-tagged
+repository and relay candidates; strict-validate and deduplicate them; then
+select greatest `created_at`, breaking a tie by lowest event id without source
+preference. Only that one current event proceeds to lineage validation; two
+forks MUST NOT both be reported current. The verifier checks its active-key
+signature, tags, and byte-exact payload and finally requires the two payloads
 to be identical. For generation greater than 1, a fresh verifier MUST follow
 each predecessor event id and binding hash to generation 1, verifying every
 Nostr event, canonical binding, resolved-DID signature, consecutive
@@ -754,9 +784,12 @@ Optional Assurance continuity may be displayed separately.
     "collection": "social.heterodyne.identityLink",
     "rkey": "self",
     "value": {"spec_version":"heterodyne/0.5.0","did":"did:web:alice.example","did_signing_key_id":"did:web:alice.example#atproto","pubkey":"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337","rid":"rad:z2TJoDAhK5pTmLzqmK9W4FMdtjyy1","established_at":1710000000,"generation":1,"nonce":"0101010101010101010101010101010101010101010101010101010101010101","predecessor":null},
-    "resolved_did_document": {"id":"did:web:alice.example","verificationMethod":[{"id":"did:web:alice.example#atproto","controller":"did:web:alice.example","type":"Ed25519VerificationKey2020","publicKeyHex":"ca93ac1705187071d67b83c7ff0efe8108e8ec4530575d7726879333dbdabe7c"}]},
-    "verification_method_id": "did:web:alice.example#atproto",
-    "signature": "c860d900abd8263339cff0b41843b2321ed0f18bf3cf2732a51f011f4858cbac2c4a704ef5f1601bd9f186f9dc24abd900e024c6b4201d5f81cfe68a22c0860c"
+    "did_signature": "c860d900abd8263339cff0b41843b2321ed0f18bf3cf2732a51f011f4858cbac2c4a704ef5f1601bd9f186f9dc24abd900e024c6b4201d5f81cfe68a22c0860c"
+  },
+  "local_resolution": {
+    "trust_anchor": {"suite":"ed25519","public_key":"6e7a1cdd29b0b78fd13af4c5598feff4ef2a97166e3ca6f2e4fbfccd80505bf1"},
+    "envelope": {"domain":"heterodyne-atproto-did-resolution-v1","did":"did:web:alice.example","resolution_method":"did:web","canonical_https_url":"https://alice.example/.well-known/did.json","plc_log_head":null,"plc_log_hash":null,"canonical_document":"{\"id\":\"did:web:alice.example\",\"verificationMethod\":[{\"controller\":\"did:web:alice.example\",\"id\":\"did:web:alice.example#atproto\",\"publicKeyHex\":\"ca93ac1705187071d67b83c7ff0efe8108e8ec4530575d7726879333dbdabe7c\",\"type\":\"Ed25519VerificationKey2020\"}]}","document_sha256":"7dd143b56326828af9704a42c98684236691222cb4b7ec6b1d4c5fdec1cbc570","selected_verification_method_id":"did:web:alice.example#atproto","resolved_at":1710000000,"expires_at":1710003600,"resolver_policy":"webpki-pinned-redirect-v1","resolver_version":"resolver-1.0.0"},
+    "signature": "a668a792eda8398c86d7047d2dcc2108a6c65771f68ba23120ac77c5e639fd8928f90251c81e0ae5280b2809f7ce84927b2165c241c7f7c43c05e903fdf86809"
   }
 }
 ```
@@ -773,8 +806,10 @@ the current DID key, to `social.heterodyne.identityLink/self`.
 
 The displayed revocation member order is canonical. A revocation is evidence
 only as either a strict valid Nostr event with the exact tags/content above or
-an Ed25519 signature verified directly through a method of the resolved DID
-document over SHA-256 of those canonical bytes. A caller-provided body,
+an Ed25519 signature verified directly through the fresh opaque resolution
+capability's current selected method over SHA-256 of those canonical bytes.
+That method MAY differ from the historical binding method after legitimate DID
+key rotation. A caller-provided body,
 validity boolean, claimed payload hash, or unsigned cached object has no
 effect.
 
@@ -805,9 +840,7 @@ new revocation.
     "collection": "social.heterodyne.identityLink",
     "rkey": "self",
     "value": {"spec_version":"heterodyne/0.5.0","record_type":"atproto_link_revocation","did":"did:web:alice.example","pubkey":"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337","generation":1,"nonce":"0101010101010101010101010101010101010101010101010101010101010101","binding_hash":"ec44f802e430848ab866f956d036600f8881acbecd209c6e2433ed2ada18c684","revoked_at":1710000100},
-    "resolved_did_document": {"id":"did:web:alice.example","verificationMethod":[{"id":"did:web:alice.example#atproto","controller":"did:web:alice.example","type":"Ed25519VerificationKey2020","publicKeyHex":"ca93ac1705187071d67b83c7ff0efe8108e8ec4530575d7726879333dbdabe7c"}]},
-    "verification_method_id": "did:web:alice.example#atproto",
-    "signature": "0efbaf3dfa8fcaf9dc67987216862eb2c232677a196a5fe50d4f0cb0929708350d4e4526a828164994b5909435662652ad4c77b8e61ee44e11be48694e228e0b"
+    "did_signature": "0efbaf3dfa8fcaf9dc67987216862eb2c232677a196a5fe50d4f0cb0929708350d4e4526a828164994b5909435662652ad4c77b8e61ee44e11be48694e228e0b"
   }
 }
 ```

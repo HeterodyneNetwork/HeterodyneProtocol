@@ -1940,10 +1940,23 @@ An internal authorization result consumed by Social or another family member
 MUST be opaque and provenance-authenticated by the complete validation above;
 it is not a caller-supplied signer tuple. The result binds the represented
 persona, actual signer and optional association, event kind, required
-publication scope, event time, current registration/grant validity bounds,
-and the exact canonical attribution tags and author produced before signing.
+publication scope, exact requested feed and resource, event time, every
+immutable registration and token/grant identity or version member, current
+registration/grant validity bounds, and the exact canonical attribution tags
+and author produced before signing. The registration audience MUST equal the
+token's sole audience, and its subject thumbprint/proof MUST equal both the
+token confirmation and validated sender proof. The requested feed and
+resource MUST each occur in the corresponding registration allow list.
 A copied or reconstructed plain object, a result for another event, or a
-result whose registration or token state has changed grants no authority.
+result whose registration, credential-ledger generation, token, status, or
+grant state has changed grants no authority.
+Pre-sign consumption is one-use and burns the result before returning even on
+failure. At that consumption the complete registration, access token,
+ledger/status state, grant bounds, destination, unsigned event, and
+attribution validation MUST run again; stale or revoked state requires a fresh
+result before signing. Success produces a separate opaque, one-use authorship
+proof bound to the unsigned event id. Social burns that proof while checking
+the resulting exact signed event; it cannot reauthorize or replay it.
 This internal result is not a new wire object and MUST NOT be serialized into
 the event.
 

@@ -444,3 +444,124 @@ complete self-review and parent integration review are the available gates.
 No approved-design contradiction or blocker remains.
 
 Fix-round-2 commit message: `fix: authenticate Social moderation and lineage`.
+
+## Fix round 3/5
+
+### Implemented review findings
+
+- Cross-bound Comms authorization to the registration's exact audience and
+  subject proof, the token audience/confirmation/sender proof, requested feed
+  and resource allow lists, and exact registration/token identity, generation,
+  version, status, and grant state. Minting targets an unsigned exact event.
+  One-use pre-sign consumption burns the authorization before returning,
+  re-runs all current validation, and yields a separate one-use opaque
+  authorship proof. Social burns that proof against the exact signed event.
+- Added an opaque resolver-authenticated DID capability. Its only producer
+  validates a closed domain-separated envelope and a local configured
+  Ed25519/BIP340 resolver attestation. The envelope binds exact canonical
+  `did:web` URL or PLC log evidence, canonical document bytes/hash, selected
+  method, time/expiry, and resolver policy/version. Binding and revocation code
+  receive no caller DID document or validity boolean. This is a client-chosen
+  embedding transport trust boundary, never protocol identity authority; no
+  resolver key was added to the registry.
+- Replaced single-candidate ATProto validation with a carrier-tagged
+  repository/relay union. Strict valid candidates are deduplicated and the
+  current event is selected by greatest `created_at`, then lowest id, with no
+  carrier preference. Only that event follows full lineage. DID-side
+  revocation verifies with the current fresh resolution capability's selected
+  method, allowing legitimate DID-key rotation; Nostr-side revocation remains
+  bound to the linked pubkey.
+- Hardened the snapshot-only runtime by using `fileURLToPath`, copying both
+  registry and schemas into disposable output, and deleting the temporary tree
+  when construction fails before the runtime path can be returned. The copied
+  frozen moderation topic remains the sole transformed source.
+
+Registry revision `14` and entry-set digest
+`9839393f2e11430ce9c19bde009228b71dc7f5c7268215960d39ecab0461a6fc`
+remain unchanged. No registry, schema, frozen topic/vector, snapshot,
+projection, baseline/report/debt, or release artifact was modified, and no
+repository authoring command was run.
+
+### Fix-round-3 RED evidence
+
+Each finding began with an executable exploit probe:
+
+```text
+Comms audience/JKT/destination/current-state binding:
+  mismatched registration audience still minted authorization              1 failed / 1
+
+Social authorization one-use consumption:
+  the second consume of the same capability still accepted                 1 failed / 1
+
+resolver-attested opaque DID authority:
+  resolver producer and verification boundary were absent                  2 failed / 2
+
+ATProto current candidate and rotated revocation authority:
+  union interface rejected valid candidates; rotated current method failed 4 failed / 5
+
+snapshot runtime construction cleanup:
+  missing-tsconfig construction left its prefixed temporary tree            1 failed / 1
+
+self-review pre-sign boundary:
+  unsigned exact event could not mint authorization                         1 failed / 1
+  Social could not consume the resulting post-sign authorship proof         1 failed / 1
+  post-sign proof could be replayed at a different destination              1 failed / 1
+
+self-review DID method binding:
+  signed did:web envelope mislabeled did:plc still minted capability        1 failed / 1
+```
+
+The resolver ambiguity was escalated before implementation. The parent
+approved a local configured resolver-attestation key and closed signed
+envelope, explicitly ruling that it is an embedding trust boundary rather
+than protocol identity authority. The approved design and implementation plan
+are recorded beside this report.
+
+### Fix-round-3 GREEN and full verification
+
+Fresh completed-patch evidence:
+
+```text
+npm --prefix docs/spec/vectors/generator test -- --run \
+  src/snapshot-topic-runtime.test.ts src/agent-moderation.test.ts \
+  src/agent-authorship.test.ts src/nostr.test.ts \
+  src/social-events.test.ts src/social-nip72.test.ts \
+  src/atproto-did-resolution.test.ts src/social-atproto.test.ts \
+  src/registry.test.ts src/schema.test.ts
+Test Files  10 passed (10)
+Tests       148 passed (148)
+
+npm --prefix docs/spec/vectors/generator run build
+node scripts/typecheck.mjs (exit 0)
+
+npm --prefix docs/spec/vectors/generator run family:check -- "$PWD"
+validated protocol document family (exit 0)
+
+npm --prefix docs/spec/vectors/generator run snapshot-check -- "$PWD"
+verified 482 vectors from source
+2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43 at snapshot
+5d4bb5fb58b35c88d8a9db120a09f1087237f35c (exit 0)
+```
+
+Snapshot verification authored only into its disposable temporary raw root
+and compared read-only with the pinned historical package.
+
+### Ownership expansion, costs, and self-review
+
+The new `atproto-did-resolution.ts`/test module is directly required to keep
+caller DID documents outside Social authority. It adds no wire object and no
+global key. The existing approved `agent-authorship.ts` ownership expanded to
+the pre-sign authorization / post-sign authorship capability pair. Loader work
+remained confined to its current snapshot-only runtime and test.
+
+The complete diff was reviewed for pre-sign unsigned-event binding,
+burn-before-decision semantics, exact current state and destination checks,
+post-sign proof replay, resolver-envelope closure/domain separation,
+configured-anchor Ed25519/BIP340 verification, fake/stale/wrong-DID/wrong-
+method rejection, carrier-neutral deterministic selection, selected-only
+lineage, current rotated DID revocation method, linked Nostr revocation key,
+copied normative runtime inputs, construction cleanup, frozen-topic isolation,
+registry revision/digest stability, and prohibited paths. `git diff --check`
+was clean. No unresolved design contradiction remains.
+
+Fix-round-3 commit message: `fix: authenticate Social current authority`.

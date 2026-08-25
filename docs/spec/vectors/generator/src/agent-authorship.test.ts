@@ -8,7 +8,12 @@ import {
   type AgentTokenValidationInput,
 } from "./agent-authorship.js";
 import * as agentAuthorship from "./agent-authorship.js";
-import { getPublicKey, signEvent, type NostrSignedEvent } from "./nostr.js";
+import {
+  getPublicKey,
+  signEvent,
+  type NostrSignedEvent,
+  type NostrUnsignedEvent,
+} from "./nostr.js";
 import { AUX_RAND } from "./vector-helpers.js";
 
 const coldRoot = "11".repeat(32);
@@ -488,30 +493,163 @@ describe("opaque Comms authorization for Social", () => {
         registration: unknown;
         token: AgentTokenValidationInput;
         represented_persona: string;
-        event: NostrSignedEvent;
+        event: NostrUnsignedEvent;
+        requested_feed: string;
+        requested_resource: string;
       }) => { verdict: "accept"; authorization: object } | {
         verdict: "reject";
         reason_code: string;
       };
+      consumeCommsSocialAuthorization?: (input: {
+        authorization: unknown;
+        registration: unknown;
+        token: AgentTokenValidationInput;
+        represented_persona: string;
+        event: NostrUnsignedEvent;
+        agent_association: typeof association;
+        requested_feed: string;
+        requested_resource: string;
+      }) => { verdict: "accept"; authorship: object } | {
+        verdict: "reject";
+        reason_code: string;
+      };
     }).authorizeCommsSocialPublication;
+    const consume = (agentAuthorship as typeof agentAuthorship & {
+      consumeCommsSocialAuthorization?: (input: {
+        authorization: unknown;
+        registration: unknown;
+        token: AgentTokenValidationInput;
+        represented_persona: string;
+        event: NostrUnsignedEvent;
+        agent_association: typeof association;
+        requested_feed: string;
+        requested_resource: string;
+      }) => { verdict: "accept"; authorship: object } | {
+        verdict: "reject";
+        reason_code: string;
+      };
+    }).consumeCommsSocialAuthorization;
     const validEvent = await event();
+    const unsignedEvent = unsigned(validEvent);
+    const authorized = authorize?.({
+      registration,
+      token,
+      represented_persona: coldRoot,
+      event: unsignedEvent,
+      requested_feed: "main",
+      requested_resource: "feed:main",
+    });
+    expect(authorized).toMatchObject({ verdict: "accept", authorization: expect.any(Object) });
+    expect(authorize?.({
+      registration,
+      token,
+      represented_persona: coldRoot,
+      event: unsigned(await event(7)),
+      requested_feed: "main",
+      requested_resource: "feed:main",
+    })).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
+    expect(authorize?.({
+      registration,
+      token,
+      represented_persona: coldRoot,
+      event: unsigned(await event(1, 1_301)),
+      requested_feed: "main",
+      requested_resource: "feed:main",
+    })).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
+
+    for (const changed of [
+      { registration: { ...registration, audience: "https://other.example/" }, token },
+      {
+        registration: {
+          ...registration,
+          subject_jkt: "B".repeat(43),
+          subject_proof: { method: "dpop" as const, jkt: "B".repeat(43) },
+        },
+        token,
+      },
+    ]) {
+      expect(authorize?.({
+        ...changed,
+        represented_persona: coldRoot,
+        event: unsignedEvent,
+        requested_feed: "main",
+        requested_resource: "feed:main",
+      })).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
+    }
+    expect(authorize?.({
+      registration,
+      token,
+      represented_persona: coldRoot,
+      event: unsignedEvent,
+      requested_feed: "other",
+      requested_resource: "feed:main",
+    })).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
+
+    if (authorized?.verdict !== "accept") throw new Error("authorization missing");
+    const current = {
+      authorization: authorized.authorization,
+      registration,
+      token,
+      represented_persona: coldRoot,
+      event: unsignedEvent,
+      agent_association: association,
+      requested_feed: "main",
+      requested_resource: "feed:main",
+    };
+    expect(consume?.(current)).toMatchObject({
+      verdict: "accept",
+      authorship: expect.any(Object),
+    });
+    expect(consume?.(current)).toEqual({
+      verdict: "reject",
+      reason_code: "agent-signer-mismatch",
+    });
+
     expect(authorize?.({
       registration,
       token,
       represented_persona: coldRoot,
       event: validEvent,
-    })).toMatchObject({ verdict: "accept", authorization: expect.any(Object) });
-    expect(authorize?.({
-      registration,
-      token,
-      represented_persona: coldRoot,
-      event: await event(7),
-    })).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
-    expect(authorize?.({
-      registration,
-      token,
-      represented_persona: coldRoot,
-      event: await event(1, 1_301),
-    })).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
+      requested_feed: "main",
+      requested_resource: "feed:main",
+    } as unknown as Parameters<NonNullable<typeof authorize>>[0]))
+      .toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
+
+    for (const patch of [
+      { token: { ...token, status: "SUSPENDED" as const } },
+      {
+        token: {
+          ...token,
+          credential_ledger_generation: 1,
+          expected_credential_ledger_generation: 1,
+        },
+      },
+      { registration: { ...registration, max_content_bytes: 8192 } },
+    ]) {
+      const fresh = authorize?.({
+        registration,
+        token,
+        represented_persona: coldRoot,
+        event: unsignedEvent,
+        requested_feed: "main",
+        requested_resource: "feed:main",
+      });
+      if (fresh?.verdict !== "accept") throw new Error("authorization missing");
+      expect(consume?.({
+        ...current,
+        authorization: fresh.authorization,
+        ...patch,
+      })).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
+    }
   });
 });
+
+function unsigned(event: NostrSignedEvent): NostrUnsignedEvent {
+  return {
+    pubkey: event.pubkey,
+    created_at: event.created_at,
+    kind: event.kind,
+    tags: event.tags,
+    content: event.content,
+  };
+}

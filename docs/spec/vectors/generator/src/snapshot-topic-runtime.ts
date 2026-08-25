@@ -1,12 +1,12 @@
 import { cp, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import ts from "typescript";
 import type { Fixtures } from "./fixtures.js";
 import type { AuthoredVector } from "./types.js";
 
-const here = dirname(new URL(import.meta.url).pathname);
+const here = dirname(fileURLToPath(import.meta.url));
 const generatorRoot = resolve(here, "..");
 const repositoryRoot = resolve(here, "../../../../../");
 const frozenModerationTopic = resolve(here, "topics-agent-moderation.ts");
@@ -44,6 +44,19 @@ export async function buildSnapshotCompatibleVectors(
 
 async function materializeSnapshotRuntime(rootNames: string[]): Promise<string> {
   const runtimeRoot = await mkdtemp(join(tmpdir(), "heterodyne-snapshot-topic-runtime-"));
+  try {
+    await materializeSnapshotRuntimeAt(runtimeRoot, rootNames);
+    return runtimeRoot;
+  } catch (error) {
+    await rm(runtimeRoot, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+async function materializeSnapshotRuntimeAt(
+  runtimeRoot: string,
+  rootNames: string[],
+): Promise<void> {
   const configPath = ts.findConfigFile(generatorRoot, ts.sys.fileExists, "tsconfig.json");
   if (configPath === undefined) throw new Error("snapshot-runtime-tsconfig-missing");
   const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
@@ -96,9 +109,10 @@ async function materializeSnapshotRuntime(rootNames: string[]): Promise<string> 
     }));
   }
   await writeFile(join(runtimeRoot, "package.json"), '{"type":"module"}\n', "utf8");
-  await symlink(
+  await cp(
     join(repositoryRoot, "docs/spec/registry"),
     join(runtimeRoot, "docs/spec/registry"),
+    { force: true, recursive: true },
   );
   await cp(
     join(repositoryRoot, "docs/spec/schemas"),
@@ -110,7 +124,6 @@ async function materializeSnapshotRuntime(rootNames: string[]): Promise<string> 
     relative(repositoryRoot, generatorRoot),
   );
   await symlink(join(generatorRoot, "node_modules"), join(emittedGenerator, "node_modules"));
-  return runtimeRoot;
 }
 
 function emittedPath(runtimeRoot: string, sourcePath: string): string {

@@ -1,10 +1,16 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   authorizeCommsSocialPublication,
+  consumeCommsSocialAuthorization,
   type AgentTokenValidationInput,
-  type CommsSocialAuthorization,
+  type CommsSocialAuthorship,
 } from "./agent-authorship.js";
-import { getPublicKey, signEvent, type NostrSignedEvent } from "./nostr.js";
+import {
+  getPublicKey,
+  signEvent,
+  type NostrSignedEvent,
+  type NostrUnsignedEvent,
+} from "./nostr.js";
 import { AUX_RAND } from "./vector-helpers.js";
 
 type AgentAssociation = { kind: "key" | "role"; value: string };
@@ -12,7 +18,9 @@ type SocialEventsModule = {
   validateSocialAuthorship?: (input: {
     event: NostrSignedEvent;
     persona_active_key?: string;
-    comms_authorization?: CommsSocialAuthorization;
+    comms_authorization?: CommsSocialAuthorship;
+    requested_feed?: string;
+    requested_resource?: string;
     comms_authorized_signers?: Array<{
       pubkey: string;
       agent_association: AgentAssociation | null;
@@ -48,10 +56,24 @@ async function loadSocialEvents(): Promise<SocialEventsModule> {
   return await import("./social-events.js").catch(() => ({}));
 }
 
+function unsigned(event: NostrSignedEvent): NostrUnsignedEvent {
+  return {
+    pubkey: event.pubkey,
+    created_at: event.created_at,
+    kind: event.kind,
+    tags: event.tags,
+    content: event.content,
+  };
+}
+
 function authorizationFor(
   event: NostrSignedEvent,
   agentAssociation: AgentAssociation | null,
-): CommsSocialAuthorization {
+): {
+  comms_authorization: CommsSocialAuthorship;
+  requested_feed: string;
+  requested_resource: string;
+} {
   const jkt = "A".repeat(43);
   const audience = "https://node.example/control/social-publication";
   const registration = {
@@ -118,10 +140,27 @@ function authorizationFor(
     registration,
     token,
     represented_persona: personaKey,
-    event,
+    event: unsigned(event),
+    requested_feed: "main",
+    requested_resource: "feed:main",
   });
   if (result.verdict !== "accept") throw new Error(result.reason_code);
-  return result.authorization;
+  const consumed = consumeCommsSocialAuthorization({
+    authorization: result.authorization,
+    registration,
+    token,
+    represented_persona: personaKey,
+    event: unsigned(event),
+    agent_association: agentAssociation,
+    requested_feed: "main",
+    requested_resource: "feed:main",
+  });
+  if (consumed.verdict !== "accept") throw new Error(consumed.reason_code);
+  return {
+    comms_authorization: consumed.authorship,
+    requested_feed: "main",
+    requested_resource: "feed:main",
+  };
 }
 
 const personaSecret = "15".repeat(32);
@@ -221,10 +260,11 @@ describe("ordinary Social authorship", () => {
         agent_association: association,
       }],
     })).toEqual({ verdict: "reject", reason_code: "social-author-binding-invalid" });
+    const currentAuthorization = authorizationFor(attributedAgentPost, association);
     expect(social.validateSocialAuthorship?.({
       event: attributedAgentPost,
       persona_active_key: personaKey,
-      comms_authorization: authorizationFor(attributedAgentPost, association),
+      ...currentAuthorization,
     })).toEqual({
       verdict: "accept",
       event_author: agentKey,
@@ -234,7 +274,27 @@ describe("ordinary Social authorship", () => {
     expect(social.validateSocialAuthorship?.({
       event: attributedAgentPost,
       persona_active_key: personaKey,
-      comms_authorization: {} as CommsSocialAuthorization,
+      comms_authorization: {} as CommsSocialAuthorship,
+    })).toEqual({ verdict: "reject", reason_code: "social-author-binding-invalid" });
+
+    const oneUse = authorizationFor(attributedAgentPost, association);
+    expect(social.validateSocialAuthorship?.({
+      event: attributedAgentPost,
+      persona_active_key: personaKey,
+      ...oneUse,
+    })).toMatchObject({ verdict: "accept" });
+    expect(social.validateSocialAuthorship?.({
+      event: attributedAgentPost,
+      persona_active_key: personaKey,
+      ...oneUse,
+    })).toEqual({ verdict: "reject", reason_code: "social-author-binding-invalid" });
+
+    const wrongDestination = authorizationFor(attributedAgentPost, association);
+    expect(social.validateSocialAuthorship?.({
+      event: attributedAgentPost,
+      persona_active_key: personaKey,
+      ...wrongDestination,
+      requested_resource: "feed:other",
     })).toEqual({ verdict: "reject", reason_code: "social-author-binding-invalid" });
 
     const differentEvent = await signEvent({
@@ -249,7 +309,7 @@ describe("ordinary Social authorship", () => {
     expect(social.validateSocialAuthorship?.({
       event: differentEvent,
       persona_active_key: personaKey,
-      comms_authorization: authorization,
+      ...authorization,
     })).toEqual({ verdict: "reject", reason_code: "social-author-binding-invalid" });
   });
 
@@ -321,7 +381,7 @@ describe("ordinary Social authorship", () => {
     expect(social.validateSocialAuthorship?.({
       event: attributed,
       persona_active_key: personaKey,
-      comms_authorization: authorizationFor(attributed, null),
+      ...authorizationFor(attributed, null),
     })).toEqual({
       verdict: "accept",
       event_author: agentKey,
