@@ -10,6 +10,7 @@ import {
   authenticateWorkspaceRepositoryView,
   authenticateWorkspaceSuccessorReauthorization,
   consumeWorkspaceInvitationAcceptance,
+  createWorkspaceRepositoryResolverAuthority,
   evaluateAllowance,
   evaluateAuthorization,
   evaluateFreshness,
@@ -24,6 +25,7 @@ import {
   resolveEffectiveHosts,
   resolveWorkspaceCurrentRelationship,
   resolveWorkspaceEffectiveAuthorization,
+  ReferenceWorkspaceInvitationAcceptanceStore,
   selectEventRepository,
   signWorkspaceObject,
   workspaceObjectId,
@@ -1734,6 +1736,270 @@ describe("Workspace role authorization", () => {
     expect(evaluateGrantActivation(committedActivation)).toMatchObject({ verdict: "accept" });
     expect(evaluateGrantActivation(committedActivation))
       .toEqual({ verdict: "reject", reason_code: "workspace_replay" });
+  });
+
+  it("revalidates every activation boundary at invitation commit's trusted time", () => {
+    type CommitBoundary = Readonly<{
+      approval_expires_at?: number;
+      grant_expires_at?: number;
+      revocation_target?: "grant" | "account" | "device" | "resource" | "host";
+      successor_expires_at?: number;
+    }>;
+    const buildBoundaryFixture = (boundary: CommitBoundary) => {
+      const usesSuccessor = boundary.successor_expires_at !== undefined;
+      const grantId = usesSuccessor ? "f1".repeat(32) : "f0".repeat(32);
+      const subjectAccount = usesSuccessor ? APPROVER_A_KEY : OTHER_KEY;
+      const subjectSecret = usesSuccessor ? APPROVER_A_SECRET : OTHER_SECRET;
+      const targetDevice = usesSuccessor ? NEW_DEVICE : H64;
+      const targetLeaf = usesSuccessor ? NEW_LEAF : LEAF;
+      const nonceOpening = "f2".repeat(32);
+      const nonceCommitment = bytesToHex(sha256(proofBytes(
+        "heterodyne-workspace-invitation-nonce-v1",
+        {
+          grant_id: grantId,
+          workspace_key: WORKSPACE_KEY,
+          subject_account: subjectAccount,
+          target_device: targetDevice,
+          target_leaf: targetLeaf,
+          nonce_opening: nonceOpening,
+        },
+      )));
+      const unsignedGrant = {
+        spec_version: "heterodyne/0.5.0",
+        object_type: "role-grant-v1",
+        workspace_key: WORKSPACE_KEY,
+        policy_head: POLICY_HEAD,
+        predecessor: PREDECESSOR,
+        authority_checkpoint: CHECKPOINT,
+        repository_rid: "rad:zWorkspace",
+        repository_head: H40,
+        issued_at: 1_720_000_050,
+        grant_id: grantId,
+        subject_account: subjectAccount,
+        target_device: targetDevice,
+        recipient: { type: "marmot-mls-leaf", value: targetLeaf },
+        role_id: H64,
+        capabilities: ["read"],
+        resource_scope: [RESOURCE_ID],
+        delegable: false,
+        activation: "subject-acceptance",
+        activates_at: 1_720_000_100,
+        expires_at: boundary.grant_expires_at ?? 1_720_000_650,
+        approval_ids: [] as string[],
+        invitation: {
+          nonce_commitment: nonceCommitment,
+          expires_at: 1_720_000_650,
+          history_mode: "from-admission",
+        },
+        evidence_ids: [] as string[],
+      };
+      const operationDigest = grantOperationDigest(unsignedGrant);
+      const timedApproval = (secretKey: string): Record<string, unknown> => {
+        const approverKey = bytesToHex(schnorr.getPublicKey(secretKey));
+        const unsigned = {
+          profile: "heterodyne.workspace-grant-approval.v1",
+          spec_version: "heterodyne/0.5.0",
+          workspace_key: WORKSPACE_KEY,
+          policy_head: POLICY_HEAD,
+          predecessor: PREDECESSOR,
+          authority_checkpoint: CHECKPOINT,
+          operation_digest: operationDigest,
+          approver_key: approverKey,
+          issued_at: 1_720_000_200,
+          expires_at: boundary.approval_expires_at ?? 1_720_000_650,
+        };
+        return {
+          ...unsigned,
+          signature: bytesToHex(schnorr.sign(
+            proofBytes("heterodyne-workspace-grant-approval-v1", unsigned),
+            secretKey,
+          )),
+        };
+      };
+      const approvals = [
+        timedApproval(APPROVER_A_SECRET),
+        timedApproval(APPROVER_B_SECRET),
+      ];
+      const grant = signWorkspaceObject({
+        ...unsignedGrant,
+        approval_ids: approvals.map(objectDigest).sort(),
+      }, WORKSPACE_SECRET);
+      const objects = currentAuthorityObjects();
+      if (boundary.revocation_target !== undefined) {
+        const targetId = boundary.revocation_target === "grant" ? grantId
+          : boundary.revocation_target === "account" ? subjectAccount
+            : boundary.revocation_target === "device" ? targetDevice
+              : boundary.revocation_target === "resource" ? RESOURCE_ID : "dd".repeat(32);
+        const transitionRevocation = signWorkspaceObject({
+          ...objects[3],
+          revocation_id: "f3".repeat(32),
+          target_type: boundary.revocation_target,
+          target_id: targetId,
+          effective_at: 1_720_000_550,
+        }, WORKSPACE_SECRET);
+        objects[5] = signWorkspaceObject({
+          ...objects[5],
+          revocation_ids: [REVOCATION_ID, transitionRevocation.revocation_id].sort(),
+        }, WORKSPACE_SECRET);
+        objects.push(transitionRevocation);
+      }
+      objects.push(grant);
+      const evidence = repositoryViewEvidence(objects, {
+        observed_at: 1_720_000_300,
+        expires_at: 1_720_000_700,
+      });
+      let commitClock: number[] | null = null;
+      const authority = createWorkspaceRepositoryResolverAuthority({
+        trust_anchors: [{ suite: "bip340", public_key: RESOLVER_KEY }],
+        allowed_policies: ["radicle-verified-complete-v1"],
+        minimum_version: "1.0.0",
+        max_ttl: 600,
+        max_view_age: 600,
+        repositories: [{
+          workspace_key: WORKSPACE_KEY,
+          repository_rid: "rad:zWorkspace",
+          pinned_head: H40,
+        }],
+        trusted_now: () => commitClock?.shift() ?? 1_720_000_400,
+        invitation_store: new ReferenceWorkspaceInvitationAcceptanceStore(),
+      });
+      const state = authenticateWorkspaceRepositoryView({ authority, evidence, objects });
+      expect(state.verdict).toBe("accept");
+      if (state.verdict !== "accept") throw new Error("fixture boundary state rejected");
+      const unsignedAcceptance = {
+        profile: "heterodyne.workspace-invitation-acceptance.v1",
+        spec_version: "heterodyne/0.5.0",
+        grant_id: grantId,
+        grant_operation_digest: operationDigest,
+        workspace_key: WORKSPACE_KEY,
+        subject_account: subjectAccount,
+        target_device: targetDevice,
+        target_leaf: targetLeaf,
+        policy_head: POLICY_HEAD,
+        predecessor: PREDECESSOR,
+        authority_checkpoint: CHECKPOINT,
+        repository_view_id: objectDigest(evidence),
+        nonce_opening: nonceOpening,
+        nonce_commitment: nonceCommitment,
+        issued_at: 1_720_000_200,
+        expires_at: 1_720_000_650,
+      };
+      const signedAcceptance = {
+        ...unsignedAcceptance,
+        signature: bytesToHex(schnorr.sign(
+          proofBytes("heterodyne-workspace-invitation-acceptance-v1", unsignedAcceptance),
+          subjectSecret,
+        )),
+      };
+      const reserved = consumeWorkspaceInvitationAcceptance({
+        authority,
+        current_state: state.state,
+        acceptance: signedAcceptance,
+      });
+      expect(reserved).toMatchObject({ verdict: "accept", acceptance: expect.any(Object) });
+      if (reserved.verdict !== "accept") throw new Error("fixture acceptance not reserved");
+      const authorization = resolveWorkspaceEffectiveAuthorization({
+        authority,
+        current_state: state.state,
+        actor_account: OTHER_KEY,
+        actor_device: H64,
+        actor_leaf: LEAF,
+        operation_digest: operationDigest,
+        requested_capabilities: ["invite", "read"],
+        requested_resources: [RESOURCE_ID],
+        requested_delegable: false,
+      });
+      expect(authorization.verdict).toBe("accept");
+      if (authorization.verdict !== "accept") throw new Error("fixture authorization rejected");
+      let successor: object | null = null;
+      if (usesSuccessor) {
+        const authenticated = authenticateWorkspaceSuccessorReauthorization({
+          authority,
+          current_state: state.state,
+          reauthorization: successorReauthorization(
+            objectDigest(evidence),
+            "role-membership",
+            grantId,
+            null,
+            { expires_at: boundary.successor_expires_at },
+          ),
+        });
+        expect(authenticated).toMatchObject({
+          verdict: "accept",
+          reauthorization: expect.any(Object),
+        });
+        if (authenticated.verdict !== "accept") {
+          throw new Error("fixture successor reauthorization rejected");
+        }
+        successor = authenticated.reauthorization;
+      }
+      const activation = {
+        authority,
+        current_state: state.state,
+        authorization: authorization.authorization,
+        grant_id: grantId,
+        membership: {
+          authenticated_account: OTHER_KEY,
+          accepted_device: targetDevice,
+          accepted_leaf: targetLeaf,
+        },
+        approvals,
+        invitation_acceptance: reserved.acceptance,
+        successor_reauthorization: successor,
+      };
+      return {
+        activateAcrossBoundary: () => {
+          commitClock = [1_720_000_549, 1_720_000_550];
+          return evaluateGrantActivation(activation);
+        },
+        reserveAgain: () => {
+          commitClock = null;
+          return consumeWorkspaceInvitationAcceptance({
+            authority,
+            current_state: state.state,
+            acceptance: signedAcceptance,
+          });
+        },
+      };
+    };
+
+    const cases: ReadonlyArray<Readonly<{
+      name: string;
+      boundary: CommitBoundary;
+      reason_code: string;
+    }>> = [
+      {
+        name: "approval expiry",
+        boundary: { approval_expires_at: 1_720_000_550 },
+        reason_code: "workspace_signature_invalid",
+      },
+      ...(["grant", "account", "device", "resource", "host"] as const).map((revocation_target) => ({
+        name: `${revocation_target} revocation`,
+        boundary: { revocation_target },
+        reason_code: "policy_denied",
+      })),
+      {
+        name: "grant expiry",
+        boundary: { grant_expires_at: 1_720_000_550 },
+        reason_code: "workspace_schema_invalid",
+      },
+      {
+        name: "successor expiry",
+        boundary: { successor_expires_at: 1_720_000_550 },
+        reason_code: "policy_denied",
+      },
+    ];
+    for (const candidate of cases) {
+      const fixture = buildBoundaryFixture(candidate.boundary);
+      expect.soft(fixture.activateAcrossBoundary(), candidate.name).toEqual({
+        verdict: "reject",
+        reason_code: candidate.reason_code,
+      });
+      expect.soft(fixture.reserveAgain(), `${candidate.name} reservation release`).toMatchObject({
+        verdict: "accept",
+        acceptance: expect.any(Object),
+      });
+    }
   });
 
   it("rejects legacy caller-authored authority ceilings, revocations, and activation context", () => {

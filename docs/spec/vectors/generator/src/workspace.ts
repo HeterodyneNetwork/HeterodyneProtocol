@@ -1433,33 +1433,234 @@ function abortWorkspaceInvitationReservation(value: unknown): void {
   }
 }
 
+type WorkspaceGrantActivationRequest = Readonly<{
+  authority: WorkspaceRepositoryResolverAuthority;
+  current_state: WorkspaceCurrentState;
+  authorization: WorkspaceEffectiveAuthorization;
+  invitation_acceptance: WorkspaceInvitationAcceptance | null;
+  successor_reauthorization: WorkspaceSuccessorReauthorization | null;
+  grant_id: string;
+  membership: Readonly<{
+    authenticated_account: string;
+    accepted_device: string;
+    accepted_leaf: string;
+  }>;
+  approvals: readonly unknown[];
+}>;
+
+type WorkspaceGrantActivationValidation = Readonly<{
+  invitation_acceptance: WorkspaceInvitationAcceptance | null;
+  normalized: Readonly<Record<string, unknown>>;
+}>;
+
+function validateWorkspaceGrantActivationAtTime(
+  request: WorkspaceGrantActivationRequest,
+  trustedNow: number,
+): Validation<WorkspaceGrantActivationValidation> {
+  const effective = requireEffectiveAuthorizationAtEffect(
+    request.authority,
+    request.current_state,
+    request.authorization,
+    trustedNow,
+    "authority",
+  );
+  if (!effective.ok) return effective;
+  const { current, authorization } = effective.value;
+  const grant = current.grants.find((candidate) => candidate.grant_id === request.grant_id);
+  if (grant === undefined) return { ok: false, reason_code: "workspace_repository_invalid" };
+  const operationDigest = grantOperationDigestSnapshot(grant);
+  if (authorization.workspace_key !== grant.workspace_key
+    || authorization.policy_head !== grant.policy_head
+    || authorization.predecessor !== grant.predecessor
+    || authorization.authority_checkpoint !== grant.authority_checkpoint
+    || authorization.operation_digest !== operationDigest) {
+    return { ok: false, reason_code: "workspace_signature_invalid" };
+  }
+  if (grant.subject_account !== request.membership.authenticated_account) {
+    if (request.successor_reauthorization === null) {
+      return { ok: false, reason_code: "policy_denied" };
+    }
+    const currentSuccessor = requireSuccessorReauthorizationAtEffect(
+      request.authority,
+      request.current_state,
+      request.successor_reauthorization,
+      trustedNow,
+    );
+    if (!currentSuccessor.ok) return currentSuccessor;
+    const successor = currentSuccessor.value.reauthorization;
+    if (successor.scope !== "role-membership"
+      || successor.resource_id !== null
+      || successor.prior_account !== request.membership.authenticated_account
+      || successor.new_account !== grant.subject_account
+      || successor.pending_grant_id !== grant.grant_id
+      || successor.role_id !== grant.role_id
+      || successor.new_device !== grant.target_device
+      || !isRecord(grant.recipient)
+      || successor.new_leaf !== grant.recipient.value
+      || trustedNow >= successor.expires_at) {
+      return { ok: false, reason_code: "policy_denied" };
+    }
+  } else if (request.successor_reauthorization !== null) {
+    return { ok: false, reason_code: "policy_denied" };
+  }
+  if (grant.target_device !== request.membership.accepted_device
+    || !isRecord(grant.recipient)
+    || grant.recipient.value !== request.membership.accepted_leaf) {
+    return { ok: false, reason_code: "device_revoked" };
+  }
+  if (!isH64(grant.grant_id)
+    || !isCapabilityArray(grant.capabilities)
+    || !isH64Array(grant.resource_scope)
+    || typeof grant.delegable !== "boolean"
+    || !isSafeNonNegativeInteger(grant.issued_at)
+    || !isSafeNonNegativeInteger(grant.activates_at)
+    || !(grant.expires_at === null || isSafeNonNegativeInteger(grant.expires_at))
+    || grant.issued_at > grant.activates_at
+    || trustedNow < grant.activates_at
+    || (grant.expires_at !== null && trustedNow >= grant.expires_at)
+    || !isH64Array(grant.approval_ids)) {
+    return { ok: false, reason_code: "workspace_schema_invalid" };
+  }
+  const relevantHostIds = new Set<string>();
+  for (const resource of current.resources) {
+    if (!(grant.resource_scope as string[]).includes(String(resource.resource_id))) continue;
+    if (!isH64Array(resource.host_ids) || !isH64Array(resource.key_custody_host_ids)) {
+      return { ok: false, reason_code: "workspace_repository_invalid" };
+    }
+    for (const hostId of [...resource.host_ids, ...resource.key_custody_host_ids]) {
+      relevantHostIds.add(hostId);
+    }
+  }
+  if (current.revocations.some((revocation) =>
+    isSafeNonNegativeInteger(revocation.effective_at)
+      && revocation.effective_at <= trustedNow
+      && ((revocation.target_type === "grant" && revocation.target_id === grant.grant_id)
+        || (revocation.target_type === "account"
+          && revocation.target_id === grant.subject_account)
+        || (revocation.target_type === "device"
+          && revocation.target_id === grant.target_device)
+        || (revocation.target_type === "resource"
+          && (grant.resource_scope as string[]).includes(String(revocation.target_id)))
+        || (revocation.target_type === "host"
+          && relevantHostIds.has(String(revocation.target_id)))))) {
+    return { ok: false, reason_code: "policy_denied" };
+  }
+  let executableInvitationAcceptance: WorkspaceInvitationAcceptance | null = null;
+  if (grant.activation === "subject-acceptance") {
+    if (request.invitation_acceptance === null) {
+      return { ok: false, reason_code: "policy_denied" };
+    }
+    const invitationRecord = WORKSPACE_INVITATION_ACCEPTANCES.get(
+      request.invitation_acceptance,
+    );
+    if (invitationRecord === undefined) {
+      return { ok: false, reason_code: "workspace_schema_invalid" };
+    }
+    if (invitationRecord.authority !== request.authority
+      || invitationRecord.current_state !== request.current_state
+      || invitationRecord.grant_id !== grant.grant_id) {
+      return { ok: false, reason_code: "workspace_signature_invalid" };
+    }
+    if (!isRecord(grant.invitation)
+      || !isSafeNonNegativeInteger(grant.invitation.expires_at)
+      || trustedNow >= grant.invitation.expires_at
+      || trustedNow >= invitationRecord.expires_at) {
+      return { ok: false, reason_code: "workspace_replay" };
+    }
+    executableInvitationAcceptance = request.invitation_acceptance;
+  } else if (request.invitation_acceptance !== null || grant.invitation !== null) {
+    return { ok: false, reason_code: "workspace_schema_invalid" };
+  }
+  const operationCapabilities = [...new Set(["invite", ...grant.capabilities])];
+  if (!subset(operationCapabilities, authorization.requested_capabilities)
+    || !subset(grant.resource_scope, authorization.requested_resources)
+    || authorization.requested_delegable !== grant.delegable
+    || !authorization.effective_capabilities.includes("invite")
+    || !subset(grant.capabilities, authorization.effective_capabilities)
+    || !subset(grant.resource_scope, authorization.effective_resources)
+    || (grant.delegable && (!authorization.effective_delegable
+      || !authorization.effective_capabilities.includes("govern-delegation")))
+    || grant.capabilities.some((capability) => capability.startsWith("govern-"))) {
+    return { ok: false, reason_code: "capability_escalation" };
+  }
+  const approvals: Array<Readonly<{ approver_key: string; approval_id: string }>> = [];
+  for (const candidate of request.approvals) {
+    const approval = validateGrantApprovalSnapshot(candidate, {
+      workspace_key: String(grant.workspace_key),
+      policy_head: String(grant.policy_head),
+      predecessor: grant.predecessor as string | null,
+      authority_checkpoint: String(grant.authority_checkpoint),
+      operation_digest: operationDigest,
+      now: trustedNow,
+    });
+    if (!approval.ok) return approval;
+    approvals.push(approval.value);
+  }
+  const approvalIds = approvals.map(({ approval_id }) => approval_id);
+  const approverKeys = approvals.map(({ approver_key }) => approver_key);
+  if (!exactStringSet(approvalIds, grant.approval_ids)
+    || new Set(approvalIds).size !== approvalIds.length
+    || new Set(approverKeys).size !== approverKeys.length
+    || !subset(approverKeys, authorization.effective_approver_keys)
+    || approvals.length < authorization.required_approvals) {
+    return { ok: false, reason_code: "policy_denied" };
+  }
+  return {
+    ok: true,
+    value: deepFreeze({
+      invitation_acceptance: executableInvitationAcceptance,
+      normalized: {
+        active: true,
+        approval_count: approvals.length,
+        approver_keys: [...approverKeys].sort(),
+        grant_id: grant.grant_id,
+        operation_digest: operationDigest,
+      },
+    }),
+  };
+}
+
 function commitWorkspaceInvitationReservation(
   value: WorkspaceInvitationAcceptance,
-  authority: WorkspaceRepositoryResolverAuthority,
-  currentState: WorkspaceCurrentState,
-): boolean {
+  request: WorkspaceGrantActivationRequest,
+): Validation<WorkspaceGrantActivationValidation> {
   const record = WORKSPACE_INVITATION_ACCEPTANCES.get(value);
-  if (record === undefined) return false;
-  const store = WORKSPACE_INVITATION_STORES.get(record.store);
-  const trusted = readWorkspaceTrustedNow(authority);
-  const trustedNow = trusted.ok ? trusted.value.now : null;
-  const reservation = store?.get(record.token);
-  if (record.authority !== authority
-    || record.current_state !== currentState
-    || trustedNow === null
-    || !requireFreshCurrentView(authority, currentState, trustedNow, "authority").ok
+  const store = record === undefined ? undefined : WORKSPACE_INVITATION_STORES.get(record.store);
+  const release = (): void => {
+    if (record === undefined || store === undefined) return;
+    const reservation = store.get(record.token);
+    if (reservation?.status === "reserved" && reservation.holder === value) {
+      store.delete(record.token);
+    }
+  };
+  if (record === undefined || store === undefined
+    || record.authority !== request.authority
+    || record.current_state !== request.current_state) {
+    release();
+    return { ok: false, reason_code: "workspace_replay" };
+  }
+  const trusted = readWorkspaceTrustedNow(request.authority);
+  if (!trusted.ok) {
+    release();
+    return trusted;
+  }
+  const validated = validateWorkspaceGrantActivationAtTime(request, trusted.value.now);
+  if (!validated.ok) {
+    release();
+    return validated;
+  }
+  const reservation = store.get(record.token);
+  if (validated.value.invitation_acceptance !== value
     || reservation?.status !== "reserved"
     || reservation.holder !== value
     || reservation.binding !== record.acceptance_id
     || reservation.expires_at !== record.expires_at
-    || trustedNow >= record.expires_at) {
-    if (reservation?.status === "reserved" && reservation.holder === value) {
-      store?.delete(record.token);
-    }
-    return false;
+    || trusted.value.now >= reservation.expires_at) {
+    release();
+    return { ok: false, reason_code: "workspace_replay" };
   }
   reservation.status = "committed";
-  return true;
+  return validated;
 }
 
 export function evaluateGrantActivation(value: unknown): WorkspaceVerdict {
@@ -1484,6 +1685,8 @@ export function evaluateGrantActivation(value: unknown): WorkspaceVerdict {
     || authority === null || typeof authority !== "object"
     || currentState === null || typeof currentState !== "object"
     || authorizationValue === null || typeof authorizationValue !== "object"
+    || !(invitationAcceptance === null || typeof invitationAcceptance === "object")
+    || !(successorReauthorization === null || typeof successorReauthorization === "object")
     || input === undefined
     || !isH64(input.grant_id)
     || !isRecord(input.membership)
@@ -1497,144 +1700,31 @@ export function evaluateGrantActivation(value: unknown): WorkspaceVerdict {
     || typeof input.membership.accepted_leaf !== "string"
     || !isCanonicalMarmotLeaf(input.membership.accepted_leaf)
     || !Array.isArray(input.approvals)) return rejectActivation("workspace_schema_invalid");
-  const trusted = readWorkspaceTrustedNow(authority as WorkspaceRepositoryResolverAuthority);
+  const request = Object.freeze({
+    authority: authority as WorkspaceRepositoryResolverAuthority,
+    current_state: currentState as WorkspaceCurrentState,
+    authorization: authorizationValue as WorkspaceEffectiveAuthorization,
+    invitation_acceptance: invitationAcceptance as WorkspaceInvitationAcceptance | null,
+    successor_reauthorization:
+      successorReauthorization as WorkspaceSuccessorReauthorization | null,
+    grant_id: input.grant_id,
+    membership: input.membership as WorkspaceGrantActivationRequest["membership"],
+    approvals: input.approvals,
+  }) as WorkspaceGrantActivationRequest;
+  const trusted = readWorkspaceTrustedNow(request.authority);
   if (!trusted.ok) return rejectActivation(trusted.reason_code);
-  const effective = requireEffectiveAuthorizationAtEffect(
-    authority as WorkspaceRepositoryResolverAuthority,
-    currentState as WorkspaceCurrentState,
-    authorizationValue as WorkspaceEffectiveAuthorization,
-    trusted.value.now,
-    "authority",
+  const initial = validateWorkspaceGrantActivationAtTime(request, trusted.value.now);
+  if (!initial.ok) return rejectActivation(initial.reason_code);
+  if (initial.value.invitation_acceptance === null) {
+    return accepted(initial.value.normalized as Record<string, unknown>);
+  }
+  const committed = commitWorkspaceInvitationReservation(
+    initial.value.invitation_acceptance,
+    request,
   );
-  if (!effective.ok) return rejectActivation(effective.reason_code);
-  const { current, authorization } = effective.value;
-  const now = trusted.value.now;
-  const grant = current.grants.find((candidate) => candidate.grant_id === input.grant_id);
-  if (grant === undefined) return rejectActivation("workspace_repository_invalid");
-  const operationDigest = grantOperationDigestSnapshot(grant);
-  if (authorization.workspace_key !== grant.workspace_key
-    || authorization.policy_head !== grant.policy_head
-    || authorization.predecessor !== grant.predecessor
-    || authorization.authority_checkpoint !== grant.authority_checkpoint
-    || authorization.operation_digest !== operationDigest) {
-    return rejectActivation("workspace_signature_invalid");
-  }
-  if (grant.subject_account !== input.membership.authenticated_account) {
-    if (successorReauthorization === null || typeof successorReauthorization !== "object") {
-      return rejectActivation("policy_denied");
-    }
-    const currentSuccessor = requireSuccessorReauthorizationAtEffect(
-      authority as WorkspaceRepositoryResolverAuthority,
-      currentState as WorkspaceCurrentState,
-      successorReauthorization as WorkspaceSuccessorReauthorization,
-      now,
-    );
-    if (!currentSuccessor.ok) return rejectActivation(currentSuccessor.reason_code);
-    const successor = currentSuccessor.value.reauthorization;
-    if (successor.scope !== "role-membership"
-      || successor.resource_id !== null
-      || successor.prior_account !== input.membership.authenticated_account
-      || successor.new_account !== grant.subject_account
-      || successor.pending_grant_id !== grant.grant_id
-      || successor.role_id !== grant.role_id
-      || successor.new_device !== grant.target_device
-      || !isRecord(grant.recipient)
-      || successor.new_leaf !== grant.recipient.value
-      || now >= successor.expires_at) return rejectActivation("policy_denied");
-  } else if (successorReauthorization !== null) {
-    return rejectActivation("policy_denied");
-  }
-  if (grant.target_device !== input.membership.accepted_device
-    || !isRecord(grant.recipient)
-    || grant.recipient.value !== input.membership.accepted_leaf) {
-    return rejectActivation("device_revoked");
-  }
-  if (!isH64(grant.grant_id)
-    || !isCapabilityArray(grant.capabilities)
-    || !isH64Array(grant.resource_scope)
-    || typeof grant.delegable !== "boolean"
-    || !isSafeNonNegativeInteger(grant.issued_at)
-    || !isSafeNonNegativeInteger(grant.activates_at)
-    || !(grant.expires_at === null || isSafeNonNegativeInteger(grant.expires_at))
-    || grant.issued_at > grant.activates_at
-    || now < grant.activates_at
-    || (grant.expires_at !== null && now >= grant.expires_at)
-    || !isH64Array(grant.approval_ids)) return rejectActivation("workspace_schema_invalid");
-  if (current.revocations.some((revocation) =>
-    isSafeNonNegativeInteger(revocation.effective_at)
-      && revocation.effective_at <= now
-      && ((revocation.target_type === "grant" && revocation.target_id === grant.grant_id)
-        || (revocation.target_type === "account"
-          && revocation.target_id === grant.subject_account)
-        || (revocation.target_type === "device"
-          && revocation.target_id === grant.target_device)
-        || (revocation.target_type === "resource"
-          && (grant.resource_scope as string[]).includes(String(revocation.target_id)))))) {
-    return rejectActivation("policy_denied");
-  }
-  let executableInvitationAcceptance: object | null = null;
-  if (grant.activation === "subject-acceptance") {
-    if (invitationAcceptance === null) return rejectActivation("policy_denied");
-    if (typeof invitationAcceptance !== "object") return rejectActivation("workspace_schema_invalid");
-    const invitationRecord = WORKSPACE_INVITATION_ACCEPTANCES.get(invitationAcceptance);
-    if (invitationRecord === undefined) return rejectActivation("workspace_schema_invalid");
-    if (invitationRecord.authority !== authority
-      || invitationRecord.current_state !== currentState
-      || invitationRecord.grant_id !== grant.grant_id) {
-      return rejectActivation("workspace_signature_invalid");
-    }
-    executableInvitationAcceptance = invitationAcceptance;
-  } else if (invitationAcceptance !== null || grant.invitation !== null) {
-    return rejectActivation("workspace_schema_invalid");
-  }
-  const operationCapabilities = [...new Set(["invite", ...grant.capabilities])];
-  if (!subset(operationCapabilities, authorization.requested_capabilities)
-    || !subset(grant.resource_scope, authorization.requested_resources)
-    || authorization.requested_delegable !== grant.delegable
-    || !authorization.effective_capabilities.includes("invite")
-    || !subset(grant.capabilities, authorization.effective_capabilities)
-    || !subset(grant.resource_scope, authorization.effective_resources)
-    || (grant.delegable && (!authorization.effective_delegable
-      || !authorization.effective_capabilities.includes("govern-delegation")))
-    || grant.capabilities.some((capability) => capability.startsWith("govern-"))) {
-    return rejectActivation("capability_escalation");
-  }
-  const approvals: Array<Readonly<{ approver_key: string; approval_id: string }>> = [];
-  for (const candidate of input.approvals) {
-    const approval = validateGrantApprovalSnapshot(candidate, {
-      workspace_key: String(grant.workspace_key),
-      policy_head: String(grant.policy_head),
-      predecessor: grant.predecessor as string | null,
-      authority_checkpoint: String(grant.authority_checkpoint),
-      operation_digest: operationDigest,
-      now,
-    });
-    if (!approval.ok) return rejectActivation(approval.reason_code);
-    approvals.push(approval.value);
-  }
-  const approvalIds = approvals.map(({ approval_id }) => approval_id);
-  const approverKeys = approvals.map(({ approver_key }) => approver_key);
-  if (!exactStringSet(approvalIds, grant.approval_ids)
-    || new Set(approvalIds).size !== approvalIds.length
-    || new Set(approverKeys).size !== approverKeys.length
-    || !subset(approverKeys, authorization.effective_approver_keys)
-    || approvals.length < authorization.required_approvals) {
-    return rejectActivation("policy_denied");
-  }
-  if (executableInvitationAcceptance !== null) {
-    if (!commitWorkspaceInvitationReservation(
-      executableInvitationAcceptance as WorkspaceInvitationAcceptance,
-      authority as WorkspaceRepositoryResolverAuthority,
-      currentState as WorkspaceCurrentState,
-    )) return rejected("workspace_replay");
-  }
-  return accepted({
-    active: true,
-    approval_count: approvals.length,
-    approver_keys: [...approverKeys].sort(),
-    grant_id: grant.grant_id,
-    operation_digest: operationDigest,
-  });
+  return committed.ok
+    ? accepted(committed.value.normalized as Record<string, unknown>)
+    : rejectActivation(committed.reason_code);
 }
 
 function requireCurrentRelationshipAtEffect(

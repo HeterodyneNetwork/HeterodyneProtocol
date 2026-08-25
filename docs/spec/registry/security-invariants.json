@@ -517,7 +517,7 @@
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Ordinary writes use checkpoints no older than 86400 seconds and authority mutations no older than 300 seconds, with policy able only to shorten those bounds; invitation commit samples trusted time itself immediately before its atomic transition."
+      "description": "Ordinary writes use checkpoints no older than 86400 seconds and authority mutations no older than 300 seconds, with policy able only to shorten those bounds; invitation commit samples trusted time itself, reruns complete activation validation at that time, and releases the reservation on any failure before its atomic transition."
     },
     {
       "id": "WORKSPACE-I-HOST-AUTHORITY-SEPARATION",

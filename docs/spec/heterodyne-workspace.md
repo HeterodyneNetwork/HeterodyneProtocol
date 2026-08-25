@@ -396,22 +396,24 @@ grant ID, workspace key, subject account, exact device and leaf, and nonce
 opening. Every binding MUST equal the current signed grant and authenticated
 repository view. A configured authoritative atomic replay store reserves that
 workspace/grant/commitment tuple while activation is evaluated. It commits
-the reservation atomically only after re-reading trusted time, confirming the
-same latest current view and reserved holder, and completing authorization,
-membership, successor, timing, and every required approval; any failure aborts
-the reservation so a still-valid acceptance is not permanently consumed. The
-store also releases or aborts an uncommitted reservation at its signed expiry
-and never commits after that expiry. The
-committed acceptance is executable exactly once; a caller-supplied acceptance ID,
-consumed-ID list, or replay boolean has no authority. Invitation material
-for a private role is delivered through an authenticated two-member
+the reservation atomically only after sampling its configured trusted clock
+inside the commit operation and rerunning one complete pure activation
+validation over the immutable request and exact latest view at that new time.
+That validation rechecks signed policy freshness, effective authorization,
+membership and exact successor bindings, grant activation and expiry,
+grant/account/device/resource/host revocations, capability/resource/
+delegability intersections, and every approval's time, signature, signer, and
+threshold. Only then does the store confirm the exact reserved holder and
+perform the atomic transition. Any failure releases the reservation so a
+still-valid acceptance is not permanently consumed; no partial activation
+takes effect. The store also releases or aborts an uncommitted reservation at
+its signed expiry and never commits after that expiry. The committed
+acceptance is executable exactly once; a caller-supplied acceptance ID,
+consumed-ID list, replay boolean, or cached time has no authority. Invitation
+material for a private role is delivered through an authenticated two-member
 conversation under
 [`heterodyne:0.5.0#comms-direct-messages`](heterodyne-comms.md#comms-direct-messages) or an existing authorized private
 repository.
-The commit operation itself samples the resolver authority's configured
-trusted clock immediately before its atomic state transition and rechecks the
-latest view plus signed authority-mutation freshness. It never consumes a
-cached time supplied by its caller.
 
 A `role-revocation-v1` may revoke a grant, account, device, relationship, host,
 or resource. A valid revocation is effective at its declared effective time,
