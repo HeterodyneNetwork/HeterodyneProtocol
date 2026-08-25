@@ -5,19 +5,22 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "profile", "spec_version", "transaction_id", "persona_active_key",
+    "profile", "spec_version", "transaction_id", "grant_id",
+    "oidc_authorization_id", "persona_active_key",
     "nip46_client_pubkey", "signer_audience", "selected_signing_pubkey",
     "key_class", "requested_methods", "requested_event_kinds",
     "requested_limits", "connection_secret_sha256", "connection_secret_state",
     "device_code_sha256", "device_code_entropy_bits", "user_code_sha256",
     "user_code_entropy_bits", "normalization", "client_fingerprint",
     "failed_guesses", "max_failed_guesses", "interval_seconds", "issued_at",
-    "expires_at", "state"
+    "expires_at", "state", "revision"
   ],
   "properties": {
     "profile": {"const": "heterodyne.control.device-authorization-state.v1"},
     "spec_version": {"const": "heterodyne/0.5.0"},
     "transaction_id": {"$ref": "#/$defs/hex256"},
+    "grant_id": {"$ref": "#/$defs/hex256"},
+    "oidc_authorization_id": {"$ref": "#/$defs/hex256"},
     "persona_active_key": {"$ref": "#/$defs/hex256"},
     "nip46_client_pubkey": {"$ref": "#/$defs/hex256"},
     "signer_audience": {"type": "string", "minLength": 1, "maxLength": 512},
@@ -55,8 +58,16 @@
     "interval_seconds": {"$ref": "#/$defs/positive"},
     "issued_at": {"$ref": "#/$defs/time"},
     "expires_at": {"$ref": "#/$defs/time"},
-    "state": {"enum": ["pending", "approved", "denied", "expired", "exhausted", "consumed"]}
+    "state": {"enum": ["pending", "approved", "denied", "expired", "exhausted", "consumed"]},
+    "revision": {"type": "integer", "minimum": 0, "maximum": 9007199254740991}
   },
+  "allOf": [
+    {
+      "if": {"properties": {"state": {"const": "consumed"}}, "required": ["state"]},
+      "then": {"properties": {"connection_secret_state": {"const": "consumed"}}},
+      "else": {"properties": {"connection_secret_state": {"const": "pending"}}}
+    }
+  ],
   "$defs": {
     "hex256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "time": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},

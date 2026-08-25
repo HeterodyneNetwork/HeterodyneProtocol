@@ -1854,6 +1854,78 @@
       "first_version": "heterodyne/0.5.0",
       "description": "A continuing subordinate authority lacks a fresh explicit post-compromise authorization.",
       "spec_refs": ["heterodyne:0.5.0#control-compromise-reset"]
+    },
+    {
+      "code": "control-signing-grant-invalid",
+      "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
+      "description": "The authoritative signer grant, request limits, or usage record is structurally invalid.",
+      "spec_refs": ["heterodyne:0.5.0#control-signer-grants"]
+    },
+    {
+      "code": "control-signing-grant-unauthenticated",
+      "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
+      "description": "A signer grant fails its domain-separated BIP-340 authorization signature.",
+      "spec_refs": ["heterodyne:0.5.0#control-signer-grants"]
+    },
+    {
+      "code": "control-signing-grant-stale",
+      "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
+      "description": "The presented signer grant is not the unique authenticated predecessor/revocation head.",
+      "spec_refs": ["heterodyne:0.5.0#control-signer-grants"]
+    },
+    {
+      "code": "control-signing-rate-limited",
+      "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
+      "description": "The authoritative per-grant usage record has exhausted its finite request window.",
+      "spec_refs": ["heterodyne:0.5.0#control-request-processing"]
+    },
+    {
+      "code": "control-operation-reservation-required",
+      "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
+      "description": "The authoritative per-grant usage state does not prove that the exact request ID and canonical digest were durably reserved before signing.",
+      "spec_refs": ["heterodyne:0.5.0#control-request-processing"]
+    },
+    {
+      "code": "control-activation-binding-mismatch",
+      "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
+      "description": "A NIP-46 activation differs from its exact approved OIDC, grant, persona, client, audience, signer, or key-class binding.",
+      "spec_refs": ["heterodyne:0.5.0#control-oidc-activation"]
+    },
+    {
+      "code": "control-attribution-binding-mismatch",
+      "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
+      "description": "Caller attribution hints differ from the authenticated workload policy bound by the signer grant.",
+      "spec_refs": ["heterodyne:0.5.0#control-agent-requirements"]
+    },
+    {
+      "code": "control-agent-intent-invalid",
+      "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
+      "description": "An automated publication intent violates its single closed unsigned-intent contract.",
+      "spec_refs": ["heterodyne:0.5.0#control-agent-requirements"]
+    },
+    {
+      "code": "control-signed-event-invalid",
+      "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
+      "description": "The signer returned altered event fields or an invalid canonical NIP-01 event ID or BIP-340 signature.",
+      "spec_refs": ["heterodyne:0.5.0#control-agent-requirements"]
+    },
+    {
+      "code": "control-compromise-reset-unauthenticated",
+      "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
+      "description": "A reset grant or completion lacks its required domain-separated BIP-340 authority signature or pinned Assurance binding.",
+      "spec_refs": ["heterodyne:0.5.0#control-compromise-reset"]
+    },
+    {
+      "code": "control-compromise-reset-inventory-mismatch",
+      "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
+      "description": "The signed reset grant does not exactly bind the authoritative pre-reset persona-vault inventory and revision.",
+      "spec_refs": ["heterodyne:0.5.0#control-compromise-reset"]
+    },
+    {
+      "code": "control-compromise-reset-evidence-invalid",
+      "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
+      "description": "Reset completion evidence is not authoritative, exact, fresh, consecutive, successor-bound, or cryptographically transition-complete.",
+      "spec_refs": ["heterodyne:0.5.0#control-compromise-reset"]
     }
   ]
 }

@@ -135,7 +135,8 @@ describe("multi-persona Control schemas", () => {
     agent_ids: [signer],
     trusted_seed_nids: ["did:key:z6MkwQp8f8Y11L3WJYJ4hXa1"],
     marmot_leaf_ids: [h("c")],
-    reachable_group_ids: [h("d")],
+    reachable_groups: [{ group_id: h("d"), epoch: 7 }],
+    unreachable_group_ids: [h("0")],
     subordinate_authority_ids: [h("a"), h("b"), signer],
   };
   const recoveryGrant = {
@@ -146,6 +147,10 @@ describe("multi-persona Control schemas", () => {
     successor_active_key: successor,
     authorization_class: "active-account",
     authorizing_pubkey: persona,
+    assurance_head: null,
+    inventory_id: h("f"),
+    inventory_revision: 12,
+    inventory_digest: h("0"),
     compromise_at: 120,
     required_reset: requiredReset,
     issued_at: 121,
@@ -160,6 +165,10 @@ describe("multi-persona Control schemas", () => {
     recovery_id: recoveryGrant.recovery_id,
     persona_active_key: persona,
     successor_active_key: successor,
+    inventory_id: recoveryGrant.inventory_id,
+    inventory_revision: recoveryGrant.inventory_revision,
+    inventory_digest: recoveryGrant.inventory_digest,
+    evidence_revision: 13,
     revoked_nip46_oidc_grant_ids: [grantId],
     invalidated_client_ids: [client],
     invalidated_delegate_ids: [h("a")],
@@ -168,13 +177,36 @@ describe("multi-persona Control schemas", () => {
     invalidated_trusted_seed_nids: requiredReset.trusted_seed_nids,
     removed_marmot_leaf_ids: [h("c")],
     advanced_group_ids: [h("d")],
-    stalled_group_ids: [],
-    fresh_keypackages: [{ account_key: successor, event_id: h("0") }],
+    stalled_group_ids: [h("0")],
+    fresh_keypackages: [{ keypackage_id: h("7"), account_key: successor, event_id: h("8") }],
     subordinate_reauthorizations: [
-      { prior_authority_id: h("a"), authorization_id: h("1") },
-      { prior_authority_id: h("b"), authorization_id: h("2") },
-      { prior_authority_id: signer, authorization_id: h("3") },
+      {
+        prior_authority_id: h("a"), authorization_id: h("1"), authority_class: "delegate",
+        successor_active_key: successor, issued_at: 130, expires_at: 180,
+        permissions_digest: h("4"), contract_digest: h("5"),
+      },
+      {
+        prior_authority_id: h("b"), authorization_id: h("2"), authority_class: "node",
+        successor_active_key: successor, issued_at: 130, expires_at: 180,
+        permissions_digest: h("5"), contract_digest: h("6"),
+      },
+      {
+        prior_authority_id: signer, authorization_id: h("3"), authority_class: "agent",
+        successor_active_key: successor, issued_at: 130, expires_at: 180,
+        permissions_digest: h("6"), contract_digest: h("7"),
+      },
     ],
+    transition_evidence: {
+      nip46_oidc_grants: [{ subject_id: grantId, evidence_id: h("1") }],
+      clients: [{ subject_id: client, evidence_id: h("2") }],
+      delegates: [{ subject_id: h("a"), evidence_id: h("3") }],
+      nodes: [{ subject_id: h("b"), evidence_id: h("4") }],
+      agents: [{ subject_id: signer, evidence_id: h("5") }],
+      trusted_seeds: [{ subject_nid: requiredReset.trusted_seed_nids[0], evidence_id: h("6") }],
+      marmot_leaves: [{ subject_id: h("c"), evidence_id: h("7") }],
+      groups: [{ group_id: h("d"), prior_epoch: 7, next_epoch: 8, evidence_id: h("8") }],
+      stalled_groups: [{ subject_id: h("0"), evidence_id: h("9") }],
+    },
     completed_at: 130,
     signer: successor,
     signature: sig("4"),
@@ -198,6 +230,7 @@ describe("multi-persona Control schemas", () => {
       value_msats: 0,
       agent_class: "ai",
       agent_association: { kind: "key", value: signer },
+      tier: 1,
     }],
     ["control-audit-record-v1.schema.json", {
       profile: "heterodyne.control.audit-record.v1",
@@ -235,6 +268,9 @@ describe("multi-persona Control schemas", () => {
       profile: "heterodyne.control.device-authorization-state.v1",
       spec_version: "heterodyne/0.5.0",
       transaction_id: h("8"),
+      grant_id: grantId,
+      oidc_authorization_id: grant.oidc_authorization_id,
+      revision: 0,
       persona_active_key: persona,
       nip46_client_pubkey: client,
       signer_audience: audience,
@@ -351,13 +387,28 @@ describe("multi-persona Control schemas", () => {
     })).toMatch(/attribution_state|not|const/);
   });
 
-  it("permits automated attribution without an optional agent association", () => {
+  it("requires the closed automated attribution contract and permits explicit null association", () => {
     const publication = structuredClone(fixtures[1][1]) as Record<string, unknown>;
-    delete publication.agent_association;
+    publication.agent_association = null;
     expect(validateControlSchema(
       "control-agent-publish-v1.schema.json",
       publication,
     )).toBeNull();
+
+    delete publication.agent_association;
+    expect(validateControlSchema(
+      "control-agent-publish-v1.schema.json",
+      publication,
+    )).toMatch(/agent_association|required/);
+
+    expect(validateControlSchema("control-agent-publish-v1.schema.json", {
+      ...fixtures[1][1],
+      tier: 0,
+    })).toMatch(/tier|enum/);
+    expect(validateControlSchema("control-agent-publish-v1.schema.json", {
+      ...fixtures[1][1],
+      kind: 2,
+    })).toMatch(/kind|enum/);
   });
 });
 

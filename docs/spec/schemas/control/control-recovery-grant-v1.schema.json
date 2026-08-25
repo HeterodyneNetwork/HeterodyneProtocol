@@ -7,6 +7,7 @@
   "required": [
     "profile", "spec_version", "recovery_id", "persona_active_key",
     "successor_active_key", "authorization_class", "authorizing_pubkey",
+    "assurance_head", "inventory_id", "inventory_revision", "inventory_digest",
     "compromise_at", "required_reset", "issued_at", "expires_at", "state",
     "revoked_at", "signature"
   ],
@@ -18,6 +19,15 @@
     "successor_active_key": {"$ref": "#/$defs/hex256"},
     "authorization_class": {"enum": ["active-account", "assurance-recovery"]},
     "authorizing_pubkey": {"$ref": "#/$defs/hex256"},
+    "assurance_head": {
+      "oneOf": [
+        {"$ref": "#/$defs/hex256"},
+        {"type": "null"}
+      ]
+    },
+    "inventory_id": {"$ref": "#/$defs/hex256"},
+    "inventory_revision": {"$ref": "#/$defs/time"},
+    "inventory_digest": {"$ref": "#/$defs/hex256"},
     "compromise_at": {"$ref": "#/$defs/time"},
     "required_reset": {
       "type": "object",
@@ -25,7 +35,7 @@
       "required": [
         "nip46_oidc_grant_ids", "client_ids", "delegate_ids", "node_ids",
         "agent_ids", "trusted_seed_nids", "marmot_leaf_ids",
-        "reachable_group_ids", "subordinate_authority_ids"
+        "reachable_groups", "unreachable_group_ids", "subordinate_authority_ids"
       ],
       "properties": {
         "nip46_oidc_grant_ids": {"$ref": "#/$defs/hexArray"},
@@ -38,7 +48,18 @@
           "items": {"type": "string", "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$"}
         },
         "marmot_leaf_ids": {"$ref": "#/$defs/hexArray"},
-        "reachable_group_ids": {"$ref": "#/$defs/hexArray"},
+        "reachable_groups": {
+          "type": "array", "uniqueItems": true,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["group_id", "epoch"],
+            "properties": {
+              "group_id": {"$ref": "#/$defs/hex256"},
+              "epoch": {"$ref": "#/$defs/time"}
+            }
+          }
+        },
+        "unreachable_group_ids": {"$ref": "#/$defs/hexArray"},
         "subordinate_authority_ids": {"$ref": "#/$defs/hexArray"}
       }
     },
@@ -54,6 +75,11 @@
     "signature": {"type": "string", "pattern": "^[0-9a-f]{128}$"}
   },
   "allOf": [
+    {
+      "if": {"properties": {"authorization_class": {"const": "active-account"}}, "required": ["authorization_class"]},
+      "then": {"properties": {"assurance_head": {"type": "null"}}},
+      "else": {"properties": {"assurance_head": {"$ref": "#/$defs/hex256"}}}
+    },
     {
       "if": {"properties": {"state": {"const": "active"}}, "required": ["state"]},
       "then": {"properties": {"revoked_at": {"type": "null"}}},

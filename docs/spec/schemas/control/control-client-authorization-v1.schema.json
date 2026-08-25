@@ -56,6 +56,7 @@
     "limits": {"$ref": "#/$defs/limits"},
     "oidc_authorization_id": {"$ref": "#/$defs/hex256"},
     "connection_secret_sha256": {"$ref": "#/$defs/hex256"},
+    "automation_policy": {"$ref": "#/$defs/automationPolicy"},
     "issued_at": {"$ref": "#/$defs/time"},
     "expires_at": {"$ref": "#/$defs/time"},
     "predecessor": {
@@ -100,6 +101,44 @@
         "request_count": {"$ref": "#/$defs/finitePositive"},
         "max_event_bytes": {"$ref": "#/$defs/finitePositive"},
         "max_value_msats": {"$ref": "#/$defs/finiteNonNegative"}
+      }
+    },
+    "agentAssociation": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": {"const": "key"},
+            "value": {"$ref": "#/$defs/hex256"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": {"const": "role"},
+            "value": {"type": "string", "minLength": 1, "maxLength": 128}
+          }
+        }
+      ]
+    },
+    "automationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workload_id", "agent_class", "agent_association", "tier", "oidc_scopes"],
+      "properties": {
+        "workload_id": {"$ref": "#/$defs/hex256"},
+        "agent_class": {"enum": ["ai", "programmatic"]},
+        "agent_association": {"$ref": "#/$defs/agentAssociation"},
+        "tier": {"enum": [1, 2, 3]},
+        "oidc_scopes": {
+          "type": "array", "maxItems": 64, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 128}
+        }
       }
     }
   }

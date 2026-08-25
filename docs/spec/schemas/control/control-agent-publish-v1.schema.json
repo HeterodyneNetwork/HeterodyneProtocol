@@ -8,7 +8,7 @@
     "profile", "spec_version", "grant_id", "vault_id", "persona_active_key",
     "nip46_client_pubkey", "signer_audience", "selected_signing_pubkey",
     "key_class", "created_at", "kind", "tags", "content", "value_msats",
-    "agent_class"
+    "agent_class", "agent_association", "tier"
   ],
   "properties": {
     "profile": {"const": "heterodyne.control.agent-publish-intent.v1"},
@@ -21,7 +21,7 @@
     "selected_signing_pubkey": {"$ref": "#/$defs/hex256"},
     "key_class": {"enum": ["persona", "agent"]},
     "created_at": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
-    "kind": {"type": "integer", "minimum": 0, "maximum": 65535},
+    "kind": {"enum": [1, 6, 7, 16, 1063, 1985, 4550, 30023]},
     "tags": {
       "type": "array",
       "maxItems": 4096,
@@ -36,16 +36,34 @@
     "value_msats": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
     "agent_class": {"enum": ["ai", "programmatic"]},
     "agent_association": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["kind", "value"],
-      "properties": {
-        "kind": {"enum": ["key", "role"]},
-        "value": {"type": "string", "minLength": 1, "maxLength": 256}
-      }
-    }
+      "$ref": "#/$defs/agentAssociation"
+    },
+    "tier": {"enum": [1, 2, 3]}
   },
   "$defs": {
-    "hex256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+    "hex256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "agentAssociation": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": {"const": "key"},
+            "value": {"$ref": "#/$defs/hex256"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": {"const": "role"},
+            "value": {"type": "string", "minLength": 1, "maxLength": 128}
+          }
+        }
+      ]
+    }
   }
 }

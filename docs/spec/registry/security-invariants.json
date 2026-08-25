@@ -191,7 +191,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "control.nip46-oidc-signing.v1",
-      "description": "A signer grant exactly binds the persona, NIP-46 client, audience, selected signing key and class, methods, event kinds, finite limits, issuance, expiry, and revocation state."
+      "description": "A domain-separated BIP-340-authenticated signer grant exactly binds the persona, NIP-46 client, audience, selected signing key and class, methods, event kinds, finite limits, issuance, expiry, and revocation state, and only the unique authenticated predecessor/revocation head is current."
     },
     {
       "id": "CONTROL-I-NIP46-OIDC-ACTIVATION",
@@ -199,7 +199,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "control.nip46-oidc-signing.v1",
-      "description": "OIDC activates standard NIP-46 under server-side authority with a one-use connection secret; caller metadata cannot widen a grant."
+      "description": "OIDC activates standard NIP-46 only after the exact approved grant, OIDC authorization, persona, client, audience, signer, class, lifetime, and one-use secret are atomically consumed from authenticated current state; caller metadata cannot widen a grant."
     },
     {
       "id": "CONTROL-I-NO-SIGNER-FALLBACK",
@@ -215,7 +215,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "control.agent-workload-publication.v1",
-      "description": "Every automated publication passes through the Comms attribution transform before the selected signer can produce a signature."
+      "description": "Every closed automated intent is digest-bound to its request and derives class, association, tier, and scopes from authenticated current policy, then passes through Comms attribution after durable reservation and before the selected signer can produce a verifiable NIP-01 signature."
     },
     {
       "id": "CONTROL-I-MARMOT-GRANT-CONFINEMENT",
@@ -230,7 +230,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Mutation reservation precedes effects and cross-node retry is limited to provably safe cases."
+      "description": "An authoritative revisioned per-grant usage record and atomic request-ID/digest reservation precede every effect; committed replay and uncommitted indeterminacy are distinct, and cross-node retry is limited to provably safe cases."
     },
     {
       "id": "CONTROL-I-MARMOT-LEAF-COMPROMISE",
@@ -246,7 +246,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "control.compromise-reset.v1",
-      "description": "Compromise completion revokes all NIP-46 and OIDC grants, invalidates subordinate authorities and trusted seeds, removes all old leaves, advances every reachable group, publishes fresh KeyPackages, and explicitly reauthorizes each continuing subordinate authority."
+      "description": "An authenticated reset grant binds the authoritative pre-reset inventory and a successor-authenticated completion binds consecutive authoritative evidence: all NIP-46 and OIDC grants are revoked, subordinate authorities and trusted seeds invalidated, old leaves removed, every reachable group advanced, fresh successor KeyPackages published, and every continuing subordinate authority receives a fresh distinct authorization."
     },
     {
       "id": "COMMS-I-CLAIM-AUTHENTICITY",
