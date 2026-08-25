@@ -1648,6 +1648,16 @@
       ]
     },
     {
+      "code": "workspace_repository_invalid",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "The configured trusted repository verification boundary did not authenticate one complete exact current Workspace repository view.",
+      "spec_refs": [
+        "heterodyne:0.5.0#workspace-errors"
+      ]
+    },
+    {
       "code": "authority_conflict",
       "owner": "workspace",
       "status": "draft",

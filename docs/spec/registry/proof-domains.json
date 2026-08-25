@@ -249,6 +249,127 @@
       "description": "The current Marmot administrator signs the complete closed private-relay ACL projection except its signature member."
     },
     {
+      "id": "heterodyne-workspace-repository-view-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "authority_checkpoint",
+        "canonical_ancestry",
+        "canonical_head",
+        "expires_at",
+        "fork_status",
+        "object_ids",
+        "object_set_digest",
+        "observed_at",
+        "observed_heads",
+        "policy_head",
+        "predecessor",
+        "profile",
+        "repository_rid",
+        "resolver_policy",
+        "resolver_version",
+        "spec_version",
+        "workspace_key"
+      ],
+      "suites": [
+        "bip340",
+        "ed25519"
+      ],
+      "description": "A configured trusted repository verifier authenticates one exact canonical, fork-complete, current Workspace repository view and complete object-set digest."
+    },
+    {
+      "id": "heterodyne-workspace-object-set-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "object_ids"
+      ],
+      "suites": [
+        "bip340",
+        "ed25519"
+      ],
+      "description": "The repository-view signature binds the SHA-256 proof-byte digest of the sorted exact current Workspace object identifier set."
+    },
+    {
+      "id": "heterodyne-workspace-invitation-nonce-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "grant_id",
+        "nonce_opening",
+        "subject_account",
+        "target_device",
+        "target_leaf",
+        "workspace_key"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "The invitation commitment binds its one-use nonce opening to the exact grant, workspace, subject account, device, and Marmot leaf."
+    },
+    {
+      "id": "heterodyne-workspace-invitation-acceptance-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "authority_checkpoint",
+        "expires_at",
+        "grant_id",
+        "grant_operation_digest",
+        "issued_at",
+        "nonce_commitment",
+        "nonce_opening",
+        "policy_head",
+        "predecessor",
+        "profile",
+        "repository_view_id",
+        "spec_version",
+        "subject_account",
+        "target_device",
+        "target_leaf",
+        "workspace_key"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "The invited subject signs a closed acceptance bound to the exact grant operation, current repository view, account, device, leaf, nonce, and validity interval."
+    },
+    {
+      "id": "heterodyne-workspace-successor-reauthorization-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "authority_checkpoint",
+        "effective_at",
+        "expires_at",
+        "issued_at",
+        "new_account",
+        "new_key",
+        "policy_head",
+        "predecessor",
+        "prior_account",
+        "prior_key",
+        "profile",
+        "repository_view_id",
+        "resource_id",
+        "role_id",
+        "scope",
+        "spec_version",
+        "subject_device",
+        "target_leaf",
+        "workspace_key"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "The current workspace and new account keys independently sign one exact current-view transfer for either role membership or one resource-key scope."
+    },
+    {
       "id": "heterodyne-workspace-affiliation-evidence-v1",
       "owner": "workspace",
       "first_version": "heterodyne/0.5.0",

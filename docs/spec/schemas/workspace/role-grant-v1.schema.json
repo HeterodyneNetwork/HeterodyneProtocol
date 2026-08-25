@@ -217,5 +217,30 @@
       },
       "uniqueItems": true
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "activation": {
+            "const": "subject-acceptance"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "invitation": {
+            "type": "object"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "invitation": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ]
 }

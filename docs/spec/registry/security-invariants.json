@@ -491,6 +491,13 @@
       "description": "Git authorship, Radicle repository-writer permission, trusted-seed or host status, relay acceptance, custody, and Marmot membership or group administration are never sufficient Workspace authorization evidence."
     },
     {
+      "id": "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Effective authorization, bilateral allowance, invitation acceptance, successor transfer, and key delivery consume only complete current signed Workspace state authenticated by one configured repository resolver instance and exact repository view."
+    },
+    {
       "id": "WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS",
       "owner": "workspace",
       "status": "draft",

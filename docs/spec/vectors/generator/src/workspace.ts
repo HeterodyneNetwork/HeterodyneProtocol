@@ -12,18 +12,6 @@ const rejected = (reason_code: string): WorkspaceVerdict => ({
   reason_code,
 });
 
-const intersection = (sets: readonly string[][]): string[] => {
-  if (sets.length === 0) return [];
-  const remaining = new Set(sets[0]);
-  for (const values of sets.slice(1)) {
-    const current = new Set(values);
-    for (const value of remaining) {
-      if (!current.has(value)) remaining.delete(value);
-    }
-  }
-  return [...remaining].sort();
-};
-
 const subset = (values: readonly string[], ceiling: readonly string[]): boolean => {
   const allowed = new Set(ceiling);
   return values.every((value) => allowed.has(value));
@@ -43,9 +31,78 @@ type Validation<T> =
   | { ok: true; value: T }
   | { ok: false; reason_code: string };
 
-declare const effectiveAuthorizationBrand: unique symbol;
-type EffectiveAuthorization = Readonly<{
+declare const currentWorkspaceObjectBrand: unique symbol;
+type CurrentWorkspaceObject = Readonly<{
+  object: Readonly<Record<string, unknown>>;
+  object_id: string;
+  [currentWorkspaceObjectBrand]: true;
+}>;
+const currentWorkspaceObjects = new WeakSet<object>();
+
+export type WorkspaceRepositoryTrustAnchor = Readonly<{
+  suite: "ed25519" | "bip340";
+  public_key: string;
+}>;
+
+declare const workspaceRepositoryResolverAuthorityBrand: unique symbol;
+export type WorkspaceRepositoryResolverAuthority = Readonly<{
+  [workspaceRepositoryResolverAuthorityBrand]: true;
+}>;
+
+declare const workspaceCurrentStateBrand: unique symbol;
+export type WorkspaceCurrentState = Readonly<{
+  [workspaceCurrentStateBrand]: true;
+}>;
+
+declare const workspaceEffectiveAuthorizationBrand: unique symbol;
+export type WorkspaceEffectiveAuthorization = Readonly<{
+  [workspaceEffectiveAuthorizationBrand]: true;
+}>;
+
+declare const workspaceCurrentRelationshipBrand: unique symbol;
+export type WorkspaceCurrentRelationship = Readonly<{
+  [workspaceCurrentRelationshipBrand]: true;
+}>;
+
+type WorkspaceResolverConfig = Readonly<{
+  trust_anchors: readonly WorkspaceRepositoryTrustAnchor[];
+  allowed_policies: readonly string[];
+  minimum_version: readonly [number, number, number];
+  max_ttl: number;
+  max_view_age: number;
+  repositories: readonly Readonly<{
+    workspace_key: string;
+    repository_rid: string;
+    pinned_head: string;
+  }>[];
+  trusted_now: () => number;
+  invitation_store: object | null;
+  accepted_views: Map<string, { head: string; observed_at: number }>;
+}>;
+
+type WorkspaceCurrentStateRecord = Readonly<{
+  authority: WorkspaceRepositoryResolverAuthority;
+  state: CurrentWorkspaceState;
+  view_id: string;
+  observed_at: number;
+  expires_at: number;
+  objects: readonly Readonly<Record<string, unknown>>[];
+  policy: Readonly<Record<string, unknown>>;
+  role: Readonly<Record<string, unknown>>;
+  grants: readonly Readonly<Record<string, unknown>>[];
+  revocations: readonly Readonly<Record<string, unknown>>[];
+  resources: readonly Readonly<Record<string, unknown>>[];
+  checkpoint: Readonly<Record<string, unknown>>;
+}>;
+
+const WORKSPACE_RESOLVER_AUTHORITIES = new WeakMap<object, WorkspaceResolverConfig>();
+const WORKSPACE_CURRENT_STATES = new WeakMap<object, WorkspaceCurrentStateRecord>();
+type WorkspaceEffectiveAuthorizationRecord = Readonly<{
+  authority: WorkspaceRepositoryResolverAuthority;
+  current_state: WorkspaceCurrentState;
   actor_account: string;
+  actor_device: string;
+  actor_leaf: string;
   workspace_key: string;
   policy_head: string;
   predecessor: string | null;
@@ -55,26 +112,56 @@ type EffectiveAuthorization = Readonly<{
   effective_resources: readonly string[];
   effective_delegable: boolean;
   effective_approver_keys: readonly string[];
-  [effectiveAuthorizationBrand]: true;
+  required_approvals: number;
 }>;
-const effectiveAuthorizationResults = new WeakSet<object>();
-
-declare const currentWorkspaceObjectBrand: unique symbol;
-type CurrentWorkspaceObject = Readonly<{
-  object: Readonly<Record<string, unknown>>;
-  object_id: string;
-  [currentWorkspaceObjectBrand]: true;
-}>;
-const currentWorkspaceObjects = new WeakSet<object>();
-
-declare const currentRelationshipBrand: unique symbol;
-type CurrentRelationship = Readonly<{
+const WORKSPACE_EFFECTIVE_AUTHORIZATIONS = new WeakMap<object, WorkspaceEffectiveAuthorizationRecord>();
+type WorkspaceCurrentRelationshipRecord = Readonly<{
+  authority: WorkspaceRepositoryResolverAuthority;
+  source_state: WorkspaceCurrentState;
+  receiving_state: WorkspaceCurrentState;
   relationship: Readonly<Record<string, unknown>>;
-  source_current: CurrentWorkspaceState;
-  receiving_current: CurrentWorkspaceState;
-  [currentRelationshipBrand]: true;
 }>;
-const currentRelationships = new WeakSet<object>();
+const WORKSPACE_CURRENT_RELATIONSHIPS = new WeakMap<object, WorkspaceCurrentRelationshipRecord>();
+
+type WorkspaceInvitationConsumption = Readonly<{ binding: string }>;
+const WORKSPACE_INVITATION_STORES = new WeakMap<object, Map<string, WorkspaceInvitationConsumption>>();
+
+export class ReferenceWorkspaceInvitationAcceptanceStore {
+  constructor() {
+    WORKSPACE_INVITATION_STORES.set(this, new Map());
+  }
+}
+
+declare const workspaceInvitationAcceptanceBrand: unique symbol;
+export type WorkspaceInvitationAcceptance = Readonly<{
+  [workspaceInvitationAcceptanceBrand]: true;
+}>;
+type WorkspaceInvitationAcceptanceRecord = Readonly<{
+  authority: WorkspaceRepositoryResolverAuthority;
+  current_state: WorkspaceCurrentState;
+  grant_id: string;
+  acceptance_id: string;
+}>;
+const WORKSPACE_INVITATION_ACCEPTANCES = new WeakMap<object, WorkspaceInvitationAcceptanceRecord>();
+const WORKSPACE_EXECUTED_INVITATION_ACCEPTANCES = new WeakSet<object>();
+
+declare const workspaceSuccessorReauthorizationBrand: unique symbol;
+export type WorkspaceSuccessorReauthorization = Readonly<{
+  [workspaceSuccessorReauthorizationBrand]: true;
+}>;
+type WorkspaceSuccessorReauthorizationRecord = Readonly<{
+  authority: WorkspaceRepositoryResolverAuthority;
+  current_state: WorkspaceCurrentState;
+  prior_account: string;
+  new_account: string;
+  subject_device: string;
+  target_leaf: string;
+  role_id: string;
+  resource_id: string | null;
+  scope: "role-membership" | "resource-key";
+  expires_at: number;
+}>;
+const WORKSPACE_SUCCESSOR_REAUTHORIZATIONS = new WeakMap<object, WorkspaceSuccessorReauthorizationRecord>();
 
 const isH64 = (value: unknown): value is string =>
   typeof value === "string" && H64_PATTERN.test(value);
@@ -161,6 +248,69 @@ export function signWorkspaceObject(
     hexToBytes(auxRand),
   ));
   return { ...unsigned, signature };
+}
+
+export function createWorkspaceRepositoryResolverAuthority(
+  value: unknown,
+): WorkspaceRepositoryResolverAuthority {
+  const captured = captureWorkspaceRequest(value, ["trusted_now"], [
+    "trust_anchors",
+    "allowed_policies",
+    "minimum_version",
+    "max_ttl",
+    "max_view_age",
+    "repositories",
+  ], ["invitation_store"]);
+  const input = captured?.data;
+  const trustedNow = captured?.opaque.trusted_now;
+  const invitationStore = captured?.opaque.invitation_store;
+  const minimumVersion = parseWorkspaceSemver(input?.minimum_version);
+  if (input === undefined
+    || typeof trustedNow !== "function"
+    || !Array.isArray(input.trust_anchors)
+    || input.trust_anchors.length === 0
+    || !input.trust_anchors.every(isWorkspaceRepositoryTrustAnchor)
+    || new Set(input.trust_anchors.map((candidate) => {
+      const anchor = candidate as WorkspaceRepositoryTrustAnchor;
+      return `${anchor.suite}:${anchor.public_key}`;
+    })).size !== input.trust_anchors.length
+    || !isUniqueStringArray(input.allowed_policies, (candidate): candidate is string =>
+      typeof candidate === "string" && /^[A-Za-z0-9._:-]{1,128}$/u.test(candidate))
+    || input.allowed_policies.length === 0
+    || minimumVersion === null
+    || !isSafeNonNegativeInteger(input.max_ttl)
+    || input.max_ttl < 1
+    || !isSafeNonNegativeInteger(input.max_view_age)
+    || input.max_view_age < 1
+    || !Array.isArray(input.repositories)
+    || input.repositories.length === 0
+    || !input.repositories.every((candidate) => isRecord(candidate)
+      && hasExactMembers(candidate, ["workspace_key", "repository_rid", "pinned_head"])
+      && isH64(candidate.workspace_key)
+      && isRadicleRid(candidate.repository_rid)
+      && isH40(candidate.pinned_head))
+    || new Set(input.repositories.map((candidate) => {
+      const repository = candidate as Record<string, unknown>;
+      return `${repository.workspace_key}:${repository.repository_rid}`;
+    })).size !== input.repositories.length
+    || (invitationStore !== undefined
+      && (invitationStore === null || typeof invitationStore !== "object"
+        || !WORKSPACE_INVITATION_STORES.has(invitationStore)))) {
+    throw new Error("workspace_repository_invalid");
+  }
+  const authority = Object.freeze({}) as WorkspaceRepositoryResolverAuthority;
+  WORKSPACE_RESOLVER_AUTHORITIES.set(authority, {
+    trust_anchors: input.trust_anchors as WorkspaceRepositoryTrustAnchor[],
+    allowed_policies: input.allowed_policies,
+    minimum_version: minimumVersion,
+    max_ttl: input.max_ttl,
+    max_view_age: input.max_view_age,
+    repositories: input.repositories as WorkspaceResolverConfig["repositories"],
+    trusted_now: trustedNow as () => number,
+    invitation_store: invitationStore === undefined ? null : invitationStore as object,
+    accepted_views: new Map(),
+  });
+  return authority;
 }
 
 export function evaluateWorkspaceObject(value: unknown): WorkspaceVerdict {
@@ -281,93 +431,425 @@ function validateCurrentWorkspaceObjectSnapshot(
   return { ok: true, value: result };
 }
 
-function validateEffectiveAuthorizationSnapshot(value: unknown): Validation<EffectiveAuthorization> {
-  if (!isRecord(value) || !hasExactMembers(value, [
-    "workspace_key",
-    "policy_head",
-    "predecessor",
-    "authority_checkpoint",
-    "authority_checkpoint_candidates",
+export function authenticateWorkspaceRepositoryView(value: unknown):
+  | { verdict: "accept"; state: WorkspaceCurrentState }
+  | { verdict: "reject"; reason_code: string } {
+  const captured = captureWorkspaceRequest(value, ["authority"], ["evidence", "objects"]);
+  const authority = captured?.opaque.authority;
+  if (captured === null || authority === null || typeof authority !== "object") {
+    return { verdict: "reject", reason_code: "workspace_schema_invalid" };
+  }
+  const config = WORKSPACE_RESOLVER_AUTHORITIES.get(authority);
+  const evidence = captured.data.evidence;
+  const objects = captured.data.objects;
+  if (config === undefined || !isRecord(evidence) || !Array.isArray(objects)
+    || !objects.every(isRecord)
+    || !hasExactMembers(evidence, [
+      "profile",
+      "spec_version",
+      "resolver_policy",
+      "resolver_version",
+      "workspace_key",
+      "repository_rid",
+      "canonical_head",
+      "canonical_ancestry",
+      "observed_heads",
+      "fork_status",
+      "policy_head",
+      "predecessor",
+      "authority_checkpoint",
+      "object_ids",
+      "object_set_digest",
+      "observed_at",
+      "expires_at",
+      "signature",
+    ])
+    || evidence.profile !== "heterodyne.workspace-repository-view.v1"
+    || evidence.spec_version !== "heterodyne/0.5.0"
+    || typeof evidence.resolver_policy !== "string"
+    || !config.allowed_policies.includes(evidence.resolver_policy)
+    || compareWorkspaceSemver(evidence.resolver_version, config.minimum_version) < 0
+    || !isH64(evidence.workspace_key)
+    || !isRadicleRid(evidence.repository_rid)
+    || !isH40(evidence.canonical_head)
+    || !isH40Array(evidence.canonical_ancestry)
+    || evidence.canonical_ancestry.length === 0
+    || evidence.canonical_ancestry[0] !== evidence.canonical_head
+    || !isH40Array(evidence.observed_heads)
+    || typeof evidence.fork_status !== "string"
+    || !isH64(evidence.policy_head)
+    || !(evidence.predecessor === null || isH64(evidence.predecessor))
+    || !isH64(evidence.authority_checkpoint)
+    || !isH64Array(evidence.object_ids)
+    || !isH64(evidence.object_set_digest)
+    || !isSafeNonNegativeInteger(evidence.observed_at)
+    || !isSafeNonNegativeInteger(evidence.expires_at)
+    || evidence.observed_at >= evidence.expires_at
+    || evidence.expires_at - evidence.observed_at > config.max_ttl
+    || typeof evidence.signature !== "string"
+    || !/^[0-9a-f]{128}$/u.test(evidence.signature)) {
+    return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+  }
+  const unsigned = { ...evidence };
+  delete unsigned.signature;
+  if (!verifyWorkspaceRepositoryAttestation(
+    unsigned,
+    evidence.signature,
+    config,
+  )) return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+  if (evidence.fork_status !== "complete"
+    || evidence.observed_heads.length !== 1
+    || evidence.observed_heads[0] !== evidence.canonical_head) {
+    return { verdict: "reject", reason_code: "authority_conflict" };
+  }
+  const repository = config.repositories.find((candidate) =>
+    candidate.workspace_key === evidence.workspace_key
+      && candidate.repository_rid === evidence.repository_rid);
+  if (repository === undefined
+    || !evidence.canonical_ancestry.includes(repository.pinned_head)) {
+    return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+  }
+  let now: number;
+  try {
+    now = config.trusted_now();
+  } catch {
+    return { verdict: "reject", reason_code: "checkpoint_stale" };
+  }
+  if (!isSafeNonNegativeInteger(now)
+    || now < evidence.observed_at
+    || now >= evidence.expires_at
+    || now - evidence.observed_at > config.max_view_age) {
+    return { verdict: "reject", reason_code: "checkpoint_stale" };
+  }
+  const objectIdsByIndex = objects.map((candidate) => workspaceObjectId(candidate));
+  const actualObjectIds = [...objectIdsByIndex].sort();
+  const actualObjectSetDigest = bytesToHex(sha256(proofBytes(
+    "heterodyne-workspace-object-set-v1",
+    { object_ids: actualObjectIds },
+  )));
+  if (!exactStringSet(evidence.object_ids, actualObjectIds)
+    || evidence.object_set_digest !== actualObjectSetDigest) {
+    return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+  }
+  const viewKey = `${evidence.workspace_key}:${evidence.repository_rid}`;
+  const previous = config.accepted_views.get(viewKey);
+  if (previous !== undefined
+    && (evidence.observed_at < previous.observed_at
+      || !evidence.canonical_ancestry.includes(previous.head))) {
+    return { verdict: "reject", reason_code: "authority_conflict" };
+  }
+  const currentState = deepFreeze({
+    workspace_key: evidence.workspace_key,
+    policy_head: evidence.policy_head,
+    predecessor: evidence.predecessor,
+    authority_checkpoint: evidence.authority_checkpoint,
+    repository_rid: evidence.repository_rid,
+    repository_head: evidence.canonical_head,
+    repository_ancestry: evidence.canonical_ancestry,
+    authority_checkpoint_candidates: [evidence.authority_checkpoint],
+    competing_repository_heads: [],
+  }) as CurrentWorkspaceState;
+  const validatedObjects: Readonly<Record<string, unknown>>[] = [];
+  for (const [index, object] of objects.entries()) {
+    const validated = validateCurrentWorkspaceObjectSnapshot(
+      object,
+      currentState,
+      objectIdsByIndex[index],
+    );
+    if (!validated.ok) return { verdict: "reject", reason_code: validated.reason_code };
+    validatedObjects.push(validated.value.object);
+  }
+  const complete = validateCompleteWorkspaceObjectSet(
+    validatedObjects,
+    currentState,
+    evidence.observed_at,
+  );
+  if (!complete.ok) return { verdict: "reject", reason_code: complete.reason_code };
+  const state = Object.freeze({}) as WorkspaceCurrentState;
+  WORKSPACE_CURRENT_STATES.set(state, deepFreeze({
+    authority: authority as WorkspaceRepositoryResolverAuthority,
+    state: currentState,
+    view_id: workspaceObjectId(evidence),
+    observed_at: evidence.observed_at,
+    expires_at: evidence.expires_at,
+    objects: validatedObjects,
+    ...complete.value,
+  }));
+  config.accepted_views.set(viewKey, {
+    head: evidence.canonical_head,
+    observed_at: evidence.observed_at,
+  });
+  return { verdict: "accept", state };
+}
+
+function validateCompleteWorkspaceObjectSet(
+  objects: readonly Readonly<Record<string, unknown>>[],
+  current: CurrentWorkspaceState,
+  observedAt: number,
+): Validation<{
+  policy: Readonly<Record<string, unknown>>;
+  role: Readonly<Record<string, unknown>>;
+  grants: readonly Readonly<Record<string, unknown>>[];
+  revocations: readonly Readonly<Record<string, unknown>>[];
+  resources: readonly Readonly<Record<string, unknown>>[];
+  checkpoint: Readonly<Record<string, unknown>>;
+}> {
+  const byType = (objectType: string): Readonly<Record<string, unknown>>[] =>
+    objects.filter((object) => object.object_type === objectType);
+  const policies = byType("workspace-policy-v1");
+  const roles = byType("role-manifest-v1");
+  const grants = byType("role-grant-v1");
+  const revocations = byType("role-revocation-v1");
+  const resources = byType("resource-advertisement-v1");
+  const checkpoints = byType("role-checkpoint-v1");
+  if (policies.length !== 1 || roles.length !== 1 || checkpoints.length !== 1
+    || grants.length === 0 || resources.length === 0
+    || objects.some((object) => ![
+      "workspace-policy-v1",
+      "role-manifest-v1",
+      "role-grant-v1",
+      "role-revocation-v1",
+      "role-checkpoint-v1",
+      "resource-advertisement-v1",
+      "workspace-relationship-v1",
+      "joint-workspace-relationship-v1",
+    ].includes(String(object.object_type)))) {
+    return { ok: false, reason_code: "workspace_repository_invalid" };
+  }
+  const policy = policies[0];
+  const role = roles[0];
+  const checkpoint = checkpoints[0];
+  if (policy.policy_id !== current.policy_head
+    || checkpoint.checkpoint_id !== current.authority_checkpoint
+    || checkpoint.workspace_policy_head !== current.policy_head
+    || checkpoint.role_id !== role.role_id
+    || !Array.isArray(policy.allowed_role_types)
+    || !policy.allowed_role_types.includes(role.role_type)
+    || !isH64Array(checkpoint.active_grant_ids)
+    || !isH64Array(checkpoint.revocation_ids)
+    || !isH64Array(checkpoint.resource_ids)
+    || !isH64Array(checkpoint.relationship_ids)
+    || !subset(
+      checkpoint.active_grant_ids,
+      grants.map((grant) => String(grant.grant_id)),
+    )
+    || !exactStringSet(
+      checkpoint.revocation_ids,
+      revocations.map((revocation) => String(revocation.revocation_id)),
+    )
+    || !exactStringSet(
+      checkpoint.resource_ids,
+      resources.map((resource) => String(resource.resource_id)),
+    )
+    || !exactStringSet(
+      checkpoint.relationship_ids,
+      [
+        ...byType("workspace-relationship-v1"),
+        ...byType("joint-workspace-relationship-v1"),
+      ].map((relationship) => String(relationship.relationship_id)),
+    )
+    || grants.some((grant) => grant.role_id !== role.role_id)
+    || resources.some((resource) => resource.role_id !== role.role_id)
+    || objects.some((object) => !isSafeNonNegativeInteger(object.issued_at)
+      || object.issued_at > observedAt)
+    || !isSafeNonNegativeInteger(checkpoint.materialized_at)
+    || checkpoint.materialized_at > observedAt) {
+    return { ok: false, reason_code: "workspace_repository_invalid" };
+  }
+  const grantIds = new Set(grants.map((grant) => grant.grant_id));
+  const resourceIds = new Set(resources.map((resource) => resource.resource_id));
+  for (const revocation of revocations) {
+    if ((revocation.target_type === "grant" && !grantIds.has(revocation.target_id))
+      || (revocation.target_type === "resource" && !resourceIds.has(revocation.target_id))) {
+      return { ok: false, reason_code: "workspace_repository_invalid" };
+    }
+  }
+  return {
+    ok: true,
+    value: { policy, role, grants, revocations, resources, checkpoint },
+  };
+}
+
+function verifyWorkspaceRepositoryAttestation(
+  envelope: Record<string, unknown>,
+  signature: string,
+  config: WorkspaceResolverConfig,
+): boolean {
+  const payload = proofBytes("heterodyne-workspace-repository-view-v1", envelope);
+  for (const anchor of config.trust_anchors) {
+    try {
+      const valid = anchor.suite === "ed25519"
+        ? ed25519.verify(hexToBytes(signature), payload, hexToBytes(anchor.public_key))
+        : schnorr.verify(hexToBytes(signature), payload, hexToBytes(anchor.public_key));
+      if (valid) return true;
+    } catch {
+      // Continue through configured anchors only.
+    }
+  }
+  return false;
+}
+
+export function resolveWorkspaceEffectiveAuthorization(value: unknown):
+  | {
+    verdict: "accept";
+    authorization: WorkspaceEffectiveAuthorization;
+    normalized: Record<string, unknown>;
+  }
+  | { verdict: "reject"; reason_code: string } {
+  const captured = captureWorkspaceRequest(value, ["authority", "current_state"], [
     "actor_account",
+    "actor_device",
+    "actor_leaf",
     "operation_digest",
     "requested_capabilities",
-    "capability_ceilings",
     "requested_resources",
-    "resource_ceilings",
     "requested_delegable",
-    "delegable_ceilings",
-    "approval_key_ceilings",
-    "device_active",
-    "denial_ids",
-    "revocation_effective_at",
-    "authority_source",
-    "now",
-  ])
-    || !isH64(value.workspace_key)
-    || !isH64(value.policy_head)
-    || !(value.predecessor === null || isH64(value.predecessor))
-    || !isH64(value.authority_checkpoint)
-    || !isH64Array(value.authority_checkpoint_candidates)
-    || !isH64(value.actor_account)
-    || !isH64(value.operation_digest)
-    || !isCapabilityArray(value.requested_capabilities)
-    || !Array.isArray(value.capability_ceilings)
-    || value.capability_ceilings.length === 0
-    || !value.capability_ceilings.every(isCapabilityArray)
-    || !isH64Array(value.requested_resources)
-    || !Array.isArray(value.resource_ceilings)
-    || value.resource_ceilings.length === 0
-    || !value.resource_ceilings.every(isH64Array)
-    || typeof value.requested_delegable !== "boolean"
-    || !Array.isArray(value.delegable_ceilings)
-    || value.delegable_ceilings.length === 0
-    || !value.delegable_ceilings.every((candidate) => typeof candidate === "boolean")
-    || !Array.isArray(value.approval_key_ceilings)
-    || value.approval_key_ceilings.length === 0
-    || !value.approval_key_ceilings.every(isH64Array)
-    || typeof value.device_active !== "boolean"
-    || !isH64Array(value.denial_ids)
-    || !Array.isArray(value.revocation_effective_at)
-    || !value.revocation_effective_at.every(isSafeNonNegativeInteger)
-    || typeof value.authority_source !== "string"
-    || !isSafeNonNegativeInteger(value.now)) {
-    return { ok: false, reason_code: "workspace_schema_invalid" };
+  ]);
+  const authority = captured?.opaque.authority;
+  const currentState = captured?.opaque.current_state;
+  const request = captured?.data;
+  if (captured === null
+    || authority === null || typeof authority !== "object"
+    || currentState === null || typeof currentState !== "object"
+    || request === undefined
+    || !isH64(request.actor_account)
+    || !isH64(request.actor_device)
+    || typeof request.actor_leaf !== "string"
+    || !isCanonicalMarmotLeaf(request.actor_leaf)
+    || !isH64(request.operation_digest)
+    || !isCapabilityArray(request.requested_capabilities)
+    || !isH64Array(request.requested_resources)
+    || typeof request.requested_delegable !== "boolean") {
+    return { verdict: "reject", reason_code: "workspace_schema_invalid" };
   }
-  if (value.authority_checkpoint_candidates.length !== 1
-    || value.authority_checkpoint_candidates[0] !== value.authority_checkpoint) {
-    return { ok: false, reason_code: "authority_conflict" };
+  const config = WORKSPACE_RESOLVER_AUTHORITIES.get(authority);
+  const current = WORKSPACE_CURRENT_STATES.get(currentState);
+  if (config === undefined || current === undefined || current.authority !== authority) {
+    return { verdict: "reject", reason_code: "workspace_repository_invalid" };
   }
-  if (value.authority_source !== "workspace-policy") {
-    return { ok: false, reason_code: "policy_denied" };
+  let now: number;
+  try {
+    now = config.trusted_now();
+  } catch {
+    return { verdict: "reject", reason_code: "checkpoint_stale" };
   }
-  if (!value.device_active) return { ok: false, reason_code: "device_revoked" };
-  if (value.denial_ids.length > 0
-    || value.revocation_effective_at.some((effectiveAt) => effectiveAt <= (value.now as number))) {
-    return { ok: false, reason_code: "policy_denied" };
+  if (!isSafeNonNegativeInteger(now)
+    || now < current.observed_at
+    || now >= current.expires_at
+    || now - current.observed_at > config.max_view_age) {
+    return { verdict: "reject", reason_code: "checkpoint_stale" };
   }
-  const effectiveCapabilities = intersection(value.capability_ceilings);
-  const effectiveResources = intersection(value.resource_ceilings);
-  const effectiveDelegable = value.delegable_ceilings.every((ceiling) => ceiling);
-  const effectiveApproverKeys = intersection(value.approval_key_ceilings);
-  if (!subset(value.requested_capabilities, effectiveCapabilities)
-    || !subset(value.requested_resources, effectiveResources)
-    || (value.requested_delegable && !effectiveDelegable)) {
-    return { ok: false, reason_code: "capability_escalation" };
+  const requestedResources = request.requested_resources as string[];
+  const requestedCapabilities = request.requested_capabilities as string[];
+  const activeGrantIds = new Set(isH64Array(current.checkpoint.active_grant_ids)
+    ? current.checkpoint.active_grant_ids : []);
+  const actorGrants = current.grants.filter((grant) => activeGrantIds.has(String(grant.grant_id))
+    && grant.subject_account === request.actor_account
+    && grant.target_device === request.actor_device
+    && isRecord(grant.recipient)
+    && grant.recipient.type === "marmot-mls-leaf"
+    && grant.recipient.value === request.actor_leaf
+    && isSafeNonNegativeInteger(grant.activates_at)
+    && grant.activates_at <= now
+    && (grant.expires_at === null
+      || (isSafeNonNegativeInteger(grant.expires_at) && now < grant.expires_at)));
+  if (actorGrants.length === 0) {
+    return { verdict: "reject", reason_code: "policy_denied" };
   }
-  const result = deepFreeze({
-    actor_account: value.actor_account,
-    workspace_key: value.workspace_key,
-    policy_head: value.policy_head,
-    predecessor: value.predecessor,
-    authority_checkpoint: value.authority_checkpoint,
-    operation_digest: value.operation_digest,
+  const effectiveRevocations = current.revocations.filter((revocation) =>
+    isSafeNonNegativeInteger(revocation.effective_at) && revocation.effective_at <= now);
+  if (effectiveRevocations.some((revocation) => revocation.target_type === "device"
+    && revocation.target_id === request.actor_device)) {
+    return { verdict: "reject", reason_code: "device_revoked" };
+  }
+  if (effectiveRevocations.some((revocation) =>
+    (revocation.target_type === "account" && revocation.target_id === request.actor_account)
+      || (revocation.target_type === "resource"
+        && requestedResources.includes(String(revocation.target_id))))) {
+    return { verdict: "reject", reason_code: "policy_denied" };
+  }
+  const revokedGrantIds = new Set(effectiveRevocations
+    .filter((revocation) => revocation.target_type === "grant")
+    .map((revocation) => revocation.target_id));
+  const usableActorGrants = actorGrants.filter((grant) => !revokedGrantIds.has(grant.grant_id));
+  if (usableActorGrants.length === 0) return { verdict: "reject", reason_code: "policy_denied" };
+  const roleCapabilities = isCapabilityArray(current.role.allowed_capabilities)
+    ? current.role.allowed_capabilities
+    : [];
+  const knownResources = new Set(current.resources.map((resource) => resource.resource_id));
+  const selectedGrant = [...usableActorGrants]
+    .sort((left, right) => String(left.grant_id).localeCompare(String(right.grant_id)))
+    .find((grant) => {
+      const grantCapabilities = isCapabilityArray(grant.capabilities)
+        ? grant.capabilities.filter((capability) => roleCapabilities.includes(capability))
+        : [];
+      const grantResources = isH64Array(grant.resource_scope)
+        ? grant.resource_scope.filter((resourceId) => knownResources.has(resourceId))
+        : [];
+      const grantDelegable = grant.delegable === true
+        && grantCapabilities.includes("govern-delegation");
+      return subset(requestedCapabilities, grantCapabilities)
+        && subset(requestedResources, grantResources)
+        && (!request.requested_delegable || grantDelegable);
+    });
+  if (selectedGrant === undefined) {
+    return { verdict: "reject", reason_code: "capability_escalation" };
+  }
+  const effectiveCapabilities = (isCapabilityArray(selectedGrant.capabilities)
+    ? selectedGrant.capabilities : [])
+    .filter((capability) => roleCapabilities.includes(capability))
+    .sort();
+  const effectiveResources = (isH64Array(selectedGrant.resource_scope)
+    ? selectedGrant.resource_scope : [])
+    .filter((resourceId) => knownResources.has(resourceId))
+    .sort();
+  const effectiveDelegable = selectedGrant.delegable === true
+    && effectiveCapabilities.includes("govern-delegation");
+  const governance = current.policy.governance;
+  if (!isRecord(governance)
+    || !isH64Array(governance.controllers)
+    || governance.controllers.length === 0
+    || !isSafeNonNegativeInteger(governance.threshold)
+    || governance.threshold < 1
+    || governance.threshold > governance.controllers.length) {
+    return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+  }
+  const record = deepFreeze({
+    authority: authority as WorkspaceRepositoryResolverAuthority,
+    current_state: currentState as WorkspaceCurrentState,
+    actor_account: request.actor_account,
+    actor_device: request.actor_device,
+    actor_leaf: request.actor_leaf,
+    workspace_key: current.state.workspace_key,
+    policy_head: current.state.policy_head,
+    predecessor: current.state.predecessor,
+    authority_checkpoint: current.state.authority_checkpoint,
+    operation_digest: request.operation_digest,
     effective_capabilities: effectiveCapabilities,
     effective_resources: effectiveResources,
     effective_delegable: effectiveDelegable,
-    effective_approver_keys: effectiveApproverKeys,
-  }) as unknown as EffectiveAuthorization;
-  effectiveAuthorizationResults.add(result);
-  return { ok: true, value: result };
+    effective_approver_keys: [...governance.controllers].sort(),
+    required_approvals: governance.threshold,
+  }) as WorkspaceEffectiveAuthorizationRecord;
+  const authorization = Object.freeze({}) as WorkspaceEffectiveAuthorization;
+  WORKSPACE_EFFECTIVE_AUTHORIZATIONS.set(authorization, record);
+  return {
+    verdict: "accept",
+    authorization,
+    normalized: snapshotJsonRecord({
+      actor_account: record.actor_account,
+      authority_checkpoint: record.authority_checkpoint,
+      effective_capabilities: record.effective_capabilities,
+      effective_delegable: record.effective_delegable,
+      effective_approver_keys: record.effective_approver_keys,
+      effective_resources: record.effective_resources,
+      operation_digest: record.operation_digest,
+      policy_head: record.policy_head,
+      predecessor: record.predecessor,
+      required_approvals: record.required_approvals,
+      workspace_key: record.workspace_key,
+    }) as Record<string, unknown>,
+  };
 }
 
 function grantOperationDigestSnapshot(grant: Readonly<Record<string, unknown>>): string {
@@ -447,90 +929,96 @@ function validRawSignature(signature: string, payload: Uint8Array, key: string):
 }
 
 export function evaluateAuthorization(value: unknown): WorkspaceVerdict {
-  const snapshot = snapshotJsonRecord(value);
-  if (snapshot === null) return rejected("workspace_schema_invalid");
-  const authorization = validateEffectiveAuthorizationSnapshot(snapshot);
-  if (!authorization.ok) return rejected(authorization.reason_code);
-  return accepted({
-    actor_account: authorization.value.actor_account,
-    authority_checkpoint: authorization.value.authority_checkpoint,
-    effective_capabilities: [...authorization.value.effective_capabilities],
-    effective_delegable: authorization.value.effective_delegable,
-    effective_approver_keys: [...authorization.value.effective_approver_keys],
-    effective_resources: [...authorization.value.effective_resources],
-    operation_digest: authorization.value.operation_digest,
-    policy_head: authorization.value.policy_head,
-    predecessor: authorization.value.predecessor,
-    workspace_key: authorization.value.workspace_key,
-  });
+  const resolved = resolveWorkspaceEffectiveAuthorization(value);
+  return resolved.verdict === "accept"
+    ? accepted(resolved.normalized)
+    : rejected(resolved.reason_code);
 }
 
 export function evaluateGrantActivation(value: unknown): WorkspaceVerdict {
-  const snapshot = snapshotJsonRecord(value);
-  if (snapshot === null || !hasExactMembers(snapshot, [
-    "grant",
-    "current",
+  const captured = captureWorkspaceRequest(value, [
+    "authority",
+    "current_state",
     "authorization",
-    "membership",
-    "required_approvals",
-    "approvals",
-    "subject_acceptance_id",
-    "consumed_invitation_grant_ids",
-    "now",
-  ])) return rejected("workspace_schema_invalid");
-  if (!isRecord(snapshot.grant)
-    || !isRecord(snapshot.current)
-    || !isRecord(snapshot.authorization)
-    || !isRecord(snapshot.membership)
-    || !Array.isArray(snapshot.approvals)
-    || !isSafeNonNegativeInteger(snapshot.required_approvals)
-    || !(snapshot.subject_acceptance_id === null || isH64(snapshot.subject_acceptance_id))
-    || !isH64Array(snapshot.consumed_invitation_grant_ids)
-    || !isSafeNonNegativeInteger(snapshot.now)) return rejected("workspace_schema_invalid");
-
-  const currentGrant = validateCurrentWorkspaceObjectSnapshot(
-    snapshot.grant,
-    snapshot.current,
-    null,
-  );
-  if (!currentGrant.ok) return rejected(currentGrant.reason_code);
-  if (!currentWorkspaceObjects.has(currentGrant.value)
-    || currentGrant.value.object.object_type !== "role-grant-v1") {
-    return rejected("workspace_schema_invalid");
+    "invitation_acceptance",
+    "successor_reauthorization",
+  ], ["grant_id", "membership", "approvals"]);
+  const authority = captured?.opaque.authority;
+  const currentState = captured?.opaque.current_state;
+  const authorizationValue = captured?.opaque.authorization;
+  const invitationAcceptance = captured?.opaque.invitation_acceptance;
+  const successorReauthorization = captured?.opaque.successor_reauthorization;
+  const input = captured?.data;
+  if (captured === null
+    || authority === null || typeof authority !== "object"
+    || currentState === null || typeof currentState !== "object"
+    || authorizationValue === null || typeof authorizationValue !== "object"
+    || input === undefined
+    || !isH64(input.grant_id)
+    || !isRecord(input.membership)
+    || !hasExactMembers(input.membership, [
+      "authenticated_account",
+      "accepted_device",
+      "accepted_leaf",
+    ])
+    || !isH64(input.membership.authenticated_account)
+    || !isH64(input.membership.accepted_device)
+    || typeof input.membership.accepted_leaf !== "string"
+    || !isCanonicalMarmotLeaf(input.membership.accepted_leaf)
+    || !Array.isArray(input.approvals)) return rejected("workspace_schema_invalid");
+  const config = WORKSPACE_RESOLVER_AUTHORITIES.get(authority);
+  const current = WORKSPACE_CURRENT_STATES.get(currentState);
+  const authorization = WORKSPACE_EFFECTIVE_AUTHORIZATIONS.get(authorizationValue);
+  if (authorization === undefined) return rejected("workspace_schema_invalid");
+  if (config === undefined || current === undefined
+    || current.authority !== authority
+    || authorization.authority !== authority
+    || authorization.current_state !== currentState) {
+    return rejected("workspace_repository_invalid");
   }
-  const grant = currentGrant.value.object;
-  const authorization = validateEffectiveAuthorizationSnapshot(snapshot.authorization);
-  if (!authorization.ok) return rejected(authorization.reason_code);
-  if (!effectiveAuthorizationResults.has(authorization.value)) {
-    return rejected("workspace_schema_invalid");
+  let now: number;
+  try {
+    now = config.trusted_now();
+  } catch {
+    return rejected("checkpoint_stale");
   }
+  if (!isSafeNonNegativeInteger(now)
+    || now < current.observed_at
+    || now >= current.expires_at
+    || now - current.observed_at > config.max_view_age) return rejected("checkpoint_stale");
+  const grant = current.grants.find((candidate) => candidate.grant_id === input.grant_id);
+  if (grant === undefined) return rejected("workspace_repository_invalid");
   const operationDigest = grantOperationDigestSnapshot(grant);
-  if (authorization.value.workspace_key !== grant.workspace_key
-    || authorization.value.policy_head !== grant.policy_head
-    || authorization.value.predecessor !== grant.predecessor
-    || authorization.value.authority_checkpoint !== grant.authority_checkpoint
-    || authorization.value.operation_digest !== operationDigest) {
+  if (authorization.workspace_key !== grant.workspace_key
+    || authorization.policy_head !== grant.policy_head
+    || authorization.predecessor !== grant.predecessor
+    || authorization.authority_checkpoint !== grant.authority_checkpoint
+    || authorization.operation_digest !== operationDigest) {
     return rejected("workspace_signature_invalid");
   }
-  if (!hasExactMembers(snapshot.membership, [
-    "authenticated_account",
-    "accepted_device",
-    "accepted_leaf",
-    "successor_reauthorization_id",
-  ])
-    || !isH64(snapshot.membership.authenticated_account)
-    || !isH64(snapshot.membership.accepted_device)
-    || typeof snapshot.membership.accepted_leaf !== "string"
-    || !isCanonicalMarmotLeaf(snapshot.membership.accepted_leaf)
-    || !isH64(snapshot.membership.successor_reauthorization_id)) {
-    return rejected("workspace_schema_invalid");
-  }
-  if (grant.subject_account !== snapshot.membership.authenticated_account) {
+  if (grant.subject_account !== input.membership.authenticated_account) {
+    if (successorReauthorization === null || typeof successorReauthorization !== "object") {
+      return rejected("policy_denied");
+    }
+    const successor = WORKSPACE_SUCCESSOR_REAUTHORIZATIONS.get(successorReauthorization);
+    if (successor === undefined) return rejected("workspace_schema_invalid");
+    if (successor.authority !== authority
+      || successor.current_state !== currentState
+      || successor.scope !== "role-membership"
+      || successor.resource_id !== null
+      || successor.prior_account !== input.membership.authenticated_account
+      || successor.new_account !== grant.subject_account
+      || successor.role_id !== grant.role_id
+      || successor.subject_device !== grant.target_device
+      || !isRecord(grant.recipient)
+      || successor.target_leaf !== grant.recipient.value
+      || now >= successor.expires_at) return rejected("policy_denied");
+  } else if (successorReauthorization !== null) {
     return rejected("policy_denied");
   }
-  if (grant.target_device !== snapshot.membership.accepted_device
+  if (grant.target_device !== input.membership.accepted_device
     || !isRecord(grant.recipient)
-    || grant.recipient.value !== snapshot.membership.accepted_leaf) {
+    || grant.recipient.value !== input.membership.accepted_leaf) {
     return rejected("device_revoked");
   }
   if (!isH64(grant.grant_id)
@@ -541,37 +1029,44 @@ export function evaluateGrantActivation(value: unknown): WorkspaceVerdict {
     || !isSafeNonNegativeInteger(grant.activates_at)
     || !(grant.expires_at === null || isSafeNonNegativeInteger(grant.expires_at))
     || grant.issued_at > grant.activates_at
-    || snapshot.now < grant.activates_at
-    || (grant.expires_at !== null && snapshot.now >= grant.expires_at)
+    || now < grant.activates_at
+    || (grant.expires_at !== null && now >= grant.expires_at)
     || !isH64Array(grant.approval_ids)) return rejected("workspace_schema_invalid");
-  if (snapshot.consumed_invitation_grant_ids.includes(grant.grant_id)) {
-    return rejected("workspace_replay");
+  let executableInvitationAcceptance: object | null = null;
+  if (grant.activation === "subject-acceptance") {
+    if (invitationAcceptance === null) return rejected("policy_denied");
+    if (typeof invitationAcceptance !== "object") return rejected("workspace_schema_invalid");
+    const invitationRecord = WORKSPACE_INVITATION_ACCEPTANCES.get(invitationAcceptance);
+    if (invitationRecord === undefined) return rejected("workspace_schema_invalid");
+    if (invitationRecord.authority !== authority
+      || invitationRecord.current_state !== currentState
+      || invitationRecord.grant_id !== grant.grant_id) {
+      return rejected("workspace_signature_invalid");
+    }
+    if (WORKSPACE_EXECUTED_INVITATION_ACCEPTANCES.has(invitationAcceptance)) {
+      return rejected("workspace_replay");
+    }
+    executableInvitationAcceptance = invitationAcceptance;
+  } else if (invitationAcceptance !== null || grant.invitation !== null) {
+    return rejected("workspace_schema_invalid");
   }
-  if (grant.activation === "subject-acceptance" && snapshot.subject_acceptance_id === null) {
-    return rejected("policy_denied");
-  }
-  if (grant.invitation !== null) {
-    if (!isRecord(grant.invitation)
-      || !isSafeNonNegativeInteger(grant.invitation.expires_at)
-      || snapshot.now >= grant.invitation.expires_at) return rejected("policy_denied");
-  }
-  if (!authorization.value.effective_capabilities.includes("invite")
-    || !subset(grant.capabilities, authorization.value.effective_capabilities)
-    || !subset(grant.resource_scope, authorization.value.effective_resources)
-    || (grant.delegable && (!authorization.value.effective_delegable
-      || !authorization.value.effective_capabilities.includes("govern-delegation")))
+  if (!authorization.effective_capabilities.includes("invite")
+    || !subset(grant.capabilities, authorization.effective_capabilities)
+    || !subset(grant.resource_scope, authorization.effective_resources)
+    || (grant.delegable && (!authorization.effective_delegable
+      || !authorization.effective_capabilities.includes("govern-delegation")))
     || grant.capabilities.some((capability) => capability.startsWith("govern-"))) {
     return rejected("capability_escalation");
   }
   const approvals: Array<Readonly<{ approver_key: string; approval_id: string }>> = [];
-  for (const candidate of snapshot.approvals) {
+  for (const candidate of input.approvals) {
     const approval = validateGrantApprovalSnapshot(candidate, {
       workspace_key: String(grant.workspace_key),
       policy_head: String(grant.policy_head),
       predecessor: grant.predecessor as string | null,
       authority_checkpoint: String(grant.authority_checkpoint),
       operation_digest: operationDigest,
-      now: snapshot.now,
+      now,
     });
     if (!approval.ok) return rejected(approval.reason_code);
     approvals.push(approval.value);
@@ -581,9 +1076,12 @@ export function evaluateGrantActivation(value: unknown): WorkspaceVerdict {
   if (!exactStringSet(approvalIds, grant.approval_ids)
     || new Set(approvalIds).size !== approvalIds.length
     || new Set(approverKeys).size !== approverKeys.length
-    || !subset(approverKeys, authorization.value.effective_approver_keys)
-    || approvals.length < snapshot.required_approvals) {
+    || !subset(approverKeys, authorization.effective_approver_keys)
+    || approvals.length < authorization.required_approvals) {
     return rejected("policy_denied");
+  }
+  if (executableInvitationAcceptance !== null) {
+    WORKSPACE_EXECUTED_INVITATION_ACCEPTANCES.add(executableInvitationAcceptance);
   }
   return accepted({
     active: true,
@@ -594,52 +1092,417 @@ export function evaluateGrantActivation(value: unknown): WorkspaceVerdict {
   });
 }
 
-function validateCurrentRelationshipSnapshot(
-  relationshipValue: unknown,
-  expectedObjectId: string,
-  sourceCurrentValue: unknown,
-  receivingCurrentValue: unknown,
-): Validation<CurrentRelationship> {
-  const sourceCurrent = validateCurrentWorkspaceStateSnapshot(sourceCurrentValue);
-  if (!sourceCurrent.ok) return sourceCurrent;
-  const receivingCurrent = validateCurrentWorkspaceStateSnapshot(receivingCurrentValue);
-  if (!receivingCurrent.ok) return receivingCurrent;
-  const currentObject = validateCurrentWorkspaceObjectSnapshot(
-    relationshipValue,
-    sourceCurrent.value,
-    expectedObjectId,
-  );
-  if (!currentObject.ok) return currentObject;
-  const relationship = currentObject.value.object;
-  if (!currentWorkspaceObjects.has(currentObject.value)
-    || relationship.object_type !== "workspace-relationship-v1"
-    || relationship.source_workspace_key !== sourceCurrent.value.workspace_key
-    || relationship.receiving_workspace_key !== receivingCurrent.value.workspace_key
-    || relationship.receiving_policy_head !== receivingCurrent.value.policy_head
-    || relationship.receiving_predecessor !== receivingCurrent.value.predecessor
-    || relationship.receiving_authority_checkpoint !== receivingCurrent.value.authority_checkpoint
-    || typeof relationship.receiving_signature !== "string"
+export function resolveWorkspaceCurrentRelationship(value: unknown):
+  | { verdict: "accept"; relationship: WorkspaceCurrentRelationship }
+  | { verdict: "reject"; reason_code: string } {
+  const captured = captureWorkspaceRequest(value, [
+    "authority",
+    "source_state",
+    "receiving_state",
+  ], ["relationship_id"]);
+  const authority = captured?.opaque.authority;
+  const sourceState = captured?.opaque.source_state;
+  const receivingState = captured?.opaque.receiving_state;
+  const relationshipId = captured?.data.relationship_id;
+  if (captured === null
+    || authority === null || typeof authority !== "object"
+    || sourceState === null || typeof sourceState !== "object"
+    || receivingState === null || typeof receivingState !== "object"
+    || !isH64(relationshipId)) {
+    return { verdict: "reject", reason_code: "workspace_schema_invalid" };
+  }
+  const config = WORKSPACE_RESOLVER_AUTHORITIES.get(authority);
+  const source = WORKSPACE_CURRENT_STATES.get(sourceState);
+  const receiving = WORKSPACE_CURRENT_STATES.get(receivingState);
+  if (config === undefined || source === undefined || receiving === undefined
+    || source.authority !== authority || receiving.authority !== authority) {
+    return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+  }
+  let now: number;
+  try {
+    now = config.trusted_now();
+  } catch {
+    return { verdict: "reject", reason_code: "checkpoint_stale" };
+  }
+  if (!isSafeNonNegativeInteger(now)
+    || now < source.observed_at || now >= source.expires_at
+    || now < receiving.observed_at || now >= receiving.expires_at
+    || now - source.observed_at > config.max_view_age
+    || now - receiving.observed_at > config.max_view_age) {
+    return { verdict: "reject", reason_code: "checkpoint_stale" };
+  }
+  const relationshipObject = source.objects.find((object) =>
+    object.object_type === "workspace-relationship-v1"
+      && object.relationship_id === relationshipId);
+  if (relationshipObject === undefined
+    || relationshipObject.source_workspace_key !== source.state.workspace_key
+    || relationshipObject.receiving_workspace_key !== receiving.state.workspace_key
+    || relationshipObject.receiving_policy_head !== receiving.state.policy_head
+    || relationshipObject.receiving_predecessor !== receiving.state.predecessor
+    || relationshipObject.receiving_authority_checkpoint !== receiving.state.authority_checkpoint
+    || typeof relationshipObject.receiving_signature !== "string"
     || !validWorkspaceSignature(
-      relationship,
-      receivingCurrent.value.workspace_key,
-      relationship.receiving_signature,
-    )) return { ok: false, reason_code: "workspace_signature_invalid" };
-  const result = deepFreeze({
-    relationship,
-    source_current: sourceCurrent.value,
-    receiving_current: receivingCurrent.value,
-  }) as CurrentRelationship;
-  currentRelationships.add(result);
-  return { ok: true, value: result };
+      relationshipObject,
+      receiving.state.workspace_key,
+      relationshipObject.receiving_signature,
+    )
+    || !isSafeNonNegativeInteger(relationshipObject.expires_at)
+    || now >= relationshipObject.expires_at
+    || !Array.isArray(source.checkpoint.relationship_ids)
+    || !source.checkpoint.relationship_ids.includes(relationshipId)
+    || source.role.role_id !== relationshipObject.source_role_id
+    || receiving.role.role_id !== relationshipObject.receiving_role_id
+    || source.policy.allow_bilateral_relationships !== true
+    || receiving.policy.allow_bilateral_relationships !== true) {
+    return { verdict: "reject", reason_code: "workspace_signature_invalid" };
+  }
+  const revoked = [source, receiving].some((state) => state.revocations.some((revocation) =>
+    revocation.target_type === "relationship"
+      && revocation.target_id === relationshipId
+      && isSafeNonNegativeInteger(revocation.effective_at)
+      && revocation.effective_at <= now));
+  if (revoked) return { verdict: "reject", reason_code: "policy_denied" };
+  const record = deepFreeze({
+    authority: authority as WorkspaceRepositoryResolverAuthority,
+    source_state: sourceState as WorkspaceCurrentState,
+    receiving_state: receivingState as WorkspaceCurrentState,
+    relationship: relationshipObject,
+  }) as WorkspaceCurrentRelationshipRecord;
+  const relationship = Object.freeze({}) as WorkspaceCurrentRelationship;
+  WORKSPACE_CURRENT_RELATIONSHIPS.set(relationship, record);
+  return { verdict: "accept", relationship };
 }
 
-function validateAffiliationEvidenceSnapshot(
-  value: unknown,
-  relationship: CurrentRelationship,
-  expectedSourceAccount: string,
-  now: number,
-): Validation<Readonly<{ source_account: string; observed_at: number }>> {
-  if (!isRecord(value) || !hasExactMembers(value, [
+export function consumeWorkspaceInvitationAcceptance(value: unknown):
+  | { verdict: "accept"; acceptance: WorkspaceInvitationAcceptance }
+  | { verdict: "reject"; reason_code: string } {
+  const captured = captureWorkspaceRequest(value, ["authority", "current_state"], ["acceptance"]);
+  const authority = captured?.opaque.authority;
+  const currentState = captured?.opaque.current_state;
+  const acceptanceValue = captured?.data.acceptance;
+  if (captured === null
+    || authority === null || typeof authority !== "object"
+    || currentState === null || typeof currentState !== "object"
+    || !isRecord(acceptanceValue)
+    || !hasExactMembers(acceptanceValue, [
+      "profile",
+      "spec_version",
+      "grant_id",
+      "grant_operation_digest",
+      "workspace_key",
+      "subject_account",
+      "target_device",
+      "target_leaf",
+      "policy_head",
+      "predecessor",
+      "authority_checkpoint",
+      "repository_view_id",
+      "nonce_opening",
+      "nonce_commitment",
+      "issued_at",
+      "expires_at",
+      "signature",
+    ])
+    || acceptanceValue.profile !== "heterodyne.workspace-invitation-acceptance.v1"
+    || acceptanceValue.spec_version !== "heterodyne/0.5.0"
+    || !isH64(acceptanceValue.grant_id)
+    || !isH64(acceptanceValue.grant_operation_digest)
+    || !isH64(acceptanceValue.workspace_key)
+    || !isH64(acceptanceValue.subject_account)
+    || !isH64(acceptanceValue.target_device)
+    || typeof acceptanceValue.target_leaf !== "string"
+    || !isCanonicalMarmotLeaf(acceptanceValue.target_leaf)
+    || !isH64(acceptanceValue.policy_head)
+    || !(acceptanceValue.predecessor === null || isH64(acceptanceValue.predecessor))
+    || !isH64(acceptanceValue.authority_checkpoint)
+    || !isH64(acceptanceValue.repository_view_id)
+    || !isH64(acceptanceValue.nonce_opening)
+    || !isH64(acceptanceValue.nonce_commitment)
+    || !isSafeNonNegativeInteger(acceptanceValue.issued_at)
+    || !isSafeNonNegativeInteger(acceptanceValue.expires_at)
+    || acceptanceValue.issued_at >= acceptanceValue.expires_at
+    || typeof acceptanceValue.signature !== "string"
+    || !/^[0-9a-f]{128}$/u.test(acceptanceValue.signature)) {
+    return { verdict: "reject", reason_code: "workspace_schema_invalid" };
+  }
+  const config = WORKSPACE_RESOLVER_AUTHORITIES.get(authority);
+  const current = WORKSPACE_CURRENT_STATES.get(currentState);
+  if (config === undefined || current === undefined || current.authority !== authority
+    || config.invitation_store === null) {
+    return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+  }
+  let now: number;
+  try {
+    now = config.trusted_now();
+  } catch {
+    return { verdict: "reject", reason_code: "checkpoint_stale" };
+  }
+  if (!isSafeNonNegativeInteger(now)
+    || now < current.observed_at || now >= current.expires_at
+    || now - current.observed_at > config.max_view_age) {
+    return { verdict: "reject", reason_code: "checkpoint_stale" };
+  }
+  const grant = current.grants.find((candidate) => candidate.grant_id === acceptanceValue.grant_id);
+  const unsignedAcceptance = { ...acceptanceValue };
+  delete unsignedAcceptance.signature;
+  if (!validRawSignature(
+    acceptanceValue.signature,
+    proofBytes("heterodyne-workspace-invitation-acceptance-v1", unsignedAcceptance),
+    acceptanceValue.subject_account,
+  )) return { verdict: "reject", reason_code: "workspace_signature_invalid" };
+  if (grant === undefined
+    || grant.activation !== "subject-acceptance"
+    || !isRecord(grant.invitation)
+    || grantOperationDigestSnapshot(grant) !== acceptanceValue.grant_operation_digest
+    || grant.workspace_key !== acceptanceValue.workspace_key
+    || grant.subject_account !== acceptanceValue.subject_account
+    || grant.target_device !== acceptanceValue.target_device
+    || !isRecord(grant.recipient)
+    || grant.recipient.value !== acceptanceValue.target_leaf
+    || current.state.policy_head !== acceptanceValue.policy_head
+    || current.state.predecessor !== acceptanceValue.predecessor
+    || current.state.authority_checkpoint !== acceptanceValue.authority_checkpoint
+    || current.view_id !== acceptanceValue.repository_view_id
+    || grant.invitation.nonce_commitment !== acceptanceValue.nonce_commitment
+    || !isSafeNonNegativeInteger(grant.invitation.expires_at)
+    || acceptanceValue.expires_at > grant.invitation.expires_at
+    || acceptanceValue.issued_at > now
+    || now >= acceptanceValue.expires_at
+    || now >= grant.invitation.expires_at) {
+    return { verdict: "reject", reason_code: "workspace_signature_invalid" };
+  }
+  const expectedCommitment = bytesToHex(sha256(proofBytes(
+    "heterodyne-workspace-invitation-nonce-v1",
+    {
+      grant_id: acceptanceValue.grant_id,
+      workspace_key: acceptanceValue.workspace_key,
+      subject_account: acceptanceValue.subject_account,
+      target_device: acceptanceValue.target_device,
+      target_leaf: acceptanceValue.target_leaf,
+      nonce_opening: acceptanceValue.nonce_opening,
+    },
+  )));
+  if (expectedCommitment !== acceptanceValue.nonce_commitment) {
+    return { verdict: "reject", reason_code: "workspace_signature_invalid" };
+  }
+  const store = WORKSPACE_INVITATION_STORES.get(config.invitation_store);
+  if (store === undefined) return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+  const token = `${acceptanceValue.workspace_key}:${acceptanceValue.grant_id}:${acceptanceValue.nonce_commitment}`;
+  if (store.has(token)) return { verdict: "reject", reason_code: "workspace_replay" };
+  const acceptanceId = workspaceObjectId(acceptanceValue);
+  store.set(token, { binding: acceptanceId });
+  const acceptance = Object.freeze({}) as WorkspaceInvitationAcceptance;
+  WORKSPACE_INVITATION_ACCEPTANCES.set(acceptance, deepFreeze({
+    authority: authority as WorkspaceRepositoryResolverAuthority,
+    current_state: currentState as WorkspaceCurrentState,
+    grant_id: acceptanceValue.grant_id,
+    acceptance_id: acceptanceId,
+  }));
+  return { verdict: "accept", acceptance };
+}
+
+export function authenticateWorkspaceSuccessorReauthorization(value: unknown):
+  | { verdict: "accept"; reauthorization: WorkspaceSuccessorReauthorization }
+  | { verdict: "reject"; reason_code: string } {
+  const captured = captureWorkspaceRequest(value, ["authority", "current_state"], ["reauthorization"]);
+  const authority = captured?.opaque.authority;
+  const currentState = captured?.opaque.current_state;
+  const reauthorizationValue = captured?.data.reauthorization;
+  if (captured === null
+    || authority === null || typeof authority !== "object"
+    || currentState === null || typeof currentState !== "object"
+    || !isRecord(reauthorizationValue)
+    || !hasExactMembers(reauthorizationValue, [
+      "profile",
+      "spec_version",
+      "workspace_key",
+      "prior_account",
+      "new_account",
+      "prior_key",
+      "new_key",
+      "subject_device",
+      "target_leaf",
+      "role_id",
+      "resource_id",
+      "scope",
+      "policy_head",
+      "predecessor",
+      "authority_checkpoint",
+      "repository_view_id",
+      "issued_at",
+      "effective_at",
+      "expires_at",
+      "workspace_signature",
+      "new_account_signature",
+    ])
+    || reauthorizationValue.profile !== "heterodyne.workspace-successor-reauthorization.v1"
+    || reauthorizationValue.spec_version !== "heterodyne/0.5.0"
+    || !isH64(reauthorizationValue.workspace_key)
+    || !isH64(reauthorizationValue.prior_account)
+    || !isH64(reauthorizationValue.new_account)
+    || !isH64(reauthorizationValue.prior_key)
+    || !isH64(reauthorizationValue.new_key)
+    || !isH64(reauthorizationValue.subject_device)
+    || typeof reauthorizationValue.target_leaf !== "string"
+    || !isCanonicalMarmotLeaf(reauthorizationValue.target_leaf)
+    || !isH64(reauthorizationValue.role_id)
+    || !(reauthorizationValue.resource_id === null || isH64(reauthorizationValue.resource_id))
+    || !(reauthorizationValue.scope === "role-membership"
+      || reauthorizationValue.scope === "resource-key")
+    || !isH64(reauthorizationValue.policy_head)
+    || !(reauthorizationValue.predecessor === null || isH64(reauthorizationValue.predecessor))
+    || !isH64(reauthorizationValue.authority_checkpoint)
+    || !isH64(reauthorizationValue.repository_view_id)
+    || !isSafeNonNegativeInteger(reauthorizationValue.issued_at)
+    || !isSafeNonNegativeInteger(reauthorizationValue.effective_at)
+    || !isSafeNonNegativeInteger(reauthorizationValue.expires_at)
+    || reauthorizationValue.issued_at > reauthorizationValue.effective_at
+    || reauthorizationValue.effective_at >= reauthorizationValue.expires_at
+    || typeof reauthorizationValue.workspace_signature !== "string"
+    || !/^[0-9a-f]{128}$/u.test(reauthorizationValue.workspace_signature)
+    || typeof reauthorizationValue.new_account_signature !== "string"
+    || !/^[0-9a-f]{128}$/u.test(reauthorizationValue.new_account_signature)) {
+    return { verdict: "reject", reason_code: "workspace_schema_invalid" };
+  }
+  const config = WORKSPACE_RESOLVER_AUTHORITIES.get(authority);
+  const current = WORKSPACE_CURRENT_STATES.get(currentState);
+  if (config === undefined || current === undefined || current.authority !== authority) {
+    return { verdict: "reject", reason_code: "workspace_repository_invalid" };
+  }
+  let now: number;
+  try {
+    now = config.trusted_now();
+  } catch {
+    return { verdict: "reject", reason_code: "checkpoint_stale" };
+  }
+  if (!isSafeNonNegativeInteger(now)
+    || now < current.observed_at || now >= current.expires_at
+    || now - current.observed_at > config.max_view_age) {
+    return { verdict: "reject", reason_code: "checkpoint_stale" };
+  }
+  const unsigned = { ...reauthorizationValue };
+  delete unsigned.workspace_signature;
+  delete unsigned.new_account_signature;
+  const payload = proofBytes("heterodyne-workspace-successor-reauthorization-v1", unsigned);
+  if (!validRawSignature(
+    reauthorizationValue.workspace_signature,
+    payload,
+    current.state.workspace_key,
+  ) || !validRawSignature(
+    reauthorizationValue.new_account_signature,
+    payload,
+    reauthorizationValue.new_account,
+  )) return { verdict: "reject", reason_code: "workspace_signature_invalid" };
+  const activeGrantIds = new Set(isH64Array(current.checkpoint.active_grant_ids)
+    ? current.checkpoint.active_grant_ids : []);
+  const priorGrants = current.grants.filter((grant) =>
+    activeGrantIds.has(String(grant.grant_id))
+      && grant.subject_account === reauthorizationValue.prior_account
+      && grant.target_device === reauthorizationValue.subject_device
+      && isRecord(grant.recipient)
+      && grant.recipient.value === reauthorizationValue.target_leaf
+      && grant.role_id === reauthorizationValue.role_id
+      && isSafeNonNegativeInteger(grant.activates_at)
+      && grant.activates_at <= now
+      && (grant.expires_at === null
+        || (isSafeNonNegativeInteger(grant.expires_at) && now < grant.expires_at)));
+  const priorGrantIds = new Set(priorGrants.map((grant) => grant.grant_id));
+  if (reauthorizationValue.workspace_key !== current.state.workspace_key
+    || reauthorizationValue.prior_account !== reauthorizationValue.prior_key
+    || reauthorizationValue.new_account !== reauthorizationValue.new_key
+    || reauthorizationValue.prior_account === reauthorizationValue.new_account
+    || reauthorizationValue.policy_head !== current.state.policy_head
+    || reauthorizationValue.predecessor !== current.state.predecessor
+    || reauthorizationValue.authority_checkpoint !== current.state.authority_checkpoint
+    || reauthorizationValue.repository_view_id !== current.view_id
+    || reauthorizationValue.effective_at > now
+    || now >= reauthorizationValue.expires_at
+    || priorGrants.length === 0
+    || (reauthorizationValue.scope === "role-membership"
+      && reauthorizationValue.resource_id !== null)
+    || (reauthorizationValue.scope === "resource-key"
+      && (reauthorizationValue.resource_id === null
+        || !priorGrants.some((grant) => isH64Array(grant.resource_scope)
+          && grant.resource_scope.includes(reauthorizationValue.resource_id as string))
+        || !current.resources.some((resource) =>
+          resource.resource_id === reauthorizationValue.resource_id)))
+    || current.revocations.some((revocation) =>
+      isSafeNonNegativeInteger(revocation.effective_at)
+        && revocation.effective_at <= now
+        && ((revocation.target_type === "account"
+          && (revocation.target_id === reauthorizationValue.prior_account
+            || revocation.target_id === reauthorizationValue.new_account))
+          || (revocation.target_type === "device"
+            && revocation.target_id === reauthorizationValue.subject_device)
+          || (revocation.target_type === "grant" && priorGrantIds.has(revocation.target_id))
+          || (revocation.target_type === "resource"
+            && revocation.target_id === reauthorizationValue.resource_id)))) {
+    return { verdict: "reject", reason_code: "policy_denied" };
+  }
+  const record = deepFreeze({
+    authority: authority as WorkspaceRepositoryResolverAuthority,
+    current_state: currentState as WorkspaceCurrentState,
+    prior_account: reauthorizationValue.prior_account,
+    new_account: reauthorizationValue.new_account,
+    subject_device: reauthorizationValue.subject_device,
+    target_leaf: reauthorizationValue.target_leaf,
+    role_id: reauthorizationValue.role_id,
+    resource_id: reauthorizationValue.resource_id,
+    scope: reauthorizationValue.scope,
+    expires_at: reauthorizationValue.expires_at,
+  }) as WorkspaceSuccessorReauthorizationRecord;
+  const reauthorization = Object.freeze({}) as WorkspaceSuccessorReauthorization;
+  WORKSPACE_SUCCESSOR_REAUTHORIZATIONS.set(reauthorization, record);
+  return { verdict: "accept", reauthorization };
+}
+
+export function evaluateAllowance(value: unknown): WorkspaceVerdict {
+  const captured = captureWorkspaceRequest(value, [
+    "authority",
+    "relationship",
+    "source_state",
+    "receiving_state",
+  ], ["affiliation", "expected_source_account", "requested_capabilities"]);
+  const authority = captured?.opaque.authority;
+  const relationshipValue = captured?.opaque.relationship;
+  const sourceState = captured?.opaque.source_state;
+  const receivingState = captured?.opaque.receiving_state;
+  const input = captured?.data;
+  if (captured === null
+    || authority === null || typeof authority !== "object"
+    || relationshipValue === null || typeof relationshipValue !== "object"
+    || sourceState === null || typeof sourceState !== "object"
+    || receivingState === null || typeof receivingState !== "object"
+    || input === undefined
+    || !isRecord(input.affiliation)
+    || !isH64(input.expected_source_account)
+    || !isCapabilityArray(input.requested_capabilities)) return rejected("workspace_schema_invalid");
+  const config = WORKSPACE_RESOLVER_AUTHORITIES.get(authority);
+  const relationship = WORKSPACE_CURRENT_RELATIONSHIPS.get(relationshipValue);
+  const source = WORKSPACE_CURRENT_STATES.get(sourceState);
+  const receiving = WORKSPACE_CURRENT_STATES.get(receivingState);
+  if (relationship === undefined) return rejected("workspace_schema_invalid");
+  if (config === undefined || source === undefined || receiving === undefined
+    || relationship.authority !== authority
+    || relationship.source_state !== sourceState
+    || relationship.receiving_state !== receivingState
+    || source.authority !== authority || receiving.authority !== authority) {
+    return rejected("workspace_repository_invalid");
+  }
+  let now: number;
+  try {
+    now = config.trusted_now();
+  } catch {
+    return rejected("checkpoint_stale");
+  }
+  if (!isSafeNonNegativeInteger(now)
+    || now < source.observed_at || now >= source.expires_at
+    || now < receiving.observed_at || now >= receiving.expires_at
+    || now - source.observed_at > config.max_view_age
+    || now - receiving.observed_at > config.max_view_age) return rejected("checkpoint_stale");
+  const object = relationship.relationship;
+  const affiliation = input.affiliation;
+  if (!hasExactMembers(affiliation, [
     "profile",
     "spec_version",
     "relationship_id",
@@ -655,112 +1518,68 @@ function validateAffiliationEvidenceSnapshot(
     "expires_at",
     "signature",
   ])
-    || value.profile !== "heterodyne.workspace-affiliation-evidence.v1"
-    || value.spec_version !== "heterodyne/0.5.0"
-    || !isH64(value.relationship_id)
-    || !isH64(value.source_workspace_key)
-    || !isH64(value.source_role_id)
-    || !isH64(value.source_account)
-    || !isH64(value.policy_head)
-    || !(value.predecessor === null || isH64(value.predecessor))
-    || !isH64(value.authority_checkpoint)
-    || !isRadicleRid(value.repository_rid)
-    || !isH40(value.repository_head)
-    || !isSafeNonNegativeInteger(value.observed_at)
-    || !isSafeNonNegativeInteger(value.expires_at)
-    || value.observed_at >= value.expires_at
-    || typeof value.signature !== "string"
-    || !/^[0-9a-f]{128}$/.test(value.signature)) {
-    return { ok: false, reason_code: "workspace_schema_invalid" };
-  }
-  const object = relationship.relationship;
-  if (value.relationship_id !== object.relationship_id
-    || value.source_workspace_key !== relationship.source_current.workspace_key
-    || value.source_role_id !== object.source_role_id
-    || value.source_account !== expectedSourceAccount
-    || value.policy_head !== relationship.source_current.policy_head
-    || value.predecessor !== relationship.source_current.predecessor
-    || value.authority_checkpoint !== relationship.source_current.authority_checkpoint
-    || value.repository_rid !== relationship.source_current.repository_rid) {
-    return { ok: false, reason_code: "workspace_signature_invalid" };
-  }
-  if (value.repository_head !== relationship.source_current.repository_head
-    || !relationship.source_current.repository_ancestry.includes(value.repository_head)) {
-    return { ok: false, reason_code: "authority_conflict" };
-  }
-  if (value.observed_at > now || now >= value.expires_at
+    || affiliation.profile !== "heterodyne.workspace-affiliation-evidence.v1"
+    || affiliation.spec_version !== "heterodyne/0.5.0"
+    || affiliation.relationship_id !== object.relationship_id
+    || affiliation.source_workspace_key !== source.state.workspace_key
+    || affiliation.source_role_id !== object.source_role_id
+    || affiliation.source_account !== input.expected_source_account
+    || affiliation.policy_head !== source.state.policy_head
+    || affiliation.predecessor !== source.state.predecessor
+    || affiliation.authority_checkpoint !== source.state.authority_checkpoint
+    || affiliation.repository_rid !== source.state.repository_rid
+    || affiliation.repository_head !== source.state.repository_head
+    || !isSafeNonNegativeInteger(affiliation.observed_at)
+    || !isSafeNonNegativeInteger(affiliation.expires_at)
+    || affiliation.observed_at >= affiliation.expires_at
+    || affiliation.observed_at > now
+    || now >= affiliation.expires_at
     || !isSafeNonNegativeInteger(object.issued_at)
-    || value.observed_at < object.issued_at) {
-    return { ok: false, reason_code: "affiliation_stale" };
+    || affiliation.observed_at < object.issued_at
+    || typeof affiliation.signature !== "string"
+    || !/^[0-9a-f]{128}$/u.test(affiliation.signature)) {
+    return rejected("affiliation_stale");
   }
-  const unsigned = { ...value };
-  delete unsigned.signature;
+  const unsignedAffiliation = { ...affiliation };
+  delete unsignedAffiliation.signature;
   if (!validRawSignature(
-    value.signature,
-    proofBytes("heterodyne-workspace-affiliation-evidence-v1", unsigned),
-    relationship.source_current.workspace_key,
-  )) return { ok: false, reason_code: "workspace_signature_invalid" };
-  return {
-    ok: true,
-    value: deepFreeze({ source_account: value.source_account, observed_at: value.observed_at }),
-  };
-}
-
-export function evaluateAllowance(value: unknown): WorkspaceVerdict {
-  const input = snapshotJsonRecord(value);
-  if (input === null || !hasExactMembers(input, [
-    "relationship",
-    "expected_relationship_object_id",
-    "source_current",
-    "receiving_current",
-    "affiliation",
-    "expected_source_account",
-    "requested_capabilities",
-    "revocation_effective_at",
-    "now",
-  ])
-    || !isRecord(input.relationship)
-    || !isH64(input.expected_relationship_object_id)
-    || !isRecord(input.source_current)
-    || !isRecord(input.receiving_current)
-    || !isRecord(input.affiliation)
-    || !isH64(input.expected_source_account)
-    || !isCapabilityArray(input.requested_capabilities)
-    || !(input.revocation_effective_at === null
-      || isSafeNonNegativeInteger(input.revocation_effective_at))
-    || !isSafeNonNegativeInteger(input.now)) return rejected("workspace_schema_invalid");
-  const relationship = validateCurrentRelationshipSnapshot(
-    input.relationship,
-    input.expected_relationship_object_id,
-    input.source_current,
-    input.receiving_current,
-  );
-  if (!relationship.ok) return rejected(relationship.reason_code);
-  if (!currentRelationships.has(relationship.value)) return rejected("workspace_schema_invalid");
-  const affiliation = validateAffiliationEvidenceSnapshot(
-    input.affiliation,
-    relationship.value,
-    input.expected_source_account,
-    input.now,
-  );
-  if (!affiliation.ok) return rejected(affiliation.reason_code);
-  const object = relationship.value.relationship;
+    affiliation.signature,
+    proofBytes("heterodyne-workspace-affiliation-evidence-v1", unsignedAffiliation),
+    source.state.workspace_key,
+  )) return rejected("workspace_signature_invalid");
+  const activeGrantIds = new Set(isH64Array(source.checkpoint.active_grant_ids)
+    ? source.checkpoint.active_grant_ids : []);
+  const affiliationGrants = source.grants.filter((grant) =>
+    activeGrantIds.has(String(grant.grant_id))
+      && grant.subject_account === input.expected_source_account
+      && grant.role_id === object.source_role_id
+      && isSafeNonNegativeInteger(grant.activates_at)
+      && grant.activates_at <= now
+      && (grant.expires_at === null
+        || (isSafeNonNegativeInteger(grant.expires_at) && now < grant.expires_at)));
+  const affiliationGrantIds = new Set(affiliationGrants.map((grant) => grant.grant_id));
+  if (affiliationGrants.length === 0
+    || source.revocations.some((revocation) =>
+      isSafeNonNegativeInteger(revocation.effective_at)
+        && revocation.effective_at <= now
+        && ((revocation.target_type === "account"
+          && revocation.target_id === input.expected_source_account)
+          || (revocation.target_type === "grant"
+            && affiliationGrantIds.has(revocation.target_id))))) {
+    return rejected("policy_denied");
+  }
   if (!isSafeNonNegativeInteger(object.expires_at)
     || !isSafeNonNegativeInteger(object.proof_max_age)
     || !isSafeNonNegativeInteger(object.grace_period)) {
     return rejected("workspace_schema_invalid");
   }
-  if (input.now >= object.expires_at
-    || (input.revocation_effective_at !== null
-      && input.now >= input.revocation_effective_at)) {
-    return rejected("policy_denied");
-  }
+  if (now >= object.expires_at) return rejected("policy_denied");
   if (!isCapabilityArray(object.capability_ceiling)
     || !subset(input.requested_capabilities, object.capability_ceiling)
     || input.requested_capabilities.some((capability) => capability.startsWith("govern-"))) {
     return rejected("capability_escalation");
   }
-  const proofAge = input.now - affiliation.value.observed_at;
+  const proofAge = now - affiliation.observed_at;
   if (!isSafeNonNegativeInteger(proofAge)) return rejected("workspace_schema_invalid");
   const maximumAge = object.proof_max_age + object.grace_period;
   if (!Number.isSafeInteger(maximumAge)) return rejected("workspace_schema_invalid");
@@ -770,7 +1589,7 @@ export function evaluateAllowance(value: unknown): WorkspaceVerdict {
     proof_age: proofAge,
     provisional_grace: proofAge > object.proof_max_age,
     relationship_id: object.relationship_id,
-    source_account: affiliation.value.source_account,
+    source_account: affiliation.source_account,
   });
 }
 
@@ -1057,78 +1876,100 @@ export function evaluateRoleLeafChange(value: unknown): WorkspaceVerdict {
 }
 
 export function evaluateKeyRequest(value: unknown): WorkspaceVerdict {
-  const input = snapshotJsonRecord(value);
-  if (input === null || !hasExactMembers(input, [
-    "resource_known",
-    "host_authorized",
-    "device_active",
-    "membership_active",
-    "checkpoint_age",
+  const captured = captureWorkspaceRequest(value, [
+    "authority",
+    "current_state",
+    "successor_reauthorization",
+  ], [
+    "resource_id",
+    "custody_host_id",
     "requested_epoch",
-    "current_epoch",
-    "admission_epoch",
-    "history_mode",
-    "selected_epochs",
-    "target_device",
     "target_account",
     "authenticated_account",
-    "authorized_device",
+    "target_device",
     "recipient",
-    "authorized_recipient",
-    "successor_reauthorized",
-  ])
-    || typeof input.resource_known !== "boolean"
-    || typeof input.host_authorized !== "boolean"
-    || typeof input.device_active !== "boolean"
-    || typeof input.membership_active !== "boolean"
-    || !isSafeNonNegativeInteger(input.checkpoint_age)
+  ]);
+  const authority = captured?.opaque.authority;
+  const currentState = captured?.opaque.current_state;
+  const successorValue = captured?.opaque.successor_reauthorization;
+  const input = captured?.data;
+  if (captured === null
+    || authority === null || typeof authority !== "object"
+    || currentState === null || typeof currentState !== "object"
+    || input === undefined
+    || !isH64(input.resource_id)
+    || !isH64(input.custody_host_id)
     || !isSafeNonNegativeInteger(input.requested_epoch)
-    || !isSafeNonNegativeInteger(input.current_epoch)
-    || !isSafeNonNegativeInteger(input.admission_epoch)
-    || input.admission_epoch > input.current_epoch
-    || !(input.history_mode === "full"
-      || input.history_mode === "from-admission"
-      || input.history_mode === "selected-snapshots")
-    || !Array.isArray(input.selected_epochs)
-    || !input.selected_epochs.every(isSafeNonNegativeInteger)
-    || new Set(input.selected_epochs).size !== input.selected_epochs.length
-    || input.selected_epochs.some((epoch) => (epoch as number) > (input.current_epoch as number))
-    || !isH64(input.target_device)
     || !isH64(input.target_account)
     || !isH64(input.authenticated_account)
-    || !isH64(input.authorized_device)
-    || typeof input.authorized_recipient !== "string"
-    || typeof input.successor_reauthorized !== "boolean"
+    || !isH64(input.target_device)
     || !isRecord(input.recipient)
-    || !hasExactMembers(input.recipient, ["type", "value"])) {
-    return rejected("workspace_schema_invalid");
-  }
-  if (!isH64(input.target_device)
+    || !hasExactMembers(input.recipient, ["type", "value"])
     || input.recipient.type !== "marmot-mls-leaf"
     || typeof input.recipient.value !== "string"
     || !isCanonicalMarmotLeaf(input.recipient.value)) {
     return rejected("workspace_schema_invalid");
   }
-  if (!input.resource_known) return rejected("resource_unknown");
-  if (!input.host_authorized) return rejected("host_unauthorized");
-  if (typeof input.target_account !== "string"
-    || !/^[0-9a-f]{64}$/.test(input.target_account)
-    || input.target_account !== input.authenticated_account
-    || input.successor_reauthorized !== true) return rejected("policy_denied");
-  if (input.target_device !== input.authorized_device
-    || input.recipient.value !== input.authorized_recipient) return rejected("device_revoked");
-  if (!input.device_active) return rejected("device_revoked");
-  if (!input.membership_active) return rejected("policy_denied");
-  if (input.checkpoint_age > 300) return rejected("checkpoint_stale");
-  if (input.requested_epoch > input.current_epoch) return rejected("resource_unknown");
-  const historyAllowed = input.history_mode === "full"
-    || (input.history_mode === "from-admission" && input.requested_epoch >= input.admission_epoch)
-    || (input.history_mode === "selected-snapshots" && input.selected_epochs.includes(input.requested_epoch));
-  if (!historyAllowed) return rejected("history_denied");
+  const resourceId = input.resource_id as string;
+  const recipient = input.recipient as Readonly<Record<string, unknown>>;
+  const config = WORKSPACE_RESOLVER_AUTHORITIES.get(authority);
+  const current = WORKSPACE_CURRENT_STATES.get(currentState);
+  if (config === undefined || current === undefined || current.authority !== authority) {
+    return rejected("workspace_repository_invalid");
+  }
+  let now: number;
+  try {
+    now = config.trusted_now();
+  } catch {
+    return rejected("checkpoint_stale");
+  }
+  if (!isSafeNonNegativeInteger(now)
+    || now < current.observed_at || now >= current.expires_at
+    || now - current.observed_at > config.max_view_age) return rejected("checkpoint_stale");
+  const resource = current.resources.find((candidate) => candidate.resource_id === resourceId);
+  if (resource === undefined) return rejected("resource_unknown");
+  if (!isH64Array(resource.key_custody_host_ids)
+    || !resource.key_custody_host_ids.includes(input.custody_host_id)) {
+    return rejected("host_unauthorized");
+  }
+  if (!isSafeNonNegativeInteger(resource.key_epoch)
+    || input.requested_epoch > resource.key_epoch) return rejected("resource_unknown");
+  if (input.target_account !== input.authenticated_account) {
+    if (successorValue === null || typeof successorValue !== "object") {
+      return rejected("policy_denied");
+    }
+    const successor = WORKSPACE_SUCCESSOR_REAUTHORIZATIONS.get(successorValue);
+    if (successor === undefined) return rejected("workspace_schema_invalid");
+    if (successor.authority !== authority
+      || successor.current_state !== currentState
+      || successor.scope !== "resource-key"
+      || successor.resource_id !== resourceId
+      || successor.prior_account !== input.authenticated_account
+      || successor.new_account !== input.target_account
+      || successor.subject_device !== input.target_device
+      || successor.target_leaf !== recipient.value
+      || now >= successor.expires_at) return rejected("policy_denied");
+  } else {
+    if (successorValue !== null) return rejected("policy_denied");
+    const activeGrantIds = new Set(isH64Array(current.checkpoint.active_grant_ids)
+      ? current.checkpoint.active_grant_ids : []);
+    const active = current.grants.some((grant) =>
+      activeGrantIds.has(String(grant.grant_id))
+        && grant.subject_account === input.target_account
+        && grant.target_device === input.target_device
+        && isRecord(grant.recipient)
+        && grant.recipient.value === recipient.value
+        && isH64Array(grant.resource_scope)
+        && grant.resource_scope.includes(resourceId));
+    if (!active) return rejected("policy_denied");
+  }
+  if (!(resource.history_mode === "full" || input.requested_epoch === resource.key_epoch)) {
+    return rejected("history_denied");
+  }
   return accepted({
     key_epoch: input.requested_epoch,
     target_device: input.target_device,
-    recipient: { ...input.recipient },
+    recipient: { ...recipient },
     device_bound: true,
     idempotent: true,
   });
@@ -1345,7 +2186,75 @@ function hasExactShape(
   return required.every((member) => Object.hasOwn(value, member))
     && keys.every((member) => allowed.has(member));
 }
+
+function captureWorkspaceRequest(
+  value: unknown,
+  opaqueMembers: readonly string[],
+  dataMembers: readonly string[],
+  optionalOpaqueMembers: readonly string[] = [],
+): {
+  opaque: Readonly<Record<string, unknown>>;
+  data: Readonly<Record<string, unknown>>;
+} | null {
+  try {
+    if (value === null || typeof value !== "object" || Array.isArray(value)
+      || utilTypes.isProxy(value) || Object.getPrototypeOf(value) !== Object.prototype) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const keys = Reflect.ownKeys(value);
+    const stringKeys = keys.filter((key): key is string => typeof key === "string");
+    const presentOptionalMembers = optionalOpaqueMembers.filter((member) =>
+      stringKeys.includes(member));
+    const expectedMembers = [...opaqueMembers, ...dataMembers, ...presentOptionalMembers].sort();
+    if (keys.some((key) => typeof key !== "string")
+      || (keys as string[]).sort().join("\0") !== expectedMembers.join("\0")) return null;
+    const opaque: Record<string, unknown> = {};
+    const data: Record<string, unknown> = {};
+    for (const member of expectedMembers) {
+      const descriptor = descriptors[member];
+      if (descriptor === undefined || !("value" in descriptor) || !descriptor.enumerable) return null;
+      if (opaqueMembers.includes(member) || optionalOpaqueMembers.includes(member)) {
+        opaque[member] = descriptor.value;
+      }
+      else data[member] = descriptor.value;
+    }
+    const snapshot = snapshotJsonRecord(data);
+    return snapshot === null ? null : { opaque: Object.freeze(opaque), data: snapshot };
+  } catch {
+    return null;
+  }
+}
+
+function isWorkspaceRepositoryTrustAnchor(
+  value: unknown,
+): value is WorkspaceRepositoryTrustAnchor {
+  return isRecord(value)
+    && hasExactMembers(value, ["suite", "public_key"])
+    && (value.suite === "ed25519" || value.suite === "bip340")
+    && isH64(value.public_key);
+}
+
+function parseWorkspaceSemver(value: unknown): [number, number, number] | null {
+  if (typeof value !== "string"
+    || !/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/u.test(value)) return null;
+  const result = value.split(".").map(Number);
+  return result.every(isSafeNonNegativeInteger)
+    ? result as [number, number, number]
+    : null;
+}
+
+function compareWorkspaceSemver(
+  value: unknown,
+  minimum: readonly [number, number, number],
+): number {
+  const parsed = parseWorkspaceSemver(value);
+  if (parsed === null) return -1;
+  for (let index = 0; index < parsed.length; index += 1) {
+    if (parsed[index] !== minimum[index]) return parsed[index] - minimum[index];
+  }
+  return 0;
+}
 import { types as utilTypes } from "node:util";
+import { ed25519 } from "@noble/curves/ed25519";
 import { schnorr } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha2";
 import { Ajv } from "ajv";

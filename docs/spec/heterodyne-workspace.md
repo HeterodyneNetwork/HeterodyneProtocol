@@ -73,6 +73,33 @@ or ill-ordered numeric values before evaluating authority.
 exact, unambiguous current authorization view. `repository_rid` and
 `repository_head` bind its durable carrier context but grant no authority.
 
+A consumer MUST obtain that view through a locally configured repository
+verification boundary; a caller-supplied head, ancestry, fork flag,
+checkpoint, object list, revocation assertion, or freshness claim has no
+authority. The boundary authenticates one closed
+`heterodyne.workspace-repository-view.v1` record containing exactly `profile`,
+`spec_version`, `resolver_policy`, `resolver_version`, `workspace_key`,
+`repository_rid`, `canonical_head`, `canonical_ancestry`, `observed_heads`,
+`fork_status`, `policy_head`, nullable `predecessor`, `authority_checkpoint`,
+`object_ids`, `object_set_digest`, `observed_at`, `expires_at`, and
+`signature`. `signature` is made by a locally configured trusted repository
+verification key over proof bytes for domain
+`heterodyne-workspace-repository-view-v1`. The configured policy and minimum
+resolver version MUST establish the Radicle repository boundary's canonical
+RID, reachable current head, complete fork observation, checkpoint, trusted
+observation time, and complete signed object set.
+
+`object_ids` is the sorted exact set of SHA-256 JCS object identifiers.
+`object_set_digest` is SHA-256 of proof bytes for domain
+`heterodyne-workspace-object-set-v1` over exactly that array. A consumer MUST
+strictly validate the complete current policy, role, grant, revocation,
+resource, relationship, and checkpoint objects, their active-key signatures,
+cross-references, and common authority tuple before deriving any effective
+authorization or relationship. A missing or extra object, untrusted resolver,
+unreachable or rolled-back head, incomplete or competing fork observation,
+stale observation, digest mismatch, or later use under another configured
+resolver instance or repository view fails closed.
+
 The SHA-256 digest of the complete JCS object including `signature` is its
 object identifier unless a field-specific identifier is defined. Consumers
 MUST reject a digest mismatch, invalid signature, active-key mismatch,
@@ -119,6 +146,23 @@ relationship, resource, repository, seed, host, custody, delegate, or
 group-administrator authority automatically. Every surviving subordinate
 authority MUST be explicitly reauthorized under the successor key and current
 policy.
+
+Such transfer is represented by one closed
+`heterodyne.workspace-successor-reauthorization.v1` record containing exactly
+`profile`, `spec_version`, `workspace_key`, `prior_account`, `new_account`,
+`prior_key`, `new_key`, `subject_device`, `target_leaf`, `role_id`, nullable
+`resource_id`, `scope`, `policy_head`, nullable `predecessor`,
+`authority_checkpoint`, `repository_view_id`, `issued_at`, `effective_at`,
+`expires_at`, `workspace_signature`, and `new_account_signature`. Both
+signatures cover every other member with proof bytes for domain
+`heterodyne-workspace-successor-reauthorization-v1`; the current workspace key
+and new account key sign independently. The prior and new keys MUST equal
+their named active accounts, the current view MUST prove the prior account's
+unrevoked exact device/leaf role, and `scope` MUST be exactly
+`role-membership` with null `resource_id` or `resource-key` with the exact
+current resource. An ID, continuity boolean, ambient account transfer, stale
+record, or record bound to another current view cannot reauthorize membership
+or key delivery.
 
 Workspace membership is affiliation only. It MUST NOT grant ambient access to
 any role or resource. Every resource access decision is evaluated through an
@@ -256,6 +300,10 @@ be a subset of every applicable workspace, role-path, resource, and actor
 ceiling; intersecting only a selected ceiling or accepting caller-asserted
 capability strings is invalid. Denial, effective revocation, inactive device
 state, a conflicting checkpoint, or any tuple mismatch prevents activation.
+Separate grants MUST NOT be unioned to manufacture a capability/resource/
+delegability combination that no one current unrevoked grant permits; the
+effective result binds one deterministic qualifying grant and every broader
+current ceiling.
 
 The grant-operation digest is SHA-256 of
 [`heterodyne:0.5.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes)
@@ -287,7 +335,25 @@ top-level `subject_account`, `target_device`, and exact `marmot-mls-leaf`
 `recipient` members bind it to one active account and device-local KeyPackage.
 An invitation is such a grant with `activation:"subject-acceptance"`, an
 unguessable one-time nonce commitment, expiry, disclosed role locator, and
-history mode. Acceptance consumes the nonce exactly once. Invitation material
+history mode. `invitation` MUST be non-null if and only if activation is
+`subject-acceptance`.
+
+Acceptance is one closed
+`heterodyne.workspace-invitation-acceptance.v1` record containing exactly
+`profile`, `spec_version`, `grant_id`, `grant_operation_digest`,
+`workspace_key`, `subject_account`, `target_device`, `target_leaf`,
+`policy_head`, nullable `predecessor`, `authority_checkpoint`,
+`repository_view_id`, `nonce_opening`, `nonce_commitment`, `issued_at`,
+`expires_at`, and `signature`. The subject active account signs every other
+member with BIP-340 proof bytes for domain
+`heterodyne-workspace-invitation-acceptance-v1`. `nonce_commitment` is SHA-256
+of proof bytes for domain `heterodyne-workspace-invitation-nonce-v1` over the
+grant ID, workspace key, subject account, exact device and leaf, and nonce
+opening. Every binding MUST equal the current signed grant and authenticated
+repository view. A configured authoritative atomic replay store consumes that
+workspace/grant/commitment tuple before activation and the resulting
+acceptance is executable exactly once; a caller-supplied acceptance ID,
+consumed-ID list, or replay boolean has no authority. Invitation material
 for a private role is delivered through an authenticated two-member
 conversation under
 [`heterodyne:0.5.0#comms-direct-messages`](heterodyne-comms.md#comms-direct-messages) or an existing authorized private
@@ -472,6 +538,17 @@ MUST authenticate the device and revalidate current membership or allowance,
 device/leaf state, resource policy, checkpoint freshness, revocation, and
 history eligibility.
 
+Every one of those values is derived from the same authenticated current
+repository view. A pull request may name the desired resource and key epoch,
+custody host, target account, device, and leaf, but MUST NOT supply authoritative
+membership, device-active, host-authorized, checkpoint-age, current-epoch,
+history-mode, revocation, or successor booleans. Cross-account delivery
+requires the exact current `resource-key` successor-reauthorization record
+defined in Section 3; role admission across the same transition requires a
+separate exact `role-membership` record. Neither proof is interchangeable or
+usable under another resolver instance, repository view, role, resource,
+device, or leaf.
+
 The response is idempotent for the tuple `(request_id, resource_id, key_epoch,
 account, device, leaf)` and is either a device-bound envelope or one exact denial:
 `resource_unknown`, `checkpoint_stale`, `device_revoked`, `history_denied`,
@@ -572,6 +649,7 @@ outcomes where disclosure or retry behavior differs.
 |---|---|
 | `workspace_schema_invalid` | The closed object or canonical encoding is invalid. |
 | `workspace_signature_invalid` | Active-key signature or exact policy, predecessor, checkpoint, or repository binding is invalid. |
+| `workspace_repository_invalid` | The configured repository verification boundary did not authenticate one complete exact current Workspace view. |
 | `authority_conflict` | Required heads or authority paths conflict or are incomparable. |
 | `capability_escalation` | Inheritance, grant, or delegation attempts to widen authority. |
 | `policy_denied` | Current effective policy denies the operation. |
@@ -596,6 +674,7 @@ The list below is descriptive:
 - **WORKSPACE-I-INHERITANCE-NARROWS:** Child roles, resources, grants, and bilateral allowances cannot widen an applicable workspace or parent-role ceiling.
 - **WORKSPACE-I-PRIVATE-TOPOLOGY:** Public state reveals no stable identifier, digest, count, locator, or correlation for a concealed workspace, role, relationship, repository, or resource.
 - **WORKSPACE-I-CARRIER-NOT-AUTHORITY:** Git authorship, repository-writer permission, trusted-seed or host status, relay acceptance, custody, and Marmot membership or administration are never sufficient Workspace authorization evidence.
+- **WORKSPACE-I-AUTHENTICATED-CURRENT-STATE:** Effective authorization, bilateral allowance, invitation acceptance, successor transfer, and key delivery consume only complete current signed Workspace state authenticated by one configured repository resolver instance and exact repository view.
 - **WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS:** Role MLS state authorizes delivery but never serves as one universal content key for subordinate resources.
 - **WORKSPACE-I-REVOCATION-FUTURE-ONLY:** Revocation blocks future authorization and key delivery without claiming erasure of data or keys already obtained.
 - **WORKSPACE-I-FRESHNESS-BOUNDED:** Ordinary writes use checkpoints no older than 86400 seconds and authority mutations no older than 300 seconds, with policy able only to shorten those bounds.

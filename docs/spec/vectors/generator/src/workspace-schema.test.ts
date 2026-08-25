@@ -71,7 +71,7 @@ const values: Record<string, Record<string, unknown>> = {
     capabilities: ["read", "write"],
     resource_scope: [],
     delegable: false,
-    activation: "immediate",
+    activation: "subject-acceptance",
     activates_at: 1_720_000_000,
     expires_at: null,
     approval_ids: [],
@@ -312,7 +312,7 @@ describe("Workspace authority object schemas", () => {
     const revocation = values["role-revocation-v1"];
     expect(validate("role-revocation-v1", { ...revocation, target_type: "account" }))
       .toBeNull();
-    expect(validate("role-revocation-v1", { ...revocation, target_type: "persona" }))
+    expect(validate("role-revocation-v1", { ...revocation, target_type: "identity" }))
       .not.toBeNull();
     expect(validate("role-revocation-v1", {
       ...revocation,
@@ -321,6 +321,31 @@ describe("Workspace authority object schemas", () => {
     expect(validate("role-checkpoint-v1", {
       ...values["role-checkpoint-v1"],
       sequence: 1.5,
+    })).not.toBeNull();
+    expect(validate("workspace-policy-v1", {
+      ...values["workspace-policy-v1"],
+      governance: {
+        ...values["workspace-policy-v1"].governance as Record<string, unknown>,
+        threshold: Number.MAX_SAFE_INTEGER + 1,
+      },
+    })).not.toBeNull();
+    expect(validate("joint-workspace-relationship-v1", {
+      ...values["joint-workspace-relationship-v1"],
+      threshold: Number.MAX_SAFE_INTEGER + 1,
+    })).not.toBeNull();
+  });
+
+  it("requires a non-null invitation exactly for subject acceptance", () => {
+    const grant = values["role-grant-v1"];
+    expect(validate("role-grant-v1", { ...grant, invitation: null })).not.toBeNull();
+    expect(validate("role-grant-v1", {
+      ...grant,
+      activation: "immediate",
+      invitation: null,
+    })).toBeNull();
+    expect(validate("role-grant-v1", {
+      ...grant,
+      activation: "immediate",
     })).not.toBeNull();
   });
 });

@@ -103,7 +103,7 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
       governance: closed(
         ["threshold", "controllers"],
         {
-          threshold: { type: "integer", minimum: 1 },
+          threshold: { type: "integer", minimum: 1, maximum: Number.MAX_SAFE_INTEGER },
           controllers: { type: "array", minItems: 1, uniqueItems: true, items: h64 },
         },
       ),
@@ -144,7 +144,8 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
       archived_event_repositories: { type: "array", items: eventRepository, uniqueItems: true },
     },
   ),
-  "role-grant-v1": workspaceSchema(
+  "role-grant-v1": {
+    ...workspaceSchema(
     "role-grant-v1",
     [
       "grant_id", "subject_account", "target_device", "recipient", "role_id",
@@ -182,8 +183,14 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
         ],
       },
       evidence_ids: identifierArray,
-    },
-  ),
+      },
+    ),
+    allOf: [{
+      if: { properties: { activation: { const: "subject-acceptance" } } },
+      then: { properties: { invitation: { type: "object" } } },
+      else: { properties: { invitation: { type: "null" } } },
+    }],
+  },
   "role-revocation-v1": workspaceSchema(
     "role-revocation-v1",
     ["revocation_id", "target_type", "target_id", "effective_at", "reason"],
@@ -320,7 +327,7 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
       joint_workspace_key: h64,
       participant_workspace_keys: { type: "array", minItems: 2, uniqueItems: true, items: h64 },
       delegate_keys: { type: "array", minItems: 2, uniqueItems: true, items: h64 },
-      threshold: { type: "integer", minimum: 1 },
+      threshold: { type: "integer", minimum: 1, maximum: Number.MAX_SAFE_INTEGER },
       resource_scope: { ...identifierArray, minItems: 1 },
       effective_at: timestamp,
       expires_at: nullableTimestamp,
