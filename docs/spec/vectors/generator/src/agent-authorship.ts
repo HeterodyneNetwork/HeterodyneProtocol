@@ -70,7 +70,7 @@ export type AgentTokenValidationInput = {
   agent_role_id?: string;
   signer_key?: string;
   signer_key_class?: "agent" | "persona";
-  agent_association?: AgentAssociation;
+  agent_association?: unknown;
   expected_issuer: string;
   expected_subject: string;
   expected_audience: string;
@@ -80,7 +80,7 @@ export type AgentTokenValidationInput = {
   expected_role_id?: string;
   expected_signer_key?: string;
   expected_signer_key_class?: "agent" | "persona";
-  expected_agent_association?: AgentAssociation;
+  expected_agent_association?: unknown;
   now: number;
   status: "VALID" | "INVALID" | "SUSPENDED";
   ledger_active: boolean;
@@ -126,8 +126,8 @@ export type AgentPublicationInput = {
   current_role_key?: string;
   signer_key_class?: "agent" | "persona";
   oidc_scopes?: string[];
-  agent_association?: AgentAssociation;
-  expected_agent_association?: AgentAssociation;
+  agent_association?: unknown;
+  expected_agent_association?: unknown;
   tier: 1 | 2 | 3;
   agent_review?: string;
   agent_review_verified?: boolean;
@@ -292,6 +292,11 @@ export function validateAgentAccessToken(
   if (!equalAssociation(input.agent_association, input.expected_agent_association)) {
     return denied("agent-signer-mismatch");
   }
+  const agentAssociation = input.agent_association === undefined
+    ? undefined
+    : isAgentAssociation(input.agent_association)
+      ? input.agent_association
+      : undefined;
   if (
     !input.ledger_active
     || !input.ledger_binding_valid
@@ -307,9 +312,9 @@ export function validateAgentAccessToken(
       client_id: input.client_id,
       signer: signerKey,
       key_class: signerKeyClass,
-      ...(input.agent_association === undefined
+      ...(agentAssociation === undefined
         ? {}
-        : { agent_association: input.agent_association }),
+        : { agent_association: agentAssociation }),
     },
   };
 }
@@ -391,13 +396,14 @@ export function injectAgentAttribution(
 }
 
 export function matchesAgentAttributionProfile(tags: string[][]): boolean {
-  const reserved = tags.filter((tag) =>
-    tag[0] === "heterodyne_agent"
-    || tag[0] === "agent_action"
-    || tag[0] === "L" && tag[1] === "network.heterodyne.agent"
-    || tag[0] === "l" && tag[2] === "network.heterodyne.agent"
+  const reservedIndexes = tags.flatMap((tag, index) =>
+    isAgentProfileTag(tag) ? [index] : []
   );
+  const reserved = reservedIndexes.map((index) => tags[index]);
   if (reserved.length !== 3 && reserved.length !== 4) return false;
+  if (reservedIndexes.some((index, offset) => index !== reservedIndexes[0] + offset)) {
+    return false;
+  }
   if (
     !equalTag(reserved[0], ["L", "network.heterodyne.agent"])
     || reserved[1].length !== 3
@@ -419,8 +425,15 @@ export function matchesAgentAttributionProfile(tags: string[][]): boolean {
     });
 }
 
+function isAgentProfileTag(tag: string[]): boolean {
+  return tag[0] === "heterodyne_agent"
+    || tag[0] === "agent_action"
+    || tag[0] === "L" && tag[1] === "network.heterodyne.agent"
+    || tag[0] === "l" && tag[2] === "network.heterodyne.agent";
+}
+
 function agentAssociationTag(
-  association: AgentAssociation | undefined,
+  association: unknown,
 ): string[] | undefined | null {
   if (association === undefined) return undefined;
   return isAgentAssociation(association)
@@ -429,8 +442,8 @@ function agentAssociationTag(
 }
 
 function equalAssociation(
-  actual: AgentAssociation | undefined,
-  expected: AgentAssociation | undefined,
+  actual: unknown,
+  expected: unknown,
 ): boolean {
   if (actual === undefined || expected === undefined) {
     return actual === expected;
@@ -441,12 +454,24 @@ function equalAssociation(
     && actual.value === expected.value;
 }
 
-function isAgentAssociation(value: AgentAssociation): boolean {
-  return value.kind === "key"
-    ? /^[0-9a-f]{64}$/.test(value.value)
-    : value.kind === "role"
-      && value.value.length >= 1
-      && value.value.length <= 128;
+function isAgentAssociation(value: unknown): value is AgentAssociation {
+  if (
+    value === null
+    || typeof value !== "object"
+    || Array.isArray(value)
+    || Object.keys(value).length !== 2
+    || !Object.hasOwn(value, "kind")
+    || !Object.hasOwn(value, "value")
+  ) {
+    return false;
+  }
+  const association = value as Record<string, unknown>;
+  if (typeof association.value !== "string") return false;
+  return association.kind === "key"
+    ? /^[0-9a-f]{64}$/.test(association.value)
+    : association.kind === "role"
+      && association.value.length >= 1
+      && association.value.length <= 128;
 }
 
 function isReservedAttributionTag(tag: string[]): boolean {

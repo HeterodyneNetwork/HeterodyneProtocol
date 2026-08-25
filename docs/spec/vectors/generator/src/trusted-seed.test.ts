@@ -91,6 +91,15 @@ async function request(
   };
 }
 
+async function readRequest(
+  patch: Record<string, unknown> = {},
+): Promise<Record<string, unknown>> {
+  const value = await request({ operation: "read" });
+  delete value.writer_ref;
+  delete value.nip01_raw;
+  return { ...value, ...patch };
+}
+
 async function signedMarmotEvent(
   patch: { kind?: number; h?: string } = {},
 ): Promise<string> {
@@ -258,6 +267,33 @@ describe("trusted private seed admission", () => {
       group_transition: nestedExtra,
     }]) {
       expect(evaluateTrustedSeedAdmission(await request(patch)), JSON.stringify(patch)).toEqual({
+        verdict: "reject",
+        reason_code: "trusted-seed-request-invalid",
+      });
+    }
+  });
+
+  it("validates optional types and operation-specific members before authorization", async () => {
+    const { evaluateTrustedSeedAdmission } = await moduleUnderTest();
+    expect(evaluateTrustedSeedAdmission(await readRequest())).toMatchObject({
+      verdict: "accept",
+      seed_nid: seedA,
+    });
+    expect(evaluateTrustedSeedAdmission(await readRequest())).not.toHaveProperty("writer_ref");
+    expect(evaluateTrustedSeedAdmission(await readRequest())).not.toHaveProperty("nip01_raw");
+
+    for (const invalid of [
+      await readRequest({ writer_ref: "refs/xyz.heterodyne.marmot/relays/seed-a" }),
+      await readRequest({ nip01_raw: await signedMarmotEvent() }),
+      await readRequest({ nip01_raw: { plaintext: "secret" } }),
+      await request({ writer_ref: undefined }),
+      await request({ nip01_raw: undefined }),
+      await request({ writer_ref: { ref: "seed-a" } }),
+      await request({ previous_acl: null }),
+      await request({ previous_acl: [] }),
+      await request({ previous_acl: "previous" }),
+    ]) {
+      expect(evaluateTrustedSeedAdmission(invalid)).toEqual({
         verdict: "reject",
         reason_code: "trusted-seed-request-invalid",
       });

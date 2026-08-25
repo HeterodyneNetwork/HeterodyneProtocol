@@ -60,7 +60,7 @@ export type TrustedSeedAdmissionResult =
       verdict: "accept";
       acl_digest: string;
       seed_nid: string;
-      writer_ref: string;
+      writer_ref?: string;
       nip01_raw?: string;
     }
   | {
@@ -226,8 +226,9 @@ export function evaluateTrustedSeedAdmission(
     verdict: "accept",
     acl_digest: trustedSeedAclDigest(acl),
     seed_nid: grant.seed_nid,
-    writer_ref: grant.writer_ref,
-    ...(input.nip01_raw === undefined ? {} : { nip01_raw: input.nip01_raw }),
+    ...(input.operation === "write"
+      ? { writer_ref: grant.writer_ref, nip01_raw: input.nip01_raw }
+      : {}),
   };
 }
 
@@ -264,8 +265,22 @@ function isClosedRequest(value: Record<string, unknown>): boolean {
     ...REQUIRED_REQUEST_MEMBERS,
     ...OPTIONAL_REQUEST_MEMBERS,
   ]);
-  return REQUIRED_REQUEST_MEMBERS.every((member) => member in value)
+  const hasWriterRef = Object.hasOwn(value, "writer_ref");
+  const hasNip01Raw = Object.hasOwn(value, "nip01_raw");
+  const hasPreviousAcl = Object.hasOwn(value, "previous_acl");
+  const operationMembersValid = value.operation === "read"
+    ? !hasWriterRef && !hasNip01Raw
+    : value.operation === "write"
+    && hasWriterRef
+    && typeof value.writer_ref === "string"
+    && value.writer_ref.length > 0
+    && hasNip01Raw
+    && typeof value.nip01_raw === "string"
+    && value.nip01_raw.length > 0;
+  return REQUIRED_REQUEST_MEMBERS.every((member) => Object.hasOwn(value, member))
     && Object.keys(value).every((member) => allowed.has(member))
+    && operationMembersValid
+    && (!hasPreviousAcl || isRecord(value.previous_acl))
     && isRecord(value.group_transition)
     && hasExactMembers(value.group_transition, GROUP_TRANSITION_MEMBERS);
 }

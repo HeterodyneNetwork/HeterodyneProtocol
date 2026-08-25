@@ -891,11 +891,17 @@ required metadata members are `acl_candidates`,
 `expected_administrator_account`, `authenticated_account`,
 `nip42_authenticated`, `operation`, `seed_nid`, `h`, `private_rid`,
 `group_transition`, and `now`; only `previous_acl`, `writer_ref`, and
-`nip01_raw` are optional. `group_transition` is itself closed to the three ACL
-members named above. Any missing, alternate, nested-extra, or top-level-extra
-metadata member fails with `trusted-seed-request-invalid`. The seed treats the
-accepted kind-445 event `content` as opaque ciphertext; request closure MUST
-NOT scan or interpret that encrypted content as plaintext.
+`nip01_raw` are optional across the union of operations. A read request MUST
+omit `writer_ref` and `nip01_raw`; a write request MUST carry both as non-empty
+strings. When present, `previous_acl` MUST be an object for subsequent ACL
+validation. `group_transition` is itself closed to the three ACL members named
+above. The seed validates every optional member's type and operation-specific
+presence or absence during closure, before NIP-42 or ACL authorization. Any
+missing, alternate, wrongly typed, nested-extra, or top-level-extra metadata
+member fails with `trusted-seed-request-invalid`. A read admission result MUST
+NOT return either write-only member. The seed treats the accepted kind-445
+event `content` as opaque ciphertext; request closure MUST NOT scan or
+interpret that encrypted content as plaintext.
 
 A candidate whose `administrator_account` differs from the current expected
 administrator is unauthorized. A candidate naming the expected administrator
@@ -1923,7 +1929,9 @@ client, scope, confirmation, checkpoint, status, and source-claim contract,
 plus exact equality between the projected signer, key class, optional public
 association kind/value, and current registration. Absence is also exact: a
 token and registration MUST either both omit the association or both carry the
-same kind and value.
+same kind and value. A null, scalar, array, partial object, or otherwise
+malformed association claim fails closed with `agent-signer-mismatch` before
+its fields are used; a verifier MUST NOT coerce or partially accept it.
 A projected JWT never replaces canonical private-ledger state. Client
 Credentials remains prohibited; a separately integrated sender-constrained
 HTTPS workload profile is required before that grant can be added.

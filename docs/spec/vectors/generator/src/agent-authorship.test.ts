@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   deriveAgentIdentity,
   injectAgentAttribution,
+  matchesAgentAttributionProfile,
   validateAgentAccessToken,
   validateWorkloadRegistration,
   type AgentTokenValidationInput,
@@ -13,6 +14,7 @@ const publishingKey = "33".repeat(32);
 const issuer = "https://issuer.example/oidc/npub1persona";
 const audience = "https://node.example/control/agent-publication";
 const subjectJkt = "A".repeat(43);
+const malformedAssociations: unknown[] = [null, [], "key", { kind: "role" }];
 
 describe("workload registration and stable identity", () => {
   const registration = {
@@ -63,6 +65,10 @@ describe("workload registration and stable identity", () => {
       { ...registration, proof_bytes: "legacy-delegation-proof" },
       { ...registration, expires_at: registration.not_before },
       { ...registration, unlimited: true },
+      ...malformedAssociations.map((agent_association) => ({
+        ...registration,
+        agent_association,
+      })),
     ]) {
       expect(() => validateWorkloadRegistration(value)).toThrow(
         /agent-workload-registration-invalid/,
@@ -210,6 +216,18 @@ describe("agent workload access token", () => {
       });
     }
   });
+
+  it("fails malformed untrusted association claims closed without throwing", () => {
+    for (const agent_association of malformedAssociations) {
+      expect(validateAgentAccessToken({
+        ...valid,
+        agent_association,
+      })).toEqual({
+        verdict: "reject",
+        reason_code: "agent-signer-mismatch",
+      });
+    }
+  });
 });
 
 describe("canonical agent attribution", () => {
@@ -315,6 +333,39 @@ describe("canonical agent attribution", () => {
         ["agent_action", "publish"],
       ],
     });
+  });
+
+  it("requires the canonical attribution block to be contiguous in the original tag list", () => {
+    const prefix = [["client", "heterodyne"]];
+    const suffix = [["p", "55".repeat(32)]];
+    expect(matchesAgentAttributionProfile([...prefix, ...canonicalTags, ...suffix])).toBe(true);
+    expect(matchesAgentAttributionProfile([
+      canonicalTags[0],
+      ["client", "interleaved"],
+      ...canonicalTags.slice(1),
+    ])).toBe(false);
+    expect(matchesAgentAttributionProfile([
+      ...canonicalTags.slice(0, 2),
+      ["p", "55".repeat(32)],
+      ...canonicalTags.slice(2),
+    ])).toBe(false);
+    expect(matchesAgentAttributionProfile([
+      ...canonicalTags.slice(0, 3),
+      ["e", "66".repeat(32)],
+      canonicalTags[3],
+    ])).toBe(false);
+  });
+
+  it("fails malformed publication associations closed without throwing", () => {
+    for (const agent_association of malformedAssociations) {
+      expect(injectAgentAttribution({
+        ...base,
+        agent_association,
+      })).toEqual({
+        verdict: "reject",
+        reason_code: "agent-signer-mismatch",
+      });
+    }
   });
 
   it("rejects unsupported kinds, mismatches, post-sign input, and legacy proof without fallback", () => {
