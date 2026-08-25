@@ -1056,7 +1056,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A preauthorized Control invite exceeds its exact bound entitlement template, key binding, client class, or prompt-free policy.",
+      "description": "A preauthorized Control invite exceeds its exact bound signer-grant template, persona, client, signer, method, kind, limit, or prompt-free policy.",
       "spec_refs": [
         "heterodyne:0.5.0#control-one-time-invites"
       ]
@@ -1146,7 +1146,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The Control group is enrollment-only and the requested method requires active private entitlement.",
+      "description": "The Control group is enrollment-only and the requested method requires an active exact signer grant.",
       "spec_refs": [
         "heterodyne:0.5.0#control-enrollment"
       ]
@@ -1166,7 +1166,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Private Control authorization is missing, stale beyond policy, unauthorized, forked, revoked, or contains a conflicting expansion.",
+      "description": "The private server-side signer grant is missing, stale beyond policy, unauthorized, forked, revoked, or contains a conflicting expansion.",
       "spec_refs": [
         "heterodyne:0.5.0#control-entitlement"
       ]
@@ -1176,7 +1176,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The Control access token is not usable: it fails type, signature, issuer, time, client, audience, sender, group, scope, authorization-record, or structural validation. The specific condition is recorded only in the encrypted audit.",
+      "description": "The Control access token is not usable: it fails type, signature, issuer, time, client, exact audience, sender constraint, grant, scope, private-state checkpoint, or structural validation. The specific condition is recorded only in the encrypted audit.",
       "spec_refs": [
         "heterodyne:0.5.0#control-token"
       ]
@@ -1212,66 +1212,6 @@
       ]
     },
     {
-      "code": "control-recovery-locked",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "The epoch inbox or prepared activation was accessed without the required explicit unlock, preparation, erasure, and relock ceremony.",
-      "spec_refs": [
-        "heterodyne:0.5.0#control-epoch-bootstrap"
-      ]
-    },
-    {
-      "code": "control-registration-invalid",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "A prospective full-node registration is malformed, expired, or fails a required proof or target-key binding.",
-      "spec_refs": [
-        "heterodyne:0.5.0#control-epoch-bootstrap"
-      ]
-    },
-    {
-      "code": "control-activation-mismatch",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "Recovered heads, manifest identity, object digests, target keys, grant, or completion state do not match the prepared activation.",
-      "spec_refs": [
-        "heterodyne:0.5.0#control-epoch-bootstrap"
-      ]
-    },
-    {
-      "code": "control-recovery-grant-invalid",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "Private-Radicle recovery access is expired or outside its bound NID, repository, head, direction, byte, activation, or completion limits.",
-      "spec_refs": [
-        "heterodyne:0.5.0#control-radicle-recovery"
-      ]
-    },
-    {
-      "code": "control-recovery-completion-mismatch",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "Recovery completion cannot prove every repository head, manifest identity, and object digest required by its grant.",
-      "spec_refs": [
-        "heterodyne:0.5.0#control-radicle-recovery"
-      ]
-    },
-    {
-      "code": "control-sftp-denied",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "An SFTP overflow request is refused. Endpoint, key, resource, direction, byte-ceiling, and expiry failures are indistinguishable to the requester and separated only in the encrypted audit.",
-      "spec_refs": [
-        "heterodyne:0.5.0#control-sftp-recovery"
-      ]
-    },
-    {
       "code": "control-request-expired",
       "owner": "control",
       "status": "draft",
@@ -1286,7 +1226,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A request identifier was reused with different canonical frame bytes in the same Control group.",
+      "description": "A request identifier was reused with different canonical bound bytes in the same persona vault.",
       "spec_refs": [
         "heterodyne:0.5.0#control-request-processing"
       ]
@@ -1316,7 +1256,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "An automated principal attempted to route publication through a human-device profile.",
+      "description": "An automated principal attempted to bypass its selected persona vault, signing key, or key class.",
       "spec_refs": [
         "heterodyne:0.5.0#control-agent-requirements"
       ]
@@ -1336,7 +1276,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The requested event kind, feed, destination, or resource is outside the active workload grant.",
+      "description": "The requested method, event kind, value, destination, or object is outside the exact active signer grant.",
       "spec_refs": [
         "heterodyne:0.5.0#control-agent-requirements"
       ]
@@ -1346,7 +1286,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The canonical publication intent exceeds its finite content-byte ceiling.",
+      "description": "The attributed unsigned event exceeds the exact grant's finite event-byte ceiling.",
       "spec_refs": [
         "heterodyne:0.5.0#control-agent-requirements"
       ]
@@ -1356,7 +1296,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The publication intent exceeds the active finite rate-window, count, or burst limit.",
+      "description": "The publication intent exceeds the exact grant's finite request window or request-count limit.",
       "spec_refs": [
         "heterodyne:0.5.0#control-agent-requirements"
       ]
@@ -1826,6 +1766,94 @@
       "spec_refs": [
         "heterodyne:0.5.0#workspace-errors"
       ]
+    },
+    {
+      "code": "control-vault-isolation-failed",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "A request does not resolve exactly one vault for its exact active persona key.",
+      "spec_refs": ["heterodyne:0.5.0#control-persona-vaults"]
+    },
+    {
+      "code": "control-signer-unavailable",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "The exact selected signer and key class are unavailable in the selected persona vault; no fallback is attempted.",
+      "spec_refs": ["heterodyne:0.5.0#control-signer-selection"]
+    },
+    {
+      "code": "control-signer-binding-mismatch",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "A presented or requested signer binding differs from the authoritative server-side grant.",
+      "spec_refs": ["heterodyne:0.5.0#control-signer-grants"]
+    },
+    {
+      "code": "control-signing-grant-inactive",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "The selected signer grant is not yet issued, expired, revoked, or otherwise inactive.",
+      "spec_refs": ["heterodyne:0.5.0#control-signer-grants"]
+    },
+    {
+      "code": "control-client-metadata-widening",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "NIP-46 client metadata or requested permissions exceed the exact server-side methods, kinds, audience, or limits.",
+      "spec_refs": ["heterodyne:0.5.0#control-nip46-signing"]
+    },
+    {
+      "code": "control-persona-authority-required",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Persona-key signing lacks an explicit grant authorized by the active persona account.",
+      "spec_refs": ["heterodyne:0.5.0#control-signer-selection"]
+    },
+    {
+      "code": "control-connection-secret-invalid",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "A pending OIDC authorization cannot activate the presented NIP-46 connection secret.",
+      "spec_refs": ["heterodyne:0.5.0#control-oidc-activation"]
+    },
+    {
+      "code": "control-connection-secret-reused",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "A consumed one-use NIP-46 connection secret was presented again.",
+      "spec_refs": ["heterodyne:0.5.0#control-oidc-activation"]
+    },
+    {
+      "code": "control-attribution-required",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "An automated publication cannot receive a signature because valid Comms automation attribution was not produced first.",
+      "spec_refs": ["heterodyne:0.5.0#control-agent-requirements"]
+    },
+    {
+      "code": "control-compromise-reset-incomplete",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "A compromise completion omits or changes a required grant, client, delegate, node, agent, seed, Marmot leaf, group transition, or fresh KeyPackage action.",
+      "spec_refs": ["heterodyne:0.5.0#control-compromise-reset"]
+    },
+    {
+      "code": "control-subordinate-reauthorization-required",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "A continuing subordinate authority lacks a fresh explicit post-compromise authorization.",
+      "spec_refs": ["heterodyne:0.5.0#control-compromise-reset"]
     }
   ]
 }

@@ -53,9 +53,8 @@ describe("revisioned protocol registry", () => {
     expect(feature("comms.oidc-jwt-projection.v1").prerequisites)
       .toEqual(["comms.private-claim-ledger.v1"]);
     expect(feature("control.node-scoped-token.v1").prerequisites)
-      .toEqual(["control.private-entitlement.v1"]);
-    expect(feature("control.oauth-device-enrollment.v1").prerequisites)
-      .toEqual(["comms.oidc-jwt-projection.v1", "control.node-scoped-token.v1"]);
+      .toEqual(["control.nip46-oidc-signing.v1"]);
+    expect(featureIds).not.toContain("control.oauth-device-enrollment.v1");
     expect(invariant("COMMS-I-JWT-TYPE-AUDIENCE").feature)
       .toBe("comms.oidc-jwt-projection.v1");
   });
@@ -404,6 +403,88 @@ describe("revisioned protocol registry", () => {
       .not.toContain("COMMS-I-AGENT-ROLE-BINDING");
   });
 
+  it("registers isolated persona vaults, exact NIP-46 grants, and complete compromise reset", () => {
+    const feature = (id: string) => {
+      const entry = registry.features.find((candidate) => candidate.id === id);
+      if (entry === undefined) throw new Error(`missing feature: ${id}`);
+      return entry;
+    };
+    expect(feature("control.multi-persona-vaults.v1")).toMatchObject({
+      owner: "control",
+      prerequisites: ["comms.marmot-conversations.v1"],
+      spec_ref: "heterodyne:0.5.0#control-persona-vaults",
+    });
+    expect(feature("control.nip46-oidc-signing.v1")).toMatchObject({
+      prerequisites: [
+        "comms.oidc-jwt-projection.v1",
+        "control.multi-persona-vaults.v1",
+      ],
+      spec_ref: "heterodyne:0.5.0#control-nip46-signing",
+    });
+    expect(feature("control.agent-workload-publication.v1").prerequisites)
+      .toEqual([
+        "comms.agent-authorship.v1",
+        "control.nip46-oidc-signing.v1",
+      ]);
+    expect(feature("control.trusted-seed-provisioning.v1").prerequisites)
+      .toEqual([
+        "comms.trusted-seed-private-relay.v1",
+        "control.multi-persona-vaults.v1",
+      ]);
+    expect(feature("control.compromise-reset.v1").prerequisites)
+      .toEqual([
+        "comms.marmot-conversations.v1",
+        "control.multi-persona-vaults.v1",
+      ]);
+    expect(registry.features.filter(({ owner }) => owner === "control")
+      .flatMap(({ prerequisites }) => prerequisites)
+      .filter((id) => id.startsWith("assurance."))).toEqual([]);
+    expect(registry.features.map(({ id }) => id)).not.toEqual(expect.arrayContaining([
+      "control.private-entitlement.v1",
+      "control.recovery.epoch-inbox.v1",
+    ]));
+
+    const reasons = registry.reason_codes.map(({ code }) => code);
+    expect(reasons).toEqual(expect.arrayContaining([
+      "control-vault-isolation-failed",
+      "control-signer-unavailable",
+      "control-signer-binding-mismatch",
+      "control-signing-grant-inactive",
+      "control-client-metadata-widening",
+      "control-persona-authority-required",
+      "control-connection-secret-invalid",
+      "control-connection-secret-reused",
+      "control-attribution-required",
+      "control-compromise-reset-incomplete",
+      "control-subordinate-reauthorization-required",
+    ]));
+    expect(reasons).not.toEqual(expect.arrayContaining([
+      "control-recovery-locked",
+      "control-registration-invalid",
+      "control-activation-mismatch",
+      "control-recovery-grant-invalid",
+      "control-recovery-completion-mismatch",
+      "control-sftp-denied",
+    ]));
+
+    const invariants = registry.security_invariants
+      .filter(({ owner }) => owner === "control");
+    expect(invariants.map(({ id }) => id)).toEqual(expect.arrayContaining([
+      "CONTROL-I-PERSONA-VAULT-ISOLATION",
+      "CONTROL-I-EXACT-SIGNER-GRANT",
+      "CONTROL-I-NIP46-OIDC-ACTIVATION",
+      "CONTROL-I-NO-SIGNER-FALLBACK",
+      "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING",
+      "CONTROL-I-BASELINE-ACTIVE-KEY",
+      "CONTROL-I-MARMOT-LEAF-COMPROMISE",
+      "CONTROL-I-COMPROMISE-RESET",
+    ]));
+    expect(invariants.map(({ id }) => id)).not.toEqual(expect.arrayContaining([
+      "CONTROL-I-EPOCH-LOCKED-DURING-TRANSFER",
+      "CONTROL-I-SFTP-PROCESS-SEPARATION",
+    ]));
+  });
+
   it("registers upstream Marmot transport kinds without Heterodyne stamping", () => {
     for (const kind of [444, 445, 30443]) {
       expect(registry.kinds.find((entry) => entry.kind === kind)).toMatchObject({
@@ -571,7 +652,6 @@ describe("revisioned protocol registry", () => {
     expect(reasonCodes).toEqual(expect.arrayContaining([
       "agent-token-invalid",
       "control-token-invalid",
-      "control-sftp-denied",
       "control-enrollment-unavailable",
       "control-device-code-invalid",
       // Backoff and the user-visible code comparison stay separable: they tell

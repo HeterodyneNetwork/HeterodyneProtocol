@@ -1,7 +1,10 @@
 import { createHash } from "node:crypto";
 import { secp256k1 } from "@noble/curves/secp256k1";
 import { jcsCanonicalize } from "./jcs.js";
-import { validateControlClientAuthorizationSchemaOrThrow } from "./schema.js";
+
+// This module remains the compatibility evaluator for the explicitly frozen
+// pre-redesign Control topic source. Current signer-grant validation lives in
+// control-signing.ts and uses the live closed schema.
 
 type Reject = { verdict: "reject"; reason_code: string };
 
@@ -248,12 +251,23 @@ function validAuthorization(
   authorization: ControlAuthorizationRecord,
   now: number,
 ): boolean {
-  try {
-    validateControlClientAuthorizationSchemaOrThrow(authorization);
-  } catch {
-    return false;
-  }
-  return authorization.state === "active"
+  const hex256 = (value: string) => /^[0-9a-f]{64}$/.test(value);
+  const hex512 = (value: string) => /^[0-9a-f]{128}$/.test(value);
+  return hex256(authorization.record_id)
+    && hex256(authorization.persona)
+    && hex256(authorization.client_key)
+    && hex256(authorization.approving_node)
+    && hex256(authorization.signer)
+    && hex512(authorization.signature)
+    && authorization.approving_authority.length > 0
+    && authorization.methods.length > 0
+    && authorization.objects.length > 0
+    && limitsAreFinite(authorization.limits)
+    && authorization.token_lifetime_default_seconds === 300
+    && Number.isSafeInteger(authorization.token_lifetime_max_seconds)
+    && authorization.token_lifetime_max_seconds >= 300
+    && authorization.token_lifetime_max_seconds <= 3_600
+    && authorization.state === "active"
     && authorization.created_at <= now
     && (authorization.expires_at === null || now < authorization.expires_at);
 }

@@ -1,21 +1,65 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://heterodyne.network/schemas/control/control-device-authorization-state-v1.schema.json",
-  "title": "Node-local hardened OAuth Device Authorization state v1",
+  "title": "Node-local OIDC authorization and NIP-46 activation state v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["device_code_sha256", "device_code_entropy_bits", "user_code_sha256", "user_code_entropy_bits", "normalization", "client_fingerprint", "failed_guesses", "max_failed_guesses", "interval_seconds", "expires_at", "state"],
+  "required": [
+    "profile", "spec_version", "transaction_id", "persona_active_key",
+    "nip46_client_pubkey", "signer_audience", "selected_signing_pubkey",
+    "key_class", "requested_methods", "requested_event_kinds",
+    "requested_limits", "connection_secret_sha256", "connection_secret_state",
+    "device_code_sha256", "device_code_entropy_bits", "user_code_sha256",
+    "user_code_entropy_bits", "normalization", "client_fingerprint",
+    "failed_guesses", "max_failed_guesses", "interval_seconds", "issued_at",
+    "expires_at", "state"
+  ],
   "properties": {
-    "device_code_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "profile": {"const": "heterodyne.control.device-authorization-state.v1"},
+    "spec_version": {"const": "heterodyne/0.5.0"},
+    "transaction_id": {"$ref": "#/$defs/hex256"},
+    "persona_active_key": {"$ref": "#/$defs/hex256"},
+    "nip46_client_pubkey": {"$ref": "#/$defs/hex256"},
+    "signer_audience": {"type": "string", "minLength": 1, "maxLength": 512},
+    "selected_signing_pubkey": {"$ref": "#/$defs/hex256"},
+    "key_class": {"enum": ["persona", "agent"]},
+    "requested_methods": {
+      "type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"}
+    },
+    "requested_event_kinds": {
+      "type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true,
+      "items": {"type": "integer", "minimum": 0, "maximum": 65535}
+    },
+    "requested_limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_window_seconds", "request_count", "max_event_bytes", "max_value_msats"],
+      "properties": {
+        "request_window_seconds": {"$ref": "#/$defs/positive"},
+        "request_count": {"$ref": "#/$defs/positive"},
+        "max_event_bytes": {"$ref": "#/$defs/positive"},
+        "max_value_msats": {"type": "integer", "minimum": 0, "maximum": 9007199254740991}
+      }
+    },
+    "connection_secret_sha256": {"$ref": "#/$defs/hex256"},
+    "connection_secret_state": {"enum": ["pending", "consumed"]},
+    "device_code_sha256": {"$ref": "#/$defs/hex256"},
     "device_code_entropy_bits": {"type": "number", "minimum": 128},
-    "user_code_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "user_code_sha256": {"$ref": "#/$defs/hex256"},
     "user_code_entropy_bits": {"type": "number", "minimum": 34.5},
     "normalization": {"const": "uppercase-ascii-remove-hyphen"},
-    "client_fingerprint": {"type": "string", "minLength": 1},
+    "client_fingerprint": {"type": "string", "minLength": 1, "maxLength": 256},
     "failed_guesses": {"type": "integer", "minimum": 0, "maximum": 5},
     "max_failed_guesses": {"const": 5},
-    "interval_seconds": {"type": "integer", "minimum": 1},
-    "expires_at": {"type": "integer", "minimum": 1},
+    "interval_seconds": {"$ref": "#/$defs/positive"},
+    "issued_at": {"$ref": "#/$defs/time"},
+    "expires_at": {"$ref": "#/$defs/time"},
     "state": {"enum": ["pending", "approved", "denied", "expired", "exhausted", "consumed"]}
+  },
+  "$defs": {
+    "hex256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "time": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+    "positive": {"type": "integer", "minimum": 1, "maximum": 9007199254740991}
   }
 }

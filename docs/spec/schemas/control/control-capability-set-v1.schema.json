@@ -1,41 +1,33 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://heterodyne.network/schemas/control/control-capability-set-v1.schema.json",
+  "title": "Heterodyne Control node capability set v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["role", "inbound_execution", "cancellation", "tools"],
+  "required": [
+    "profile", "spec_version", "node_mode", "max_persona_vaults",
+    "custody_modes", "nip46_methods", "oidc_activation",
+    "one_use_connection_secrets", "automation_attribution", "compromise_reset"
+  ],
   "properties": {
-    "role": {
-      "enum": ["light-client", "full-node"]
-    },
-    "inbound_execution": {
-      "type": "boolean"
-    },
-    "cancellation": {
-      "type": "boolean"
-    },
-    "tools": {
+    "profile": {"const": "heterodyne.control.capability-set.v1"},
+    "spec_version": {"const": "heterodyne/0.5.0"},
+    "node_mode": {"enum": ["full", "light"]},
+    "max_persona_vaults": {"type": "integer", "minimum": 0, "maximum": 65535},
+    "custody_modes": {
       "type": "array",
-      "maxItems": 256,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["name", "input_schema", "timeout_ms"],
-        "properties": {
-          "name": {
-            "type": "string",
-            "pattern": "^[a-zA-Z0-9](?:[a-zA-Z0-9._:-]{0,126}[a-zA-Z0-9])?$"
-          },
-          "input_schema": {
-            "type": "object"
-          },
-          "timeout_ms": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 300000
-          }
-        }
-      }
-    }
+      "uniqueItems": true,
+      "items": {"enum": ["local", "nip46"]}
+    },
+    "nip46_methods": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"}
+    },
+    "oidc_activation": {"type": "boolean"},
+    "one_use_connection_secrets": {"type": "boolean"},
+    "automation_attribution": {"type": "boolean"},
+    "compromise_reset": {"type": "boolean"}
   }
 }

@@ -1,17 +1,51 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://heterodyne.network/schemas/control/control-agent-publish-v1.schema.json",
+  "title": "Heterodyne automated publication intent v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["spec_version", "token", "sender_proof", "content", "kind", "resource", "feed", "options"],
+  "required": [
+    "profile", "spec_version", "grant_id", "vault_id", "persona_active_key",
+    "nip46_client_pubkey", "signer_audience", "selected_signing_pubkey",
+    "key_class", "created_at", "kind", "tags", "content", "value_msats",
+    "agent_class"
+  ],
   "properties": {
+    "profile": {"const": "heterodyne.control.agent-publish-intent.v1"},
     "spec_version": {"const": "heterodyne/0.5.0"},
-    "token": {"type": "string", "minLength": 1, "maxLength": 16384},
-    "sender_proof": {"type": "string", "minLength": 1, "maxLength": 16384},
-    "content": {"type": "string"},
+    "grant_id": {"$ref": "#/$defs/hex256"},
+    "vault_id": {"$ref": "#/$defs/hex256"},
+    "persona_active_key": {"$ref": "#/$defs/hex256"},
+    "nip46_client_pubkey": {"$ref": "#/$defs/hex256"},
+    "signer_audience": {"type": "string", "minLength": 1, "maxLength": 512},
+    "selected_signing_pubkey": {"$ref": "#/$defs/hex256"},
+    "key_class": {"enum": ["persona", "agent"]},
+    "created_at": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
     "kind": {"type": "integer", "minimum": 0, "maximum": 65535},
-    "resource": {"type": "string", "minLength": 1, "maxLength": 512},
-    "feed": {"type": "string", "minLength": 1, "maxLength": 256},
-    "options": {"type": "object"}
+    "tags": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 64,
+        "items": {"type": "string", "maxLength": 8192}
+      }
+    },
+    "content": {"type": "string"},
+    "value_msats": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+    "agent_class": {"enum": ["ai", "programmatic"]},
+    "agent_association": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "value"],
+      "properties": {
+        "kind": {"enum": ["key", "role"]},
+        "value": {"type": "string", "minLength": 1, "maxLength": 256}
+      }
+    }
+  },
+  "$defs": {
+    "hex256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
   }
 }

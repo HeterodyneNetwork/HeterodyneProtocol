@@ -28,6 +28,11 @@ const commsSchemasRoot = resolve(
   "../../../schemas/comms",
 );
 
+const controlSchemasRoot = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../schemas/control",
+);
+
 const marmotSchemaNames = [
   "marmot-group-directory-v1.schema.json",
   "marmot-persona-inbox-bundle-v1.schema.json",
@@ -72,8 +77,289 @@ function validateCommsSchema(
   return validate(value) ? null : JSON.stringify(validate.errors);
 }
 
+function validateControlSchema(name: string, value: unknown): string | null {
+  const schema = JSON.parse(
+    readFileSync(resolve(controlSchemasRoot, name), "utf8"),
+  ) as AnySchema & { $schema?: string };
+  const validate = schema.$schema?.includes("2020-12")
+    ? new Ajv2020({ allErrors: true, strict: false }).compile(schema)
+    : new Ajv({ allErrors: true, strict: false }).compile(schema);
+  return validate(value) ? null : JSON.stringify(validate.errors);
+}
+
 const h = (byte: string) => byte.repeat(64);
 const sig = (byte: string) => byte.repeat(128);
+
+describe("multi-persona Control schemas", () => {
+  const persona = h("1");
+  const successor = h("2");
+  const client = h("3");
+  const signer = h("4");
+  const vaultId = h("5");
+  const grantId = h("6");
+  const audience = "https://node.example/nip46/persona-1";
+  const grant = {
+    profile: "heterodyne.control.signer-grant.v1",
+    spec_version: "heterodyne/0.5.0",
+    grant_id: grantId,
+    vault_id: vaultId,
+    persona_active_key: persona,
+    nip46_client_pubkey: client,
+    signer_audience: audience,
+    selected_signing_pubkey: signer,
+    key_class: "agent",
+    persona_signing_authorized: false,
+    allowed_methods: ["sign_event"],
+    allowed_event_kinds: [1, 30023],
+    limits: {
+      request_window_seconds: 60,
+      request_count: 20,
+      max_event_bytes: 4096,
+      max_value_msats: 0,
+    },
+    oidc_authorization_id: h("7"),
+    connection_secret_sha256: h("8"),
+    issued_at: 100,
+    expires_at: 200,
+    predecessor: null,
+    state: "active",
+    revoked_at: null,
+    authorizing_pubkey: persona,
+    signature: sig("9"),
+  };
+  const requiredReset = {
+    nip46_oidc_grant_ids: [grantId],
+    client_ids: [client],
+    delegate_ids: [h("a")],
+    node_ids: [h("b")],
+    agent_ids: [signer],
+    trusted_seed_nids: ["did:key:z6MkwQp8f8Y11L3WJYJ4hXa1"],
+    marmot_leaf_ids: [h("c")],
+    reachable_group_ids: [h("d")],
+    subordinate_authority_ids: [h("a"), h("b"), signer],
+  };
+  const recoveryGrant = {
+    profile: "heterodyne.control.compromise-reset-grant.v1",
+    spec_version: "heterodyne/0.5.0",
+    recovery_id: h("e"),
+    persona_active_key: persona,
+    successor_active_key: successor,
+    authorization_class: "active-account",
+    authorizing_pubkey: persona,
+    compromise_at: 120,
+    required_reset: requiredReset,
+    issued_at: 121,
+    expires_at: 180,
+    state: "active",
+    revoked_at: null,
+    signature: sig("f"),
+  };
+  const recoveryCompletion = {
+    profile: "heterodyne.control.compromise-reset-completion.v1",
+    spec_version: "heterodyne/0.5.0",
+    recovery_id: recoveryGrant.recovery_id,
+    persona_active_key: persona,
+    successor_active_key: successor,
+    revoked_nip46_oidc_grant_ids: [grantId],
+    invalidated_client_ids: [client],
+    invalidated_delegate_ids: [h("a")],
+    invalidated_node_ids: [h("b")],
+    invalidated_agent_ids: [signer],
+    invalidated_trusted_seed_nids: requiredReset.trusted_seed_nids,
+    removed_marmot_leaf_ids: [h("c")],
+    advanced_group_ids: [h("d")],
+    stalled_group_ids: [],
+    fresh_keypackages: [{ account_key: successor, event_id: h("0") }],
+    subordinate_reauthorizations: [
+      { prior_authority_id: h("a"), authorization_id: h("1") },
+      { prior_authority_id: h("b"), authorization_id: h("2") },
+      { prior_authority_id: signer, authorization_id: h("3") },
+    ],
+    completed_at: 130,
+    signer: successor,
+    signature: sig("4"),
+  };
+  const fixtures = [
+    ["control-client-authorization-v1.schema.json", grant],
+    ["control-agent-publish-v1.schema.json", {
+      profile: "heterodyne.control.agent-publish-intent.v1",
+      spec_version: "heterodyne/0.5.0",
+      grant_id: grantId,
+      vault_id: vaultId,
+      persona_active_key: persona,
+      nip46_client_pubkey: client,
+      signer_audience: audience,
+      selected_signing_pubkey: signer,
+      key_class: "agent",
+      created_at: 125,
+      kind: 1,
+      tags: [["t", "heterodyne"]],
+      content: "bounded publication intent",
+      value_msats: 0,
+      agent_class: "ai",
+      agent_association: { kind: "key", value: signer },
+    }],
+    ["control-audit-record-v1.schema.json", {
+      profile: "heterodyne.control.audit-record.v1",
+      spec_version: "heterodyne/0.5.0",
+      grant_id: grantId,
+      vault_id: vaultId,
+      persona_active_key: persona,
+      nip46_client_pubkey: client,
+      signer_audience: audience,
+      selected_signing_pubkey: signer,
+      key_class: "agent",
+      request_id: h("5"),
+      method: "sign_event",
+      event_kind: 1,
+      payload_digest: h("6"),
+      attribution_state: "applied",
+      decision: "accept",
+      reason_code: null,
+      event_id: h("7"),
+      created_at: 126,
+    }],
+    ["control-capability-set-v1.schema.json", {
+      profile: "heterodyne.control.capability-set.v1",
+      spec_version: "heterodyne/0.5.0",
+      node_mode: "full",
+      max_persona_vaults: 16,
+      custody_modes: ["local", "nip46"],
+      nip46_methods: ["sign_event", "nip44_decrypt"],
+      oidc_activation: true,
+      one_use_connection_secrets: true,
+      automation_attribution: true,
+      compromise_reset: true,
+    }],
+    ["control-device-authorization-state-v1.schema.json", {
+      profile: "heterodyne.control.device-authorization-state.v1",
+      spec_version: "heterodyne/0.5.0",
+      transaction_id: h("8"),
+      persona_active_key: persona,
+      nip46_client_pubkey: client,
+      signer_audience: audience,
+      selected_signing_pubkey: signer,
+      key_class: "agent",
+      requested_methods: ["sign_event"],
+      requested_event_kinds: [1],
+      requested_limits: grant.limits,
+      connection_secret_sha256: grant.connection_secret_sha256,
+      connection_secret_state: "pending",
+      device_code_sha256: h("9"),
+      device_code_entropy_bits: 128,
+      user_code_sha256: h("a"),
+      user_code_entropy_bits: 34.5,
+      normalization: "uppercase-ascii-remove-hyphen",
+      client_fingerprint: "NIP-46 client 33333333",
+      failed_guesses: 0,
+      max_failed_guesses: 5,
+      interval_seconds: 5,
+      issued_at: 100,
+      expires_at: 200,
+      state: "approved",
+    }],
+    ["control-operation-record-v1.schema.json", {
+      profile: "heterodyne.control.signing-operation.v1",
+      spec_version: "heterodyne/0.5.0",
+      operation_id: h("b"),
+      request_id: h("c"),
+      grant_id: grantId,
+      vault_id: vaultId,
+      persona_active_key: persona,
+      nip46_client_pubkey: client,
+      signer_audience: audience,
+      selected_signing_pubkey: signer,
+      key_class: "agent",
+      method: "sign_event",
+      event_kind: 1,
+      request_digest: h("d"),
+      attribution_state: "applied",
+      signature_state: "produced",
+      event_id: h("e"),
+      state: "committed",
+      result_digest: h("e"),
+      commit_evidence: { event_id: h("e") },
+      created_at: 125,
+      updated_at: 126,
+    }],
+    ["control-recovery-grant-v1.schema.json", recoveryGrant],
+    ["control-recovery-completion-v1.schema.json", recoveryCompletion],
+  ] as const;
+
+  it.each(fixtures)("accepts the exact closed %s contract", (name, value) => {
+    expect(validateControlSchema(name, value)).toBeNull();
+    expect(validateControlSchema(name, { ...value, kel_head: h("f") }))
+      .toMatch(/additionalProperties/);
+  });
+
+  it("requires every authority-bearing signer grant binding", () => {
+    for (const member of [
+      "persona_active_key",
+      "nip46_client_pubkey",
+      "signer_audience",
+      "selected_signing_pubkey",
+      "key_class",
+      "allowed_methods",
+      "allowed_event_kinds",
+      "limits",
+      "issued_at",
+      "expires_at",
+      "state",
+    ]) {
+      const missing = structuredClone(grant) as Record<string, unknown>;
+      delete missing[member];
+      expect(
+        validateControlSchema("control-client-authorization-v1.schema.json", missing),
+        member,
+      ).toMatch(/required/);
+    }
+  });
+
+  it("makes persona authority explicit and revocation state closed", () => {
+    expect(validateControlSchema("control-client-authorization-v1.schema.json", {
+      ...grant,
+      selected_signing_pubkey: persona,
+      key_class: "persona",
+      persona_signing_authorized: true,
+    })).toBeNull();
+    expect(validateControlSchema("control-client-authorization-v1.schema.json", {
+      ...grant,
+      selected_signing_pubkey: persona,
+      key_class: "persona",
+      persona_signing_authorized: false,
+    })).toMatch(/persona_signing_authorized|const/);
+    expect(validateControlSchema("control-client-authorization-v1.schema.json", {
+      ...grant,
+      state: "revoked",
+      revoked_at: null,
+    })).toMatch(/revoked_at|type/);
+  });
+
+  it("preserves hardened device authorization and operation ordering", () => {
+    const device = structuredClone(fixtures[4][1]) as Record<string, unknown>;
+    delete device.client_fingerprint;
+    expect(validateControlSchema(
+      "control-device-authorization-state-v1.schema.json",
+      device,
+    )).toMatch(/client_fingerprint|required/);
+
+    const operation = fixtures[5][1];
+    expect(validateControlSchema("control-operation-record-v1.schema.json", {
+      ...operation,
+      attribution_state: "required",
+      signature_state: "produced",
+    })).toMatch(/attribution_state|not|const/);
+  });
+
+  it("permits automated attribution without an optional agent association", () => {
+    const publication = structuredClone(fixtures[1][1]) as Record<string, unknown>;
+    delete publication.agent_association;
+    expect(validateControlSchema(
+      "control-agent-publish-v1.schema.json",
+      publication,
+    )).toBeNull();
+  });
+});
 
 describe("trusted private seed and flexible agent schemas", () => {
   const administratorAccount = h("1");

@@ -1,89 +1,71 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://heterodyne.network/schemas/control/control-recovery-grant-v1.schema.json",
-  "title": "Heterodyne private Radicle recovery grant v1",
+  "title": "Heterodyne compromise reset grant v1",
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "grant_id",
-    "activation_id",
-    "prospective_nid",
-    "repositories",
-    "direction",
-    "byte_ceiling",
-    "issued_at",
-    "expires_at",
-    "completion_digest",
-    "signer",
-    "signature"
+    "profile", "spec_version", "recovery_id", "persona_active_key",
+    "successor_active_key", "authorization_class", "authorizing_pubkey",
+    "compromise_at", "required_reset", "issued_at", "expires_at", "state",
+    "revoked_at", "signature"
   ],
   "properties": {
-    "grant_id": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
-    },
-    "activation_id": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
-    },
-    "prospective_nid": {
-      "type": "string",
-      "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$"
-    },
-    "repositories": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "rid",
-          "head"
-        ],
-        "properties": {
-          "rid": {
-            "type": "string",
-            "minLength": 1
-          },
-          "head": {
-            "type": "string",
-            "pattern": "^[0-9a-f]{40}$"
-          }
-        }
+    "profile": {"const": "heterodyne.control.compromise-reset-grant.v1"},
+    "spec_version": {"const": "heterodyne/0.5.0"},
+    "recovery_id": {"$ref": "#/$defs/hex256"},
+    "persona_active_key": {"$ref": "#/$defs/hex256"},
+    "successor_active_key": {"$ref": "#/$defs/hex256"},
+    "authorization_class": {"enum": ["active-account", "assurance-recovery"]},
+    "authorizing_pubkey": {"$ref": "#/$defs/hex256"},
+    "compromise_at": {"$ref": "#/$defs/time"},
+    "required_reset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nip46_oidc_grant_ids", "client_ids", "delegate_ids", "node_ids",
+        "agent_ids", "trusted_seed_nids", "marmot_leaf_ids",
+        "reachable_group_ids", "subordinate_authority_ids"
+      ],
+      "properties": {
+        "nip46_oidc_grant_ids": {"$ref": "#/$defs/hexArray"},
+        "client_ids": {"$ref": "#/$defs/hexArray"},
+        "delegate_ids": {"$ref": "#/$defs/hexArray"},
+        "node_ids": {"$ref": "#/$defs/hexArray"},
+        "agent_ids": {"$ref": "#/$defs/hexArray"},
+        "trusted_seed_nids": {
+          "type": "array", "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$"}
+        },
+        "marmot_leaf_ids": {"$ref": "#/$defs/hexArray"},
+        "reachable_group_ids": {"$ref": "#/$defs/hexArray"},
+        "subordinate_authority_ids": {"$ref": "#/$defs/hexArray"}
       }
     },
-    "direction": {
-      "enum": [
-        "fetch",
-        "push"
+    "issued_at": {"$ref": "#/$defs/time"},
+    "expires_at": {"$ref": "#/$defs/time"},
+    "state": {"enum": ["active", "revoked"]},
+    "revoked_at": {
+      "oneOf": [
+        {"$ref": "#/$defs/time"},
+        {"type": "null"}
       ]
     },
-    "byte_ceiling": {
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 9007199254740991
-    },
-    "issued_at": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 9007199254740991
-    },
-    "expires_at": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 9007199254740991
-    },
-    "completion_digest": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
-    },
-    "signer": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
-    },
-    "signature": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{128}$"
+    "signature": {"type": "string", "pattern": "^[0-9a-f]{128}$"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"state": {"const": "active"}}, "required": ["state"]},
+      "then": {"properties": {"revoked_at": {"type": "null"}}},
+      "else": {"properties": {"revoked_at": {"$ref": "#/$defs/time"}}}
+    }
+  ],
+  "$defs": {
+    "hex256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "time": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+    "hexArray": {
+      "type": "array", "uniqueItems": true,
+      "items": {"$ref": "#/$defs/hex256"}
     }
   }
 }
