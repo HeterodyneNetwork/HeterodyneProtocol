@@ -2,6 +2,7 @@ import { Ajv2020 } from "ajv/dist/2020.js";
 import workloadRegistrationSchema from "../../../schemas/comms/agent-workload-registration-v1.schema.json" with { type: "json" };
 import { derivePairwiseSubject } from "./oidc.js";
 import { evaluateCredentialGeneration } from "./credential-generation.js";
+import { isStrictNostrSignedEvent, type NostrSignedEvent } from "./nostr.js";
 
 // Compatibility exports for the explicitly frozen pre-redesign vector topic.
 export {
@@ -47,6 +48,11 @@ export type WorkloadRegistration = {
 export type AgentAssociation = {
   kind: "key" | "role";
   value: string;
+};
+
+declare const commsSocialAuthorizationBrand: unique symbol;
+export type CommsSocialAuthorization = {
+  readonly [commsSocialAuthorizationBrand]: true;
 };
 
 export type AgentTokenValidationInput = {
@@ -151,6 +157,14 @@ const validateRegistration = ajv.compile<WorkloadRegistration>(
   workloadRegistrationSchema,
 );
 const AGENT_KINDS = new Set([1, 6, 7, 16, 1063, 1985, 4550, 30023]);
+const SOCIAL_AUTHORIZATIONS = new WeakMap<object, {
+  represented_persona: string;
+  event_id: string;
+  signer: string;
+  kind: number;
+  created_at: number;
+  agent_association: AgentAssociation | null;
+}>();
 const LEGACY_DELEGATION_MEMBERS = new Set([
   "agent_role_id",
   "expected_role_id",
@@ -395,6 +409,102 @@ export function injectAgentAttribution(
   };
 }
 
+export function authorizeCommsSocialPublication(input: {
+  registration: unknown;
+  token: AgentTokenValidationInput;
+  represented_persona: string;
+  event: NostrSignedEvent;
+}): { verdict: "accept"; authorization: CommsSocialAuthorization } | {
+  verdict: "reject";
+  reason_code: "agent-signer-mismatch";
+} {
+  let registration: WorkloadRegistration;
+  try {
+    registration = validateWorkloadRegistration(input.registration);
+  } catch {
+    return denied("agent-signer-mismatch");
+  }
+  const token = validateAgentAccessToken(input.token);
+  const association = registration.agent_association ?? null;
+  if (
+    token.verdict !== "accept"
+    || !isStrictNostrSignedEvent(input.event)
+    || registration.persona_key !== input.represented_persona
+    || registration.selected_signer !== input.event.pubkey
+    || registration.selected_signer !== token.identity.signer
+    || registration.signer_key_class !== token.identity.key_class
+    || !equalAssociation(registration.agent_association, token.identity.agent_association)
+    || !registration.scopes.includes("heterodyne:agent:publish")
+    || input.token.scope !== registration.scopes.join(" ")
+    || input.token.expected_scope !== registration.scopes.join(" ")
+    || input.token.expected_client_id !== registration.client_id
+    || input.token.expected_signer_key !== registration.selected_signer
+    || input.token.expected_signer_key_class !== registration.signer_key_class
+    || !equalAssociation(input.token.expected_agent_association, registration.agent_association)
+    || input.token.registration_expires_at !== registration.expires_at
+    || input.event.created_at !== input.token.now
+    || input.event.created_at < registration.not_before
+    || input.event.created_at >= registration.expires_at
+    || input.event.created_at < input.token.iat
+    || input.event.created_at >= input.token.exp
+    || !registration.allowed_kinds.includes(input.event.kind)
+    || new TextEncoder().encode(input.event.content).length > registration.max_content_bytes
+  ) {
+    return denied("agent-signer-mismatch");
+  }
+  const attributed = injectAgentAttribution({
+    kind: input.event.kind,
+    tags: input.event.tags,
+    agent_class: registration.agent_class,
+    persona: input.represented_persona,
+    signer: input.event.pubkey,
+    expected_signer: token.identity.signer,
+    signer_key_class: token.identity.key_class,
+    oidc_scopes: registration.scopes,
+    agent_association: registration.agent_association,
+    expected_agent_association: token.identity.agent_association,
+    tier: 1,
+  });
+  if (
+    attributed.verdict !== "accept"
+    || attributed.author !== input.event.pubkey
+    || JSON.stringify(attributed.tags) !== JSON.stringify(input.event.tags)
+  ) {
+    return denied("agent-signer-mismatch");
+  }
+  const authorization = Object.freeze({}) as CommsSocialAuthorization;
+  SOCIAL_AUTHORIZATIONS.set(authorization, {
+    represented_persona: input.represented_persona,
+    event_id: input.event.id,
+    signer: input.event.pubkey,
+    kind: input.event.kind,
+    created_at: input.event.created_at,
+    agent_association: association,
+  });
+  return { verdict: "accept", authorization };
+}
+
+export function matchesCommsSocialAuthorization(input: {
+  authorization: unknown;
+  represented_persona: string;
+  event: NostrSignedEvent;
+  agent_association: AgentAssociation | null;
+}): boolean {
+  if (
+    input.authorization === null
+    || typeof input.authorization !== "object"
+    || Array.isArray(input.authorization)
+  ) return false;
+  const binding = SOCIAL_AUTHORIZATIONS.get(input.authorization);
+  return binding !== undefined
+    && binding.represented_persona === input.represented_persona
+    && binding.event_id === input.event.id
+    && binding.signer === input.event.pubkey
+    && binding.kind === input.event.kind
+    && binding.created_at === input.event.created_at
+    && equalNullableAssociation(binding.agent_association, input.agent_association);
+}
+
 export function matchesAgentAttributionProfile(tags: string[][]): boolean {
   const reservedIndexes = tags.flatMap((tag, index) =>
     isAgentProfileTag(tag) ? [index] : []
@@ -454,6 +564,15 @@ function equalAssociation(
     && actual.value === expected.value;
 }
 
+function equalNullableAssociation(
+  actual: AgentAssociation | null,
+  expected: AgentAssociation | null,
+): boolean {
+  return actual === null || expected === null
+    ? actual === expected
+    : actual.kind === expected.kind && actual.value === expected.value;
+}
+
 function isAgentAssociation(value: unknown): value is AgentAssociation {
   if (
     value === null
@@ -491,6 +610,6 @@ function hasAnyMember(value: object, members: ReadonlySet<string>): boolean {
   return Object.keys(value).some((member) => members.has(member));
 }
 
-function denied(reason_code: string): { verdict: "reject"; reason_code: string } {
+function denied<const T extends string>(reason_code: T): { verdict: "reject"; reason_code: T } {
   return { verdict: "reject", reason_code };
 }

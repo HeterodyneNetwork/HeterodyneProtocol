@@ -86,11 +86,11 @@ export function findProfileCoverageIssues(
 }
 
 export async function writeCoverage(vectorRoot: string): Promise<void> {
-  const { buildAllVectors } = await import("./topics.js");
+  const { buildSnapshotCompatibleVectors } = await import("./snapshot-topic-runtime.js");
   const { buildFixtures } = await import("./fixtures.js");
   await writeCoverageFromVectors(
     vectorRoot,
-    (await buildAllVectors(buildFixtures())).map(({ vector }) => vector),
+    (await buildSnapshotCompatibleVectors(buildFixtures())).map(({ vector }) => vector),
   );
 }
 

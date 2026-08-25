@@ -1936,6 +1936,17 @@ A projected JWT never replaces canonical private-ledger state. Client
 Credentials remains prohibited; a separately integrated sender-constrained
 HTTPS workload profile is required before that grant can be added.
 
+An internal authorization result consumed by Social or another family member
+MUST be opaque and provenance-authenticated by the complete validation above;
+it is not a caller-supplied signer tuple. The result binds the represented
+persona, actual signer and optional association, event kind, required
+publication scope, event time, current registration/grant validity bounds,
+and the exact canonical attribution tags and author produced before signing.
+A copied or reconstructed plain object, a result for another event, or a
+result whose registration or token state has changed grants no authority.
+This internal result is not a new wire object and MUST NOT be serialized into
+the event.
+
 <a id="comms-agent-attribution"></a>
 ### 15.4 Mandatory pre-sign attribution
 

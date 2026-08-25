@@ -1,13 +1,15 @@
-import { matchesAgentAttributionProfile, type AgentAssociation } from "./agent-authorship.js";
+import {
+  matchesAgentAttributionProfile,
+  matchesCommsSocialAuthorization,
+  type AgentAssociation,
+  type CommsSocialAuthorization,
+} from "./agent-authorship.js";
 import { isStrictNostrSignedEvent, type NostrSignedEvent } from "./nostr.js";
 
 export type SocialAuthorshipInput = {
   event: NostrSignedEvent;
   persona_active_key?: string;
-  comms_authorized_signers?: readonly {
-    pubkey: string;
-    agent_association: AgentAssociation | null;
-  }[];
+  comms_authorization?: CommsSocialAuthorization;
 };
 
 export type SocialAuthorshipDecision =
@@ -55,13 +57,14 @@ export function validateSocialAuthorship(
   }
 
   const attribution = signedAgentAssociation(input.event);
-  const authorization = attribution.valid
-    ? input.comms_authorized_signers?.find((candidate) =>
-      candidate.pubkey === input.event.pubkey
-      && sameAssociation(candidate.agent_association, attribution.association))
-    : undefined;
   if (
-    authorization === undefined
+    !attribution.valid
+    || !matchesCommsSocialAuthorization({
+      authorization: input.comms_authorization,
+      represented_persona: representedPersona,
+      event: input.event,
+      agent_association: attribution.association,
+    })
     || attribution.association?.kind === "key"
       && attribution.association.value !== input.event.pubkey
   ) {
@@ -176,15 +179,6 @@ function signedAgentAssociation(event: NostrSignedEvent): {
     return { valid: true, association: association as AgentAssociation };
   }
   return { valid: false, association: null };
-}
-
-function sameAssociation(
-  left: AgentAssociation | null,
-  right: AgentAssociation | null,
-): boolean {
-  return left === null || right === null
-    ? left === right
-    : left.kind === right.kind && left.value === right.value;
 }
 
 function validSignedEvent(event: NostrSignedEvent): boolean {

@@ -11,6 +11,7 @@ type Nip72Module = {
     }>;
     candidate: NostrSignedEvent;
     approvals: NostrSignedEvent[];
+    deletions?: NostrSignedEvent[];
   }) => {
     verdict: "accept" | "hold" | "reject";
     counted_approval_ids?: string[];
@@ -120,6 +121,103 @@ describe("NIP-72 live curated view", () => {
       verdict: "accept",
       counted_approval_ids: [currentModeratorApproval.id],
       audit_only_approval_ids: [oldModeratorApproval.id],
+    });
+  });
+
+  it("accepts upstream candidate and approval tag prefixes with trailing relay hints", async () => {
+    const hintedCandidate = await signEvent({
+      secretKey: authorSecret,
+      created_at: 1_115,
+      kind: 1,
+      tags: [["a", coordinate, "wss://community.example/"]],
+      content: "hinted contribution",
+      auxRand: AUX_RAND,
+    });
+    const hintedApproval = await signEvent({
+      secretKey: moderatorBSecret,
+      created_at: 1_120,
+      kind: 4550,
+      tags: [
+        ["a", coordinate, "wss://community.example/"],
+        ["e", hintedCandidate.id, "wss://author.example/"],
+        ["p", authorKey, "wss://author.example/"],
+      ],
+      content: JSON.stringify(hintedCandidate),
+      auxRand: AUX_RAND,
+    });
+    const nip72 = await loadNip72();
+    expect(nip72.evaluateNip72CuratedView?.({
+      community: { pubkey: communityKey, d: "garden" },
+      declaration_candidates: [{ carrier: "relay", event: currentDeclaration }],
+      candidate: hintedCandidate,
+      approvals: [hintedApproval],
+    })).toMatchObject({
+      verdict: "accept",
+      counted_approval_ids: [hintedApproval.id],
+    });
+  });
+
+  it("requires an approval at or after the selected declaration revision", async () => {
+    const preRevisionApproval = await approval(moderatorBSecret, 1_050);
+    const nip72 = await loadNip72();
+    expect(nip72.evaluateNip72CuratedView?.({
+      community: { pubkey: communityKey, d: "garden" },
+      declaration_candidates: [
+        { carrier: "repository", event: oldDeclaration },
+        { carrier: "relay", event: currentDeclaration },
+      ],
+      candidate,
+      approvals: [preRevisionApproval],
+    })).toEqual({
+      verdict: "hold",
+      counted_approval_ids: [],
+      audit_only_approval_ids: [preRevisionApproval.id],
+    });
+  });
+
+  it("excludes only a strict same-author NIP-09 deletion of the approval", async () => {
+    const validDeletion = await signEvent({
+      secretKey: moderatorBSecret,
+      created_at: 1_130,
+      kind: 5,
+      tags: [["e", currentModeratorApproval.id, "wss://relay.example/"]],
+      content: "withdraw approval",
+      auxRand: AUX_RAND,
+    });
+    const wrongAuthorDeletion = await signEvent({
+      secretKey: moderatorASecret,
+      created_at: 1_130,
+      kind: 5,
+      tags: [["e", currentModeratorApproval.id]],
+      content: "forged withdrawal",
+      auxRand: AUX_RAND,
+    });
+    const malformedDeletion = await signEvent({
+      secretKey: moderatorBSecret,
+      created_at: 1_130,
+      kind: 5,
+      tags: [[]],
+      content: "malformed withdrawal",
+      auxRand: AUX_RAND,
+    });
+    const nip72 = await loadNip72();
+    const base = {
+      community: { pubkey: communityKey, d: "garden" },
+      declaration_candidates: [{ carrier: "relay" as const, event: currentDeclaration }],
+      candidate,
+      approvals: [currentModeratorApproval],
+    };
+    expect(nip72.evaluateNip72CuratedView?.({
+      ...base,
+      deletions: [wrongAuthorDeletion, malformedDeletion],
+    })).toMatchObject({ verdict: "accept" });
+    expect(nip72.evaluateNip72CuratedView?.({
+      ...base,
+      deletions: [validDeletion],
+    })).toEqual({
+      verdict: "hold",
+      counted_approval_ids: [],
+      audit_only_approval_ids: [],
     });
   });
 });

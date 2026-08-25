@@ -27,13 +27,13 @@ import {
   snapshotVectorValidator,
   validateRawVector,
 } from "./snapshot-envelope.js";
-import { buildAllVectors } from "./topics.js";
+import { buildSnapshotCompatibleVectors } from "./snapshot-topic-runtime.js";
 import type { RawVector, SnapshotVector } from "./types.js";
 import { writeCoverageFromVectors } from "./coverage.js";
 
 export async function authorAllVectors(outputDir: string): Promise<string[]> {
   const fixtures = buildFixtures();
-  const vectors = await buildAllVectors(fixtures);
+  const vectors = await buildSnapshotCompatibleVectors(fixtures);
   const written: string[] = [];
 
   await removeRetiredVectors(

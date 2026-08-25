@@ -295,3 +295,152 @@ parent integration review remain the available review gates. No approved-
 design ambiguity or legacy-adapter blocker remains.
 
 Fix-round commit message: `fix: harden Social Nostr interoperability`.
+
+## Fix round 2/5
+
+### Implemented review findings
+
+- Replaced the compiler-only legacy bridge as the execution mechanism with a
+  real snapshot-only runtime. It emits a disposable repository-shaped
+  TypeScript build, rewrites only the copied frozen moderation topic's single
+  import to the explicit legacy adapter, links the locked dependencies and
+  current registry, copies current schemas required by emitted and dynamic
+  imports, loads the emitted JavaScript, and removes the disposable tree.
+  Current author and coverage execution enter through this runtime. Live
+  moderation exports stay current-only and direct frozen-topic execution
+  through them fails closed.
+- Updated NIP-72 reference handling to accept upstream trailing relay hints as
+  tag prefixes. Only approvals at or after the deterministically selected
+  kind `34550` declaration revision count, so removal/re-addition cannot
+  resurrect an old approval. Strict signed, non-backdated NIP-09 requests
+  exclude only the same author's targeted approval; malformed and wrong-author
+  requests have no effect.
+- Replaced caller signer/association arrays with an opaque Comms authorization
+  capability. Its producer runs the existing workload-registration,
+  access-token, and attribution validators, then exact-checks represented
+  persona, signer, optional association, event kind, publication scope, event
+  time, current registration/grant bounds, content size, canonical tags, and
+  actual author. A module-private WeakMap authenticates the frozen capability;
+  plain lookalikes and use on another signed event reject.
+- Defined one explicit ATProto binding/revocation serialization order. Binding
+  verification requires canonical `did:web` or `did:plc`, an optional
+  canonical 20-byte Base58btc RID, and a direct Ed25519 proof using the exact
+  named verification method of the resolved DID document. Boolean validity or
+  claimed hash inputs no longer exist.
+- Added authenticated ATProto lineage. Generation 1 carries
+  `predecessor:null`; every later generation binds the prior Nostr event id and
+  canonical binding hash. A fresh verifier walks signed repository-history or
+  relay evidence to generation 1 and checks every event, DID proof,
+  consecutive generation, time, nonce, event reference, and hash. Missing or
+  forged history and an old countersignature fail.
+- Revocations now enter only as a strict signed Nostr event or a direct DID
+  signature over canonical revocation bytes. Forged bodies do not revoke.
+  Either valid side revokes the current chain; recovery requires the next
+  fresh mutually signed generation after the revocation with the revoked
+  binding as authenticated predecessor.
+
+Registry revision `14` and entry-set digest
+`9839393f2e11430ce9c19bde009228b71dc7f5c7268215960d39ecab0461a6fc`
+remain unchanged. No registry, schema, frozen vector, snapshot, baseline,
+report/debt, topic source/metadata, or release artifact was modified, and no
+repository authoring command was run.
+
+### Fix-round-2 RED evidence
+
+Every review area began with executable exploit probes before production
+changes:
+
+```text
+snapshot runtime:
+  direct frozen topic through live API threw agent-policy-receipt-invalid;
+  isolated runtime vector result was undefined                    1 failed / 1
+
+NIP-72 relay hints, set revision, and signed deletion:
+  exact tags rejected hints; pre-revision approval counted;
+  valid same-author NIP-09 was ignored                             3 failed / 5
+
+Comms-to-Social authorization:
+  capability producer absent; fabricated tuple accepted           2 failed / 28
+
+ATProto canonical DID evidence:
+  after boolean/hash removal, canonical proof inputs rejected     4 failed / 4
+
+ATProto signed lineage and revocation:
+  predecessor/revocation evidence interface absent and
+  generation-1 predecessor shape rejected                         4 failed / 4
+
+self-review lineage pair continuity:
+  valid same-DID predecessor permitted a different Nostr pubkey   1 failed / 1
+```
+
+An initial broad current-author probe reached an unrelated current Comms
+continuity-schema projection before the moderation topic. The focused runtime
+probe was therefore narrowed to execute the actual frozen moderation builder;
+it first proves direct live failure and then requires the real emitted adapter
+runtime to produce `agent-moderation/receipt-valid`.
+
+A final broad author integration probe first exposed absent disposable
+registry and dynamically loaded schema assets. After linking/copying those
+read-only inputs into the disposable repository shape, both snapshot-runtime
+author calls and the direct live author call reached the same unrelated Comms
+continuity-schema projection (`claim-schema-invalid`) with no runtime path or
+module-resolution failure. The focused moderation runtime stayed green.
+
+### Fix-round-2 GREEN and full verification
+
+Fresh completed-patch evidence:
+
+```text
+npm --prefix docs/spec/vectors/generator test -- --run \
+  src/snapshot-topic-runtime.test.ts src/agent-moderation.test.ts \
+  src/agent-authorship.test.ts src/nostr.test.ts \
+  src/social-events.test.ts src/social-nip72.test.ts \
+  src/social-atproto.test.ts src/registry.test.ts src/schema.test.ts
+Test Files  9 passed (9)
+Tests       145 passed (145)
+
+npm --prefix docs/spec/vectors/generator run build
+node scripts/typecheck.mjs (exit 0)
+
+npm --prefix docs/spec/vectors/generator run family:check -- "$PWD"
+validated protocol document family (exit 0)
+
+npm --prefix docs/spec/vectors/generator run snapshot-check -- "$PWD"
+verified 482 vectors from source
+2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43 at snapshot
+5d4bb5fb58b35c88d8a9db120a09f1087237f35c (exit 0)
+```
+
+Snapshot verification authored only into its disposable temporary raw root
+and compared read-only with the pinned historical package.
+
+### Ownership expansion, cost, and self-review
+
+The parent explicitly expanded Task 7 ownership to
+`agent-authorship.ts`/tests for the Comms-to-Social capability. That cost is a
+new non-wire capability producer and consumer contract in the shared Comms
+module, plus focused Comms prose, tests, and exact reuse of three existing
+validators. No second authorization implementation or serializable receipt
+was introduced.
+
+The real snapshot runtime additionally required `author.ts`, `coverage.ts`,
+`snapshot-topic-runtime.ts`, and its integration test. These are execution
+surfaces, not frozen topic or vector artifacts. The approved design and plan
+are recorded beside this report.
+
+The complete diff was reviewed for a single transformed import, disposable
+cleanup, no legacy live dispatch, NIP-72 prefix/reference/author/time rules,
+WeakMap capability provenance and event replay, exact existing Comms validator
+reuse, canonical identifier/serialization rules, resolved-DID method
+selection and Ed25519 verification, predecessor event/hash traversal, carrier
+neutrality, same DID/Nostr-key pair continuity, unique nonce and monotonic
+time, forged revocation handling,
+post-revocation recovery, deterministic fixture signatures, registry
+revision/digest stability, and prohibited paths. `git diff --check` was clean.
+
+Independent review dispatch remained unavailable because the root thread's
+existing completed reviewers still consumed the agent thread limit. The
+complete self-review and parent integration review are the available gates.
+No approved-design contradiction or blocker remains.
+
+Fix-round-2 commit message: `fix: authenticate Social moderation and lineage`.

@@ -1,4 +1,9 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import {
+  authorizeCommsSocialPublication,
+  type AgentTokenValidationInput,
+  type CommsSocialAuthorization,
+} from "./agent-authorship.js";
 import { getPublicKey, signEvent, type NostrSignedEvent } from "./nostr.js";
 import { AUX_RAND } from "./vector-helpers.js";
 
@@ -7,6 +12,7 @@ type SocialEventsModule = {
   validateSocialAuthorship?: (input: {
     event: NostrSignedEvent;
     persona_active_key?: string;
+    comms_authorization?: CommsSocialAuthorization;
     comms_authorized_signers?: Array<{
       pubkey: string;
       agent_association: AgentAssociation | null;
@@ -40,6 +46,82 @@ type SocialEventsModule = {
 
 async function loadSocialEvents(): Promise<SocialEventsModule> {
   return await import("./social-events.js").catch(() => ({}));
+}
+
+function authorizationFor(
+  event: NostrSignedEvent,
+  agentAssociation: AgentAssociation | null,
+): CommsSocialAuthorization {
+  const jkt = "A".repeat(43);
+  const audience = "https://node.example/control/social-publication";
+  const registration = {
+    persona_key: personaKey,
+    client_id: "social-agent-client",
+    subject_jkt: jkt,
+    subject_proof: { method: "dpop", jkt },
+    agent_class: event.tags.some((tag) => tag[0] === "l" && tag[1] === "programmatic")
+      ? "programmatic" as const
+      : "ai" as const,
+    selected_signer: event.pubkey,
+    signer_key_class: "agent" as const,
+    ...(agentAssociation === null ? {} : { agent_association: agentAssociation }),
+    audience,
+    scopes: ["heterodyne:agent:publish"],
+    allowed_kinds: [event.kind],
+    allowed_feeds: ["main"],
+    allowed_resources: ["feed:main"],
+    max_content_bytes: 4096,
+    rate_limit: { window_seconds: 60, count: 20, burst: 5 },
+    not_before: event.created_at - 10,
+    expires_at: event.created_at + 200,
+  };
+  const token: AgentTokenValidationInput = {
+    typ: "at+jwt",
+    credential_ledger_persona: personaKey,
+    credential_ledger_generation: 0,
+    expected_credential_ledger_persona: personaKey,
+    expected_credential_ledger_generation: 0,
+    iss: "https://issuer.example/oidc/social",
+    sub: "social-pairwise-sub",
+    aud: [audience],
+    exp: event.created_at + 100,
+    iat: event.created_at - 1,
+    jti: `social-${event.id}`,
+    client_id: registration.client_id,
+    scope: "heterodyne:agent:publish",
+    cnf_jkt: jkt,
+    sender_proof_jkt: jkt,
+    sender_proof_valid: true,
+    signer_key: event.pubkey,
+    signer_key_class: "agent",
+    ...(agentAssociation === null ? {} : { agent_association: agentAssociation }),
+    expected_issuer: "https://issuer.example/oidc/social",
+    expected_subject: "social-pairwise-sub",
+    expected_audience: audience,
+    expected_client_id: registration.client_id,
+    expected_scope: "heterodyne:agent:publish",
+    expected_signer_key: event.pubkey,
+    expected_signer_key_class: "agent",
+    ...(agentAssociation === null ? {} : { expected_agent_association: agentAssociation }),
+    now: event.created_at,
+    status: "VALID",
+    ledger_active: true,
+    ledger_binding_valid: true,
+    status_binding_valid: true,
+    session_expires_at: registration.expires_at,
+    delegation_expires_at: registration.expires_at,
+    registration_expires_at: registration.expires_at,
+    consent_expires_at: registration.expires_at,
+    source_authorization_expires_at: registration.expires_at,
+  };
+  const result = authorizeCommsSocialPublication({
+    registration,
+    token,
+    represented_persona: personaKey,
+    event,
+  });
+  if (result.verdict !== "accept") throw new Error(result.reason_code);
+  return result.authorization;
 }
 
 const personaSecret = "15".repeat(32);
@@ -138,12 +220,37 @@ describe("ordinary Social authorship", () => {
         pubkey: agentKey,
         agent_association: association,
       }],
+    })).toEqual({ verdict: "reject", reason_code: "social-author-binding-invalid" });
+    expect(social.validateSocialAuthorship?.({
+      event: attributedAgentPost,
+      persona_active_key: personaKey,
+      comms_authorization: authorizationFor(attributedAgentPost, association),
     })).toEqual({
       verdict: "accept",
       event_author: agentKey,
       represented_persona: personaKey,
       agent_association: association,
     });
+    expect(social.validateSocialAuthorship?.({
+      event: attributedAgentPost,
+      persona_active_key: personaKey,
+      comms_authorization: {} as CommsSocialAuthorization,
+    })).toEqual({ verdict: "reject", reason_code: "social-author-binding-invalid" });
+
+    const differentEvent = await signEvent({
+      secretKey: agentSecret,
+      created_at: attributedAgentPost.created_at,
+      kind: attributedAgentPost.kind,
+      tags: attributedAgentPost.tags,
+      content: "different event under a replayed capability",
+      auxRand: AUX_RAND,
+    });
+    const authorization = authorizationFor(attributedAgentPost, association);
+    expect(social.validateSocialAuthorship?.({
+      event: differentEvent,
+      persona_active_key: personaKey,
+      comms_authorization: authorization,
+    })).toEqual({ verdict: "reject", reason_code: "social-author-binding-invalid" });
   });
 
   it("rejects an agent association that is missing, unauthorized, or not signed into the event", async () => {
@@ -214,10 +321,7 @@ describe("ordinary Social authorship", () => {
     expect(social.validateSocialAuthorship?.({
       event: attributed,
       persona_active_key: personaKey,
-      comms_authorized_signers: [{
-        pubkey: agentKey,
-        agent_association: null,
-      }],
+      comms_authorization: authorizationFor(attributed, null),
     })).toEqual({
       verdict: "accept",
       event_author: agentKey,

@@ -7,6 +7,9 @@ import {
   validateWorkloadRegistration,
   type AgentTokenValidationInput,
 } from "./agent-authorship.js";
+import * as agentAuthorship from "./agent-authorship.js";
+import { getPublicKey, signEvent, type NostrSignedEvent } from "./nostr.js";
+import { AUX_RAND } from "./vector-helpers.js";
 
 const coldRoot = "11".repeat(32);
 const roleId = "ab".repeat(32);
@@ -397,5 +400,118 @@ describe("canonical agent attribution", () => {
       verdict: "reject",
       reason_code: "agent-attribution-invalid",
     });
+  });
+});
+
+describe("opaque Comms authorization for Social", () => {
+  const agentSecret = "17".repeat(32);
+  const agentKey = getPublicKey(agentSecret);
+  const association = { kind: "key" as const, value: agentKey };
+  const registration = {
+    persona_key: coldRoot,
+    client_id: "social-agent-client",
+    subject_jkt: subjectJkt,
+    subject_proof: { method: "dpop", jkt: subjectJkt },
+    agent_class: "ai" as const,
+    selected_signer: agentKey,
+    signer_key_class: "agent" as const,
+    agent_association: association,
+    audience,
+    scopes: ["heterodyne:agent:publish"],
+    allowed_kinds: [1],
+    allowed_feeds: ["main"],
+    allowed_resources: ["feed:main"],
+    max_content_bytes: 4096,
+    rate_limit: { window_seconds: 60, count: 20, burst: 5 },
+    not_before: 900,
+    expires_at: 1_300,
+  };
+  const token: AgentTokenValidationInput = {
+    typ: "at+jwt",
+    credential_ledger_persona: coldRoot,
+    credential_ledger_generation: 0,
+    expected_credential_ledger_persona: coldRoot,
+    expected_credential_ledger_generation: 0,
+    iss: issuer,
+    sub: "social-pairwise-sub",
+    aud: [audience],
+    exp: 1_250,
+    iat: 1_000,
+    jti: "social-token-1",
+    client_id: registration.client_id,
+    scope: "heterodyne:agent:publish",
+    cnf_jkt: subjectJkt,
+    sender_proof_jkt: subjectJkt,
+    sender_proof_valid: true,
+    signer_key: agentKey,
+    signer_key_class: "agent",
+    agent_association: association,
+    expected_issuer: issuer,
+    expected_subject: "social-pairwise-sub",
+    expected_audience: audience,
+    expected_client_id: registration.client_id,
+    expected_scope: "heterodyne:agent:publish",
+    expected_signer_key: agentKey,
+    expected_signer_key_class: "agent",
+    expected_agent_association: association,
+    now: 1_100,
+    status: "VALID",
+    ledger_active: true,
+    ledger_binding_valid: true,
+    status_binding_valid: true,
+    session_expires_at: 1_300,
+    delegation_expires_at: 1_300,
+    registration_expires_at: 1_300,
+    consent_expires_at: 1_300,
+    source_authorization_expires_at: 1_300,
+  };
+
+  async function event(kind = 1, created_at = 1_100): Promise<NostrSignedEvent> {
+    return await signEvent({
+      secretKey: agentSecret,
+      created_at,
+      kind,
+      tags: [
+        ["L", "network.heterodyne.agent"],
+        ["l", "ai", "network.heterodyne.agent"],
+        ["heterodyne_agent", "v1", "key", agentKey],
+        ["agent_action", "publish"],
+      ],
+      content: "authorized Social automation",
+      auxRand: AUX_RAND,
+    });
+  }
+
+  it("produces a module-authenticated capability only for the exact current grant", async () => {
+    const authorize = (agentAuthorship as typeof agentAuthorship & {
+      authorizeCommsSocialPublication?: (input: {
+        registration: unknown;
+        token: AgentTokenValidationInput;
+        represented_persona: string;
+        event: NostrSignedEvent;
+      }) => { verdict: "accept"; authorization: object } | {
+        verdict: "reject";
+        reason_code: string;
+      };
+    }).authorizeCommsSocialPublication;
+    const validEvent = await event();
+    expect(authorize?.({
+      registration,
+      token,
+      represented_persona: coldRoot,
+      event: validEvent,
+    })).toMatchObject({ verdict: "accept", authorization: expect.any(Object) });
+    expect(authorize?.({
+      registration,
+      token,
+      represented_persona: coldRoot,
+      event: await event(7),
+    })).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
+    expect(authorize?.({
+      registration,
+      token,
+      represented_persona: coldRoot,
+      event: await event(1, 1_301),
+    })).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
   });
 });
