@@ -235,7 +235,39 @@ describe("agent workload access token", () => {
         agent_association,
       })).toEqual({
         verdict: "reject",
-        reason_code: "agent-signer-mismatch",
+        reason_code: "agent-token-invalid",
+      });
+    }
+  });
+
+  it("fails exact-key malformed token members closed without throwing", () => {
+    const malformed: Array<[keyof AgentTokenValidationInput, unknown]> = [
+      ["aud", null],
+      ["aud", {}],
+      ["aud", [audience, null]],
+      ["scope", null],
+      ["jti", []],
+      ["cnf_jkt", {}],
+      ["sender_proof_jkt", []],
+      ["signer_key", null],
+      ["expected_signer_key", []],
+      ["agent_association", { kind: "key", value: publishingKey, extra: true }],
+      ["credential_ledger_generation", []],
+      ["exp", {}],
+      ["ledger_active", "true"],
+      ["status", []],
+    ];
+    for (const [member, value] of malformed) {
+      let result: ReturnType<typeof validateAgentAccessToken> | undefined;
+      expect(() => {
+        result = validateAgentAccessToken({
+          ...valid,
+          [member]: value,
+        } as AgentTokenValidationInput);
+      }, member).not.toThrow();
+      expect(result, member).toEqual({
+        verdict: "reject",
+        reason_code: "agent-token-invalid",
       });
     }
   });
@@ -692,6 +724,27 @@ describe("atomic Comms signed publication for Social", () => {
       });
       expect(signerCalls).toBe(0);
     }
+  });
+
+  it("rejects an exact-key token with null audience before signer invocation", () => {
+    const api = agentAuthorship as AtomicApi;
+    let signerCalls = 0;
+    const authority = api.createCommsSocialPublicationAuthority?.({
+      trusted_now: () => 1_101,
+      signer_execution: signerExecution((event) => {
+        signerCalls += 1;
+        return signNostrEvent(event);
+      }),
+    });
+    if (authority === undefined) throw new Error("publication authority missing");
+    let result: ReturnType<NonNullable<AtomicApi["signCommsSocialPublication"]>> | undefined;
+    expect(() => {
+      result = api.signCommsSocialPublication?.(atomicInput(authority, {
+        token: { ...token, aud: null } as unknown as AgentTokenValidationInput,
+      }));
+    }).not.toThrow();
+    expect(result).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
+    expect(signerCalls).toBe(0);
   });
 
   it("rejects stale current state before invoking the signer", () => {

@@ -970,3 +970,111 @@ remain unchanged. No frozen topic, vector, snapshot, projection, baseline,
 debt, release artifact, or authoring output was modified.
 
 Correction commit message: `fix: snapshot Social trust inputs`.
+
+## Post-round fail-closed correction
+
+This narrow correction hardens only malformed runtime evidence handling; it
+does not change protocol semantics, registry revision, wire formats, or any
+frozen artifact. The approved reason boundary is preserved: malformed direct
+token shapes reject as `agent-token-invalid`, while the atomic Social
+publication boundary maps malformed current state to `agent-signer-mismatch`
+before any signer call. Malformed ATProto binding and revocation trees return
+their existing `atproto-binding-invalid` or `atproto-revocation-invalid`
+verdicts and do not throw.
+
+The Comms token validator now snapshots exact closed token data, checks the
+complete required/optional member set, dense single-string audience, scalar
+types, safe-integer time/generation values, booleans, signer/status enums, and
+exact association shapes before semantic validation. Explicit `undefined` on
+the two optional association members retains its existing absent-value
+semantics. The atomic publication path catches any unexpected pre-sign
+validation escape as a defense-in-depth rejection and never invokes the
+embedding signer for malformed input.
+
+The ATProto binding and revocation snapshots now structurally validate every
+captured candidate, lineage entry, revocation, strict Nostr event, PDS value,
+resolution envelope, and optional observation envelope before private
+validation can dereference nested members. The table-driven probes cover
+null, scalar, array, and open-object variants at public boundaries and nested
+target binding, event, PDS, resolution, candidate, lineage, and revocation
+positions.
+
+### RED evidence
+
+Both requested exploit categories were observed before production changes:
+
+```text
+npm --prefix docs/spec/vectors/generator test -- src/agent-authorship.test.ts
+Test Files  1 failed (1)
+Tests       2 failed | 26 passed (28)
+
+exact-key token aud:null:
+  validateAgentAccessToken threw TypeError reading null.length
+atomic publication with aud:null:
+  signCommsSocialPublication propagated the same TypeError instead of
+  rejecting agent-signer-mismatch; the signer-call count remained zero
+
+npm --prefix docs/spec/vectors/generator test -- src/social-atproto.test.ts
+Test Files  1 failed (1)
+Tests       2 failed | 12 passed (14)
+
+direct revocation nostr_event:null:
+  validateAtprotoRevocation threw TypeError reading null.content
+nested lineage nostr_event:null:
+  validateAtprotoBinding threw TypeError reading null.created_at
+```
+
+The first GREEN attempt exposed two intended compatibility assertions: an
+explicitly `undefined` optional association had to remain equivalent to an
+absent association, and the older malformed-association test still expected
+the superseded semantic mismatch reason. After retaining optional-undefined
+semantics and applying the approved direct-shape reason, the complete focused
+table passed.
+
+### GREEN and verification evidence
+
+Fresh focused and required lane results:
+
+```text
+npm --prefix docs/spec/vectors/generator test -- \
+  src/agent-authorship.test.ts src/social-atproto.test.ts
+Test Files  2 passed (2)
+Tests       42 passed (42)
+
+npm --prefix docs/spec/vectors/generator test -- --run \
+  src/snapshot-topic-runtime.test.ts src/agent-moderation.test.ts \
+  src/agent-authorship.test.ts src/nostr.test.ts \
+  src/social-events.test.ts src/social-nip72.test.ts \
+  src/atproto-did-resolution.test.ts src/social-atproto.test.ts \
+  src/registry.test.ts src/schema.test.ts
+Test Files  10 passed (10)
+Tests       172 passed (172)
+
+npm --prefix docs/spec/vectors/generator run build
+node scripts/typecheck.mjs (exit 0)
+
+npm --prefix docs/spec/vectors/generator run family:check -- "$PWD"
+validated protocol document family (exit 0)
+
+npm --prefix docs/spec/vectors/generator run snapshot-check -- "$PWD"
+verified 482 vectors from source
+2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43 at snapshot
+5d4bb5fb58b35c88d8a9db120a09f1087237f35c (exit 0)
+```
+
+### Security and boundary self-review
+
+The correction diff was reviewed for exact token keys, nested type guards,
+dense arrays, descriptor-only capture, optional-value compatibility, direct
+versus atomic reason boundaries, zero signer calls, exact ATProto evidence
+keys, strict Nostr tag trees, malformed target binding handling, current
+resolution and historical observation shapes, and no unchecked nested
+dereference reachable from either public validator. All failures are local
+rejections; no catch path converts malformed evidence into acceptance.
+
+Registry revision `14` and digest
+`9839393f2e11430ce9c19bde009228b71dc7f5c7268215960d39ecab0461a6fc`
+remain unchanged. No frozen topic, vector, snapshot, projection, baseline,
+debt, release artifact, or authoring output was modified.
+
+Correction commit message: `fix: fail closed on malformed Social evidence`.

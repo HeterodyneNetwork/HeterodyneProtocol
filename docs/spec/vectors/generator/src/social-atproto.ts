@@ -394,6 +394,19 @@ const ATPROTO_BINDING_INPUT_KEYS = [
 const ATPROTO_REVOCATION_INPUT_KEYS = [
   "binding", "current_resolution", "evidence", "now", "resolver_authority",
 ].join("\0");
+const NOSTR_SIGNED_EVENT_KEYS = "content\0created_at\0id\0kind\0pubkey\0sig\0tags";
+const RESOLUTION_EVIDENCE_KEYS = "envelope\0signature";
+const RESOLUTION_ENVELOPE_KEYS = [
+  "canonical_document", "canonical_https_url", "did", "document_sha256", "domain",
+  "expires_at", "plc_log_hash", "plc_log_head", "resolution_method", "resolved_at",
+  "resolver_policy", "resolver_version", "selected_verification_method_id",
+].join("\0");
+const OBSERVATION_EVIDENCE_KEYS = "envelope\0signature";
+const OBSERVATION_ENVELOPE_KEYS = [
+  "binding_event_id", "binding_hash", "checkpoint_reference", "did",
+  "did_signature_digest", "domain", "generation", "observed_at", "pubkey",
+  "resolution_envelope_hash", "resolver_policy", "resolver_version",
+].join("\0");
 
 function snapshotAtprotoBindingInput(
   value: unknown,
@@ -405,12 +418,12 @@ function snapshotAtprotoBindingInput(
     || typeof captured.pubkey !== "string"
     || !Number.isSafeInteger(captured.now)
     || !Array.isArray(captured.candidates)
-    || !captured.candidates.every(isAtprotoSnapshotObject)
+    || !captured.candidates.every(isBindingEvidenceStructure)
     || !Array.isArray(captured.lineage)
-    || !captured.lineage.every(isAtprotoSnapshotObject)
+    || !captured.lineage.every(isBindingEvidenceStructure)
     || !Array.isArray(captured.revocations)
-    || !captured.revocations.every(isAtprotoSnapshotObject)
-    || !isAtprotoSnapshotObject(captured.current_resolution)
+    || !captured.revocations.every(isRevocationEvidenceStructure)
+    || !isResolutionEvidenceStructure(captured.current_resolution)
   ) return null;
   return captured as AtprotoBindingValidationInput;
 }
@@ -424,9 +437,9 @@ function snapshotAtprotoRevocationInput(
     captured === null
     || parsedBinding === null
     || !Number.isSafeInteger(captured.now)
-    || !isAtprotoSnapshotObject(captured.evidence)
+    || !isRevocationEvidenceStructure(captured.evidence)
     || !isAtprotoSnapshotObject(captured.binding)
-    || !isAtprotoSnapshotObject(captured.current_resolution)
+    || !isResolutionEvidenceStructure(captured.current_resolution)
   ) return null;
   return Object.freeze({
     evidence: captured.evidence as AtprotoRevocationEvidence,
@@ -435,6 +448,98 @@ function snapshotAtprotoRevocationInput(
     current_resolution: captured.current_resolution as AtprotoResolutionEvidence,
     now: captured.now as number,
   });
+}
+
+function isBindingEvidenceStructure(value: unknown): value is AtprotoBindingEvidence {
+  if (!isAtprotoSnapshotObject(value)) return false;
+  const keys = Object.keys(value).sort().join("\0");
+  if (
+    keys !== "did_signature\0nostr_event\0pds_value\0resolution_evidence"
+    && keys
+      !== "did_signature\0nostr_event\0observation_evidence\0pds_value\0resolution_evidence"
+  ) return false;
+  return typeof value.did_signature === "string"
+    && isNostrEventDataShape(value.nostr_event)
+    && isBindingValueDataShape(value.pds_value)
+    && isResolutionEvidenceStructure(value.resolution_evidence)
+    && (value.observation_evidence === undefined
+      || isObservationEvidenceStructure(value.observation_evidence));
+}
+
+function isRevocationEvidenceStructure(value: unknown): value is AtprotoRevocationEvidence {
+  if (!isAtprotoSnapshotObject(value)) return false;
+  const keys = Object.keys(value).sort().join("\0");
+  if (value.side === "nostr") {
+    return keys === "nostr_event\0side" && isNostrEventDataShape(value.nostr_event);
+  }
+  if (value.side === "atproto") {
+    return keys === "did_signature\0side\0value"
+      && typeof value.did_signature === "string"
+      && isRevocationValueDataShape(value.value);
+  }
+  return false;
+}
+
+function isNostrEventDataShape(value: unknown): value is NostrSignedEvent {
+  if (
+    !isAtprotoSnapshotObject(value)
+    || Object.keys(value).sort().join("\0") !== NOSTR_SIGNED_EVENT_KEYS
+  ) return false;
+  return typeof value.id === "string"
+    && typeof value.pubkey === "string"
+    && Number.isSafeInteger(value.created_at)
+    && Number.isSafeInteger(value.kind)
+    && typeof value.content === "string"
+    && typeof value.sig === "string"
+    && Array.isArray(value.tags)
+    && value.tags.every((tag) =>
+      Array.isArray(tag)
+      && tag.length >= 1
+      && tag.every((member) => typeof member === "string"));
+}
+
+function isBindingValueDataShape(value: unknown): boolean {
+  if (!isAtprotoSnapshotObject(value)) return false;
+  const keys = Object.keys(value).sort().join("\0");
+  if (
+    keys !== [
+      "did", "did_signing_key_id", "established_at", "generation", "nonce",
+      "predecessor", "pubkey", "spec_version",
+    ].join("\0")
+    && keys !== [
+      "did", "did_signing_key_id", "established_at", "generation", "nonce",
+      "predecessor", "pubkey", "rid", "spec_version",
+    ].join("\0")
+  ) return false;
+  return value.predecessor === null
+    || isAtprotoSnapshotObject(value.predecessor)
+      && Object.keys(value.predecessor).sort().join("\0") === "binding_hash\0event_id";
+}
+
+function isRevocationValueDataShape(value: unknown): boolean {
+  return isAtprotoSnapshotObject(value)
+    && Object.keys(value).sort().join("\0") === [
+      "binding_hash", "did", "generation", "nonce", "pubkey", "record_type",
+      "revoked_at", "spec_version",
+    ].join("\0");
+}
+
+function isResolutionEvidenceStructure(value: unknown): value is AtprotoResolutionEvidence {
+  return isAtprotoSnapshotObject(value)
+    && Object.keys(value).sort().join("\0") === RESOLUTION_EVIDENCE_KEYS
+    && typeof value.signature === "string"
+    && isAtprotoSnapshotObject(value.envelope)
+    && Object.keys(value.envelope).sort().join("\0") === RESOLUTION_ENVELOPE_KEYS;
+}
+
+function isObservationEvidenceStructure(
+  value: unknown,
+): value is AtprotoBindingObservationEvidence {
+  return isAtprotoSnapshotObject(value)
+    && Object.keys(value).sort().join("\0") === OBSERVATION_EVIDENCE_KEYS
+    && typeof value.signature === "string"
+    && isAtprotoSnapshotObject(value.envelope)
+    && Object.keys(value.envelope).sort().join("\0") === OBSERVATION_ENVELOPE_KEYS;
 }
 
 function captureAtprotoBoundary(

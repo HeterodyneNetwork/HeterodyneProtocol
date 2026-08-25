@@ -456,6 +456,102 @@ describe("ATProto active-key binding", () => {
     })).toEqual({ verdict: "reject", reason_code: "atproto-revocation-invalid" });
   });
 
+  it("fails malformed direct revocation evidence closed without throwing", async () => {
+    const atproto = await loadAtproto();
+    const validRevocation = revocationFor(binding, 1_100);
+    const validRevocationEvidence: RevocationEvidence = {
+      side: "nostr",
+      nostr_event: await revocationNostrEvent(validRevocation),
+    };
+    const directInput = (evidence: unknown) => ({
+      evidence,
+      binding,
+      resolver_authority: resolverAuthority,
+      current_resolution: resolutionEvidenceFor(binding),
+      now: 1_150,
+    });
+    const malformed: unknown[] = [
+      null,
+      1,
+      [],
+      { side: "nostr", nostr_event: null },
+      { side: "nostr", nostr_event: [] },
+      { side: "nostr", nostr_event: { ...bindingEvent, extra: true } },
+      { side: "atproto", value: null, did_signature: null },
+      { side: "atproto", value: [], did_signature: "00".repeat(64) },
+      { side: "atproto", value: { ...validRevocation, extra: true }, did_signature: "00".repeat(64) },
+    ];
+    for (const evidence of malformed) {
+      let result: unknown;
+      expect(() => {
+        result = atproto.validateAtprotoRevocation?.(directInput(evidence) as never);
+      }, JSON.stringify(evidence)).not.toThrow();
+      expect(result, JSON.stringify(evidence)).toEqual({
+        verdict: "reject",
+        reason_code: "atproto-revocation-invalid",
+      });
+    }
+    for (const malformedBinding of [null, 1, [], { ...binding, extra: true }]) {
+      let result: unknown;
+      expect(() => {
+        result = atproto.validateAtprotoRevocation?.({
+          ...directInput(validRevocationEvidence),
+          binding: malformedBinding,
+        } as never);
+      }, JSON.stringify(malformedBinding)).not.toThrow();
+      expect(result, JSON.stringify(malformedBinding)).toEqual({
+        verdict: "reject",
+        reason_code: "atproto-revocation-invalid",
+      });
+    }
+  });
+
+  it("fails malformed nested binding evidence closed without throwing", async () => {
+    const atproto = await loadAtproto();
+    const valid = bindingEvidence(
+      binding,
+      bindingEvent,
+      resolutionEvidenceFor(binding),
+      false,
+    );
+    const malformedEvent = { ...bindingEvent, extra: true };
+    const cases: unknown[] = [
+      null,
+      1,
+      "invalid",
+      [],
+      { ...bindingInput([valid]), candidates: [valid, null] },
+      { ...bindingInput([valid]), candidates: [valid, { ...valid, nostr_event: null }] },
+      { ...bindingInput([valid]), candidates: [valid, { ...valid, pds_value: null }] },
+      { ...bindingInput([valid]), candidates: [valid, { ...valid, pds_value: [] }] },
+      {
+        ...bindingInput([valid]),
+        candidates: [valid, { ...valid, resolution_evidence: null }],
+      },
+      { ...bindingInput([valid]), candidates: [valid, { ...valid, extra: true }] },
+      { ...bindingInput([valid]), lineage: [{ ...valid, nostr_event: null }] },
+      { ...bindingInput([valid]), lineage: [{ ...valid, nostr_event: malformedEvent }] },
+      { ...bindingInput([valid]), revocations: [null] },
+      { ...bindingInput([valid]), revocations: [[]] },
+      {
+        ...bindingInput([valid]),
+        revocations: [{ side: "nostr", nostr_event: null }],
+      },
+      { ...bindingInput([valid]), current_resolution: null },
+      {
+        ...bindingInput([valid]),
+        current_resolution: { ...resolutionEvidenceFor(binding), envelope: null },
+      },
+    ];
+    for (const value of cases) {
+      let result: unknown;
+      expect(() => {
+        result = atproto.validateAtprotoBinding?.(value as never);
+      }).not.toThrow();
+      expect(result).toEqual({ verdict: "reject", reason_code: "atproto-binding-invalid" });
+    }
+  });
+
   it("fails closed when durable revocations target sibling, reset, or incompatible forks", async () => {
     const atproto = await loadAtproto();
     const branchA = {

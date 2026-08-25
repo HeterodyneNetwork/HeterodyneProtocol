@@ -264,6 +264,14 @@ export function deriveAgentIdentity(
 export function validateAgentAccessToken(
   input: AgentTokenValidationInput,
 ): AgentTokenDecision {
+  const captured = snapshotAgentTokenValidationInput(input);
+  if (captured === null) return denied("agent-token-invalid");
+  return validateAgentAccessTokenSnapshot(captured);
+}
+
+function validateAgentAccessTokenSnapshot(
+  input: AgentTokenValidationInput,
+): AgentTokenDecision {
   if (hasAnyMember(input, LEGACY_DELEGATION_MEMBERS)) {
     return denied("agent-token-invalid");
   }
@@ -486,15 +494,20 @@ export function signCommsSocialPublication(input: {
   } catch {
     return denied("agent-signer-mismatch");
   }
-  const context = validateCommsSocialContext({
-    registration: request.registration,
-    token: request.token,
-    represented_persona: request.represented_persona,
-    event: request.event,
-    requested_feed: request.requested_feed,
-    requested_resource: request.requested_resource,
-    trusted_now: trustedNow,
-  });
+  let context: ReturnType<typeof validateCommsSocialContext>;
+  try {
+    context = validateCommsSocialContext({
+      registration: request.registration,
+      token: request.token,
+      represented_persona: request.represented_persona,
+      event: request.event,
+      requested_feed: request.requested_feed,
+      requested_resource: request.requested_resource,
+      trusted_now: trustedNow,
+    });
+  } catch {
+    return denied("agent-signer-mismatch");
+  }
   if (
     context === null
     || !/^[0-9a-f]{64}$/u.test(request.execution_token)
@@ -813,6 +826,54 @@ const CURRENT_TOKEN_OPTIONAL_KEYS = new Set([
   "agent_association",
   "expected_agent_association",
 ]);
+const CURRENT_TOKEN_STRING_KEYS = [
+  "client_id", "cnf_jkt", "credential_ledger_persona", "expected_audience",
+  "expected_client_id", "expected_credential_ledger_persona", "expected_issuer",
+  "expected_scope", "expected_signer_key", "expected_signer_key_class",
+  "expected_subject", "iss", "jti", "scope", "sender_proof_jkt", "signer_key",
+  "signer_key_class", "status", "sub", "typ",
+] as const;
+const CURRENT_TOKEN_INTEGER_KEYS = [
+  "consent_expires_at", "credential_ledger_generation", "delegation_expires_at",
+  "exp", "expected_credential_ledger_generation", "iat", "now",
+  "registration_expires_at", "session_expires_at", "source_authorization_expires_at",
+] as const;
+const CURRENT_TOKEN_BOOLEAN_KEYS = [
+  "ledger_active", "ledger_binding_valid", "sender_proof_valid", "status_binding_valid",
+] as const;
+
+function snapshotAgentTokenValidationInput(
+  value: unknown,
+): AgentTokenValidationInput | null {
+  const captured = snapshotClosedData(value, new WeakSet());
+  if (
+    captured === INVALID_SNAPSHOT
+    || captured === null
+    || typeof captured !== "object"
+    || Array.isArray(captured)
+  ) return null;
+  const token = captured as Record<string, unknown>;
+  const keys = Object.keys(token).sort();
+  if (
+    CURRENT_TOKEN_REQUIRED_KEYS.some((key) => !keys.includes(key))
+    || keys.some((key) =>
+      !CURRENT_TOKEN_REQUIRED_KEYS.includes(key) && !CURRENT_TOKEN_OPTIONAL_KEYS.has(key))
+    || !CURRENT_TOKEN_STRING_KEYS.every((key) => typeof token[key] === "string")
+    || !CURRENT_TOKEN_INTEGER_KEYS.every((key) => Number.isSafeInteger(token[key]))
+    || !CURRENT_TOKEN_BOOLEAN_KEYS.every((key) => typeof token[key] === "boolean")
+    || !Array.isArray(token.aud)
+    || token.aud.length !== 1
+    || !token.aud.every((member) => typeof member === "string")
+    || token.signer_key_class !== "agent" && token.signer_key_class !== "persona"
+    || token.expected_signer_key_class !== "agent"
+      && token.expected_signer_key_class !== "persona"
+    || !["VALID", "INVALID", "SUSPENDED"].includes(token.status as string)
+    || token.agent_association !== undefined && !isAgentAssociation(token.agent_association)
+    || token.expected_agent_association !== undefined
+      && !isAgentAssociation(token.expected_agent_association)
+  ) return null;
+  return deepFreeze(captured) as AgentTokenValidationInput;
+}
 
 function snapshotCommsSocialPublicationRequest(
   value: unknown,
@@ -892,6 +953,7 @@ function snapshotClosedData(
 ): unknown | typeof INVALID_SNAPSHOT {
   if (
     value === null
+    || value === undefined
     || typeof value === "string"
     || typeof value === "number"
     || typeof value === "boolean"
