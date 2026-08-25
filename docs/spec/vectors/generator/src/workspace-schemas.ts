@@ -315,6 +315,28 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
       receiving_signature: signature,
     },
   ),
+  "workspace-relationship-receipt-v1": workspaceSchema(
+    "workspace-relationship-receipt-v1",
+    [
+      "receipt_id", "relationship_id", "receiving_role_id",
+      "source_workspace_key", "source_relationship_object_id",
+      "source_policy_head", "source_predecessor", "source_authority_checkpoint",
+      "source_repository_rid", "source_repository_head", "received_at",
+    ],
+    {
+      receipt_id: h64,
+      relationship_id: h64,
+      receiving_role_id: h64,
+      source_workspace_key: h64,
+      source_relationship_object_id: h64,
+      source_policy_head: h64,
+      source_predecessor: nullableH64,
+      source_authority_checkpoint: h64,
+      source_repository_rid: radicleRid,
+      source_repository_head: h40,
+      received_at: timestamp,
+    },
+  ),
   "joint-workspace-relationship-v1": workspaceSchema(
     "joint-workspace-relationship-v1",
     [
@@ -336,7 +358,7 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
   "resource-key-envelope-v1": workspaceSchema(
     "resource-key-envelope-v1",
     [
-      "envelope_id", "resource_id", "key_epoch", "target_account",
+      "envelope_id", "resource_id", "grant_id", "key_epoch", "admission_epoch", "target_account",
       "target_device", "recipient", "role_id", "checkpoint_id", "custody_host_id",
       "wrapping_profile", "nonce", "ciphertext", "ciphertext_sha256",
       "created_at",
@@ -344,7 +366,9 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
     {
       envelope_id: h64,
       resource_id: h64,
+      grant_id: h64,
       key_epoch: nonNegativeInteger,
+      admission_epoch: nonNegativeInteger,
       target_account: h64,
       target_device: h64,
       recipient: {

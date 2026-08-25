@@ -15,6 +15,7 @@
     {"id":"host-advertisement-v1","owner":"workspace","first_version":"heterodyne/0.5.0","status":"draft","schema":"https://heterodyne.network/schemas/workspace/host-advertisement-v1.schema.json","carriers":["radicle-authority-file"]},
     {"id":"service-advertisement-v1","owner":"workspace","first_version":"heterodyne/0.5.0","status":"draft","schema":"https://heterodyne.network/schemas/workspace/service-advertisement-v1.schema.json","carriers":["radicle-authority-file"]},
     {"id":"workspace-relationship-v1","owner":"workspace","first_version":"heterodyne/0.5.0","status":"draft","schema":"https://heterodyne.network/schemas/workspace/workspace-relationship-v1.schema.json","carriers":["radicle-authority-file","marmot-application-data"]},
+    {"id":"workspace-relationship-receipt-v1","owner":"workspace","first_version":"heterodyne/0.5.0","status":"draft","schema":"https://heterodyne.network/schemas/workspace/workspace-relationship-receipt-v1.schema.json","carriers":["radicle-authority-file"]},
     {"id":"joint-workspace-relationship-v1","owner":"workspace","first_version":"heterodyne/0.5.0","status":"draft","schema":"https://heterodyne.network/schemas/workspace/joint-workspace-relationship-v1.schema.json","carriers":["radicle-authority-file"]},
     {"id":"resource-key-envelope-v1","owner":"workspace","first_version":"heterodyne/0.5.0","status":"draft","schema":"https://heterodyne.network/schemas/workspace/resource-key-envelope-v1.schema.json","carriers":["marmot-application-data"]}
   ]

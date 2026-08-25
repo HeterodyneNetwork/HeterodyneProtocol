@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Ajv, type ErrorObject } from "ajv";
 import { describe, expect, it } from "vitest";
@@ -168,6 +168,20 @@ const values: Record<string, Record<string, unknown>> = {
     receiving_authority_checkpoint: H64,
     receiving_signature: SIG,
   },
+  "workspace-relationship-receipt-v1": {
+    ...base("workspace-relationship-receipt-v1"),
+    receipt_id: H64_B,
+    relationship_id: H64,
+    receiving_role_id: H64_B,
+    source_workspace_key: H64,
+    source_relationship_object_id: H64_B,
+    source_policy_head: H64,
+    source_predecessor: H64_B,
+    source_authority_checkpoint: H64,
+    source_repository_rid: "rad:zSource",
+    source_repository_head: H40,
+    received_at: 1_720_000_000,
+  },
   "joint-workspace-relationship-v1": {
     ...base("joint-workspace-relationship-v1"),
     relationship_id: H64_B,
@@ -183,7 +197,9 @@ const values: Record<string, Record<string, unknown>> = {
     ...base("resource-key-envelope-v1"),
     envelope_id: H64_B,
     resource_id: H64,
+    grant_id: H64_B,
     key_epoch: 3,
+    admission_epoch: 2,
     target_account: H64,
     target_device: H64_B,
     recipient: {
@@ -211,6 +227,10 @@ const validate = (name: string, value: unknown): ErrorObject[] | null => {
 };
 
 describe("Workspace authority object schemas", () => {
+  it("defines a closed receiving-side relationship receipt", () => {
+    expect(existsSync(resolve(root, "workspace-relationship-receipt-v1.schema.json"))).toBe(true);
+  });
+
   for (const [name, value] of Object.entries(values)) {
     it(`accepts the exact ${name} shape`, () => {
       expect(validate(name, value)).toBeNull();
@@ -266,6 +286,11 @@ describe("Workspace authority object schemas", () => {
     delete missingRecipient.recipient;
 
     expect(validate("resource-key-envelope-v1", missingRecipient)).not.toBeNull();
+    for (const member of ["grant_id", "admission_epoch"]) {
+      const missingBinding = { ...envelope };
+      delete missingBinding[member];
+      expect(validate("resource-key-envelope-v1", missingBinding), member).not.toBeNull();
+    }
     expect(validate("resource-key-envelope-v1", {
       ...envelope,
       recipient: {

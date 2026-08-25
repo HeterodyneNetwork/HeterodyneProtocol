@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://heterodyne.network/schemas/workspace/resource-key-envelope-v1.schema.json",
-  "title": "resource-key-envelope-v1",
+  "$id": "https://heterodyne.network/schemas/workspace/workspace-relationship-receipt-v1.schema.json",
+  "title": "workspace-relationship-receipt-v1",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -15,29 +15,24 @@
     "repository_head",
     "issued_at",
     "signature",
-    "envelope_id",
-    "resource_id",
-    "grant_id",
-    "key_epoch",
-    "admission_epoch",
-    "target_account",
-    "target_device",
-    "recipient",
-    "role_id",
-    "checkpoint_id",
-    "custody_host_id",
-    "wrapping_profile",
-    "nonce",
-    "ciphertext",
-    "ciphertext_sha256",
-    "created_at"
+    "receipt_id",
+    "relationship_id",
+    "receiving_role_id",
+    "source_workspace_key",
+    "source_relationship_object_id",
+    "source_policy_head",
+    "source_predecessor",
+    "source_authority_checkpoint",
+    "source_repository_rid",
+    "source_repository_head",
+    "received_at"
   ],
   "properties": {
     "spec_version": {
       "const": "heterodyne/0.5.0"
     },
     "object_type": {
-      "const": "resource-key-envelope-v1"
+      "const": "workspace-relationship-receipt-v1"
     },
     "workspace_key": {
       "type": "string",
@@ -79,81 +74,54 @@
       "type": "string",
       "pattern": "^[0-9a-f]{128}$"
     },
-    "envelope_id": {
+    "receipt_id": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "resource_id": {
+    "relationship_id": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "grant_id": {
+    "receiving_role_id": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "key_epoch": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 9007199254740991
-    },
-    "admission_epoch": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 9007199254740991
-    },
-    "target_account": {
+    "source_workspace_key": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "target_device": {
+    "source_relationship_object_id": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "recipient": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "const": "marmot-mls-leaf"
-        },
-        "value": {
+    "source_policy_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_predecessor": {
+      "anyOf": [
+        {
           "type": "string",
-          "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$"
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
         }
-      }
+      ]
     },
-    "role_id": {
+    "source_authority_checkpoint": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "checkpoint_id": {
+    "source_repository_rid": {
       "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
+      "pattern": "^rad:[A-Za-z0-9]+$"
     },
-    "custody_host_id": {
+    "source_repository_head": {
       "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
+      "pattern": "^[0-9a-f]{40}$"
     },
-    "wrapping_profile": {
-      "const": "marmot-mls-application-v1"
-    },
-    "nonce": {
-      "type": "string",
-      "pattern": "^[A-Za-z0-9_-]{16,128}$"
-    },
-    "ciphertext": {
-      "type": "string",
-      "pattern": "^[A-Za-z0-9_-]+$"
-    },
-    "ciphertext_sha256": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
-    },
-    "created_at": {
+    "received_at": {
       "type": "integer",
       "minimum": 0,
       "maximum": 9007199254740991

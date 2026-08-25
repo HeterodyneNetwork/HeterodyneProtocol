@@ -94,7 +94,8 @@ JCS object identifiers; set-equivalent reordering is invalid.
 `object_set_digest` is SHA-256 of proof bytes for domain
 `heterodyne-workspace-object-set-v1` over exactly that array. A consumer MUST
 strictly validate the complete current policy, role, grant, revocation,
-resource, relationship, and checkpoint objects, their active-key signatures,
+resource, relationship, receiving relationship-receipt, joint-relationship,
+checkpoint, and resource-key-envelope objects, their active-key signatures,
 cross-references, and common authority tuple before deriving any effective
 authorization or relationship. A missing or extra object, untrusted resolver,
 unreachable or rolled-back head, incomplete or competing fork observation,
@@ -124,9 +125,9 @@ status are carriers or service roles, not Workspace governance authority.
 <a id="workspace-identity"></a>
 ## 3. Workspace identity and governance
 
-A workspace is an independently governed Core active-key persona under
+A workspace is an independently governed Core active-key account under
 [`heterodyne:0.5.0#core-active-key-persona`](heterodyne-core.md#core-active-key-persona).
-Human and organization personas use the same wire model. The current
+Human and organization accounts use the same wire model. The current
 `workspace_key` is the workspace npub and Marmot account identity. Multiple
 workspaces operated by one organization use distinct active keys when they
 are intended to remain independently governed. They MAY publish signed
@@ -138,19 +139,19 @@ The stable workspace repository contains exactly one current
 history from which both are derived. Its canonical authority branch is the one
 unambiguous policy-approved predecessor and checkpoint chain. A public
 workspace MAY advertise this repository
-from its public persona profile. A private workspace has no required public
+from its public account profile. A private workspace has no required public
 projection; an invitation or relationship conveys the active workspace key,
 private locator, current policy/checkpoint context, and exact Marmot account,
 device, and leaf binding needed by the recipient.
 
 Human delegates and agents request organization-key actions through an exact
 current Workspace policy decision and, where remote signing is used, the
-persona-specific NIP-46/OIDC authorization in
+account-specific NIP-46/OIDC authorization in
 [`heterodyne:0.5.0#control-signer-grants`](heterodyne-control.md#control-signer-grants)
 and current Comms authorization state. The public Workspace proof remains a
 signature by `workspace_key`; private requester identity remains in protected
 audit state unless policy requires disclosure. A signer MUST NOT use
-cross-persona fallback, a broader grant, or stale policy state.
+cross-account fallback, a broader grant, or stale policy state.
 
 Optional Assurance may prove continuity to a successor active key, but it
 does not alias the old and new workspaces. Succession transfers no role,
@@ -164,7 +165,9 @@ Such transfer is represented by one closed
 `profile`, `spec_version`, `workspace_key`, `prior_account`, `new_account`,
 `prior_key`, `new_key`, `prior_device`, `prior_leaf`, `new_device`, `new_leaf`,
 `role_id`, nullable `resource_id`, `scope`, `prior_grant_id`,
-`pending_grant_id`, nullable `pending_envelope_id`, `policy_head`, nullable `predecessor`,
+`pending_grant_id`, nullable `pending_envelope_id`, nullable
+`pending_key_epoch`, nullable `pending_custody_host_id`, nullable
+`pending_checkpoint_id`, `policy_head`, nullable `predecessor`,
 `authority_checkpoint`, `repository_view_id`, `issued_at`, `effective_at`,
 `expires_at`, `workspace_signature`, and `new_account_signature`. Both
 signatures cover every other member with proof bytes for domain
@@ -175,8 +178,9 @@ unrevoked exact active grant, device, and leaf. The new device and leaf MUST be
 distinct from the prior ones, absent from active prior-view membership, and
 bound to the named pending grant. `scope` MUST be exactly `role-membership`
 with null resource and envelope IDs, or `resource-key` with the exact current
-resource and a pending signed envelope bound to the new account, device, leaf,
-role, checkpoint, and resource. The prior leaf proves only former authority;
+resource and a pending signed envelope bound by ID to the exact pending grant,
+new account, device, leaf, role, resource, key epoch, custody host, and
+checkpoint. The prior leaf proves only former authority;
 it is never a recipient for successor delivery. An ID, continuity boolean,
 ambient account transfer, stale record, or record bound to another current
 view cannot reauthorize membership or key delivery. Every use rechecks both
@@ -307,6 +311,13 @@ complete acyclic parent chain and every grant, resource, relationship, and
 checkpoint MUST bind the role to which it applies. Missing parents, duplicate
 checkpoints, cross-role materializations, or a child that widens capability,
 visibility, delegation, history, or selected-snapshot authority fail closed.
+Each checkpoint's `role_policy_heads` is the exact unique byte-sorted set of
+JCS object identifiers for every role manifest on that role's complete
+root-to-leaf path; a missing, stale, extra, or phantom head fails closed. Role
+visibility MUST narrow the workspace `visibility_ceiling`, each child MUST
+narrow its parent, and each resource MUST narrow every role in its path.
+`visibility:"public"` additionally requires
+`workspace-policy-v1.allow_public_resources:true`.
 
 <a id="workspace-grants"></a>
 ## 7. Grants, revocations, and invitations
@@ -380,10 +391,12 @@ grant ID, workspace key, subject account, exact device and leaf, and nonce
 opening. Every binding MUST equal the current signed grant and authenticated
 repository view. A configured authoritative atomic replay store reserves that
 workspace/grant/commitment tuple while activation is evaluated. It commits
-the reservation atomically only after current authorization, membership,
-successor, timing, and every required approval succeeds; any failure aborts
+the reservation atomically only after re-reading trusted time, confirming the
+same latest current view and reserved holder, and completing authorization,
+membership, successor, timing, and every required approval; any failure aborts
 the reservation so a still-valid acceptance is not permanently consumed. The
-store also releases an uncommitted reservation at its signed expiry. The
+store also releases or aborts an uncommitted reservation at its signed expiry
+and never commits after that expiry. The
 committed acceptance is executable exactly once; a caller-supplied acceptance ID,
 consumed-ID list, or replay boolean has no authority. Invitation material
 for a private role is delivered through an authenticated two-member
@@ -409,6 +422,17 @@ maximum age, grace period, expiry, and independent revocation terms. A
 one-sided, cross-key, stale-context, predecessor-mismatched, or otherwise
 mismatched object does not activate an allowance.
 
+The receiving repository materializes acceptance as one closed signed
+`workspace-relationship-receipt-v1`. Its current receiving-workspace tuple
+binds a unique `receipt_id`, the relationship and receiving-role IDs, the
+source workspace key, the exact source relationship object identifier,
+source policy/predecessor/checkpoint, accepted source repository RID and
+head, and trusted `received_at`. The receiving role checkpoint lists the
+receipt ID. A source relationship not matched by that exact current receipt,
+or a receipt referring to another source view or relationship object, does
+not activate an allowance. Source revocations target the source relationship
+ID; independent receiving revocations target the receipt ID.
+
 An allowance continuously depends on a closed
 `heterodyne.workspace-affiliation-evidence.v1` record signed by the source
 workspace active key with BIP-340 proof bytes for domain
@@ -433,14 +457,15 @@ mapping.
 
 Every allowance use re-resolves the signed relationship from both latest
 repository states. Its effective capabilities are the intersection of the
-relationship ceiling, one current unrevoked source grant, every source-role
-parent ceiling, every receiving-role parent ceiling, and both current
+relationship ceiling, one current unrevoked source grant and its subject
+account and device, every source-role parent ceiling, every receiving-role
+parent ceiling, and both current
 workspace policies. Separate grants are not unioned and no raw head, age,
 fork, currentness, or revocation assertion participates.
 
 Shared resources use one of two models. In the default host-owned model, one
 workspace governs the resource and partner accounts receive bounded guest
-roles. In the jointly governed model, a separate active-key workspace persona
+roles. In the jointly governed model, a separate active-key workspace account
 is created; `joint-workspace-relationship-v1` names the joint key,
 participating active keys, explicitly authorized delegates, threshold, and
 scope. Its inherited `workspace_key` MUST exactly equal `joint_workspace_key`,
@@ -564,8 +589,12 @@ Key distribution is push-first. After a key change, signed authority state
 records the epoch, each eligible device leaf receives its envelope in the role
 control group, and the exact Marmot carrier event is committed to the active
 event repository directly or through an eligible relay. Beyond the members
-Core requires, the envelope binds the qualifying role, the authority
-checkpoint, and the host. A raw unprotected resource key MUST NOT be returned.
+Core requires, each envelope has a globally unique `envelope_id` and binds
+the qualifying `grant_id`, its signed `admission_epoch`, the role, the
+authority checkpoint, and the custody host. Duplicate envelope IDs,
+inconsistent admission epochs for one grant/account/device/leaf path, or a
+grant/envelope/resource mismatch fail closed. A raw unprotected resource key
+MUST NOT be returned.
 Workspace does not re-protect existing objects on rotation: each affected
 resource rotates forward independently and prior ciphertext is left as it
 stands.
@@ -597,9 +626,10 @@ nullable `requested_snapshot_id`, `resource_id`, `target_account`, and
 `target_device`. Delivery rechecks its qualifying grant and complete role
 path, then intersects their capabilities with
 `resource-advertisement-v1.required_capabilities` and scope. The exact history
-start is derived only from current signed envelopes: the later of the
-resource's earliest retained envelope epoch and the target role/grant's first
-eligible envelope epoch. `selected-snapshots` additionally requires the named
+start is derived only from current signed state: no earlier than the resource
+epoch boundary, the qualifying grant's signed admission epoch, and that
+grant/account/device/leaf path's first signed envelope epoch.
+`selected-snapshots` additionally requires the named
 signed envelope identifier in every applicable selected-snapshot ceiling.
 
 The response is idempotent for the tuple `(request_id, resource_id, key_epoch,
@@ -649,8 +679,15 @@ relaxed window for ordinary code, content, and discussion writes: 86,400
 seconds.
 
 A workspace, role, or resource policy MAY shorten or disable either window
-and MUST NOT lengthen it. The operation must reach a conforming validator
-while its referenced signed checkpoint is within the effective window. A
+and MUST NOT lengthen it. At every effect, the effective maximum age is the
+minimum of the locally configured resolver maximum and the signed
+`ordinary_write_max_age` for ordinary writes or
+`authority_mutation_max_age` for activation, invitations, successor
+reauthorization, joint governance, and other authority effects. Bilateral
+allowance evaluation and resource-key delivery use the ordinary-operation
+bound while still rechecking current signed authority. The operation must
+reach a conforming validator while its referenced signed checkpoint is within
+the effective window. A
 self-declared event time does not extend freshness. A resource-specific
 profile MAY define separately vectored durable acceptance evidence; Workspace
 defines no universal trusted timestamp or transferable acceptance receipt.
@@ -683,8 +720,9 @@ object types have these responsibilities:
 | `host-advertisement-v1` | Separate host and trusted-seed NIDs, endpoints, profiles, inheritance, key custody, priority, and expiry. |
 | `service-advertisement-v1` | Separate operator account, service profile, endpoints, policy, audience role, and expiry. |
 | `workspace-relationship-v1` | Dual-active-key bilateral allowance, exact policy/predecessor chains, and continuous-proof terms. |
+| `workspace-relationship-receipt-v1` | Receiving-side current-state materialization of one exact dual-signed source relationship object and repository view. |
 | `joint-workspace-relationship-v1` | Participant active keys, independent joint active key, explicit delegates, threshold, and scope. |
-| `resource-key-envelope-v1` | Exact active-account, device, and leaf-bound authenticated wrapping of one resource key epoch. |
+| `resource-key-envelope-v1` | Exact grant/admission, active-account, device, leaf, role, checkpoint, host, and resource-key-epoch-bound authenticated wrapping. |
 
 No new Nostr kind is allocated. These objects are files in authority
 repositories or Marmot application payloads as specified above. When carried
