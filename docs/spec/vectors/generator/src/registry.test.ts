@@ -344,15 +344,53 @@ describe("revisioned protocol registry", () => {
         "workspace_key",
       ],
     });
+    expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-workspace-successor-reauthorization-v1",
+    )).toMatchObject({
+      owner: "workspace",
+      suites: ["bip340"],
+      bound_members: expect.arrayContaining([
+        "new_account",
+        "new_device",
+        "new_leaf",
+        "pending_envelope_id",
+        "pending_grant_id",
+        "prior_account",
+        "prior_device",
+        "prior_grant_id",
+        "prior_leaf",
+      ]),
+    });
+    expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-workspace-key-request-v1",
+    )).toMatchObject({
+      owner: "workspace",
+      suites: ["bip340"],
+      bound_members: [
+        "authenticated_account",
+        "custody_host_id",
+        "recipient",
+        "requested_epoch",
+        "requested_snapshot_id",
+        "resource_id",
+        "target_account",
+        "target_device",
+      ],
+    });
 
     expect(registry.reason_codes.find(({ code }) => code === "workspace_signature_invalid")
       ?.description).not.toMatch(/KEL|cold root|epoch/i);
+    expect(registry.reason_codes.find(({ code }) => code === "checkpoint_stale")
+      ?.description).toMatch(/latest|superseded/i);
     expect(registry.security_invariants.find(
       ({ id }) => id === "WORKSPACE-I-CARRIER-NOT-AUTHORITY",
     )?.description).toMatch(/seed|repository writer/i);
     expect(registry.security_invariants.find(
       ({ id }) => id === "WORKSPACE-I-DEVICE-LEAF-SEPARATION",
     )?.description).toMatch(/active account/i);
+    expect(registry.security_invariants.find(
+      ({ id }) => id === "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE",
+    )?.description).toMatch(/latest.*effect|effect.*latest/i);
   });
 
   it("registers Assurance-owned features, objects, proofs, reasons, and invariants", () => {

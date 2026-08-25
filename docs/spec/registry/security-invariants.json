@@ -495,7 +495,7 @@
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Effective authorization, bilateral allowance, invitation acceptance, successor transfer, and key delivery consume only complete current signed Workspace state authenticated by one configured repository resolver instance and exact repository view."
+      "description": "Every Workspace authority effect consumes only its configured resolver instance's latest accepted generation and revalidates complete signed state, transition times, role paths, and revocations at effect time."
     },
     {
       "id": "WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS",

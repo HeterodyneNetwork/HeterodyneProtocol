@@ -1692,7 +1692,7 @@
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The applicable signed authorization checkpoint exceeds its maximum age.",
+      "description": "The configured resolver handle is not the latest accepted generation, is superseded, not yet observed, expired, or exceeds its maximum age.",
       "spec_refs": [
         "heterodyne:0.5.0#workspace-errors"
       ]

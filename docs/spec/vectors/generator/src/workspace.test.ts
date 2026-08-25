@@ -40,6 +40,8 @@ const CHECKPOINT = "44".repeat(32);
 const POLICY_HEAD = "55".repeat(32);
 const PREDECESSOR = "66".repeat(32);
 const LEAF = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+const NEW_DEVICE = "ab".repeat(32);
+const NEW_LEAF = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE";
 const APPROVER_A_SECRET = "03".repeat(32);
 const APPROVER_A_KEY = bytesToHex(schnorr.getPublicKey(APPROVER_A_SECRET));
 const APPROVER_B_SECRET = "04".repeat(32);
@@ -125,6 +127,7 @@ const invitationAcceptance = (
   operationDigest: string,
   viewId: string,
   nonceOpening: string,
+  expiresAt = 1_720_000_600,
 ): Record<string, unknown> => {
   const unsigned = {
     profile: "heterodyne.workspace-invitation-acceptance.v1",
@@ -142,7 +145,7 @@ const invitationAcceptance = (
     nonce_opening: nonceOpening,
     nonce_commitment: invitationNonceCommitment(grantId, nonceOpening),
     issued_at: 1_720_000_200,
-    expires_at: 1_720_000_600,
+    expires_at: expiresAt,
   };
   return {
     ...unsigned,
@@ -156,6 +159,8 @@ const invitationAcceptance = (
 const successorReauthorization = (
   viewId: string,
   scope: "role-membership" | "resource-key",
+  pendingGrantId = "ac".repeat(32),
+  pendingEnvelopeId: string | null = scope === "resource-key" ? "ad".repeat(32) : null,
 ): Record<string, unknown> => {
   const unsigned = {
     profile: "heterodyne.workspace-successor-reauthorization.v1",
@@ -165,11 +170,16 @@ const successorReauthorization = (
     new_account: APPROVER_A_KEY,
     prior_key: OTHER_KEY,
     new_key: APPROVER_A_KEY,
-    subject_device: H64,
-    target_leaf: LEAF,
+    prior_device: H64,
+    prior_leaf: LEAF,
+    new_device: NEW_DEVICE,
+    new_leaf: NEW_LEAF,
     role_id: H64,
     resource_id: scope === "resource-key" ? RESOURCE_ID : null,
     scope,
+    prior_grant_id: ACTOR_GRANT_ID,
+    pending_grant_id: pendingGrantId,
+    pending_envelope_id: pendingEnvelopeId,
     policy_head: POLICY_HEAD,
     predecessor: PREDECESSOR,
     authority_checkpoint: CHECKPOINT,
@@ -185,6 +195,20 @@ const successorReauthorization = (
     new_account_signature: bytesToHex(schnorr.sign(payload, APPROVER_A_SECRET)),
   };
 };
+
+const keyRequestDigest = (request: Record<string, unknown>): string => bytesToHex(sha256(proofBytes(
+  "heterodyne-workspace-key-request-v1",
+  {
+    authenticated_account: request.authenticated_account,
+    custody_host_id: request.custody_host_id,
+    recipient: request.recipient,
+    requested_epoch: request.requested_epoch,
+    requested_snapshot_id: request.requested_snapshot_id,
+    resource_id: request.resource_id,
+    target_account: request.target_account,
+    target_device: request.target_device,
+  },
+)));
 
 const grantActivationFixture = () => {
   const unsignedGrant = {
@@ -426,6 +450,35 @@ const jointGovernanceFixture = (threshold = 2) => {
     ],
     now: 1_720_000_100,
   };
+};
+
+const jointAuthorityObjects = (threshold = 2): Record<string, unknown>[] => {
+  const base = currentAuthorityObjects().map((source) => {
+    const unsigned: Record<string, unknown> = {
+      ...source,
+      workspace_key: JOINT_KEY,
+      repository_rid: "rad:zJoint",
+    };
+    delete unsigned.signature;
+    if (unsigned.object_type === "role-manifest-v1") {
+      unsigned.administrator_account = JOINT_KEY;
+    }
+    if (unsigned.object_type === "resource-advertisement-v1") {
+      unsigned.repository_owner_key = JOINT_KEY;
+    }
+    if (unsigned.object_type === "role-checkpoint-v1") {
+      unsigned.relationship_ids = [H64];
+    }
+    return signWorkspaceObject(unsigned, JOINT_SECRET);
+  });
+  const fixture = jointGovernanceFixture(threshold).joint;
+  const unsignedJoint = {
+    ...fixture,
+    repository_rid: "rad:zJoint",
+  } as Record<string, unknown>;
+  delete unsignedJoint.signature;
+  base.push(signWorkspaceObject(unsignedJoint, JOINT_SECRET));
+  return base;
 };
 
 const currentAuthorityObjects = (): Record<string, unknown>[] => {
@@ -690,6 +743,191 @@ describe("Workspace configured repository resolver", () => {
       evidence,
       objects,
     })).toEqual({ verdict: "reject", reason_code: "checkpoint_stale" });
+  });
+
+  it("rejects non-canonical object-id attestations and superseded current-state handles", async () => {
+    let trustedNow = 1_720_000_400;
+    const api = await import("./workspace.js");
+    const authority = api.createWorkspaceRepositoryResolverAuthority({
+      trust_anchors: [{ suite: "bip340", public_key: RESOLVER_KEY }],
+      allowed_policies: ["radicle-verified-complete-v1"],
+      minimum_version: "1.0.0",
+      max_ttl: 600,
+      max_view_age: 300,
+      repositories: [{
+        workspace_key: WORKSPACE_KEY,
+        repository_rid: "rad:zWorkspace",
+        pinned_head: H40,
+      }],
+      trusted_now: () => trustedNow,
+    });
+    const objects = currentAuthorityObjects();
+    const canonical = repositoryViewEvidence(objects);
+    const reversedIds = [...(canonical.object_ids as string[])].reverse();
+    const unsorted = repositoryViewEvidence(objects, { object_ids: reversedIds });
+    expect(api.authenticateWorkspaceRepositoryView({ authority, evidence: unsorted, objects }))
+      .toEqual({ verdict: "reject", reason_code: "workspace_repository_invalid" });
+
+    const first = api.authenticateWorkspaceRepositoryView({ authority, evidence: canonical, objects });
+    expect(first.verdict).toBe("accept");
+    if (first.verdict !== "accept") throw new Error("fixture first repository view rejected");
+    const secondEvidence = repositoryViewEvidence(objects, {
+      observed_at: 1_720_000_200,
+      expires_at: 1_720_000_750,
+    });
+    const second = api.authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: secondEvidence,
+      objects,
+    });
+    expect(second.verdict).toBe("accept");
+    if (second.verdict !== "accept") throw new Error("fixture latest repository view rejected");
+
+    const request = {
+      authority,
+      actor_account: OTHER_KEY,
+      actor_device: H64,
+      actor_leaf: LEAF,
+      operation_digest: "ee".repeat(32),
+      requested_capabilities: ["read"],
+      requested_resources: [RESOURCE_ID],
+      requested_delegable: false,
+    };
+    expect(api.resolveWorkspaceEffectiveAuthorization({ ...request, current_state: first.state }))
+      .toEqual({ verdict: "reject", reason_code: "checkpoint_stale" });
+    expect(api.resolveWorkspaceEffectiveAuthorization({ ...request, current_state: second.state }))
+      .toMatchObject({ verdict: "accept" });
+
+    trustedNow = 1_720_000_751;
+    expect(api.resolveWorkspaceEffectiveAuthorization({ ...request, current_state: second.state }))
+      .toEqual({ verdict: "reject", reason_code: "checkpoint_stale" });
+  });
+
+  it("authenticates complete multi-role parent chains with one checkpoint per role", async () => {
+    const api = await import("./workspace.js");
+    const childRoleId = "12".repeat(32);
+    const childCheckpointId = "13".repeat(32);
+    const common = {
+      spec_version: "heterodyne/0.5.0",
+      workspace_key: WORKSPACE_KEY,
+      policy_head: POLICY_HEAD,
+      predecessor: PREDECESSOR,
+      authority_checkpoint: CHECKPOINT,
+      repository_rid: "rad:zWorkspace",
+      repository_head: H40,
+      issued_at: 1_720_000_050,
+    };
+    const childRole = signWorkspaceObject({
+      ...common,
+      object_type: "role-manifest-v1",
+      role_id: childRoleId,
+      parent_role_id: H64,
+      role_type: "member",
+      visibility: "private",
+      allowed_capabilities: ["read"],
+      history_mode: "from-admission",
+      selected_snapshots: [],
+      administrator_account: WORKSPACE_KEY,
+      marmot_h: "child-role-routing-id",
+      active_event_repository: { repository_rid: "rad:zChildEvents", mls_epoch: 7 },
+      overlap_event_repository: null,
+      archived_event_repositories: [],
+    }, WORKSPACE_SECRET);
+    const childCheckpoint = signWorkspaceObject({
+      ...common,
+      object_type: "role-checkpoint-v1",
+      checkpoint_id: childCheckpointId,
+      role_id: childRoleId,
+      sequence: 1,
+      materialized_at: 1_720_000_050,
+      workspace_policy_head: POLICY_HEAD,
+      role_policy_heads: [POLICY_HEAD],
+      active_grant_ids: [],
+      revocation_ids: [REVOCATION_ID],
+      relationship_ids: [],
+      host_ids: [],
+      resource_ids: [],
+      seed_nids: [],
+      previous_checkpoint: null,
+    }, WORKSPACE_SECRET);
+    const objects = [...currentAuthorityObjects(), childRole, childCheckpoint];
+    const authority = api.createWorkspaceRepositoryResolverAuthority({
+      trust_anchors: [{ suite: "bip340", public_key: RESOLVER_KEY }],
+      allowed_policies: ["radicle-verified-complete-v1"],
+      minimum_version: "1.0.0",
+      max_ttl: 600,
+      max_view_age: 300,
+      repositories: [{ workspace_key: WORKSPACE_KEY, repository_rid: "rad:zWorkspace", pinned_head: H40 }],
+      trusted_now: () => 1_720_000_400,
+    });
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(objects),
+      objects,
+    })).toMatchObject({ verdict: "accept", state: expect.any(Object) });
+
+    const unrelatedRoleId = "15".repeat(32);
+    const unrelatedGrantId = "16".repeat(32);
+    const unrelatedCheckpointId = "17".repeat(32);
+    const unrelatedRole = signWorkspaceObject({
+      ...childRole,
+      role_id: unrelatedRoleId,
+      parent_role_id: null,
+    }, WORKSPACE_SECRET);
+    const unrelatedGrant = signWorkspaceObject({
+      ...currentAuthorityObjects()[2],
+      grant_id: unrelatedGrantId,
+      role_id: unrelatedRoleId,
+      capabilities: ["read"],
+      resource_scope: [RESOURCE_ID],
+      delegable: false,
+    }, WORKSPACE_SECRET);
+    const unrelatedCheckpoint = signWorkspaceObject({
+      ...childCheckpoint,
+      checkpoint_id: unrelatedCheckpointId,
+      role_id: unrelatedRoleId,
+      active_grant_ids: [unrelatedGrantId],
+    }, WORKSPACE_SECRET);
+    const crossRoleObjects = [
+      ...currentAuthorityObjects(),
+      unrelatedRole,
+      unrelatedGrant,
+      unrelatedCheckpoint,
+    ];
+    const crossRoleAuthority = api.createWorkspaceRepositoryResolverAuthority({
+      trust_anchors: [{ suite: "bip340", public_key: RESOLVER_KEY }],
+      allowed_policies: ["radicle-verified-complete-v1"],
+      minimum_version: "1.0.0",
+      max_ttl: 600,
+      max_view_age: 300,
+      repositories: [{ workspace_key: WORKSPACE_KEY, repository_rid: "rad:zWorkspace", pinned_head: H40 }],
+      trusted_now: () => 1_720_000_400,
+    });
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority: crossRoleAuthority,
+      evidence: repositoryViewEvidence(crossRoleObjects),
+      objects: crossRoleObjects,
+    })).toEqual({ verdict: "reject", reason_code: "workspace_repository_invalid" });
+
+    const missingParent = signWorkspaceObject({
+      ...childRole,
+      parent_role_id: "14".repeat(32),
+    }, WORKSPACE_SECRET);
+    const invalidObjects = [...currentAuthorityObjects(), missingParent, childCheckpoint];
+    const invalidAuthority = api.createWorkspaceRepositoryResolverAuthority({
+      trust_anchors: [{ suite: "bip340", public_key: RESOLVER_KEY }],
+      allowed_policies: ["radicle-verified-complete-v1"],
+      minimum_version: "1.0.0",
+      max_ttl: 600,
+      max_view_age: 300,
+      repositories: [{ workspace_key: WORKSPACE_KEY, repository_rid: "rad:zWorkspace", pinned_head: H40 }],
+      trusted_now: () => 1_720_000_400,
+    });
+    expect(api.authenticateWorkspaceRepositoryView({
+      authority: invalidAuthority,
+      evidence: repositoryViewEvidence(invalidObjects),
+      objects: invalidObjects,
+    })).toEqual({ verdict: "reject", reason_code: "workspace_repository_invalid" });
   });
 });
 
@@ -1010,6 +1248,7 @@ describe("Workspace role authorization", () => {
 
   it("activates a current signed grant with same-view authority and policy-derived approvals", async () => {
     const api = await import("./workspace.js");
+    let trustedNow = 1_720_000_400;
     const unsignedGrant = {
       spec_version: "heterodyne/0.5.0",
       object_type: "role-grant-v1",
@@ -1044,19 +1283,24 @@ describe("Workspace role authorization", () => {
       ...unsignedGrant,
       approval_ids: approvals.map(objectDigest).sort(),
     }, WORKSPACE_SECRET);
-    const objects = [...currentAuthorityObjects(), grant];
+    const authorityObjects = currentAuthorityObjects();
+    authorityObjects[3] = signWorkspaceObject({
+      ...authorityObjects[3],
+      effective_at: 1_720_000_450,
+    }, WORKSPACE_SECRET);
+    const objects = [...authorityObjects, grant];
     const authority = api.createWorkspaceRepositoryResolverAuthority({
       trust_anchors: [{ suite: "bip340", public_key: RESOLVER_KEY }],
       allowed_policies: ["radicle-verified-complete-v1"],
       minimum_version: "1.0.0",
       max_ttl: 600,
-      max_view_age: 300,
+      max_view_age: 600,
       repositories: [{
         workspace_key: WORKSPACE_KEY,
         repository_rid: "rad:zWorkspace",
         pinned_head: H40,
       }],
-      trusted_now: () => 1_720_000_400,
+      trusted_now: () => trustedNow,
     });
     const state = api.authenticateWorkspaceRepositoryView({
       authority,
@@ -1110,6 +1354,10 @@ describe("Workspace role authorization", () => {
       ...activation,
       authorization: {},
     })).toEqual({ verdict: "reject", reason_code: "workspace_schema_invalid" });
+
+    trustedNow = 1_720_000_500;
+    expect(evaluateGrantActivation(activation))
+      .toEqual({ verdict: "reject", reason_code: "policy_denied" });
   });
 
   it("consumes one signed subject acceptance through the configured atomic replay store", async () => {
@@ -1123,6 +1371,7 @@ describe("Workspace role authorization", () => {
     };
     expect(api.ReferenceWorkspaceInvitationAcceptanceStore).toBeTypeOf("function");
     expect(api.consumeWorkspaceInvitationAcceptance).toBeTypeOf("function");
+    let trustedNow = 1_720_000_400;
     const grantId = "ed".repeat(32);
     const nonceOpening = "de".repeat(32);
     const unsignedGrant = {
@@ -1171,9 +1420,9 @@ describe("Workspace role authorization", () => {
       allowed_policies: ["radicle-verified-complete-v1"],
       minimum_version: "1.0.0",
       max_ttl: 600,
-      max_view_age: 300,
+      max_view_age: 600,
       repositories: [{ workspace_key: WORKSPACE_KEY, repository_rid: "rad:zWorkspace", pinned_head: H40 }],
-      trusted_now: () => 1_720_000_400,
+      trusted_now: () => trustedNow,
       invitation_store: store,
     });
     const state = api.authenticateWorkspaceRepositoryView({ authority, evidence, objects });
@@ -1184,6 +1433,7 @@ describe("Workspace role authorization", () => {
       operationDigest,
       objectDigest(evidence),
       nonceOpening,
+      1_720_000_450,
     );
     const first = api.consumeWorkspaceInvitationAcceptance?.({
       authority,
@@ -1203,6 +1453,24 @@ describe("Workspace role authorization", () => {
     })).toEqual({ verdict: "reject", reason_code: "workspace_signature_invalid" });
     if (first?.verdict !== "accept" || first.acceptance === undefined) {
       throw new Error("fixture signed acceptance rejected");
+    }
+    trustedNow = 1_720_000_500;
+    const retryableAcceptance = invitationAcceptance(
+      grantId,
+      operationDigest,
+      objectDigest(evidence),
+      nonceOpening,
+    );
+    const afterExpiredReservation = api.consumeWorkspaceInvitationAcceptance?.({
+      authority,
+      current_state: state.state,
+      acceptance: retryableAcceptance,
+    });
+    expect(afterExpiredReservation)
+      .toMatchObject({ verdict: "accept", acceptance: expect.any(Object) });
+    if (afterExpiredReservation?.verdict !== "accept"
+      || afterExpiredReservation.acceptance === undefined) {
+      throw new Error("fixture expired invitation reservation was not released");
     }
     const resolved = api.resolveWorkspaceEffectiveAuthorization({
       authority,
@@ -1228,11 +1496,23 @@ describe("Workspace role authorization", () => {
         accepted_leaf: LEAF,
       },
       approvals,
-      invitation_acceptance: first.acceptance,
+      invitation_acceptance: afterExpiredReservation.acceptance,
       successor_reauthorization: null,
     };
-    expect(evaluateGrantActivation(activation)).toMatchObject({ verdict: "accept" });
-    expect(evaluateGrantActivation(activation))
+    expect(evaluateGrantActivation({ ...activation, approvals: approvals.slice(0, 1) }))
+      .toEqual({ verdict: "reject", reason_code: "policy_denied" });
+    const retry = api.consumeWorkspaceInvitationAcceptance?.({
+      authority,
+      current_state: state.state,
+      acceptance: retryableAcceptance,
+    });
+    expect(retry).toMatchObject({ verdict: "accept", acceptance: expect.any(Object) });
+    if (retry?.verdict !== "accept" || retry.acceptance === undefined) {
+      throw new Error("fixture invitation reservation was not released");
+    }
+    const committedActivation = { ...activation, invitation_acceptance: retry.acceptance };
+    expect(evaluateGrantActivation(committedActivation)).toMatchObject({ verdict: "accept" });
+    expect(evaluateGrantActivation(committedActivation))
       .toEqual({ verdict: "reject", reason_code: "workspace_replay" });
   });
 
@@ -1332,6 +1612,20 @@ describe("Workspace relationships and privacy", () => {
     })).toEqual({ verdict: "reject", reason_code: "workspace_schema_invalid" });
     expect(evaluateAllowance({ ...allowance, relationship: {} }))
       .toEqual({ verdict: "reject", reason_code: "workspace_schema_invalid" });
+    expect(evaluateAllowance({ ...allowance, requested_capabilities: ["triage"] }))
+      .toEqual({ verdict: "reject", reason_code: "capability_escalation" });
+
+    const newerSource = api.authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(sourceObjects, {
+        observed_at: 1_720_000_200,
+        expires_at: 1_720_000_750,
+      }),
+      objects: sourceObjects,
+    });
+    expect(newerSource.verdict).toBe("accept");
+    expect(evaluateAllowance(allowance))
+      .toEqual({ verdict: "reject", reason_code: "checkpoint_stale" });
   });
 
   it("rejects legacy raw bilateral heads, fork claims, revocation ages, and relationship objects", () => {
@@ -1402,8 +1696,40 @@ describe("Workspace relationships and privacy", () => {
       .toEqual({ verdict: "reject", reason_code: "workspace_schema_invalid" });
   });
 
-  it("requires threshold-governed joint identities instead of host authority", () => {
-    const input = jointGovernanceFixture();
+  it("requires latest resolver-derived joint state instead of host or caller authority", async () => {
+    const api = await import("./workspace.js");
+    const objects = jointAuthorityObjects();
+    const authority = api.createWorkspaceRepositoryResolverAuthority({
+      trust_anchors: [{ suite: "bip340", public_key: RESOLVER_KEY }],
+      allowed_policies: ["radicle-verified-complete-v1"],
+      minimum_version: "1.0.0",
+      max_ttl: 600,
+      max_view_age: 300,
+      repositories: [{ workspace_key: JOINT_KEY, repository_rid: "rad:zJoint", pinned_head: H40 }],
+      trusted_now: () => 1_720_000_100,
+    });
+    const state = api.authenticateWorkspaceRepositoryView({
+      authority,
+      evidence: repositoryViewEvidence(objects, {
+        workspace_key: JOINT_KEY,
+        repository_rid: "rad:zJoint",
+        observed_at: 1_720_000_050,
+        expires_at: 1_720_000_650,
+      }),
+      objects,
+    });
+    expect(state.verdict).toBe("accept");
+    if (state.verdict !== "accept") throw new Error("fixture joint current state rejected");
+    const input = {
+      authority,
+      current_state: state.state,
+      relationship_id: H64,
+      resource_scope: [H64],
+      delegate_proofs: [
+        jointDelegateProof([H64], APPROVER_A_SECRET),
+        jointDelegateProof([H64], APPROVER_B_SECRET),
+      ],
+    };
     expect(evaluateJointGovernance(input)).toEqual({
       verdict: "accept",
       normalized: {
@@ -1415,23 +1741,25 @@ describe("Workspace relationships and privacy", () => {
       },
     });
 
-    const duplicate = jointGovernanceFixture();
-    duplicate.delegate_proofs = [duplicate.delegate_proofs[0], duplicate.delegate_proofs[0]];
-    expect(evaluateJointGovernance(duplicate))
+    expect(evaluateJointGovernance({
+      ...input,
+      delegate_proofs: [input.delegate_proofs[0], input.delegate_proofs[0]],
+    }))
       .toEqual({ verdict: "reject", reason_code: "policy_denied" });
 
-    const forged = jointGovernanceFixture();
-    forged.delegate_proofs[1] = {
-      ...forged.delegate_proofs[1],
+    expect(evaluateJointGovernance({
+      ...input,
+      delegate_proofs: [input.delegate_proofs[0], {
+      ...input.delegate_proofs[1],
       signature: "00".repeat(64),
-    };
-    expect(evaluateJointGovernance(forged))
+      }],
+    }))
       .toEqual({ verdict: "reject", reason_code: "workspace_signature_invalid" });
 
-    const impossibleThreshold = jointGovernanceFixture(3);
-    expect(evaluateJointGovernance(impossibleThreshold))
-      .toEqual({ verdict: "reject", reason_code: "workspace_schema_invalid" });
-
+    expect(evaluateJointGovernance(jointGovernanceFixture())).toEqual({
+      verdict: "reject",
+      reason_code: "workspace_schema_invalid",
+    });
     expect(evaluateJointGovernance({
       independent_joint_identity: true,
       valid_distinct_delegates: 2,
@@ -1455,6 +1783,7 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
         reauthorization?: object;
       };
     };
+    let trustedNow = 1_720_000_400;
     expect(api.authenticateWorkspaceSuccessorReauthorization).toBeTypeOf("function");
     const pendingGrantBase = {
       spec_version: "heterodyne/0.5.0",
@@ -1468,8 +1797,8 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
       issued_at: 1_720_000_050,
       grant_id: "ac".repeat(32),
       subject_account: APPROVER_A_KEY,
-      target_device: H64,
-      recipient: { type: "marmot-mls-leaf", value: LEAF },
+      target_device: NEW_DEVICE,
+      recipient: { type: "marmot-mls-leaf", value: NEW_LEAF },
       role_id: H64,
       capabilities: ["read"],
       resource_scope: [RESOURCE_ID],
@@ -1490,21 +1819,56 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
       ...pendingGrantBase,
       approval_ids: pendingApprovals.map(objectDigest).sort(),
     }, WORKSPACE_SECRET);
-    const objects = [...currentAuthorityObjects(), pendingGrant];
-    const evidence = repositoryViewEvidence(objects);
+    const pendingEnvelope = signWorkspaceObject({
+      spec_version: "heterodyne/0.5.0",
+      object_type: "resource-key-envelope-v1",
+      workspace_key: WORKSPACE_KEY,
+      policy_head: POLICY_HEAD,
+      predecessor: PREDECESSOR,
+      authority_checkpoint: CHECKPOINT,
+      repository_rid: "rad:zWorkspace",
+      repository_head: H40,
+      issued_at: 1_720_000_200,
+      envelope_id: "ad".repeat(32),
+      resource_id: RESOURCE_ID,
+      key_epoch: 1,
+      target_account: APPROVER_A_KEY,
+      target_device: NEW_DEVICE,
+      recipient: { type: "marmot-mls-leaf", value: NEW_LEAF },
+      role_id: H64,
+      checkpoint_id: CHECKPOINT,
+      custody_host_id: "dd".repeat(32),
+      wrapping_profile: "marmot-mls-application-v1",
+      nonce: "AAAAAAAAAAAAAAAA",
+      ciphertext: "AQID",
+      ciphertext_sha256: "ae".repeat(32),
+      created_at: 1_720_000_200,
+    }, WORKSPACE_SECRET);
+    const authorityObjects = currentAuthorityObjects();
+    authorityObjects[3] = signWorkspaceObject({
+      ...authorityObjects[3],
+      effective_at: 1_720_000_450,
+    }, WORKSPACE_SECRET);
+    const objects = [...authorityObjects, pendingGrant, pendingEnvelope];
+    const evidence = repositoryViewEvidence(objects, { observed_at: 1_720_000_300 });
     const authority = api.createWorkspaceRepositoryResolverAuthority({
       trust_anchors: [{ suite: "bip340", public_key: RESOLVER_KEY }],
       allowed_policies: ["radicle-verified-complete-v1"],
       minimum_version: "1.0.0",
       max_ttl: 600,
-      max_view_age: 300,
+      max_view_age: 600,
       repositories: [{ workspace_key: WORKSPACE_KEY, repository_rid: "rad:zWorkspace", pinned_head: H40 }],
-      trusted_now: () => 1_720_000_400,
+      trusted_now: () => trustedNow,
     });
     const state = api.authenticateWorkspaceRepositoryView({ authority, evidence, objects });
     expect(state.verdict).toBe("accept");
     if (state.verdict !== "accept") throw new Error("fixture successor state rejected");
-    const signed = successorReauthorization(objectDigest(evidence), "resource-key");
+    const signed = successorReauthorization(
+      objectDigest(evidence),
+      "resource-key",
+      String(pendingGrant.grant_id),
+      String(pendingEnvelope.envelope_id),
+    );
     const successor = api.authenticateWorkspaceSuccessorReauthorization?.({
       authority,
       current_state: state.state,
@@ -1514,25 +1878,45 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
     if (successor?.verdict !== "accept" || successor.reauthorization === undefined) {
       throw new Error("fixture successor reauthorization rejected");
     }
-    const request = {
-      authority,
-      current_state: state.state,
-      successor_reauthorization: successor.reauthorization,
+    const requestBody = {
       resource_id: RESOURCE_ID,
       custody_host_id: "dd".repeat(32),
       requested_epoch: 1,
+      requested_snapshot_id: null,
       target_account: APPROVER_A_KEY,
       authenticated_account: OTHER_KEY,
-      target_device: H64,
-      recipient: { type: "marmot-mls-leaf", value: LEAF },
+      target_device: NEW_DEVICE,
+      recipient: { type: "marmot-mls-leaf", value: NEW_LEAF },
+    };
+    const keyAuthorization = api.resolveWorkspaceEffectiveAuthorization({
+      authority,
+      current_state: state.state,
+      actor_account: OTHER_KEY,
+      actor_device: H64,
+      actor_leaf: LEAF,
+      operation_digest: keyRequestDigest(requestBody),
+      requested_capabilities: ["read"],
+      requested_resources: [RESOURCE_ID],
+      requested_delegable: false,
+    });
+    expect(keyAuthorization.verdict).toBe("accept");
+    if (keyAuthorization.verdict !== "accept") throw new Error("fixture key authorization rejected");
+    const request = {
+      authority,
+      current_state: state.state,
+      authorization: keyAuthorization.authorization,
+      successor_reauthorization: successor.reauthorization,
+      ...requestBody,
     };
     expect(evaluateKeyRequest(request)).toEqual({
       verdict: "accept",
       normalized: {
         key_epoch: 1,
-        target_device: H64,
-        recipient: { type: "marmot-mls-leaf", value: LEAF },
+        target_device: NEW_DEVICE,
+        recipient: { type: "marmot-mls-leaf", value: NEW_LEAF },
         device_bound: true,
+        history_start_epoch: 1,
+        history_mode: "full",
         idempotent: true,
       },
     });
@@ -1558,11 +1942,31 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
       current_state: state.state,
       reauthorization: { ...signed, new_account_signature: "00".repeat(64) },
     })).toEqual({ verdict: "reject", reason_code: "workspace_signature_invalid" });
+    expect(api.authenticateWorkspaceSuccessorReauthorization?.({
+      authority,
+      current_state: state.state,
+      reauthorization: successorReauthorization(
+        objectDigest(evidence),
+        "resource-key",
+        String(pendingGrant.grant_id),
+        String(pendingEnvelope.envelope_id),
+      ),
+    })).toMatchObject({ verdict: "accept" });
+
+    trustedNow = 1_720_000_500;
+    expect(evaluateKeyRequest(request))
+      .toEqual({ verdict: "reject", reason_code: "policy_denied" });
+    trustedNow = 1_720_000_400;
 
     const roleSuccessor = api.authenticateWorkspaceSuccessorReauthorization?.({
       authority,
       current_state: state.state,
-      reauthorization: successorReauthorization(objectDigest(evidence), "role-membership"),
+      reauthorization: successorReauthorization(
+        objectDigest(evidence),
+        "role-membership",
+        String(pendingGrant.grant_id),
+        null,
+      ),
     });
     expect(roleSuccessor).toMatchObject({ verdict: "accept", reauthorization: expect.any(Object) });
     if (roleSuccessor?.verdict !== "accept" || roleSuccessor.reauthorization === undefined) {
@@ -1588,8 +1992,8 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
       grant_id: pendingGrant.grant_id,
       membership: {
         authenticated_account: OTHER_KEY,
-        accepted_device: H64,
-        accepted_leaf: LEAF,
+        accepted_device: NEW_DEVICE,
+        accepted_leaf: NEW_LEAF,
       },
       approvals: pendingApprovals,
       invitation_acceptance: null,

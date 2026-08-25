@@ -290,7 +290,7 @@
         "bip340",
         "ed25519"
       ],
-      "description": "The repository-view signature binds the SHA-256 proof-byte digest of the sorted exact current Workspace object identifier set."
+      "description": "The repository-view signature binds the SHA-256 proof-byte digest of the unique strictly byte-sorted current Workspace object identifier array; reordering is invalid."
     },
     {
       "id": "heterodyne-workspace-invitation-nonce-v1",
@@ -349,25 +349,30 @@
         "expires_at",
         "issued_at",
         "new_account",
+        "new_device",
         "new_key",
+        "new_leaf",
+        "pending_envelope_id",
+        "pending_grant_id",
         "policy_head",
         "predecessor",
         "prior_account",
+        "prior_device",
+        "prior_grant_id",
         "prior_key",
+        "prior_leaf",
         "profile",
         "repository_view_id",
         "resource_id",
         "role_id",
         "scope",
         "spec_version",
-        "subject_device",
-        "target_leaf",
         "workspace_key"
       ],
       "suites": [
         "bip340"
       ],
-      "description": "The current workspace and new account keys independently sign one exact current-view transfer for either role membership or one resource-key scope."
+      "description": "The current workspace and new account keys independently sign one exact latest-view transfer from the prior account/device/leaf and active grant to a fresh new account/device/leaf bound by a pending grant and, for resource-key scope, pending envelope."
     },
     {
       "id": "heterodyne-workspace-affiliation-evidence-v1",
@@ -438,7 +443,7 @@
       "suites": [
         "bip340"
       ],
-      "description": "A configured joint-workspace delegate signs one closed proof bound to the exact joint authority tuple, operation digest, scope, and validity interval."
+      "description": "A delegate from the latest resolver-derived signed joint-workspace state signs one closed proof bound to the exact joint authority tuple, operation digest, scope, and validity interval."
     },
     {
       "id": "heterodyne-workspace-grant-operation-v1",
@@ -491,6 +496,26 @@
         "bip340"
       ],
       "description": "The joint-operation prehash bound into delegate BIP-340 proofs covers the exact joint authority tuple and requested resource scope."
+    },
+    {
+      "id": "heterodyne-workspace-key-request-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "authenticated_account",
+        "custody_host_id",
+        "recipient",
+        "requested_epoch",
+        "requested_snapshot_id",
+        "resource_id",
+        "target_account",
+        "target_device"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "The effective-authorization operation digest binds one exact resource-key pull request before latest-view role, resource, history, successor, and revocation evaluation."
     },
     {
       "id": "heterodyne-workspace-object-v1",
