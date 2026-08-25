@@ -5,6 +5,7 @@ import { sha256 } from "@noble/hashes/sha2";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { AUX_RAND } from "./vector-helpers.js";
 import * as resolutionModule from "./atproto-did-resolution.js";
+import { getPublicKey, signEvent, type NostrSignedEvent } from "./nostr.js";
 
 type Envelope = {
   domain: "heterodyne-atproto-did-resolution-v1";
@@ -53,18 +54,23 @@ type ResolutionModule = {
     expected_binding: {
       binding_event_id: string;
       binding_hash: string;
+      canonical_payload: string;
       did: string;
+      did_signature: string;
+      did_signing_key_id: string;
       pubkey: string;
       generation: number;
       event_created_at: number;
+      nostr_event: NostrSignedEvent;
     };
   }) => { verdict: "accept" } | { verdict: "reject"; reason_code: string };
 };
 
 type ObservationEnvelope = {
-  domain: "heterodyne-atproto-binding-observation-v1";
+  domain: "heterodyne-atproto-binding-observation-v2";
   binding_event_id: string;
   binding_hash: string;
+  did_signature_digest: string;
   did: string;
   pubkey: string;
   generation: number;
@@ -113,28 +119,7 @@ describe("authenticated ATProto DID resolution", () => {
       suite: "ed25519",
       public_key: resolverPublic,
     });
-    const bindingEventId = "11".repeat(32);
-    const expected = {
-      binding_event_id: bindingEventId,
-      binding_hash: "22".repeat(32),
-      did,
-      pubkey: "33".repeat(32),
-      generation: 1,
-      event_created_at: 1_050,
-    };
-    const observation: ObservationEnvelope = {
-      domain: "heterodyne-atproto-binding-observation-v1",
-      binding_event_id: bindingEventId,
-      binding_hash: expected.binding_hash,
-      did,
-      pubkey: expected.pubkey,
-      generation: 1,
-      observed_at: 1_100,
-      checkpoint_reference: `nostr:event:${bindingEventId}`,
-      resolution_envelope_hash: bytesToHex(sha256(utf8Bytes(canonicalEnvelope(envelope)))),
-      resolver_policy: envelope.resolver_policy,
-      resolver_version: envelope.resolver_version,
-    };
+    const { expected, observation } = await bindingObservationFixture();
     const resolutionEvidence = attestation(envelope, resolverSecret, "ed25519");
     expect(api.authenticateAtprotoBindingObservation?.({
       authority,
@@ -148,6 +133,10 @@ describe("authenticated ATProto DID resolution", () => {
       observationAttestation(observation, attackerSecret),
       observationAttestation({ ...observation, binding_event_id: "44".repeat(32) }, resolverSecret),
       observationAttestation({ ...observation, binding_hash: "44".repeat(32) }, resolverSecret),
+      observationAttestation({
+        ...observation,
+        did_signature_digest: "44".repeat(32),
+      }, resolverSecret),
       observationAttestation({ ...observation, pubkey: "44".repeat(32) }, resolverSecret),
       observationAttestation({ ...observation, generation: 2 }, resolverSecret),
       observationAttestation({ ...observation, resolution_envelope_hash: "44".repeat(32) }, resolverSecret),
@@ -193,27 +182,7 @@ describe("authenticated ATProto DID resolution", () => {
     })).toEqual({ verdict: "reject", reason_code: "atproto-did-resolution-invalid" });
     expect(resolutionGetterCalls).toBe(0);
 
-    const expected = {
-      binding_event_id: "11".repeat(32),
-      binding_hash: "22".repeat(32),
-      did,
-      pubkey: "33".repeat(32),
-      generation: 1,
-      event_created_at: 1_050,
-    };
-    const signedEnvelope: ObservationEnvelope = {
-      domain: "heterodyne-atproto-binding-observation-v1",
-      binding_event_id: "44".repeat(32),
-      binding_hash: expected.binding_hash,
-      did,
-      pubkey: expected.pubkey,
-      generation: 1,
-      observed_at: 1_100,
-      checkpoint_reference: `nostr:event:${"44".repeat(32)}`,
-      resolution_envelope_hash: bytesToHex(sha256(utf8Bytes(canonicalEnvelope(envelope)))),
-      resolver_policy: envelope.resolver_policy,
-      resolver_version: envelope.resolver_version,
-    };
+    const { expected, observation: signedEnvelope } = await bindingObservationFixture();
     let observationGetterCalls = 0;
     const accessorObservation = { ...signedEnvelope } as Record<string, unknown>;
     Object.defineProperty(accessorObservation, "binding_event_id", {
@@ -222,7 +191,7 @@ describe("authenticated ATProto DID resolution", () => {
         observationGetterCalls += 1;
         return observationGetterCalls === 1
           ? expected.binding_event_id
-          : signedEnvelope.binding_event_id;
+          : "44".repeat(32);
       },
     });
     expect(api.authenticateAtprotoBindingObservation?.({
@@ -538,10 +507,11 @@ function observationAttestation(
   secret: string,
 ): { envelope: ObservationEnvelope; signature: string } {
   const digest = sha256(utf8Bytes(
-    `heterodyne:atproto-binding-observation:v1\0${JSON.stringify({
+    `heterodyne:atproto-binding-observation:v2\0${JSON.stringify({
       domain: value.domain,
       binding_event_id: value.binding_event_id,
       binding_hash: value.binding_hash,
+      did_signature_digest: value.did_signature_digest,
       did: value.did,
       pubkey: value.pubkey,
       generation: value.generation,
@@ -555,5 +525,80 @@ function observationAttestation(
   return {
     envelope: value,
     signature: bytesToHex(ed25519.sign(digest, hexToBytes(secret))),
+  };
+}
+
+async function bindingObservationFixture(): Promise<{
+  expected: {
+    binding_event_id: string;
+    binding_hash: string;
+    canonical_payload: string;
+    did: string;
+    did_signature: string;
+    did_signing_key_id: string;
+    pubkey: string;
+    generation: number;
+    event_created_at: number;
+    nostr_event: NostrSignedEvent;
+  };
+  observation: ObservationEnvelope;
+}> {
+  const nostrSecret = "17".repeat(32);
+  const pubkey = getPublicKey(nostrSecret);
+  const canonicalPayload = JSON.stringify({
+    spec_version: "heterodyne/0.5.0",
+    did,
+    did_signing_key_id: method,
+    pubkey,
+    established_at: 1_050,
+    generation: 1,
+    nonce: "01".repeat(32),
+    predecessor: null,
+  });
+  const nostrEvent = await signEvent({
+    secretKey: nostrSecret,
+    created_at: 1_050,
+    kind: 31009,
+    tags: [
+      ["d", did],
+      ["heterodyne", "atproto_link"],
+      ["pubkey", pubkey],
+      ["did", did],
+    ],
+    content: canonicalPayload,
+    auxRand: AUX_RAND,
+  });
+  const didSignature = bytesToHex(ed25519.sign(
+    sha256(utf8Bytes(canonicalPayload)),
+    hexToBytes(didSecret),
+  ));
+  const expected = {
+    binding_event_id: nostrEvent.id,
+    binding_hash: bytesToHex(sha256(utf8Bytes(canonicalPayload))),
+    canonical_payload: canonicalPayload,
+    did,
+    did_signature: didSignature,
+    did_signing_key_id: method,
+    pubkey,
+    generation: 1,
+    event_created_at: nostrEvent.created_at,
+    nostr_event: nostrEvent,
+  };
+  return {
+    expected,
+    observation: {
+      domain: "heterodyne-atproto-binding-observation-v2",
+      binding_event_id: nostrEvent.id,
+      binding_hash: expected.binding_hash,
+      did_signature_digest: bytesToHex(sha256(hexToBytes(didSignature))),
+      did,
+      pubkey,
+      generation: 1,
+      observed_at: 1_100,
+      checkpoint_reference: `nostr:event:${nostrEvent.id}`,
+      resolution_envelope_hash: bytesToHex(sha256(utf8Bytes(canonicalEnvelope(envelope)))),
+      resolver_policy: envelope.resolver_policy,
+      resolver_version: envelope.resolver_version,
+    },
   };
 }

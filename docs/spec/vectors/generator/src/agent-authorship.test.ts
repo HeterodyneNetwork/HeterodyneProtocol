@@ -599,6 +599,101 @@ describe("atomic Comms signed publication for Social", () => {
     expect(replacementCalls).toBe(0);
   });
 
+  it("rejects an authority accessor that launders proof branding from A to B", () => {
+    const api = agentAuthorship as AtomicApi;
+    let signerCalls = 0;
+    let authorityReads = 0;
+    const authorityA = api.createCommsSocialPublicationAuthority?.({
+      trusted_now: () => 1_101,
+      signer_execution: signerExecution((event) => {
+        signerCalls += 1;
+        return signNostrEvent(event);
+      }),
+    });
+    const authorityB = api.createCommsSocialPublicationAuthority?.({
+      trusted_now: () => 1_101,
+      signer_execution: signerExecution(),
+    });
+    if (authorityA === undefined || authorityB === undefined) {
+      throw new Error("publication authority missing");
+    }
+    const request = atomicInput(authorityA) as Record<string, unknown>;
+    Object.defineProperty(request, "authority", {
+      enumerable: true,
+      get() {
+        authorityReads += 1;
+        return authorityReads <= 5 ? authorityA : authorityB;
+      },
+    });
+
+    expect(api.signCommsSocialPublication?.(request as never)).toEqual({
+      verdict: "reject",
+      reason_code: "agent-signer-mismatch",
+    });
+    expect(signerCalls).toBe(0);
+  });
+
+  it("rejects content that grows after the authorization checks", () => {
+    const api = agentAuthorship as AtomicApi;
+    let signerCalls = 0;
+    let contentReads = 0;
+    const authority = api.createCommsSocialPublicationAuthority?.({
+      trusted_now: () => 1_101,
+      signer_execution: signerExecution((event) => {
+        signerCalls += 1;
+        return signNostrEvent(event);
+      }),
+    });
+    if (authority === undefined) throw new Error("publication authority missing");
+    const event = { ...intent } as Record<string, unknown>;
+    Object.defineProperty(event, "content", {
+      enumerable: true,
+      get() {
+        contentReads += 1;
+        return contentReads <= 2 ? intent.content : "x".repeat(5_000);
+      },
+    });
+
+    expect(api.signCommsSocialPublication?.(
+      atomicInput(authority, { event }) as never,
+    )).toEqual({
+      verdict: "reject",
+      reason_code: "agent-signer-mismatch",
+    });
+    expect(signerCalls).toBe(0);
+  });
+
+  it("rejects feed or resource accessors that change the signed destination", () => {
+    const api = agentAuthorship as AtomicApi;
+    for (const member of ["requested_feed", "requested_resource"] as const) {
+      let signerCalls = 0;
+      let destinationReads = 0;
+      const authority = api.createCommsSocialPublicationAuthority?.({
+        trusted_now: () => 1_101,
+        signer_execution: signerExecution((event) => {
+          signerCalls += 1;
+          return signNostrEvent(event);
+        }),
+      });
+      if (authority === undefined) throw new Error("publication authority missing");
+      const request = atomicInput(authority) as Record<string, unknown>;
+      const allowed = member === "requested_feed" ? "main" : "feed:main";
+      Object.defineProperty(request, member, {
+        enumerable: true,
+        get() {
+          destinationReads += 1;
+          return destinationReads === 1 ? allowed : `${allowed}:different`;
+        },
+      });
+
+      expect(api.signCommsSocialPublication?.(request as never)).toEqual({
+        verdict: "reject",
+        reason_code: "agent-signer-mismatch",
+      });
+      expect(signerCalls).toBe(0);
+    }
+  });
+
   it("rejects stale current state before invoking the signer", () => {
     const api = agentAuthorship as AtomicApi;
     let signerCalls = 0;

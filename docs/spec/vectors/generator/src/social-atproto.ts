@@ -58,9 +58,7 @@ export type AtprotoRevocationDecision =
   | { verdict: "accept"; revocation: AtprotoRevocation }
   | { verdict: "reject"; reason_code: "atproto-revocation-invalid" };
 
-const HEX_32 = /^[0-9a-f]{64}$/;
-
-export function validateAtprotoBinding(input: {
+type AtprotoBindingValidationInput = {
   did: string;
   pubkey: string;
   candidates: readonly AtprotoBindingEvidence[];
@@ -69,11 +67,38 @@ export function validateAtprotoBinding(input: {
   resolver_authority: AtprotoResolverAuthority;
   current_resolution: AtprotoResolutionEvidence;
   now: number;
-}): AtprotoBindingDecision {
+};
+
+type AtprotoRevocationValidationInput = {
+  evidence: AtprotoRevocationEvidence;
+  binding: AtprotoBinding;
+  resolver_authority: AtprotoResolverAuthority;
+  current_resolution: AtprotoResolutionEvidence;
+  now: number;
+};
+
+const HEX_32 = /^[0-9a-f]{64}$/;
+
+export function validateAtprotoBinding(
+  input: AtprotoBindingValidationInput,
+): AtprotoBindingDecision {
+  const captured = snapshotAtprotoBindingInput(input);
+  if (captured === null) {
+    return { verdict: "reject", reason_code: "atproto-binding-invalid" };
+  }
+  return validateAtprotoBindingSnapshot(captured);
+}
+
+function validateAtprotoBindingSnapshot(
+  input: AtprotoBindingValidationInput,
+): AtprotoBindingDecision {
   if (!HEX_32.test(input.pubkey)) {
     return { verdict: "reject", reason_code: "atproto-binding-invalid" };
   }
-  const valid = new Map<string, { binding: AtprotoBinding; event: NostrSignedEvent }>();
+  const valid: Array<{
+    evidence: AtprotoBindingEvidence;
+    checked: { binding: AtprotoBinding; event: NostrSignedEvent };
+  }> = [];
   for (const candidate of input.candidates) {
     const checked = validateBindingEvidence(
       candidate,
@@ -83,16 +108,19 @@ export function validateAtprotoBinding(input: {
       input.resolver_authority,
       false,
     );
-    if (checked !== null) valid.set(checked.event.id, checked);
+    if (checked !== null) valid.push({ evidence: candidate, checked });
   }
-  const current = [...valid.values()].sort((left, right) =>
-    right.event.created_at - left.event.created_at
-    || left.event.id.localeCompare(right.event.id))[0];
-  if (current === undefined) {
+  const selected = valid.sort((left, right) =>
+    right.checked.event.created_at - left.checked.event.created_at
+    || left.checked.event.id.localeCompare(right.checked.event.id))[0];
+  if (selected === undefined) {
     return { verdict: "reject", reason_code: "atproto-binding-invalid" };
   }
+  const current = selected.checked;
   const historical = new Map<string, { binding: AtprotoBinding; event: NostrSignedEvent }>();
+  historical.set(current.event.id, current);
   for (const evidence of [...input.candidates, ...input.lineage]) {
+    if (evidence === selected.evidence) continue;
     const checked = validateBindingEvidence(
       evidence,
       input.did,
@@ -112,7 +140,7 @@ export function validateAtprotoBinding(input: {
     const target = [...universe.values()].find(({ binding }) =>
       revocationTargetsBinding(evidence, binding));
     if (target === undefined) return [];
-    const decision = validateAtprotoRevocation({
+    const decision = validateAtprotoRevocationSnapshot({
       evidence,
       binding: target.binding,
       resolver_authority: input.resolver_authority,
@@ -148,13 +176,27 @@ export function validateAtprotoBinding(input: {
   };
 }
 
-export function validateAtprotoRevocation(input: {
-  evidence: AtprotoRevocationEvidence;
-  binding: AtprotoBinding;
-  resolver_authority: AtprotoResolverAuthority;
-  current_resolution: AtprotoResolutionEvidence;
-  now: number;
-}): AtprotoRevocationDecision {
+export function validateAtprotoRevocation(
+  input: AtprotoRevocationValidationInput,
+): AtprotoRevocationDecision {
+  const captured = snapshotAtprotoRevocationInput(input);
+  if (captured === null) {
+    return { verdict: "reject", reason_code: "atproto-revocation-invalid" };
+  }
+  return validateAtprotoRevocationSnapshot(captured);
+}
+
+function validateAtprotoRevocationSnapshot(
+  input: AtprotoRevocationValidationInput,
+): AtprotoRevocationDecision {
+  const evidenceKeys = Object.keys(input.evidence).sort().join("\0");
+  if (
+    input.evidence.side === "nostr"
+      ? evidenceKeys !== "nostr_event\0side"
+      : input.evidence.side === "atproto"
+        ? evidenceKeys !== "did_signature\0side\0value"
+        : true
+  ) return { verdict: "reject", reason_code: "atproto-revocation-invalid" };
   const value = input.evidence.side === "nostr"
     ? parseJson(input.evidence.nostr_event.content)
     : input.evidence.value;
@@ -242,9 +284,11 @@ function validateBindingEvidence(
   if (binding === null) return null;
   const canonicalPayload = serializeAtprotoBinding(binding);
   const event = evidence.nostr_event;
+  const resolutionEvidence = evidence.resolution_evidence;
+  const didSignature = evidence.did_signature;
   const resolution = authenticateAtprotoDidResolution({
     authority: resolverAuthority,
-    evidence: evidence.resolution_evidence,
+    evidence: resolutionEvidence,
     validation_time: validationTime,
   });
   if (
@@ -257,7 +301,7 @@ function validateBindingEvidence(
       did: binding.did,
       verification_method_id: binding.did_signing_key_id,
       payload: canonicalPayload,
-      signature: evidence.did_signature,
+      signature: didSignature,
       validation_time: validationTime,
     })
     || !isStrictNostrSignedEvent(event)
@@ -277,14 +321,18 @@ function validateBindingEvidence(
       || authenticateAtprotoBindingObservation({
         authority: resolverAuthority,
         evidence: evidence.observation_evidence,
-        resolution_evidence: evidence.resolution_evidence,
+        resolution_evidence: resolutionEvidence,
         expected_binding: {
           binding_event_id: event.id,
           binding_hash: digestAtprotoBinding(binding),
+          canonical_payload: canonicalPayload,
           did: binding.did,
+          did_signature: didSignature,
+          did_signing_key_id: binding.did_signing_key_id,
           pubkey: binding.pubkey,
           generation: binding.generation,
           event_created_at: event.created_at,
+          nostr_event: event,
         },
       }).verdict !== "accept"
     )
@@ -336,6 +384,166 @@ function revocationTargetsBinding(
     && revocation.generation === binding.generation
     && revocation.nonce === binding.nonce
     && revocation.binding_hash === digestAtprotoBinding(binding);
+}
+
+const INVALID_ATPROTO_SNAPSHOT = Symbol("invalid-atproto-snapshot");
+const ATPROTO_BINDING_INPUT_KEYS = [
+  "candidates", "current_resolution", "did", "lineage", "now", "pubkey",
+  "resolver_authority", "revocations",
+].join("\0");
+const ATPROTO_REVOCATION_INPUT_KEYS = [
+  "binding", "current_resolution", "evidence", "now", "resolver_authority",
+].join("\0");
+
+function snapshotAtprotoBindingInput(
+  value: unknown,
+): AtprotoBindingValidationInput | null {
+  const captured = captureAtprotoBoundary(value, ATPROTO_BINDING_INPUT_KEYS);
+  if (
+    captured === null
+    || typeof captured.did !== "string"
+    || typeof captured.pubkey !== "string"
+    || !Number.isSafeInteger(captured.now)
+    || !Array.isArray(captured.candidates)
+    || !captured.candidates.every(isAtprotoSnapshotObject)
+    || !Array.isArray(captured.lineage)
+    || !captured.lineage.every(isAtprotoSnapshotObject)
+    || !Array.isArray(captured.revocations)
+    || !captured.revocations.every(isAtprotoSnapshotObject)
+    || !isAtprotoSnapshotObject(captured.current_resolution)
+  ) return null;
+  return captured as AtprotoBindingValidationInput;
+}
+
+function snapshotAtprotoRevocationInput(
+  value: unknown,
+): AtprotoRevocationValidationInput | null {
+  const captured = captureAtprotoBoundary(value, ATPROTO_REVOCATION_INPUT_KEYS);
+  const parsedBinding = captured === null ? null : parseBinding(captured.binding);
+  if (
+    captured === null
+    || parsedBinding === null
+    || !Number.isSafeInteger(captured.now)
+    || !isAtprotoSnapshotObject(captured.evidence)
+    || !isAtprotoSnapshotObject(captured.binding)
+    || !isAtprotoSnapshotObject(captured.current_resolution)
+  ) return null;
+  return Object.freeze({
+    evidence: captured.evidence as AtprotoRevocationEvidence,
+    binding: Object.freeze(parsedBinding),
+    resolver_authority: captured.resolver_authority as AtprotoResolverAuthority,
+    current_resolution: captured.current_resolution as AtprotoResolutionEvidence,
+    now: captured.now as number,
+  });
+}
+
+function captureAtprotoBoundary(
+  value: unknown,
+  expectedKeys: string,
+): Readonly<Record<string, unknown>> | null {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
+  let prototype: object | null;
+  let descriptors: PropertyDescriptorMap;
+  try {
+    prototype = Object.getPrototypeOf(value) as object | null;
+    descriptors = Object.getOwnPropertyDescriptors(value);
+  } catch {
+    return null;
+  }
+  if (
+    prototype !== Object.prototype
+    || Reflect.ownKeys(descriptors).some((key) => typeof key !== "string")
+    || Object.keys(descriptors).sort().join("\0") !== expectedKeys
+    || Object.values(descriptors).some((descriptor) =>
+      !("value" in descriptor) || descriptor.enumerable !== true)
+  ) return null;
+  const captured: Record<string, unknown> = {};
+  for (const key of Object.keys(descriptors)) {
+    const descriptor = descriptors[key] as PropertyDescriptor & { value: unknown };
+    if (key === "resolver_authority") {
+      captured[key] = descriptor.value;
+      continue;
+    }
+    const member = snapshotAtprotoData(descriptor.value, new WeakSet());
+    if (member === INVALID_ATPROTO_SNAPSHOT) return null;
+    captured[key] = member;
+  }
+  return Object.freeze(captured);
+}
+
+function snapshotAtprotoData(
+  value: unknown,
+  seen: WeakSet<object>,
+): unknown | typeof INVALID_ATPROTO_SNAPSHOT {
+  if (
+    value === null
+    || typeof value === "string"
+    || typeof value === "number"
+    || typeof value === "boolean"
+  ) return value;
+  if (typeof value !== "object" || seen.has(value)) return INVALID_ATPROTO_SNAPSHOT;
+  let prototype: object | null;
+  let descriptors: PropertyDescriptorMap;
+  try {
+    prototype = Object.getPrototypeOf(value) as object | null;
+    descriptors = Object.getOwnPropertyDescriptors(value);
+  } catch {
+    return INVALID_ATPROTO_SNAPSHOT;
+  }
+  const array = Array.isArray(value);
+  if (
+    prototype !== (array ? Array.prototype : Object.prototype)
+    || Reflect.ownKeys(descriptors).some((key) => typeof key !== "string")
+  ) return INVALID_ATPROTO_SNAPSHOT;
+  seen.add(value);
+  try {
+    if (array) {
+      const lengthDescriptor = descriptors.length;
+      if (
+        lengthDescriptor === undefined
+        || !("value" in lengthDescriptor)
+        || !Number.isSafeInteger(lengthDescriptor.value)
+        || lengthDescriptor.value < 0
+      ) return INVALID_ATPROTO_SNAPSHOT;
+      const length = lengthDescriptor.value as number;
+      const keys = Object.keys(descriptors).filter((key) => key !== "length");
+      if (keys.length !== length || keys.some((key, index) => key !== String(index))) {
+        return INVALID_ATPROTO_SNAPSHOT;
+      }
+      const snapshot: unknown[] = [];
+      for (let index = 0; index < length; index += 1) {
+        const descriptor = descriptors[String(index)];
+        if (
+          descriptor === undefined
+          || !("value" in descriptor)
+          || descriptor.enumerable !== true
+        ) return INVALID_ATPROTO_SNAPSHOT;
+        const member = snapshotAtprotoData(descriptor.value, seen);
+        if (member === INVALID_ATPROTO_SNAPSHOT) return INVALID_ATPROTO_SNAPSHOT;
+        snapshot.push(member);
+      }
+      return Object.freeze(snapshot);
+    }
+    const snapshot: Record<string, unknown> = {};
+    for (const key of Object.keys(descriptors)) {
+      const descriptor = descriptors[key];
+      if (
+        descriptor === undefined
+        || !("value" in descriptor)
+        || descriptor.enumerable !== true
+      ) return INVALID_ATPROTO_SNAPSHOT;
+      const member = snapshotAtprotoData(descriptor.value, seen);
+      if (member === INVALID_ATPROTO_SNAPSHOT) return INVALID_ATPROTO_SNAPSHOT;
+      snapshot[key] = member;
+    }
+    return Object.freeze(snapshot);
+  } finally {
+    seen.delete(value);
+  }
+}
+
+function isAtprotoSnapshotObject(value: unknown): value is Readonly<Record<string, unknown>> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function parseBinding(value: unknown): AtprotoBinding | null {

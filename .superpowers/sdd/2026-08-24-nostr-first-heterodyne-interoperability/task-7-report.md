@@ -831,3 +831,142 @@ security review above was therefore performed inline; the parent already has
 the prior broad-suite diagnostic for concurrent non-Task-7 failures.
 
 Fix-round-5 commit message: `fix: close Social authority replay`.
+
+## Post-round boundary correction
+
+This integration-safety correction closes caller-controlled aliasing across
+the complete Comms publication request, the complete ATProto binding and
+revocation input universe, and the durable historical observation. It is not
+a sixth fix round. The parent approved module-local schema-specific capture
+helpers and observation domain `heterodyne-atproto-binding-observation-v2`
+with field `did_signature_digest`.
+
+Comms now captures the top-level publication request's exact own data
+descriptors before any semantic read. One captured authority identity is used
+unchanged for its WeakMap lookup, trusted clock, execute-once signer, and proof
+branding. Registration, token, unsigned event, content, feed, resource,
+destination, execution token, and digest are independently copied into closed
+deep-frozen data. The current token has an exact member set; no caller object
+is spread or reread. The authority itself remains opaque and is not traversed
+or frozen by the capture path.
+
+ATProto binding and direct-revocation entry points likewise capture the
+complete input once, retain only the exact resolver-authority reference, and
+deep-freeze the candidate, lineage, revocation, binding, resolution,
+observation, and Nostr-event trees. Selection retains the exact checked
+record and seeds it directly into the historical/revocation universe instead
+of rereading selected evidence during a second pass. Direct revocation also
+canonical-parses the captured target binding before verification.
+
+Durable binding observations use v2 and commit SHA-256 of the exact 64-byte
+DID signature. Observation authentication re-verifies the exact strict Nostr
+event, author, kind, time, canonical content, coordinate tags, binding hash,
+named DID method, DID signature, signed resolution interval, checkpoint,
+policy, version, resolution hash, and resolver observation signature. Social
+captures one resolution evidence value and reuses it for the DID proof and
+observation proof. A valid alternative DID signature cannot be substituted
+after an observation for another signature, and a resolution accessor cannot
+present different documents to the two proof paths.
+
+### RED evidence
+
+Every production boundary had an observed exploit-first failure:
+
+```text
+npm --prefix docs/spec/vectors/generator test -- src/agent-authorship.test.ts
+Test Files  1 failed (1)
+Tests       3 failed | 23 passed (26)
+
+authority A -> B:
+  current code signed under authority A and returned a proof branded to B
+small -> 5000-byte content:
+  current code authorized the small value and signed the later oversized value
+allowed -> different destination:
+  current code authorized the first feed value and stored the later value;
+  that failing first loop case stopped RED before the equivalent resource case,
+  while the final GREEN run executes and rejects both feed and resource cases
+
+npm --prefix docs/spec/vectors/generator test -- src/social-atproto.test.ts
+Test Files  1 failed (1)
+Tests       1 failed | 10 passed (11)
+
+candidate A -> B:
+  current selection retained revoked binding A, the second history pass read B,
+  and the valid revocation of A disappeared from the universe and was accepted
+
+npm --prefix docs/spec/vectors/generator test -- src/social-atproto.test.ts
+Test Files  1 failed (1)
+Tests       4 failed | 8 passed (12)
+
+observation v2 and exact DID-signature proof:
+  the v1-only validator rejected valid v2 historical evidence and did not bind
+  the observation to the newly required DID-signature digest/dual-proof input
+```
+
+The first draft of the signature-substitution probe placed an observation on
+the fresh selected current candidate. That candidate intentionally may rely
+on current resolution and omit historical observation, so the probe was
+corrected before GREEN to place the substituted observation in required
+historical lineage. The final executable test uses two independently valid DID
+keys/signatures: history attested for signature A rejects when evidence
+substitutes valid signature B. The resolution A-to-B accessor probe is also on
+required historical lineage.
+
+### GREEN and verification evidence
+
+Fresh focused and required lane results:
+
+```text
+npm --prefix docs/spec/vectors/generator test -- --run \
+  src/snapshot-topic-runtime.test.ts src/agent-moderation.test.ts \
+  src/agent-authorship.test.ts src/nostr.test.ts \
+  src/social-events.test.ts src/social-nip72.test.ts \
+  src/atproto-did-resolution.test.ts src/social-atproto.test.ts \
+  src/registry.test.ts src/schema.test.ts
+Test Files  10 passed (10)
+Tests       168 passed (168)
+
+npm --prefix docs/spec/vectors/generator run build
+node scripts/typecheck.mjs (exit 0)
+
+npm --prefix docs/spec/vectors/generator run family:check -- "$PWD"
+validated protocol document family (exit 0)
+
+npm --prefix docs/spec/vectors/generator run snapshot-check -- "$PWD"
+verified 482 vectors from source
+2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43 at snapshot
+5d4bb5fb58b35c88d8a9db120a09f1087237f35c (exit 0)
+```
+
+The broader `draft:check` integration diagnostic completed build and then
+reported the pre-existing/concurrently owned result of 50/56 test files and
+745/783 tests passing. Its 38 failures remain in OIDC continuity schema/topic
+migration, maintained guide/Control assertions, author/coverage/versioning
+projections, and their verify dependents. None names a changed Task 7 source or
+focused test. Family validation and the exact-482 history-bound snapshot lane
+passed independently.
+
+### Ownership expansion, costs, and security self-review
+
+Approved Task 7 ownership expanded only within `agent-authorship.ts`,
+`social-atproto.ts`, `atproto-did-resolution.ts`, their focused tests, the two
+affected normative paragraphs, and this SDD design/plan/report. Keeping the
+capture helpers module-local deliberately duplicates a small structural
+routine so Comms never imports Social/resolver policy and opaque authority
+identity is handled by each exact embedding boundary.
+
+The complete correction diff was reviewed for one top-level descriptor
+capture, data-descriptor-only nested copies, no caller spread/reread, no
+authority traversal, exact authority reuse, trusted-time/sign/proof identity,
+content and destination immutability, dense arrays, exact token and evidence
+members, candidate/history/revocation snapshot coverage, exact selected-record
+seeding, source-neutral coordinate selection, current-candidate observation
+exception, historical observation requirement, strict NIP-01 verification,
+DID signature/method verification, v2 canonical field order and digest,
+single resolution reuse, malformed-input fail-closed behavior, family
+layering, and frozen/prohibited paths. Registry revision `14` and digest
+`9839393f2e11430ce9c19bde009228b71dc7f5c7268215960d39ecab0461a6fc`
+remain unchanged. No frozen topic, vector, snapshot, projection, baseline,
+debt, release artifact, or authoring output was modified.
+
+Correction commit message: `fix: snapshot Social trust inputs`.

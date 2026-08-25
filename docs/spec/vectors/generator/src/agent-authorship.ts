@@ -470,12 +470,15 @@ export function signCommsSocialPublication(input: {
   verdict: "reject";
   reason_code: "agent-signer-mismatch";
 } {
+  const request = snapshotCommsSocialPublicationRequest(input);
   if (
-    input.authority === null
-    || typeof input.authority !== "object"
-    || Array.isArray(input.authority)
+    request === null
+    || request.authority === null
+    || typeof request.authority !== "object"
+    || Array.isArray(request.authority)
   ) return denied("agent-signer-mismatch");
-  const authority = SOCIAL_PUBLICATION_AUTHORITIES.get(input.authority);
+  const capturedAuthority = request.authority as CommsSocialPublicationAuthority;
+  const authority = SOCIAL_PUBLICATION_AUTHORITIES.get(capturedAuthority);
   if (authority === undefined) return denied("agent-signer-mismatch");
   let trustedNow: number;
   try {
@@ -483,19 +486,27 @@ export function signCommsSocialPublication(input: {
   } catch {
     return denied("agent-signer-mismatch");
   }
-  const context = validateCommsSocialContext({ ...input, trusted_now: trustedNow });
+  const context = validateCommsSocialContext({
+    registration: request.registration,
+    token: request.token,
+    represented_persona: request.represented_persona,
+    event: request.event,
+    requested_feed: request.requested_feed,
+    requested_resource: request.requested_resource,
+    trusted_now: trustedNow,
+  });
   if (
     context === null
-    || !/^[0-9a-f]{64}$/u.test(input.execution_token)
-    || !/^[0-9a-f]{64}$/u.test(input.request_digest)
+    || !/^[0-9a-f]{64}$/u.test(request.execution_token)
+    || !/^[0-9a-f]{64}$/u.test(request.request_digest)
   ) return denied("agent-signer-mismatch");
   const { registration, token, association } = context;
   const attributed = injectAgentAttribution({
-    kind: input.event.kind,
-    tags: input.event.tags,
+    kind: request.event.kind,
+    tags: request.event.tags,
     agent_class: registration.agent_class,
-    persona: input.represented_persona,
-    signer: input.event.pubkey,
+    persona: request.represented_persona,
+    signer: request.event.pubkey,
     expected_signer: token.identity.signer,
     signer_key_class: token.identity.key_class,
     oidc_scopes: registration.scopes,
@@ -505,23 +516,23 @@ export function signCommsSocialPublication(input: {
   });
   if (
     attributed.verdict !== "accept"
-    || attributed.author !== input.event.pubkey
+    || attributed.author !== request.event.pubkey
   ) {
     return denied("agent-signer-mismatch");
   }
   const unsignedEvent = deepFreezeJson({
-    pubkey: input.event.pubkey,
-    created_at: input.event.created_at,
-    kind: input.event.kind,
+    pubkey: request.event.pubkey,
+    created_at: request.event.created_at,
+    kind: request.event.kind,
     tags: attributed.tags,
-    content: input.event.content,
+    content: request.event.content,
   });
   let rawOutcome: unknown;
   try {
     rawOutcome = authority.execute_once(
-      input.execution_token,
+      request.execution_token,
       unsignedEvent,
-      input.request_digest,
+      request.request_digest,
     );
   } catch {
     return denied("agent-signer-mismatch");
@@ -540,15 +551,15 @@ export function signCommsSocialPublication(input: {
   const event = outcome.event;
   const publication = Object.freeze({}) as CommsSocialSignedPublication;
   SOCIAL_SIGNED_PUBLICATIONS.set(publication, {
-    authority: input.authority as CommsSocialPublicationAuthority,
-    represented_persona: input.represented_persona,
+    authority: capturedAuthority,
+    represented_persona: request.represented_persona,
     event_id: event.id,
     signer: event.pubkey,
     kind: event.kind,
     created_at: event.created_at,
     agent_association: association,
-    requested_feed: input.requested_feed,
-    requested_resource: input.requested_resource,
+    requested_feed: request.requested_feed,
+    requested_resource: request.requested_resource,
   });
   return { verdict: "accept", event, publication };
 }
@@ -615,7 +626,9 @@ function validateCommsSocialContext(input: {
   } catch {
     return null;
   }
-  const token = validateAgentAccessToken({ ...input.token, now: input.trusted_now });
+  const currentToken = structuredClone(input.token);
+  currentToken.now = input.trusted_now;
+  const token = validateAgentAccessToken(deepFreeze(currentToken));
   const association = registration.agent_association ?? null;
   if (
     token.verdict !== "accept"
@@ -768,6 +781,82 @@ function stableJson(value: unknown): string {
     `${JSON.stringify(key)}:${stableJson(record[key])}`).join(",")}}`;
 }
 
+type CapturedCommsSocialPublicationRequest = {
+  authority: unknown;
+  registration: unknown;
+  token: AgentTokenValidationInput;
+  represented_persona: string;
+  event: NostrUnsignedEvent;
+  requested_feed: string;
+  requested_resource: string;
+  execution_token: string;
+  request_digest: string;
+};
+
+const COMMS_SOCIAL_REQUEST_KEYS = [
+  "authority", "event", "execution_token", "registration", "represented_persona",
+  "request_digest", "requested_feed", "requested_resource", "token",
+].join("\0");
+const CURRENT_TOKEN_REQUIRED_KEYS = [
+  "aud", "client_id", "cnf_jkt", "consent_expires_at",
+  "credential_ledger_generation", "credential_ledger_persona",
+  "delegation_expires_at", "exp", "expected_audience", "expected_client_id",
+  "expected_credential_ledger_generation", "expected_credential_ledger_persona",
+  "expected_issuer", "expected_scope", "expected_signer_key",
+  "expected_signer_key_class", "expected_subject", "iat", "iss", "jti",
+  "ledger_active", "ledger_binding_valid", "now", "registration_expires_at",
+  "scope", "sender_proof_jkt", "sender_proof_valid", "session_expires_at",
+  "signer_key", "signer_key_class", "source_authorization_expires_at", "status",
+  "status_binding_valid", "sub", "typ",
+].sort();
+const CURRENT_TOKEN_OPTIONAL_KEYS = new Set([
+  "agent_association",
+  "expected_agent_association",
+]);
+
+function snapshotCommsSocialPublicationRequest(
+  value: unknown,
+): CapturedCommsSocialPublicationRequest | null {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
+  let prototype: object | null;
+  let descriptors: PropertyDescriptorMap;
+  try {
+    prototype = Object.getPrototypeOf(value) as object | null;
+    descriptors = Object.getOwnPropertyDescriptors(value);
+  } catch {
+    return null;
+  }
+  const keys = Reflect.ownKeys(descriptors);
+  if (
+    prototype !== Object.prototype
+    || keys.some((key) => typeof key !== "string")
+    || Object.keys(descriptors).sort().join("\0") !== COMMS_SOCIAL_REQUEST_KEYS
+    || Object.values(descriptors).some((descriptor) =>
+      !("value" in descriptor) || descriptor.enumerable !== true)
+  ) return null;
+
+  const captured: Record<string, unknown> = {};
+  for (const key of Object.keys(descriptors)) {
+    const descriptor = descriptors[key] as PropertyDescriptor & { value: unknown };
+    if (key === "authority") {
+      captured.authority = descriptor.value;
+      continue;
+    }
+    const member = snapshotClosedData(descriptor.value, new WeakSet());
+    if (member === INVALID_SNAPSHOT) return null;
+    captured[key] = deepFreeze(member);
+  }
+  const token = captured.token;
+  if (token === null || typeof token !== "object" || Array.isArray(token)) return null;
+  const tokenKeys = Object.keys(token).sort();
+  if (
+    CURRENT_TOKEN_REQUIRED_KEYS.some((key) => !tokenKeys.includes(key))
+    || tokenKeys.some((key) =>
+      !CURRENT_TOKEN_REQUIRED_KEYS.includes(key) && !CURRENT_TOKEN_OPTIONAL_KEYS.has(key))
+  ) return null;
+  return Object.freeze(captured) as CapturedCommsSocialPublicationRequest;
+}
+
 const INVALID_SNAPSHOT = Symbol("invalid-signer-outcome-snapshot");
 
 function snapshotAcceptedSignerOutcome(
@@ -840,7 +929,11 @@ function snapshotClosedData(
       const snapshot: unknown[] = [];
       for (let index = 0; index < length; index += 1) {
         const descriptor = descriptors[String(index)];
-        if (descriptor === undefined || !("value" in descriptor)) {
+        if (
+          descriptor === undefined
+          || !("value" in descriptor)
+          || descriptor.enumerable !== true
+        ) {
           return INVALID_SNAPSHOT;
         }
         const member = snapshotClosedData(descriptor.value, seen);
@@ -852,7 +945,11 @@ function snapshotClosedData(
     const snapshot: Record<string, unknown> = {};
     for (const key of Object.keys(descriptors)) {
       const descriptor = descriptors[key];
-      if (descriptor === undefined || !("value" in descriptor)) {
+      if (
+        descriptor === undefined
+        || !("value" in descriptor)
+        || descriptor.enumerable !== true
+      ) {
         return INVALID_SNAPSHOT;
       }
       const member = snapshotClosedData(descriptor.value, seen);

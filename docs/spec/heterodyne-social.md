@@ -718,10 +718,15 @@ forged signature, stale capability, or cross-authority capability grants no
 authority.
 
 Before parsing or signature verification, the local boundary MUST capture one
-closed plain-data snapshot of each resolution or observation evidence tree and
-MUST reject accessors, symbols, sparse arrays, unexpected members, or later
-substitution. All validation and durable reconstruction use only that
-independent immutable snapshot.
+closed plain-data snapshot of the complete binding or revocation validation
+input, including every candidate, lineage, revocation, resolution, and
+observation evidence tree. It preserves only the one captured opaque resolver-
+authority reference and MUST reject accessors, symbols, sparse arrays,
+unexpected members, or later substitution. All selection, validation, and
+durable reconstruction use only that independent immutable snapshot. The
+exact selected validated record is inserted directly into the historical and
+revocation universe; a verifier MUST NOT reread or reconstruct it from caller
+evidence during a later pass.
 
 <a id="social-atproto-binding"></a>
 ### 8.2 Bidirectional binding
@@ -761,12 +766,17 @@ sides sign that exact new payload. A signature or payload hash from an older
 generation cannot countersign a new one.
 
 Historical existence requires a second durable resolver-signed observation
-envelope under the configured local resolver authority. This closed,
-domain-separated envelope commits the exact Nostr binding event id, canonical
-binding hash, DID, Nostr `pubkey`, generation, integer `observed_at`, canonical
-carrier/checkpoint reference, SHA-256 of the exact signed resolution envelope,
-resolver policy, and resolver semantic version. Its anchor signature,
-policy/version, and resolution-envelope hash MUST verify under that authority;
+envelope under the configured local resolver authority. The current `v2`
+closed, domain-separated envelope commits the exact Nostr binding event id,
+canonical binding hash, SHA-256 of the exact 64-byte DID signature, DID, Nostr
+`pubkey`, generation, integer `observed_at`, canonical carrier/checkpoint
+reference, SHA-256 of the exact signed resolution envelope, resolver policy,
+and resolver semantic version. Before trusting the observation signature, the
+verifier MUST strict-verify the exact Nostr event and its canonical binding
+content and MUST verify that exact DID signature against the named method from
+the same captured authenticated resolution. Its anchor signature,
+policy/version, DID-signature digest, and resolution-envelope hash MUST verify
+under that authority;
 `observed_at` MUST be at or after the binding event's `created_at` and inside
 the referenced authenticated resolution interval. A raw carrier name is not
 evidence. A historical key compromised after expiry therefore cannot create a

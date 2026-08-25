@@ -1939,8 +1939,16 @@ HTTPS workload profile is required before that grant can be added.
 An internal Social publication boundary MUST atomically validate, attribute,
 sign, and verify; it MUST NOT split those actions across caller-consumable
 pre-sign and post-sign capability producers. The embedding supplies a trusted
-clock and a durable execute-once signer capability. Comms samples that clock
-once, then validates the represented persona, actual signer and optional
+clock and a durable execute-once signer capability. Before any semantic read,
+Comms captures the complete publication request's own property descriptors
+once. The top level and every registration, token, unsigned-event, content,
+feed, resource, and destination data tree MUST be closed ordinary data-
+descriptor structures; accessors, symbols, sparse arrays, unexpected members,
+or later substitution fail closed. One captured authority reference is used
+unchanged for authority lookup, clock sampling, signing, and proof branding;
+all other members are independently copied and frozen, and the caller input is
+never read again. Comms samples that clock once, then validates the represented
+persona, actual signer and optional
 association, event kind and time, publication scope, exact requested feed and
 resource, every immutable registration and token/grant identity or version
 member, current ledger/status state, and all validity bounds. Trusted current
