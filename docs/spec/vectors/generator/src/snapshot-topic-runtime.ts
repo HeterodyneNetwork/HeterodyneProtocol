@@ -1,4 +1,5 @@
 import { cp, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -10,18 +11,64 @@ const here = dirname(fileURLToPath(import.meta.url));
 const generatorRoot = resolve(here, "..");
 const repositoryRoot = resolve(here, "../../../../../");
 const frozenModerationTopic = resolve(here, "topics-agent-moderation.ts");
+const frozenClaimsTopic = resolve(here, "topics-claims.ts");
+const frozenClaimLedgerTopic = resolve(here, "topics-claim-ledger.ts");
 const allTopics = resolve(here, "topics.ts");
+const snapshotClaimsAdapter = resolve(here, "snapshot-claims-adapter.ts");
 const liveImport = 'from "./agent-moderation.js";';
 const snapshotImport = 'from "./snapshot-agent-moderation-adapter.js";';
+const liveClaimsImport = 'from "./claims.js";';
+const snapshotClaimsImport = 'from "./snapshot-claims-adapter.js";';
 
 export async function buildSnapshotAgentModerationVectors(): Promise<AuthoredVector[]> {
   const runtimeRoot = await materializeSnapshotRuntime([frozenModerationTopic]);
   try {
     const emittedTopic = emittedPath(runtimeRoot, frozenModerationTopic);
-    const module = await import(`${pathToFileURL(emittedTopic).href}?runtime=${Date.now()}`) as {
+    const module = await import(snapshotRuntimeModuleUrl(runtimeRoot, emittedTopic)) as {
       buildAgentModerationVectors: () => Promise<AuthoredVector[]>;
     };
     return await module.buildAgentModerationVectors();
+  } finally {
+    await rm(runtimeRoot, { recursive: true, force: true });
+  }
+}
+
+export async function buildSnapshotClaimVectors(fixtures: Fixtures): Promise<AuthoredVector[]> {
+  const runtimeRoot = await materializeSnapshotRuntime([frozenClaimsTopic]);
+  try {
+    const emittedTopic = emittedPath(runtimeRoot, frozenClaimsTopic);
+    const module = await import(snapshotRuntimeModuleUrl(runtimeRoot, emittedTopic)) as {
+      buildClaimVectors: (value: Fixtures) => Promise<AuthoredVector[]>;
+    };
+    return await module.buildClaimVectors(fixtures);
+  } finally {
+    await rm(runtimeRoot, { recursive: true, force: true });
+  }
+}
+
+export async function buildSnapshotClaimLedgerVectors(
+  fixtures: Fixtures,
+): Promise<AuthoredVector[]> {
+  const runtimeRoot = await materializeSnapshotRuntime([frozenClaimLedgerTopic]);
+  try {
+    const emittedTopic = emittedPath(runtimeRoot, frozenClaimLedgerTopic);
+    const module = await import(snapshotRuntimeModuleUrl(runtimeRoot, emittedTopic)) as {
+      buildClaimLedgerVectors: (value: Fixtures) => Promise<AuthoredVector[]>;
+    };
+    return await module.buildClaimLedgerVectors(fixtures);
+  } finally {
+    await rm(runtimeRoot, { recursive: true, force: true });
+  }
+}
+
+export async function replaySnapshotClaimLedgerVectors(inputs: unknown[]): Promise<unknown[]> {
+  const runtimeRoot = await materializeSnapshotRuntime([frozenClaimLedgerTopic]);
+  try {
+    const emittedTopic = emittedPath(runtimeRoot, frozenClaimLedgerTopic);
+    const module = await import(snapshotRuntimeModuleUrl(runtimeRoot, emittedTopic)) as {
+      replayClaimLedgerVector: (value: unknown) => unknown;
+    };
+    return inputs.map((input) => module.replayClaimLedgerVector(input));
   } finally {
     await rm(runtimeRoot, { recursive: true, force: true });
   }
@@ -33,7 +80,7 @@ export async function buildSnapshotCompatibleVectors(
   const runtimeRoot = await materializeSnapshotRuntime([allTopics]);
   try {
     const emittedTopics = emittedPath(runtimeRoot, allTopics);
-    const module = await import(`${pathToFileURL(emittedTopics).href}?runtime=${Date.now()}`) as {
+    const module = await import(snapshotRuntimeModuleUrl(runtimeRoot, emittedTopics)) as {
       buildAllVectors: (value: Fixtures) => Promise<AuthoredVector[]>;
     };
     return await module.buildAllVectors(fixtures);
@@ -82,12 +129,21 @@ async function materializeSnapshotRuntimeAt(
       onError,
       shouldCreateNewSourceFile,
     );
-    if (source === undefined || resolve(fileName) !== frozenModerationTopic) return source;
-    const matches = source.text.split(liveImport).length - 1;
-    if (matches !== 1) throw new Error("snapshot-runtime-moderation-import-ambiguous");
+    if (source === undefined) return source;
+    const canonicalFile = resolve(fileName);
+    let transformed = source.text;
+    if (canonicalFile === frozenModerationTopic) {
+      const matches = transformed.split(liveImport).length - 1;
+      if (matches !== 1) throw new Error("snapshot-runtime-moderation-import-ambiguous");
+      transformed = transformed.replace(liveImport, snapshotImport);
+    }
+    if (canonicalFile !== snapshotClaimsAdapter && transformed.includes(liveClaimsImport)) {
+      transformed = transformed.replaceAll(liveClaimsImport, snapshotClaimsImport);
+    }
+    if (transformed === source.text) return source;
     return ts.createSourceFile(
       fileName,
-      source.text.replace(liveImport, snapshotImport),
+      transformed,
       languageVersion,
       true,
       ts.ScriptKind.TS,
@@ -124,6 +180,19 @@ async function materializeSnapshotRuntimeAt(
     relative(repositoryRoot, generatorRoot),
   );
   await symlink(join(generatorRoot, "node_modules"), join(emittedGenerator, "node_modules"));
+}
+
+export function snapshotRuntimeModuleUrl(runtimeRoot: string, modulePath: string): string {
+  const canonicalRoot = realpathSync(runtimeRoot);
+  const canonicalModule = realpathSync(modulePath);
+  const relativeModule = relative(canonicalRoot, canonicalModule);
+  if (
+    relativeModule.startsWith("..") ||
+    resolve(canonicalRoot, relativeModule) !== canonicalModule
+  ) {
+    throw new Error("snapshot-runtime-module-outside-disposable-root");
+  }
+  return `${pathToFileURL(canonicalModule).href}?runtime=${Date.now()}`;
 }
 
 function emittedPath(runtimeRoot: string, sourcePath: string): string {

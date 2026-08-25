@@ -48,8 +48,10 @@ Baseline discovery uses ordinary Nostr mechanisms:
 Clients union byte-exact valid observations from repositories and relays, then
 apply the relevant NIP-01 selection rule. Selection is source-neutral: carrier
 location does not outrank signature, event coordinates, or recency. A cached
-discovery observation older than seven days produces a warning and refresh
-attempt, not an automatic invalidation.
+kind `0` profile or kind `10002` relay list older than seven days produces a
+warning and refresh attempt, not an automatic invalidation. Every other state
+retains its applicable freshness and expiry rules and fails closed where those
+rules require.
 
 Optional Assurance attaches only after reciprocal enrollment between the
 active key and recovery authority. A successor remains a different Nostr

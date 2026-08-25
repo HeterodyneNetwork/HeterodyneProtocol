@@ -169,6 +169,10 @@ describe("canonical family documentation", () => {
     ["docs/glossary.md", "A caller may remove agent\n  attribution before signing."],
     ["README.md", "A bare active key is incomplete\n  without Assurance."],
     ["AGENTS.md", "The vector snapshot defines current-draft\n  conformance."],
+    ["README.md", "A persona is identified by a cold-\n  root npub."],
+    ["README.md", "A bare-key persona does not satisfy baseline conformance unless\n  Assurance is enabled."],
+    ["AGENTS.md", "The rolling vector-snapshot is authoritative for the\n  current draft."],
+    ["docs/glossary.md", "Automated agent publication may omit\n  NIP-32 attribution before signing."],
   ])("rejects whitespace-varied retired Nostr-first claims in %s", (path, retiredText) => {
     const issues = lintMaintainedGuides(repositoryRoot, {
       [path]: `${read(path)}\n${retiredText}\n`,
@@ -187,12 +191,28 @@ describe("canonical family documentation", () => {
     "Agents may build malware.",
     "Agents should perform destructive actions.",
     "Agents must weaken security controls.",
+    "Agents may exploit live third-party\n  relays.",
   ])("rejects unsafe security-task framing in AGENTS", (unsafeText) => {
     const issues = lintMaintainedGuides(repositoryRoot, {
       "AGENTS.md": `${read("AGENTS.md")}\n${unsafeText}\n`,
     });
     expect(issues).toContainEqual(expect.objectContaining({
       path: "AGENTS.md",
+      code: "retired-authoring-model",
+    }));
+  });
+
+  it.each([
+    ["README.md", "A bare-key persona is not incomplete without Assurance."],
+    ["AGENTS.md", "The rolling vector snapshot is not authoritative for the current draft."],
+    ["docs/glossary.md", "Automated publication must not omit NIP-32 attribution."],
+    ["AGENTS.md", "Agents must not exploit live third-party systems."],
+  ])("permits explicit negation of retired guidance in %s", (path, retiredText) => {
+    const issues = lintMaintainedGuides(repositoryRoot, {
+      [path]: `${read(path)}\n${retiredText}\n`,
+    });
+    expect(issues).not.toContainEqual(expect.objectContaining({
+      path,
       code: "retired-authoring-model",
     }));
   });
@@ -217,6 +237,52 @@ describe("canonical family documentation", () => {
     expect(maintained).toMatch(/compromise[\s\S]{0,180}(?:complete|full) reset/i);
     expect(maintained).toContain("2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43");
     expect(maintained).toContain("5d4bb5fb58b35c88d8a9db120a09f1087237f35c");
+  });
+
+  it("does not invent an Assurance or singular six-document strict profile", () => {
+    const guides = `${read("README.md")}\n${read("docs/glossary.md")}`;
+    expect(guides).not.toContain("heterodyne-assurance-strict-v1");
+    expect(guides).not.toMatch(/six[- ]document strict profile/i);
+    expect(guides).toMatch(/Assurance[\s\S]{0,160}no strict profile/i);
+  });
+
+  it("limits the seven-day warning-only rule to kind 0 and kind 10002", () => {
+    const registry = loadRegistry(repositoryRoot);
+    const description = registry.security_invariants.find(
+      ({ id }) => id === "SOCIAL-I-SOURCE-NEUTRAL-SELECTION",
+    )?.description;
+    expect(description).toMatch(
+      /only kind `0` profiles and kind `10002` relay lists[\s\S]*warning-only[\s\S]*every other state[\s\S]*(?:freshness and expiry|expiry and freshness)[\s\S]*fails closed/i,
+    );
+    expect(read("docs/spec/heterodyne-social.md")).toContain(description);
+    expect(read("docs/security/threat-model.md")).toContain(description);
+    for (const path of [
+      "docs/architecture.md",
+      "docs/glossary.md",
+      "docs/security/threat-model.md",
+      "docs/spec/heterodyne-social.md",
+    ]) {
+      const text = read(path);
+      expect(text).toMatch(/kind `0`[\s\S]{0,100}kind `10002`/i);
+      expect(text).toMatch(/other state[\s\S]{0,120}(?:freshness|expiry)[\s\S]{0,120}fail/i);
+    }
+  });
+
+  it("keeps every future-NIP extraction anchored to a live family section", () => {
+    const index = read("docs/spec/extensions/nips/README.md");
+    const sources = [
+      ["core", "core-identity-discovery"],
+      ["assurance", "assurance-reciprocal-enrollment"],
+      ["comms", "comms-marmot-event-repository"],
+      ["comms", "comms-trusted-seed-private-relay"],
+      ["social", "social-moderation"],
+      ["social", "social-lists"],
+    ] as const;
+    for (const [document, anchor] of sources) {
+      expect(index).toContain(`heterodyne:0.5.0#${anchor}`);
+      expect(read(`docs/spec/heterodyne-${document}.md`))
+        .toContain(`<a id="${anchor}"></a>`);
+    }
   });
 
   it("states Social conformance through Core layering and the one family version", () => {
@@ -313,6 +379,25 @@ describe("canonical family documentation", () => {
       "docs/spec/heterodyne-comms.md",
       "No epoch-key NIP-59 inbox exists. A manifest cannot be justified by a KEL alias. "
         + "KEL/key revocation is not current authority.",
+    )).toEqual([]);
+  });
+
+  it("rejects baseline KEL/root/epoch requirements but permits explicitly gated Assurance", () => {
+    const retired = "A conformant persona MUST have an accepted KEL, epoch key, and cold root.";
+    expect(findRetiredNormativeClaimIssues(
+      "docs/spec/heterodyne-core.md",
+      retired,
+    )).toEqual([expect.objectContaining({
+      path: "docs/spec/heterodyne-core.md",
+      code: "retired-authoring-model",
+    })]);
+    expect(findRetiredNormativeClaimIssues(
+      "docs/spec/heterodyne-core.md",
+      `When optional Assurance is claimed, ${retired}`,
+    )).toEqual([]);
+    expect(findRetiredNormativeClaimIssues(
+      "docs/spec/heterodyne-assurance.md",
+      retired,
     )).toEqual([]);
   });
 

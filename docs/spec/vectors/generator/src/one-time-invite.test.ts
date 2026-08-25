@@ -34,6 +34,31 @@ describe("provider-independent one-time invites", () => {
     expect(verifyInviteSignature({ ...descriptor, purpose: "control-enrollment" }, signature)).toBe(false);
   });
 
+  it("accepts an active-account-signed device invite and rejects legacy authority members", () => {
+    const deviceDescriptor: InviteDescriptor = {
+      ...descriptor,
+      purpose: "device-enrollment",
+    };
+    const signature = Buffer.from(
+      schnorr.sign(descriptorDigest(deviceDescriptor), secretKey, new Uint8Array(32)),
+    ).toString("hex");
+    expect(verifyInviteSignature(deviceDescriptor, signature)).toBe(true);
+
+    const legacyDescriptor = {
+      ...deviceDescriptor,
+      inviter_authority: {
+        persona: getPublicKey(secretKey),
+        kel_head: "33".repeat(32),
+        epoch_key: getPublicKey(secretKey),
+        authority_event_id: "44".repeat(32),
+      },
+    };
+    const legacySignature = Buffer.from(
+      schnorr.sign(descriptorDigest(legacyDescriptor), secretKey, new Uint8Array(32)),
+    ).toString("hex");
+    expect(verifyInviteSignature(legacyDescriptor, legacySignature)).toBe(false);
+  });
+
   it("encodes authority only in a URL fragment", () => {
     const signature = Buffer.from(schnorr.sign(descriptorDigest(descriptor), secretKey, new Uint8Array(32))).toString("hex");
     const fragment = encodeInviteFragment({ descriptor, signature, secret });

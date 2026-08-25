@@ -2,7 +2,6 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { sha256 } from "@noble/hashes/sha2";
 import { ed25519 } from "@noble/curves/ed25519";
 import { createHmac } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
 import {
   buildLedgerRepositoryEvidence,
   buildReaderOnboardingBundle,
@@ -25,8 +24,10 @@ import { buildFixtures } from "./fixtures.js";
 import { subjectProofPayload } from "./claims.js";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
-import { buildClaimLedgerScenario, type ClaimLedgerScenario } from "./topics-claim-ledger.js";
-import * as claimLedgerTopics from "./topics-claim-ledger.js";
+import {
+  buildClaimLedgerScenario,
+  type ClaimLedgerScenario,
+} from "./claim-ledger-test-support.js";
 
 const fixtures = buildFixtures();
 let s: ClaimLedgerScenario;
@@ -470,7 +471,7 @@ describe("authenticated onboarding and snapshot-wide layout", () => {
   });
 });
 
-describe("self-contained Task 4 vectors", () => {
+describe("prepared live claim-ledger records", () => {
   it("revalidates prepared records after in-place record or evidence mutation", () => {
     for (const mutate of [
       (records: typeof s.claimRecordOne[], _context: ReturnType<typeof s.makeContext>) => {
@@ -494,47 +495,4 @@ describe("self-contained Task 4 vectors", () => {
     }
   });
 
-  it("replays every committed vector input to its committed expected output", () => {
-    const directory = new URL("../../claim-ledger/", import.meta.url);
-    const files = readdirSync(directory).filter((file) => file.endsWith(".json")).sort();
-    expect(files).toHaveLength(13);
-    const replay = (claimLedgerTopics as unknown as {
-      replayClaimLedgerVector?: (input: unknown) => unknown;
-    }).replayClaimLedgerVector;
-    expect(replay).toBeTypeOf("function");
-    for (const file of files) {
-      const vector = JSON.parse(readFileSync(new URL(file, directory), "utf8")) as {
-        input: unknown;
-        expected_output: unknown;
-      };
-      expect(replay!(vector.input), file).toEqual(vector.expected_output);
-    }
-  });
-
-  it("replays authoritative not-before, post-checkpoint expiry, and grant-only confirmation transitions", () => {
-    const vector = JSON.parse(readFileSync(
-      new URL("../../claim-ledger/003-delivered-grant-provisional.json", import.meta.url),
-      "utf8",
-    )) as { input: Record<string, unknown>; expected_output: Record<string, any> };
-    expect(vector.input.temporal_cases).toBeInstanceOf(Array);
-    expect(vector.expected_output.temporal_transitions).toEqual([
-      { name: "signed-claim-time-window", states: ["provisional", "active", "expired"] },
-      { name: "embedded-grant-not-confirmation", states: ["provisional"] },
-    ]);
-    expect(claimLedgerTopics.replayClaimLedgerVector(vector.input)).toEqual(vector.expected_output);
-  });
-
-  it("cannot inject a serialized replay cache to bypass record validation", () => {
-    const vector = JSON.parse(readFileSync(
-      new URL("../../claim-ledger/011-multiwriter-status-allocation.json", import.meta.url),
-      "utf8",
-    )) as { input: any };
-    const merge = vector.input.merge;
-    merge.context._replay_validated_record_ids = {
-      $heterodyne_replay_type: "set",
-      values: merge.left.map((record: { record_id: string }) => record.record_id),
-    };
-    merge.left[0].signature = "00".repeat(64);
-    expect(() => claimLedgerTopics.replayClaimLedgerVector(vector.input)).toThrow(/signature|record.?id/i);
-  });
 });

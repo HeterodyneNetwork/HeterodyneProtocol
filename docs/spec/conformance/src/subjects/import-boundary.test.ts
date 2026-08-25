@@ -18,7 +18,11 @@ import { afterEach, describe, expect, it } from "vitest";
 
 type ImportEdge = { importer: string; specifier: string; resolved: string };
 type ImportKind = "import" | "require" | "module.require" | "require.resolve";
-type ImportReference = { kind: ImportKind; specifier?: string };
+type ImportReference = {
+  kind: ImportKind;
+  specifier?: string;
+  verifiedSnapshotRuntimeTarget?: boolean;
+};
 type ResolvedRelativeImport = { path: string; sourceEligible: boolean };
 
 const repositoryRoot = fileURLToPath(new URL("../../../../../", import.meta.url));
@@ -124,6 +128,9 @@ function importReferences(path: string): ImportReference[] {
           ...(firstArgument !== undefined && ts.isStringLiteralLike(firstArgument)
             ? { specifier: firstArgument.text }
             : {}),
+          ...(kind === "import" && isVerifiedSnapshotRuntimeTarget(firstArgument)
+            ? { verifiedSnapshotRuntimeTarget: true }
+            : {}),
         });
       }
     }
@@ -131,6 +138,20 @@ function importReferences(path: string): ImportReference[] {
   };
   visit(source);
   return references;
+}
+
+function isVerifiedSnapshotRuntimeTarget(
+  expression: ts.Expression | undefined,
+): boolean {
+  return expression !== undefined &&
+    ts.isCallExpression(expression) &&
+    ts.isIdentifier(expression.expression) &&
+    expression.expression.text === "snapshotRuntimeModuleUrl" &&
+    expression.arguments.length === 2 &&
+    ts.isIdentifier(expression.arguments[0]) &&
+    expression.arguments[0].text === "runtimeRoot" &&
+    ts.isIdentifier(expression.arguments[1]) &&
+    /^emittedTopics?$/u.test(expression.arguments[1].text);
 }
 
 function resolveRelativeImport(importer: string, specifier: string): ResolvedRelativeImport | undefined {
@@ -177,7 +198,10 @@ function forbiddenImportEdges(
 
     for (const reference of importReferences(importer)) {
       if (reference.specifier === undefined) {
-        if (allowedNonliteralImporters.has(importer)) continue;
+        if (
+          allowedNonliteralImporters.has(importer) &&
+          reference.verifiedSnapshotRuntimeTarget === true
+        ) continue;
         forbidden.push({
           importer,
           specifier: `<nonliteral:${reference.kind}>`,
@@ -424,7 +448,7 @@ describe("reciprocal package import boundary", () => {
     ].sort());
   });
 
-  it("allows nonliteral imports only for an exact snapshot-only importer", () => {
+  it("allows only the verified snapshot-runtime wrapper form, not a whole importer file", () => {
     const root = mkdtempSync(join(tmpdir(), "heterodyne-import-boundary-"));
     temporaryRoots.push(root);
     const left = join(root, "left");
@@ -435,7 +459,9 @@ describe("reciprocal package import boundary", () => {
     const current = join(left, "src", "current.ts");
     writeFileSync(
       snapshotOnly,
-      'import "@right/runtime";\nvoid import(computedSnapshotPath);\n',
+      'import "@right/runtime";\n'
+        + 'void import(snapshotRuntimeModuleUrl(runtimeRoot, emittedTopic));\n'
+        + 'void import(computedConformancePath);\n',
     );
     writeFileSync(current, "void import(computedCurrentPath);\n");
 
@@ -456,6 +482,11 @@ describe("reciprocal package import boundary", () => {
         importer: realpathSync(snapshotOnly),
         resolved: "@right",
         specifier: "@right/runtime",
+      },
+      {
+        importer: realpathSync(snapshotOnly),
+        resolved: "<nonliteral>",
+        specifier: "<nonliteral:import>",
       },
     ]);
   });

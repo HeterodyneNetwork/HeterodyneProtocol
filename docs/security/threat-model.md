@@ -51,8 +51,10 @@ active-key persona. A pinned Assurance state cannot silently disappear.
 Baseline discovery combines kind `0`, NIP-05, NIP-65, and signed repository or
 node hints. Carrier selection is source-neutral. Repository location never
 outvotes a newer valid relay event, and relay location never outvotes a valid
-repository observation. Data older than seven days raises a warning and refresh
-attempt rather than becoming invalid solely due to age.
+repository observation. Only a kind `0` profile or kind `10002` relay list
+older than seven days raises a warning and refresh attempt rather than becoming
+invalid solely due to age. Every other state retains its applicable freshness
+and expiry rules and fails closed where those rules require.
 
 ### Confidentiality and topology leakage
 
@@ -125,7 +127,7 @@ reviewers can trace the threat control to its owner and feature binding.
 - **SOCIAL-I-PRIVATE-STATE-AT-REST:** Private mute, feed-preference, followed-repository, and other Social state are encrypted at rest using the owning Social or bound Comms profile.
 - **SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH:** Following, transitive discovery, and social-graph evaluation do not depend on a centralized follow-graph oracle.
 - **SOCIAL-I-NIP01-AUTHORSHIP:** Every ordinary Social event is authored by the public key that actually produced its valid NIP-01 signature; no persona, agent, moderator, repository, relay, KEL, or feed metadata can substitute another author.
-- **SOCIAL-I-SOURCE-NEUTRAL-SELECTION:** Social state unions valid exact events from relays and repositories and applies NIP-01 replaceable selection without carrier priority; seven-day refresh age is warning-only.
+- **SOCIAL-I-SOURCE-NEUTRAL-SELECTION:** Social state unions valid exact events from relays and repositories and applies NIP-01 replaceable selection without carrier priority; only kind `0` profiles and kind `10002` relay lists use the seven-day warning-only refresh age. Every other state remains subject to its applicable freshness and expiry rules and fails closed where those rules require.
 - **CONTROL-I-AUDIT-AT-REST:** Signer authorization, attribution, refusal, and side-effect audit is encrypted and contains no replayable token, connection secret, or transcript.
 - **CONTROL-I-BASELINE-ACTIVE-KEY:** Baseline enrollment and signing depend only on the persona active Nostr account; cold roots, KERI, epochs, succession, and Assurance remain optional additional protection.
 - **CONTROL-I-CLIENT-KEY-CONFINEMENT:** A light client receives no persona, agent, NID, repository, Marmot-leaf, OIDC-issuer, or trusted-seed private key.

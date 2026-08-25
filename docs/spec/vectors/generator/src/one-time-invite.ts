@@ -13,7 +13,6 @@ export type InviteDescriptor = {
   version: 1;
   purpose: InvitePurpose;
   inviter_account: string;
-  inviter_authority?: Record<string, unknown>;
   invite_id: string;
   rendezvous_pubkey: string;
   relay_hints: string[];
@@ -46,6 +45,7 @@ export function verifyInviteSignature(
   signatureHex: string,
 ): boolean {
   try {
+    if (!hasClosedDescriptorMembers(descriptor)) return false;
     return schnorr.verify(
       hexToBytes(signatureHex),
       descriptorDigest(descriptor),
@@ -54,6 +54,28 @@ export function verifyInviteSignature(
   } catch {
     return false;
   }
+}
+
+const INVITE_DESCRIPTOR_MEMBERS = new Set([
+  "approval_mode",
+  "expected_client_pubkey",
+  "expires_at",
+  "invite_id",
+  "inviter_account",
+  "issued_at",
+  "preauthorization",
+  "purpose",
+  "relay_hints",
+  "rendezvous_pubkey",
+  "secret_sha256",
+  "version",
+]);
+
+function hasClosedDescriptorMembers(descriptor: InviteDescriptor): boolean {
+  const members = Reflect.ownKeys(descriptor);
+  return members.every((member) =>
+    typeof member === "string" && INVITE_DESCRIPTOR_MEMBERS.has(member)
+  );
 }
 
 export function encodeInviteFragment(envelope: InviteEnvelope): string {

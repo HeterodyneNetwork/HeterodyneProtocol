@@ -4,11 +4,12 @@ import { defineConfig } from "vitest/config";
 
 const project = JSON.parse(
   readFileSync(resolve(import.meta.dirname, "tsconfig.current.json"), "utf8"),
-) as { include: string[] };
+) as { include: string[]; exclude: string[] };
 
 export default defineConfig({
   test: {
-    include: project.include.filter((path) => path.endsWith(".test.ts")),
+    include: ["src/**/*.test.ts"],
+    exclude: project.exclude,
     maxWorkers: 4,
   },
 });

@@ -2,12 +2,30 @@ import { describe, expect, it } from "vitest";
 import { cp, mkdir, mkdtemp, readdir, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { buildAgentModerationVectors } from "./topics-agent-moderation.js";
+import { snapshotRuntimeModuleUrl } from "./snapshot-topic-runtime.js";
 
 const runtimePrefix = "heterodyne-snapshot-topic-runtime-";
 
 describe("snapshot-only frozen topic runtime", () => {
+  it("rejects a computed module target outside the disposable runtime root", async () => {
+    const runtimeRoot = await mkdtemp(join(tmpdir(), runtimePrefix));
+    const outsideRoot = await mkdtemp(join(tmpdir(), "heterodyne-snapshot-outside-"));
+    try {
+      const inside = join(runtimeRoot, "inside.js");
+      const outside = join(outsideRoot, "outside.js");
+      await cp(fileURLToPath(new URL("./snapshot-topic-runtime.ts", import.meta.url)), inside);
+      await cp(fileURLToPath(new URL("./snapshot-topic-runtime.ts", import.meta.url)), outside);
+      expect(snapshotRuntimeModuleUrl(runtimeRoot, inside)).toMatch(/^file:.*\?runtime=\d+$/);
+      expect(() => snapshotRuntimeModuleUrl(runtimeRoot, outside))
+        .toThrow(/outside-disposable-root/);
+    } finally {
+      await rm(runtimeRoot, { recursive: true, force: true });
+      await rm(outsideRoot, { recursive: true, force: true });
+    }
+  });
+
   it("executes the frozen legacy moderation builder through the isolated adapter", async () => {
     await expect(buildAgentModerationVectors())
       .rejects.toThrow(/agent-policy-receipt-invalid/);
@@ -38,7 +56,9 @@ describe("snapshot-only frozen topic runtime", () => {
     const before = new Set((await readdir(tmpdir())).filter((name) => name.startsWith(runtimePrefix)));
     let after: string[] = [];
     try {
-      const isolated = await import(`${pathToFileURL(copiedSource).href}?copy=${Date.now()}`) as {
+      const runtimeRoot = sandbox;
+      const emittedTopic = copiedSource;
+      const isolated = await import(snapshotRuntimeModuleUrl(runtimeRoot, emittedTopic)) as {
         buildSnapshotAgentModerationVectors: () => Promise<unknown>;
       };
       await expect(isolated.buildSnapshotAgentModerationVectors())

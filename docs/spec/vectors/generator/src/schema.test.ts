@@ -1061,12 +1061,27 @@ describe("one-time invite schemas", () => {
     })).toThrow(/additional/);
   });
 
-  it("enforces purpose-specific authority and preauthorization", () => {
+  it("accepts active-account-only device enrollment and rejects legacy authority members", () => {
     expect(() => validateOneTimeInviteSchemaOrThrow({
       descriptor: { ...descriptor, purpose: "device-enrollment" },
       signature: "55".repeat(64),
       secret: "66".repeat(32),
-    })).toThrow();
+    })).not.toThrow();
+    for (const authority of [
+      { inviter_authority: { persona: "11".repeat(32), kel_head: "22".repeat(32), epoch_key: "33".repeat(32), authority_event_id: "44".repeat(32) } },
+      { kel_head: "22".repeat(32) },
+      { epoch_key: "33".repeat(32) },
+      { cold_root: "44".repeat(32) },
+    ]) {
+      expect(() => validateOneTimeInviteSchemaOrThrow({
+        descriptor: { ...descriptor, purpose: "device-enrollment", ...authority },
+        signature: "55".repeat(64),
+        secret: "66".repeat(32),
+      })).toThrow(/additional/);
+    }
+  });
+
+  it("enforces purpose-specific preauthorization", () => {
     expect(() => validateOneTimeInviteSchemaOrThrow({
       descriptor: { ...descriptor, approval_mode: "preauthorized" },
       signature: "55".repeat(64),

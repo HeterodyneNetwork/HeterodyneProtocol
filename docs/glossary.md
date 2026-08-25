@@ -47,9 +47,10 @@ live registry and schemas govern when a short definition omits a condition.
 
 **Strict profile**
 : A conformance profile whose required invariant set is the transitive closure
-  of declared prerequisite profiles plus only the invariants it adds. The
-  six-document strict profile includes optional Assurance; baseline Core does
-  not.
+  of declared prerequisite profiles plus only the invariants it adds. Core,
+  Comms, Control, Social, and Workspace register document-specific strict
+  profiles. Assurance is an optional document claim and currently has no strict
+  profile; there is no singular strict profile for the six-document family.
 
 **Family registry revision**
 : The authoring revision in `docs/spec/registry/manifest.json` for the current
@@ -85,8 +86,10 @@ live registry and schemas govern when a short definition omits a condition.
 **Source-neutral selection**
 : Selection based on signatures, coordinates, protocol replacement rules, and
   recency rather than whether an exact event arrived from a relay or a
-  repository. An observation older than seven days triggers a warning and
-  refresh attempt; age alone does not invalidate it.
+  repository. Only a kind `0` profile or kind `10002` relay list older than
+  seven days triggers a warning and refresh attempt without invalidation from
+  age alone. Every other state retains its applicable freshness and expiry
+  rules and fails closed where those rules require.
 
 **Full node**
 : A user-controlled service that may host repositories, coordinate policy and

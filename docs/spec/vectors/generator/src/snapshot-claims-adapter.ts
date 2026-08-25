@@ -111,12 +111,17 @@ export type ClaimState =
   | "revoked"
   | "conflicted";
 
+/**
+ * Task 3 needs this evidence in addition to the original plan's abbreviated
+ * context shape so the approved stage-2 Core/KEL check is explicit rather
+ * than being inferred from local trust policy.
+ */
 export type ClaimAuthorityEvidence = {
   claim_id: string;
   issuer: KeyRef;
   event_id: string;
-  event_author: string;
   envelope_valid: boolean;
+  core_kel_authority_valid: boolean;
   credential_ledger_persona: string | null;
   credential_ledger_generation: number | null;
   verified_at: number;
@@ -127,10 +132,11 @@ export type RevocationAuthorityEvidence = {
   event_id: string;
   claim_id: string;
   signer: KeyRef;
-  authority: "active-ancestor-issuer" | "active-persona";
+  authority: "active-ancestor-issuer" | "persona-epoch" | "persona-cold-root";
   authority_claim_id?: string;
   valid_from: number;
   valid_until: number;
+  core_kel_authority_valid: boolean;
 };
 
 export type ClaimVerificationContext = {
@@ -388,7 +394,7 @@ function evaluateClaim(
     return invalidEvaluation(error);
   }
 
-  // 2. Require explicit, current, claim-bound envelope and event-author evidence.
+  // 2. Require explicit, current, claim-bound envelope and Core/KEL evidence.
   for (const claim of chain) {
     const evidence = context.claim_authority_evidence.get(claim.claim_id);
     if (!validClaimAuthorityEvidence(claim, evidence, context.now)) {
@@ -612,12 +618,9 @@ function isRevoked(chain: ClaimSemanticBody[], context: ClaimVerificationContext
         "active-ancestor-issuer",
         superior.claim_id,
       );
-      const personaAuthorized = target.claim_class === "authorization" &&
-        target.credential_ledger_persona !== null &&
-        external?.authority === "active-persona" &&
-        revocation.signer.type === "nostr-secp256k1" &&
-        revocation.signer.value === target.credential_ledger_persona &&
-        validRevocationAuthorityEvidence(revocation, external, "active-persona");
+      const personaAuthorized = external !== undefined &&
+        (external.authority === "persona-epoch" || external.authority === "persona-cold-root") &&
+        validRevocationAuthorityEvidence(revocation, external, external.authority);
       if (target.claim_class === "authorization") {
         if (
           sameKeyRef(revocation.signer, target.subject) ||
@@ -641,13 +644,11 @@ function validClaimAuthorityEvidence(
   now: number,
 ): evidence is ClaimAuthorityEvidence {
   return evidence !== undefined &&
-    hasExactMembers(evidence, CLAIM_AUTHORITY_EVIDENCE_MEMBERS) &&
     evidence.claim_id === claim.claim_id &&
     sameKeyRef(evidence.issuer, claim.issuer) &&
-    claim.issuer.type === "nostr-secp256k1" &&
-    evidence.event_author === claim.issuer.value &&
     CLAIM_ID_PATTERN.test(evidence.event_id) &&
     evidence.envelope_valid &&
+    evidence.core_kel_authority_valid &&
     evidence.credential_ledger_persona === claim.credential_ledger_persona &&
     evidence.credential_ledger_generation === claim.credential_ledger_generation &&
     Number.isSafeInteger(evidence.verified_at) &&
@@ -663,7 +664,6 @@ function validRevocationAuthorityEvidence(
   authorityClaimId?: string,
 ): evidence is RevocationAuthorityEvidence {
   return evidence !== undefined &&
-    hasExactMembers(evidence, REVOCATION_AUTHORITY_EVIDENCE_MEMBERS) &&
     evidence.event_id === revocation.event_id &&
     evidence.claim_id === revocation.claim_id &&
     sameKeyRef(evidence.signer, revocation.signer) &&
@@ -671,39 +671,12 @@ function validRevocationAuthorityEvidence(
     (authorityClaimId === undefined
       ? evidence.authority_claim_id === undefined
       : evidence.authority_claim_id === authorityClaimId) &&
+    evidence.core_kel_authority_valid &&
     Number.isSafeInteger(evidence.valid_from) &&
     Number.isSafeInteger(evidence.valid_until) &&
     revocation.event_created_at === revocation.revoked_at &&
     evidence.valid_from <= revocation.event_created_at &&
     revocation.event_created_at < evidence.valid_until;
-}
-
-const CLAIM_AUTHORITY_EVIDENCE_MEMBERS = new Set([
-  "claim_id",
-  "credential_ledger_generation",
-  "credential_ledger_persona",
-  "envelope_valid",
-  "event_author",
-  "event_id",
-  "issuer",
-  "valid_until",
-  "verified_at",
-]);
-
-const REVOCATION_AUTHORITY_EVIDENCE_MEMBERS = new Set([
-  "authority",
-  "authority_claim_id",
-  "claim_id",
-  "event_id",
-  "signer",
-  "valid_from",
-  "valid_until",
-]);
-
-function hasExactMembers(value: object, allowed: ReadonlySet<string>): boolean {
-  return Reflect.ownKeys(value).every((member) =>
-    typeof member === "string" && allowed.has(member)
-  );
 }
 
 function matchesRestriction(restriction: string[] | undefined, value: string): boolean {

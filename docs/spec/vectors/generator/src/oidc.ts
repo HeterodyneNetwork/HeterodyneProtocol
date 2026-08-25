@@ -28,7 +28,7 @@ export const CHECKPOINT_CLAIM = "https://heterodyne.network/jwt/ledger-checkpoin
 export const STATUS_MIRROR_CLAIM = "https://heterodyne.network/jwt/status-mirror";
 const DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code";
 
-export type PersonaIdentityState = { cold_root_npub: string; epoch_npubs: string[] };
+export type PersonaIdentityState = { persona_npub: string; persona_key: string };
 
 export type DiscoveryPaths = {
   issuer: string;
@@ -319,40 +319,40 @@ export function purgeOidcTransactionsForCredentialReset(
   };
 }
 
-export function issuerUrl(origin: string, coldRootNpub: string, identity: PersonaIdentityState): string {
+export function issuerUrl(origin: string, personaNpub: string, identity: PersonaIdentityState): string {
   const canonicalOrigin = exactHttpsOrigin(origin);
-  if (!validateColdRootBinding(coldRootNpub, identity).allowed) {
-    throw new Error("oidc-issuer-mismatch: issuer path is not the authenticated cold root");
+  if (!validatePersonaBinding(personaNpub, identity).allowed) {
+    throw new Error("oidc-issuer-mismatch: issuer path is not the active persona");
   }
   let decoded: ReturnType<typeof nip19.decode>;
   try {
-    decoded = nip19.decode(coldRootNpub);
+    decoded = nip19.decode(personaNpub);
   } catch {
-    throw new Error("oidc-issuer-mismatch: cold-root npub is invalid");
+    throw new Error("oidc-issuer-mismatch: persona npub is invalid");
   }
   if (decoded.type !== "npub" || typeof decoded.data !== "string" ||
-      !/^[0-9a-f]{64}$/.test(decoded.data) || nip19.npubEncode(decoded.data) !== coldRootNpub) {
-    throw new Error("oidc-issuer-mismatch: exact lowercase cold-root npub is required");
+      !/^[0-9a-f]{64}$/.test(decoded.data) || nip19.npubEncode(decoded.data) !== personaNpub) {
+    throw new Error("oidc-issuer-mismatch: exact active-persona npub is required");
   }
-  return `${canonicalOrigin}/oidc/${coldRootNpub}`;
+  return `${canonicalOrigin}/oidc/${personaNpub}`;
 }
 
-export function discoveryPaths(origin: string, coldRootNpub: string, identity: PersonaIdentityState): DiscoveryPaths {
+export function discoveryPaths(origin: string, personaNpub: string, identity: PersonaIdentityState): DiscoveryPaths {
   const exactOrigin = exactHttpsOrigin(origin);
-  const issuer = issuerUrl(exactOrigin, coldRootNpub, identity);
+  const issuer = issuerUrl(exactOrigin, personaNpub, identity);
   return {
     issuer,
     oidc_discovery: `${issuer}/.well-known/openid-configuration`,
-    rfc8414_alias: `${exactOrigin}/.well-known/oauth-authorization-server/oidc/${coldRootNpub}`,
+    rfc8414_alias: `${exactOrigin}/.well-known/oauth-authorization-server/oidc/${personaNpub}`,
   };
 }
 
 export function issuerMetadata(
   origin: string,
-  coldRootNpub: string,
+  personaNpub: string,
   identity: PersonaIdentityState,
 ): IssuerMetadata {
-  const { issuer } = discoveryPaths(origin, coldRootNpub, identity);
+  const { issuer } = discoveryPaths(origin, personaNpub, identity);
   return {
     issuer,
     authorization_endpoint: `${issuer}/authorize`,
@@ -390,7 +390,14 @@ export function validateIssuerMetadata(
       ? metadata.id_token_signing_alg_values_supported
       : [];
     if (algorithms.length !== 1 || algorithms[0] !== "RS256") return denied("oidc-issuer-mismatch");
-    const expected = issuerMetadata(issuer.origin, root, { cold_root_npub: root, epoch_npubs: [] });
+    const decoded = nip19.decode(root);
+    if (decoded.type !== "npub" || typeof decoded.data !== "string") {
+      return denied("oidc-issuer-mismatch");
+    }
+    const expected = issuerMetadata(issuer.origin, root, {
+      persona_npub: root,
+      persona_key: decoded.data,
+    });
     if (jcsCanonicalize(metadata as unknown as JsonValue) !== jcsCanonicalize(expected as unknown as JsonValue)) {
       return denied("oidc-issuer-mismatch");
     }
@@ -400,15 +407,16 @@ export function validateIssuerMetadata(
   return accepted();
 }
 
-export function validateColdRootBinding(
+export function validatePersonaBinding(
   candidateNpub: string,
-  identity: { cold_root_npub: string; epoch_npubs: string[] },
+  identity: PersonaIdentityState,
 ): AuthorizationDecision {
   try {
     const candidate = canonicalNpub(candidateNpub);
-    const coldRoot = canonicalNpub(identity.cold_root_npub);
-    const epochs = identity.epoch_npubs.map(canonicalNpub);
-    return candidate === coldRoot && !epochs.includes(candidate) && new Set(epochs).size === epochs.length
+    const persona = canonicalNpub(identity.persona_npub);
+    const decoded = nip19.decode(persona);
+    return candidate === persona && decoded.type === "npub" &&
+      decoded.data === identity.persona_key && nip19.npubEncode(identity.persona_key) === persona
       ? accepted()
       : denied("oidc-issuer-mismatch");
   } catch {
@@ -859,7 +867,7 @@ function validateProjectionInput(input: JwtProjectionInput): {
   const decodedRoot = nip19.decode(root);
   const rootPersona = decodedRoot.type === "npub" && typeof decodedRoot.data === "string" ? decodedRoot.data : "";
   if (parsed.protocol !== "https:" || parsed.search !== "" || parsed.hash !== "" || parsed.pathname.endsWith("/") ||
-      !validateColdRootBinding(root, input.identity).allowed ||
+      !validatePersonaBinding(root, input.identity).allowed ||
       issuerUrl(parsed.origin, root, input.identity) !== input.issuer || rootPersona !== input.issuer_envelope.persona ||
       input.state.records.some(({ persona }) => persona !== rootPersona) ||
       input.authorization_request.state.records.some(({ persona }) => persona !== rootPersona)) {

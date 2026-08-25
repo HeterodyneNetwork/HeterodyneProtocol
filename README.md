@@ -92,14 +92,17 @@ names the family version, registry revision or digest, feature IDs, and any
 strict profiles. The required invariant set is the transitive closure of the
 claimed profiles and features.
 
-The stable strict profile IDs are:
+The registered strict profile IDs are:
 
 - `heterodyne-core-strict-v1`
-- `heterodyne-assurance-strict-v1`
 - `heterodyne-comms-strict-v1`
 - `heterodyne-control-strict-v1`
 - `heterodyne-social-strict-v1`
 - `heterodyne-workspace-strict-v1`
+
+Assurance is a separately composable optional document claim and currently has
+no strict profile. There is no singular strict profile for the six-document
+family.
 
 ## Current draft versus frozen snapshot
 

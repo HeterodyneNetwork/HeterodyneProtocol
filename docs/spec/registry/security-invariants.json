@@ -167,7 +167,7 @@
       "owner": "social",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Social state unions valid exact events from relays and repositories and applies NIP-01 replaceable selection without carrier priority; seven-day refresh age is warning-only."
+      "description": "Social state unions valid exact events from relays and repositories and applies NIP-01 replaceable selection without carrier priority; only kind `0` profiles and kind `10002` relay lists use the seven-day warning-only refresh age. Every other state remains subject to its applicable freshness and expiry rules and fails closed where those rules require."
     },
     {
       "id": "CONTROL-I-AUDIT-AT-REST",

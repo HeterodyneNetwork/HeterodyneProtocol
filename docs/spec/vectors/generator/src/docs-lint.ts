@@ -125,7 +125,7 @@ const RETIRED_MAINTAINED_GUIDE_PATTERNS = [
 // retirement/optionality statements. Whitespace is intentionally flexible so
 // Markdown wrapping cannot bypass the maintained-guide gate.
 const RETIRED_NOSTR_FIRST_GUIDE_PATTERNS = [
-  /persona\s+is\s+(?:identified|anchored)\s+by\s+(?:a\s+)?cold[- ]root\s+(?:Nostr\s+)?npub/i,
+  /persona\s+is\s+(?:identified|anchored)\s+by\s+(?:a\s+)?cold[-\s]+root\s+(?:Nostr\s+)?npub/i,
   /every\s+persona\s+requires\s+(?:an\s+)?accepted\s+KEL(?:\s+and\s+(?:an\s+)?epoch\s+key)?/i,
   /(?:human\s+)?Marmot\s+account\s+is\s+separate\s+from\s+the\s+active\s+Nostr\s+key/i,
   /kind\s*:?\s*`?31005`?\s+is\s+required/i,
@@ -135,8 +135,10 @@ const RETIRED_NOSTR_FIRST_GUIDE_PATTERNS = [
   /full\s+node\s+is\s+(?:a\s+)?required\s+(?:Nostr\s+)?relay/i,
   /(?:each|one)\s+group\s+has\s+one\s+canonical\s+trusted\s+seed/i,
   /caller\s+may\s+remove\s+agent\s+attribution\s+before\s+signing/i,
-  /bare\s+(?:active\s+)?key\s+is\s+incomplete\s+without\s+Assurance/i,
-  /vector\s+snapshot\s+defines\s+current-draft\s+conformance/i,
+  /(?:automated\s+(?:agent\s+)?)?publication\s+(?:may|can|should|must)\s+(?:omit|remove)\s+(?:NIP[-\s]*32\s+)?(?:agent\s+)?attribution/i,
+  /bare[-\s]+(?:active[-\s]+)?key(?:\s+persona)?\s+(?:is\s+)?(?:incomplete|insufficient)\s+without\s+Assurance/i,
+  /bare[-\s]+(?:active[-\s]+)?key(?:\s+persona)?\s+does\s+not\s+satisfy\s+(?:baseline\s+)?conformance\s+unless\s+Assurance/i,
+  /(?:rolling\s+)?vector[-\s]+snapshot\s+(?:defines\s+current[-\s]+draft\s+conformance|is\s+(?:the\s+)?(?:normative|authoritative)(?:\s+authority)?\s+for\s+(?:the\s+)?current[-\s]+draft)/i,
 ];
 
 const UNSAFE_AGENT_SECURITY_FRAMING = [
@@ -147,6 +149,7 @@ const UNSAFE_AGENT_SECURITY_FRAMING = [
   /agents?\s+(?:may|should|must)\s+(?:build|create|deploy)\s+(?:malware|shells?|phishing|command-and-control|C2)/i,
   /agents?\s+(?:may|should|must)\s+(?:perform|take)\s+destructive\s+actions?/i,
   /agents?\s+(?:may|should|must)\s+weaken\s+(?:security\s+)?controls?/i,
+  /agents?\s+(?:may|should|must)\s+exploit\s+live\s+third[-\s]+party\s+(?:relays|nodes|deployments|identity providers|accounts|systems)/i,
 ];
 
 const RETIRED_NORMATIVE_CLAIMS = [
@@ -161,11 +164,29 @@ const RETIRED_NORMATIVE_CLAIMS = [
   /Private-Radicle\s+recovery\s+and\s+SFTP\s+overflow\s+are\s+optional\s+Control\s+profiles/i,
 ];
 
+const RETIRED_BASELINE_AUTHORITY_CLAIMS = [
+  /(?:conformant\s+)?persona\s+(?:MUST\s+(?:have|use)|requires?)\s+(?:an?\s+)?(?:accepted\s+)?(?:KEL|cold[-\s]+root|epoch[-\s]+key)/i,
+];
+
+function isExplicitlyGatedAssurance(
+  path: string,
+  text: string,
+  matchIndex: number,
+): boolean {
+  if (/(?:^|\/)heterodyne-assurance\.md$/.test(path)) return true;
+  const paragraphStart = Math.max(0, text.lastIndexOf("\n\n", matchIndex));
+  const paragraphEndCandidate = text.indexOf("\n\n", matchIndex);
+  const paragraphEnd = paragraphEndCandidate < 0 ? text.length : paragraphEndCandidate;
+  const paragraph = text.slice(paragraphStart, paragraphEnd);
+  return /\b(?:optional\s+Assurance|when\s+Assurance\s+is\s+claimed|implementations?\s+claiming\s+Assurance|Assurance\s+(?:composition|profile))\b/i
+    .test(paragraph);
+}
+
 export function findRetiredNormativeClaimIssues(
   path: string,
   text: string,
 ): FamilyDocIssue[] {
-  return RETIRED_NORMATIVE_CLAIMS.flatMap((pattern) => {
+  const retired = RETIRED_NORMATIVE_CLAIMS.flatMap((pattern) => {
     const match = pattern.exec(text);
     if (match === null) return [];
     return [{
@@ -175,6 +196,20 @@ export function findRetiredNormativeClaimIssues(
       message: `retired normative authority: ${match[0]}`,
     }];
   });
+  const baselineAuthority = RETIRED_BASELINE_AUTHORITY_CLAIMS.flatMap((pattern) => {
+    const match = pattern.exec(text);
+    if (
+      match === null
+      || isExplicitlyGatedAssurance(path, text, match.index)
+    ) return [];
+    return [{
+      path,
+      line: text.slice(0, match.index).split(/\r?\n/).length,
+      code: "retired-authoring-model" as const,
+      message: `retired baseline authority: ${match[0]}`,
+    }];
+  });
+  return [...retired, ...baselineAuthority];
 }
 
 function displayPath(repoRoot: string, path: string): string {

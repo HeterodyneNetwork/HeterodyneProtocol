@@ -21,7 +21,7 @@ describe("protocol document family", () => {
     ) as { scripts: Record<string, string> };
     const currentProject = JSON.parse(
       readFileSync(resolve(generatorRoot, "tsconfig.current.json"), "utf8"),
-    ) as { include: string[] };
+    ) as { include: string[]; exclude: string[] };
 
     expect(packageJson.scripts["draft:check"])
       .toBe("npm run build:current && npm run test:current && npm run family:check");
@@ -30,23 +30,32 @@ describe("protocol document family", () => {
     expect(packageJson.scripts["build:current"])
       .toBe("node scripts/typecheck.mjs tsconfig.current.json");
 
-    const currentTests = currentProject.include.filter((path) => path.endsWith(".test.ts"));
-    expect(currentTests).toEqual(expect.arrayContaining([
-      "src/docs-lint.test.ts",
-      "src/family.test.ts",
-      "src/registry.test.ts",
-      "src/schema.test.ts",
-      "src/assurance.test.ts",
-      "src/control-signing.test.ts",
-      "src/social-events.test.ts",
-      "src/trusted-seed.test.ts",
-      "src/workspace.test.ts",
-    ]));
-    for (const path of currentProject.include) {
-      expect(path).not.toMatch(
-        /(?:^|\/)(?:topics(?:-[^/]*)?|author|coverage|verify|versioning|oidc|token-status|fixtures|snapshot-[^/]*)\.test\.ts$/,
-      );
+    expect(currentProject.include).toEqual(["src/**/*.ts"]);
+    for (const live of [
+      "src/claims.test.ts",
+      "src/claim-ledger.test.ts",
+      "src/claim-ledger-conformance.test.ts",
+      "src/stamping.test.ts",
+      "src/one-time-invite.test.ts",
+    ]) {
+      expect(currentProject.exclude).not.toContain(live);
     }
+    expect(currentProject.exclude).toEqual(expect.arrayContaining([
+      "src/topics*.ts",
+      "src/snapshot*.ts",
+    ]));
+  });
+
+  it("keeps live OIDC continuity on active-persona authority", () => {
+    const currentOidc = ["src/oidc.ts", "src/token-status.ts"]
+      .map((path) => readFileSync(resolve(generatorRoot, path), "utf8"))
+      .join("\n");
+    expect(currentOidc).not.toMatch(
+      /cold_root_npub|cold_root_hex|persona_kel_head|core_kel_authority_valid|current-persona-epoch|cold-root-recovery|validateColdRootBinding/,
+    );
+    expect(currentOidc).toMatch(/persona_npub/);
+    expect(currentOidc).toMatch(/persona_key/);
+    expect(currentOidc).toMatch(/active-persona/);
   });
 
   it("parses the single family version", () => {

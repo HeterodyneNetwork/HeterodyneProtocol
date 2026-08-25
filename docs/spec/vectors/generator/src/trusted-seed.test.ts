@@ -199,7 +199,7 @@ describe("trusted private seed admission", () => {
     const previousDigest = trustedSeedAclDigest(previous);
     const ambiguous = await signedAcl({
       sequence: 1,
-      predecessor: `${previousDigest.slice(0, -1)}0`,
+      predecessor: `${previousDigest.slice(0, -1)}${previousDigest.endsWith("0") ? "1" : "0"}`,
     });
     expect(evaluateTrustedSeedAdmission(await request({
       acl_candidates: [ambiguous],

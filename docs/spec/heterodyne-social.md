@@ -102,7 +102,9 @@ carriage has no selection priority. A newer valid relay event wins immediately
 and remains usable while repository ingestion catches up. If a repository is
 unavailable, ordinary relay state remains valid. Publishing clients refresh
 kind `0` and kind `10002` at least every seven days; exceeding that interval
-produces a visible warning and MUST NOT invalidate the latest valid state.
+produces a visible warning and MUST NOT invalidate the latest valid profile or
+relay-list event. Every other state retains its applicable freshness and expiry
+rules and MUST fail closed where those rules require.
 
 Transitive discovery MUST NOT disclose an inner feed before the reader holds
 the outer audience's access capability. A search result, starter pack, graph
@@ -949,7 +951,7 @@ The list below is descriptive:
 - **SOCIAL-I-PRIVATE-STATE-AT-REST:** Private mute, feed-preference, followed-repository, and other Social state are encrypted at rest using the owning Social or bound Comms profile.
 - **SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH:** Following, transitive discovery, and social-graph evaluation do not depend on a centralized follow-graph oracle.
 - **SOCIAL-I-NIP01-AUTHORSHIP:** Every ordinary Social event is authored by the public key that actually produced its valid NIP-01 signature; no persona, agent, moderator, repository, relay, KEL, or feed metadata can substitute another author.
-- **SOCIAL-I-SOURCE-NEUTRAL-SELECTION:** Social state unions valid exact events from relays and repositories and applies NIP-01 replaceable selection without carrier priority; seven-day refresh age is warning-only.
+- **SOCIAL-I-SOURCE-NEUTRAL-SELECTION:** Social state unions valid exact events from relays and repositories and applies NIP-01 replaceable selection without carrier priority; only kind `0` profiles and kind `10002` relay lists use the seven-day warning-only refresh age. Every other state remains subject to its applicable freshness and expiry rules and fails closed where those rules require.
 - **SOCIAL-I-AGENT-POLICY-LOCAL:** Agent-policy receipts inform publicly, but only an explicitly subscribed and verified current policy list changes a client's local visibility.
 - **SOCIAL-I-AGENT-AUTHORSHIP-EXACT:** Agent-policy receipts, corrections, and subscriber-local enforcement bind the actual signed event author and verified Comms agent association; no moderator or associated agent becomes an event author without producing that event's signature.
 

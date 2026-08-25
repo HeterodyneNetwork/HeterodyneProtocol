@@ -24,7 +24,7 @@ import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import {
   assertValidatedProjectedJwtContext,
-  validateColdRootBinding,
+  validatePersonaBinding,
   type PersonaIdentityState,
   type ValidatedProjectedJwtContext,
 } from "./oidc.js";
@@ -58,9 +58,8 @@ export type ContinuityManifestBody = {
   profile: "heterodyne-oidc-continuity-v1";
   repository_rid: string;
   branch: "main";
-  cold_root_npub: string;
-  cold_root_hex: string;
-  persona_kel_head: { id: string; seq: number };
+  persona_npub: string;
+  persona_key: string;
   issuer: string;
   sequence: number;
   predecessor_digest: string | null;
@@ -79,32 +78,21 @@ export type ContinuityManifest = ContinuityManifestBody & { authority_proof: Key
 
 export type ContinuityValidationContext = {
   identity: PersonaIdentityState;
-  expected_kel_head: { id: string; seq: number };
   repository_rid: string;
   canonical_branch: "main";
   writer_nid: string;
   now: number;
   ledger_state: LedgerMergeResult | null;
   succession_authority: PersonaSuccessionProof | null;
-  kel_transition: {
-    persona_root_npub: string;
-    previous_head: { id: string; seq: number } | null;
-    current_head: { id: string; seq: number };
+  active_persona_authority: {
+    persona_key: string;
     valid_from: number;
     valid_until: number;
-    core_kel_authority_valid: true;
-  } | null;
-  current_epoch_authority: {
-    npub: string;
-    kel_head: { id: string; seq: number };
-    valid_from: number;
-    valid_until: number;
-    core_kel_authority_valid: true;
   } | null;
 };
 
 export type PersonaSuccessionProof = {
-  authority: "current-persona-epoch" | "cold-root-recovery";
+  authority: "active-persona";
   signer_pubkey: string;
   signature: string;
 };
@@ -314,7 +302,7 @@ export function buildContinuityTree(
   validateOidcContinuityManifestSchemaOrThrow(manifest);
   validateManifestIntrinsic(manifest);
   if (!verifyContinuityProof(manifest)) throw new Error("oidc-issuer-authority-invalid: invalid manifest proof");
-  const root = `.well-known/${manifest.cold_root_npub}`;
+  const root = `.well-known/${manifest.persona_npub}`;
   const expectedStatus = new Map(manifest.status_lists.map((entry) => [entry.path, entry.sha256]));
   if (statusTokens.size !== expectedStatus.size) throw new Error("oidc-status-invalid: status set differs from manifest");
   const publicJwks = validateManifestJwks(manifest, jwksBytes);
@@ -356,11 +344,11 @@ export function resolveIssuerContinuity(
     const checkpoint = context.ledger_state === null ? null : canonicalValidatedCheckpoint(context.ledger_state);
     if (context.canonical_branch !== "main" || candidate.branch !== "main" ||
         candidate.repository_rid !== context.repository_rid || candidate.repository_rid !== context.repository_rid ||
-        jcsCanonicalize(candidate.persona_kel_head) !== jcsCanonicalize(context.expected_kel_head) ||
-        !validKelTransition(previous, candidate, context) ||
-        !validateColdRootBinding(candidate.cold_root_npub, context.identity).allowed ||
-        candidate.cold_root_npub !== context.identity.cold_root_npub ||
+        !validatePersonaBinding(candidate.persona_npub, context.identity).allowed ||
+        candidate.persona_npub !== context.identity.persona_npub ||
+        candidate.persona_key !== context.identity.persona_key ||
         candidate.authority.writer_nid !== context.writer_nid || context.ledger_state === null || checkpoint === null ||
+        context.ledger_state.credential_ledger.credential_ledger_persona !== candidate.persona_key ||
         checkpoint.repository_rid !== candidate.repository_rid ||
         jcsCanonicalize(candidate.authority.checkpoint) !== jcsCanonicalize(checkpoint) ||
         currentIssuerSigningKeyId(context.ledger_state) !== candidate.current_signing_key_id ||
@@ -384,7 +372,8 @@ export function resolveIssuerContinuity(
     validateOidcContinuityManifestSchemaOrThrow(previous);
     validateManifestIntrinsic(previous);
     if (!verifyContinuityProof(previous) || previous.repository_rid !== candidate.repository_rid ||
-        previous.cold_root_npub !== candidate.cold_root_npub || previous.cold_root_hex !== candidate.cold_root_hex) {
+        (previous.issuer === candidate.issuer &&
+          (previous.persona_npub !== candidate.persona_npub || previous.persona_key !== candidate.persona_key))) {
       return deniedContinuity("oidc-issuer-authority-invalid");
     }
     if (candidate.sequence !== previous.sequence + 1 ||
@@ -413,19 +402,6 @@ export function resolveIssuerContinuity(
     if (message.includes("digest") || message.includes("retained")) return deniedContinuity("oidc-status-invalid");
     return deniedContinuity("oidc-issuer-authority-invalid");
   }
-}
-
-function validKelTransition(
-  previous: ContinuityManifest | null,
-  candidate: ContinuityManifest,
-  context: ContinuityValidationContext,
-): boolean {
-  const evidence = context.kel_transition;
-  return evidence !== null && evidence.core_kel_authority_valid &&
-    evidence.persona_root_npub === candidate.cold_root_npub &&
-    jcsCanonicalize(evidence.previous_head) === jcsCanonicalize(previous?.persona_kel_head ?? null) &&
-    jcsCanonicalize(evidence.current_head) === jcsCanonicalize(candidate.persona_kel_head) &&
-    evidence.valid_from <= candidate.authority.issued_at && candidate.authority.issued_at < evidence.valid_until;
 }
 
 export function validateIssuerContinuityChain(
@@ -459,20 +435,11 @@ function continuityChainFingerprint(context: ValidatedContinuityChainContext): s
 
 function verifyPersonaSuccessionProof(candidate: ContinuityManifest, context: ContinuityValidationContext): boolean {
   const proof = context.succession_authority;
-  if (proof === null || !/^[0-9a-f]{64}$/.test(proof.signer_pubkey) || !/^[0-9a-f]{128}$/.test(proof.signature)) return false;
-  let authorized = false;
-  if (proof.authority === "current-persona-epoch") {
-    const authority = context.current_epoch_authority;
-    authorized = authority !== null && authority.core_kel_authority_valid &&
-      jcsCanonicalize(authority.kel_head) === jcsCanonicalize(candidate.persona_kel_head) &&
-      authority.valid_from <= candidate.authority.issued_at && candidate.authority.issued_at < authority.valid_until &&
-      context.identity.epoch_npubs.includes(authority.npub) && (() => {
-        try { const decoded = nip19.decode(authority.npub); return decoded.type === "npub" && decoded.data === proof.signer_pubkey; }
-        catch { return false; }
-      })();
-  } else {
-    authorized = proof.signer_pubkey === candidate.cold_root_hex;
-  }
+  const authority = context.active_persona_authority;
+  if (proof === null || authority === null || proof.authority !== "active-persona" ||
+      !/^[0-9a-f]{64}$/.test(proof.signer_pubkey) || !/^[0-9a-f]{128}$/.test(proof.signature)) return false;
+  const authorized = proof.signer_pubkey === authority.persona_key &&
+    authority.valid_from <= candidate.authority.issued_at && candidate.authority.issued_at < authority.valid_until;
   return authorized && schnorr.verify(hexToBytes(proof.signature), utf8Bytes(personaSuccessionPayload(candidate)), hexToBytes(proof.signer_pubkey));
 }
 
@@ -513,7 +480,7 @@ function retainUnexpiredMaterial(
   }
   const candidatePaths = new Set(candidate.status_lists.map(({ path }) => path));
   const requiredPaths = new Set(unexpired.map(({ reservation }) =>
-    `.well-known/${candidate.cold_root_npub}/${reservation.uri}`));
+    `.well-known/${candidate.persona_npub}/${reservation.uri}`));
   for (const path of requiredPaths) {
     if (!candidatePaths.has(path)) throw new Error("prior status list not retained through token expiry");
   }
@@ -552,13 +519,13 @@ function continuityProofPayload(body: ContinuityManifestBody | Omit<ContinuityMa
 }
 
 function validateManifestIntrinsic(manifest: ContinuityManifest): void {
-  const decoded = nip19.decode(manifest.cold_root_npub);
-  if (decoded.type !== "npub" || decoded.data !== manifest.cold_root_hex || nip19.npubEncode(manifest.cold_root_hex) !== manifest.cold_root_npub) {
-    throw new Error("oidc-issuer-mismatch: cold-root npub/hex mismatch");
+  const decoded = nip19.decode(manifest.persona_npub);
+  if (decoded.type !== "npub" || decoded.data !== manifest.persona_key || nip19.npubEncode(manifest.persona_key) !== manifest.persona_npub) {
+    throw new Error("oidc-issuer-mismatch: active-persona npub/key mismatch");
   }
   const parsed = new URL(manifest.issuer);
   if (parsed.protocol !== "https:" || parsed.username !== "" || parsed.password !== "" || parsed.search !== "" || parsed.hash !== "" ||
-      `${parsed.origin}${parsed.pathname}` !== manifest.issuer || parsed.pathname !== `/oidc/${manifest.cold_root_npub}`) {
+      `${parsed.origin}${parsed.pathname}` !== manifest.issuer || parsed.pathname !== `/oidc/${manifest.persona_npub}`) {
     throw new Error("oidc-issuer-mismatch: manifest issuer is not exact");
   }
   if (manifest.max_checkpoint_age_seconds > 300 || manifest.retiring_jwks_sha256.includes(manifest.current_signing_jwk_sha256) ||
@@ -567,8 +534,8 @@ function validateManifestIntrinsic(manifest: ContinuityManifest): void {
       jcsCanonicalize(manifest.retiring_signing_key_ids) !== jcsCanonicalize([...manifest.retiring_signing_key_ids].sort()) ||
       jcsCanonicalize(manifest.retiring_jwks_sha256) !== jcsCanonicalize([...manifest.retiring_jwks_sha256].sort()) ||
       jcsCanonicalize(manifest.status_lists) !== jcsCanonicalize([...manifest.status_lists].sort((a, b) => a.path.localeCompare(b.path))) ||
-      manifest.status_lists.some(({ path }) => !path.startsWith(`.well-known/${manifest.cold_root_npub}/status-lists/`)) ||
-      manifest.status_lists.some((entry) => !validStatusEntry(entry, manifest.cold_root_npub)) ||
+      manifest.status_lists.some(({ path }) => !path.startsWith(`.well-known/${manifest.persona_npub}/status-lists/`)) ||
+      manifest.status_lists.some((entry) => !validStatusEntry(entry, manifest.persona_npub)) ||
       (manifest.sequence === 0 && manifest.status_lists.some((entry) => entry.issuer !== manifest.issuer)) ||
       new Set(manifest.status_lists.map(({ path }) => path)).size !== manifest.status_lists.length) {
     throw new Error("oidc-status-invalid: manifest set is noncanonical");
@@ -577,14 +544,14 @@ function validateManifestIntrinsic(manifest: ContinuityManifest): void {
 
 function validStatusEntry(
   entry: ContinuityManifest["status_lists"][number],
-  coldRootNpub: string,
+  personaNpub: string,
 ): boolean {
   try {
     const issuer = new URL(entry.issuer);
     return issuer.protocol === "https:" && issuer.username === "" && issuer.password === "" &&
       issuer.search === "" && issuer.hash === "" && `${issuer.origin}${issuer.pathname}` === entry.issuer &&
-      issuer.pathname === `/oidc/${coldRootNpub}` &&
-      entry.uri === `${entry.issuer}/${entry.path.slice(`.well-known/${coldRootNpub}/`.length)}`;
+      issuer.pathname === `/oidc/${personaNpub}` &&
+      entry.uri === `${entry.issuer}/${entry.path.slice(`.well-known/${personaNpub}/`.length)}`;
   } catch { return false; }
 }
 
