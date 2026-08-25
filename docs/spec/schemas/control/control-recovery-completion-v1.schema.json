@@ -8,10 +8,10 @@
     "profile", "spec_version", "recovery_id", "persona_active_key",
     "successor_active_key", "inventory_id", "inventory_revision",
     "inventory_digest", "evidence_revision", "revoked_nip46_oidc_grant_ids",
-    "invalidated_client_ids", "invalidated_delegate_ids", "invalidated_node_ids",
+    "invalidated_client_ids", "invalidated_repository_ids", "invalidated_delegate_ids", "invalidated_node_ids",
     "invalidated_agent_ids", "invalidated_trusted_seed_nids",
     "removed_marmot_leaf_ids", "advanced_group_ids", "stalled_group_ids",
-    "fresh_keypackages", "subordinate_reauthorizations", "transition_evidence", "completed_at",
+    "fresh_keypackages", "subordinate_reauthorizations", "transition_evidence", "evidence_bundle_digest", "completed_at",
     "signer", "signature"
   ],
   "properties": {
@@ -26,6 +26,7 @@
     "evidence_revision": {"$ref": "#/$defs/time"},
     "revoked_nip46_oidc_grant_ids": {"$ref": "#/$defs/hexArray"},
     "invalidated_client_ids": {"$ref": "#/$defs/hexArray"},
+    "invalidated_repository_ids": {"$ref": "#/$defs/hexArray"},
     "invalidated_delegate_ids": {"$ref": "#/$defs/hexArray"},
     "invalidated_node_ids": {"$ref": "#/$defs/hexArray"},
     "invalidated_agent_ids": {"$ref": "#/$defs/hexArray"},
@@ -43,11 +44,37 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["keypackage_id", "account_key", "event_id"],
+        "required": [
+          "keypackage_id", "account_key", "group_id", "event_id", "event",
+          "content_sha256", "mls_verifier_pubkey", "verification_signature"
+        ],
         "properties": {
           "keypackage_id": {"$ref": "#/$defs/hex256"},
           "account_key": {"$ref": "#/$defs/hex256"},
-          "event_id": {"$ref": "#/$defs/hex256"}
+          "group_id": {"$ref": "#/$defs/hex256"},
+          "event_id": {"$ref": "#/$defs/hex256"},
+          "event": {
+            "type": "object", "additionalProperties": false,
+            "required": ["id", "pubkey", "created_at", "kind", "tags", "content", "sig"],
+            "properties": {
+              "id": {"$ref": "#/$defs/hex256"},
+              "pubkey": {"$ref": "#/$defs/hex256"},
+              "created_at": {"$ref": "#/$defs/time"},
+              "kind": {"const": 30443},
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "array", "minItems": 1,
+                  "items": {"type": "string"}
+                }
+              },
+              "content": {"type": "string", "minLength": 4},
+              "sig": {"type": "string", "pattern": "^[0-9a-f]{128}$"}
+            }
+          },
+          "content_sha256": {"$ref": "#/$defs/hex256"},
+          "mls_verifier_pubkey": {"$ref": "#/$defs/hex256"},
+          "verification_signature": {"type": "string", "pattern": "^[0-9a-f]{128}$"}
         }
       }
     },
@@ -65,7 +92,7 @@
         "properties": {
           "prior_authority_id": {"$ref": "#/$defs/hex256"},
           "authorization_id": {"$ref": "#/$defs/hex256"},
-          "authority_class": {"enum": ["client", "delegate", "node", "agent"]},
+          "authority_class": {"enum": ["client", "repository", "delegate", "node", "agent", "trusted-seed"]},
           "successor_active_key": {"$ref": "#/$defs/hex256"},
           "issued_at": {"$ref": "#/$defs/time"},
           "expires_at": {"$ref": "#/$defs/time"},
@@ -77,12 +104,13 @@
     "transition_evidence": {
       "type": "object", "additionalProperties": false,
       "required": [
-        "nip46_oidc_grants", "clients", "delegates", "nodes", "agents",
+        "nip46_oidc_grants", "clients", "repositories", "delegates", "nodes", "agents",
         "trusted_seeds", "marmot_leaves", "groups", "stalled_groups"
       ],
       "properties": {
         "nip46_oidc_grants": {"$ref": "#/$defs/hexTransitions"},
         "clients": {"$ref": "#/$defs/hexTransitions"},
+        "repositories": {"$ref": "#/$defs/hexTransitions"},
         "delegates": {"$ref": "#/$defs/hexTransitions"},
         "nodes": {"$ref": "#/$defs/hexTransitions"},
         "agents": {"$ref": "#/$defs/hexTransitions"},
@@ -114,6 +142,7 @@
         "stalled_groups": {"$ref": "#/$defs/hexTransitions"}
       }
     },
+    "evidence_bundle_digest": {"$ref": "#/$defs/hex256"},
     "completed_at": {"$ref": "#/$defs/time"},
     "signer": {"$ref": "#/$defs/hex256"},
     "signature": {"type": "string", "pattern": "^[0-9a-f]{128}$"}

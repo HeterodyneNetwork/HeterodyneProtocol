@@ -33,13 +33,14 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "nip46_oidc_grant_ids", "client_ids", "delegate_ids", "node_ids",
+        "nip46_oidc_grant_ids", "client_ids", "repository_ids", "delegate_ids", "node_ids",
         "agent_ids", "trusted_seed_nids", "marmot_leaf_ids",
         "reachable_groups", "unreachable_group_ids", "subordinate_authority_ids"
       ],
       "properties": {
         "nip46_oidc_grant_ids": {"$ref": "#/$defs/hexArray"},
         "client_ids": {"$ref": "#/$defs/hexArray"},
+        "repository_ids": {"$ref": "#/$defs/hexArray"},
         "delegate_ids": {"$ref": "#/$defs/hexArray"},
         "node_ids": {"$ref": "#/$defs/hexArray"},
         "agent_ids": {"$ref": "#/$defs/hexArray"},

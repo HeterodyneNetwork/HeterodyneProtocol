@@ -255,7 +255,8 @@ strictly after `issued_at`, `now < expires_at`, and active state requires
 `revoked_at = null`. Revocation is absorbing. Forked, ambiguous, unavailable,
 or stale private state fails closed.
 
-The `signature` is a BIP-340 signature by `authorizing_pubkey` over
+The `signature` is a BIP-340 signature by `authorizing_pubkey` in domain
+`heterodyne-control-signer-grant-v1` over
 `UTF-8("heterodyne-control-signer-grant-v1") || 0x00 ||
 UTF-8(JCS(unsigned-grant))`, where `unsigned-grant` is the complete closed
 record with only `signature` removed. A validator MUST verify every candidate
@@ -318,28 +319,51 @@ Before a signature or other side effect, the full node validates in order:
 
 The operation record conforms to
 `docs/spec/schemas/control/control-operation-record-v1.schema.json`. It binds
-the grant, vault, persona, NIP-46 client, audience, selected signer and class,
-method, kind, canonical request digest, attribution state, signature state,
-event ID when produced, durable `reserved|committed|indeterminate` state,
-result and commit evidence, and timestamps. A `produced` signature state is
-forbidden while attribution remains `required`; a reservation has no result
-or commit evidence, while a committed operation has both.
+the collision-resistant digest of the complete signed grant, vault, persona,
+NIP-46 client, audience, selected signer and class, the closed standard NIP-46
+`{id,method,params}` request, kind, value, canonical request digest, window,
+attribution state, signature state, event ID when produced, durable
+`reserved|claimed|committed|indeterminate` state, result or failure digest,
+commit evidence, and timestamps. A `produced` signature state is forbidden
+while attribution remains `required`; reserved and claimed operations have no
+result, while committed and indeterminate operations carry their terminal
+evidence.
 
 A request ID or operation ID reused for different bound bytes fails closed.
 A node may replay a previously committed result but MUST NOT repeat an
 unproven non-idempotent effect.
 
 The rate boundary consumes an authenticated authoritative per-grant usage
-record containing `grant_id`, window start, consumed count, monotonic
-`revision`, and unique request-ID reservations with their canonical request
-digests and `reserved|committed` state. The caller supplies neither the window
-nor the count. A new request produces an exact compare-and-swap transition
-from the stored revision to the next revision, increments the applicable
-window count, and adds its reservation. The host MUST persist that transition
-atomically before invoking a signer or causing any other effect. A matching
-committed reservation may replay its stored event ID; a matching uncommitted
-reservation is indeterminate; the same request ID with a different digest is
-a conflict. Exhaustion is computed only from authoritative state.
+record containing `grant_id`, the digest and full authority tuple of the
+complete authenticated grant, window start, consumed count, monotonic
+`revision`, and unique request-ID reservations. Every reservation repeats the
+closed RPC request, value, window, lifecycle timestamps, and canonical request
+digest and has `reserved|claimed|committed|indeterminate` state. The current
+window count MUST equal its reservation history; older-window history remains
+distinguishable by its stored window timestamp. The caller supplies neither
+the window nor the count. A new request produces an exact compare-and-swap
+transition from the stored revision to the next revision, increments the
+applicable window count, and adds its reservation. Before the signer can be
+invoked, a second compare-and-swap MUST atomically persist `reserved ->
+claimed`. Only reloaded authoritative `claimed` state permits invocation. A
+valid result produces `claimed -> committed`; a thrown, invalid, timed-out, or
+otherwise uncertain signer effect produces durable `claimed -> indeterminate`
+and MUST NOT become reusable `reserved` state. A matching committed
+reservation may replay its stored event ID; any other existing nonterminal or
+indeterminate reservation MUST NOT repeat the effect. The same request ID
+with different bound bytes is a conflict. Exhaustion is computed only from
+authoritative state.
+
+The server derives the request digest; a caller never supplies it. The digest
+is SHA-256 over `UTF-8("heterodyne-control-nip46-request-v1") || 0x00 ||
+UTF-8(JCS({grant_digest,authority,rpc_request,value_msats}))`, where
+`grant_digest` is SHA-256 over
+`UTF-8("heterodyne-control-signer-grant-state-v1") || 0x00 ||
+UTF-8(JCS(complete-signed-grant))` and `authority` is the exact vault, persona,
+client, audience, signer, and key-class tuple. For `sign_event`, `params` has
+exactly one string containing the JCS serialization of one closed unsigned
+NIP-01 event whose `pubkey` is the selected signer. Method, kind, and byte
+limits are derived from those canonical bytes, never caller counters.
 
 Reference validators in this specification family are pure boundaries: their
 stored grant, revocation head, pending activation, usage, inventory, and
@@ -366,13 +390,13 @@ An automated request conforms to
 unsigned, closed intent and MUST NOT contain an event ID or signature.
 `agent_association` is always present and is either null or one closed key/role
 association; `tier` is always present and is `1|2|3`, and `kind` is restricted
-to a Comms automation-attribution profile kind. The canonical request digest
-is SHA-256 over
-`UTF-8("heterodyne-control-agent-publish-intent-v1") || 0x00 ||
-UTF-8(JCS(intent))`. A digest copied from different intent bytes is a request
-conflict.
+to a Comms automation-attribution profile kind. This intent is an
+equality-checked construction input, not an alternate wire request or digest
+contract. After attribution, the resulting exact unsigned event MUST equal
+the canonical `sign_event` parameter. A canonical request copied from a
+different intent is a request conflict.
 
-The node validates the closed intent and digest, the authenticated current
+The node validates the closed intent and derived request digest, the authenticated current
 grant and signer, and exact equality of every grant, vault, persona, client,
 audience, signer, class, kind, value, and signed automation-policy binding.
 It derives agent class, association, tier, and scopes only from the signed
@@ -382,13 +406,16 @@ attribution transform at
 then verifies the resulting attribution, and only then exposes the unsigned
 event to the signer. Before that invocation it MUST also reload authoritative
 usage state and verify that the exact request ID and canonical digest are
-already durably reserved. After the signer returns, the node MUST recompute
+already durably claimed by a persisted `reserved -> claimed` compare-and-swap.
+After the signer returns, the node MUST recompute
 the canonical NIP-01 event ID and verify the returned BIP-340 signature and
 the exact closed NIP-01 event member set and every unsigned event field before
 accepting or committing the result. A valid
-result produces a second compare-and-swap transition from that exact reserved
-revision to `committed`, binding the request ID, canonical digest, and verified
-event ID. The host MUST persist it before publishing or returning success.
+result produces a compare-and-swap transition from that exact claimed revision
+to `committed`, binding the request ID, canonical digest, and verified event
+ID. An invalid or uncertain signer effect instead becomes durably
+`indeterminate`. The host MUST persist the terminal transition before
+publishing or returning success and MUST never retry an indeterminate effect.
 
 Agent-key signing is preferred. Persona-key signing requires the explicit
 persona grant and the Comms persona-signing OIDC scope. The caller cannot
@@ -487,7 +514,7 @@ UTF-8(JCS(inventory))`. The signed `required_reset` is exact set equality with
 that inventory's:
 
 - NIP-46/OIDC grants to revoke;
-- clients, delegates, nodes, agents, and trusted seeds to invalidate;
+- clients, repositories, delegates, nodes, agents, and trusted seeds to invalidate;
 - old Marmot leaf identifiers to remove;
 - reachable groups with their current epochs to advance, and unreachable
   groups to stall; and
@@ -496,12 +523,13 @@ that inventory's:
 Completion conforms to
 `docs/spec/schemas/control/control-recovery-completion-v1.schema.json` and
 MUST prove exact set equality with that inventory. The reset-grant signature
-is BIP-340 over
+is BIP-340 in domain `heterodyne-control-compromise-reset-grant-v1` over
 `UTF-8("heterodyne-control-compromise-reset-grant-v1") || 0x00 ||
 UTF-8(JCS(unsigned-grant))`. `active-account` requires the exact old active
 key and no Assurance head. `assurance-recovery` requires the exact locally
 pinned Assurance authority public key and head. The completion signature is
-BIP-340 by the successor key over
+BIP-340 by the successor key in domain
+`heterodyne-control-compromise-reset-completion-v1` over
 `UTF-8("heterodyne-control-compromise-reset-completion-v1") || 0x00 ||
 UTF-8(JCS(unsigned-completion))`. The successor signature never substitutes
 for grant authority, and grant authority never substitutes for successor
@@ -511,8 +539,8 @@ Before completion the
 implementation MUST:
 
 1. revoke every NIP-46 connection and OIDC signer grant;
-2. invalidate every listed client, delegate, full/recovery node, agent, and
-   trusted seed;
+2. invalidate every listed client, repository, delegate, full/recovery node,
+   agent, and trusted seed;
 3. remove every old-account Marmot leaf from every reachable group;
 4. advance each reachable group to fresh cryptographic state;
 5. publish at least one fresh KeyPackage bound to the successor account;
@@ -527,13 +555,50 @@ never carries forward and the completion names the fresh authorization.
 
 The authoritative evidence record MUST equal the signed completion's
 inventory binding, next consecutive evidence revision, transition evidence,
-fresh KeyPackages, and subordinate reauthorizations. Evidence observation is
-not before completion and not after validation time. Grant, client, delegate,
-node, agent, trusted-seed, leaf, and stalled-group evidence names every exact
-inventory subject. Each reachable-group proof binds its exact prior epoch,
-next epoch `prior + 1`, and a concrete transition evidence ID. Every fresh
-KeyPackage binds the successor account and carries distinct fresh KeyPackage
-and event IDs. Every continuing subordinate contract binds its exact prior
+fresh KeyPackages, subordinate reauthorizations, and
+`evidence_bundle_digest`. That digest is SHA-256 over
+`UTF-8("heterodyne-control-compromise-reset-evidence-bundle-v1") || 0x00 ||
+UTF-8(JCS(evidence_bundle))`. Evidence observation is not before completion
+and not after validation time. A completion signature is not evidence that
+any invalidation, MLS transition, or KeyPackage verification occurred.
+
+Each grant, client, repository, delegate, node, agent, trusted-seed, and
+stalled-group carrier is a closed state-transition record. It binds a fresh
+evidence ID, class, exact subject, authoritative prior-authorization digest,
+`revoked|invalidated|stalled` action, its own effective time, recovery ID, and
+reset-grant authority signer (the old active account or exact pinned Assurance
+authority). Its BIP-340 signature in domain
+`heterodyne-control-reset-state-evidence-v1` covers
+`UTF-8("heterodyne-control-reset-state-evidence-v1") || 0x00 ||
+UTF-8(JCS(record-without-signature))`. The validator compares every carrier
+with the authoritative pre-reset authorization inventory and rejects opaque
+identifiers or caller-invented prior state.
+
+Each reachable-group carrier contains the raw standard MLS Commit bytes,
+their SHA-256 digest, exact prior and successor state digests, consecutive
+epochs, exact removed and continuing prior leaves, fresh successor leaves,
+individual verification time, and the verifier public key pinned in the
+authoritative prior group state. The pinned verifier signs JCS proof bytes in
+domain `heterodyne-control-mls-commit-evidence-v1`. Before issuing
+that carrier, the host MUST use a conforming MLS implementation to parse and
+cryptographically verify the Commit against the authoritative prior group,
+verify its Remove proposals remove exactly the compromised leaves, and verify
+the accepted successor tree equals the carrier. The pure reference validator
+checks the authenticated parser boundary, raw-byte digest, prior state, exact
+leaf sets, successor leaves, and signature; it does not pretend to implement
+an MLS database or substitute the carrier signature for MLS verification.
+
+Every fresh successor KeyPackage is a signed canonical NIP-01 kind `30443`
+event with standard `d`, `mls_protocol_version=1.0`, `i`, `ciphersuite`,
+`extensions`, `proposals`, and `app_components` metadata. The validator
+recomputes the event ID, verifies its BIP-340 signature by the successor
+account, decodes the base64 MLS KeyPackage bytes, checks their digest and exact
+KeyPackageRef/account carrier, and verifies the prior-group MLS verifier's
+signature in domain `heterodyne-control-mls-keypackage-evidence-v1`. The host MUST parse
+and validate the standard KeyPackage before that verifier signs. The
+authoritative inventory tracks both prior KeyPackageRefs and event IDs; fresh
+packages and fresh successor leaves MUST reuse neither. Every continuing
+subordinate contract binds its exact prior
 authority, fresh authorization ID, authority class, successor key, lifetime,
 permissions digest, and `contract_digest`; its lifetime MUST include
 `completed_at`. `contract_digest` is SHA-256

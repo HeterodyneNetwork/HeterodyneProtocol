@@ -1,11 +1,19 @@
 import { createHash } from "node:crypto";
 import { schnorr } from "@noble/curves/secp256k1";
 import { describe, expect, it } from "vitest";
-import { matchesAgentAttributionProfile } from "./agent-authorship.js";
+import {
+  injectAgentAttribution,
+  matchesAgentAttributionProfile,
+} from "./agent-authorship.js";
 import {
   authorizeNip46Signing,
   consumeNip46ConnectionSecret,
+  compromiseResetEvidenceBundleDigest,
+  executeClaimedAutomatedSigning,
+  keyPackageVerificationProofBytes,
+  mlsCommitEvidenceProofBytes,
   prepareAutomatedSigning,
+  resetStateEvidenceProofBytes,
   type AutomatedPublication,
   type CompromiseResetCompletion,
   type CompromiseResetGrant,
@@ -13,6 +21,7 @@ import {
   validateCompromiseReset,
 } from "./control-signing.js";
 import { bytesToHex, hexToBytes } from "./hex.js";
+import { jcsCanonicalize } from "./jcs.js";
 import { getEventId, getPublicKey, type NostrUnsignedEvent } from "./nostr.js";
 import { proofBytes } from "./proof-bytes.js";
 
@@ -115,9 +124,20 @@ const vaults = [
   },
 ];
 
+const rpcUnsignedEvent = {
+  pubkey: agentSigner,
+  created_at: 111,
+  kind: 1,
+  tags: [] as string[][],
+  content: "canonical NIP-46 payload",
+};
+const rpcRequest = {
+  id: hex("d"),
+  method: "sign_event",
+  params: [jcsCanonicalize(rpcUnsignedEvent)],
+};
+
 const request = {
-  request_id: hex("d"),
-  request_digest: hex("e"),
   grant_id: grant.grant_id,
   vault_id: vaultId,
   persona_active_key: persona,
@@ -125,20 +145,52 @@ const request = {
   signer_audience: audience,
   selected_signing_pubkey: agentSigner,
   key_class: "agent" as const,
-  method: "sign_event",
-  event_kind: 1,
-  event_bytes: 512,
+  rpc_request: rpcRequest,
   value_msats: 0,
   now: 110,
 };
 
-const usageState = {
-  grant_id: grant.grant_id,
-  window_started_at: 100,
-  consumed_request_count: 0,
-  revision: 4,
-  reservations: [],
-};
+function testGrantDigest(candidate: SigningGrant): string {
+  return createHash("sha256")
+    .update(proofBytes("heterodyne-control-signer-grant-state-v1", candidate))
+    .digest("hex");
+}
+
+function usageStateFor(candidate: SigningGrant) {
+  return {
+    grant_id: candidate.grant_id,
+    grant_digest: testGrantDigest(candidate),
+    authority: {
+      vault_id: candidate.vault_id,
+      persona_active_key: candidate.persona_active_key,
+      nip46_client_pubkey: candidate.nip46_client_pubkey,
+      signer_audience: candidate.signer_audience,
+      selected_signing_pubkey: candidate.selected_signing_pubkey,
+      key_class: candidate.key_class,
+    },
+    window_started_at: 100,
+    consumed_request_count: 0,
+    revision: 4,
+    reservations: [],
+  };
+}
+
+function testNip46RequestDigest(
+  candidate: SigningGrant,
+  rpc: typeof rpcRequest,
+  valueMsats = 0,
+): string {
+  return createHash("sha256")
+    .update(proofBytes("heterodyne-control-nip46-request-v1", {
+      grant_digest: testGrantDigest(candidate),
+      authority: usageStateFor(candidate).authority,
+      rpc_request: rpc,
+      value_msats: valueMsats,
+    }))
+    .digest("hex");
+}
+
+const usageState = usageStateFor(grant);
 
 const metadata = {
   requested_methods: ["sign_event"],
@@ -171,23 +223,93 @@ function automatedIntent(
   };
 }
 
-function intentDigest(publication: AutomatedPublication): string {
-  return createHash("sha256")
-    .update(proofBytes("heterodyne-control-agent-publish-intent-v1", publication))
-    .digest("hex");
+function automatedRequest(
+  publication: AutomatedPublication,
+  candidate = automationGrant,
+) {
+  const policy = candidate.automation_policy;
+  if (policy === undefined) throw new Error("automation fixture lacks policy");
+  const attributed = injectAgentAttribution({
+    kind: publication.kind,
+    tags: publication.tags,
+    agent_class: policy.agent_class,
+    persona: candidate.persona_active_key,
+    signer: candidate.selected_signing_pubkey,
+    expected_signer: candidate.selected_signing_pubkey,
+    signer_key_class: candidate.key_class,
+    oidc_scopes: policy.oidc_scopes,
+    agent_association: policy.agent_association ?? undefined,
+    expected_agent_association: policy.agent_association ?? undefined,
+    tier: policy.tier,
+  });
+  if (attributed.verdict !== "accept") throw new Error("automation fixture invalid");
+  const unsigned = {
+    pubkey: attributed.author,
+    created_at: publication.created_at,
+    kind: publication.kind,
+    tags: attributed.tags,
+    content: publication.content,
+  };
+  return {
+    ...request,
+    grant_id: candidate.grant_id,
+    vault_id: candidate.vault_id,
+    persona_active_key: candidate.persona_active_key,
+    nip46_client_pubkey: candidate.nip46_client_pubkey,
+    signer_audience: candidate.signer_audience,
+    selected_signing_pubkey: candidate.selected_signing_pubkey,
+    key_class: candidate.key_class,
+    rpc_request: {
+      id: request.rpc_request.id,
+      method: "sign_event",
+      params: [jcsCanonicalize(unsigned)],
+    },
+    value_msats: publication.value_msats,
+  };
 }
 
-function persistedUsage(requestDigest: string) {
+function persistedUsage(
+  automatedSigningRequest: ReturnType<typeof automatedRequest>,
+  candidate = automationGrant,
+) {
+  const candidateUsage = usageStateFor(candidate);
   return {
-    ...usageState,
+    ...candidateUsage,
     consumed_request_count: 1,
-    revision: usageState.revision + 1,
+    revision: candidateUsage.revision + 1,
     reservations: [{
-      request_id: request.request_id,
-      request_digest: requestDigest,
+      request_id: automatedSigningRequest.rpc_request.id,
+      request_digest: testNip46RequestDigest(
+        candidate,
+        automatedSigningRequest.rpc_request,
+        automatedSigningRequest.value_msats,
+      ),
+      rpc_request: automatedSigningRequest.rpc_request,
+      value_msats: automatedSigningRequest.value_msats,
+      window_started_at: candidateUsage.window_started_at,
+      reserved_at: automatedSigningRequest.now,
+      claimed_at: null,
+      completed_at: null,
       state: "reserved" as const,
       result_event_id: null,
+      failure_digest: null,
     }],
+  };
+}
+
+function claimedUsage(
+  automatedSigningRequest: ReturnType<typeof automatedRequest>,
+  candidate = automationGrant,
+) {
+  const persisted = persistedUsage(automatedSigningRequest, candidate);
+  return {
+    ...persisted,
+    revision: persisted.revision + 1,
+    reservations: persisted.reservations.map((reservation) => ({
+      ...reservation,
+      state: "claimed" as const,
+      claimed_at: automatedSigningRequest.now,
+    })),
   };
 }
 
@@ -224,24 +346,65 @@ describe("Control NIP-46 signer grant authorization", () => {
       authorization_mode: "reserved",
       usage_transition: {
         grant_id: grant.grant_id,
-        request_id: request.request_id,
-        request_digest: request.request_digest,
+        grant_digest: usageState.grant_digest,
+        authority: usageState.authority,
+        request_id: request.rpc_request.id,
+        request_digest: testNip46RequestDigest(grant, rpcRequest),
+        rpc_request: rpcRequest,
+        value_msats: 0,
         expected_revision: 4,
         next_revision: 5,
         prior_window_started_at: 100,
         window_started_at: 100,
         prior_consumed_request_count: 0,
         consumed_request_count: 1,
+        reserved_at: request.now,
         reservation_state: "reserved",
       },
     });
   });
 
+  it("derives the reservation digest from the canonical standard NIP-46 request", () => {
+    const result = authorize({
+      request: {
+        ...request,
+        rpc_request: rpcRequest,
+      },
+    });
+    expect(result).toMatchObject({
+      verdict: "accept",
+      usage_transition: {
+        request_digest: testNip46RequestDigest(grant, rpcRequest),
+      },
+    });
+  });
+
   it("uses authoritative window consumption instead of a caller-selected count", () => {
+    const reservations = Array.from({ length: grant.limits.request_count }, (_, index) => {
+      const historicalRpc = {
+        id: index.toString(16).padStart(64, "0"),
+        method: "sign_event",
+        params: [jcsCanonicalize(rpcUnsignedEvent)],
+      };
+      return {
+        request_id: historicalRpc.id,
+        request_digest: testNip46RequestDigest(grant, historicalRpc),
+        rpc_request: historicalRpc,
+        value_msats: 0,
+        window_started_at: usageState.window_started_at,
+        reserved_at: 101,
+        claimed_at: null,
+        completed_at: null,
+        state: "reserved" as const,
+        result_event_id: null,
+        failure_digest: null,
+      };
+    });
     expect(authorize({
       usage_state: {
         ...usageState,
         consumed_request_count: grant.limits.request_count,
+        reservations,
       },
     })).toEqual({
       verdict: "reject",
@@ -255,15 +418,56 @@ describe("Control NIP-46 signer grant authorization", () => {
         ...usageState,
         consumed_request_count: 1,
         reservations: [{
-          request_id: request.request_id,
-          request_digest: request.request_digest,
+          request_id: request.rpc_request.id,
+          request_digest: testNip46RequestDigest(grant, rpcRequest),
+          rpc_request: rpcRequest,
+          value_msats: 0,
+          window_started_at: usageState.window_started_at,
+          reserved_at: 101,
+          claimed_at: 102,
+          completed_at: 103,
           state: "committed",
           result_event_id: hex("f"),
+          failure_digest: null,
         }],
       },
     })).toEqual({
       verdict: "replay",
       event_id: hex("f"),
+    });
+  });
+
+  it("rejects replay state copied from a different grant authority tuple", () => {
+    expect(authorize({
+      usage_state: {
+        ...usageState,
+        grant_digest: hex("0"),
+        authority: {
+          vault_id: vaults[0].vault_id,
+          persona_active_key: otherPersona,
+          nip46_client_pubkey: client,
+          signer_audience: audience,
+          selected_signing_pubkey: otherSigner,
+          key_class: "agent",
+        },
+        consumed_request_count: 1,
+        reservations: [{
+          request_id: request.rpc_request.id,
+          request_digest: testNip46RequestDigest(grant, rpcRequest),
+          rpc_request: rpcRequest,
+          value_msats: 0,
+          window_started_at: usageState.window_started_at,
+          reserved_at: 101,
+          claimed_at: 102,
+          completed_at: 103,
+          state: "committed",
+          result_event_id: hex("f"),
+          failure_digest: null,
+        }],
+      },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "control-usage-binding-mismatch",
     });
   });
 
@@ -324,6 +528,64 @@ describe("Control NIP-46 signer grant authorization", () => {
     })).toEqual({
       verdict: "reject",
       reason_code: "control-signing-grant-unauthenticated",
+    });
+  });
+
+  it("does not permit an active child after an absorbing revoked grant", () => {
+    const revoked = resignGrant({
+      ...grant,
+      state: "revoked",
+      revoked_at: 105,
+    });
+    const { signature: _signature, ...unsigned } = grant;
+    const resurrected = signGrant({
+      ...unsigned,
+      grant_id: hex("c"),
+      predecessor: revoked.grant_id,
+      issued_at: 106,
+    });
+    expect(authorize({
+      grant_candidates: [revoked, resurrected],
+      presented_grant: resurrected,
+      usage_state: { ...usageState, grant_id: resurrected.grant_id },
+      request: { ...request, grant_id: resurrected.grant_id },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "control-signing-grant-stale",
+    });
+  });
+
+  it("rejects a predecessor chain with backdated child issuance", () => {
+    const { signature: _signature, ...unsigned } = grant;
+    const backdated = signGrant({
+      ...unsigned,
+      grant_id: hex("c"),
+      predecessor: grant.grant_id,
+      issued_at: grant.issued_at - 1,
+    });
+    expect(authorize({
+      grant_candidates: [grant, backdated],
+      presented_grant: backdated,
+      usage_state: { ...usageState, grant_id: backdated.grant_id },
+      request: { ...request, grant_id: backdated.grant_id },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "control-signing-grant-stale",
+    });
+  });
+
+  it("rejects a revocation timestamp before grant issuance", () => {
+    const impossible = resignGrant({
+      ...grant,
+      state: "revoked",
+      revoked_at: grant.issued_at - 1,
+    });
+    expect(authorize({
+      grant_candidates: [impossible],
+      presented_grant: impossible,
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "control-signing-grant-invalid",
     });
   });
 
@@ -392,7 +654,14 @@ describe("Control NIP-46 signer grant authorization", () => {
           custody: "local",
         }],
       }],
-      request: { ...request, selected_signing_pubkey: persona },
+      request: {
+        ...request,
+        selected_signing_pubkey: persona,
+        rpc_request: {
+          ...rpcRequest,
+          params: [jcsCanonicalize({ ...rpcUnsignedEvent, pubkey: persona })],
+        },
+      },
       client_metadata: metadata,
     })).toEqual({
       verdict: "reject",
@@ -436,6 +705,10 @@ describe("Control NIP-46 signer grant authorization", () => {
       ...request,
       selected_signing_pubkey: persona,
       key_class: "persona" as const,
+      rpc_request: {
+        ...rpcRequest,
+        params: [jcsCanonicalize({ ...rpcUnsignedEvent, pubkey: persona })],
+      },
     };
     const personaVaults = [{
       vault_id: vaultId,
@@ -448,7 +721,7 @@ describe("Control NIP-46 signer grant authorization", () => {
     }];
     expect(authorizeNip46Signing({
       grant_candidates: [personaGrant],
-      usage_state: usageState,
+      usage_state: usageStateFor(personaGrant),
       presented_grant: structuredClone(personaGrant),
       vaults: personaVaults,
       request: personaRequest,
@@ -578,13 +851,14 @@ describe("OIDC activation and automated publication", () => {
   it("injects valid Comms attribution before the signer sees an automated event", () => {
     let signerSawAttribution = false;
     const publication = automatedIntent();
-    const result = prepareAutomatedSigning({
+    const signingRequest = automatedRequest(publication);
+    const result = executeClaimedAutomatedSigning({
       authorization: {
         grant_candidates: [automationGrant],
-        usage_state: persistedUsage(intentDigest(publication)),
+        usage_state: claimedUsage(signingRequest),
         presented_grant: structuredClone(automationGrant),
         vaults,
-        request: { ...request, request_digest: intentDigest(publication) },
+        request: signingRequest,
         client_metadata: metadata,
       },
       publication,
@@ -596,14 +870,16 @@ describe("OIDC activation and automated publication", () => {
     expect(signerSawAttribution).toBe(true);
     expect(result).toMatchObject({
       verdict: "accept",
-      reservation_revision: 5,
-      commit_transition: {
+      completion_transition: {
         grant_id: automationGrant.grant_id,
-        request_id: request.request_id,
-        request_digest: intentDigest(publication),
-        expected_revision: 5,
-        next_revision: 6,
-        prior_reservation_state: "reserved",
+        request_id: signingRequest.rpc_request.id,
+        request_digest: testNip46RequestDigest(
+          automationGrant,
+          signingRequest.rpc_request,
+        ),
+        expected_revision: 6,
+        next_revision: 7,
+        prior_reservation_state: "claimed",
         reservation_state: "committed",
       },
       event: {
@@ -612,16 +888,17 @@ describe("OIDC activation and automated publication", () => {
     });
   });
 
-  it("rejects a request digest copied from a different automated intent", () => {
+  it("rejects a canonical NIP-46 request copied from a different automated intent", () => {
     const original = automatedIntent();
     const altered = automatedIntent({ content: "different caller-selected content" });
-    const result = prepareAutomatedSigning({
+    const signingRequest = automatedRequest(original);
+    const result = executeClaimedAutomatedSigning({
       authorization: {
         grant_candidates: [automationGrant],
-        usage_state: persistedUsage(intentDigest(original)),
+        usage_state: claimedUsage(signingRequest),
         presented_grant: structuredClone(automationGrant),
         vaults,
-        request: { ...request, request_digest: intentDigest(original) },
+        request: signingRequest,
         client_metadata: metadata,
       },
       publication: altered,
@@ -636,13 +913,14 @@ describe("OIDC activation and automated publication", () => {
   it("does not invoke the signer before the authoritative reservation is persisted", () => {
     let signerCalled = false;
     const publication = automatedIntent();
+    const signingRequest = automatedRequest(publication);
     const result = prepareAutomatedSigning({
       authorization: {
         grant_candidates: [automationGrant],
-        usage_state: usageState,
+        usage_state: usageStateFor(automationGrant),
         presented_grant: structuredClone(automationGrant),
         vaults,
-        request: { ...request, request_digest: intentDigest(publication) },
+        request: signingRequest,
         client_metadata: metadata,
       },
       publication,
@@ -656,6 +934,40 @@ describe("OIDC activation and automated publication", () => {
       reason_code: "control-operation-reservation-required",
     });
     expect(signerCalled).toBe(false);
+  });
+
+  it("requires an authoritative reserved-to-claimed CAS before invoking the signer", () => {
+    let signerCalled = false;
+    const publication = automatedIntent();
+    const signingRequest = automatedRequest(publication);
+    const result = prepareAutomatedSigning({
+      authorization: {
+        grant_candidates: [automationGrant],
+        usage_state: persistedUsage(signingRequest),
+        presented_grant: structuredClone(automationGrant),
+        vaults,
+        request: signingRequest,
+        client_metadata: metadata,
+      },
+      publication,
+      sign: (event) => {
+        signerCalled = true;
+        return signNostrEvent(event);
+      },
+    });
+    expect(signerCalled).toBe(false);
+    expect(result).toMatchObject({
+      verdict: "accept",
+      authorization_mode: "claim-required",
+      claim_transition: {
+        grant_id: automationGrant.grant_id,
+        request_id: signingRequest.rpc_request.id,
+        expected_revision: 5,
+        next_revision: 6,
+        prior_reservation_state: "reserved",
+        reservation_state: "claimed",
+      },
+    });
   });
 
   it("derives attribution policy from the authenticated grant and treats intent fields as hints", () => {
@@ -688,13 +1000,14 @@ describe("OIDC activation and automated publication", () => {
       agent_association: null,
       tier: 2 as const,
     };
+    const signingRequest = automatedRequest(policyIntent, policyGrant);
     const result = prepareAutomatedSigning({
       authorization: {
         grant_candidates: [policyGrant],
         usage_state: usageState,
         presented_grant: structuredClone(policyGrant),
         vaults,
-        request: { ...request, request_digest: intentDigest(policyIntent) },
+        request: signingRequest,
         client_metadata: metadata,
       },
       publication: policyIntent,
@@ -753,7 +1066,10 @@ describe("OIDC activation and automated publication", () => {
           ...request,
           selected_signing_pubkey: persona,
           key_class: "persona",
-          request_digest: intentDigest(publication),
+          rpc_request: {
+            ...rpcRequest,
+            params: [jcsCanonicalize({ ...rpcUnsignedEvent, pubkey: persona })],
+          },
         },
         client_metadata: metadata,
       },
@@ -785,8 +1101,10 @@ describe("OIDC activation and automated publication", () => {
         vaults,
         request: {
           ...request,
-          event_kind: 2,
-          request_digest: intentDigest(publication),
+          rpc_request: {
+            ...rpcRequest,
+            params: [jcsCanonicalize({ ...rpcUnsignedEvent, kind: 2 })],
+          },
         },
         client_metadata: { ...metadata, requested_event_kinds: [2] },
       },
@@ -805,33 +1123,41 @@ describe("OIDC activation and automated publication", () => {
 
   it("rejects a shape-valid returned event ID and signature that do not verify", () => {
     const publication = automatedIntent();
-    const result = prepareAutomatedSigning({
+    const signingRequest = automatedRequest(publication);
+    const result = executeClaimedAutomatedSigning({
       authorization: {
         grant_candidates: [automationGrant],
-        usage_state: persistedUsage(intentDigest(publication)),
+        usage_state: claimedUsage(signingRequest),
         presented_grant: structuredClone(automationGrant),
         vaults,
-        request: { ...request, request_digest: intentDigest(publication) },
+        request: signingRequest,
         client_metadata: metadata,
       },
       publication,
       sign: (event) => ({ ...event, id: hex("d"), sig: "e".repeat(128) }),
     });
-    expect(result).toEqual({
-      verdict: "reject",
-      reason_code: "control-signed-event-invalid",
+    expect(result).toMatchObject({
+      verdict: "indeterminate",
+      reason_code: "control-signer-effect-indeterminate",
+      completion_transition: {
+        prior_reservation_state: "claimed",
+        reservation_state: "indeterminate",
+        expected_revision: 6,
+        next_revision: 7,
+      },
     });
   });
 
   it("rejects extra non-NIP-01 fields on an otherwise valid signed event", () => {
     const publication = automatedIntent();
-    const result = prepareAutomatedSigning({
+    const signingRequest = automatedRequest(publication);
+    const result = executeClaimedAutomatedSigning({
       authorization: {
         grant_candidates: [automationGrant],
-        usage_state: persistedUsage(intentDigest(publication)),
+        usage_state: claimedUsage(signingRequest),
         presented_grant: structuredClone(automationGrant),
         vaults,
-        request: { ...request, request_digest: intentDigest(publication) },
+        request: signingRequest,
         client_metadata: metadata,
       },
       publication,
@@ -840,9 +1166,41 @@ describe("OIDC activation and automated publication", () => {
         grant_id: automationGrant.grant_id,
       }),
     });
-    expect(result).toEqual({
-      verdict: "reject",
-      reason_code: "control-signed-event-invalid",
+    expect(result).toMatchObject({
+      verdict: "indeterminate",
+      reason_code: "control-signer-effect-indeterminate",
+      completion_transition: {
+        prior_reservation_state: "claimed",
+        reservation_state: "indeterminate",
+      },
+    });
+  });
+
+  it("makes a thrown claimed signer effect durably indeterminate", () => {
+    const publication = automatedIntent();
+    const signingRequest = automatedRequest(publication);
+    const result = executeClaimedAutomatedSigning({
+      authorization: {
+        grant_candidates: [automationGrant],
+        usage_state: claimedUsage(signingRequest),
+        presented_grant: structuredClone(automationGrant),
+        vaults,
+        request: signingRequest,
+        client_metadata: metadata,
+      },
+      publication,
+      sign: () => {
+        throw new Error("remote signer outcome unknown");
+      },
+    });
+    expect(result).toMatchObject({
+      verdict: "indeterminate",
+      reason_code: "control-signer-effect-indeterminate",
+      completion_transition: {
+        prior_reservation_state: "claimed",
+        reservation_state: "indeterminate",
+        failure_digest: expect.stringMatching(/^[0-9a-f]{64}$/),
+      },
     });
   });
 
@@ -856,6 +1214,7 @@ describe("OIDC activation and automated publication", () => {
       tags: [],
       content: "larger than the grant after attribution",
     });
+    const signingRequest = automatedRequest(publication, tinyGrant);
     const result = prepareAutomatedSigning({
       authorization: {
         grant_candidates: [tinyGrant],
@@ -863,9 +1222,7 @@ describe("OIDC activation and automated publication", () => {
         presented_grant: structuredClone(tinyGrant),
         vaults,
         request: {
-          ...request,
-          event_bytes: 1,
-          request_digest: intentDigest(publication),
+          ...signingRequest,
         },
         client_metadata: metadata,
       },
@@ -910,6 +1267,7 @@ describe("Control compromise reset", () => {
   const requiredReset = {
     nip46_oidc_grant_ids: [grant.grant_id],
     client_ids: [client],
+    repository_ids: [rid(9)],
     delegate_ids: [rid(2)],
     node_ids: [rid(3)],
     agent_ids: [agentSigner],
@@ -917,7 +1275,7 @@ describe("Control compromise reset", () => {
     marmot_leaf_ids: [rid(4)],
     reachable_groups: [{ group_id: rid(5), epoch: 7 }],
     unreachable_group_ids: [rid(6)],
-    subordinate_authority_ids: [rid(2), rid(3), agentSigner],
+    subordinate_authority_ids: [client, rid(9), rid(2), rid(3), agentSigner, rid(67)],
   };
   const authoritativeInventory = {
     inventory_id: rid(100),
@@ -925,8 +1283,30 @@ describe("Control compromise reset", () => {
     observed_at: 120,
     persona_active_key: persona,
     ...structuredClone(requiredReset),
+    reachable_groups: [{
+      group_id: rid(5),
+      epoch: 7,
+      state_digest: rid(10),
+      mls_verifier_pubkey: assuranceAuthority,
+      leaves: [{
+        leaf_id: rid(4),
+        leaf_index: 0,
+        account_key: persona,
+        keypackage_id: rid(11),
+      }],
+    }],
     existing_transition_ids: [rid(7)],
     existing_keypackage_event_ids: [rid(8)],
+    existing_keypackage_ids: [rid(11)],
+    authorization_records: [
+      { authority_class: "nip46-oidc-grant" as const, subject_id: grant.grant_id, authorization_id: grant.grant_id, authorization_digest: rid(60) },
+      { authority_class: "client" as const, subject_id: client, authorization_id: client, authorization_digest: rid(61) },
+      { authority_class: "repository" as const, subject_id: rid(9), authorization_id: rid(9), authorization_digest: rid(62) },
+      { authority_class: "delegate" as const, subject_id: rid(2), authorization_id: rid(2), authorization_digest: rid(63) },
+      { authority_class: "node" as const, subject_id: rid(3), authorization_id: rid(3), authorization_digest: rid(64) },
+      { authority_class: "agent" as const, subject_id: agentSigner, authorization_id: agentSigner, authorization_digest: rid(65) },
+      { authority_class: "trusted-seed" as const, subject_id: requiredReset.trusted_seed_nids[0], authorization_id: rid(67), authorization_digest: rid(66) },
+    ],
   };
   const inventoryDigest = createHash("sha256")
     .update(proofBytes(
@@ -956,6 +1336,7 @@ describe("Control compromise reset", () => {
   const transitionEvidence = {
     nip46_oidc_grants: [{ subject_id: grant.grant_id, evidence_id: rid(20) }],
     clients: [{ subject_id: client, evidence_id: rid(21) }],
+    repositories: [{ subject_id: rid(9), evidence_id: rid(29) }],
     delegates: [{ subject_id: rid(2), evidence_id: rid(22) }],
     nodes: [{ subject_id: rid(3), evidence_id: rid(23) }],
     agents: [{ subject_id: agentSigner, evidence_id: rid(24) }],
@@ -975,7 +1356,7 @@ describe("Control compromise reset", () => {
   const subordinateContract = (
     prior_authority_id: string,
     authorization_id: string,
-    authority_class: "delegate" | "node" | "agent",
+    authority_class: "client" | "repository" | "delegate" | "node" | "agent" | "trusted-seed",
     permissions_digest: string,
   ) => {
     const unsigned = {
@@ -995,10 +1376,114 @@ describe("Control compromise reset", () => {
     };
   };
   const subordinateReauthorizations = [
+    subordinateContract(client, rid(43), "client", rid(53)),
+    subordinateContract(rid(9), rid(44), "repository", rid(54)),
     subordinateContract(rid(2), rid(40), "delegate", rid(50)),
     subordinateContract(rid(3), rid(41), "node", rid(51)),
     subordinateContract(agentSigner, rid(42), "agent", rid(52)),
+    subordinateContract(rid(67), rid(45), "trusted-seed", rid(55)),
   ];
+  const signStateEvidence = (
+    value: Omit<import("./control-signing.js").ResetStateEvidence, "signature">,
+  ) => ({
+    ...value,
+    signature: bytesToHex(schnorr.sign(
+      resetStateEvidenceProofBytes(value),
+      hexToBytes(personaSecret),
+      "00".repeat(32),
+    )),
+  });
+  const stateEvidence = [
+    ["nip46-oidc-grant", grant.grant_id, rid(20), rid(60), "revoked"],
+    ["client", client, rid(21), rid(61), "invalidated"],
+    ["repository", rid(9), rid(29), rid(62), "invalidated"],
+    ["delegate", rid(2), rid(22), rid(63), "invalidated"],
+    ["node", rid(3), rid(23), rid(64), "invalidated"],
+    ["agent", agentSigner, rid(24), rid(65), "invalidated"],
+    ["trusted-seed", requiredReset.trusted_seed_nids[0], rid(25), rid(66), "invalidated"],
+    ["stalled-group", rid(6), rid(28), authoritativeInventory.inventory_id, "stalled"],
+  ].map(([authority_class, subject_id, evidence_id, prior_authorization_digest, action]) =>
+    signStateEvidence({
+      evidence_id,
+      authority_class: authority_class as import("./control-signing.js").ResetStateEvidence["authority_class"],
+      subject_id,
+      prior_authorization_digest,
+      action: action as import("./control-signing.js").ResetStateEvidence["action"],
+      effective_at: 124,
+      recovery_id: recoveryGrant.recovery_id,
+      signer: persona,
+    })
+  );
+  const keyPackageContent = Buffer.from("standard-mls-keypackage-wire-v1", "utf8");
+  const keyPackageEvent = signNostrEvent({
+    pubkey: otherPersona,
+    created_at: 125,
+    kind: 30443,
+    tags: [
+      ["d", rid(33)],
+      ["mls_protocol_version", "1.0"],
+      ["i", rid(30)],
+      ["ciphersuite", "MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519"],
+      ["extensions", "required_capabilities"],
+      ["proposals", "add", "update", "remove"],
+      ["app_components", "marmot"],
+    ],
+    content: keyPackageContent.toString("base64"),
+  }, otherPersonaSecret) as CompromiseResetCompletion["fresh_keypackages"][number]["event"];
+  const keyPackageUnsigned = {
+    keypackage_id: rid(30),
+    account_key: otherPersona,
+    group_id: rid(5),
+    event_id: keyPackageEvent.id,
+    event: keyPackageEvent,
+    content_sha256: createHash("sha256").update(keyPackageContent).digest("hex"),
+    mls_verifier_pubkey: assuranceAuthority,
+  };
+  const freshKeyPackage = {
+    ...keyPackageUnsigned,
+    verification_signature: bytesToHex(schnorr.sign(
+      keyPackageVerificationProofBytes({
+        ...keyPackageUnsigned,
+        verification_signature: "",
+      }),
+      hexToBytes(assuranceSecret),
+      "00".repeat(32),
+    )),
+  };
+  const commitBytes = Buffer.from("verified-mls-remove-commit-v1", "utf8");
+  const commitUnsigned = {
+    evidence_id: rid(27),
+    recovery_id: recoveryGrant.recovery_id,
+    group_id: rid(5),
+    prior_epoch: 7,
+    next_epoch: 8,
+    prior_state_digest: rid(10),
+    next_state_digest: rid(12),
+    commit_bytes_base64: commitBytes.toString("base64"),
+    commit_sha256: createHash("sha256").update(commitBytes).digest("hex"),
+    removed_leaf_ids: [rid(4)],
+    continuing_leaf_ids: [] as string[],
+    successor_leaves: [{
+      leaf_id: rid(32),
+      leaf_index: 1,
+      account_key: otherPersona,
+      keypackage_id: rid(30),
+    }],
+    verified_at: 126,
+    mls_verifier_pubkey: assuranceAuthority,
+  };
+  const groupCommit = {
+    ...commitUnsigned,
+    verification_signature: bytesToHex(schnorr.sign(
+      mlsCommitEvidenceProofBytes(commitUnsigned),
+      hexToBytes(assuranceSecret),
+      "00".repeat(32),
+    )),
+  };
+  const evidenceBundle = {
+    state_transitions: stateEvidence,
+    group_commits: [groupCommit],
+  };
   const completion = signRecoveryCompletion({
     profile: "heterodyne.control.compromise-reset-completion.v1",
     spec_version: "heterodyne/0.5.0",
@@ -1011,6 +1496,7 @@ describe("Control compromise reset", () => {
     evidence_revision: 13,
     revoked_nip46_oidc_grant_ids: [grant.grant_id],
     invalidated_client_ids: [client],
+    invalidated_repository_ids: [rid(9)],
     invalidated_delegate_ids: [rid(2)],
     invalidated_node_ids: [rid(3)],
     invalidated_agent_ids: [agentSigner],
@@ -1018,13 +1504,10 @@ describe("Control compromise reset", () => {
     removed_marmot_leaf_ids: [rid(4)],
     advanced_group_ids: [rid(5)],
     stalled_group_ids: [rid(6)],
-    fresh_keypackages: [{
-      keypackage_id: rid(30),
-      account_key: otherPersona,
-      event_id: rid(31),
-    }],
+    fresh_keypackages: [freshKeyPackage],
     subordinate_reauthorizations: subordinateReauthorizations,
     transition_evidence: transitionEvidence,
+    evidence_bundle_digest: compromiseResetEvidenceBundleDigest(evidenceBundle),
     completed_at: 130,
     signer: otherPersona,
   });
@@ -1036,6 +1519,7 @@ describe("Control compromise reset", () => {
     transition_evidence: completion.transition_evidence,
     fresh_keypackages: completion.fresh_keypackages,
     subordinate_reauthorizations: completion.subordinate_reauthorizations,
+    evidence_bundle: evidenceBundle,
   };
 
   function validateReset(overrides: Record<string, unknown> = {}) {
@@ -1050,6 +1534,7 @@ describe("Control compromise reset", () => {
         transition_evidence: candidateCompletion.transition_evidence,
         fresh_keypackages: candidateCompletion.fresh_keypackages,
         subordinate_reauthorizations: candidateCompletion.subordinate_reauthorizations,
+        evidence_bundle: authoritativeEvidence.evidence_bundle,
       },
       pinned_assurance_authority: null,
       now: 130,
@@ -1149,7 +1634,7 @@ describe("Control compromise reset", () => {
         ...completionUnsigned,
         successor_active_key: persona,
         signer: persona,
-        fresh_keypackages: [{ keypackage_id: rid(30), account_key: persona, event_id: rid(31) }],
+        fresh_keypackages: [{ ...freshKeyPackage, account_key: persona }],
       }, personaSecret),
     })).toEqual({
       verdict: "reject",
@@ -1208,8 +1693,7 @@ describe("Control compromise reset", () => {
       completion: signRecoveryCompletion({
         ...completionUnsigned,
         fresh_keypackages: [{
-          keypackage_id: rid(30),
-          account_key: otherPersona,
+          ...freshKeyPackage,
           event_id: grant.grant_id,
         }],
       }),
@@ -1225,7 +1709,12 @@ describe("Control compromise reset", () => {
       ...unsigned,
       fresh_keypackages: [
         ...completion.fresh_keypackages,
-        { keypackage_id: rid(60), account_key: persona, event_id: rid(61) },
+        {
+          ...freshKeyPackage,
+          keypackage_id: rid(60),
+          account_key: persona,
+          event_id: rid(61),
+        },
       ],
     });
     expect(validateReset({ completion: mixedAccountCompletion })).toEqual({
@@ -1251,6 +1740,99 @@ describe("Control compromise reset", () => {
       authoritative_evidence: {
         ...authoritativeEvidence,
         observed_at: 131,
+      },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "control-compromise-reset-evidence-invalid",
+    });
+  });
+
+  it("rejects an opaque reset evidence identifier without an authenticated state transition", () => {
+    const { signature: _signature, ...completionUnsigned } = completion;
+    const opaqueEvidence = {
+      ...completion.transition_evidence,
+      nip46_oidc_grants: [{
+        subject_id: grant.grant_id,
+        evidence_id: rid(90),
+      }],
+    };
+    expect(validateReset({
+      completion: signRecoveryCompletion({
+        ...completionUnsigned,
+        transition_evidence: opaqueEvidence,
+      }),
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "control-compromise-reset-evidence-invalid",
+    });
+  });
+
+  it("rejects a grafted authoritative invalidation record with no valid state signature", () => {
+    const { signature: _signature, ...completionUnsigned } = completion;
+    const graftedBundle = {
+      ...evidenceBundle,
+      state_transitions: [
+        { ...stateEvidence[0], effective_at: 125 },
+        ...stateEvidence.slice(1),
+      ],
+    };
+    const graftedCompletion = signRecoveryCompletion({
+      ...completionUnsigned,
+      evidence_bundle_digest: compromiseResetEvidenceBundleDigest(graftedBundle),
+    });
+    expect(validateReset({
+      completion: graftedCompletion,
+      authoritative_evidence: {
+        ...authoritativeEvidence,
+        evidence_bundle: graftedBundle,
+      },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "control-compromise-reset-evidence-invalid",
+    });
+  });
+
+  it("rejects a grafted MLS Remove/Commit carrier not signed by the prior-group verifier", () => {
+    const { signature: _signature, ...completionUnsigned } = completion;
+    const graftedBundle = {
+      ...evidenceBundle,
+      group_commits: [{
+        ...groupCommit,
+        next_state_digest: rid(13),
+      }],
+    };
+    const graftedCompletion = signRecoveryCompletion({
+      ...completionUnsigned,
+      evidence_bundle_digest: compromiseResetEvidenceBundleDigest(graftedBundle),
+    });
+    expect(validateReset({
+      completion: graftedCompletion,
+      authoritative_evidence: {
+        ...authoritativeEvidence,
+        evidence_bundle: graftedBundle,
+      },
+    })).toEqual({
+      verdict: "reject",
+      reason_code: "control-compromise-reset-evidence-invalid",
+    });
+  });
+
+  it("verifies the canonical NIP-01 id and BIP-340 signature of successor KeyPackages", () => {
+    const { signature: _signature, ...completionUnsigned } = completion;
+    const invalidPackage = {
+      ...freshKeyPackage,
+      event: { ...freshKeyPackage.event, id: rid(99) },
+      event_id: rid(99),
+    };
+    const invalidCompletion = signRecoveryCompletion({
+      ...completionUnsigned,
+      fresh_keypackages: [invalidPackage],
+    });
+    expect(validateReset({
+      completion: invalidCompletion,
+      authoritative_evidence: {
+        ...authoritativeEvidence,
+        fresh_keypackages: [invalidPackage],
       },
     })).toEqual({
       verdict: "reject",

@@ -1,6 +1,48 @@
 {
   "proof_domains": [
     {
+      "id": "heterodyne-control-signer-grant-v1",
+      "owner": "control", "first_version": "heterodyne/0.5.0", "status": "draft",
+      "bound_members": ["unsigned_grant"],
+      "suites": ["bip340"],
+      "description": "Active persona authorization of one exact closed NIP-46 signer grant."
+    },
+    {
+      "id": "heterodyne-control-compromise-reset-grant-v1",
+      "owner": "control", "first_version": "heterodyne/0.5.0", "status": "draft",
+      "bound_members": ["unsigned_grant"],
+      "suites": ["bip340"],
+      "description": "Old active account or pinned Assurance authority authorization of one exact compromise reset."
+    },
+    {
+      "id": "heterodyne-control-compromise-reset-completion-v1",
+      "owner": "control", "first_version": "heterodyne/0.5.0", "status": "draft",
+      "bound_members": ["unsigned_completion"],
+      "suites": ["bip340"],
+      "description": "Successor account acceptance of one exact reset completion and evidence-bundle digest."
+    },
+    {
+      "id": "heterodyne-control-reset-state-evidence-v1",
+      "owner": "control", "first_version": "heterodyne/0.5.0", "status": "draft",
+      "bound_members": ["action", "authority_class", "effective_at", "evidence_id", "prior_authorization_digest", "recovery_id", "signer", "subject_id"],
+      "suites": ["bip340"],
+      "description": "Authenticated individual revocation, invalidation, or stalled-state evidence."
+    },
+    {
+      "id": "heterodyne-control-mls-commit-evidence-v1",
+      "owner": "control", "first_version": "heterodyne/0.5.0", "status": "draft",
+      "bound_members": ["unsigned_commit_evidence"],
+      "suites": ["bip340"],
+      "description": "Prior-group-verifier attestation over raw MLS Commit bytes, prior state, exact leaf transition, and successor state."
+    },
+    {
+      "id": "heterodyne-control-mls-keypackage-evidence-v1",
+      "owner": "control", "first_version": "heterodyne/0.5.0", "status": "draft",
+      "bound_members": ["unsigned_keypackage_evidence"],
+      "suites": ["bip340"],
+      "description": "Pinned MLS verifier attestation over a successor-bound standard Nostr KeyPackage event and decoded package binding."
+    },
+    {
       "id": "heterodyne-nid-binding-v1",
       "owner": "assurance",
       "first_version": "heterodyne/0.5.0",

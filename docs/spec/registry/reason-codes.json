@@ -1886,6 +1886,24 @@
       "spec_refs": ["heterodyne:0.5.0#control-request-processing"]
     },
     {
+      "code": "control-nip46-request-invalid",
+      "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
+      "description": "The presented NIP-46 request is not the exact closed canonical standard request or its sign_event parameter is not one canonical unsigned NIP-01 event for the selected signer.",
+      "spec_refs": ["heterodyne:0.5.0#control-request-processing"]
+    },
+    {
+      "code": "control-usage-binding-mismatch",
+      "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
+      "description": "Authoritative usage or replay state is not bound to the collision-resistant digest and complete authority tuple of the authenticated current grant.",
+      "spec_refs": ["heterodyne:0.5.0#control-request-processing"]
+    },
+    {
+      "code": "control-signer-effect-indeterminate",
+      "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
+      "description": "A claimed signing operation produced an invalid, failed, timed-out, or otherwise uncertain signer effect and requires a durable non-reusable indeterminate transition.",
+      "spec_refs": ["heterodyne:0.5.0#control-agent-requirements"]
+    },
+    {
       "code": "control-activation-binding-mismatch",
       "owner": "control", "status": "draft", "first_version": "heterodyne/0.5.0",
       "description": "A NIP-46 activation differs from its exact approved OIDC, grant, persona, client, audience, signer, or key-class binding.",
