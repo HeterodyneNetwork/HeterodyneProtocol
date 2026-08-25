@@ -69,7 +69,8 @@
     },
     "issued_at": {
       "type": "integer",
-      "minimum": 0
+      "minimum": 0,
+      "maximum": 9007199254740991
     },
     "signature": {
       "type": "string",
@@ -85,11 +86,13 @@
     },
     "sequence": {
       "type": "integer",
-      "minimum": 0
+      "minimum": 0,
+      "maximum": 9007199254740991
     },
     "materialized_at": {
       "type": "integer",
-      "minimum": 0
+      "minimum": 0,
+      "maximum": 9007199254740991
     },
     "workspace_policy_head": {
       "type": "string",

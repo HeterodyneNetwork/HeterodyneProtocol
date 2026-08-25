@@ -249,6 +249,129 @@
       "description": "The current Marmot administrator signs the complete closed private-relay ACL projection except its signature member."
     },
     {
+      "id": "heterodyne-workspace-affiliation-evidence-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "authority_checkpoint",
+        "expires_at",
+        "observed_at",
+        "policy_head",
+        "predecessor",
+        "profile",
+        "relationship_id",
+        "repository_head",
+        "repository_rid",
+        "source_account",
+        "source_role_id",
+        "source_workspace_key",
+        "spec_version"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "The source workspace active key signs closed current affiliation evidence bound to the relationship, source role and account, accepted repository state, and authority tuple."
+    },
+    {
+      "id": "heterodyne-workspace-grant-approval-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "approver_key",
+        "authority_checkpoint",
+        "expires_at",
+        "issued_at",
+        "operation_digest",
+        "policy_head",
+        "predecessor",
+        "profile",
+        "spec_version",
+        "workspace_key"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "An authorized approver signs one closed grant-approval record bound to the exact Workspace authority tuple and grant-operation digest."
+    },
+    {
+      "id": "heterodyne-workspace-joint-delegate-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "authority_checkpoint",
+        "delegate_key",
+        "expires_at",
+        "issued_at",
+        "joint_workspace_key",
+        "operation_digest",
+        "policy_head",
+        "predecessor",
+        "profile",
+        "relationship_id",
+        "resource_scope",
+        "spec_version"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "A configured joint-workspace delegate signs one closed proof bound to the exact joint authority tuple, operation digest, scope, and validity interval."
+    },
+    {
+      "id": "heterodyne-workspace-grant-operation-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "activates_at",
+        "activation",
+        "authority_checkpoint",
+        "capabilities",
+        "delegable",
+        "evidence_ids",
+        "expires_at",
+        "grant_id",
+        "invitation",
+        "issued_at",
+        "object_type",
+        "policy_head",
+        "predecessor",
+        "recipient",
+        "repository_head",
+        "repository_rid",
+        "resource_scope",
+        "role_id",
+        "spec_version",
+        "subject_account",
+        "target_device",
+        "workspace_key"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "The grant-operation prehash bound into approval BIP-340 proofs covers every closed signed grant member except signature and approval IDs."
+    },
+    {
+      "id": "heterodyne-workspace-joint-operation-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "authority_checkpoint",
+        "policy_head",
+        "predecessor",
+        "relationship_id",
+        "resource_scope",
+        "workspace_key"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "The joint-operation prehash bound into delegate BIP-340 proofs covers the exact joint authority tuple and requested resource scope."
+    },
+    {
       "id": "heterodyne-workspace-object-v1",
       "owner": "workspace",
       "first_version": "heterodyne/0.5.0",

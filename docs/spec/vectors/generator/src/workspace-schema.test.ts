@@ -307,4 +307,20 @@ describe("Workspace authority object schemas", () => {
       expect(validate("role-grant-v1", { ...grant, ...changed })).not.toBeNull();
     }
   });
+
+  it("uses account revocation vocabulary and safe nonnegative integer bounds", () => {
+    const revocation = values["role-revocation-v1"];
+    expect(validate("role-revocation-v1", { ...revocation, target_type: "account" }))
+      .toBeNull();
+    expect(validate("role-revocation-v1", { ...revocation, target_type: "persona" }))
+      .not.toBeNull();
+    expect(validate("role-revocation-v1", {
+      ...revocation,
+      effective_at: Number.MAX_SAFE_INTEGER + 1,
+    })).not.toBeNull();
+    expect(validate("role-checkpoint-v1", {
+      ...values["role-checkpoint-v1"],
+      sequence: 1.5,
+    })).not.toBeNull();
+  });
 });

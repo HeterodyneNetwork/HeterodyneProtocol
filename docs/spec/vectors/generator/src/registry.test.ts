@@ -241,6 +241,109 @@ describe("revisioned protocol registry", () => {
       "spec_version",
       "workspace_key",
     ]);
+    expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-workspace-grant-approval-v1",
+    )).toMatchObject({
+      owner: "workspace",
+      suites: ["bip340"],
+      bound_members: [
+        "approver_key",
+        "authority_checkpoint",
+        "expires_at",
+        "issued_at",
+        "operation_digest",
+        "policy_head",
+        "predecessor",
+        "profile",
+        "spec_version",
+        "workspace_key",
+      ],
+    });
+    expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-workspace-grant-operation-v1",
+    )).toMatchObject({
+      owner: "workspace",
+      suites: ["bip340"],
+      bound_members: [
+        "activates_at",
+        "activation",
+        "authority_checkpoint",
+        "capabilities",
+        "delegable",
+        "evidence_ids",
+        "expires_at",
+        "grant_id",
+        "invitation",
+        "issued_at",
+        "object_type",
+        "policy_head",
+        "predecessor",
+        "recipient",
+        "repository_head",
+        "repository_rid",
+        "resource_scope",
+        "role_id",
+        "spec_version",
+        "subject_account",
+        "target_device",
+        "workspace_key",
+      ],
+    });
+    expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-workspace-affiliation-evidence-v1",
+    )).toMatchObject({
+      owner: "workspace",
+      suites: ["bip340"],
+      bound_members: [
+        "authority_checkpoint",
+        "expires_at",
+        "observed_at",
+        "policy_head",
+        "predecessor",
+        "profile",
+        "relationship_id",
+        "repository_head",
+        "repository_rid",
+        "source_account",
+        "source_role_id",
+        "source_workspace_key",
+        "spec_version",
+      ],
+    });
+    expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-workspace-joint-delegate-v1",
+    )).toMatchObject({
+      owner: "workspace",
+      suites: ["bip340"],
+      bound_members: [
+        "authority_checkpoint",
+        "delegate_key",
+        "expires_at",
+        "issued_at",
+        "joint_workspace_key",
+        "operation_digest",
+        "policy_head",
+        "predecessor",
+        "profile",
+        "relationship_id",
+        "resource_scope",
+        "spec_version",
+      ],
+    });
+    expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-workspace-joint-operation-v1",
+    )).toMatchObject({
+      owner: "workspace",
+      suites: ["bip340"],
+      bound_members: [
+        "authority_checkpoint",
+        "policy_head",
+        "predecessor",
+        "relationship_id",
+        "resource_scope",
+        "workspace_key",
+      ],
+    });
 
     expect(registry.reason_codes.find(({ code }) => code === "workspace_signature_invalid")
       ?.description).not.toMatch(/KEL|cold root|epoch/i);

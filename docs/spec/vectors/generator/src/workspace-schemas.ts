@@ -6,8 +6,8 @@ type Schema = Record<string, unknown>;
 const h64 = { type: "string", pattern: "^[0-9a-f]{64}$" };
 const h40 = { type: "string", pattern: "^[0-9a-f]{40}$" };
 const signature = { type: "string", pattern: "^[0-9a-f]{128}$" };
-const nonNegativeInteger = { type: "integer", minimum: 0 };
-const timestamp = { type: "integer", minimum: 0 };
+const nonNegativeInteger = { type: "integer", minimum: 0, maximum: Number.MAX_SAFE_INTEGER };
+const timestamp = { type: "integer", minimum: 0, maximum: Number.MAX_SAFE_INTEGER };
 const radicleRid = { type: "string", pattern: "^rad:[A-Za-z0-9]+$" };
 const radicleNid = { type: "string", pattern: "^did:key:z[1-9A-HJ-NP-Za-km-z]+$" };
 const marmotLeaf = { type: "string", pattern: "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$" };
@@ -189,7 +189,7 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
     ["revocation_id", "target_type", "target_id", "effective_at", "reason"],
     {
       revocation_id: h64,
-      target_type: { enum: ["grant", "persona", "device", "relationship", "host", "resource"] },
+      target_type: { enum: ["grant", "account", "device", "relationship", "host", "resource"] },
       target_id: h64,
       effective_at: timestamp,
       reason: { type: "string", minLength: 1, maxLength: 512 },

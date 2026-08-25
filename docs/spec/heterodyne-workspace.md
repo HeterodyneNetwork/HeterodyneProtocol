@@ -63,6 +63,11 @@ signatures.
 
 `repository_head` is a git object ID and therefore the one 40-character value
 in a signed object; every other digest-shaped member is 64-character SHA-256.
+Every Workspace timestamp, age, epoch, sequence, threshold, priority, and
+count is a finite nonnegative JSON integer no greater than
+`9007199254740991`; narrower limits stated below still apply. Producers and
+consumers MUST reject fractional, negative, non-finite, unsafe, overflowed,
+or ill-ordered numeric values before evaluating authority.
 
 `policy_head`, `predecessor`, and `authority_checkpoint` bind the object to one
 exact, unambiguous current authorization view. `repository_rid` and
@@ -243,16 +248,39 @@ required approval object IDs. The authenticated requester MUST possess
 `invite` or the explicit grant capability for the target scope, and the
 active-key signer MUST evaluate that request against the exact current policy
 and checkpoint. Neither may grant broader or more delegable authority than
-the requester holds.
+the requester holds. That evaluation MUST first produce one closed current
+effective-authorization result bound to the actor account, workspace key,
+policy head, predecessor, unique authority checkpoint, and grant-operation
+digest. The grant's capabilities, resource scope, and delegability MUST each
+be a subset of every applicable workspace, role-path, resource, and actor
+ceiling; intersecting only a selected ceiling or accepting caller-asserted
+capability strings is invalid. Denial, effective revocation, inactive device
+state, a conflicting checkpoint, or any tuple mismatch prevents activation.
+
+The grant-operation digest is SHA-256 of
+[`heterodyne:0.5.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes)
+for domain `heterodyne-workspace-grant-operation-v1` over the complete
+closed grant except `signature` and `approval_ids`. This breaks the circular
+dependency while binding every operation term that approvals authorize.
 
 A routine valid grant becomes effective immediately unless policy requires
 additional approvals, subject acceptance, a waiting period, or an approving
-role. `approval_ids` bind distinct authenticated approval records in protected
-authorization state; the finalized grant carries the workspace active-key
-signature. The grant activates only when the deterministic approval set
-satisfies policy. Replayed approvals, duplicate controllers, approvals bound
-to another workspace or broader policy, and approvals lacking current
-authority at their own checkpoints do not count.
+role. `approval_ids` are the SHA-256 JCS identifiers of distinct closed
+`heterodyne.workspace-grant-approval.v1` records. Each record contains exactly
+`profile`, `spec_version`, `workspace_key`, `policy_head`, nullable
+`predecessor`, `authority_checkpoint`, `operation_digest`, `approver_key`,
+`issued_at`, `expires_at`, and `signature`. `approver_key` signs every other
+member with BIP-340 proof bytes for domain
+`heterodyne-workspace-grant-approval-v1`.
+Every counted approval MUST have the same workspace, current
+policy/predecessor/checkpoint, and grant-operation digest, be current at
+trusted evaluation time, name a distinct authorized approver, and appear by
+exact identifier in `approval_ids`; names, booleans, or unsigned counts are
+not approvals. The finalized grant carries the workspace active-key signature.
+The grant activates only when the deterministic approval set satisfies policy.
+Replayed approvals, duplicate controllers, approvals bound to another
+workspace or broader policy, and approvals lacking current authority at their
+own checkpoints do not count.
 
 Explicit invitation is the default external onboarding path. Every grant's
 top-level `subject_account`, `target_device`, and exact `marmot-mls-leaf`
@@ -283,20 +311,55 @@ maximum age, grace period, expiry, and independent revocation terms. A
 one-sided, cross-key, stale-context, predecessor-mismatched, or otherwise
 mismatched object does not activate an allowance.
 
-An allowance continuously depends on a current source affiliation proof. The
-receiving workspace MAY accept a previously valid proof only through the
-signed grace period, after which access suspends with `affiliation_stale`.
-The receiving workspace may revoke independently. An automatic allowance
-MUST NOT confer a governance capability unless the receiving root policy
-explicitly permits that exact mapping.
+An allowance continuously depends on a closed
+`heterodyne.workspace-affiliation-evidence.v1` record signed by the source
+workspace active key with BIP-340 proof bytes for domain
+`heterodyne-workspace-affiliation-evidence-v1`. It contains exactly `profile`,
+`spec_version`, `relationship_id`,
+`source_workspace_key`, `source_role_id`, `source_account`, `policy_head`,
+nullable `predecessor`, `authority_checkpoint`, `repository_rid`,
+`repository_head`, `observed_at`, `expires_at`, and `signature`. The evidence
+MUST bind the relationship's source workspace, role, and qualifying account,
+the exact current source authority tuple, and the accepted repository RID and
+exact current head at the start of its canonical ancestry. A fork, competing
+checkpoint, older ancestral head, rollback, stale
+source state, non-current receiving policy, or effective bilateral revocation
+rejects the allowance. The consumer derives proof age as trusted `now` minus
+signed `observed_at`; a caller-supplied age, freshness boolean, policy boolean,
+or affiliation assertion has no authority. The receiving workspace MAY accept
+a previously valid proof only through the relationship's signed grace period,
+after which access suspends with `affiliation_stale`. The receiving workspace
+may revoke independently. An automatic allowance MUST NOT confer a governance
+capability unless the receiving root policy explicitly permits that exact
+mapping.
 
 Shared resources use one of two models. In the default host-owned model, one
 workspace governs the resource and partner accounts receive bounded guest
 roles. In the jointly governed model, a separate active-key workspace persona
 is created; `joint-workspace-relationship-v1` names the joint key,
 participating active keys, explicitly authorized delegates, threshold, and
-scope. The joint workspace key and current policy, not any participant, host,
-or relationship claim, governs the resource.
+scope. Its inherited `workspace_key` MUST exactly equal `joint_workspace_key`,
+its threshold is an integer from one through the number of configured distinct
+delegates, and its active-key signature and complete current
+policy/predecessor/checkpoint/repository tuple MUST validate normally. The
+configured delegate set MUST exactly equal the signed `delegate_keys` set.
+
+Each counted delegate supplies one closed
+`heterodyne.workspace-joint-delegate.v1` record containing exactly `profile`,
+`spec_version`, `joint_workspace_key`, `relationship_id`, `delegate_key`,
+`policy_head`, nullable `predecessor`, `authority_checkpoint`,
+`operation_digest`, `resource_scope`, `issued_at`, `expires_at`, and
+`signature`. The named delegate signs every other member with BIP-340 proof
+bytes for domain `heterodyne-workspace-joint-delegate-v1`. Its tuple, scope,
+validity interval, and operation digest MUST equal the evaluated joint
+operation, and only distinct configured delegate keys count. The operation
+digest is SHA-256 of proof bytes for domain
+`heterodyne-workspace-joint-operation-v1` over
+the relationship ID, joint workspace key, exact authority tuple, and requested
+resource scope. A boolean threshold claim, unsigned count, participant
+signature, or host signature has no joint authority. The joint workspace key
+and current policy, not any participant, host, or relationship claim, governs
+the resource.
 
 <a id="workspace-advertisements"></a>
 ## 9. Resources, services, and hosts
