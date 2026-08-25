@@ -21,6 +21,12 @@ let offendingEvent: NostrSignedEvent;
 let receiptEvent: NostrSignedEvent;
 let receipt: AgentPolicyReceipt;
 let listEvent: NostrSignedEvent;
+let legacyReceiptEvent: NostrSignedEvent;
+let legacyCorrectionEvent: NostrSignedEvent;
+let legacyListEvent: NostrSignedEvent;
+const legacyEventId = "33".repeat(32);
+const legacyDeviceKey = "11".repeat(32);
+const legacyColdRoot = "44".repeat(32);
 
 beforeAll(async () => {
   offendingEvent = await signEvent({
@@ -74,6 +80,131 @@ beforeAll(async () => {
     ],
     content: "",
     auxRand: AUX_RAND,
+  });
+  legacyReceiptEvent = await signEvent({
+    secretKey: moderatorPrivateKey,
+    created_at: 900,
+    kind: 1985,
+    tags: [
+      ["L", "network.heterodyne.agent-policy"],
+      ["l", reason, "network.heterodyne.agent-policy"],
+      ["e", legacyEventId],
+      ["p", legacyDeviceKey],
+    ],
+    content: JSON.stringify({
+      profile: "heterodyne.social.agent-policy-receipt.v1",
+      spec_version: "heterodyne/0.5.0",
+      event_id: legacyEventId,
+      device_key: legacyDeviceKey,
+      cold_root: legacyColdRoot,
+      reason,
+      observed_at: 900,
+      evidence: ["sha256:legacy"],
+      explanation: "Frozen pre-redesign receipt.",
+      remediation: "rotate-device-key",
+    }),
+    auxRand: AUX_RAND,
+  });
+  legacyListEvent = await signEvent({
+    secretKey: moderatorPrivateKey,
+    created_at: 901,
+    kind: 10000,
+    tags: [
+      ["heterodyne", "social-agent-policy-list-v1"],
+      ["spec_version", "heterodyne/0.5.0"],
+      ["p", legacyDeviceKey],
+      ["e", legacyReceiptEvent.id],
+      ["agent_violation", legacyDeviceKey, legacyReceiptEvent.id, reason],
+    ],
+    content: "",
+    auxRand: AUX_RAND,
+  });
+  legacyCorrectionEvent = await signEvent({
+    secretKey: moderatorPrivateKey,
+    created_at: 902,
+    kind: 1985,
+    tags: [
+      ["L", "network.heterodyne.agent-policy"],
+      ["l", "correction", "network.heterodyne.agent-policy"],
+      ["e", legacyReceiptEvent.id],
+      ["p", legacyDeviceKey],
+    ],
+    content: JSON.stringify({
+      profile: "heterodyne.social.agent-policy-correction.v1",
+      spec_version: "heterodyne/0.5.0",
+      receipt_id: legacyReceiptEvent.id,
+      device_key: legacyDeviceKey,
+      corrected_at: 902,
+      explanation: "Frozen pre-redesign correction.",
+      action: "retract",
+    }),
+    auxRand: AUX_RAND,
+  });
+});
+
+describe("live moderation API quarantine", () => {
+  it("requires an actual signed target instead of accepting a one-argument legacy receipt", () => {
+    const call = validateAgentPolicyReceipt as unknown as (
+      event: NostrSignedEvent,
+    ) => unknown;
+    expect(() => call(legacyReceiptEvent)).toThrow(/agent-policy-receipt-invalid/);
+  });
+
+  it("requires the current receipt when validating a correction", () => {
+    const call = validateAgentPolicyCorrection as unknown as (
+      event: NostrSignedEvent,
+    ) => unknown;
+    expect(() => call(legacyCorrectionEvent)).toThrow(/agent-policy-receipt-invalid/);
+  });
+
+  it("does not select a legacy list validator from the map's first value", () => {
+    const legacyReceipt = {
+      receipt_id: legacyReceiptEvent.id,
+      issuer: moderatorPublicKey,
+      event_id: legacyEventId,
+      device_key: legacyDeviceKey,
+      cold_root: legacyColdRoot,
+      reason,
+      observed_at: 900,
+      evidence: ["sha256:legacy"],
+      explanation: "Frozen pre-redesign receipt.",
+      remediation: "rotate-device-key" as const,
+    };
+    const call = validateAgentPolicyList as unknown as (
+      event: NostrSignedEvent,
+      receipts: ReadonlyMap<string, unknown>,
+    ) => unknown;
+    expect(() => call(
+      legacyListEvent,
+      new Map([[legacyReceiptEvent.id, legacyReceipt]]),
+    )).toThrow(/agent-policy-binding-invalid/);
+  });
+
+  it("does not dispatch legacy device-key policy input through live application APIs", () => {
+    const applyPolicy = applySubscribedAgentPolicy as unknown as (
+      input: Record<string, unknown>,
+    ) => unknown;
+    const applyCorrection = applyAgentPolicyCorrection as unknown as (
+      input: Record<string, unknown>,
+    ) => unknown;
+    expect(() => applyPolicy({
+      subscribed: true,
+      policy_persona: moderatorPublicKey,
+      policy_current_canonical: true,
+      repo_history_verified: true,
+      candidate_source: "canonical",
+      device_key: legacyDeviceKey,
+      muted_device_keys: [legacyDeviceKey],
+      default_subscription: true,
+      default_visible: true,
+      can_disable_default: true,
+    })).toThrow(/agent-policy-binding-invalid/);
+    expect(() => applyCorrection({
+      correction_valid: true,
+      canonical_list_binding_removed: true,
+      device_key: legacyDeviceKey,
+      muted_device_keys: [legacyDeviceKey],
+    })).toThrow(/agent-policy-binding-invalid/);
   });
 });
 
@@ -155,6 +286,48 @@ describe("agent-policy receipt", () => {
     }
   });
 
+  it("rejects a signed receipt with an invalid NIP-01 tag structure", async () => {
+    const malformed = await signEvent({
+      secretKey: moderatorPrivateKey,
+      created_at: receiptEvent.created_at,
+      kind: receiptEvent.kind,
+      tags: [...receiptEvent.tags, []],
+      content: receiptEvent.content,
+      auxRand: AUX_RAND,
+    });
+    expect(() => validateAgentPolicyReceipt(malformed, {
+      event: offendingEvent,
+      verified_agent_association: agentAssociation,
+    })).toThrow(/agent-policy-receipt-invalid/);
+  });
+
+  it("rejects a cryptographically signed target with an invalid NIP-01 structure", async () => {
+    const malformedTarget = await signEvent({
+      secretKey: devicePrivateKey,
+      created_at: offendingEvent.created_at,
+      kind: offendingEvent.kind,
+      tags: [[]],
+      content: offendingEvent.content,
+      auxRand: AUX_RAND,
+    });
+    const targetReceipt = await signEvent({
+      secretKey: moderatorPrivateKey,
+      created_at: receiptEvent.created_at,
+      kind: receiptEvent.kind,
+      tags: receiptEvent.tags.map((tag) =>
+        tag[0] === "e" ? ["e", malformedTarget.id] : tag),
+      content: JSON.stringify({
+        ...JSON.parse(receiptEvent.content),
+        event_id: malformedTarget.id,
+      }),
+      auxRand: AUX_RAND,
+    });
+    expect(() => validateAgentPolicyReceipt(targetReceipt, {
+      event: malformedTarget,
+      verified_agent_association: agentAssociation,
+    })).toThrow(/agent-policy-receipt-invalid/);
+  });
+
   it("rejects a receipt whose claimed author or association does not match the actual event", async () => {
     for (const patch of [
       { event_author: replacementKey },
@@ -222,6 +395,21 @@ describe("agent policy list and subscriber-local enforcement", () => {
     });
     expect(() => validateAgentPolicyList(bad, new Map([[receiptEvent.id, receipt]])))
       .toThrow(/agent-policy-binding-invalid/);
+  });
+
+  it("rejects a signed policy list with an invalid NIP-01 tag structure", async () => {
+    const malformed = await signEvent({
+      secretKey: moderatorPrivateKey,
+      created_at: listEvent.created_at,
+      kind: listEvent.kind,
+      tags: [...listEvent.tags, []],
+      content: listEvent.content,
+      auxRand: AUX_RAND,
+    });
+    expect(() => validateAgentPolicyList(
+      malformed,
+      new Map([[receiptEvent.id, receipt]]),
+    )).toThrow(/agent-policy-binding-invalid/);
   });
 
   it("mutes only for an explicitly subscribed verified canonical policy", () => {
@@ -326,6 +514,37 @@ describe("correction and current list removal", () => {
       auxRand: AUX_RAND,
     });
     expect(() => validateAgentPolicyCorrection(mismatched, receipt))
+      .toThrow(/agent-policy-receipt-invalid/);
+  });
+
+  it("rejects a signed correction with an invalid NIP-01 tag structure", async () => {
+    const correction = await signEvent({
+      secretKey: moderatorPrivateKey,
+      created_at: 1_008,
+      kind: 1985,
+      tags: [
+        ["L", "network.heterodyne.agent-policy"],
+        ["l", "correction", "network.heterodyne.agent-policy"],
+        ["e", receiptEvent.id],
+        ["p", deviceKey],
+        [],
+      ],
+      content: JSON.stringify({
+        profile: "heterodyne.social.agent-policy-correction.v1",
+        spec_version: "heterodyne/0.5.0",
+        corrects_receipt_id: receiptEvent.id,
+        event_id: offendingEvent.id,
+        event_author: deviceKey,
+        agent_association: agentAssociation,
+        policy: { id: "network.heterodyne.agent-policy", version: "1.0.0" },
+        decision: "retract",
+        corrected_at: 1_008,
+        evidence: ["sha256:dcba"],
+        explanation: "The original evidence was misclassified.",
+      }),
+      auxRand: AUX_RAND,
+    });
+    expect(() => validateAgentPolicyCorrection(correction, receipt))
       .toThrow(/agent-policy-receipt-invalid/);
   });
 

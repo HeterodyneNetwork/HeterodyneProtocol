@@ -296,8 +296,9 @@ on kind `31007`.
 
 An organization post is an ordinary event signed by the organization active
 key. An authorized agent or human persona MAY instead sign with its own key
-only when the event carries the mandatory Comms automation attribution or the
-organization's explicit public-byline profile for that path. In every case the
+only when the event carries the complete mandatory Comms automation
+attribution and current Comms authorization binds that exact signer and
+association. A public byline alone grants no such authority. In every case the
 event `pubkey` is the actual author. Association with the organization affects
 presentation and audit; it MUST NOT rewrite the author, signature, address, or
 replaceable namespace. Private delegate authority remains a Workspace concern.
@@ -375,21 +376,27 @@ Social client MUST:
    and
 5. surface the candidate only when distinct live approvals meet the threshold.
 
-For an approval-time view, select among valid declaration events whose
-`created_at` is not after the approval: greatest `created_at`, then lowest
-event id. Carrier does not enter the comparison. Optional Assurance may add
-continuity evidence for a moderator that later changes active key, but it is
-not required to validate an approval by the key that actually signed it.
+For the live curated view, first select the current valid declaration by
+greatest `created_at`, then lowest event id, across the source-neutral carrier
+union. Only approvals whose actual signing `pubkey` is in that selected
+declaration's current moderator set count toward its current threshold. An
+approval from a removed moderator remains valid signed audit evidence but is
+audit-only for the live view. The candidate remains held until the currently
+selected moderator set supplies fresh approvals meeting the current threshold.
+Optional Assurance may add continuity evidence but cannot make a key absent
+from the current declaration count as a current moderator.
 
 <!-- fixture:social-approval-anchor-evidence -->
 ```json
-{"signature_valid":true,"moderator_declared_at_event_time":true,"carrier":"relay-or-repository","deleted":false}
+{"signature_valid":true,"moderator_in_current_declaration":true,"carrier":"relay-or-repository","deleted":false}
 ```
 
-Later removal of a moderator does not rewrite an earlier approval. An optional
-Assurance compromise claim may cause a client explicitly evaluating that
-claim to warn about affected history; it MUST NOT change baseline NIP-01
-validity. Withdrawing a live approval uses NIP-09 as described below.
+Later removal of a moderator does not rewrite the earlier approval's
+authorship or erase it from audit history, but it removes that approval from
+the live threshold until a current moderator reapproves. An optional Assurance
+compromise claim may cause a client explicitly evaluating that claim to warn
+about affected history; it MUST NOT change baseline NIP-01 validity.
+Withdrawing a live approval uses NIP-09 as described below.
 
 <a id="social-revocation"></a>
 ### 6.3 Approval withdrawal and deletion
@@ -664,18 +671,21 @@ Social-owned `kind:31009` `atproto_link` event's content cover the same
 canonical compact JSON object:
 
 ```json
-{"spec_version":"heterodyne/0.5.0","did":"<DID>","did_signing_key_id":"<key id>","npub":"<active Nostr key hex>","rid":"<canonical RID>","established_at":0}
+{"spec_version":"heterodyne/0.5.0","did":"<DID>","did_signing_key_id":"<key id>","pubkey":"<active Nostr key hex>","rid":"<canonical RID>","established_at":0,"generation":1,"nonce":"<64 lowercase hex>"}
 ```
 
 `rid` is omitted only if no RID exists. Transport-specific account
 identifiers MUST NOT appear in the signed payload. The Nostr attestation MUST
-be signed by the current active key named by `npub` and include exactly one
-each of `d=<DID>`, `heterodyne=atproto_link`, `npub=<active-key>`, and
+be signed by the current active key named by `pubkey` and include exactly one
+each of `d=<DID>`, `heterodyne=atproto_link`, `pubkey=<active-key>`, and
 `did=<DID>`, and use the canonical payload above as its JSON `content`. The in-content
 `spec_version` is the event's Social stamp; a duplicate version tag MUST NOT
 be added. The DID signature MUST verify under the resolved key over SHA-256 of
 the canonical payload. Both signatures MUST verify; a one-sided claim MUST be
-rejected.
+rejected. The initial mutually signed binding uses `generation:1`. Every later
+binding uses the next consecutive generation and a fresh unpredictable nonce;
+both sides sign that exact new payload. A signature or payload hash from an
+older generation cannot countersign a new one.
 
 The executable fixture below uses a deterministic Ed25519 DID key. Its PDS
 proof records `algorithm`, the resolved raw `public_key`, the lowercase-hex
@@ -688,7 +698,7 @@ non-empty markers.
 
 Verification MUST begin from the PDS record and proceed through every binding:
 resolve the DID and verify its named signing key and record signature; read the
-payload's active npub; locate Social `kind:31009` candidates through that
+payload's active `pubkey`; locate Social `kind:31009` candidates through that
 author's NIP-65 relays and repository relay hints; apply ordinary NIP-01
 addressable-event selection; verify the selected event id, active-key
 signature, tags, and byte-exact payload; and finally require the two payloads
@@ -701,32 +711,40 @@ to be identical. Optional Assurance continuity may be displayed separately.
     "pubkey": "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337",
     "created_at": 1710000000,
     "kind": 31009,
-    "tags": [["d","did:web:alice.example"],["heterodyne","atproto_link"],["npub","531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337"],["did","did:web:alice.example"]],
-    "content": "{\"spec_version\":\"heterodyne/0.5.0\",\"did\":\"did:web:alice.example\",\"did_signing_key_id\":\"did:web:alice.example#atproto\",\"npub\":\"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337\",\"rid\":\"rad:zAlice\",\"established_at\":1710000000}",
-    "id": "238811dae009972d744370a179ab105e59e366a6ad45f0166740a5cdb45dc45e",
-    "sig": "a26c1b3a4afffa9f140ab54369b470a5df7e0973eb09934b4c169f57e55384a992a8cb00a2192ee2adc5a82a7976077dedabc8bbc5fd5d67c36215a899fcafc5"
+    "tags": [["d","did:web:alice.example"],["heterodyne","atproto_link"],["pubkey","531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337"],["did","did:web:alice.example"]],
+    "content": "{\"spec_version\":\"heterodyne/0.5.0\",\"did\":\"did:web:alice.example\",\"did_signing_key_id\":\"did:web:alice.example#atproto\",\"pubkey\":\"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337\",\"rid\":\"rad:zAlice\",\"established_at\":1710000000,\"generation\":1,\"nonce\":\"0101010101010101010101010101010101010101010101010101010101010101\"}",
+    "id": "157e9da1bc5bb4fa94cb5037f50d09da3318e12b4e5a0d6e00ecac83295fd31b",
+    "sig": "fcd2ea27c655155a6ac0062aa5d192de8bf211cd77352027104512a44fd2258d80cbb814c8b4ab9a712c6e19854aa8fa8c382a6190f516c57fd6ed4724958adc"
   },
   "pds_record": {
     "collection": "social.heterodyne.identityLink",
     "rkey": "self",
-    "value": {"spec_version":"heterodyne/0.5.0","did":"did:web:alice.example","did_signing_key_id":"did:web:alice.example#atproto","npub":"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337","rid":"rad:zAlice","established_at":1710000000},
+    "value": {"spec_version":"heterodyne/0.5.0","did":"did:web:alice.example","did_signing_key_id":"did:web:alice.example#atproto","pubkey":"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337","rid":"rad:zAlice","established_at":1710000000,"generation":1,"nonce":"0101010101010101010101010101010101010101010101010101010101010101"},
     "algorithm": "Ed25519",
     "public_key": "ca93ac1705187071d67b83c7ff0efe8108e8ec4530575d7726879333dbdabe7c",
-    "signed_payload_hash": "6adf242345b2ac833ec54689e1eb6607d84897a5a116ef00df447646c5c541a0",
-    "signature": "83a5f27554ae5dcd20552e19894c6d0c87d5a0efc91b423d88cb6ded67d1763c20013b7dec15aea8e8bf577c3dccab4749227756441a608d20d979c2ddc1570b"
+    "signed_payload_hash": "d2205d97062a761dfc7d7cb2a6dc4537068e3ccbd6feb923b199f29746b912e8",
+    "signature": "b44aeb93b5b0c5f80818642c655a9017bb22873659f71019d1405e15f066485096424f22b681cc6f9f92e1c5cea03cceb6dc02856a09df86d8b19d0965ee020f"
   }
 }
 ```
 
 Either identity may revoke unilaterally. The persona publishes an
 active-key-signed `kind:31009` with `heterodyne=atproto_link_revocation`,
-`d=<DID>`, `did`, and `npub`; the closed ordered content has
-`spec_version`, `record_type=atproto_link_revocation`, `did`, `npub`,
-`binding_hash` (SHA-256 of the binding payload), and integer `revoked_at`. The
-DID owner publishes the same revocation value, signed by the current DID key,
-to `social.heterodyne.identityLink/self`. Either independently verified
-revocation supersedes the binding at `revoked_at`; establishing a link still
-requires both signatures.
+`d=revocation:<DID>:<generation>:<nonce>`, `did`, and `pubkey`; this distinct
+addressable coordinate keeps the revocation independent of the replaceable
+binding coordinate. The closed ordered content has `spec_version`,
+`record_type=atproto_link_revocation`, `did`, `pubkey`, `generation`, `nonce`,
+`binding_hash` (SHA-256 of the exact binding payload), and integer
+`revoked_at`. The DID owner may publish the same revocation value, signed by
+the current DID key, to `social.heterodyne.identityLink/self`.
+
+Either independently verified revocation is durable once observed. A newer
+binding-coordinate event, PDS record replacement, cache eviction, or loss of
+one revocation carrier MUST NOT erase or supersede it. The revoked generation
+and nonce can never become current again. Re-establishing a link requires the
+next consecutive generation, a fresh nonce, and fresh signatures by both the
+Nostr key and current DID key over the exact new payload; replaying either old
+countersignature fails.
 
 <!-- fixture:atproto-link-revocations -->
 ```json
@@ -735,16 +753,17 @@ requires both signatures.
     "pubkey": "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337",
     "created_at": 1710000100,
     "kind": 31009,
-    "tags": [["d","did:web:alice.example"],["heterodyne","atproto_link_revocation"],["did","did:web:alice.example"],["npub","531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337"]],
-    "content": "{\"spec_version\":\"heterodyne/0.5.0\",\"record_type\":\"atproto_link_revocation\",\"did\":\"did:web:alice.example\",\"npub\":\"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337\",\"binding_hash\":\"6adf242345b2ac833ec54689e1eb6607d84897a5a116ef00df447646c5c541a0\",\"revoked_at\":1710000100}",
-    "id": "8cc56e87c621bdbfc9d7db52932e26db4e7a3007b02b02a85abefd9541c192ab",
-    "sig": "6d5b603bfa816c846ba6958e8262cb48ba7a31f0692fa046dfe19b1d8fb731b3a0da9479c0969863cd6cc786882059d0199925859cad755144288b8efe9ea582"
+    "tags": [["d","revocation:did:web:alice.example:1:0101010101010101010101010101010101010101010101010101010101010101"],["heterodyne","atproto_link_revocation"],["did","did:web:alice.example"],["pubkey","531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337"]],
+    "content": "{\"spec_version\":\"heterodyne/0.5.0\",\"record_type\":\"atproto_link_revocation\",\"did\":\"did:web:alice.example\",\"pubkey\":\"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337\",\"generation\":1,\"nonce\":\"0101010101010101010101010101010101010101010101010101010101010101\",\"binding_hash\":\"d2205d97062a761dfc7d7cb2a6dc4537068e3ccbd6feb923b199f29746b912e8\",\"revoked_at\":1710000100}",
+    "id": "0b42e1d151983227634a31dbe6f428c6b6af836acf6e592ce95176d2010b8e57",
+    "sig": "b5f1ebe202278c75a1e659a1832fbddd37cfa4c14e46aac6299e0636833eb943be7ccad5a0d01a82c1a3f2a4d17cfef517f119ed60d58923064b620af8b1d573"
   },
   "atproto": {
     "collection": "social.heterodyne.identityLink",
     "rkey": "self",
-    "value": {"spec_version":"heterodyne/0.5.0","record_type":"atproto_link_revocation","did":"did:web:alice.example","npub":"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337","binding_hash":"6adf242345b2ac833ec54689e1eb6607d84897a5a116ef00df447646c5c541a0","revoked_at":1710000100},
-    "signature": "did-revocation-signature-base64url"
+    "value": {"spec_version":"heterodyne/0.5.0","record_type":"atproto_link_revocation","did":"did:web:alice.example","pubkey":"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337","generation":1,"nonce":"0101010101010101010101010101010101010101010101010101010101010101","binding_hash":"d2205d97062a761dfc7d7cb2a6dc4537068e3ccbd6feb923b199f29746b912e8","revoked_at":1710000100},
+    "signed_payload_hash": "bc14ebf8ad43f421bca54104f367273e66e5217c286f794bf6e4599848e85c43",
+    "signature": "b7489532c0b19cb51286ebcb2e74df7d9b42c7bdd8ef68db678d9ce66f5837a1779410fbf2a0edd301cfcdf240a94bf4085267076bb901482cf6dc899eecfd01"
   }
 }
 ```
@@ -754,7 +773,9 @@ at most one hour. A newer selected kind `0`, kind `10002`, or kind `31009`, a
 changed DID document or PDS record, or an observed revocation MUST invalidate
 the relevant cache immediately. Any
 signature or binding failure MUST invalidate the cached success rather than
-extending its TTL.
+extending its TTL. Cache invalidation MUST retain the durable set of observed,
+verified `(DID, pubkey, generation, nonce)` revocations so transport
+replacement cannot resurrect a revoked binding.
 
 <a id="social-atproto-mirror"></a>
 ### 8.3 Mirror publication and witnessing

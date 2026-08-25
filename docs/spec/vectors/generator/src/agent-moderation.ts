@@ -2,19 +2,7 @@ import { Ajv2020 } from "ajv/dist/2020.js";
 import receiptSchema from "../../../schemas/social/agent-policy-receipt-v1.schema.json" with { type: "json" };
 import correctionSchema from "../../../schemas/social/agent-policy-correction-v1.schema.json" with { type: "json" };
 import type { AgentAssociation } from "./agent-authorship.js";
-import {
-  applyLegacyAgentPolicyCorrection,
-  applyLegacySubscribedAgentPolicy,
-  validateLegacyAgentPolicyCorrection,
-  validateLegacyAgentPolicyList,
-  validateLegacyAgentPolicyReceipt,
-  type LegacyAgentCorrectionInput,
-  type LegacyAgentPolicyDecision,
-  type LegacyAgentPolicyInput,
-  type LegacyAgentPolicyList,
-  type LegacyAgentPolicyReceipt,
-} from "./legacy-agent-moderation.js";
-import { verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
+import { isStrictNostrSignedEvent, type NostrSignedEvent } from "./nostr.js";
 
 export type AgentPolicyReason =
   | "agent-attribution-missing"
@@ -97,18 +85,11 @@ const HEX_32 = /^[0-9a-f]{64}$/;
 
 export function validateAgentPolicyReceipt(
   event: NostrSignedEvent,
-): LegacyAgentPolicyReceipt;
-export function validateAgentPolicyReceipt(
-  event: NostrSignedEvent,
   target: AgentPolicyTarget,
-): AgentPolicyReceipt;
-export function validateAgentPolicyReceipt(
-  event: NostrSignedEvent,
-  target?: AgentPolicyTarget,
-): AgentPolicyReceipt | LegacyAgentPolicyReceipt {
-  if (target === undefined) return validateLegacyAgentPolicyReceipt(event);
+): AgentPolicyReceipt {
   if (
-    event.kind !== 1985
+    target === undefined
+    || event.kind !== 1985
     || !validSignedEvent(event)
     || !validSignedEvent(target.event)
   ) {
@@ -158,22 +139,7 @@ export function validateAgentPolicyReceipt(
 export function validateAgentPolicyList(
   event: NostrSignedEvent,
   receipts: ReadonlyMap<string, AgentPolicyReceipt>,
-): AgentPolicyList;
-export function validateAgentPolicyList(
-  event: NostrSignedEvent,
-  receipts: ReadonlyMap<string, LegacyAgentPolicyReceipt>,
-): LegacyAgentPolicyList;
-export function validateAgentPolicyList(
-  event: NostrSignedEvent,
-  receipts: ReadonlyMap<string, AgentPolicyReceipt | LegacyAgentPolicyReceipt>,
-): AgentPolicyList | LegacyAgentPolicyList {
-  const firstReceipt = receipts.values().next().value;
-  if (firstReceipt !== undefined && "device_key" in firstReceipt) {
-    return validateLegacyAgentPolicyList(
-      event,
-      receipts as ReadonlyMap<string, LegacyAgentPolicyReceipt>,
-    );
-  }
+): AgentPolicyList {
   if (
     event.kind !== 10000
     || event.content !== ""
@@ -192,7 +158,7 @@ export function validateAgentPolicyList(
     ) {
       throw new Error("agent-policy-binding-invalid");
     }
-    const receipt = receipts.get(tag[2]) as AgentPolicyReceipt | undefined;
+    const receipt = receipts.get(tag[2]);
     if (
       receipt === undefined
       || receipt.event_author !== tag[1]
@@ -214,14 +180,8 @@ export function validateAgentPolicyList(
 
 export function applySubscribedAgentPolicy(
   input: AgentPolicyInput,
-): AgentPolicyDecision;
-export function applySubscribedAgentPolicy(
-  input: LegacyAgentPolicyInput,
-): LegacyAgentPolicyDecision;
-export function applySubscribedAgentPolicy(
-  input: AgentPolicyInput | LegacyAgentPolicyInput,
-): AgentPolicyDecision | LegacyAgentPolicyDecision {
-  if ("device_key" in input) return applyLegacySubscribedAgentPolicy(input);
+): AgentPolicyDecision {
+  if ("device_key" in input) throw new Error("agent-policy-binding-invalid");
   if (
     input.default_subscription
     && (!input.default_visible || !input.can_disable_default)
@@ -245,18 +205,11 @@ export function applySubscribedAgentPolicy(
 
 export function validateAgentPolicyCorrection(
   event: NostrSignedEvent,
-): ReturnType<typeof validateLegacyAgentPolicyCorrection>;
-export function validateAgentPolicyCorrection(
-  event: NostrSignedEvent,
   receipt: AgentPolicyReceipt,
-): AgentPolicyCorrection;
-export function validateAgentPolicyCorrection(
-  event: NostrSignedEvent,
-  receipt?: AgentPolicyReceipt,
-): AgentPolicyCorrection | ReturnType<typeof validateLegacyAgentPolicyCorrection> {
-  if (receipt === undefined) return validateLegacyAgentPolicyCorrection(event);
+): AgentPolicyCorrection {
   if (
-    event.kind !== 1985
+    receipt === undefined
+    || event.kind !== 1985
     || !validSignedEvent(event)
     || event.pubkey !== receipt.issuer
   ) {
@@ -306,14 +259,8 @@ export function validateAgentPolicyCorrection(
 
 export function applyAgentPolicyCorrection(
   input: AgentCorrectionInput,
-): AgentPolicyDecision;
-export function applyAgentPolicyCorrection(
-  input: LegacyAgentCorrectionInput,
-): LegacyAgentPolicyDecision;
-export function applyAgentPolicyCorrection(
-  input: AgentCorrectionInput | LegacyAgentCorrectionInput,
-): AgentPolicyDecision | LegacyAgentPolicyDecision {
-  if ("device_key" in input) return applyLegacyAgentPolicyCorrection(input);
+): AgentPolicyDecision {
+  if ("device_key" in input) throw new Error("agent-policy-binding-invalid");
   const currentlyMuted = input.muted_event_authors.includes(input.event_author);
   if (input.correction_valid && input.current_list_binding_removed) {
     return { visible: true, muted: false };
@@ -355,9 +302,5 @@ function parseJson(content: string): unknown {
 }
 
 function validSignedEvent(event: NostrSignedEvent): boolean {
-  try {
-    return verifyEventSignature(event);
-  } catch {
-    return false;
-  }
+  return isStrictNostrSignedEvent(event);
 }

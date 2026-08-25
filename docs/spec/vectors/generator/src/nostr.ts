@@ -51,3 +51,38 @@ export function verifyEventSignature(event: NostrSignedEvent): boolean {
   }
   return schnorr.verify(event.sig, event.id, event.pubkey);
 }
+
+export function isStrictNostrSignedEvent(value: unknown): value is NostrSignedEvent {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const event = value as Record<string, unknown>;
+  if (
+    Object.keys(event).sort().join("\0")
+      !== ["content", "created_at", "id", "kind", "pubkey", "sig", "tags"].join("\0")
+    || typeof event.pubkey !== "string"
+    || !/^[0-9a-f]{64}$/.test(event.pubkey)
+    || typeof event.id !== "string"
+    || !/^[0-9a-f]{64}$/.test(event.id)
+    || typeof event.sig !== "string"
+    || !/^[0-9a-f]{128}$/.test(event.sig)
+    || !Number.isSafeInteger(event.created_at)
+    || (event.created_at as number) < 0
+    || !Number.isSafeInteger(event.kind)
+    || (event.kind as number) < 0
+    || (event.kind as number) > 65_535
+    || !Array.isArray(event.tags)
+    || !event.tags.every((tag) =>
+      Array.isArray(tag)
+      && tag.length >= 1
+      && tag.every((member) => typeof member === "string"))
+    || typeof event.content !== "string"
+  ) {
+    return false;
+  }
+  try {
+    return verifyEventSignature(event as NostrSignedEvent);
+  } catch {
+    return false;
+  }
+}

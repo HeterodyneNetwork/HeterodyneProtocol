@@ -7,7 +7,7 @@ type SocialEventsModule = {
   validateSocialAuthorship?: (input: {
     event: NostrSignedEvent;
     persona_active_key?: string;
-    authorized_agent_signers?: Array<{
+    comms_authorized_signers?: Array<{
       pubkey: string;
       agent_association: AgentAssociation | null;
     }>;
@@ -58,7 +58,7 @@ beforeAll(async () => {
     created_at: 1_000,
     kind: 1,
     tags: [
-      ["e", "21".repeat(32), "wss://relay.example/", "reply"],
+      ["e", "21".repeat(32), "wss://relay.example/", "root"],
       ["p", "22".repeat(32)],
     ],
     content: "ordinary NIP-10 reply",
@@ -105,6 +105,22 @@ describe("ordinary Social authorship", () => {
     });
   });
 
+  it("rejects a cryptographically signed event whose NIP-01 tag structure is invalid", async () => {
+    const social = await loadSocialEvents();
+    const malformed = await signEvent({
+      secretKey: personaSecret,
+      created_at: 1_000,
+      kind: 1,
+      tags: [[]],
+      content: "empty tag name",
+      auxRand: AUX_RAND,
+    });
+    expect(social.validateSocialAuthorship?.({ event: malformed })).toEqual({
+      verdict: "reject",
+      reason_code: "social-event-invalid",
+    });
+  });
+
   it("keeps the actual signer authoritative for direct and attributed organization posts", async () => {
     const social = await loadSocialEvents();
     expect(social.validateSocialAuthorship?.({
@@ -118,7 +134,7 @@ describe("ordinary Social authorship", () => {
     expect(social.validateSocialAuthorship?.({
       event: attributedAgentPost,
       persona_active_key: personaKey,
-      authorized_agent_signers: [{
+      comms_authorized_signers: [{
         pubkey: agentKey,
         agent_association: association,
       }],
@@ -148,7 +164,7 @@ describe("ordinary Social authorship", () => {
     expect(social.validateSocialAuthorship?.({
       event: unattributed,
       persona_active_key: personaKey,
-      authorized_agent_signers: [{
+      comms_authorized_signers: [{
         pubkey: agentKey,
         agent_association: association,
       }],
@@ -174,7 +190,7 @@ describe("ordinary Social authorship", () => {
     expect(social.validateSocialAuthorship?.({
       event: roleAttributed,
       persona_active_key: personaKey,
-      authorized_agent_signers: [{
+      comms_authorized_signers: [{
         pubkey: personaKey,
         agent_association: roleAssociation,
       }],
@@ -198,7 +214,7 @@ describe("ordinary Social authorship", () => {
     expect(social.validateSocialAuthorship?.({
       event: attributed,
       persona_active_key: personaKey,
-      authorized_agent_signers: [{
+      comms_authorized_signers: [{
         pubkey: agentKey,
         agent_association: null,
       }],
@@ -214,7 +230,7 @@ describe("ordinary Social authorship", () => {
     expect(social.validateSocialAuthorship?.({
       event: { ...bareReply, pubkey: agentKey },
       persona_active_key: personaKey,
-      authorized_agent_signers: [{
+      comms_authorized_signers: [{
         pubkey: agentKey,
         agent_association: association,
       }],
@@ -297,6 +313,22 @@ describe("source-neutral Social state", () => {
         { carrier: "relay", event: { ...left, sig: "00".repeat(64) } },
       ],
     })?.id).toBe(expected.id);
+  });
+
+  it("uses the second d-tag member as the coordinate and permits trailing members", async () => {
+    const social = await loadSocialEvents();
+    const event = await signEvent({
+      secretKey: personaSecret,
+      created_at: 2_300,
+      kind: 30000,
+      tags: [["d", "team", "extension"]],
+      content: "",
+      auxRand: AUX_RAND,
+    });
+    expect(social.selectCurrentSocialEvent?.({
+      coordinate: { pubkey: personaKey, kind: 30000, d: "team" },
+      candidates: [{ carrier: "relay", event }],
+    })?.id).toBe(event.id);
   });
 
   it("reports seven-day staleness as a warning without invalidating signed state", async () => {

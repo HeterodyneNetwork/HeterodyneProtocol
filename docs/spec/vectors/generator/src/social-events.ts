@@ -1,10 +1,10 @@
 import { matchesAgentAttributionProfile, type AgentAssociation } from "./agent-authorship.js";
-import { verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
+import { isStrictNostrSignedEvent, type NostrSignedEvent } from "./nostr.js";
 
 export type SocialAuthorshipInput = {
   event: NostrSignedEvent;
   persona_active_key?: string;
-  authorized_agent_signers?: readonly {
+  comms_authorized_signers?: readonly {
     pubkey: string;
     agent_association: AgentAssociation | null;
   }[];
@@ -56,7 +56,7 @@ export function validateSocialAuthorship(
 
   const attribution = signedAgentAssociation(input.event);
   const authorization = attribution.valid
-    ? input.authorized_agent_signers?.find((candidate) =>
+    ? input.comms_authorized_signers?.find((candidate) =>
       candidate.pubkey === input.event.pubkey
       && sameAssociation(candidate.agent_association, attribution.association))
     : undefined;
@@ -149,7 +149,7 @@ function coordinateD(event: NostrSignedEvent): string | undefined | null {
     return undefined;
   }
   const dTags = event.tags.filter((tag) => tag[0] === "d");
-  return dTags.length === 1 && dTags[0].length === 2 ? dTags[0][1] : null;
+  return dTags.length === 1 && dTags[0].length >= 2 ? dTags[0][1] : null;
 }
 
 function signedAgentAssociation(event: NostrSignedEvent): {
@@ -188,21 +188,5 @@ function sameAssociation(
 }
 
 function validSignedEvent(event: NostrSignedEvent): boolean {
-  try {
-    return HEX_32.test(event.pubkey)
-      && HEX_32.test(event.id)
-      && /^[0-9a-f]{128}$/.test(event.sig)
-      && Number.isSafeInteger(event.created_at)
-      && event.created_at >= 0
-      && Number.isSafeInteger(event.kind)
-      && event.kind >= 0
-      && event.kind <= 65_535
-      && Array.isArray(event.tags)
-      && event.tags.every((tag) =>
-        Array.isArray(tag) && tag.every((member) => typeof member === "string"))
-      && typeof event.content === "string"
-      && verifyEventSignature(event);
-  } catch {
-    return false;
-  }
+  return isStrictNostrSignedEvent(event);
 }
