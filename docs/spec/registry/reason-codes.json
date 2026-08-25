@@ -966,7 +966,7 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The token, registration, selected signing key, key class, or event pubkey names a different signer.",
+      "description": "The token, registration, selected signing key, key class, optional association kind/value, or event pubkey disagrees with current authorization.",
       "spec_refs": [
         "heterodyne:0.5.0#comms-agent-authorship"
       ]
@@ -1512,11 +1512,19 @@
       "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
     },
     {
-      "code": "trusted-seed-secret-material-forbidden",
+      "code": "trusted-seed-event-invalid",
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A private relay request attempted to send MLS leaf state, plaintext, or content-decryption material to the seed.",
+      "description": "A trusted-seed write does not carry one complete signed kind-445 Nostr event with a valid identifier and BIP-340 signature.",
+      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+    },
+    {
+      "code": "trusted-seed-request-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Private relay admission metadata contains a missing, malformed, alternate, or additional request member.",
       "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
     },
     {

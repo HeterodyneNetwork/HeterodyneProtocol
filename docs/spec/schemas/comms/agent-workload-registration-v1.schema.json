@@ -56,13 +56,8 @@
     "signer_key_class": {
       "enum": ["agent", "persona"]
     },
-    "agent_key": {
-      "$ref": "#/$defs/nostr_key"
-    },
-    "agent_role": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+    "agent_association": {
+      "$ref": "#/$defs/agent_association"
     },
     "audience": {
       "type": "string",
@@ -155,19 +150,6 @@
       "if": {
         "properties": {
           "signer_key_class": {
-            "const": "agent"
-          }
-        },
-        "required": ["signer_key_class"]
-      },
-      "then": {
-        "required": ["agent_key"]
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "signer_key_class": {
             "const": "persona"
           }
         },
@@ -185,6 +167,28 @@
     }
   ],
   "$defs": {
+    "agent_association": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": { "const": "key" },
+            "value": { "$ref": "#/$defs/nostr_key" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": { "const": "role" },
+            "value": { "type": "string", "minLength": 1, "maxLength": 128 }
+          }
+        }
+      ]
+    },
     "nostr_key": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"

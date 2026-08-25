@@ -2,6 +2,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { matchesAgentAttributionProfile } from "./agent-authorship.js";
 import {
   assertRegistryDownrefs,
   assertRegistryStatusTransition,
@@ -384,11 +385,14 @@ describe("revisioned protocol registry", () => {
         "trusted-seed-revoked",
         "trusted-seed-nip42-required",
         "trusted-seed-route-mismatch",
-        "trusted-seed-secret-material-forbidden",
+        "trusted-seed-event-invalid",
+        "trusted-seed-request-invalid",
         "agent-signer-mismatch",
         "agent-persona-scope-required",
       ]),
     );
+    expect(registry.reason_codes.map(({ code }) => code))
+      .not.toContain("trusted-seed-secret-material-forbidden");
     expect(registry.security_invariants.map(({ id }) => id)).toEqual(
       expect.arrayContaining([
         "COMMS-I-TRUSTED-SEED-CONFINEMENT",
@@ -434,6 +438,39 @@ describe("revisioned protocol registry", () => {
         first_version: "heterodyne/0.5.0",
       });
     }
+  });
+
+  it("admits association-free and associated agent attribution through one canonical rule", () => {
+    const attributionProfiles = registry.kinds.flatMap(({ profiles }) =>
+      profiles.filter(({ profile_id }) =>
+        profile_id.startsWith("heterodyne-comms-agent-attribution-kind-"),
+      ),
+    );
+    expect(attributionProfiles).toHaveLength(8);
+    for (const profile of attributionProfiles) {
+      expect(profile.discriminator).toBe("production-rule:agent-attribution-v1");
+    }
+
+    const associationFree = [
+      ["L", "network.heterodyne.agent"],
+      ["l", "ai", "network.heterodyne.agent"],
+      ["agent_action", "publish"],
+    ];
+    const associated = [
+      ["L", "network.heterodyne.agent"],
+      ["l", "ai", "network.heterodyne.agent"],
+      ["heterodyne_agent", "v1", "key", "33".repeat(32)],
+      ["agent_action", "publish"],
+    ];
+    for (const tags of [associationFree, associated]) {
+      expect(matchesAgentAttributionProfile(tags)).toBe(true);
+    }
+    expect(matchesAgentAttributionProfile([
+      associationFree[0],
+      associationFree[1],
+      ["heterodyne_agent", "v1", "key", "not-a-key"],
+      associationFree[2],
+    ])).toBe(false);
   });
 
   it("allocates distinct immutable native-proof discriminators for claims and revocations", () => {

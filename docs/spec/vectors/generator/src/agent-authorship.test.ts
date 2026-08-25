@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { bytesToHex } from "./hex.js";
 import {
-  agentBindingMessage,
   deriveAgentIdentity,
   injectAgentAttribution,
   validateAgentAccessToken,
-  validateAgentDelegation,
   validateWorkloadRegistration,
   type AgentTokenValidationInput,
 } from "./agent-authorship.js";
@@ -13,66 +10,9 @@ import {
 const coldRoot = "11".repeat(32);
 const roleId = "ab".repeat(32);
 const publishingKey = "33".repeat(32);
-const nid = "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdgQ9T";
 const issuer = "https://issuer.example/oidc/npub1persona";
 const audience = "https://node.example/control/agent-publication";
 const subjectJkt = "A".repeat(43);
-
-describe("agent signing delegation", () => {
-  const proof = bytesToHex(agentBindingMessage(coldRoot, nid, roleId, publishingKey));
-  const valid = {
-    cold_root: coldRoot,
-    credential_ledger_generation: 0,
-    expected_credential_ledger_persona: coldRoot,
-    expected_credential_ledger_generation: 0,
-    nid,
-    role_id: roleId,
-    publishing_key: publishingKey,
-    address: `agent:${roleId}`,
-    proof_bytes: proof,
-    outer_epoch_signature_valid: true,
-    nid_proof_valid: true,
-    key_proof_valid: true,
-    kel_authority_current: true,
-    unexpired: true,
-    repo_final: true,
-  };
-
-  it("constructs and validates the exact triple-proof binding", () => {
-    expect(new TextDecoder().decode(
-      agentBindingMessage(coldRoot, nid, roleId, publishingKey),
-    )).toBe(
-      'heterodyne-agent-signing-binding-v1\u0000'
-        + `{"cold_root":"${coldRoot}","nid":"${nid}",`
-        + `"publishing_key":"${publishingKey}","role_id":"${roleId}"}`,
-    );
-    expect(validateAgentDelegation(valid)).toEqual({
-      verdict: "accept",
-      role_id: roleId,
-      publishing_key: publishingKey,
-      repo_final: true,
-    });
-  });
-
-  it("fails closed on address, proof, KEL, expiry, or finality failures", () => {
-    expect(validateAgentDelegation({ ...valid, address: `agent:${roleId.toUpperCase()}` }))
-      .toMatchObject({ verdict: "reject", reason_code: "role-delegation-address-invalid" });
-    for (const patch of [
-      { outer_epoch_signature_valid: false },
-      { nid_proof_valid: false },
-      { key_proof_valid: false },
-      { proof_bytes: `${proof}x` },
-      { kel_authority_current: false },
-      { unexpired: false },
-    ]) {
-      expect(validateAgentDelegation({ ...valid, ...patch })).toMatchObject({ verdict: "reject" });
-    }
-    expect(validateAgentDelegation({ ...valid, repo_final: false }))
-      .toMatchObject({ verdict: "reject", reason_code: "provisional_not_final" });
-    expect(validateAgentDelegation({ ...valid, expected_credential_ledger_generation: 1 }))
-      .toMatchObject({ verdict: "reject", reason_code: "credential_generation_stale" });
-  });
-});
 
 describe("workload registration and stable identity", () => {
   const registration = {
@@ -83,8 +23,7 @@ describe("workload registration and stable identity", () => {
     agent_class: "ai",
     selected_signer: publishingKey,
     signer_key_class: "agent",
-    agent_key: publishingKey,
-    agent_role: roleId,
+    agent_association: { kind: "key", value: publishingKey },
     audience,
     scopes: ["heterodyne:agent:publish"],
     allowed_kinds: [1, 30023],
@@ -114,13 +53,14 @@ describe("workload registration and stable identity", () => {
     })).toThrow(/agent-workload-registration-invalid/);
   });
 
-  it("rejects signer, proof, empty, unlimited, unknown, or inverted registrations", () => {
+  it("rejects signer, proof, authority, legacy delegation, or shape-invalid registrations", () => {
     for (const value of [
       { ...registration, scopes: [] },
       { ...registration, max_content_bytes: 0 },
       { ...registration, rate_limit: { ...registration.rate_limit, count: 0 } },
-      { ...registration, selected_signer: "44".repeat(32) },
+      { ...registration, selected_signer: "zz".repeat(32) },
       { ...registration, subject_proof: { method: "dpop", jkt: "B".repeat(43) } },
+      { ...registration, proof_bytes: "legacy-delegation-proof" },
       { ...registration, expires_at: registration.not_before },
       { ...registration, unlimited: true },
     ]) {
@@ -175,17 +115,17 @@ describe("agent workload access token", () => {
     cnf_jkt: subjectJkt,
     sender_proof_jkt: subjectJkt,
     sender_proof_valid: true,
-    agent_role_id: roleId,
     signer_key: publishingKey,
     signer_key_class: "agent",
+    agent_association: { kind: "role", value: roleId },
     expected_issuer: issuer,
     expected_subject: "stable-pairwise-sub",
     expected_audience: audience,
     expected_client_id: "agent-client",
     expected_scope: "heterodyne:agent:publish",
-    expected_role_id: roleId,
     expected_signer_key: publishingKey,
     expected_signer_key_class: "agent",
+    expected_agent_association: { kind: "role", value: roleId },
     now: 1_100,
     status: "VALID",
     ledger_active: true,
@@ -207,7 +147,7 @@ describe("agent workload access token", () => {
         client_id: "agent-client",
         signer: publishingKey,
         key_class: "agent",
-        agent_role: roleId,
+        agent_association: { kind: "role", value: roleId },
       },
     });
   });
@@ -222,8 +162,8 @@ describe("agent workload access token", () => {
       expected_signer_key: coldRoot,
       signer_key_class: "persona",
       expected_signer_key_class: "persona",
-      agent_role_id: undefined,
-      expected_role_id: undefined,
+      agent_association: undefined,
+      expected_agent_association: undefined,
     })).toEqual({
       verdict: "accept",
       identity: {
@@ -236,7 +176,7 @@ describe("agent workload access token", () => {
     });
   });
 
-  it("rejects invalid type, time, status, audience, scope, sender proof, role, or ledger state", () => {
+  it("rejects invalid token state, association mismatch, or legacy delegation proof", () => {
     const cases: Array<[Partial<AgentTokenValidationInput>, string]> = [
       [{ typ: "JWT" }, "agent-token-invalid"],
       [{ exp: 1_301 }, "agent-token-invalid"],
@@ -248,6 +188,18 @@ describe("agent workload access token", () => {
       [{ sender_proof_jkt: "B".repeat(43) }, "agent-sender-proof-invalid"],
       [{ signer_key: "44".repeat(32) }, "agent-signer-mismatch"],
       [{ signer_key_class: "persona" }, "agent-signer-mismatch"],
+      [{
+        scope: "heterodyne:agent:publish heterodyne:agent:sign:persona",
+        expected_scope: "heterodyne:agent:publish heterodyne:agent:sign:persona",
+        signer_key: coldRoot,
+        expected_signer_key: coldRoot,
+        signer_key_class: "persona",
+        expected_signer_key_class: "persona",
+        agent_association: { kind: "key", value: publishingKey },
+        expected_agent_association: { kind: "key", value: "44".repeat(32) },
+      }, "agent-signer-mismatch"],
+      [{ proof_bytes: "legacy-delegation-proof" } as Partial<AgentTokenValidationInput>,
+        "agent-token-invalid"],
       [{ ledger_active: false }, "agent-token-invalid"],
       [{ expected_credential_ledger_generation: 1 }, "credential_generation_stale"],
     ];
@@ -274,10 +226,11 @@ describe("canonical agent attribution", () => {
     subject: "stable-pairwise-sub",
     client_id: "agent-client",
     signer: publishingKey,
+    expected_signer: publishingKey,
     signer_key_class: "agent" as const,
     oidc_scopes: ["heterodyne:agent:publish"],
-    agent_key: publishingKey,
-    agent_role: roleId,
+    agent_association: { kind: "key" as const, value: publishingKey },
+    expected_agent_association: { kind: "key" as const, value: publishingKey },
     tier: 1 as const,
   };
   const canonicalTags = [
@@ -327,6 +280,7 @@ describe("canonical agent attribution", () => {
     const personaSigned = injectAgentAttribution({
       ...base,
       signer: coldRoot,
+      expected_signer: coldRoot,
       signer_key_class: "persona",
       oidc_scopes: ["heterodyne:agent:publish", "heterodyne:agent:sign:persona"],
     });
@@ -337,6 +291,7 @@ describe("canonical agent attribution", () => {
     expect(injectAgentAttribution({
       ...base,
       signer: coldRoot,
+      expected_signer: coldRoot,
       signer_key_class: "persona",
     })).toEqual({ verdict: "reject", reason_code: "agent-persona-scope-required" });
   });
@@ -345,10 +300,11 @@ describe("canonical agent attribution", () => {
     const result = injectAgentAttribution({
       ...base,
       signer: coldRoot,
+      expected_signer: coldRoot,
       signer_key_class: "persona",
       oidc_scopes: ["heterodyne:agent:publish", "heterodyne:agent:sign:persona"],
-      agent_key: undefined,
-      agent_role: undefined,
+      agent_association: undefined,
+      expected_agent_association: undefined,
     });
     expect(result).toMatchObject({
       verdict: "accept",
@@ -361,7 +317,7 @@ describe("canonical agent attribution", () => {
     });
   });
 
-  it("rejects unsupported kinds, signer mismatch, and post-sign injection without fallback", () => {
+  it("rejects unsupported kinds, mismatches, post-sign input, and legacy proof without fallback", () => {
     expect(injectAgentAttribution({ ...base, kind: 31007 })).toEqual({
       verdict: "reject",
       reason_code: "agent-attribution-profile-unavailable",
@@ -369,6 +325,22 @@ describe("canonical agent attribution", () => {
     expect(injectAgentAttribution({ ...base, signer: "44".repeat(32) })).toEqual({
       verdict: "reject",
       reason_code: "agent-signer-mismatch",
+    });
+    expect(injectAgentAttribution({
+      ...base,
+      signer: coldRoot,
+      expected_signer: coldRoot,
+      signer_key_class: "persona",
+      oidc_scopes: ["heterodyne:agent:publish", "heterodyne:agent:sign:persona"],
+      agent_association: { kind: "role", value: roleId },
+    })).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
+    expect(injectAgentAttribution({
+      ...base,
+      proof_bytes: "legacy-delegation-proof",
+      key_proof_valid: true,
+    } as typeof base)).toEqual({
+      verdict: "reject",
+      reason_code: "agent-attribution-invalid",
     });
     expect(injectAgentAttribution({ ...base, sig: "55".repeat(64) } as typeof base)).toEqual({
       verdict: "reject",

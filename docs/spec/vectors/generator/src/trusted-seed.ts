@@ -4,6 +4,7 @@ import { Ajv, type AnySchema } from "ajv";
 import trustedSeedAclSchema from "../../../schemas/comms/trusted-seed-acl-v1.schema.json" with { type: "json" };
 import { hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
+import { verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
 import { proofBytes } from "./proof-bytes.js";
 
 export type TrustedSeedRole = "read" | "write";
@@ -69,11 +70,24 @@ export type TrustedSeedAdmissionResult =
 
 const ajv = new Ajv({ allErrors: true, strict: false });
 const validateAcl = ajv.compile<TrustedSeedAcl>(trustedSeedAclSchema as AnySchema);
-const FORBIDDEN_SECRET_MEMBERS = new Set([
-  "mls_leaf_secret",
-  "plaintext",
-  "content_decryption_key",
-]);
+const REQUIRED_REQUEST_MEMBERS = [
+  "acl_candidates",
+  "expected_administrator_account",
+  "authenticated_account",
+  "nip42_authenticated",
+  "operation",
+  "seed_nid",
+  "h",
+  "private_rid",
+  "group_transition",
+  "now",
+] as const;
+const OPTIONAL_REQUEST_MEMBERS = ["writer_ref", "nip01_raw", "previous_acl"] as const;
+const GROUP_TRANSITION_MEMBERS = [
+  "generation",
+  "marmot_routing_event_id",
+  "routing_binding_sha256",
+] as const;
 
 export function trustedSeedAclProofBytes(
   value: Omit<TrustedSeedAcl, "signature"> | Record<string, unknown>,
@@ -91,9 +105,9 @@ export function trustedSeedAclDigest(value: unknown): string {
 export function evaluateTrustedSeedAdmission(
   value: unknown,
 ): TrustedSeedAdmissionResult {
-  if (!isRecord(value)) return denied("trusted-seed-acl-invalid");
-  if ([...FORBIDDEN_SECRET_MEMBERS].some((member) => member in value)) {
-    return denied("trusted-seed-secret-material-forbidden");
+  if (!isRecord(value)) return denied("trusted-seed-request-invalid");
+  if (!isClosedRequest(value)) {
+    return denied("trusted-seed-request-invalid");
   }
   const input = value as TrustedSeedAdmissionInput;
   if (!input.nip42_authenticated) return denied("trusted-seed-nip42-required");
@@ -119,15 +133,17 @@ export function evaluateTrustedSeedAdmission(
     candidates.push(candidate as TrustedSeedAcl);
   }
   if (candidates.some((candidate) =>
+    candidate.administrator_account !== input.expected_administrator_account
+  )) {
+    return denied("trusted-seed-unauthorized");
+  }
+  if (candidates.some((candidate) => !verifyAclSignature(candidate))) {
+    return denied("trusted-seed-acl-invalid");
+  }
+  if (candidates.some((candidate) =>
     candidate.h !== input.h || candidate.private_rid !== input.private_rid
   )) {
     return denied("trusted-seed-route-mismatch");
-  }
-  if (candidates.some((candidate) =>
-    candidate.administrator_account !== input.expected_administrator_account
-      || !verifyAclSignature(candidate)
-  )) {
-    return denied("trusted-seed-unauthorized");
   }
 
   const greatestSequence = Math.max(...candidates.map(({ sequence }) => sequence));
@@ -202,6 +218,8 @@ export function evaluateTrustedSeedAdmission(
     ) {
       return denied("trusted-seed-unauthorized");
     }
+    const eventVerdict = validateMarmotEvent(input.nip01_raw, input.h);
+    if (eventVerdict !== undefined) return denied(eventVerdict);
   }
 
   return {
@@ -235,9 +253,80 @@ function hasDuplicate(values: string[]): boolean {
 
 function isGroupTransition(value: unknown): value is TrustedSeedAcl["group_transition"] {
   return isRecord(value)
+    && hasExactMembers(value, GROUP_TRANSITION_MEMBERS)
     && Number.isSafeInteger(value.generation)
     && typeof value.marmot_routing_event_id === "string"
     && typeof value.routing_binding_sha256 === "string";
+}
+
+function isClosedRequest(value: Record<string, unknown>): boolean {
+  const allowed = new Set<string>([
+    ...REQUIRED_REQUEST_MEMBERS,
+    ...OPTIONAL_REQUEST_MEMBERS,
+  ]);
+  return REQUIRED_REQUEST_MEMBERS.every((member) => member in value)
+    && Object.keys(value).every((member) => allowed.has(member))
+    && isRecord(value.group_transition)
+    && hasExactMembers(value.group_transition, GROUP_TRANSITION_MEMBERS);
+}
+
+function hasExactMembers(
+  value: Record<string, unknown>,
+  members: readonly string[],
+): boolean {
+  const keys = Object.keys(value);
+  return keys.length === members.length
+    && members.every((member) => member in value);
+}
+
+function validateMarmotEvent(
+  raw: string,
+  expectedH: string,
+): "trusted-seed-event-invalid" | "trusted-seed-route-mismatch" | undefined {
+  let event: unknown;
+  try {
+    event = JSON.parse(raw);
+  } catch {
+    return "trusted-seed-event-invalid";
+  }
+  if (
+    !isSignedNostrEvent(event)
+    || event.kind !== 445
+    || !verifyEventSignature(event)
+  ) {
+    return "trusted-seed-event-invalid";
+  }
+  const routingTags = event.tags.filter(([name]) => name === "h");
+  if (
+    routingTags.length !== 1
+    || routingTags[0].length !== 2
+    || routingTags[0][1] !== expectedH
+  ) {
+    return "trusted-seed-route-mismatch";
+  }
+  return undefined;
+}
+
+function isSignedNostrEvent(value: unknown): value is NostrSignedEvent {
+  if (!isRecord(value)) return false;
+  const expectedMembers = ["content", "created_at", "id", "kind", "pubkey", "sig", "tags"];
+  return hasExactMembers(value, expectedMembers)
+    && typeof value.pubkey === "string"
+    && /^[0-9a-f]{64}$/.test(value.pubkey)
+    && Number.isSafeInteger(value.created_at)
+    && (value.created_at as number) >= 0
+    && Number.isSafeInteger(value.kind)
+    && (value.kind as number) >= 0
+    && (value.kind as number) <= 65_535
+    && Array.isArray(value.tags)
+    && value.tags.every((tag) =>
+      Array.isArray(tag) && tag.every((member) => typeof member === "string")
+    )
+    && typeof value.content === "string"
+    && typeof value.id === "string"
+    && /^[0-9a-f]{64}$/.test(value.id)
+    && typeof value.sig === "string"
+    && /^[0-9a-f]{128}$/.test(value.sig);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

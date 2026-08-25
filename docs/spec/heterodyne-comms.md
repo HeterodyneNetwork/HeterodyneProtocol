@@ -886,13 +886,35 @@ effect as soon as the newer authenticated ACL is available; an explicitly
 `revoked` grant MUST NOT be used even if the endpoint or old ref remains
 reachable.
 
-An accepted write is one exact signed Marmot Nostr event. The seed verifies
-the visible NIP-01 envelope, commits the received bytes unchanged only to the
-writer ref bound to its own NID, and acknowledges only after the durability
-boundary in §7.9. The accepted repository view unions all current authorized
-native and seed refs under §7.5. A seed MUST NOT write another seed's ref,
-merge refs, re-sign an event, infer the MLS sender from the outer event key, or
-turn storage provenance into group authority.
+The admission request is closed before any authorization decision. Its exact
+required metadata members are `acl_candidates`,
+`expected_administrator_account`, `authenticated_account`,
+`nip42_authenticated`, `operation`, `seed_nid`, `h`, `private_rid`,
+`group_transition`, and `now`; only `previous_acl`, `writer_ref`, and
+`nip01_raw` are optional. `group_transition` is itself closed to the three ACL
+members named above. Any missing, alternate, nested-extra, or top-level-extra
+metadata member fails with `trusted-seed-request-invalid`. The seed treats the
+accepted kind-445 event `content` as opaque ciphertext; request closure MUST
+NOT scan or interpret that encrypted content as plaintext.
+
+A candidate whose `administrator_account` differs from the current expected
+administrator is unauthorized. A candidate naming the expected administrator
+but carrying an invalid BIP-340 signature is instead an invalid ACL. Account,
+grant, operation, or writer-ref mismatch remains unauthorized.
+
+An accepted write is one exact serialized signed Marmot Nostr event. The seed
+parses the complete closed NIP-01 event object, requires kind `445`, requires
+exactly one two-member `h` tag equal to the admitted route, recomputes the event
+ID from the six NIP-01 signing fields, and verifies its BIP-340 signature.
+Malformed JSON, missing or additional event members, wrong kind, bad ID, or bad
+signature fails with `trusted-seed-event-invalid`; a missing, duplicate, or
+mismatched `h` fails with `trusted-seed-route-mismatch`. After verification the
+seed commits the original received bytes unchanged only to the writer ref
+bound to its own NID, and acknowledges only after the durability boundary in
+§7.9. The accepted repository view unions all current authorized native and
+seed refs under §7.5. A seed MUST NOT write another seed's ref, merge refs,
+re-sign or reserialize an event, infer the MLS sender from the outer event key,
+or turn storage provenance into group authority.
 
 A seed, full node, persona, repository owner, and Marmot administrator are
 distinct roles. A combined deployment MAY hold several roles, but each grant
@@ -1851,9 +1873,10 @@ thumbprint and DPoP proof method, `ai` or `programmatic` class, one
 `selected_signer`, its `agent` or `persona` key class, one audience, non-empty
 OIDC scopes, allowed event kinds, feeds and resources, maximum content bytes,
 finite positive rate window/count/burst, validity interval, and an optional
-descriptive software-claim reference. It MAY bind a public `agent_key`, public
-`agent_role`, or both for attribution. For key class `agent`, `agent_key` is
-required and MUST equal `selected_signer`. For key class `persona`,
+descriptive software-claim reference. It MAY bind exactly one closed public
+`agent_association` object whose `kind` is `key` or `role` and whose `value` is
+respectively one 32-byte lowercase-hex Nostr key or a non-empty public role of
+at most 128 characters. For key class `persona`,
 `selected_signer` MUST equal `persona_key` and the exact persona-signing scope
 is required. Empty or unlimited kind, resource, size, rate, or burst authority
 is invalid.
@@ -1885,9 +1908,9 @@ server as the RFC 9068 access token defined by §12.2. This is an interoperable
 projection of private-ledger authority, not a node-local command credential.
 In addition to the generic §12.2 claims, it carries
 private Heterodyne claims for the exact selected signer, signer key class, and
-optional agent association. Its exact `aud` and normalized `scope` MUST be
-allowed by that workload registration and the compatible client registration
-and consent. A persona-key token MUST contain the exact
+optional association kind and value. Its exact `aud` and normalized `scope`
+MUST be allowed by that workload registration and the compatible client
+registration and consent. A persona-key token MUST contain the exact
 `heterodyne:agent:sign:persona` scope; the verifier MUST NOT infer it from the
 selected signer or any other claim.
 
@@ -1898,7 +1921,9 @@ the issuer's applicable third-party token policy. Before claim use, a resource
 server validates the complete §12.2 type, issuer, audience, signature, time,
 client, scope, confirmation, checkpoint, status, and source-claim contract,
 plus exact equality between the projected signer, key class, optional public
-association, and current registration.
+association kind/value, and current registration. Absence is also exact: a
+token and registration MUST either both omit the association or both carry the
+same kind and value.
 A projected JWT never replaces canonical private-ledger state. Client
 Credentials remains prohibited; a separately integrated sender-constrained
 HTTPS workload profile is required before that grant can be added.
@@ -1916,8 +1941,9 @@ then inserts this NIP-32-compatible block in exact relative order:
 ["l", "ai" | "programmatic", "network.heterodyne.agent"]
 ```
 
-When the registration carries a public association, the signer MAY append
-exactly one of these Heterodyne tags after the NIP-32 block:
+When the exact token/registration association carries a public kind and value,
+the signer MUST append exactly one corresponding Heterodyne tag after the
+NIP-32 block:
 
 ```text
 ["heterodyne_agent", "v1", "key", "<agent-key>"]
@@ -1926,9 +1952,14 @@ exactly one of these Heterodyne tags after the NIP-32 block:
 
 The association is optional and descriptive. It MUST NOT contain an issuer,
 OIDC subject, client ID, token ID, claim ID, audit ID, private role record, or
-other non-public authorization identifier. When both a public key and role are
-registered, the key form is preferred because it identifies an ordinary Nostr
-author without changing the event signer.
+other non-public authorization identifier. The closed registration carries at
+most one association; it cannot publish both key and role forms.
+
+Before injection, the signer MUST compare both presence and exact
+`agent_association.kind`/`agent_association.value` equality between verified
+token identity and current registration. A mismatch fails with
+`agent-signer-mismatch`; the signer MUST NOT select one source, coerce a role
+to a key, or infer an association from the selected signer.
 
 The signer then appends `["agent_action","publish"]` immediately after the
 association, or immediately after the NIP-32 block when no association is
@@ -1961,6 +1992,12 @@ profile MUST fail with `agent-attribution-profile-unavailable`; it MUST NOT
 fall back to an unlabeled or human event. Deterministic Assurance,
 token-status, relay-metadata, and equivalent maintenance events are
 not agent-authored application publications.
+
+All eight entries use discriminator
+`production-rule:agent-attribution-v1`. That rule admits exactly the canonical
+NIP-32 block followed directly by `agent_action`, or the same block with one
+canonical `heterodyne_agent` association immediately before `agent_action`.
+Neither form makes the association mandatory or permits it in another order.
 
 Tier 1 carries the block publicly. Tier 2 carries it inside the private
 repository trust boundary. Tier 3 carries the same block only inside the
@@ -2024,7 +2061,7 @@ The list below is descriptive:
 - **COMMS-I-JWT-TYPE-AUDIENCE:** JWT consumers enforce exact issuer, intended audience, time, signature, nonce when applicable, and token-type separation including typ at+jwt for access tokens.
 - **COMMS-I-STATUS-INTEGRITY:** Draft-21 status lists are signed, fresh, digest-bound across HTTPS and Radicle mirrors, writer-namespaced without index reuse, and never let VALID override other token failures.
 - **COMMS-I-PUBLIC-READER-TIER1-ONLY:** A public-reader implementation consumes only verified Tier 1 content and never renders Tier 2 plaintext or interprets Tier 3 ciphertext as public content.
-- **COMMS-I-AGENT-SIGNER-BINDING:** Every automated event uses the exact registered signer and key class; an agent key is preferred, while a persona key requires the explicit OIDC persona-signing scope, and the event pubkey remains authoritative.
+- **COMMS-I-AGENT-SIGNER-BINDING:** Every automated event uses the exact registered signer, key class, and optional association kind/value; an agent key is preferred, while a persona key requires the explicit OIDC persona-signing scope, and the event pubkey remains authoritative.
 - **COMMS-I-AGENT-ATTRIBUTION:** Every agent-authored application event carries the canonical automation attribution block at its tier-appropriate protected location.
 - **COMMS-I-WORKLOAD-TOKEN-CONFINEMENT:** Workload tokens, token identifiers, private source claims, and sender proofs remain confined to the protected authorization and audit boundary.
 - **COMMS-I-MARMOT-UPSTREAM-AUTHORITY:** The pinned Marmot dependency remains authoritative for MLS, conversation events, encrypted media, and Nostr transport semantics.

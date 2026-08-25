@@ -116,8 +116,7 @@ describe("trusted private seed and flexible agent schemas", () => {
     agent_class: "ai",
     selected_signer: agentKey,
     signer_key_class: "agent",
-    agent_key: agentKey,
-    agent_role: "newsletter",
+    agent_association: { kind: "key", value: agentKey },
     audience: "https://node.example/control/agent-publication",
     scopes: ["heterodyne:agent:publish"],
     allowed_kinds: [1, 30023],
@@ -210,6 +209,14 @@ describe("trusted private seed and flexible agent schemas", () => {
     expect(validateCommsSchema(
       "agent-workload-registration-v1.schema.json",
       personaSigner,
+      "2020-12",
+    )).toBeNull();
+    expect(validateCommsSchema(
+      "agent-workload-registration-v1.schema.json",
+      {
+        ...personaSigner,
+        agent_association: { kind: "role", value: "newsletter" },
+      },
       "2020-12",
     )).toBeNull();
     expect(validateCommsSchema(

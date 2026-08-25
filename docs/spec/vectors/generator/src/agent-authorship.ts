@@ -2,39 +2,16 @@ import { Ajv2020 } from "ajv/dist/2020.js";
 import workloadRegistrationSchema from "../../../schemas/comms/agent-workload-registration-v1.schema.json" with { type: "json" };
 import { derivePairwiseSubject } from "./oidc.js";
 import { evaluateCredentialGeneration } from "./credential-generation.js";
-import { proofBytes } from "./proof-bytes.js";
-import { bytesToHex } from "./hex.js";
 
-export type AgentDelegationInput = {
-  cold_root: string;
-  credential_ledger_generation: number;
-  expected_credential_ledger_persona: string;
-  expected_credential_ledger_generation: number;
-  nid: string;
-  role_id: string;
-  publishing_key: string;
-  address: string;
-  /** Hex of the Core 3.5.1 proof bytes. */
-  proof_bytes: string;
-  outer_epoch_signature_valid: boolean;
-  nid_proof_valid: boolean;
-  key_proof_valid: boolean;
-  kel_authority_current: boolean;
-  unexpired: boolean;
-  repo_final: boolean;
-};
-
-export type AgentDelegationResult =
-  | {
-      verdict: "accept";
-      role_id: string;
-      publishing_key: string;
-      repo_final: true;
-    }
-  | {
-      verdict: "reject";
-      reason_code: string;
-    };
+// Compatibility exports for the explicitly frozen pre-redesign vector topic.
+export {
+  legacyAgentBindingMessage as agentBindingMessage,
+  validateLegacyAgentDelegation as validateAgentDelegation,
+} from "./legacy-agent-delegation.js";
+export type {
+  LegacyAgentDelegationInput as AgentDelegationInput,
+  LegacyAgentDelegationResult as AgentDelegationResult,
+} from "./legacy-agent-delegation.js";
 
 export type WorkloadRegistration = {
   /** Optional in this source type only so the frozen pre-redesign topic source still compiles. */
@@ -48,8 +25,7 @@ export type WorkloadRegistration = {
   agent_class: "ai" | "programmatic";
   selected_signer?: string;
   signer_key_class?: "agent" | "persona";
-  agent_key?: string;
-  agent_role?: string;
+  agent_association?: AgentAssociation;
   /** Retained only as a compile-time bridge for the frozen pre-redesign topic source. */
   role_id?: string;
   audience: string;
@@ -66,6 +42,11 @@ export type WorkloadRegistration = {
   not_before: number;
   expires_at: number;
   software_claim_ref?: string;
+};
+
+export type AgentAssociation = {
+  kind: "key" | "role";
+  value: string;
 };
 
 export type AgentTokenValidationInput = {
@@ -85,17 +66,21 @@ export type AgentTokenValidationInput = {
   cnf_jkt: string;
   sender_proof_jkt: string;
   sender_proof_valid: boolean;
+  /** Frozen topic compile bridge; current validation rejects this member. */
   agent_role_id?: string;
   signer_key?: string;
   signer_key_class?: "agent" | "persona";
+  agent_association?: AgentAssociation;
   expected_issuer: string;
   expected_subject: string;
   expected_audience: string;
   expected_client_id: string;
   expected_scope: string;
+  /** Frozen topic compile bridge; current validation rejects this member. */
   expected_role_id?: string;
   expected_signer_key?: string;
   expected_signer_key_class?: "agent" | "persona";
+  expected_agent_association?: AgentAssociation;
   now: number;
   status: "VALID" | "INVALID" | "SUSPENDED";
   ledger_active: boolean;
@@ -117,7 +102,7 @@ export type AgentTokenDecision =
         client_id: string;
         signer: string;
         key_class: "agent" | "persona";
-        agent_role?: string;
+        agent_association?: AgentAssociation;
       };
     }
   | {
@@ -133,13 +118,16 @@ export type AgentPublicationInput = {
   issuer?: string;
   subject?: string;
   client_id?: string;
+  /** Frozen topic compile bridge; current validation rejects this member. */
   role_id?: string;
   signer: string;
+  expected_signer?: string;
+  /** Frozen topic compile bridge; current validation rejects this member. */
   current_role_key?: string;
   signer_key_class?: "agent" | "persona";
   oidc_scopes?: string[];
-  agent_key?: string;
-  agent_role?: string;
+  agent_association?: AgentAssociation;
+  expected_agent_association?: AgentAssociation;
   tier: 1 | 2 | 3;
   agent_review?: string;
   agent_review_verified?: boolean;
@@ -163,71 +151,17 @@ const validateRegistration = ajv.compile<WorkloadRegistration>(
   workloadRegistrationSchema,
 );
 const AGENT_KINDS = new Set([1, 6, 7, 16, 1063, 1985, 4550, 30023]);
-
-export function agentBindingMessage(
-  coldRoot: string,
-  nid: string,
-  roleId: string,
-  publishingKey: string,
-): Uint8Array {
-  return proofBytes("heterodyne-agent-signing-binding-v1", {
-    cold_root: coldRoot,
-    nid,
-    publishing_key: publishingKey,
-    role_id: roleId,
-  });
-}
-
-export function validateAgentDelegation(
-  input: AgentDelegationInput,
-): AgentDelegationResult {
-  if (!Object.prototype.hasOwnProperty.call(input, "credential_ledger_generation")) {
-    return denied("credential_generation_missing");
-  }
-  if (
-    !/^[0-9a-f]{64}$/.test(input.role_id)
-    || input.address !== `agent:${input.role_id}`
-  ) {
-    return denied("role-delegation-address-invalid");
-  }
-  if (
-    !/^[0-9a-f]{64}$/.test(input.cold_root)
-    || !/^did:key:z[1-9A-HJ-NP-Za-km-z]+$/.test(input.nid)
-    || !/^[0-9a-f]{64}$/.test(input.publishing_key)
-    || input.proof_bytes !== bytesToHex(agentBindingMessage(
-      input.cold_root,
-      input.nid,
-      input.role_id,
-      input.publishing_key,
-    ))
-    || !input.outer_epoch_signature_valid
-    || !input.nid_proof_valid
-    || !input.key_proof_valid
-    || !input.kel_authority_current
-  ) {
-    return denied("role-delegation-key-proof-invalid");
-  }
-  const generation = evaluateCredentialGeneration({
-    credential_ledger_persona: input.cold_root,
-    credential_ledger_generation: input.credential_ledger_generation,
-  }, {
-    credential_ledger_persona: input.expected_credential_ledger_persona,
-    credential_ledger_generation: input.expected_credential_ledger_generation,
-  });
-  if (!generation.valid) {
-    return denied(generation.reason_code === "credential_schema_invalid"
-      ? "role-delegation-key-proof-invalid"
-      : generation.reason_code);
-  }
-  if (!input.unexpired) return denied("expired_delegation");
-  if (!input.repo_final) return denied("provisional_not_final");
-  return {
-    verdict: "accept",
-    role_id: input.role_id,
-    publishing_key: input.publishing_key,
-    repo_final: true,
-  };
-}
+const LEGACY_DELEGATION_MEMBERS = new Set([
+  "agent_role_id",
+  "expected_role_id",
+  "role_id",
+  "current_role_key",
+  "proof_bytes",
+  "outer_epoch_signature_valid",
+  "nid_proof_valid",
+  "key_proof_valid",
+  "kel_authority_current",
+]);
 
 export function validateWorkloadRegistration(
   value: unknown,
@@ -244,10 +178,7 @@ export function validateWorkloadRegistration(
   ) {
     throw new Error("agent-workload-registration-invalid");
   }
-  if (
-    registration.signer_key_class === "agent"
-    && registration.selected_signer !== registration.agent_key
-  ) {
+  if (!/^[0-9a-f]{64}$/.test(registration.selected_signer ?? "")) {
     throw new Error("agent-workload-registration-invalid");
   }
   if (
@@ -290,6 +221,9 @@ export function deriveAgentIdentity(
 export function validateAgentAccessToken(
   input: AgentTokenValidationInput,
 ): AgentTokenDecision {
+  if (hasAnyMember(input, LEGACY_DELEGATION_MEMBERS)) {
+    return denied("agent-token-invalid");
+  }
   if (!Object.prototype.hasOwnProperty.call(input, "credential_ledger_generation")) {
     return denied("credential_generation_missing");
   }
@@ -355,17 +289,7 @@ export function validateAgentAccessToken(
   ) {
     return denied("agent-persona-scope-required");
   }
-  const hasAgentRole = input.agent_role_id !== undefined
-    || input.expected_role_id !== undefined;
-  if (
-    hasAgentRole
-    && (
-      input.agent_role_id !== input.expected_role_id
-      || typeof input.agent_role_id !== "string"
-      || input.agent_role_id.length < 1
-      || input.agent_role_id.length > 128
-    )
-  ) {
+  if (!equalAssociation(input.agent_association, input.expected_agent_association)) {
     return denied("agent-signer-mismatch");
   }
   if (
@@ -383,9 +307,9 @@ export function validateAgentAccessToken(
       client_id: input.client_id,
       signer: signerKey,
       key_class: signerKeyClass,
-      ...(input.agent_role_id === undefined
+      ...(input.agent_association === undefined
         ? {}
-        : { agent_role: input.agent_role_id }),
+        : { agent_association: input.agent_association }),
     },
   };
 }
@@ -399,19 +323,21 @@ export function injectAgentAttribution(
   if (
     Object.prototype.hasOwnProperty.call(input, "id")
     || Object.prototype.hasOwnProperty.call(input, "sig")
+    || hasAnyMember(input, LEGACY_DELEGATION_MEMBERS)
   ) {
     return denied("agent-attribution-invalid");
   }
   if (!/^[0-9a-f]{64}$/.test(input.persona ?? "")) {
     return denied("agent-signer-mismatch");
   }
+  if (
+    input.signer !== input.expected_signer
+    || !/^[0-9a-f]{64}$/.test(input.signer)
+  ) {
+    return denied("agent-signer-mismatch");
+  }
   if (input.signer_key_class === "agent") {
-    if (
-      input.signer !== input.agent_key
-      || !/^[0-9a-f]{64}$/.test(input.agent_key ?? "")
-    ) {
-      return denied("agent-signer-mismatch");
-    }
+    // The exact signer was already compared with verified token identity.
   } else if (input.signer_key_class === "persona") {
     if (input.signer !== input.persona) return denied("agent-signer-mismatch");
     if (!input.oidc_scopes?.includes("heterodyne:agent:sign:persona")) {
@@ -426,7 +352,14 @@ export function injectAgentAttribution(
     return denied("agent-attribution-invalid");
   }
 
-  const association = agentAssociationTag(input);
+  if (!equalAssociation(
+    input.agent_association,
+    input.expected_agent_association,
+  )) {
+    return denied("agent-signer-mismatch");
+  }
+
+  const association = agentAssociationTag(input.agent_association);
   if (association === null) return denied("agent-attribution-invalid");
 
   const preserved = input.tags.filter((tag) => !isReservedAttributionTag(tag));
@@ -457,20 +390,63 @@ export function injectAgentAttribution(
   };
 }
 
+export function matchesAgentAttributionProfile(tags: string[][]): boolean {
+  const reserved = tags.filter((tag) =>
+    tag[0] === "heterodyne_agent"
+    || tag[0] === "agent_action"
+    || tag[0] === "L" && tag[1] === "network.heterodyne.agent"
+    || tag[0] === "l" && tag[2] === "network.heterodyne.agent"
+  );
+  if (reserved.length !== 3 && reserved.length !== 4) return false;
+  if (
+    !equalTag(reserved[0], ["L", "network.heterodyne.agent"])
+    || reserved[1].length !== 3
+    || reserved[1][0] !== "l"
+    || !["ai", "programmatic"].includes(reserved[1][1])
+    || reserved[1][2] !== "network.heterodyne.agent"
+    || !equalTag(reserved.at(-1) ?? [], ["agent_action", "publish"])
+  ) {
+    return false;
+  }
+  if (reserved.length === 3) return true;
+  const association = reserved[2];
+  return association.length === 4
+    && association[0] === "heterodyne_agent"
+    && association[1] === "v1"
+    && isAgentAssociation({
+      kind: association[2] as "key" | "role",
+      value: association[3],
+    });
+}
+
 function agentAssociationTag(
-  input: AgentPublicationInput,
+  association: AgentAssociation | undefined,
 ): string[] | undefined | null {
-  if (input.agent_key !== undefined) {
-    return /^[0-9a-f]{64}$/.test(input.agent_key)
-      ? ["heterodyne_agent", "v1", "key", input.agent_key]
-      : null;
+  if (association === undefined) return undefined;
+  return isAgentAssociation(association)
+    ? ["heterodyne_agent", "v1", association.kind, association.value]
+    : null;
+}
+
+function equalAssociation(
+  actual: AgentAssociation | undefined,
+  expected: AgentAssociation | undefined,
+): boolean {
+  if (actual === undefined || expected === undefined) {
+    return actual === expected;
   }
-  if (input.agent_role !== undefined) {
-    return input.agent_role.length >= 1 && input.agent_role.length <= 128
-      ? ["heterodyne_agent", "v1", "role", input.agent_role]
-      : null;
-  }
-  return undefined;
+  return isAgentAssociation(actual)
+    && isAgentAssociation(expected)
+    && actual.kind === expected.kind
+    && actual.value === expected.value;
+}
+
+function isAgentAssociation(value: AgentAssociation): boolean {
+  return value.kind === "key"
+    ? /^[0-9a-f]{64}$/.test(value.value)
+    : value.kind === "role"
+      && value.value.length >= 1
+      && value.value.length <= 128;
 }
 
 function isReservedAttributionTag(tag: string[]): boolean {
@@ -479,6 +455,15 @@ function isReservedAttributionTag(tag: string[]): boolean {
   }
   return tag[0] === "L" && tag[1] === "network.heterodyne.agent"
     || tag[0] === "l" && tag[2] === "network.heterodyne.agent";
+}
+
+function equalTag(actual: string[], expected: string[]): boolean {
+  return actual.length === expected.length
+    && actual.every((member, index) => member === expected[index]);
+}
+
+function hasAnyMember(value: object, members: ReadonlySet<string>): boolean {
+  return Object.keys(value).some((member) => members.has(member));
 }
 
 function denied(reason_code: string): { verdict: "reject"; reason_code: string } {

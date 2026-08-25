@@ -347,7 +347,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "comms.agent-authorship.v1",
-      "description": "Every automated event uses the exact registered signer and key class; an agent key is preferred, while a persona key requires the explicit OIDC persona-signing scope, and the event pubkey remains authoritative."
+      "description": "Every automated event uses the exact registered signer, key class, and optional association kind/value; an agent key is preferred, while a persona key requires the explicit OIDC persona-signing scope, and the event pubkey remains authoritative."
     },
     {
       "id": "COMMS-I-AGENT-ATTRIBUTION",
