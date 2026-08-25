@@ -962,13 +962,23 @@
       ]
     },
     {
-      "code": "agent-role-mismatch",
+      "code": "agent-signer-mismatch",
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The token, registration, delegation role, or event signer names a different agent role.",
+      "description": "The token, registration, selected signing key, key class, or event pubkey names a different signer.",
       "spec_refs": [
-        "heterodyne:0.5.0#comms-publishing"
+        "heterodyne:0.5.0#comms-agent-authorship"
+      ]
+    },
+    {
+      "code": "agent-persona-scope-required",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "An automated publication selected the persona key without the exact explicit OIDC persona-signing scope.",
+      "spec_refs": [
+        "heterodyne:0.5.0#comms-agent-authorship"
       ]
     },
     {
@@ -1420,6 +1430,94 @@
       "spec_refs": [
         "heterodyne:0.5.0#comms-marmot-groups"
       ]
+    },
+    {
+      "code": "trusted-seed-acl-missing",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "No trusted-seed ACL projection is available for the requested private route.",
+      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+    },
+    {
+      "code": "trusted-seed-acl-invalid",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "A trusted-seed ACL is malformed, future-issued, incorrectly signed, or otherwise invalid.",
+      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+    },
+    {
+      "code": "trusted-seed-acl-expired",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "The selected trusted-seed ACL has reached its signed expiry.",
+      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+    },
+    {
+      "code": "trusted-seed-acl-stale",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "The selected trusted-seed ACL is not newer than accepted state or names an older Marmot group transition.",
+      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+    },
+    {
+      "code": "trusted-seed-acl-conflict",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "More than one distinct valid trusted-seed ACL claims the same greatest sequence.",
+      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+    },
+    {
+      "code": "trusted-seed-acl-ambiguous",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Trusted-seed ACL state has no unique predecessor-linked head, seed grant, account entry, or writer ref.",
+      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+    },
+    {
+      "code": "trusted-seed-unauthorized",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "The authenticated account, seed NID, operation, or target writer ref is outside the current ACL.",
+      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+    },
+    {
+      "code": "trusted-seed-revoked",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "The requested seed NID is explicitly revoked by the current ACL projection.",
+      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+    },
+    {
+      "code": "trusted-seed-nip42-required",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Private relay admission lacks successful NIP-42 authentication by the account being authorized.",
+      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+    },
+    {
+      "code": "trusted-seed-route-mismatch",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "The request and ACL disagree on h, private RID, current Marmot transition, or the selected seed route.",
+      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+    },
+    {
+      "code": "trusted-seed-secret-material-forbidden",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "A private relay request attempted to send MLS leaf state, plaintext, or content-decryption material to the seed.",
+      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
     },
     {
       "code": "marmot-routing-binding-invalid",

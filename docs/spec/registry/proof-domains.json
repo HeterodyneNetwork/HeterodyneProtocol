@@ -110,23 +110,6 @@
       "description": "NID proof over a kind:31010 node and repository advertisement."
     },
     {
-      "id": "heterodyne-agent-signing-binding-v1",
-      "owner": "assurance",
-      "first_version": "heterodyne/0.5.0",
-      "status": "draft",
-      "bound_members": [
-        "cold_root",
-        "nid",
-        "publishing_key",
-        "role_id"
-      ],
-      "suites": [
-        "bip340",
-        "ed25519"
-      ],
-      "description": "Historical dual proof binding a node-held agent role key to a cold-root persona and hosting NID."
-    },
-    {
       "id": "heterodyne-claim-pop-v1",
       "owner": "comms",
       "first_version": "heterodyne/0.5.0",
@@ -190,6 +173,38 @@
         "hmac-sha256"
       ],
       "description": "Responder proof over a one-time invite response without its proof member."
+    },
+    {
+      "id": "heterodyne-trusted-seed-acl-v1",
+      "owner": "comms",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "accounts[].account_key",
+        "accounts[].roles",
+        "administrator_account",
+        "expires_at",
+        "group_transition.generation",
+        "group_transition.marmot_routing_event_id",
+        "group_transition.routing_binding_sha256",
+        "h",
+        "issued_at",
+        "predecessor",
+        "private_rid",
+        "profile",
+        "seed_grants[].radicle_endpoint",
+        "seed_grants[].relay_endpoint",
+        "seed_grants[].roles",
+        "seed_grants[].seed_nid",
+        "seed_grants[].state",
+        "seed_grants[].writer_ref",
+        "sequence",
+        "spec_version"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "The current Marmot administrator signs the complete closed private-relay ACL projection except its signature member."
     },
     {
       "id": "heterodyne-workspace-object-v1",

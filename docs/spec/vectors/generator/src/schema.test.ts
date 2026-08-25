@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Ajv, type AnySchema } from "ajv";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import {
   CREDENTIAL_CONTINUITY_SCHEMA_FILES,
@@ -57,8 +58,183 @@ function validateAssuranceSchema(name: string, value: unknown): string | null {
   return validate(value) ? null : JSON.stringify(validate.errors);
 }
 
+function validateCommsSchema(
+  name: string,
+  value: unknown,
+  draft: "draft-07" | "2020-12" = "draft-07",
+): string | null {
+  const schema = JSON.parse(
+    readFileSync(resolve(commsSchemasRoot, name), "utf8"),
+  ) as AnySchema;
+  const validate = draft === "2020-12"
+    ? new Ajv2020({ allErrors: true, strict: false }).compile(schema)
+    : new Ajv({ allErrors: true, strict: false }).compile(schema);
+  return validate(value) ? null : JSON.stringify(validate.errors);
+}
+
 const h = (byte: string) => byte.repeat(64);
 const sig = (byte: string) => byte.repeat(128);
+
+describe("trusted private seed and flexible agent schemas", () => {
+  const administratorAccount = h("1");
+  const personaKey = h("2");
+  const agentKey = h("3");
+  const seedNid = "did:key:z6MkwQp8f8Y11L3WJYJ4hXa1";
+  const privateRid = "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5";
+  const acl = {
+    profile: "heterodyne.trusted-seed-acl.v1",
+    spec_version: "heterodyne/0.5.0",
+    administrator_account: administratorAccount,
+    accounts: [{ account_key: personaKey, roles: ["read", "write"] }],
+    h: "private-routing-id",
+    private_rid: privateRid,
+    seed_grants: [{
+      seed_nid: seedNid,
+      relay_endpoint: "wss://seed.example/group",
+      radicle_endpoint: privateRid,
+      writer_ref: "refs/xyz.heterodyne.marmot/relays/seed-a",
+      roles: ["read", "write"],
+      state: "active",
+    }],
+    sequence: 0,
+    predecessor: null,
+    group_transition: {
+      generation: 7,
+      marmot_routing_event_id: h("4"),
+      routing_binding_sha256: h("5"),
+    },
+    issued_at: 1_785_000_000,
+    expires_at: 1_785_003_600,
+    signature: sig("6"),
+  };
+
+  const workload = {
+    persona_key: personaKey,
+    client_id: "agent-client",
+    subject_jkt: "A".repeat(43),
+    subject_proof: { method: "dpop", jkt: "A".repeat(43) },
+    agent_class: "ai",
+    selected_signer: agentKey,
+    signer_key_class: "agent",
+    agent_key: agentKey,
+    agent_role: "newsletter",
+    audience: "https://node.example/control/agent-publication",
+    scopes: ["heterodyne:agent:publish"],
+    allowed_kinds: [1, 30023],
+    allowed_feeds: ["main"],
+    allowed_resources: ["feed:main"],
+    max_content_bytes: 4096,
+    rate_limit: { window_seconds: 60, count: 20, burst: 5 },
+    not_before: 1_785_000_000,
+    expires_at: 1_785_003_600,
+  };
+
+  const continuity = {
+    profile: "heterodyne-oidc-continuity-v1",
+    repository_rid: "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5",
+    branch: "main",
+    persona_npub: `npub1${"q".repeat(58)}`,
+    persona_key: personaKey,
+    issuer: `https://issuer.example/oidc/npub1${"q".repeat(58)}`,
+    sequence: 0,
+    predecessor_digest: null,
+    max_checkpoint_age_seconds: 300,
+    current_jwks_sha256: h("7"),
+    current_signing_key_id: "B".repeat(43),
+    current_signing_jwk_sha256: h("8"),
+    retiring_signing_key_ids: [],
+    retiring_jwks_sha256: [],
+    status_lists: [],
+    successor: null,
+    authority: {
+      writer_nid: seedNid,
+      issued_at: 1_785_000_000,
+      checkpoint: {
+        repository_rid: "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5",
+        branch: "main",
+        commit_oid: h("9"),
+        observed_at: 1_785_000_000,
+      },
+    },
+    authority_proof: {
+      type: "radicle-ed25519",
+      public_key: h("a"),
+      signature: sig("b"),
+    },
+  };
+
+  it("accepts the exact closed trusted-seed ACL projection", () => {
+    expect(validateCommsSchema("trusted-seed-acl-v1.schema.json", acl)).toBeNull();
+    for (const member of [
+      "profile", "accounts", "h", "private_rid", "seed_grants", "sequence",
+      "predecessor", "group_transition", "issued_at", "expires_at", "signature",
+    ]) {
+      const missing = structuredClone(acl) as Record<string, unknown>;
+      delete missing[member];
+      expect(
+        validateCommsSchema("trusted-seed-acl-v1.schema.json", missing),
+        member,
+      ).toMatch(/required/);
+    }
+    expect(validateCommsSchema(
+      "trusted-seed-acl-v1.schema.json",
+      { ...acl, mls_leaf_secret: h("c") },
+    )).toMatch(/additionalProperties/);
+  });
+
+  it("binds workload registration to persona, signer class, public association, kinds, expiry, and subject proof", () => {
+    expect(validateCommsSchema(
+      "agent-workload-registration-v1.schema.json",
+      workload,
+      "2020-12",
+    )).toBeNull();
+    for (const member of [
+      "persona_key", "selected_signer", "signer_key_class", "allowed_kinds",
+      "expires_at", "subject_proof",
+    ]) {
+      const missing = structuredClone(workload) as Record<string, unknown>;
+      delete missing[member];
+      expect(validateCommsSchema(
+        "agent-workload-registration-v1.schema.json",
+        missing,
+        "2020-12",
+      ), member).toMatch(/required/);
+    }
+
+    const personaSigner = {
+      ...workload,
+      selected_signer: personaKey,
+      signer_key_class: "persona",
+      scopes: ["heterodyne:agent:publish", "heterodyne:agent:sign:persona"],
+    };
+    expect(validateCommsSchema(
+      "agent-workload-registration-v1.schema.json",
+      personaSigner,
+      "2020-12",
+    )).toBeNull();
+    expect(validateCommsSchema(
+      "agent-workload-registration-v1.schema.json",
+      { ...personaSigner, scopes: ["heterodyne:agent:publish"] },
+      "2020-12",
+    )).toMatch(/contains/);
+  });
+
+  it("binds OIDC continuity to the active persona key without a cold-root or KEL prerequisite", () => {
+    expect(validateCommsSchema(
+      "oidc-continuity-manifest-v1.schema.json",
+      continuity,
+    )).toBeNull();
+    expect(validateCommsSchema(
+      "oidc-continuity-manifest-v1.schema.json",
+      { ...continuity, cold_root_hex: h("c") },
+    )).toMatch(/additionalProperties/);
+    const { persona_key: _persona, ...missingPersona } = continuity;
+    expect(validateCommsSchema(
+      "oidc-continuity-manifest-v1.schema.json",
+      missingPersona,
+    )).toMatch(/persona_key|required/);
+  });
+});
 
 const assuranceInception = {
   profile: "heterodyne.assurance.enrollment-inception.v1",

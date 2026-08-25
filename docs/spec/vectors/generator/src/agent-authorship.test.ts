@@ -8,7 +8,6 @@ import {
   validateAgentDelegation,
   validateWorkloadRegistration,
   type AgentTokenValidationInput,
-  type WorkloadRegistration,
 } from "./agent-authorship.js";
 
 const coldRoot = "11".repeat(32);
@@ -76,11 +75,16 @@ describe("agent signing delegation", () => {
 });
 
 describe("workload registration and stable identity", () => {
-  const registration: WorkloadRegistration = {
+  const registration = {
+    persona_key: coldRoot,
     client_id: "agent-client",
     subject_jkt: subjectJkt,
+    subject_proof: { method: "dpop", jkt: subjectJkt },
     agent_class: "ai",
-    role_id: roleId,
+    selected_signer: publishingKey,
+    signer_key_class: "agent",
+    agent_key: publishingKey,
+    agent_role: roleId,
     audience,
     scopes: ["heterodyne:agent:publish"],
     allowed_kinds: [1, 30023],
@@ -92,16 +96,31 @@ describe("workload registration and stable identity", () => {
     expires_at: 2_000,
   };
 
-  it("accepts one role and finite kind, resource, size, rate, and burst bounds", () => {
+  it("accepts an agent-key signer bound to one persona, subject proof, and finite authority", () => {
     expect(validateWorkloadRegistration(registration)).toEqual(registration);
   });
 
-  it("rejects empty, unlimited, multi-role-shaped, unknown, or inverted registrations", () => {
+  it("permits persona-key signing only under the explicit OIDC scope", () => {
+    const personaSigner = {
+      ...registration,
+      selected_signer: coldRoot,
+      signer_key_class: "persona",
+      scopes: ["heterodyne:agent:publish", "heterodyne:agent:sign:persona"],
+    };
+    expect(validateWorkloadRegistration(personaSigner)).toEqual(personaSigner);
+    expect(() => validateWorkloadRegistration({
+      ...personaSigner,
+      scopes: ["heterodyne:agent:publish"],
+    })).toThrow(/agent-workload-registration-invalid/);
+  });
+
+  it("rejects signer, proof, empty, unlimited, unknown, or inverted registrations", () => {
     for (const value of [
       { ...registration, scopes: [] },
       { ...registration, max_content_bytes: 0 },
       { ...registration, rate_limit: { ...registration.rate_limit, count: 0 } },
-      { ...registration, role_id: [roleId, "44".repeat(32)] },
+      { ...registration, selected_signer: "44".repeat(32) },
+      { ...registration, subject_proof: { method: "dpop", jkt: "B".repeat(43) } },
       { ...registration, expires_at: registration.not_before },
       { ...registration, unlimited: true },
     ]) {
@@ -157,12 +176,16 @@ describe("agent workload access token", () => {
     sender_proof_jkt: subjectJkt,
     sender_proof_valid: true,
     agent_role_id: roleId,
+    signer_key: publishingKey,
+    signer_key_class: "agent",
     expected_issuer: issuer,
     expected_subject: "stable-pairwise-sub",
     expected_audience: audience,
     expected_client_id: "agent-client",
     expected_scope: "heterodyne:agent:publish",
     expected_role_id: roleId,
+    expected_signer_key: publishingKey,
+    expected_signer_key_class: "agent",
     now: 1_100,
     status: "VALID",
     ledger_active: true,
@@ -182,7 +205,33 @@ describe("agent workload access token", () => {
         issuer,
         sub: "stable-pairwise-sub",
         client_id: "agent-client",
-        role_id: roleId,
+        signer: publishingKey,
+        key_class: "agent",
+        agent_role: roleId,
+      },
+    });
+  });
+
+  it("accepts an explicitly scoped persona signer without inventing an agent role", () => {
+    const scope = "heterodyne:agent:publish heterodyne:agent:sign:persona";
+    expect(validateAgentAccessToken({
+      ...valid,
+      scope,
+      expected_scope: scope,
+      signer_key: coldRoot,
+      expected_signer_key: coldRoot,
+      signer_key_class: "persona",
+      expected_signer_key_class: "persona",
+      agent_role_id: undefined,
+      expected_role_id: undefined,
+    })).toEqual({
+      verdict: "accept",
+      identity: {
+        issuer,
+        sub: "stable-pairwise-sub",
+        client_id: "agent-client",
+        signer: coldRoot,
+        key_class: "persona",
       },
     });
   });
@@ -197,7 +246,8 @@ describe("agent workload access token", () => {
       [{ scope: "heterodyne:agent:publish extra" }, "agent-token-invalid"],
       [{ sender_proof_valid: false }, "agent-sender-proof-invalid"],
       [{ sender_proof_jkt: "B".repeat(43) }, "agent-sender-proof-invalid"],
-      [{ agent_role_id: "44".repeat(32) }, "agent-role-mismatch"],
+      [{ signer_key: "44".repeat(32) }, "agent-signer-mismatch"],
+      [{ signer_key_class: "persona" }, "agent-signer-mismatch"],
       [{ ledger_active: false }, "agent-token-invalid"],
       [{ expected_credential_ledger_generation: 1 }, "credential_generation_stale"],
     ];
@@ -219,27 +269,36 @@ describe("canonical agent attribution", () => {
       ["agent_action", "human"],
     ],
     agent_class: "ai" as const,
+    persona: coldRoot,
     issuer,
     subject: "stable-pairwise-sub",
     client_id: "agent-client",
-    role_id: roleId,
     signer: publishingKey,
-    current_role_key: publishingKey,
+    signer_key_class: "agent" as const,
+    oidc_scopes: ["heterodyne:agent:publish"],
+    agent_key: publishingKey,
+    agent_role: roleId,
     tier: 1 as const,
   };
   const canonicalTags = [
     ["L", "network.heterodyne.agent"],
     ["l", "ai", "network.heterodyne.agent"],
-    ["heterodyne_agent", "v1", issuer, "stable-pairwise-sub", "agent-client", roleId],
+    ["heterodyne_agent", "v1", "key", publishingKey],
     ["agent_action", "publish"],
   ];
 
-  it("removes caller forgery and inserts the exact ordered block", () => {
+  it("removes caller forgery, inserts public-safe attribution, and keeps the signer authoritative", () => {
     expect(injectAgentAttribution(base)).toEqual({
       verdict: "accept",
       tags: [["client", "heterodyne"], ...canonicalTags],
       placement: "public",
+      author: publishingKey,
     });
+    const result = injectAgentAttribution(base);
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain(issuer);
+    expect(serialized).not.toContain("stable-pairwise-sub");
+    expect(serialized).not.toContain("agent-client");
   });
 
   it("keeps verified human review optional without changing agent classification", () => {
@@ -264,14 +323,56 @@ describe("canonical agent attribution", () => {
     });
   });
 
-  it("rejects unsupported kinds and signer-role mismatch without fallback", () => {
+  it("allows persona-key authorship only under explicit scope and keeps automation visible", () => {
+    const personaSigned = injectAgentAttribution({
+      ...base,
+      signer: coldRoot,
+      signer_key_class: "persona",
+      oidc_scopes: ["heterodyne:agent:publish", "heterodyne:agent:sign:persona"],
+    });
+    expect(personaSigned).toMatchObject({ verdict: "accept", author: coldRoot });
+    expect(personaSigned.verdict === "accept" && personaSigned.tags).toContainEqual(
+      ["l", "ai", "network.heterodyne.agent"],
+    );
+    expect(injectAgentAttribution({
+      ...base,
+      signer: coldRoot,
+      signer_key_class: "persona",
+    })).toEqual({ verdict: "reject", reason_code: "agent-persona-scope-required" });
+  });
+
+  it("keeps the Heterodyne association optional without weakening the NIP-32 label", () => {
+    const result = injectAgentAttribution({
+      ...base,
+      signer: coldRoot,
+      signer_key_class: "persona",
+      oidc_scopes: ["heterodyne:agent:publish", "heterodyne:agent:sign:persona"],
+      agent_key: undefined,
+      agent_role: undefined,
+    });
+    expect(result).toMatchObject({
+      verdict: "accept",
+      tags: [
+        ["client", "heterodyne"],
+        ["L", "network.heterodyne.agent"],
+        ["l", "ai", "network.heterodyne.agent"],
+        ["agent_action", "publish"],
+      ],
+    });
+  });
+
+  it("rejects unsupported kinds, signer mismatch, and post-sign injection without fallback", () => {
     expect(injectAgentAttribution({ ...base, kind: 31007 })).toEqual({
       verdict: "reject",
       reason_code: "agent-attribution-profile-unavailable",
     });
     expect(injectAgentAttribution({ ...base, signer: "44".repeat(32) })).toEqual({
       verdict: "reject",
-      reason_code: "agent-role-mismatch",
+      reason_code: "agent-signer-mismatch",
+    });
+    expect(injectAgentAttribution({ ...base, sig: "55".repeat(64) } as typeof base)).toEqual({
+      verdict: "reject",
+      reason_code: "agent-attribution-invalid",
     });
   });
 });

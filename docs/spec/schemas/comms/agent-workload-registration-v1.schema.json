@@ -5,10 +5,13 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "persona_key",
     "client_id",
     "subject_jkt",
+    "subject_proof",
     "agent_class",
-    "role_id",
+    "selected_signer",
+    "signer_key_class",
     "audience",
     "scopes",
     "allowed_kinds",
@@ -20,21 +23,46 @@
     "expires_at"
   ],
   "properties": {
+    "persona_key": {
+      "$ref": "#/$defs/nostr_key"
+    },
     "client_id": {
       "type": "string",
       "minLength": 1,
       "maxLength": 128
     },
     "subject_jkt": {
-      "type": "string",
-      "pattern": "^[A-Za-z0-9_-]{43}$"
+      "$ref": "#/$defs/jwk_thumbprint"
+    },
+    "subject_proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "jkt"],
+      "properties": {
+        "method": {
+          "const": "dpop"
+        },
+        "jkt": {
+          "$ref": "#/$defs/jwk_thumbprint"
+        }
+      }
     },
     "agent_class": {
       "enum": ["ai", "programmatic"]
     },
-    "role_id": {
+    "selected_signer": {
+      "$ref": "#/$defs/nostr_key"
+    },
+    "signer_key_class": {
+      "enum": ["agent", "persona"]
+    },
+    "agent_key": {
+      "$ref": "#/$defs/nostr_key"
+    },
+    "agent_role": {
       "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
+      "minLength": 1,
+      "maxLength": 128
     },
     "audience": {
       "type": "string",
@@ -120,6 +148,50 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 512
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "signer_key_class": {
+            "const": "agent"
+          }
+        },
+        "required": ["signer_key_class"]
+      },
+      "then": {
+        "required": ["agent_key"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "signer_key_class": {
+            "const": "persona"
+          }
+        },
+        "required": ["signer_key_class"]
+      },
+      "then": {
+        "properties": {
+          "scopes": {
+            "contains": {
+              "const": "heterodyne:agent:sign:persona"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "nostr_key": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "jwk_thumbprint": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
     }
   }
 }

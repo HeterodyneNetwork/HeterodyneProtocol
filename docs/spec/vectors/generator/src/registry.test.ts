@@ -86,6 +86,7 @@ describe("revisioned protocol registry", () => {
       "active-key-acceptance-v1",
       "succession-v1",
       "associated-key-v1",
+      "trusted-seed-acl-v1",
       "workspace-manifest-v1",
       "workspace-policy-v1",
       "role-manifest-v1",
@@ -314,6 +315,89 @@ describe("revisioned protocol registry", () => {
       .toBe("comms.marmot-conversations.v1");
     expect(invariant("COMMS-I-RADICLE-ROUTING-AUTHORITY").feature)
       .toBe("comms.radicle-marmot-storage.v1");
+  });
+
+  it("registers trusted private seeds and flexible automated signers", () => {
+    const feature = (id: string) => {
+      const entry = registry.features.find((candidate) => candidate.id === id);
+      if (entry === undefined) throw new Error(`missing feature: ${id}`);
+      return entry;
+    };
+
+    expect(feature("comms.trusted-seed-private-relay.v1")).toMatchObject({
+      owner: "comms",
+      prerequisites: [
+        "core.repo-relay-client.v1",
+        "comms.radicle-backed-marmot-relay.v1",
+      ],
+      spec_ref: "heterodyne:0.5.0#comms-trusted-seed-private-relay",
+    });
+    expect(feature("comms.agent-authorship.v1").prerequisites)
+      .toEqual(["comms.oidc-jwt-projection.v1"]);
+
+    expect(registry.objects.find(({ id }) => id === "trusted-seed-acl-v1"))
+      .toMatchObject({
+        owner: "comms",
+        schema: "https://heterodyne.network/schemas/comms/trusted-seed-acl-v1.schema.json",
+        carriers: ["radicle-authority-file"],
+      });
+    expect(registry.proof_domains.find(
+      ({ id }) => id === "heterodyne-trusted-seed-acl-v1",
+    )).toMatchObject({
+      owner: "comms",
+      suites: ["bip340"],
+      bound_members: [
+        "accounts[].account_key",
+        "accounts[].roles",
+        "administrator_account",
+        "expires_at",
+        "group_transition.generation",
+        "group_transition.marmot_routing_event_id",
+        "group_transition.routing_binding_sha256",
+        "h",
+        "issued_at",
+        "predecessor",
+        "private_rid",
+        "profile",
+        "seed_grants[].radicle_endpoint",
+        "seed_grants[].relay_endpoint",
+        "seed_grants[].roles",
+        "seed_grants[].seed_nid",
+        "seed_grants[].state",
+        "seed_grants[].writer_ref",
+        "sequence",
+        "spec_version",
+      ],
+    });
+    expect(registry.proof_domains.map(({ id }) => id))
+      .not.toContain("heterodyne-agent-signing-binding-v1");
+
+    expect(registry.reason_codes.map(({ code }) => code)).toEqual(
+      expect.arrayContaining([
+        "trusted-seed-acl-missing",
+        "trusted-seed-acl-invalid",
+        "trusted-seed-acl-expired",
+        "trusted-seed-acl-stale",
+        "trusted-seed-acl-conflict",
+        "trusted-seed-acl-ambiguous",
+        "trusted-seed-unauthorized",
+        "trusted-seed-revoked",
+        "trusted-seed-nip42-required",
+        "trusted-seed-route-mismatch",
+        "trusted-seed-secret-material-forbidden",
+        "agent-signer-mismatch",
+        "agent-persona-scope-required",
+      ]),
+    );
+    expect(registry.security_invariants.map(({ id }) => id)).toEqual(
+      expect.arrayContaining([
+        "COMMS-I-TRUSTED-SEED-CONFINEMENT",
+        "COMMS-I-PRIVATE-RELAY-ACL",
+        "COMMS-I-AGENT-SIGNER-BINDING",
+      ]),
+    );
+    expect(registry.security_invariants.map(({ id }) => id))
+      .not.toContain("COMMS-I-AGENT-ROLE-BINDING");
   });
 
   it("registers upstream Marmot transport kinds without Heterodyne stamping", () => {

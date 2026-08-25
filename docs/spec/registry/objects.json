@@ -4,6 +4,7 @@
     {"id":"active-key-acceptance-v1","owner":"assurance","first_version":"heterodyne/0.5.0","status":"draft","schema":"https://heterodyne.network/schemas/assurance/active-key-acceptance-v1.schema.json","carriers":["nostr-event"]},
     {"id":"succession-v1","owner":"assurance","first_version":"heterodyne/0.5.0","status":"draft","schema":"https://heterodyne.network/schemas/assurance/succession-v1.schema.json","carriers":["nostr-event"]},
     {"id":"associated-key-v1","owner":"assurance","first_version":"heterodyne/0.5.0","status":"draft","schema":"https://heterodyne.network/schemas/assurance/associated-key-v1.schema.json","carriers":["nostr-event"]},
+    {"id":"trusted-seed-acl-v1","owner":"comms","first_version":"heterodyne/0.5.0","status":"draft","schema":"https://heterodyne.network/schemas/comms/trusted-seed-acl-v1.schema.json","carriers":["radicle-authority-file"]},
     {"id":"workspace-manifest-v1","owner":"workspace","first_version":"heterodyne/0.5.0","status":"draft","schema":"https://heterodyne.network/schemas/workspace/workspace-manifest-v1.schema.json","carriers":["radicle-authority-file"]},
     {"id":"workspace-policy-v1","owner":"workspace","first_version":"heterodyne/0.5.0","status":"draft","schema":"https://heterodyne.network/schemas/workspace/workspace-policy-v1.schema.json","carriers":["radicle-authority-file"]},
     {"id":"role-manifest-v1","owner":"workspace","first_version":"heterodyne/0.5.0","status":"draft","schema":"https://heterodyne.network/schemas/workspace/role-manifest-v1.schema.json","carriers":["radicle-authority-file"]},

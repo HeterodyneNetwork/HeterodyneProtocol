@@ -817,8 +817,9 @@ Because `kind:445` uses a fresh ephemeral event key, a restricted relay MUST
 NOT use that key as member identity. A write allowlist may use NIP-42
 connection authentication by an authorized stable Marmot account key. This is
 anti-abuse admission only; it MUST NOT be presented as Marmot sender
-authentication. This section does not define the private trusted-seed ACL
-profile.
+authentication. A relay claiming the private trusted-seed profile additionally
+implements [§7.7.1](#comms-trusted-seed-private-relay); NIP-42 alone grants no
+read, write, routing, or repository authority.
 
 A group has one or more hosts, and administrators are hosts by default. Hosts
 replicate the static, active, and retained archive repositories; advertise
@@ -829,6 +830,75 @@ NOT acquire group-admin authority merely by hosting.
 
 Light clients do not need Radicle NIDs unless they use native Radicle
 membership. A standard-compatible client may remain Nostr-only.
+
+<a id="comms-trusted-seed-private-relay"></a>
+#### 7.7.1 Trusted-seed private relay
+
+The OPTIONAL feature `comms.trusted-seed-private-relay.v1` lets an explicitly
+trusted seed serve one private Marmot routing generation. Trust is anchored to
+the seed's canonical Radicle NID under
+[`heterodyne:0.5.0#core-seed-nid-trust`](heterodyne-core.md#core-seed-nid-trust),
+not to its relay key, DNS name, TLS certificate, URL, repository head, or mere
+availability. Several seed NIDs MAY be active concurrently. Each has its own
+relay endpoint, Radicle endpoint, grant, permissions, and relay-ingest writer
+ref. There is no primary seed and no shared ref between seed NIDs.
+
+Private relay access requires successful NIP-42 authentication by the stable
+Marmot account being authorized. The selected seed consequently learns that
+account key, the presented `h`, the target private RID, timing and traffic
+volume, and whether the request is a read or write. A client MUST present this
+metadata disclosure before enabling the seed. The seed MUST NOT receive a
+Marmot leaf, epoch secret, application plaintext, content-decryption key,
+stable group identifier, or private administrative record.
+
+The seed enforces one current private ACL projection validating against
+`schemas/comms/trusted-seed-acl-v1.schema.json`. The closed object contains:
+
+- profile `heterodyne.trusted-seed-acl.v1` and `spec_version`;
+- the signing `administrator_account`;
+- allowed stable Marmot `accounts`, each with a non-empty set of `read` and/or
+  `write` roles;
+- the exact current `h` and private event-repository RID;
+- one or more independent `seed_grants`, each binding a seed NID, relay and
+  Radicle endpoints, its own relay ref, roles, and `active` or `revoked` state;
+- safe-integer `sequence`, nullable predecessor digest, and the exact Marmot
+  group transition's generation, routing-event ID, and routing-binding digest;
+- safe-integer `issued_at` and `expires_at`; and
+- the administrator's BIP-340 signature.
+
+The signature uses domain `heterodyne-trusted-seed-acl-v1` over the complete
+ACL except `signature`. The signer MUST be the active Marmot administrator
+that authored the bound canonical routing transition. A genesis ACL has
+sequence zero and a null predecessor. Every later ACL increments sequence by
+exactly one and names the SHA-256 JCS digest of the complete prior signed ACL.
+Distinct otherwise valid heads at the same greatest sequence conflict. A
+non-genesis head without the exact accepted predecessor is ambiguous. Neither
+wall-clock order, seed preference, repository default branch, nor Radicle
+delegate order selects among conflicting or ambiguous state.
+
+For every read or write, the seed MUST recheck NIP-42 identity, account role,
+its own active seed grant and operation, the exact `h` and private RID, the
+current Marmot transition, predecessor continuity, issue time, expiry, and
+administrator signature. Missing, malformed, future-issued, expired, stale,
+conflicting, ambiguous, revoked, unauthorized, or route-mismatched state fails
+closed using the registered `trusted-seed-*` reason. A removed seed grant takes
+effect as soon as the newer authenticated ACL is available; an explicitly
+`revoked` grant MUST NOT be used even if the endpoint or old ref remains
+reachable.
+
+An accepted write is one exact signed Marmot Nostr event. The seed verifies
+the visible NIP-01 envelope, commits the received bytes unchanged only to the
+writer ref bound to its own NID, and acknowledges only after the durability
+boundary in §7.9. The accepted repository view unions all current authorized
+native and seed refs under §7.5. A seed MUST NOT write another seed's ref,
+merge refs, re-sign an event, infer the MLS sender from the outer event key, or
+turn storage provenance into group authority.
+
+A seed, full node, persona, repository owner, and Marmot administrator are
+distinct roles. A combined deployment MAY hold several roles, but each grant
+and conformance claim remains independent. Private relay service alone grants
+no persona signing, repository ownership, full-node policy, group
+administration, membership, or MLS authority.
 
 <a id="comms-marmot-host-authority"></a>
 ### 7.8 Host authority, convergence, and equivocation
@@ -1457,21 +1527,22 @@ parties omits them entirely. The prerequisite chain in
 A persona has one exact HTTPS issuer:
 
 ```text
-https://<host>/oidc/<cold-root-npub>
+https://<host>/oidc/<persona-npub>
 ```
 
-The final path component is the canonical NIP-19 encoding of the persona's raw
-cold-root key, not an epoch key. A host may serve many personas at disjoint
-cold-root paths. Every trusted serving node exposes current and retiring public
-keys for each persona it serves, including keys minted elsewhere.
+The final path component is the canonical NIP-19 encoding of the persona's
+active Nostr key. No cold root, KEL, or optional Assurance state is required.
+A host may serve many isolated personas at disjoint active-key paths. Every
+trusted serving node exposes current and retiring public keys for each persona
+it serves, including keys minted elsewhere.
 
 The OIDC configuration is at `<issuer>/.well-known/openid-configuration`, the
 RFC 8414 alias is
-`https://<host>/.well-known/oauth-authorization-server/oidc/<cold-root-npub>`,
+`https://<host>/.well-known/oauth-authorization-server/oidc/<persona-npub>`,
 and JWKS is at `<issuer>/.well-known/jwks.json`. Metadata uses that exact issuer
 and advertises `<issuer>/authorize`, `<issuer>/token`, and
 `<issuer>/device_authorization`. Issuer comparison is exact. Redirects,
-aliases, case folding, a host change, or an epoch-key path do not silently
+aliases, case folding, a host change, or a different persona-key path do not silently
 change issuer identity.
 
 The closed metadata schema is
@@ -1603,7 +1674,7 @@ Canonical `main` in the public persona profile repository simultaneously
 publishes:
 
 ```text
-.well-known/<cold-root-npub>/
+.well-known/<persona-npub>/
   issuer.json
   openid-configuration
   jwks.json
@@ -1613,22 +1684,24 @@ publishes:
 
 The exact manifest schema is
 `schemas/comms/oidc-continuity-manifest-v1.schema.json`. It binds profile,
-public RID, `main`, cold-root npub and raw key, accepted KEL head, exact issuer,
-monotonic sequence and predecessor digest, checkpoint-age bound, current and
-retiring key IDs/JWK digests, all status paths/URIs/digests, optional successor,
-and an active NID writer/checkpoint. Its Ed25519 authority proof and that
-writer's current ledger authority MUST verify. HTTPS and repository metadata,
-JWKS, and Status List Token bytes MUST be identical.
+public RID, `main`, the active persona npub and raw key, exact issuer, monotonic
+sequence and predecessor digest, checkpoint-age bound, current and retiring
+key IDs/JWK digests, all status paths/URIs/digests, optional successor, and an
+active NID writer/checkpoint. `persona_npub` MUST be the canonical NIP-19
+encoding of `persona_key`, and the issuer's final component MUST equal that
+npub. Its Ed25519 authority proof and that writer's current ledger authority
+for the same active persona MUST verify. HTTPS and repository metadata, JWKS,
+and Status List Token bytes MUST be identical. Optional Assurance state is not
+an input to baseline manifest validity.
 
 The manifest authority proof `issued_at` MUST be greater than or equal to its
 exact canonical ledger checkpoint's `observed_at` and MUST NOT be later than
-the verification time. The named writer authorization and its Core KEL
-authority are evaluated at that `issued_at`, not at fetch time. The verifier
-requires Core-authenticated previous-to-current KEL transition evidence that
-binds the same persona cold-root npub, the exact predecessor manifest's
-previous head (or null at genesis), the candidate's current head, and a half-open
-`valid_from <= issued_at < valid_until` interval. The candidate manifest MUST
-also carry the exact current KEL head expected by the verifier.
+the verification time. The named writer authorization and its current Core NID
+proof are evaluated at that `issued_at`, not at fetch time. The verifier
+requires the exact active persona, writer NID, ledger generation, canonical
+checkpoint, sequence, and predecessor digest. A change of active persona key
+creates a different issuer identity; it cannot be accepted as a same-issuer
+manifest update or justified by a KEL alias.
 
 The `jwks.json` input is hashed as raw closed JWKS bytes, and that SHA-256 MUST
 equal `current_jwks_sha256`; parsing or reserialization does not substitute for
@@ -1661,13 +1734,14 @@ list.
 
 The Radicle manifest is authoritative for Heterodyne continuity when the HTTPS
 node is unavailable. A successor requires an unbroken predecessor chain plus
-current persona epoch authority or cold-root recovery and an exact binding to
-the new manifest. Heterodyne-aware resolution may then find the new URL through
-canonical `main`; ordinary OIDC clients still require normal trust or
-registration for the new issuer. A fork, rollback, stale KEL head, digest
-mismatch, unauthorized successor, or disagreement between HTTPS and Radicle
-fails closed. Public continuity contains no private claim, consent, reader,
-issuance mapping, or secret key.
+explicit authorization in current private persona state and an exact binding
+to the new manifest. Optional Assurance MAY provide additional continuity
+evidence but cannot alias the issuers. Heterodyne-aware resolution may then
+find the new URL through canonical `main`; ordinary OIDC clients still require
+normal trust or registration for the new issuer. A fork, rollback, persona-key
+mismatch, unauthorized successor, digest mismatch, or disagreement between
+HTTPS and Radicle fails closed. Public continuity contains no private claim,
+consent, reader, issuance mapping, or secret key.
 
 <a id="comms-token-status"></a>
 ## 14. Token status profile
@@ -1732,57 +1806,38 @@ An **automated principal** is an AI or other programmatic workload acting
 through an agentic authenticated session. Every publication requested by that
 principal is agent-authored, including output that a human reviews or approves
 before publication. Automated principals MUST use the scoped workload-token
-and intent-publication path below. They MUST refuse instructions to obtain or
-exercise a persona, epoch, NID, human-device, or role private key; request raw
-signing; select a human publication profile; remove or falsify attribution;
-impersonate a human author; or bypass token, proof, scope, resource, rate, or
-size enforcement.
+and intent-publication path below. They MUST refuse instructions to obtain a
+private key, request raw signing, remove or falsify attribution, impersonate a
+human author, or bypass token, proof, signer, scope, resource, rate, or size
+enforcement.
 
 This is a conformance rule for the execution path. It does not make a valid
 Nostr signature invalid merely because a non-conforming private implementation
 misclassified its source, and it cannot detect agent text manually copied into
 a human client.
 
-<a id="comms-agent-delegation"></a>
-### 15.1 Dedicated role key and delegation
+<a id="comms-agent-signer-selection"></a>
+### 15.1 Signer selection and Nostr authorship
 
-A full node accepting automated commands MUST generate at least one dedicated
-secp256k1 agent-signing key locally. The private key MUST remain protected on
-the full node and MUST NOT be released through an agent session, OIDC,
-configuration sync, credential sync, backup export to the workload, tool
-result, or diagnostic interface. One generic role is normal; separate stable
-roles MAY isolate a newsletter, aggregator, moderator, or other automation
-pipeline.
+An independent agent key is the preferred default signer. It is an ordinary
+Nostr author and its public key appears unchanged in the event's `pubkey`.
+Separately governed automation MAY use different agent keys or public role
+names. A private agent key MUST remain inside its selected signer and MUST NOT
+be released to the workload, token, tool result, configuration export, audit
+record, or public event.
 
-The registry defines the non-stamping
-`heterodyne-comms-agent-signing-delegation-v1` profile on the Core
-role-addressed delegation extension at [`heterodyne:0.5.0#core-nid-delegation`](heterodyne-core.md#core-nid-delegation).
-Its discriminator is
-`tag:d=agent:<role-id>;tags:key_proof,radicle_nid,nid_proof`. Comms supplies
-only the four items that extension requires.
+A persona key MAY sign an automated publication only when the exact active
+OIDC authorization contains scope `heterodyne:agent:sign:persona`. General
+publication authority, a NIP-46 connection, client metadata, a human approval,
+or an agent-publication scope without that exact additional scope is
+insufficient. Implementations SHOULD present the agent-key mode first and MUST
+NOT silently fall back from an unavailable agent key to the persona key.
 
-**Namespace.** `agent`. `role-id` is exactly 32 random bytes encoded as 64
-lowercase hexadecimal characters.
-
-**Proof domain.** Domain `heterodyne-agent-signing-binding-v1`, whose claim binds
-`cold_root`, `nid`, `publishing_key`, and `role_id`. The hosting NID and the
-agent key each sign those bytes independently.
-
-**Additional tags.** `radicle_nid` carrying the hosting full-node NID, and
-`nid_proof` carrying that NID's Ed25519 proof, inserted after `heterodyne` and
-before `publishing_key`. Each appears exactly once. Both proofs are REQUIRED;
-the Core extension's `key_proof` is the agent key's BIP-340 proof over the
-same bytes.
-
-**Semantics.** The role authorizes automated publication for the persona under
-[`heterodyne:0.5.0#comms-agent-attribution`](#comms-agent-attribution) and nothing else. Acceptance
-additionally requires ordinary Core repo finality, returning
-`provisional_not_final` while unmet.
-
-Replacing the delegation at the same `agent:<role-id>` address rotates only
-that role's device key. The prior key remains historically attributable but
-MUST NOT authorize a new event after the replacement becomes effective. Other
-roles, human devices, and the epoch key are unchanged.
+Nostr authorship is never virtualized. The selected signing key is the
+event's actual `pubkey`, and normal NIP-01 ID and BIP-340 verification are
+authoritative. A Heterodyne association can explain that an agent key or role
+is related to a persona-signed event; it cannot replace, alias, or override the
+signer.
 
 <a id="comms-agent-workload"></a>
 ### 15.2 Private workload registration and stable identity
@@ -1791,12 +1846,17 @@ The canonical private claim ledger MUST carry an active
 `heterodyne.agent` / `workload-registration` authorization claim. Its value
 MUST validate against
 `docs/spec/schemas/comms/agent-workload-registration-v1.schema.json` and is
-closed. It binds exact `client_id`, subject JWK thumbprint, `ai` or
-`programmatic` class, exactly one role ID, exactly one audience, non-empty
-scopes, allowed kinds, feeds and resources, maximum content bytes, finite
-positive rate window/count/burst, validity interval, and an optional
-descriptive software-claim reference. Empty or unlimited kind, resource, size,
-rate, or burst authority is invalid.
+closed. It binds the exact active `persona_key`, `client_id`, subject JWK
+thumbprint and DPoP proof method, `ai` or `programmatic` class, one
+`selected_signer`, its `agent` or `persona` key class, one audience, non-empty
+OIDC scopes, allowed event kinds, feeds and resources, maximum content bytes,
+finite positive rate window/count/burst, validity interval, and an optional
+descriptive software-claim reference. It MAY bind a public `agent_key`, public
+`agent_role`, or both for attribution. For key class `agent`, `agent_key` is
+required and MUST equal `selected_signer`. For key class `persona`,
+`selected_signer` MUST equal `persona_key` and the exact persona-signing scope
+is required. Empty or unlimited kind, resource, size, rate, or burst authority
+is invalid.
 
 The OIDC client registration, explicit consent, and workload registration MUST
 all be active, repository-confirmed, subject-identical, and mutually
@@ -1812,7 +1872,9 @@ origin and persona-private pairwise secret. The tuple remains stable across
 temporary-token renewals for one registration; distinct persona secrets
 prevent the same workload JWK from producing a correlatable subject across
 personas. An optional software, vendor, model, or pipeline claim is descriptive
-only and grants no authority.
+only and grants no authority. The tuple, subject proof, client ID, token ID,
+and private registration are authorization inputs and are not public
+attribution fields.
 
 <a id="comms-agent-token"></a>
 ### 15.3 Third-party OIDC workload projection
@@ -1822,9 +1884,12 @@ project an active workload registration to an ordinary third-party resource
 server as the RFC 9068 access token defined by §12.2. This is an interoperable
 projection of private-ledger authority, not a node-local command credential.
 In addition to the generic §12.2 claims, it carries
-`https://heterodyne.network/jwt/agent-role-id` equal to the registration's one
-role. Its exact `aud` and normalized `scope` MUST be allowed by that workload
-registration and the compatible client registration and consent.
+private Heterodyne claims for the exact selected signer, signer key class, and
+optional agent association. Its exact `aud` and normalized `scope` MUST be
+allowed by that workload registration and the compatible client registration
+and consent. A persona-key token MUST contain the exact
+`heterodyne:agent:sign:persona` scope; the verifier MUST NOT infer it from the
+selected signer or any other claim.
 
 If the client registration selects sender constraint, the token uses only the
 standard DPoP or mutual-TLS confirmation form defined by §12.2. Its validity
@@ -1832,34 +1897,54 @@ MUST NOT outlive the workload registration, consent, source authorization, or
 the issuer's applicable third-party token policy. Before claim use, a resource
 server validates the complete §12.2 type, issuer, audience, signature, time,
 client, scope, confirmation, checkpoint, status, and source-claim contract,
-plus exact equality between the projected role and current registration.
+plus exact equality between the projected signer, key class, optional public
+association, and current registration.
 A projected JWT never replaces canonical private-ledger state. Client
 Credentials remains prohibited; a separately integrated sender-constrained
 HTTPS workload profile is required before that grant can be added.
 
 <a id="comms-agent-attribution"></a>
-### 15.4 Canonical public attribution
+### 15.4 Mandatory pre-sign attribution
 
 An agent supplies intent content, kind, destination/feed, and permitted
 options. It does not supply a signature or authoritative attribution identity.
 The full node removes every caller-supplied reserved agent-attribution field,
-then inserts these tags in exact relative order:
+then inserts this NIP-32-compatible block in exact relative order:
 
 ```text
 ["L", "network.heterodyne.agent"]
 ["l", "ai" | "programmatic", "network.heterodyne.agent"]
-["heterodyne_agent", "v1", "<issuer>", "<sub>", "<client_id>", "<role-id>"]
-["agent_action", "publish"]
 ```
+
+When the registration carries a public association, the signer MAY append
+exactly one of these Heterodyne tags after the NIP-32 block:
+
+```text
+["heterodyne_agent", "v1", "key", "<agent-key>"]
+["heterodyne_agent", "v1", "role", "<public-role>"]
+```
+
+The association is optional and descriptive. It MUST NOT contain an issuer,
+OIDC subject, client ID, token ID, claim ID, audit ID, private role record, or
+other non-public authorization identifier. When both a public key and role are
+registered, the key form is preferred because it identifies an ordinary Nostr
+author without changing the event signer.
+
+The signer then appends `["agent_action","publish"]` immediately after the
+association, or immediately after the NIP-32 block when no association is
+present. Thus association-bearing events retain the registry's existing
+`L`, `l`, `heterodyne_agent`, `agent_action` relative order while the
+association itself remains optional.
 
 It MAY append `["agent_review","<verified-review-reference>"]` only after
 independent verification. Review never changes the automated classification.
-The full node signs exactly once with the current key at the named role
-address, then applies ordinary §4 publication and §5 indexing.
+All injection and validation MUST finish while the event is unsigned. The
+signer then constructs the final NIP-01 ID and signs exactly once with the
+selected key before applying ordinary §4 publication and §5 indexing. A
+caller-supplied event ID or signature at the injection boundary is invalid.
 
-The registry makes the attribution discriminator
-`tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1`
-active through these non-stamping profiles:
+The registry activates the mandatory automation label for these non-stamping
+profiles:
 
 - `heterodyne-comms-agent-attribution-kind-1-v1`;
 - `heterodyne-comms-agent-attribution-kind-6-v1`;
@@ -1873,29 +1958,38 @@ active through these non-stamping profiles:
 These cover notes, articles, replies, reactions, reposts, media, and
 moderation actions represented by those kinds. A kind without an active
 profile MUST fail with `agent-attribution-profile-unavailable`; it MUST NOT
-fall back to an unlabeled or human event. Deterministic KEL, delegation,
+fall back to an unlabeled or human event. Deterministic Assurance,
 token-status, relay-metadata, and equivalent maintenance events are
 not agent-authored application publications.
 
 Tier 1 carries the block publicly. Tier 2 carries it inside the private
 repository trust boundary. Tier 3 carries the same block only inside the
 encrypted logical event and adds no agent marker to the clear wrapper. A
-verifier MUST require the signer to equal the current publishing key at the
-named role address and MUST require the class, issuer, subject, client, and
-role fields to be canonical. Public verification establishes a signed
-agent-service assertion; it does not reveal or prove the private token
-ceremony.
+verifier MUST require the event `pubkey` to equal the exact selected signer and
+MUST require the label namespace, class, action, ordering, and any optional
+association to be canonical. Heterodyne clients always render the event as
+automated, including a persona-key-signed event. Vanilla clients ignore the
+unknown label and display the actual Nostr author normally. Public
+verification establishes a signed automation assertion; it does not reveal or
+prove the private token ceremony.
+
+Human organization delegates remain private authorization and audit subjects
+by default. They do not receive automation attribution merely because they use
+a shared organization signer. An organization policy MAY require a public
+human byline for a particular event class; that policy is separate from the
+mandatory automation label and MUST NOT expose private OIDC or audit identity.
 
 <a id="comms-agent-fail-closed"></a>
 ### 15.5 Fail-closed authorization and privacy
 
 The full node MUST refuse before signing for a missing, invalid, expired,
 revoked, stale, wrong-audience, or wrong-scope token; sender-proof or
-`cnf.jkt` failure; session, client, subject, role, or current-key mismatch;
-non-active or unavailable ledger/status state; a disallowed kind, feed,
+`cnf.jkt` failure; session, client, subject, persona, selected-signer,
+key-class, or current-key mismatch; missing persona-signing scope; non-active
+or unavailable ledger/status state; a disallowed kind, feed,
 resource, size, rate, or burst; unavailable attribution profile; raw signing,
 key access, human-profile selection, or attribution bypass. There is no
-fallback to an unlabeled event, human key, bearer-only token, stale decision,
+fallback to an unlabeled event, persona key, bearer-only token, stale decision,
 or agent-provided signature.
 
 The raw token, `jti`, unused scopes, source claim IDs, sender proof, and private
@@ -1925,12 +2019,12 @@ The list below is descriptive:
 - **COMMS-I-LEDGER-CONFINEMENT:** Private claim-ledger contents and decryption material are available only to active durable NID-bearing ledger readers.
 - **COMMS-I-ISSUER-KEY-CONFINEMENT:** Shared OIDC signing keys are separately encrypted and released only to nodes with active oidc-token-issuer authority.
 - **COMMS-I-MINT-FRESHNESS:** A node mints only from a synchronized canonical checkpoint no older than the manifest bound, which cannot exceed 300 seconds.
-- **COMMS-I-ISSUER-CONTINUITY:** HTTPS issuer metadata and the root-key-scoped Radicle continuity tree agree on the exact active issuer, keys, status digests, and authorized succession.
+- **COMMS-I-ISSUER-CONTINUITY:** HTTPS issuer metadata and the active-persona-key-scoped Radicle continuity tree agree on the exact active issuer, keys, status digests, and authorized succession.
 - **COMMS-I-CLAIM-RELEASE:** OIDC projection releases only claims allowed by scope, audience, client policy, consent, active repository state, issuer trust, and proof requirements.
 - **COMMS-I-JWT-TYPE-AUDIENCE:** JWT consumers enforce exact issuer, intended audience, time, signature, nonce when applicable, and token-type separation including typ at+jwt for access tokens.
 - **COMMS-I-STATUS-INTEGRITY:** Draft-21 status lists are signed, fresh, digest-bound across HTTPS and Radicle mirrors, writer-namespaced without index reuse, and never let VALID override other token failures.
 - **COMMS-I-PUBLIC-READER-TIER1-ONLY:** A public-reader implementation consumes only verified Tier 1 content and never renders Tier 2 plaintext or interprets Tier 3 ciphertext as public content.
-- **COMMS-I-AGENT-ROLE-BINDING:** Every agent-authored event signer, workload registration, token role claim, and active role-addressed delegation identify the same dedicated full-node-held role key.
+- **COMMS-I-AGENT-SIGNER-BINDING:** Every automated event uses the exact registered signer and key class; an agent key is preferred, while a persona key requires the explicit OIDC persona-signing scope, and the event pubkey remains authoritative.
 - **COMMS-I-AGENT-ATTRIBUTION:** Every agent-authored application event carries the canonical automation attribution block at its tier-appropriate protected location.
 - **COMMS-I-WORKLOAD-TOKEN-CONFINEMENT:** Workload tokens, token identifiers, private source claims, and sender proofs remain confined to the protected authorization and audit boundary.
 - **COMMS-I-MARMOT-UPSTREAM-AUTHORITY:** The pinned Marmot dependency remains authoritative for MLS, conversation events, encrypted media, and Nostr transport semantics.
@@ -1939,6 +2033,8 @@ The list below is descriptive:
 - **COMMS-I-MARMOT-SECRET-CONFINEMENT:** Independent device leaves do not share secrets by default, and node-mediated clients receive no MLS, account, leaf, or repository secret.
 - **COMMS-I-RADICLE-ROUTING-AUTHORITY:** Only a canonical Marmot routing commit by its active account-key administrator can authorize a routing binding and repository genesis with the same `h`, RID, routing-event ID, and authorized writer refs.
 - **COMMS-I-RADICLE-NON-ERASURE:** Retention expiry stops conforming advertisement and replication but never claims erasure of independent Git objects, clones, exports, or backups.
+- **COMMS-I-TRUSTED-SEED-CONFINEMENT:** A trusted seed receives only routing metadata and exact encrypted event bytes, writes only its own active authorized NID ref, and gains no persona, repository-owner, group-admin, full-node, or MLS authority.
+- **COMMS-I-PRIVATE-RELAY-ACL:** Every private seed read or write requires NIP-42 account authentication plus one unique current unexpired administrator-signed ACL head matching the account role, seed grant, `h`, private RID, and Marmot group transition.
 
 Mechanism guarantees MUST remain distinct. Tier 3 has no forward secrecy: a
 compromised audience key decrypts every retained post under its
@@ -2001,7 +2097,7 @@ at the pinned registry revision.
 
 Typed key claims, the private claim ledger, the OIDC issuer, token status, the
 public reader, Marmot conversations, Radicle Marmot storage and relays, and
-agent authorship are each a separately claimed feature, not an entry
+trusted-seed private relay and agent authorship are each a separately claimed feature, not an entry
 requirement. A base Comms implementation therefore does not need an RFC 9068
 issuer, JWKS discovery, a continuity manifest, or status lists. The
 invariant scoping in
@@ -2011,6 +2107,14 @@ implementation claims a feature that requires it, which for Comms means
 `comms.agent-authorship.v1`: an automated principal's registration, consent,
 and pairwise subject are OIDC objects, so a client that works with agents
 ships the issuer and a client that does not, does not.
+
+A report claiming `comms.trusted-seed-private-relay.v1` MUST identify every
+seed by its Radicle NID, demonstrate independent endpoints and writer refs,
+exercise NIP-42 plus the current ACL for both reads and writes, and fail closed
+for every invalid-state class in §7.7.1. It MUST demonstrate that accepted
+write bytes enter only the selected seed's authorized ref and that no MLS leaf,
+plaintext, content-decryption key, persona authority, or group-administrator
+authority reaches the seed.
 
 A report claiming `comms.public-reader.v1` MAY omit every send-side and private
 feature, but MUST name the `public-reader` Core role, implement

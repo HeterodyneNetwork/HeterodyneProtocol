@@ -37,10 +37,21 @@ export type AgentDelegationResult =
     };
 
 export type WorkloadRegistration = {
+  /** Optional in this source type only so the frozen pre-redesign topic source still compiles. */
+  persona_key?: string;
   client_id: string;
   subject_jkt: string;
+  subject_proof?: {
+    method: "dpop";
+    jkt: string;
+  };
   agent_class: "ai" | "programmatic";
-  role_id: string;
+  selected_signer?: string;
+  signer_key_class?: "agent" | "persona";
+  agent_key?: string;
+  agent_role?: string;
+  /** Retained only as a compile-time bridge for the frozen pre-redesign topic source. */
+  role_id?: string;
   audience: string;
   scopes: string[];
   allowed_kinds: number[];
@@ -74,13 +85,17 @@ export type AgentTokenValidationInput = {
   cnf_jkt: string;
   sender_proof_jkt: string;
   sender_proof_valid: boolean;
-  agent_role_id: string;
+  agent_role_id?: string;
+  signer_key?: string;
+  signer_key_class?: "agent" | "persona";
   expected_issuer: string;
   expected_subject: string;
   expected_audience: string;
   expected_client_id: string;
   expected_scope: string;
-  expected_role_id: string;
+  expected_role_id?: string;
+  expected_signer_key?: string;
+  expected_signer_key_class?: "agent" | "persona";
   now: number;
   status: "VALID" | "INVALID" | "SUSPENDED";
   ledger_active: boolean;
@@ -100,7 +115,9 @@ export type AgentTokenDecision =
         issuer: string;
         sub: string;
         client_id: string;
-        role_id: string;
+        signer: string;
+        key_class: "agent" | "persona";
+        agent_role?: string;
       };
     }
   | {
@@ -112,12 +129,17 @@ export type AgentPublicationInput = {
   kind: number;
   tags: string[][];
   agent_class: "ai" | "programmatic";
-  issuer: string;
-  subject: string;
-  client_id: string;
-  role_id: string;
+  persona?: string;
+  issuer?: string;
+  subject?: string;
+  client_id?: string;
+  role_id?: string;
   signer: string;
-  current_role_key: string;
+  current_role_key?: string;
+  signer_key_class?: "agent" | "persona";
+  oidc_scopes?: string[];
+  agent_key?: string;
+  agent_role?: string;
   tier: 1 | 2 | 3;
   agent_review?: string;
   agent_review_verified?: boolean;
@@ -128,6 +150,7 @@ export type AgentPublicationResult =
       verdict: "accept";
       tags: string[][];
       placement: "public" | "private-repository" | "encrypted-inner";
+      author: string;
       clear_outer_tags?: string[][];
     }
   | {
@@ -216,6 +239,23 @@ export function validateWorkloadRegistration(
   if (
     registration.expires_at <= registration.not_before
     || registration.rate_limit.burst > registration.rate_limit.count
+    || registration.subject_proof?.jkt !== registration.subject_jkt
+    || registration.subject_proof?.method !== "dpop"
+  ) {
+    throw new Error("agent-workload-registration-invalid");
+  }
+  if (
+    registration.signer_key_class === "agent"
+    && registration.selected_signer !== registration.agent_key
+  ) {
+    throw new Error("agent-workload-registration-invalid");
+  }
+  if (
+    registration.signer_key_class === "persona"
+    && (
+      registration.selected_signer !== registration.persona_key
+      || !registration.scopes.includes("heterodyne:agent:sign:persona")
+    )
   ) {
     throw new Error("agent-workload-registration-invalid");
   }
@@ -301,10 +341,32 @@ export function validateAgentAccessToken(
       : generation.reason_code);
   }
   if (
-    input.agent_role_id !== input.expected_role_id
-    || !/^[0-9a-f]{64}$/.test(input.agent_role_id)
+    input.signer_key !== input.expected_signer_key
+    || input.signer_key_class !== input.expected_signer_key_class
+    || !/^[0-9a-f]{64}$/.test(input.signer_key ?? "")
   ) {
-    return denied("agent-role-mismatch");
+    return denied("agent-signer-mismatch");
+  }
+  const signerKey = input.signer_key as string;
+  const signerKeyClass = input.signer_key_class as "agent" | "persona";
+  if (
+    input.signer_key_class === "persona"
+    && !input.scope.split(" ").includes("heterodyne:agent:sign:persona")
+  ) {
+    return denied("agent-persona-scope-required");
+  }
+  const hasAgentRole = input.agent_role_id !== undefined
+    || input.expected_role_id !== undefined;
+  if (
+    hasAgentRole
+    && (
+      input.agent_role_id !== input.expected_role_id
+      || typeof input.agent_role_id !== "string"
+      || input.agent_role_id.length < 1
+      || input.agent_role_id.length > 128
+    )
+  ) {
+    return denied("agent-signer-mismatch");
   }
   if (
     !input.ledger_active
@@ -319,7 +381,11 @@ export function validateAgentAccessToken(
       issuer: input.iss,
       sub: input.sub,
       client_id: input.client_id,
-      role_id: input.agent_role_id,
+      signer: signerKey,
+      key_class: signerKeyClass,
+      ...(input.agent_role_id === undefined
+        ? {}
+        : { agent_role: input.agent_role_id }),
     },
   };
 }
@@ -331,33 +397,44 @@ export function injectAgentAttribution(
     return denied("agent-attribution-profile-unavailable");
   }
   if (
-    input.signer !== input.current_role_key
-    || !/^[0-9a-f]{64}$/.test(input.role_id)
-  ) {
-    return denied("agent-role-mismatch");
-  }
-  if (
-    !["ai", "programmatic"].includes(input.agent_class)
-    || input.issuer.length === 0
-    || input.subject.length === 0
-    || input.client_id.length === 0
+    Object.prototype.hasOwnProperty.call(input, "id")
+    || Object.prototype.hasOwnProperty.call(input, "sig")
   ) {
     return denied("agent-attribution-invalid");
   }
+  if (!/^[0-9a-f]{64}$/.test(input.persona ?? "")) {
+    return denied("agent-signer-mismatch");
+  }
+  if (input.signer_key_class === "agent") {
+    if (
+      input.signer !== input.agent_key
+      || !/^[0-9a-f]{64}$/.test(input.agent_key ?? "")
+    ) {
+      return denied("agent-signer-mismatch");
+    }
+  } else if (input.signer_key_class === "persona") {
+    if (input.signer !== input.persona) return denied("agent-signer-mismatch");
+    if (!input.oidc_scopes?.includes("heterodyne:agent:sign:persona")) {
+      return denied("agent-persona-scope-required");
+    }
+  } else {
+    return denied("agent-signer-mismatch");
+  }
+  if (
+    !["ai", "programmatic"].includes(input.agent_class)
+  ) {
+    return denied("agent-attribution-invalid");
+  }
+
+  const association = agentAssociationTag(input);
+  if (association === null) return denied("agent-attribution-invalid");
 
   const preserved = input.tags.filter((tag) => !isReservedAttributionTag(tag));
   const tags = [
     ...preserved,
     ["L", "network.heterodyne.agent"],
     ["l", input.agent_class, "network.heterodyne.agent"],
-    [
-      "heterodyne_agent",
-      "v1",
-      input.issuer,
-      input.subject,
-      input.client_id,
-      input.role_id,
-    ],
+    ...(association === undefined ? [] : [association]),
     ["agent_action", "publish"],
     ...(input.agent_review !== undefined && input.agent_review_verified === true
       ? [["agent_review", input.agent_review]]
@@ -368,6 +445,7 @@ export function injectAgentAttribution(
       verdict: "accept",
       tags,
       placement: "encrypted-inner",
+      author: input.signer,
       clear_outer_tags: [],
     };
   }
@@ -375,7 +453,24 @@ export function injectAgentAttribution(
     verdict: "accept",
     tags,
     placement: input.tier === 1 ? "public" : "private-repository",
+    author: input.signer,
   };
+}
+
+function agentAssociationTag(
+  input: AgentPublicationInput,
+): string[] | undefined | null {
+  if (input.agent_key !== undefined) {
+    return /^[0-9a-f]{64}$/.test(input.agent_key)
+      ? ["heterodyne_agent", "v1", "key", input.agent_key]
+      : null;
+  }
+  if (input.agent_role !== undefined) {
+    return input.agent_role.length >= 1 && input.agent_role.length <= 128
+      ? ["heterodyne_agent", "v1", "role", input.agent_role]
+      : null;
+  }
+  return undefined;
 }
 
 function isReservedAttributionTag(tag: string[]): boolean {

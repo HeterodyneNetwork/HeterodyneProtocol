@@ -342,12 +342,12 @@
       "description": "A public-reader implementation consumes only verified Tier 1 content and never renders Tier 2 plaintext or interprets Tier 3 ciphertext as public content."
     },
     {
-      "id": "COMMS-I-AGENT-ROLE-BINDING",
+      "id": "COMMS-I-AGENT-SIGNER-BINDING",
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "comms.agent-authorship.v1",
-      "description": "Every agent-authored event signer, workload registration, token role claim, and active role-addressed delegation identify the same dedicated full-node-held role key."
+      "description": "Every automated event uses the exact registered signer and key class; an agent key is preferred, while a persona key requires the explicit OIDC persona-signing scope, and the event pubkey remains authoritative."
     },
     {
       "id": "COMMS-I-AGENT-ATTRIBUTION",
@@ -412,6 +412,22 @@
       "first_version": "heterodyne/0.5.0",
       "feature": "comms.radicle-marmot-storage.v1",
       "description": "Retention expiry stops conforming advertisement and replication but never claims erasure of independent Git objects, clones, exports, or backups."
+    },
+    {
+      "id": "COMMS-I-TRUSTED-SEED-CONFINEMENT",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "comms.trusted-seed-private-relay.v1",
+      "description": "A trusted seed receives only routing metadata and exact encrypted event bytes, writes only its own active authorized NID ref, and gains no persona, repository-owner, group-admin, full-node, or MLS authority."
+    },
+    {
+      "id": "COMMS-I-PRIVATE-RELAY-ACL",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "comms.trusted-seed-private-relay.v1",
+      "description": "Every private seed read or write requires NIP-42 account authentication plus one unique current unexpired administrator-signed ACL head matching the account role, seed grant, h, private RID, and Marmot group transition."
     },
     {
       "id": "SOCIAL-I-AGENT-POLICY-LOCAL",
