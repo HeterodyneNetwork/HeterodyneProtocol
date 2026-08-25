@@ -209,6 +209,54 @@ describe("authenticated ATProto DID resolution", () => {
     expect(observationGetterCalls).toBe(0);
   });
 
+  it("rejects canonical JSON hazards across public resolution and observation paths", async () => {
+    const api = await loadResolution();
+    const authority = configuredAuthority(api, {
+      suite: "ed25519",
+      public_key: resolverPublic,
+    });
+    const { expected, observation } = await bindingObservationFixture();
+    const hazards = [
+      "1e400",
+      '{"nested":1e400}',
+      `${"[".repeat(6_000)}null${"]".repeat(6_000)}`,
+    ];
+    for (const canonicalDocument of hazards) {
+      const hazardousEnvelope = withCanonicalDocument(canonicalDocument);
+      const resolutionEvidence = attestation(
+        hazardousEnvelope,
+        resolverSecret,
+        "ed25519",
+      );
+      let resolutionResult: unknown;
+      expect(() => {
+        resolutionResult = api.authenticateAtprotoDidResolution?.({
+          authority,
+          evidence: resolutionEvidence,
+          validation_time: 1_100,
+        });
+      }, canonicalDocument.slice(0, 40)).not.toThrow();
+      expect(resolutionResult, canonicalDocument.slice(0, 40)).toEqual({
+        verdict: "reject",
+        reason_code: "atproto-did-resolution-invalid",
+      });
+
+      let observationResult: unknown;
+      expect(() => {
+        observationResult = api.authenticateAtprotoBindingObservation?.({
+          authority,
+          evidence: observationAttestation(observation, resolverSecret),
+          resolution_evidence: resolutionEvidence,
+          expected_binding: expected,
+        });
+      }, canonicalDocument.slice(0, 40)).not.toThrow();
+      expect(observationResult, canonicalDocument.slice(0, 40)).toEqual({
+        verdict: "reject",
+        reason_code: "atproto-binding-observation-invalid",
+      });
+    }
+  });
+
   it("mints only from a fresh exact resolver attestation and rejects a fake victim document", async () => {
     const api = await loadResolution();
     const authority = configuredAuthority(api, {
@@ -469,6 +517,14 @@ function attestation(
   suite: "ed25519" | "bip340",
 ): { envelope: Envelope; signature: string } {
   return { envelope: value, signature: resolverSignature(value, secret, suite) };
+}
+
+function withCanonicalDocument(canonicalDocument: string): Envelope {
+  return {
+    ...envelope,
+    canonical_document: canonicalDocument,
+    document_sha256: bytesToHex(sha256(utf8Bytes(canonicalDocument))),
+  };
 }
 
 function resolverSignature(

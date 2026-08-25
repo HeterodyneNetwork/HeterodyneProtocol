@@ -1078,3 +1078,83 @@ remain unchanged. No frozen topic, vector, snapshot, projection, baseline,
 debt, release artifact, or authoring output was modified.
 
 Correction commit message: `fix: fail closed on malformed Social evidence`.
+
+## Final resolver fail-closed correction
+
+This final narrow correction closes the remaining exception path for
+attested resolver documents whose JSON parser result cannot be represented by
+the canonical JSON serializer. It preserves all protocol semantics and
+existing invalid verdicts. `parseEnvelope` now treats JSON parsing and
+canonicalization as one fail-closed operation: invalid JSON, non-finite parsed
+numbers, nested non-finite values, and recursion-depth failures all return
+`null`. The public resolver, durable observation, Social binding, and DID-side
+revocation paths consequently reject with their existing invalid verdicts
+instead of propagating an exception.
+
+An audit of every `canonicalize(...)` call reachable from current Task 7
+untrusted inputs found one entry in `parseEnvelope` plus its private recursive
+calls. That entry is now inside the catch boundary. Registry canonicalization
+is a separate maintained-input path and was not changed.
+
+### RED evidence
+
+The exact review exploit and its downstream propagation were observed before
+the production change:
+
+```text
+npm --prefix docs/spec/vectors/generator test -- \
+  src/atproto-did-resolution.test.ts src/social-atproto.test.ts
+Test Files  2 failed (2)
+Tests       2 failed | 19 passed (21)
+
+canonical_document: "1e400":
+  authenticateAtprotoDidResolution propagated
+  Error: non-finite JSON number
+
+the same attested resolver evidence through validateAtprotoBinding:
+  propagated Error: non-finite JSON number before the revocation assertion
+```
+
+The direct resolver test also contains nested-overflow JSON and a 6,000-level
+nested JSON array. The first exact overflow stopped that RED loop; the final
+GREEN run executes all hazards through both resolution and observation. The
+Social test executes the exact overflow through both binding and ATProto-side
+revocation.
+
+### GREEN and verification evidence
+
+```text
+npm --prefix docs/spec/vectors/generator test -- \
+  src/atproto-did-resolution.test.ts src/social-atproto.test.ts
+Test Files  2 passed (2)
+Tests       21 passed (21)
+
+npm --prefix docs/spec/vectors/generator test -- --run \
+  src/snapshot-topic-runtime.test.ts src/agent-moderation.test.ts \
+  src/agent-authorship.test.ts src/nostr.test.ts \
+  src/social-events.test.ts src/social-nip72.test.ts \
+  src/atproto-did-resolution.test.ts src/social-atproto.test.ts \
+  src/registry.test.ts src/schema.test.ts
+Test Files  10 passed (10)
+Tests       174 passed (174)
+
+npm --prefix docs/spec/vectors/generator run build
+node scripts/typecheck.mjs (exit 0)
+
+npm --prefix docs/spec/vectors/generator run family:check -- "$PWD"
+validated protocol document family (exit 0)
+
+npm --prefix docs/spec/vectors/generator run snapshot-check -- "$PWD"
+verified 482 vectors from source
+2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43 at snapshot
+5d4bb5fb58b35c88d8a9db120a09f1087237f35c (exit 0)
+```
+
+The correction modifies only the resolver implementation, its focused test,
+the Social ATProto focused test, and this report. Registry revision `14` and
+digest
+`9839393f2e11430ce9c19bde009228b71dc7f5c7268215960d39ecab0461a6fc`
+remain unchanged. No topic, vector, snapshot, projection, baseline, debt,
+release artifact, or authoring output was modified.
+
+Correction commit message: `fix: reject malformed resolver JSON`.

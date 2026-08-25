@@ -552,6 +552,42 @@ describe("ATProto active-key binding", () => {
     }
   });
 
+  it("rejects non-finite resolver JSON through public binding and revocation paths", async () => {
+    const atproto = await loadAtproto();
+    const hazardousResolution = resolutionEvidenceWithDocument(binding, "1e400");
+    let bindingResult: unknown;
+    expect(() => {
+      bindingResult = atproto.validateAtprotoBinding?.(bindingInput([
+        bindingEvidence(binding, bindingEvent, hazardousResolution, false),
+      ]));
+    }).not.toThrow();
+    expect(bindingResult).toEqual({
+      verdict: "reject",
+      reason_code: "atproto-binding-invalid",
+    });
+
+    const revocation = revocationFor(binding, 1_100);
+    const revocationEvidence: RevocationEvidence = {
+      side: "atproto",
+      value: revocation,
+      did_signature: didPayloadSignature(canonicalRevocation(revocation)),
+    };
+    let revocationResult: unknown;
+    expect(() => {
+      revocationResult = atproto.validateAtprotoRevocation?.({
+        evidence: revocationEvidence,
+        binding,
+        resolver_authority: resolverAuthority,
+        current_resolution: hazardousResolution,
+        now: 1_150,
+      });
+    }).not.toThrow();
+    expect(revocationResult).toEqual({
+      verdict: "reject",
+      reason_code: "atproto-revocation-invalid",
+    });
+  });
+
   it("fails closed when durable revocations target sibling, reset, or incompatible forks", async () => {
     const atproto = await loadAtproto();
     const branchA = {
@@ -884,6 +920,25 @@ function resolutionEvidenceFor(
     expires_at: expiresAt,
     resolver_policy: "webpki-pinned-redirect-v1",
     resolver_version: "1.0.0",
+  };
+  const digest = sha256(utf8Bytes(
+    `heterodyne:atproto-did-resolution:v1\0${canonicalResolutionEnvelope(envelope)}`,
+  ));
+  return {
+    envelope,
+    signature: bytesToHex(ed25519.sign(digest, hexToBytes(resolverSecret))),
+  };
+}
+
+function resolutionEvidenceWithDocument(
+  value: Binding,
+  canonicalDocument: string,
+): AtprotoResolutionEvidence {
+  const valid = resolutionEvidenceFor(value);
+  const envelope = {
+    ...valid.envelope,
+    canonical_document: canonicalDocument,
+    document_sha256: bytesToHex(sha256(utf8Bytes(canonicalDocument))),
   };
   const digest = sha256(utf8Bytes(
     `heterodyne:atproto-did-resolution:v1\0${canonicalResolutionEnvelope(envelope)}`,

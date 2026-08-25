@@ -415,13 +415,15 @@ function parseEnvelope(
     || !HEX_32.test(record.plc_log_hash)
   ) return null;
   let document: unknown;
+  let canonicalDocument: string;
   try {
     document = JSON.parse(record.canonical_document);
+    canonicalDocument = canonicalize(document);
   } catch {
     return null;
   }
   if (
-    canonicalize(document) !== record.canonical_document
+    canonicalDocument !== record.canonical_document
     || bytesToHex(sha256(utf8Bytes(record.canonical_document))) !== record.document_sha256
   ) return null;
   const method = selectedMethod(document, record.did, record.selected_verification_method_id);
