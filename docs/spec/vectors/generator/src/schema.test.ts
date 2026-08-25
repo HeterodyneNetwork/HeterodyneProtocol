@@ -22,6 +22,33 @@ const assuranceSchemasRoot = resolve(
   "../../../schemas/assurance",
 );
 
+const commsSchemasRoot = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../schemas/comms",
+);
+
+const marmotSchemaNames = [
+  "marmot-group-directory-v1.schema.json",
+  "marmot-persona-inbox-bundle-v1.schema.json",
+  "marmot-persona-inbox-manifest-v1.schema.json",
+  "marmot-routing-binding-v1.schema.json",
+  "marmot-event-repository-genesis-v1.schema.json",
+] as const;
+
+const marmotSchemas = new Ajv({ allErrors: true, strict: false });
+for (const name of marmotSchemaNames) {
+  marmotSchemas.addSchema(JSON.parse(
+    readFileSync(resolve(commsSchemasRoot, name), "utf8"),
+  ) as AnySchema);
+}
+
+function validateMarmotSchema(name: typeof marmotSchemaNames[number], value: unknown): string | null {
+  const id = `https://heterodyne.network/schemas/comms/${name}`;
+  const validate = marmotSchemas.getSchema(id);
+  if (validate === undefined) throw new Error(`missing Marmot schema: ${id}`);
+  return validate(value) ? null : JSON.stringify(validate.errors);
+}
+
 function validateAssuranceSchema(name: string, value: unknown): string | null {
   const schema = JSON.parse(
     readFileSync(resolve(assuranceSchemasRoot, name), "utf8"),
@@ -355,6 +382,171 @@ describe("one-time invite schemas", () => {
       capabilities: [],
       proof: "99".repeat(32),
     })).toThrow();
+  });
+});
+
+describe("active-account Marmot repository schemas", () => {
+  const accountKey = h("a");
+  const writerNid = "did:key:z6MkwQp8f8Y11L3WJYJ4hXa1";
+  const eventRid = "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5";
+  const routingEventId = h("b");
+  const routingBindingDigest = h("c");
+  const writerRefs = [
+    {
+      nid: writerNid,
+      ref: "refs/xyz.heterodyne.marmot/writers/native-1",
+    },
+    {
+      nid: "did:key:z6Mkq7ZBA1Vh9fVhKo2H2iW4",
+      ref: "refs/xyz.heterodyne.marmot/relays/ingest-1",
+    },
+  ];
+  const exactEvent = (kind: number, byte: string) => ({
+    nip01_raw: `[0,"${byte}"]`,
+    event: {
+      id: h(byte),
+      pubkey: h("d"),
+      created_at: 1_785_000_100,
+      kind,
+      tags: [["h", "marmot-routing-id"]],
+      content: "ciphertext",
+      sig: sig("e"),
+    },
+  });
+
+  const directory = {
+    spec_version: "heterodyne/0.5.0",
+    profile: "standard-compatible",
+    stable_group_id: "stable-group-1",
+    account_key: accountKey,
+    current_routing: {
+      generation: 3,
+      h: "marmot-routing-id",
+      event_rid: eventRid,
+      marmot_routing_event_id: routingEventId,
+      routing_binding_sha256: routingBindingDigest,
+    },
+    authorized_writer_refs: writerRefs,
+    visibility: "public-directory",
+    public_profile: { name: "Group", description: "", policy: {} },
+    encrypted_records: [],
+    host_announcements: [],
+    routing_binding_digests: [routingBindingDigest],
+  };
+
+  const manifest = {
+    spec_version: "heterodyne/0.5.0",
+    account_key: accountKey,
+    writer_nid: writerNid,
+    consumed_keypackage_id: "keypackage-1",
+    welcome_event_id: h("1"),
+    first_group_event_id: h("2"),
+    objects: [
+      { object_id: "welcome", media_type: "application/nostr+json", encoded_bytes: 128, sha256: h("3") },
+      { object_id: "first-event", media_type: "application/nostr+json", encoded_bytes: 256, sha256: h("4") },
+    ],
+    automation: { automated: false },
+  };
+
+  const bundle = {
+    spec_version: "heterodyne/0.5.0",
+    account_key: accountKey,
+    writer_nid: writerNid,
+    manifest,
+    welcome: exactEvent(444, "1"),
+    first_group_event: exactEvent(445, "2"),
+    atomic_commit: true,
+  };
+
+  const routingBinding = {
+    spec_version: "heterodyne/0.5.0",
+    stable_group_id: "stable-group-1",
+    generation: 3,
+    h: "marmot-routing-id",
+    event_rid: eventRid,
+    genesis_manifest_sha256: h("5"),
+    previous_generation: null,
+    authorized_writer_refs: writerRefs,
+    authorized_hosts: [writerNid],
+    interfaces: [{ type: "radicle", endpoint: eventRid }],
+    retention: { retain_until: 1_785_086_400, non_erasure_acknowledged: true },
+    account_key: accountKey,
+    marmot_routing_event_id: routingEventId,
+    signature: sig("6"),
+  };
+
+  const genesis = {
+    spec_version: "heterodyne/0.5.0",
+    stable_group_id_digest: h("7"),
+    generation: 3,
+    h: "marmot-routing-id",
+    event_rid: eventRid,
+    account_key: accountKey,
+    marmot_routing_event_id: routingEventId,
+    authorized_writer_refs: writerRefs,
+    created_at: 1_785_000_000,
+    logical_soft_cap_bytes: 5_368_709_120,
+    event_index: "events/by-id/<event-id>.json",
+    media_index: "media/by-ciphertext-sha256/<sha256>",
+    writer_ref_prefix: "refs/xyz.heterodyne.marmot/writers/",
+    relay_ref_prefix: "refs/xyz.heterodyne.marmot/relays/",
+  };
+
+  it("accepts closed account, routing, RID, h, and authorized-writer bindings", () => {
+    for (const [name, value] of [
+      ["marmot-group-directory-v1.schema.json", directory],
+      ["marmot-persona-inbox-manifest-v1.schema.json", manifest],
+      ["marmot-persona-inbox-bundle-v1.schema.json", bundle],
+      ["marmot-routing-binding-v1.schema.json", routingBinding],
+      ["marmot-event-repository-genesis-v1.schema.json", genesis],
+    ] as const) {
+      expect(validateMarmotSchema(name, value), name).toBeNull();
+    }
+  });
+
+  it("rejects missing active-account, routing-commit, and writer-ref authority", () => {
+    const { account_key: _directoryAccount, ...directoryWithoutAccount } = directory;
+    const { marmot_routing_event_id: _routingEvent, ...bindingWithoutRoutingEvent } = routingBinding;
+    const { authorized_writer_refs: _writerRefs, ...genesisWithoutWriters } = genesis;
+
+    expect(validateMarmotSchema(
+      "marmot-group-directory-v1.schema.json",
+      directoryWithoutAccount,
+    )).toMatch(/account_key|required/);
+    expect(validateMarmotSchema(
+      "marmot-routing-binding-v1.schema.json",
+      bindingWithoutRoutingEvent,
+    )).toMatch(/marmot_routing_event_id|required/);
+    expect(validateMarmotSchema(
+      "marmot-event-repository-genesis-v1.schema.json",
+      genesisWithoutWriters,
+    )).toMatch(/authorized_writer_refs|required/);
+  });
+
+  it("keeps Radicle writer provenance separate from the Marmot account", () => {
+    const { account_key: _accountKey, ...manifestWithoutAccount } = manifest;
+    const { writer_nid: _writerNid, ...bundleWithoutWriter } = bundle;
+
+    expect(validateMarmotSchema(
+      "marmot-persona-inbox-manifest-v1.schema.json",
+      manifestWithoutAccount,
+    )).toMatch(/account_key|required/);
+    expect(validateMarmotSchema(
+      "marmot-persona-inbox-bundle-v1.schema.json",
+      bundleWithoutWriter,
+    )).toMatch(/writer_nid|required/);
+  });
+
+  it("rejects legacy identity and discovery authority members", () => {
+    for (const [name, value] of [
+      ["marmot-group-directory-v1.schema.json", { ...directory, cold_root: h("8") }],
+      ["marmot-routing-binding-v1.schema.json", { ...routingBinding, kel_head: h("9") }],
+      ["marmot-event-repository-genesis-v1.schema.json", { ...genesis, epoch_pubkey: h("0") }],
+      ["marmot-persona-inbox-manifest-v1.schema.json", { ...manifest, identity_pointer_kind: 31_005 }],
+      ["marmot-persona-inbox-bundle-v1.schema.json", { ...bundle, feed_index_kind: 31_007 }],
+    ] as const) {
+      expect(validateMarmotSchema(name, value), name).toMatch(/additionalProperties/);
+    }
   });
 });
 

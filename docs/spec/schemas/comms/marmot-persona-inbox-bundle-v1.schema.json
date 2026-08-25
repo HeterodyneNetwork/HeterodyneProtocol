@@ -6,6 +6,8 @@
   "additionalProperties": false,
   "required": [
     "spec_version",
+    "account_key",
+    "writer_nid",
     "manifest",
     "welcome",
     "first_group_event",
@@ -14,6 +16,14 @@
   "properties": {
     "spec_version": {
       "const": "heterodyne/0.5.0"
+    },
+    "account_key": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "writer_nid": {
+      "type": "string",
+      "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$"
     },
     "manifest": {
       "$ref": "marmot-persona-inbox-manifest-v1.schema.json"

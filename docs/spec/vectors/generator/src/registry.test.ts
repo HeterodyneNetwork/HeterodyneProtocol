@@ -290,6 +290,32 @@ describe("revisioned protocol registry", () => {
     ]));
   });
 
+  it("composes public Comms and Marmot from Core Nostr and repository primitives", () => {
+    const feature = (id: string) => {
+      const entry = registry.features.find((candidate) => candidate.id === id);
+      if (entry === undefined) throw new Error(`missing feature: ${id}`);
+      return entry;
+    };
+    const invariant = (id: string) => {
+      const entry = registry.security_invariants.find((candidate) => candidate.id === id);
+      if (entry === undefined) throw new Error(`missing invariant: ${id}`);
+      return entry;
+    };
+
+    expect(feature("comms.public-reader.v1").prerequisites)
+      .toEqual(["core.nostr-relay-read.v1"]);
+    expect(feature("comms.marmot-conversations.v1").prerequisites)
+      .toEqual(["core.nostr-relay-read.v1"]);
+    expect(feature("comms.radicle-marmot-storage.v1").prerequisites)
+      .toEqual(["core.repo-relay-client.v1", "comms.marmot-conversations.v1"]);
+    expect(registry.features.flatMap(({ prerequisites }) => prerequisites))
+      .not.toContain("core.marmot-role-attribution.v1");
+    expect(invariant("COMMS-I-MARMOT-ACCOUNT-IDENTITY").feature)
+      .toBe("comms.marmot-conversations.v1");
+    expect(invariant("COMMS-I-RADICLE-ROUTING-AUTHORITY").feature)
+      .toBe("comms.radicle-marmot-storage.v1");
+  });
+
   it("registers upstream Marmot transport kinds without Heterodyne stamping", () => {
     for (const kind of [444, 445, 30443]) {
       expect(registry.kinds.find((entry) => entry.kind === kind)).toMatchObject({

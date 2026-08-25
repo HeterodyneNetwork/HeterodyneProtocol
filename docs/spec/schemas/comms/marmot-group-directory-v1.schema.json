@@ -8,6 +8,9 @@
     "spec_version",
     "profile",
     "stable_group_id",
+    "account_key",
+    "current_routing",
+    "authorized_writer_refs",
     "visibility",
     "public_profile",
     "encrypted_records",
@@ -28,6 +31,52 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 256
+    },
+    "account_key": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "current_routing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "generation",
+        "h",
+        "event_rid",
+        "marmot_routing_event_id",
+        "routing_binding_sha256"
+      ],
+      "properties": {
+        "generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "h": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "event_rid": {
+          "type": "string",
+          "pattern": "^rad:z[1-9A-HJ-NP-Za-km-z]+$"
+        },
+        "marmot_routing_event_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "routing_binding_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "authorized_writer_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/definitions/authorizedWriterRef"
+      }
     },
     "visibility": {
       "enum": [
@@ -128,6 +177,26 @@
       "items": {
         "type": "string",
         "pattern": "^[0-9a-f]{64}$"
+      }
+    }
+  },
+  "definitions": {
+    "authorizedWriterRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nid",
+        "ref"
+      ],
+      "properties": {
+        "nid": {
+          "type": "string",
+          "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$"
+        },
+        "ref": {
+          "type": "string",
+          "pattern": "^refs/xyz\\.heterodyne\\.marmot/(writers|relays)/[A-Za-z0-9._-]+$"
+        }
       }
     }
   },

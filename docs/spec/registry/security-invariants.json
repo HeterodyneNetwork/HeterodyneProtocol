@@ -374,6 +374,14 @@
       "description": "The pinned Marmot dependency remains authoritative for MLS, conversation events, encrypted media, and Nostr transport semantics."
     },
     {
+      "id": "COMMS-I-MARMOT-ACCOUNT-IDENTITY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "comms.marmot-conversations.v1",
+      "description": "The active persona key is the Marmot account identity, every device leaf remains independent, and neither Heterodyne continuity nor storage provenance aliases another account or leaf inside MLS."
+    },
+    {
       "id": "COMMS-I-MARMOT-EXACT-BYTES",
       "owner": "comms",
       "status": "draft",
@@ -394,8 +402,8 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "feature": "comms.radicle-backed-marmot-relay.v1",
-      "description": "Only a canonical Marmot routing commit by an active administrator can authorize a matching Radicle routing binding and repository genesis."
+      "feature": "comms.radicle-marmot-storage.v1",
+      "description": "Only a canonical Marmot routing commit by its active account-key administrator can authorize a routing binding and repository genesis with the same h, RID, routing-event ID, and authorized writer refs."
     },
     {
       "id": "COMMS-I-RADICLE-NON-ERASURE",
