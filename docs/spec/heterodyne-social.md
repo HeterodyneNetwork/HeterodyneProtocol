@@ -14,11 +14,11 @@ forms.
 Social defines following, replies, reactions, threading, social discovery,
 cross-persona advertisements, reply inboxes, feed presentation, community and
 organization presentation, moderation, personal and community lists,
-web-of-trust policy, starter packs, social recovery bindings, and the optional
-ATProto attached outbox. Social owns public and audience publishing, durable
-feed assets, stable links, citations, public community presentation,
-moderation, and discovery. Private conversation and group-scoped content use
-Marmot under Comms.
+web-of-trust policy, starter packs, optional Assurance-informed continuity
+vouches, and the optional ATProto attached outbox. Social applies these
+behaviors to ordinary Nostr events. It does not redefine NIP-01 authorship,
+addresses, filters, or replaceable-event selection. Private conversation and
+group-scoped content use Marmot under Comms.
 
 There is one `Social` conformance class. It follows the Core-defined layering
 closure and requires every claimed document to use the same family version,
@@ -28,30 +28,26 @@ plus every applicable section of this document.
 ## 2. Replies, reactions, threading, and mixed-tier fan-out
 
 
-Because a persona's repository is writable only by its authorized delegates,
-a replier MUST NOT require write access to another persona's repository.
-Replies and reactions use the Nostr outbox model:
+Replies and reactions use the ordinary Nostr outbox model:
 
 - A reply is a NIP-10 event and a reaction is a NIP-25 `kind:7` event written
   to the replier's own Comms outbox. It carries the standard `e`/`p` references
   to the target id and author and is published under
   [`heterodyne:0.5.0#comms-publishing`](heterodyne-comms.md#comms-publishing).
-- Thread assembly is scatter-gather over repliers' repo relays and ordinary
-  relays. A client MUST locally verify every event through
-  [`heterodyne:0.5.0#comms-envelope`](heterodyne-comms.md#comms-envelope) and MUST deduplicate by event id.
+- Thread assembly is scatter-gather over the authors' NIP-65 relays and any
+  repository-published relay hints. A client MUST locally verify every event
+  through [`heterodyne:0.5.0#comms-envelope`](heterodyne-comms.md#comms-envelope) and MUST deduplicate by event id.
 - A full node MAY materialize `xyz.heterodyne.thread` as a Radicle
   Collaborative Object, but a client MUST treat it only as an optimization.
   The verified scatter-gathered events remain authoritative.
-- A replier MAY index its reply in its own feed. By default replies and
-  reactions are non-indexed and render only in context. An explicit signed
-  `['heterodyne_index','true']` overrides the default; `false` excludes an
-  otherwise indexed event.
+- The event's `pubkey` is its author. A cold root, KEL head, feed index,
+  repository writer, moderator, or agent association MUST NOT substitute a
+  different author. A valid bare Nostr key with no Assurance state is a
+  first-class Social author.
 
-The default feed classifications are: kinds `1`, `6`, `16`, `1063`, `30023`,
-and `30402` indexed; kinds `0`, `3`, `5`, `7`, `8`, `17`, `1984`, `4550`,
-`9734`, `9735`, `10000-10999`, `30000-30099`, and `31000-31099` non-indexed.
-Kind `30024` is a non-indexed draft. Unknown persistent addressable content
-SHOULD default indexed; other unknown kinds SHOULD default non-indexed.
+Feed inclusion, reply collapsing, reaction display, and ranking are local
+presentation decisions over valid events. They do not add an authorship or
+validity rule to NIP-10, NIP-25, or NIP-01.
 
 A private reply or reaction MUST use a Marmot conversation under
 [`heterodyne:0.5.0#comms-marmot`](heterodyne-comms.md#comms-marmot). If no suitable two-member group exists,
@@ -74,8 +70,8 @@ An outbox advertisement MAY contain ordinary-relay, repo-relay, and Marmot
 persona-inbox hints where the persona prefers to observe replies and mentions.
 A replier SHOULD add reachable public destinations to the normal destination
 set. A private response uses the Marmot hint and remains in its two-member
-group. An inbox never grants write authority over the parent's canonical
-repository.
+group. An inbox never grants write authority over the parent's repository or
+changes source-neutral event selection.
 
 Public interaction is intentionally asynchronous. A client MUST degrade
 gracefully to outbox replies and reactions and MUST NOT block the user waiting
@@ -85,19 +81,28 @@ for real-time push.
 ## 3. Following and social discovery
 
 
-Social discovery starts only after Core has resolved npub to RID to serving
-node and Comms has located the generic feed/outbox. A follower MUST:
+Social discovery starts from an active npub, whether supplied directly or
+resolved through NIP-05. A follower MUST:
 
 1. resolve the target npub through
    [`heterodyne:0.5.0#core-identity-discovery`](heterodyne-core.md#core-identity-discovery);
-2. read and verify the target's public Comms `kind:31007` indexes and select
-   topic feeds;
-3. for Tier 2, establish access through the repository allow list; for Tier 3,
+2. retrieve the target's standard NIP-65 `kind:10002` relay list and query its
+   write relays plus any repository-published relay hints with NIP-01 filters;
+3. union valid exact events from all reachable carriers, deduplicate by event
+   id, and use NIP-01 replaceable selection where applicable;
+4. for Tier 2, establish access through the repository allow list; for Tier 3,
    possess the current audience key and use the in-audience descriptor;
-4. after entering an audience, read its descriptor for deeper feeds and repeat
+5. after entering an audience, read its descriptor for deeper feeds and repeat
    transitively; and
-5. cache discoveries with a TTL, revalidate on a newer verified identity
-   pointer, and discard expired node advertisements.
+6. cache transport hints with a TTL and revalidate on a newer valid kind `0`
+   or kind `10002`.
+
+Repository bytes are the canonical event bytes when available, but repository
+carriage has no selection priority. A newer valid relay event wins immediately
+and remains usable while repository ingestion catches up. If a repository is
+unavailable, ordinary relay state remains valid. Publishing clients refresh
+kind `0` and kind `10002` at least every seven days; exceeding that interval
+produces a visible warning and MUST NOT invalidate the latest valid state.
 
 Transitive discovery MUST NOT disclose an inner feed before the reader holds
 the outer audience's access capability. A search result, starter pack, graph
@@ -109,8 +114,9 @@ the same Core and Comms resolution path before subscription.
 
 Following is a set of feed subscriptions, not one global server-side edge:
 
-- following one public topic subscribes to that topic's index;
-- following all public topics subscribes to every selected public index;
+- following a public author subscribes to its NIP-65 write relays with
+  ordinary NIP-01 filters;
+- topic selection is a local filter over that author's valid events;
 - private following requires Tier 2 allow-list access or Tier 3 audience-key
   membership; and
 - vanilla-Nostr following subscribes through the target's NIP-65 write relays.
@@ -128,48 +134,40 @@ local encrypted storage. A followed-repositories record stored through the
 Core keys-repository protection mechanism remains a Social payload; storage
 location does not transfer semantic ownership.
 
-A conforming client MUST support a vanilla Nostr-only author as a first-class
-follow target. It verifies each event's NIP-01 signature, subscribes through
-the author's current NIP-65 write-relay list, and MUST present the author as an
-external identity with no Heterodyne KEL, delegation, or private-audience
-guarantees. Following an external identity does not imply that it has a
-compatible Marmot account or can receive a Heterodyne private conversation.
+A conforming client MUST support every valid vanilla Nostr author as a
+first-class follow target. Absence of Heterodyne metadata or Assurance is not
+an external, incomplete, downgraded, or invalid identity state. Following an
+author does not by itself imply private-audience access or Marmot reachability.
 
-An unstamped `kind:0` or `kind:1` without `kel_head` remains ordinary upstream
-Nostr even when its prose claims that an account moved. A client MAY render
-that claim as an advisory, reduced-assurance breadcrumb, but it MUST NOT infer
-either registered rotation-breadcrumb producer profile, project KEL
-continuity, or use the event as persona authority. Following, refollowing, or
-switching to a claimed successor requires an explicit user action; a client
-MUST NOT change a follow automatically. Compromise-driven rotations have no
-trustworthy old-key breadcrumb, and a later compromise of a retired key can
-overwrite replaceable `kind:0` or publish a competing note, so the UI MUST NOT
-describe breadcrumb continuity as secure or compromise-resistant.
+An ordinary `kind:0` or `kind:1` may contain a human-readable succession
+breadcrumb. It remains advisory. A client MUST NOT change a follow
+automatically or alias the old and new authors. Optional Assurance can add
+verified continuity evidence, but only when the user requests that separate
+claim; it never changes the validity or authorship of either event.
 
 <a id="social-cross-persona"></a>
 ### 3.2 Cross-persona advertisements
 
 `kind:31004` is the Social `related_persona` attestation. A relationship is
 valid only when two distinct personas A and B publish a matching pair of
-attestations. A's `other_npub` MUST be B's cold-root npub and B's
-`other_npub` MUST be A's. Each event carries:
+attestations. A's `other_npub` MUST be B's active npub and B's `other_npub`
+MUST be A's active npub. Each event carries:
 
 ```text
 ['d','<relation>:<other_npub_hex>']
 ['heterodyne','related_persona']
 ['other_npub','<other_npub_hex>']
 ['relation','same_holder|endorses|endorsed_by|linked']
-['cold_root','<signing persona cold-root hex>']
-['kel_head','<accepted KEL event id>','<seq>']
 ['spec_version','heterodyne/0.5.0']
 ```
 
-Both signatures and both personas' Core key authority MUST verify. A
+Both NIP-01 event ids and signatures MUST verify, and each event's `pubkey`
+MUST equal the active author identified by the opposite attestation. A
 single-signed relationship MUST be rejected. The `d`, `other_npub`, and
 opposite-party values MUST match exactly. `same_holder` and `linked` are
 symmetric: both events MUST use the same relation. `endorses` and
 `endorsed_by` are the only inverse pair. The events MUST have independent
-signatures, signing epoch keys, cold roots, and accepted `kel_head` proofs.
+signatures from their actual authors. Neither author requires Assurance.
 An OPTIONAL `['scope','<value>']` tag is valid only when it is either absent
 from both events or occurs exactly once with the same value in both. A
 relationship MAY be advertised
@@ -190,31 +188,22 @@ relationship event cannot erase prior observations or copies.
     "pubkey": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
     "created_at": 1710000000,
     "kind": 31004,
-    "tags": [["d","endorses:4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766"],["heterodyne","related_persona"],["other_npub","4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766"],["relation","endorses"],["scope","professional"],["cold_root","1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"],["kel_head","3333333333333333333333333333333333333333333333333333333333333333","0"],["spec_version","heterodyne/0.5.0"]],
+    "tags": [["d","endorses:4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766"],["heterodyne","related_persona"],["other_npub","4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766"],["relation","endorses"],["scope","professional"],["spec_version","heterodyne/0.5.0"]],
     "content": "",
-    "id": "89a6a1bf0345535482d296e6910b5115a623dbafe8b9cdd5011af28f686eb45d",
-    "sig": "7ff8bd7d316fd67820547ed4d92c60a556ed1fd089afd6aafe30190c2fe9812e34f81b3bf8200eb1437e3ccdcc74bfa874d9014d6cd924efb6ad1072dfd1a3ff"
+    "id": "8c63243f98958be655db1f24298e4c0053e77174f354b0603e7687e5f99e9a8e",
+    "sig": "c926b803104698e5bd6a1e3294c418cc3d6367dc7b3b0cc7aad7cc14f97ecd21fdb412ec867dc4e64e3cfdd3ca0deb1a6f964b3fff2b1d8d70d85433e1710785"
   },
   "right": {
     "pubkey": "4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766",
     "created_at": 1710000001,
     "kind": 31004,
-    "tags": [["d","endorsed_by:1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"],["heterodyne","related_persona"],["other_npub","1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"],["relation","endorsed_by"],["scope","professional"],["cold_root","4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766"],["kel_head","4444444444444444444444444444444444444444444444444444444444444444","0"],["spec_version","heterodyne/0.5.0"]],
+    "tags": [["d","endorsed_by:1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"],["heterodyne","related_persona"],["other_npub","1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"],["relation","endorsed_by"],["scope","professional"],["spec_version","heterodyne/0.5.0"]],
     "content": "",
-    "id": "5781bb1481f0872b2f30cb814504ff2d88a6f3e7698ef5d282efd408181fa135",
-    "sig": "dff1363b0c75c624a849bea8251eb8404fe1cc0972aa7e68663737351dcaea6138d146eee98ce3bdefbe20de8765d0d017596910f96128c451cf9690e7d8a1b0"
-  },
-  "kel_authority": {
-    "left": {"cold_root":"1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f","accepted_head":"3333333333333333333333333333333333333333333333333333333333333333","authorized_epoch_key":"1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"},
-    "right": {"cold_root":"4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766","accepted_head":"4444444444444444444444444444444444444444444444444444444444444444","authorized_epoch_key":"4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766"}
+    "id": "bd75843f083ad87e979b9f8de0c267b0a9ea82ad6b2d8d3377b06450308dcbc8",
+    "sig": "5c3a3dac8f9344796a746943d3c58d0b33cbfda22fa6db2e5c4208210ffd4e5ec383cc2370eaced191811e9dd15f12df95099278b026dde65a98dcc3e2b82362"
   }
 }
 ```
-
-The fixture's `kel_authority` object is test metadata, not part of either
-Nostr event. It records the accepted Core KEL head and authorized epoch key
-used to verify each event independently; both example personas are at their
-inception epoch, so each authorized epoch key equals its cold root.
 
 <a id="social-discovery-extensions"></a>
 ### 3.3 Search, starter packs, and graph sources
@@ -230,29 +219,25 @@ replace it with live verified lists, and MUST NOT allow it to override the
 user's own follows or mutes.
 
 <a id="social-recovery-binding"></a>
-## 4. Social binding of Core recovery roles
+## 4. Optional Assurance continuity vouches
 
 
-Core defines recovery peers, declared witnesses, cached identity material,
-and cold-root re-anchor at [`heterodyne:0.5.0#core-recovery`](heterodyne-core.md#core-recovery). Social MAY
-select recovery peers from follows, mutual follows, and friends:
+Ordinary Social behavior does not require recovery roles, continuity proofs,
+or cached authority state. A follower MAY cache exact signed Nostr events and
+MAY publish an advisory vouch about a claimed key transition. Such a vouch is
+not identity authority and never changes an event's NIP-01 author.
 
-- any follower MAY cache permitted identity material;
-- a mutual follow SHOULD cache it; and
-- a declared Core witness MUST retain the material required by the Core
-  recovery profile for at least 30 days.
+When the subject has explicitly attached optional Assurance, an Assurance
+verifier MAY consume a Social vouch as extra evidence under that document's
+rules. Social itself does not make a succession or recovery decision. Absence,
+invalidity, or staleness of a vouch or Assurance state MUST NOT invalidate an
+otherwise valid Social event or prevent an unassured persona from using any
+ordinary Social feature.
 
 <!-- fixture:social-recovery-cache-duties -->
 ```json
-{"follower":"may","mutual-follow":"should","declared-witness":"must"}
+{"ordinary_event_cache":"may","continuity_vouch":"advisory","assurance_required_for_baseline":false}
 ```
-
-Only persona-signed identity/feed material and valid KEL events may enter this
-cache. A serving peer MUST mark cached data stale and cache-sourced. Social
-relationships are advisory availability bindings and MUST NOT replace the
-cold-root re-anchor, accepted KEL, witness
-threshold, or verification rules in Core. Informal `kind:31008` social vouches
-are advisory only and MUST NOT count toward a Core rotation threshold.
 
 Human out-of-band assurance before vouching is deliberately unspecified. A
 voucher MAY use any channel; this document defines no single capturable proof.
@@ -264,105 +249,69 @@ An informal vouch has this Social-owned addressable shape:
 
 ```json
 {
-  "pubkey": "<voucher current epoch key>",
+  "pubkey": "<voucher active Nostr key>",
   "created_at": 0,
   "kind": 31008,
   "tags": [
-    ["d", "<persona cold-root>:<s>:<vouched_key>"],
+    ["d", "<subject-active-key>:<claimed-successor-key>"],
     ["heterodyne", "social_vouch"],
-    ["p", "<persona cold-root>"],
-    ["vouched_key", "<new epoch or cold key hex>"],
-    ["s", "<KEL sequence>"],
-    ["kel_head", "<voucher accepted KEL event id>", "<seq>"],
+    ["p", "<subject-active-key>"],
+    ["vouched_key", "<claimed-successor-key>"],
     ["spec_version", "heterodyne/0.5.0"]
   ],
   "content": "<optional free-text note>",
-  "sig": "<BIP-340 signature by voucher epoch key>"
+  "sig": "<BIP-340 signature by voucher active key>"
 }
 ```
 
-The `d`, `p`, `s`, and `vouched_key` values MUST agree exactly, and the named
-sequence/key MUST match the rotation being discussed. The voucher's signature,
-KEL authority, `kel_head`, and Social stamp MUST verify. A `did:key`-only peer
-participates through Core's declared-witness mechanism, not this Nostr event.
-No number of informal vouches can satisfy a Core threshold. A client MAY show
-or rank them and suggest a declared-witness promotion, but promotion MUST be an
-explicit user action and MUST NOT influence the Core accept/reject verdict.
+The `d`, `p`, and `vouched_key` values MUST agree exactly. The voucher's
+NIP-01 event id, signature, and Social stamp MUST verify, and its `pubkey` is
+the voucher's only author. No number of informal vouches can alias authors,
+move follows, or satisfy an Assurance threshold. A client MAY show or rank
+them, but any continuity decision is an explicit optional Assurance claim.
 
 <a id="social-feed-presentation"></a>
 ## 5. Feed and organization presentation
 
 
-Comms owns feed storage, ordering, paging, retrieval, and threshold
-authorization. Social turns those verified inputs into topic subscriptions,
-curated views, community pages, reply counters, moderation views, and
-organization presentation. A Social renderer MUST NOT show an org post or
-index as canonical until it passes
-[`heterodyne:0.5.0#comms-org-authorization`](heterodyne-comms.md#comms-org-authorization).
+Social turns valid ordinary Nostr inputs into topic subscriptions, curated
+views, community pages, reply counters, moderation views, and organization
+presentation. Clients discover public events through the author's NIP-65
+write relays and repository-published relay hints. They union valid exact
+events and use NIP-01 selection. A repository is a durable source and
+reconciliation target, not a source-priority override.
 
-A persona MAY operate multiple topic feeds and multiple audience feeds. A
-client SHOULD support topic-selective subscription and MAY present a union as
-"all topics." Feed labels, topic tags, pinning, intentional omissions, and
-nonchronological ordering are presentation instructions from the verified
-Comms index; relay presence alone MUST NOT insert an unindexed event into a
-persona's curated feed.
+A persona MAY use standard topic tags, NIP-51 sets, and NIP-72 communities.
+Pinning, intentional omission, and nonchronological ordering are local or
+explicitly subscribed presentation policy. They do not make a signed event
+invalid or change its author.
 
-<a id="social-org-feed-profile"></a>
-### 5.1 Registered Social org-feed profile
+<a id="social-organization-personas"></a>
+### 5.1 Organization personas
 
-The registry allocates the stamping profile `heterodyne-social-org-feed-v1`
-on the Comms-owned `kind:31007`. Social supplies the content object it stamps;
-[`heterodyne:0.5.0#comms-feed-index`](heterodyne-comms.md#comms-feed-index)
-governs everything else, including the discriminator's authority, the
-stamp-location and version-tag rules, and the Tier 3 prohibition. An event
-opting into this profile MUST otherwise validate the complete Comms
-feed-index schema. The content object is closed, has no unknown members, and
-is exactly:
+An organization has the same wire identity as a human persona: one active
+Nostr key, one ordinary kind `0` profile, and one NIP-65 kind `10002` relay
+list. There is no separate organization-feed identity or live Social profile
+on kind `31007`.
 
-```json
-{
-  "profile": "heterodyne.social.org-feed.v1",
-  "spec_version": "heterodyne/0.5.0"
-}
-```
-
-A Comms `kind:31007` without the exact discriminator remains a Comms event and
-MUST NOT be interpreted as this Social profile.
-
-<!-- fixture:social-org-feed-index -->
-```json
-{
-  "pubkey": "1111111111111111111111111111111111111111111111111111111111111111",
-  "created_at": 1710000000,
-  "kind": 31007,
-  "tags": [["d","org-news:page-2"],["heterodyne","feed_index"],["cold_root","2222222222222222222222222222222222222222222222222222222222222222"],["rid","rad:zExample"],["feed_label","Org news"],["e","3333333333333333333333333333333333333333333333333333333333333333","wss://relay.example"],["previous_index","4444444444444444444444444444444444444444444444444444444444444444"],["prev_page_hash","5555555555555555555555555555555555555555555555555555555555555555"],["kel_head","6666666666666666666666666666666666666666666666666666666666666666","7"]],
-  "content": "{\"profile\":\"heterodyne.social.org-feed.v1\",\"spec_version\":\"heterodyne/0.5.0\"}",
-  "sig": "77777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777"
-}
-```
-
-The profile controls only org/community/editorial presentation. It MUST NOT
-weaken the requirement that both the org post and index be reachable from the
-delegate-threshold-approved canonical feed branch. Any `xyz.radicle.crefs` refinement of editorial refs
-is bounded by [`heterodyne:0.5.0#core-threshold-authority`](heterodyne-core.md#core-threshold-authority).
+An organization post is an ordinary event signed by the organization active
+key. An authorized agent or human persona MAY instead sign with its own key
+only when the event carries the mandatory Comms automation attribution or the
+organization's explicit public-byline profile for that path. In every case the
+event `pubkey` is the actual author. Association with the organization affects
+presentation and audit; it MUST NOT rewrite the author, signature, address, or
+replaceable namespace. Private delegate authority remains a Workspace concern.
 
 <a id="social-moderation"></a>
 ## 6. Moderation and editorial gating
 
 
-Social defines two independent editorial-gating mechanisms:
-
-1. **NIP-72 approval mode.** A moderator publishes a `kind:4550` approval;
-   authorized, anchored approvals determine the curated view.
-2. **Radicle editorial mode.** A post and its index are approved exactly when
-   both are reachable from the delegate-threshold-approved canonical feed
-   branch.
-
-A community MAY use either or both. A client MUST NOT treat one as proof of
-the other. Membership is a separate axis: repository `visibility.allow`
-controls replication/read access and Core delegates control repo authority.
-An unapproved post may remain visible in a raw relay or repository view while
-being absent from the curated view.
+Social adopts ordinary NIP-72 communities and approvals. A moderator's valid
+`kind:4550` event is authored by its own `pubkey`; community metadata cannot
+replace that author. Labels, repository inclusion, relay acceptance, and
+subscriber policy MAY affect a curated presentation but MUST NOT create a
+NIP-72 approval or invalidate the underlying signed event. Membership and
+repository replication remain separate axes.
 
 <a id="social-nip72-submission"></a>
 ### 6.1 NIP-72 contribution and declaration
@@ -377,7 +326,7 @@ The contributor MUST publish to its own NIP-65 write relays and SHOULD also
 publish to the current moderators' write relays. A
 `['client','heterodyne']` tag is
 OPTIONAL and MUST NOT be used to exclude vanilla submissions. A contributor
-SHOULD poll or subscribe to moderator indexes. Polling MUST use five-minute
+SHOULD poll or subscribe to the moderators' NIP-65 write relays. Polling MUST use five-minute
 intervals for the first 30 minutes, then MAY use exponential backoff of 5, 10,
 30, then 60 minutes. It MUST stop on approval or when the seven-day
 implicit-rejection window expires. If no approval appears within seven days
@@ -395,17 +344,17 @@ SHOULD surface a second such outcome with `outcome_class`
 approved within 7-day window” are examples, not normative strings.
 
 Every moderated community MUST publish a NIP-72 `kind:34550` addressable
-community definition on the Core/Comms backends. It lists each moderator's
-permanent cold root as a wire key per
-[`heterodyne:0.5.0#core-wire-keys`](heterodyne-core.md#core-wire-keys):
+community definition through ordinary relays and any repository relay. It
+lists each moderator's active Nostr public key:
 
 ```text
-['p','<moderator cold-root 64-lowercase-hex>','<relay hint>','moderator']
+['p','<moderator-active-key 64-lowercase-hex>','<relay hint>','moderator']
 ```
 
 and MAY carry `['approvals_required','<positive integer>']`; absence means 1.
-A repo-hosted community MUST commit every declaration revision to the
-delegate-threshold canonical history.
+A repo-hosted community SHOULD preserve every exact declaration event for
+durability. The same event remains usable when available only from an
+ordinary relay.
 
 <a id="social-nip72-approval"></a>
 ### 6.2 Approval verification and anchors
@@ -415,62 +364,51 @@ stringifies the approved post and its tags identify the post, author, and
 community. It remains an unstamped upstream event. For each candidate, a
 Social client MUST:
 
-1. resolve the community declaration and `approvals_required`;
-2. fetch each moderator's current `kind:31007` approval index;
-3. fetch each referenced `kind:4550`, the approved post, and applicable
+1. resolve the current valid `kind:34550` community declaration with ordinary
+   NIP-01 addressable-event selection;
+2. query each declared moderator's NIP-65 write relays and any
+   repository-published relay hints;
+3. fetch each `kind:4550`, the approved post, and applicable
    deletion requests;
-4. verify exact NIP-01 bytes, the BIP-340 signature, moderator cold-root
-   mapping through the KEL at approval `created_at`, index inclusion, and the
-   required historical anchor; and
+4. verify every NIP-01 event id and BIP-340 signature and require each
+   approval author to be a moderator active key declared for that community;
+   and
 5. surface the candidate only when distinct live approvals meet the threshold.
 
-An approval counts only with the anchor required by its hosting mode:
-
-- **Repo anchor:** its introducing commit is reachable from canonical history;
-  the moderator set is the newest `kind:34550` revision in that commit's
-  ancestor history.
-- **Relay-only fallback:** the newest declaration with `created_at` not after
-  the approval is used. A client MUST label this reduced assurance because a
-  removed moderator can backdate.
-
-An approval required to have a repo anchor but lacking it MUST NOT count. An
-approval omitted from the moderator's current index is off-index and
-MUST NOT count in the Heterodyne curated view even if a vanilla NIP-72 client
-uses it.
+For an approval-time view, select among valid declaration events whose
+`created_at` is not after the approval: greatest `created_at`, then lowest
+event id. Carrier does not enter the comparison. Optional Assurance may add
+continuity evidence for a moderator that later changes active key, but it is
+not required to validate an approval by the key that actually signed it.
 
 <!-- fixture:social-approval-anchor-evidence -->
 ```json
-{"indexed":true,"signatureValid":true,"moderatorAuthorizedAtAnchor":true,"requiredAnchorPresent":true,"deleted":false}
+{"signature_valid":true,"moderator_declared_at_event_time":true,"carrier":"relay-or-repository","deleted":false}
 ```
 
-The moderator set is evaluated at the anchor, not verification time. Later
-removal does not invalidate an earlier approval. A KERI compromise cutoff
-MUST invalidate approvals signed after the cutoff. Invalidating an otherwise
-historical approval requires a per-approval NIP-09 `kind:5` deletion request
-and an updated moderator index.
+Later removal of a moderator does not rewrite an earlier approval. An optional
+Assurance compromise claim may cause a client explicitly evaluating that
+claim to warn about affected history; it MUST NOT change baseline NIP-01
+validity. Withdrawing a live approval uses NIP-09 as described below.
 
 <a id="social-revocation"></a>
 ### 6.3 Approval withdrawal and deletion
 
 Silence is rejection; this release defines no explicit rejection event. To
 withdraw an approval, its author MUST publish a NIP-09 `kind:5` deletion
-request targeting its own `kind:4550` and MUST publish an updated approval
-index omitting it. A client MUST validate that the deletion and target authors
+request targeting its own `kind:4550`. A client MUST validate that the deletion and target authors
 match before hiding or discounting the approval. Deletion signals intent and
 MUST NOT be represented as erasure.
 
 <a id="social-radicle-editorial"></a>
-### 6.4 Radicle editorial-gating mode
+### 6.4 Repository-backed editorial views
 
-For a Radicle-mode community, a client MUST treat a post as editorially
-approved if and only if both the post and the `kind:31007` that references it
-are reachable from the delegate-threshold-approved canonical feed branch. A
-lone epoch-key signature observed only on an ordinary relay MUST NOT bypass
-that threshold. A client MUST NOT require `kind:4550` in this mode. Conversely,
-it MUST NOT impose branch reachability on a NIP-72-mode view.
-
-Post-hoc removal uses `kind:5` plus a new canonical index omitting the post.
-It changes the live view only, under [`heterodyne:0.5.0#core-non-erasure`](heterodyne-core.md#core-non-erasure).
+A community MAY offer a repository-backed curated view containing exact
+signed Nostr events. Repository inclusion is a subscriber-local presentation
+signal and storage fact. It MUST NOT replace a NIP-72 `kind:4550`, confer
+moderator authority on a writer NID, or make a relay-only event invalid.
+Post-hoc removal from that view changes only the view and never claims erasure,
+under [`heterodyne:0.5.0#core-non-erasure`](heterodyne-core.md#core-non-erasure).
 
 <a id="social-labels"></a>
 ### 6.5 Reports and labels
@@ -480,7 +418,7 @@ and consume NIP-32 `kind:1985` labels. A label event MUST target at least one
 event, pubkey, address, relay, or topic through an upstream `e`, `p`, `a`, `r`,
 or `t` tag. When it uses an `L` namespace, each `l` tag MUST mark a matching
 namespace. Labels are advisory: they MAY influence local warnings/ranking but
-MUST NOT constitute either editorial approval mechanism.
+MUST NOT change event authorship or constitute NIP-72 approval.
 
 <a id="social-agent-policy-receipts"></a>
 ### 6.6 Agent-policy receipts and corrections
@@ -495,30 +433,36 @@ A receipt MUST have exactly:
       "agent-attribution-falsified" |
       "agent-publication-bypass", "network.heterodyne.agent-policy"]
 ["e", "<offending-event-id>", "<optional relay hint>"]
-["p", "<offending device-publishing-key>", "<optional relay hint>"]
+["p", "<offending-event-author>", "<optional relay hint>"]
 ```
 
-It MUST target exactly one event and exactly its signing device key. Its
+It MUST target exactly one event and its actual signing `pubkey`. Its
 content MUST validate against
 `docs/spec/schemas/social/agent-policy-receipt-v1.schema.json`, whose closed
-Social JSON binds profile/version, offending event, device key, resolved
-cold-root persona, reason, observation time, evidence references or digests,
-explanation, and remediation `rotate-device-key`. It MUST NOT expose a token,
-secret, private claim, raw sender proof, or protected audit record.
+Social JSON binds profile/version, offending event id and author, the verified
+Comms agent association or explicit null, policy id/version, advisory decision,
+reason, observation time, evidence references or digests, explanation, and
+bounded remediation. It carries no root, KEL, or epoch authority. It MUST NOT
+expose a token, secret, private claim, raw sender proof, or protected audit
+record.
 
 A valid receipt publicly informs. It does not mute, hide, establish editorial
 authority, or prove a private token failure by itself. A recipient MUST verify
-the event signature, exact tag/body binding, offending event signature,
-device-to-role delegation, and point-in-time persona resolution before showing
-it as verified.
+the receipt signature, exact tag/body binding, offending event signature and
+author, and the Comms association evidence before showing it as verified. A
+moderator or associated persona MUST NOT be displayed as the event author
+unless that key actually produced the event signature.
 
 A false-positive correction is a signed `kind:1985` receipt from the correcting
 policy authority with `L` namespace `network.heterodyne.agent-policy`,
 `l` value `correction`, one `e` tag naming the original receipt, and one `p`
-tag naming the device key. Its content MUST validate against
+tag naming the same event author. Its content MUST validate against
 `docs/spec/schemas/social/agent-policy-correction-v1.schema.json`. A correction
-does not restore visibility until the current canonical policy list also
-removes the original binding.
+MUST bind the original receipt id, offending event id and author, verified
+agent association, same policy id/version, retraction decision, correction
+evidence, time, and explanation. It does not restore visibility until the
+source-neutrally selected current policy list also removes the original
+binding.
 
 <a id="social-lists"></a>
 ## 7. Personal lists, community policy, and web of trust
@@ -547,8 +491,9 @@ The profile is stamping, so `heterodyne/0.5.0` is its sole owner stamp. Public
 mute entries use upstream `p`, `t`, `word`, and `e` tags. Private entries keep
 the upstream NIP-51 encrypted-content shape; the profile MUST NOT change that
 shape. A client MUST verify the signer through Core and re-encrypt private
-items under the new authoritative epoch key on the next list write after
-rotation.
+items to the current active key on the next list write after a user-approved
+key transition. Optional Assurance continuity does not change NIP-51
+authorship or replacement.
 
 A plain upstream NIP-51 event without the exact Social discriminator MUST
 remain unstamped. It is an interoperability input and MUST NOT be stamped
@@ -567,17 +512,20 @@ The registry defines the stamping
 ```
 
 For each adopted receipt, the list contains one upstream
-`["p","<device-key>"]` mute, one `["e","<receipt-id>"]` reference, and one
+`["p","<event-author>"]` mute, one `["e","<receipt-id>"]` reference, and one
 closed binding:
 
 ```text
-["agent_violation", "<device-key>", "<receipt-id>", "<reason-code>"]
+["agent_violation", "<event-author>", "<receipt-id>", "<reason-code>"]
 ```
 
 The client MUST verify the receipt, exact `p`/`e`/`agent_violation` binding,
-policy persona, current replaceable event, and canonical repository history
-before the entry can affect visibility. A relay-only list candidate or
-unmerged Radicle PR has no policy effect.
+policy author, and the current replaceable event before the entry can affect
+visibility. Current state is selected from the union of valid relay and
+authorized-repository candidates by greatest `created_at`, then lowest event
+id. A relay-only candidate may therefore be current; carrier location does
+not grant or remove policy effect. An unauthorized Radicle ref is not a Core
+repository candidate.
 
 Only an explicitly subscribed policy list affects a client. An unsubscribed
 receipt or list remains visible information and MUST NOT silently change
@@ -587,17 +535,15 @@ source for each filtering decision and let the user inspect, disable, or
 replace it. No moderator, registry entry, default client, repository, or relay
 has global power.
 
-Enforcement mutes exactly the listed device-publishing key. It MUST NOT mute
-the persona, epoch key, human devices, hosting NID, or other agent-role keys.
-Remediation replaces the offending role key at the same `agent:<role-id>`
-address and finalizes that Core/Comms delegation. The old key MAY remain muted
-indefinitely; the replacement key is evaluated independently. Epoch-key
-rotation is neither required nor permitted as a substitute for the
-device-scoped remediation.
+Enforcement mutes exactly the listed event author. It MUST NOT mute an
+associated persona, organization, moderator, hosting NID, or different agent
+key. A receipt MAY recommend correcting attribution or replacing that signing
+key, but Social policy is advisory and cannot require a persona or Assurance
+rotation. A replacement author is evaluated independently.
 
 Correction requires both a valid signed correction receipt and a current
-canonical list revision removing the original binding. Either one alone leaves
-the current subscribed mute unchanged.
+source-neutrally selected list revision removing the original binding. Either
+one alone leaves the current subscribed mute unchanged.
 
 <a id="social-sets"></a>
 ### 7.3 Sets and private configuration
@@ -608,18 +554,17 @@ follow sets `30000`, relay sets `30002`, bookmark sets `30003`, kind-mute sets
 packs `39089`. Sets MAY use upstream `title`, `image`, and `description` tags.
 They remain unstamped unless a registry profile explicitly opts them in.
 
-Every ordinary Social NIP-51 list or set uses a public dual-backend carrier:
-it MUST be publishable to and served from both the persona's ordinary relays
-and its repo relay. The repo relay MUST accept conforming NIP-51 events for a
-repository it serves. Upstream private items remain NIP-44-encrypted to self
+Every ordinary Social NIP-51 list or set is a standard signed event publishable
+to the persona's NIP-65 write relays. A repository or repository-backed relay
+MAY store and serve the exact same event. Upstream private items remain NIP-44-encrypted to self
 inside that same publishable event; ciphertext does not make the event or its
-metadata private. This dual-backend rule MUST NOT imply Tier 2 delivery or a
+metadata private. Repository carriage MUST NOT imply Tier 2 delivery or a
 private-repository allow list.
 
 The persona SHOULD also commit each current list revision to its persona
-repository. A reader MUST prefer the newest
-verifiable replaceable/addressable revision and SHOULD detect an older relay
-revision when canonical repo history proves a newer one. Data whose existence
+repository. A reader MUST select the newest valid replaceable/addressable
+revision across relay and repository candidates without carrier priority and
+SHOULD warn when a reachable carrier is missing the selected event. Data whose existence
 or size must not be exposed even as ciphertext SHOULD be stored as a
 Social-owned private payload in the encrypted config repository instead of a
 NIP-51 event.
@@ -629,11 +574,13 @@ NIP-51 event.
 
 A policy persona MAY publish community block/allow policy using `kind:10000`,
 `kind:30007`, and `kind:30000`. A community adopts it through `a` tags for
-sets or `['p','<policy cold-root 64-lowercase-hex>','<relay hint>','policy']`
+sets or `['p','<policy-active-key 64-lowercase-hex>','<relay hint>','policy']`
 in `kind:34550`.
 Clients computing that community's view SHOULD apply adopted sources after
-verifying their signatures and current KEL authority. A follower MAY subscribe
-to additional policy personas independently.
+verifying their NIP-01 signatures and selecting current replaceable state. An
+unassured policy key is complete. Optional Assurance may add continuity
+evidence without becoming an enforcement prerequisite. A follower MAY
+subscribe to additional policy personas independently.
 
 <a id="social-admission-policy"></a>
 ### 7.5 Web-of-trust and the Comms acceptance hook
@@ -667,18 +614,19 @@ group admission result.
 
 Web-of-trust ranking is local policy, not canonicality. A graph MAY be built
 from verified `kind:3` follows, public Social mute profiles, and weighted
-NIP-32 labels. It MUST NOT change whether a post is signed, indexed,
-NIP-72-approved, or Radicle-editorially approved.
+NIP-32 labels. It MUST NOT change whether a post is signed, authored, selected
+under NIP-01, or NIP-72-approved.
 
 <a id="social-atproto"></a>
 ## 8. Optional ATProto attached outbox
 
 
 ATProto is an OPTIONAL decorative public outbox and witness surface. It is not
-the persona identity, a required transport, or recovery authority. The npub,
-accepted KEL, Core identity pointer, and Comms feed remain authoritative.
+the persona identity, a required transport, or recovery authority. The current
+active npub and its valid Nostr events remain authoritative. Optional
+Assurance continuity is extra evidence only.
 Private or audience-gated content MUST NOT mirror to ATProto. An ATProto
-failure MUST NOT fail or roll back canonical Heterodyne publication.
+failure MUST NOT fail or roll back ordinary Heterodyne publication.
 
 <a id="social-atproto-resolution"></a>
 ### 8.1 DID resolution and SSRF protection
@@ -716,15 +664,14 @@ Social-owned `kind:31009` `atproto_link` event's content cover the same
 canonical compact JSON object:
 
 ```json
-{"spec_version":"heterodyne/0.5.0","did":"<DID>","did_signing_key_id":"<key id>","npub":"<cold-root hex>","rid":"<canonical RID>","established_at":0}
+{"spec_version":"heterodyne/0.5.0","did":"<DID>","did_signing_key_id":"<key id>","npub":"<active Nostr key hex>","rid":"<canonical RID>","established_at":0}
 ```
 
 `rid` is omitted only if no RID exists. Transport-specific account
 identifiers MUST NOT appear in the signed payload. The Nostr attestation MUST
-be signed by the currently
-authoritative epoch key and include exactly one each of `d=<DID>`,
-`heterodyne=atproto_link`, `cold_root=<npub>`, `did=<DID>`, `kel_head`, and
-use the canonical payload above as its JSON `content`. The in-content
+be signed by the current active key named by `npub` and include exactly one
+each of `d=<DID>`, `heterodyne=atproto_link`, `npub=<active-key>`, and
+`did=<DID>`, and use the canonical payload above as its JSON `content`. The in-content
 `spec_version` is the event's Social stamp; a duplicate version tag MUST NOT
 be added. The DID signature MUST verify under the resolved key over SHA-256 of
 the canonical payload. Both signatures MUST verify; a one-sided claim MUST be
@@ -741,10 +688,11 @@ non-empty markers.
 
 Verification MUST begin from the PDS record and proceed through every binding:
 resolve the DID and verify its named signing key and record signature; read the
-payload's cold-root npub; verify that npub's current Core `kind:31005`; follow
-its canonical RID and KEL; locate the current Social `kind:31009`; verify its
-Nostr id, epoch-key signature, KEL authority, tags, and byte-exact payload; and
-finally require the two payloads to be identical.
+payload's active npub; locate Social `kind:31009` candidates through that
+author's NIP-65 relays and repository relay hints; apply ordinary NIP-01
+addressable-event selection; verify the selected event id, active-key
+signature, tags, and byte-exact payload; and finally require the two payloads
+to be identical. Optional Assurance continuity may be displayed separately.
 
 <!-- fixture:atproto-identity-link -->
 ```json
@@ -753,10 +701,10 @@ finally require the two payloads to be identical.
     "pubkey": "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337",
     "created_at": 1710000000,
     "kind": 31009,
-    "tags": [["d","did:web:alice.example"],["heterodyne","atproto_link"],["cold_root","531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337"],["did","did:web:alice.example"],["kel_head","5555555555555555555555555555555555555555555555555555555555555555","0"]],
+    "tags": [["d","did:web:alice.example"],["heterodyne","atproto_link"],["npub","531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337"],["did","did:web:alice.example"]],
     "content": "{\"spec_version\":\"heterodyne/0.5.0\",\"did\":\"did:web:alice.example\",\"did_signing_key_id\":\"did:web:alice.example#atproto\",\"npub\":\"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337\",\"rid\":\"rad:zAlice\",\"established_at\":1710000000}",
-    "id": "cd41c76501b0b7145c8dd115503473553e0e8a31c8e5849822aa7c87d19c6bf6",
-    "sig": "a63775bd44e0b09a9400ed900aa13cdae9b239237056fe9b2bc87b24297af117d562a61f80a5d522680fc8d683b6ffa1f3d5e963a7c99635bdf0385ea80b03d5"
+    "id": "238811dae009972d744370a179ab105e59e366a6ad45f0166740a5cdb45dc45e",
+    "sig": "a26c1b3a4afffa9f140ab54369b470a5df7e0973eb09934b4c169f57e55384a992a8cb00a2192ee2adc5a82a7976077dedabc8bbc5fd5d67c36215a899fcafc5"
   },
   "pds_record": {
     "collection": "social.heterodyne.identityLink",
@@ -771,8 +719,8 @@ finally require the two payloads to be identical.
 ```
 
 Either identity may revoke unilaterally. The persona publishes an
-epoch-key-signed `kind:31009` with `heterodyne=atproto_link_revocation`,
-`d=<DID>`, `did`, `cold_root`, and `kel_head`; the closed ordered content has
+active-key-signed `kind:31009` with `heterodyne=atproto_link_revocation`,
+`d=<DID>`, `did`, and `npub`; the closed ordered content has
 `spec_version`, `record_type=atproto_link_revocation`, `did`, `npub`,
 `binding_hash` (SHA-256 of the binding payload), and integer `revoked_at`. The
 DID owner publishes the same revocation value, signed by the current DID key,
@@ -787,9 +735,10 @@ requires both signatures.
     "pubkey": "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337",
     "created_at": 1710000100,
     "kind": 31009,
-    "tags": [["d","did:web:alice.example"],["heterodyne","atproto_link_revocation"],["did","did:web:alice.example"],["cold_root","531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337"],["kel_head","5555555555555555555555555555555555555555555555555555555555555555","0"]],
+    "tags": [["d","did:web:alice.example"],["heterodyne","atproto_link_revocation"],["did","did:web:alice.example"],["npub","531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337"]],
     "content": "{\"spec_version\":\"heterodyne/0.5.0\",\"record_type\":\"atproto_link_revocation\",\"did\":\"did:web:alice.example\",\"npub\":\"531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337\",\"binding_hash\":\"6adf242345b2ac833ec54689e1eb6607d84897a5a116ef00df447646c5c541a0\",\"revoked_at\":1710000100}",
-    "sig": "66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666"
+    "id": "8cc56e87c621bdbfc9d7db52932e26db4e7a3007b02b02a85abefd9541c192ab",
+    "sig": "6d5b603bfa816c846ba6958e8262cb48ba7a31f0692fa046dfe19b1d8fb731b3a0da9479c0969863cd6cc786882059d0199925859cad755144288b8efe9ea582"
   },
   "atproto": {
     "collection": "social.heterodyne.identityLink",
@@ -801,8 +750,9 @@ requires both signatures.
 ```
 
 Successful DID, PDS, binding, and revocation verification SHOULD be cached for
-at most one hour. A changed `kind:31005`, KEL head, DID document, PDS record,
-or observed revocation MUST invalidate the relevant cache immediately. Any
+at most one hour. A newer selected kind `0`, kind `10002`, or kind `31009`, a
+changed DID document or PDS record, or an observed revocation MUST invalidate
+the relevant cache immediately. Any
 signature or binding failure MUST invalidate the cached success rather than
 extending its TTL.
 
@@ -811,14 +761,14 @@ extending its TTL.
 
 Mirroring defaults off. An explicit configuration MUST allow-list source
 public feeds, Nostr kinds, and either `truncate_with_link` or `full_or_skip`.
-Only Tier 1 public material may mirror. The client first completes canonical
-Comms publication and index update, then best-effort publishes the adapted PDS
+Only Tier 1 public material may mirror. The client first completes ordinary
+Comms publication to at least one intended destination, then best-effort publishes the adapted PDS
 record with a canonical Nostr event-id reference. It SHOULD avoid aggressive
 retry.
 
-A verified DID key MAY sign a Core KERI ceremony as an additive witness. It
-MUST NOT satisfy a controller-signature requirement or replace the declared
-Core witness threshold. A verifier MAY ignore it without losing Social
+A verified DID key MAY serve as extra evidence in an optional Assurance
+workflow. It MUST NOT replace an active-key signature or become a baseline
+Social requirement. A verifier MAY ignore it without losing Social
 conformance. A displayed ATProto handle MUST remain marked unverified until
 both halves of the binding verify.
 
@@ -833,8 +783,10 @@ The list below is descriptive:
 
 - **SOCIAL-I-PRIVATE-STATE-AT-REST:** Private mute, feed-preference, followed-repository, and other Social state are encrypted at rest using the owning Social or bound Comms profile.
 - **SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH:** Following, transitive discovery, and social-graph evaluation do not depend on a centralized follow-graph oracle.
+- **SOCIAL-I-NIP01-AUTHORSHIP:** Every ordinary Social event is authored by the public key that actually produced its valid NIP-01 signature; no persona, agent, moderator, repository, relay, KEL, or feed metadata can substitute another author.
+- **SOCIAL-I-SOURCE-NEUTRAL-SELECTION:** Social state unions valid exact events from relays and repositories and applies NIP-01 replaceable selection without carrier priority; seven-day refresh age is warning-only.
 - **SOCIAL-I-AGENT-POLICY-LOCAL:** Agent-policy receipts inform publicly, but only an explicitly subscribed and verified current policy list changes a client's local visibility.
-- **SOCIAL-I-AGENT-REMEDIATION-SCOPED:** Agent-policy enforcement and remediation target only the offending role device key; replacement at the same role address never requires epoch-key rotation.
+- **SOCIAL-I-AGENT-AUTHORSHIP-EXACT:** Agent-policy receipts, corrections, and subscriber-local enforcement bind the actual signed event author and verified Comms agent association; no moderator or associated agent becomes an event author without producing that event's signature.
 
 The mechanism boundaries MUST remain honest. Tier 2, Tier 3, Marmot
 conversation, and Radicle persona-inbox guarantees come from Comms. Social
@@ -861,7 +813,9 @@ feature is claimed, so the profile does not restate them.
   ],
   "adds_invariants": [
     "SOCIAL-I-PRIVATE-STATE-AT-REST",
-    "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH"
+    "SOCIAL-I-NO-CENTRAL-SOCIAL-GRAPH",
+    "SOCIAL-I-NIP01-AUTHORSHIP",
+    "SOCIAL-I-SOURCE-NEUTRAL-SELECTION"
   ]
 }
 ```
@@ -871,8 +825,8 @@ pass baseline verification before Social policy is applied; initiation of
 subscription or polling for a valid `kind:5` deletion within 30 seconds on an
 active source, with retry and availability evidence until a terminal
 condition; exact receipt/list binding; subscribed-policy transparency;
-device-key-scoped remediation; and a visible warning when a previously met
-strict requirement becomes unmet. A carrier partition does not itself make an
+actual-author-scoped moderation; source-neutral replaceable selection; and a
+visible warning when a previously met strict requirement becomes unmet. A carrier partition does not itself make an
 otherwise conforming consumer nonconformant.
 
 <a id="social-conformance"></a>
@@ -884,20 +838,23 @@ A `Social` report follows the family requirements in
 §§1-9. It MUST
 include async replies/reactions, following and transitive discovery,
 cross-persona advertisements, reply inboxes, mixed-tier Social fan-out,
-moderation, NIP-51 Social profiles, community policy, Social recovery binding,
-feed/org presentation, ATProto behavior when advertised, the acceptance-hook
+moderation, NIP-51 Social profiles, community policy,
+source-neutral feed and organization presentation, optional Assurance-only
+continuity vouches, ATProto behavior when advertised, the acceptance-hook
 policy, subscriber-local agent-policy moderation when
 `social.agent-policy-moderation.v1` is advertised, and every Social invariant
 its claim scopes in under
 [`heterodyne:0.5.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope).
 
 Social presentation of persona name, avatar, biography, website, or NIP-05
-MUST begin from the canonical Core persona-profile record. The delegated
-`kind:0` mirror provides vanilla interoperability, but a competing relay event
-or repointed NIP-05 MUST NOT replace canonical repository state.
+MUST begin from the current valid kind `0` event selected across relay and
+repository candidates under NIP-01. The repository is a durable source, not a
+selection override. NIP-05 maps to the active key and does not supersede event
+signatures.
 
 Optional lower-layer profiles are claimed only when their owning documents'
-requirements and vectors are satisfied.
+requirements are satisfied. Assurance is optional and is never included in
+the baseline Social dependency closure.
 
 Report contents, byte-exact wire conformance, vector-ID immutability, and
 unknown-version handling are family-wide rules stated once by

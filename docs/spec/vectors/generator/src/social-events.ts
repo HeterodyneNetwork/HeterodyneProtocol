@@ -1,0 +1,208 @@
+import { matchesAgentAttributionProfile, type AgentAssociation } from "./agent-authorship.js";
+import { verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
+
+export type SocialAuthorshipInput = {
+  event: NostrSignedEvent;
+  persona_active_key?: string;
+  authorized_agent_signers?: readonly {
+    pubkey: string;
+    agent_association: AgentAssociation | null;
+  }[];
+};
+
+export type SocialAuthorshipDecision =
+  | {
+      verdict: "accept";
+      event_author: string;
+      represented_persona: string;
+      agent_association?: AgentAssociation;
+    }
+  | {
+      verdict: "reject";
+      reason_code: "social-event-invalid" | "social-author-binding-invalid";
+    };
+
+export type SocialEventCandidate = {
+  carrier: "relay" | "repository";
+  event: NostrSignedEvent;
+};
+
+export type SocialReplaceableCoordinate = {
+  pubkey: string;
+  kind: number;
+  d?: string;
+};
+
+const SEVEN_DAYS_SECONDS = 7 * 24 * 60 * 60;
+const HEX_32 = /^[0-9a-f]{64}$/;
+
+export function validateSocialAuthorship(
+  input: SocialAuthorshipInput,
+): SocialAuthorshipDecision {
+  if (!validSignedEvent(input.event)) {
+    return { verdict: "reject", reason_code: "social-event-invalid" };
+  }
+  const representedPersona = input.persona_active_key ?? input.event.pubkey;
+  if (!HEX_32.test(representedPersona)) {
+    return { verdict: "reject", reason_code: "social-author-binding-invalid" };
+  }
+  if (input.event.pubkey === representedPersona) {
+    return {
+      verdict: "accept",
+      event_author: input.event.pubkey,
+      represented_persona: representedPersona,
+    };
+  }
+
+  const attribution = signedAgentAssociation(input.event);
+  const authorization = attribution.valid
+    ? input.authorized_agent_signers?.find((candidate) =>
+      candidate.pubkey === input.event.pubkey
+      && sameAssociation(candidate.agent_association, attribution.association))
+    : undefined;
+  if (
+    authorization === undefined
+    || attribution.association?.kind === "key"
+      && attribution.association.value !== input.event.pubkey
+  ) {
+    return { verdict: "reject", reason_code: "social-author-binding-invalid" };
+  }
+  return {
+    verdict: "accept",
+    event_author: input.event.pubkey,
+    represented_persona: representedPersona,
+    ...(attribution.association === null
+      ? {}
+      : { agent_association: attribution.association }),
+  };
+}
+
+export function selectCurrentSocialEvent(input: {
+  coordinate: SocialReplaceableCoordinate;
+  candidates: readonly SocialEventCandidate[];
+}): NostrSignedEvent | null {
+  if (!validCoordinate(input.coordinate)) return null;
+  const unique = new Map<string, NostrSignedEvent>();
+  for (const { event } of input.candidates) {
+    if (validateSocialReplaceableCandidate({
+      coordinate: input.coordinate,
+      event,
+    }).verdict === "accept") {
+      unique.set(event.id, event);
+    }
+  }
+  return [...unique.values()].sort((left, right) =>
+    right.created_at - left.created_at || left.id.localeCompare(right.id))[0] ?? null;
+}
+
+export function validateSocialReplaceableCandidate(input: {
+  coordinate: SocialReplaceableCoordinate;
+  event: NostrSignedEvent;
+}): { verdict: "accept" } | {
+  verdict: "reject";
+  reason_code: "social-event-invalid" | "social-replaceable-coordinate-mismatch";
+} {
+  if (!validSignedEvent(input.event)) {
+    return { verdict: "reject", reason_code: "social-event-invalid" };
+  }
+  if (
+    !validCoordinate(input.coordinate)
+    || input.event.pubkey !== input.coordinate.pubkey
+    || input.event.kind !== input.coordinate.kind
+    || coordinateD(input.event) !== input.coordinate.d
+  ) {
+    return {
+      verdict: "reject",
+      reason_code: "social-replaceable-coordinate-mismatch",
+    };
+  }
+  return { verdict: "accept" };
+}
+
+export function assessSocialStateFreshness(
+  event: NostrSignedEvent,
+  now: number,
+): { valid: boolean; warning: "stale" | null } {
+  if (!validSignedEvent(event) || ![0, 10002].includes(event.kind)) {
+    return { valid: false, warning: null };
+  }
+  return {
+    valid: true,
+    warning: now - event.created_at > SEVEN_DAYS_SECONDS ? "stale" : null,
+  };
+}
+
+function validCoordinate(coordinate: SocialReplaceableCoordinate): boolean {
+  if (!HEX_32.test(coordinate.pubkey)) return false;
+  if (coordinate.kind === 0 || coordinate.kind === 3
+    || coordinate.kind >= 10_000 && coordinate.kind < 20_000) {
+    return coordinate.d === undefined;
+  }
+  return coordinate.kind >= 30_000
+    && coordinate.kind < 40_000
+    && typeof coordinate.d === "string";
+}
+
+function coordinateD(event: NostrSignedEvent): string | undefined | null {
+  if (event.kind === 0 || event.kind === 3
+    || event.kind >= 10_000 && event.kind < 20_000) {
+    return undefined;
+  }
+  const dTags = event.tags.filter((tag) => tag[0] === "d");
+  return dTags.length === 1 && dTags[0].length === 2 ? dTags[0][1] : null;
+}
+
+function signedAgentAssociation(event: NostrSignedEvent): {
+  valid: boolean;
+  association: AgentAssociation | null;
+} {
+  if (!matchesAgentAttributionProfile(event.tags)) {
+    return { valid: false, association: null };
+  }
+  const tags = event.tags.filter((tag) => tag[0] === "heterodyne_agent");
+  if (tags.length === 0) return { valid: true, association: null };
+  if (tags.length !== 1 || tags[0].length !== 4 || tags[0][1] !== "v1") {
+    return { valid: false, association: null };
+  }
+  const association = { kind: tags[0][2], value: tags[0][3] };
+  if (association.kind === "key" && HEX_32.test(association.value)) {
+    return { valid: true, association: association as AgentAssociation };
+  }
+  if (
+    association.kind === "role"
+    && association.value.length >= 1
+    && association.value.length <= 128
+  ) {
+    return { valid: true, association: association as AgentAssociation };
+  }
+  return { valid: false, association: null };
+}
+
+function sameAssociation(
+  left: AgentAssociation | null,
+  right: AgentAssociation | null,
+): boolean {
+  return left === null || right === null
+    ? left === right
+    : left.kind === right.kind && left.value === right.value;
+}
+
+function validSignedEvent(event: NostrSignedEvent): boolean {
+  try {
+    return HEX_32.test(event.pubkey)
+      && HEX_32.test(event.id)
+      && /^[0-9a-f]{128}$/.test(event.sig)
+      && Number.isSafeInteger(event.created_at)
+      && event.created_at >= 0
+      && Number.isSafeInteger(event.kind)
+      && event.kind >= 0
+      && event.kind <= 65_535
+      && Array.isArray(event.tags)
+      && event.tags.every((tag) =>
+        Array.isArray(tag) && tag.every((member) => typeof member === "string"))
+      && typeof event.content === "string"
+      && verifyEventSignature(event);
+  } catch {
+    return false;
+  }
+}

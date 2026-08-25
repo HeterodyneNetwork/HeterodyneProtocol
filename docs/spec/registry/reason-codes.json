@@ -371,16 +371,6 @@
       ]
     },
     {
-      "code": "not_canonical_branch_reachable",
-      "owner": "comms",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "An org kind:31007 or post was not reachable from the delegate-threshold-approved canonical feed branch.",
-      "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
-      ]
-    },
-    {
       "code": "org_member_add_unauthorized",
       "owner": "core",
       "status": "draft",
@@ -391,23 +381,33 @@
       ]
     },
     {
-      "code": "page_chain_broken",
-      "owner": "comms",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "A feed-index page's prev_page_hash did not match the prior page's canonical serialization.",
-      "spec_refs": [
-        "heterodyne:0.5.0#comms-conformance"
-      ]
-    },
-    {
-      "code": "stale_list_rollback",
+      "code": "social-event-invalid",
       "owner": "social",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A relay served an older NIP-51 list revision than one reachable in the repo's canonical history.",
+      "description": "A Social candidate fails its canonical NIP-01 event-id or BIP-340 signature verification.",
       "spec_refs": [
-        "heterodyne:0.5.0#social-conformance"
+        "heterodyne:0.5.0#social-interactions"
+      ]
+    },
+    {
+      "code": "social-author-binding-invalid",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "An event does not use the represented persona active key or an explicitly authorized actual signer with mandatory Comms automation attribution.",
+      "spec_refs": [
+        "heterodyne:0.5.0#social-interactions"
+      ]
+    },
+    {
+      "code": "social-replaceable-coordinate-mismatch",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "A Social replaceable candidate does not match the requested NIP-01 author, kind, and parameterized d-tag coordinate.",
+      "spec_refs": [
+        "heterodyne:0.5.0#social-feed-presentation"
       ]
     },
     {
@@ -1336,7 +1336,7 @@
       "owner": "social",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "An agent-policy receipt is malformed, unverifiable, secret-bearing, or does not target exactly one event and device key.",
+      "description": "An agent-policy receipt is malformed, unverifiable, secret-bearing, or does not bind exactly one actual event author, verified agent association, policy version, decision, and evidence set.",
       "spec_refs": [
         "heterodyne:0.5.0#social-labels"
       ]
@@ -1346,17 +1346,7 @@
       "owner": "social",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A policy-list entry does not bind the same device key, receipt identifier, and reason code.",
-      "spec_refs": [
-        "heterodyne:0.5.0#social-mute-profile"
-      ]
-    },
-    {
-      "code": "agent-role-key-rotation-required",
-      "owner": "social",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "description": "The subscribed policy requires replacement of the exact offending role key before restored visibility.",
+      "description": "A policy-list entry does not bind the same actual event author, receipt identifier, and reason code.",
       "spec_refs": [
         "heterodyne:0.5.0#social-mute-profile"
       ]

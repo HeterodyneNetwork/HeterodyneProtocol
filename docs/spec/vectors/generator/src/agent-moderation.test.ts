@@ -12,16 +12,25 @@ import { AUX_RAND } from "./vector-helpers.js";
 
 const moderatorPrivateKey = "0d".repeat(32);
 const moderatorPublicKey = getPublicKey(moderatorPrivateKey);
-const deviceKey = "11".repeat(32);
+const devicePrivateKey = "0e".repeat(32);
+const deviceKey = getPublicKey(devicePrivateKey);
 const replacementKey = "22".repeat(32);
-const eventId = "33".repeat(32);
-const coldRoot = "44".repeat(32);
+const agentAssociation = { kind: "key", value: deviceKey } as const;
 const reason = "agent-attribution-missing";
+let offendingEvent: NostrSignedEvent;
 let receiptEvent: NostrSignedEvent;
 let receipt: AgentPolicyReceipt;
 let listEvent: NostrSignedEvent;
 
 beforeAll(async () => {
+  offendingEvent = await signEvent({
+    secretKey: devicePrivateKey,
+    created_at: 999,
+    kind: 1,
+    tags: [],
+    content: "Automated publication omitted mandatory attribution.",
+    auxRand: AUX_RAND,
+  });
   receiptEvent = await signEvent({
     secretKey: moderatorPrivateKey,
     created_at: 1_000,
@@ -29,24 +38,29 @@ beforeAll(async () => {
     tags: [
       ["L", "network.heterodyne.agent-policy"],
       ["l", reason, "network.heterodyne.agent-policy"],
-      ["e", eventId, "wss://relay.example/"],
+      ["e", offendingEvent.id, "wss://relay.example/"],
       ["p", deviceKey, "wss://relay.example/"],
     ],
     content: JSON.stringify({
       profile: "heterodyne.social.agent-policy-receipt.v1",
       spec_version: "heterodyne/0.5.0",
-      event_id: eventId,
-      device_key: deviceKey,
-      cold_root: coldRoot,
+      event_id: offendingEvent.id,
+      event_author: deviceKey,
+      agent_association: agentAssociation,
+      policy: { id: "network.heterodyne.agent-policy", version: "1.0.0" },
+      decision: "advisory-violation",
       reason,
       observed_at: 1_000,
       evidence: ["sha256:abcd"],
       explanation: "Automated publication omitted mandatory attribution.",
-      remediation: "rotate-device-key",
+      remediation: "replace-signing-key",
     }),
     auxRand: AUX_RAND,
   });
-  receipt = validateAgentPolicyReceipt(receiptEvent);
+  receipt = validateAgentPolicyReceipt(receiptEvent, {
+    event: offendingEvent,
+    verified_agent_association: agentAssociation,
+  });
   listEvent = await signEvent({
     secretKey: moderatorPrivateKey,
     created_at: 1_001,
@@ -64,14 +78,16 @@ beforeAll(async () => {
 });
 
 describe("agent-policy receipt", () => {
-  it("validates exact L/l, one event, one device key, and closed public content", () => {
+  it("binds the actual signed event author, verified agent association, policy, and decision", () => {
     expect(receipt).toMatchObject({
       receipt_id: receiptEvent.id,
-      event_id: eventId,
-      device_key: deviceKey,
-      cold_root: coldRoot,
+      event_id: offendingEvent.id,
+      event_author: deviceKey,
+      agent_association: agentAssociation,
+      policy: { id: "network.heterodyne.agent-policy", version: "1.0.0" },
+      decision: "advisory-violation",
       reason,
-      remediation: "rotate-device-key",
+      remediation: "replace-signing-key",
     });
   });
 
@@ -88,7 +104,7 @@ describe("agent-policy receipt", () => {
         tags: [
           ["L", "network.heterodyne.agent-policy"],
           ["l", candidateReason, "network.heterodyne.agent-policy"],
-          ["e", eventId],
+          ["e", offendingEvent.id],
           ["p", deviceKey],
         ],
         content: JSON.stringify({
@@ -97,7 +113,10 @@ describe("agent-policy receipt", () => {
         }),
         auxRand: AUX_RAND,
       });
-      expect(validateAgentPolicyReceipt(event).reason).toBe(candidateReason);
+      expect(validateAgentPolicyReceipt(event, {
+        event: offendingEvent,
+        verified_agent_association: agentAssociation,
+      }).reason).toBe(candidateReason);
     }
   });
 
@@ -110,7 +129,10 @@ describe("agent-policy receipt", () => {
       content: receiptEvent.content,
       auxRand: AUX_RAND,
     });
-    expect(() => validateAgentPolicyReceipt(malformed))
+    expect(() => validateAgentPolicyReceipt(malformed, {
+      event: offendingEvent,
+      verified_agent_association: agentAssociation,
+    }))
       .toThrow(/agent-policy-receipt-invalid/);
     for (const leaked of [
       { raw_token: "secret" },
@@ -125,9 +147,51 @@ describe("agent-policy receipt", () => {
         content: JSON.stringify({ ...JSON.parse(receiptEvent.content), ...leaked }),
         auxRand: AUX_RAND,
       });
-      expect(() => validateAgentPolicyReceipt(event))
+      expect(() => validateAgentPolicyReceipt(event, {
+        event: offendingEvent,
+        verified_agent_association: agentAssociation,
+      }))
         .toThrow(/agent-policy-receipt-invalid/);
     }
+  });
+
+  it("rejects a receipt whose claimed author or association does not match the actual event", async () => {
+    for (const patch of [
+      { event_author: replacementKey },
+      { agent_association: { kind: "key", value: replacementKey } },
+    ]) {
+      const event = await signEvent({
+        secretKey: moderatorPrivateKey,
+        created_at: 1_004,
+        kind: 1985,
+        tags: receiptEvent.tags,
+        content: JSON.stringify({ ...JSON.parse(receiptEvent.content), ...patch }),
+        auxRand: AUX_RAND,
+      });
+      expect(() => validateAgentPolicyReceipt(event, {
+        event: offendingEvent,
+        verified_agent_association: agentAssociation,
+      })).toThrow(/agent-policy-receipt-invalid/);
+    }
+  });
+
+  it("rejects a key association that does not name the actual event signer", async () => {
+    const wrongAssociation = { kind: "key", value: replacementKey } as const;
+    const event = await signEvent({
+      secretKey: moderatorPrivateKey,
+      created_at: 1_004,
+      kind: 1985,
+      tags: receiptEvent.tags,
+      content: JSON.stringify({
+        ...JSON.parse(receiptEvent.content),
+        agent_association: wrongAssociation,
+      }),
+      auxRand: AUX_RAND,
+    });
+    expect(() => validateAgentPolicyReceipt(event, {
+      event: offendingEvent,
+      verified_agent_association: wrongAssociation,
+    })).toThrow(/agent-policy-receipt-invalid/);
   });
 });
 
@@ -138,7 +202,7 @@ describe("agent policy list and subscriber-local enforcement", () => {
       new Map([[receiptEvent.id, receipt]]),
     );
     expect(parsed.entries).toEqual([{
-      device_key: deviceKey,
+      event_author: deviceKey,
       receipt_id: receiptEvent.id,
       reason,
     }]);
@@ -164,11 +228,9 @@ describe("agent policy list and subscriber-local enforcement", () => {
     const base = {
       subscribed: true,
       policy_persona: moderatorPublicKey,
-      policy_current_canonical: true,
-      repo_history_verified: true,
-      candidate_source: "canonical" as const,
-      device_key: deviceKey,
-      muted_device_keys: [deviceKey],
+      policy_event_selected: true,
+      event_author: deviceKey,
+      muted_event_authors: [deviceKey],
       default_subscription: true,
       default_visible: true,
       can_disable_default: true,
@@ -177,15 +239,13 @@ describe("agent policy list and subscriber-local enforcement", () => {
       visible: false,
       muted: true,
       source: moderatorPublicKey,
-      reason: "subscribed-device-key-policy",
+      reason: "subscribed-event-author-policy",
     });
     expect(applySubscribedAgentPolicy({ ...base, subscribed: false })).toEqual({
       visible: true,
       muted: false,
     });
-    expect(applySubscribedAgentPolicy({ ...base, candidate_source: "relay-only" }))
-      .toEqual({ visible: true, muted: false });
-    expect(applySubscribedAgentPolicy({ ...base, candidate_source: "pr" }))
+    expect(applySubscribedAgentPolicy({ ...base, policy_event_selected: false }))
       .toEqual({ visible: true, muted: false });
   });
 
@@ -193,11 +253,9 @@ describe("agent policy list and subscriber-local enforcement", () => {
     expect(() => applySubscribedAgentPolicy({
       subscribed: true,
       policy_persona: moderatorPublicKey,
-      policy_current_canonical: true,
-      repo_history_verified: true,
-      candidate_source: "canonical",
-      device_key: deviceKey,
-      muted_device_keys: [deviceKey],
+      policy_event_selected: true,
+      event_author: deviceKey,
+      muted_event_authors: [deviceKey],
       default_subscription: true,
       default_visible: false,
       can_disable_default: true,
@@ -208,23 +266,21 @@ describe("agent policy list and subscriber-local enforcement", () => {
     const base = {
       subscribed: true,
       policy_persona: moderatorPublicKey,
-      policy_current_canonical: true,
-      repo_history_verified: true,
-      candidate_source: "canonical" as const,
-      muted_device_keys: [deviceKey],
+      policy_event_selected: true,
+      muted_event_authors: [deviceKey],
       default_subscription: false,
       default_visible: true,
       can_disable_default: true,
     };
-    expect(applySubscribedAgentPolicy({ ...base, device_key: deviceKey }).muted).toBe(true);
-    expect(applySubscribedAgentPolicy({ ...base, device_key: replacementKey })).toEqual({
+    expect(applySubscribedAgentPolicy({ ...base, event_author: deviceKey }).muted).toBe(true);
+    expect(applySubscribedAgentPolicy({ ...base, event_author: replacementKey })).toEqual({
       visible: true,
       muted: false,
     });
   });
 });
 
-describe("correction and canonical list removal", () => {
+describe("correction and current list removal", () => {
   it("requires exact signed correction tags and body binding", async () => {
     const correction = await signEvent({
       secretKey: moderatorPrivateKey,
@@ -239,18 +295,24 @@ describe("correction and canonical list removal", () => {
       content: JSON.stringify({
         profile: "heterodyne.social.agent-policy-correction.v1",
         spec_version: "heterodyne/0.5.0",
-        receipt_id: receiptEvent.id,
-        device_key: deviceKey,
+        corrects_receipt_id: receiptEvent.id,
+        event_id: offendingEvent.id,
+        event_author: deviceKey,
+        agent_association: agentAssociation,
+        policy: { id: "network.heterodyne.agent-policy", version: "1.0.0" },
+        decision: "retract",
         corrected_at: 1_006,
+        evidence: ["sha256:dcba"],
         explanation: "The original evidence was misclassified.",
-        action: "retract",
       }),
       auxRand: AUX_RAND,
     });
-    expect(validateAgentPolicyCorrection(correction)).toMatchObject({
-      receipt_id: receiptEvent.id,
-      device_key: deviceKey,
-      action: "retract",
+    expect(validateAgentPolicyCorrection(correction, receipt)).toMatchObject({
+      corrects_receipt_id: receiptEvent.id,
+      event_id: offendingEvent.id,
+      event_author: deviceKey,
+      agent_association: agentAssociation,
+      decision: "retract",
     });
     const mismatched = await signEvent({
       secretKey: moderatorPrivateKey,
@@ -259,26 +321,26 @@ describe("correction and canonical list removal", () => {
       tags: correction.tags,
       content: JSON.stringify({
         ...JSON.parse(correction.content),
-        device_key: replacementKey,
+        event_author: replacementKey,
       }),
       auxRand: AUX_RAND,
     });
-    expect(() => validateAgentPolicyCorrection(mismatched))
+    expect(() => validateAgentPolicyCorrection(mismatched, receipt))
       .toThrow(/agent-policy-receipt-invalid/);
   });
 
-  it("requires both a signed correction and current canonical list removal", () => {
+  it("requires both a signed correction and source-neutrally selected current list removal", () => {
     expect(applyAgentPolicyCorrection({
       correction_valid: true,
-      canonical_list_binding_removed: true,
-      device_key: deviceKey,
-      muted_device_keys: [deviceKey],
+      current_list_binding_removed: true,
+      event_author: deviceKey,
+      muted_event_authors: [deviceKey],
     })).toEqual({ visible: true, muted: false });
     expect(applyAgentPolicyCorrection({
       correction_valid: true,
-      canonical_list_binding_removed: false,
-      device_key: deviceKey,
-      muted_device_keys: [deviceKey],
+      current_list_binding_removed: false,
+      event_author: deviceKey,
+      muted_event_authors: [deviceKey],
     })).toEqual({ visible: false, muted: true });
   });
 });

@@ -156,6 +156,20 @@
       "description": "Following, transitive discovery, and social-graph evaluation do not depend on a centralized follow-graph oracle."
     },
     {
+      "id": "SOCIAL-I-NIP01-AUTHORSHIP",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Every ordinary Social event is authored by the public key that actually produced its valid NIP-01 signature; no persona, agent, moderator, repository, relay, KEL, or feed metadata can substitute another author."
+    },
+    {
+      "id": "SOCIAL-I-SOURCE-NEUTRAL-SELECTION",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Social state unions valid exact events from relays and repositories and applies NIP-01 replaceable selection without carrier priority; seven-day refresh age is warning-only."
+    },
+    {
       "id": "CONTROL-I-AUDIT-AT-REST",
       "owner": "control",
       "status": "draft",
@@ -441,12 +455,12 @@
       "description": "Agent-policy receipts inform publicly, but only an explicitly subscribed and verified current policy list changes a client's local visibility."
     },
     {
-      "id": "SOCIAL-I-AGENT-REMEDIATION-SCOPED",
+      "id": "SOCIAL-I-AGENT-AUTHORSHIP-EXACT",
       "owner": "social",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "social.agent-policy-moderation.v1",
-      "description": "Agent-policy enforcement and remediation target only the offending role device key; replacement at the same role address never requires epoch-key rotation."
+      "description": "Agent-policy receipts, corrections, and subscriber-local enforcement bind the actual signed event author and verified Comms agent association; no moderator or associated agent becomes an event author without producing that event's signature."
     },
     {
       "id": "WORKSPACE-I-NO-AMBIENT-AUTHORITY",

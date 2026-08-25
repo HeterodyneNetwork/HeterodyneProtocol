@@ -528,14 +528,6 @@
       "profiles": []
     },
     {
-      "kind": 31007,
-      "allocation_authority": "heterodyne",
-      "base_schema_owner": "comms",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "profiles": []
-    },
-    {
       "kind": 31008,
       "allocation_authority": "heterodyne",
       "base_schema_owner": "social",

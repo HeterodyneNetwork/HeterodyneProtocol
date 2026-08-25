@@ -33,6 +33,11 @@ const controlSchemasRoot = resolve(
   "../../../schemas/control",
 );
 
+const socialSchemasRoot = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../schemas/social",
+);
+
 const marmotSchemaNames = [
   "marmot-group-directory-v1.schema.json",
   "marmot-persona-inbox-bundle-v1.schema.json",
@@ -87,8 +92,105 @@ function validateControlSchema(name: string, value: unknown): string | null {
   return validate(value) ? null : JSON.stringify(validate.errors);
 }
 
+function validateSocialSchema(name: string, value: unknown): string | null {
+  const schema = JSON.parse(
+    readFileSync(resolve(socialSchemasRoot, name), "utf8"),
+  ) as AnySchema;
+  const validate = new Ajv2020({ allErrors: true, strict: false }).compile(schema);
+  return validate(value) ? null : JSON.stringify(validate.errors);
+}
+
 const h = (byte: string) => byte.repeat(64);
 const sig = (byte: string) => byte.repeat(128);
+
+describe("Social active-author policy schemas", () => {
+  const author = h("a");
+  const association = { kind: "key", value: author };
+  const policy = { id: "network.heterodyne.agent-policy", version: "1.0.0" };
+  const receipt = {
+    profile: "heterodyne.social.agent-policy-receipt.v1",
+    spec_version: "heterodyne/0.5.0",
+    event_id: h("b"),
+    event_author: author,
+    agent_association: association,
+    policy,
+    decision: "advisory-violation",
+    reason: "agent-attribution-missing",
+    observed_at: 1_000,
+    evidence: ["sha256:abcd"],
+    explanation: "Automated publication omitted mandatory attribution.",
+    remediation: "replace-signing-key",
+  };
+  const correction = {
+    profile: "heterodyne.social.agent-policy-correction.v1",
+    spec_version: "heterodyne/0.5.0",
+    corrects_receipt_id: h("c"),
+    event_id: receipt.event_id,
+    event_author: author,
+    agent_association: association,
+    policy,
+    decision: "retract",
+    corrected_at: 1_100,
+    evidence: ["sha256:dcba"],
+    explanation: "The original evidence was misclassified.",
+  };
+
+  it("accepts closed receipt and correction objects bound to the active event author", () => {
+    expect(validateSocialSchema("agent-policy-receipt-v1.schema.json", receipt)).toBeNull();
+    expect(validateSocialSchema("agent-policy-correction-v1.schema.json", correction)).toBeNull();
+  });
+
+  it("rejects root, KEL, epoch, and device-authority aliases", () => {
+    for (const legacy of [
+      { cold_root: h("d") },
+      { kel_head: h("e") },
+      { epoch_key: h("f") },
+      { device_key: h("0") },
+    ]) {
+      expect(validateSocialSchema(
+        "agent-policy-receipt-v1.schema.json",
+        { ...receipt, ...legacy },
+      )).toMatch(/additionalProperties/);
+      expect(validateSocialSchema(
+        "agent-policy-correction-v1.schema.json",
+        { ...correction, ...legacy },
+      )).toMatch(/additionalProperties/);
+    }
+    expect(validateSocialSchema(
+      "agent-policy-correction-v1.schema.json",
+      { ...correction, reason: receipt.reason },
+    )).toMatch(/additionalProperties/);
+  });
+
+  it("requires the author, association, policy, decision, evidence, and correction relationship", () => {
+    for (const member of [
+      "event_author",
+      "agent_association",
+      "policy",
+      "decision",
+      "evidence",
+    ]) {
+      const invalid = { ...receipt } as Record<string, unknown>;
+      delete invalid[member];
+      expect(validateSocialSchema("agent-policy-receipt-v1.schema.json", invalid))
+        .toMatch(new RegExp(`${member}|required`));
+    }
+    for (const member of [
+      "corrects_receipt_id",
+      "event_id",
+      "event_author",
+      "agent_association",
+      "policy",
+      "decision",
+      "evidence",
+    ]) {
+      const invalid = { ...correction } as Record<string, unknown>;
+      delete invalid[member];
+      expect(validateSocialSchema("agent-policy-correction-v1.schema.json", invalid))
+        .toMatch(new RegExp(`${member}|required`));
+    }
+  });
+});
 
 describe("multi-persona Control schemas", () => {
   const persona = h("1");

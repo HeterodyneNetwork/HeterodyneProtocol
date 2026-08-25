@@ -108,10 +108,7 @@ describe("revisioned protocol registry", () => {
       registry.kinds.find((entry) => entry.kind === 31001)
         ?.base_schema_owner,
     ).toBe("assurance");
-    expect(
-      registry.kinds.find((entry) => entry.kind === 31007)
-        ?.base_schema_owner,
-    ).toBe("comms");
+    expect(registry.kinds.find((entry) => entry.kind === 31007)).toBeUndefined();
     expect(
       registry.kinds.find((entry) => entry.kind === 10000)
         ?.allocation_authority,
@@ -169,12 +166,54 @@ describe("revisioned protocol registry", () => {
       }));
     }
 
-    for (const retiredKind of [31005, 31007]) {
+    for (const retiredKind of [31005]) {
       expect(registry.kinds.find((entry) => entry.kind === retiredKind)).toMatchObject({
         allocation_authority: "heterodyne",
         profiles: [],
       });
     }
+  });
+
+  it("registers Social as a vanilla-Nostr extension without feed-index or KEL prerequisites", () => {
+    const socialFeatures = registry.features.filter(({ owner }) => owner === "social");
+    expect(socialFeatures).toEqual([expect.objectContaining({
+      id: "social.agent-policy-moderation.v1",
+      prerequisites: ["comms.agent-authorship.v1"],
+    })]);
+    expect(socialFeatures.flatMap(({ prerequisites }) => prerequisites)
+      .some((id) => id.startsWith("assurance."))).toBe(false);
+    expect(registry.kinds.find((entry) => entry.kind === 31007)).toBeUndefined();
+
+    const socialReasons = registry.reason_codes
+      .filter(({ owner }) => owner === "social")
+      .map(({ code }) => code);
+    expect(socialReasons).toEqual(expect.arrayContaining([
+      "social-event-invalid",
+      "social-author-binding-invalid",
+      "social-replaceable-coordinate-mismatch",
+      "agent-policy-receipt-invalid",
+      "agent-policy-binding-invalid",
+    ]));
+    expect(socialReasons).not.toEqual(expect.arrayContaining([
+      "stale_list_rollback",
+      "agent-role-key-rotation-required",
+    ]));
+    expect(registry.reason_codes.map(({ code }) => code)).not.toEqual(
+      expect.arrayContaining([
+        "not_canonical_branch_reachable",
+        "page_chain_broken",
+      ]),
+    );
+
+    const socialInvariants = registry.security_invariants
+      .filter(({ owner }) => owner === "social")
+      .map(({ id }) => id);
+    expect(socialInvariants).toEqual(expect.arrayContaining([
+      "SOCIAL-I-NIP01-AUTHORSHIP",
+      "SOCIAL-I-SOURCE-NEUTRAL-SELECTION",
+      "SOCIAL-I-AGENT-POLICY-LOCAL",
+      "SOCIAL-I-AGENT-AUTHORSHIP-EXACT",
+    ]));
   });
 
   it("registers Assurance-owned features, objects, proofs, reasons, and invariants", () => {
@@ -780,9 +819,7 @@ describe("revisioned protocol registry", () => {
         "tag:heterodyne_wrap=room_key.v2",
       ),
     ).toBeNull();
-    expect(
-      registry.kinds.find((entry) => entry.kind === 31007)?.base_schema_owner,
-    ).toBe("comms");
+    expect(registry.kinds.find((entry) => entry.kind === 31007)).toBeUndefined();
   });
 
   it("validates the manifest against the registry schema", () => {
