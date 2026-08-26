@@ -357,6 +357,60 @@ describe("canonical family documentation", () => {
   });
 
   it.each([
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n[MUST]: #requirement",
+    "No canonical feed index exists; implementations MUST provide [one].\n\n[one]: #index",
+    "No canonical feed index exists; implementations [MuSt] provide one.\n\n[mUsT]: <#requirement>",
+    "No canonical feed index exists; implementations [MUST   provide] [one].\n\n[must provide]: #requirement\n[ ONE ]: #index",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n   [must]:   #requirement \"normative\"",
+  ])("resolves valid CommonMark shortcut references before classification", (text) => {
+    const path = "README.md";
+    expect(lintMaintainedGuides(repositoryRoot, { [path]: text }))
+      .toContainEqual(expect.objectContaining({
+        path,
+        code: "retired-authoring-model",
+      }));
+  });
+
+  it.each([
+    "No canonical feed index exists; implementations [MUST] provide one.",
+    "No canonical feed index exists; example `[MUST] provide one`.\n\n[MUST]: #requirement",
+    "No canonical feed index exists; example `MUST provide [one]`.\n\n[one]: #index",
+    "No canonical feed index exists; image ![MUST](#badge) provide one.",
+    "No canonical feed index exists; image ![MUST] provide one.\n\n[MUST]: #badge",
+    "No canonical feed index exists; image ![MUST][badge] provide one.\n\n[badge]: #badge",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n```md\n[MUST]: #requirement\n```",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n~~~\n [MUST]: #requirement\n~~~",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n<!--\n[MUST]: #requirement\n-->",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n- ```md\n  [MUST]: #requirement\n  ```",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n1. ~~~\n   [MUST]: #requirement\n   ~~~",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n```md\ntext ``` still code\n[MUST]: #requirement\n```",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n```md\n- ```\n[MUST]: #requirement\n```",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n~~~md\n> ~~~\n[MUST]: #requirement\n~~~",
+    "No canonical feed index exists; example ``[MUST] provide one``.\n\n[MUST]: #requirement",
+  ])("does not classify arbitrary brackets, code spans, or image labels: %s", (text) => {
+    const path = "README.md";
+    expect(lintMaintainedGuides(repositoryRoot, { [path]: text }))
+      .not.toContainEqual(expect.objectContaining({
+        path,
+        code: "retired-authoring-model",
+      }));
+  });
+
+  it.each([
+    "No canonical feed index exists; implementations `[MUST] provide one``.\n\n[MUST]: #requirement",
+    "No canonical feed index exists; implementations \\![MUST](#requirement) provide one.",
+    "No canonical feed index exists; implementations [MUST] provide one. `<!--`\n\n[MUST]: #requirement",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n> ~~~\n> code\n> ~~~\n\n[MUST]: #requirement",
+  ])("keeps unmatched code delimiters and escaped image markers in prose: %s", (text) => {
+    const path = "README.md";
+    expect(lintMaintainedGuides(repositoryRoot, { [path]: text }))
+      .toContainEqual(expect.objectContaining({
+        path,
+        code: "retired-authoring-model",
+      }));
+  });
+
+  it.each([
     "Implementations MUST provide one signature, but no canonical feed index exists.",
     "Implementations MUST provide one-time proof, but no canonical feed index exists.",
     "Implementations MUST provide one, two, or three signatures, but no canonical feed index exists.",

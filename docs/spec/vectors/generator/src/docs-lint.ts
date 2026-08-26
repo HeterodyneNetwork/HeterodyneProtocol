@@ -292,10 +292,187 @@ function isPredicateLocallyRetired(
   return directlyNegativeSubject || directlyNegativePredicate || directlyRetiredPredicate;
 }
 
-function normalizeMarkdownForClassification(text: string): string {
-  return text
-    .replace(/\[([^\]\n]+)\]\[[^\]\n]*\]/gu, "$1")
-    .replace(/\[([^\]\n]+)\]\([^)]+\)/gu, "$1")
+function normalizeReferenceLabel(label: string): string {
+  return label.trim().replace(/\s+/gu, " ").toLocaleLowerCase("en-US");
+}
+
+function transformExactCodeSpans(
+  text: string,
+  transform: (body: string) => string,
+): string {
+  let normalized = "";
+  let cursor = 0;
+  while (cursor < text.length) {
+    if (text[cursor] !== "`") {
+      normalized += text[cursor];
+      cursor += 1;
+      continue;
+    }
+    let openerEnd = cursor;
+    while (text[openerEnd] === "`") openerEnd += 1;
+    const openerLength = openerEnd - cursor;
+    let search = openerEnd;
+    let closer = -1;
+    while (search < text.length) {
+      const candidate = text.indexOf("`", search);
+      if (candidate < 0) break;
+      let candidateEnd = candidate;
+      while (text[candidateEnd] === "`") candidateEnd += 1;
+      if (candidateEnd - candidate === openerLength) {
+        closer = candidate;
+        break;
+      }
+      search = candidateEnd;
+    }
+    if (closer < 0) {
+      normalized += text.slice(cursor, openerEnd);
+      cursor = openerEnd;
+      continue;
+    }
+    normalized += transform(text.slice(openerEnd, closer));
+    cursor = closer + openerLength;
+  }
+  return normalized;
+}
+
+type MarkdownFence = {
+  marker: "`" | "~";
+  length: number;
+  quoteDepth: number;
+  listIndent: number;
+};
+
+function stripQuoteContainers(
+  line: string,
+  maximumDepth = Number.POSITIVE_INFINITY,
+): { content: string; depth: number } {
+  let content = line;
+  let depth = 0;
+  while (depth < maximumDepth) {
+    const quote = content.match(/^ {0,3}>[ \t]?/u);
+    if (quote === null) break;
+    content = content.slice(quote[0].length);
+    depth += 1;
+  }
+  return { content, depth };
+}
+
+function fenceOpener(line: string): MarkdownFence | null {
+  const quoted = stripQuoteContainers(line);
+  let content = quoted.content;
+  const list = content.match(/^ {0,3}(?:[-+*]|\d{1,9}[.)])[ \t]+/u);
+  const listIndent = list?.[0].length ?? 0;
+  if (list !== null) content = content.slice(list[0].length);
+  const candidate = content.match(/^ {0,3}(`+|~+)(.*)$/u);
+  if (candidate === null
+    || candidate[1].length < 3
+    || (candidate[1][0] === "`" && candidate[2].includes("`"))) {
+    return null;
+  }
+  return {
+    marker: candidate[1][0] as "`" | "~",
+    length: candidate[1].length,
+    quoteDepth: quoted.depth,
+    listIndent,
+  };
+}
+
+function isFenceCloser(line: string, fence: MarkdownFence): boolean {
+  const quoted = stripQuoteContainers(line, fence.quoteDepth);
+  if (quoted.depth !== fence.quoteDepth) return false;
+  let content = quoted.content;
+  if (fence.listIndent > 0) {
+    const indent = content.match(/^ */u)?.[0].length ?? 0;
+    if (indent < fence.listIndent) return false;
+    content = content.slice(fence.listIndent);
+  }
+  const candidate = content.match(/^ {0,3}(`+|~+)(.*)$/u);
+  return candidate !== null
+    && candidate[1][0] === fence.marker
+    && candidate[1].length >= fence.length
+    && candidate[2].trim() === "";
+}
+
+function visibleReferenceDefinitionText(text: string): string {
+  const visible: string[] = [];
+  let fence: MarkdownFence | null = null;
+  for (const line of text.split(/\r?\n/u)) {
+    if (fence !== null) {
+      if (isFenceCloser(line, fence)) fence = null;
+      visible.push("");
+      continue;
+    }
+    const opener = fenceOpener(line);
+    if (opener !== null) {
+      fence = opener;
+      visible.push("");
+      continue;
+    }
+    visible.push(line);
+  }
+  const codeMasked = transformExactCodeSpans(
+    visible.join("\n"),
+    (body) => body.replace(/[^\r\n]/gu, " "),
+  );
+  return codeMasked.replace(/<!--[\s\S]*?(?:-->|$)/gu, "");
+}
+
+function collectShortcutReferenceLabels(text: string): ReadonlySet<string> {
+  const labels = new Set<string>();
+  for (const definition of visibleReferenceDefinitionText(text).matchAll(
+    /^ {0,3}\[([^\]\n]+)\]:[ \t]*(?:<[^<>\n]+>|[^ \t\n]+)(?:[ \t]+(?:"[^"\n]*"|'[^'\n]*'|\([^\)\n]*\)))?[ \t]*$/gmu,
+  )) {
+    labels.add(normalizeReferenceLabel(definition[1]));
+  }
+  return labels;
+}
+
+function maskCodeSpanBrackets(text: string): string {
+  return transformExactCodeSpans(
+    text,
+    (body) => body
+      .replace(/\[/gu, "\uE000")
+      .replace(/\]/gu, "\uE001"),
+  );
+}
+
+function isUnescapedImageLabel(source: string, bracketOffset: number): boolean {
+  if (source[bracketOffset - 1] !== "!") return false;
+  let escapes = 0;
+  for (let index = bracketOffset - 2; index >= 0 && source[index] === "\\"; index -= 1) {
+    escapes += 1;
+  }
+  return escapes % 2 === 0;
+}
+
+function normalizeMarkdownForClassification(
+  text: string,
+  shortcutReferenceLabels: ReadonlySet<string>,
+): string {
+  return maskCodeSpanBrackets(text)
+    .replace(/\[([^\]\n]+)\]\[[^\]\n]*\]/gu, (
+      whole,
+      label: string,
+      offset: number,
+      source: string,
+    ) => isUnescapedImageLabel(source, offset) ? whole : label)
+    .replace(/\[([^\]\n]+)\]\([^)]+\)/gu, (
+      whole,
+      label: string,
+      offset: number,
+      source: string,
+    ) => isUnescapedImageLabel(source, offset) ? whole : label)
+    .replace(/\[([^\]\n]+)\](?![\[(])/gu, (
+      whole,
+      label: string,
+      offset: number,
+      source: string,
+    ) => isUnescapedImageLabel(source, offset)
+      || !shortcutReferenceLabels.has(normalizeReferenceLabel(label))
+      ? whole
+      : label)
+    .replace(/\uE000/gu, "[")
+    .replace(/\uE001/gu, "]")
     .replace(/\\(?=\r?\n)/gu, "")
     .replace(/[*_`~]+/gu, "")
     .replace(/\s+/gu, " ");
@@ -307,9 +484,14 @@ function isCanonicalFeedIndexLocallyRetired(
   matchLength: number,
 ): boolean {
   const { start, end } = assertionClauseBounds(text, matchIndex);
-  const before = normalizeMarkdownForClassification(text.slice(start, matchIndex));
+  const shortcutReferenceLabels = collectShortcutReferenceLabels(text);
+  const before = normalizeMarkdownForClassification(
+    text.slice(start, matchIndex),
+    shortcutReferenceLabels,
+  );
   const after = normalizeMarkdownForClassification(
     text.slice(matchIndex + matchLength, end),
+    shortcutReferenceLabels,
   );
   const directlyNegativeSubject = new RegExp(
     `^${CANONICAL_SCOPE_PREFIX_SOURCE}(?:no|there\\s+(?:is|are)\\s+no)\\s+$`,
@@ -351,6 +533,7 @@ function isCanonicalFeedIndexLocallyRetired(
   const sentenceEnd = terminator < 0 ? text.length : end + terminator + 1;
   const otherClauses = normalizeMarkdownForClassification(
     `${text.slice(sentenceStart, matchIndex)} ${text.slice(end, sentenceEnd)}`,
+    shortcutReferenceLabels,
   );
   const canonicalReference = `${CANONICAL_FEED_INDEX_SOURCE}\\b`;
   const oneAdjunct = CANONICAL_ONE_ADJUNCTS.join("|");
