@@ -417,9 +417,65 @@ function visibleReferenceDefinitionText(text: string): string {
   return codeMasked.replace(/<!--[\s\S]*?(?:-->|$)/gu, "");
 }
 
+function isVisibleParagraphBoundary(content: string): boolean {
+  return /^ {0,3}#{1,6}(?:[ \t]+|$)/u.test(content)
+    || /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/u.test(content)
+    || /^ {4}/u.test(content)
+    || /^ {0,3}\[[^\]\n]+\]:[ \t]*(?:<[^<>\n]+>|[^ \t\n]+)/u.test(content);
+}
+
+function normalizeVisibleDefinitionContainers(text: string): string {
+  const normalized: string[] = [];
+  let activeListIndent: number | null = null;
+  let activeQuoteDepth = 0;
+  let paragraphOpen = false;
+
+  for (const line of text.split("\n")) {
+    const quoted = stripQuoteContainers(line);
+    let content = quoted.content;
+    if (quoted.depth !== activeQuoteDepth) {
+      activeQuoteDepth = quoted.depth;
+      activeListIndent = null;
+      paragraphOpen = false;
+    }
+    if (content.trim() === "") {
+      normalized.push("");
+      paragraphOpen = false;
+      continue;
+    }
+
+    if (activeListIndent !== null) {
+      const indent = content.match(/^ */u)?.[0].length ?? 0;
+      if (indent >= activeListIndent) {
+        content = content.slice(activeListIndent);
+      } else {
+        activeListIndent = null;
+      }
+    }
+
+    const list = content.match(/^( {0,3})([-+*]|(\d{1,9})[.)])([ \t]+)/u);
+    if (list !== null) {
+      const orderedStart = list[3];
+      const mayInterruptParagraph = orderedStart === undefined || orderedStart === "1";
+      if (!paragraphOpen || mayInterruptParagraph) {
+        activeListIndent = list[0].length;
+        content = content.slice(list[0].length);
+      }
+    }
+
+    normalized.push(content);
+    paragraphOpen = !isVisibleParagraphBoundary(content);
+  }
+
+  return normalized.join("\n");
+}
+
 function collectShortcutReferenceLabels(text: string): ReadonlySet<string> {
   const labels = new Set<string>();
-  for (const definition of visibleReferenceDefinitionText(text).matchAll(
+  const visibleDefinitions = normalizeVisibleDefinitionContainers(
+    visibleReferenceDefinitionText(text),
+  );
+  for (const definition of visibleDefinitions.matchAll(
     /^ {0,3}\[([^\]\n]+)\]:[ \t]*(?:<[^<>\n]+>|[^ \t\n]+)(?:[ \t]+(?:"[^"\n]*"|'[^'\n]*'|\([^\)\n]*\)))?[ \t]*$/gmu,
   )) {
     labels.add(normalizeReferenceLabel(definition[1]));

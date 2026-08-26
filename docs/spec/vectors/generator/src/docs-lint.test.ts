@@ -362,6 +362,15 @@ describe("canonical family documentation", () => {
     "No canonical feed index exists; implementations [MuSt] provide one.\n\n[mUsT]: <#requirement>",
     "No canonical feed index exists; implementations [MUST   provide] [one].\n\n[must provide]: #requirement\n[ ONE ]: #index",
     "No canonical feed index exists; implementations [MUST] provide one.\n\n   [must]:   #requirement \"normative\"",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n> [MUST]: #requirement",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n- [MUST]: #requirement",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n> - [MUST]: #requirement",
+    "No canonical feed index exists; implementations [MUST] provide one.\n> 2. [MUST]: #requirement",
+    "No canonical feed index exists; implementations [MUST] provide one.\n# Heading\n2. [MUST]: #requirement",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n1. item\n   [MUST]: #requirement",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n10. item\n    [MUST]: #requirement",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n-   item\n    [MUST]: #requirement",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n- paragraph\n\n  2. [MUST]: #requirement",
   ])("resolves valid CommonMark shortcut references before classification", (text) => {
     const path = "README.md";
     expect(lintMaintainedGuides(repositoryRoot, { [path]: text }))
@@ -387,6 +396,10 @@ describe("canonical family documentation", () => {
     "No canonical feed index exists; implementations [MUST] provide one.\n\n```md\n- ```\n[MUST]: #requirement\n```",
     "No canonical feed index exists; implementations [MUST] provide one.\n\n~~~md\n> ~~~\n[MUST]: #requirement\n~~~",
     "No canonical feed index exists; example ``[MUST] provide one``.\n\n[MUST]: #requirement",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n`[MUST]: #requirement`",
+    "No canonical feed index exists; implementations [MUST] provide one.\n2. [MUST]: #requirement",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n- paragraph\n  2. [MUST]: #requirement",
+    "No canonical feed index exists; implementations [MUST] provide one.\n\n> 10. item\n    [MUST]: #requirement",
   ])("does not classify arbitrary brackets, code spans, or image labels: %s", (text) => {
     const path = "README.md";
     expect(lintMaintainedGuides(repositoryRoot, { [path]: text }))
