@@ -1,10 +1,10 @@
 import { cp, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
-import { realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import type { Fixtures } from "./fixtures.js";
+import { snapshotRuntimeModuleUrl } from "./snapshot-runtime-module-url.js";
 import type { AuthoredVector } from "./types.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -13,12 +13,46 @@ const repositoryRoot = resolve(here, "../../../../../");
 const frozenModerationTopic = resolve(here, "topics-agent-moderation.ts");
 const frozenClaimsTopic = resolve(here, "topics-claims.ts");
 const frozenClaimLedgerTopic = resolve(here, "topics-claim-ledger.ts");
+const frozenOidcTopic = resolve(here, "topics-oidc.ts");
+const frozenAgentAuthorshipTopic = resolve(here, "topics-agent-authorship.ts");
+const frozenWorkspaceTopic = resolve(here, "topics-workspace.ts");
+const frozenClaimLedgerSupport = resolve(here, "claim-ledger-test-support.ts");
+const frozenOidcRsaFixtures = resolve(here, "oidc-rsa-fixtures.ts");
 const allTopics = resolve(here, "topics.ts");
 const snapshotClaimsAdapter = resolve(here, "snapshot-claims-adapter.ts");
+const snapshotOidcAdapter = resolve(here, "snapshot-oidc-adapter.ts");
+const snapshotTokenStatusAdapter = resolve(here, "snapshot-token-status-adapter.ts");
+const snapshotAgentAuthorshipAdapter = resolve(here, "snapshot-agent-authorship-adapter.ts");
+const snapshotWorkspaceAdapter = resolve(here, "snapshot-workspace-adapter.ts");
+const liveSchemaImport = 'from "./schema.js";';
+const snapshotSchemaImport = 'from "./snapshot-schema-adapter.js";';
 const liveImport = 'from "./agent-moderation.js";';
 const snapshotImport = 'from "./snapshot-agent-moderation-adapter.js";';
 const liveClaimsImport = 'from "./claims.js";';
 const snapshotClaimsImport = 'from "./snapshot-claims-adapter.js";';
+const liveOidcImport = 'from "./oidc.js";';
+const snapshotOidcImport = 'from "./snapshot-oidc-adapter.js";';
+const liveTokenStatusImport = 'from "./token-status.js";';
+const snapshotTokenStatusImport = 'from "./snapshot-token-status-adapter.js";';
+const liveAgentAuthorshipImport = 'from "./agent-authorship.js";';
+const snapshotAgentAuthorshipImport = 'from "./snapshot-agent-authorship-adapter.js";';
+const liveAgentWorkloadSchemaImport = 'import workloadRegistrationSchema from "../../../schemas/comms/agent-workload-registration-v1.schema.json" with { type: "json" };';
+const snapshotAgentWorkloadSchemaImport = 'import workloadRegistrationSchema from "./snapshot-agent-workload-registration-schema-adapter.js";';
+const liveWorkspaceImport = 'from "./workspace.js";';
+const snapshotWorkspaceImport = 'from "./snapshot-workspace-compatibility-adapter.js";';
+const requiredHistoricalImports = new Map<string, readonly string[]>([
+  [frozenModerationTopic, [liveImport]],
+  [frozenClaimsTopic, [liveClaimsImport]],
+  [frozenClaimLedgerTopic, [liveClaimsImport]],
+  [frozenClaimLedgerSupport, [liveClaimsImport]],
+  [frozenOidcRsaFixtures, [liveClaimsImport]],
+  [frozenOidcTopic, [liveClaimsImport, liveOidcImport, liveTokenStatusImport]],
+  [frozenAgentAuthorshipTopic, [liveAgentAuthorshipImport]],
+  [frozenWorkspaceTopic, [liveWorkspaceImport]],
+  [snapshotOidcAdapter, [liveClaimsImport]],
+  [snapshotTokenStatusAdapter, [liveClaimsImport, liveOidcImport, liveSchemaImport]],
+  [snapshotAgentAuthorshipAdapter, [liveOidcImport, liveAgentWorkloadSchemaImport]],
+]);
 
 export async function buildSnapshotAgentModerationVectors(): Promise<AuthoredVector[]> {
   const runtimeRoot = await materializeSnapshotRuntime([frozenModerationTopic]);
@@ -132,13 +166,51 @@ async function materializeSnapshotRuntimeAt(
     if (source === undefined) return source;
     const canonicalFile = resolve(fileName);
     let transformed = source.text;
+    assertRequiredHistoricalImports(canonicalFile, transformed);
     if (canonicalFile === frozenModerationTopic) {
-      const matches = transformed.split(liveImport).length - 1;
-      if (matches !== 1) throw new Error("snapshot-runtime-moderation-import-ambiguous");
       transformed = transformed.replace(liveImport, snapshotImport);
     }
     if (canonicalFile !== snapshotClaimsAdapter && transformed.includes(liveClaimsImport)) {
       transformed = transformed.replaceAll(liveClaimsImport, snapshotClaimsImport);
+    }
+    if (canonicalFile !== snapshotOidcAdapter && transformed.includes(liveOidcImport)) {
+      transformed = transformed.replaceAll(liveOidcImport, snapshotOidcImport);
+    }
+    if (
+      canonicalFile !== snapshotTokenStatusAdapter
+      && transformed.includes(liveTokenStatusImport)
+    ) {
+      transformed = transformed.replaceAll(liveTokenStatusImport, snapshotTokenStatusImport);
+    }
+    if (
+      canonicalFile === snapshotTokenStatusAdapter
+      && transformed.includes(liveSchemaImport)
+    ) {
+      transformed = transformed.replaceAll(liveSchemaImport, snapshotSchemaImport);
+    }
+    if (
+      canonicalFile !== snapshotAgentAuthorshipAdapter
+      && transformed.includes(liveAgentAuthorshipImport)
+    ) {
+      transformed = transformed.replaceAll(
+        liveAgentAuthorshipImport,
+        snapshotAgentAuthorshipImport,
+      );
+    }
+    if (
+      canonicalFile === snapshotAgentAuthorshipAdapter
+      && transformed.includes(liveAgentWorkloadSchemaImport)
+    ) {
+      transformed = transformed.replace(
+        liveAgentWorkloadSchemaImport,
+        snapshotAgentWorkloadSchemaImport,
+      );
+    }
+    if (
+      canonicalFile !== snapshotWorkspaceAdapter
+      && transformed.includes(liveWorkspaceImport)
+    ) {
+      transformed = transformed.replaceAll(liveWorkspaceImport, snapshotWorkspaceImport);
     }
     if (transformed === source.text) return source;
     return ts.createSourceFile(
@@ -182,19 +254,15 @@ async function materializeSnapshotRuntimeAt(
   await symlink(join(generatorRoot, "node_modules"), join(emittedGenerator, "node_modules"));
 }
 
-export function snapshotRuntimeModuleUrl(runtimeRoot: string, modulePath: string): string {
-  const canonicalRoot = realpathSync(runtimeRoot);
-  const canonicalModule = realpathSync(modulePath);
-  const relativeModule = relative(canonicalRoot, canonicalModule);
-  if (
-    relativeModule.startsWith("..") ||
-    resolve(canonicalRoot, relativeModule) !== canonicalModule
-  ) {
-    throw new Error("snapshot-runtime-module-outside-disposable-root");
-  }
-  return `${pathToFileURL(canonicalModule).href}?runtime=${Date.now()}`;
-}
-
 function emittedPath(runtimeRoot: string, sourcePath: string): string {
   return join(runtimeRoot, relative(repositoryRoot, sourcePath)).replace(/\.ts$/u, ".js");
+}
+
+function assertRequiredHistoricalImports(canonicalFile: string, source: string): void {
+  for (const requiredImport of requiredHistoricalImports.get(canonicalFile) ?? []) {
+    const matches = source.split(requiredImport).length - 1;
+    if (matches !== 1) {
+      throw new Error("snapshot-runtime-required-import-ambiguous");
+    }
+  }
 }

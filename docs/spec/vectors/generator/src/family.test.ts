@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -15,14 +16,10 @@ import {
 const generatorRoot = resolve(import.meta.dirname, "..");
 
 describe("protocol document family", () => {
-  it("keeps current-draft validation independent of frozen vector projections", () => {
+  it("keeps the compiler-resolved current-draft graph independent of frozen vector projections", () => {
     const packageJson = JSON.parse(
       readFileSync(resolve(generatorRoot, "package.json"), "utf8"),
     ) as { scripts: Record<string, string> };
-    const currentProject = JSON.parse(
-      readFileSync(resolve(generatorRoot, "tsconfig.current.json"), "utf8"),
-    ) as { include: string[]; exclude: string[] };
-
     expect(packageJson.scripts["draft:check"])
       .toBe("npm run build:current && npm run test:current && npm run family:check");
     expect(packageJson.scripts["test:current"])
@@ -30,20 +27,22 @@ describe("protocol document family", () => {
     expect(packageJson.scripts["build:current"])
       .toBe("node scripts/typecheck.mjs tsconfig.current.json");
 
-    expect(currentProject.include).toEqual(["src/**/*.ts"]);
-    for (const live of [
-      "src/claims.test.ts",
-      "src/claim-ledger.test.ts",
-      "src/claim-ledger-conformance.test.ts",
-      "src/stamping.test.ts",
-      "src/one-time-invite.test.ts",
-    ]) {
-      expect(currentProject.exclude).not.toContain(live);
-    }
-    expect(currentProject.exclude).toEqual(expect.arrayContaining([
-      "src/topics*.ts",
-      "src/snapshot*.ts",
-    ]));
+    const resolvedFiles = execFileSync(
+      process.execPath,
+      [
+        resolve(generatorRoot, "node_modules/typescript/bin/tsc"),
+        "-p",
+        resolve(generatorRoot, "tsconfig.current.json"),
+        "--listFilesOnly",
+      ],
+      { cwd: generatorRoot, encoding: "utf8" },
+    ).trim().split(/\r?\n/u).map((path) => path.replaceAll("\\", "/"));
+    const frozenOrHistoricalBuilders = resolvedFiles.filter((path) =>
+      /\/src\/(?:topics[^/]*|snapshot[^/]*)\.ts$/u.test(path)
+      || /\/src\/(?:author|coverage|verify|cli)\.ts$/u.test(path)
+    );
+
+    expect(frozenOrHistoricalBuilders).toEqual([]);
   });
 
   it("keeps live OIDC continuity on active-persona authority", () => {

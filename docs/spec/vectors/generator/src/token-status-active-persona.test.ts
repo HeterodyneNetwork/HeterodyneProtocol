@@ -5,10 +5,14 @@ import { buildFixtures } from "./fixtures.js";
 import { utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import { OIDC_RSA_ONE } from "./oidc-rsa-fixtures.js";
+import { buildClaimLedgerScenario } from "./claim-ledger-test-support.js";
 import {
   buildContinuityTree,
+  continuityManifestDigest,
+  continuitySuccessorDigest,
   createContinuityAuthorityProof,
   createPersonaSuccessionProof,
+  resolveIssuerContinuity,
   type ContinuityManifest,
   type ContinuityManifestBody,
 } from "./token-status.js";
@@ -81,5 +85,101 @@ describe("active-persona OIDC continuity material", () => {
       fixtures.personas.alice.epoch_keys.epoch_1.private_key,
     );
     expect(proof).toMatchObject({ authority: "active-persona", signer_pubkey: personaKey });
+  });
+
+  it("rejects an unrelated active-key proof even when the supplied authority window names that key", async () => {
+    const scenario = await buildClaimLedgerScenario(fixtures);
+    const authorityCheckpoint = scenario.issuerKeyEpochOneState.checkpoint;
+    const base = {
+      ...manifestBody(),
+      current_signing_key_id: scenario.issuerKeyEnvelopeOne.signing_key_id,
+      authority: {
+        writer_nid: scenario.writerOne.did_key,
+        issued_at: authorityCheckpoint.observed_at,
+        checkpoint: authorityCheckpoint,
+      },
+    };
+    const successorIssuer = base.issuer.replace("node.example", "successor.example");
+    const commitmentBody = {
+      ...base,
+      issuer: successorIssuer,
+      sequence: 1,
+      predecessor_digest: "00".repeat(32),
+    };
+    const commitment: ContinuityManifest = {
+      ...commitmentBody,
+      authority_proof: createContinuityAuthorityProof(
+        commitmentBody,
+        scenario.writerOne.private_key,
+      ),
+    };
+    const previousBody = {
+      ...base,
+      successor: {
+        issuer: successorIssuer,
+        manifest_sha256: continuitySuccessorDigest(commitment),
+      },
+    };
+    const previous: ContinuityManifest = {
+      ...previousBody,
+      authority_proof: createContinuityAuthorityProof(
+        previousBody,
+        scenario.writerOne.private_key,
+      ),
+    };
+    const candidateBody = {
+      ...base,
+      issuer: successorIssuer,
+      sequence: 1,
+      predecessor_digest: continuityManifestDigest(previous),
+    };
+    const candidate: ContinuityManifest = {
+      ...candidateBody,
+      authority_proof: createContinuityAuthorityProof(
+        candidateBody,
+        scenario.writerOne.private_key,
+      ),
+    };
+    const context = {
+      identity: { persona_npub: personaNpub, persona_key: personaKey },
+      repository_rid: scenario.rid,
+      canonical_branch: "main" as const,
+      writer_nid: scenario.writerOne.did_key,
+      now: authorityCheckpoint.observed_at,
+      ledger_state: scenario.issuerKeyEpochOneState,
+      succession_authority: createPersonaSuccessionProof(
+        candidate,
+        "active-persona",
+        fixtures.personas.alice.epoch_keys.epoch_1.private_key,
+      ),
+      active_persona_authority: {
+        persona_key: personaKey,
+        valid_from: authorityCheckpoint.observed_at,
+        valid_until: authorityCheckpoint.observed_at + 300,
+      },
+    };
+
+    expect(resolveIssuerContinuity(previous, candidate, context)).toMatchObject({
+      allowed: true,
+      standard_oidc_action: "register-successor",
+    });
+
+    const unrelatedKey = fixtures.personas.carol.epoch_keys.epoch_1.pubkey;
+    const unrelatedContext = {
+      ...context,
+      succession_authority: createPersonaSuccessionProof(
+        candidate,
+        "active-persona",
+        fixtures.personas.carol.epoch_keys.epoch_1.private_key,
+      ),
+      active_persona_authority: {
+        ...context.active_persona_authority,
+        persona_key: unrelatedKey,
+      },
+    };
+    expect(resolveIssuerContinuity(previous, candidate, unrelatedContext)).toMatchObject({
+      allowed: false,
+      reason_code: "oidc-issuer-authority-invalid",
+    });
   });
 });

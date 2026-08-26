@@ -70,12 +70,34 @@ const INVITE_DESCRIPTOR_MEMBERS = new Set([
   "secret_sha256",
   "version",
 ]);
+const REQUIRED_INVITE_DESCRIPTOR_MEMBERS = [
+  "approval_mode",
+  "expires_at",
+  "invite_id",
+  "inviter_account",
+  "issued_at",
+  "purpose",
+  "relay_hints",
+  "rendezvous_pubkey",
+  "secret_sha256",
+  "version",
+] as const;
 
 function hasClosedDescriptorMembers(descriptor: InviteDescriptor): boolean {
-  const members = Reflect.ownKeys(descriptor);
-  return members.every((member) =>
-    typeof member === "string" && INVITE_DESCRIPTOR_MEMBERS.has(member)
-  );
+  const prototype = Object.getPrototypeOf(descriptor);
+  if (prototype !== Object.prototype && prototype !== null) return false;
+
+  const propertyDescriptors = Object.getOwnPropertyDescriptors(descriptor);
+  const members = Reflect.ownKeys(propertyDescriptors);
+  return REQUIRED_INVITE_DESCRIPTOR_MEMBERS.every((member) =>
+    Object.hasOwn(propertyDescriptors, member)
+  ) && members.every((member) => {
+    if (typeof member !== "string" || !INVITE_DESCRIPTOR_MEMBERS.has(member)) {
+      return false;
+    }
+    const property = propertyDescriptors[member];
+    return property.enumerable === true && Object.hasOwn(property, "value");
+  });
 }
 
 export function encodeInviteFragment(envelope: InviteEnvelope): string {

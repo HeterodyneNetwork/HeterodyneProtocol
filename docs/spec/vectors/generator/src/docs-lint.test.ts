@@ -401,6 +401,73 @@ describe("canonical family documentation", () => {
     )).toEqual([]);
   });
 
+  it.each([
+    "When optional Assurance is claimed, a persona MUST have an accepted KEL.",
+    "When optional\n  Assurance is claimed, a persona MUST have an accepted\n  KEL.",
+    "Implementations claiming Assurance MAY require a cold-\n  root for that Assurance profile.",
+  ])("permits Assurance gating attached to the exact authority assertion", (text) => {
+    expect(findRetiredNormativeClaimIssues(
+      "docs/spec/heterodyne-core.md",
+      text,
+    )).toEqual([]);
+  });
+
+  it.each([
+    "Optional Assurance composition may use recovery material. A conformant persona MUST have an accepted KEL.",
+    "Optional Assurance composition may use recovery material; a conformant persona MUST have an epoch key.",
+    "When Assurance is claimed, recovery MAY use a KEL.\n  Baseline personas require a cold-\n  root.",
+  ])("does not let a separate Assurance clause exempt baseline authority", (text) => {
+    expect(findRetiredNormativeClaimIssues(
+      "docs/spec/heterodyne-core.md",
+      text,
+    )).toEqual([expect.objectContaining({
+      code: "retired-authoring-model",
+    })]);
+  });
+
+  it.each([
+    "A conformant persona does not require an accepted KEL.",
+    "The former requirement that a persona requires a cold root is retired.",
+    "No baseline persona requires an epoch-\n  key.",
+    "Current persona epoch or cold-root authority is not valid authority.",
+    "Current persona\n  epoch or cold-root authority is not valid authority.",
+  ])("permits an explicit negation or retirement of baseline authority", (text) => {
+    expect(findRetiredNormativeClaimIssues(
+      "docs/spec/heterodyne-core.md",
+      text,
+    )).toEqual([]);
+  });
+
+  it.each([
+    "There is no canonical feed index.",
+    "There is no canonical\n  feed index.",
+  ])("permits the exact negated canonical-index retirement probe", (text) => {
+    const path = "README.md";
+    expect(lintMaintainedGuides(repositoryRoot, {
+      [path]: `${read(path)}\n${text}\n`,
+    })).not.toContainEqual(expect.objectContaining({
+      path,
+      code: "retired-authoring-model",
+    }));
+  });
+
+  it.each([
+    "Optional Assurance adds supplemental evidence. A conformant persona MUST have an accepted KEL.",
+    "Optional Assurance adds supplemental evidence.\n  A conformant persona MUST have an accepted\n  KEL.",
+    "Optional Assurance composition may use recovery material, but a conformant persona MUST have an accepted KEL.",
+    "The Assurance profile does not require a KEL, but a conformant persona MUST have an accepted KEL.",
+    "Optional Assurance composition may use recovery material,\n  but a conformant persona MUST have an accepted\n  KEL.",
+    "The Assurance profile does not require a KEL but a conformant persona MUST have an accepted KEL.",
+    "Optional Assurance composition may use recovery material yet a conformant persona MUST have an accepted KEL.",
+  ])("rejects the exact cross-sentence Assurance exemption probe", (text) => {
+    expect(findRetiredNormativeClaimIssues(
+      "docs/spec/heterodyne-core.md",
+      text,
+    )).toEqual([expect.objectContaining({
+      code: "retired-authoring-model",
+    })]);
+  });
+
   it("keeps pairwise claims and direct messages on standard Marmot groups", () => {
     const comms = read("docs/spec/heterodyne-comms.md");
     expect(comms).toMatch(/pairwise-private[\s\S]*two-member Marmot group/i);

@@ -165,7 +165,7 @@ const RETIRED_NORMATIVE_CLAIMS = [
 ];
 
 const RETIRED_BASELINE_AUTHORITY_CLAIMS = [
-  /(?:conformant\s+)?persona\s+(?:MUST\s+(?:have|use)|requires?)\s+(?:an?\s+)?(?:accepted\s+)?(?:KEL|cold[-\s]+root|epoch[-\s]+key)/i,
+  /(?:conformant\s+)?personas?\s+(?:MUST\s+(?:have|use)|requires?)\s+(?:an?\s+)?(?:accepted\s+)?(?:KEL|cold[-\s]+root|epoch[-\s]+key)/i,
 ];
 
 function isExplicitlyGatedAssurance(
@@ -174,12 +174,66 @@ function isExplicitlyGatedAssurance(
   matchIndex: number,
 ): boolean {
   if (/(?:^|\/)heterodyne-assurance\.md$/.test(path)) return true;
-  const paragraphStart = Math.max(0, text.lastIndexOf("\n\n", matchIndex));
-  const paragraphEndCandidate = text.indexOf("\n\n", matchIndex);
-  const paragraphEnd = paragraphEndCandidate < 0 ? text.length : paragraphEndCandidate;
-  const paragraph = text.slice(paragraphStart, paragraphEnd);
+  const assertion = assertionClause(text, matchIndex);
   return /\b(?:optional\s+Assurance|when\s+Assurance\s+is\s+claimed|implementations?\s+claiming\s+Assurance|Assurance\s+(?:composition|profile))\b/i
-    .test(paragraph);
+    .test(assertion);
+}
+
+function assertionClause(text: string, matchIndex: number): string {
+  const prior = text.slice(0, matchIndex);
+  let boundary = Math.max(
+    prior.lastIndexOf("."),
+    prior.lastIndexOf("!"),
+    prior.lastIndexOf("?"),
+    prior.lastIndexOf(";"),
+  );
+  for (const coordinator of prior.matchAll(
+    /(?:,\s*(?:and|but|yet|while|whereas)|\s+(?:but|yet|while|whereas))\s+/giu,
+  )) {
+    boundary = Math.max(boundary, coordinator.index + coordinator[0].length - 1);
+  }
+  const remainder = text.slice(matchIndex);
+  const punctuationBoundary = remainder.search(/[.!?;]/u);
+  const coordinatorBoundary = remainder.search(
+    /(?:,\s*(?:and|but|yet|while|whereas)|\s+(?:but|yet|while|whereas))\s+/iu,
+  );
+  const followingBoundary = punctuationBoundary < 0
+    ? coordinatorBoundary
+    : coordinatorBoundary < 0
+      ? punctuationBoundary
+      : Math.min(punctuationBoundary, coordinatorBoundary);
+  const end = followingBoundary < 0
+    ? text.length
+    : matchIndex + followingBoundary + 1;
+  return text.slice(boundary + 1, end);
+}
+
+function isExplicitNegationOrRetirement(text: string, matchIndex: number): boolean {
+  const assertion = assertionClause(text, matchIndex);
+  return /\b(?:former|retired|no\s+longer|(?:is|are|was|were|does|do|must|shall)\s+not|cannot|never)\b/i
+    .test(assertion)
+    || /^\s*(?:[-+*]\s+)?no\b/i.test(assertion);
+}
+
+function isExplicitGuideNegationOrRetirement(
+  text: string,
+  matchIndex: number,
+  matchLength: number,
+): boolean {
+  const assertion = assertionClause(text, matchIndex);
+  const matched = text.slice(matchIndex, matchIndex + matchLength);
+  const localIndex = assertion.indexOf(matched);
+  if (localIndex < 0) return false;
+  const before = assertion.slice(0, localIndex);
+  const after = assertion.slice(localIndex + matched.length);
+  return /\b(?:no|not|never|former|retired|no\s+longer)\b/i.test(before)
+    || /^\s+(?:(?:is|are|was|were|has\s+been)\s+)?(?:not\b|retired\b|no\s+longer\b)/i
+      .test(after);
+}
+
+function allPatternMatches(pattern: RegExp, text: string): RegExpExecArray[] {
+  const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+  return [...text.matchAll(new RegExp(pattern.source, flags))];
 }
 
 export function findRetiredNormativeClaimIssues(
@@ -187,27 +241,23 @@ export function findRetiredNormativeClaimIssues(
   text: string,
 ): FamilyDocIssue[] {
   const retired = RETIRED_NORMATIVE_CLAIMS.flatMap((pattern) => {
-    const match = pattern.exec(text);
-    if (match === null) return [];
-    return [{
+    return allPatternMatches(pattern, text).flatMap((match) =>
+      isExplicitNegationOrRetirement(text, match.index) ? [] : [{
       path,
       line: text.slice(0, match.index).split(/\r?\n/).length,
       code: "retired-authoring-model" as const,
       message: `retired normative authority: ${match[0]}`,
-    }];
+      }]);
   });
   const baselineAuthority = RETIRED_BASELINE_AUTHORITY_CLAIMS.flatMap((pattern) => {
-    const match = pattern.exec(text);
-    if (
-      match === null
-      || isExplicitlyGatedAssurance(path, text, match.index)
-    ) return [];
-    return [{
+    return allPatternMatches(pattern, text).flatMap((match) =>
+      isExplicitNegationOrRetirement(text, match.index)
+      || isExplicitlyGatedAssurance(path, text, match.index) ? [] : [{
       path,
       line: text.slice(0, match.index).split(/\r?\n/).length,
       code: "retired-authoring-model" as const,
       message: `retired baseline authority: ${match[0]}`,
-    }];
+      }]);
   });
   return [...retired, ...baselineAuthority];
 }
@@ -754,14 +804,19 @@ export function lintMaintainedGuides(
   for (const path of liveNostrFirstPaths) {
     const text = contents.get(path)!;
     for (const pattern of RETIRED_NOSTR_FIRST_GUIDE_PATTERNS) {
-      const match = pattern.exec(text);
-      if (match === null) continue;
-      issues.push({
-        path,
-        line: lineFor(text, match.index),
-        code: "retired-authoring-model",
-        message: `retired Nostr-first terminology: ${match[0]}`,
-      });
+      for (const match of allPatternMatches(pattern, text)) {
+        if (isExplicitGuideNegationOrRetirement(
+          text,
+          match.index,
+          match[0].length,
+        )) continue;
+        issues.push({
+          path,
+          line: lineFor(text, match.index),
+          code: "retired-authoring-model",
+          message: `retired Nostr-first terminology: ${match[0]}`,
+        });
+      }
     }
   }
 

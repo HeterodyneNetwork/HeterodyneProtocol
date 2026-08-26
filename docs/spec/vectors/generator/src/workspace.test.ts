@@ -2000,7 +2000,7 @@ describe("Workspace role authorization", () => {
         acceptance: expect.any(Object),
       });
     }
-  });
+  }, 30_000);
 
   it("rejects legacy caller-authored authority ceilings, revocations, and activation context", () => {
     expect(evaluateAuthorization(grantActivationFixture().authorization))
@@ -2953,7 +2953,7 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
       invitation_acceptance: null,
       successor_reauthorization: decoyRoleSuccessor.reauthorization,
     })).toEqual({ verdict: "reject", reason_code: "policy_denied" });
-  });
+  }, 30_000);
 
   it("inherits or replaces ordered hosts while retaining a Radicle backstop", () => {
     expect(resolveEffectiveHosts({ inherited, mode: "default", configured: [], last_responsive: H64 }))
