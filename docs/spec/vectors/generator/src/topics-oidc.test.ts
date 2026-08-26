@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validateControlTokenUse, type TokenUseInput } from "./control-profile.js";
-import { buildFixtures } from "./fixtures.js";
+import { buildFixtures } from "./snapshot-fixtures-adapter.js";
 import { buildControlVectors } from "./topics-control.js";
 import { buildOidcVectors } from "./topics-oidc.js";
 

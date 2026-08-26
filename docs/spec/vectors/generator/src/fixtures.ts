@@ -1,8 +1,7 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { QUALIFIED_VERSION } from "./family.js";
-import { inceptionTemplate } from "./kel.js";
-import { getEventId, getPublicKey } from "./nostr.js";
+import { getPublicKey } from "./nostr.js";
 import { didKeyFromEd25519, ed25519PublicKey, fixtureRid } from "./radicle.js";
 import { loadRegistry } from "./registry.js";
 import { SCHEMA_VERSION } from "./vector-helpers.js";
@@ -95,22 +94,6 @@ export function buildFixtures() {
     alice_tier3_gen_b: { key_id: "aud-2026-05-25-b", key: "41".repeat(32) },
   };
 
-  // Per-persona KEL head. Each persona's KEL here is a single
-  // committed inception (kind:31002, §3.5.1) with no witnesses; its id is the
-  // head every epoch-key-signed event's kel_head tag references (§3.0, §4.5.1).
-  // The inception_event is the unsigned NIP-01 template; its id is over that
-  // serialization, so it is stable whether or not the cold-root signature is
-  // attached (signatures are exercised in the keri-authority/ vectors).
-  const kelFor = (coldRootPubkey: string, epochPubkey: string) => {
-    const inceptionEvent = inceptionTemplate(coldRootPubkey, epochPubkey, TEST_EPOCH);
-    const id = getEventId(inceptionEvent);
-    return { inception_event: inceptionEvent, head: { id, seq: 0 } };
-  };
-  const kel = {
-    alice: kelFor(personas.alice.cold_root.pubkey, personas.alice.epoch_keys.epoch_1.pubkey),
-    bob: kelFor(personas.bob.cold_root.pubkey, personas.bob.epoch_keys.epoch_1.pubkey),
-    carol: kelFor(personas.carol.cold_root.pubkey, personas.carol.epoch_keys.epoch_1.pubkey),
-  };
   return {
     vector_schema_version: SCHEMA_VERSION,
     spec_version: QUALIFIED_VERSION,
@@ -121,7 +104,6 @@ export function buildFixtures() {
       nip44_nonce_policy: "Each vector carries a fixed 32-byte nonce in input.",
     },
     personas,
-    kel,
     ed25519_nids,
     device_publishing_keys,
     radicle_rids,

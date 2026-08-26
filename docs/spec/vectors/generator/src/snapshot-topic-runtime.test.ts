@@ -3,7 +3,7 @@ import { cp, mkdir, mkdtemp, readdir, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildFixtures } from "./fixtures.js";
+import { buildFixtures } from "./snapshot-fixtures-adapter.js";
 import {
   isContainedRelativePath,
   snapshotRuntimeModuleUrl,

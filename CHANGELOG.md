@@ -17,10 +17,6 @@ family map, and the single registry pin is
 
 ### Nostr-first family integration
 
-- [ADR-047](docs/adr/archive/2026-08-24-047-nostr-first-interoperability.md)
-  records the accepted Nostr-first semantic replacement. The live six-document
-  family and normative machine-readable artifacts are self-contained, while
-  the frozen 482-vector snapshot remains historical and unreconciled.
 - Made the active Nostr key the baseline persona and standard Marmot account,
   with a bare active key remaining first-class. Cold-root continuity, recovery
   authority, associated keys, succession, and KERI export now live in the

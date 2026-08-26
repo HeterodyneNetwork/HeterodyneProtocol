@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildFixtures } from "./fixtures.js";
+import { buildFixtures } from "./snapshot-fixtures-adapter.js";
 import {
   buildSnapshotClaimLedgerVectors,
   replaySnapshotClaimLedgerVectors,

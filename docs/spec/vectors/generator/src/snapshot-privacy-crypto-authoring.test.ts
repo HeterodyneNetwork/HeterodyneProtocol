@@ -2,7 +2,7 @@ import { hkdf } from "@noble/hashes/hkdf";
 import { sha256 } from "@noble/hashes/sha2";
 import { nip44 } from "nostr-tools";
 import { describe, expect, it } from "vitest";
-import { buildFixtures } from "./fixtures.js";
+import { buildFixtures } from "./snapshot-fixtures-adapter.js";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { buildV04Vectors } from "./topics-v04.js";
 import { buildV04bVectors } from "./topics-v04b.js";

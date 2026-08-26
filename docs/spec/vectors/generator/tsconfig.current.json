@@ -4,6 +4,11 @@
   "exclude": [
     "src/topics*.ts",
     "src/snapshot*.ts",
+    "src/kel.ts",
+    "src/kel-replay.ts",
+    "src/kel-replay.test.ts",
+    "src/keri-materialized.ts",
+    "src/keri-materialized.test.ts",
     "src/author.ts",
     "src/author.test.ts",
     "src/cli.ts",

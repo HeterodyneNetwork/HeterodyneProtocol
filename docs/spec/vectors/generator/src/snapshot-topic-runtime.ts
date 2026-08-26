@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
-import type { Fixtures } from "./fixtures.js";
+import type { Fixtures } from "./snapshot-fixtures-adapter.js";
 import { snapshotRuntimeModuleUrl } from "./snapshot-runtime-module-url.js";
 import type { AuthoredVector } from "./types.js";
 
@@ -24,6 +24,9 @@ const snapshotOidcAdapter = resolve(here, "snapshot-oidc-adapter.ts");
 const snapshotTokenStatusAdapter = resolve(here, "snapshot-token-status-adapter.ts");
 const snapshotAgentAuthorshipAdapter = resolve(here, "snapshot-agent-authorship-adapter.ts");
 const snapshotWorkspaceAdapter = resolve(here, "snapshot-workspace-adapter.ts");
+const snapshotFixturesAdapter = resolve(here, "snapshot-fixtures-adapter.ts");
+const liveFixturesImport = 'from "./fixtures.js";';
+const snapshotFixturesImport = 'from "./snapshot-fixtures-adapter.js";';
 const liveSchemaImport = 'from "./schema.js";';
 const snapshotSchemaImport = 'from "./snapshot-schema-adapter.js";';
 const liveImport = 'from "./agent-moderation.js";';
@@ -41,6 +44,7 @@ const snapshotAgentWorkloadSchemaImport = 'import workloadRegistrationSchema fro
 const liveWorkspaceImport = 'from "./workspace.js";';
 const snapshotWorkspaceImport = 'from "./snapshot-workspace-compatibility-adapter.js";';
 const requiredHistoricalImports = new Map<string, readonly string[]>([
+  [allTopics, [liveFixturesImport]],
   [frozenModerationTopic, [liveImport]],
   [frozenClaimsTopic, [liveClaimsImport]],
   [frozenClaimLedgerTopic, [liveClaimsImport]],
@@ -208,6 +212,12 @@ async function materializeSnapshotRuntimeAt(
     assertRequiredHistoricalImports(canonicalFile, transformed);
     if (canonicalFile === frozenModerationTopic) {
       transformed = transformed.replace(liveImport, snapshotImport);
+    }
+    if (
+      canonicalFile !== snapshotFixturesAdapter
+      && transformed.includes(liveFixturesImport)
+    ) {
+      transformed = transformed.replaceAll(liveFixturesImport, snapshotFixturesImport);
     }
     if (canonicalFile !== snapshotClaimsAdapter && transformed.includes(liveClaimsImport)) {
       transformed = transformed.replaceAll(liveClaimsImport, snapshotClaimsImport);

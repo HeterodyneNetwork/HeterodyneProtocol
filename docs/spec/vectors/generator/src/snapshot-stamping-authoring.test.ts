@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { QUALIFIED_VERSION } from "./family.js";
-import { buildFixtures } from "./fixtures.js";
+import { buildFixtures } from "./snapshot-fixtures-adapter.js";
 import { buildSplitVectors } from "./topics-split.js";
 
 describe("snapshot stamping vector authoring", () => {

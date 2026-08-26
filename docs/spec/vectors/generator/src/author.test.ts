@@ -13,7 +13,7 @@ import { verifyVectorTree } from "./verify.js";
 import { snapshotPackageCheck } from "./verify.js";
 import { verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
 import { writeCoverage } from "./coverage.js";
-import { buildFixtures } from "./fixtures.js";
+import { buildFixtures } from "./snapshot-fixtures-adapter.js";
 import { validateNodeAdvertisement } from "./radicle.js";
 
 let tempDirs: string[] = [];

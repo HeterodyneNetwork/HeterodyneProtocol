@@ -1,6 +1,6 @@
 # ADR-047: Nostr-first interoperability with optional Assurance
 
-**Status:** Accepted
+**Status:** Proposed
 **Date:** 2026-08-24
 
 This record is non-canonical. The live specification family, protocol schemas,
@@ -82,10 +82,7 @@ key rotation while retaining a path for stronger recovery and succession.
 
 ## Acceptance and archive
 
-Acceptance followed complete implementation, independent review, and clean
-pre- and post-acceptance matrices. The live specification family and normative
-machine-readable artifacts are self-contained and stand on their own without
-this record. The frozen 482-vector snapshot remains historical and
-unreconciled; it records its pinned source rather than current conformance.
-This record was accepted and moved to `docs/adr/archive/` only after those
-conditions were established.
+This proposed record must be reviewed together with the complete specification,
+registry, schema, and tooling integration. Before merge it must be marked
+accepted and moved to `docs/adr/archive/`; the live specification must stand on
+its own without citing this record.

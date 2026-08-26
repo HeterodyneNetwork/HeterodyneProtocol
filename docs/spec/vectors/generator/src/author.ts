@@ -10,7 +10,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
-import { buildFixtures } from "./fixtures.js";
+import { buildFixtures } from "./snapshot-fixtures-adapter.js";
 import { REASON_CODES } from "./reason-codes.js";
 import { VECTOR_SCHEMA, validateVectorOrThrow } from "./schema.js";
 import {
