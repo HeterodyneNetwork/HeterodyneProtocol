@@ -5,6 +5,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { relative, resolve, sep } from "node:path";
+import { Parser } from "commonmark";
+import type { Node as CommonmarkNode } from "commonmark";
 import {
   assertAllowedDependency,
   DOCUMENTS,
@@ -51,6 +53,7 @@ export type FamilyDocIssue = {
     | "unregistered-proof-domain"
     | "mislinked-reference"
     | "retired-authoring-model"
+    | "markdown-resource-limit"
     | "profile-revision-registry-context-missing";
   message: string;
 };
@@ -292,246 +295,99 @@ function isPredicateLocallyRetired(
   return directlyNegativeSubject || directlyNegativePredicate || directlyRetiredPredicate;
 }
 
-function normalizeReferenceLabel(label: string): string {
-  return label.trim().replace(/\s+/gu, " ").toLocaleLowerCase("en-US");
-}
+const MAX_MARKDOWN_FILE_BYTES = 512 * 1024;
+const MAX_MARKDOWN_CORPUS_BYTES = 2 * 1024 * 1024;
+const MAX_MARKDOWN_AST_DEPTH = 64;
+const MAX_MARKDOWN_AST_NODES = 50_000;
 
-function transformExactCodeSpans(
-  text: string,
-  transform: (body: string) => string,
-): string {
-  let normalized = "";
-  let cursor = 0;
-  while (cursor < text.length) {
-    if (text[cursor] !== "`") {
-      normalized += text[cursor];
-      cursor += 1;
-      continue;
-    }
-    let openerEnd = cursor;
-    while (text[openerEnd] === "`") openerEnd += 1;
-    const openerLength = openerEnd - cursor;
-    let search = openerEnd;
-    let closer = -1;
-    while (search < text.length) {
-      const candidate = text.indexOf("`", search);
-      if (candidate < 0) break;
-      let candidateEnd = candidate;
-      while (text[candidateEnd] === "`") candidateEnd += 1;
-      if (candidateEnd - candidate === openerLength) {
-        closer = candidate;
-        break;
-      }
-      search = candidateEnd;
-    }
-    if (closer < 0) {
-      normalized += text.slice(cursor, openerEnd);
-      cursor = openerEnd;
-      continue;
-    }
-    normalized += transform(text.slice(openerEnd, closer));
-    cursor = closer + openerLength;
-  }
-  return normalized;
-}
-
-type MarkdownFence = {
-  marker: "`" | "~";
-  length: number;
-  quoteDepth: number;
-  listIndent: number;
+type VisibleMarkdownBlock = {
+  line: number;
+  text: string;
 };
 
-function stripQuoteContainers(
-  line: string,
-  maximumDepth = Number.POSITIVE_INFINITY,
-): { content: string; depth: number } {
-  let content = line;
-  let depth = 0;
-  while (depth < maximumDepth) {
-    const quote = content.match(/^ {0,3}>[ \t]?/u);
-    if (quote === null) break;
-    content = content.slice(quote[0].length);
-    depth += 1;
-  }
-  return { content, depth };
-}
+type MarkdownAnalysis = {
+  blocks: readonly VisibleMarkdownBlock[];
+  maxDepth: number;
+  nodeCount: number;
+};
 
-function fenceOpener(line: string): MarkdownFence | null {
-  const quoted = stripQuoteContainers(line);
-  let content = quoted.content;
-  const list = content.match(/^ {0,3}(?:[-+*]|\d{1,9}[.)])[ \t]+/u);
-  const listIndent = list?.[0].length ?? 0;
-  if (list !== null) content = content.slice(list[0].length);
-  const candidate = content.match(/^ {0,3}(`+|~+)(.*)$/u);
-  if (candidate === null
-    || candidate[1].length < 3
-    || (candidate[1][0] === "`" && candidate[2].includes("`"))) {
-    return null;
-  }
-  return {
-    marker: candidate[1][0] as "`" | "~",
-    length: candidate[1].length,
-    quoteDepth: quoted.depth,
-    listIndent,
-  };
-}
+const markdownParser = new Parser();
 
-function isFenceCloser(line: string, fence: MarkdownFence): boolean {
-  const quoted = stripQuoteContainers(line, fence.quoteDepth);
-  if (quoted.depth !== fence.quoteDepth) return false;
-  let content = quoted.content;
-  if (fence.listIndent > 0) {
-    const indent = content.match(/^ */u)?.[0].length ?? 0;
-    if (indent < fence.listIndent) return false;
-    content = content.slice(fence.listIndent);
-  }
-  const candidate = content.match(/^ {0,3}(`+|~+)(.*)$/u);
-  return candidate !== null
-    && candidate[1][0] === fence.marker
-    && candidate[1].length >= fence.length
-    && candidate[2].trim() === "";
-}
-
-function visibleReferenceDefinitionText(text: string): string {
+function visibleInlineText(block: CommonmarkNode): string {
   const visible: string[] = [];
-  let fence: MarkdownFence | null = null;
-  for (const line of text.split(/\r?\n/u)) {
-    if (fence !== null) {
-      if (isFenceCloser(line, fence)) fence = null;
-      visible.push("");
-      continue;
+  const stack: CommonmarkNode[] = [];
+  const pushChildren = (node: CommonmarkNode): void => {
+    const children: CommonmarkNode[] = [];
+    for (let child = node.firstChild; child !== null; child = child.next) {
+      children.push(child);
     }
-    const opener = fenceOpener(line);
-    if (opener !== null) {
-      fence = opener;
-      visible.push("");
-      continue;
+    stack.push(...children.reverse());
+  };
+  pushChildren(block);
+  while (stack.length > 0) {
+    const node = stack.pop()!;
+    switch (node.type) {
+      case "text":
+        visible.push(node.literal ?? "");
+        break;
+      case "softbreak":
+      case "linebreak":
+        visible.push(" ");
+        break;
+      case "emph":
+      case "strong":
+      case "link":
+        pushChildren(node);
+        break;
+      case "code":
+      case "html_inline":
+      case "image":
+        visible.push(" ");
+        break;
+      default:
+        visible.push(" ");
+        break;
     }
-    visible.push(line);
   }
-  const codeMasked = transformExactCodeSpans(
-    visible.join("\n"),
-    (body) => body.replace(/[^\r\n]/gu, " "),
-  );
-  return codeMasked.replace(/<!--[\s\S]*?(?:-->|$)/gu, "");
+  return visible.join("").replace(/\s+/gu, " ").trim();
 }
 
-function isVisibleParagraphBoundary(content: string): boolean {
-  return /^ {0,3}#{1,6}(?:[ \t]+|$)/u.test(content)
-    || /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/u.test(content)
-    || /^ {4}/u.test(content)
-    || /^ {0,3}\[[^\]\n]+\]:[ \t]*(?:<[^<>\n]+>|[^ \t\n]+)/u.test(content);
-}
-
-function normalizeVisibleDefinitionContainers(text: string): string {
-  const normalized: string[] = [];
-  let activeListIndent: number | null = null;
-  let activeQuoteDepth = 0;
-  let paragraphOpen = false;
-
-  for (const line of text.split("\n")) {
-    const quoted = stripQuoteContainers(line);
-    let content = quoted.content;
-    if (quoted.depth !== activeQuoteDepth) {
-      activeQuoteDepth = quoted.depth;
-      activeListIndent = null;
-      paragraphOpen = false;
+function analyzeMarkdown(text: string): MarkdownAnalysis {
+  const root = markdownParser.parse(text);
+  const blockNodes: CommonmarkNode[] = [];
+  let maxDepth = 0;
+  let nodeCount = 0;
+  const stack: { node: CommonmarkNode; depth: number }[] = [{ node: root, depth: 1 }];
+  while (stack.length > 0) {
+    const { node, depth } = stack.pop()!;
+    nodeCount += 1;
+    if (nodeCount > MAX_MARKDOWN_AST_NODES) {
+      return { blocks: [], maxDepth, nodeCount };
     }
-    if (content.trim() === "") {
-      normalized.push("");
-      paragraphOpen = false;
-      continue;
+    if (depth > MAX_MARKDOWN_AST_DEPTH) {
+      return { blocks: [], maxDepth: depth, nodeCount };
     }
-
-    if (activeListIndent !== null) {
-      const indent = content.match(/^ */u)?.[0].length ?? 0;
-      if (indent >= activeListIndent) {
-        content = content.slice(activeListIndent);
-      } else {
-        activeListIndent = null;
-      }
+    maxDepth = Math.max(maxDepth, depth);
+    if (node.type === "paragraph" || node.type === "heading") {
+      blockNodes.push(node);
     }
-
-    const list = content.match(/^( {0,3})([-+*]|(\d{1,9})[.)])([ \t]+)/u);
-    if (list !== null) {
-      const orderedStart = list[3];
-      const mayInterruptParagraph = orderedStart === undefined || orderedStart === "1";
-      if (!paragraphOpen || mayInterruptParagraph) {
-        activeListIndent = list[0].length;
-        content = content.slice(list[0].length);
-      }
+    const children: CommonmarkNode[] = [];
+    for (let child = node.firstChild; child !== null; child = child.next) {
+      children.push(child);
     }
-
-    normalized.push(content);
-    paragraphOpen = !isVisibleParagraphBoundary(content);
+    for (const child of children.reverse()) {
+      stack.push({ node: child, depth: depth + 1 });
+    }
   }
-
-  return normalized.join("\n");
+  const blocks = blockNodes.map((node) => ({
+    line: node.sourcepos[0][0],
+    text: visibleInlineText(node),
+  }));
+  return { blocks, maxDepth, nodeCount };
 }
 
-function collectShortcutReferenceLabels(text: string): ReadonlySet<string> {
-  const labels = new Set<string>();
-  const visibleDefinitions = normalizeVisibleDefinitionContainers(
-    visibleReferenceDefinitionText(text),
-  );
-  for (const definition of visibleDefinitions.matchAll(
-    /^ {0,3}\[([^\]\n]+)\]:[ \t]*(?:<[^<>\n]+>|[^ \t\n]+)(?:[ \t]+(?:"[^"\n]*"|'[^'\n]*'|\([^\)\n]*\)))?[ \t]*$/gmu,
-  )) {
-    labels.add(normalizeReferenceLabel(definition[1]));
-  }
-  return labels;
-}
-
-function maskCodeSpanBrackets(text: string): string {
-  return transformExactCodeSpans(
-    text,
-    (body) => body
-      .replace(/\[/gu, "\uE000")
-      .replace(/\]/gu, "\uE001"),
-  );
-}
-
-function isUnescapedImageLabel(source: string, bracketOffset: number): boolean {
-  if (source[bracketOffset - 1] !== "!") return false;
-  let escapes = 0;
-  for (let index = bracketOffset - 2; index >= 0 && source[index] === "\\"; index -= 1) {
-    escapes += 1;
-  }
-  return escapes % 2 === 0;
-}
-
-function normalizeMarkdownForClassification(
-  text: string,
-  shortcutReferenceLabels: ReadonlySet<string>,
-): string {
-  return maskCodeSpanBrackets(text)
-    .replace(/\[([^\]\n]+)\]\[[^\]\n]*\]/gu, (
-      whole,
-      label: string,
-      offset: number,
-      source: string,
-    ) => isUnescapedImageLabel(source, offset) ? whole : label)
-    .replace(/\[([^\]\n]+)\]\([^)]+\)/gu, (
-      whole,
-      label: string,
-      offset: number,
-      source: string,
-    ) => isUnescapedImageLabel(source, offset) ? whole : label)
-    .replace(/\[([^\]\n]+)\](?![\[(])/gu, (
-      whole,
-      label: string,
-      offset: number,
-      source: string,
-    ) => isUnescapedImageLabel(source, offset)
-      || !shortcutReferenceLabels.has(normalizeReferenceLabel(label))
-      ? whole
-      : label)
-    .replace(/\uE000/gu, "[")
-    .replace(/\uE001/gu, "]")
-    .replace(/\\(?=\r?\n)/gu, "")
-    .replace(/[*_`~]+/gu, "")
-    .replace(/\s+/gu, " ");
+function normalizeVisibleMarkdown(text: string): string {
+  return text.replace(/\s+/gu, " ");
 }
 
 function isCanonicalFeedIndexLocallyRetired(
@@ -540,15 +396,8 @@ function isCanonicalFeedIndexLocallyRetired(
   matchLength: number,
 ): boolean {
   const { start, end } = assertionClauseBounds(text, matchIndex);
-  const shortcutReferenceLabels = collectShortcutReferenceLabels(text);
-  const before = normalizeMarkdownForClassification(
-    text.slice(start, matchIndex),
-    shortcutReferenceLabels,
-  );
-  const after = normalizeMarkdownForClassification(
-    text.slice(matchIndex + matchLength, end),
-    shortcutReferenceLabels,
-  );
+  const before = normalizeVisibleMarkdown(text.slice(start, matchIndex));
+  const after = normalizeVisibleMarkdown(text.slice(matchIndex + matchLength, end));
   const directlyNegativeSubject = new RegExp(
     `^${CANONICAL_SCOPE_PREFIX_SOURCE}(?:no|there\\s+(?:is|are)\\s+no)\\s+$`,
     "i",
@@ -587,17 +436,16 @@ function isCanonicalFeedIndexLocallyRetired(
   const following = text.slice(end);
   const terminator = following.search(/[.!?](?:\s|$)/u);
   const sentenceEnd = terminator < 0 ? text.length : end + terminator + 1;
-  const otherClauses = normalizeMarkdownForClassification(
+  const otherClauses = normalizeVisibleMarkdown(
     `${text.slice(sentenceStart, matchIndex)} ${text.slice(end, sentenceEnd)}`,
-    shortcutReferenceLabels,
   );
-  const canonicalReference = `${CANONICAL_FEED_INDEX_SOURCE}\\b`;
+  const canonicalReference = `(?<!\\[)${CANONICAL_FEED_INDEX_SOURCE}\\b(?!\\])`;
   const oneAdjunct = CANONICAL_ONE_ADJUNCTS.join("|");
-  const objectReference = `(?:${canonicalReference}|it\\b|one\\b(?=\\s*(?:[.;!?)]|,\\s*(?:${oneAdjunct})\\b|(?:${oneAdjunct})\\b|$)))`;
-  const subjectReference = `(?:${canonicalReference}|(?:one|it)\\b)`;
+  const objectReference = `(?:${canonicalReference}|(?<!\\[)it\\b(?!\\])|(?<!\\[)one\\b(?!\\])(?=\\s*(?:\`+\\s*)?(?:[.;!?)]|,\\s*(?:${oneAdjunct})\\b|(?:${oneAdjunct})\\b|$)))`;
+  const subjectReference = `(?:${canonicalReference}|(?<!\\[)(?:one|it)\\b(?!\\]))`;
   const provisionVerb = CANONICAL_PROVISION_VERBS.join("|");
   const requiredByOperator = new RegExp(
-    `\\b(?:MUST|SHALL|(?:is|are)\\s+required\\s+to)\\s+(?:still\\s+)?(?:${provisionVerb})\\s+(?:(?:an?|the)\\s+)?${objectReference}`,
+    `(?<!\\[)\\b(?:MUST|SHALL|(?:is|are)\\s+required\\s+to)(?!\\])\\s+(?:still\\s+)?(?:${provisionVerb})\\s+(?:(?:an?|the)\\s+)?${objectReference}`,
     "i",
   );
   const requiredAsSubject = new RegExp(
@@ -606,7 +454,7 @@ function isCanonicalFeedIndexLocallyRetired(
   );
   const omissionVerb = CANONICAL_OMISSION_VERBS.join("|");
   const prohibitedOmission = new RegExp(
-    `\\b(?:MUST|SHALL)\\s+NOT\\s+(?:${omissionVerb})\\s+(?:(?:an?|the)\\s+)?${objectReference}`,
+    `(?<!\\[)\\b(?:MUST|SHALL)(?!\\])\\s+NOT\\s+(?:${omissionVerb})\\s+(?:(?:an?|the)\\s+)?${objectReference}`,
     "i",
   );
   return !(
@@ -1160,6 +1008,60 @@ export function lintMaintainedGuides(
       contentOverrides[path] ?? readFileSync(resolve(repoRoot, path), "utf8"),
     ]),
   );
+  const corpusBytes = [...contents.values()].reduce(
+    (total, text) => total + Buffer.byteLength(text, "utf8"),
+    0,
+  );
+  if (corpusBytes > MAX_MARKDOWN_CORPUS_BYTES) {
+    return [{
+      path: "<maintained-guides>",
+      line: 1,
+      code: "markdown-resource-limit",
+      message: `maintained Markdown corpus exceeds ${MAX_MARKDOWN_CORPUS_BYTES} bytes`,
+    }];
+  }
+  for (const [path, text] of contents) {
+    const bytes = Buffer.byteLength(text, "utf8");
+    if (bytes > MAX_MARKDOWN_FILE_BYTES) {
+      return [{
+        path,
+        line: 1,
+        code: "markdown-resource-limit",
+        message: `maintained Markdown file exceeds ${MAX_MARKDOWN_FILE_BYTES} bytes`,
+      }];
+    }
+  }
+  const markdownAnalyses = new Map<string, MarkdownAnalysis>();
+  for (const [path, text] of contents) {
+    let analysis: MarkdownAnalysis;
+    try {
+      analysis = analyzeMarkdown(text);
+    } catch (error) {
+      return [{
+        path,
+        line: 1,
+        code: "markdown-resource-limit",
+        message: `maintained Markdown parse failed closed: ${String(error)}`,
+      }];
+    }
+    if (analysis.maxDepth > MAX_MARKDOWN_AST_DEPTH) {
+      return [{
+        path,
+        line: 1,
+        code: "markdown-resource-limit",
+        message: `maintained Markdown AST exceeds depth ${MAX_MARKDOWN_AST_DEPTH}`,
+      }];
+    }
+    if (analysis.nodeCount > MAX_MARKDOWN_AST_NODES) {
+      return [{
+        path,
+        line: 1,
+        code: "markdown-resource-limit",
+        message: `maintained Markdown AST exceeds ${MAX_MARKDOWN_AST_NODES} nodes`,
+      }];
+    }
+    markdownAnalyses.set(path, analysis);
+  }
   const lineFor = (text: string, offset: number) =>
     text.slice(0, offset).split(/\r?\n/).length;
 
@@ -1189,10 +1091,26 @@ export function lintMaintainedGuides(
   for (const path of liveNostrFirstPaths) {
     const text = contents.get(path)!;
     for (const pattern of RETIRED_NOSTR_FIRST_GUIDE_PATTERNS) {
+      if (pattern === CANONICAL_FEED_INDEX_PATTERN) {
+        for (const block of markdownAnalyses.get(path)!.blocks) {
+          for (const match of allPatternMatches(pattern, block.text)) {
+            if (isCanonicalFeedIndexLocallyRetired(
+              block.text,
+              match.index,
+              match[0].length,
+            )) continue;
+            issues.push({
+              path,
+              line: block.line,
+              code: "retired-authoring-model",
+              message: `retired Nostr-first terminology: ${match[0]}`,
+            });
+          }
+        }
+        continue;
+      }
       for (const match of allPatternMatches(pattern, text)) {
-        if ((pattern === CANONICAL_FEED_INDEX_PATTERN
-          ? isCanonicalFeedIndexLocallyRetired
-          : isPredicateLocallyRetired)(
+        if (isPredicateLocallyRetired(
           text,
           match.index,
           match[0].length,
