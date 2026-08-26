@@ -2,7 +2,7 @@ import { ed25519 } from "@noble/curves/ed25519";
 import { schnorr } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha2";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
-import { isStrictNostrSignedEvent, type NostrSignedEvent } from "./nostr.js";
+import { snapshotAndVerifyNostrEvent, type NostrSignedEvent } from "./nostr.js";
 
 export type AtprotoResolutionEnvelope = {
   domain: "heterodyne-atproto-did-resolution-v1";
@@ -249,7 +249,7 @@ export function authenticateAtprotoBindingObservation(input: {
       expected.event_created_at,
       config,
     );
-  const event = expected.nostr_event;
+  const event = snapshotAndVerifyNostrEvent(expected.nostr_event);
   if (
     config === undefined
     || observedResolution === null
@@ -278,7 +278,7 @@ export function authenticateAtprotoBindingObservation(input: {
     || observation.generation < 1
     || !Number.isSafeInteger(expected.event_created_at)
     || expected.event_created_at < 0
-    || !isStrictNostrSignedEvent(event)
+    || event === null
     || event.id !== expected.binding_event_id
     || event.pubkey !== expected.pubkey
     || event.kind !== 31009

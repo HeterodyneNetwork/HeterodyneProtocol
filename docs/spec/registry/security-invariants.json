@@ -19,7 +19,7 @@
       "owner": "core",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Every signed object is locally signature-verified and, where applicable, delegation-checked before rendering, storage, or authorization."
+      "description": "Every signed object is captured once into an independently owned immutable value, locally signature-verified from that value, and never reread from attacker-controlled source state before rendering, storage, or authorization."
     },
     {
       "id": "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
@@ -48,7 +48,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "assurance.continuity.v1",
-      "description": "Assurance attaches only when a cold-root inception and active-key acceptance bind the same exact active key, inception event, and cold-root signature."
+      "description": "Assurance attaches only when a cold-root inception and no-earlier active-key acceptance bind the same exact active key, inception event, and cold-root signature."
     },
     {
       "id": "ASSURANCE-I-TRANSITION-PROOF-BINDING",
@@ -444,7 +444,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "comms.trusted-seed-private-relay.v1",
-      "description": "Every private seed read or write requires NIP-42 account authentication plus one unique current unexpired administrator-signed ACL head matching the account role, seed grant, h, private RID, and Marmot group transition."
+      "description": "Every private seed read or write uses embedding-configured seed and administrator trust roots, one-use authenticated request authority, trusted current state and time, and one unique current unexpired administrator-signed ACL head matching the account role, seed grant, h, private RID, and Marmot group transition."
     },
     {
       "id": "SOCIAL-I-AGENT-POLICY-LOCAL",

@@ -3101,36 +3101,31 @@ export function eventsAreByteIdentical(value: unknown): WorkspaceVerdict {
   return accepted({ byte_length: new TextEncoder().encode(events[0]).length });
 }
 
-export function evaluateWorkspacePrivateRelay(value: unknown): WorkspaceVerdict {
-  const input = snapshotJsonRecord(value);
-  if (input === null
-    || !hasExactMembers(input, [
-      "workspace_key",
-      "private_rid",
-      "role_authorized",
-      "governance_requested",
-      "seed_admission",
-    ])
-    || !isH64(input.workspace_key)
-    || !isRadicleRid(input.private_rid)
-    || typeof input.role_authorized !== "boolean"
-    || typeof input.governance_requested !== "boolean"
-    || !isRecord(input.seed_admission)) {
-    return rejected("workspace_schema_invalid");
-  }
-  if (!input.role_authorized || input.governance_requested) return rejected("policy_denied");
-  if (input.seed_admission.expected_administrator_account !== input.workspace_key
-    || input.seed_admission.private_rid !== input.private_rid) {
-    return rejected("host_unauthorized");
-  }
-  const admission = evaluateTrustedSeedAdmission(input.seed_admission);
-  if (admission.verdict !== "accept") return rejected("host_unauthorized");
-  return accepted({
-    acl_digest: admission.acl_digest,
-    private_rid: input.private_rid,
-    seed_nid: admission.seed_nid,
-    ...(admission.writer_ref === undefined ? {} : { writer_ref: admission.writer_ref }),
-  });
+export function createWorkspacePrivateRelayEvaluator(
+  trustedSeedAuthority: TrustedSeedAdmissionAuthority,
+): (capability: unknown, value: unknown) => WorkspaceVerdict {
+  const expectedAuthority = trustedSeedAuthority;
+  return (capability: unknown, value: unknown): WorkspaceVerdict => {
+    const input = snapshotJsonRecord(value);
+    if (input === null
+      || !hasExactMembers(input, [
+        "role_authorized",
+        "governance_requested",
+      ])
+      || typeof input.role_authorized !== "boolean"
+      || typeof input.governance_requested !== "boolean") {
+      return rejected("workspace_schema_invalid");
+    }
+    if (!input.role_authorized || input.governance_requested) return rejected("policy_denied");
+    const admission = evaluateTrustedSeedAdmission(expectedAuthority, capability);
+    if (admission.verdict !== "accept") return rejected("host_unauthorized");
+    return accepted({
+      acl_digest: admission.acl_digest,
+      private_rid: admission.private_rid,
+      seed_nid: admission.seed_nid,
+      ...(admission.writer_ref === undefined ? {} : { writer_ref: admission.writer_ref }),
+    });
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -3300,5 +3295,8 @@ import { Ajv } from "ajv";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import { proofBytes } from "./proof-bytes.js";
-import { evaluateTrustedSeedAdmission } from "./trusted-seed.js";
+import {
+  evaluateTrustedSeedAdmission,
+  type TrustedSeedAdmissionAuthority,
+} from "./trusted-seed.js";
 import { WORKSPACE_SCHEMAS } from "./workspace-schemas.js";

@@ -103,7 +103,10 @@ group can authorize multiple concurrent trusted seeds, and no seed is
 canonical. Each seed writes only its own authorized NID ref and gains no
 persona, repository-owner, group-administrator, full-node, or MLS authority.
 Private reads and writes require current NIP-42 authentication plus the unique
-current administrator-signed ACL head.
+current administrator-signed ACL head. The embedding captures the seed and
+administrator trust roots, current-state and time sources, and one-use consume
+boundary; requests cannot self-assert them, and replay or effect failure fails
+closed.
 
 ## Automation and signing
 

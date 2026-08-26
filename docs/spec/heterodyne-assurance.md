@@ -125,7 +125,10 @@ The active key publishes kind `31000`. Its outer `pubkey` equals
 `assurance_head` all equal the exact inception event ID, `cold_root` equals
 the inception cold root, and `cold_root_signature` byte-for-byte equals that
 inception's outer signature. `state` is `assured` and
-`downgrade_consent` is absent.
+`downgrade_consent` is absent. Its outer and content `created_at` MUST be equal
+and MUST be greater than or equal to the inception event's outer and content
+`created_at`. Equality is valid; an acceptance before inception is
+`assurance-reciprocal-proof-invalid`.
 
 After an accepted succession, the new active key publishes the same profile
 with the original inception binding retained and with `predecessor` and
@@ -465,7 +468,7 @@ repository-writer, agent, or persona authority by themselves.
 Assurance implementations preserve these registered invariants:
 
 - **ASSURANCE-I-CORE-OPTIONALITY:** Absent, invalid, stale, or withdrawn Assurance cannot invalidate a Core-valid active-key persona or alter NIP-01 or Marmot identity semantics.
-- **ASSURANCE-I-RECIPROCAL-ENROLLMENT:** Assurance attaches only when a cold-root inception and active-key acceptance bind the same exact active key, inception event, and cold-root signature.
+- **ASSURANCE-I-RECIPROCAL-ENROLLMENT:** Assurance attaches only when a cold-root inception and no-earlier active-key acceptance bind the same exact active key, inception event, and cold-root signature.
 - **ASSURANCE-I-TRANSITION-PROOF-BINDING:** Every succession authority proof, new-key acceptance, and witness receipt binds one identical digest containing every closed transition member except the proof signature values themselves.
 - **ASSURANCE-I-PIN-DOWNGRADE:** A pinned Assurance state survives disappearing or conflicting hints and can be downgraded only by the active key plus current recovery authority.
 - **ASSURANCE-I-SUCCESSION-NON-ALIASING:** A verified successor proves continuity but remains a distinct Nostr author and Marmot account whose authority does not silently inherit.

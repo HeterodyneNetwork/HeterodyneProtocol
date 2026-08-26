@@ -7,7 +7,11 @@ import { base58 } from "@scure/base";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import { proofBytes } from "./proof-bytes.js";
-import { type NostrSignedEvent, verifyEventSignature } from "./nostr.js";
+import {
+  snapshotAndVerifyNostrEvent,
+  type NostrSignedEvent,
+  type VerifiedNostrEvent,
+} from "./nostr.js";
 import { didKeyFromEd25519 } from "./radicle.js";
 import { reasonCodeValues } from "./reason-codes.js";
 import {
@@ -189,10 +193,10 @@ export function validateClaimId(body: ClaimSemanticBody): void {
 }
 
 export function validateClaimEnvelope(
-  event: NostrSignedEvent,
+  sourceEvent: NostrSignedEvent,
   context: ClaimEnvelopeContext,
 ): ClaimSemanticBody {
-  assertNip01EventStructure(event);
+  const event = requireVerifiedClaimEvent(sourceEvent);
   assertAddressedCommsEvent(event, CLAIM_KIND);
   const parsed = parseCanonicalContent(event.content, "claim") as unknown;
   if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) &&
@@ -209,7 +213,6 @@ export function validateClaimEnvelope(
   }
   validateClaimId(body);
   assertSingleAddress(event, body.claim_id);
-  assertOuterSignature(event);
   if (context.profile_revision !== 2 || body.profile_revision !== context.profile_revision) {
     throw new Error("claim-schema-invalid: registry revision does not match the supplied context");
   }
@@ -239,8 +242,8 @@ export function revocationProofPayload(body: RevocationProofBody): Uint8Array {
   });
 }
 
-export function validateClaimRevocationEnvelope(event: NostrSignedEvent): VerifiedRevocation {
-  assertNip01EventStructure(event);
+export function validateClaimRevocationEnvelope(sourceEvent: NostrSignedEvent): VerifiedRevocation {
+  const event = requireVerifiedClaimEvent(sourceEvent);
   assertAddressedCommsEvent(event, REVOCATION_KIND);
   const parsed = parseCanonicalContent(event.content, "revocation") as unknown;
   validateClaimRevocationSchemaOrThrow(parsed);
@@ -253,7 +256,6 @@ export function validateClaimRevocationEnvelope(event: NostrSignedEvent): Verifi
   if (revocation.revoked_at !== event.created_at) {
     throw new Error("claim-schema-invalid: revoked_at must equal signed event created_at");
   }
-  assertOuterSignature(event);
   verifyRevocationProof(event, revocation);
   return {
     ...revocation,
@@ -741,40 +743,14 @@ function assertAddressedCommsEvent(event: NostrSignedEvent, expectedKind: number
   }
 }
 
-function assertNip01EventStructure(event: NostrSignedEvent): void {
-  if (event === null || Array.isArray(event) || typeof event !== "object") {
-    throw new Error("claim-event-signature-invalid: NIP-01 event structure must be an object");
+function requireVerifiedClaimEvent(value: unknown): VerifiedNostrEvent {
+  const event = snapshotAndVerifyNostrEvent(value);
+  if (event === null) {
+    throw new Error(
+      "claim-event-signature-invalid: invalid canonical NIP-01 id or BIP-340 signature",
+    );
   }
-  const fields = Reflect.ownKeys(event);
-  if (
-    fields.some((field) => typeof field !== "string") ||
-    fields.length !== NIP01_SIGNED_EVENT_FIELDS.length ||
-    [...(fields as string[])].sort().some((field, index) => field !== NIP01_SIGNED_EVENT_FIELDS[index])
-  ) {
-    throw new Error("claim-event-signature-invalid: NIP-01 signed event has unexpected or missing fields");
-  }
-  if (
-    typeof event.id !== "string" ||
-    typeof event.pubkey !== "string" ||
-    !LOWER_HEX_32_PATTERN.test(event.id) ||
-    !LOWER_HEX_32_PATTERN.test(event.pubkey)
-  ) {
-    throw new Error("claim-event-signature-invalid: NIP-01 id and pubkey require lowercase 64-hex encoding");
-  }
-  if (typeof event.sig !== "string" || !/^[0-9a-f]{128}$/.test(event.sig)) {
-    throw new Error("claim-event-signature-invalid: NIP-01 sig requires lowercase 128-hex encoding");
-  }
-  if (!Number.isSafeInteger(event.created_at) || event.created_at < 0) {
-    throw new Error("claim-event-signature-invalid: NIP-01 created_at must be a nonnegative safe integer");
-  }
-  if (!Number.isInteger(event.kind) || typeof event.content !== "string" || !Array.isArray(event.tags)) {
-    throw new Error("claim-event-signature-invalid: NIP-01 kind, content, or tags has the wrong type");
-  }
-  for (const tag of event.tags) {
-    if (!Array.isArray(tag) || tag.length === 0 || tag.some((member) => typeof member !== "string")) {
-      throw new Error("claim-event-signature-invalid: every NIP-01 tag must be a non-empty string array");
-    }
-  }
+  return event;
 }
 
 function assertSingleAddress(event: NostrSignedEvent, expected: string): void {
@@ -807,15 +783,7 @@ function parseCanonicalContent(content: string, label: string): unknown {
   return parsed;
 }
 
-function assertOuterSignature(event: NostrSignedEvent): void {
-  try {
-    if (!verifyEventSignature(event)) throw new Error("invalid");
-  } catch {
-    throw new Error("claim-event-signature-invalid: invalid canonical NIP-01 id or BIP-340 signature");
-  }
-}
-
-function verifyRevocationProof(event: NostrSignedEvent, revocation: ClaimRevocation): void {
+function verifyRevocationProof(event: VerifiedNostrEvent, revocation: ClaimRevocation): void {
   if (revocation.revoker.type === "nostr-secp256k1") {
     if (revocation.proof !== undefined) {
       throw new Error("claim-key-reference-invalid: Nostr revocation uses only the outer event signature");

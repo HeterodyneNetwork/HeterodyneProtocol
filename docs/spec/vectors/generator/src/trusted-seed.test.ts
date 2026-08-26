@@ -5,298 +5,285 @@ import { signEvent } from "./nostr.js";
 
 const adminPrivateKey = "11".repeat(32);
 const administratorAccount = bytesToHex(schnorr.getPublicKey(adminPrivateKey));
-const accountA = "22".repeat(32);
-const accountB = "33".repeat(32);
-const seedA = "did:key:z6MkwQp8f8Y11L3WJYJ4hXa1";
-const seedB = "did:key:z6Mkq7ZBA1Vh9fVhKo2H2iW4";
+const account = "22".repeat(32);
+const seedNid = "did:key:z6MkwQp8f8Y11L3WJYJ4hXa1";
 const privateRid = "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5";
+const route = "private-routing-id";
+const writerRef = "refs/xyz.heterodyne.marmot/relays/seed-a";
 const now = 1_785_000_100;
-const eventPrivateKey = "77".repeat(32);
-const eventAuxRand = "88".repeat(32);
+const transition = {
+  generation: 7,
+  marmot_routing_event_id: "44".repeat(32),
+  routing_binding_sha256: "55".repeat(32),
+};
 
-async function moduleUnderTest() {
-  return import("./trusted-seed.js");
+type Authority = object;
+type Capability = object;
+type AuthorityBundle = {
+  authority: Authority;
+  mintRequestCapability(session: unknown, request: unknown): Capability | null;
+};
+type TrustedSeedApi = {
+  createTrustedSeedAdmissionAuthority?: (config: unknown) => AuthorityBundle | null;
+  evaluateTrustedSeedAdmission?: (
+    authority: unknown,
+    request: unknown,
+  ) => { verdict: "accept" | "reject"; reason_code?: string; seed_nid?: string };
+  trustedSeedAclProofBytes(value: Record<string, unknown>): Uint8Array;
+};
+
+async function moduleUnderTest(): Promise<TrustedSeedApi> {
+  return await import("./trusted-seed.js") as TrustedSeedApi;
+}
+
+function authResult(patch: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    verdict: "accept",
+    account_key: account,
+    connection_id: "connection-1",
+    challenge_id: "challenge-1",
+    request_id: "request-1",
+    authenticated_at: now - 1,
+    expires_at: now + 60,
+    ...patch,
+  };
 }
 
 async function signedAcl(
+  api: TrustedSeedApi,
   patch: Record<string, unknown> = {},
 ): Promise<Record<string, unknown>> {
-  const { trustedSeedAclProofBytes } = await moduleUnderTest();
   const acl = {
     profile: "heterodyne.trusted-seed-acl.v1",
     spec_version: "heterodyne/0.5.0",
     administrator_account: administratorAccount,
-    accounts: [
-      { account_key: accountA, roles: ["read", "write"] },
-      { account_key: accountB, roles: ["read"] },
-    ],
-    h: "private-routing-id",
+    accounts: [{ account_key: account, roles: ["read", "write"] }],
+    h: route,
     private_rid: privateRid,
-    seed_grants: [
-      {
-        seed_nid: seedA,
-        relay_endpoint: "wss://seed-a.example/group",
-        radicle_endpoint: privateRid,
-        writer_ref: "refs/xyz.heterodyne.marmot/relays/seed-a",
-        roles: ["read", "write"],
-        state: "active",
-      },
-      {
-        seed_nid: seedB,
-        relay_endpoint: "wss://seed-b.example/group",
-        radicle_endpoint: privateRid,
-        writer_ref: "refs/xyz.heterodyne.marmot/relays/seed-b",
-        roles: ["read", "write"],
-        state: "active",
-      },
-    ],
+    seed_grants: [{
+      seed_nid: seedNid,
+      relay_endpoint: "wss://seed-a.example/group",
+      radicle_endpoint: privateRid,
+      writer_ref: writerRef,
+      roles: ["read", "write"],
+      state: "active",
+    }],
     sequence: 0,
     predecessor: null,
-    group_transition: {
-      generation: 7,
-      marmot_routing_event_id: "44".repeat(32),
-      routing_binding_sha256: "55".repeat(32),
-    },
+    group_transition: transition,
     issued_at: now - 100,
     expires_at: now + 1_000,
     ...patch,
   };
   return {
     ...acl,
-    signature: bytesToHex(schnorr.sign(trustedSeedAclProofBytes(acl), adminPrivateKey)),
+    signature: bytesToHex(schnorr.sign(
+      api.trustedSeedAclProofBytes(acl),
+      adminPrivateKey,
+    )),
   };
 }
 
-async function request(
-  patch: Record<string, unknown> = {},
-): Promise<Record<string, unknown>> {
-  return {
-    acl_candidates: [await signedAcl()],
-    expected_administrator_account: administratorAccount,
-    authenticated_account: accountA,
-    nip42_authenticated: true,
-    operation: "write",
-    seed_nid: seedA,
-    h: "private-routing-id",
-    private_rid: privateRid,
-    writer_ref: "refs/xyz.heterodyne.marmot/relays/seed-a",
-    group_transition: {
-      generation: 7,
-      marmot_routing_event_id: "44".repeat(32),
-      routing_binding_sha256: "55".repeat(32),
-    },
-    now,
-    nip01_raw: await signedMarmotEvent(),
-    ...patch,
-  };
-}
-
-async function readRequest(
-  patch: Record<string, unknown> = {},
-): Promise<Record<string, unknown>> {
-  const value = await request({ operation: "read" });
-  delete value.writer_ref;
-  delete value.nip01_raw;
-  return { ...value, ...patch };
-}
-
-async function signedMarmotEvent(
-  patch: { kind?: number; h?: string } = {},
-): Promise<string> {
-  const event = await signEvent({
-    secretKey: eventPrivateKey,
+async function signedMarmotEvent(): Promise<string> {
+  return JSON.stringify(await signEvent({
+    secretKey: "77".repeat(32),
     created_at: now - 1,
-    kind: patch.kind ?? 445,
-    tags: [["h", patch.h ?? "private-routing-id"]],
+    kind: 445,
+    tags: [["h", route]],
     content: "marmot-ciphertext",
-    auxRand: eventAuxRand,
-  });
-  return JSON.stringify(event);
+    auxRand: "88".repeat(32),
+  }));
 }
 
-describe("trusted private seed admission", () => {
-  it("authenticates with NIP-42 and admits each concurrent seed only to its own ref", async () => {
-    const { evaluateTrustedSeedAdmission } = await moduleUnderTest();
-    const acl = await signedAcl();
-    const exactRaw = await signedMarmotEvent();
-    const first = await request({ acl_candidates: [acl], nip01_raw: exactRaw });
-    const second = await request({
-      acl_candidates: [acl],
-      seed_nid: seedB,
-      writer_ref: "refs/xyz.heterodyne.marmot/relays/seed-b",
-    });
+async function harness(overrides: {
+  clock?: () => unknown;
+  authenticate?: () => unknown;
+  loadState?: () => unknown;
+  consume?: () => unknown;
+} = {}) {
+  const api = await moduleUnderTest();
+  expect(api.createTrustedSeedAdmissionAuthority).toBeTypeOf("function");
+  const acl = await signedAcl(api);
+  let state: unknown = {
+    administrator_account: administratorAccount,
+    acl_candidates: [acl],
+    previous_acl: null,
+    group_transition: transition,
+    revision: 4,
+  };
+  let consumeResult: unknown = { verdict: "accept" };
+  const config = {
+    seed_nid: seedNid,
+    administrator_account: administratorAccount,
+    trusted_now: overrides.clock ?? (() => ({ now })),
+    authenticate_nip42: overrides.authenticate ?? (() => authResult()),
+    load_current_state: overrides.loadState ?? (() => state),
+    consume_once: overrides.consume ?? (() => consumeResult),
+  };
+  const bundle = api.createTrustedSeedAdmissionAuthority?.(config);
+  expect(bundle).not.toBeNull();
+  const write = {
+    operation: "write",
+    h: route,
+    private_rid: privateRid,
+    writer_ref: writerRef,
+    nip01_raw: await signedMarmotEvent(),
+  };
+  return {
+    api,
+    bundle: bundle!,
+    config,
+    write,
+    setState(value: unknown) { state = value; },
+    setConsumeResult(value: unknown) { consumeResult = value; },
+  };
+}
 
-    expect(evaluateTrustedSeedAdmission(first)).toMatchObject({
+describe("trusted private seed admission authority", () => {
+  it("derives authentication, trust roots, time, and current state outside caller input", async () => {
+    const { api, bundle, write } = await harness();
+    const capability = bundle.mintRequestCapability({ connection: "opaque" }, write);
+    expect(capability).not.toBeNull();
+    expect(api.evaluateTrustedSeedAdmission?.(bundle.authority, capability)).toMatchObject({
       verdict: "accept",
-      seed_nid: seedA,
-      writer_ref: "refs/xyz.heterodyne.marmot/relays/seed-a",
-      nip01_raw: exactRaw,
-    });
-    expect(evaluateTrustedSeedAdmission(second)).toMatchObject({
-      verdict: "accept",
-      seed_nid: seedB,
-      writer_ref: "refs/xyz.heterodyne.marmot/relays/seed-b",
-    });
-    expect(evaluateTrustedSeedAdmission(await request({
-      acl_candidates: [acl],
-      writer_ref: "refs/xyz.heterodyne.marmot/relays/seed-b",
-    }))).toEqual({ verdict: "reject", reason_code: "trusted-seed-unauthorized" });
-  });
-
-  it("verifies the complete signed kind-445 event, exact id/signature, and routing h", async () => {
-    const { evaluateTrustedSeedAdmission } = await moduleUnderTest();
-    const wrongKind = await signedMarmotEvent({ kind: 1 });
-    const wrongRoute = await signedMarmotEvent({ h: "other-routing-id" });
-    const badId = JSON.stringify({
-      ...JSON.parse(await signedMarmotEvent()) as Record<string, unknown>,
-      id: "99".repeat(32),
-    });
-    const badSignature = JSON.stringify({
-      ...JSON.parse(await signedMarmotEvent()) as Record<string, unknown>,
-      sig: "99".repeat(64),
-    });
-    const invalidPublicKey = JSON.stringify({
-      ...JSON.parse(await signedMarmotEvent()) as Record<string, unknown>,
-      pubkey: "ff".repeat(32),
+      seed_nid: seedNid,
     });
 
-    for (const nip01_raw of [
-      wrongKind,
-      badId,
-      badSignature,
-      invalidPublicKey,
-      "not-json",
+    for (const untrusted of [
+      { ...write, nip42_authenticated: true },
+      { ...write, authenticated_account: account },
+      { ...write, expected_administrator_account: administratorAccount },
+      { ...write, acl_candidates: [] },
+      { ...write, previous_acl: {} },
+      { ...write, group_transition: transition },
+      { ...write, now },
+      { ...write, seed_nid: seedNid },
     ]) {
-      expect(evaluateTrustedSeedAdmission(await request({ nip01_raw }))).toEqual({
-        verdict: "reject",
-        reason_code: "trusted-seed-event-invalid",
-      });
+      expect(bundle.mintRequestCapability({}, untrusted)).toBeNull();
     }
-    expect(evaluateTrustedSeedAdmission(await request({ nip01_raw: wrongRoute })))
-      .toEqual({ verdict: "reject", reason_code: "trusted-seed-route-mismatch" });
   });
 
-  it("fails closed for missing, expired, stale, conflicting, and ambiguous ACL state", async () => {
-    const { evaluateTrustedSeedAdmission, trustedSeedAclDigest } = await moduleUnderTest();
-    expect(evaluateTrustedSeedAdmission(await request({ acl_candidates: [] })))
-      .toEqual({ verdict: "reject", reason_code: "trusted-seed-acl-missing" });
-    expect(evaluateTrustedSeedAdmission(await request({
-      acl_candidates: [await signedAcl({ expires_at: now })],
-    }))).toEqual({ verdict: "reject", reason_code: "trusted-seed-acl-expired" });
+  it("rejects cross-authority and repeated capabilities after burning before decision", async () => {
+    const first = await harness();
+    const second = await harness();
+    const capability = first.bundle.mintRequestCapability({}, first.write);
+    expect(first.api.evaluateTrustedSeedAdmission?.(second.bundle.authority, capability))
+      .toEqual({ verdict: "reject", reason_code: "trusted-seed-request-invalid" });
 
-    const previous = await signedAcl();
-    expect(evaluateTrustedSeedAdmission(await request({
-      acl_candidates: [previous],
-      previous_acl: previous,
-    }))).toEqual({ verdict: "reject", reason_code: "trusted-seed-acl-stale" });
+    const ownCapability = first.bundle.mintRequestCapability({}, first.write);
+    expect(first.api.evaluateTrustedSeedAdmission?.(first.bundle.authority, ownCapability))
+      .toMatchObject({ verdict: "accept" });
+    expect(first.api.evaluateTrustedSeedAdmission?.(first.bundle.authority, ownCapability))
+      .toEqual({ verdict: "reject", reason_code: "trusted-seed-request-replay" });
+  });
 
-    const conflictingA = await signedAcl({ accounts: [{ account_key: accountA, roles: ["read"] }] });
-    const conflictingB = await signedAcl({ accounts: [{ account_key: accountA, roles: ["write"] }] });
-    expect(evaluateTrustedSeedAdmission(await request({
-      acl_candidates: [conflictingA, conflictingB],
-    }))).toEqual({ verdict: "reject", reason_code: "trusted-seed-acl-conflict" });
-
-    const previousDigest = trustedSeedAclDigest(previous);
-    const ambiguous = await signedAcl({
-      sequence: 1,
-      predecessor: `${previousDigest.slice(0, -1)}${previousDigest.endsWith("0") ? "1" : "0"}`,
+  it("burns before current-state validation and fails a repaired retry as replay", async () => {
+    const fixture = await harness();
+    const capability = fixture.bundle.mintRequestCapability({}, fixture.write);
+    fixture.setState({ malformed: true });
+    expect(fixture.api.evaluateTrustedSeedAdmission?.(fixture.bundle.authority, capability))
+      .toEqual({ verdict: "reject", reason_code: "trusted-seed-acl-invalid" });
+    const acl = await signedAcl(fixture.api);
+    fixture.setState({
+      administrator_account: administratorAccount,
+      acl_candidates: [acl],
+      previous_acl: null,
+      group_transition: transition,
+      revision: 5,
     });
-    expect(evaluateTrustedSeedAdmission(await request({
-      acl_candidates: [ambiguous],
-      previous_acl: previous,
-    }))).toEqual({ verdict: "reject", reason_code: "trusted-seed-acl-ambiguous" });
+    expect(fixture.api.evaluateTrustedSeedAdmission?.(fixture.bundle.authority, capability))
+      .toEqual({ verdict: "reject", reason_code: "trusted-seed-request-replay" });
   });
 
-  it("rejects revoked, unauthorized, unauthenticated, and route-mismatched access", async () => {
-    const { evaluateTrustedSeedAdmission } = await moduleUnderTest();
-    const revoked = await signedAcl({
-      seed_grants: [{
-        seed_nid: seedA,
+  it("snapshots every callback result and rejects accessors without invoking them", async () => {
+    let getterCalls = 0;
+    const accessorAuth = Object.defineProperty(
+      { ...authResult() },
+      "account_key",
+      {
+        enumerable: true,
+        get() {
+          getterCalls += 1;
+          return account;
+        },
+      },
+    );
+    const authFixture = await harness({ authenticate: () => accessorAuth });
+    expect(authFixture.bundle.mintRequestCapability({}, authFixture.write)).toBeNull();
+    expect(getterCalls).toBe(0);
+
+    for (const override of [
+      { clock: () => ({ now, extra: true }) },
+      { authenticate: () => ({ ...authResult(), extra: true }) },
+      { loadState: () => ({ malformed: true }) },
+      { consume: () => ({ verdict: "accept", extra: true }) },
+    ]) {
+      const fixture = await harness(override);
+      const capability = fixture.bundle.mintRequestCapability({}, fixture.write);
+      const result = fixture.api.evaluateTrustedSeedAdmission?.(
+        fixture.bundle.authority,
+        capability,
+      );
+      expect(result?.verdict).toBe("reject");
+    }
+  });
+
+  it("captures callback identities once and rejects proxy configuration without traps", async () => {
+    const fixture = await harness();
+    fixture.config.trusted_now = () => ({ now: now + 100_000 });
+    const capability = fixture.bundle.mintRequestCapability({}, fixture.write);
+    expect(capability).not.toBeNull();
+
+    let traps = 0;
+    const proxy = new Proxy(fixture.config, {
+      ownKeys() {
+        traps += 1;
+        return Reflect.ownKeys(fixture.config);
+      },
+    });
+    expect(fixture.api.createTrustedSeedAdmissionAuthority?.(proxy)).toBeNull();
+    expect(traps).toBe(0);
+  });
+
+  it("reloads current ACL state and enforces revocation, expiry, and route state", async () => {
+    for (const aclPatch of [
+      { expires_at: now },
+      { h: "different-route" },
+      { seed_grants: [{
+        seed_nid: seedNid,
         relay_endpoint: "wss://seed-a.example/group",
         radicle_endpoint: privateRid,
-        writer_ref: "refs/xyz.heterodyne.marmot/relays/seed-a",
+        writer_ref: writerRef,
         roles: ["read", "write"],
         state: "revoked",
-      }],
-    });
-    expect(evaluateTrustedSeedAdmission(await request({ acl_candidates: [revoked] })))
-      .toEqual({ verdict: "reject", reason_code: "trusted-seed-revoked" });
-    expect(evaluateTrustedSeedAdmission(await request({ authenticated_account: "66".repeat(32) })))
-      .toEqual({ verdict: "reject", reason_code: "trusted-seed-unauthorized" });
-    expect(evaluateTrustedSeedAdmission(await request({ nip42_authenticated: false })))
-      .toEqual({ verdict: "reject", reason_code: "trusted-seed-nip42-required" });
-    expect(evaluateTrustedSeedAdmission(await request({ h: "wrong-route" })))
-      .toEqual({ verdict: "reject", reason_code: "trusted-seed-route-mismatch" });
-    expect(evaluateTrustedSeedAdmission(await request({
-      group_transition: {
-        generation: 8,
-        marmot_routing_event_id: "77".repeat(32),
-        routing_binding_sha256: "88".repeat(32),
-      },
-    }))).toEqual({ verdict: "reject", reason_code: "trusted-seed-acl-stale" });
-  });
-
-  it("classifies a bad ACL signature as invalid rather than unauthorized", async () => {
-    const { evaluateTrustedSeedAdmission } = await moduleUnderTest();
-    const invalidSignature = {
-      ...await signedAcl(),
-      signature: "00".repeat(64),
-    };
-    expect(evaluateTrustedSeedAdmission(await request({
-      acl_candidates: [invalidSignature],
-    }))).toEqual({ verdict: "reject", reason_code: "trusted-seed-acl-invalid" });
-    expect(evaluateTrustedSeedAdmission(await request({
-      acl_candidates: [invalidSignature],
-      h: "wrong-route",
-    }))).toEqual({ verdict: "reject", reason_code: "trusted-seed-acl-invalid" });
-  });
-
-  it("closes request metadata to exact allowed top-level and group-transition members", async () => {
-    const { evaluateTrustedSeedAdmission } = await moduleUnderTest();
-    expect(evaluateTrustedSeedAdmission(null)).toEqual({
-      verdict: "reject",
-      reason_code: "trusted-seed-request-invalid",
-    });
-    const nestedExtra = {
-      generation: 7,
-      marmot_routing_event_id: "44".repeat(32),
-      routing_binding_sha256: "55".repeat(32),
-      audit_identifier: "private-audit-id",
-    };
-    for (const patch of [{ mls_leaf: "secret" }, { opaque_metadata: {} }, {
-      group_transition: nestedExtra,
-    }]) {
-      expect(evaluateTrustedSeedAdmission(await request(patch)), JSON.stringify(patch)).toEqual({
-        verdict: "reject",
-        reason_code: "trusted-seed-request-invalid",
+      }] },
+    ]) {
+      const fixture = await harness();
+      fixture.setState({
+        administrator_account: administratorAccount,
+        acl_candidates: [await signedAcl(fixture.api, aclPatch)],
+        previous_acl: null,
+        group_transition: transition,
+        revision: 5,
       });
+      const capability = fixture.bundle.mintRequestCapability({}, fixture.write);
+      expect(fixture.api.evaluateTrustedSeedAdmission?.(fixture.bundle.authority, capability)?.verdict)
+        .toBe("reject");
     }
   });
 
-  it("validates optional types and operation-specific members before authorization", async () => {
-    const { evaluateTrustedSeedAdmission } = await moduleUnderTest();
-    expect(evaluateTrustedSeedAdmission(await readRequest())).toMatchObject({
-      verdict: "accept",
-      seed_nid: seedA,
-    });
-    expect(evaluateTrustedSeedAdmission(await readRequest())).not.toHaveProperty("writer_ref");
-    expect(evaluateTrustedSeedAdmission(await readRequest())).not.toHaveProperty("nip01_raw");
-
-    for (const invalid of [
-      await readRequest({ writer_ref: "refs/xyz.heterodyne.marmot/relays/seed-a" }),
-      await readRequest({ nip01_raw: await signedMarmotEvent() }),
-      await readRequest({ nip01_raw: { plaintext: "secret" } }),
-      await request({ writer_ref: undefined }),
-      await request({ nip01_raw: undefined }),
-      await request({ writer_ref: { ref: "seed-a" } }),
-      await request({ previous_acl: null }),
-      await request({ previous_acl: [] }),
-      await request({ previous_acl: "previous" }),
+  it("fails closed for replay, conflict, malformed, throwing, or uncertain consume results", async () => {
+    for (const consume of [
+      () => ({ verdict: "replay" }),
+      () => ({ verdict: "conflict" }),
+      () => ({ verdict: "effect-failed" }),
+      () => ({ verdict: "accept", revision: 7 }),
+      () => { throw new Error("persistence unavailable"); },
     ]) {
-      expect(evaluateTrustedSeedAdmission(invalid)).toEqual({
-        verdict: "reject",
-        reason_code: "trusted-seed-request-invalid",
-      });
+      const fixture = await harness({ consume });
+      const capability = fixture.bundle.mintRequestCapability({}, fixture.write);
+      expect(fixture.api.evaluateTrustedSeedAdmission?.(fixture.bundle.authority, capability)?.verdict)
+        .toBe("reject");
     }
   });
 });

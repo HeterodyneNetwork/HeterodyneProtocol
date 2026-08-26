@@ -107,11 +107,11 @@ reviewers can trace the threat control to its owner and feature binding.
 
 - **CORE-I-IDENTITY-INTEGRITY:** The active persona key and its valid NIP-01 signature are authoritative for baseline persona authorship; hints, repositories, caches, and optional Assurance cannot override them.
 - **CORE-I-NID-DELEGATION-DUAL-PROOF:** A writer NID enters a repository union only after owner authorization and the NID's Ed25519 proof verify over the same exact binding.
-- **CORE-I-VERIFY-BEFORE-USE:** Every signed object is locally signature-verified and, where applicable, delegation-checked before rendering, storage, or authorization.
+- **CORE-I-VERIFY-BEFORE-USE:** Every signed object is captured once into an independently owned immutable value, locally signature-verified from that value, and never reread from attacker-controlled source state before rendering, storage, or authorization.
 - **CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY:** Core discovery does not depend on a centralized persona, npub, RID, or serving-node directory.
 - **CORE-I-KEY-MATERIAL-AT-REST:** Persona nsec, NID secrets, and sensitive cached identity material are protected by the Core keys-repository profile, including NIP-49 wrapping where applicable.
 - **ASSURANCE-I-CORE-OPTIONALITY:** Absent, invalid, stale, or withdrawn Assurance cannot invalidate a Core-valid active-key persona or alter NIP-01 or Marmot identity semantics.
-- **ASSURANCE-I-RECIPROCAL-ENROLLMENT:** Assurance attaches only when a cold-root inception and active-key acceptance bind the same exact active key, inception event, and cold-root signature.
+- **ASSURANCE-I-RECIPROCAL-ENROLLMENT:** Assurance attaches only when a cold-root inception and no-earlier active-key acceptance bind the same exact active key, inception event, and cold-root signature.
 - **ASSURANCE-I-TRANSITION-PROOF-BINDING:** Every succession authority proof, new-key acceptance, and witness receipt binds one identical digest containing every closed transition member except the proof signature values themselves.
 - **ASSURANCE-I-PIN-DOWNGRADE:** A pinned Assurance state survives disappearing or conflicting hints and can be downgraded only by the active key plus current recovery authority.
 - **ASSURANCE-I-SUCCESSION-NON-ALIASING:** A verified successor proves continuity but remains a distinct Nostr author and Marmot account whose authority does not silently inherit.
@@ -162,7 +162,7 @@ reviewers can trace the threat control to its owner and feature binding.
 - **COMMS-I-RADICLE-ROUTING-AUTHORITY:** Only a canonical Marmot routing commit by its active account-key administrator can authorize a routing binding and repository genesis with the same h, RID, routing-event ID, and authorized writer refs.
 - **COMMS-I-RADICLE-NON-ERASURE:** Retention expiry stops conforming advertisement and replication but never claims erasure of independent Git objects, clones, exports, or backups.
 - **COMMS-I-TRUSTED-SEED-CONFINEMENT:** A trusted seed receives only routing metadata and exact encrypted event bytes, writes only its own active authorized NID ref, and gains no persona, repository-owner, group-admin, full-node, or MLS authority.
-- **COMMS-I-PRIVATE-RELAY-ACL:** Every private seed read or write requires NIP-42 account authentication plus one unique current unexpired administrator-signed ACL head matching the account role, seed grant, h, private RID, and Marmot group transition.
+- **COMMS-I-PRIVATE-RELAY-ACL:** Every private seed read or write uses embedding-configured seed and administrator trust roots, one-use authenticated request authority, trusted current state and time, and one unique current unexpired administrator-signed ACL head matching the account role, seed grant, h, private RID, and Marmot group transition.
 - **SOCIAL-I-AGENT-POLICY-LOCAL:** Agent-policy receipts inform publicly, but only an explicitly subscribed and verified current policy list changes a client's local visibility.
 - **SOCIAL-I-AGENT-AUTHORSHIP-EXACT:** Agent-policy receipts, corrections, and subscriber-local enforcement bind the actual signed event author and verified Comms agent association; no moderator or associated agent becomes an event author without producing that event's signature.
 - **WORKSPACE-I-NO-AMBIENT-AUTHORITY:** Workspace affiliation, optional Assurance continuity, or active-key succession alone grants no role, relationship, delegate, seed, or resource capability; each subordinate authority requires explicit current-key reauthorization.

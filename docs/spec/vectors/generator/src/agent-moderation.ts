@@ -2,7 +2,7 @@ import { Ajv2020 } from "ajv/dist/2020.js";
 import receiptSchema from "../../../schemas/social/agent-policy-receipt-v1.schema.json" with { type: "json" };
 import correctionSchema from "../../../schemas/social/agent-policy-correction-v1.schema.json" with { type: "json" };
 import type { AgentAssociation } from "./agent-authorship.js";
-import { isStrictNostrSignedEvent, type NostrSignedEvent } from "./nostr.js";
+import { snapshotAndVerifyNostrEvent, type NostrSignedEvent } from "./nostr.js";
 
 export type AgentPolicyReason =
   | "agent-attribution-missing"
@@ -87,18 +87,22 @@ export function validateAgentPolicyReceipt(
   event: NostrSignedEvent,
   target: AgentPolicyTarget,
 ): AgentPolicyReceipt {
+  const receiptEvent = snapshotAndVerifyNostrEvent(event);
+  const targetEvent = target === undefined
+    ? null
+    : snapshotAndVerifyNostrEvent(target.event);
   if (
     target === undefined
-    || event.kind !== 1985
-    || !validSignedEvent(event)
-    || !validSignedEvent(target.event)
+    || receiptEvent === null
+    || targetEvent === null
+    || receiptEvent.kind !== 1985
   ) {
     throw new Error("agent-policy-receipt-invalid");
   }
-  const namespaceTags = tags(event, "L");
-  const labelTags = tags(event, "l");
-  const eventTags = tags(event, "e");
-  const authorTags = tags(event, "p");
+  const namespaceTags = tags(receiptEvent, "L");
+  const labelTags = tags(receiptEvent, "l");
+  const eventTags = tags(receiptEvent, "e");
+  const authorTags = tags(receiptEvent, "p");
   if (
     namespaceTags.length !== 1
     || namespaceTags[0].length !== 2
@@ -116,40 +120,41 @@ export function validateAgentPolicyReceipt(
   ) {
     throw new Error("agent-policy-receipt-invalid");
   }
-  const content = parseJson(event.content);
+  const content = parseJson(receiptEvent.content);
   if (!validateReceiptContent(content)) {
     throw new Error("agent-policy-receipt-invalid");
   }
   const value = content as Omit<AgentPolicyReceipt, "receipt_id" | "issuer">;
   if (
     value.event_id !== eventTags[0][1]
-    || value.event_id !== target.event.id
+    || value.event_id !== targetEvent.id
     || value.event_author !== authorTags[0][1]
-    || value.event_author !== target.event.pubkey
+    || value.event_author !== targetEvent.pubkey
     || !equalAssociation(value.agent_association, target.verified_agent_association)
     || target.verified_agent_association?.kind === "key"
-      && target.verified_agent_association.value !== target.event.pubkey
+      && target.verified_agent_association.value !== targetEvent.pubkey
     || value.reason !== labelTags[0][1]
   ) {
     throw new Error("agent-policy-receipt-invalid");
   }
-  return { receipt_id: event.id, issuer: event.pubkey, ...value };
+  return { receipt_id: receiptEvent.id, issuer: receiptEvent.pubkey, ...value };
 }
 
 export function validateAgentPolicyList(
   event: NostrSignedEvent,
   receipts: ReadonlyMap<string, AgentPolicyReceipt>,
 ): AgentPolicyList {
+  const verified = snapshotAndVerifyNostrEvent(event);
   if (
-    event.kind !== 10000
-    || event.content !== ""
-    || !validSignedEvent(event)
-    || countExactTag(event, ["heterodyne", "social-agent-policy-list-v1"]) !== 1
-    || countExactTag(event, ["spec_version", "heterodyne/0.5.0"]) !== 1
+    verified === null
+    || verified.kind !== 10000
+    || verified.content !== ""
+    || countExactTag(verified, ["heterodyne", "social-agent-policy-list-v1"]) !== 1
+    || countExactTag(verified, ["spec_version", "heterodyne/0.5.0"]) !== 1
   ) {
     throw new Error("agent-policy-binding-invalid");
   }
-  const entries = tags(event, "agent_violation").map((tag) => {
+  const entries = tags(verified, "agent_violation").map((tag) => {
     if (
       tag.length !== 4
       || !HEX_32.test(tag[1])
@@ -163,8 +168,8 @@ export function validateAgentPolicyList(
       receipt === undefined
       || receipt.event_author !== tag[1]
       || receipt.reason !== tag[3]
-      || !hasReferenceTag(event, "p", tag[1])
-      || !hasReferenceTag(event, "e", tag[2])
+      || !hasReferenceTag(verified, "p", tag[1])
+      || !hasReferenceTag(verified, "e", tag[2])
     ) {
       throw new Error("agent-policy-binding-invalid");
     }
@@ -175,7 +180,7 @@ export function validateAgentPolicyList(
     };
   });
   if (entries.length === 0) throw new Error("agent-policy-binding-invalid");
-  return { policy_persona: event.pubkey, event_id: event.id, entries };
+  return { policy_persona: verified.pubkey, event_id: verified.id, entries };
 }
 
 export function applySubscribedAgentPolicy(
@@ -207,18 +212,19 @@ export function validateAgentPolicyCorrection(
   event: NostrSignedEvent,
   receipt: AgentPolicyReceipt,
 ): AgentPolicyCorrection {
+  const verified = snapshotAndVerifyNostrEvent(event);
   if (
     receipt === undefined
-    || event.kind !== 1985
-    || !validSignedEvent(event)
-    || event.pubkey !== receipt.issuer
+    || verified === null
+    || verified.kind !== 1985
+    || verified.pubkey !== receipt.issuer
   ) {
     throw new Error("agent-policy-receipt-invalid");
   }
-  const namespaceTags = tags(event, "L");
-  const labelTags = tags(event, "l");
-  const receiptTags = tags(event, "e");
-  const authorTags = tags(event, "p");
+  const namespaceTags = tags(verified, "L");
+  const labelTags = tags(verified, "l");
+  const receiptTags = tags(verified, "e");
+  const authorTags = tags(verified, "p");
   if (
     namespaceTags.length !== 1
     || namespaceTags[0].length !== 2
@@ -236,7 +242,7 @@ export function validateAgentPolicyCorrection(
   ) {
     throw new Error("agent-policy-receipt-invalid");
   }
-  const content = parseJson(event.content);
+  const content = parseJson(verified.content);
   if (!validateCorrectionContent(content)) {
     throw new Error("agent-policy-receipt-invalid");
   }
@@ -299,8 +305,4 @@ function parseJson(content: string): unknown {
   } catch {
     throw new Error("agent-policy-receipt-invalid");
   }
-}
-
-function validSignedEvent(event: NostrSignedEvent): boolean {
-  return isStrictNostrSignedEvent(event);
 }

@@ -5,7 +5,10 @@ import { bytesToHex, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import { signEvent } from "./nostr.js";
 import { proofBytes } from "./proof-bytes.js";
-import { trustedSeedAclProofBytes } from "./trusted-seed.js";
+import {
+  createTrustedSeedAdmissionAuthority,
+  trustedSeedAclProofBytes,
+} from "./trusted-seed.js";
 import {
   authenticateWorkspaceRepositoryView,
   authenticateWorkspaceSuccessorReauthorization,
@@ -20,7 +23,7 @@ import {
   evaluatePrivateProjection,
   evaluateRoleLeafChange,
   evaluateWorkspaceObject,
-  evaluateWorkspacePrivateRelay,
+  createWorkspacePrivateRelayEvaluator,
   eventsAreByteIdentical,
   resolveEffectiveHosts,
   resolveWorkspaceCurrentRelationship,
@@ -1051,7 +1054,6 @@ describe("Workspace evaluator input boundary", () => {
       evaluateFreshness,
       selectEventRepository,
       eventsAreByteIdentical,
-      evaluateWorkspacePrivateRelay,
     ] as Array<(value: unknown) => unknown>;
     for (const evaluator of evaluators) {
       for (const hostile of [
@@ -3117,9 +3119,11 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
 
   it("composes the signed Task-5 trusted-seed ACL without granting governance", async () => {
     const workspace = await import("./workspace.js") as typeof import("./workspace.js") & {
-      evaluateWorkspacePrivateRelay?: (input: unknown) => unknown;
+      createWorkspacePrivateRelayEvaluator?: (
+        authority: unknown,
+      ) => (capability: unknown, input: unknown) => unknown;
     };
-    expect(workspace.evaluateWorkspacePrivateRelay).toBeTypeOf("function");
+    expect(workspace.createWorkspacePrivateRelayEvaluator).toBeTypeOf("function");
 
     const seedNid = "did:key:z6MkwQp8f8Y11L3WJYJ4hXa1";
     const privateRid = "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5";
@@ -3163,40 +3167,60 @@ describe("Workspace hosts, keys, repositories, and freshness", () => {
         WORKSPACE_SECRET,
       )),
     };
-    const admission = {
-      acl_candidates: [acl],
-      expected_administrator_account: WORKSPACE_KEY,
-      authenticated_account: OTHER_KEY,
-      nip42_authenticated: true,
-      operation: "write",
+    const bundle = createTrustedSeedAdmissionAuthority({
       seed_nid: seedNid,
+      administrator_account: WORKSPACE_KEY,
+      trusted_now: () => ({ now: 1_720_000_100 }),
+      authenticate_nip42: () => ({
+        verdict: "accept",
+        account_key: OTHER_KEY,
+        connection_id: "workspace-connection",
+        challenge_id: "workspace-challenge",
+        request_id: "workspace-request",
+        authenticated_at: 1_720_000_099,
+        expires_at: 1_720_000_200,
+      }),
+      load_current_state: () => ({
+        administrator_account: WORKSPACE_KEY,
+        acl_candidates: [acl],
+        previous_acl: null,
+        group_transition: aclBody.group_transition,
+        revision: 1,
+      }),
+      consume_once: () => ({ verdict: "accept" }),
+    });
+    expect(bundle).not.toBeNull();
+    const admissionRequest = {
+      operation: "write",
       h: "workspace-private-route",
       private_rid: privateRid,
       writer_ref: "refs/xyz.heterodyne.marmot/relays/workspace-seed",
-      group_transition: aclBody.group_transition,
-      now: 1_720_000_100,
       nip01_raw: JSON.stringify(event),
     };
-    expect(workspace.evaluateWorkspacePrivateRelay?.({
-      workspace_key: WORKSPACE_KEY,
+    const evaluatePrivateRelay = workspace.createWorkspacePrivateRelayEvaluator?.(
+      bundle!.authority,
+    );
+    const capability = bundle!.mintRequestCapability({}, admissionRequest);
+    expect(evaluatePrivateRelay?.(capability, {
+      role_authorized: true,
+      governance_requested: false,
+    })).toMatchObject({ verdict: "accept", normalized: { seed_nid: seedNid } });
+    const governanceCapability = bundle!.mintRequestCapability({}, admissionRequest);
+    expect(evaluatePrivateRelay?.(governanceCapability, {
+      role_authorized: true,
+      governance_requested: true,
+    })).toEqual({ verdict: "reject", reason_code: "policy_denied" });
+    expect(evaluatePrivateRelay?.({}, {
       private_rid: privateRid,
       role_authorized: true,
       governance_requested: false,
-      seed_admission: admission,
-    })).toMatchObject({ verdict: "accept", normalized: { seed_nid: seedNid } });
-    expect(workspace.evaluateWorkspacePrivateRelay?.({
-      workspace_key: WORKSPACE_KEY,
-      private_rid: privateRid,
-      role_authorized: true,
-      governance_requested: true,
-      seed_admission: admission,
-    })).toEqual({ verdict: "reject", reason_code: "policy_denied" });
+    })).toEqual({ verdict: "reject", reason_code: "workspace_schema_invalid" });
 
     const hostile = new Proxy({}, {
       ownKeys: () => { throw new Error("relay request substituted"); },
     });
-    expect(() => workspace.evaluateWorkspacePrivateRelay?.(hostile)).not.toThrow();
-    expect(workspace.evaluateWorkspacePrivateRelay?.(hostile))
+    expect(() => evaluatePrivateRelay?.({}, hostile)).not.toThrow();
+    expect(evaluatePrivateRelay?.({}, hostile))
       .toEqual({ verdict: "reject", reason_code: "workspace_schema_invalid" });
   });
 

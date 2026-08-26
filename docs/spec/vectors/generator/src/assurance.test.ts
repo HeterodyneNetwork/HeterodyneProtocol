@@ -309,6 +309,44 @@ describe("Assurance reciprocal enrollment", () => {
     });
   });
 
+  it("rejects acceptance before inception while allowing the exact inception instant", async () => {
+    const { inception, acceptanceBody } = await enrolledPersona();
+    for (const [created_at, verdict] of [
+      [inception.created_at - 1, "reject"],
+      [inception.created_at, "accept"],
+      [inception.created_at + 1, "accept"],
+    ] as const) {
+      const acceptance = await assuranceEvent(
+        ACTIVE_SECRET,
+        31000,
+        "assurance-head",
+        acceptanceBody.profile,
+        { ...acceptanceBody, created_at },
+      );
+      expect(evaluateEnrollment({ inception, acceptance }).verdict, String(created_at))
+        .toBe(verdict);
+    }
+  });
+
+  it("rejects accessor-backed enrollment events without invoking the accessor", async () => {
+    const { inception, acceptance } = await enrolledPersona();
+    let getterCalls = 0;
+    const accessor = { ...inception } as NostrSignedEvent;
+    Object.defineProperty(accessor, "content", {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return inception.content;
+      },
+    });
+
+    expect(evaluateEnrollment({ inception: accessor, acceptance })).toEqual({
+      verdict: "reject",
+      reason_code: "assurance-reciprocal-proof-invalid",
+    });
+    expect(getterCalls).toBe(0);
+  });
+
   it("rejects an inception whose thresholds cannot be evaluated against its current policy", async () => {
     const { inception, acceptance } = await enrolledPersona({
       thresholds: { epoch: 2, witness: 2 },

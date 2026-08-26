@@ -8,7 +8,11 @@ import successionSchema from "../../../schemas/assurance/succession-v1.schema.js
 import { domainSeparatedJcsDigest } from "./credential-continuity.js";
 import { bytesToHex, hexToBytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
-import { verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
+import {
+  snapshotAndVerifyNostrEvent,
+  type NostrSignedEvent,
+  type VerifiedNostrEvent,
+} from "./nostr.js";
 
 export type EpochPolicy = {
   mode: "none" | "pre-rotation";
@@ -163,22 +167,25 @@ export function evaluateEnrollment(input: {
   inception: NostrSignedEvent;
   acceptance: NostrSignedEvent;
 }): AssuranceVerdict<AssuranceHeadState> {
+  const inceptionEvent = snapshotAndVerifyNostrEvent(input.inception);
+  const acceptanceEvent = snapshotAndVerifyNostrEvent(input.acceptance);
+  if (inceptionEvent === null || acceptanceEvent === null) return reciprocalReject();
   const inception = parseRecord<EnrollmentInception>(
-    input.inception,
+    inceptionEvent,
     31002,
     validateInception,
   );
   const acceptance = parseRecord<ActiveKeyAcceptance>(
-    input.acceptance,
+    acceptanceEvent,
     31000,
     validateAcceptance,
   );
   if (inception === null || acceptance === null) return reciprocalReject();
-  if (!hasExactTags(input.inception, [
+  if (!hasExactTags(inceptionEvent, [
     ["d", `assurance-inception:${inception.active_key}`],
     ["profile", inception.profile],
     ["p", inception.active_key],
-  ]) || !hasExactTags(input.acceptance, [
+  ]) || !hasExactTags(acceptanceEvent, [
     ["d", "assurance-head"],
     ["profile", acceptance.profile],
   ])) {
@@ -188,14 +195,15 @@ export function evaluateEnrollment(input: {
     return reciprocalReject();
   }
   if (
-    input.inception.pubkey !== inception.cold_root ||
-    input.acceptance.pubkey !== inception.active_key ||
+    inceptionEvent.pubkey !== inception.cold_root ||
+    acceptanceEvent.pubkey !== inception.active_key ||
     acceptance.active_key !== inception.active_key ||
-    acceptance.predecessor !== input.inception.id ||
-    acceptance.inception_event_id !== input.inception.id ||
-    acceptance.assurance_head !== input.inception.id ||
+    acceptance.predecessor !== inceptionEvent.id ||
+    acceptance.inception_event_id !== inceptionEvent.id ||
+    acceptance.assurance_head !== inceptionEvent.id ||
     acceptance.cold_root !== inception.cold_root ||
-    acceptance.cold_root_signature !== input.inception.sig ||
+    acceptance.cold_root_signature !== inceptionEvent.sig ||
+    acceptance.created_at < inception.created_at ||
     acceptance.state !== "assured"
   ) {
     return reciprocalReject();
@@ -204,10 +212,10 @@ export function evaluateEnrollment(input: {
     verdict: "accept",
     normalized: {
       active_key: inception.active_key,
-      head: input.acceptance.id,
-      head_created_at: input.acceptance.created_at,
-      inception_event_id: input.inception.id,
-      inception_signature: input.inception.sig,
+      head: acceptanceEvent.id,
+      head_created_at: acceptanceEvent.created_at,
+      inception_event_id: inceptionEvent.id,
+      inception_signature: inceptionEvent.sig,
       cold_root: inception.cold_root,
       succession_authority: inception.succession_authority,
       epoch_policy: inception.epoch_policy,
@@ -243,12 +251,14 @@ export function evaluateSuccession(input: {
   current: AssuranceHeadState;
   event: NostrSignedEvent;
 }): AssuranceVerdict<SuccessionResult> {
+  const event = snapshotAndVerifyNostrEvent(input.event);
+  if (event === null) return reject("assurance-schema-invalid");
   const record = parseRecord<SuccessionRecord>(
-    input.event,
+    event,
     31003,
     validateSuccession,
   );
-  if (record === null || !hasExactTags(input.event, [
+  if (record === null || !hasExactTags(event, [
     ["d", `assurance-succession:${record?.previous_head ?? ""}`],
     ["profile", record?.profile ?? ""],
     ["p", record?.active_key ?? ""],
@@ -269,12 +279,12 @@ export function evaluateSuccession(input: {
 
   if (record.class === "routine") {
     if (
-      input.event.pubkey !== input.current.active_key ||
+      event.pubkey !== input.current.active_key ||
       record.authorizing_evidence.authority_class === "recovery"
     ) return reject("assurance-authority-invalid");
   } else {
     if (
-      input.event.pubkey !== input.current.cold_root ||
+      event.pubkey !== input.current.cold_root ||
       record.authorizing_evidence.authority_class !== "recovery"
     ) return reject("assurance-authority-invalid");
     if (
@@ -318,7 +328,7 @@ export function evaluateSuccession(input: {
   return {
     verdict: "accept",
     normalized: {
-      succession_event_id: input.event.id,
+      succession_event_id: event.id,
       transition_digest: digest,
       new_active_key: record.new_active_key,
       compromise_cutoff: record.compromise_time ?? null,
@@ -347,17 +357,19 @@ export function evaluateSuccessorAcceptance(input: {
   });
   if (succession.verdict === "reject") return succession;
   const pending = succession.normalized;
+  const acceptanceEvent = snapshotAndVerifyNostrEvent(input.acceptance);
+  if (acceptanceEvent === null) return reciprocalReject();
   const acceptance = parseRecord<ActiveKeyAcceptance>(
-    input.acceptance,
+    acceptanceEvent,
     31000,
     validateAcceptance,
   );
-  if (acceptance === null || !hasExactTags(input.acceptance, [
+  if (acceptance === null || !hasExactTags(acceptanceEvent, [
     ["d", "assurance-head"],
     ["profile", acceptance?.profile ?? ""],
   ])) return reciprocalReject();
   if (
-    input.acceptance.pubkey !== pending.new_active_key ||
+    acceptanceEvent.pubkey !== pending.new_active_key ||
     acceptance.active_key !== pending.new_active_key ||
     acceptance.inception_event_id !== input.current.inception_event_id ||
     acceptance.cold_root !== input.current.cold_root ||
@@ -375,8 +387,8 @@ export function evaluateSuccessorAcceptance(input: {
     verdict: "accept",
     normalized: {
       active_key: pending.new_active_key,
-      head: input.acceptance.id,
-      head_created_at: input.acceptance.created_at,
+      head: acceptanceEvent.id,
+      head_created_at: acceptanceEvent.created_at,
       inception_event_id: input.current.inception_event_id,
       inception_signature: input.current.inception_signature,
       cold_root: input.current.cold_root,
@@ -413,12 +425,14 @@ export function evaluateAssociatedKey(input: {
   now: number;
   previous: AssociatedKeyState | null;
 }): AssociatedKeyVerdict {
+  const event = snapshotAndVerifyNostrEvent(input.event);
+  if (event === null) return reject("assurance-schema-invalid");
   const record = parseRecord<AssociatedKeyRecord>(
-    input.event,
+    event,
     31001,
     validateAssociatedKey,
   );
-  if (record === null || !hasExactTags(input.event, [
+  if (record === null || !hasExactTags(event, [
     ["d", `assurance-associated:${record?.active_key ?? ""}:${record?.role ?? ""}:${record?.subject_key ?? ""}`],
     ["profile", record?.profile ?? ""],
     ["p", record?.active_key ?? ""],
@@ -447,7 +461,7 @@ export function evaluateAssociatedKey(input: {
       normalized: input.previous,
     };
   }
-  if (input.event.pubkey !== record.issuer) {
+  if (event.pubkey !== record.issuer) {
     return reject("assurance-authority-invalid");
   }
 
@@ -480,7 +494,7 @@ export function evaluateAssociatedKey(input: {
     return {
       verdict: "reject",
       reason_code: "assurance-associated-key-revoked",
-      normalized: associatedKeyState(record, input.event.id),
+      normalized: associatedKeyState(record, event.id),
     };
   }
   if (record.expires_at !== undefined && input.now >= record.expires_at) {
@@ -488,27 +502,35 @@ export function evaluateAssociatedKey(input: {
   }
   return {
     verdict: "accept",
-    normalized: associatedKeyState(record, input.event.id),
+    normalized: associatedKeyState(record, event.id),
   };
 }
 
 function parseRecord<T>(
-  event: NostrSignedEvent,
+  event: VerifiedNostrEvent,
   kind: number,
   validate: ValidateFunction,
 ): T | null {
   try {
-    if (event.kind !== kind || !verifyEventSignature(event)) return null;
+    if (event.kind !== kind) return null;
     const value = JSON.parse(event.content) as unknown;
     if (event.content !== jcsCanonicalize(value) || !validate(value)) return null;
     if (
       typeof value !== "object" || value === null ||
       (value as { created_at?: unknown }).created_at !== event.created_at
     ) return null;
-    return value as T;
+    return deepFreeze(value) as T;
   } catch {
     return null;
   }
+}
+
+function deepFreeze<T>(value: T): T {
+  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
+    for (const member of Object.values(value)) deepFreeze(member);
+    Object.freeze(value);
+  }
+  return value;
 }
 
 function hasExactTags(event: NostrSignedEvent, expected: string[][]): boolean {

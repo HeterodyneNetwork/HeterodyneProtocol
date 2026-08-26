@@ -9,7 +9,7 @@ import recoveryGrantSchema from "../../../schemas/control/control-recovery-grant
 import { injectAgentAttribution, matchesAgentAttributionProfile } from "./agent-authorship.js";
 import { hexToBytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
-import { getEventId, verifyEventSignature } from "./nostr.js";
+import { snapshotAndVerifyNostrEvent, type VerifiedNostrEvent } from "./nostr.js";
 import { proofBytes } from "./proof-bytes.js";
 
 type KeyClass = "persona" | "agent";
@@ -1558,18 +1558,15 @@ export function executePersistedAutomatedSigning<
     completed_at: input.authorization.request.now,
   };
   let eventValid = false;
+  let verifiedEvent: VerifiedNostrEvent | null = null;
   try {
-    eventValid = event !== undefined
-      && Object.keys(event).sort().join("\0")
-        === ["content", "created_at", "id", "kind", "pubkey", "sig", "tags"].join("\0")
-      && event.pubkey === authoritativeUnsignedEvent.pubkey
-      && event.created_at === authoritativeUnsignedEvent.created_at
-      && event.kind === authoritativeUnsignedEvent.kind
-      && event.content === authoritativeUnsignedEvent.content
-      && jcsCanonicalize(event.tags) === jcsCanonicalize(authoritativeUnsignedEvent.tags)
-      && /^[0-9a-f]{64}$/.test(event.id)
-      && /^[0-9a-f]{128}$/.test(event.sig)
-      && verifyEventSignature(event);
+    verifiedEvent = event === undefined ? null : snapshotAndVerifyNostrEvent(event);
+    eventValid = verifiedEvent !== null
+      && verifiedEvent.pubkey === authoritativeUnsignedEvent.pubkey
+      && verifiedEvent.created_at === authoritativeUnsignedEvent.created_at
+      && verifiedEvent.kind === authoritativeUnsignedEvent.kind
+      && verifiedEvent.content === authoritativeUnsignedEvent.content
+      && jcsCanonicalize(verifiedEvent.tags) === jcsCanonicalize(authoritativeUnsignedEvent.tags);
   } catch {
     eventValid = false;
   }
@@ -1591,7 +1588,7 @@ export function executePersistedAutomatedSigning<
       },
     };
   }
-  const validEvent = event as T;
+  const validEvent = verifiedEvent as unknown as T;
   return {
     verdict: "accept",
     event: validEvent,
@@ -2335,7 +2332,8 @@ function freshKeyPackagesAreAuthentic(
   grant: CompromiseResetGrant,
 ): boolean {
   return completion.fresh_keypackages.every((candidate) => {
-    const event = candidate.event;
+    const event = snapshotAndVerifyNostrEvent(candidate.event);
+    if (event === null) return false;
     const content = decodeStrictBase64(event.content);
     const group = inventory.reachable_groups.find(({ group_id }) =>
       group_id === candidate.group_id
@@ -2362,8 +2360,6 @@ function freshKeyPackagesAreAuthentic(
       && event.kind === 30443
       && event.created_at >= grant.issued_at
       && event.created_at <= completion.completed_at
-      && getEventId(event) === event.id
-      && verifyEventSignature(event)
       && tags.size === 7
       && singleton("d", /^[0-9a-f]{64}$/)
       && singleton("mls_protocol_version", /^1\.0$/)

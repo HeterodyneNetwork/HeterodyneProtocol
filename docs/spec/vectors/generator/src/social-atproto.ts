@@ -10,7 +10,7 @@ import {
   type AtprotoResolutionEvidence,
   type AtprotoResolverAuthority,
 } from "./atproto-did-resolution.js";
-import { isStrictNostrSignedEvent, type NostrSignedEvent } from "./nostr.js";
+import { snapshotAndVerifyNostrEvent, type NostrSignedEvent } from "./nostr.js";
 
 export type AtprotoBinding = {
   spec_version: "heterodyne/0.5.0";
@@ -197,8 +197,11 @@ function validateAtprotoRevocationSnapshot(
         ? evidenceKeys !== "did_signature\0side\0value"
         : true
   ) return { verdict: "reject", reason_code: "atproto-revocation-invalid" };
+  const nostrEvent = input.evidence.side === "nostr"
+    ? snapshotAndVerifyNostrEvent(input.evidence.nostr_event)
+    : null;
   const value = input.evidence.side === "nostr"
-    ? parseJson(input.evidence.nostr_event.content)
+    ? nostrEvent === null ? null : parseJson(nostrEvent.content)
     : input.evidence.value;
   const revocation = parseRevocation(value);
   const canonicalPayload = revocation === null ? null : serializeAtprotoRevocation(revocation);
@@ -215,9 +218,9 @@ function validateAtprotoRevocationSnapshot(
     return { verdict: "reject", reason_code: "atproto-revocation-invalid" };
   }
   if (input.evidence.side === "nostr") {
-    const event = input.evidence.nostr_event;
+    const event = nostrEvent;
     if (
-      !isStrictNostrSignedEvent(event)
+      event === null
       || event.kind !== 31009
       || event.pubkey !== revocation.pubkey
       || event.created_at !== revocation.revoked_at
@@ -283,7 +286,7 @@ function validateBindingEvidence(
   const binding = parseBinding(evidence.pds_value);
   if (binding === null) return null;
   const canonicalPayload = serializeAtprotoBinding(binding);
-  const event = evidence.nostr_event;
+  const event = snapshotAndVerifyNostrEvent(evidence.nostr_event);
   const resolutionEvidence = evidence.resolution_evidence;
   const didSignature = evidence.did_signature;
   const resolution = authenticateAtprotoDidResolution({
@@ -304,7 +307,7 @@ function validateBindingEvidence(
       signature: didSignature,
       validation_time: validationTime,
     })
-    || !isStrictNostrSignedEvent(event)
+    || event === null
     || event.kind !== 31009
     || event.pubkey !== binding.pubkey
     || event.created_at !== binding.established_at

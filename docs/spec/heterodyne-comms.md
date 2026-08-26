@@ -44,8 +44,10 @@ encryption change confidentiality, not the NIP-01 envelope.
 Before rendering, storing, indexing, or authorizing a received event, a client
 MUST apply the Core NIP-01 verification rules. In order, it MUST:
 
-1. require a well-formed event and the exact `nip01_raw` signing bytes;
-2. hash `nip01_raw`, match `id` and every parsed field, and verify BIP-340;
+1. snapshot every member exactly once, require a well-formed event, and bind
+   the exact `nip01_raw` source when present;
+2. derive the NIP-01 signing bytes only from that immutable snapshot, match
+   `id` and every raw parsed field, and verify BIP-340;
 3. when persona authorship is required, require `event.pubkey` to equal that
    persona's active key; and
 4. apply the Comms schema, tier, and authorization rules for the event.
@@ -876,32 +878,43 @@ non-genesis head without the exact accepted predecessor is ambiguous. Neither
 wall-clock order, seed preference, repository default branch, nor Radicle
 delegate order selects among conflicting or ambiguous state.
 
-For every read or write, the seed MUST recheck NIP-42 identity, account role,
-its own active seed grant and operation, the exact `h` and private RID, the
-current Marmot transition, predecessor continuity, issue time, expiry, and
-administrator signature. Missing, malformed, future-issued, expired, stale,
-conflicting, ambiguous, revoked, unauthorized, or route-mismatched state fails
-closed using the registered `trusted-seed-*` reason. A removed seed grant takes
-effect as soon as the newer authenticated ACL is available; an explicitly
-`revoked` grant MUST NOT be used even if the endpoint or old ref remains
-reachable.
+The embedding configures each admission boundary with the expected seed NID,
+administrator account, trusted clock, NIP-42 authenticator, current-state
+loader, and atomic consume operation. These configured values and callback
+identities are captured once and are not supplied by an admission request.
+Every callback result is copied once into an independently owned immutable
+closed value before semantic use. Missing, alternate, additional,
+accessor-backed, or otherwise malformed callback state fails closed.
 
-The admission request is closed before any authorization decision. Its exact
-required metadata members are `acl_candidates`,
-`expected_administrator_account`, `authenticated_account`,
-`nip42_authenticated`, `operation`, `seed_nid`, `h`, `private_rid`,
-`group_transition`, and `now`; only `previous_acl`, `writer_ref`, and
-`nip01_raw` are optional across the union of operations. A read request MUST
-omit `writer_ref` and `nip01_raw`; a write request MUST carry both as non-empty
-strings. When present, `previous_acl` MUST be an object for subsequent ACL
-validation. `group_transition` is itself closed to the three ACL members named
-above. The seed validates every optional member's type and operation-specific
-presence or absence during closure, before NIP-42 or ACL authorization. Any
-missing, alternate, wrongly typed, nested-extra, or top-level-extra metadata
-member fails with `trusted-seed-request-invalid`. A read admission result MUST
-NOT return either write-only member. The seed treats the accepted kind-445
-event `content` as opaque ciphertext; request closure MUST NOT scan or
-interpret that encrypted content as plaintext.
+The untrusted request is closed before authentication. A read carries exactly
+`operation`, `h`, and `private_rid`; a write additionally carries exactly the
+non-empty `writer_ref` and `nip01_raw`. Caller assertions of authenticated
+state, account, administrator, ACL candidates, predecessor, transition, seed
+NID, or current time are invalid request members and grant no authority. After
+successful NIP-42 authentication, the embedding issues an opaque one-request
+capability bound to the authenticated account, connection, challenge, request,
+expiry, and exact closed request. A capability created by another admission
+authority is invalid.
+
+Before each decision the seed irrevocably consumes the capability, then reloads
+trusted current time and the current administrator, ACL candidates,
+predecessor, Marmot transition, and revision. Reuse, including a retry after a
+failed decision, is `trusted-seed-request-replay`. It then rechecks account
+role, its own active seed grant and operation, exact `h` and private RID,
+transition, predecessor continuity, issue time, expiry, and administrator
+signature. Missing, malformed, future-issued, expired, stale, conflicting,
+ambiguous, revoked, unauthorized, or route-mismatched state fails closed using
+the registered `trusted-seed-*` reason. A removed seed grant takes effect as
+soon as the newer authenticated ACL is available; an explicitly `revoked`
+grant MUST NOT be used even if the endpoint or old ref remains reachable.
+
+An accepted admission is atomically consumed against the exact authenticated
+connection and challenge, request ID, ACL digest and current-state revision,
+Marmot transition, operation, route, RID, writer ref, and event ID. Replay,
+compare-and-swap conflict, effect failure, malformed result, or exception fails
+closed and MUST NOT acknowledge the operation. A read admission result MUST
+NOT return either write-only member. The seed treats accepted kind-445 event
+`content` as opaque ciphertext and MUST NOT interpret it as plaintext.
 
 A candidate whose `administrator_account` differs from the current expected
 administrator is unauthorized. A candidate naming the expected administrator
@@ -2134,7 +2147,7 @@ The list below is descriptive:
 - **COMMS-I-RADICLE-ROUTING-AUTHORITY:** Only a canonical Marmot routing commit by its active account-key administrator can authorize a routing binding and repository genesis with the same `h`, RID, routing-event ID, and authorized writer refs.
 - **COMMS-I-RADICLE-NON-ERASURE:** Retention expiry stops conforming advertisement and replication but never claims erasure of independent Git objects, clones, exports, or backups.
 - **COMMS-I-TRUSTED-SEED-CONFINEMENT:** A trusted seed receives only routing metadata and exact encrypted event bytes, writes only its own active authorized NID ref, and gains no persona, repository-owner, group-admin, full-node, or MLS authority.
-- **COMMS-I-PRIVATE-RELAY-ACL:** Every private seed read or write requires NIP-42 account authentication plus one unique current unexpired administrator-signed ACL head matching the account role, seed grant, `h`, private RID, and Marmot group transition.
+- **COMMS-I-PRIVATE-RELAY-ACL:** Every private seed read or write uses embedding-configured seed and administrator trust roots, one-use authenticated request authority, trusted current state and time, and one unique current unexpired administrator-signed ACL head matching the account role, seed grant, `h`, private RID, and Marmot group transition.
 
 Mechanism guarantees MUST remain distinct. Tier 3 has no forward secrecy: a
 compromised audience key decrypts every retained post under its

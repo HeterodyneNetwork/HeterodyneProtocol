@@ -6,7 +6,11 @@ import {
   type CommsSocialSignedPublicationConsumer,
   type CommsSocialSignedPublication,
 } from "./agent-authorship.js";
-import { isStrictNostrSignedEvent, type NostrSignedEvent } from "./nostr.js";
+import {
+  snapshotAndVerifyNostrEvent,
+  type NostrSignedEvent,
+  type VerifiedNostrEvent,
+} from "./nostr.js";
 
 export type SocialAuthorshipInput = {
   event: NostrSignedEvent;
@@ -64,22 +68,23 @@ function validateSocialAuthorshipWithConsumer(
   input: SocialAuthorshipInput,
   consumePublication: CommsSocialSignedPublicationConsumer | null,
 ): SocialAuthorshipDecision {
-  if (!validSignedEvent(input.event)) {
+  const event = snapshotAndVerifyNostrEvent(input.event);
+  if (event === null) {
     return { verdict: "reject", reason_code: "social-event-invalid" };
   }
-  const representedPersona = input.persona_active_key ?? input.event.pubkey;
+  const representedPersona = input.persona_active_key ?? event.pubkey;
   if (!HEX_32.test(representedPersona)) {
     return { verdict: "reject", reason_code: "social-author-binding-invalid" };
   }
-  if (input.event.pubkey === representedPersona) {
+  if (event.pubkey === representedPersona) {
     return {
       verdict: "accept",
-      event_author: input.event.pubkey,
+      event_author: event.pubkey,
       represented_persona: representedPersona,
     };
   }
 
-  const attribution = signedAgentAssociation(input.event);
+  const attribution = signedAgentAssociation(event);
   if (
     !attribution.valid
     || input.requested_feed === undefined
@@ -88,19 +93,19 @@ function validateSocialAuthorshipWithConsumer(
     || !consumePublication({
       publication: input.comms_authorization,
       represented_persona: representedPersona,
-      event: input.event,
+      event,
       agent_association: attribution.association,
       requested_feed: input.requested_feed,
       requested_resource: input.requested_resource,
     })
     || attribution.association?.kind === "key"
-      && attribution.association.value !== input.event.pubkey
+      && attribution.association.value !== event.pubkey
   ) {
     return { verdict: "reject", reason_code: "social-author-binding-invalid" };
   }
   return {
     verdict: "accept",
-    event_author: input.event.pubkey,
+    event_author: event.pubkey,
     represented_persona: representedPersona,
     ...(attribution.association === null
       ? {}
@@ -113,9 +118,10 @@ export function selectCurrentSocialEvent(input: {
   candidates: readonly SocialEventCandidate[];
 }): NostrSignedEvent | null {
   if (!validCoordinate(input.coordinate)) return null;
-  const unique = new Map<string, NostrSignedEvent>();
-  for (const { event } of input.candidates) {
-    if (validateSocialReplaceableCandidate({
+  const unique = new Map<string, VerifiedNostrEvent>();
+  for (const { event: sourceEvent } of input.candidates) {
+    const event = snapshotAndVerifyNostrEvent(sourceEvent);
+    if (event !== null && validateSocialReplaceableCandidate({
       coordinate: input.coordinate,
       event,
     }).verdict === "accept") {
@@ -133,14 +139,15 @@ export function validateSocialReplaceableCandidate(input: {
   verdict: "reject";
   reason_code: "social-event-invalid" | "social-replaceable-coordinate-mismatch";
 } {
-  if (!validSignedEvent(input.event)) {
+  const event = snapshotAndVerifyNostrEvent(input.event);
+  if (event === null) {
     return { verdict: "reject", reason_code: "social-event-invalid" };
   }
   if (
     !validCoordinate(input.coordinate)
-    || input.event.pubkey !== input.coordinate.pubkey
-    || input.event.kind !== input.coordinate.kind
-    || coordinateD(input.event) !== input.coordinate.d
+    || event.pubkey !== input.coordinate.pubkey
+    || event.kind !== input.coordinate.kind
+    || coordinateD(event) !== input.coordinate.d
   ) {
     return {
       verdict: "reject",
@@ -154,12 +161,13 @@ export function assessSocialStateFreshness(
   event: NostrSignedEvent,
   now: number,
 ): { valid: boolean; warning: "stale" | null } {
-  if (!validSignedEvent(event) || ![0, 10002].includes(event.kind)) {
+  const verified = snapshotAndVerifyNostrEvent(event);
+  if (verified === null || ![0, 10002].includes(verified.kind)) {
     return { valid: false, warning: null };
   }
   return {
     valid: true,
-    warning: now - event.created_at > SEVEN_DAYS_SECONDS ? "stale" : null,
+    warning: now - verified.created_at > SEVEN_DAYS_SECONDS ? "stale" : null,
   };
 }
 
@@ -183,7 +191,7 @@ function coordinateD(event: NostrSignedEvent): string | undefined | null {
   return dTags.length === 1 && dTags[0].length >= 2 ? dTags[0][1] : null;
 }
 
-function signedAgentAssociation(event: NostrSignedEvent): {
+function signedAgentAssociation(event: VerifiedNostrEvent): {
   valid: boolean;
   association: AgentAssociation | null;
 } {
@@ -207,8 +215,4 @@ function signedAgentAssociation(event: NostrSignedEvent): {
     return { valid: true, association: association as AgentAssociation };
   }
   return { valid: false, association: null };
-}
-
-function validSignedEvent(event: NostrSignedEvent): boolean {
-  return isStrictNostrSignedEvent(event);
 }

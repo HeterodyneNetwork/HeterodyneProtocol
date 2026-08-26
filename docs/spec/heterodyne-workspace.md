@@ -272,7 +272,11 @@ A private repository-backed relay composes
 Its current ACL `administrator_account` is the active `workspace_key`; the ACL
 MUST exactly bind the authenticated member account, read/write role, Marmot
 `h`, private RID, seed NID and writer ref, predecessor, group transition, and
-expiry. Missing, stale, expired, conflicting, revoked, unauthorized,
+expiry. The Workspace embedding captures the expected Comms admission authority
+configured with that active key and passes only its opaque one-request
+capability to the composed evaluator; request fields cannot select an
+administrator, seed, ACL, authenticated account, transition, or clock.
+Missing, stale, expired, conflicting, replayed, revoked, unauthorized,
 ambiguous, or route-mismatched state fails closed. An admitted seed writes
 only its authorized ref and gains no repository-owner, workspace, role,
 custody, signer, or Marmot-administrator authority.

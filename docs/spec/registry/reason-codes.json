@@ -1458,6 +1458,14 @@
       "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
     },
     {
+      "code": "trusted-seed-request-replay",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "A private relay request capability or its authenticated consume binding was already used.",
+      "spec_refs": ["heterodyne:0.5.0#comms-trusted-seed-private-relay"]
+    },
+    {
       "code": "marmot-routing-binding-invalid",
       "owner": "comms",
       "status": "draft",

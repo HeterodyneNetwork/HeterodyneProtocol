@@ -3,7 +3,7 @@ import { sha256 } from "@noble/hashes/sha2";
 import { base58 } from "@scure/base";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { proofBytes } from "./proof-bytes.js";
-import { verifyEventSignature, type NostrSignedEvent } from "./nostr.js";
+import { snapshotAndVerifyNostrEvent, type NostrSignedEvent } from "./nostr.js";
 
 // Multicodec prefix for an Ed25519 public key (varint 0xed 0x01), per the
 // did:key method and the multicodec table.
@@ -105,7 +105,7 @@ export type NodeAdvertisementValidation =
     };
 
 export function validateNodeAdvertisement(
-  event: NostrSignedEvent,
+  sourceEvent: NostrSignedEvent,
   context: {
     now: number;
     clock_uncertainty_seconds?: number;
@@ -113,7 +113,8 @@ export function validateNodeAdvertisement(
     graph_fetch: RepositoryGraphFetch;
   },
 ): NodeAdvertisementValidation {
-  if (!verifyEventSignature(event)) {
+  const event = snapshotAndVerifyNostrEvent(sourceEvent);
+  if (event === null) {
     return { status: "rejected", failure: "bad_signature" };
   }
   if (event.kind !== 31010 || event.content !== "") {

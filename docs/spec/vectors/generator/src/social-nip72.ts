@@ -1,4 +1,8 @@
-import { isStrictNostrSignedEvent, type NostrSignedEvent } from "./nostr.js";
+import {
+  snapshotAndVerifyNostrEvent,
+  type NostrSignedEvent,
+  type VerifiedNostrEvent,
+} from "./nostr.js";
 import {
   selectCurrentSocialEvent,
   type SocialEventCandidate,
@@ -21,6 +25,7 @@ export function evaluateNip72CuratedView(input: {
   approvals: readonly NostrSignedEvent[];
   deletions?: readonly NostrSignedEvent[];
 }): Nip72CuratedViewDecision {
+  const candidate = snapshotAndVerifyNostrEvent(input.candidate);
   const coordinate = `34550:${input.community.pubkey}:${input.community.d}`;
   const declaration = selectCurrentSocialEvent({
     coordinate: {
@@ -32,8 +37,8 @@ export function evaluateNip72CuratedView(input: {
   });
   if (
     declaration === null
-    || !isStrictNostrSignedEvent(input.candidate)
-    || !hasTagPrefix(input.candidate, ["a", coordinate])
+    || candidate === null
+    || !hasTagPrefix(candidate, ["a", coordinate])
   ) {
     return { verdict: "reject", reason_code: "social-event-invalid" };
   }
@@ -55,10 +60,13 @@ export function evaluateNip72CuratedView(input: {
   const auditOnly: string[] = [];
   const countedModerators = new Set<string>();
   const seenApprovals = new Set<string>();
-  for (const approval of input.approvals) {
+  for (const sourceApproval of input.approvals) {
+    const approval = snapshotAndVerifyNostrEvent(sourceApproval);
     if (
+      approval === null
+      ||
       seenApprovals.has(approval.id)
-      || !validApproval(approval, input.candidate, coordinate)
+      || !validApproval(approval, candidate, coordinate)
     ) continue;
     seenApprovals.add(approval.id);
     if (isDeletedApproval(approval, input.deletions ?? [])) continue;
@@ -82,20 +90,20 @@ export function evaluateNip72CuratedView(input: {
 }
 
 function validApproval(
-  approval: NostrSignedEvent,
-  candidate: NostrSignedEvent,
+  approval: VerifiedNostrEvent,
+  candidate: VerifiedNostrEvent,
   coordinate: string,
 ): boolean {
   if (
-    !isStrictNostrSignedEvent(approval)
-    || approval.kind !== 4550
+    approval.kind !== 4550
     || !hasTagPrefix(approval, ["a", coordinate])
     || !hasTagPrefix(approval, ["e", candidate.id])
     || !hasTagPrefix(approval, ["p", candidate.pubkey])
   ) return false;
   try {
     const embedded = JSON.parse(approval.content) as unknown;
-    return isStrictNostrSignedEvent(embedded) && embedded.id === candidate.id;
+    const verified = snapshotAndVerifyNostrEvent(embedded);
+    return verified !== null && verified.id === candidate.id;
   } catch {
     return false;
   }
@@ -112,18 +120,21 @@ function approvalThreshold(declaration: NostrSignedEvent): number | null {
 }
 
 function isDeletedApproval(
-  approval: NostrSignedEvent,
+  approval: VerifiedNostrEvent,
   deletions: readonly NostrSignedEvent[],
 ): boolean {
   return deletions.some((deletion) =>
-    isStrictNostrSignedEvent(deletion)
-    && deletion.kind === 5
-    && deletion.pubkey === approval.pubkey
-    && deletion.created_at >= approval.created_at
-    && hasTagPrefix(deletion, ["e", approval.id]));
+    (() => {
+      const verified = snapshotAndVerifyNostrEvent(deletion);
+      return verified !== null
+        && verified.kind === 5
+        && verified.pubkey === approval.pubkey
+        && verified.created_at >= approval.created_at
+        && hasTagPrefix(verified, ["e", approval.id]);
+    })());
 }
 
-function hasTagPrefix(event: NostrSignedEvent, expected: string[]): boolean {
+function hasTagPrefix(event: VerifiedNostrEvent, expected: string[]): boolean {
   return event.tags.some((tag) =>
     tag.length >= expected.length
     && expected.every((member, index) => tag[index] === member));

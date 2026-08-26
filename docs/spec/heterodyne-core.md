@@ -693,9 +693,11 @@ It MAY tighten but MUST NOT weaken these rules.
 Before rendering, storing, or using a Nostr event for authorization, a Core
 implementation MUST perform these stages in order:
 
-1. validate the signed-event structure;
+1. obtain every signed-event member exactly once into a new immutable snapshot
+   and validate that snapshot's exact seven-member structure;
 2. bind exact `nip01_raw` when the event is embedded;
-3. recompute the SHA-256 event identifier;
+3. serialize the NIP-01 six-member signing array from only that snapshot and
+   recompute the SHA-256 event identifier;
 4. verify the BIP-340 signature;
 5. require `event.pubkey === active_persona_key` for a persona-scoped claim;
 6. enforce the registered schema or profile for any Heterodyne extension; and
@@ -704,6 +706,15 @@ implementation MUST perform these stages in order:
 NIP-01 event validity remains mandatory even when a repository, relay, NIP-05
 mapping, profile extension, or Assurance claim is available. None may repair a
 bad identifier, bad signature, raw mismatch, or author mismatch.
+
+The structural step MUST reject without invoking any accessor, proxy trap, or
+other user-controlled member operation. It rejects inherited members,
+accessor-backed members, non-ordinary containers, symbol members, sparse tag
+arrays, additional members, and cyclic structures. Successful verification
+produces one independently owned, recursively immutable verified-event value.
+Every later schema, authorship, routing, moderation, Assurance, Social, or
+Control decision MUST use that exact value and MUST NOT reread the source
+object. Repeating a boolean signature check does not establish this boundary.
 
 The independent `core-signed-event-v1` checker exposes
 `event_structure`, `nip01_raw`, `identifier`, `signature`,
@@ -846,8 +857,10 @@ Core's current invariant meanings are:
 - **CORE-I-NID-DELEGATION-DUAL-PROOF:** A writer NID enters a repository union
   only after owner authorization and the NID's Ed25519 proof verify over the
   same exact binding.
-- **CORE-I-VERIFY-BEFORE-USE:** Every signed event and ref is locally verified
-  before rendering, storage-derived selection, or authorization.
+- **CORE-I-VERIFY-BEFORE-USE:** Every signed object is captured once into an
+  independently owned immutable value, locally signature-verified from that
+  value, and never reread from attacker-controlled source state before
+  rendering, storage, or authorization.
 - **CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY:** Discovery uses active keys,
   NIP-05, kind `0`, kind `10002`, ordinary relays, and optional repositories;
   no centralized persona directory is required.

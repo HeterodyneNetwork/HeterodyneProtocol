@@ -4,7 +4,7 @@ import { derivePairwiseSubject } from "./oidc.js";
 import { evaluateCredentialGeneration } from "./credential-generation.js";
 import {
   getEventId,
-  isStrictNostrSignedEvent,
+  snapshotAndVerifyNostrEvent,
   type NostrSignedEvent,
   type NostrUnsignedEvent,
 } from "./nostr.js";
@@ -551,17 +551,20 @@ export function signCommsSocialPublication(input: {
     return denied("agent-signer-mismatch");
   }
   const outcome = snapshotAcceptedSignerOutcome(rawOutcome);
+  const verifiedEvent = outcome === null
+    ? null
+    : snapshotAndVerifyNostrEvent(outcome.event);
   if (
     outcome === null
-    || !isStrictNostrSignedEvent(outcome.event)
-    || outcome.event.id !== getEventId(unsignedEvent)
-    || outcome.event.pubkey !== unsignedEvent.pubkey
-    || outcome.event.created_at !== unsignedEvent.created_at
-    || outcome.event.kind !== unsignedEvent.kind
-    || outcome.event.content !== unsignedEvent.content
-    || stableJson(outcome.event.tags) !== stableJson(unsignedEvent.tags)
+    || verifiedEvent === null
+    || verifiedEvent.id !== getEventId(unsignedEvent)
+    || verifiedEvent.pubkey !== unsignedEvent.pubkey
+    || verifiedEvent.created_at !== unsignedEvent.created_at
+    || verifiedEvent.kind !== unsignedEvent.kind
+    || verifiedEvent.content !== unsignedEvent.content
+    || stableJson(verifiedEvent.tags) !== stableJson(unsignedEvent.tags)
   ) return denied("agent-signer-mismatch");
-  const event = outcome.event;
+  const event = verifiedEvent;
   const publication = Object.freeze({}) as CommsSocialSignedPublication;
   SOCIAL_SIGNED_PUBLICATIONS.set(publication, {
     authority: capturedAuthority,
@@ -609,12 +612,13 @@ function consumeCommsSocialSignedPublication(
   const binding = SOCIAL_SIGNED_PUBLICATIONS.get(input.publication);
   if (binding === undefined || binding.authority !== expectedAuthority) return false;
   SOCIAL_SIGNED_PUBLICATIONS.delete(input.publication);
-  return isStrictNostrSignedEvent(input.event)
+  const event = snapshotAndVerifyNostrEvent(input.event);
+  return event !== null
     && binding.represented_persona === input.represented_persona
-    && binding.event_id === input.event.id
-    && binding.signer === input.event.pubkey
-    && binding.kind === input.event.kind
-    && binding.created_at === input.event.created_at
+    && binding.event_id === event.id
+    && binding.signer === event.pubkey
+    && binding.kind === event.kind
+    && binding.created_at === event.created_at
     && binding.requested_feed === input.requested_feed
     && binding.requested_resource === input.requested_resource
     && equalNullableAssociation(binding.agent_association, input.agent_association);

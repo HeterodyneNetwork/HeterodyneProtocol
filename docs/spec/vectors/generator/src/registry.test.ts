@@ -610,6 +610,7 @@ describe("revisioned protocol registry", () => {
         "trusted-seed-route-mismatch",
         "trusted-seed-event-invalid",
         "trusted-seed-request-invalid",
+        "trusted-seed-request-replay",
         "agent-signer-mismatch",
         "agent-persona-scope-required",
       ]),

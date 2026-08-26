@@ -1,3 +1,4 @@
+import { types as utilTypes } from "node:util";
 import { schnorr } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha2";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
@@ -13,6 +14,11 @@ export type NostrUnsignedEvent = {
 export type NostrSignedEvent = NostrUnsignedEvent & {
   id: string;
   sig: string;
+};
+
+declare const verifiedNostrEventBrand: unique symbol;
+export type VerifiedNostrEvent = NostrSignedEvent & {
+  readonly [verifiedNostrEventBrand]: true;
 };
 
 export type SignEventInput = Omit<NostrUnsignedEvent, "pubkey"> & {
@@ -46,43 +52,155 @@ export async function signEvent(input: SignEventInput): Promise<NostrSignedEvent
 }
 
 export function verifyEventSignature(event: NostrSignedEvent): boolean {
-  if (event.id !== getEventId(event)) {
-    return false;
-  }
-  return schnorr.verify(event.sig, event.id, event.pubkey);
+  return snapshotAndVerifyNostrEvent(event) !== null;
 }
 
 export function isStrictNostrSignedEvent(value: unknown): value is NostrSignedEvent {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    return false;
-  }
-  const event = value as Record<string, unknown>;
-  if (
-    Object.keys(event).sort().join("\0")
-      !== ["content", "created_at", "id", "kind", "pubkey", "sig", "tags"].join("\0")
-    || typeof event.pubkey !== "string"
-    || !/^[0-9a-f]{64}$/.test(event.pubkey)
-    || typeof event.id !== "string"
-    || !/^[0-9a-f]{64}$/.test(event.id)
-    || typeof event.sig !== "string"
-    || !/^[0-9a-f]{128}$/.test(event.sig)
-    || !Number.isSafeInteger(event.created_at)
-    || (event.created_at as number) < 0
-    || !Number.isSafeInteger(event.kind)
-    || (event.kind as number) < 0
-    || (event.kind as number) > 65_535
-    || !Array.isArray(event.tags)
-    || !event.tags.every((tag) =>
-      Array.isArray(tag)
-      && tag.length >= 1
-      && tag.every((member) => typeof member === "string"))
-    || typeof event.content !== "string"
-  ) {
-    return false;
-  }
+  return snapshotAndVerifyNostrEvent(value) !== null;
+}
+
+const VERIFIED_NOSTR_EVENTS = new WeakSet<object>();
+const SIGNED_EVENT_MEMBERS = [
+  "content",
+  "created_at",
+  "id",
+  "kind",
+  "pubkey",
+  "sig",
+  "tags",
+] as const;
+
+export function isVerifiedNostrEvent(value: unknown): value is VerifiedNostrEvent {
+  return value !== null
+    && typeof value === "object"
+    && VERIFIED_NOSTR_EVENTS.has(value);
+}
+
+export function snapshotAndVerifyNostrEvent(value: unknown): VerifiedNostrEvent | null {
+  if (isVerifiedNostrEvent(value)) return value;
+  const event = snapshotSignedEvent(value);
+  if (event === null) return null;
+  const raw = JSON.stringify([
+    0,
+    event.pubkey,
+    event.created_at,
+    event.kind,
+    event.tags,
+    event.content,
+  ]);
+  const digest = sha256(utf8Bytes(raw));
+  if (event.id !== bytesToHex(digest)) return null;
   try {
-    return verifyEventSignature(event as NostrSignedEvent);
+    if (!schnorr.verify(event.sig, digest, event.pubkey)) return null;
   } catch {
-    return false;
+    return null;
   }
+  for (const tag of event.tags) Object.freeze(tag);
+  Object.freeze(event.tags);
+  Object.freeze(event);
+  VERIFIED_NOSTR_EVENTS.add(event);
+  return event as VerifiedNostrEvent;
+}
+
+function snapshotSignedEvent(value: unknown): NostrSignedEvent | null {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
+  try {
+    if (utilTypes.isProxy(value) || Object.getPrototypeOf(value) !== Object.prototype) {
+      return null;
+    }
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const keys = Reflect.ownKeys(descriptors);
+    if (
+      keys.some((key) => typeof key !== "string")
+      || keys.length !== SIGNED_EVENT_MEMBERS.length
+      || !SIGNED_EVENT_MEMBERS.every((member) => Object.hasOwn(descriptors, member))
+    ) return null;
+    const read = (member: typeof SIGNED_EVENT_MEMBERS[number]): unknown => {
+      const descriptor = descriptors[member];
+      return descriptor !== undefined
+        && "value" in descriptor
+        && descriptor.enumerable === true
+        ? descriptor.value
+        : undefined;
+    };
+    const pubkey = read("pubkey");
+    const createdAt = read("created_at");
+    const kind = read("kind");
+    const tags = snapshotTags(read("tags"));
+    const content = read("content");
+    const id = read("id");
+    const sig = read("sig");
+    if (
+      typeof pubkey !== "string"
+      || !/^[0-9a-f]{64}$/.test(pubkey)
+      || !Number.isSafeInteger(createdAt)
+      || (createdAt as number) < 0
+      || !Number.isSafeInteger(kind)
+      || (kind as number) < 0
+      || (kind as number) > 65_535
+      || tags === null
+      || typeof content !== "string"
+      || typeof id !== "string"
+      || !/^[0-9a-f]{64}$/.test(id)
+      || typeof sig !== "string"
+      || !/^[0-9a-f]{128}$/.test(sig)
+    ) return null;
+    return {
+      pubkey,
+      created_at: createdAt as number,
+      kind: kind as number,
+      tags,
+      content,
+      id,
+      sig,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function snapshotTags(value: unknown): string[][] | null {
+  if (!Array.isArray(value) || utilTypes.isProxy(value)) return null;
+  if (Object.getPrototypeOf(value) !== Array.prototype) return null;
+  const tags = snapshotDenseArray(value);
+  if (tags === null) return null;
+  const snapshot: string[][] = [];
+  for (const tagValue of tags) {
+    if (!Array.isArray(tagValue) || utilTypes.isProxy(tagValue)) return null;
+    if (Object.getPrototypeOf(tagValue) !== Array.prototype) return null;
+    const members = snapshotDenseArray(tagValue);
+    if (
+      members === null
+      || members.length === 0
+      || members.some((member) => typeof member !== "string")
+    ) return null;
+    snapshot.push(members as string[]);
+  }
+  return snapshot;
+}
+
+function snapshotDenseArray(value: unknown[]): unknown[] | null {
+  const descriptors = Object.getOwnPropertyDescriptors(value) as unknown as PropertyDescriptorMap;
+  const keys = Reflect.ownKeys(descriptors);
+  if (keys.some((key) => typeof key !== "string")) return null;
+  const lengthDescriptor = descriptors.length;
+  if (
+    lengthDescriptor === undefined
+    || !("value" in lengthDescriptor)
+    || !Number.isSafeInteger(lengthDescriptor.value)
+    || lengthDescriptor.value < 0
+  ) return null;
+  const length = lengthDescriptor.value as number;
+  if (keys.length !== length + 1) return null;
+  const snapshot: unknown[] = [];
+  for (let index = 0; index < length; index += 1) {
+    const descriptor = descriptors[String(index)];
+    if (
+      descriptor === undefined
+      || !("value" in descriptor)
+      || descriptor.enumerable !== true
+    ) return null;
+    snapshot.push(descriptor.value);
+  }
+  return snapshot;
 }
