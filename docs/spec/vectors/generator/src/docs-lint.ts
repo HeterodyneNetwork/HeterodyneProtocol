@@ -990,7 +990,7 @@ export function lintMaintainedGuides(
   const guides = [
     "AGENTS.md",
     "README.md",
-    "docs/adr/archive/2026-08-15-045-conformance-harness-independence.md",
+    "docs/adr/archive/2026-08-24-047-nostr-first-interoperability.md",
     "docs/adr/README.md",
     "docs/spec/heterodyne.md",
     "docs/spec/vectors/README.md",

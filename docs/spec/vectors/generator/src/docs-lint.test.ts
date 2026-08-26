@@ -135,7 +135,7 @@ describe("canonical family documentation", () => {
         + "and conformance vectors.",
     ],
     [
-      "docs/adr/archive/2026-08-15-045-conformance-harness-independence.md",
+      "docs/adr/archive/2026-08-24-047-nostr-first-interoperability.md",
       "- The conformance package, its baselines, and its reports are tooling rather\n"
         + "  than normative family artifacts. The live specifications, registry, schemas,\n"
         + "  release metadata, and vectors remain the protocol authority.",
@@ -511,7 +511,7 @@ describe("canonical family documentation", () => {
     const paths = [
       "AGENTS.md",
       "README.md",
-      "docs/adr/archive/2026-08-15-045-conformance-harness-independence.md",
+      "docs/adr/archive/2026-08-24-047-nostr-first-interoperability.md",
       "docs/adr/README.md",
       "docs/spec/heterodyne.md",
       "docs/spec/vectors/README.md",
