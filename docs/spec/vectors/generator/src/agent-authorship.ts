@@ -1,3 +1,4 @@
+import { types as utilTypes } from "node:util";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import workloadRegistrationSchema from "../../../schemas/comms/agent-workload-registration-v1.schema.json" with { type: "json" };
 import { derivePairwiseSubject } from "./oidc.js";
@@ -9,18 +10,7 @@ import {
   type NostrUnsignedEvent,
 } from "./nostr.js";
 
-// Compatibility exports for the explicitly frozen pre-redesign vector topic.
-export {
-  legacyAgentBindingMessage as agentBindingMessage,
-  validateLegacyAgentDelegation as validateAgentDelegation,
-} from "./legacy-agent-delegation.js";
-export type {
-  LegacyAgentDelegationInput as AgentDelegationInput,
-  LegacyAgentDelegationResult as AgentDelegationResult,
-} from "./legacy-agent-delegation.js";
-
 export type WorkloadRegistration = {
-  /** Optional in this source type only so the frozen pre-redesign topic source still compiles. */
   persona_key?: string;
   client_id: string;
   subject_jkt: string;
@@ -927,25 +917,35 @@ const INVALID_SNAPSHOT = Symbol("invalid-signer-outcome-snapshot");
 function snapshotAcceptedSignerOutcome(
   value: unknown,
 ): Extract<CommsSocialSignerExecutionOutcome, { verdict: "accept" }> | null {
-  const snapshot = snapshotClosedData(value, new WeakSet());
   if (
-    snapshot === INVALID_SNAPSHOT
-    || snapshot === null
-    || typeof snapshot !== "object"
-    || Array.isArray(snapshot)
-    || Object.keys(snapshot).sort().join("\0") !== "disposition\0event\0verdict"
+    value === null
+    || typeof value !== "object"
+    || Array.isArray(value)
+    || utilTypes.isProxy(value)
   ) return null;
-  const outcome = snapshot as Record<string, unknown>;
+  let descriptors: PropertyDescriptorMap;
+  try {
+    if (Object.getPrototypeOf(value) !== Object.prototype) return null;
+    descriptors = Object.getOwnPropertyDescriptors(value);
+  } catch {
+    return null;
+  }
   if (
-    outcome.verdict !== "accept"
-    || outcome.disposition !== "executed" && outcome.disposition !== "cached"
-    || outcome.event === null
-    || typeof outcome.event !== "object"
-    || Array.isArray(outcome.event)
-    || Object.keys(outcome.event).sort().join("\0")
-      !== "content\0created_at\0id\0kind\0pubkey\0sig\0tags"
+    Reflect.ownKeys(descriptors).some((key) => typeof key !== "string")
+    || Object.keys(descriptors).sort().join("\0") !== "disposition\0event\0verdict"
+    || Object.values(descriptors).some((descriptor) =>
+      !("value" in descriptor) || descriptor.enumerable !== true)
   ) return null;
-  return deepFreeze(snapshot) as Extract<
+  const verdict = descriptors.verdict?.value as unknown;
+  const disposition = descriptors.disposition?.value as unknown;
+  const eventReference = descriptors.event?.value as unknown;
+  const event = snapshotAndVerifyNostrEvent(eventReference);
+  if (
+    verdict !== "accept"
+    || disposition !== "executed" && disposition !== "cached"
+    || event === null
+  ) return null;
+  return Object.freeze({ verdict, disposition, event }) as Extract<
     CommsSocialSignerExecutionOutcome,
     { verdict: "accept" }
   >;
@@ -962,7 +962,11 @@ function snapshotClosedData(
     || typeof value === "number"
     || typeof value === "boolean"
   ) return value;
-  if (typeof value !== "object" || seen.has(value)) return INVALID_SNAPSHOT;
+  if (
+    typeof value !== "object"
+    || utilTypes.isProxy(value)
+    || seen.has(value)
+  ) return INVALID_SNAPSHOT;
   let prototype: object | null;
   let descriptors: PropertyDescriptorMap;
   try {

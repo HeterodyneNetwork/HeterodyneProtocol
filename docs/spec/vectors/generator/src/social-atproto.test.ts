@@ -122,6 +122,25 @@ async function loadAtproto(): Promise<AtprotoModule> {
 }
 
 describe("ATProto active-key binding", () => {
+  it("rejects a nested event proxy before invoking any proxy trap", async () => {
+    const atproto = await loadAtproto();
+    let traps = 0;
+    const proxiedEvent = new Proxy(bindingEvent, {
+      getPrototypeOf(target) {
+        traps += 1;
+        return Reflect.getPrototypeOf(target);
+      },
+      ownKeys(target) {
+        traps += 1;
+        return Reflect.ownKeys(target);
+      },
+    });
+    expect(atproto.validateAtprotoBinding?.(bindingInput([
+      bindingEvidence(binding, proxiedEvent, resolutionEvidenceFor(binding), false),
+    ]))).toEqual({ verdict: "reject", reason_code: "atproto-binding-invalid" });
+    expect(traps).toBe(0);
+  });
+
   it("accepts only the canonical raw-pubkey binding through authenticated resolution", async () => {
     const atproto = await loadAtproto();
     expect(atproto.validateAtprotoBinding?.(bindingInput([

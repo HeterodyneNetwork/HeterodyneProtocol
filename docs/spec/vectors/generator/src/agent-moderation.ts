@@ -256,7 +256,7 @@ export function validateAgentPolicyCorrection(
     || !equalAssociation(value.agent_association, receipt.agent_association)
     || value.policy.id !== receipt.policy.id
     || value.policy.version !== receipt.policy.version
-    || value.corrected_at !== event.created_at
+    || value.corrected_at !== verified.created_at
   ) {
     throw new Error("agent-policy-receipt-invalid");
   }

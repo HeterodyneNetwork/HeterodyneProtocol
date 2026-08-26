@@ -10,10 +10,12 @@ const retiredCurrentSources = [
   "src/kel-replay.test.ts",
   "src/keri-materialized.ts",
   "src/keri-materialized.test.ts",
+  "src/legacy-agent-delegation.ts",
+  "src/legacy-agent-delegation.test.ts",
 ] as const;
 
 describe("current-draft compiler and Vitest boundary", () => {
-  it("does not compile retired Core KEL or materialized-KEL units", () => {
+  it("does not compile retired KEL or caller-asserted delegation units", () => {
     const configPath = resolve(generatorRoot, "tsconfig.current.json");
     const config = ts.readConfigFile(configPath, ts.sys.readFile);
     const parsed = ts.parseJsonConfigFileContent(
@@ -48,5 +50,6 @@ describe("current-draft compiler and Vitest boundary", () => {
 
     expect(listed).not.toContain("src/kel-replay.test.ts");
     expect(listed).not.toContain("src/keri-materialized.test.ts");
+    expect(listed).not.toContain("src/legacy-agent-delegation.test.ts");
   });
 });

@@ -9,6 +9,8 @@
     "src/kel-replay.test.ts",
     "src/keri-materialized.ts",
     "src/keri-materialized.test.ts",
+    "src/legacy-agent-delegation.ts",
+    "src/legacy-agent-delegation.test.ts",
     "src/author.ts",
     "src/author.test.ts",
     "src/cli.ts",

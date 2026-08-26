@@ -99,7 +99,7 @@ async function harness(overrides: {
   clock?: () => unknown;
   authenticate?: () => unknown;
   loadState?: () => unknown;
-  consume?: () => unknown;
+  consume?: (binding: unknown) => unknown;
 } = {}) {
   const api = await moduleUnderTest();
   expect(api.createTrustedSeedAdmissionAuthority).toBeTypeOf("function");
@@ -270,6 +270,28 @@ describe("trusted private seed admission authority", () => {
       expect(fixture.api.evaluateTrustedSeedAdmission?.(fixture.bundle.authority, capability)?.verdict)
         .toBe("reject");
     }
+  });
+
+  it("atomically binds persistence to the byte-exact verified write", async () => {
+    let consumedBinding: unknown;
+    const fixture = await harness({
+      consume: (binding) => {
+        consumedBinding = binding;
+        return { verdict: "accept" };
+      },
+    });
+    fixture.write.nip01_raw = ` \n${fixture.write.nip01_raw}\n`;
+    const capability = fixture.bundle.mintRequestCapability({}, fixture.write);
+    expect(fixture.api.evaluateTrustedSeedAdmission?.(
+      fixture.bundle.authority,
+      capability,
+    )).toMatchObject({ verdict: "accept", nip01_raw: fixture.write.nip01_raw });
+    expect(consumedBinding).toMatchObject({
+      event_id: JSON.parse(fixture.write.nip01_raw).id,
+      nip01_raw: fixture.write.nip01_raw,
+      writer_ref: writerRef,
+    });
+    expect(Object.isFrozen(consumedBinding)).toBe(true);
   });
 
   it("fails closed for replay, conflict, malformed, throwing, or uncertain consume results", async () => {

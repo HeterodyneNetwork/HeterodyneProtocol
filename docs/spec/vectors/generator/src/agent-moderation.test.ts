@@ -517,6 +517,44 @@ describe("correction and current list removal", () => {
       .toThrow(/agent-policy-receipt-invalid/);
   });
 
+  it("does not reread a mutable correction source after verification", async () => {
+    const correction = await signEvent({
+      secretKey: moderatorPrivateKey,
+      created_at: 1_006,
+      kind: 1985,
+      tags: [
+        ["L", "network.heterodyne.agent-policy"],
+        ["l", "correction", "network.heterodyne.agent-policy"],
+        ["e", receiptEvent.id],
+        ["p", deviceKey],
+      ],
+      content: JSON.stringify({
+        profile: "heterodyne.social.agent-policy-correction.v1",
+        spec_version: "heterodyne/0.5.0",
+        corrects_receipt_id: receiptEvent.id,
+        event_id: offendingEvent.id,
+        event_author: deviceKey,
+        agent_association: agentAssociation,
+        policy: { id: "network.heterodyne.agent-policy", version: "1.0.0" },
+        decision: "retract",
+        corrected_at: 1_007,
+        evidence: ["sha256:chronology"],
+        explanation: "Synthetic boundary validation only.",
+      }),
+      auxRand: AUX_RAND,
+    });
+    const mutatingReceipt = { ...receipt };
+    Object.defineProperty(mutatingReceipt, "issuer", {
+      enumerable: true,
+      get() {
+        correction.created_at = 1_007;
+        return receipt.issuer;
+      },
+    });
+    expect(() => validateAgentPolicyCorrection(correction, mutatingReceipt))
+      .toThrow(/agent-policy-receipt-invalid/);
+  });
+
   it("rejects a signed correction with an invalid NIP-01 tag structure", async () => {
     const correction = await signEvent({
       secretKey: moderatorPrivateKey,

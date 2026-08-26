@@ -1,3 +1,4 @@
+import { types as utilTypes } from "node:util";
 import { sha256 } from "@noble/hashes/sha2";
 import { base58 } from "@scure/base";
 import { bytesToHex, utf8Bytes } from "./hex.js";
@@ -549,7 +550,12 @@ function captureAtprotoBoundary(
   value: unknown,
   expectedKeys: string,
 ): Readonly<Record<string, unknown>> | null {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
+  if (
+    value === null
+    || typeof value !== "object"
+    || Array.isArray(value)
+    || utilTypes.isProxy(value)
+  ) return null;
   let prototype: object | null;
   let descriptors: PropertyDescriptorMap;
   try {
@@ -589,7 +595,11 @@ function snapshotAtprotoData(
     || typeof value === "number"
     || typeof value === "boolean"
   ) return value;
-  if (typeof value !== "object" || seen.has(value)) return INVALID_ATPROTO_SNAPSHOT;
+  if (
+    typeof value !== "object"
+    || utilTypes.isProxy(value)
+    || seen.has(value)
+  ) return INVALID_ATPROTO_SNAPSHOT;
   let prototype: object | null;
   let descriptors: PropertyDescriptorMap;
   try {
@@ -640,7 +650,9 @@ function snapshotAtprotoData(
         || !("value" in descriptor)
         || descriptor.enumerable !== true
       ) return INVALID_ATPROTO_SNAPSHOT;
-      const member = snapshotAtprotoData(descriptor.value, seen);
+      const member = key === "nostr_event"
+        ? snapshotAndVerifyNostrEvent(descriptor.value) ?? INVALID_ATPROTO_SNAPSHOT
+        : snapshotAtprotoData(descriptor.value, seen);
       if (member === INVALID_ATPROTO_SNAPSHOT) return INVALID_ATPROTO_SNAPSHOT;
       snapshot[key] = member;
     }

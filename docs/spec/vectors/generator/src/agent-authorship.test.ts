@@ -28,6 +28,12 @@ const subjectJkt = "A".repeat(43);
 const malformedAssociations: unknown[] = [null, [], "key", { kind: "role" }];
 
 describe("workload registration and stable identity", () => {
+  it("does not expose the retired caller-asserted delegation bridge", () => {
+    const live = agentAuthorship as Record<string, unknown>;
+    expect(live.agentBindingMessage).toBeUndefined();
+    expect(live.validateAgentDelegation).toBeUndefined();
+  });
+
   const registration = {
     persona_key: coldRoot,
     client_id: "agent-client",
@@ -865,6 +871,7 @@ describe("atomic Comms signed publication for Social", () => {
   it("rejects open or non-data signer result trees", () => {
     const api = agentAuthorship as AtomicApi;
     let nestedGetterCalls = 0;
+    let nestedProxyTraps = 0;
     const validOutcome = (event: NostrUnsignedEvent) => ({
       verdict: "accept" as const,
       disposition: "executed" as const,
@@ -891,6 +898,32 @@ describe("atomic Comms signed publication for Social", () => {
         });
         return { ...outcome, event: accessorEvent };
       },
+      (event) => {
+        const outcome = validOutcome(event);
+        return {
+          ...outcome,
+          event: new Proxy(outcome.event, {
+            getPrototypeOf(target) {
+              nestedProxyTraps += 1;
+              return Reflect.getPrototypeOf(target);
+            },
+            ownKeys(target) {
+              nestedProxyTraps += 1;
+              return Reflect.ownKeys(target);
+            },
+          }),
+        };
+      },
+      (event) => new Proxy(validOutcome(event), {
+        getPrototypeOf(target) {
+          nestedProxyTraps += 1;
+          return Reflect.getPrototypeOf(target);
+        },
+        ownKeys(target) {
+          nestedProxyTraps += 1;
+          return Reflect.ownKeys(target);
+        },
+      }),
     ];
     for (const createOutcome of cases) {
       const authority = api.createCommsSocialPublicationAuthority?.({
@@ -911,6 +944,7 @@ describe("atomic Comms signed publication for Social", () => {
       expect(result).toEqual({ verdict: "reject", reason_code: "agent-signer-mismatch" });
     }
     expect(nestedGetterCalls).toBe(0);
+    expect(nestedProxyTraps).toBe(0);
   });
 });
 

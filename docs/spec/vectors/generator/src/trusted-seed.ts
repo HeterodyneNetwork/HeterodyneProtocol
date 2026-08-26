@@ -267,6 +267,7 @@ export function evaluateTrustedSeedAdmission(
     private_rid: request.private_rid,
     writer_ref: request.writer_ref ?? null,
     event_id: event?.id ?? null,
+    nip01_raw: request.nip01_raw ?? null,
   });
   const consumed = callAndSnapshot(authority.consume_once, consumeBinding);
   if (!isConsumeResult(consumed)) return denied("trusted-seed-request-invalid");

@@ -433,6 +433,79 @@ describe("reader lifecycle and metadata privacy", () => {
     }
   });
 
+  it("rejects an accessor-backed stored claim event without invoking it", () => {
+    const records = [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord];
+    const state = mergeClaimLedger(
+      records,
+      [],
+      s.epochOneRepository.checkpoint,
+      contextFor(s.epochOneRepository.repository),
+    );
+    const hostileRecord = structuredClone(s.claimRecordOne);
+    const artifact = (hostileRecord.payload as Record<string, unknown>)
+      .claim_artifact as Record<string, unknown>;
+    const event = artifact.event as Record<string, unknown>;
+    const eventId = event.id;
+    let getterCalls = 0;
+    Object.defineProperty(event, "id", {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return eventId;
+      },
+    });
+    const hostileState = {
+      ...state,
+      records: state.records.map((record) =>
+        record.record_id === hostileRecord.record_id ? hostileRecord : record),
+    };
+    const request = s.requestFor(s.claimRecordOne, s.claimOne);
+    request.verification_context.now = s.now + 60;
+    expect(() => buildReaderOnboardingBundle({
+      reader_nid: s.writerOne.did_key,
+      request,
+      audience_key: s.audienceKeyOne,
+      compact_state: { confirmed_claim_ids: [s.claimOne.artifact.semantic.claim_id] },
+    }, hostileState)).toThrow(/claim-event-signature-invalid|claim-ledger-reader-unauthorized/);
+    expect(getterCalls).toBe(0);
+  });
+
+  it("keeps the verified claim event ID stable after later source mutation", () => {
+    const records = [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord];
+    const state = mergeClaimLedger(
+      records,
+      [],
+      s.epochOneRepository.checkpoint,
+      contextFor(s.epochOneRepository.repository),
+    );
+    const hostileRecord = structuredClone(s.claimRecordOne);
+    const artifact = (hostileRecord.payload as Record<string, unknown>)
+      .claim_artifact as Record<string, unknown>;
+    const event = artifact.event as Record<string, unknown>;
+    const originalEventId = event.id as string;
+    const hostileState = {
+      ...state,
+      records: state.records.map((record) =>
+        record.record_id === hostileRecord.record_id ? hostileRecord : record),
+    };
+    const compactState = Object.defineProperty({}, "confirmed_claim_ids", {
+      enumerable: true,
+      get() {
+        event.id = "00".repeat(32);
+        return [s.claimOne.artifact.semantic.claim_id];
+      },
+    });
+    const request = s.requestFor(s.claimRecordOne, s.claimOne);
+    request.verification_context.now = s.now + 60;
+    const bundle = buildReaderOnboardingBundle({
+      reader_nid: s.writerOne.did_key,
+      request,
+      audience_key: s.audienceKeyOne,
+      compact_state: compactState,
+    }, hostileState);
+    expect(bundle.authorization.event_id).toBe(originalEventId);
+  });
+
   it("materializes all fixed-size opaque buckets and changes every bucket per commit", () => {
     const one = materializeLedgerLayout(s.audienceKeyOne, 1, s.baseRepository.checkpoint.commit_oid, "11".repeat(32), [s.claimRecordOne]);
     const many = materializeLedgerLayout(s.audienceKeyOne, 1, s.baseRepository.checkpoint.commit_oid, "12".repeat(32), [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord]);

@@ -910,11 +910,16 @@ grant MUST NOT be used even if the endpoint or old ref remains reachable.
 
 An accepted admission is atomically consumed against the exact authenticated
 connection and challenge, request ID, ACL digest and current-state revision,
-Marmot transition, operation, route, RID, writer ref, and event ID. Replay,
-compare-and-swap conflict, effect failure, malformed result, or exception fails
-closed and MUST NOT acknowledge the operation. A read admission result MUST
-NOT return either write-only member. The seed treats accepted kind-445 event
-`content` as opaque ciphertext and MUST NOT interpret it as plaintext.
+Marmot transition, operation, route, RID, writer ref, and event ID. For a
+write, that same atomic binding also carries the exact original `nip01_raw`
+string whose event ID and signature were verified. Callback
+acceptance certifies that those byte-exact received bytes are durable on the
+bound writer ref; returning the bytes from admission without that persistence
+effect is insufficient. Replay, compare-and-swap conflict, effect failure,
+malformed result, or exception fails closed and MUST NOT acknowledge the
+operation. A read admission result MUST NOT return either write-only member.
+The seed treats accepted kind-445 event `content` as opaque ciphertext and
+MUST NOT interpret it as plaintext.
 
 A candidate whose `administrator_account` differs from the current expected
 administrator is unauthorized. A candidate naming the expected administrator
