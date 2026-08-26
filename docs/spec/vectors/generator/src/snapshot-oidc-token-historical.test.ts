@@ -13,8 +13,9 @@ const fixtures = buildFixtures();
 let replayed: Awaited<ReturnType<typeof buildAndReplaySnapshotOidcTokenVectors>>;
 
 beforeAll(async () => {
+  // The isolated historical adapter installs, compiles, and replays its pinned runtime.
   replayed = await buildAndReplaySnapshotOidcTokenVectors(fixtures);
-}, 30_000);
+}, 90_000);
 
 describe("snapshot-only historical OIDC and token-status semantics", () => {
   it("keeps cold-root issuer construction only on the pinned OIDC adapter", () => {
