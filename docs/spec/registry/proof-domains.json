@@ -1,8 +1,50 @@
 {
   "proof_domains": [
     {
+      "id": "heterodyne-control-signer-grant-v1",
+      "owner": "control", "first_version": "heterodyne/0.5.0", "status": "draft",
+      "bound_members": ["unsigned_grant"],
+      "suites": ["bip340"],
+      "description": "Active persona authorization of one exact closed NIP-46 signer grant."
+    },
+    {
+      "id": "heterodyne-control-compromise-reset-grant-v1",
+      "owner": "control", "first_version": "heterodyne/0.5.0", "status": "draft",
+      "bound_members": ["unsigned_grant"],
+      "suites": ["bip340"],
+      "description": "Old active account or pinned Assurance authority authorization of one exact compromise reset."
+    },
+    {
+      "id": "heterodyne-control-compromise-reset-completion-v1",
+      "owner": "control", "first_version": "heterodyne/0.5.0", "status": "draft",
+      "bound_members": ["unsigned_completion"],
+      "suites": ["bip340"],
+      "description": "Successor account acceptance of one exact reset completion and evidence-bundle digest."
+    },
+    {
+      "id": "heterodyne-control-reset-state-evidence-v1",
+      "owner": "control", "first_version": "heterodyne/0.5.0", "status": "draft",
+      "bound_members": ["action", "authority_class", "effective_at", "evidence_id", "prior_authorization_digest", "recovery_id", "signer", "subject_id"],
+      "suites": ["bip340"],
+      "description": "Authenticated individual revocation, invalidation, or stalled-state evidence."
+    },
+    {
+      "id": "heterodyne-control-mls-commit-evidence-v1",
+      "owner": "control", "first_version": "heterodyne/0.5.0", "status": "draft",
+      "bound_members": ["unsigned_commit_evidence"],
+      "suites": ["bip340"],
+      "description": "Prior-group-verifier attestation over raw MLS Commit bytes, prior state, exact leaf transition, and successor state."
+    },
+    {
+      "id": "heterodyne-control-mls-keypackage-evidence-v1",
+      "owner": "control", "first_version": "heterodyne/0.5.0", "status": "draft",
+      "bound_members": ["unsigned_keypackage_evidence"],
+      "suites": ["bip340"],
+      "description": "Pinned MLS verifier attestation over a successor-bound standard Nostr KeyPackage event and decoded package binding."
+    },
+    {
       "id": "heterodyne-nid-binding-v1",
-      "owner": "core",
+      "owner": "assurance",
       "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
@@ -13,7 +55,84 @@
         "bip340",
         "ed25519"
       ],
-      "description": "Dual-proof binding of a Radicle NID to a persona cold root on kind:31001."
+      "description": "Historical dual-proof binding of a Radicle NID to a persona cold root on pre-redesign kind:31001."
+    },
+    {
+      "id": "heterodyne-assurance-succession-transition-v1",
+      "owner": "assurance",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "active_key",
+        "authorizing_evidence.authority_class",
+        "authorizing_evidence.authority_proofs[].authority_key",
+        "authorizing_evidence.witness_receipts[].witness_key",
+        "class",
+        "compromise_time",
+        "created_at",
+        "new_active_key",
+        "new_key_acceptance.key",
+        "next_associated_key_policy",
+        "next_epoch_policy",
+        "next_succession_authority",
+        "predecessor",
+        "previous_active_key",
+        "previous_head",
+        "profile",
+        "spec_version",
+        "subordinate_reauthorizations",
+        "thresholds",
+        "witnesses"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "Authority, new-key acceptance, and witness proofs bind one identical domain-separated digest of the entire closed succession record except authorizing_evidence.authority_proofs[*].signature, authorizing_evidence.witness_receipts[*].signature, and new_key_acceptance.signature."
+    },
+    {
+      "id": "heterodyne-assurance-associated-key-record-v1",
+      "owner": "assurance",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "active_key",
+        "assurance_head",
+        "created_at",
+        "expires_at",
+        "issuer",
+        "issuer_authority.authority_proofs[].authority_key",
+        "issuer_authority.class",
+        "predecessor",
+        "profile",
+        "revocation",
+        "role",
+        "scope",
+        "spec_version",
+        "state",
+        "subject_key",
+        "visibility"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "Epoch-threshold issuer proofs and active public-agent subject proof bind one identical domain-separated digest of the entire closed associated-key record except issuer_authority.authority_proofs[*].signature and subject_proof."
+    },
+    {
+      "id": "heterodyne-assurance-downgrade-v1",
+      "owner": "assurance",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "active_key",
+        "assurance_head",
+        "created_at",
+        "inception_event_id",
+        "predecessor"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "Current recovery-authority consent over an active-key-authored Assurance downgrade."
     },
     {
       "id": "heterodyne-node-advert-v1",
@@ -31,23 +150,6 @@
         "ed25519"
       ],
       "description": "NID proof over a kind:31010 node and repository advertisement."
-    },
-    {
-      "id": "heterodyne-agent-signing-binding-v1",
-      "owner": "comms",
-      "first_version": "heterodyne/0.5.0",
-      "status": "draft",
-      "bound_members": [
-        "cold_root",
-        "nid",
-        "publishing_key",
-        "role_id"
-      ],
-      "suites": [
-        "bip340",
-        "ed25519"
-      ],
-      "description": "Dual proof binding a node-held agent role key to a persona and hosting NID."
     },
     {
       "id": "heterodyne-claim-pop-v1",
@@ -115,17 +217,330 @@
       "description": "Responder proof over a one-time invite response without its proof member."
     },
     {
+      "id": "heterodyne-trusted-seed-acl-v1",
+      "owner": "comms",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "accounts[].account_key",
+        "accounts[].roles",
+        "administrator_account",
+        "expires_at",
+        "group_transition.generation",
+        "group_transition.marmot_routing_event_id",
+        "group_transition.routing_binding_sha256",
+        "h",
+        "issued_at",
+        "predecessor",
+        "private_rid",
+        "profile",
+        "seed_grants[].radicle_endpoint",
+        "seed_grants[].relay_endpoint",
+        "seed_grants[].roles",
+        "seed_grants[].seed_nid",
+        "seed_grants[].state",
+        "seed_grants[].writer_ref",
+        "sequence",
+        "spec_version"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "The current Marmot administrator signs the complete closed private-relay ACL projection except its signature member."
+    },
+    {
+      "id": "heterodyne-workspace-repository-view-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "authority_checkpoint",
+        "canonical_ancestry",
+        "canonical_head",
+        "expires_at",
+        "fork_status",
+        "object_ids",
+        "object_set_digest",
+        "observed_at",
+        "observed_heads",
+        "policy_head",
+        "predecessor",
+        "profile",
+        "repository_rid",
+        "resolver_policy",
+        "resolver_version",
+        "spec_version",
+        "workspace_key"
+      ],
+      "suites": [
+        "bip340",
+        "ed25519"
+      ],
+      "description": "A configured trusted repository verifier authenticates one exact canonical, fork-complete, current Workspace repository view and complete object-set digest."
+    },
+    {
+      "id": "heterodyne-workspace-object-set-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "object_ids"
+      ],
+      "suites": [
+        "bip340",
+        "ed25519"
+      ],
+      "description": "The repository-view signature binds the SHA-256 proof-byte digest of the unique strictly byte-sorted current Workspace object identifier array; reordering is invalid."
+    },
+    {
+      "id": "heterodyne-workspace-invitation-nonce-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "grant_id",
+        "nonce_opening",
+        "subject_account",
+        "target_device",
+        "target_leaf",
+        "workspace_key"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "The invitation commitment binds its one-use nonce opening to the exact grant, workspace, subject account, device, and Marmot leaf."
+    },
+    {
+      "id": "heterodyne-workspace-invitation-acceptance-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "authority_checkpoint",
+        "expires_at",
+        "grant_id",
+        "grant_operation_digest",
+        "issued_at",
+        "nonce_commitment",
+        "nonce_opening",
+        "policy_head",
+        "predecessor",
+        "profile",
+        "repository_view_id",
+        "spec_version",
+        "subject_account",
+        "target_device",
+        "target_leaf",
+        "workspace_key"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "The invited subject signs a closed acceptance bound to the exact grant operation, current repository view, account, device, leaf, nonce, and validity interval."
+    },
+    {
+      "id": "heterodyne-workspace-successor-reauthorization-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "authority_checkpoint",
+        "effective_at",
+        "expires_at",
+        "issued_at",
+        "new_account",
+        "new_device",
+        "new_key",
+        "new_leaf",
+        "pending_checkpoint_id",
+        "pending_custody_host_id",
+        "pending_envelope_id",
+        "pending_grant_id",
+        "pending_key_epoch",
+        "policy_head",
+        "predecessor",
+        "prior_account",
+        "prior_device",
+        "prior_grant_id",
+        "prior_key",
+        "prior_leaf",
+        "profile",
+        "repository_view_id",
+        "resource_id",
+        "role_id",
+        "scope",
+        "spec_version",
+        "workspace_key"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "The current workspace and new account keys independently sign one exact latest-view transfer from the prior account/device/leaf and active grant to a fresh new account/device/leaf bound by a pending grant and, for resource-key scope, pending envelope."
+    },
+    {
+      "id": "heterodyne-workspace-affiliation-evidence-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "authority_checkpoint",
+        "expires_at",
+        "observed_at",
+        "policy_head",
+        "predecessor",
+        "profile",
+        "relationship_id",
+        "repository_head",
+        "repository_rid",
+        "source_account",
+        "source_role_id",
+        "source_workspace_key",
+        "spec_version"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "The source workspace active key signs closed current affiliation evidence bound to the relationship, source role and account, accepted repository state, and authority tuple."
+    },
+    {
+      "id": "heterodyne-workspace-grant-approval-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "approver_key",
+        "authority_checkpoint",
+        "expires_at",
+        "issued_at",
+        "operation_digest",
+        "policy_head",
+        "predecessor",
+        "profile",
+        "spec_version",
+        "workspace_key"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "An authorized approver signs one closed grant-approval record bound to the exact Workspace authority tuple and grant-operation digest."
+    },
+    {
+      "id": "heterodyne-workspace-joint-delegate-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "authority_checkpoint",
+        "delegate_key",
+        "expires_at",
+        "issued_at",
+        "joint_workspace_key",
+        "operation_digest",
+        "policy_head",
+        "predecessor",
+        "profile",
+        "relationship_id",
+        "resource_scope",
+        "spec_version"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "A delegate from the latest resolver-derived signed joint-workspace state signs one closed proof bound to the exact joint authority tuple, operation digest, scope, and validity interval."
+    },
+    {
+      "id": "heterodyne-workspace-grant-operation-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "activates_at",
+        "activation",
+        "authority_checkpoint",
+        "capabilities",
+        "delegable",
+        "evidence_ids",
+        "expires_at",
+        "grant_id",
+        "invitation",
+        "issued_at",
+        "object_type",
+        "policy_head",
+        "predecessor",
+        "recipient",
+        "repository_head",
+        "repository_rid",
+        "resource_scope",
+        "role_id",
+        "spec_version",
+        "subject_account",
+        "target_device",
+        "workspace_key"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "The grant-operation prehash bound into approval BIP-340 proofs covers every closed signed grant member except signature and approval IDs."
+    },
+    {
+      "id": "heterodyne-workspace-joint-operation-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "authority_checkpoint",
+        "policy_head",
+        "predecessor",
+        "relationship_id",
+        "resource_scope",
+        "workspace_key"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "The joint-operation prehash bound into delegate BIP-340 proofs covers the exact joint authority tuple and requested resource scope."
+    },
+    {
+      "id": "heterodyne-workspace-key-request-v1",
+      "owner": "workspace",
+      "first_version": "heterodyne/0.5.0",
+      "status": "draft",
+      "bound_members": [
+        "authenticated_account",
+        "custody_host_id",
+        "recipient",
+        "requested_epoch",
+        "requested_snapshot_id",
+        "resource_id",
+        "target_account",
+        "target_device"
+      ],
+      "suites": [
+        "bip340"
+      ],
+      "description": "The effective-authorization operation digest binds one exact resource-key pull request before latest-view role, resource, history, successor, and revocation evaluation."
+    },
+    {
       "id": "heterodyne-workspace-object-v1",
       "owner": "workspace",
       "first_version": "heterodyne/0.5.0",
       "status": "draft",
       "bound_members": [
-        "object"
+        "authority_checkpoint",
+        "body",
+        "issued_at",
+        "object_type",
+        "policy_head",
+        "predecessor",
+        "repository_head",
+        "repository_rid",
+        "spec_version",
+        "workspace_key"
       ],
       "suites": [
         "bip340"
       ],
-      "description": "Actor proof over a signed Workspace object without its signature member."
+      "description": "Active workspace-key proof over the closed object body and exact current policy, predecessor, checkpoint, and repository context."
     }
   ]
 }

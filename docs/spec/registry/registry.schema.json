@@ -59,6 +59,7 @@
    "type": "string",
    "enum": [
     "core",
+    "assurance",
     "comms",
     "control",
     "social",
@@ -168,6 +169,7 @@
      "type": "string",
      "enum": [
       "core",
+      "assurance",
       "comms",
       "control",
       "social",
@@ -240,7 +242,7 @@
    "properties": {
     "id": {
      "type": "string",
-     "pattern": "^(CORE|COMMS|CONTROL|SOCIAL|WORKSPACE)-I-[A-Z0-9]+(?:-[A-Z0-9]+)*$"
+     "pattern": "^(CORE|ASSURANCE|COMMS|CONTROL|SOCIAL|WORKSPACE)-I-[A-Z0-9]+(?:-[A-Z0-9]+)*$"
     },
     "owner": {
      "$ref": "#/definitions/document_id"
@@ -253,7 +255,7 @@
     },
     "feature": {
      "type": "string",
-     "pattern": "^(core|comms|control|social|workspace)\\.[a-z0-9]+(?:[.-][a-z0-9]+)*\\.v[1-9][0-9]*$",
+     "pattern": "^(core|assurance|comms|control|social|workspace)\\.[a-z0-9]+(?:[.-][a-z0-9]+)*\\.v[1-9][0-9]*$",
      "description": "Optional owning feature. An invariant with this member binds only implementations claiming that feature; an invariant without it is baseline for its document."
     },
     "description": {
@@ -277,7 +279,7 @@
    "properties": {
     "id": {
      "type": "string",
-     "pattern": "^(core|comms|control|social|workspace)\\.[a-z0-9]+(?:[.-][a-z0-9]+)*\\.v[1-9][0-9]*$"
+     "pattern": "^(core|assurance|comms|control|social|workspace)\\.[a-z0-9]+(?:[.-][a-z0-9]+)*\\.v[1-9][0-9]*$"
     },
     "owner": {
      "$ref": "#/definitions/document_id"
@@ -300,7 +302,7 @@
      "uniqueItems": true,
      "items": {
       "type": "string",
-      "pattern": "^(core|comms|control|social|workspace)\\.[a-z0-9]+(?:[.-][a-z0-9]+)*\\.v[1-9][0-9]*$"
+      "pattern": "^(core|assurance|comms|control|social|workspace)\\.[a-z0-9]+(?:[.-][a-z0-9]+)*\\.v[1-9][0-9]*$"
      }
     }
    }
@@ -340,6 +342,7 @@
      "uniqueItems": true,
      "items": {
       "enum": [
+       "nostr-event",
        "radicle-authority-file",
        "marmot-application-data"
       ]
@@ -379,7 +382,7 @@
      "uniqueItems": true,
      "items": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9_]*$"
+      "pattern": "^[a-z][a-z0-9_]*(?:\\[\\])?(?:\\.[a-z][a-z0-9_]*(?:\\[\\])?)*$"
      }
     },
     "suites": {

@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/workspace/workspace-relationship-receipt-v1.schema.json",
+  "title": "workspace-relationship-receipt-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version",
+    "object_type",
+    "workspace_key",
+    "policy_head",
+    "predecessor",
+    "authority_checkpoint",
+    "repository_rid",
+    "repository_head",
+    "issued_at",
+    "signature",
+    "receipt_id",
+    "relationship_id",
+    "receiving_role_id",
+    "source_workspace_key",
+    "source_relationship_object_id",
+    "source_policy_head",
+    "source_predecessor",
+    "source_authority_checkpoint",
+    "source_repository_rid",
+    "source_repository_head",
+    "received_at"
+  ],
+  "properties": {
+    "spec_version": {
+      "const": "heterodyne/0.5.0"
+    },
+    "object_type": {
+      "const": "workspace-relationship-receipt-v1"
+    },
+    "workspace_key": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "policy_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "predecessor": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "authority_checkpoint": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "repository_rid": {
+      "type": "string",
+      "pattern": "^rad:[A-Za-z0-9]+$"
+    },
+    "repository_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "issued_at": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    },
+    "receipt_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "relationship_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "receiving_role_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_workspace_key": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_relationship_object_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_policy_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_predecessor": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source_authority_checkpoint": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_repository_rid": {
+      "type": "string",
+      "pattern": "^rad:[A-Za-z0-9]+$"
+    },
+    "source_repository_head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "received_at": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    }
+  }
+}

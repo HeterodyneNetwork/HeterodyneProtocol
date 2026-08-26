@@ -13,7 +13,6 @@ export type InviteDescriptor = {
   version: 1;
   purpose: InvitePurpose;
   inviter_account: string;
-  inviter_authority?: Record<string, unknown>;
   invite_id: string;
   rendezvous_pubkey: string;
   relay_hints: string[];
@@ -46,6 +45,7 @@ export function verifyInviteSignature(
   signatureHex: string,
 ): boolean {
   try {
+    if (!hasClosedDescriptorMembers(descriptor)) return false;
     return schnorr.verify(
       hexToBytes(signatureHex),
       descriptorDigest(descriptor),
@@ -54,6 +54,50 @@ export function verifyInviteSignature(
   } catch {
     return false;
   }
+}
+
+const INVITE_DESCRIPTOR_MEMBERS = new Set([
+  "approval_mode",
+  "expected_client_pubkey",
+  "expires_at",
+  "invite_id",
+  "inviter_account",
+  "issued_at",
+  "preauthorization",
+  "purpose",
+  "relay_hints",
+  "rendezvous_pubkey",
+  "secret_sha256",
+  "version",
+]);
+const REQUIRED_INVITE_DESCRIPTOR_MEMBERS = [
+  "approval_mode",
+  "expires_at",
+  "invite_id",
+  "inviter_account",
+  "issued_at",
+  "purpose",
+  "relay_hints",
+  "rendezvous_pubkey",
+  "secret_sha256",
+  "version",
+] as const;
+
+function hasClosedDescriptorMembers(descriptor: InviteDescriptor): boolean {
+  const prototype = Object.getPrototypeOf(descriptor);
+  if (prototype !== Object.prototype && prototype !== null) return false;
+
+  const propertyDescriptors = Object.getOwnPropertyDescriptors(descriptor);
+  const members = Reflect.ownKeys(propertyDescriptors);
+  return REQUIRED_INVITE_DESCRIPTOR_MEMBERS.every((member) =>
+    Object.hasOwn(propertyDescriptors, member)
+  ) && members.every((member) => {
+    if (typeof member !== "string" || !INVITE_DESCRIPTOR_MEMBERS.has(member)) {
+      return false;
+    }
+    const property = propertyDescriptors[member];
+    return property.enumerable === true && Object.hasOwn(property, "value");
+  });
 }
 
 export function encodeInviteFragment(envelope: InviteEnvelope): string {

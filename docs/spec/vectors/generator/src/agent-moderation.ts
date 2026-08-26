@@ -1,10 +1,8 @@
 import { Ajv2020 } from "ajv/dist/2020.js";
 import receiptSchema from "../../../schemas/social/agent-policy-receipt-v1.schema.json" with { type: "json" };
 import correctionSchema from "../../../schemas/social/agent-policy-correction-v1.schema.json" with { type: "json" };
-import {
-  verifyEventSignature,
-  type NostrSignedEvent,
-} from "./nostr.js";
+import type { AgentAssociation } from "./agent-authorship.js";
+import { snapshotAndVerifyNostrEvent, type NostrSignedEvent } from "./nostr.js";
 
 export type AgentPolicyReason =
   | "agent-attribution-missing"
@@ -15,20 +13,27 @@ export type AgentPolicyReceipt = {
   receipt_id: string;
   issuer: string;
   event_id: string;
-  device_key: string;
-  cold_root: string;
+  event_author: string;
+  agent_association: AgentAssociation | null;
+  policy: { id: string; version: string };
+  decision: "advisory-violation";
   reason: AgentPolicyReason;
   observed_at: number;
   evidence: string[];
   explanation: string;
-  remediation: "rotate-device-key";
+  remediation: "correct-attribution" | "replace-signing-key";
+};
+
+export type AgentPolicyTarget = {
+  event: NostrSignedEvent;
+  verified_agent_association: AgentAssociation | null;
 };
 
 export type AgentPolicyList = {
   policy_persona: string;
   event_id: string;
   entries: Array<{
-    device_key: string;
+    event_author: string;
     receipt_id: string;
     reason: AgentPolicyReason;
   }>;
@@ -37,33 +42,35 @@ export type AgentPolicyList = {
 export type AgentPolicyInput = {
   subscribed: boolean;
   policy_persona: string;
-  policy_current_canonical: boolean;
-  repo_history_verified: boolean;
-  candidate_source: "canonical" | "relay-only" | "pr";
-  device_key: string;
-  muted_device_keys: string[];
+  policy_event_selected: boolean;
+  event_author: string;
+  muted_event_authors: string[];
   default_subscription: boolean;
   default_visible: boolean;
   can_disable_default: boolean;
 };
 
 export type AgentPolicyDecision =
-  | {
-      visible: true;
-      muted: false;
-    }
-  | {
-      visible: false;
-      muted: true;
-      source?: string;
-      reason?: string;
-    };
+  | { visible: true; muted: false }
+  | { visible: false; muted: true; source?: string; reason?: string };
 
 export type AgentCorrectionInput = {
   correction_valid: boolean;
-  canonical_list_binding_removed: boolean;
-  device_key: string;
-  muted_device_keys: string[];
+  current_list_binding_removed: boolean;
+  event_author: string;
+  muted_event_authors: string[];
+};
+
+export type AgentPolicyCorrection = {
+  corrects_receipt_id: string;
+  event_id: string;
+  event_author: string;
+  agent_association: AgentAssociation | null;
+  policy: { id: string; version: string };
+  decision: "retract";
+  corrected_at: number;
+  evidence: string[];
+  explanation: string;
 };
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
@@ -74,17 +81,28 @@ const POLICY_REASONS = new Set<AgentPolicyReason>([
   "agent-attribution-falsified",
   "agent-publication-bypass",
 ]);
+const HEX_32 = /^[0-9a-f]{64}$/;
 
 export function validateAgentPolicyReceipt(
   event: NostrSignedEvent,
+  target: AgentPolicyTarget,
 ): AgentPolicyReceipt {
-  if (event.kind !== 1985 || !verifyEventSignature(event)) {
+  const receiptEvent = snapshotAndVerifyNostrEvent(event);
+  const targetEvent = target === undefined
+    ? null
+    : snapshotAndVerifyNostrEvent(target.event);
+  if (
+    target === undefined
+    || receiptEvent === null
+    || targetEvent === null
+    || receiptEvent.kind !== 1985
+  ) {
     throw new Error("agent-policy-receipt-invalid");
   }
-  const namespaceTags = tags(event, "L");
-  const labelTags = tags(event, "l");
-  const eventTags = tags(event, "e");
-  const deviceTags = tags(event, "p");
+  const namespaceTags = tags(receiptEvent, "L");
+  const labelTags = tags(receiptEvent, "l");
+  const eventTags = tags(receiptEvent, "e");
+  const authorTags = tags(receiptEvent, "p");
   if (
     namespaceTags.length !== 1
     || namespaceTags[0].length !== 2
@@ -95,71 +113,52 @@ export function validateAgentPolicyReceipt(
     || !POLICY_REASONS.has(labelTags[0][1] as AgentPolicyReason)
     || eventTags.length !== 1
     || ![2, 3].includes(eventTags[0].length)
-    || deviceTags.length !== 1
-    || ![2, 3].includes(deviceTags[0].length)
-    || !/^[0-9a-f]{64}$/.test(eventTags[0][1])
-    || !/^[0-9a-f]{64}$/.test(deviceTags[0][1])
+    || authorTags.length !== 1
+    || ![2, 3].includes(authorTags[0].length)
+    || !HEX_32.test(eventTags[0][1])
+    || !HEX_32.test(authorTags[0][1])
   ) {
     throw new Error("agent-policy-receipt-invalid");
   }
-  let content: unknown;
-  try {
-    content = JSON.parse(event.content);
-  } catch {
-    throw new Error("agent-policy-receipt-invalid");
-  }
+  const content = parseJson(receiptEvent.content);
   if (!validateReceiptContent(content)) {
     throw new Error("agent-policy-receipt-invalid");
   }
-  const value = content as {
-    event_id: string;
-    device_key: string;
-    cold_root: string;
-    reason: AgentPolicyReason;
-    observed_at: number;
-    evidence: string[];
-    explanation: string;
-    remediation: "rotate-device-key";
-  };
+  const value = content as Omit<AgentPolicyReceipt, "receipt_id" | "issuer">;
   if (
     value.event_id !== eventTags[0][1]
-    || value.device_key !== deviceTags[0][1]
+    || value.event_id !== targetEvent.id
+    || value.event_author !== authorTags[0][1]
+    || value.event_author !== targetEvent.pubkey
+    || !equalAssociation(value.agent_association, target.verified_agent_association)
+    || target.verified_agent_association?.kind === "key"
+      && target.verified_agent_association.value !== targetEvent.pubkey
     || value.reason !== labelTags[0][1]
   ) {
     throw new Error("agent-policy-receipt-invalid");
   }
-  return {
-    receipt_id: event.id,
-    issuer: event.pubkey,
-    event_id: value.event_id,
-    device_key: value.device_key,
-    cold_root: value.cold_root,
-    reason: value.reason,
-    observed_at: value.observed_at,
-    evidence: value.evidence,
-    explanation: value.explanation,
-    remediation: value.remediation,
-  };
+  return { receipt_id: receiptEvent.id, issuer: receiptEvent.pubkey, ...value };
 }
 
 export function validateAgentPolicyList(
   event: NostrSignedEvent,
   receipts: ReadonlyMap<string, AgentPolicyReceipt>,
 ): AgentPolicyList {
+  const verified = snapshotAndVerifyNostrEvent(event);
   if (
-    event.kind !== 10000
-    || event.content !== ""
-    || !verifyEventSignature(event)
-    || countExactTag(event, ["heterodyne", "social-agent-policy-list-v1"]) !== 1
-    || countExactTag(event, ["spec_version", "heterodyne/0.5.0"]) !== 1
+    verified === null
+    || verified.kind !== 10000
+    || verified.content !== ""
+    || countExactTag(verified, ["heterodyne", "social-agent-policy-list-v1"]) !== 1
+    || countExactTag(verified, ["spec_version", "heterodyne/0.5.0"]) !== 1
   ) {
     throw new Error("agent-policy-binding-invalid");
   }
-  const entries = tags(event, "agent_violation").map((tag) => {
+  const entries = tags(verified, "agent_violation").map((tag) => {
     if (
       tag.length !== 4
-      || !/^[0-9a-f]{64}$/.test(tag[1])
-      || !/^[0-9a-f]{64}$/.test(tag[2])
+      || !HEX_32.test(tag[1])
+      || !HEX_32.test(tag[2])
       || !POLICY_REASONS.has(tag[3] as AgentPolicyReason)
     ) {
       throw new Error("agent-policy-binding-invalid");
@@ -167,30 +166,27 @@ export function validateAgentPolicyList(
     const receipt = receipts.get(tag[2]);
     if (
       receipt === undefined
-      || receipt.device_key !== tag[1]
+      || receipt.event_author !== tag[1]
       || receipt.reason !== tag[3]
-      || !tags(event, "p").some((candidate) => candidate[1] === tag[1])
-      || !tags(event, "e").some((candidate) => candidate[1] === tag[2])
+      || !hasReferenceTag(verified, "p", tag[1])
+      || !hasReferenceTag(verified, "e", tag[2])
     ) {
       throw new Error("agent-policy-binding-invalid");
     }
     return {
-      device_key: tag[1],
+      event_author: tag[1],
       receipt_id: tag[2],
       reason: tag[3] as AgentPolicyReason,
     };
   });
   if (entries.length === 0) throw new Error("agent-policy-binding-invalid");
-  return {
-    policy_persona: event.pubkey,
-    event_id: event.id,
-    entries,
-  };
+  return { policy_persona: verified.pubkey, event_id: verified.id, entries };
 }
 
 export function applySubscribedAgentPolicy(
   input: AgentPolicyInput,
 ): AgentPolicyDecision {
+  if ("device_key" in input) throw new Error("agent-policy-binding-invalid");
   if (
     input.default_subscription
     && (!input.default_visible || !input.can_disable_default)
@@ -199,10 +195,8 @@ export function applySubscribedAgentPolicy(
   }
   if (
     !input.subscribed
-    || !input.policy_current_canonical
-    || !input.repo_history_verified
-    || input.candidate_source !== "canonical"
-    || !input.muted_device_keys.includes(input.device_key)
+    || !input.policy_event_selected
+    || !input.muted_event_authors.includes(input.event_author)
   ) {
     return { visible: true, muted: false };
   }
@@ -210,24 +204,27 @@ export function applySubscribedAgentPolicy(
     visible: false,
     muted: true,
     source: input.policy_persona,
-    reason: "subscribed-device-key-policy",
+    reason: "subscribed-event-author-policy",
   };
 }
 
 export function validateAgentPolicyCorrection(
   event: NostrSignedEvent,
-): {
-  receipt_id: string;
-  device_key: string;
-  action: "retract";
-} {
-  if (event.kind !== 1985 || !verifyEventSignature(event)) {
+  receipt: AgentPolicyReceipt,
+): AgentPolicyCorrection {
+  const verified = snapshotAndVerifyNostrEvent(event);
+  if (
+    receipt === undefined
+    || verified === null
+    || verified.kind !== 1985
+    || verified.pubkey !== receipt.issuer
+  ) {
     throw new Error("agent-policy-receipt-invalid");
   }
-  const namespaceTags = tags(event, "L");
-  const labelTags = tags(event, "l");
-  const receiptTags = tags(event, "e");
-  const deviceTags = tags(event, "p");
+  const namespaceTags = tags(verified, "L");
+  const labelTags = tags(verified, "l");
+  const receiptTags = tags(verified, "e");
+  const authorTags = tags(verified, "p");
   if (
     namespaceTags.length !== 1
     || namespaceTags[0].length !== 2
@@ -238,30 +235,28 @@ export function validateAgentPolicyCorrection(
     || labelTags[0][2] !== "network.heterodyne.agent-policy"
     || receiptTags.length !== 1
     || ![2, 3].includes(receiptTags[0].length)
-    || deviceTags.length !== 1
-    || ![2, 3].includes(deviceTags[0].length)
-    || !/^[0-9a-f]{64}$/.test(receiptTags[0][1])
-    || !/^[0-9a-f]{64}$/.test(deviceTags[0][1])
+    || authorTags.length !== 1
+    || ![2, 3].includes(authorTags[0].length)
+    || !HEX_32.test(receiptTags[0][1])
+    || !HEX_32.test(authorTags[0][1])
   ) {
     throw new Error("agent-policy-receipt-invalid");
   }
-  let content: unknown;
-  try {
-    content = JSON.parse(event.content);
-  } catch {
-    throw new Error("agent-policy-receipt-invalid");
-  }
+  const content = parseJson(verified.content);
   if (!validateCorrectionContent(content)) {
     throw new Error("agent-policy-receipt-invalid");
   }
-  const value = content as {
-    receipt_id: string;
-    device_key: string;
-    action: "retract";
-  };
+  const value = content as AgentPolicyCorrection;
   if (
-    value.receipt_id !== receiptTags[0][1]
-    || value.device_key !== deviceTags[0][1]
+    value.corrects_receipt_id !== receiptTags[0][1]
+    || value.corrects_receipt_id !== receipt.receipt_id
+    || value.event_id !== receipt.event_id
+    || value.event_author !== authorTags[0][1]
+    || value.event_author !== receipt.event_author
+    || !equalAssociation(value.agent_association, receipt.agent_association)
+    || value.policy.id !== receipt.policy.id
+    || value.policy.version !== receipt.policy.version
+    || value.corrected_at !== verified.created_at
   ) {
     throw new Error("agent-policy-receipt-invalid");
   }
@@ -271,11 +266,9 @@ export function validateAgentPolicyCorrection(
 export function applyAgentPolicyCorrection(
   input: AgentCorrectionInput,
 ): AgentPolicyDecision {
-  const currentlyMuted = input.muted_device_keys.includes(input.device_key);
-  if (
-    input.correction_valid
-    && input.canonical_list_binding_removed
-  ) {
+  if ("device_key" in input) throw new Error("agent-policy-binding-invalid");
+  const currentlyMuted = input.muted_event_authors.includes(input.event_author);
+  if (input.correction_valid && input.current_list_binding_removed) {
     return { visible: true, muted: false };
   }
   return currentlyMuted
@@ -291,4 +284,25 @@ function countExactTag(event: NostrSignedEvent, expected: string[]): number {
   return event.tags.filter((tag) =>
     tag.length === expected.length
     && tag.every((value, index) => value === expected[index])).length;
+}
+
+function hasReferenceTag(event: NostrSignedEvent, name: string, value: string): boolean {
+  return tags(event, name).some((tag) => tag.length >= 2 && tag[1] === value);
+}
+
+function equalAssociation(
+  left: AgentAssociation | null,
+  right: AgentAssociation | null,
+): boolean {
+  return left === null || right === null
+    ? left === right
+    : left.kind === right.kind && left.value === right.value;
+}
+
+function parseJson(content: string): unknown {
+  try {
+    return JSON.parse(content) as unknown;
+  } catch {
+    throw new Error("agent-policy-receipt-invalid");
+  }
 }

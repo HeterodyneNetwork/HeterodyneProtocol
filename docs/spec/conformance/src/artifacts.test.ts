@@ -26,13 +26,29 @@ afterEach(() => {
   for (const path of temps.splice(0)) rmSync(path, { recursive: true, force: true });
 });
 
-function corpus(options: { withVector?: boolean } = {}): TestCorpus {
+function corpus(options: { withVector?: boolean; withAssurance?: boolean } = {}): TestCorpus {
   const value = createTestCorpus(options);
   temps.push(value.root);
   return value;
 }
 
 describe("loadCorpus split roots", () => {
+  it("loads the live six-document source family", () => {
+    const input = corpus({ withAssurance: true });
+
+    const loaded = loadCorpus(input);
+
+    expect(loaded.issues).toEqual([]);
+    expect([...loaded.corpus!.specifications.keys()]).toEqual([
+      "docs/spec/heterodyne-core.md",
+      "docs/spec/heterodyne-assurance.md",
+      "docs/spec/heterodyne-comms.md",
+      "docs/spec/heterodyne-control.md",
+      "docs/spec/heterodyne-social.md",
+      "docs/spec/heterodyne-workspace.md",
+    ]);
+  });
+
   it("reads source-owned and snapshot-owned artifacts from their authoritative roots", () => {
     const input = corpus();
     writeText(input.snapshotRoot, "docs/spec/heterodyne-core.md", "current-head-conflict\n");
@@ -79,6 +95,24 @@ describe("loadCorpus split roots", () => {
     writeJson(input.snapshotRoot, vectorSchemaPath, schema);
     const vector = readJson(input.snapshotRoot, vectorPath);
     vector.spec_refs = ["heterodyne:0.5.0#core-conformance"];
+    writeJson(input.snapshotRoot, vectorPath, vector);
+    refreshSnapshotManifest(input.snapshotRoot);
+
+    expect(loadCorpus(input).issues).toContainEqual({
+      code: "invalid-document-shape",
+      path: vectorPath,
+      message: "vector does not match the 2.0.0 snapshot corpus shape",
+    });
+  });
+
+  it("rejects an unknown seventh owner even when the packaged schema allows it", () => {
+    const input = corpus();
+    const schema = readJson(input.snapshotRoot, vectorSchemaPath);
+    const properties = schema.properties as Record<string, Record<string, unknown>>;
+    properties.owner_document = { type: "string" };
+    writeJson(input.snapshotRoot, vectorSchemaPath, schema);
+    const vector = readJson(input.snapshotRoot, vectorPath);
+    vector.owner_document = "unknown";
     writeJson(input.snapshotRoot, vectorPath, vector);
     refreshSnapshotManifest(input.snapshotRoot);
 
@@ -269,7 +303,7 @@ describe("loadCorpus split roots", () => {
     ]));
   });
 
-  it("accepts a zero-vector snapshot while retaining the full static corpus", () => {
+  it("loads the historical five-document source family with a zero-vector snapshot", () => {
     const input = corpus({ withVector: false });
     const loaded = loadCorpus(input);
 

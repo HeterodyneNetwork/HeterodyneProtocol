@@ -10,7 +10,7 @@ import {
   findProfileCoverageIssues,
   writeCoverage,
 } from "./coverage.js";
-import { buildFixtures } from "./fixtures.js";
+import { buildFixtures } from "./snapshot-fixtures-adapter.js";
 import { loadRegistry } from "./registry.js";
 import { buildAllVectors } from "./topics.js";
 

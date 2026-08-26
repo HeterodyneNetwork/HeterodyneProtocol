@@ -10,12 +10,15 @@
     "generation",
     "h",
     "event_rid",
+    "account_key",
+    "marmot_routing_event_id",
+    "authorized_writer_refs",
     "created_at",
     "logical_soft_cap_bytes",
     "event_index",
     "media_index",
     "writer_ref_prefix",
-    "relay_ref"
+    "relay_ref_prefix"
   ],
   "properties": {
     "spec_version": {
@@ -38,6 +41,37 @@
       "type": "string",
       "pattern": "^rad:z[1-9A-HJ-NP-Za-km-z]+$"
     },
+    "account_key": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "marmot_routing_event_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "authorized_writer_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "nid",
+          "ref"
+        ],
+        "properties": {
+          "nid": {
+            "type": "string",
+            "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$"
+          },
+          "ref": {
+            "type": "string",
+            "pattern": "^refs/xyz\\.heterodyne\\.marmot/(writers|relays)/[A-Za-z0-9._-]+$"
+          }
+        }
+      }
+    },
     "created_at": {
       "type": "integer",
       "minimum": 0
@@ -54,8 +88,8 @@
     "writer_ref_prefix": {
       "const": "refs/xyz.heterodyne.marmot/writers/"
     },
-    "relay_ref": {
-      "const": "refs/xyz.heterodyne.marmot/relay"
+    "relay_ref_prefix": {
+      "const": "refs/xyz.heterodyne.marmot/relays/"
     }
   }
 }

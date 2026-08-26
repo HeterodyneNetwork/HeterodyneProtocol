@@ -5,6 +5,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { relative, resolve, sep } from "node:path";
+import { Parser } from "commonmark";
+import type { Node as CommonmarkNode } from "commonmark";
 import {
   assertAllowedDependency,
   DOCUMENTS,
@@ -51,6 +53,7 @@ export type FamilyDocIssue = {
     | "unregistered-proof-domain"
     | "mislinked-reference"
     | "retired-authoring-model"
+    | "markdown-resource-limit"
     | "profile-revision-registry-context-missing";
   message: string;
 };
@@ -71,13 +74,13 @@ const QUALIFIED_REFERENCE = new RegExp(
 // qualified URI: [`heterodyne:<ver>#<anchor>`](<file>#<anchor>).
 const LINKED_QUALIFIED_REFERENCE = new RegExp(
   "\\[`heterodyne:[^`]+#([a-z0-9-]+)`\\]"
-    + "\\((?:heterodyne-(core|comms|control|social|workspace)\\.md)?#([a-z0-9-]+)\\)",
+    + "\\((?:heterodyne-(core|assurance|comms|control|social|workspace)\\.md)?#([a-z0-9-]+)\\)",
   "g",
 );
 // Within a document [12.2](#anchor) is fine; across one, the version has to
 // travel with the reference.
 const CROSS_DOCUMENT_LINK =
-  /\]\((?:\.\/)?heterodyne-(?:core|comms|control|social|workspace)\.md#[^)]+\)/;
+  /\]\((?:\.\/)?heterodyne-(?:core|assurance|comms|control|social|workspace)\.md#[^)]+\)/;
 const LOCAL_ANCHOR_LINK = /\]\(#([a-z0-9-]+)\)/g;
 const NONCANONICAL_DECISION_REFERENCE = /\bADR-\d{3}\b|docs\/adr\//;
 const NUMBERED_HEADING = /^#{2,6}\s+(\d+(?:\.\d+)*)\.?\s/;
@@ -85,7 +88,7 @@ const SECTION_REFERENCE = /§(\d+(?:\.\d+)*)/g;
 const PROOF_DOMAIN = /\bdomain\s+`(heterodyne-[a-z0-9-]*-v[1-9][0-9]*)`/gi;
 const PROOF_DOMAIN_FENCED = /`?<?(heterodyne-[a-z0-9-]*-v[1-9][0-9]*) proof bytes>?`?/g;
 const FEATURE_ID =
-  /`((?:core|comms|control|social|workspace)\.[a-z0-9-]+(?:\.[a-z0-9-]+)*\.v\d+)`/g;
+  /`((?:core|assurance|comms|control|social|workspace)\.[a-z0-9-]+(?:\.[a-z0-9-]+)*\.v\d+)`/g;
 const BCP14_KEYWORD =
   /\b(?:MUST(?: NOT)?|REQUIRED|SHALL(?: NOT)?|SHOULD(?: NOT)?|RECOMMENDED|NOT RECOMMENDED|MAY|OPTIONAL)\b/;
 const EXPLICIT_NORMATIVE =
@@ -96,7 +99,7 @@ const WRAPPED_DEPENDENCY_DECLARATION = /^\s*Normative dependencies\s*:\s*$/i;
 const RETIRED_MAINTAINED_GUIDE_PATTERNS = [
   /owner_version/,
   /dependency_versions/,
-  /heterodyne:(?:core|comms|control|social|workspace)\//,
+  /heterodyne:(?:core|assurance|comms|control|social|workspace)\//,
   /run release-manifests/,
   /JSON member remains named\s+`registry_revision`/,
   /five documents are independently versioned/i,
@@ -120,6 +123,377 @@ const RETIRED_MAINTAINED_GUIDE_PATTERNS = [
   /generator-owned\s+protocol\s+inputs:\s+live\s+normative\s+machine-readable\s+artifacts/i,
   /recheck the named family release/i,
 ];
+
+// These patterns target affirmative live guidance, not historical or explicit
+// retirement/optionality statements. Whitespace is intentionally flexible so
+// Markdown wrapping cannot bypass the maintained-guide gate.
+const CANONICAL_FEED_INDEX_SOURCE = "canonical[-\\s]+feed[-\\s]+index";
+const CANONICAL_FEED_INDEX_PATTERN = new RegExp(CANONICAL_FEED_INDEX_SOURCE, "i");
+const CANONICAL_SCOPE_PREFIX_SOURCE = "\\s*(?:[-+*]\\s+)?(?:(?:(?:for\\s+baseline\\s+conformance)|(?:(?:for|under|within)\\s+(?:(?:this|the|current)\\s+)?(?:protocol|specification|baseline)))\\s*,\\s*)?";
+const CANONICAL_SCOPE_SUFFIX_SOURCE = "(?:\\s+(?:(?:by|in|under|within)\\s+(?:(?:this|the|current)\\s+)?(?:protocol|specification|baseline)|for\\s+baseline\\s+conformance))?";
+const CANONICAL_PROVISION_VERBS = [
+  "provide",
+  "maintain",
+  "preserve",
+  "publish",
+  "define",
+  "implement",
+  "include",
+  "use",
+  "retain",
+] as const;
+const CANONICAL_OMISSION_VERBS = [
+  "omit",
+  "remove",
+  "exclude",
+  "ignore",
+  "drop",
+] as const;
+const CANONICAL_ONE_ADJUNCTS = [
+  "although",
+  "and",
+  "as",
+  "because",
+  "before",
+  "but",
+  "by",
+  "during",
+  "for",
+  "from",
+  "if",
+  "in",
+  "into",
+  "on",
+  "since",
+  "though",
+  "to",
+  "under",
+  "unless",
+  "until",
+  "when",
+  "where",
+  "whereas",
+  "while",
+  "with",
+  "without",
+  "yet",
+] as const;
+const RETIRED_NOSTR_FIRST_GUIDE_PATTERNS = [
+  /persona\s+is\s+(?:identified|anchored)\s+by\s+(?:a\s+)?cold[-\s]+root\s+(?:Nostr\s+)?npub/i,
+  /every\s+persona\s+requires\s+(?:an\s+)?accepted\s+KEL(?:\s+and\s+(?:an\s+)?epoch\s+key)?/i,
+  /(?:human\s+)?Marmot\s+account\s+is\s+separate\s+from\s+the\s+active\s+Nostr\s+key/i,
+  /kind\s*:?\s*`?31005`?\s+is\s+required/i,
+  /kind\s*:?\s*`?31007`?\s+is\s+required/i,
+  CANONICAL_FEED_INDEX_PATTERN,
+  /repository\s+copies?\s+take\s+precedence\s+over\s+(?:newer\s+)?relay\s+events?/i,
+  /full\s+node\s+is\s+(?:a\s+)?required\s+(?:Nostr\s+)?relay/i,
+  /(?:each|one)\s+group\s+has\s+one\s+canonical\s+trusted\s+seed/i,
+  /caller\s+may\s+remove\s+agent\s+attribution\s+before\s+signing/i,
+  /(?:automated\s+(?:agent\s+)?)?publication\s+(?:may|can|should|must)\s+(?:omit|remove)\s+(?:NIP[-\s]*32\s+)?(?:agent\s+)?attribution/i,
+  /bare[-\s]+(?:active[-\s]+)?key(?:\s+persona)?\s+(?:is\s+)?(?:incomplete|insufficient)\s+without\s+Assurance/i,
+  /bare[-\s]+(?:active[-\s]+)?key(?:\s+persona)?\s+does\s+not\s+satisfy\s+(?:baseline\s+)?conformance\s+unless\s+Assurance/i,
+  /(?:rolling\s+)?vector[-\s]+snapshot\s+(?:defines\s+current[-\s]+draft\s+conformance|is\s+(?:the\s+)?(?:normative|authoritative)(?:\s+authority)?\s+for\s+(?:the\s+)?current[-\s]+draft)/i,
+];
+
+const UNSAFE_AGENT_SECURITY_FRAMING = [
+  /agents?\s+may\s+test\s+live\s+(?:relays|nodes|deployments|identity providers|accounts|third-party systems)\s+without\s+authorization/i,
+  /produce\s+(?:a\s+)?functional\s+exploit\s+payload\s+for\s+deployment/i,
+  /use\s+real\s+credentials\s+and\s+scan\s+third-party\s+systems/i,
+  /add\s+persistence\s*,\s*evasion\s*,\s*and\s+anti-forensics\s+to\s+the\s+proof/i,
+  /agents?\s+(?:may|should|must)\s+(?:build|create|deploy)\s+(?:malware|shells?|phishing|command-and-control|C2)/i,
+  /agents?\s+(?:may|should|must)\s+(?:perform|take)\s+destructive\s+actions?/i,
+  /agents?\s+(?:may|should|must)\s+weaken\s+(?:security\s+)?controls?/i,
+  /agents?\s+(?:may|should|must)\s+exploit\s+live\s+third[-\s]+party\s+(?:relays|nodes|deployments|identity providers|accounts|systems)/i,
+];
+
+const RETIRED_NORMATIVE_CLAIMS = [
+  /require\s+a\s+`?valid`?\s+Core\/KEL\s+authority\s+result/i,
+  /current\s+persona\s+epoch\s+or\s+cold-root\s+authority/i,
+  /KEL\/key\s+revocation\s+(?:is\s+(?!not\b)|remains\s+(?!not\b)|wins\b)/i,
+  /\b(?:may|can|MUST|SHOULD)\s+be\s+justified\s+by\s+a\s+KEL\s+alias/i,
+  /(?<!no\s)epoch-key\s+NIP-59\s+inbox\s+exists/i,
+  /temporary\s+private-repository\s+access\s+only\s+through\s+the\s+optional\s+recovery\s+grants/i,
+  /optional\s+prepared\s+recovery\s+activation\s*,\s*finite\s+recovery\s+grants/i,
+  /writers?\s+still\s+authenticate\s+against\s+current\s+Core\/KER[IL]\s+state/i,
+  /Private-Radicle\s+recovery\s+and\s+SFTP\s+overflow\s+are\s+optional\s+Control\s+profiles/i,
+];
+
+const RETIRED_BASELINE_AUTHORITY_CLAIMS = [
+  /(?:conformant\s+)?personas?\s+(?:(?:MUST\s+(?:have|use)|requires?)|does\s+not\s+require)\s+(?:an?\s+)?(?:accepted\s+)?(?:KEL|cold[-\s]+root|epoch[-\s]+key)/i,
+];
+
+function isExplicitlyGatedAssurance(
+  path: string,
+  text: string,
+  matchIndex: number,
+): boolean {
+  if (/(?:^|\/)heterodyne-assurance\.md$/.test(path)) return true;
+  const { start } = assertionClauseBounds(text, matchIndex);
+  const prefix = text.slice(start, matchIndex).replace(/\s+/gu, " ");
+  // In a non-Assurance document, gating must grammatically introduce this
+  // exact subject. Merely mentioning Assurance earlier in the sentence does
+  // not exempt a later baseline assertion.
+  return /\b(?:when\s+(?:optional\s+)?Assurance\s+is\s+claimed|implementations?\s+claiming\s+Assurance|for\s+(?:the\s+)?optional\s+Assurance\s+(?:profile|composition)|in\s+an?\s+optional\s+Assurance\s+(?:profile|composition))\s*,\s*(?:an?\s+)?$/i
+    .test(prefix);
+}
+
+function assertionClauseBounds(
+  text: string,
+  matchIndex: number,
+): { start: number; end: number } {
+  const prior = text.slice(0, matchIndex);
+  let boundary = Math.max(
+    prior.lastIndexOf("."),
+    prior.lastIndexOf("!"),
+    prior.lastIndexOf("?"),
+    prior.lastIndexOf(";"),
+  );
+  for (const coordinator of prior.matchAll(
+    /(?:,\s*(?:and|but|yet|while|whereas)|\s+(?:but|yet|while|whereas))\s+/giu,
+  )) {
+    boundary = Math.max(boundary, coordinator.index + coordinator[0].length - 1);
+  }
+  const remainder = text.slice(matchIndex);
+  const punctuationBoundary = remainder.search(/[.!?;]/u);
+  const coordinatorBoundary = remainder.search(
+    /(?:,\s*(?:and|but|yet|while|whereas)|\s+(?:but|yet|while|whereas))\s+/iu,
+  );
+  const followingBoundary = punctuationBoundary < 0
+    ? coordinatorBoundary
+    : coordinatorBoundary < 0
+      ? punctuationBoundary
+      : Math.min(punctuationBoundary, coordinatorBoundary);
+  const end = followingBoundary < 0
+    ? text.length
+    : matchIndex + followingBoundary + 1;
+  return { start: boundary + 1, end };
+}
+
+function isPredicateLocallyRetired(
+  text: string,
+  matchIndex: number,
+  matchLength: number,
+): boolean {
+  const { start, end } = assertionClauseBounds(text, matchIndex);
+  const assertion = text.slice(start, end);
+  const matched = text.slice(matchIndex, matchIndex + matchLength);
+  const localIndex = matchIndex - start;
+  if (localIndex < 0 || localIndex + matchLength > assertion.length) return false;
+  const before = assertion.slice(0, localIndex).replace(/\s+/gu, " ");
+  const after = assertion.slice(localIndex + matched.length).replace(/\s+/gu, " ");
+
+  // Only polarity attached immediately to the matched subject can retire it.
+  // A later MUST NOT, a relative "that is not ...", or negative optionality
+  // therefore cannot suppress an affirmative retired predicate.
+  const directlyNegativeSubject = /(?:^(?:\s*[-+*]\s+)?|[,:;(]\s*|\bthere\s+(?:is|are)\s+)no\s+(?:(?:an?|the|baseline|current)\s+)?$/i
+    .test(before)
+    || /\bnever\s+(?:an?\s+|the\s+)?$/i.test(before);
+  const directlyNegativePredicate = /(?:conformant\s+)?personas?\s+does\s+not\s+require\s+(?:an?\s+)?(?:accepted\s+)?(?:KEL|cold[-\s]+root|epoch[-\s]+key)$/i
+    .test(matched.replace(/\s+/gu, " "));
+  const directlyRetiredPredicate = /^\s+(?:is|are|was|were|has\s+been)\s+(?:retired|deprecated|withdrawn|not\s+(?:required|valid(?:\s+authority)?|current(?:\s+authority)?|authoritative|normative)|no\s+longer\s+(?:required|valid(?:\s+authority)?|current(?:\s+authority)?|authoritative|normative))\b/i
+    .test(after);
+  return directlyNegativeSubject || directlyNegativePredicate || directlyRetiredPredicate;
+}
+
+const MAX_MARKDOWN_FILE_BYTES = 512 * 1024;
+const MAX_MARKDOWN_CORPUS_BYTES = 2 * 1024 * 1024;
+const MAX_MARKDOWN_AST_DEPTH = 64;
+const MAX_MARKDOWN_AST_NODES = 50_000;
+
+type VisibleMarkdownBlock = {
+  line: number;
+  text: string;
+};
+
+type MarkdownAnalysis = {
+  blocks: readonly VisibleMarkdownBlock[];
+  maxDepth: number;
+  nodeCount: number;
+};
+
+const markdownParser = new Parser();
+
+function visibleInlineText(block: CommonmarkNode): string {
+  const visible: string[] = [];
+  const stack: CommonmarkNode[] = [];
+  const pushChildren = (node: CommonmarkNode): void => {
+    const children: CommonmarkNode[] = [];
+    for (let child = node.firstChild; child !== null; child = child.next) {
+      children.push(child);
+    }
+    stack.push(...children.reverse());
+  };
+  pushChildren(block);
+  while (stack.length > 0) {
+    const node = stack.pop()!;
+    switch (node.type) {
+      case "text":
+        visible.push(node.literal ?? "");
+        break;
+      case "softbreak":
+      case "linebreak":
+        visible.push(" ");
+        break;
+      case "emph":
+      case "strong":
+      case "link":
+        pushChildren(node);
+        break;
+      case "code":
+      case "html_inline":
+      case "image":
+        visible.push(" ");
+        break;
+      default:
+        visible.push(" ");
+        break;
+    }
+  }
+  return visible.join("").replace(/\s+/gu, " ").trim();
+}
+
+function analyzeMarkdown(text: string): MarkdownAnalysis {
+  const root = markdownParser.parse(text);
+  const blockNodes: CommonmarkNode[] = [];
+  let maxDepth = 0;
+  let nodeCount = 0;
+  const stack: { node: CommonmarkNode; depth: number }[] = [{ node: root, depth: 1 }];
+  while (stack.length > 0) {
+    const { node, depth } = stack.pop()!;
+    nodeCount += 1;
+    if (nodeCount > MAX_MARKDOWN_AST_NODES) {
+      return { blocks: [], maxDepth, nodeCount };
+    }
+    if (depth > MAX_MARKDOWN_AST_DEPTH) {
+      return { blocks: [], maxDepth: depth, nodeCount };
+    }
+    maxDepth = Math.max(maxDepth, depth);
+    if (node.type === "paragraph" || node.type === "heading") {
+      blockNodes.push(node);
+    }
+    const children: CommonmarkNode[] = [];
+    for (let child = node.firstChild; child !== null; child = child.next) {
+      children.push(child);
+    }
+    for (const child of children.reverse()) {
+      stack.push({ node: child, depth: depth + 1 });
+    }
+  }
+  const blocks = blockNodes.map((node) => ({
+    line: node.sourcepos[0][0],
+    text: visibleInlineText(node),
+  }));
+  return { blocks, maxDepth, nodeCount };
+}
+
+function normalizeVisibleMarkdown(text: string): string {
+  return text.replace(/\s+/gu, " ");
+}
+
+function isCanonicalFeedIndexLocallyRetired(
+  text: string,
+  matchIndex: number,
+  matchLength: number,
+): boolean {
+  const { start, end } = assertionClauseBounds(text, matchIndex);
+  const before = normalizeVisibleMarkdown(text.slice(start, matchIndex));
+  const after = normalizeVisibleMarkdown(text.slice(matchIndex + matchLength, end));
+  const directlyNegativeSubject = new RegExp(
+    `^${CANONICAL_SCOPE_PREFIX_SOURCE}(?:no|there\\s+(?:is|are)\\s+no)\\s+$`,
+    "i",
+  ).test(before);
+  const negativeExistenceOrRequirement = new RegExp(
+    `^\\s*(?:(?:exists?|(?:is|are)\\s+required)${CANONICAL_SCOPE_SUFFIX_SOURCE}\\s*)?(?:[.!?;]|$)$`,
+    "i",
+  ).test(after);
+  const directlyNegativeDefinition = new RegExp(
+    `^${CANONICAL_SCOPE_PREFIX_SOURCE}(?:the\\s+)?(?:protocol|specification|baseline)\\s+(?:does|do)\\s+not\\s+(?:define|require|specify)\\s+(?:an?\\s+|the\\s+)?$`,
+    "i",
+  ).test(before);
+  const negativeDefinition = new RegExp(
+    `^${CANONICAL_SCOPE_SUFFIX_SOURCE}\\s*(?:[.!?;]|$)$`,
+    "i",
+  ).test(after);
+  const directlyRetiredSubject = new RegExp(
+    `^${CANONICAL_SCOPE_PREFIX_SOURCE}(?:an?|the)?\\s*$`,
+    "i",
+  ).test(before);
+  const directlyRetiredPredicate = new RegExp(
+    `^\\s+(?:is|are|was|were|has\\s+been)\\s+(?:retired|deprecated|withdrawn|not\\s+(?:required|valid(?:\\s+authority)?|current(?:\\s+authority)?|authoritative|normative)|no\\s+longer\\s+(?:required|valid(?:\\s+authority)?|current(?:\\s+authority)?|authoritative|normative))${CANONICAL_SCOPE_SUFFIX_SOURCE}\\s*(?:[.!?;]|$)$`,
+    "i",
+  ).test(after);
+  const localClauseRetires = (directlyNegativeSubject && negativeExistenceOrRequirement)
+    || (directlyNegativeDefinition && negativeDefinition)
+    || (directlyRetiredSubject && directlyRetiredPredicate);
+  if (!localClauseRetires) return false;
+
+  const preceding = text.slice(0, start);
+  const sentenceStart = Math.max(
+    preceding.lastIndexOf("."),
+    preceding.lastIndexOf("!"),
+    preceding.lastIndexOf("?"),
+  ) + 1;
+  const following = text.slice(end);
+  const terminator = following.search(/[.!?](?:\s|$)/u);
+  const sentenceEnd = terminator < 0 ? text.length : end + terminator + 1;
+  const otherClauses = normalizeVisibleMarkdown(
+    `${text.slice(sentenceStart, matchIndex)} ${text.slice(end, sentenceEnd)}`,
+  );
+  const canonicalReference = `(?<!\\[)${CANONICAL_FEED_INDEX_SOURCE}\\b(?!\\])`;
+  const oneAdjunct = CANONICAL_ONE_ADJUNCTS.join("|");
+  const objectReference = `(?:${canonicalReference}|(?<!\\[)it\\b(?!\\])|(?<!\\[)one\\b(?!\\])(?=\\s*(?:\`+\\s*)?(?:[.;!?)]|,\\s*(?:${oneAdjunct})\\b|(?:${oneAdjunct})\\b|$)))`;
+  const subjectReference = `(?:${canonicalReference}|(?<!\\[)(?:one|it)\\b(?!\\]))`;
+  const provisionVerb = CANONICAL_PROVISION_VERBS.join("|");
+  const requiredByOperator = new RegExp(
+    `(?<!\\[)\\b(?:MUST|SHALL|(?:is|are)\\s+required\\s+to)(?!\\])\\s+(?:still\\s+)?(?:${provisionVerb})\\s+(?:(?:an?|the)\\s+)?${objectReference}`,
+    "i",
+  );
+  const requiredAsSubject = new RegExp(
+    `\\b${subjectReference}\\s+(?:(?:MUST|SHALL)\\s+(?:still\\s+)?(?:exist|be\\s+(?:provided|required|maintained|published|defined|included|used|retained))|(?:is|remains)\\s+(?:still\\s+)?required)\\b`,
+    "i",
+  );
+  const omissionVerb = CANONICAL_OMISSION_VERBS.join("|");
+  const prohibitedOmission = new RegExp(
+    `(?<!\\[)\\b(?:MUST|SHALL)(?!\\])\\s+NOT\\s+(?:${omissionVerb})\\s+(?:(?:an?|the)\\s+)?${objectReference}`,
+    "i",
+  );
+  return !(
+    requiredByOperator.test(otherClauses)
+    || requiredAsSubject.test(otherClauses)
+    || prohibitedOmission.test(otherClauses)
+  );
+}
+
+function allPatternMatches(pattern: RegExp, text: string): RegExpExecArray[] {
+  const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+  return [...text.matchAll(new RegExp(pattern.source, flags))];
+}
+
+export function findRetiredNormativeClaimIssues(
+  path: string,
+  text: string,
+): FamilyDocIssue[] {
+  const retired = RETIRED_NORMATIVE_CLAIMS.flatMap((pattern) => {
+    return allPatternMatches(pattern, text).flatMap((match) =>
+      isPredicateLocallyRetired(text, match.index, match[0].length) ? [] : [{
+      path,
+      line: text.slice(0, match.index).split(/\r?\n/).length,
+      code: "retired-authoring-model" as const,
+      message: `retired normative authority: ${match[0]}`,
+      }]);
+  });
+  const baselineAuthority = RETIRED_BASELINE_AUTHORITY_CLAIMS.flatMap((pattern) => {
+    return allPatternMatches(pattern, text).flatMap((match) =>
+      isPredicateLocallyRetired(text, match.index, match[0].length)
+      || isExplicitlyGatedAssurance(path, text, match.index) ? [] : [{
+      path,
+      line: text.slice(0, match.index).split(/\r?\n/).length,
+      code: "retired-authoring-model" as const,
+      message: `retired baseline authority: ${match[0]}`,
+      }]);
+  });
+  return [...retired, ...baselineAuthority];
+}
 
 function displayPath(repoRoot: string, path: string): string {
   return relative(repoRoot, path).split(sep).join("/");
@@ -260,6 +634,13 @@ export function lintFamilyDocs(repoRoot: string): FamilyDocIssue[] {
   const registeredProofDomains = new Set(
     registry.proof_domains.map(({ id }) => id),
   );
+
+  for (const document of documents) {
+    issues.push(...findRetiredNormativeClaimIssues(
+      document.displayPath,
+      document.lines.join("\n"),
+    ));
+  }
 
   for (const document of documents) {
     const normativeLines = normativeParagraphLines(document.lines);
@@ -484,7 +865,7 @@ function canonicalJson(value: unknown): string {
 function parseInvariantRows(text: string): Map<string, string> {
   return new Map(
     [...text.matchAll(
-      /^- \*\*((?:CORE|COMMS|CONTROL|SOCIAL|WORKSPACE)-I-[A-Z0-9]+(?:-[A-Z0-9]+)*):\*\* ([^\r\n]+)$/gm,
+      /^- \*\*((?:CORE|ASSURANCE|COMMS|CONTROL|SOCIAL|WORKSPACE)-I-[A-Z0-9]+(?:-[A-Z0-9]+)*):\*\* ([^\r\n]+)$/gm,
     )].map((match) => [match[1], match[2]]),
   );
 }
@@ -609,7 +990,7 @@ export function lintMaintainedGuides(
   const guides = [
     "AGENTS.md",
     "README.md",
-    "docs/adr/archive/2026-08-15-045-conformance-harness-independence.md",
+    "docs/adr/archive/2026-08-24-047-nostr-first-interoperability.md",
     "docs/adr/README.md",
     "docs/spec/heterodyne.md",
     "docs/spec/vectors/README.md",
@@ -627,6 +1008,60 @@ export function lintMaintainedGuides(
       contentOverrides[path] ?? readFileSync(resolve(repoRoot, path), "utf8"),
     ]),
   );
+  const corpusBytes = [...contents.values()].reduce(
+    (total, text) => total + Buffer.byteLength(text, "utf8"),
+    0,
+  );
+  if (corpusBytes > MAX_MARKDOWN_CORPUS_BYTES) {
+    return [{
+      path: "<maintained-guides>",
+      line: 1,
+      code: "markdown-resource-limit",
+      message: `maintained Markdown corpus exceeds ${MAX_MARKDOWN_CORPUS_BYTES} bytes`,
+    }];
+  }
+  for (const [path, text] of contents) {
+    const bytes = Buffer.byteLength(text, "utf8");
+    if (bytes > MAX_MARKDOWN_FILE_BYTES) {
+      return [{
+        path,
+        line: 1,
+        code: "markdown-resource-limit",
+        message: `maintained Markdown file exceeds ${MAX_MARKDOWN_FILE_BYTES} bytes`,
+      }];
+    }
+  }
+  const markdownAnalyses = new Map<string, MarkdownAnalysis>();
+  for (const [path, text] of contents) {
+    let analysis: MarkdownAnalysis;
+    try {
+      analysis = analyzeMarkdown(text);
+    } catch (error) {
+      return [{
+        path,
+        line: 1,
+        code: "markdown-resource-limit",
+        message: `maintained Markdown parse failed closed: ${String(error)}`,
+      }];
+    }
+    if (analysis.maxDepth > MAX_MARKDOWN_AST_DEPTH) {
+      return [{
+        path,
+        line: 1,
+        code: "markdown-resource-limit",
+        message: `maintained Markdown AST exceeds depth ${MAX_MARKDOWN_AST_DEPTH}`,
+      }];
+    }
+    if (analysis.nodeCount > MAX_MARKDOWN_AST_NODES) {
+      return [{
+        path,
+        line: 1,
+        code: "markdown-resource-limit",
+        message: `maintained Markdown AST exceeds ${MAX_MARKDOWN_AST_NODES} nodes`,
+      }];
+    }
+    markdownAnalyses.set(path, analysis);
+  }
   const lineFor = (text: string, offset: number) =>
     text.slice(0, offset).split(/\r?\n/).length;
 
@@ -642,6 +1077,64 @@ export function lintMaintainedGuides(
         });
       }
     }
+  }
+
+  const liveNostrFirstPaths = [
+    "AGENTS.md",
+    "README.md",
+    "docs/spec/heterodyne.md",
+    "docs/architecture.md",
+    "docs/glossary.md",
+    "docs/security/threat-model.md",
+    "docs/spec/extensions/nips/README.md",
+  ];
+  for (const path of liveNostrFirstPaths) {
+    const text = contents.get(path)!;
+    for (const pattern of RETIRED_NOSTR_FIRST_GUIDE_PATTERNS) {
+      if (pattern === CANONICAL_FEED_INDEX_PATTERN) {
+        for (const block of markdownAnalyses.get(path)!.blocks) {
+          for (const match of allPatternMatches(pattern, block.text)) {
+            if (isCanonicalFeedIndexLocallyRetired(
+              block.text,
+              match.index,
+              match[0].length,
+            )) continue;
+            issues.push({
+              path,
+              line: block.line,
+              code: "retired-authoring-model",
+              message: `retired Nostr-first terminology: ${match[0]}`,
+            });
+          }
+        }
+        continue;
+      }
+      for (const match of allPatternMatches(pattern, text)) {
+        if (isPredicateLocallyRetired(
+          text,
+          match.index,
+          match[0].length,
+        )) continue;
+        issues.push({
+          path,
+          line: lineFor(text, match.index),
+          code: "retired-authoring-model",
+          message: `retired Nostr-first terminology: ${match[0]}`,
+        });
+      }
+    }
+  }
+
+  const agents = contents.get("AGENTS.md")!;
+  for (const pattern of UNSAFE_AGENT_SECURITY_FRAMING) {
+    const match = pattern.exec(agents);
+    if (match === null) continue;
+    issues.push({
+      path: "AGENTS.md",
+      line: lineFor(agents, match.index),
+      code: "retired-authoring-model",
+      message: `unsafe security-task framing: ${match[0]}`,
+    });
   }
 
   const registryRevision = loadRegistry(repoRoot).manifest.revision;

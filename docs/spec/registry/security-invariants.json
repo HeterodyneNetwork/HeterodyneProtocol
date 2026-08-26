@@ -5,21 +5,21 @@
       "owner": "core",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "The cold-root npub and accepted KEL are authoritative for persona identity; downstream caches and delegated identifiers cannot override them."
+      "description": "The active persona key and its valid NIP-01 signature are authoritative for baseline persona authorship; hints, repositories, caches, and optional Assurance cannot override them."
     },
     {
       "id": "CORE-I-NID-DELEGATION-DUAL-PROOF",
       "owner": "core",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A Radicle NID delegation is active only after both the persona epoch-key BIP-340 signature and the delegated NID Ed25519 proof verify over the same binding."
+      "description": "A writer NID enters a repository union only after owner authorization and the NID's Ed25519 proof verify over the same exact binding."
     },
     {
       "id": "CORE-I-VERIFY-BEFORE-USE",
       "owner": "core",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Every signed object is locally signature-verified and, where applicable, delegation-checked before rendering, storage, or authorization."
+      "description": "Every signed object is captured once into an independently owned immutable value, locally signature-verified from that value, and never reread from attacker-controlled source state before rendering, storage, or authorization."
     },
     {
       "id": "CORE-I-NO-CENTRAL-IDENTITY-DIRECTORY",
@@ -34,6 +34,77 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "description": "Persona nsec, NID secrets, and sensitive cached identity material are protected by the Core keys-repository profile, including NIP-49 wrapping where applicable."
+    },
+    {
+      "id": "ASSURANCE-I-CORE-OPTIONALITY",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Absent, invalid, stale, or withdrawn Assurance cannot invalidate a Core-valid active-key persona or alter NIP-01 or Marmot identity semantics."
+    },
+    {
+      "id": "ASSURANCE-I-RECIPROCAL-ENROLLMENT",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "assurance.continuity.v1",
+      "description": "Assurance attaches only when a cold-root inception and no-earlier active-key acceptance bind the same exact active key, inception event, and cold-root signature."
+    },
+    {
+      "id": "ASSURANCE-I-TRANSITION-PROOF-BINDING",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "assurance.continuity.v1",
+      "description": "Every succession authority proof, new-key acceptance, and witness receipt binds one identical digest containing every closed transition member except the proof signature values themselves."
+    },
+    {
+      "id": "ASSURANCE-I-PIN-DOWNGRADE",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "assurance.continuity.v1",
+      "description": "A pinned Assurance state survives disappearing or conflicting hints and can be downgraded only by the active key plus current recovery authority."
+    },
+    {
+      "id": "ASSURANCE-I-SUCCESSION-NON-ALIASING",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "assurance.continuity.v1",
+      "description": "A verified successor proves continuity but remains a distinct Nostr author and Marmot account whose authority does not silently inherit."
+    },
+    {
+      "id": "ASSURANCE-I-COMPROMISE-CUTOFF",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "assurance.continuity.v1",
+      "description": "A compromise succession rejects Assurance authority at or after its effective cutoff and carries no subordinate continuation."
+    },
+    {
+      "id": "ASSURANCE-I-NO-IMPLICIT-CONTINUATION",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "assurance.continuity.v1",
+      "description": "Succession transfers no succession authority, associated-key issuance policy, subordinate key, repository, group, delegate, financial, or application authority unless the record explicitly reauthorizes it."
+    },
+    {
+      "id": "ASSURANCE-I-ASSOCIATED-KEY-BOUNDS",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "assurance.associated-keys.v1",
+      "description": "Associated keys are accepted only for their exact head, active-key or epoch-threshold issuance ceiling, narrowed role and scope, issuer, subject, time bounds, active-grant proof requirements, and non-revoked state."
+    },
+    {
+      "id": "ASSURANCE-I-EXPORT-LOSSLESS",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "assurance.keri-export.v1",
+      "description": "KERI export either preserves every security-relevant accepted Assurance semantic or fails without emitting a misleading partial identity."
     },
     {
       "id": "COMMS-I-TIER3-BLIND-CARRIER",
@@ -85,62 +156,80 @@
       "description": "Following, transitive discovery, and social-graph evaluation do not depend on a centralized follow-graph oracle."
     },
     {
+      "id": "SOCIAL-I-NIP01-AUTHORSHIP",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Every ordinary Social event is authored by the public key that actually produced its valid NIP-01 signature; no persona, agent, moderator, repository, relay, KEL, or feed metadata can substitute another author."
+    },
+    {
+      "id": "SOCIAL-I-SOURCE-NEUTRAL-SELECTION",
+      "owner": "social",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Social state unions valid exact events from relays and repositories and applies NIP-01 replaceable selection without carrier priority; only kind `0` profiles and kind `10002` relay lists use the seven-day warning-only refresh age. Every other state remains subject to its applicable freshness and expiry rules and fails closed where those rules require."
+    },
+    {
       "id": "CONTROL-I-AUDIT-AT-REST",
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Authorization and side-effect audit is encrypted and contains no replayable token or transcript."
+      "description": "Signer authorization, attribution, refusal, and side-effect audit is encrypted and contains no replayable token, connection secret, or transcript."
+    },
+    {
+      "id": "CONTROL-I-BASELINE-ACTIVE-KEY",
+      "owner": "control",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "control.multi-persona-vaults.v1",
+      "description": "Baseline enrollment and signing depend only on the persona active Nostr account; cold roots, KERI, epochs, succession, and Assurance remain optional additional protection."
     },
     {
       "id": "CONTROL-I-CLIENT-KEY-CONFINEMENT",
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A light client receives no persona, device, epoch, NID, repository, MLS-leaf, or agent-role private key."
+      "description": "A light client receives no persona, agent, NID, repository, Marmot-leaf, OIDC-issuer, or trusted-seed private key."
     },
     {
-      "id": "CONTROL-I-MARMOT-SENDER-BINDING",
+      "id": "CONTROL-I-PERSONA-VAULT-ISOLATION",
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Every privileged token is bound to the authenticated Marmot account and exact group."
+      "feature": "control.multi-persona-vaults.v1",
+      "description": "Every request resolves exactly one persona vault and no authority, key, repository, audit context, or fallback crosses a vault boundary."
     },
     {
-      "id": "CONTROL-I-ENTITLEMENT-FRESHNESS",
+      "id": "CONTROL-I-EXACT-SIGNER-GRANT",
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Every privileged request uses current, non-conflicted private entitlement state and absorbing revocation."
+      "feature": "control.nip46-oidc-signing.v1",
+      "description": "A domain-separated BIP-340-authenticated signer grant exactly binds the persona, NIP-46 client, audience, selected signing key and class, methods, event kinds, finite limits, issuance, expiry, and revocation state, and only the unique authenticated predecessor/revocation head is current."
     },
     {
-      "id": "CONTROL-I-NODE-AUDIENCE",
+      "id": "CONTROL-I-NIP46-OIDC-ACTIVATION",
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "A node-issued Control token is accepted only when its protected typ is exactly at+jwt, signature and issuer validate, time bounds hold, and audience is the exact issuing-node resource."
+      "feature": "control.nip46-oidc-signing.v1",
+      "description": "OIDC activates standard NIP-46 only after the exact approved grant, OIDC authorization, persona, client, audience, signer, class, lifetime, and one-use secret are atomically consumed from authenticated current state; caller metadata cannot widen a grant."
     },
     {
-      "id": "CONTROL-I-OPERATION-AT-MOST-ONCE",
+      "id": "CONTROL-I-NO-SIGNER-FALLBACK",
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Mutation reservation precedes effects and cross-node retry is limited to provably safe cases."
+      "feature": "control.nip46-oidc-signing.v1",
+      "description": "Vault lookup and signer selection fail closed without falling through to another persona, key class, local key, or broader grant."
     },
     {
-      "id": "CONTROL-I-AGENT-NO-KEY-RELEASE",
-      "owner": "control",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "feature": "control.agent-workload-publication.v1",
-      "description": "An automated principal never receives or directly exercises a persona, epoch, NID, human-device, or agent-role private key."
-    },
-    {
-      "id": "CONTROL-I-AGENT-INTENT-ONLY",
+      "id": "CONTROL-I-AUTOMATION-ATTRIBUTION-BEFORE-SIGNING",
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "control.agent-workload-publication.v1",
-      "description": "An automated principal publishes only through the intent-level agent method, and raw signing, human-profile fallback, and attribution bypass fail closed."
+      "description": "Every closed automated intent is digest-bound to its request and derives class, association, tier, and scopes from authenticated current policy, then passes through Comms attribution after durable reservation and before the selected signer can produce a verifiable NIP-01 signature."
     },
     {
       "id": "CONTROL-I-MARMOT-GRANT-CONFINEMENT",
@@ -148,31 +237,30 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "control.node-mediated-marmot.v1",
-      "description": "Node-mediated Marmot operations expose only grant-filtered content and actions while all account, MLS leaf, epoch, and repository secrets remain on the designated node."
+      "description": "Node-mediated Marmot operations expose only active-account and exact device-leaf grant-filtered content while all leaf secrets remain device-local."
     },
     {
-      "id": "CONTROL-I-EPOCH-LOCKED-DURING-TRANSFER",
+      "id": "CONTROL-I-OPERATION-AT-MOST-ONCE",
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "feature": "control.recovery.epoch-inbox.v1",
-      "description": "Epoch plaintext is erased and relocked before network or bulk-transfer activity."
+      "description": "An authoritative revisioned per-grant usage record and request reservation precede every effect, and only a durable cross-process signer-side execute-once token fence over an immutable event snapshot may invoke the key operation; acquisition irreversibly poisons the token before the effect, exact terminal retries return isolated cached copies, unresolved terminal persistence remains non-reacquirable reconciliation, different bindings conflict, and no post-signing compare-and-swap substitutes for that fence."
     },
     {
-      "id": "CONTROL-I-RECOVERY-GRANT-CONFINEMENT",
+      "id": "CONTROL-I-MARMOT-LEAF-COMPROMISE",
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "feature": "control.recovery.radicle.v1",
-      "description": "Recovery access is finite and bound to exact identities, resources, direction, bytes, time, and completion."
+      "feature": "control.compromise-reset.v1",
+      "description": "Compromise of the active Nostr account assumes every device-local Marmot leaf bound to that account may also be compromised."
     },
     {
-      "id": "CONTROL-I-SFTP-PROCESS-SEPARATION",
+      "id": "CONTROL-I-COMPROMISE-RESET",
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "feature": "control.recovery.sftp.v1",
-      "description": "Overflow SFTP uses a per-grant onion and isolated rooted process with Tor and SSH authentication."
+      "feature": "control.compromise-reset.v1",
+      "description": "An authenticated reset grant binds the authoritative pre-reset inventory and a successor-authenticated completion binds consecutive authoritative evidence: all NIP-46 and OIDC grants are revoked, subordinate authorities and trusted seeds invalidated, old leaves removed, every reachable group advanced, fresh successor KeyPackages published, and every continuing subordinate authority receives a fresh distinct authorization."
     },
     {
       "id": "COMMS-I-CLAIM-AUTHENTICITY",
@@ -236,7 +324,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "comms.oidc-jwt-projection.v1",
-      "description": "HTTPS issuer metadata and the root-key-scoped Radicle continuity tree agree on the exact active issuer, keys, status digests, and authorized succession."
+      "description": "HTTPS issuer metadata and the active-persona-key-scoped Radicle continuity tree agree on the exact active issuer, keys, status digests, and authorized succession."
     },
     {
       "id": "COMMS-I-CLAIM-RELEASE",
@@ -271,12 +359,12 @@
       "description": "A public-reader implementation consumes only verified Tier 1 content and never renders Tier 2 plaintext or interprets Tier 3 ciphertext as public content."
     },
     {
-      "id": "COMMS-I-AGENT-ROLE-BINDING",
+      "id": "COMMS-I-AGENT-SIGNER-BINDING",
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "comms.agent-authorship.v1",
-      "description": "Every agent-authored event signer, workload registration, token role claim, and active role-addressed delegation identify the same dedicated full-node-held role key."
+      "description": "Every automated event uses the exact registered signer, key class, and optional association kind/value; an agent key is preferred, while a persona key requires the explicit OIDC persona-signing scope, and the event pubkey remains authoritative."
     },
     {
       "id": "COMMS-I-AGENT-ATTRIBUTION",
@@ -295,20 +383,20 @@
       "description": "Workload tokens, token identifiers, private source claims, and sender proofs remain confined to the protected authorization and audit boundary."
     },
     {
-      "id": "CORE-I-MARMOT-ROLE-ATTRIBUTION",
-      "owner": "core",
-      "status": "draft",
-      "first_version": "heterodyne/0.5.0",
-      "feature": "core.marmot-role-attribution.v1",
-      "description": "KERI role evidence attributes Marmot accounts and Radicle hosts without selecting MLS state or altering Marmot convergence."
-    },
-    {
       "id": "COMMS-I-MARMOT-UPSTREAM-AUTHORITY",
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "comms.marmot-conversations.v1",
       "description": "The pinned Marmot dependency remains authoritative for MLS, conversation events, encrypted media, and Nostr transport semantics."
+    },
+    {
+      "id": "COMMS-I-MARMOT-ACCOUNT-IDENTITY",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "comms.marmot-conversations.v1",
+      "description": "The active persona key is the Marmot account identity, every device leaf remains independent, and neither Heterodyne continuity nor storage provenance aliases another account or leaf inside MLS."
     },
     {
       "id": "COMMS-I-MARMOT-EXACT-BYTES",
@@ -331,8 +419,8 @@
       "owner": "comms",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "feature": "comms.radicle-backed-marmot-relay.v1",
-      "description": "Only a canonical Marmot routing commit by an active administrator can authorize a matching Radicle routing binding and repository genesis."
+      "feature": "comms.radicle-marmot-storage.v1",
+      "description": "Only a canonical Marmot routing commit by its active account-key administrator can authorize a routing binding and repository genesis with the same h, RID, routing-event ID, and authorized writer refs."
     },
     {
       "id": "COMMS-I-RADICLE-NON-ERASURE",
@@ -343,6 +431,22 @@
       "description": "Retention expiry stops conforming advertisement and replication but never claims erasure of independent Git objects, clones, exports, or backups."
     },
     {
+      "id": "COMMS-I-TRUSTED-SEED-CONFINEMENT",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "comms.trusted-seed-private-relay.v1",
+      "description": "A trusted seed receives only routing metadata and exact encrypted event bytes, writes only its own active authorized NID ref, and gains no persona, repository-owner, group-admin, full-node, or MLS authority."
+    },
+    {
+      "id": "COMMS-I-PRIVATE-RELAY-ACL",
+      "owner": "comms",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "feature": "comms.trusted-seed-private-relay.v1",
+      "description": "Every private seed read or write uses embedding-configured seed and administrator trust roots, one-use authenticated request authority, trusted current state and time, and one unique current unexpired administrator-signed ACL head matching the account role, seed grant, h, private RID, and Marmot group transition."
+    },
+    {
       "id": "SOCIAL-I-AGENT-POLICY-LOCAL",
       "owner": "social",
       "status": "draft",
@@ -351,26 +455,26 @@
       "description": "Agent-policy receipts inform publicly, but only an explicitly subscribed and verified current policy list changes a client's local visibility."
     },
     {
-      "id": "SOCIAL-I-AGENT-REMEDIATION-SCOPED",
+      "id": "SOCIAL-I-AGENT-AUTHORSHIP-EXACT",
       "owner": "social",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "social.agent-policy-moderation.v1",
-      "description": "Agent-policy enforcement and remediation target only the offending role device key; replacement at the same role address never requires epoch-key rotation."
+      "description": "Agent-policy receipts, corrections, and subscriber-local enforcement bind the actual signed event author and verified Comms agent association; no moderator or associated agent becomes an event author without producing that event's signature."
     },
     {
       "id": "WORKSPACE-I-NO-AMBIENT-AUTHORITY",
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Workspace affiliation alone grants no role or resource capability."
+      "description": "Workspace affiliation, optional Assurance continuity, or active-key succession alone grants no role, relationship, delegate, seed, or resource capability; each subordinate authority requires explicit current-key reauthorization."
     },
     {
       "id": "WORKSPACE-I-INHERITANCE-NARROWS",
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Child roles, resources, grants, and bilateral allowances cannot widen an applicable workspace or parent-role ceiling."
+      "description": "Exact role-policy-head sets, child roles, resource visibility/capabilities, grants, and bilateral allowances cannot widen an applicable workspace or parent-role ceiling."
     },
     {
       "id": "WORKSPACE-I-PRIVATE-TOPOLOGY",
@@ -384,7 +488,14 @@
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Git authorship, Radicle permission, relay acceptance, MLS membership, and host status are never sufficient Workspace authorization evidence."
+      "description": "Git authorship, Radicle repository-writer permission, trusted-seed or host status, relay acceptance, custody, and Marmot membership or group administration are never sufficient Workspace authorization evidence."
+    },
+    {
+      "id": "WORKSPACE-I-AUTHENTICATED-CURRENT-STATE",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "heterodyne/0.5.0",
+      "description": "Every Workspace authority effect consumes only its configured resolver instance's latest accepted generation and revalidates complete signed state, exact requested terms, transition times, role paths, exactly one semantic receiving relationship receipt, immutable envelope-ID ancestry, and revocations at effect time."
     },
     {
       "id": "WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS",
@@ -399,21 +510,21 @@
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Revocation blocks future authorization and key delivery without claiming erasure of data or keys already obtained."
+      "description": "Revocation blocks future authorization and key delivery, including custody-host delivery from and including the exact effective time, without claiming erasure of data or keys already obtained."
     },
     {
       "id": "WORKSPACE-I-FRESHNESS-BOUNDED",
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Ordinary writes use checkpoints no older than 86400 seconds and authority mutations no older than 300 seconds, with policy able only to shorten those bounds."
+      "description": "Ordinary writes use checkpoints no older than 86400 seconds and authority mutations no older than 300 seconds, with policy able only to shorten those bounds; invitation commit samples trusted time itself, reruns complete activation validation at that time, and releases the reservation on any failure before its atomic transition."
     },
     {
       "id": "WORKSPACE-I-HOST-AUTHORITY-SEPARATION",
       "owner": "workspace",
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
-      "description": "Hosting does not grant governance authority, while key-custody hosts remain explicit confidentiality trust boundaries."
+      "description": "Hosting or trusted-seed availability does not grant governance authority, while explicit key-custody hosts remain confidentiality trust boundaries."
     },
     {
       "id": "WORKSPACE-I-RADICLE-BACKSTOP",
@@ -429,7 +540,7 @@
       "status": "draft",
       "first_version": "heterodyne/0.5.0",
       "feature": "workspace.private-role-control.v1",
-      "description": "Each authorized device has an independently revocable MLS leaf and receives only device-bound resource-key envelopes."
+      "description": "Each active account device has an independently revocable Marmot MLS leaf and receives only uniquely identified envelopes bound to that exact grant, single path admission epoch, account, device, leaf, role, resource, checkpoint, and custody host."
     }
   ]
 }

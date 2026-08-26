@@ -1,17 +1,5 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { authorAllVectors } from "./author.js";
-import { lintFamilyDocs } from "./docs-lint.js";
-import { writeWorkspaceSchemas } from "./workspace-schemas.js";
-import { verifyVectorTree } from "./verify.js";
-import { writeCoverage } from "./coverage.js";
-import { authorRegistryRevision } from "./registry.js";
-import {
-  authorSnapshot,
-  checkSnapshot,
-  formatSnapshotCheckSuccess,
-} from "./snapshot-orchestrator.js";
-import { snapshotPackageCheck } from "./verify.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultVectorRoot = resolve(here, "..", "..");
@@ -20,9 +8,11 @@ const command = process.argv[2];
 const root = resolve(process.argv[3] ?? defaultVectorRoot);
 
 if (command === "author") {
+  const { authorAllVectors } = await import("./author.js");
   const written = await authorAllVectors(root);
   console.log(`authored ${written.length} vectors under ${root}`);
 } else if (command === "verify") {
+  const { verifyVectorTree } = await import("./verify.js");
   const result = await verifyVectorTree(root);
   if (result.errors.length > 0) {
     console.error(result.errors.join("\n"));
@@ -31,6 +21,7 @@ if (command === "author") {
     console.log(`verified ${result.validFiles} vectors under ${root}`);
   }
 } else if (command === "family-check") {
+  const { lintFamilyDocs } = await import("./docs-lint.js");
   const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
   const issues = lintFamilyDocs(repositoryRoot);
   if (issues.length > 0) {
@@ -44,18 +35,22 @@ if (command === "author") {
     console.log("validated protocol document family");
   }
 } else if (command === "coverage") {
+  const { writeCoverage } = await import("./coverage.js");
   await writeCoverage(root);
   console.log(`generated vector coverage under ${resolve(root, "coverage")}`);
 } else if (command === "registry-author") {
+  const { authorRegistryRevision } = await import("./registry.js");
   const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
   const revision = Number.parseInt(process.argv[4] ?? "6", 10);
   const digest = authorRegistryRevision(repositoryRoot, revision);
   console.log(`authored registry revision ${revision} (${digest})`);
 } else if (command === "workspace-schemas") {
+  const { writeWorkspaceSchemas } = await import("./workspace-schemas.js");
   const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
   const written = writeWorkspaceSchemas(repositoryRoot);
   console.log(`generated ${written.length} Workspace schemas`);
 } else if (command === "snapshot-author") {
+  const { authorSnapshot } = await import("./snapshot-orchestrator.js");
   const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
   const sourceCommit = process.argv[4];
   if (sourceCommit === undefined) {
@@ -66,10 +61,14 @@ if (command === "author") {
     console.log(`authored vector snapshot from ${sourceCommit}`);
   }
 } else if (command === "snapshot-check") {
+  const { checkSnapshot, formatSnapshotCheckSuccess } = await import(
+    "./snapshot-orchestrator.js"
+  );
   const repositoryRoot = resolve(process.argv[3] ?? defaultRepositoryRoot);
   const history = await checkSnapshot(repositoryRoot);
   console.log(formatSnapshotCheckSuccess(history));
 } else if (command === "snapshot-package-check") {
+  const { snapshotPackageCheck } = await import("./verify.js");
   const flags = parseFlags(process.argv.slice(3));
   const rawRoot = flags?.get("--raw-root");
   const snapshotRoot = flags?.get("--snapshot-root");

@@ -135,8 +135,11 @@ export function refreshSnapshotManifest(
   });
 }
 
-function writeSource(root: string): void {
-  for (const name of ["comms", "control", "core", "social", "workspace"]) {
+function writeSource(root: string, withAssurance: boolean): void {
+  const documents = withAssurance
+    ? ["core", "assurance", "comms", "control", "social", "workspace"]
+    : ["core", "comms", "control", "social", "workspace"];
+  for (const name of documents) {
     const schemaReference = name === "core"
       ? "\nProtocol schema: docs/spec/schemas/core/example-v1.schema.json."
       : "";
@@ -225,13 +228,15 @@ function writeSnapshot(root: string, withVector: boolean): void {
   refreshSnapshotManifest(root);
 }
 
-export function createTestCorpus(options: { withVector?: boolean } = {}): TestCorpus {
+export function createTestCorpus(
+  options: { withVector?: boolean; withAssurance?: boolean } = {},
+): TestCorpus {
   const root = mkdtempSync(join(tmpdir(), "heterodyne-conformance-"));
   const sourceRoot = resolve(root, "source");
   const snapshotRoot = resolve(root, "snapshot");
   mkdirSync(sourceRoot);
   mkdirSync(snapshotRoot);
-  writeSource(sourceRoot);
+  writeSource(sourceRoot, options.withAssurance ?? false);
   writeSnapshot(snapshotRoot, options.withVector ?? true);
   return { root, sourceRoot, snapshotRoot, sourceCommit, snapshotCommit };
 }

@@ -7,7 +7,11 @@ import { base58 } from "@scure/base";
 import { bytesToHex, hexToBytes, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import { proofBytes } from "./proof-bytes.js";
-import { type NostrSignedEvent, verifyEventSignature } from "./nostr.js";
+import {
+  snapshotAndVerifyNostrEvent,
+  type NostrSignedEvent,
+  type VerifiedNostrEvent,
+} from "./nostr.js";
 import { didKeyFromEd25519 } from "./radicle.js";
 import { reasonCodeValues } from "./reason-codes.js";
 import {
@@ -111,17 +115,12 @@ export type ClaimState =
   | "revoked"
   | "conflicted";
 
-/**
- * Task 3 needs this evidence in addition to the original plan's abbreviated
- * context shape so the approved stage-2 Core/KEL check is explicit rather
- * than being inferred from local trust policy.
- */
 export type ClaimAuthorityEvidence = {
   claim_id: string;
   issuer: KeyRef;
   event_id: string;
+  event_author: string;
   envelope_valid: boolean;
-  core_kel_authority_valid: boolean;
   credential_ledger_persona: string | null;
   credential_ledger_generation: number | null;
   verified_at: number;
@@ -132,11 +131,10 @@ export type RevocationAuthorityEvidence = {
   event_id: string;
   claim_id: string;
   signer: KeyRef;
-  authority: "active-ancestor-issuer" | "persona-epoch" | "persona-cold-root";
+  authority: "active-ancestor-issuer" | "active-persona";
   authority_claim_id?: string;
   valid_from: number;
   valid_until: number;
-  core_kel_authority_valid: boolean;
 };
 
 export type ClaimVerificationContext = {
@@ -195,10 +193,10 @@ export function validateClaimId(body: ClaimSemanticBody): void {
 }
 
 export function validateClaimEnvelope(
-  event: NostrSignedEvent,
+  sourceEvent: NostrSignedEvent,
   context: ClaimEnvelopeContext,
 ): ClaimSemanticBody {
-  assertNip01EventStructure(event);
+  const event = requireVerifiedClaimEvent(sourceEvent);
   assertAddressedCommsEvent(event, CLAIM_KIND);
   const parsed = parseCanonicalContent(event.content, "claim") as unknown;
   if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) &&
@@ -215,7 +213,6 @@ export function validateClaimEnvelope(
   }
   validateClaimId(body);
   assertSingleAddress(event, body.claim_id);
-  assertOuterSignature(event);
   if (context.profile_revision !== 2 || body.profile_revision !== context.profile_revision) {
     throw new Error("claim-schema-invalid: registry revision does not match the supplied context");
   }
@@ -245,8 +242,8 @@ export function revocationProofPayload(body: RevocationProofBody): Uint8Array {
   });
 }
 
-export function validateClaimRevocationEnvelope(event: NostrSignedEvent): VerifiedRevocation {
-  assertNip01EventStructure(event);
+export function validateClaimRevocationEnvelope(sourceEvent: NostrSignedEvent): VerifiedRevocation {
+  const event = requireVerifiedClaimEvent(sourceEvent);
   assertAddressedCommsEvent(event, REVOCATION_KIND);
   const parsed = parseCanonicalContent(event.content, "revocation") as unknown;
   validateClaimRevocationSchemaOrThrow(parsed);
@@ -259,7 +256,6 @@ export function validateClaimRevocationEnvelope(event: NostrSignedEvent): Verifi
   if (revocation.revoked_at !== event.created_at) {
     throw new Error("claim-schema-invalid: revoked_at must equal signed event created_at");
   }
-  assertOuterSignature(event);
   verifyRevocationProof(event, revocation);
   return {
     ...revocation,
@@ -394,7 +390,7 @@ function evaluateClaim(
     return invalidEvaluation(error);
   }
 
-  // 2. Require explicit, current, claim-bound envelope and Core/KEL evidence.
+  // 2. Require explicit, current, claim-bound envelope and event-author evidence.
   for (const claim of chain) {
     const evidence = context.claim_authority_evidence.get(claim.claim_id);
     if (!validClaimAuthorityEvidence(claim, evidence, context.now)) {
@@ -618,9 +614,12 @@ function isRevoked(chain: ClaimSemanticBody[], context: ClaimVerificationContext
         "active-ancestor-issuer",
         superior.claim_id,
       );
-      const personaAuthorized = external !== undefined &&
-        (external.authority === "persona-epoch" || external.authority === "persona-cold-root") &&
-        validRevocationAuthorityEvidence(revocation, external, external.authority);
+      const personaAuthorized = target.claim_class === "authorization" &&
+        target.credential_ledger_persona !== null &&
+        external?.authority === "active-persona" &&
+        revocation.signer.type === "nostr-secp256k1" &&
+        revocation.signer.value === target.credential_ledger_persona &&
+        validRevocationAuthorityEvidence(revocation, external, "active-persona");
       if (target.claim_class === "authorization") {
         if (
           sameKeyRef(revocation.signer, target.subject) ||
@@ -644,11 +643,13 @@ function validClaimAuthorityEvidence(
   now: number,
 ): evidence is ClaimAuthorityEvidence {
   return evidence !== undefined &&
+    hasExactMembers(evidence, CLAIM_AUTHORITY_EVIDENCE_MEMBERS) &&
     evidence.claim_id === claim.claim_id &&
     sameKeyRef(evidence.issuer, claim.issuer) &&
+    claim.issuer.type === "nostr-secp256k1" &&
+    evidence.event_author === claim.issuer.value &&
     CLAIM_ID_PATTERN.test(evidence.event_id) &&
     evidence.envelope_valid &&
-    evidence.core_kel_authority_valid &&
     evidence.credential_ledger_persona === claim.credential_ledger_persona &&
     evidence.credential_ledger_generation === claim.credential_ledger_generation &&
     Number.isSafeInteger(evidence.verified_at) &&
@@ -664,6 +665,7 @@ function validRevocationAuthorityEvidence(
   authorityClaimId?: string,
 ): evidence is RevocationAuthorityEvidence {
   return evidence !== undefined &&
+    hasExactMembers(evidence, REVOCATION_AUTHORITY_EVIDENCE_MEMBERS) &&
     evidence.event_id === revocation.event_id &&
     evidence.claim_id === revocation.claim_id &&
     sameKeyRef(evidence.signer, revocation.signer) &&
@@ -671,12 +673,39 @@ function validRevocationAuthorityEvidence(
     (authorityClaimId === undefined
       ? evidence.authority_claim_id === undefined
       : evidence.authority_claim_id === authorityClaimId) &&
-    evidence.core_kel_authority_valid &&
     Number.isSafeInteger(evidence.valid_from) &&
     Number.isSafeInteger(evidence.valid_until) &&
     revocation.event_created_at === revocation.revoked_at &&
     evidence.valid_from <= revocation.event_created_at &&
     revocation.event_created_at < evidence.valid_until;
+}
+
+const CLAIM_AUTHORITY_EVIDENCE_MEMBERS = new Set([
+  "claim_id",
+  "credential_ledger_generation",
+  "credential_ledger_persona",
+  "envelope_valid",
+  "event_author",
+  "event_id",
+  "issuer",
+  "valid_until",
+  "verified_at",
+]);
+
+const REVOCATION_AUTHORITY_EVIDENCE_MEMBERS = new Set([
+  "authority",
+  "authority_claim_id",
+  "claim_id",
+  "event_id",
+  "signer",
+  "valid_from",
+  "valid_until",
+]);
+
+function hasExactMembers(value: object, allowed: ReadonlySet<string>): boolean {
+  return Reflect.ownKeys(value).every((member) =>
+    typeof member === "string" && allowed.has(member)
+  );
 }
 
 function matchesRestriction(restriction: string[] | undefined, value: string): boolean {
@@ -714,40 +743,14 @@ function assertAddressedCommsEvent(event: NostrSignedEvent, expectedKind: number
   }
 }
 
-function assertNip01EventStructure(event: NostrSignedEvent): void {
-  if (event === null || Array.isArray(event) || typeof event !== "object") {
-    throw new Error("claim-event-signature-invalid: NIP-01 event structure must be an object");
+function requireVerifiedClaimEvent(value: unknown): VerifiedNostrEvent {
+  const event = snapshotAndVerifyNostrEvent(value);
+  if (event === null) {
+    throw new Error(
+      "claim-event-signature-invalid: invalid canonical NIP-01 id or BIP-340 signature",
+    );
   }
-  const fields = Reflect.ownKeys(event);
-  if (
-    fields.some((field) => typeof field !== "string") ||
-    fields.length !== NIP01_SIGNED_EVENT_FIELDS.length ||
-    [...(fields as string[])].sort().some((field, index) => field !== NIP01_SIGNED_EVENT_FIELDS[index])
-  ) {
-    throw new Error("claim-event-signature-invalid: NIP-01 signed event has unexpected or missing fields");
-  }
-  if (
-    typeof event.id !== "string" ||
-    typeof event.pubkey !== "string" ||
-    !LOWER_HEX_32_PATTERN.test(event.id) ||
-    !LOWER_HEX_32_PATTERN.test(event.pubkey)
-  ) {
-    throw new Error("claim-event-signature-invalid: NIP-01 id and pubkey require lowercase 64-hex encoding");
-  }
-  if (typeof event.sig !== "string" || !/^[0-9a-f]{128}$/.test(event.sig)) {
-    throw new Error("claim-event-signature-invalid: NIP-01 sig requires lowercase 128-hex encoding");
-  }
-  if (!Number.isSafeInteger(event.created_at) || event.created_at < 0) {
-    throw new Error("claim-event-signature-invalid: NIP-01 created_at must be a nonnegative safe integer");
-  }
-  if (!Number.isInteger(event.kind) || typeof event.content !== "string" || !Array.isArray(event.tags)) {
-    throw new Error("claim-event-signature-invalid: NIP-01 kind, content, or tags has the wrong type");
-  }
-  for (const tag of event.tags) {
-    if (!Array.isArray(tag) || tag.length === 0 || tag.some((member) => typeof member !== "string")) {
-      throw new Error("claim-event-signature-invalid: every NIP-01 tag must be a non-empty string array");
-    }
-  }
+  return event;
 }
 
 function assertSingleAddress(event: NostrSignedEvent, expected: string): void {
@@ -780,15 +783,7 @@ function parseCanonicalContent(content: string, label: string): unknown {
   return parsed;
 }
 
-function assertOuterSignature(event: NostrSignedEvent): void {
-  try {
-    if (!verifyEventSignature(event)) throw new Error("invalid");
-  } catch {
-    throw new Error("claim-event-signature-invalid: invalid canonical NIP-01 id or BIP-340 signature");
-  }
-}
-
-function verifyRevocationProof(event: NostrSignedEvent, revocation: ClaimRevocation): void {
+function verifyRevocationProof(event: VerifiedNostrEvent, revocation: ClaimRevocation): void {
   if (revocation.revoker.type === "nostr-secp256k1") {
     if (revocation.proof !== undefined) {
       throw new Error("claim-key-reference-invalid: Nostr revocation uses only the outer event signature");

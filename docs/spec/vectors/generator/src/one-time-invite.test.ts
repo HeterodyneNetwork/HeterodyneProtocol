@@ -34,6 +34,95 @@ describe("provider-independent one-time invites", () => {
     expect(verifyInviteSignature({ ...descriptor, purpose: "control-enrollment" }, signature)).toBe(false);
   });
 
+  it("accepts an active-account-signed device invite and rejects legacy authority members", () => {
+    const deviceDescriptor: InviteDescriptor = {
+      ...descriptor,
+      purpose: "device-enrollment",
+    };
+    const signature = Buffer.from(
+      schnorr.sign(descriptorDigest(deviceDescriptor), secretKey, new Uint8Array(32)),
+    ).toString("hex");
+    expect(verifyInviteSignature(deviceDescriptor, signature)).toBe(true);
+
+    const legacyDescriptor = {
+      ...deviceDescriptor,
+      inviter_authority: {
+        persona: getPublicKey(secretKey),
+        kel_head: "33".repeat(32),
+        epoch_key: getPublicKey(secretKey),
+        authority_event_id: "44".repeat(32),
+      },
+    };
+    const legacySignature = Buffer.from(
+      schnorr.sign(descriptorDigest(legacyDescriptor), secretKey, new Uint8Array(32)),
+    ).toString("hex");
+    expect(verifyInviteSignature(legacyDescriptor, legacySignature)).toBe(false);
+  });
+
+  it("rejects a correctly signed descriptor missing any required member", () => {
+    for (const required of [
+      "version",
+      "purpose",
+      "inviter_account",
+      "invite_id",
+      "rendezvous_pubkey",
+      "relay_hints",
+      "issued_at",
+      "expires_at",
+      "secret_sha256",
+      "approval_mode",
+    ] as const) {
+      const partial = Object.fromEntries(
+        Object.entries(descriptor).filter(([member]) => member !== required),
+      ) as InviteDescriptor;
+      const signature = Buffer.from(
+        schnorr.sign(descriptorDigest(partial), secretKey, new Uint8Array(32)),
+      ).toString("hex");
+
+      expect(verifyInviteSignature(partial, signature), required).toBe(false);
+    }
+  });
+
+  it("rejects descriptor properties that are not signed JSON data members", () => {
+    const missingPurpose = Object.fromEntries(
+      Object.entries(descriptor).filter(([member]) => member !== "purpose"),
+    ) as InviteDescriptor;
+    Object.defineProperty(missingPurpose, "purpose", {
+      value: "dm",
+      enumerable: false,
+    });
+
+    const hiddenOptional = { ...descriptor } as InviteDescriptor;
+    Object.defineProperty(hiddenOptional, "preauthorization", {
+      value: { capability: "control" },
+      enumerable: false,
+    });
+
+    const symbolMember = { ...descriptor } as InviteDescriptor;
+    Object.defineProperty(symbolMember, Symbol("unsigned"), {
+      value: "authority",
+      enumerable: true,
+    });
+
+    const accessorMember = { ...descriptor } as InviteDescriptor;
+    Object.defineProperty(accessorMember, "purpose", {
+      get: () => "dm",
+      enumerable: true,
+    });
+
+    for (const malformed of [
+      missingPurpose,
+      hiddenOptional,
+      symbolMember,
+      accessorMember,
+    ]) {
+      const signature = Buffer.from(
+        schnorr.sign(descriptorDigest(malformed), secretKey, new Uint8Array(32)),
+      ).toString("hex");
+      expect(verifyInviteSignature(malformed, signature)).toBe(false);
+    }
+  });
+
   it("encodes authority only in a URL fragment", () => {
     const signature = Buffer.from(schnorr.sign(descriptorDigest(descriptor), secretKey, new Uint8Array(32))).toString("hex");
     const fragment = encodeInviteFragment({ descriptor, signature, secret });

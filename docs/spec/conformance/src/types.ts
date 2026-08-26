@@ -16,7 +16,7 @@ export type ConformanceCheckDocument = {
 export type VectorDocument = {
   vector_id: string;
   vector_schema_version: "2.0.0";
-  owner_document: "core" | "comms" | "control" | "social" | "workspace";
+  owner_document: "core" | "assurance" | "comms" | "control" | "social" | "workspace";
   spec_refs: string[];
   direction: "consume" | "produce" | "round-trip";
   input: Record<string, unknown>;

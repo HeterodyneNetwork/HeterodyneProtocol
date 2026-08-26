@@ -1,0 +1,166 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/comms/trusted-seed-acl-v1.schema.json",
+  "title": "Heterodyne trusted seed ACL v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile",
+    "spec_version",
+    "administrator_account",
+    "accounts",
+    "h",
+    "private_rid",
+    "seed_grants",
+    "sequence",
+    "predecessor",
+    "group_transition",
+    "issued_at",
+    "expires_at",
+    "signature"
+  ],
+  "properties": {
+    "profile": {
+      "const": "heterodyne.trusted-seed-acl.v1"
+    },
+    "spec_version": {
+      "const": "heterodyne/0.5.0"
+    },
+    "administrator_account": {
+      "$ref": "#/definitions/account_key"
+    },
+    "accounts": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["account_key", "roles"],
+        "properties": {
+          "account_key": {
+            "$ref": "#/definitions/account_key"
+          },
+          "roles": {
+            "$ref": "#/definitions/roles"
+          }
+        }
+      }
+    },
+    "h": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "private_rid": {
+      "$ref": "#/definitions/rid"
+    },
+    "seed_grants": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "seed_nid",
+          "relay_endpoint",
+          "radicle_endpoint",
+          "writer_ref",
+          "roles",
+          "state"
+        ],
+        "properties": {
+          "seed_nid": {
+            "type": "string",
+            "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$"
+          },
+          "relay_endpoint": {
+            "type": "string",
+            "pattern": "^wss?://[^?#]+$",
+            "maxLength": 2048
+          },
+          "radicle_endpoint": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "writer_ref": {
+            "type": "string",
+            "pattern": "^refs/xyz\\.heterodyne\\.marmot/relays/[A-Za-z0-9._-]+$"
+          },
+          "roles": {
+            "$ref": "#/definitions/roles"
+          },
+          "state": {
+            "enum": ["active", "revoked"]
+          }
+        }
+      }
+    },
+    "sequence": {
+      "$ref": "#/definitions/json_safe_integer"
+    },
+    "predecessor": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "group_transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "generation",
+        "marmot_routing_event_id",
+        "routing_binding_sha256"
+      ],
+      "properties": {
+        "generation": {
+          "$ref": "#/definitions/json_safe_integer"
+        },
+        "marmot_routing_event_id": {
+          "$ref": "#/definitions/sha256"
+        },
+        "routing_binding_sha256": {
+          "$ref": "#/definitions/sha256"
+        }
+      }
+    },
+    "issued_at": {
+      "$ref": "#/definitions/json_safe_integer"
+    },
+    "expires_at": {
+      "$ref": "#/definitions/json_safe_integer"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    }
+  },
+  "definitions": {
+    "account_key": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "rid": {
+      "type": "string",
+      "pattern": "^rad:z[1-9A-HJ-NP-Za-km-z]+$"
+    },
+    "roles": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["read", "write"]
+      }
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "json_safe_integer": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    }
+  }
+}

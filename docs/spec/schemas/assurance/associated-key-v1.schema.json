@@ -1,0 +1,185 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/assurance/associated-key-v1.schema.json",
+  "title": "Heterodyne Assurance associated-key state v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile",
+    "spec_version",
+    "active_key",
+    "created_at",
+    "predecessor",
+    "assurance_head",
+    "role",
+    "scope",
+    "issuer",
+    "issuer_authority",
+    "subject_key",
+    "visibility",
+    "state"
+  ],
+  "properties": {
+    "profile": {
+      "const": "heterodyne.assurance.associated-key.v1"
+    },
+    "spec_version": {
+      "const": "heterodyne/0.5.0"
+    },
+    "active_key": {
+      "$ref": "#/definitions/hex32"
+    },
+    "created_at": {
+      "$ref": "#/definitions/unix_time"
+    },
+    "predecessor": {
+      "$ref": "#/definitions/hex32"
+    },
+    "assurance_head": {
+      "$ref": "#/definitions/hex32"
+    },
+    "role": {
+      "$ref": "#/definitions/name"
+    },
+    "scope": {
+      "$ref": "#/definitions/scope"
+    },
+    "issuer": {
+      "$ref": "#/definitions/hex32"
+    },
+    "issuer_authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "authority_proofs"],
+      "properties": {
+        "class": {
+          "enum": ["active-key", "epoch-threshold"]
+        },
+        "authority_proofs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["authority_key", "signature"],
+            "properties": {
+              "authority_key": { "$ref": "#/definitions/hex32" },
+              "signature": { "$ref": "#/definitions/signature" }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "class": { "const": "active-key" }
+            },
+            "required": ["class"]
+          },
+          "then": {
+            "properties": {
+              "authority_proofs": { "maxItems": 0 }
+            }
+          },
+          "else": {
+            "properties": {
+              "authority_proofs": { "minItems": 1 }
+            }
+          }
+        }
+      ]
+    },
+    "subject_key": {
+      "$ref": "#/definitions/hex32"
+    },
+    "expires_at": {
+      "$ref": "#/definitions/unix_time"
+    },
+    "visibility": {
+      "enum": ["public", "private"]
+    },
+    "subject_proof": {
+      "$ref": "#/definitions/signature"
+    },
+    "state": {
+      "enum": ["active", "revoked"]
+    },
+    "revocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revoked_at", "reason"],
+      "properties": {
+        "revoked_at": {
+          "$ref": "#/definitions/unix_time"
+        },
+        "reason": {
+          "enum": ["operator-request", "expiry", "compromise", "superseded"]
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "role": { "const": "agent" },
+          "visibility": { "const": "public" },
+          "state": { "const": "active" }
+        },
+        "required": ["role", "visibility", "state"]
+      },
+      "then": {
+        "required": ["subject_proof"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": { "const": "revoked" }
+        },
+        "required": ["state"]
+      },
+      "then": {
+        "required": ["revocation"],
+        "not": {
+          "required": ["subject_proof"]
+        }
+      },
+      "else": {
+        "not": {
+          "required": ["revocation"]
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "hex32": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    },
+    "unix_time": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+    },
+    "scope": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      }
+    }
+  }
+}

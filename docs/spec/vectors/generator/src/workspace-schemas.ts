@@ -6,9 +6,11 @@ type Schema = Record<string, unknown>;
 const h64 = { type: "string", pattern: "^[0-9a-f]{64}$" };
 const h40 = { type: "string", pattern: "^[0-9a-f]{40}$" };
 const signature = { type: "string", pattern: "^[0-9a-f]{128}$" };
-const nonNegativeInteger = { type: "integer", minimum: 0 };
-const timestamp = { type: "integer", minimum: 0 };
+const nonNegativeInteger = { type: "integer", minimum: 0, maximum: Number.MAX_SAFE_INTEGER };
+const timestamp = { type: "integer", minimum: 0, maximum: Number.MAX_SAFE_INTEGER };
 const radicleRid = { type: "string", pattern: "^rad:[A-Za-z0-9]+$" };
+const radicleNid = { type: "string", pattern: "^did:key:z[1-9A-HJ-NP-Za-km-z]+$" };
+const marmotLeaf = { type: "string", pattern: "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$" };
 const nullableH64 = { anyOf: [h64, { type: "null" }] };
 const nullableTimestamp = { anyOf: [timestamp, { type: "null" }] };
 const identifierArray = { type: "array", items: h64, uniqueItems: true };
@@ -37,10 +39,10 @@ const closed = (
 const baseProperties = (objectType: string): Record<string, unknown> => ({
   spec_version: { const: "heterodyne/0.5.0" },
   object_type: { const: objectType },
-  workspace_id: h64,
-  actor: h64,
-  kel_head: h64,
-  authority_sequence: nonNegativeInteger,
+  workspace_key: h64,
+  policy_head: h64,
+  predecessor: nullableH64,
+  authority_checkpoint: h64,
   repository_rid: radicleRid,
   repository_head: h40,
   issued_at: timestamp,
@@ -48,9 +50,9 @@ const baseProperties = (objectType: string): Record<string, unknown> => ({
 });
 
 const BASE_REQUIRED = [
-  "spec_version", "object_type", "workspace_id", "actor", "kel_head",
-  "authority_sequence", "repository_rid", "repository_head", "issued_at",
-  "signature",
+  "spec_version", "object_type", "workspace_key", "policy_head",
+  "predecessor", "authority_checkpoint", "repository_rid",
+  "repository_head", "issued_at", "signature",
 ];
 
 const workspaceSchema = (
@@ -101,7 +103,7 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
       governance: closed(
         ["threshold", "controllers"],
         {
-          threshold: { type: "integer", minimum: 1 },
+          threshold: { type: "integer", minimum: 1, maximum: Number.MAX_SAFE_INTEGER },
           controllers: { type: "array", minItems: 1, uniqueItems: true, items: h64 },
         },
       ),
@@ -124,7 +126,7 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
     [
       "role_id", "parent_role_id", "role_type", "visibility",
       "allowed_capabilities", "history_mode", "selected_snapshots",
-      "policy_head", "mls_group_id", "active_event_repository",
+      "administrator_account", "marmot_h", "active_event_repository",
       "overlap_event_repository", "archived_event_repositories",
     ],
     {
@@ -135,23 +137,30 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
       allowed_capabilities: capabilities,
       history_mode: historyMode,
       selected_snapshots: identifierArray,
-      policy_head: h64,
-      mls_group_id: nullableH64,
+      administrator_account: h64,
+      marmot_h: { anyOf: [{ type: "string", minLength: 1, maxLength: 128 }, { type: "null" }] },
       active_event_repository: eventRepository,
       overlap_event_repository: { anyOf: [eventRepository, { type: "null" }] },
       archived_event_repositories: { type: "array", items: eventRepository, uniqueItems: true },
     },
   ),
-  "role-grant-v1": workspaceSchema(
+  "role-grant-v1": {
+    ...workspaceSchema(
     "role-grant-v1",
     [
-      "grant_id", "subject", "role_id", "capabilities", "resource_scope",
+      "grant_id", "subject_account", "target_device", "recipient", "role_id",
+      "capabilities", "resource_scope",
       "delegable", "activation", "activates_at", "expires_at",
       "approval_ids", "invitation", "evidence_ids",
     ],
     {
       grant_id: h64,
-      subject: h64,
+      subject_account: h64,
+      target_device: h64,
+      recipient: closed(
+        ["type", "value"],
+        { type: { const: "marmot-mls-leaf" }, value: marmotLeaf },
+      ),
       role_id: h64,
       capabilities,
       resource_scope: identifierArray,
@@ -165,19 +174,29 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
           { type: "null" },
           closed(
             ["nonce_commitment", "expires_at", "history_mode"],
-            { nonce_commitment: h64, expires_at: timestamp, history_mode: historyMode },
+            {
+              nonce_commitment: h64,
+              expires_at: timestamp,
+              history_mode: historyMode,
+            },
           ),
         ],
       },
       evidence_ids: identifierArray,
-    },
-  ),
+      },
+    ),
+    allOf: [{
+      if: { properties: { activation: { const: "subject-acceptance" } } },
+      then: { properties: { invitation: { type: "object" } } },
+      else: { properties: { invitation: { type: "null" } } },
+    }],
+  },
   "role-revocation-v1": workspaceSchema(
     "role-revocation-v1",
     ["revocation_id", "target_type", "target_id", "effective_at", "reason"],
     {
       revocation_id: h64,
-      target_type: { enum: ["grant", "persona", "device", "relationship", "host", "resource"] },
+      target_type: { enum: ["grant", "account", "device", "relationship", "host", "resource"] },
       target_id: h64,
       effective_at: timestamp,
       reason: { type: "string", minLength: 1, maxLength: 512 },
@@ -189,7 +208,7 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
       "checkpoint_id", "role_id", "sequence", "materialized_at",
       "workspace_policy_head", "role_policy_heads", "active_grant_ids",
       "revocation_ids", "relationship_ids", "host_ids", "resource_ids",
-      "previous_checkpoint",
+      "seed_nids", "previous_checkpoint",
     ],
     {
       checkpoint_id: h64,
@@ -202,6 +221,7 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
       revocation_ids: identifierArray,
       relationship_ids: identifierArray,
       host_ids: identifierArray,
+      seed_nids: { type: "array", items: radicleNid, uniqueItems: true },
       resource_ids: identifierArray,
       previous_checkpoint: nullableH64,
     },
@@ -210,9 +230,10 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
     "resource-advertisement-v1",
     [
       "resource_id", "role_id", "resource_type", "visibility", "locators",
-      "policy_head", "required_capabilities", "key_epoch", "history_mode",
+      "required_capabilities", "key_epoch", "history_mode",
       "selected_snapshots", "retention_seconds", "host_ids",
-      "key_custody_host_ids",
+      "key_custody_host_ids", "repository_owner_key",
+      "repository_writer_nids", "trusted_seed_nids",
     ],
     {
       resource_id: h64,
@@ -220,7 +241,6 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
       resource_type: { enum: ["project", "group", "artifact", "service", "repository"] },
       visibility,
       locators: { type: "array", minItems: 1, uniqueItems: true, items: { type: "string", minLength: 1, maxLength: 2048 } },
-      policy_head: h64,
       required_capabilities: capabilities,
       key_epoch: nonNegativeInteger,
       history_mode: historyMode,
@@ -228,18 +248,22 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
       retention_seconds: { anyOf: [nonNegativeInteger, { type: "null" }] },
       host_ids: { ...identifierArray, minItems: 1 },
       key_custody_host_ids: identifierArray,
+      repository_owner_key: h64,
+      repository_writer_nids: { type: "array", items: radicleNid, uniqueItems: true },
+      trusted_seed_nids: { type: "array", items: radicleNid, uniqueItems: true },
     },
   ),
   "host-advertisement-v1": workspaceSchema(
     "host-advertisement-v1",
     [
-      "host_id", "nid", "radicle_locators", "onion_endpoints",
+      "host_id", "host_nid", "trusted_seed_nids", "radicle_locators", "onion_endpoints",
       "clearnet_endpoints", "supported_features", "inheritance",
       "key_custody_resource_ids", "priority", "expires_at",
     ],
     {
       host_id: h64,
-      nid: h64,
+      host_nid: radicleNid,
+      trusted_seed_nids: { type: "array", items: radicleNid, uniqueItems: true },
       radicle_locators: { type: "array", minItems: 1, uniqueItems: true, items: radicleRid },
       onion_endpoints: { type: "array", uniqueItems: true, items: { type: "string", pattern: "^https?://[a-z2-7]{56}\\.onion(?::[0-9]{1,5})?$" } },
       clearnet_endpoints: { type: "array", uniqueItems: true, items: { type: "string", pattern: "^https://" } },
@@ -252,30 +276,32 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
   ),
   "service-advertisement-v1": workspaceSchema(
     "service-advertisement-v1",
-    ["service_id", "role_id", "service_type", "profile_id", "endpoints", "policy_head", "audience_role_id", "expires_at"],
+    ["service_id", "role_id", "service_type", "profile_id", "endpoints", "audience_role_id", "operator_account", "expires_at"],
     {
       service_id: h64,
       role_id: h64,
       service_type: { type: "string", pattern: "^[a-z][a-z0-9-]{0,63}$" },
       profile_id: { type: "string", pattern: "^[a-z][a-z0-9.-]+\\.v[0-9]+$" },
       endpoints: { type: "array", minItems: 1, uniqueItems: true, items: { type: "string", minLength: 1, maxLength: 2048 } },
-      policy_head: h64,
       audience_role_id: h64,
+      operator_account: h64,
       expires_at: timestamp,
     },
   ),
   "workspace-relationship-v1": workspaceSchema(
     "workspace-relationship-v1",
     [
-      "relationship_id", "source_workspace_id", "receiving_workspace_id",
+      "relationship_id", "source_workspace_key", "receiving_workspace_key",
       "source_role_id", "receiving_role_id", "capability_ceiling",
       "proof_max_age", "grace_period", "expires_at",
-      "independently_revocable", "source_signature", "receiving_signature",
+      "independently_revocable", "receiving_policy_head",
+      "receiving_predecessor", "receiving_authority_checkpoint",
+      "receiving_signature",
     ],
     {
       relationship_id: h64,
-      source_workspace_id: h64,
-      receiving_workspace_id: h64,
+      source_workspace_key: h64,
+      receiving_workspace_key: h64,
       source_role_id: h64,
       receiving_role_id: h64,
       capability_ceiling: capabilities,
@@ -283,23 +309,47 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
       grace_period: { type: "integer", minimum: 0, maximum: 86_400 },
       expires_at: timestamp,
       independently_revocable: { const: true },
-      source_signature: signature,
+      receiving_policy_head: h64,
+      receiving_predecessor: nullableH64,
+      receiving_authority_checkpoint: h64,
       receiving_signature: signature,
+    },
+  ),
+  "workspace-relationship-receipt-v1": workspaceSchema(
+    "workspace-relationship-receipt-v1",
+    [
+      "receipt_id", "relationship_id", "receiving_role_id",
+      "source_workspace_key", "source_relationship_object_id",
+      "source_policy_head", "source_predecessor", "source_authority_checkpoint",
+      "source_repository_rid", "source_repository_head", "received_at",
+    ],
+    {
+      receipt_id: h64,
+      relationship_id: h64,
+      receiving_role_id: h64,
+      source_workspace_key: h64,
+      source_relationship_object_id: h64,
+      source_policy_head: h64,
+      source_predecessor: nullableH64,
+      source_authority_checkpoint: h64,
+      source_repository_rid: radicleRid,
+      source_repository_head: h40,
+      received_at: timestamp,
     },
   ),
   "joint-workspace-relationship-v1": workspaceSchema(
     "joint-workspace-relationship-v1",
     [
-      "relationship_id", "joint_workspace_id", "participant_workspace_ids",
+      "relationship_id", "joint_workspace_key", "participant_workspace_keys",
       "delegate_keys", "threshold", "resource_scope", "effective_at",
       "expires_at",
     ],
     {
       relationship_id: h64,
-      joint_workspace_id: h64,
-      participant_workspace_ids: { type: "array", minItems: 2, uniqueItems: true, items: h64 },
+      joint_workspace_key: h64,
+      participant_workspace_keys: { type: "array", minItems: 2, uniqueItems: true, items: h64 },
       delegate_keys: { type: "array", minItems: 2, uniqueItems: true, items: h64 },
-      threshold: { type: "integer", minimum: 1 },
+      threshold: { type: "integer", minimum: 1, maximum: Number.MAX_SAFE_INTEGER },
       resource_scope: { ...identifierArray, minItems: 1 },
       effective_at: timestamp,
       expires_at: nullableTimestamp,
@@ -308,16 +358,18 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
   "resource-key-envelope-v1": workspaceSchema(
     "resource-key-envelope-v1",
     [
-      "envelope_id", "resource_id", "key_epoch", "target_persona",
-      "target_device", "recipient", "role_id", "checkpoint_id", "host_id",
+      "envelope_id", "resource_id", "grant_id", "key_epoch", "admission_epoch", "target_account",
+      "target_device", "recipient", "role_id", "checkpoint_id", "custody_host_id",
       "wrapping_profile", "nonce", "ciphertext", "ciphertext_sha256",
       "created_at",
     ],
     {
       envelope_id: h64,
       resource_id: h64,
+      grant_id: h64,
       key_epoch: nonNegativeInteger,
-      target_persona: h64,
+      admission_epoch: nonNegativeInteger,
+      target_account: h64,
       target_device: h64,
       recipient: {
         type: "object",
@@ -325,12 +377,12 @@ export const WORKSPACE_SCHEMAS: Record<string, Schema> = {
         required: ["type", "value"],
         properties: {
           type: { const: "marmot-mls-leaf" },
-          value: { type: "string", pattern: "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$" },
+          value: marmotLeaf,
         },
       },
       role_id: h64,
       checkpoint_id: h64,
-      host_id: h64,
+      custody_host_id: h64,
       wrapping_profile: { const: "marmot-mls-application-v1" },
       nonce: { type: "string", pattern: "^[A-Za-z0-9_-]{16,128}$" },
       ciphertext: { type: "string", pattern: "^[A-Za-z0-9_-]+$" },

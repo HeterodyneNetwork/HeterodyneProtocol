@@ -12,10 +12,11 @@
     "event_rid",
     "genesis_manifest_sha256",
     "previous_generation",
+    "authorized_writer_refs",
     "authorized_hosts",
     "interfaces",
     "retention",
-    "admin_account",
+    "account_key",
     "marmot_routing_event_id",
     "signature"
   ],
@@ -80,6 +81,29 @@
         }
       ]
     },
+    "authorized_writer_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "nid",
+          "ref"
+        ],
+        "properties": {
+          "nid": {
+            "type": "string",
+            "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$"
+          },
+          "ref": {
+            "type": "string",
+            "pattern": "^refs/xyz\\.heterodyne\\.marmot/(writers|relays)/[A-Za-z0-9._-]+$"
+          }
+        }
+      }
+    },
     "authorized_hosts": {
       "type": "array",
       "minItems": 1,
@@ -132,7 +156,7 @@
         }
       }
     },
-    "admin_account": {
+    "account_key": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },

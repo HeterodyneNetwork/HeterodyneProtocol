@@ -10,7 +10,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
-import { buildFixtures } from "./fixtures.js";
+import { buildFixtures } from "./snapshot-fixtures-adapter.js";
 import { REASON_CODES } from "./reason-codes.js";
 import { VECTOR_SCHEMA, validateVectorOrThrow } from "./schema.js";
 import {
@@ -27,13 +27,13 @@ import {
   snapshotVectorValidator,
   validateRawVector,
 } from "./snapshot-envelope.js";
-import { buildAllVectors } from "./topics.js";
+import { buildSnapshotCompatibleVectors } from "./snapshot-topic-runtime.js";
 import type { RawVector, SnapshotVector } from "./types.js";
 import { writeCoverageFromVectors } from "./coverage.js";
 
 export async function authorAllVectors(outputDir: string): Promise<string[]> {
   const fixtures = buildFixtures();
-  const vectors = await buildAllVectors(fixtures);
+  const vectors = await buildSnapshotCompatibleVectors(fixtures);
   const written: string[] = [];
 
   await removeRetiredVectors(
@@ -80,7 +80,20 @@ export async function packageSnapshot(
   sourceCommit: string,
 ): Promise<SnapshotManifest> {
   const rawSchema = JSON.parse(await readFile(join(rawRoot, "schema/vector.schema.json"), "utf8"));
-  const packagedSchema = buildSnapshotVectorSchema(rawSchema);
+  const rawVectors = await Promise.all((await listRawVectorFiles(rawRoot)).map(
+    async (relativePath) => ({
+      relativePath,
+      raw: JSON.parse(
+        await readFile(join(rawRoot, ...relativePath.split("/")), "utf8"),
+      ) as unknown,
+    }),
+  ));
+  const includesAssurance = rawVectors.some(({ raw }) =>
+    typeof raw === "object"
+      && raw !== null
+      && (raw as Record<string, unknown>).owner_document === "assurance"
+  );
+  const packagedSchema = buildSnapshotVectorSchema(rawSchema, includesAssurance);
   const validatePackagedVector = snapshotVectorValidator(packagedSchema);
   const rawFixtures = JSON.parse(await readFile(join(rawRoot, "fixtures.json"), "utf8"));
   const destinationVectorRoot = join(snapshotRoot, SNAPSHOT_VECTOR_ROOT);
@@ -108,8 +121,7 @@ export async function packageSnapshot(
     "utf8",
   );
 
-  for (const relativePath of await listRawVectorFiles(rawRoot)) {
-    const raw = JSON.parse(await readFile(join(rawRoot, ...relativePath.split("/")), "utf8")) as unknown;
+  for (const { relativePath, raw } of rawVectors) {
     let packaged: SnapshotVector;
     try {
       validateRawVector(raw, rawSchema);
@@ -404,7 +416,10 @@ function normalizeReasonCodeProjection(raw: unknown): {
       const match = typeof ref === "string"
         ? /^heterodyne:[^#]+#([a-z0-9][a-z0-9-]*)$/u.exec(ref)
         : null;
-      if (match === null || !["core", "comms", "control", "social", "workspace"].includes(owner)) {
+      if (
+        match === null
+        || !["core", "assurance", "comms", "control", "social", "workspace"].includes(owner)
+      ) {
         throw new Error(`raw-reason-codes-invalid: reason_codes/${index}/spec_refs`);
       }
       const qualified = `heterodyne:${owner}#${match[1]}`;

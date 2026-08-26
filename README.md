@@ -1,41 +1,36 @@
 # Heterodyne
 
-**Own your social identity.** No company owns it, nobody's required to host
-it. Any device with an internet connection can share content, whether public
-or private, and nobody can take it away. You can host it yourself publicly or
-anonymously. **You can't stop the signal!**
+**Own your social identity.** No company owns it, and no particular service is
+required to host it. Heterodyne is a specification-first, implementation-
+agnostic protocol family composed from standard Nostr events, standard Marmot
+accounts and MLS groups, and Radicle-backed durable storage.
 
 **Repository mirrors:** [GitHub](https://github.com/HeterodyneNetwork/HeterodyneProtocol)
 · [Radicle](https://radicle.network/nodes/iris.radicle.network/rad:z2zX5XvPiggGJvCn8DPkp1hRNGA5)
 
-Heterodyne is a decentralized protocol family for portable personas,
-authenticated communication, own-device control, and social interaction. It
-uses Nostr signed events, Radicle-backed durable storage, and Marmot for
-encrypted direct and group communication.
-
-The project is specification-first and implementation-agnostic. All current
-documents are 0.x drafts and may make breaking changes before 1.0.
-
-[`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is the non-normative
-family map. Normative authority is divided among the five documents below.
+The current documents are 0.x drafts and may make breaking changes before
+1.0. [`docs/spec/heterodyne.md`](docs/spec/heterodyne.md) is the
+non-normative family map; the specifications and machine-readable artifacts
+linked below carry current authority.
 
 ## Protocol family
 
-The specification is published as five documents at one version,
-`heterodyne/0.5.0`:
+The six-document family has one draft identifier, `heterodyne/0.5.0`:
 
 | Document | Responsibility |
 |---|---|
-| [Heterodyne Core](docs/spec/heterodyne-core.md) | Persona identity, KEL verification, canonical Nostr bytes, Radicle delegation, node roles, repository substrate, registry, versioning, and base conformance. |
-| [Heterodyne Comms](docs/spec/heterodyne-comms.md) | Nostr-native envelopes, privacy tiers, publishing, Marmot conversations and media, Radicle conversation storage, atomic key claims, the private claim ledger, and the OIDC/JWT projection. |
-| [Heterodyne Control](docs/spec/heterodyne-control.md) | Active own-device enrollment, grants, RPC, node-mediated Marmot access, and agentic sessions as a Comms profile. |
-| [Heterodyne Social](docs/spec/heterodyne-social.md) | Public following, interactions, moderation, lists, social discovery, durable assets, and ATProto attachment. |
-| [Heterodyne Workspace](docs/spec/heterodyne-workspace.md) | Independently governed workspaces, roles, private discovery, federation, hosting, and resource-key delivery. |
+| [Core](docs/spec/heterodyne-core.md) | Active-key personas, NIP-01 verification, kind `0`/NIP-05/NIP-65 discovery, source-neutral state, repositories, registry, and base conformance. |
+| [Assurance](docs/spec/heterodyne-assurance.md) | Optional cold-root/KERI continuity, reciprocal enrollment, succession, associated keys, and downgrade resistance. |
+| [Comms](docs/spec/heterodyne-comms.md) | Publishing, privacy, standard Marmot accounts and groups, claims, private ledger, OIDC/JWT, automation attribution, and trusted-seed private relay ACLs. |
+| [Control](docs/spec/heterodyne-control.md) | Isolated persona vaults, standard NIP-46, OIDC-bound signing grants, node-mediated Marmot operations, and compromise reset. |
+| [Social](docs/spec/heterodyne-social.md) | Vanilla-compatible following, interactions, lists, communities, moderation, durable assets, and ATProto attachment. |
+| [Workspace](docs/spec/heterodyne-workspace.md) | Active-key organizations, roles, private discovery, federation, hosting, and resource-key delivery. |
 
-The allowed composition graph is exactly; Workspace's solid base dependency
-is Core+Comms, while its Control and Social edges are optional:
+Assurance is optional. Workspace requires Core+Comms; its Assurance, Control,
+and Social compositions are optional.
 
 ```text
+Core <- Assurance
 Core <- Comms <- Control
 Core <- Comms <- Social
 Core <- Comms <- Workspace
@@ -43,68 +38,61 @@ Control <- Workspace
 Social <- Workspace
 ```
 
-These prepared 0.x documents are current normative authority in the
-repository, but remain unreleased pending explicit release approval.
-
-The five documents share one draft family version and pin the same registry
-revision. The split exists so the blast radius of a change stays inside one
-section.
-
-No pre-1.0 release manifest exists. The five specifications, protocol schemas,
-and registry are the current authority. The rolling validation snapshot is
-non-normative evidence for one pinned source commit, and ordinary draft changes
-do not update it. The release and compatibility model for 1.0 is intentionally
-deferred to a later protocol decision.
+No pre-1.0 release manifest exists. The six specifications, live protocol
+schemas, and registry are the current authority. Generator-owned live inputs
+are non-normative authoring inputs kept synchronized with them.
 
 ## What the family provides
 
-- **Portable identity.** A persona is anchored by a cold-root Nostr npub and
-  an accepted KERI key-event log. Rotating epoch keys handle routine signing;
-  Radicle node identities are dual-proof delegated.
-- **Plural storage and delivery.** Ordinary Nostr relays and Radicle-backed
-  repo relays carry signed content. Full nodes are onion services by default;
-  light clients should use outbound Tor and verify locally. Browser tabs may
-  use an authenticated shared relay with an explicit reduced-assurance
-  indicator.
-- **Universal public reading.** A centrally hosted static browser client can
-  open one fragment-only persona/event link, resolve public content locally
-  from supplied and discovered clearnet relays, and render verified Tier 1
-  without learning the target at the web origin.
-- **Honest privacy boundaries.** Tier 1 is public. Tier 2 is selectively
-  replicated plaintext on allowed seeders. Tier 3 is encrypted before any
-  repository or carrier receives it.
-- **Encrypted conversations and media.** Comms adopts pinned Marmot semantics
-  for MLS groups, two-member direct conversations, application events, and
-  encrypted media. Standard Nostr delivery and Radicle-backed delivery preserve
-  the same signed event and ciphertext bytes.
-- **Key claims and interoperable tokens.** Comms verifies atomic claims about
-  typed keys against a persona's encrypted multi-writer ledger. Its OIDC/JWT
-  surface is a consent-limited projection for third-party interoperability,
-  never the canonical authorization source; canonical device authority stays
-  in verified private-ledger state.
-- **Accountable automation.** AI and programmatic publishers receive only
-  scoped, temporary, sender-constrained workload tokens. A full node adds
-  canonical agent attribution and signs with a stable dedicated role key that
-  is never released to the agent; direct user-device signing is forbidden.
-- **Workspace collaboration.** Workspace roles distribute private policy,
-  resource and service advertisements, bilateral allowances, host selection,
-  and independently rotated resource keys across organizational boundaries.
-- **Independent feature growth.** Control and Social are independent Comms
-  siblings. Workspace composes them only for optional RPC and social-policy
-  integrations.
-- **Client-side trust.** Relays, full nodes, routing nodes, and Radicle hosts
-  are carriers or designated endpoints. Identity, decryption, authorization,
-  and policy evaluation remain within user-controlled clients and nodes.
+- **Nostr-native identity.** One active Nostr public key is the baseline
+  persona identity and the standard Marmot account identity. A bare active key
+  without Assurance is complete and first-class.
+- **Standard discovery.** Ordinary kind `0`, NIP-05, and NIP-65 kind `10002`
+  provide profile and outbox discovery. Required custom identity pointers and
+  public feed indexes are retired.
+- **Source-neutral state.** Relays and repositories carry the same exact
+  signed event bytes. Clients union valid candidates and apply NIP-01 current-
+  state selection without giving either carrier authority by location.
+- **Persona-owned repositories.** A RID locates durable event storage; it is
+  not an identity. Only owner-authorized writer refs enter the accepted union,
+  and Nostr signatures remain authoritative for event authorship.
+- **Warning-only freshness.** Publishing clients refresh kind `0` and kind
+  `10002` at least every seven days. Overdue state produces a warning, never
+  signature invalidity.
+- **Standard Marmot operation.** The active persona key is the Marmot account.
+  Every device keeps an independent leaf, and succession changes accounts
+  through explicit standard group operations rather than aliasing identities.
+- **Accountable automation.** Agent-key signing is preferred. Persona-key
+  signing requires explicit scope, and every automated intent receives
+  NIP-32-compatible attribution before any signature.
+- **Full-node signing policy.** A full node may manage isolated vaults and
+  sign under exact NIP-46/OIDC grants. It is not required to be a relay or
+  repository host and gains no persona authority merely by operating.
+- **Replaceable trusted seeds.** Several trusted seed NIDs may concurrently
+  provide repository availability and public or private relay service. Each
+  writes only its authorized ref and receives no persona, repository-owner,
+  group-admin, full-node, or MLS authority.
+- **Complete compromise reset.** Active-key compromise revokes NIP-46/OIDC
+  grants, invalidates every subordinate authority and seed, removes old
+  Marmot leaves, advances reachable groups, publishes fresh KeyPackages, and
+  explicitly reauthorizes every continuing subordinate.
+- **Optional enhanced assurance.** Existing Nostr users may attach cold-root
+  and KERI continuity later without rotating the active key. Assurance never
+  changes NIP-01 authorship, filtering, replacement, or Marmot membership.
+
+Vanilla Nostr relays, Radicle nodes, and standard Marmot implementations do not
+need Heterodyne-specific changes. Heterodyne extensions remain ignorable and
+must not interfere with baseline protocol behavior.
 
 ## 0.x conformance
 
-Every implementation claims Core. A Heterodyne persona claims Core+Comms.
-Social adds public social behavior. Control requires a conformant Core+Comms
-implementation plus the active Control profile. Workspace requires Core+Comms;
-its Control and Social compositions are optional and separately advertised.
+Every implementation claims Core. Comms, Assurance, Control, Social, and
+Workspace claims are separately composable according to the graph. A claim
+names the family version, registry revision or digest, feature IDs, and any
+strict profiles. The required invariant set is the transitive closure of the
+claimed profiles and features.
 
-Claims name the family version, the required features, the registry revision
-or digest, and any strict profiles. The stable strict IDs are:
+The registered strict profile IDs are:
 
 - `heterodyne-core-strict-v1`
 - `heterodyne-comms-strict-v1`
@@ -112,94 +100,72 @@ or digest, and any strict profiles. The stable strict IDs are:
 - `heterodyne-social-strict-v1`
 - `heterodyne-workspace-strict-v1`
 
-Each profile declares only its prerequisites and the invariants it adds; the
-required set is the transitive closure.
+Assurance is a separately composable optional document claim and currently has
+no strict profile. There is no singular strict profile for the six-document
+family.
 
-The vectors in [docs/spec/vectors](docs/spec/vectors/) are the latest rolling,
-non-normative pre-1.0 validation snapshot. They provide byte-exact evidence for
-their pinned source commit without changing the authority of the current draft.
-The current generator can describe 499 draft vectors, while the bootstrap
-snapshot contains 482 vectors; those counts are intentionally independent.
+## Current draft versus frozen snapshot
 
-## Repository map
+The live specifications, registry, schemas, and current reference semantics
+are validated independently from the one frozen historical vector snapshot.
+That snapshot is non-normative evidence for source commit
+`2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`, is history-bound to snapshot
+commit `5d4bb5fb58b35c88d8a9db120a09f1087237f35c`, and contains exactly 482
+vectors. Ordinary draft work does not regenerate its vector payloads,
+fixtures, packaged schema, reason/coverage projections, or metadata.
 
-| Path | Purpose |
-|---|---|
-| [docs/spec/heterodyne.md](docs/spec/heterodyne.md) | Non-normative family overview and document map |
-| [docs/spec/heterodyne-core.md](docs/spec/heterodyne-core.md) | Core normative document |
-| [docs/spec/heterodyne-comms.md](docs/spec/heterodyne-comms.md) | Comms normative document |
-| [docs/spec/heterodyne-control.md](docs/spec/heterodyne-control.md) | Active Control profile |
-| [docs/spec/heterodyne-social.md](docs/spec/heterodyne-social.md) | Social normative document |
-| [docs/spec/heterodyne-workspace.md](docs/spec/heterodyne-workspace.md) | Workspace normative document |
-| [docs/spec/registry](docs/spec/registry/) | Kind, profile, reason-code, invariant, feature, object, and proof-domain registry, with the single revision pin in `manifest.json` |
-| [docs/spec/vectors](docs/spec/vectors/) | Rolling validation snapshot, closed manifest, and snapshot tooling |
-| [docs/spec/conformance](docs/spec/conformance/) | Independent read-only conformance harness, ratcheted baselines, and reports |
-| [docs/architecture.md](docs/architecture.md) | Non-normative family architecture and rationale |
-| [docs/glossary.md](docs/glossary.md) | Non-normative term index |
-| [docs/security/threat-model.md](docs/security/threat-model.md) | Family threat analysis |
-| [docs/adr](docs/adr/) | Non-canonical decision-record staging and archive |
-| [research/INDEX.md](research/INDEX.md) | Topic-keyed research index |
-
-## Working on Heterodyne
-
-Start with the family document that owns the behavior you are changing, then
-read the relevant registry entry and any explanatory ADR. An ordinary pre-1.0
-change updates only affected draft prose, registry entries, protocol schemas,
-and source generator inputs. It does not update the rolling snapshot. Files
-under `research/sources/` are preserved
-research artifacts and must not be edited.
-
-Normal checks are read-only and deliberately separate current draft quality
-from reproducibility of the pinned snapshot:
+Run the two read-only lanes separately:
 
 ```bash
 npm --prefix docs/spec/vectors/generator run draft:check -- "$PWD"
 npm --prefix docs/spec/vectors/generator run snapshot-check -- "$PWD"
 ```
 
-The snapshot manifest is the closed
-[`docs/spec/vectors/snapshot.json`](docs/spec/vectors/snapshot.json) inventory.
-The bootstrap pins source commit
-`2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`: its source root supplies the five
-specifications, registry, protocol schemas, and behavioral generator inputs.
-The snapshot root supplies 482 packaged vectors plus fixtures, packaged schema,
-reason/coverage projections, and the manifest—493 digest-bound artifacts in
-all. The snapshot-tool root comes from the snapshot commit derived and printed
-at runtime and supplies the packager and its locked dependencies. That derived
-identity may change when commits are squashed. Runtime conformance receives the
-explicit source and snapshot roots plus both commit identities. Because the bootstrap source
-predates checker declarations, it executes zero declared reference-checker
-cases while corpus-wide gates still run.
+`draft:check` validates current prose, schemas, registry, and reference
+semantics without executing frozen pre-redesign topic projections.
+`snapshot-check` materializes the pinned source and snapshot history, uses the
+historical generator and packager, and verifies the exact 482-vector corpus.
+A dedicated reconciliation maintainer alone selects a future stable source,
+runs `snapshot-author`, reviews the complete replacement, commits it, and then
+runs `snapshot-check`.
 
-Only a dedicated periodic reconciliation replaces that snapshot. The safe
-sequence is: choose a stable full source commit, run `snapshot-author`, review
-the complete replacement, commit it, then run `snapshot-check`. The check
-derives the snapshot commit from Git history, so checking uncommitted snapshot
-bytes is invalid. Snapshot authoring, publishing, deployment, tagging, and
-pushing are absent from both hosted lanes.
+The shared hosted/local gate is:
 
-The shared local and hosted acceptance gate is
-`scripts/conformance-ci.sh`. GitHub should require its stable `conformance`
-check. Before a Radicle patch is merged, delegates require a green run through
-an isolated podman adapter; delegate-node and remote-repository configuration
-remain outside this repository.
+```bash
+scripts/conformance-ci.sh
+```
+
+## Repository map
+
+| Path | Purpose |
+|---|---|
+| [docs/spec/heterodyne.md](docs/spec/heterodyne.md) | Non-normative family map |
+| [docs/spec/heterodyne-core.md](docs/spec/heterodyne-core.md) | Core normative document |
+| [docs/spec/heterodyne-assurance.md](docs/spec/heterodyne-assurance.md) | Assurance normative document |
+| [docs/spec/heterodyne-comms.md](docs/spec/heterodyne-comms.md) | Comms normative document |
+| [docs/spec/heterodyne-control.md](docs/spec/heterodyne-control.md) | Control normative document |
+| [docs/spec/heterodyne-social.md](docs/spec/heterodyne-social.md) | Social normative document |
+| [docs/spec/heterodyne-workspace.md](docs/spec/heterodyne-workspace.md) | Workspace normative document |
+| [docs/spec/registry](docs/spec/registry/) | Current kind, profile, reason, invariant, feature, object, and proof-domain registry |
+| [docs/spec/schemas](docs/spec/schemas/) | Current protocol schemas |
+| [docs/spec/vectors](docs/spec/vectors/) | Frozen rolling validation snapshot and snapshot tooling |
+| [docs/spec/conformance](docs/spec/conformance/) | Independent read-only conformance harness |
+| [docs/architecture.md](docs/architecture.md) | Non-normative architecture |
+| [docs/glossary.md](docs/glossary.md) | Non-normative term index |
+| [docs/security/threat-model.md](docs/security/threat-model.md) | Family threat analysis |
+| [docs/adr](docs/adr/) | Non-canonical decision-record staging and archive |
+| [research/INDEX.md](research/INDEX.md) | Topic-keyed preserved research index |
 
 ## Standards
 
-Heterodyne composes established standards rather than defining new
-cryptography or backend protocols:
-
 - [Nostr NIPs](https://github.com/nostr-protocol/nips), including NIP-01,
-  NIP-44, NIP-49, NIP-51, NIP-65, NIP-72, and NIP-78
-- [Radicle](https://radicle.xyz) Heartwood repositories and signed refs
-- [KERI](https://arxiv.org/abs/1907.02143) and the
-  [ToIP KSWG specification](https://trustoverip.github.io/kswg-keri-specification/)
-- [Signal Double Ratchet](https://signal.org/docs/specifications/doubleratchet/)
+  NIP-05, NIP-32, NIP-42, NIP-46, NIP-51, NIP-65, and NIP-72
 - [Marmot](https://github.com/marmot-protocol/marmot) and
   [MLS RFC 9420](https://www.rfc-editor.org/rfc/rfc9420.html)
+- [Radicle Heartwood](https://radicle.xyz)
+- [KERI](https://arxiv.org/abs/1907.02143) for optional Assurance
 - [OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html)
-  and [Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html),
-  with the OAuth/JWT sources indexed in [AGENTS.md](AGENTS.md)
+  and [Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html)
 
 ## License
 

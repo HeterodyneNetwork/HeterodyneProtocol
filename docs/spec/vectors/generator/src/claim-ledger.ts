@@ -30,7 +30,11 @@ import {
   isCredentialLedgerBinding,
   type CredentialLedgerBinding,
 } from "./credential-generation.js";
-import type { NostrSignedEvent } from "./nostr.js";
+import {
+  snapshotAndVerifyNostrEvent,
+  type NostrSignedEvent,
+  type VerifiedNostrEvent,
+} from "./nostr.js";
 
 export type LedgerRecordType =
   | "claim"
@@ -131,6 +135,8 @@ export type MintingAttemptDecision = MintingEligibility & {
 
 export type ClaimArtifact = { event: NostrSignedEvent; semantic: ClaimSemanticBody };
 export type RevocationArtifact = { event: NostrSignedEvent; semantic: JsonValue };
+type VerifiedClaimArtifact = { event: VerifiedNostrEvent; semantic: ClaimSemanticBody };
+type VerifiedRevocationArtifact = { event: VerifiedNostrEvent; semantic: JsonValue };
 
 export type LedgerRecordValidationEvidence = {
   record_id: string;
@@ -438,7 +444,7 @@ export function mergeClaimLedger(
     .filter((record) => ["revocation", "authority-reduction", "reader-change", "issuer-authority"].includes(record.record_type))
     .filter((record) => isReduction(record))
     .map(revocationArtifactFromRecord)
-    .filter((artifact): artifact is RevocationArtifact => artifact !== null)
+    .filter((artifact): artifact is VerifiedRevocationArtifact => artifact !== null)
     .map(({ event }) => validateClaimRevocationEnvelope(event));
   const confirmedSet = new Set(confirmed);
   const explicitTokenInvalidations = records
@@ -1422,7 +1428,7 @@ function canonicalIssuerAuthorityClaimId(
         state.credential_ledger.credential_ledger_generation &&
       confirmed.has(record.record_id))
     .map(claimArtifactFromRecord)
-    .filter((artifact): artifact is ClaimArtifact => artifact !== null)
+    .filter((artifact): artifact is VerifiedClaimArtifact => artifact !== null)
     .map(({ semantic }) => semantic)
     .filter((claim) => claim.claim_class === "authorization" && claim.namespace === "heterodyne.device" &&
       claim.name === "oidc-token-issuer" && claim.value === true &&
@@ -2095,6 +2101,9 @@ function validateAuthenticatedArtifact(
   evidence: LedgerRecordValidationEvidence,
 ): void {
   const claimArtifact = claimArtifactFromRecord(record);
+  if (claimArtifact === null && claimArtifactValueFromRecord(record) !== undefined) {
+    throw new Error("claim-event-signature-invalid: invalid signed claim artifact event");
+  }
   if (claimArtifact !== null) {
     if (evidence.claim_envelope_context === undefined || evidence.claims_by_id === undefined) {
       throw new Error("claim-issuer-authority-invalid: signed claim validation context is required");
@@ -2120,6 +2129,9 @@ function validateAuthenticatedArtifact(
   }
 
   const revocationArtifact = revocationArtifactFromRecord(record);
+  if (revocationArtifact === null && revocationArtifactValueFromRecord(record) !== undefined) {
+    throw new Error("claim-event-signature-invalid: invalid signed revocation artifact event");
+  }
   if (revocationArtifact === null) return;
   if (evidence.claims_by_id === undefined || evidence.claim_verification_context === undefined) {
     throw new Error("claim-revoker-unauthorized: revocation validation context is required");
@@ -2167,24 +2179,38 @@ function validateAuthenticatedArtifact(
   )) throw new Error("claim-repository-unconfirmed: revocation target has no signed ledger artifact");
 }
 
-function claimArtifactFromRecord(record: LedgerRecord): ClaimArtifact | null {
-  const payload = payloadObject(record.payload);
-  const value = record.record_type === "claim" ? payload.claim_artifact :
-    ((record.record_type === "reader-change" || record.record_type === "issuer-authority") && payload.action === "grant") ? payload.claim_artifact : undefined;
+function claimArtifactFromRecord(record: LedgerRecord): VerifiedClaimArtifact | null {
+  const value = claimArtifactValueFromRecord(record);
   if (value === undefined) return null;
   const artifact = payloadObject(value);
-  return { event: artifact.event as unknown as NostrSignedEvent, semantic: artifact.semantic as unknown as ClaimSemanticBody };
+  const event = snapshotAndVerifyNostrEvent(artifact.event);
+  return event === null
+    ? null
+    : { event, semantic: artifact.semantic as unknown as ClaimSemanticBody };
 }
 
-function revocationArtifactFromRecord(record: LedgerRecord): RevocationArtifact | null {
+function claimArtifactValueFromRecord(record: LedgerRecord): JsonValue | undefined {
   const payload = payloadObject(record.payload);
-  const value = record.record_type === "revocation" || record.record_type === "authority-reduction" ||
-    (record.record_type === "status-invalidation" && payload.cause === "source-claim-revoked") ||
-    ((record.record_type === "reader-change" || record.record_type === "issuer-authority") && payload.action === "remove")
-    ? payload.revocation_artifact : undefined;
+  return record.record_type === "claim" ? payload.claim_artifact :
+    ((record.record_type === "reader-change" || record.record_type === "issuer-authority")
+      && payload.action === "grant") ? payload.claim_artifact : undefined;
+}
+
+function revocationArtifactFromRecord(record: LedgerRecord): VerifiedRevocationArtifact | null {
+  const value = revocationArtifactValueFromRecord(record);
   if (value === undefined) return null;
   const artifact = payloadObject(value);
-  return { event: artifact.event as unknown as NostrSignedEvent, semantic: artifact.semantic as JsonValue };
+  const event = snapshotAndVerifyNostrEvent(artifact.event);
+  return event === null ? null : { event, semantic: artifact.semantic as JsonValue };
+}
+
+function revocationArtifactValueFromRecord(record: LedgerRecord): JsonValue | undefined {
+  const payload = payloadObject(record.payload);
+  return record.record_type === "revocation" || record.record_type === "authority-reduction" ||
+    (record.record_type === "status-invalidation" && payload.cause === "source-claim-revoked") ||
+    ((record.record_type === "reader-change" || record.record_type === "issuer-authority")
+      && payload.action === "remove")
+    ? payload.revocation_artifact : undefined;
 }
 
 function verifiedRevocationSemantic(verified: VerifiedRevocation): JsonValue {
@@ -2305,7 +2331,7 @@ function validateLedgerStateInvariants(
     authenticated_revocations: records
       .filter((record) => isReduction(record))
       .map(revocationArtifactFromRecord)
-      .filter((artifact): artifact is RevocationArtifact => artifact !== null)
+      .filter((artifact): artifact is VerifiedRevocationArtifact => artifact !== null)
       .map(({ event }) => validateClaimRevocationEnvelope(event)),
     token_invalidations: [],
   };
@@ -2643,7 +2669,7 @@ function ledgerSnapshotForRecordSet(
     authenticated_revocations: records
       .filter((record) => isReduction(record))
       .map(revocationArtifactFromRecord)
-      .filter((artifact): artifact is RevocationArtifact => artifact !== null)
+      .filter((artifact): artifact is VerifiedRevocationArtifact => artifact !== null)
       .map(({ event }) => validateClaimRevocationEnvelope(event)),
     token_invalidations: [],
   };
@@ -2660,7 +2686,7 @@ function activeIssuerNidsForRecordSet(
   const candidates = new Set(records
     .filter(({ record_type }) => record_type === "claim")
     .map(claimArtifactFromRecord)
-    .filter((artifact): artifact is ClaimArtifact => artifact !== null)
+    .filter((artifact): artifact is VerifiedClaimArtifact => artifact !== null)
     .filter(({ semantic }) => semantic.claim_class === "authorization" &&
       semantic.namespace === "heterodyne.device" && semantic.name === "oidc-token-issuer" &&
       semantic.value === true && semantic.visibility === "repository-private" &&

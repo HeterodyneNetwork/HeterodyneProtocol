@@ -24,7 +24,7 @@ function isStringArray(value: unknown): value is string[] {
 
 function parseStrictProfile(value: unknown): StrictProfile | undefined {
   const owner = isRecord(value) && typeof value.profile_id === "string"
-    ? /^heterodyne-(core|comms|control|social|workspace)-/u.exec(value.profile_id)?.[1]
+    ? /^heterodyne-(core|assurance|comms|control|social|workspace)-/u.exec(value.profile_id)?.[1]
     : undefined;
   if (
     !isRecord(value)
@@ -38,7 +38,14 @@ function parseStrictProfile(value: unknown): StrictProfile | undefined {
   ) {
     return undefined;
   }
-  const knownOwners = new Set(["core", "comms", "control", "social", "workspace"]);
+  const knownOwners = new Set([
+    "core",
+    "assurance",
+    "comms",
+    "control",
+    "social",
+    "workspace",
+  ]);
   const conformanceOwners = new Set(value.conformance_class
     .split(/[^A-Za-z]+/u)
     .map((part) => part.toLowerCase())

@@ -1,270 +1,161 @@
 # Heterodyne architecture
 
-This document is a non-normative explanation of the protocol family. The
-documents under [`docs/spec/`](spec/) and their registry, schemas, and vectors
-are authoritative.
+This document is an implementation-facing, non-normative view of the current
+draft. Normative behavior lives in the six specification documents, registry,
+and schemas under [`docs/spec/`](spec/).
 
-The family documents are [Core](spec/heterodyne-core.md),
-[Comms](spec/heterodyne-comms.md), [Control](spec/heterodyne-control.md),
-[Social](spec/heterodyne-social.md), and
-[Workspace](spec/heterodyne-workspace.md).
+## Family shape
 
-## 1. Family boundaries
+All six documents share `heterodyne/0.5.0` and the one registry manifest.
 
 ```text
+Core <- Assurance (optional)
 Core <- Comms <- Control
 Core <- Comms <- Social
 Core <- Comms <- Workspace
-Control <- Workspace
-Social <- Workspace
+Control <- Workspace (optional composition)
+Social <- Workspace (optional composition)
 ```
 
-```mermaid
-flowchart LR
-    Core[Core<br/>identity, repositories, registry]
-    Comms[Comms<br/>publishing, Marmot, claims, OIDC]
-    Control[Control<br/>own-device and agent RPC]
-    Social[Social<br/>public graph and moderation]
-    Workspace[Workspace<br/>roles, resources, and federation]
-    Core --> Comms
-    Comms --> Control
-    Comms --> Social
-    Comms --> Workspace
-    Control -. optional composition .-> Workspace
-    Social -. optional composition .-> Workspace
+Core defines active-key identity, Nostr event verification, repositories,
+discovery, versioning, and base conformance. Assurance is an opt-in layer for
+continuity, recovery authority, associated keys, and KERI export. Comms owns
+public and private delivery, Marmot conversations, claims, OIDC/JWT, automation
+attribution, archives, and trusted seeds. Control owns device enrollment and
+signing. Social owns public interaction and moderation behavior. Workspace owns
+roles, private topology, federation, hosting, and resource-key delivery.
+
+Every implementation starts with Core. Comms builds on Core; Control, Social,
+and Workspace build on Comms. Assurance can be combined with any family member
+but is never a prerequisite for baseline Core or Marmot operation.
+
+## Identity and discovery
+
+The active Nostr public key is the persona identifier and the corresponding
+private key is its signing authority. A bare active key is a first-class
+persona. Its valid NIP-01 signature decides authorship; display names,
+repositories, relays, caches, continuity records, and automation metadata are
+hints or independently scoped evidence, not substitute authors.
+
+Baseline discovery uses ordinary Nostr mechanisms:
+
+- kind `0` carries active-key-signed profile metadata;
+- NIP-05 can map an Internet name to the active key;
+- NIP-65 advertises relay preferences;
+- Core registry entries advertise persona-owned Radicle repositories and
+  full-node capabilities without converting them into identity authorities.
+
+Clients union byte-exact valid observations from repositories and relays, then
+apply the relevant NIP-01 selection rule. Selection is source-neutral: carrier
+location does not outrank signature, event coordinates, or recency. A cached
+kind `0` profile or kind `10002` relay list older than seven days produces a
+warning and refresh attempt, not an automatic invalidation. Every other state
+retains its applicable freshness and expiry rules and fails closed where those
+rules require.
+
+Optional Assurance attaches only after reciprocal enrollment between the
+active key and recovery authority. A successor remains a different Nostr
+author and a different Marmot account. Applications must explicitly reissue
+any continuing repository, group, delegate, financial, or application
+authority.
+
+## Storage and transport
+
+A persona may own one or more Radicle repositories. An authorized NID writer
+gets a namespaced ref only after the persona and NID prove the exact binding.
+Repositories are durable signed-object carriers; Git authorship, hosting,
+replication, and repository membership do not create application authority.
+
+Relays and repositories are interchangeable carriers only where an owning
+specification says they carry the same exact object. A reader verifies the
+object locally before rendering, storage, or authorization. Invalid bytes from
+one carrier do not taint an independently valid copy from another.
+
+Privacy has three deployment tiers:
+
+| Tier | Treatment | Trust boundary |
+|---|---|---|
+| 1 | Public signed Nostr content | Integrity depends on local verification. |
+| 2 | Plaintext in selectively replicated private repositories | Every repository reader can observe plaintext. |
+| 3 | Audience- or group-encrypted content | Repositories, relays, seeds, and full nodes remain blind carriers. |
+
+Marmot owns MLS, account and device-leaf identity, conversation events,
+encrypted media, and Nostr transport semantics. Heterodyne stores and routes
+exact signed Marmot bytes. The active persona key is the standard Marmot
+account; each device has an independent leaf. No custom relay or Marmot fork is
+required.
+
+## Full nodes, light clients, and trusted seeds
+
+A full node is a user-controlled service that can host repositories, enforce
+policy, coordinate device operations, and provide a NIP-46 signer. It is not
+required to be a Nostr relay. Hosting, signing, relay service, and authority are
+separate capabilities, and registry advertisements describe them separately.
+
+A light client authenticates to the selected full-node capability and receives
+no persona, NID, repository, OIDC issuer, trusted-seed, or Marmot leaf secret.
+Every request selects exactly one persona vault. Missing or ambiguous vault,
+grant, policy, or signer state fails closed rather than falling through to
+another persona or key class.
+
+Trusted seeds are availability helpers for encrypted Marmot event bytes. A
+group can authorize multiple concurrent trusted seeds, and no seed is
+canonical. Each seed writes only its own authorized NID ref and gains no
+persona, repository-owner, group-administrator, full-node, or MLS authority.
+Private reads and writes require current NIP-42 authentication plus the unique
+current administrator-signed ACL head. The embedding captures the seed and
+administrator trust roots, current-state and time sources, and one-use consume
+boundary; requests cannot self-assert them, and replay or effect failure fails
+closed.
+
+## Automation and signing
+
+Automation does not weaken NIP-01. The public key on an event is the author
+that produced its signature. A registered agent key is preferred. Use of the
+persona key requires an explicit, narrow OIDC persona-signing scope.
+
+Before signing, Control durably reserves the request and Comms derives the
+canonical attribution block from authenticated current policy. Attribution is
+placed in the tier-appropriate protected location and is part of the exact
+intent presented to the selected signer. Callers cannot suppress or broaden
+it.
+
+Signer grants bind the persona, NIP-46 client, audience, key and class,
+methods, event kinds, limits, issue and expiry times, and revocation state.
+OIDC activates standard NIP-46 only after the matching one-use secret and exact
+approved grant are atomically consumed. The signer-side execute-once fence is
+acquired before an effect; ambiguous terminal persistence remains poisoned for
+reconciliation rather than becoming retryable.
+
+## Compromise and recovery
+
+Baseline Core treats a compromised active key as a new-account event. A
+complete reset revokes NIP-46 and OIDC grants, invalidates subordinate
+authorities and trusted seeds, removes old Marmot leaves, advances every
+reachable group, publishes fresh successor KeyPackages, and explicitly issues
+fresh distinct authorizations for anything that continues.
+
+Assurance may prove continuity from an old active key to a successor, but it
+does not turn the successor into the old Nostr author or silently preserve any
+subordinate authority. A compromise succession cuts off prior Assurance
+authority at the declared effective point.
+
+## Current draft and frozen validation history
+
+The draft checker reads current specifications, registry entries, schemas, and
+current generator reference code. It does not execute the historical topic
+projection used to author the rolling snapshot.
+
+The independent snapshot checker instead materializes the snapshot source
+commit `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43` and checks the 482 frozen
+vectors bound by snapshot commit
+`5d4bb5fb58b35c88d8a9db120a09f1087237f35c`. Those vectors are
+non-normative validation history and do not define the current draft.
+
+```bash
+npm --prefix docs/spec/vectors/generator run draft:check -- "$PWD"
+npm --prefix docs/spec/vectors/generator run snapshot-check -- "$PWD"
 ```
 
-Core owns the KERI-anchored persona, Nostr and Radicle identifiers, repository
-authority, transport roles, versioning, and conformance vocabulary. Comms owns
-privacy tiers, publication, Marmot conversations and media, Radicle-backed
-conversation storage, claims, the private ledger, and OIDC/JWT projection.
-Control owns grant-filtered access to a person's own full node. Social owns
-public following, interactions, community policy, moderation, presentation,
-and durable social assets. Workspace owns organizational authority, role
-repositories, private topology, resource and service advertisements,
-cross-workspace allowances, host selection, and resource-key delivery.
-
-Control and Social are siblings. Neither may acquire authority over the other
-through an implementation shortcut. Workspace may consume their advertised
-features, but its base authorization and storage remain a Core+Comms profile.
-
-## 2. Identity and trust
-
-A persona is rooted in a cold-root Nostr public key and its accepted KERI key
-event log. Epoch keys perform routine signing. Radicle NIDs, Marmot accounts,
-devices, group administrators, hosts, and agent roles are attributed by
-current KERI evidence without becoming alternate persona roots.
-
-Marmot validity and MLS convergence remain independent of Heterodyne
-attribution. Revoked or stale KERI evidence removes verified Heterodyne
-authority; it does not rewrite converged group history.
-
-Full nodes hold sensitive role and account keys. Devices normally use
-independent MLS leaf keys. A leaf backup is an exclusive takeover, not a way
-to run the same leaf concurrently on several devices.
-
-## 3. Roles, reachability, and transport
-
-Full nodes are persistent onion services by default and use Tor for backend
-egress by default. They may also publish clearnet endpoints. Authenticated
-light clients should implement outbound-only Tor where their runtime permits.
-A browser tab that cannot do so may use an authenticated shared relay, but the
-client must identify that path as reduced-assurance.
-
-A public reader needs no persona secrets. It downloads a static browser client,
-resolves a fragment-only public link from known or discovered clearnet relays,
-verifies locally, and renders only Tier 1 material. The hosting origin does not
-receive the fragment target.
-
-```mermaid
-flowchart LR
-    Browser[Browser light client<br/>reduced-assurance when relayed]
-    Direct[Direct-member client<br/>independent MLS leaf]
-    Agent[Automated principal<br/>scoped workload token]
-    Node[Full or recovery node<br/>onion service]
-    Nostr[Ordinary Nostr relay]
-    Repo[Radicle and repo-relay paths]
-    Browser --> Node
-    Direct --> Nostr
-    Direct --> Repo
-    Agent --> Node
-    Node --> Nostr
-    Node --> Repo
-```
-
-## 4. Publishing and privacy
-
-Tier 1 is public. Tier 2 is plaintext selectively replicated to authorized
-Radicle nodes and must be presented honestly as a replication boundary rather
-than encryption. Tier 3 is encrypted before any carrier or repository receives
-it. Its persona membership expands to active delegated human-device keys so
-light devices can decrypt directly; cold-root and epoch keys stay offline.
-Using the device publishing key for NIP-44 and event signing intentionally
-places both operations in one revocation and compromise domain. Ordinary
-relays and repository relays preserve signed event bytes.
-
-Canonical persona metadata lives in the public Radicle profile repository. A
-single delegated profile publisher mirrors it as vanilla `kind:0`; KEL-derived
-historical publisher sets aid discovery, while repository indexes alone select
-current addressable coordinates.
-
-The universal public launcher provides a stable path into verified Tier 1
-content. It is not a centralized identity or content directory.
-
-## 5. Marmot conversations
-
-Marmot is the canonical conversation engine. The locally archived pinned specification
-owns MLS membership and convergence, account-to-leaf proofs, application
-events, replies, reactions, edits, encrypted media, and ordinary Nostr
-transport. Heterodyne adds KERI attribution, Control authorization, Radicle
-storage and admission, and deployment adapters.
-
-Ordinary one-to-one conversations are two-member Marmot groups. Direct-member
-clients own independent leaves. Node-mediated browser/light clients use
-grant-filtered Control operations while MLS and repository secrets remain on a
-designated node. Routine Control itself uses a separate two-member Marmot group
-between the light client and that full node, with short-lived node-scoped
-authorization layered above Marmot sender authentication.
-
-Standard-compatible groups remain usable through ordinary Marmot relays.
-Heterodyne-private groups use private Radicle discovery and admission but keep
-valid Marmot cryptography and event bytes.
-
-## 6. Radicle-backed group storage
-
-Each group has a stable directory repository plus routing-generation event
-repositories. One routing generation maps one Marmot `h` value to one event
-repository RID. Membership changes, explicit recovery, or the 5 GB logical
-soft cap rotate the routing generation; unrelated MLS commits do not.
-
-```mermaid
-flowchart LR
-    Admin[Active Marmot admin]
-    Directory[Stable group directory]
-    Old[Prior generation<br/>old h and RID]
-    Active[Active generation<br/>h and RID]
-    WriterA[Persona A ref]
-    WriterB[Persona B ref]
-    Relay[Integrated relay ref]
-    Onion[Onion NIP-01/media]
-    Clear[Optional clearnet NIP-01/media]
-    Admin --> Directory
-    Directory --> Old
-    Directory --> Active
-    WriterA --> Active
-    WriterB --> Active
-    Relay --> Active
-    Active <--> Onion
-    Active <--> Clear
-```
-
-Writers publish append-only objects on their own authorized refs; integrated
-relays use a relay ref. Logical contents are the deduplicated union of valid
-authorized refs. Radicle provenance never substitutes for Marmot sender
-authentication.
-
-Every interface preserves exact signed Marmot event bytes and exact encrypted
-media ciphertext. Repository commits and indexes do not wrap, translate, or
-re-sign content. A Radicle-backed relay routes by `h` and need not learn the
-stable group identity, member list, or MLS epoch.
-
-Radicle delegates replicate; active Marmot administrators authorize. A routing
-binding is accepted only when its admin, canonical Marmot routing commit, `h`,
-RID, and repository genesis agree. Equivocation fails closed.
-
-## 7. Retention and persona inboxes
-
-Signed group retention policy determines which archived routing generations
-conforming hosts advertise and seed. Expiration stops conforming service and
-permits local garbage collection; it does not erase independent Git objects,
-clones, exports, or backups.
-
-A persona repository may expose a contributor-ref inbox containing a bounded,
-atomic Marmot Welcome and first-event bundle. This bootstraps a two-member
-group for first contact, private replies, or private reactions. Sender refs are
-never merged into the canonical profile branch. Unknown public refs remain in
-pull-based quarantine and cannot trigger automatic media retrieval.
-
-## 8. Control and automated principals
-
-Each light client uses a private non-delegated Nostr key and one pairwise
-Marmot group per full node. Group membership is enrollment-only until OAuth
-Device Authorization commits a persona-wide entitlement to encrypted private
-Radicle state. Each node then issues its own five-minute, node-audience JWT
-bound to the client's Marmot account and exact group. Extended tokens require
-separate consent and may never exceed sixty minutes.
-
-Control exposes only methods and objects allowed by current entitlement and
-token scope. Mutations reserve a stable operation ID before effects. A client
-fails over sequentially and repeats a mutation only when it is inherently
-idempotent or another node can prove the committed result; otherwise it
-surfaces an indeterminate outcome. A node-mediated client receives rendered or
-encrypted results appropriate to its grant, never account, leaf, epoch,
-repository, or role secrets.
-
-An AI or programmatic principal submits intent through Control using a scoped,
-temporary, sender-constrained workload token from the node's OIDC issuer. The
-full node validates current authority, constructs the Marmot or public event,
-adds canonical automation attribution, and signs with a full-node-held stable
-agent role. The agent never receives that key and there is no fallback to a
-human device key or unlabeled publication.
-
-Portable recovery is independent of baseline Control. Private Radicle is the
-primary network recovery path. A locked epoch NIP-59 inbox is used only to
-register a new full/recovery node when no authorized device can approve it.
-The epoch key is relocked before transfer begins, and authority activates only
-after exact repository heads and object digests verify. Oversized immutable
-objects may use a separately advertised SFTP profile on a fresh per-grant
-client-authorized onion, isolated from the Radicle service and restricted to a
-rooted, finite, expiring transfer view.
-
-## 9. Social
-
-Social is the public policy and presentation layer. It covers follows, public
-replies and reactions, feeds, NIP-72 communities, moderation, mute and policy
-lists, public durable assets, and optional ATProto attachment. Private replies
-or reactions start or reuse a Marmot conversation and may reference the public
-asset.
-
-Moderation remains subscriber-local. Receipts inform; only a verified policy
-list to which a client explicitly subscribes changes local visibility.
-
-## 10. Workspace control plane
-
-Workspace repositories turn organizational roles into explicit, signed
-authorization state. A root workspace policy sets ceilings; subordinate role
-policies can only narrow them. Affiliation, Git authorship, Radicle access,
-Marmot membership, relay acceptance, and host status are evidence or delivery
-mechanisms, never ambient authorization.
-
-Each effective role has an encrypted role repository, an independent Marmot
-group, and an authorized Radicle-backed delivery path. Public roles are merely
-one visibility choice. Private roles conceal stable identifiers, topology,
-locators, counts, and correlation material from public state. Policies,
-resource advertisements, service advertisements, and host advertisements flow
-through the role repository and may also use ordinary Nostr relays.
-
-Resource encryption is independent from role MLS state. Authorized devices
-have separate, revocable leaves and receive device-bound envelopes for the
-resource epochs their current role and history policy permit. Hosts may store
-or relay bytes without governance authority; a key-custody host is an explicit
-confidentiality trust boundary.
-
-Cross-workspace access defaults to explicit invitations. Bilateral automatic
-allowances require matching signed declarations and fresh affiliation proof.
-Joint workspaces require the declared governance threshold, so neither parent
-can unilaterally widen authority. Default organization hosts and policy are
-inherited unless a narrower role or resource policy overrides them.
-
-## 11. Availability and residual trust
-
-Multiple relays, hosts, writers, and locators improve availability but do not
-create new identity or group authority. Full nodes, Nostr relays, Radicle
-hosts, and repository relays can observe metadata and can omit, delay, or
-reorder traffic. Local signature, KERI, MLS, grant, and repository-binding
-verification remains mandatory.
-
-The five documents share one exact family version. The family version,
-registry digest, features, and strict profiles travel with every conformance
-claim. The family is in its 0.x phase and may make breaking changes before
-1.0.
+The two lanes are deliberately independent: a live-draft edit neither rewrites
+frozen vectors nor imports their pre-redesign assumptions into current checks.

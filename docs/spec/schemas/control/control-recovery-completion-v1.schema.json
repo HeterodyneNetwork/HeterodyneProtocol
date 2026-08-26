@@ -1,74 +1,169 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://heterodyne.network/schemas/control/control-recovery-completion-v1.schema.json",
-  "title": "Heterodyne recovery completion proof v1",
+  "title": "Heterodyne compromise reset completion v1",
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "activation_id",
-    "grant_id",
-    "portable_manifest_id",
-    "repository_heads",
-    "object_digests",
-    "completed_at",
-    "prover_nid",
-    "signature"
+    "profile", "spec_version", "recovery_id", "persona_active_key",
+    "successor_active_key", "inventory_id", "inventory_revision",
+    "inventory_digest", "evidence_revision", "revoked_nip46_oidc_grant_ids",
+    "invalidated_client_ids", "invalidated_repository_ids", "invalidated_delegate_ids", "invalidated_node_ids",
+    "invalidated_agent_ids", "invalidated_trusted_seed_nids",
+    "removed_marmot_leaf_ids", "advanced_group_ids", "stalled_group_ids",
+    "fresh_keypackages", "subordinate_reauthorizations", "transition_evidence", "evidence_bundle_digest", "completed_at",
+    "signer", "signature"
   ],
   "properties": {
-    "activation_id": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
+    "profile": {"const": "heterodyne.control.compromise-reset-completion.v1"},
+    "spec_version": {"const": "heterodyne/0.5.0"},
+    "recovery_id": {"$ref": "#/$defs/hex256"},
+    "persona_active_key": {"$ref": "#/$defs/hex256"},
+    "successor_active_key": {"$ref": "#/$defs/hex256"},
+    "inventory_id": {"$ref": "#/$defs/hex256"},
+    "inventory_revision": {"$ref": "#/$defs/time"},
+    "inventory_digest": {"$ref": "#/$defs/hex256"},
+    "evidence_revision": {"$ref": "#/$defs/time"},
+    "revoked_nip46_oidc_grant_ids": {"$ref": "#/$defs/hexArray"},
+    "invalidated_client_ids": {"$ref": "#/$defs/hexArray"},
+    "invalidated_repository_ids": {"$ref": "#/$defs/hexArray"},
+    "invalidated_delegate_ids": {"$ref": "#/$defs/hexArray"},
+    "invalidated_node_ids": {"$ref": "#/$defs/hexArray"},
+    "invalidated_agent_ids": {"$ref": "#/$defs/hexArray"},
+    "invalidated_trusted_seed_nids": {
+      "type": "array", "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$"}
     },
-    "grant_id": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
-    },
-    "portable_manifest_id": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
-    },
-    "repository_heads": {
+    "removed_marmot_leaf_ids": {"$ref": "#/$defs/hexArray"},
+    "advanced_group_ids": {"$ref": "#/$defs/hexArray"},
+    "stalled_group_ids": {"$ref": "#/$defs/hexArray"},
+    "fresh_keypackages": {
       "type": "array",
       "minItems": 1,
+      "uniqueItems": true,
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "rid",
-          "head"
+          "keypackage_id", "account_key", "group_id", "event_id", "event",
+          "content_sha256", "mls_verifier_pubkey", "verification_signature"
         ],
         "properties": {
-          "rid": {
-            "type": "string",
-            "minLength": 1
+          "keypackage_id": {"$ref": "#/$defs/hex256"},
+          "account_key": {"$ref": "#/$defs/hex256"},
+          "group_id": {"$ref": "#/$defs/hex256"},
+          "event_id": {"$ref": "#/$defs/hex256"},
+          "event": {
+            "type": "object", "additionalProperties": false,
+            "required": ["id", "pubkey", "created_at", "kind", "tags", "content", "sig"],
+            "properties": {
+              "id": {"$ref": "#/$defs/hex256"},
+              "pubkey": {"$ref": "#/$defs/hex256"},
+              "created_at": {"$ref": "#/$defs/time"},
+              "kind": {"const": 30443},
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "array", "minItems": 1,
+                  "items": {"type": "string"}
+                }
+              },
+              "content": {"type": "string", "minLength": 4},
+              "sig": {"type": "string", "pattern": "^[0-9a-f]{128}$"}
+            }
           },
-          "head": {
-            "type": "string",
-            "pattern": "^[0-9a-f]{40}$"
-          }
+          "content_sha256": {"$ref": "#/$defs/hex256"},
+          "mls_verifier_pubkey": {"$ref": "#/$defs/hex256"},
+          "verification_signature": {"type": "string", "pattern": "^[0-9a-f]{128}$"}
         }
       }
     },
-    "object_digests": {
+    "subordinate_reauthorizations": {
       "type": "array",
       "uniqueItems": true,
       "items": {
-        "type": "string",
-        "pattern": "^[0-9a-f]{64}$"
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "prior_authority_id", "authorization_id", "authority_class",
+          "successor_active_key", "issued_at", "expires_at", "permissions_digest",
+          "contract_digest"
+        ],
+        "properties": {
+          "prior_authority_id": {"$ref": "#/$defs/hex256"},
+          "authorization_id": {"$ref": "#/$defs/hex256"},
+          "authority_class": {"enum": ["client", "repository", "delegate", "node", "agent", "trusted-seed"]},
+          "successor_active_key": {"$ref": "#/$defs/hex256"},
+          "issued_at": {"$ref": "#/$defs/time"},
+          "expires_at": {"$ref": "#/$defs/time"},
+          "permissions_digest": {"$ref": "#/$defs/hex256"},
+          "contract_digest": {"$ref": "#/$defs/hex256"}
+        }
       }
     },
-    "completed_at": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 9007199254740991
+    "transition_evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "nip46_oidc_grants", "clients", "repositories", "delegates", "nodes", "agents",
+        "trusted_seeds", "marmot_leaves", "groups", "stalled_groups"
+      ],
+      "properties": {
+        "nip46_oidc_grants": {"$ref": "#/$defs/hexTransitions"},
+        "clients": {"$ref": "#/$defs/hexTransitions"},
+        "repositories": {"$ref": "#/$defs/hexTransitions"},
+        "delegates": {"$ref": "#/$defs/hexTransitions"},
+        "nodes": {"$ref": "#/$defs/hexTransitions"},
+        "agents": {"$ref": "#/$defs/hexTransitions"},
+        "trusted_seeds": {
+          "type": "array", "uniqueItems": true,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["subject_nid", "evidence_id"],
+            "properties": {
+              "subject_nid": {"type": "string", "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$"},
+              "evidence_id": {"$ref": "#/$defs/hex256"}
+            }
+          }
+        },
+        "marmot_leaves": {"$ref": "#/$defs/hexTransitions"},
+        "groups": {
+          "type": "array", "uniqueItems": true,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["group_id", "prior_epoch", "next_epoch", "evidence_id"],
+            "properties": {
+              "group_id": {"$ref": "#/$defs/hex256"},
+              "prior_epoch": {"$ref": "#/$defs/time"},
+              "next_epoch": {"$ref": "#/$defs/time"},
+              "evidence_id": {"$ref": "#/$defs/hex256"}
+            }
+          }
+        },
+        "stalled_groups": {"$ref": "#/$defs/hexTransitions"}
+      }
     },
-    "prover_nid": {
-      "type": "string",
-      "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$"
+    "evidence_bundle_digest": {"$ref": "#/$defs/hex256"},
+    "completed_at": {"$ref": "#/$defs/time"},
+    "signer": {"$ref": "#/$defs/hex256"},
+    "signature": {"type": "string", "pattern": "^[0-9a-f]{128}$"}
+  },
+  "$defs": {
+    "hex256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "time": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+    "hexArray": {
+      "type": "array", "uniqueItems": true,
+      "items": {"$ref": "#/$defs/hex256"}
     },
-    "signature": {
-      "type": "string",
-      "minLength": 16
+    "hexTransitions": {
+      "type": "array", "uniqueItems": true,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["subject_id", "evidence_id"],
+        "properties": {
+          "subject_id": {"$ref": "#/$defs/hex256"},
+          "evidence_id": {"$ref": "#/$defs/hex256"}
+        }
+      }
     }
   }
 }

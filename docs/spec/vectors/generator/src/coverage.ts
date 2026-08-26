@@ -1,5 +1,6 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { DOCUMENTS } from "./family.js";
 import type { Registry } from "./registry.js";
 import type { DocumentId } from "./types.js";
 
@@ -85,11 +86,11 @@ export function findProfileCoverageIssues(
 }
 
 export async function writeCoverage(vectorRoot: string): Promise<void> {
-  const { buildAllVectors } = await import("./topics.js");
-  const { buildFixtures } = await import("./fixtures.js");
+  const { buildSnapshotCompatibleVectors } = await import("./snapshot-topic-runtime.js");
+  const { buildFixtures } = await import("./snapshot-fixtures-adapter.js");
   await writeCoverageFromVectors(
     vectorRoot,
-    (await buildAllVectors(buildFixtures())).map(({ vector }) => vector),
+    (await buildSnapshotCompatibleVectors(buildFixtures())).map(({ vector }) => vector),
   );
 }
 
@@ -105,7 +106,14 @@ export async function writeCoverageFromVectors(
 
   // The serialized manifest is the sole source for every human-readable view.
   const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as CoverageEntry[];
-  for (const document of ["core", "comms", "control", "social", "workspace"] as const) {
+  const documents = DOCUMENTS.filter((document) =>
+    document !== "assurance"
+      || manifest.some((entry) => entry.owner_document === "assurance")
+  );
+  if (!documents.includes("assurance")) {
+    await rm(join(coverageRoot, "assurance.md"), { force: true });
+  }
+  for (const document of documents) {
     const filtered = manifest.filter((entry) => entry.owner_document === document);
     await writeFile(
       join(coverageRoot, `${document}.md`),
@@ -125,7 +133,11 @@ function renderDocumentView(document: DocumentId, entries: CoverageEntry[]): str
 }
 
 function renderFamilyView(entries: CoverageEntry[]): string {
-  const counts = (["core", "comms", "control", "social", "workspace"] as const)
+  const counts = DOCUMENTS
+    .filter((document) =>
+      document !== "assurance"
+        || entries.some((entry) => entry.owner_document === "assurance")
+    )
     .map((document) => `- ${document}: ${entries.filter((entry) => entry.owner_document === document).length}`)
     .join("\n");
   return `# Protocol-family vector coverage\n\nGenerated from [manifest.json](manifest.json); do not edit by hand.\n\n${counts}\n\n${renderTable(entries)}`;

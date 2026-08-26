@@ -12,7 +12,7 @@ forms.
 
 Comms defines secure persona speech over the Core substrate: a Nostr-native
 event envelope, public/private/encrypted repository tiers, publishing and
-fan-out, generic feed ordering and location, Marmot conversations and media,
+fan-out, standard NIP-65 outbox retrieval, Marmot conversations and media,
 Radicle-backed group storage and relays, Marmot-carried Control integration,
 credential-plane synchronization, private Control authorization state, and a
 receive-only public-reader profile with a provider-independent fragment
@@ -42,18 +42,20 @@ deduplication key across both backends. Repo visibility and application-layer
 encryption change confidentiality, not the NIP-01 envelope.
 
 Before rendering, storing, indexing, or authorizing a received event, a client
-MUST invoke [`heterodyne:0.5.0#core-verification`](heterodyne-core.md#core-verification). In order, it MUST:
+MUST apply the Core NIP-01 verification rules. In order, it MUST:
 
-1. require a well-formed event and the exact `nip01_raw` signing bytes;
-2. hash `nip01_raw`, match `id` and every parsed field, and verify BIP-340;
-3. resolve the signer through the persona KEL and require epoch-key authority
-   at `created_at`, including compromise cutoffs;
-4. apply Core `kel_head`, provisional-finality, and equivocation rules; and
-5. apply the Comms schema, tier, and authorization rules for the event.
+1. snapshot every member exactly once, require a well-formed event, and bind
+   the exact `nip01_raw` source when present;
+2. derive the NIP-01 signing bytes only from that immutable snapshot, match
+   `id` and every raw parsed field, and verify BIP-340;
+3. when persona authorship is required, require `event.pubkey` to equal that
+   persona's active key; and
+4. apply the Comms schema, tier, and authorization rules for the event.
 
 A failure MUST be surfaced as a rejection or explicit security indicator;
-clients MUST NOT silently treat an invalid event as verified. A provisional
-Core verdict MUST NOT be reported or persisted as final.
+clients MUST NOT silently treat an invalid event as verified. A cold root,
+KERI log, repository ref, storage signer, relay identity, or optional
+Assurance claim MUST NOT substitute for the event's actual NIP-01 author.
 
 Under [`heterodyne:0.5.0#core-version-stamps`](heterodyne-core.md#core-version-stamps), Comms-allocated
 JSON-content kinds carry `"spec_version":"heterodyne/0.5.0"`.
@@ -89,13 +91,13 @@ confirmation. `visibility.allow` MUST NOT be conflated with the repository
 
 Tier 3 content MUST be encrypted before it reaches any repository, full node,
 seed, or relay. Plaintext Tier 3 content MUST NOT be committed or published.
-An individual Tier 3 post or index outer event exposes only its registered
+An individual Tier 3 post outer event exposes only its registered
 profile marker, opaque `key_id`, required Core integrity/identity tags, and
 Comms profile stamp; semantic content and tags, RID, audience association, and
 retrieval hints are encrypted. The surrounding distribution graph is not
 membership-private: `kind:31011` and `kind:31012` expose clear recipient
 `p`/`d` tags and roster changes, the shared `key_id` links wraps, rosters,
-posts, indexes, descriptors, and rotations, and carrier observers retain
+posts, descriptors, and rotations, and carrier observers retain
 timing, size, count, publication, and fetch-cadence metadata.
 
 <a id="comms-audience-keys"></a>
@@ -109,20 +111,20 @@ requires and adds nothing else to its distribution and rotation rules:
 
 | Choice | Comms value |
 |---|---|
-| Recipient set | every active KEL-delegated human-device secp256k1 publishing key for the persona, or an explicit policy-narrowed subset of those active devices |
-| Reference and wrapping | `nostr-secp256k1`, NIP-44 wrapped to the device publishing key |
+| Recipient set | every active Marmot account key selected for the audience, or an explicit policy-narrowed subset of those accounts |
+| Reference and wrapping | `nostr-secp256k1`, NIP-44 wrapped to the active account key |
 | Carrier | one `kind:31011` per recipient, with the replaceable `kind:31012` roster |
 | Generation identifier | opaque `key_id` |
 | Extra rotation triggers | `none` |
 
 An audience key is 32 uniformly random bytes. A narrowing policy MUST NOT add
-an inactive, revoked, unverified, non-device, cold-root, or epoch key. The same
-device private key signs Nostr events and decrypts its wraps; this is one
-compromise domain. An authenticated light device therefore decrypts directly
-without bringing a persona authority key online.
+an inactive, superseded, or unverified account key. Local custody, a standard
+NIP-46 signer, or a full node may perform the account-key operation; the wire
+recipient remains the active account key and never an MLS leaf, Radicle NID,
+repository RID, cold root, or KERI key.
 
-The event MUST be epoch-key signed and contain exactly the addressing fields
-represented here:
+The event MUST be signed by the publishing persona's active key and contain
+exactly the addressing fields represented here:
 
 ```json
 {
@@ -131,9 +133,7 @@ represented here:
     ["d", "<key_id>:<recipient pubkey-hex>"],
     ["heterodyne", "audience_key_wrap"],
     ["key_id", "<opaque id with at least 128 bits>"],
-    ["p", "<recipient pubkey-hex>"],
-    ["cold_root", "<persona cold root>"],
-    ["kel_head", "<accepted KEL event id>", "<seq>"],
+    ["p", "<recipient active account pubkey-hex>"],
     ["spec_version", "heterodyne/0.5.0"]
   ],
   "content": "<NIP-44 wrap of the audience key>"
@@ -141,23 +141,22 @@ represented here:
 ```
 
 The replaceable `kind:31012` roster uses `d = key_id`, the
-`audience_roster` discriminator, the same `key_id` and cold root, and one `p`
-tag per recipient. It MUST be epoch-key signed and KEL-validated. A sensitive
-roster MAY instead be carried inside a Tier 3 encrypted object.
+`audience_roster` discriminator, the same `key_id`, and one `p` tag per
+recipient active account key. It MUST be signed by the publishing persona's
+active key. A sensitive roster MAY instead be carried inside a Tier 3
+encrypted object.
 
 Encrypting the roster does not create complete membership privacy.
 Recipient-addressed `kind:31011` events on public carriers still expose the
 clear recipient and generation linkage Core warns of. This release defines no
 membership-private audience-key distribution profile.
 
-Every addition and removal follows the Core rotation rules; Comms restates
-none of them and adds exactly two obligations. First, removing or revoking a
-device removes it from the effective recipient set and is therefore a Core
-removal rotation, whether or not the persona intended a membership change.
-Second, Comms does re-protect existing objects: the rotation republishes the
-current encrypted index under the newly derived `index_key` and supersedes the
-in-audience descriptor. The producer MUST initiate every required index,
-descriptor, roster, and wrap action within 60 seconds of the triggering change
+Every addition and removal follows the Core key-envelope rotation rules.
+Removing or superseding an account removes it from the effective recipient
+set. Comms re-protects retained current objects and supersedes the
+in-audience descriptor under the fresh generation. The producer MUST initiate
+every required descriptor, roster, wrap, and retained-object action within
+60 seconds of the triggering change
 and retry until success, explicit expiry, user cancellation, a superseding
 state transition, or the profile's terminal retry-budget outcome. A carrier
 partition is an availability failure, not automatic producer nonconformance.
@@ -167,7 +166,7 @@ partition is an availability failure, not automatic producer nonconformance.
 
 
 Comms profiles the symmetric ChaCha20/HMAC-SHA256 layer of NIP-44 v2. It does
-not perform NIP-44 ECDH for a post or index body; the per-recipient ECDH occurs
+not perform NIP-44 ECDH for a post body; the per-recipient ECDH occurs
 only in `kind:31011`. Keys are domain-separated:
 
 ```text
@@ -175,12 +174,6 @@ post_key = HKDF-SHA256(
   IKM=audience_key,
   salt=UTF8(key_id),
   info=UTF8("heterodyne-post-key-v1"),
-  L=32
-)
-index_key = HKDF-SHA256(
-  IKM=audience_key,
-  salt=UTF8(key_id),
-  info=UTF8("heterodyne-index-key-v1"),
   L=32
 )
 ```
@@ -213,23 +206,22 @@ A Tier 3 post has this outer shape (kind `1` shown):
 ```json
 {
   "id": "<SHA-256 of canonical NIP-01 serialization>",
-  "pubkey": "<current epoch key>",
+  "pubkey": "<publishing persona active key>",
   "created_at": 0,
   "kind": 1,
   "tags": [
     ["heterodyne_wrap", "room_key.v2"],
     ["key_id", "<opaque audience-key generation id>"],
-    ["kel_head", "<accepted KEL event id>", "<decimal seq>"],
     ["spec_version", "heterodyne/0.5.0"]
   ],
   "content": "<NIP-44-v2 symmetric ciphertext of the inner payload>",
-  "sig": "<BIP-340 signature by current epoch key>"
+  "sig": "<BIP-340 signature by the active key>"
 }
 ```
 
-The clear tags of every Tier 3 post MUST include the two wrap tags,
-`spec_version` equal to `heterodyne/0.5.0` as required by its stamping profile, and `kel_head`
-exactly as Core requires for an epoch-signed event. For addressable kinds
+The clear tags of every Tier 3 post MUST include the two wrap tags and
+`spec_version` equal to `heterodyne/0.5.0` as required by its stamping
+profile. For addressable kinds
 `30023` and `30402`, an additional outer `d` tag is REQUIRED and MUST be an
 opaque value derived from at least 128 bits of randomness or a keyed digest;
 the semantic address remains encrypted. No other clear tag is permitted.
@@ -242,8 +234,8 @@ id.
 
 A receiver MUST select the audience key named by `key_id`, derive `post_key`,
 decrypt and parse the closed inner object, reconstruct the logical event, and
-then verify the outer signature and Core key authority. Possession of the key,
-not current membership metadata, is the cryptographic access test.
+then verify the outer signature by its actual NIP-01 author. Possession of the
+key, not current membership metadata, is the cryptographic access test.
 `room_key.v1` and the withdrawn NIP-59 broadcast path MUST be rejected.
 
 <a id="comms-config-repository"></a>
@@ -254,23 +246,24 @@ The `heterodyne-comms-config-repository-v1` protection profile instantiates
 [`heterodyne:0.5.0#core-protected-repository`](heterodyne-core.md#core-protected-repository) with the Tier 3 profile
 above. There is exactly one private,
 unadvertised config repository per persona; its allow list contains only the
-persona's durable delegated NIDs. The RID MUST NOT appear on any published
-profile, event, relay list, feed index, or node advertisement. It travels only
+persona's durable authorized writer NIDs. The RID MUST NOT appear on any
+published profile, event, relay list, or node advertisement. It travels only
 through authorized credential sync, the Core keys repository, or backup
 restore.
 
 The dedicated config audience key MUST NOT be distributed by published
 `kind:31011`; that would reveal the repository and audience. The repository
-MUST contain no nsec, epoch secret, NID secret, audience key, or MLS state.
+MUST contain no nsec, NID secret, audience key, or MLS state.
 Comms owns its encryption profile and audience payload types; private
 social preferences and followed-repository payloads are outside Comms.
 The private persona claim ledger in §11 is an allowed Comms-owned non-key
 configuration payload.
 
-Authorization comes only from the KEL and active delegations defined by
-[`heterodyne:0.5.0#core-nid-delegation`](heterodyne-core.md#core-nid-delegation). A device
-inventory is bookkeeping and MUST NOT authorize a device; a stale inventory
-MUST NOT remove a device except through an explicit marked revocation record.
+Writer authorization comes only from the active persona key's authenticated
+repository policy and each writer NID's proof over the same exact RID, ref,
+and operations under
+[`heterodyne:0.5.0#core-nid-delegation`](heterodyne-core.md#core-nid-delegation).
+A local device inventory is bookkeeping and MUST NOT authorize a writer.
 
 <a id="comms-encrypted-branches"></a>
 ### 3.4 Encrypted branches, deletion, and residue
@@ -288,8 +281,8 @@ new events and ids. Cooperating seeds SHOULD reclaim unreachable objects.
 This scrub is cooperative hygiene, not erasure, under
 [`heterodyne:0.5.0#core-non-erasure`](heterodyne-core.md#core-non-erasure).
 
-Individual deletion uses Nostr `kind:5` plus an updated feed index. It signals
-intent, not erasure. Live history MUST NOT be rewritten; deletion of a whole
+Individual deletion uses ordinary Nostr `kind:5`. It signals intent, not
+erasure. Live history MUST NOT be rewritten; deletion of a whole
 retired `enc/<key_id>` ref is the sole sanctioned ref-deletion path.
 Clients MUST warn that Tier 1 and Tier 2 plaintext may persist on every node
 that fetched or seeded it. Tier 3 ciphertext may persist on relays and
@@ -302,17 +295,18 @@ non-cooperating seeds and remains readable to holders of its retired key.
 One publication intent MUST produce exactly one signed Nostr event, computed
 once and fanned out unchanged. Implementations MUST NOT re-sign the same
 intent. Tier 3 encryption precedes signing. The event `id` is the idempotency
-token across ordinary and repo relays, and receivers SHOULD deduplicate on it.
+token across ordinary relays, repo relays, and native repository ingestion;
+receivers MUST deduplicate on it.
 
-The destination set contains the persona's configured ordinary write relays
-and the appropriate repo relay. Tier 1 plaintext MUST be published to ordinary
-relays and the public repo relay. Tier 2 plaintext MUST be published only to
-private-repo allowed seeders and MUST NOT be sent to a public relay. Tier 3
-ciphertext MUST be published to both its configured ordinary relays and its
-repo relay. The feed index follows the same tier-specific
-publication boundary. Scheduling, batching, and retry are implementation
-choices, but partial failure MUST be shown with destination and reason; a
-generic unexplained partial-failure message is insufficient.
+The public destination set is the union of the author's selected NIP-65 write
+relays, applicable read relays of tagged recipients, a repo relay already
+listed in the author's kind `10002`, and other explicitly selected ordinary
+relays. Tier 1 plaintext MAY use every public destination. Tier 2 plaintext
+MUST be published only to private-repository allowed writers and interfaces.
+Tier 3 ciphertext MAY use its configured ordinary and repository-backed
+relays. A repository-backed relay receives the same standard NIP-01 `EVENT`
+message and exact event bytes as any ordinary relay; it adds no envelope or
+storage signature to the event.
 
 A Nostr write is permanently failed when a relay returns NIP-01 `OK=false`
 with `invalid:`, `blocked:`, or `restricted:`, when `rate-limited:` exceeds
@@ -322,201 +316,125 @@ transient before NIP-42 authentication and permanent if repeated afterward
 (`auth_rejected_permanent`). A NIP-13 proof-of-work rejection is PERMANENT
 when the client cannot meet the relay's target.
 
-An indexed event MUST NOT enter `kind:31007` until at least one configured
-Comms destination has accepted it. If every configured write destination
-permanently fails, the index MUST NOT include it, automatic republication MUST
-NOT occur, and user action is required. Retries MUST reuse the original event
-without changing its id.
+Partial delivery succeeds when at least one intended destination accepts the
+event. Every failed destination remains eligible for retry with the original
+bytes, `created_at`, tags, content, signature, and event ID. If no destination
+accepts, the event remains locally pending. A client MUST surface
+destination-specific partial or total failure and MUST NOT create or commit a
+custom public feed-index entry as a substitute for delivery.
 
 An automated-principal publication additionally MUST satisfy §15 before this
 ordinary fan-out begins. The full node constructs and signs one canonical
 attributed event; an idempotent retry reuses those exact bytes and event id.
 
 <a id="comms-feed-index"></a>
-## 5. Generic feed index
+## 5. Standard outbox state and filtering
 
 
-`kind:31007` is a persona's canonical ordering authority independent of which
-backend served an event. It is an addressable, epoch-key-signed Comms event,
-with a `["spec_version","heterodyne/0.5.0"]` tag unless a registered stamping
-profile assigns the event's sole owner stamp elsewhere.
-Tier 1 and Tier 2 ordinary indexes MUST have empty `content`.
-Tier 3 index `content` MUST be ciphertext as defined by §5.3.
-Publication is likewise tier-qualified by
-§5.3: there is no common destination set for all indexes. The example below
-is the ordinary plaintext metadata form used within the Tier 1 or Tier 2 trust
-boundary.
+Public Comms history is the set of valid Nostr events returned by ordinary
+NIP-01 filters, not a Heterodyne ordering object. A client requests the active
+persona key in the filter's `authors` field and selects the application kinds,
+tags, and time or limit bounds appropriate to its view. Event `pubkey` remains
+the actual author and event `created_at` remains the ordinary ordering input.
 
-```json
-{
-  "kind": 31007,
-  "tags": [
-    ["d", "<feed_id>:<page_id>"],
-    ["heterodyne", "feed_index"],
-    ["cold_root", "<persona cold root>"],
-    ["rid", "<feed RID>"],
-    ["feed_label", "<optional human-readable label>"],
-    ["retrieval_hints", "{\"archive_url\":\"https://archive.example/<nostr_event_id>\"}"],
-    ["e", "<event id>", "<relay hint>"],
-    ["kel_head", "<accepted KEL event id>", "<seq>"],
-    ["spec_version", "heterodyne/0.5.0"]
-  ],
-  "content": ""
-}
-```
+Required kind `31005` identity pointers and kind `31007` feed indexes are
+retired. A current Comms producer MUST NOT publish either as required
+discovery or ordering authority, and a consumer MUST NOT require one for
+outbox location, retrieval, completeness, current-state selection, repository
+use, or public presentation. Historical events of those kinds remain
+signature-verifiable Nostr events but grant no current authority.
 
-The public `d` tag MUST be exactly `["d", "<feed_id>:<page_id>"]`.
-`heterodyne` and `cold_root` are REQUIRED. `rid` SHOULD appear for a
-repo-backed feed; `feed_label` and `retrieval_hints` are OPTIONAL feed
-metadata. When present, `retrieval_hints` contains
-[`heterodyne:0.5.0#core-canonical-json`](heterodyne-core.md#core-canonical-json) and its `archive_url` is interpreted by
-§6. Ordered `e` tags define the display
-order. A profile above
-Comms declares which application events are indexed; absent such a profile,
-persistent authored content SHOULD be indexed and ephemeral metadata SHOULD
-not. An explicit `heterodyne_index=true|false` tag overrides that default.
-
-Comms permits exactly one class of exception to the empty-content and
-Comms-version-tag rules: a registered stamping profile on `kind:31007`. The
-[`registry/kinds.json`](registry/kinds.json) entry names each such profile,
-its owner, and its immutable `content.profile=` discriminator; the owning
-document defines the exact content object. A stamped event carries that object
-as its sole owner stamp, in `content` only, and MUST NOT carry a Comms or
-owner `spec_version` tag. Every other Comms tag, paging, size, publication,
-retrieval, signature, KEL, and organization-threshold rule remains unchanged.
-No stamping profile may be used for Tier 3, contain Tier 3 ciphertext, or
-carry `heterodyne_wrap` or `key_id` tags. A profile absent from the registry
-entry MUST be rejected rather than treated as ordinary content.
+The candidate set is the union of locally verified results from every
+reachable ordinary relay, repo relay, and authorized native repository path.
+Clients deduplicate by event ID before applying the selection rules in §5.2.
+A carrier may omit, delay, replay, or reorder a result; it cannot make its copy
+win merely because that carrier is preferred or durable.
 
 <a id="comms-org-authorization"></a>
-### 5.1 Organization threshold authorization
+### 5.1 Organization authorship
 
 
-Applying [`heterodyne:0.5.0#core-threshold-authority`](heterodyne-core.md#core-threshold-authority), all posts and feed
-indexes owned by an org persona MUST be reachable
-from the delegate-threshold-approved canonical `defaultBranch` before being
-canonical. A lone org epoch-key holder MUST NOT bypass threshold governance by
-publishing a valid signature only to relays; failure is
-`not_canonical_branch_reachable`. For a single-delegate persona this reduces
-to ordinary signature verification, under
-[`heterodyne:0.5.0#core-threshold-authority`](heterodyne-core.md#core-threshold-authority).
-
-This rule applies uniformly to org-owned Comms posts and feed indexes; their
-threshold authorization is not a presentation-layer option.
+An organization uses the same active-key wire model as a human persona. An
+organization-owned Comms event is an ordinary NIP-01 event whose `pubkey` is
+the organization's active key. Several custodians MAY jointly produce that
+one BIP-340 signature, but delegate policy, repository branches, writer refs,
+and optional Assurance do not replace it or create an alternate author.
 
 <a id="comms-feed-paging"></a>
-### 5.2 Paging and integrity
+### 5.2 Candidate union and replaceable selection
 
 
-A page MUST contain at most 500 entries and SHOULD contain 256. A chained
-public page uses exactly `["previous_index", "<event_id>"]` and MUST also use
-`["prev_page_hash", "<hex-sha256>"]`, where the hash is SHA-256 of the
-prior page's canonical NIP-01 bytes. The first page MUST omit both tags. A
-verifier MUST check every page signature and hash; mismatch breaks the chain
-with `page_chain_broken` and a visible feed-integrity error. A page missing
-the hash MAY be rendered only with an unverifiable-chain warning.
+Ordinary events coexist by event ID. Replaceable events select by
+`(pubkey, kind)`, and parameterized replaceable events select by
+`(pubkey, kind, d)`. Within one replaceable coordinate, the event with the
+greatest `created_at` wins; the lowest lexicographic event ID wins a tie.
+Invalid signatures, mismatched IDs or `nip01_raw`, and wrong-author candidates
+never enter the union.
 
-After a complete fetch attempt cannot resolve a predecessor, the newest
-resolvable page containing that missing predecessor link is the referring
-page. The client MUST surface a
-[`heterodyne:0.5.0#core-structured-outcome`](heterodyne-core.md#core-structured-outcome)
-with `outcome_class` `missing-predecessor`, a `subject` binding the
-unavailable predecessor event id and the referring page's event id,
-`created_at`, and `d`, and `allowed_actions` drawn from `retry` and
-`continue-incomplete`. For example, an English UI may render “feed truncated
-after `<created_at>` / `<d>`; missing `<event_id>`”; that sentence is not
-normative.
-The client MUST continue from the newest resolvable page and MUST NOT call the
-result complete. It MUST persist the unresolved predecessor event id and the
-referring-page locator (its event id, `created_at`, and `d`) across process
-restart, and retry when a new relay becomes reachable or the user revisits the
-feed. Equal `(pubkey, kind, d, created_at)` conflicts select the
-lexicographically smallest event id.
+When reachable, a repository is the preferred durable source and
+reconciliation target. It is not a source-priority override. A newer valid
+relay event missing from the repository wins immediately and makes the
+repository stale until an authorized writer ingests those exact bytes.
+Repository unavailability leaves relay-derived state fully usable.
 
 <a id="comms-private-index"></a>
-### 5.3 Tier-specific indexes and descriptors
+### 5.3 Tier-specific carrier boundaries
 
 
-Tier 1 indexes are plaintext and MUST be published to ordinary relays and the
-public repo relay. Tier 2 indexes are plaintext only on private-repo allowed
-seeders and MUST NOT be published to a public relay. A Tier 3 index MUST
-encrypt its closed payload with `index_key` and MUST be published as
-ciphertext to both its configured ordinary relays and its repo relay.
-Clear tags are limited to opaque `d`, `heterodyne=feed_index`, `cold_root`,
-`heterodyne_wrap=room_key.v2`, `key_id`, `kel_head`, and the Comms version
-tag. Relay-visible tags MUST NOT contain `retrieval_hints`, RID, entries,
-hints, or previous-page data; all of them MUST be inside ciphertext.
+Tier 1 filters may query ordinary public relays and public repo relays. Tier 2
+filters may query only authorized private-repository interfaces. Tier 3
+filters retrieve the signed ciphertext events from their configured ordinary
+or repository-backed relays and decrypt only after exact-event verification.
+The filter and selected carrier MUST NOT weaken the tier's disclosure rule.
 
-The Tier 3 outer `d` MUST be opaque and generated from at least 128 bits of
-randomness or from a keyed digest whose secret input is known only to the
-audience. It MUST NOT contain a literal RID, room identifier, feed label, or
-semantic page name.
-
-The closed decrypted payload contains, in order, `spec_version`, `rid`,
-`page_id`, optional `feed_label`, optional `retrieval_hints`, ordered
-`entries[{event_id,relay_hint}]`, and optional
-`previous_index{event_id,prev_page_hash}`. `retrieval_hints`, when present,
-MUST be an object with exactly one string `archive_url` member. Missing,
-duplicate, unknown, misordered, or wrongly typed members MUST be rejected. A
-receiver MUST select and derive the matching `index_key`, decrypt, require the
-expected RID, verify signature and KEL authority, then traverse the decrypted
-chain.
-
-Every audience-scoped feed MUST publish an in-audience descriptor. Tier 2
-carries it in the private repository; Tier 3 carries an epoch-key-authenticated
-object encrypted under `index_key`, addressable from clear `key_id` plus Core
-RID/host routing. Its payload MUST locate the publisher, kind 31007, latest
-opaque `d`, `key_id`, RID, and relay/repo set. This non-circular bootstrap MUST
-work without a higher-layer service. Removal and rotation MUST supersede the
-descriptor under the fresh generation. The producer MUST initiate that
-supersession within 60 seconds and retry until success, explicit expiry, user
-cancellation, a superseding state transition, or the terminal retry-budget
-outcome.
+Private audience bootstrap MAY carry an encrypted descriptor that names its
+current `key_id`, authorized interfaces, and RID inside the audience boundary.
+That descriptor is configuration, not a public feed index and not an ordering
+authority. Rotation MUST supersede it under the fresh audience generation.
 
 <a id="comms-retrieval"></a>
-## 6. Retrieval, backfill, and outbox location
+## 6. Retrieval, reconciliation, and NIP-65 outbox location
 
 
-A missing indexed event is queried by NIP-01 id from its hint, then the
-persona's NIP-65 write and read relays, and eligible repo relays. For this
-calculation, `known_relays` is exactly the set union of the persona's current
-NIP-65 `read` and `write` relays and all relay hints accompanying the feed
-entry or page, after URL normalization and deduplication. A complete fetch
-attempt queries `max(3, ceil(len(known_relays) * 0.5))` relays, subject to the
-available set (when fewer are known, it queries every known relay), uses a default
-10-second timeout, makes at most three retries (1/4/16 seconds RECOMMENDED),
-and orders hints, write relays, then read relays. Clients MUST refresh changed
-`kind:10002` relay lists before declaring the attempt complete.
+Public outbox discovery starts from the active persona key, obtained directly
+or through NIP-05. A client fetches valid kind `0` and kind `10002` candidates
+from known relays, selects current replaceable state under §5.2, and queries
+the selected NIP-65 write relays with ordinary NIP-01 filters. An unmarked
+kind-`10002` relay is both read and write; an explicitly marked relay has only
+the upstream NIP-65 role that its marker grants.
 
-Tier 3 fetches ciphertext then decrypts it. Tier 2 fetches only from an
-allowed full node. A persona MAY advertise its own HTTPS archive in the
-`retrieval_hints.archive_url` field of feed-index metadata. If the URL
-contains the literal `<nostr_event_id>`, a client substitutes the requested
-event id. Otherwise it appends or sets `?id=<nostr_event_id>`. The publisher
-is entirely responsible for the endpoint; archive failure is not a protocol
-error. If relay, repo, and explicitly advertised archive channels fail, the
-object is permanently lost to the network and SHOULD be shown as missing.
+The retrieval candidate set is the normalized, deduplicated union of selected
+write relays, useful read relays, accepted event or NIP-19 hints, and every
+repo relay already listed as an ordinary endpoint in kind `10002`. Clients
+verify all returned events locally, union the valid candidates, deduplicate by
+event ID, and apply §5.2. An unavailable repository, missing profile extension,
+or absent optional Assurance chain MUST NOT make valid relay results unusable.
 
-Automated historical retrieval requests, responses, or pushes over any DM
-transport are forbidden. Marmot history follows the group's declared
-retention and join-epoch rules. Comms defines no relay-style bulk-fetch service
-or mandatory archive service.
+When native repository access is available, reconciliation compares the same
+exact event IDs and `nip01_raw` bytes. An authorized writer fills repository
+gaps without re-signing, normalizing, or replacing newer relay state. Writer
+and carrier preference affects durability and retry order only; it never
+changes which candidate wins.
 
-The generic public outbox location is the verified `kind:31005` npub-to-RID
-pointer from [`heterodyne:0.5.0#core-identity-pointer`](heterodyne-core.md#core-identity-pointer) plus the NIP-65
-relay list; clients use it to locate the persona's
-`kind:31007` indexes. Audience-scoped location is the descriptor in §5.3.
-Comms discovery ends at generic feed/outbox location and does not define who
-subscribes or a social-graph traversal. No centralized delivery directory may
-be required.
+Heterodyne publishing clients MUST refresh kind `0` and kind `10002` at least
+once every seven days, even when their content is unchanged. Passing that
+boundary produces a visible staleness or liveness warning, not invalidity of
+the last correctly signed events. Relay-only retrieval remains a complete and
+conforming public path.
+
+Tier 3 retrieval obtains ciphertext before decryption. Tier 2 retrieval uses
+only an authorized private interface. Marmot history follows the group's
+declared retention and join-epoch rules. Comms defines no mandatory archive
+service, centralized delivery directory, subscriber graph, or social-feed
+presentation.
 
 <a id="comms-public-reader"></a>
 ### 6.1 Public-reader feature
 
-`comms.public-reader.v1` consumes only verified Tier 1 Comms envelopes, public
-feed indexes, and retrieval state. It MUST implement
-`core.nostr-relay-read.v1`, local NIP-01/BIP-340 and KEL verification, §5
-receive-side feed integrity, §6 retrieval, and
+`comms.public-reader.v1` consumes only verified Tier 1 Nostr events and
+source-neutral retrieval state. It MUST implement
+`core.nostr-relay-read.v1`, local NIP-01 identifier and BIP-340 verification,
+§5 candidate selection, §6 retrieval, and
 `COMMS-I-PUBLIC-READER-TIER1-ONLY`. It MUST NOT require a Heterodyne account,
 persona key, repository write path, publishing feature, claim ledger, OIDC
 issuer, DM session, or Control session merely to render public content.
@@ -541,10 +459,10 @@ The provider-independent version-1 fragment grammar is exactly:
 
 The first form selects a persona, the second an immutable event, and the third
 an addressable or replaceable event. `nprofile` MUST decode under NIP-19 and
-its public key MUST be the persona's canonical cold-root npub. An `nevent`
-author, when present, and an `naddr` public key MUST equal that cold root.
-`did:key`, Radicle NID, derived export AID, OIDC subject, or launcher origin
-MUST NOT substitute for the cold-root identity.
+its public key MUST be the persona's active key. An `nevent` author, when
+present, and an `naddr` public key MUST equal that active key. A cold root,
+`did:key`, Radicle NID, repository RID, OIDC subject, optional Assurance key,
+or launcher origin MUST NOT substitute for the active Nostr identity.
 
 A compatible static host appends the complete fragment to its application
 origin. The reference form is:
@@ -584,33 +502,27 @@ connection to the NIP-01 exchange; successful connection is never authority.
 After complete local parsing, the client:
 
 1. contacts accepted usable hints;
-2. resolves and verifies the cold-root identity pointer and available KEL;
-3. refreshes the persona's current NIP-65 relay list;
-4. locates public `kind:31007` feed indexes;
-5. fetches the target from entry hints and the refreshed relay set;
-6. verifies its NIP-01 bytes, signature, KEL authority, page integrity, and
-   complete-fetch state; and
-7. requires reachability from the persona's canonical Tier 1 feed before
-   calling the result canonical.
+2. resolves the active key directly from `nprofile` and verifies current kind
+   `0` and kind `10002` candidates source-neutrally;
+3. queries the selected NIP-65 write relays, usable read relays, and accepted
+   route hints with an ordinary author, ID, or addressable-event filter;
+4. verifies exact NIP-01 bytes, identifier, signature, author, kind, and `d`
+   coordinate where applicable;
+5. unions and deduplicates valid relay and optional repository candidates; and
+6. applies ordinary NIP-01 replaceable selection without source priority.
 
 Resolution MUST terminate in exactly one visible state:
 
-- `canonical` when every check succeeds and repository confirmation is final;
-- `provisional-canonical` when the same checks succeed but repository
-  confirmation is unavailable;
-- `unindexed-signed-event` for a valid Tier 1 signed event absent from the
-  canonical public index;
-- `conflicted` when the applicable Core, page, or addressable-event rules
+- `verified` when the selected Tier 1 event passes every required check;
+- `conflicted` when applicable NIP-01 or addressable-event rules
   identify a conflict;
-- `unavailable` when the complete-fetch, NIP-65 refresh, predecessor, or
-  required relay evidence cannot be completed; or
+- `unavailable` when no queried carrier returns the requested valid event; or
 - `private` for Tier 2 plaintext or Tier 3 ciphertext.
 
-The client MUST NOT turn a failed complete fetch into an empty feed. It MUST
-NOT render Tier 2 plaintext in public-reader mode and MUST NOT interpret,
-probe, or label Tier 3 ciphertext as public content. An unindexed signed event
-MUST carry that exact visible qualification and MUST NOT be presented as a
-canonical Heterodyne publication.
+The client MUST NOT turn a failed fetch into an authoritative empty outbox. It
+MUST NOT render Tier 2 plaintext in public-reader mode and MUST NOT interpret,
+probe, or label Tier 3 ciphertext as public content. Repository confirmation
+MAY report durability, but its absence MUST NOT demote a relay-verified event.
 
 <a id="comms-public-transition"></a>
 ### 6.4 Anonymous-to-authenticated transition
@@ -622,8 +534,9 @@ KeyPackage on accepted relays, establish a two-member group, and invoke the
 Control enrollment profile. The transition MUST NOT change already verified
 public-reader identity or content results.
 
-The Control principal receives no persona epoch secret, NID secret, audience
-key, repository-decryption key, credential-ledger key, device key, or MLS leaf
+The Control principal receives no persona active-key secret, NID secret,
+audience key, repository-decryption key, credential-ledger key, device key, or
+MLS leaf
 belonging to another member. Logout MUST attempt self-revocation when
 available, delete the local Control key and group state, clear private
 configuration and decrypted caches, and return to public-reader mode without
@@ -679,12 +592,11 @@ encrypted-media v2; and its Nostr KeyPackage, Welcome, and signed `kind:445`
 transport envelopes. Heterodyne MUST NOT fork, reinterpret, or add a required
 application component to those surfaces.
 
-Heterodyne is authoritative only for KERI attribution, Control authorization,
-node-mediated operation, agent policy, Radicle repository and relay profiles,
-and public Social assets. A Marmot-valid event without current KERI evidence
-remains part of Marmot history. It loses verified Heterodyne attribution or
-authorization, but Heterodyne MUST NOT use KERI to select an MLS branch or
-alter convergence.
+Heterodyne is authoritative only for Control authorization, node-mediated
+operation, agent policy, and Radicle repository and relay profiles around
+those standard surfaces. Heterodyne metadata MUST NOT select an MLS branch,
+alter convergence, replace an account proof, or introduce an identity alias
+inside Marmot.
 
 Ordinary user-facing one-to-one conversations and routine own-device Control
 channels are two-member Marmot groups. Marmot also owns private group content,
@@ -694,17 +606,27 @@ the authenticated encrypted application carriage on which Control relies.
 <a id="comms-marmot-participation"></a>
 ### 7.1 Identity, leaf ownership, and client modes
 
-Each persona uses the Core-bound `marmot:human-messaging` account for ordinary
-account-scoped privilege and a separate `marmot:group-admin` account for
-administration. Automated roles use `agent:<role-id>`. The account private
-keys remain on authorized full or recovery nodes.
+The persona's active Nostr key is its Marmot account identity for ordinary and
+administrative account-scoped privilege. There is no separate
+`marmot:human-messaging` key, `marmot:group-admin` key, or Heterodyne account
+alias. An agent key that participates is a separate standard Marmot account.
+Local custody, NIP-46, and full-node signing are implementation choices and do
+not change the account key carried by Marmot.
 
 Devices use independent Marmot MLS leaf keys. Heterodyne does not adopt
 Marmot's draft multi-device External Commit profile. A new device uses
 standard Marmot KeyPackages, Add commits, account-to-leaf proofs, and
 Welcomes. A leaf backup or transfer is permitted only as the exclusive
-takeover defined by Core; concurrent use of one leaf by multiple devices MUST
+takeover allowed by Marmot; concurrent use of one leaf by multiple devices MUST
 be rejected.
+
+Active-key succession creates a new Marmot account. Every affected group MUST
+explicitly remove all leaves bound to the old account, publish fresh
+KeyPackages, add new independent leaves bound by standard account proofs to
+the successor account, and advance the group under Marmot's rules. Optional
+Assurance continuity MAY explain the transition to Heterodyne clients but
+MUST NOT alias the accounts, preserve old leaf membership, or transfer group
+administration inside MLS.
 
 Comms defines two client modes:
 
@@ -762,6 +684,14 @@ Each Heterodyne-backed group has one stable directory repository and a
 sequence of event repositories. The directory manifest MUST validate against
 `docs/spec/schemas/comms/marmot-group-directory-v1.schema.json`.
 
+The manifest's `account_key` is the active Marmot administrator account that
+authored the current standard routing commit. `current_routing` binds that
+commit's exact event ID and `h` to one event RID and routing-binding digest.
+Every `authorized_writer_refs` entry binds one Radicle NID to one exact ref;
+the NID is storage provenance and never the Marmot account. Those members MUST
+agree with the current routing binding and repository genesis before the
+directory state is accepted.
+
 The static repository carries stable group identification, public profile and
 policy fields, host announcements, sealed invitations, encrypted routing
 bindings, retention policy, membership administration, mute lists, and
@@ -807,9 +737,11 @@ steps in a way that reveals the replacement `h` to the removed member.
 A routing binding MUST validate against
 `docs/spec/schemas/comms/marmot-routing-binding-v1.schema.json` and MUST bind
 the stable group identifier, new `h`, event RID, genesis-manifest digest,
-prior generation, authorized host set, advertised interfaces, retention
-metadata, signing administrator, and accompanying Marmot routing-commit event
-ID.
+prior generation, exact authorized writer NIDs and refs, authorized host set,
+advertised interfaces, retention metadata, signing administrator
+`account_key`, and accompanying standard Marmot routing-commit event ID. The
+binding's `account_key` MUST equal the account that authored that canonical
+commit, and the commit's `h` MUST equal the binding's `h`.
 
 <a id="comms-marmot-event-repository"></a>
 ### 7.5 Event repository and logical union
@@ -819,8 +751,17 @@ An event repository genesis manifest MUST validate against
 The repository is append-only at the logical protocol layer and has no merged
 canonical message branch.
 
+The genesis `account_key`, `marmot_routing_event_id`, `h`, and `event_rid`
+MUST exactly match the accepted routing binding. Its
+`authorized_writer_refs` is the initial accepted writer set and MUST match
+the binding. Later writer changes require the same group-owner authorization
+and NID proof required by Core; they do not change Marmot authorship or group
+administration.
+
 Each native writer MUST publish to its own NID ref. An integrated relay MUST
-publish relay-ingested objects to its designated relay ref. Hosts replicate
+publish relay-ingested objects to its own authorized NID ref under the relay
+ref prefix. No two writer NIDs may share an accepted ref, and no accepted ref
+may name two writer NIDs. Hosts replicate
 valid authorized refs. The logical contents are the union of valid objects
 reachable from authorized refs, deduplicated by Nostr event ID for events and
 ciphertext hash for media. An unauthorized, malformed, or equivocated ref MUST
@@ -875,10 +816,12 @@ policy, or static repository. It verifies the visible NIP-01 envelope and
 commits exact accepted bytes to its relay ref.
 
 Because `kind:445` uses a fresh ephemeral event key, a restricted relay MUST
-NOT use that key as member identity. A write allowlist uses NIP-42 connection
-authentication by an authorized stable Marmot account or active
-KERI-delegated device or agent key. This is anti-abuse admission only; it MUST
-NOT be presented as Marmot sender authentication.
+NOT use that key as member identity. A write allowlist may use NIP-42
+connection authentication by an authorized stable Marmot account key. This is
+anti-abuse admission only; it MUST NOT be presented as Marmot sender
+authentication. A relay claiming the private trusted-seed profile additionally
+implements [§7.7.1](#comms-trusted-seed-private-relay); NIP-42 alone grants no
+read, write, routing, or repository authority.
 
 A group has one or more hosts, and administrators are hosts by default. Hosts
 replicate the static, active, and retained archive repositories; advertise
@@ -890,16 +833,131 @@ NOT acquire group-admin authority merely by hosting.
 Light clients do not need Radicle NIDs unless they use native Radicle
 membership. A standard-compatible client may remain Nostr-only.
 
+<a id="comms-trusted-seed-private-relay"></a>
+#### 7.7.1 Trusted-seed private relay
+
+The OPTIONAL feature `comms.trusted-seed-private-relay.v1` lets an explicitly
+trusted seed serve one private Marmot routing generation. Trust is anchored to
+the seed's canonical Radicle NID under
+[`heterodyne:0.5.0#core-seed-nid-trust`](heterodyne-core.md#core-seed-nid-trust),
+not to its relay key, DNS name, TLS certificate, URL, repository head, or mere
+availability. Several seed NIDs MAY be active concurrently. Each has its own
+relay endpoint, Radicle endpoint, grant, permissions, and relay-ingest writer
+ref. There is no primary seed and no shared ref between seed NIDs.
+
+Private relay access requires successful NIP-42 authentication by the stable
+Marmot account being authorized. The selected seed consequently learns that
+account key, the presented `h`, the target private RID, timing and traffic
+volume, and whether the request is a read or write. A client MUST present this
+metadata disclosure before enabling the seed. The seed MUST NOT receive a
+Marmot leaf, epoch secret, application plaintext, content-decryption key,
+stable group identifier, or private administrative record.
+
+The seed enforces one current private ACL projection validating against
+`schemas/comms/trusted-seed-acl-v1.schema.json`. The closed object contains:
+
+- profile `heterodyne.trusted-seed-acl.v1` and `spec_version`;
+- the signing `administrator_account`;
+- allowed stable Marmot `accounts`, each with a non-empty set of `read` and/or
+  `write` roles;
+- the exact current `h` and private event-repository RID;
+- one or more independent `seed_grants`, each binding a seed NID, relay and
+  Radicle endpoints, its own relay ref, roles, and `active` or `revoked` state;
+- safe-integer `sequence`, nullable predecessor digest, and the exact Marmot
+  group transition's generation, routing-event ID, and routing-binding digest;
+- safe-integer `issued_at` and `expires_at`; and
+- the administrator's BIP-340 signature.
+
+The signature uses domain `heterodyne-trusted-seed-acl-v1` over the complete
+ACL except `signature`. The signer MUST be the active Marmot administrator
+that authored the bound canonical routing transition. A genesis ACL has
+sequence zero and a null predecessor. Every later ACL increments sequence by
+exactly one and names the SHA-256 JCS digest of the complete prior signed ACL.
+Distinct otherwise valid heads at the same greatest sequence conflict. A
+non-genesis head without the exact accepted predecessor is ambiguous. Neither
+wall-clock order, seed preference, repository default branch, nor Radicle
+delegate order selects among conflicting or ambiguous state.
+
+The embedding configures each admission boundary with the expected seed NID,
+administrator account, trusted clock, NIP-42 authenticator, current-state
+loader, and atomic consume operation. These configured values and callback
+identities are captured once and are not supplied by an admission request.
+Every callback result is copied once into an independently owned immutable
+closed value before semantic use. Missing, alternate, additional,
+accessor-backed, or otherwise malformed callback state fails closed.
+
+The untrusted request is closed before authentication. A read carries exactly
+`operation`, `h`, and `private_rid`; a write additionally carries exactly the
+non-empty `writer_ref` and `nip01_raw`. Caller assertions of authenticated
+state, account, administrator, ACL candidates, predecessor, transition, seed
+NID, or current time are invalid request members and grant no authority. After
+successful NIP-42 authentication, the embedding issues an opaque one-request
+capability bound to the authenticated account, connection, challenge, request,
+expiry, and exact closed request. A capability created by another admission
+authority is invalid.
+
+Before each decision the seed irrevocably consumes the capability, then reloads
+trusted current time and the current administrator, ACL candidates,
+predecessor, Marmot transition, and revision. Reuse, including a retry after a
+failed decision, is `trusted-seed-request-replay`. It then rechecks account
+role, its own active seed grant and operation, exact `h` and private RID,
+transition, predecessor continuity, issue time, expiry, and administrator
+signature. Missing, malformed, future-issued, expired, stale, conflicting,
+ambiguous, revoked, unauthorized, or route-mismatched state fails closed using
+the registered `trusted-seed-*` reason. A removed seed grant takes effect as
+soon as the newer authenticated ACL is available; an explicitly `revoked`
+grant MUST NOT be used even if the endpoint or old ref remains reachable.
+
+An accepted admission is atomically consumed against the exact authenticated
+connection and challenge, request ID, ACL digest and current-state revision,
+Marmot transition, operation, route, RID, writer ref, and event ID. For a
+write, that same atomic binding also carries the exact original `nip01_raw`
+string whose event ID and signature were verified. Callback
+acceptance certifies that those byte-exact received bytes are durable on the
+bound writer ref; returning the bytes from admission without that persistence
+effect is insufficient. Replay, compare-and-swap conflict, effect failure,
+malformed result, or exception fails closed and MUST NOT acknowledge the
+operation. A read admission result MUST NOT return either write-only member.
+The seed treats accepted kind-445 event `content` as opaque ciphertext and
+MUST NOT interpret it as plaintext.
+
+A candidate whose `administrator_account` differs from the current expected
+administrator is unauthorized. A candidate naming the expected administrator
+but carrying an invalid BIP-340 signature is instead an invalid ACL. Account,
+grant, operation, or writer-ref mismatch remains unauthorized.
+
+An accepted write is one exact serialized signed Marmot Nostr event. The seed
+parses the complete closed NIP-01 event object, requires kind `445`, requires
+exactly one two-member `h` tag equal to the admitted route, recomputes the event
+ID from the six NIP-01 signing fields, and verifies its BIP-340 signature.
+Malformed JSON, missing or additional event members, wrong kind, bad ID, or bad
+signature fails with `trusted-seed-event-invalid`; a missing, duplicate, or
+mismatched `h` fails with `trusted-seed-route-mismatch`. After verification the
+seed commits the original received bytes unchanged only to the writer ref
+bound to its own NID, and acknowledges only after the durability boundary in
+§7.9. The accepted repository view unions all current authorized native and
+seed refs under §7.5. A seed MUST NOT write another seed's ref, merge refs,
+re-sign or reserialize an event, infer the MLS sender from the outer event key,
+or turn storage provenance into group authority.
+
+A seed, full node, persona, repository owner, and Marmot administrator are
+distinct roles. A combined deployment MAY hold several roles, but each grant
+and conformance claim remains independent. Private relay service alone grants
+no persona signing, repository ownership, full-node policy, group
+administration, membership, or MLS authority.
+
 <a id="comms-marmot-host-authority"></a>
 ### 7.8 Host authority, convergence, and equivocation
 
 Static-repository changes are signed announcements. A client accepts a routing
 binding only when:
 
-1. the signer was an active Marmot administrator;
-2. that signer authored the canonical Marmot routing commit establishing the
-   same `h`; and
-3. the event repository's genesis manifest matches the bound digest.
+1. `account_key` was an active Marmot administrator account;
+2. that exact account authored the canonical standard Marmot routing commit
+   named by `marmot_routing_event_id` and establishing the same `h`;
+3. the binding, directory state, and genesis agree on the exact event RID,
+   `h`, routing event ID, and authorized writer refs; and
+4. the event repository's genesis manifest matches the bound digest.
 
 Other authorized hosts may advertise replicas and endpoints for the bound
 RID; they MUST NOT substitute another repository. Neither a Radicle default
@@ -962,7 +1020,11 @@ KeyPackage, create a standard two-member Marmot group, produce Marmot's exact
 Welcome transport artifact and first exact `kind:445`, and commit both
 atomically in a contact bundle conforming to
 `docs/spec/schemas/comms/marmot-persona-inbox-bundle-v1.schema.json` on its
-sender-specific ref. The first application event may be a direct message,
+sender-specific ref. The bundle's `account_key` is the sender's actual Marmot
+account and `writer_nid` is only the Radicle identity that wrote that ref; both
+values MUST match its manifest. The Welcome and first event MUST establish the
+same account through Marmot's standard account-to-leaf proof. The first
+application event may be a direct message,
 private reply, or private reaction referencing a public or privately shared
 Social asset. Heterodyne defines no one-shot encrypted contact payload.
 Subsequent messages use the group's routing-generation repository, and a later
@@ -979,8 +1041,10 @@ bootstrap path.
 For a public inbox, an unknown ref enters pull-based quarantine. The client
 MUST fetch and validate a bounded manifest conforming to
 `docs/spec/schemas/comms/marmot-persona-inbox-manifest-v1.schema.json` before
-larger objects. The manifest identifies sender NID, consumed KeyPackage,
-event IDs, object sizes, and automation status. Unknown bundles MUST NOT
+larger objects. The manifest identifies the sender account key separately
+from its writer NID, consumed KeyPackage, event IDs, object sizes, and
+automation status. The automation flag is quarantine metadata, not an account
+alias or authorization grant. Unknown bundles MUST NOT
 trigger automatic media retrieval. Clients discard duplicate KeyPackage use,
 malformed artifacts, muted senders, objects over local limits, excess rate,
 and unsupported capabilities. Hosts MAY impose stricter quotas without making
@@ -1009,11 +1073,10 @@ ordinary Marmot application events. Heterodyne adds no competing DM cipher,
 invitation format, or outer event kind.
 
 Routine light-client, human RPC, and agent RPC use ordinary two-member Marmot
-groups under [`heterodyne:0.5.0#control-frame`](heterodyne-control.md#control-frame). The full node uses its
-Core-authorized device account and a dedicated leaf; the light client uses its
-private non-delegated Control account and its own leaf. A standard Welcome and
-valid MLS membership authenticate transport identity but grant no application
-authority.
+groups under [`heterodyne:0.5.0#control-frame`](heterodyne-control.md#control-frame). Each participant uses the
+exact Marmot account selected by Control and an independent leaf bound through
+the standard account proof. A standard Welcome and valid MLS membership
+authenticate transport identity but grant no application authority.
 
 The registry profile `heterodyne-control-marmot-frame-v1` allocates unsigned
 inner application `kind:31017`. The event is valid only inside Marmot MLS. It
@@ -1050,9 +1113,11 @@ Marmot account, random 256-bit `invite_id`, a fresh ephemeral Nostr
 `rendezvous_pubkey`, one or more normalized `wss://` relay hints, issue and
 expiry times, `SHA-256(secret)` for a uniformly random 256-bit secret,
 `interactive` or `preauthorized` approval mode, and any exact expected client
-key or preauthorization template. A `device-enrollment` descriptor also binds
-current Core/KERI inviter-authority evidence. Unknown descriptor, envelope,
-authority, or preauthorization members are invalid.
+key or preauthorization template. The inviter Marmot account is the actual
+active persona or agent key that signs the descriptor. A higher-layer
+`device-enrollment` profile MAY bind additional Control authorization, but
+Comms requires no KERI, cold-root, or epoch-key evidence. Unknown descriptor,
+envelope, authority, or preauthorization members are invalid.
 
 The inviter account produces the BIP-340 `signature` over the SHA-256 digest
 of the [`heterodyne:0.5.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes) bytes for domain
@@ -1098,8 +1163,8 @@ it.
 A valid `dm` redemption creates an ordinary two-member Marmot group and makes
 the Comms-native admission result `accept` for its issuer, subject to an
 absorbing local mute or block. Higher-layer Control profiles define Control
-and KERI device effects; the Comms rendezvous alone grants no application or
-persona authority.
+device effects; the Comms rendezvous alone grants no application or persona
+authority.
 
 <a id="comms-acceptance-hook"></a>
 ## 8. Authenticated Marmot admission and synchronization policy
@@ -1159,12 +1224,13 @@ over an authorized pairwise Control group. A transport message never becomes
 canonical state until the corresponding signed record is reachable from the
 applicable canonical repository head.
 
-A joining full node receives temporary private-repository access only through
-the optional recovery grants at
-[`heterodyne:0.5.0#control-radicle-recovery`](heterodyne-control.md#control-radicle-recovery). An ordinary light client
-receives filtered decisions and configuration, never claim-ledger reader
-authority, repository credentials, audience keys, issuer keys, or unfiltered
-private records.
+A joining full node receives private-repository access only through an active,
+current, non-conflicted reader authorization in the encrypted registry or
+claim ledger, ultimately authorized by the persona active key. Repository
+availability, prior access, hosting, and optional Assurance are not reader
+authority. An ordinary light client receives filtered decisions and
+configuration, never claim-ledger reader authority, repository credentials,
+audience keys, issuer keys, or unfiltered private records.
 
 Credential and configuration state machines remain append-only,
 generation-bound, rollback-resistant, and fail closed on unresolved forks.
@@ -1180,7 +1246,7 @@ governed decrypt-key obligations, checkpoint receipts, secret-source and
 exposure records, reset records, lost-generation handling, and exact Git
 projection are transport-independent draft building blocks. They do not
 define a live wire profile, are not required by baseline Control, and are not
-required by either optional recovery profile. Implementations MAY experiment
+required by optional Assurance. Implementations MAY experiment
 with them only as encrypted repository records and MUST report them as
 non-claimable drafts.
 
@@ -1198,15 +1264,15 @@ The registry contains:
 - authorized full-node issuer public state;
 - minimal operation reservations, results, and commit evidence;
 - encrypted audit records;
-- optional prepared recovery activation, finite recovery grants, and
-  completion receipts; and
+- active-key-authorized reader, issuer, and compromise-reset state; and
 - no raw Control frame, access token, device code, MLS state, epoch secret, or
   replayable transcript.
 
 Comms stores Control client-authorization records as opaque encrypted objects;
 their authority and merge semantics belong to the Control document. Repository
-writers still authenticate against current Core/KERI state, and Comms MUST NOT
-interpret transport arrival order as authorization.
+writers authenticate through current Core NID delegation scoped to the exact
+active persona key, and Comms MUST NOT interpret transport arrival order as
+authorization.
 
 The approving node may act on its own record only after durably committing
 and validating that commit. Another node acts only after fetching and
@@ -1214,24 +1280,19 @@ validating the record and approving authority. The repository is evidence
 replication, not distributed consensus or a cross-node execution lock.
 
 <a id="comms-control-bootstrap"></a>
-### 9.1 Locked epoch inbox and recovery records
+### 9.1 Active-key registry admission
 
-The epoch-key NIP-59 inbox exists only for prospective full/recovery-node
-registration when no authorized device Control channel is available. Public
-Core metadata provides the epoch recipient key and relay hints. The gift-wrap
-rumor, prepared activation, recovery grant, and completion records are defined
-at [`heterodyne:0.5.0#control-epoch-bootstrap`](heterodyne-control.md#control-epoch-bootstrap).
+Comms defines no locked epoch inbox, recovery-node identity, SFTP bootstrap,
+or private-repository recovery carrier. An object enters the private Control
+registry only after its exact active-key, NID-writer, repository-generation,
+and predecessor authority verify from authenticated current state. A transport
+receipt, optional Assurance record, or possession of old repository material
+MUST NOT activate, replace, or widen that authority.
 
-The epoch key stays encrypted and absent from memory except during an explicit
-local approval ceremony. Prepared public and private authority remains
-inactive, and the wrapped epoch envelope remains unreleased, until exact
-repository heads, manifest identity, and required object digests satisfy the
-signed completion condition. Epoch plaintext MUST be erased and relocked
-before any Radicle synchronization, onion-service startup, SFTP process, or
-bulk transfer.
-
-Private-Radicle recovery and SFTP overflow are optional Control profiles.
-Neither is a prerequisite for Comms or baseline Control conformance.
+An implementation MAY use optional Assurance as additional evidence where an
+owning higher-layer profile explicitly permits it, but it MUST first validate
+the active-key-scoped Comms object and MUST NOT make Assurance a baseline
+registry-admission prerequisite.
 
 <a id="comms-authorization-freshness"></a>
 ### 9.2 Authorization-view freshness
@@ -1333,7 +1394,9 @@ Verification is ordered and fail-closed:
 1. validate the closed JSON schema, owner version, profile revision, typed
    references, canonical claim ID, address, exact NIP-01 bytes, event ID, and
    outer signature;
-2. require a `valid` Core/KEL authority result for the issuer at `issued_at`;
+2. require the verified outer event `pubkey` to equal the exact
+   `nostr-secp256k1` issuer at `issued_at`, without substituting continuity,
+   recovery, repository, or cache identity;
 3. resolve and validate the complete chain in §10.2;
 4. enforce time, audience, resource, namespace, operation, and subject-type
    constraints;
@@ -1397,14 +1460,16 @@ native proof binds the owning Comms profile revision as well as the
 revocation.
 
 An authorization claim may be revoked by its issuer, an active superior issuer
-in its verified chain, current persona epoch or cold-root authority, or its
-subject. Subject revocation is self-reduction only. A descriptive claim may be
-revoked only by its issuer, an explicitly listed revoker, or a superior issuer;
-its subject may separately reject the assertion but cannot erase it.
+in its verified chain, the exact active persona key named by its
+`credential_ledger_persona`, or its subject. Subject revocation is
+self-reduction only. A descriptive claim may be revoked only by its issuer, an
+explicitly listed revoker, or a superior issuer; its subject may separately
+reject the assertion but cannot erase it.
 
-Valid direct revocation, ancestor or issuer-authority revocation, KEL/key
-revocation, reader or token-issuer reduction, signing-key compromise, and
-derived-token invalidation are cumulative. A valid reduction is permanent,
+Valid direct revocation, ancestor or issuer-authority revocation,
+credential-ledger generation reset, active-key compromise reset, reader or
+token-issuer reduction, signing-key compromise, and derived-token invalidation
+are cumulative. A valid reduction is permanent,
 takes effect immediately when authenticated, and is later made repository-
 final. Revocation wins concurrent merges. Renewal or correction creates a new
 claim ID; no later grant or `VALID` token bit resurrects the old authority.
@@ -1508,21 +1573,22 @@ parties omits them entirely. The prerequisite chain in
 A persona has one exact HTTPS issuer:
 
 ```text
-https://<host>/oidc/<cold-root-npub>
+https://<host>/oidc/<persona-npub>
 ```
 
-The final path component is the canonical NIP-19 encoding of the persona's raw
-cold-root key, not an epoch key. A host may serve many personas at disjoint
-cold-root paths. Every trusted serving node exposes current and retiring public
-keys for each persona it serves, including keys minted elsewhere.
+The final path component is the canonical NIP-19 encoding of the persona's
+active Nostr key. No cold root, KEL, or optional Assurance state is required.
+A host may serve many isolated personas at disjoint active-key paths. Every
+trusted serving node exposes current and retiring public keys for each persona
+it serves, including keys minted elsewhere.
 
 The OIDC configuration is at `<issuer>/.well-known/openid-configuration`, the
 RFC 8414 alias is
-`https://<host>/.well-known/oauth-authorization-server/oidc/<cold-root-npub>`,
+`https://<host>/.well-known/oauth-authorization-server/oidc/<persona-npub>`,
 and JWKS is at `<issuer>/.well-known/jwks.json`. Metadata uses that exact issuer
 and advertises `<issuer>/authorize`, `<issuer>/token`, and
 `<issuer>/device_authorization`. Issuer comparison is exact. Redirects,
-aliases, case folding, a host change, or an epoch-key path do not silently
+aliases, case folding, a host change, or a different persona-key path do not silently
 change issuer identity.
 
 The closed metadata schema is
@@ -1654,7 +1720,7 @@ Canonical `main` in the public persona profile repository simultaneously
 publishes:
 
 ```text
-.well-known/<cold-root-npub>/
+.well-known/<persona-npub>/
   issuer.json
   openid-configuration
   jwks.json
@@ -1664,22 +1730,24 @@ publishes:
 
 The exact manifest schema is
 `schemas/comms/oidc-continuity-manifest-v1.schema.json`. It binds profile,
-public RID, `main`, cold-root npub and raw key, accepted KEL head, exact issuer,
-monotonic sequence and predecessor digest, checkpoint-age bound, current and
-retiring key IDs/JWK digests, all status paths/URIs/digests, optional successor,
-and an active NID writer/checkpoint. Its Ed25519 authority proof and that
-writer's current ledger authority MUST verify. HTTPS and repository metadata,
-JWKS, and Status List Token bytes MUST be identical.
+public RID, `main`, the active persona npub and raw key, exact issuer, monotonic
+sequence and predecessor digest, checkpoint-age bound, current and retiring
+key IDs/JWK digests, all status paths/URIs/digests, optional successor, and an
+active NID writer/checkpoint. `persona_npub` MUST be the canonical NIP-19
+encoding of `persona_key`, and the issuer's final component MUST equal that
+npub. Its Ed25519 authority proof and that writer's current ledger authority
+for the same active persona MUST verify. HTTPS and repository metadata, JWKS,
+and Status List Token bytes MUST be identical. Optional Assurance state is not
+an input to baseline manifest validity.
 
 The manifest authority proof `issued_at` MUST be greater than or equal to its
 exact canonical ledger checkpoint's `observed_at` and MUST NOT be later than
-the verification time. The named writer authorization and its Core KEL
-authority are evaluated at that `issued_at`, not at fetch time. The verifier
-requires Core-authenticated previous-to-current KEL transition evidence that
-binds the same persona cold-root npub, the exact predecessor manifest's
-previous head (or null at genesis), the candidate's current head, and a half-open
-`valid_from <= issued_at < valid_until` interval. The candidate manifest MUST
-also carry the exact current KEL head expected by the verifier.
+the verification time. The named writer authorization and its current Core NID
+proof are evaluated at that `issued_at`, not at fetch time. The verifier
+requires the exact active persona, writer NID, ledger generation, canonical
+checkpoint, sequence, and predecessor digest. A change of active persona key
+creates a different issuer identity; continuity or recovery evidence cannot
+turn it into a same-issuer manifest update.
 
 The `jwks.json` input is hashed as raw closed JWKS bytes, and that SHA-256 MUST
 equal `current_jwks_sha256`; parsing or reserialization does not substitute for
@@ -1712,13 +1780,14 @@ list.
 
 The Radicle manifest is authoritative for Heterodyne continuity when the HTTPS
 node is unavailable. A successor requires an unbroken predecessor chain plus
-current persona epoch authority or cold-root recovery and an exact binding to
-the new manifest. Heterodyne-aware resolution may then find the new URL through
-canonical `main`; ordinary OIDC clients still require normal trust or
-registration for the new issuer. A fork, rollback, stale KEL head, digest
-mismatch, unauthorized successor, or disagreement between HTTPS and Radicle
-fails closed. Public continuity contains no private claim, consent, reader,
-issuance mapping, or secret key.
+explicit authorization in current private persona state and an exact binding
+to the new manifest. Optional Assurance MAY provide additional continuity
+evidence but cannot alias the issuers. Heterodyne-aware resolution may then
+find the new URL through canonical `main`; ordinary OIDC clients still require
+normal trust or registration for the new issuer. A fork, rollback, persona-key
+mismatch, unauthorized successor, digest mismatch, or disagreement between
+HTTPS and Radicle fails closed. Public continuity contains no private claim,
+consent, reader, issuance mapping, or secret key.
 
 <a id="comms-token-status"></a>
 ## 14. Token status profile
@@ -1783,57 +1852,38 @@ An **automated principal** is an AI or other programmatic workload acting
 through an agentic authenticated session. Every publication requested by that
 principal is agent-authored, including output that a human reviews or approves
 before publication. Automated principals MUST use the scoped workload-token
-and intent-publication path below. They MUST refuse instructions to obtain or
-exercise a persona, epoch, NID, human-device, or role private key; request raw
-signing; select a human publication profile; remove or falsify attribution;
-impersonate a human author; or bypass token, proof, scope, resource, rate, or
-size enforcement.
+and intent-publication path below. They MUST refuse instructions to obtain a
+private key, request raw signing, remove or falsify attribution, impersonate a
+human author, or bypass token, proof, signer, scope, resource, rate, or size
+enforcement.
 
 This is a conformance rule for the execution path. It does not make a valid
 Nostr signature invalid merely because a non-conforming private implementation
 misclassified its source, and it cannot detect agent text manually copied into
 a human client.
 
-<a id="comms-agent-delegation"></a>
-### 15.1 Dedicated role key and delegation
+<a id="comms-agent-signer-selection"></a>
+### 15.1 Signer selection and Nostr authorship
 
-A full node accepting automated commands MUST generate at least one dedicated
-secp256k1 agent-signing key locally. The private key MUST remain protected on
-the full node and MUST NOT be released through an agent session, OIDC,
-configuration sync, credential sync, backup export to the workload, tool
-result, or diagnostic interface. One generic role is normal; separate stable
-roles MAY isolate a newsletter, aggregator, moderator, or other automation
-pipeline.
+An independent agent key is the preferred default signer. It is an ordinary
+Nostr author and its public key appears unchanged in the event's `pubkey`.
+Separately governed automation MAY use different agent keys or public role
+names. A private agent key MUST remain inside its selected signer and MUST NOT
+be released to the workload, token, tool result, configuration export, audit
+record, or public event.
 
-The registry defines the non-stamping
-`heterodyne-comms-agent-signing-delegation-v1` profile on the Core
-role-addressed delegation extension at [`heterodyne:0.5.0#core-nid-delegation`](heterodyne-core.md#core-nid-delegation).
-Its discriminator is
-`tag:d=agent:<role-id>;tags:key_proof,radicle_nid,nid_proof`. Comms supplies
-only the four items that extension requires.
+A persona key MAY sign an automated publication only when the exact active
+OIDC authorization contains scope `heterodyne:agent:sign:persona`. General
+publication authority, a NIP-46 connection, client metadata, a human approval,
+or an agent-publication scope without that exact additional scope is
+insufficient. Implementations SHOULD present the agent-key mode first and MUST
+NOT silently fall back from an unavailable agent key to the persona key.
 
-**Namespace.** `agent`. `role-id` is exactly 32 random bytes encoded as 64
-lowercase hexadecimal characters.
-
-**Proof domain.** Domain `heterodyne-agent-signing-binding-v1`, whose claim binds
-`cold_root`, `nid`, `publishing_key`, and `role_id`. The hosting NID and the
-agent key each sign those bytes independently.
-
-**Additional tags.** `radicle_nid` carrying the hosting full-node NID, and
-`nid_proof` carrying that NID's Ed25519 proof, inserted after `heterodyne` and
-before `publishing_key`. Each appears exactly once. Both proofs are REQUIRED;
-the Core extension's `key_proof` is the agent key's BIP-340 proof over the
-same bytes.
-
-**Semantics.** The role authorizes automated publication for the persona under
-[`heterodyne:0.5.0#comms-agent-attribution`](#comms-agent-attribution) and nothing else. Acceptance
-additionally requires ordinary Core repo finality, returning
-`provisional_not_final` while unmet.
-
-Replacing the delegation at the same `agent:<role-id>` address rotates only
-that role's device key. The prior key remains historically attributable but
-MUST NOT authorize a new event after the replacement becomes effective. Other
-roles, human devices, and the epoch key are unchanged.
+Nostr authorship is never virtualized. The selected signing key is the
+event's actual `pubkey`, and normal NIP-01 ID and BIP-340 verification are
+authoritative. A Heterodyne association can explain that an agent key or role
+is related to a persona-signed event; it cannot replace, alias, or override the
+signer.
 
 <a id="comms-agent-workload"></a>
 ### 15.2 Private workload registration and stable identity
@@ -1842,12 +1892,18 @@ The canonical private claim ledger MUST carry an active
 `heterodyne.agent` / `workload-registration` authorization claim. Its value
 MUST validate against
 `docs/spec/schemas/comms/agent-workload-registration-v1.schema.json` and is
-closed. It binds exact `client_id`, subject JWK thumbprint, `ai` or
-`programmatic` class, exactly one role ID, exactly one audience, non-empty
-scopes, allowed kinds, feeds and resources, maximum content bytes, finite
-positive rate window/count/burst, validity interval, and an optional
-descriptive software-claim reference. Empty or unlimited kind, resource, size,
-rate, or burst authority is invalid.
+closed. It binds the exact active `persona_key`, `client_id`, subject JWK
+thumbprint and DPoP proof method, `ai` or `programmatic` class, one
+`selected_signer`, its `agent` or `persona` key class, one audience, non-empty
+OIDC scopes, allowed event kinds, feeds and resources, maximum content bytes,
+finite positive rate window/count/burst, validity interval, and an optional
+descriptive software-claim reference. It MAY bind exactly one closed public
+`agent_association` object whose `kind` is `key` or `role` and whose `value` is
+respectively one 32-byte lowercase-hex Nostr key or a non-empty public role of
+at most 128 characters. For key class `persona`,
+`selected_signer` MUST equal `persona_key` and the exact persona-signing scope
+is required. Empty or unlimited kind, resource, size, rate, or burst authority
+is invalid.
 
 The OIDC client registration, explicit consent, and workload registration MUST
 all be active, repository-confirmed, subject-identical, and mutually
@@ -1863,7 +1919,9 @@ origin and persona-private pairwise secret. The tuple remains stable across
 temporary-token renewals for one registration; distinct persona secrets
 prevent the same workload JWK from producing a correlatable subject across
 personas. An optional software, vendor, model, or pipeline claim is descriptive
-only and grants no authority.
+only and grants no authority. The tuple, subject proof, client ID, token ID,
+and private registration are authorization inputs and are not public
+attribution fields.
 
 <a id="comms-agent-token"></a>
 ### 15.3 Third-party OIDC workload projection
@@ -1873,9 +1931,12 @@ project an active workload registration to an ordinary third-party resource
 server as the RFC 9068 access token defined by §12.2. This is an interoperable
 projection of private-ledger authority, not a node-local command credential.
 In addition to the generic §12.2 claims, it carries
-`https://heterodyne.network/jwt/agent-role-id` equal to the registration's one
-role. Its exact `aud` and normalized `scope` MUST be allowed by that workload
-registration and the compatible client registration and consent.
+private Heterodyne claims for the exact selected signer, signer key class, and
+optional association kind and value. Its exact `aud` and normalized `scope`
+MUST be allowed by that workload registration and the compatible client
+registration and consent. A persona-key token MUST contain the exact
+`heterodyne:agent:sign:persona` scope; the verifier MUST NOT infer it from the
+selected signer or any other claim.
 
 If the client registration selects sender constraint, the token uses only the
 standard DPoP or mutual-TLS confirmation form defined by §12.2. Its validity
@@ -1883,34 +1944,119 @@ MUST NOT outlive the workload registration, consent, source authorization, or
 the issuer's applicable third-party token policy. Before claim use, a resource
 server validates the complete §12.2 type, issuer, audience, signature, time,
 client, scope, confirmation, checkpoint, status, and source-claim contract,
-plus exact equality between the projected role and current registration.
+plus exact equality between the projected signer, key class, optional public
+association kind/value, and current registration. Absence is also exact: a
+token and registration MUST either both omit the association or both carry the
+same kind and value. A null, scalar, array, partial object, or otherwise
+malformed association claim fails closed with `agent-signer-mismatch` before
+its fields are used; a verifier MUST NOT coerce or partially accept it.
 A projected JWT never replaces canonical private-ledger state. Client
 Credentials remains prohibited; a separately integrated sender-constrained
 HTTPS workload profile is required before that grant can be added.
 
+An internal Social publication boundary MUST atomically validate, attribute,
+sign, and verify; it MUST NOT split those actions across caller-consumable
+pre-sign and post-sign capability producers. The embedding supplies a trusted
+clock and a durable execute-once signer capability. Before any semantic read,
+Comms captures the complete publication request's own property descriptors
+once. The top level and every registration, token, unsigned-event, content,
+feed, resource, and destination data tree MUST be closed ordinary data-
+descriptor structures; accessors, symbols, sparse arrays, unexpected members,
+or later substitution fail closed. One captured authority reference is used
+unchanged for authority lookup, clock sampling, signing, and proof branding;
+all other members are independently copied and frozen, and the caller input is
+never read again. Comms samples that clock once, then validates the represented
+persona, actual signer and optional
+association, event kind and time, publication scope, exact requested feed and
+resource, every immutable registration and token/grant identity or version
+member, current ledger/status state, and all validity bounds. Trusted current
+time is distinct from event `created_at`: both MUST satisfy their applicable
+bounds, but they need not be equal. The registration audience MUST equal the
+token's sole audience, its subject thumbprint/proof MUST equal both token
+confirmation and validated sender proof, and each destination MUST occur in
+its matching registration allow list.
+
+The embedding constructs one publication-authority instance and captures the
+trusted-clock function and a bound `executeOnce` function at that moment.
+Later replacement of a method on the caller's signer object has no effect.
+Every signed-publication proof is branded to the exact authority instance that
+issued it. A Social consumer MUST be constructed with its expected authority
+and MUST reject a proof from every other instance, including an attacker-
+created instance using a backdated clock. There is no authority-agnostic proof
+consumer.
+
+Only after that final current-state check may Comms remove caller attribution,
+inject the canonical block below, deep-copy and freeze the resulting unsigned
+event, and pass those exact bytes to the embedding-owned `executeOnce`
+boundary. It MUST strict-verify the returned NIP-01 id/signature and exact
+equality with that immutable snapshot before returning the event and a
+module-authenticated one-use signed-publication proof. No API may accept an
+already signed event, strip `id`/`sig`, and mint that proof. Social burns the
+proof against the exact signed event, persona, signer, association, and
+destination without rechecking mutable grant state. Thus stale or revoked
+state at the final pre-sign check prevents signing, while revocation after an
+event was genuinely signed does not retroactively invalidate it. A plain or
+reconstructed object grants no authority. The proof is not a wire object and
+MUST NOT be serialized into the event.
+
+The execute-once result is untrusted input. Comms reads each source node's own
+property descriptors once, requires a closed ordinary object/array tree made
+only of data descriptors, and rejects accessors, symbols, sparse arrays, and
+unexpected members. A runtime that cannot generally prove proxy absence MUST
+not claim that it did; any proxy may participate only in that single descriptor
+capture. Comms then constructs and freezes one independent plain-data snapshot
+and never reads the source again. Strict validation, equality comparison,
+proof storage, and the returned event MUST all use that same snapshot. A result
+cannot expose one event for validation and another for return.
+
 <a id="comms-agent-attribution"></a>
-### 15.4 Canonical public attribution
+### 15.4 Mandatory pre-sign attribution
 
 An agent supplies intent content, kind, destination/feed, and permitted
 options. It does not supply a signature or authoritative attribution identity.
 The full node removes every caller-supplied reserved agent-attribution field,
-then inserts these tags in exact relative order:
+then inserts this NIP-32-compatible block in exact relative order:
 
 ```text
 ["L", "network.heterodyne.agent"]
 ["l", "ai" | "programmatic", "network.heterodyne.agent"]
-["heterodyne_agent", "v1", "<issuer>", "<sub>", "<client_id>", "<role-id>"]
-["agent_action", "publish"]
 ```
+
+When the exact token/registration association carries a public kind and value,
+the signer MUST append exactly one corresponding Heterodyne tag after the
+NIP-32 block:
+
+```text
+["heterodyne_agent", "v1", "key", "<agent-key>"]
+["heterodyne_agent", "v1", "role", "<public-role>"]
+```
+
+The association is optional and descriptive. It MUST NOT contain an issuer,
+OIDC subject, client ID, token ID, claim ID, audit ID, private role record, or
+other non-public authorization identifier. The closed registration carries at
+most one association; it cannot publish both key and role forms.
+
+Before injection, the signer MUST compare both presence and exact
+`agent_association.kind`/`agent_association.value` equality between verified
+token identity and current registration. A mismatch fails with
+`agent-signer-mismatch`; the signer MUST NOT select one source, coerce a role
+to a key, or infer an association from the selected signer.
+
+The signer then appends `["agent_action","publish"]` immediately after the
+association, or immediately after the NIP-32 block when no association is
+present. Thus association-bearing events retain the registry's existing
+`L`, `l`, `heterodyne_agent`, `agent_action` relative order while the
+association itself remains optional.
 
 It MAY append `["agent_review","<verified-review-reference>"]` only after
 independent verification. Review never changes the automated classification.
-The full node signs exactly once with the current key at the named role
-address, then applies ordinary §4 publication and §5 indexing.
+All injection and validation MUST finish while the event is unsigned. The
+signer then constructs the final NIP-01 ID and signs exactly once with the
+selected key before applying ordinary §4 publication and §5 indexing. A
+caller-supplied event ID or signature at the injection boundary is invalid.
 
-The registry makes the attribution discriminator
-`tags:L=network.heterodyne.agent,l=<class>@network.heterodyne.agent,heterodyne_agent=v1,agent_action=publish;order=v1`
-active through these non-stamping profiles:
+The registry activates the mandatory automation label for these non-stamping
+profiles:
 
 - `heterodyne-comms-agent-attribution-kind-1-v1`;
 - `heterodyne-comms-agent-attribution-kind-6-v1`;
@@ -1924,29 +2070,44 @@ active through these non-stamping profiles:
 These cover notes, articles, replies, reactions, reposts, media, and
 moderation actions represented by those kinds. A kind without an active
 profile MUST fail with `agent-attribution-profile-unavailable`; it MUST NOT
-fall back to an unlabeled or human event. Deterministic KEL, delegation,
-feed-index, token-status, relay-metadata, and equivalent maintenance events are
+fall back to an unlabeled or human event. Deterministic Assurance,
+token-status, relay-metadata, and equivalent maintenance events are
 not agent-authored application publications.
+
+All eight entries use discriminator
+`production-rule:agent-attribution-v1`. That rule admits exactly the canonical
+NIP-32 block followed directly by `agent_action`, or the same block with one
+canonical `heterodyne_agent` association immediately before `agent_action`.
+Neither form makes the association mandatory or permits it in another order.
 
 Tier 1 carries the block publicly. Tier 2 carries it inside the private
 repository trust boundary. Tier 3 carries the same block only inside the
 encrypted logical event and adds no agent marker to the clear wrapper. A
-verifier MUST require the signer to equal the current publishing key at the
-named role address and MUST require the class, issuer, subject, client, and
-role fields to be canonical. Public verification establishes a signed
-agent-service assertion; it does not reveal or prove the private token
-ceremony.
+verifier MUST require the event `pubkey` to equal the exact selected signer and
+MUST require the label namespace, class, action, ordering, and any optional
+association to be canonical. Heterodyne clients always render the event as
+automated, including a persona-key-signed event. Vanilla clients ignore the
+unknown label and display the actual Nostr author normally. Public
+verification establishes a signed automation assertion; it does not reveal or
+prove the private token ceremony.
+
+Human organization delegates remain private authorization and audit subjects
+by default. They do not receive automation attribution merely because they use
+a shared organization signer. An organization policy MAY require a public
+human byline for a particular event class; that policy is separate from the
+mandatory automation label and MUST NOT expose private OIDC or audit identity.
 
 <a id="comms-agent-fail-closed"></a>
 ### 15.5 Fail-closed authorization and privacy
 
 The full node MUST refuse before signing for a missing, invalid, expired,
 revoked, stale, wrong-audience, or wrong-scope token; sender-proof or
-`cnf.jkt` failure; session, client, subject, role, or current-key mismatch;
-non-active or unavailable ledger/status state; a disallowed kind, feed,
+`cnf.jkt` failure; session, client, subject, persona, selected-signer,
+key-class, or current-key mismatch; missing persona-signing scope; non-active
+or unavailable ledger/status state; a disallowed kind, feed,
 resource, size, rate, or burst; unavailable attribution profile; raw signing,
 key access, human-profile selection, or attribution bypass. There is no
-fallback to an unlabeled event, human key, bearer-only token, stale decision,
+fallback to an unlabeled event, persona key, bearer-only token, stale decision,
 or agent-provided signature.
 
 The raw token, `jti`, unused scopes, source claim IDs, sender proof, and private
@@ -1976,22 +2137,25 @@ The list below is descriptive:
 - **COMMS-I-LEDGER-CONFINEMENT:** Private claim-ledger contents and decryption material are available only to active durable NID-bearing ledger readers.
 - **COMMS-I-ISSUER-KEY-CONFINEMENT:** Shared OIDC signing keys are separately encrypted and released only to nodes with active oidc-token-issuer authority.
 - **COMMS-I-MINT-FRESHNESS:** A node mints only from a synchronized canonical checkpoint no older than the manifest bound, which cannot exceed 300 seconds.
-- **COMMS-I-ISSUER-CONTINUITY:** HTTPS issuer metadata and the root-key-scoped Radicle continuity tree agree on the exact active issuer, keys, status digests, and authorized succession.
+- **COMMS-I-ISSUER-CONTINUITY:** HTTPS issuer metadata and the active-persona-key-scoped Radicle continuity tree agree on the exact active issuer, keys, status digests, and authorized succession.
 - **COMMS-I-CLAIM-RELEASE:** OIDC projection releases only claims allowed by scope, audience, client policy, consent, active repository state, issuer trust, and proof requirements.
 - **COMMS-I-JWT-TYPE-AUDIENCE:** JWT consumers enforce exact issuer, intended audience, time, signature, nonce when applicable, and token-type separation including typ at+jwt for access tokens.
 - **COMMS-I-STATUS-INTEGRITY:** Draft-21 status lists are signed, fresh, digest-bound across HTTPS and Radicle mirrors, writer-namespaced without index reuse, and never let VALID override other token failures.
 - **COMMS-I-PUBLIC-READER-TIER1-ONLY:** A public-reader implementation consumes only verified Tier 1 content and never renders Tier 2 plaintext or interprets Tier 3 ciphertext as public content.
-- **COMMS-I-AGENT-ROLE-BINDING:** Every agent-authored event signer, workload registration, token role claim, and active role-addressed delegation identify the same dedicated full-node-held role key.
+- **COMMS-I-AGENT-SIGNER-BINDING:** Every automated event uses the exact registered signer, key class, and optional association kind/value; an agent key is preferred, while a persona key requires the explicit OIDC persona-signing scope, and the event pubkey remains authoritative.
 - **COMMS-I-AGENT-ATTRIBUTION:** Every agent-authored application event carries the canonical automation attribution block at its tier-appropriate protected location.
 - **COMMS-I-WORKLOAD-TOKEN-CONFINEMENT:** Workload tokens, token identifiers, private source claims, and sender proofs remain confined to the protected authorization and audit boundary.
 - **COMMS-I-MARMOT-UPSTREAM-AUTHORITY:** The pinned Marmot dependency remains authoritative for MLS, conversation events, encrypted media, and Nostr transport semantics.
+- **COMMS-I-MARMOT-ACCOUNT-IDENTITY:** The active persona key is the Marmot account identity, every device leaf remains independent, and neither Heterodyne continuity nor storage provenance aliases another account or leaf inside MLS.
 - **COMMS-I-MARMOT-EXACT-BYTES:** Radicle storage and every Nostr or media interface preserve exact signed Marmot event bytes and encrypted media ciphertext.
 - **COMMS-I-MARMOT-SECRET-CONFINEMENT:** Independent device leaves do not share secrets by default, and node-mediated clients receive no MLS, account, leaf, or repository secret.
-- **COMMS-I-RADICLE-ROUTING-AUTHORITY:** Only a canonical Marmot routing commit by an active administrator can authorize a matching Radicle routing binding and repository genesis.
+- **COMMS-I-RADICLE-ROUTING-AUTHORITY:** Only a canonical Marmot routing commit by its active account-key administrator can authorize a routing binding and repository genesis with the same `h`, RID, routing-event ID, and authorized writer refs.
 - **COMMS-I-RADICLE-NON-ERASURE:** Retention expiry stops conforming advertisement and replication but never claims erasure of independent Git objects, clones, exports, or backups.
+- **COMMS-I-TRUSTED-SEED-CONFINEMENT:** A trusted seed receives only routing metadata and exact encrypted event bytes, writes only its own active authorized NID ref, and gains no persona, repository-owner, group-admin, full-node, or MLS authority.
+- **COMMS-I-PRIVATE-RELAY-ACL:** Every private seed read or write uses embedding-configured seed and administrator trust roots, one-use authenticated request authority, trusted current state and time, and one unique current unexpired administrator-signed ACL head matching the account role, seed grant, `h`, private RID, and Marmot group transition.
 
 Mechanism guarantees MUST remain distinct. Tier 3 has no forward secrecy: a
-compromised audience key decrypts every retained post and index under its
+compromised audience key decrypts every retained post under its
 `key_id`; rotation protects only later generations. Marmot conversation and
 Control-channel guarantees come only from the pinned Marmot/MLS profile and
 its retention behavior. Clients MUST NOT infer one mechanism's guarantee for
@@ -2041,15 +2205,17 @@ by every implementation claiming those features, strict or not.
 
 A Comms conformance report follows the family requirements in
 [`heterodyne:0.5.0#core-conformance`](heterodyne-core.md#core-conformance) and claims Core+Comms. A base
-implementation MUST implement the envelope, tiers, publishing, feed,
-retrieval, the Marmot invitation hook, private Control-registry integration,
-and every baseline Comms invariant. One that advertises DMs MUST implement all
-applicable Marmot rules in §7. Transport-independent credential-continuity
-definitions remain non-claimable at the pinned registry revision.
+implementation MUST implement the envelope, tiers, one-event exact-byte
+publishing and retry, NIP-65 outbox retrieval, source-neutral selection, and
+every baseline Comms invariant. It MUST NOT require Assurance, a cold root,
+KERI state, an epoch key, kind `31005`, or kind `31007`. One that advertises
+DMs MUST implement all applicable Marmot rules in §7.
+Transport-independent credential-continuity definitions remain non-claimable
+at the pinned registry revision.
 
 Typed key claims, the private claim ledger, the OIDC issuer, token status, the
 public reader, Marmot conversations, Radicle Marmot storage and relays, and
-agent authorship are each a separately claimed feature, not an entry
+trusted-seed private relay and agent authorship are each a separately claimed feature, not an entry
 requirement. A base Comms implementation therefore does not need an RFC 9068
 issuer, JWKS discovery, a continuity manifest, or status lists. The
 invariant scoping in
@@ -2060,11 +2226,20 @@ implementation claims a feature that requires it, which for Comms means
 and pairwise subject are OIDC objects, so a client that works with agents
 ships the issuer and a client that does not, does not.
 
+A report claiming `comms.trusted-seed-private-relay.v1` MUST identify every
+seed by its Radicle NID, demonstrate independent endpoints and writer refs,
+exercise NIP-42 plus the current ACL for both reads and writes, and fail closed
+for every invalid-state class in §7.7.1. It MUST demonstrate that accepted
+write bytes enter only the selected seed's authorized ref and that no MLS leaf,
+plaintext, content-decryption key, persona authority, or group-administrator
+authority reaches the seed.
+
 A report claiming `comms.public-reader.v1` MAY omit every send-side and private
 feature, but MUST name the `public-reader` Core role, implement
 `core.nostr-relay-read.v1`, list whether `core.outbound-tor.v1` is present,
 pass every public-reader and applicable Core vector, and report reduced
-assurance when Tor or repo confirmation is unavailable. It MUST NOT claim this
+assurance when Tor is unavailable. Repository unavailability does not demote
+valid relay-derived state. It MUST NOT claim this
 feature after rendering Tier 2 or Tier 3 as public content.
 
 A report claiming `heterodyne-comms-strict-v1` MUST include the computed

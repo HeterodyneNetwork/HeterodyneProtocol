@@ -9,13 +9,14 @@ function read(relativePath: string): string {
 }
 
 describe("Marmot Control canonical contract", () => {
-  it("activates baseline Control without Double Ratchet or recovery gating", () => {
+  it("activates baseline Control from the active key without Double Ratchet or Assurance gating", () => {
     const control = read("docs/spec/heterodyne-control.md");
 
     expect(control).toContain('"spec_version": "heterodyne/0.5.0"');
     expect(control).toContain('"transport_owner": "marmot"');
     expect(control).toContain('"can_claim_control_conformance": true');
-    expect(control).toMatch(/portable recovery[\s\S]*not\s+required for baseline Control/i);
+    expect(control).toMatch(/bare[\s\S]*active Nostr key[\s\S]*complete Control persona/i);
+    expect(control).toMatch(/Assurance[\s\S]*not a Control prerequisite/i);
     expect(control).not.toMatch(/nostr-double-ratchet|kind:31015|kind:31016/i);
   });
 
@@ -63,22 +64,23 @@ describe("Marmot Control canonical contract", () => {
     expect(JSON.stringify(kinds)).not.toMatch(/heterodyne-comms-double-ratchet|heterodyne-control-session-device/);
   });
 
-  it("publishes every replacement closed schema", () => {
+  it("publishes every current closed Control schema", () => {
     for (const name of [
       "control-frame-v1.schema.json",
       "control-client-authorization-v1.schema.json",
       "control-operation-record-v1.schema.json",
-      "control-epoch-registration-v1.schema.json",
-      "control-prepared-activation-v1.schema.json",
+      "control-agent-publish-v1.schema.json",
+      "control-audit-record-v1.schema.json",
+      "control-capability-set-v1.schema.json",
+      "control-device-authorization-state-v1.schema.json",
       "control-recovery-grant-v1.schema.json",
       "control-recovery-completion-v1.schema.json",
-      "control-sftp-grant-v1.schema.json",
     ]) {
       expect(existsSync(resolve(repositoryRoot, "docs/spec/schemas/control", name)), name).toBe(true);
     }
   });
 
-  it("registers Control recovery as separately claimable optional features", () => {
+  it("registers multi-persona signing and compromise reset features", () => {
     const features = JSON.parse(read("docs/spec/registry/features.json")) as {
       features: Array<{ id: string; owner: string }>;
     };
@@ -87,13 +89,13 @@ describe("Marmot Control canonical contract", () => {
       .map(({ id }) => id);
     expect(control).toEqual(expect.arrayContaining([
       "control.marmot.v1",
-      "control.recovery.radicle.v1",
-      "control.recovery.epoch-inbox.v1",
-      "control.recovery.sftp.v1",
+      "control.multi-persona-vaults.v1",
+      "control.nip46-oidc-signing.v1",
+      "control.agent-workload-publication.v1",
+      "control.trusted-seed-provisioning.v1",
+      "control.compromise-reset.v1",
     ]));
     const specText = read("docs/spec/heterodyne-control.md");
-    expect(specText).toMatch(
-      /Recovery capabilities are separately advertised optional profiles/,
-    );
+    expect(specText).toMatch(/Optional Assurance[\s\S]*not a Control prerequisite/);
   });
 });

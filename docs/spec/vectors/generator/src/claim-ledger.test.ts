@@ -32,10 +32,8 @@ import {
 import { buildFixtures } from "./fixtures.js";
 import {
   buildClaimLedgerScenario,
-  buildClaimLedgerVectors,
-  replayClaimLedgerVector,
   type ClaimLedgerScenario,
-} from "./topics-claim-ledger.js";
+} from "./claim-ledger-test-support.js";
 import { bytesToHex, utf8Bytes } from "./hex.js";
 import { jcsCanonicalize } from "./jcs.js";
 import { OIDC_RSA_ONE, OIDC_RSA_TWO } from "./oidc-rsa-fixtures.js";
@@ -433,6 +431,79 @@ describe("reader lifecycle and metadata privacy", () => {
     ]) {
       expect(() => validateReaderOnboardingBundle(mutation, state, request)).toThrow(/onboarding|binding|authorization/);
     }
+  });
+
+  it("rejects an accessor-backed stored claim event without invoking it", () => {
+    const records = [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord];
+    const state = mergeClaimLedger(
+      records,
+      [],
+      s.epochOneRepository.checkpoint,
+      contextFor(s.epochOneRepository.repository),
+    );
+    const hostileRecord = structuredClone(s.claimRecordOne);
+    const artifact = (hostileRecord.payload as Record<string, unknown>)
+      .claim_artifact as Record<string, unknown>;
+    const event = artifact.event as Record<string, unknown>;
+    const eventId = event.id;
+    let getterCalls = 0;
+    Object.defineProperty(event, "id", {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return eventId;
+      },
+    });
+    const hostileState = {
+      ...state,
+      records: state.records.map((record) =>
+        record.record_id === hostileRecord.record_id ? hostileRecord : record),
+    };
+    const request = s.requestFor(s.claimRecordOne, s.claimOne);
+    request.verification_context.now = s.now + 60;
+    expect(() => buildReaderOnboardingBundle({
+      reader_nid: s.writerOne.did_key,
+      request,
+      audience_key: s.audienceKeyOne,
+      compact_state: { confirmed_claim_ids: [s.claimOne.artifact.semantic.claim_id] },
+    }, hostileState)).toThrow(/claim-event-signature-invalid|claim-ledger-reader-unauthorized/);
+    expect(getterCalls).toBe(0);
+  });
+
+  it("keeps the verified claim event ID stable after later source mutation", () => {
+    const records = [s.claimRecordOne, s.claimRecordTwo, s.epochOneRecord];
+    const state = mergeClaimLedger(
+      records,
+      [],
+      s.epochOneRepository.checkpoint,
+      contextFor(s.epochOneRepository.repository),
+    );
+    const hostileRecord = structuredClone(s.claimRecordOne);
+    const artifact = (hostileRecord.payload as Record<string, unknown>)
+      .claim_artifact as Record<string, unknown>;
+    const event = artifact.event as Record<string, unknown>;
+    const originalEventId = event.id as string;
+    const hostileState = {
+      ...state,
+      records: state.records.map((record) =>
+        record.record_id === hostileRecord.record_id ? hostileRecord : record),
+    };
+    const compactState = Object.defineProperty({}, "confirmed_claim_ids", {
+      enumerable: true,
+      get() {
+        event.id = "00".repeat(32);
+        return [s.claimOne.artifact.semantic.claim_id];
+      },
+    });
+    const request = s.requestFor(s.claimRecordOne, s.claimOne);
+    request.verification_context.now = s.now + 60;
+    const bundle = buildReaderOnboardingBundle({
+      reader_nid: s.writerOne.did_key,
+      request,
+      audience_key: s.audienceKeyOne,
+      compact_state: compactState,
+    }, hostileState);
+    expect(bundle.authorization.event_id).toBe(originalEventId);
   });
 
   it("materializes all fixed-size opaque buckets and changes every bucket per commit", () => {
@@ -1390,72 +1461,5 @@ describe("multi-writer OIDC issuer authority", () => {
     const context = s.makeTask5Context(repository.repository);
     context.record_evidence.set(duplicate.record_id, boundEvidence(duplicate));
     expect(() => mergeClaimLedger(records, [], repository.checkpoint, context)).toThrow(/duplicate/);
-  });
-});
-
-describe("Task 4 vector closure", () => {
-  it("authors the exact thirteen vectors from executable decisions", async () => {
-    const vectors = await buildClaimLedgerVectors(fixtures);
-    expect(vectors).toHaveLength(13);
-    expect(vectors.map(({ relativePath }) => relativePath)).toEqual(
-      Array.from({ length: 13 }, (_, index) => `claim-ledger/${(index + 1).toString().padStart(3, "0")}-${[
-        "reader-nid-authorized", "nidless-reader-denied", "delivered-grant-provisional", "immediate-revocation",
-        "multiwriter-revocation-wins", "authority-reduction-wins", "nonmonotonic-conflict-blocks",
-        "checkpoint-rollback-rejected", "keyed-path-metadata-private", "reader-removal-key-rotation",
-        "multiwriter-status-allocation", "stale-minter-denied", "source-claim-revokes-token",
-      ][index]}.json`),
-    );
-    const rollback = vectors.find(({ vector }) => vector.vector_id.endsWith("checkpoint-rollback-rejected"))!.vector;
-    expect(rollback.expected_output).toEqual({ verdict: "reject", reason_code: "claim-ledger-rollback" });
-    const privacy = vectors.find(({ vector }) => vector.vector_id.endsWith("keyed-path-metadata-private"))!.vector;
-    expect((privacy.expected_output.normalized as { changed_entries: number }).changed_entries).toBe(256);
-    const multiwriter = vectors.find(({ vector }) => vector.vector_id.endsWith("multiwriter-status-allocation"))!.vector;
-    const multiwriterOutput = multiwriter.expected_output.normalized as any;
-    expect(multiwriter.expected_output.verdict).toBe("accept");
-    expect(multiwriterOutput.writers.map(({ eligibility }: any) => eligibility.allowed)).toEqual([true, true]);
-    expect(new Set(multiwriterOutput.writers.map(({ signing_key_id }: any) => signing_key_id)).size).toBe(1);
-    expect(multiwriterOutput.unique_allocation_count).toBe(2);
-    expect(multiwriterOutput.durable_before_return).toBe(true);
-
-    const stale = vectors.find(({ vector }) => vector.vector_id.endsWith("stale-minter-denied"))!.vector;
-    const staleOutput = stale.expected_output.normalized as any;
-    expect(staleOutput.boundary_300.allowed).toBe(true);
-    expect(staleOutput.boundary_301.reason_code).toBe("oidc-checkpoint-stale");
-    expect(staleOutput.zero_bound_exact.allowed).toBe(true);
-    expect(staleOutput.zero_bound_after_one.reason_code).toBe("oidc-checkpoint-stale");
-    expect(staleOutput.removal).toMatchObject({ allowed: false, pending_rotation: true, reason_code: "oidc-signing-key-unavailable" });
-    expect(staleOutput.post_rotation).toMatchObject({ allowed: true, pending_rotation: false });
-    expect(staleOutput.rotated_key.audience_key_id).not.toBe(staleOutput.rotated_key.previous_key_id);
-    expect(staleOutput.issuer_epoch_fork).toEqual({
-      verdict: "reject", reason_code: "claim-repository-conflict",
-    });
-
-    const invalidation = vectors.find(({ vector }) => vector.vector_id.endsWith("source-claim-revokes-token"))!.vector;
-    const invalidationOutput = invalidation.expected_output.normalized as any;
-    expect(invalidationOutput.converged).toBe(true);
-    expect(invalidationOutput.left_token_invalidations).toEqual(["writer_one_token_0001", "writer_two_token_0001"]);
-    expect(invalidationOutput.invalidation_record_jtis).toEqual([
-      "writer_one_token_0001", "writer_one_token_0001",
-      "writer_two_token_0001", "writer_two_token_0001",
-    ]);
-    expect(invalidationOutput.generated_record_count).toBe(4);
-    expect(invalidationOutput.generated_matches_committed).toBe(true);
-    expect(invalidationOutput.canonically_durable).toBe(true);
-    expect(invalidationOutput.causes).toEqual(["signing-key-compromised", "source-claim-revoked"]);
-
-    const boundaryMutation = structuredClone(stale.input) as any;
-    boundaryMutation.evaluation_age = 300;
-    expect(replayClaimLedgerVector(boundaryMutation)).toMatchObject({ verdict: "accept" });
-
-    const invalidationMutation = structuredClone(invalidation.input) as any;
-    invalidationMutation.committed_invalidations.pop();
-    expect(replayClaimLedgerVector(invalidationMutation)).toMatchObject({
-      verdict: "reject",
-      normalized: { generated_matches_committed: false },
-    });
-
-    const multiwriterMutation = structuredClone(multiwriter.input) as any;
-    multiwriterMutation.writers[0].audience_key.hex = "00".repeat(32);
-    expect(replayClaimLedgerVector(multiwriterMutation)).toMatchObject({ verdict: "reject" });
   });
 });

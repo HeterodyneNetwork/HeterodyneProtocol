@@ -3,13 +3,42 @@
   "$id": "https://heterodyne.network/schemas/social/agent-policy-receipt-v1.schema.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["profile", "spec_version", "event_id", "device_key", "cold_root", "reason", "observed_at", "evidence", "explanation", "remediation"],
+  "required": ["profile", "spec_version", "event_id", "event_author", "agent_association", "policy", "decision", "reason", "observed_at", "evidence", "explanation", "remediation"],
   "properties": {
     "profile": {"const": "heterodyne.social.agent-policy-receipt.v1"},
     "spec_version": {"const": "heterodyne/0.5.0"},
     "event_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "device_key": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "cold_root": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "event_author": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "agent_association": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": {"enum": ["key", "role"]},
+            "value": {"type": "string", "minLength": 1, "maxLength": 128}
+          },
+          "allOf": [
+            {
+              "if": {"properties": {"kind": {"const": "key"}}, "required": ["kind"]},
+              "then": {"properties": {"value": {"pattern": "^[0-9a-f]{64}$"}}}
+            }
+          ]
+        }
+      ]
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 128},
+        "version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"}
+      }
+    },
+    "decision": {"const": "advisory-violation"},
     "reason": {"enum": ["agent-attribution-missing", "agent-attribution-falsified", "agent-publication-bypass"]},
     "observed_at": {"type": "integer", "minimum": 0},
     "evidence": {
@@ -19,6 +48,6 @@
       "items": {"type": "string", "minLength": 1, "maxLength": 512}
     },
     "explanation": {"type": "string", "minLength": 1, "maxLength": 4096},
-    "remediation": {"const": "rotate-device-key"}
+    "remediation": {"enum": ["correct-attribution", "replace-signing-key"]}
   }
 }

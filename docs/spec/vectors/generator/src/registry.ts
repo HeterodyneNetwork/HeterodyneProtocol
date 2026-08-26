@@ -68,7 +68,9 @@ export type ObjectEntry = {
   first_version: string;
   status: RegistryStatus;
   schema: string;
-  carriers: Array<"radicle-authority-file" | "marmot-application-data">;
+  carriers: Array<
+    "radicle-authority-file" | "marmot-application-data" | "nostr-event"
+  >;
 };
 
 export type ProofDomainEntry = {
