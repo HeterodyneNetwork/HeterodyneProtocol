@@ -37,16 +37,16 @@ describe("canonical family documentation", () => {
     expect(lintMaintainedGuides(repositoryRoot)).toEqual([]);
   });
 
-  it("keeps ADR-047 proposed until the final closure review is complete", () => {
-    const proposedPath = resolve(
-      repositoryRoot,
-      "docs/adr/2026-08-24-047-nostr-first-interoperability.md",
-    );
-    expect(existsSync(proposedPath)).toBe(true);
-    expect(readFileSync(proposedPath, "utf8")).toContain("**Status:** Proposed");
-    expect(existsSync(resolve(
+  it("keeps accepted ADR-047 archived after the final closure review", () => {
+    const archivedPath = resolve(
       repositoryRoot,
       "docs/adr/archive/2026-08-24-047-nostr-first-interoperability.md",
+    );
+    expect(existsSync(archivedPath)).toBe(true);
+    expect(readFileSync(archivedPath, "utf8")).toContain("**Status:** Accepted");
+    expect(existsSync(resolve(
+      repositoryRoot,
+      "docs/adr/2026-08-24-047-nostr-first-interoperability.md",
     ))).toBe(false);
   });
 
@@ -149,7 +149,7 @@ describe("canonical family documentation", () => {
         + "and conformance vectors.",
     ],
     [
-      "docs/adr/archive/2026-08-15-045-conformance-harness-independence.md",
+      "docs/adr/archive/2026-08-24-047-nostr-first-interoperability.md",
       "- The conformance package, its baselines, and its reports are tooling rather\n"
         + "  than normative family artifacts. The live specifications, registry, schemas,\n"
         + "  release metadata, and vectors remain the protocol authority.",
@@ -525,7 +525,7 @@ describe("canonical family documentation", () => {
     const paths = [
       "AGENTS.md",
       "README.md",
-      "docs/adr/archive/2026-08-15-045-conformance-harness-independence.md",
+      "docs/adr/archive/2026-08-24-047-nostr-first-interoperability.md",
       "docs/adr/README.md",
       "docs/spec/heterodyne.md",
       "docs/spec/vectors/README.md",

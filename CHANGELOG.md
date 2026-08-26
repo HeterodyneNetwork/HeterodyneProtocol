@@ -42,6 +42,10 @@ family map, and the single registry pin is
 
 ### Accepted rolling conformance snapshot lifecycle
 
+- [ADR-047](docs/adr/archive/2026-08-24-047-nostr-first-interoperability.md)
+  records the accepted Nostr-first semantic replacement. The live six-document
+  family and normative machine-readable artifacts are self-contained, while
+  the frozen 482-vector snapshot remains historical and unreconciled.
 - [ADR-045](docs/adr/archive/2026-08-15-045-conformance-harness-independence.md)
   records the accepted independent conformance gate. Acceptance followed
   implementation, security and specification review waves,
