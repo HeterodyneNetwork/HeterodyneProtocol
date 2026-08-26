@@ -245,6 +245,17 @@ describe("live one-bit status-list semantics", () => {
     expect(generateToken().compact).toBe(token.compact);
   });
 
+  it("rejects status issuance before the canonical ledger checkpoint", () => {
+    expect(() => generateStatusListToken({
+      state: x.issuedState,
+      uri: statusUri(),
+      private_jwk: OIDC_RSA_ONE.private_jwk,
+      iat: statusIat() - 1,
+      exp: statusIat() + 60,
+      ttl: 30,
+    })).toThrow(/predates.*checkpoint/i);
+  });
+
   it("rejects another credential-ledger generation", () => {
     const token = generateToken();
     const stale = resignStatusToken(token, token.claims.status_list.lst, {
@@ -280,6 +291,52 @@ describe("live one-bit status-list semantics", () => {
       statusIat(),
       continuityChain(token),
     )).toMatchObject({ allowed: false });
+  });
+
+  it("rejects an expired referenced JWT while the status token remains fresh", () => {
+    const token = generateStatusListToken({
+      state: x.issuedState,
+      uri: statusUri(),
+      private_jwk: OIDC_RSA_ONE.private_jwk,
+      iat: statusIat(),
+      exp: x.issuance.expires_at + 60,
+      ttl: 10_000,
+    });
+    expect(validateTokenStatus(
+      validatedAccessContext(token),
+      token,
+      jwksBytes(),
+      x.issuance.expires_at,
+      statusIat(),
+      continuityChain(token),
+    )).toMatchObject({ allowed: false, reason_code: "oidc-token-type-invalid" });
+  });
+
+  it("rejects a status token with the wrong media type", () => {
+    const token = generateToken();
+    expect(validateTokenStatus(
+      validatedAccessContext(token),
+      { ...token, media_type: "application/json" } as never,
+      jwksBytes(),
+      statusIat(),
+      statusIat(),
+      continuityChain(token),
+    )).toMatchObject({ allowed: false, reason_code: "oidc-status-invalid" });
+  });
+
+  it.each([
+    ["future resolution", 0, 1],
+    ["stale resolution", 31, 0],
+  ])("rejects %s time for a fresh signed status token", (_label, nowOffset, resolvedOffset) => {
+    const token = generateToken();
+    expect(validateTokenStatus(
+      validatedAccessContext(token),
+      token,
+      jwksBytes(),
+      statusIat() + nowOffset,
+      statusIat() + resolvedOffset,
+      continuityChain(token),
+    )).toMatchObject({ allowed: false, reason_code: "oidc-status-invalid" });
   });
 
   it("binds raw JWKS bytes and fractional TTL to trusted resolution time", () => {
@@ -406,6 +463,22 @@ describe("live active-persona issuer continuity", () => {
     };
     expect(resolveIssuerContinuity(null, legacy as never, continuityContext()))
       .toMatchObject({ allowed: false });
+  });
+
+  it("rejects a continuity proof issued before its canonical checkpoint", () => {
+    const body = manifestBodyFor(generateToken());
+    const backdated = signedManifest({
+      ...body,
+      authority: {
+        ...body.authority,
+        issued_at: body.authority.checkpoint.observed_at - 1,
+      },
+    });
+    expect(resolveIssuerContinuity(null, backdated, continuityContext()))
+      .toMatchObject({
+        allowed: false,
+        reason_code: "oidc-issuer-authority-invalid",
+      });
   });
 
   it("validates a same-persona refresh and rejects a broken predecessor", () => {

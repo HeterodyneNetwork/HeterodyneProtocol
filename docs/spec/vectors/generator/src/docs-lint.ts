@@ -124,13 +124,14 @@ const RETIRED_MAINTAINED_GUIDE_PATTERNS = [
 // These patterns target affirmative live guidance, not historical or explicit
 // retirement/optionality statements. Whitespace is intentionally flexible so
 // Markdown wrapping cannot bypass the maintained-guide gate.
+const CANONICAL_FEED_INDEX_PATTERN = /canonical[-\s]+feed[-\s]+index/i;
 const RETIRED_NOSTR_FIRST_GUIDE_PATTERNS = [
   /persona\s+is\s+(?:identified|anchored)\s+by\s+(?:a\s+)?cold[-\s]+root\s+(?:Nostr\s+)?npub/i,
   /every\s+persona\s+requires\s+(?:an\s+)?accepted\s+KEL(?:\s+and\s+(?:an\s+)?epoch\s+key)?/i,
   /(?:human\s+)?Marmot\s+account\s+is\s+separate\s+from\s+the\s+active\s+Nostr\s+key/i,
   /kind\s*:?\s*`?31005`?\s+is\s+required/i,
   /kind\s*:?\s*`?31007`?\s+is\s+required/i,
-  /canonical[-\s]+feed[-\s]+index/i,
+  CANONICAL_FEED_INDEX_PATTERN,
   /repository\s+copies?\s+take\s+precedence\s+over\s+(?:newer\s+)?relay\s+events?/i,
   /full\s+node\s+is\s+(?:a\s+)?required\s+(?:Nostr\s+)?relay/i,
   /(?:each|one)\s+group\s+has\s+one\s+canonical\s+trusted\s+seed/i,
@@ -239,6 +240,28 @@ function isPredicateLocallyRetired(
   const directlyRetiredPredicate = /^\s+(?:is|are|was|were|has\s+been)\s+(?:retired|deprecated|withdrawn|not\s+(?:required|valid(?:\s+authority)?|current(?:\s+authority)?|authoritative|normative)|no\s+longer\s+(?:required|valid(?:\s+authority)?|current(?:\s+authority)?|authoritative|normative))\b/i
     .test(after);
   return directlyNegativeSubject || directlyNegativePredicate || directlyRetiredPredicate;
+}
+
+function isCanonicalFeedIndexLocallyRetired(
+  text: string,
+  matchIndex: number,
+  matchLength: number,
+): boolean {
+  const { start, end } = assertionClauseBounds(text, matchIndex);
+  const before = text.slice(start, matchIndex).replace(/\s+/gu, " ");
+  const after = text.slice(matchIndex + matchLength, end).replace(/\s+/gu, " ");
+  const directlyNegativeSubject = /(?:^\s*(?:[-+*]\s+)?|\bthere\s+(?:is|are)\s+)no\s+$/i
+    .test(before);
+  if (directlyNegativeSubject) {
+    return /^\s*(?:(?:exists?|(?:is|are)\s+required)\s*)?(?:[.!?;]|$)/i
+      .test(after);
+  }
+  const directlyNegativeDefinition = /\b(?:the\s+)?(?:protocol|specification|baseline)\s+(?:does|do)\s+not\s+(?:define|require|specify)\s+(?:an?\s+|the\s+)?$/i
+    .test(before);
+  const directlyRetiredPredicate = /^\s+(?:is|are|was|were|has\s+been)\s+(?:retired|deprecated|withdrawn|not\s+(?:required|valid(?:\s+authority)?|current(?:\s+authority)?|authoritative|normative)|no\s+longer\s+(?:required|valid(?:\s+authority)?|current(?:\s+authority)?|authoritative|normative))\s*(?:[.!?;]|$)$/i
+    .test(after);
+  return (directlyNegativeDefinition && /^\s*(?:[.!?;]|$)/u.test(after))
+    || directlyRetiredPredicate;
 }
 
 function allPatternMatches(pattern: RegExp, text: string): RegExpExecArray[] {
@@ -815,7 +838,9 @@ export function lintMaintainedGuides(
     const text = contents.get(path)!;
     for (const pattern of RETIRED_NOSTR_FIRST_GUIDE_PATTERNS) {
       for (const match of allPatternMatches(pattern, text)) {
-        if (isPredicateLocallyRetired(
+        if ((pattern === CANONICAL_FEED_INDEX_PATTERN
+          ? isCanonicalFeedIndexLocallyRetired
+          : isPredicateLocallyRetired)(
           text,
           match.index,
           match[0].length,

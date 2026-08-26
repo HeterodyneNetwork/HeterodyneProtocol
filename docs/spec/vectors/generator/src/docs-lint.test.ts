@@ -253,6 +253,54 @@ describe("canonical family documentation", () => {
     }));
   });
 
+  it("rejects negative optionality that affirmatively requires a canonical index", () => {
+    const path = "README.md";
+    expect(lintMaintainedGuides(repositoryRoot, {
+      [path]: "No canonical feed index is optional; implementations MUST provide one.",
+    })).toContainEqual(expect.objectContaining({
+      path,
+      code: "retired-authoring-model",
+    }));
+  });
+
+  it("permits a protocol-local negative definition of the retired index", () => {
+    const path = "README.md";
+    expect(lintMaintainedGuides(repositoryRoot, {
+      [path]: "The protocol does not define a canonical feed index.",
+    })).not.toContainEqual(expect.objectContaining({
+      path,
+      code: "retired-authoring-model",
+    }));
+  });
+
+  it.each([
+    "No canonical feed index exists only for premium users.",
+    "No canonical feed index is required to be private; implementations MUST provide one.",
+    "The protocol does not define a canonical feed index as optional; implementations MUST provide one.",
+    "The canonical feed index is retired only for legacy clients.",
+    "A canonical feed index is not required to be private; implementations MUST provide one.",
+    "A canonical feed index is no longer required for premium users only.",
+  ])("rejects qualified predicates that do not retire the canonical index: %s", (text) => {
+    const path = "README.md";
+    expect(lintMaintainedGuides(repositoryRoot, { [path]: text }))
+      .toContainEqual(expect.objectContaining({
+        path,
+        code: "retired-authoring-model",
+      }));
+  });
+
+  it.each([
+    "Context.\nNo canonical feed index exists.",
+    "Context.\nNo canonical feed index is required.",
+  ])("permits whitespace-prefixed negative existence or requirement", (text) => {
+    const path = "README.md";
+    expect(lintMaintainedGuides(repositoryRoot, { [path]: text }))
+      .not.toContainEqual(expect.objectContaining({
+        path,
+        code: "retired-authoring-model",
+      }));
+  });
+
   it("documents the six-document active-key family and frozen snapshot boundary", () => {
     const maintained = [
       "README.md",
