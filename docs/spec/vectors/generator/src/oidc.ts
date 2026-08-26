@@ -412,6 +412,17 @@ export function validatePersonaBinding(
   identity: PersonaIdentityState,
 ): AuthorizationDecision {
   try {
+    const prototype = Object.getPrototypeOf(identity);
+    const descriptors = Object.getOwnPropertyDescriptors(identity);
+    const members = Reflect.ownKeys(descriptors);
+    if ((prototype !== Object.prototype && prototype !== null) ||
+        members.length !== 2 ||
+        !members.every((member) => typeof member === "string" &&
+          (member === "persona_key" || member === "persona_npub") &&
+          descriptors[member].enumerable === true &&
+          Object.hasOwn(descriptors[member], "value"))) {
+      return denied("oidc-issuer-mismatch");
+    }
     const candidate = canonicalNpub(candidateNpub);
     const persona = canonicalNpub(identity.persona_npub);
     const decoded = nip19.decode(persona);

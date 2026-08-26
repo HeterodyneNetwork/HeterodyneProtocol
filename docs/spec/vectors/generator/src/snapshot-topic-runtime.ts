@@ -123,6 +123,45 @@ export async function buildSnapshotCompatibleVectors(
   }
 }
 
+export async function buildAndReplaySnapshotOidcTokenVectors(fixtures: Fixtures): Promise<{
+  oidc: Array<{ vector_id: string; expected: unknown; replayed: unknown }>;
+  token: Array<{
+    vector_id: string;
+    expected: unknown;
+    replayed: unknown;
+    mutations: Record<string, unknown>;
+  }>;
+}> {
+  const runtimeRoot = await materializeSnapshotRuntime([frozenOidcTopic]);
+  try {
+    const emittedTopic = emittedPath(runtimeRoot, frozenOidcTopic);
+    const module = await import(snapshotRuntimeModuleUrl(runtimeRoot, emittedTopic)) as {
+      buildOidcVectors: (value: Fixtures) => Promise<AuthoredVector[]>;
+      buildTokenStatusVectors: (value: Fixtures) => Promise<AuthoredVector[]>;
+      replayOidcVector: (value: unknown) => unknown;
+      replayTokenStatusVector: (value: unknown) => unknown;
+      replayTokenStatusMutationTable: (value: unknown) => Record<string, unknown>;
+    };
+    const oidcVectors = await module.buildOidcVectors(fixtures);
+    const tokenVectors = await module.buildTokenStatusVectors(fixtures);
+    return {
+      oidc: oidcVectors.map(({ vector }) => ({
+        vector_id: vector.vector_id,
+        expected: vector.expected_output,
+        replayed: module.replayOidcVector(vector.input),
+      })),
+      token: tokenVectors.map(({ vector }) => ({
+        vector_id: vector.vector_id,
+        expected: vector.expected_output,
+        replayed: module.replayTokenStatusVector(vector.input),
+        mutations: module.replayTokenStatusMutationTable(vector.input),
+      })),
+    };
+  } finally {
+    await rm(runtimeRoot, { recursive: true, force: true });
+  }
+}
+
 async function materializeSnapshotRuntime(rootNames: string[]): Promise<string> {
   const runtimeRoot = await mkdtemp(join(tmpdir(), "heterodyne-snapshot-topic-runtime-"));
   try {

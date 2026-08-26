@@ -9,8 +9,6 @@
     "src/cli.ts",
     "src/coverage.ts",
     "src/coverage.test.ts",
-    "src/oidc.test.ts",
-    "src/token-status.test.ts",
     "src/verify.ts",
     "src/verify.test.ts",
     "src/versioning.test.ts"

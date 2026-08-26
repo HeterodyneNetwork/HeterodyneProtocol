@@ -130,7 +130,7 @@ const RETIRED_NOSTR_FIRST_GUIDE_PATTERNS = [
   /(?:human\s+)?Marmot\s+account\s+is\s+separate\s+from\s+the\s+active\s+Nostr\s+key/i,
   /kind\s*:?\s*`?31005`?\s+is\s+required/i,
   /kind\s*:?\s*`?31007`?\s+is\s+required/i,
-  /canonical\s+feed\s+index/i,
+  /canonical[-\s]+feed[-\s]+index/i,
   /repository\s+copies?\s+take\s+precedence\s+over\s+(?:newer\s+)?relay\s+events?/i,
   /full\s+node\s+is\s+(?:a\s+)?required\s+(?:Nostr\s+)?relay/i,
   /(?:each|one)\s+group\s+has\s+one\s+canonical\s+trusted\s+seed/i,
@@ -165,7 +165,7 @@ const RETIRED_NORMATIVE_CLAIMS = [
 ];
 
 const RETIRED_BASELINE_AUTHORITY_CLAIMS = [
-  /(?:conformant\s+)?personas?\s+(?:MUST\s+(?:have|use)|requires?)\s+(?:an?\s+)?(?:accepted\s+)?(?:KEL|cold[-\s]+root|epoch[-\s]+key)/i,
+  /(?:conformant\s+)?personas?\s+(?:(?:MUST\s+(?:have|use)|requires?)|does\s+not\s+require)\s+(?:an?\s+)?(?:accepted\s+)?(?:KEL|cold[-\s]+root|epoch[-\s]+key)/i,
 ];
 
 function isExplicitlyGatedAssurance(
@@ -174,12 +174,19 @@ function isExplicitlyGatedAssurance(
   matchIndex: number,
 ): boolean {
   if (/(?:^|\/)heterodyne-assurance\.md$/.test(path)) return true;
-  const assertion = assertionClause(text, matchIndex);
-  return /\b(?:optional\s+Assurance|when\s+Assurance\s+is\s+claimed|implementations?\s+claiming\s+Assurance|Assurance\s+(?:composition|profile))\b/i
-    .test(assertion);
+  const { start } = assertionClauseBounds(text, matchIndex);
+  const prefix = text.slice(start, matchIndex).replace(/\s+/gu, " ");
+  // In a non-Assurance document, gating must grammatically introduce this
+  // exact subject. Merely mentioning Assurance earlier in the sentence does
+  // not exempt a later baseline assertion.
+  return /\b(?:when\s+(?:optional\s+)?Assurance\s+is\s+claimed|implementations?\s+claiming\s+Assurance|for\s+(?:the\s+)?optional\s+Assurance\s+(?:profile|composition)|in\s+an?\s+optional\s+Assurance\s+(?:profile|composition))\s*,\s*(?:an?\s+)?$/i
+    .test(prefix);
 }
 
-function assertionClause(text: string, matchIndex: number): string {
+function assertionClauseBounds(
+  text: string,
+  matchIndex: number,
+): { start: number; end: number } {
   const prior = text.slice(0, matchIndex);
   let boundary = Math.max(
     prior.lastIndexOf("."),
@@ -205,30 +212,33 @@ function assertionClause(text: string, matchIndex: number): string {
   const end = followingBoundary < 0
     ? text.length
     : matchIndex + followingBoundary + 1;
-  return text.slice(boundary + 1, end);
+  return { start: boundary + 1, end };
 }
 
-function isExplicitNegationOrRetirement(text: string, matchIndex: number): boolean {
-  const assertion = assertionClause(text, matchIndex);
-  return /\b(?:former|retired|no\s+longer|(?:is|are|was|were|does|do|must|shall)\s+not|cannot|never)\b/i
-    .test(assertion)
-    || /^\s*(?:[-+*]\s+)?no\b/i.test(assertion);
-}
-
-function isExplicitGuideNegationOrRetirement(
+function isPredicateLocallyRetired(
   text: string,
   matchIndex: number,
   matchLength: number,
 ): boolean {
-  const assertion = assertionClause(text, matchIndex);
+  const { start, end } = assertionClauseBounds(text, matchIndex);
+  const assertion = text.slice(start, end);
   const matched = text.slice(matchIndex, matchIndex + matchLength);
-  const localIndex = assertion.indexOf(matched);
-  if (localIndex < 0) return false;
-  const before = assertion.slice(0, localIndex);
-  const after = assertion.slice(localIndex + matched.length);
-  return /\b(?:no|not|never|former|retired|no\s+longer)\b/i.test(before)
-    || /^\s+(?:(?:is|are|was|were|has\s+been)\s+)?(?:not\b|retired\b|no\s+longer\b)/i
-      .test(after);
+  const localIndex = matchIndex - start;
+  if (localIndex < 0 || localIndex + matchLength > assertion.length) return false;
+  const before = assertion.slice(0, localIndex).replace(/\s+/gu, " ");
+  const after = assertion.slice(localIndex + matched.length).replace(/\s+/gu, " ");
+
+  // Only polarity attached immediately to the matched subject can retire it.
+  // A later MUST NOT, a relative "that is not ...", or negative optionality
+  // therefore cannot suppress an affirmative retired predicate.
+  const directlyNegativeSubject = /(?:^(?:\s*[-+*]\s+)?|[,:;(]\s*|\bthere\s+(?:is|are)\s+)no\s+(?:(?:an?|the|baseline|current)\s+)?$/i
+    .test(before)
+    || /\bnever\s+(?:an?\s+|the\s+)?$/i.test(before);
+  const directlyNegativePredicate = /(?:conformant\s+)?personas?\s+does\s+not\s+require\s+(?:an?\s+)?(?:accepted\s+)?(?:KEL|cold[-\s]+root|epoch[-\s]+key)$/i
+    .test(matched.replace(/\s+/gu, " "));
+  const directlyRetiredPredicate = /^\s+(?:is|are|was|were|has\s+been)\s+(?:retired|deprecated|withdrawn|not\s+(?:required|valid(?:\s+authority)?|current(?:\s+authority)?|authoritative|normative)|no\s+longer\s+(?:required|valid(?:\s+authority)?|current(?:\s+authority)?|authoritative|normative))\b/i
+    .test(after);
+  return directlyNegativeSubject || directlyNegativePredicate || directlyRetiredPredicate;
 }
 
 function allPatternMatches(pattern: RegExp, text: string): RegExpExecArray[] {
@@ -242,7 +252,7 @@ export function findRetiredNormativeClaimIssues(
 ): FamilyDocIssue[] {
   const retired = RETIRED_NORMATIVE_CLAIMS.flatMap((pattern) => {
     return allPatternMatches(pattern, text).flatMap((match) =>
-      isExplicitNegationOrRetirement(text, match.index) ? [] : [{
+      isPredicateLocallyRetired(text, match.index, match[0].length) ? [] : [{
       path,
       line: text.slice(0, match.index).split(/\r?\n/).length,
       code: "retired-authoring-model" as const,
@@ -251,7 +261,7 @@ export function findRetiredNormativeClaimIssues(
   });
   const baselineAuthority = RETIRED_BASELINE_AUTHORITY_CLAIMS.flatMap((pattern) => {
     return allPatternMatches(pattern, text).flatMap((match) =>
-      isExplicitNegationOrRetirement(text, match.index)
+      isPredicateLocallyRetired(text, match.index, match[0].length)
       || isExplicitlyGatedAssurance(path, text, match.index) ? [] : [{
       path,
       line: text.slice(0, match.index).split(/\r?\n/).length,
@@ -805,7 +815,7 @@ export function lintMaintainedGuides(
     const text = contents.get(path)!;
     for (const pattern of RETIRED_NOSTR_FIRST_GUIDE_PATTERNS) {
       for (const match of allPatternMatches(pattern, text)) {
-        if (isExplicitGuideNegationOrRetirement(
+        if (isPredicateLocallyRetired(
           text,
           match.index,
           match[0].length,

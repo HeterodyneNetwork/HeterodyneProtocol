@@ -203,7 +203,6 @@ describe("canonical family documentation", () => {
   });
 
   it.each([
-    ["README.md", "A bare-key persona is not incomplete without Assurance."],
     ["AGENTS.md", "The rolling vector snapshot is not authoritative for the current draft."],
     ["docs/glossary.md", "Automated publication must not omit NIP-32 attribution."],
     ["AGENTS.md", "Agents must not exploit live third-party systems."],
@@ -212,6 +211,43 @@ describe("canonical family documentation", () => {
       [path]: `${read(path)}\n${retiredText}\n`,
     });
     expect(issues).not.toContainEqual(expect.objectContaining({
+      path,
+      code: "retired-authoring-model",
+    }));
+  });
+
+  it.each([
+    "A canonical feed index is not optional.",
+    "A canonical feed index MUST exist and MUST NOT expose private identities.",
+    "A canonical feed index that is not public remains part of the protocol.",
+    "A canonical\n  feed index is not\n  optional.",
+    "A canonical feed index is retired and a canonical feed index is not optional.",
+    "A canonical-feed index is required.",
+    "A canonical feed-index is required.",
+    "A canonical-feed-index is required.",
+  ])("does not treat unrelated or negative-polarity guide text as retirement", (text) => {
+    const path = "README.md";
+    expect(lintMaintainedGuides(repositoryRoot, {
+      [path]: `${read(path)}\n${text}\n`,
+    })).toContainEqual(expect.objectContaining({
+      path,
+      code: "retired-authoring-model",
+    }));
+  });
+
+  it.each([
+    "The canonical feed index is retired.",
+    "A canonical feed index is not required.",
+    "A canonical\n  feed index is no longer required.",
+    "A canonical-feed index is retired.",
+    "A canonical feed-index is not required.",
+    "A canonical-feed-index is no longer required.",
+    "A bare-key persona is not incomplete without Assurance.",
+  ])("permits predicate-local retirement of guide claims", (text) => {
+    const path = "README.md";
+    expect(lintMaintainedGuides(repositoryRoot, {
+      [path]: `${read(path)}\n${text}\n`,
+    })).not.toContainEqual(expect.objectContaining({
       path,
       code: "retired-authoring-model",
     }));
@@ -404,7 +440,9 @@ describe("canonical family documentation", () => {
   it.each([
     "When optional Assurance is claimed, a persona MUST have an accepted KEL.",
     "When optional\n  Assurance is claimed, a persona MUST have an accepted\n  KEL.",
-    "Implementations claiming Assurance MAY require a cold-\n  root for that Assurance profile.",
+    "Implementations claiming Assurance, a persona MUST have a cold-\n  root for that Assurance profile.",
+    "For the optional Assurance profile, a persona MUST have an accepted KEL.",
+    "In an optional Assurance composition, a persona MUST have an epoch key.",
   ])("permits Assurance gating attached to the exact authority assertion", (text) => {
     expect(findRetiredNormativeClaimIssues(
       "docs/spec/heterodyne-core.md",
@@ -427,6 +465,7 @@ describe("canonical family documentation", () => {
 
   it.each([
     "A conformant persona does not require an accepted KEL.",
+    "A conformant persona does\n  not require an accepted KEL.",
     "The former requirement that a persona requires a cold root is retired.",
     "No baseline persona requires an epoch-\n  key.",
     "Current persona epoch or cold-root authority is not valid authority.",
@@ -439,8 +478,36 @@ describe("canonical family documentation", () => {
   });
 
   it.each([
+    "A conformant persona MUST have an accepted KEL and MUST NOT expose private key material.",
+    "A conformant persona MUST have an accepted KEL that is not public.",
+    "A conformant persona MUST have a cold-\n  root and is not required to publish it.",
+    "Current persona epoch or cold-root authority is not optional.",
+    "Current persona epoch or cold-root authority that is not public remains valid.",
+    "A persona requires a KEL is retired and a persona requires a KEL for baseline.",
+  ])("does not let unrelated or negative-polarity normative text negate retired authority", (text) => {
+    expect(findRetiredNormativeClaimIssues(
+      "docs/spec/heterodyne-core.md",
+      text,
+    )).toEqual([expect.objectContaining({
+      code: "retired-authoring-model",
+    })]);
+  });
+
+  it.each([
+    "The statement that a persona requires an accepted KEL is retired.",
+    "Current persona epoch or cold-root authority is retired.",
+    "Current persona epoch or cold-root authority is no longer valid authority.",
+  ])("permits retirement only when it governs the matched authority predicate", (text) => {
+    expect(findRetiredNormativeClaimIssues(
+      "docs/spec/heterodyne-core.md",
+      text,
+    )).toEqual([]);
+  });
+
+  it.each([
     "There is no canonical feed index.",
     "There is no canonical\n  feed index.",
+    "- No canonical feed index exists.",
   ])("permits the exact negated canonical-index retirement probe", (text) => {
     const path = "README.md";
     expect(lintMaintainedGuides(repositoryRoot, {
@@ -459,6 +526,8 @@ describe("canonical family documentation", () => {
     "Optional Assurance composition may use recovery material,\n  but a conformant persona MUST have an accepted\n  KEL.",
     "The Assurance profile does not require a KEL but a conformant persona MUST have an accepted KEL.",
     "Optional Assurance composition may use recovery material yet a conformant persona MUST have an accepted KEL.",
+    "Optional Assurance composition may use recovery material and a conformant persona MUST have an accepted KEL.",
+    "Optional Assurance composition may use recovery material, a conformant persona MUST have an accepted KEL.",
   ])("rejects the exact cross-sentence Assurance exemption probe", (text) => {
     expect(findRetiredNormativeClaimIssues(
       "docs/spec/heterodyne-core.md",

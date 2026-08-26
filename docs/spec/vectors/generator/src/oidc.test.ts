@@ -1,4 +1,5 @@
 import { createHash, createPrivateKey, sign, type JsonWebKey } from "node:crypto";
+import { nip19 } from "nostr-tools";
 import { beforeAll, describe, expect, it } from "vitest";
 import { buildFixtures } from "./fixtures.js";
 import {
@@ -16,21 +17,21 @@ import {
   redeemAuthorizationCode,
   redeemDeviceCode,
   validateAuthorizationRequest,
-  validateColdRootBinding,
   validateIssuerMetadata,
+  validatePersonaBinding,
   validateProjectedJwt,
   type JwtValidationOptions,
   type OidcAuthorizationRequest,
 } from "./oidc.js";
 import { OIDC_RSA_ONE } from "./oidc-rsa-fixtures.js";
-import { buildOidcScenario, buildOidcVectors, replayOidcVector } from "./topics-oidc.js";
+import { buildLiveOidcScenario } from "./oidc-test-support.js";
 import { buildLedgerRepositoryEvidence, mergeClaimLedger } from "./claim-ledger.js";
 import { jcsCanonicalize } from "./jcs.js";
 
 const fixtures = buildFixtures();
-let x: Awaited<ReturnType<typeof buildOidcScenario>>;
+let x: Awaited<ReturnType<typeof buildLiveOidcScenario>>;
 
-beforeAll(async () => { x = await buildOidcScenario(fixtures); });
+beforeAll(async () => { x = await buildLiveOidcScenario(fixtures); });
 
 const options = (token_use: JwtValidationOptions["token_use"], extra: Partial<JwtValidationOptions> = {}): JwtValidationOptions => ({
   now: x.issuance.issued_at, token_use, client_id: "registered-client", sender_constraint: "none",
@@ -49,14 +50,29 @@ function resignJwt(jwt: string, mutate: (claims: Record<string, unknown>) => voi
   return `${signingInput}.${sign("RSA-SHA256", Buffer.from(signingInput), privateKey).toString("base64url")}`;
 }
 
-describe("cold-root issuer and exact origin identity", () => {
-  it("requires authenticated cold-root identity at every issuer constructor", () => {
-    expect(issuerUrl("https://node.example", x.root, x.identity)).toBe(x.metadata.issuer);
-    expect(discoveryPaths("https://node.example", x.root, x.identity).issuer).toBe(x.metadata.issuer);
-    expect(issuerMetadata("https://node.example", x.root, x.identity)).toEqual(x.metadata);
+describe("active-persona issuer and exact origin identity", () => {
+  it("requires the authenticated active persona at every issuer constructor", () => {
+    expect(issuerUrl("https://node.example", x.personaNpub, x.identity)).toBe(x.metadata.issuer);
+    expect(discoveryPaths("https://node.example", x.personaNpub, x.identity).issuer)
+      .toBe(x.metadata.issuer);
+    expect(issuerMetadata("https://node.example", x.personaNpub, x.identity)).toEqual(x.metadata);
     expect(validateIssuerMetadata(x.metadata, x.metadata.issuer, x.metadata.jwks_uri)).toMatchObject({ allowed: true });
-    expect(() => issuerUrl("https://node.example", x.epoch, x.identity)).toThrow(/cold root|issuer/i);
-    expect(validateColdRootBinding(x.epoch, x.identity)).toMatchObject({ allowed: false });
+    const unrelatedNpub = nip19.npubEncode(
+      fixtures.personas.carol.epoch_keys.epoch_1.pubkey,
+    );
+    expect(() => issuerUrl("https://node.example", unrelatedNpub, x.identity))
+      .toThrow(/active persona|issuer/i);
+    expect(validatePersonaBinding(unrelatedNpub, x.identity)).toMatchObject({ allowed: false });
+    const legacyIdentity = {
+      ...x.identity,
+      cold_root_npub: unrelatedNpub,
+      epoch_npubs: [x.personaNpub],
+      persona_kel_head: { id: "00".repeat(32), seq: 0 },
+    };
+    expect(validatePersonaBinding(x.personaNpub, legacyIdentity as never))
+      .toMatchObject({ allowed: false, reason_code: "oidc-issuer-mismatch" });
+    expect(() => issuerUrl("https://node.example", x.personaNpub, legacyIdentity as never))
+      .toThrow(/active persona|issuer/i);
   });
 
   it("advertises and accepts only the implemented RS256 signing profile", () => {
@@ -70,7 +86,7 @@ describe("cold-root issuer and exact origin identity", () => {
     "http://node.example", "https://node.example/", "https://NODE.example", "https://node.example:443",
     "https://user@node.example", "https://node.example?x=1", "https://node.example#x",
   ])("rejects non-exact origin %s", (origin) => {
-    expect(() => issuerUrl(origin, x.root, x.identity)).toThrow(/origin|issuer/i);
+    expect(() => issuerUrl(origin, x.personaNpub, x.identity)).toThrow(/origin|issuer/i);
   });
 });
 
@@ -329,9 +345,13 @@ describe("evidence-derived strict JOSE projection", () => {
       authorization_request: { ...x.request, requested_claims: [] } })).toThrow(/projection|authorization/i);
     expect(() => projectIdToken({ ...x.projection,
       authorization_request: { ...x.request, nonce: "substituted-nonce" } })).toThrow(/projection|token/i);
-    const otherIdentity = { cold_root_npub: x.epoch, epoch_npubs: [x.root] };
+    const otherKey = fixtures.personas.carol.epoch_keys.epoch_1.pubkey;
+    const otherIdentity = {
+      persona_key: otherKey,
+      persona_npub: nip19.npubEncode(otherKey),
+    };
     expect(() => projectIdToken({ ...x.projection, identity: otherIdentity,
-      issuer: `https://node.example/oidc/${x.epoch}` })).toThrow(/issuer/i);
+      issuer: `https://node.example/oidc/${otherIdentity.persona_npub}` })).toThrow(/issuer/i);
     expect(() => projectJwtAssertion({ ...x.projection,
       authorization_request: { ...x.request, registration: x.request.consent } }, "urn:example:jwt-assertion:v1"))
       .toThrow(/registered|authorization|token/i);
@@ -378,30 +398,5 @@ describe("evidence-derived strict JOSE projection", () => {
     expect(validateProjectedJwt(malformed, x.metadata.issuer, "https://api.example",
       { keys: [OIDC_RSA_ONE.public_jwk] }, options("access_token")))
       .toMatchObject({ allowed: false, reason_code: "oidc-token-type-invalid" });
-  });
-});
-
-describe("authored OIDC corpus", () => {
-  it("keeps the exact 13 vector IDs and replays every mutation table", async () => {
-    const vectors = await buildOidcVectors(fixtures);
-    expect(vectors.map(({ relativePath }) => relativePath)).toEqual([
-      "oidc/001-discovery-exact-issuer.json", "oidc/002-issuer-mismatch-rejected.json",
-      "oidc/003-authorization-code-pkce.json", "oidc/004-device-authorization.json",
-      "oidc/005-prohibited-grants.json", "oidc/006-pairwise-subject.json",
-      "oidc/007-stable-key-consent-gated.json", "oidc/008-id-token-valid.json",
-      "oidc/009-rfc9068-access-token-valid.json", "oidc/010-token-type-confusion-rejected.json",
-      "oidc/011-dpop-confirmation-bound.json", "oidc/012-registered-jwt-assertion.json",
-      "oidc/013-mtls-confirmation-bound.json",
-    ]);
-    for (const { vector } of vectors) {
-      expect(replayOidcVector(vector.input)).toEqual(vector.expected_output);
-      expect(JSON.stringify(vector)).not.toContain('"d":"');
-    }
-    const pairwise = vectors.find(({ vector }) => vector.vector_id === "oidc/pairwise-subject")!.vector;
-    expect(pairwise.input.local_subject).toBe(createHash("sha256")
-      .update(jcsCanonicalize(pairwise.input.typed_subject)).digest("hex"));
-    expect((pairwise.input.local_subject_mutations as unknown[])).toHaveLength(5);
-    expect((pairwise.expected_output.normalized as { mutation_results: Array<{ verdict: string }> })
-      .mutation_results.every(({ verdict }) => verdict === "reject")).toBe(true);
   });
 });
