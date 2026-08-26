@@ -124,7 +124,57 @@ const RETIRED_MAINTAINED_GUIDE_PATTERNS = [
 // These patterns target affirmative live guidance, not historical or explicit
 // retirement/optionality statements. Whitespace is intentionally flexible so
 // Markdown wrapping cannot bypass the maintained-guide gate.
-const CANONICAL_FEED_INDEX_PATTERN = /canonical[-\s]+feed[-\s]+index/i;
+const CANONICAL_FEED_INDEX_SOURCE = "canonical[-\\s]+feed[-\\s]+index";
+const CANONICAL_FEED_INDEX_PATTERN = new RegExp(CANONICAL_FEED_INDEX_SOURCE, "i");
+const CANONICAL_SCOPE_PREFIX_SOURCE = "\\s*(?:[-+*]\\s+)?(?:(?:(?:for\\s+baseline\\s+conformance)|(?:(?:for|under|within)\\s+(?:(?:this|the|current)\\s+)?(?:protocol|specification|baseline)))\\s*,\\s*)?";
+const CANONICAL_SCOPE_SUFFIX_SOURCE = "(?:\\s+(?:(?:by|in|under|within)\\s+(?:(?:this|the|current)\\s+)?(?:protocol|specification|baseline)|for\\s+baseline\\s+conformance))?";
+const CANONICAL_PROVISION_VERBS = [
+  "provide",
+  "maintain",
+  "preserve",
+  "publish",
+  "define",
+  "implement",
+  "include",
+  "use",
+  "retain",
+] as const;
+const CANONICAL_OMISSION_VERBS = [
+  "omit",
+  "remove",
+  "exclude",
+  "ignore",
+  "drop",
+] as const;
+const CANONICAL_ONE_ADJUNCTS = [
+  "although",
+  "and",
+  "as",
+  "because",
+  "before",
+  "but",
+  "by",
+  "during",
+  "for",
+  "from",
+  "if",
+  "in",
+  "into",
+  "on",
+  "since",
+  "though",
+  "to",
+  "under",
+  "unless",
+  "until",
+  "when",
+  "where",
+  "whereas",
+  "while",
+  "with",
+  "without",
+  "yet",
+] as const;
 const RETIRED_NOSTR_FIRST_GUIDE_PATTERNS = [
   /persona\s+is\s+(?:identified|anchored)\s+by\s+(?:a\s+)?cold[-\s]+root\s+(?:Nostr\s+)?npub/i,
   /every\s+persona\s+requires\s+(?:an\s+)?accepted\s+KEL(?:\s+and\s+(?:an\s+)?epoch\s+key)?/i,
@@ -242,26 +292,89 @@ function isPredicateLocallyRetired(
   return directlyNegativeSubject || directlyNegativePredicate || directlyRetiredPredicate;
 }
 
+function normalizeMarkdownForClassification(text: string): string {
+  return text
+    .replace(/\[([^\]\n]+)\]\[[^\]\n]*\]/gu, "$1")
+    .replace(/\[([^\]\n]+)\]\([^)]+\)/gu, "$1")
+    .replace(/\\(?=\r?\n)/gu, "")
+    .replace(/[*_`~]+/gu, "")
+    .replace(/\s+/gu, " ");
+}
+
 function isCanonicalFeedIndexLocallyRetired(
   text: string,
   matchIndex: number,
   matchLength: number,
 ): boolean {
   const { start, end } = assertionClauseBounds(text, matchIndex);
-  const before = text.slice(start, matchIndex).replace(/\s+/gu, " ");
-  const after = text.slice(matchIndex + matchLength, end).replace(/\s+/gu, " ");
-  const directlyNegativeSubject = /(?:^\s*(?:[-+*]\s+)?|\bthere\s+(?:is|are)\s+)no\s+$/i
-    .test(before);
-  if (directlyNegativeSubject) {
-    return /^\s*(?:(?:exists?|(?:is|are)\s+required)\s*)?(?:[.!?;]|$)/i
-      .test(after);
-  }
-  const directlyNegativeDefinition = /\b(?:the\s+)?(?:protocol|specification|baseline)\s+(?:does|do)\s+not\s+(?:define|require|specify)\s+(?:an?\s+|the\s+)?$/i
-    .test(before);
-  const directlyRetiredPredicate = /^\s+(?:is|are|was|were|has\s+been)\s+(?:retired|deprecated|withdrawn|not\s+(?:required|valid(?:\s+authority)?|current(?:\s+authority)?|authoritative|normative)|no\s+longer\s+(?:required|valid(?:\s+authority)?|current(?:\s+authority)?|authoritative|normative))\s*(?:[.!?;]|$)$/i
-    .test(after);
-  return (directlyNegativeDefinition && /^\s*(?:[.!?;]|$)/u.test(after))
-    || directlyRetiredPredicate;
+  const before = normalizeMarkdownForClassification(text.slice(start, matchIndex));
+  const after = normalizeMarkdownForClassification(
+    text.slice(matchIndex + matchLength, end),
+  );
+  const directlyNegativeSubject = new RegExp(
+    `^${CANONICAL_SCOPE_PREFIX_SOURCE}(?:no|there\\s+(?:is|are)\\s+no)\\s+$`,
+    "i",
+  ).test(before);
+  const negativeExistenceOrRequirement = new RegExp(
+    `^\\s*(?:(?:exists?|(?:is|are)\\s+required)${CANONICAL_SCOPE_SUFFIX_SOURCE}\\s*)?(?:[.!?;]|$)$`,
+    "i",
+  ).test(after);
+  const directlyNegativeDefinition = new RegExp(
+    `^${CANONICAL_SCOPE_PREFIX_SOURCE}(?:the\\s+)?(?:protocol|specification|baseline)\\s+(?:does|do)\\s+not\\s+(?:define|require|specify)\\s+(?:an?\\s+|the\\s+)?$`,
+    "i",
+  ).test(before);
+  const negativeDefinition = new RegExp(
+    `^${CANONICAL_SCOPE_SUFFIX_SOURCE}\\s*(?:[.!?;]|$)$`,
+    "i",
+  ).test(after);
+  const directlyRetiredSubject = new RegExp(
+    `^${CANONICAL_SCOPE_PREFIX_SOURCE}(?:an?|the)?\\s*$`,
+    "i",
+  ).test(before);
+  const directlyRetiredPredicate = new RegExp(
+    `^\\s+(?:is|are|was|were|has\\s+been)\\s+(?:retired|deprecated|withdrawn|not\\s+(?:required|valid(?:\\s+authority)?|current(?:\\s+authority)?|authoritative|normative)|no\\s+longer\\s+(?:required|valid(?:\\s+authority)?|current(?:\\s+authority)?|authoritative|normative))${CANONICAL_SCOPE_SUFFIX_SOURCE}\\s*(?:[.!?;]|$)$`,
+    "i",
+  ).test(after);
+  const localClauseRetires = (directlyNegativeSubject && negativeExistenceOrRequirement)
+    || (directlyNegativeDefinition && negativeDefinition)
+    || (directlyRetiredSubject && directlyRetiredPredicate);
+  if (!localClauseRetires) return false;
+
+  const preceding = text.slice(0, start);
+  const sentenceStart = Math.max(
+    preceding.lastIndexOf("."),
+    preceding.lastIndexOf("!"),
+    preceding.lastIndexOf("?"),
+  ) + 1;
+  const following = text.slice(end);
+  const terminator = following.search(/[.!?](?:\s|$)/u);
+  const sentenceEnd = terminator < 0 ? text.length : end + terminator + 1;
+  const otherClauses = normalizeMarkdownForClassification(
+    `${text.slice(sentenceStart, matchIndex)} ${text.slice(end, sentenceEnd)}`,
+  );
+  const canonicalReference = `${CANONICAL_FEED_INDEX_SOURCE}\\b`;
+  const oneAdjunct = CANONICAL_ONE_ADJUNCTS.join("|");
+  const objectReference = `(?:${canonicalReference}|it\\b|one\\b(?=\\s*(?:[.;!?)]|,\\s*(?:${oneAdjunct})\\b|(?:${oneAdjunct})\\b|$)))`;
+  const subjectReference = `(?:${canonicalReference}|(?:one|it)\\b)`;
+  const provisionVerb = CANONICAL_PROVISION_VERBS.join("|");
+  const requiredByOperator = new RegExp(
+    `\\b(?:MUST|SHALL|(?:is|are)\\s+required\\s+to)\\s+(?:still\\s+)?(?:${provisionVerb})\\s+(?:(?:an?|the)\\s+)?${objectReference}`,
+    "i",
+  );
+  const requiredAsSubject = new RegExp(
+    `\\b${subjectReference}\\s+(?:(?:MUST|SHALL)\\s+(?:still\\s+)?(?:exist|be\\s+(?:provided|required|maintained|published|defined|included|used|retained))|(?:is|remains)\\s+(?:still\\s+)?required)\\b`,
+    "i",
+  );
+  const omissionVerb = CANONICAL_OMISSION_VERBS.join("|");
+  const prohibitedOmission = new RegExp(
+    `\\b(?:MUST|SHALL)\\s+NOT\\s+(?:${omissionVerb})\\s+(?:(?:an?|the)\\s+)?${objectReference}`,
+    "i",
+  );
+  return !(
+    requiredByOperator.test(otherClauses)
+    || requiredAsSubject.test(otherClauses)
+    || prohibitedOmission.test(otherClauses)
+  );
 }
 
 function allPatternMatches(pattern: RegExp, text: string): RegExpExecArray[] {

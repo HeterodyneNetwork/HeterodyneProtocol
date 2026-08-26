@@ -280,6 +280,9 @@ describe("canonical family documentation", () => {
     "The canonical feed index is retired only for legacy clients.",
     "A canonical feed index is not required to be private; implementations MUST provide one.",
     "A canonical feed index is no longer required for premium users only.",
+    "For premium users, there is no canonical feed index.",
+    "For premium users, the protocol does not define a canonical feed index.",
+    "For legacy clients, the canonical feed index is retired.",
   ])("rejects qualified predicates that do not retire the canonical index: %s", (text) => {
     const path = "README.md";
     expect(lintMaintainedGuides(repositoryRoot, { [path]: text }))
@@ -292,6 +295,10 @@ describe("canonical family documentation", () => {
   it.each([
     "Context.\nNo canonical feed index exists.",
     "Context.\nNo canonical feed index is required.",
+    "For baseline conformance, no canonical feed index exists.",
+    "No canonical feed index is required by this protocol.",
+    "- For baseline\n  conformance, no canonical-feed index exists.",
+    "No canonical feed-index is required\n  by this protocol.",
   ])("permits whitespace-prefixed negative existence or requirement", (text) => {
     const path = "README.md";
     expect(lintMaintainedGuides(repositoryRoot, { [path]: text }))
@@ -299,6 +306,135 @@ describe("canonical family documentation", () => {
         path,
         code: "retired-authoring-model",
       }));
+  });
+
+  it.each([
+    "No canonical feed index exists; implementations MUST provide one.",
+    "The protocol does not define a canonical feed index; implementations MUST provide one.",
+    "The canonical feed index is retired; implementations MUST still provide it.",
+    "No canonical-feed-index exists;\n  implementations MUST provide one.",
+    "- The canonical feed-index is retired;\n  implementations SHALL still maintain it.",
+    "Implementations MUST provide one, no canonical feed index exists.",
+    "Implementations MUST preserve it, but no canonical feed index exists.",
+    "Implementations **MUST** provide `one`; no canonical-feed-index exists.",
+    "No canonical feed index exists; implementations **MUST** provide one.",
+    "No canonical feed index exists; implementations MUST provide `one`.",
+    "No canonical feed index exists; `one` remains required.",
+    "Implementations MUST provide one although there is no canonical feed index.",
+    "Implementations MUST provide one although the protocol does not define a canonical feed index.",
+    "Implementations MUST provide one although the canonical feed index is retired.",
+    "No canonical feed index exists; implementations MUST provide a [canonical feed index](#index).",
+    "No canonical feed index exists; implementations [**MUST**](#requirement) provide [one](#index).",
+    "No canonical feed index exists; implementations MUST\\\n  provide one.",
+    "No canonical feed index exists; implementations MUST retain it for compatibility.",
+    "No canonical feed index exists; implementations MUST provide one because legacy clients expect it.",
+    "No canonical feed index exists; implementations MUST NOT omit one from responses.",
+    "No canonical feed index exists; implementations MUST provide [one][index].",
+    "No canonical feed index exists; implementations [MUST][require] provide one.",
+  ])("does not let a retirement clause exempt another canonical-index requirement: %s", (text) => {
+    const path = "README.md";
+    expect(lintMaintainedGuides(repositoryRoot, { [path]: text }))
+      .toContainEqual(expect.objectContaining({
+        path,
+        code: "retired-authoring-model",
+      }));
+  });
+
+  it("distinguishes a canonical-index prohibition from a preservation requirement", () => {
+    const path = "README.md";
+    expect(lintMaintainedGuides(repositoryRoot, {
+      [path]: "No canonical feed index exists; implementations MUST NOT provide one.",
+    })).not.toContainEqual(expect.objectContaining({
+      path,
+      code: "retired-authoring-model",
+    }));
+    expect(lintMaintainedGuides(repositoryRoot, {
+      [path]: "No canonical feed index exists; implementations MUST NOT omit one.",
+    })).toContainEqual(expect.objectContaining({
+      path,
+      code: "retired-authoring-model",
+    }));
+  });
+
+  it.each([
+    "Implementations MUST provide one signature, but no canonical feed index exists.",
+    "Implementations MUST provide one-time proof, but no canonical feed index exists.",
+    "Implementations MUST provide one, two, or three signatures, but no canonical feed index exists.",
+  ])("does not treat an unrelated one-determiner as a canonical-index reference: %s", (text) => {
+    const path = "README.md";
+    expect(lintMaintainedGuides(repositoryRoot, { [path]: text }))
+      .not.toContainEqual(expect.objectContaining({
+        path,
+        code: "retired-authoring-model",
+      }));
+  });
+
+  const canonicalSubjectForms = [
+    "canonical feed index",
+    "canonical-feed index",
+    "canonical feed-index",
+    "canonical-feed-index",
+  ];
+  const canonicalRetirementForms = [
+    (subject: string) => `no ${subject} exists`,
+    (subject: string) => `no ${subject} is required`,
+    (subject: string) => `the protocol does not define a ${subject}`,
+    (subject: string) => `the ${subject} is retired`,
+  ];
+  const harmlessCanonicalScopes = [
+    (clause: string) => clause,
+    (clause: string) => `for baseline conformance, ${clause}`,
+    (clause: string) => `${clause} under this protocol`,
+  ];
+
+  it("accepts the finite canonical retirement grammar cross product", () => {
+    const path = "README.md";
+    for (const subject of canonicalSubjectForms) {
+      for (const retirement of canonicalRetirementForms) {
+        for (const scope of harmlessCanonicalScopes) {
+          const clause = scope(retirement(subject));
+          for (const text of [
+            `${clause}.`,
+            `Informational context only; ${clause}.`,
+            `${clause}; implementations MUST NOT provide one.`,
+            `**${clause}.**`,
+          ]) {
+            expect(
+              lintMaintainedGuides(repositoryRoot, { [path]: text }),
+              text,
+            ).not.toContainEqual(expect.objectContaining({
+              path,
+              code: "retired-authoring-model",
+            }));
+          }
+        }
+      }
+    }
+  });
+
+  it("rejects provision across the finite retirement grammar cross product", () => {
+    const path = "README.md";
+    for (const subject of canonicalSubjectForms) {
+      for (const retirement of canonicalRetirementForms) {
+        for (const scope of harmlessCanonicalScopes) {
+          const clause = scope(retirement(subject));
+          for (const text of [
+            `${clause}; implementations MUST provide one.`,
+            `Implementations MUST provide one although ${clause}.`,
+            `${clause}; implementations [MUST][require] preserve [it][index].`,
+            `${clause}; implementations MUST provide a ${subject}.`,
+          ]) {
+            expect(
+              lintMaintainedGuides(repositoryRoot, { [path]: text }),
+              text,
+            ).toContainEqual(expect.objectContaining({
+              path,
+              code: "retired-authoring-model",
+            }));
+          }
+        }
+      }
+    }
   });
 
   it("documents the six-document active-key family and frozen snapshot boundary", () => {
