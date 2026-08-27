@@ -441,6 +441,19 @@ Only events with valid structure, identifier, and signature enter the union.
 The rule is identical whether a candidate arrived from an ordinary relay, a
 repo relay, or native repository access.
 
+<a id="core-created-at-bound"></a>
+Selection additionally applies a premature-candidate bound. A candidate whose
+`created_at` exceeds the verifier's trusted current time by more than 900
+seconds MUST NOT enter the selection union. The candidate is quarantined, not
+invalidated: the verifier retains it, reports `core-created-at-premature`, and
+the candidate re-enters selection automatically once its `created_at` is
+within bound, if it is still a candidate then. A verifier whose known clock
+uncertainty exceeds 900 seconds fails closed for selection that this bound
+would decide. Quarantine changes candidate admission only; it does not alter
+NIP-01 cryptographic validity, and the kind `0`/`10002` seven-day refresh duty
+is unchanged and caps the residual effect of a later-activating quarantined
+candidate at one refresh interval.
+
 When reachable, a repository is the preferred durable reconciliation target,
 not a priority override. A newer valid relay event missing from the repository
 wins immediately and makes the repository stale until an authorized writer
