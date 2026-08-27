@@ -1612,6 +1612,14 @@ standard discovery, and an implementation that projects nothing to third
 parties omits them entirely. The prerequisite chain in
 [`registry/features.json`](registry/features.json) fixes who must ship them.
 
+<a id="comms-oidc-non-goals"></a>
+The issuer projection exists for private-network and workload agent
+authentication and for ordinary third-party relying-party verification. It is
+not censorship-resistant: the HTTPS host is an availability and correlation
+chokepoint, accepted as such. Issuer metadata, NIP-05 records, and launcher
+hosts never create identity authority; a client that treats them as more than
+hints reintroduces a central authority and is non-conformant.
+
 A persona has one exact HTTPS issuer:
 
 ```text

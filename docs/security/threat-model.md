@@ -91,6 +91,16 @@ requires explicit narrow OIDC scope; the NIP-01 event public key remains the
 author. Vault selection, grant selection, and signer selection fail closed and
 cannot fall back across personas or key classes.
 
+### Carrier withholding and equivocation
+
+Carriers can withhold revocations and other monotonic state. The defenses are
+multiple independent carriers and the declared authorization-view bound, which
+converts a withheld revocation from indefinite into bounded staleness at any
+honest minting node. Residual exposure for pure-relay reading clients is
+inherited from the Nostr carrier model and accepted. Equivocation-induced
+Assurance stalls have a specified recovery for properly enrolled personas: the
+witnessed-anchor tiebreak in the Assurance enrollment rules.
+
 ### Replay, races, and partial failure
 
 Usage state and request reservation precede a key effect. The durable
