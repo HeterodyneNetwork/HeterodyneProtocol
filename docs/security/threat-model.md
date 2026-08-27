@@ -176,6 +176,7 @@ reviewers can trace the threat control to its owner and feature binding.
 - **WORKSPACE-I-HOST-AUTHORITY-SEPARATION:** Hosting or trusted-seed availability does not grant governance authority, while explicit key-custody hosts remain confidentiality trust boundaries.
 - **WORKSPACE-I-RADICLE-BACKSTOP:** Every effective role retains an authorized Radicle locator and eligible Radicle-backed relay host independent of optional Nostr relays.
 - **WORKSPACE-I-DEVICE-LEAF-SEPARATION:** Each active account device has an independently revocable Marmot MLS leaf and receives only uniquely identified envelopes bound to that exact grant, single path admission epoch, account, device, leaf, role, resource, checkpoint, and custody host.
+- **CORE-I-CREATED-AT-REFUTATION:** A matured OpenTimestamps attestation proving created_at materially exceeds true existence time permanently excludes the event from replaceable selection and every enhanced claim, and no proof requirement gates baseline interoperability.
 
 ## Current draft versus frozen validation history
 

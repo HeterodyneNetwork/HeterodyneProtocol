@@ -28,6 +28,7 @@ vanilla Nostr relays and standard Marmot implementations.
 | `heterodyne:0.6.0#comms-trusted-seed-private-relay` | Concurrent trusted-seed discovery | Availability-oriented seed grants with no canonical seed and no identity, repository-owner, group-admin, or MLS authority. |
 | `heterodyne:0.6.0#social-moderation` | Anchored editorial approvals | Likely an amendment or profile around NIP-72 rather than a new NIP. |
 | `heterodyne:0.6.0#social-lists` | Stamped Social list profile | A general profile-marker approach that preserves plain NIP-51 interoperability. |
+| `heterodyne:0.6.0#core-ots-anchor` | NIP-03 anchoring for replaceable-state selection | Optional OpenTimestamps attestation of Nostr events with permanent refutation of provably future-dated replaceable state. |
 
 Control is a Comms-carried application profile, so this directory does not
 host Control protocol drafts. A reusable Control behavior needs an upstream

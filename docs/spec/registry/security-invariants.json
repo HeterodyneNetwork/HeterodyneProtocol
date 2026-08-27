@@ -541,6 +541,14 @@
       "first_version": "heterodyne/0.6.0",
       "feature": "workspace.private-role-control.v1",
       "description": "Each active account device has an independently revocable Marmot MLS leaf and receives only uniquely identified envelopes bound to that exact grant, single path admission epoch, account, device, leaf, role, resource, checkpoint, and custody host."
+    },
+    {
+      "id": "CORE-I-CREATED-AT-REFUTATION",
+      "owner": "core",
+      "status": "draft",
+      "first_version": "heterodyne/0.6.0",
+      "feature": "core.ots-anchor.v1",
+      "description": "A matured OpenTimestamps attestation proving created_at materially exceeds true existence time permanently excludes the event from replaceable selection and every enhanced claim, and no proof requirement gates baseline interoperability."
     }
   ]
 }
