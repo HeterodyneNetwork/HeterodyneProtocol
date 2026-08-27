@@ -104,7 +104,10 @@ semantics. It does not execute the frozen pre-redesign vector topic sources.
 The one rolling validation snapshot is non-normative historical evidence. It
 contains exactly 482 vectors, pins source commit
 `2ef40a6d6304f8f5e6162f84c12b7b03a42a3c43`, and is history-bound to snapshot
-commit `5d4bb5fb58b35c88d8a9db120a09f1087237f35c`. Historical generation,
+commit `5d4bb5fb58b35c88d8a9db120a09f1087237f35c`. The frozen snapshot and the
+current vector lane predate `heterodyne/0.6.0` and are regenerated in a
+follow-up change; until then the generator's current lane remains pinned at
+0.5.0. Historical generation,
 packaging, fixtures, vector schema/reason projections, coverage, and metadata
 belong to `snapshot-check`. Ordinary current-draft work does not rewrite them.
 
