@@ -1326,7 +1326,9 @@ MUST NOT activate, replace, or widen that authority.
 An implementation MAY use optional Assurance as additional evidence where an
 owning higher-layer profile explicitly permits it, but it MUST first validate
 the active-key-scoped Comms object and MUST NOT make Assurance a baseline
-registry-admission prerequisite.
+registry-admission prerequisite. A persona holding claim-ledger or OIDC-issuer
+authority SHOULD attach a window-complete Assurance enrollment; a client MUST
+surface an unenrolled high-authority persona distinctly.
 
 <a id="comms-authorization-freshness"></a>
 ### 9.2 Authorization-view freshness

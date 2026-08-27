@@ -543,6 +543,13 @@
       "description": "Each active account device has an independently revocable Marmot MLS leaf and receives only uniquely identified envelopes bound to that exact grant, single path admission epoch, account, device, leaf, role, resource, checkpoint, and custody host."
     },
     {
+      "id": "WORKSPACE-I-GOVERNANCE-ASSURED",
+      "owner": "workspace",
+      "status": "draft",
+      "first_version": "heterodyne/0.6.0",
+      "description": "Workspace authority mutations execute only under a window-complete verified Assurance enrollment bound at inception, compromise reset for a workspace uses only the assurance-recovery class, and ordinary writes continue under their own window when governance fails closed."
+    },
+    {
       "id": "ASSURANCE-I-ENROLLMENT-WINDOWED",
       "owner": "assurance",
       "status": "draft",

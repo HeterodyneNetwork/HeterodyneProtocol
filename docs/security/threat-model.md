@@ -107,7 +107,9 @@ invalidate subordinate authorities and trusted seeds, remove old leaves,
 advance every reachable group, publish fresh successor KeyPackages, and issue
 fresh distinct authorization for every continuing subordinate capability.
 Optional Assurance can prove continuity to a successor but does not alias the
-new author or preserve subordinate authority implicitly.
+new author or preserve subordinate authority implicitly. A workspace's hot key
+can no longer authorize its own succession; recovery authority rests with the
+cold root bound at inception.
 
 ## Registry-bound invariants
 
@@ -185,6 +187,7 @@ reviewers can trace the threat control to its owner and feature binding.
 - **WORKSPACE-I-HOST-AUTHORITY-SEPARATION:** Hosting or trusted-seed availability does not grant governance authority, while explicit key-custody hosts remain confidentiality trust boundaries.
 - **WORKSPACE-I-RADICLE-BACKSTOP:** Every effective role retains an authorized Radicle locator and eligible Radicle-backed relay host independent of optional Nostr relays.
 - **WORKSPACE-I-DEVICE-LEAF-SEPARATION:** Each active account device has an independently revocable Marmot MLS leaf and receives only uniquely identified envelopes bound to that exact grant, single path admission epoch, account, device, leaf, role, resource, checkpoint, and custody host.
+- **WORKSPACE-I-GOVERNANCE-ASSURED:** Workspace authority mutations execute only under a window-complete verified Assurance enrollment bound at inception, compromise reset for a workspace uses only the assurance-recovery class, and ordinary writes continue under their own window when governance fails closed.
 - **ASSURANCE-I-ENROLLMENT-WINDOWED:** No enrollment is pin-eligible before 604800 seconds of observably public, conflict-free existence; contests and competing enrollments fail closed to baseline, and a conflict resolves only to an enrollment with both materially earlier proven existence and witness receipts spanning the gap.
 - **COMMS-I-TIER3-CONFINED:** Tier 3 posts, audience wraps, rosters, and rotation records are carried only via the private repository's authorized interfaces, never ordinary public relays, confining audience membership metadata to allowed nodes.
 - **CORE-I-CREATED-AT-REFUTATION:** A matured OpenTimestamps attestation proving created_at materially exceeds true existence time permanently excludes the event from replaceable selection and every enhanced claim, and no proof requirement gates baseline interoperability.

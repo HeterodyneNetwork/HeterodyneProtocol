@@ -1966,6 +1966,12 @@
       "spec_refs": ["heterodyne:0.6.0#core-created-at-bound"]
     },
     {
+      "code": "workspace-governance-assurance-required",
+      "owner": "workspace", "status": "draft", "first_version": "heterodyne/0.6.0",
+      "description": "Workspace authority mutation rejected because the workspace persona lacks a window-complete verified Assurance enrollment at effect time.",
+      "spec_refs": ["heterodyne:0.6.0#workspace-governance-assurance"]
+    },
+    {
       "code": "assurance-enrollment-pending-window",
       "owner": "assurance", "status": "draft", "first_version": "heterodyne/0.6.0",
       "description": "Reciprocal enrollment is valid but its 604800 second conflict-free observation window has not elapsed, so it is not pin-eligible.",

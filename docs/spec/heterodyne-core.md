@@ -520,7 +520,10 @@ ref proves storage only; it never proves authorship.
 ## 8. Radicle event repositories
 
 A logical Nostr event repository belongs to one persona or higher-layer
-group. Its RID is a stable storage locator, not an identity. Its accepted
+group. Its RID is a stable storage locator, not an identity. A persona holding
+repository-owner policy authority SHOULD attach a window-complete Assurance
+enrollment; a client MUST surface an unenrolled high-authority persona
+distinctly. Its accepted
 logical contents are the union of currently authorized Radicle writer refs:
 
 - every native writer uses its own NID and signed ref;
