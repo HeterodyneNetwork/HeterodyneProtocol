@@ -1335,12 +1335,18 @@ This bound governs every Comms-derived authorization decision and every
 document that composes one; no other document restates it.
 
 Token minting and every privileged use require an authenticated,
-non-conflicted private authorization view no more than 300 seconds old. A
+non-conflicted private authorization view no older than the deployment's
+declared bound. The declared bound is the signed continuity-manifest member
+`authorization_view_max_age`, in seconds; when absent it is 300, and it MUST
+NOT exceed 86,400. A
 mutation additionally performs an immediate synchronization attempt against
 the canonical private ledger before authorizing, and fails closed unless it
 establishes that fresh view. A fresh token cannot extend a stale authorization
-view. A composing document or a local policy MAY shorten the window and MUST
-NOT lengthen it.
+view. A composing document or a local policy MAY shorten the effective bound
+and MUST NOT lengthen it beyond the declared value. A relying party MUST be
+able to read the declared bound before trusting a deployment, and clients
+surface it. Revocation latency at honest nodes is bounded by the declared
+value: declaring a long window is declaring slow revocation.
 
 <a id="comms-key-claims"></a>
 ## 10. Atomic typed-key claims
@@ -2172,7 +2178,7 @@ The list below is descriptive:
 - **COMMS-I-CLAIM-REVOCATION:** A valid revocation or authority reduction is irreversible, monotonic, and wins concurrent repository merges.
 - **COMMS-I-LEDGER-CONFINEMENT:** Private claim-ledger contents and decryption material are available only to active durable NID-bearing ledger readers.
 - **COMMS-I-ISSUER-KEY-CONFINEMENT:** Shared OIDC signing keys are separately encrypted and released only to nodes with active oidc-token-issuer authority.
-- **COMMS-I-MINT-FRESHNESS:** A node mints only from a synchronized canonical checkpoint no older than the manifest bound, which cannot exceed 300 seconds.
+- **COMMS-I-MINT-FRESHNESS:** A node mints only from a synchronized canonical checkpoint no older than the declared authorization_view_max_age bound, which defaults to 300 seconds and cannot exceed 86400 seconds.
 - **COMMS-I-ISSUER-CONTINUITY:** HTTPS issuer metadata and the active-persona-key-scoped Radicle continuity tree agree on the exact active issuer, keys, status digests, and authorized succession.
 - **COMMS-I-CLAIM-RELEASE:** OIDC projection releases only claims allowed by scope, audience, client policy, consent, active repository state, issuer trust, and proof requirements.
 - **COMMS-I-JWT-TYPE-AUDIENCE:** JWT consumers enforce exact issuer, intended audience, time, signature, nonce when applicable, and token-type separation including typ at+jwt for access tokens.

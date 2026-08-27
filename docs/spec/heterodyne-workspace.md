@@ -792,7 +792,7 @@ The list below is descriptive:
 - **WORKSPACE-I-AUTHENTICATED-CURRENT-STATE:** Every authority effect consumes only the resolver instance's latest accepted generation and revalidates complete signed Workspace state, transitions, and revocations at effect time.
 - **WORKSPACE-I-INDEPENDENT-RESOURCE-KEYS:** Role MLS state authorizes delivery but never serves as one universal content key for subordinate resources.
 - **WORKSPACE-I-REVOCATION-FUTURE-ONLY:** Revocation blocks future authorization and key delivery without claiming erasure of data or keys already obtained.
-- **WORKSPACE-I-FRESHNESS-BOUNDED:** Ordinary writes use checkpoints no older than 86400 seconds and authority mutations no older than 300 seconds, with policy able only to shorten those bounds.
+- **WORKSPACE-I-FRESHNESS-BOUNDED:** Ordinary writes use checkpoints no older than 86400 seconds and authority mutations no older than the declared authorization-view bound (default 300 seconds, ceiling 86400 seconds), with policy able only to shorten those bounds.
 - **WORKSPACE-I-HOST-AUTHORITY-SEPARATION:** Hosting or trusted-seed availability does not grant governance authority, while key-custody hosts remain explicit confidentiality trust boundaries.
 - **WORKSPACE-I-RADICLE-BACKSTOP:** Every effective role retains an authorized Radicle locator and eligible Radicle-backed relay host independent of optional Nostr relays.
 - **WORKSPACE-I-DEVICE-LEAF-SEPARATION:** Each active-account device has an independently revocable Marmot leaf and receives only envelopes bound to that exact account, device, and leaf.

@@ -1126,7 +1126,7 @@
       "owner": "control",
       "status": "draft",
       "first_version": "heterodyne/0.6.0",
-      "description": "The authenticated private authorization view is conflicted, older than 300 seconds, or not freshly synchronized for mutation.",
+      "description": "The authenticated private authorization view is conflicted, older than the declared authorization-view bound, or not freshly synchronized for mutation.",
       "spec_refs": [
         "heterodyne:0.6.0#control-token"
       ]
