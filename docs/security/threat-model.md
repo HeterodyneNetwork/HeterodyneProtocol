@@ -31,7 +31,7 @@ or weakened security controls.
 | Nostr event ingestion | Relay, repository, cache, or peer bytes | Verify exact ID and signature, then apply the owning kind/profile rule before use. |
 | Identity discovery | kind `0`, NIP-05, NIP-65, repository and node hints | Preserve active-key authority; treat hints as source-neutral observations. |
 | Repository union | Git objects and NID refs | Admit only authorized refs and locally verified exact objects. |
-| Privacy tiers | Repository readers, relays, seeds, full nodes | Present Tier 2 honestly and encrypt Tier 3 before every carrier. |
+| Privacy tiers | Repository readers, relays, seeds, full nodes | Present private-repository plaintext honestly, encrypt Tier 2 and Tier 3 before every carrier, and confine Tier 3 to authorized private-repository interfaces. |
 | Marmot boundary | Conversation events, routing commits, media | Preserve exact signed/ciphertext bytes and upstream account and device-leaf semantics. |
 | Full-node API | Light-client request and caller metadata | Resolve one persona vault and exact current grant; fail closed on ambiguity. |
 | Signer | Closed intent, grant, request identity, usage state | Attribute and reserve before signing; acquire the execute-once fence before effect. |
@@ -58,8 +58,13 @@ and expiry rules and fails closed where those rules require.
 
 ### Confidentiality and topology leakage
 
-Tier 2 is selective replication, not encryption. A UI must not imply otherwise.
-Tier 3 encrypts before any repository, relay, trusted seed, or full node. Private
+A private plaintext repository is selective replication, not encryption. A UI
+must not imply otherwise.
+Tier 2 and Tier 3 encrypt before any repository, relay, trusted seed, or full
+node. Tier 2 ciphertext on public carriers exposes the full distribution graph
+by design. Tier 3 improves membership privacy against global observers but
+concentrates audience metadata at the private repository's allowed nodes; a
+compromised or compelled allowed node yields the audience graph. Private
 workspace identifiers, counts, locators, and correlations remain inside the
 protected boundary. Resource content uses independent keys; role MLS state is
 an authorization channel rather than a universal content key.
@@ -119,8 +124,8 @@ reviewers can trace the threat control to its owner and feature binding.
 - **ASSURANCE-I-NO-IMPLICIT-CONTINUATION:** Succession transfers no succession authority, associated-key issuance policy, subordinate key, repository, group, delegate, financial, or application authority unless the record explicitly reauthorizes it.
 - **ASSURANCE-I-ASSOCIATED-KEY-BOUNDS:** Associated keys are accepted only for their exact head, active-key or epoch-threshold issuance ceiling, narrowed role and scope, issuer, subject, time bounds, active-grant proof requirements, and non-revoked state.
 - **ASSURANCE-I-EXPORT-LOSSLESS:** KERI export either preserves every security-relevant accepted Assurance semantic or fails without emitting a misleading partial identity.
-- **COMMS-I-TIER3-BLIND-CARRIER:** Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay.
-- **COMMS-I-TIER2-HONESTY:** Tier 2 private repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly.
+- **COMMS-I-TIER3-BLIND-CARRIER:** Tier 2 and Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay, and Tier 3 objects reach only authorized private-repository interfaces.
+- **COMMS-I-TIER2-HONESTY:** Private plaintext repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly.
 - **COMMS-I-CONFIG-AT-REST:** Comms-owned non-key private state and audience or group material are encrypted under the Comms repository-encryption profile.
 - **COMMS-I-CLIENT-SIDE-DELIVERY:** Cross-backend Comms processing runs on user-controlled clients; full nodes, repository relays, routing nodes, and Nostr relays are blind carriers for protected plaintext.
 - **COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY:** Feed, outbox, and delivery discovery do not depend on a centralized delivery directory.
@@ -151,7 +156,7 @@ reviewers can trace the threat control to its owner and feature binding.
 - **COMMS-I-CLAIM-RELEASE:** OIDC projection releases only claims allowed by scope, audience, client policy, consent, active repository state, issuer trust, and proof requirements.
 - **COMMS-I-JWT-TYPE-AUDIENCE:** JWT consumers enforce exact issuer, intended audience, time, signature, nonce when applicable, and token-type separation including typ at+jwt for access tokens.
 - **COMMS-I-STATUS-INTEGRITY:** Draft-21 status lists are signed, fresh, digest-bound across HTTPS and Radicle mirrors, writer-namespaced without index reuse, and never let VALID override other token failures.
-- **COMMS-I-PUBLIC-READER-TIER1-ONLY:** A public-reader implementation consumes only verified Tier 1 content and never renders Tier 2 plaintext or interprets Tier 3 ciphertext as public content.
+- **COMMS-I-PUBLIC-READER-TIER1-ONLY:** A public-reader implementation consumes only verified Tier 1 content and never renders private-repository plaintext or interprets Tier 2 or Tier 3 ciphertext as public content.
 - **COMMS-I-AGENT-SIGNER-BINDING:** Every automated event uses the exact registered signer, key class, and optional association kind/value; an agent key is preferred, while a persona key requires the explicit OIDC persona-signing scope, and the event pubkey remains authoritative.
 - **COMMS-I-AGENT-ATTRIBUTION:** Every agent-authored application event carries the canonical automation attribution block at its tier-appropriate protected location.
 - **COMMS-I-WORKLOAD-TOKEN-CONFINEMENT:** Workload tokens, token identifiers, private source claims, and sender proofs remain confined to the protected authorization and audit boundary.
@@ -176,6 +181,7 @@ reviewers can trace the threat control to its owner and feature binding.
 - **WORKSPACE-I-HOST-AUTHORITY-SEPARATION:** Hosting or trusted-seed availability does not grant governance authority, while explicit key-custody hosts remain confidentiality trust boundaries.
 - **WORKSPACE-I-RADICLE-BACKSTOP:** Every effective role retains an authorized Radicle locator and eligible Radicle-backed relay host independent of optional Nostr relays.
 - **WORKSPACE-I-DEVICE-LEAF-SEPARATION:** Each active account device has an independently revocable Marmot MLS leaf and receives only uniquely identified envelopes bound to that exact grant, single path admission epoch, account, device, leaf, role, resource, checkpoint, and custody host.
+- **COMMS-I-TIER3-CONFINED:** Tier 3 posts, audience wraps, rosters, and rotation records are carried only via the private repository's authorized interfaces, never ordinary public relays, confining audience membership metadata to allowed nodes.
 - **CORE-I-CREATED-AT-REFUTATION:** A matured OpenTimestamps attestation proving created_at materially exceeds true existence time permanently excludes the event from replaceable selection and every enhanced claim, and no proof requirement gates baseline interoperability.
 
 ## Current draft versus frozen validation history

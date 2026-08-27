@@ -69,36 +69,61 @@ profile and their registered Heterodyne application discriminator.
 ## 3. Repository privacy tiers
 
 
-Every repository-carried publication declares one of three trust boundaries,
-which clients MUST present without ambiguity:
+Every repository-carried publication declares one of three confidentiality
+tiers, which clients MUST present without ambiguity. Tier 1 and Tier 2 objects
+are valid Nostr events and are directly cross-compatible with ordinary public
+relays; Tier 3 is defined by Heterodyne private-repository mechanics and has
+no direct Nostr equivalent.
 
-| Tier | Stored form | Trust boundary |
-|---|---|---|
-| Tier 1 | plaintext in a public repository and on ordinary relays | confidential against no one |
-| Tier 2 | plaintext in a private repository | hidden from non-allowed nodes, but readable by every allowed seeder |
-| Tier 3 | NIP-44-v2-profile ciphertext in a public or private repository | confidential against everyone without the audience key, including seeders and full nodes |
+| Tier | Stored form | Nostr analogue | Trust boundary |
+|---|---|---|---|
+| Tier 1 | plaintext in a public repository and on ordinary relays | plaintext post on a public relay | confidential against no one |
+| Tier 2 | NIP-44-v2-profile ciphertext in a public repository and/or on ordinary relays | encrypted post on a public relay | content confidential against everyone without the audience key; distribution graph, membership, timing, and volume public |
+| Tier 3 | NIP-44-v2-profile ciphertext carried only via authorized private-repository interfaces | encrypted post on a members-only relay (no direct equivalent) | content confidential as Tier 2, and ciphertext, audience wraps, rosters, and fetch patterns visible only to allowed nodes |
 
-Before a user relies on a Tier 3 audience, the client MUST disclose that Tier
-3 protects content but not sender identity, recipient identity, audience
+Plaintext in a private repository is a repository-visibility setting, not a
+confidentiality tier. `visibility.allow` mechanics are unchanged: it MUST NOT
+be described as encrypted, end-to-end encrypted, or confidential against
+members; adding an NID to `visibility.allow` grants that node plaintext read
+and replication access and SHOULD require explicit user confirmation; and
+`visibility.allow` MUST NOT be conflated with the repository `delegates`
+governance set. Every allowed seeder reads that plaintext.
+
+Before a user relies on a Tier 2 audience, the client MUST disclose that Tier
+2 protects content but not sender identity, recipient identity, audience
 membership or membership changes, audience-generation linkage, timing, or
-volume. A client MUST NOT label Tier 3 membership-private.
+volume. A client MUST NOT label Tier 2 membership-private.
 
-A client MUST NOT describe Tier 2 as encrypted, end-to-end encrypted, or
-confidential against members. Adding an NID to `visibility.allow` grants that
-node plaintext read and replication access and SHOULD require explicit user
-confirmation. `visibility.allow` MUST NOT be conflated with the repository
-`delegates` governance set.
+Before a user relies on a Tier 3 audience, the client MUST disclose that
+membership, timing, and volume are visible to every allowed node and seeder of
+the repository; that the protocol defines no membership privacy within the
+audience's carrier set; and that Tier 3 has no forward secrecy — a compromised
+audience key decrypts every retained post under its `key_id`, and rotation
+protects only later generations. A client MUST NOT label Tier 3
+membership-private beyond the allowed-node boundary.
 
-Tier 3 content MUST be encrypted before it reaches any repository, full node,
-seed, or relay. Plaintext Tier 3 content MUST NOT be committed or published.
-An individual Tier 3 post outer event exposes only its registered
-profile marker, opaque `key_id`, required Core integrity/identity tags, and
-Comms profile stamp; semantic content and tags, RID, audience association, and
-retrieval hints are encrypted. The surrounding distribution graph is not
-membership-private: `kind:31011` and `kind:31012` expose clear recipient
-`p`/`d` tags and roster changes, the shared `key_id` links wraps, rosters,
-posts, descriptors, and rotations, and carrier observers retain
-timing, size, count, publication, and fetch-cadence metadata.
+Tier 2 and Tier 3 content MUST be encrypted before it reaches any repository,
+full node, seed, or relay. Plaintext Tier 2 or Tier 3 content MUST NOT be
+committed or published. An individual Tier 2 or Tier 3 post outer event
+exposes only its registered profile marker, opaque `key_id`, required Core
+integrity/identity tags, and Comms profile stamp; semantic content and tags,
+RID, audience association, and retrieval hints are encrypted. On public
+carriers the surrounding Tier 2 distribution graph is not membership-private:
+`kind:31011` and `kind:31012` expose clear recipient `p`/`d` tags and roster
+changes, the shared `key_id` links wraps, rosters, posts, descriptors, and
+rotations, and carrier observers retain timing, size, count, publication, and
+fetch-cadence metadata.
+
+<a id="comms-tier3-confinement"></a>
+For a Tier 3 audience, the `kind:31011` audience wraps, the `kind:31012`
+roster, rotation records, and the Tier 3 posts themselves MUST be carried only
+via the private repository's authorized interfaces and MUST NOT be published
+to ordinary public relays. This confines the clear recipient `p` tags,
+`key_id` linkage, and roster changes to allowed nodes. A recipient MUST be an
+allowed node of the private repository before wraps addressed to it are
+published there. Tier 3 improves membership privacy against global observers
+but concentrates audience metadata at the private repository's allowed nodes;
+a compromised or compelled allowed node yields the audience graph.
 
 <a id="comms-audience-keys"></a>
 ### 3.1 Audience key distribution and roster
@@ -143,10 +168,11 @@ exactly the addressing fields represented here:
 The replaceable `kind:31012` roster uses `d = key_id`, the
 `audience_roster` discriminator, the same `key_id`, and one `p` tag per
 recipient active account key. It MUST be signed by the publishing persona's
-active key. A sensitive roster MAY instead be carried inside a Tier 3
-encrypted object.
+active key. A sensitive roster MAY instead be carried inside an
+audience-encrypted object.
 
-Encrypting the roster does not create complete membership privacy.
+For a Tier 2 audience, encrypting the roster does not create complete
+membership privacy.
 Recipient-addressed `kind:31011` events on public carriers still expose the
 clear recipient and generation linkage Core warns of. This release defines no
 membership-private audience-key distribution profile.
@@ -162,7 +188,7 @@ state transition, or the profile's terminal retry-budget outcome. A carrier
 partition is an availability failure, not automatic producer nonconformance.
 
 <a id="comms-tier-three-profile"></a>
-### 3.2 Tier 3 encryption profile
+### 3.2 Audience encryption profile (Tiers 2 and 3)
 
 
 Comms profiles the symmetric ChaCha20/HMAC-SHA256 layer of NIP-44 v2. It does
@@ -185,8 +211,10 @@ ECDH or additional KDF is applied. Every encryption under a derived key MUST
 use a fresh 32-byte NIP-44 nonce, and a producer MUST NOT reuse a nonce with
 the same derived key.
 
-The registry permits Tier 3 wrapping only for this closed stamping
-profile set:
+The registry permits Tier 2 and Tier 3 wrapping only for this closed stamping
+profile set. The registered `tier3` profile identifiers are historical names
+for the shared wrapped-content profile; the tier of a wrapped post is set by
+its carrier boundary, not its profile ID:
 
 | Nostr kind | Profile ID |
 |---|---|
@@ -201,7 +229,7 @@ Every profile uses discriminator `tag:heterodyne_wrap=room_key.v2` and is
 stamping. Another upstream kind MUST NOT use `room_key.v2` until a later
 registry revision allocates its own immutable profile.
 
-A Tier 3 post has this outer shape (kind `1` shown):
+A wrapped Tier 2 or Tier 3 post has this outer shape (kind `1` shown):
 
 ```json
 {
@@ -219,7 +247,7 @@ A Tier 3 post has this outer shape (kind `1` shown):
 }
 ```
 
-The clear tags of every Tier 3 post MUST include the two wrap tags and
+The clear tags of every wrapped post MUST include the two wrap tags and
 `spec_version` equal to `heterodyne/0.6.0` as required by its stamping
 profile. For addressable kinds
 `30023` and `30402`, an additional outer `d` tag is REQUIRED and MUST be an
@@ -243,8 +271,8 @@ key, not current membership metadata, is the cryptographic access test.
 
 
 The `heterodyne-comms-config-repository-v1` protection profile instantiates
-[`heterodyne:0.6.0#core-protected-repository`](heterodyne-core.md#core-protected-repository) with the Tier 3 profile
-above. There is exactly one private,
+[`heterodyne:0.6.0#core-protected-repository`](heterodyne-core.md#core-protected-repository) with the audience
+encryption profile above at Tier 3. There is exactly one private,
 unadvertised config repository per persona; its allow list contains only the
 persona's durable authorized writer NIDs. The RID MUST NOT appear on any
 published profile, event, relay list, or node advertisement. It travels only
@@ -284,8 +312,9 @@ This scrub is cooperative hygiene, not erasure, under
 Individual deletion uses ordinary Nostr `kind:5`. It signals intent, not
 erasure. Live history MUST NOT be rewritten; deletion of a whole
 retired `enc/<key_id>` ref is the sole sanctioned ref-deletion path.
-Clients MUST warn that Tier 1 and Tier 2 plaintext may persist on every node
-that fetched or seeded it. Tier 3 ciphertext may persist on relays and
+Clients MUST warn that Tier 1 plaintext and private-repository plaintext may
+persist on every node that fetched or seeded it. Tier 2 and Tier 3 ciphertext
+may persist on relays and
 non-cooperating seeds and remains readable to holders of its retired key.
 
 <a id="comms-publishing"></a>
@@ -294,17 +323,19 @@ non-cooperating seeds and remains readable to holders of its retired key.
 
 One publication intent MUST produce exactly one signed Nostr event, computed
 once and fanned out unchanged. Implementations MUST NOT re-sign the same
-intent. Tier 3 encryption precedes signing. The event `id` is the idempotency
+intent. Audience encryption precedes signing. The event `id` is the idempotency
 token across ordinary relays, repo relays, and native repository ingestion;
 receivers MUST deduplicate on it.
 
 The public destination set is the union of the author's selected NIP-65 write
 relays, applicable read relays of tagged recipients, a repo relay already
 listed in the author's kind `10002`, and other explicitly selected ordinary
-relays. Tier 1 plaintext MAY use every public destination. Tier 2 plaintext
-MUST be published only to private-repository allowed writers and interfaces.
-Tier 3 ciphertext MAY use its configured ordinary and repository-backed
-relays. A repository-backed relay receives the same standard NIP-01 `EVENT`
+relays. Tier 1 plaintext and Tier 2 ciphertext MAY use every public
+destination. Private-repository plaintext MUST be published only to
+private-repository allowed writers and interfaces. Tier 3 ciphertext MUST be
+published only via the private repository's authorized interfaces under
+`heterodyne:0.6.0#comms-tier3-confinement`.
+A repository-backed relay receives the same standard NIP-01 `EVENT`
 message and exact event bytes as any ordinary relay; it adds no envelope or
 storage signature to the event.
 
@@ -381,10 +412,11 @@ Repository unavailability leaves relay-derived state fully usable.
 ### 5.3 Tier-specific carrier boundaries
 
 
-Tier 1 filters may query ordinary public relays and public repo relays. Tier 2
-filters may query only authorized private-repository interfaces. Tier 3
-filters retrieve the signed ciphertext events from their configured ordinary
-or repository-backed relays and decrypt only after exact-event verification.
+Tier 1 and Tier 2 filters may query ordinary public relays and public repo
+relays. Private-repository plaintext filters may query only authorized
+private-repository interfaces. Tier 3 filters retrieve the signed ciphertext
+events only from authorized private-repository interfaces. Tier 2 and Tier 3
+retrieval decrypts only after exact-event verification.
 The filter and selected carrier MUST NOT weaken the tier's disclosure rule.
 
 Private audience bootstrap MAY carry an encrypted descriptor that names its
@@ -422,7 +454,8 @@ boundary produces a visible staleness or liveness warning, not invalidity of
 the last correctly signed events. Relay-only retrieval remains a complete and
 conforming public path.
 
-Tier 3 retrieval obtains ciphertext before decryption. Tier 2 retrieval uses
+Tier 2 and Tier 3 retrieval obtain ciphertext before decryption; Tier 3 and
+private-repository plaintext retrieval use
 only an authorized private interface. Marmot history follows the group's
 declared retention and join-epoch rules. Comms defines no mandatory archive
 service, centralized delivery directory, subscriber graph, or social-feed
@@ -517,11 +550,12 @@ Resolution MUST terminate in exactly one visible state:
 - `conflicted` when applicable NIP-01 or addressable-event rules
   identify a conflict;
 - `unavailable` when no queried carrier returns the requested valid event; or
-- `private` for Tier 2 plaintext or Tier 3 ciphertext.
+- `private` for private-repository plaintext or Tier 2/Tier 3 ciphertext.
 
 The client MUST NOT turn a failed fetch into an authoritative empty outbox. It
-MUST NOT render Tier 2 plaintext in public-reader mode and MUST NOT interpret,
-probe, or label Tier 3 ciphertext as public content. Repository confirmation
+MUST NOT render private-repository plaintext in public-reader mode and MUST
+NOT interpret,
+probe, or label Tier 2 or Tier 3 ciphertext as public content. Repository confirmation
 MAY report durability, but its absence MUST NOT demote a relay-verified event.
 
 <a id="comms-public-transition"></a>
@@ -2080,9 +2114,10 @@ NIP-32 block followed directly by `agent_action`, or the same block with one
 canonical `heterodyne_agent` association immediately before `agent_action`.
 Neither form makes the association mandatory or permits it in another order.
 
-Tier 1 carries the block publicly. Tier 2 carries it inside the private
-repository trust boundary. Tier 3 carries the same block only inside the
-encrypted logical event and adds no agent marker to the clear wrapper. A
+Tier 1 carries the block publicly. Private-repository plaintext carries it
+inside the private repository trust boundary. Tier 2 and Tier 3 carry the same
+block only inside the
+encrypted logical event and add no agent marker to the clear wrapper. A
 verifier MUST require the event `pubkey` to equal the exact selected signer and
 MUST require the label namespace, class, action, ordering, and any optional
 association to be canonical. Heterodyne clients always render the event as
@@ -2125,8 +2160,9 @@ claiming that feature, under
 [`heterodyne:0.6.0#core-invariant-scope`](heterodyne-core.md#core-invariant-scope).
 The list below is descriptive:
 
-- **COMMS-I-TIER3-BLIND-CARRIER:** Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay.
-- **COMMS-I-TIER2-HONESTY:** Tier 2 private repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly.
+- **COMMS-I-TIER3-BLIND-CARRIER:** Tier 2 and Tier 3 content is audience-key encrypted before reaching any repository, seed, full node, or relay, and Tier 3 objects reach only authorized private-repository interfaces.
+- **COMMS-I-TIER2-HONESTY:** Private plaintext repositories are selective-replication boundaries, not encryption, and clients present that trust boundary honestly.
+- **COMMS-I-TIER3-CONFINED:** Tier 3 posts, audience wraps, rosters, and rotation records are carried only via the private repository's authorized interfaces, never ordinary public relays, confining audience membership metadata to allowed nodes.
 - **COMMS-I-CONFIG-AT-REST:** Comms-owned non-key private state and audience or group material are encrypted under the Comms repository-encryption profile.
 - **COMMS-I-CLIENT-SIDE-DELIVERY:** Cross-backend Comms processing runs on user-controlled clients; full nodes, repository relays, routing nodes, and Nostr relays are blind carriers for protected plaintext.
 - **COMMS-I-NO-CENTRAL-DELIVERY-DIRECTORY:** Feed, outbox, and delivery discovery do not depend on a centralized delivery directory.
@@ -2141,7 +2177,7 @@ The list below is descriptive:
 - **COMMS-I-CLAIM-RELEASE:** OIDC projection releases only claims allowed by scope, audience, client policy, consent, active repository state, issuer trust, and proof requirements.
 - **COMMS-I-JWT-TYPE-AUDIENCE:** JWT consumers enforce exact issuer, intended audience, time, signature, nonce when applicable, and token-type separation including typ at+jwt for access tokens.
 - **COMMS-I-STATUS-INTEGRITY:** Draft-21 status lists are signed, fresh, digest-bound across HTTPS and Radicle mirrors, writer-namespaced without index reuse, and never let VALID override other token failures.
-- **COMMS-I-PUBLIC-READER-TIER1-ONLY:** A public-reader implementation consumes only verified Tier 1 content and never renders Tier 2 plaintext or interprets Tier 3 ciphertext as public content.
+- **COMMS-I-PUBLIC-READER-TIER1-ONLY:** A public-reader implementation consumes only verified Tier 1 content and never renders private-repository plaintext or interprets Tier 2 or Tier 3 ciphertext as public content.
 - **COMMS-I-AGENT-SIGNER-BINDING:** Every automated event uses the exact registered signer, key class, and optional association kind/value; an agent key is preferred, while a persona key requires the explicit OIDC persona-signing scope, and the event pubkey remains authoritative.
 - **COMMS-I-AGENT-ATTRIBUTION:** Every agent-authored application event carries the canonical automation attribution block at its tier-appropriate protected location.
 - **COMMS-I-WORKLOAD-TOKEN-CONFINEMENT:** Workload tokens, token identifiers, private source claims, and sender proofs remain confined to the protected authorization and audit boundary.
@@ -2154,7 +2190,8 @@ The list below is descriptive:
 - **COMMS-I-TRUSTED-SEED-CONFINEMENT:** A trusted seed receives only routing metadata and exact encrypted event bytes, writes only its own active authorized NID ref, and gains no persona, repository-owner, group-admin, full-node, or MLS authority.
 - **COMMS-I-PRIVATE-RELAY-ACL:** Every private seed read or write uses embedding-configured seed and administrator trust roots, one-use authenticated request authority, trusted current state and time, and one unique current unexpired administrator-signed ACL head matching the account role, seed grant, `h`, private RID, and Marmot group transition.
 
-Mechanism guarantees MUST remain distinct. Tier 3 has no forward secrecy: a
+Mechanism guarantees MUST remain distinct. Tier 2 and Tier 3 have no forward
+secrecy: a
 compromised audience key decrypts every retained post under its
 `key_id`; rotation protects only later generations. Marmot conversation and
 Control-channel guarantees come only from the pinned Marmot/MLS profile and
@@ -2191,7 +2228,8 @@ authorship:
 ```
 
 A `heterodyne-comms-strict-v1` implementation MUST meet every inherited Core
-obligation, MUST present the Tier 2 plaintext-on-allowed-seeds warning before
+obligation, MUST present the private-repository plaintext-on-allowed-seeds
+warning before
 publication, and MUST retain no retired message keys after the Comms deletion
 points. Its capability advertisement MUST name both profile IDs. An
 implementation missing any condition MUST omit the Comms profile. The
@@ -2240,10 +2278,12 @@ feature, but MUST name the `public-reader` Core role, implement
 pass every public-reader and applicable Core vector, and report reduced
 assurance when Tor is unavailable. Repository unavailability does not demote
 valid relay-derived state. It MUST NOT claim this
-feature after rendering Tier 2 or Tier 3 as public content.
+feature after rendering private-repository plaintext or Tier 2 or Tier 3
+ciphertext as public content.
 
 A report claiming `heterodyne-comms-strict-v1` MUST include the computed
-closure, the Core prerequisite result, the Tier 2 warning result, every
+closure, the Core prerequisite result, the private-repository plaintext
+warning result, every
 applicable strict vector result, and the vector results for every feature it
 also claims. It MUST NOT claim the profile if any item is missing. An
 implementation that exposes an automated publication path outside §15 MUST NOT

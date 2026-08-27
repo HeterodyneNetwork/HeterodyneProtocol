@@ -60,9 +60,10 @@ not added to the public Social outbox unless the user separately publishes it.
 ### 2.1 Mixed-tier fan-out and reply inboxes
 
 A Social UI MAY compose one intent across multiple Comms destinations, but it
-MUST preserve [`heterodyne:0.6.0#comms-privacy-tiers`](heterodyne-comms.md#comms-privacy-tiers): Tier 2 plaintext
-MUST NOT reach a public relay, and Tier 3 MUST remain ciphertext at every
-destination. A client SHOULD warn before a user expands a Tier 2, Tier 3, or
+MUST preserve [`heterodyne:0.6.0#comms-privacy-tiers`](heterodyne-comms.md#comms-privacy-tiers): private-repository
+plaintext MUST NOT reach a public relay, Tier 2 MUST remain ciphertext at
+every destination, and Tier 3 MUST NOT leave the private repository's
+authorized interfaces. A client SHOULD warn before a user expands a Tier 2, Tier 3, or
 private-discussion intent to a public destination. The warning never permits
 plaintext leakage.
 
@@ -90,8 +91,9 @@ resolved through NIP-05. A follower MUST:
    write relays plus any repository-published relay hints with NIP-01 filters;
 3. union valid exact events from all reachable carriers, deduplicate by event
    id, and use NIP-01 replaceable selection where applicable;
-4. for Tier 2, establish access through the repository allow list; for Tier 3,
-   possess the current audience key and use the in-audience descriptor;
+4. for Tier 2, possess the current audience key; for Tier 3, possess the
+   current audience key, establish access through the private repository allow
+   list, and use the in-audience descriptor;
 5. after entering an audience, read its descriptor for deeper feeds and repeat
    transitively; and
 6. cache transport hints with a TTL and revalidate on a newer valid kind `0`
@@ -119,8 +121,8 @@ Following is a set of feed subscriptions, not one global server-side edge:
 - following a public author subscribes to its NIP-65 write relays with
   ordinary NIP-01 filters;
 - topic selection is a local filter over that author's valid events;
-- private following requires Tier 2 allow-list access or Tier 3 audience-key
-  membership; and
+- private following requires the applicable audience key and, for Tier 3,
+  private-repository allow-list access; and
 - vanilla-Nostr following subscribes through the target's NIP-65 write relays.
 
 A client that follows a public feed SHOULD offer to opt into seeding its
@@ -592,8 +594,8 @@ Every ordinary Social NIP-51 list or set is a standard signed event publishable
 to the persona's NIP-65 write relays. A repository or repository-backed relay
 MAY store and serve the exact same event. Upstream private items remain NIP-44-encrypted to self
 inside that same publishable event; ciphertext does not make the event or its
-metadata private. Repository carriage MUST NOT imply Tier 2 delivery or a
-private-repository allow list.
+metadata private. Repository carriage MUST NOT imply audience-encrypted
+delivery or a private-repository allow list.
 
 The persona SHOULD also commit each current list revision to its persona
 repository. A reader MUST select the newest valid replaceable/addressable

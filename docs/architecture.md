@@ -71,13 +71,15 @@ specification says they carry the same exact object. A reader verifies the
 object locally before rendering, storage, or authorization. Invalid bytes from
 one carrier do not taint an independently valid copy from another.
 
-Privacy has three deployment tiers:
+Privacy has three deployment tiers, plus an orthogonal private-repository
+visibility setting for selectively replicated plaintext (every allowed reader
+observes that plaintext):
 
 | Tier | Treatment | Trust boundary |
 |---|---|---|
 | 1 | Public signed Nostr content | Integrity depends on local verification. |
-| 2 | Plaintext in selectively replicated private repositories | Every repository reader can observe plaintext. |
-| 3 | Audience- or group-encrypted content | Repositories, relays, seeds, and full nodes remain blind carriers. |
+| 2 | Audience-encrypted content on public carriers | Content is blind to carriers; the distribution graph, membership, and timing stay public. |
+| 3 | Audience-encrypted content confined to private-repository interfaces | Content blind to carriers, and membership metadata visible only to allowed nodes. |
 
 Marmot owns MLS, account and device-leaf identity, conversation events,
 encrypted media, and Nostr transport semantics. Heterodyne stores and routes
