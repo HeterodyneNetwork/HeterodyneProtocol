@@ -15,7 +15,7 @@ linked below carry current authority.
 
 ## Protocol family
 
-The six-document family has one draft identifier, `heterodyne/0.5.0`:
+The six-document family has one draft identifier, `heterodyne/0.6.0`:
 
 | Document | Responsibility |
 |---|---|

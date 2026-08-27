@@ -64,7 +64,7 @@
       "uniqueItems": true,
       "items": { "$ref": "#/definitions/key_ref" }
     },
-    "spec_version": { "const": "heterodyne/0.5.0" },
+    "spec_version": { "const": "heterodyne/0.6.0" },
     "profile_revision": { "const": 2, "description": "Immutable profile revision at which the v1 claim wire profile was allocated; not the current family registry revision." }
   },
   "allOf": [

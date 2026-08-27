@@ -3,7 +3,7 @@
 Document ID: `control`
 
 Control is a section of the Heterodyne specification and is governed by
-[`heterodyne:0.5.0#core-document-conventions`](heterodyne-core.md#core-document-conventions),
+[`heterodyne:0.6.0#core-document-conventions`](heterodyne-core.md#core-document-conventions),
 which fixes the family version, registry pin, release status, BCP 14 usage,
 and anchor and reference forms. Its conformance expression is **Core + Comms
 conformant + Control profile**. Optional Assurance can strengthen succession
@@ -13,13 +13,13 @@ and recovery but is not a Control prerequisite.
 ```json
 {
   "document_id": "control",
-  "spec_version": "heterodyne/0.5.0",
+  "spec_version": "heterodyne/0.6.0",
   "conformance_expression": "Core + Comms conformant + Control profile",
   "direct_dependencies": [
-    "heterodyne:0.5.0#core-conformance",
-    "heterodyne:0.5.0#comms-conformance",
-    "heterodyne:0.5.0#comms-marmot",
-    "heterodyne:0.5.0#comms-agent-authorship"
+    "heterodyne:0.6.0#core-conformance",
+    "heterodyne:0.6.0#comms-conformance",
+    "heterodyne:0.6.0#comms-marmot",
+    "heterodyne:0.6.0#comms-agent-authorship"
   ],
   "required_features": [
     "comms.marmot-conversations.v1",
@@ -449,7 +449,7 @@ audience, signer, class, kind, value, and signed automation-policy binding.
 It derives agent class, association, tier, and scopes only from the signed
 grant; caller values never select policy. The node then invokes the Comms automation
 attribution transform at
-[`heterodyne:0.5.0#comms-agent-authorship`](heterodyne-comms.md#comms-agent-authorship),
+[`heterodyne:0.6.0#comms-agent-authorship`](heterodyne-comms.md#comms-agent-authorship),
 then verifies the resulting attribution, and only then passes the unsigned
 event to the signer-side execute-once capability; it never receives or invokes
 a raw signer. Before that invocation it MUST also reload authoritative

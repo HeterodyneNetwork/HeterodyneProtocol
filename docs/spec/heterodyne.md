@@ -12,7 +12,7 @@ are optional Assurance rather than prerequisites.
 
 ## Document graph
 
-All six documents carry `heterodyne/0.5.0`. Assurance depends only on Core.
+All six documents carry `heterodyne/0.6.0`. Assurance depends only on Core.
 Comms, Control, Social, and Workspace may compose Assurance but do not require
 it for baseline conformance. Workspace's Core+Comms base is solid; its Control
 and Social integrations are optional.

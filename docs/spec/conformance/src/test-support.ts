@@ -26,7 +26,7 @@ export const vectorPath = "docs/spec/vectors/core/001-valid.json";
 export const sourceCommit = "1".repeat(40);
 export const snapshotCommit = "2".repeat(40);
 export const registryEntrySetDigest =
-  "32579526a345b75cf11b3892b01928794c57c0318b8ae5194208f1d76c13df69";
+  "0250925c750aa782924c6ebc6eebd4d085f7c16dc72175077b9e5188b251ace9";
 
 const snapshotSupportPaths = [
   fixturesPath,
@@ -164,9 +164,9 @@ function writeSource(root: string, withAssurance: boolean): void {
       code: "bad_signature",
       owner: "core",
       status: "draft",
-      first_version: "heterodyne/0.5.0",
+      first_version: "heterodyne/0.6.0",
       description: "Nostr event id or BIP-340 signature verification failed.",
-      spec_refs: ["heterodyne:0.5.0#core-conformance"],
+      spec_refs: ["heterodyne:0.6.0#core-conformance"],
     }],
   });
   writeJson(root, securityInvariantsPath, {
@@ -174,7 +174,7 @@ function writeSource(root: string, withAssurance: boolean): void {
       id: "CORE-I-VERIFY-BEFORE-USE",
       owner: "core",
       status: "draft",
-      first_version: "heterodyne/0.5.0",
+      first_version: "heterodyne/0.6.0",
       description: "Verify signed input before use.",
     }],
   });

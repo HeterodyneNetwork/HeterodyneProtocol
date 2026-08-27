@@ -12,7 +12,7 @@
   ],
   "properties": {
     "profile": {"const": "heterodyne.control.agent-publish-intent.v1"},
-    "spec_version": {"const": "heterodyne/0.5.0"},
+    "spec_version": {"const": "heterodyne/0.6.0"},
     "grant_id": {"$ref": "#/$defs/hex256"},
     "vault_id": {"$ref": "#/$defs/hex256"},
     "persona_active_key": {"$ref": "#/$defs/hex256"},

@@ -23,7 +23,7 @@
   ],
   "properties": {
     "spec_version": {
-      "const": "heterodyne/0.5.0"
+      "const": "heterodyne/0.6.0"
     },
     "object_type": {
       "const": "role-revocation-v1"

@@ -14,15 +14,15 @@ import { findSignatureIntegrityFailures } from "./signature-integrity.js";
 
 const DIGEST = "aa".repeat(32);
 const VALID_RAW =
-  '[0,"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",100,1,[["spec_version","heterodyne/0.5.0"],["kel_head","b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0","0"]],"fixture"]';
-const VALID_ID = "74fed57cc8f0d83a0e01c12cb0a1cae66acfc6326b254c4783226e1a17121c83";
+  '[0,"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",100,1,[["spec_version","heterodyne/0.6.0"],["kel_head","b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0","0"]],"fixture"]';
+const VALID_ID = "cfb684b3beaf23f8b7ddba82614d7cc8af92ce790031de6c8d6e85f6cb8c199d";
 const VALID_SIGNATURE =
-  "6044a1b015173a9e853867e61b2545554406c1c78e6944802fc0bd1e1484e998dfdb5e228e4d2b6adc5cb1066ef29ae3232d915d97975af48a88d68d3c6ab858";
+  "5c903aaa1cbd39b551a13903b44be49cdc63572904c31ab8511ba41b0ce3020ccbf67f44d4f22e0a11b7b3622bdaa263137e788da3e532c60c50817cddb719af";
 const ALTERNATE_ESCAPE_RAW =
-  '[0,"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",100,31008,[["spec_version","heterodyne/0.5.0"],["kel_head","b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0","0"]],"fi\\u0078ture"]';
-const ALTERNATE_ESCAPE_ID = "49ee55f141662471402e659860126cd908ccbfcc52560567715a3c75fb86d2f8";
+  '[0,"f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",100,31008,[["spec_version","heterodyne/0.6.0"],["kel_head","b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0","0"]],"fi\\u0078ture"]';
+const ALTERNATE_ESCAPE_ID = "d692c7c0d06430c9a6e3a554eac6cd02c9342056aa9575eb5c8afb5c0c8147d0";
 const ALTERNATE_ESCAPE_SIGNATURE =
-  "564b09765b0de0fb660d9fafc5b5ab55bed535082ce8b45016bc8c230be46af2518fe3e59385a5e6de75df324e335e828d46e6c5f168b94495640422a8708015";
+  "283cad197c3675df637c7fcc7b63e3042a4752dd75ddd0ec71ce3ffa029d8a03f902bf7dc00a2d7ee2b53188cfcebb2e09c1fa6efc6727154852a743d603236d";
 
 type CorpusVector = { path: string; value: VectorDocument };
 
@@ -33,7 +33,7 @@ function signedEvent(): Record<string, unknown> {
     created_at: 100,
     kind: 1,
     tags: [
-      ["spec_version", "heterodyne/0.5.0"],
+      ["spec_version", "heterodyne/0.6.0"],
       ["kel_head", "b0".repeat(32), "0"],
     ],
     content: "fixture",
@@ -48,7 +48,7 @@ function alternateEscapeEvent(): Record<string, unknown> {
     created_at: 100,
     kind: 31_008,
     tags: [
-      ["spec_version", "heterodyne/0.5.0"],
+      ["spec_version", "heterodyne/0.6.0"],
       ["kel_head", "b0".repeat(32), "0"],
     ],
     content: "fixture",

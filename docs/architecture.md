@@ -6,7 +6,7 @@ and schemas under [`docs/spec/`](spec/).
 
 ## Family shape
 
-All six documents share `heterodyne/0.5.0` and the one registry manifest.
+All six documents share `heterodyne/0.6.0` and the one registry manifest.
 
 ```text
 Core <- Assurance (optional)

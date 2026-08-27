@@ -94,7 +94,7 @@ describe("loadCorpus split roots", () => {
     properties.spec_refs = { type: "array", minItems: 1, items: { type: "string" } };
     writeJson(input.snapshotRoot, vectorSchemaPath, schema);
     const vector = readJson(input.snapshotRoot, vectorPath);
-    vector.spec_refs = ["heterodyne:0.5.0#core-conformance"];
+    vector.spec_refs = ["heterodyne:0.6.0#core-conformance"];
     writeJson(input.snapshotRoot, vectorPath, vector);
     refreshSnapshotManifest(input.snapshotRoot);
 

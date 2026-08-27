@@ -24,7 +24,7 @@
       "const": "heterodyne.assurance.associated-key.v1"
     },
     "spec_version": {
-      "const": "heterodyne/0.5.0"
+      "const": "heterodyne/0.6.0"
     },
     "active_key": {
       "$ref": "#/definitions/hex32"

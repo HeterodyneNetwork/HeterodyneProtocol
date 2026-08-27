@@ -4,17 +4,17 @@ Document ID: `assurance`
 
 Assurance is an optional section of the Heterodyne specification and is
 governed by
-[`heterodyne:0.5.0#core-document-conventions`](heterodyne-core.md#core-document-conventions),
+[`heterodyne:0.6.0#core-document-conventions`](heterodyne-core.md#core-document-conventions),
 which fixes the family version, registry pin, BCP 14 usage, canonical key and
 JSON forms, and conformance rules.
 
 Normative dependencies:
 
-- [`heterodyne:0.5.0#core-active-key-persona`](heterodyne-core.md#core-active-key-persona)
+- [`heterodyne:0.6.0#core-active-key-persona`](heterodyne-core.md#core-active-key-persona)
   supplies the active-key persona and baseline NIP-01 identity.
-- [`heterodyne:0.5.0#core-verification`](heterodyne-core.md#core-verification)
+- [`heterodyne:0.6.0#core-verification`](heterodyne-core.md#core-verification)
   supplies exact NIP-01 event verification.
-- [`heterodyne:0.5.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes)
+- [`heterodyne:0.6.0#core-proof-bytes`](heterodyne-core.md#core-proof-bytes)
   supplies domain-separated proof bytes.
 
 Assurance has no other normative dependency.
@@ -58,7 +58,7 @@ contents are the closed schemas below:
 
 Every content object contains exactly its schema members, including
 `profile`, `spec_version`, `active_key`, `created_at`, and `predecessor`.
-`spec_version` is exactly `heterodyne/0.5.0`. `active_key`, event IDs,
+`spec_version` is exactly `heterodyne/0.6.0`. `active_key`, event IDs,
 commitments, and Nostr keys are 64 lowercase hexadecimal characters.
 Signatures are 128 lowercase hexadecimal characters. `created_at` equals the
 outer event's integer `created_at`. `predecessor` is `null` only in an

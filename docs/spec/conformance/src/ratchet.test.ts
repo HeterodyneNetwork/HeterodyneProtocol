@@ -70,7 +70,7 @@ describe("baseline documents", () => {
       "G1",
     )).toThrow("exactly source_commit, artifact_set_sha256, gate, and failures");
     expect(() => parseBaseline(JSON.stringify({
-      source_commit: "heterodyne/0.5.0",
+      source_commit: "heterodyne/0.6.0",
       artifact_set_sha256: artifactSetSha256,
       gate: "G1",
       failures: [],

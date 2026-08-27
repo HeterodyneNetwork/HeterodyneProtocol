@@ -33,7 +33,7 @@ implementations require no Heterodyne-specific changes.
 These conventions govern every document in the family.
 
 **Family version.** The live draft family uses the single qualified version
-`heterodyne/0.5.0`. Core, Assurance, Comms, Control, Social, and Workspace are
+`heterodyne/0.6.0`. Core, Assurance, Comms, Control, Social, and Workspace are
 sections of that family rather than independent version lineages. Assurance
 is optional; its absence does not reduce baseline Core conformance.
 
@@ -53,7 +53,7 @@ or `workspace-`. Generated heading IDs are not stable protocol references.
 
 **Qualified references.** A normative cross-document reference is
 `heterodyne:<semver>#<anchor>`, for example
-[`heterodyne:0.5.0#core-active-key-persona`](#core-active-key-persona).
+[`heterodyne:0.6.0#core-active-key-persona`](#core-active-key-persona).
 
 **Layering.** Core depends on nothing. Assurance and Comms depend on Core.
 Control and Social depend on Core and Comms. Workspace depends on Core and
@@ -136,7 +136,7 @@ selects a different Nostr signature or author.
 1. Heterodyne-defined JSON `content` MUST carry the exact family
    `spec_version` required by its registered schema.
 2. A Heterodyne-allocated kind with empty or non-JSON content MUST carry
-   exactly `['spec_version', 'heterodyne/0.5.0']` when its registry entry
+   exactly `['spec_version', 'heterodyne/0.6.0']` when its registry entry
    requires stamping.
 3. An adopted upstream kind is unstamped unless an immutable registered
    stamping profile opts it in.
