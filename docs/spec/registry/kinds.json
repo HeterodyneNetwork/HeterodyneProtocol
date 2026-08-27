@@ -545,6 +545,23 @@
       "profiles": []
     },
     {
+      "kind": 31006,
+      "allocation_authority": "heterodyne",
+      "base_schema_owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.6.0",
+      "profiles": [
+        {
+          "profile_id": "heterodyne-assurance-enrollment-contest-profile-v1",
+          "owner": "assurance",
+          "discriminator": "enrollment_contest",
+          "stamping": true,
+          "first_version": "heterodyne/0.6.0",
+          "status": "draft"
+        }
+      ]
+    },
+    {
       "kind": 31008,
       "allocation_authority": "heterodyne",
       "base_schema_owner": "social",

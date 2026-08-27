@@ -56,6 +56,10 @@ older than seven days raises a warning and refresh attempt rather than becoming
 invalid solely due to age. Every other state retains its applicable freshness
 and expiry rules and fails closed where those rules require.
 
+Pre-enrollment key theft can no longer silently attach an attacker cold root:
+enrollment requires a seven-day observably public, conflict-free window, and
+contested enrollments fail closed to baseline.
+
 ### Confidentiality and topology leakage
 
 A private plaintext repository is selective replication, not encryption. A UI
@@ -181,6 +185,7 @@ reviewers can trace the threat control to its owner and feature binding.
 - **WORKSPACE-I-HOST-AUTHORITY-SEPARATION:** Hosting or trusted-seed availability does not grant governance authority, while explicit key-custody hosts remain confidentiality trust boundaries.
 - **WORKSPACE-I-RADICLE-BACKSTOP:** Every effective role retains an authorized Radicle locator and eligible Radicle-backed relay host independent of optional Nostr relays.
 - **WORKSPACE-I-DEVICE-LEAF-SEPARATION:** Each active account device has an independently revocable Marmot MLS leaf and receives only uniquely identified envelopes bound to that exact grant, single path admission epoch, account, device, leaf, role, resource, checkpoint, and custody host.
+- **ASSURANCE-I-ENROLLMENT-WINDOWED:** No enrollment is pin-eligible before 604800 seconds of observably public, conflict-free existence; contests and competing enrollments fail closed to baseline, and a conflict resolves only to an enrollment with both materially earlier proven existence and witness receipts spanning the gap.
 - **COMMS-I-TIER3-CONFINED:** Tier 3 posts, audience wraps, rosters, and rotation records are carried only via the private repository's authorized interfaces, never ordinary public relays, confining audience membership metadata to allowed nodes.
 - **CORE-I-CREATED-AT-REFUTATION:** A matured OpenTimestamps attestation proving created_at materially exceeds true existence time permanently excludes the event from replaceable selection and every enhanced claim, and no proof requirement gates baseline interoperability.
 

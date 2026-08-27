@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://heterodyne.network/schemas/assurance/enrollment-contest-v1.schema.json",
+  "title": "Heterodyne Assurance enrollment contest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile",
+    "spec_version",
+    "active_key",
+    "created_at",
+    "contested_inception_event_id",
+    "contested_cold_root",
+    "reason"
+  ],
+  "properties": {
+    "profile": {
+      "const": "heterodyne.assurance.enrollment-contest.v1"
+    },
+    "spec_version": {
+      "const": "heterodyne/0.6.0"
+    },
+    "active_key": {
+      "$ref": "#/definitions/hex32"
+    },
+    "created_at": {
+      "$ref": "#/definitions/unix_time"
+    },
+    "contested_inception_event_id": {
+      "$ref": "#/definitions/hex32"
+    },
+    "contested_cold_root": {
+      "$ref": "#/definitions/hex32"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 1024
+    }
+  },
+  "definitions": {
+    "hex32": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "unix_time": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    }
+  }
+}

@@ -543,6 +543,14 @@
       "description": "Each active account device has an independently revocable Marmot MLS leaf and receives only uniquely identified envelopes bound to that exact grant, single path admission epoch, account, device, leaf, role, resource, checkpoint, and custody host."
     },
     {
+      "id": "ASSURANCE-I-ENROLLMENT-WINDOWED",
+      "owner": "assurance",
+      "status": "draft",
+      "first_version": "heterodyne/0.6.0",
+      "feature": "assurance.continuity.v1",
+      "description": "No enrollment is pin-eligible before 604800 seconds of observably public, conflict-free existence; contests and competing enrollments fail closed to baseline, and a conflict resolves only to an enrollment with both materially earlier proven existence and witness receipts spanning the gap."
+    },
+    {
       "id": "COMMS-I-TIER3-CONFINED",
       "owner": "comms",
       "status": "draft",

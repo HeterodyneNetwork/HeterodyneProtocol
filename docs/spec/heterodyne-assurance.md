@@ -205,6 +205,20 @@ predecessor's witness evidence uniquely satisfies one branch. Arrival time,
 relay count, repository location, and a later Nostr timestamp MUST NOT select
 an otherwise ambiguous branch.
 
+<a id="assurance-enrollment-tiebreak"></a>
+A conflict between two individually valid enrollments E1 and E2 for one active
+key resolves to E1 instead of stalling only when both hold: E1 carries a
+matured OpenTimestamps attestation under
+[`heterodyne:0.6.0#core-ots-anchor`](heterodyne-core.md#core-ots-anchor)
+proving it existed at least 604,800 seconds before E2's earliest provable
+existence — E2's own attestation time if anchored, otherwise E2's earliest
+witnessed observation — and E1 carries conflict-free witness receipts covering
+that same period. Existence evidence without the observation trail MUST NOT
+resolve a conflict: a withheld enrollment has no receipts, so a secretly
+anchored enrollment published later cannot displace an established one.
+Conflicts meeting neither condition stall exactly as above. Arrival order,
+relay count, and `created_at` still select nothing.
+
 <a id="assurance-succession"></a>
 ## 6. Active-key succession and cold-root recovery
 
@@ -319,8 +333,31 @@ subject key signs an event, that subject key is the author.
 <a id="assurance-pinning"></a>
 ## 8. TOFU, pinning, and discovery loss
 
+<a id="assurance-enrollment-window"></a>
+A reciprocal enrollment is pin-eligible only after it has been observably
+public and conflict-free for 604,800 seconds. Either satisfies the window: the
+verifier's own conflict-free observation for that duration, or conflict-free
+witness receipts spanning at least that duration and satisfying the
+enrollment's configured witness thresholds. The window is observation-based;
+`created_at` values MUST NOT satisfy it. A verifier evaluating an enrollment
+whose window has not elapsed returns `pending` with reason
+`assurance-enrollment-pending-window`; `pending` contributes no enhanced
+claim.
+
+A client holding a persona's active key MUST alarm when it observes any
+enrollment for that key that it did not initiate, and MAY publish a kind
+`31006` enrollment contest conforming to
+`schemas/assurance/enrollment-contest-v1.schema.json`, signed by the same
+active key. A contest or a competing enrollment observed during any verifier's
+window makes the enrollment non-pin-eligible wherever observed, with reason
+`assurance-enrollment-contested`; the persona remains baseline. A key thief
+can therefore deny Assurance but cannot gain recovery authority over the
+owner: denial is bounded harm, because a bare-key holder can already
+impersonate at baseline.
+
 A client with no prior Assurance state MAY use trust on first use only after
-validating reciprocal enrollment. It pins at least the active key,
+validating reciprocal enrollment and its completed window. It pins at least
+the active key,
 inception event ID, cold root, accepted head event ID, state, and observation
 time. A stronger local trust source MAY replace TOFU before the first pin.
 
@@ -426,10 +463,13 @@ registered Nostr events is `keri_wire_format_rejected`.
 <a id="assurance-failure-outcomes"></a>
 ## 12. Failure outcomes
 
-Assurance evaluation returns one of `verified`, `unassured`, `predated`,
+Assurance evaluation returns one of `verified`, `unassured`, `pending`,
+`predated`,
 `unavailable`, `stalled`, `downgraded`, or `invalid`, plus the applicable
 registered reason code for a rejection. `unassured` is a factual absence, not
-a failure. `predated` means the Nostr event precedes reciprocal enrollment.
+a failure. `pending` reports a validated enrollment whose observation window
+has not yet elapsed; it contributes no enhanced claim and preserves the Core
+verdict. `predated` means the Nostr event precedes reciprocal enrollment.
 `unavailable` retains an established pin while evidence sources cannot be
 reached. `stalled` retains the last unique head while a fork or missing
 threshold prevents advancement. `downgraded` records valid dual consent.
@@ -469,6 +509,7 @@ Assurance implementations preserve these registered invariants:
 
 - **ASSURANCE-I-CORE-OPTIONALITY:** Absent, invalid, stale, or withdrawn Assurance cannot invalidate a Core-valid active-key persona or alter NIP-01 or Marmot identity semantics.
 - **ASSURANCE-I-RECIPROCAL-ENROLLMENT:** Assurance attaches only when a cold-root inception and no-earlier active-key acceptance bind the same exact active key, inception event, and cold-root signature.
+- **ASSURANCE-I-ENROLLMENT-WINDOWED:** No enrollment is pin-eligible before 604800 seconds of observably public, conflict-free existence; contests and competing enrollments fail closed to baseline, and a conflict resolves only to an enrollment with both materially earlier proven existence and witness receipts spanning the gap.
 - **ASSURANCE-I-TRANSITION-PROOF-BINDING:** Every succession authority proof, new-key acceptance, and witness receipt binds one identical digest containing every closed transition member except the proof signature values themselves.
 - **ASSURANCE-I-PIN-DOWNGRADE:** A pinned Assurance state survives disappearing or conflicting hints and can be downgraded only by the active key plus current recovery authority.
 - **ASSURANCE-I-SUCCESSION-NON-ALIASING:** A verified successor proves continuity but remains a distinct Nostr author and Marmot account whose authority does not silently inherit.
