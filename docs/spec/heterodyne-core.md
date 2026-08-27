@@ -918,9 +918,25 @@ Core's current invariant meanings are:
   grants, and sensitive cached state use the Core keys-repository protection
   profile, including NIP-49 wrapping where applicable.
 
-RID and Git object identifiers use SHA-1 in the applicable Radicle version,
-but Nostr event integrity independently uses SHA-256/BIP-340 and Radicle refs
-use Ed25519. A RID collision cannot authorize a forged event or writer ref.
+<a id="core-sha1-bindings"></a>
+SHA-1 appears in exactly three places, each analyzed individually rather than
+dismissed wholesale. The Comms genesis-manifest digest is already SHA-256 and
+is not in this list.
+
+| Value | Where | Classification | Analysis |
+|---|---|---|---|
+| RID (20-byte Git object ID) | `rad:z…` repository identifier | locator | a collision yields two repositories claiming one name; neither gains event authorship (SHA-256/BIP-340) or ref authority (Ed25519) |
+| `repo_head` | kind `31010` seed advert, Ed25519-bound | possession snapshot | signature-bound but grants nothing; advert expiry of at most 86,400 seconds limits exposure |
+| `repository_head` | every signed Workspace object | carrier context | signature-bound but explicitly non-authority; a head not reachable from the accepted authority branch is rejected |
+
+For each signature-bound SHA-1 value the concrete attack requires both a
+chosen-prefix collision against repository state the attacker can influence
+and a consumer that treats the digest as more than a locator; the rules above
+remove the second half. Two requirements follow. No Heterodyne document may
+bind authority, policy, or key material to a SHA-1 digest; authority bindings
+require SHA-256 or stronger. Implementations SHOULD prefer the Radicle
+`sha256` object format where the substrate supports it; the credential-ledger
+schemas already accept both formats.
 
 <a id="core-conformance"></a>
 ## 13. Conformance and validation
@@ -983,7 +999,9 @@ decision rather than an internal condition. Where a requester is not
 authorized to distinguish causes, one coarse code MUST cover the refusal and
 privileged detail stays only in the owning encrypted audit record. A document
 MUST NOT allocate a finer code when an existing code intentionally covers the
-same indistinguishable refusal.
+same indistinguishable refusal. The registry marks such codes
+`intentionally_coarse`; a document MUST NOT allocate a finer code where a
+flagged code covers the refusal.
 
 <a id="core-marmot-role-attribution"></a>
 ### 13.3 Superseded Core role attribution

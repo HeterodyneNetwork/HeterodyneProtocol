@@ -1069,7 +1069,8 @@
       "description": "A full node accepts no new enrollment for this request. Disabled policy, exhausted capacity, and expired enrollment state are indistinguishable to the requester.",
       "spec_refs": [
         "heterodyne:0.6.0#control-invitation-policy"
-      ]
+      ],
+      "intentionally_coarse": true
     },
     {
       "code": "control-enrollment-rate-limited",

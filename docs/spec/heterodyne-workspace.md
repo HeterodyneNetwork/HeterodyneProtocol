@@ -778,7 +778,10 @@ Comms profile.
 
 Conformance vectors use the registry-allocated reason codes below. Wire
 protocols MAY map them to local or upstream errors, but MUST preserve distinct
-outcomes where disclosure or retry behavior differs.
+outcomes where disclosure or retry behavior differs, except where the
+[`heterodyne:0.6.0#core-conformance`](heterodyne-core.md#core-conformance)
+reason-code granularity rules flag a code `intentionally_coarse`, which
+governs.
 
 | Reason code | Meaning |
 |---|---|
