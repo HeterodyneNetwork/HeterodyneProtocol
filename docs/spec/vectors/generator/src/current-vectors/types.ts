@@ -8,6 +8,8 @@ import type {
 
 export type CurrentVectorCase = Readonly<{
   relativePath: string;
+  /** Executed production boundary that produced this case's expected result. */
+  semantic_boundary: string;
   vector_id: string;
   owner_document: DocumentId;
   profile?: string;

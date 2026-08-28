@@ -195,6 +195,20 @@ describe("trusted private seed admission authority", () => {
       .toEqual({ verdict: "reject", reason_code: "trusted-seed-request-replay" });
   });
 
+  it("distinguishes an absent ACL projection from malformed ACL state", async () => {
+    const fixture = await harness();
+    fixture.setState({
+      administrator_account: administratorAccount,
+      acl_candidates: [],
+      previous_acl: null,
+      group_transition: transition,
+      revision: 5,
+    });
+    const capability = fixture.bundle.mintRequestCapability({}, fixture.write);
+    expect(fixture.api.evaluateTrustedSeedAdmission?.(fixture.bundle.authority, capability))
+      .toEqual({ verdict: "reject", reason_code: "trusted-seed-acl-missing" });
+  });
+
   it("snapshots every callback result and rejects accessors without invoking them", async () => {
     let getterCalls = 0;
     const accessorAuth = Object.defineProperty(

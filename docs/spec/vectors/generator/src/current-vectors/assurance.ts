@@ -2,13 +2,30 @@ import { schnorr } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha2";
 import {
   createAssuranceEnrollmentObservationAuthority,
+  associatedKeyRecordDigest,
+  evaluateAssuranceAuthorityAt,
+  evaluateAssociatedKey,
+  evaluateEnrollment,
   evaluateEnrollmentEligibility,
+  evaluateSuccession,
+  successionTransitionDigest,
+  type AssociatedKeyRecord,
+  type AssociatedKeyState,
   type AssuranceEnrollmentObservationEvidence,
+  type AssuranceHeadState,
   type EnrollmentInception,
   type EnrollmentObservationReceipt,
+  type SuccessionRecord,
 } from "../assurance.js";
+import {
+  evaluateAssuranceAssociatedKeyConsent,
+  evaluateAssuranceCompromiseContinuation,
+  evaluateAssuranceExport,
+  evaluateAssurancePinPolicy,
+} from "../assurance-policy.js";
 import { domainSeparatedJcsDigest } from "../credential-continuity.js";
 import { QUALIFIED_VERSION } from "../family.js";
+import { classifyRetiredKeyObservation } from "../follow-up-hardening.js";
 import { bytesToHex, hexToBytes } from "../hex.js";
 import { jcsCanonicalize } from "../jcs.js";
 import { getPublicKey, signEvent, type NostrSignedEvent } from "../nostr.js";
@@ -23,6 +40,10 @@ const EPOCH_SECRET = secret(4);
 const WITNESS_SECRET = secret(5);
 const WRONG_SECRET = secret(9);
 const SECOND_WITNESS_SECRET = secret(11);
+const NEXT_ACTIVE_SECRET = secret(6);
+const NEXT_EPOCH_SECRET = secret(7);
+const FUTURE_EPOCH_SECRET = secret(8);
+const SUBJECT_SECRET = secret(10);
 const COLD_KEY = getPublicKey(COLD_SECRET);
 const ACTIVE_KEY = getPublicKey(ACTIVE_SECRET);
 const SUCCESSION_KEY = getPublicKey(SUCCESSION_SECRET);
@@ -30,6 +51,10 @@ const EPOCH_KEY = getPublicKey(EPOCH_SECRET);
 const WITNESS_KEY = getPublicKey(WITNESS_SECRET);
 const SECOND_WITNESS_KEY = getPublicKey(SECOND_WITNESS_SECRET);
 const WRONG_KEY = getPublicKey(WRONG_SECRET);
+const NEXT_ACTIVE_KEY = getPublicKey(NEXT_ACTIVE_SECRET);
+const NEXT_EPOCH_KEY = getPublicKey(NEXT_EPOCH_SECRET);
+const FUTURE_EPOCH_KEY = getPublicKey(FUTURE_EPOCH_SECRET);
+const SUBJECT_KEY = getPublicKey(SUBJECT_SECRET);
 const CREATED_AT = 1_785_000_000;
 const OBSERVATION_NOW = CREATED_AT + 700_000;
 const WINDOW = 604_800;
@@ -217,6 +242,133 @@ function receipt(
   };
 }
 
+function acceptedHead(
+  pair: Awaited<ReturnType<typeof enrolledPersona>>,
+): AssuranceHeadState {
+  const decision = evaluateEnrollment(pair);
+  if (decision.verdict !== "accept") {
+    throw new Error(`current Assurance enrollment fixture rejected: ${decision.reason_code}`);
+  }
+  return decision.normalized;
+}
+
+function successionRecord(
+  current: AssuranceHeadState,
+  overrides: Partial<SuccessionRecord> = {},
+): SuccessionRecord {
+  const base: SuccessionRecord = {
+    profile: "heterodyne.assurance.succession.v1",
+    spec_version: QUALIFIED_VERSION,
+    active_key: current.active_key,
+    created_at: current.head_created_at + 10,
+    predecessor: current.head,
+    previous_active_key: current.active_key,
+    previous_head: current.head,
+    new_active_key: NEXT_ACTIVE_KEY,
+    authorizing_evidence: {
+      authority_class: "succession",
+      authority_proofs: [{ authority_key: SUCCESSION_KEY, signature: "00".repeat(64) }],
+      witness_receipts: [{ witness_key: WITNESS_KEY, signature: "00".repeat(64) }],
+    },
+    new_key_acceptance: { key: NEXT_ACTIVE_KEY, signature: "00".repeat(64) },
+    class: "routine",
+    next_succession_authority: SUCCESSION_KEY,
+    next_epoch_policy: {
+      mode: "pre-rotation",
+      current_keys: [NEXT_EPOCH_KEY],
+      next_key_commitments: [commitment(FUTURE_EPOCH_KEY)],
+    },
+    witnesses: [{ key: WITNESS_KEY, weight: 1 }],
+    thresholds: { epoch: 1, witness: 1 },
+    next_associated_key_policy: current.associated_key_policy,
+    subordinate_reauthorizations: [],
+  };
+  return { ...base, ...overrides };
+}
+
+function signSuccession(
+  body: SuccessionRecord,
+  authoritySecret = SUCCESSION_SECRET,
+  newKeySecret = NEXT_ACTIVE_SECRET,
+  witnessSecret = WITNESS_SECRET,
+): SuccessionRecord {
+  const digest = successionTransitionDigest(body);
+  return {
+    ...body,
+    authorizing_evidence: {
+      ...body.authorizing_evidence,
+      authority_proofs: body.authorizing_evidence.authority_proofs.map((entry) => ({
+        ...entry,
+        signature: proof(authoritySecret, digest),
+      })),
+      witness_receipts: body.authorizing_evidence.witness_receipts.map((entry) => ({
+        ...entry,
+        signature: proof(witnessSecret, digest),
+      })),
+    },
+    new_key_acceptance: {
+      ...body.new_key_acceptance,
+      signature: proof(newKeySecret, digest),
+    },
+  };
+}
+
+async function successionEvent(
+  body: SuccessionRecord,
+  outerSecret = ACTIVE_SECRET,
+): Promise<NostrSignedEvent> {
+  return assuranceEvent(
+    outerSecret,
+    31_003,
+    `assurance-succession:${body.previous_head}`,
+    body.profile,
+    body,
+    [body.active_key, body.new_active_key],
+  );
+}
+
+function associatedRecord(
+  current: AssuranceHeadState,
+  overrides: Partial<AssociatedKeyRecord> = {},
+): AssociatedKeyRecord {
+  const base: AssociatedKeyRecord = {
+    profile: "heterodyne.assurance.associated-key.v1",
+    spec_version: QUALIFIED_VERSION,
+    active_key: current.active_key,
+    created_at: current.head_created_at + 2,
+    predecessor: current.head,
+    assurance_head: current.head,
+    role: "agent",
+    scope: ["nostr:kind:1"],
+    issuer: current.active_key,
+    issuer_authority: { class: "active-key", authority_proofs: [] },
+    subject_key: SUBJECT_KEY,
+    expires_at: current.head_created_at + 100,
+    visibility: "public",
+    subject_proof: "00".repeat(64),
+    state: "active",
+  };
+  return { ...base, ...overrides };
+}
+
+function signAssociatedSubject(body: AssociatedKeyRecord): AssociatedKeyRecord {
+  return {
+    ...body,
+    subject_proof: proof(SUBJECT_SECRET, associatedKeyRecordDigest(body)),
+  };
+}
+
+async function associatedEvent(body: AssociatedKeyRecord): Promise<NostrSignedEvent> {
+  return assuranceEvent(
+    ACTIVE_SECRET,
+    31_001,
+    `assurance-associated:${body.active_key}:${body.role}:${body.subject_key}`,
+    body.profile,
+    body,
+    [body.active_key],
+  );
+}
+
 export async function buildAssuranceCases(): Promise<CurrentVectorCase[]> {
   const pair = await enrolledPersona();
   const firstObserved = OBSERVATION_NOW - WINDOW;
@@ -312,10 +464,11 @@ export async function buildAssuranceCases(): Promise<CurrentVectorCase[]> {
     "Insufficient configured witness weight leaves enrollment pending.",
   ];
 
-  return ids.map((id, index) => {
+  const enrollmentCases = ids.map((id, index) => {
     const expected = output(results[index]);
     return {
       relativePath: `assurance/${id}.json`,
+      semantic_boundary: "assurance.evaluateEnrollmentEligibility",
       vector_id: `assurance/${id}`,
       owner_document: "assurance" as const,
       ...index === 2
@@ -326,7 +479,11 @@ export async function buildAssuranceCases(): Promise<CurrentVectorCase[]> {
       spec_refs: [currentSpecRef(index === 5
         ? "assurance-pinning"
         : "assurance-enrollment-window")],
-      invariants: ["ASSURANCE-I-ENROLLMENT-WINDOWED"],
+      invariants: [
+        "ASSURANCE-I-ENROLLMENT-WINDOWED",
+        ...(index === 4 ? ["ASSURANCE-I-CORE-OPTIONALITY"] : []),
+        ...(index === 5 ? ["ASSURANCE-I-PIN-DOWNGRADE"] : []),
+      ],
       reason_codes: expected.verdict === "reject" ? [String(expected.reason_code)] : [],
       description: descriptions[index],
       direction: "consume" as const,
@@ -339,4 +496,481 @@ export async function buildAssuranceCases(): Promise<CurrentVectorCase[]> {
       expected_output: expected,
     };
   });
+
+  const current = acceptedHead(pair);
+  const validSuccessionRecord = signSuccession(successionRecord(current));
+  const validSuccessionEvent = await successionEvent(validSuccessionRecord);
+  const validSuccessionDecision = evaluateSuccession({
+    current,
+    event: validSuccessionEvent,
+  });
+  const malformedSuccessionEvent = {
+    ...validSuccessionEvent,
+    sig: "00".repeat(64),
+  };
+  const malformedSuccessionDecision = evaluateSuccession({
+    current,
+    event: malformedSuccessionEvent,
+  });
+  const wrongPredecessorRecord = signSuccession(successionRecord(current, {
+    predecessor: "dd".repeat(32),
+  }));
+  const wrongPredecessorEvent = await successionEvent(wrongPredecessorRecord);
+  const wrongPredecessorDecision = evaluateSuccession({
+    current,
+    event: wrongPredecessorEvent,
+  });
+  const wrongHeadRecord = signSuccession(successionRecord(current, {
+    previous_head: "ee".repeat(32),
+  }));
+  const wrongHeadEvent = await successionEvent(wrongHeadRecord);
+  const wrongHeadDecision = evaluateSuccession({ current, event: wrongHeadEvent });
+  const wrongOuterEvent = await successionEvent(validSuccessionRecord, SUCCESSION_SECRET);
+  const wrongOuterDecision = evaluateSuccession({ current, event: wrongOuterEvent });
+  const invalidNewKeyRecord = {
+    ...validSuccessionRecord,
+    new_key_acceptance: {
+      ...validSuccessionRecord.new_key_acceptance,
+      signature: "00".repeat(64),
+    },
+  };
+  const invalidNewKeyEvent = await successionEvent(invalidNewKeyRecord);
+  const invalidNewKeyDecision = evaluateSuccession({ current, event: invalidNewKeyEvent });
+  const insufficientWitnessRecord = {
+    ...validSuccessionRecord,
+    authorizing_evidence: {
+      ...validSuccessionRecord.authorizing_evidence,
+      witness_receipts: validSuccessionRecord.authorizing_evidence.witness_receipts.map(
+        (entry) => ({ ...entry, signature: "00".repeat(64) }),
+      ),
+    },
+  };
+  const insufficientWitnessEvent = await successionEvent(insufficientWitnessRecord);
+  const insufficientWitnessDecision = evaluateSuccession({
+    current,
+    event: insufficientWitnessEvent,
+  });
+  const compromiseBase = successionRecord(current, {
+    class: "compromise",
+    compromise_time: current.head_created_at + 1,
+    authorizing_evidence: {
+      authority_class: "recovery",
+      authority_proofs: [{ authority_key: COLD_KEY, signature: "00".repeat(64) }],
+      witness_receipts: [{ witness_key: WITNESS_KEY, signature: "00".repeat(64) }],
+    },
+    subordinate_reauthorizations: [{
+      role: "agent",
+      subject_key: WRONG_KEY,
+      scope: ["nostr:kind:1"],
+      expires_at: current.head_created_at + 3_600,
+    }],
+  });
+  const compromiseWithSubordinate = signSuccession(compromiseBase, COLD_SECRET);
+  const compromiseWithSubordinateEvent = await successionEvent(
+    compromiseWithSubordinate,
+    COLD_SECRET,
+  );
+  const subordinatePolicyInput = {
+    transition_class: "compromise" as const,
+    subordinate_reauthorization_ids: compromiseWithSubordinate
+      .subordinate_reauthorizations.map(({ subject_key }) => subject_key),
+  };
+  const subordinateDecision = evaluateAssuranceCompromiseContinuation(
+    subordinatePolicyInput,
+  );
+  const cutoffInput = {
+    created_at: current.head_created_at + 1,
+    compromise_cutoff: current.head_created_at + 1,
+  };
+  const cutoffDecision = evaluateAssuranceAuthorityAt(
+    cutoffInput.created_at,
+    cutoffInput.compromise_cutoff,
+  );
+  const postCompromiseInput = {
+    signatureValid: true,
+    createdAtInAuthorityWindow: true,
+    compromiseSince: CREATED_AT,
+    eventCreatedAt: CREATED_AT,
+    repoCommitAncestorOfRetirementCheckpoint: false,
+    trustedLocalReceiptBeforeRetirement: false,
+  };
+  const postCompromiseDecision = classifyRetiredKeyObservation(postCompromiseInput);
+  const reciprocalInput = {
+    inception: pair.inception,
+    acceptance: { ...pair.acceptance, sig: "00".repeat(64) },
+  };
+  const reciprocalDecision = evaluateEnrollment(reciprocalInput);
+
+  const requiredBase = associatedRecord(current);
+  const { subject_proof: _subjectProof, ...withoutSubjectProof } = requiredBase;
+  const subjectRequiredEvent = await associatedEvent(withoutSubjectProof);
+  const subjectRequiredPolicyInput = {
+    state: requiredBase.state,
+    role: requiredBase.role,
+    visibility: requiredBase.visibility,
+    subject_proof_present: false,
+    subject_proof_valid: false,
+  } as const;
+  const subjectRequiredDecision = evaluateAssuranceAssociatedKeyConsent(
+    subjectRequiredPolicyInput,
+  );
+  const subjectInvalidEvent = await associatedEvent(requiredBase);
+  const subjectInvalidDecision = evaluateAssociatedKey({
+    current,
+    event: subjectInvalidEvent,
+    now: requiredBase.created_at,
+    previous: null,
+  });
+  const activeAssociatedRecord = signAssociatedSubject(associatedRecord(current));
+  const activeAssociatedEvent = await associatedEvent(activeAssociatedRecord);
+  const activeAssociatedDecision = evaluateAssociatedKey({
+    current,
+    event: activeAssociatedEvent,
+    now: activeAssociatedRecord.created_at,
+    previous: null,
+  });
+  const expiredAssociatedDecision = evaluateAssociatedKey({
+    current,
+    event: activeAssociatedEvent,
+    now: activeAssociatedRecord.expires_at!,
+    previous: null,
+  });
+  if (activeAssociatedDecision.verdict !== "accept") {
+    throw new Error("current associated-key grant fixture rejected");
+  }
+  const activeAssociatedState: AssociatedKeyState = activeAssociatedDecision.normalized;
+  const { subject_proof: _activeProof, ...activeWithoutProof } = activeAssociatedRecord;
+  const revocationRecord: AssociatedKeyRecord = {
+    ...activeWithoutProof,
+    created_at: activeAssociatedRecord.created_at + 1,
+    predecessor: activeAssociatedEvent.id,
+    state: "revoked",
+    revocation: {
+      revoked_at: activeAssociatedRecord.created_at + 1,
+      reason: "operator-request",
+    },
+  };
+  const revocationEvent = await associatedEvent(revocationRecord);
+  const revocationDecision = evaluateAssociatedKey({
+    current,
+    event: revocationEvent,
+    now: revocationRecord.created_at,
+    previous: activeAssociatedState,
+  });
+
+  const successionCases: CurrentVectorCase[] = [
+    {
+      relativePath: "assurance/succession-valid.json",
+      semantic_boundary: "assurance-policy.evaluateAssuranceCompromiseContinuation",
+      vector_id: "assurance/succession-valid",
+      owner_document: "assurance",
+      profile: "heterodyne-assurance-succession-v1",
+      spec_refs: [currentSpecRef("assurance-succession")],
+      invariants: [
+        "ASSURANCE-I-NO-IMPLICIT-CONTINUATION",
+        "ASSURANCE-I-SUCCESSION-NON-ALIASING",
+        "ASSURANCE-I-TRANSITION-PROOF-BINDING",
+      ],
+      reason_codes: [],
+      description: "A routine successor remains a distinct active key and advances only the explicitly bound next policy.",
+      direction: "consume",
+      input: { current, event: validSuccessionEvent },
+      expected_output: validSuccessionDecision,
+    },
+    {
+      relativePath: "assurance/succession-schema-invalid.json",
+      semantic_boundary: "assurance.evaluateSuccession",
+      vector_id: "assurance/succession-schema-invalid",
+      owner_document: "assurance",
+      profile: "heterodyne-assurance-succession-v1",
+      spec_refs: [currentSpecRef("assurance-record-envelope")],
+      invariants: ["ASSURANCE-I-TRANSITION-PROOF-BINDING"],
+      reason_codes: ["assurance-schema-invalid"],
+      description: "A succession with an invalid outer event signature fails the closed record boundary.",
+      direction: "consume",
+      input: { current, event: malformedSuccessionEvent },
+      expected_output: malformedSuccessionDecision,
+    },
+    {
+      relativePath: "assurance/succession-predecessor-mismatch.json",
+      semantic_boundary: "assurance.evaluateSuccession",
+      vector_id: "assurance/succession-predecessor-mismatch",
+      owner_document: "assurance",
+      spec_refs: [currentSpecRef("assurance-chain-validation")],
+      invariants: ["ASSURANCE-I-TRANSITION-PROOF-BINDING"],
+      reason_codes: ["assurance-predecessor-mismatch"],
+      description: "A fully signed succession cannot skip the accepted predecessor event.",
+      direction: "consume",
+      input: { current, event: wrongPredecessorEvent },
+      expected_output: wrongPredecessorDecision,
+    },
+    {
+      relativePath: "assurance/succession-head-mismatch.json",
+      semantic_boundary: "assurance.evaluateSuccession",
+      vector_id: "assurance/succession-head-mismatch",
+      owner_document: "assurance",
+      spec_refs: [currentSpecRef("assurance-chain-validation")],
+      invariants: ["ASSURANCE-I-TRANSITION-PROOF-BINDING"],
+      reason_codes: ["assurance-head-mismatch"],
+      description: "A fully signed succession that names a different prior head is rejected.",
+      direction: "consume",
+      input: { current, event: wrongHeadEvent },
+      expected_output: wrongHeadDecision,
+    },
+    {
+      relativePath: "assurance/succession-authority-invalid.json",
+      semantic_boundary: "assurance.evaluateSuccession",
+      vector_id: "assurance/succession-authority-invalid",
+      owner_document: "assurance",
+      spec_refs: [currentSpecRef("assurance-succession")],
+      invariants: ["ASSURANCE-I-TRANSITION-PROOF-BINDING"],
+      reason_codes: ["assurance-authority-invalid"],
+      description: "A routine succession carried by a non-active outer author is rejected despite valid inner proofs.",
+      direction: "consume",
+      input: { current, event: wrongOuterEvent },
+      expected_output: wrongOuterDecision,
+    },
+    {
+      relativePath: "assurance/succession-new-key-acceptance-invalid.json",
+      semantic_boundary: "assurance.evaluateSuccession",
+      vector_id: "assurance/succession-new-key-acceptance-invalid",
+      owner_document: "assurance",
+      spec_refs: [currentSpecRef("assurance-succession")],
+      invariants: ["ASSURANCE-I-TRANSITION-PROOF-BINDING"],
+      reason_codes: ["assurance-new-key-acceptance-invalid"],
+      description: "Authority and witness proofs cannot substitute for the new key's proof over the identical transition digest.",
+      direction: "consume",
+      input: { current, event: invalidNewKeyEvent },
+      expected_output: invalidNewKeyDecision,
+    },
+    {
+      relativePath: "assurance/succession-witness-threshold-unsatisfied.json",
+      semantic_boundary: "assurance.evaluateSuccession",
+      vector_id: "assurance/succession-witness-threshold-unsatisfied",
+      owner_document: "assurance",
+      spec_refs: [currentSpecRef("assurance-keri-policy")],
+      invariants: ["ASSURANCE-I-TRANSITION-PROOF-BINDING"],
+      reason_codes: ["assurance-witness-threshold-unsatisfied"],
+      description: "A succession with valid authority and new-key proofs still fails without its configured witness threshold.",
+      direction: "consume",
+      input: { current, event: insufficientWitnessEvent },
+      expected_output: insufficientWitnessDecision,
+    },
+    {
+      relativePath: "assurance/compromise-subordinate-continuation-forbidden.json",
+      semantic_boundary: "assurance.evaluateSuccession",
+      vector_id: "assurance/compromise-subordinate-continuation-forbidden",
+      owner_document: "assurance",
+      spec_refs: [currentSpecRef("assurance-compromise")],
+      invariants: [
+        "ASSURANCE-I-COMPROMISE-CUTOFF",
+        "ASSURANCE-I-NO-IMPLICIT-CONTINUATION",
+      ],
+      reason_codes: ["assurance-subordinate-continuation-forbidden"],
+      description: "A compromise recovery transition cannot carry an existing subordinate authorization forward.",
+      direction: "consume",
+      input: { ...subordinatePolicyInput, transition_event: compromiseWithSubordinateEvent },
+      expected_output: subordinateDecision,
+    },
+    {
+      relativePath: "assurance/authority-at-compromise-cutoff.json",
+      semantic_boundary: "assurance.evaluateAssuranceAuthorityAt",
+      vector_id: "assurance/authority-at-compromise-cutoff",
+      owner_document: "assurance",
+      spec_refs: [currentSpecRef("assurance-compromise")],
+      invariants: ["ASSURANCE-I-COMPROMISE-CUTOFF"],
+      reason_codes: ["assurance-compromise-cutoff"],
+      description: "Assurance authority is rejected at the exact inclusive compromise cutoff.",
+      direction: "consume",
+      input: cutoffInput,
+      expected_output: cutoffDecision,
+    },
+    {
+      relativePath: "assurance/retired-key-post-compromise.json",
+      semantic_boundary: "follow-up-hardening.classifyRetiredKeyObservation",
+      vector_id: "assurance/retired-key-post-compromise",
+      owner_document: "assurance",
+      spec_refs: [currentSpecRef("assurance-retired-wire-profiles")],
+      invariants: ["ASSURANCE-I-COMPROMISE-CUTOFF"],
+      reason_codes: ["revoked_key_post_compromise"],
+      description: "Retired-key material at the inclusive accepted compromise cutoff is non-authoritative.",
+      direction: "consume",
+      input: postCompromiseInput,
+      expected_output: postCompromiseDecision,
+    },
+    {
+      relativePath: "assurance/reciprocal-proof-invalid.json",
+      semantic_boundary: "assurance.evaluateEnrollment",
+      vector_id: "assurance/reciprocal-proof-invalid",
+      owner_document: "assurance",
+      spec_refs: [currentSpecRef("assurance-reciprocal-enrollment")],
+      invariants: ["ASSURANCE-I-RECIPROCAL-ENROLLMENT"],
+      reason_codes: ["assurance-reciprocal-proof-invalid"],
+      description: "A malformed active-key acceptance cannot attach Assurance to an otherwise valid Core persona.",
+      direction: "consume",
+      input: reciprocalInput,
+      expected_output: reciprocalDecision,
+    },
+  ];
+
+  const associatedCases: CurrentVectorCase[] = [
+    {
+      relativePath: "assurance/associated-key-subject-proof-required.json",
+      semantic_boundary: "assurance-policy.evaluateAssuranceAssociatedKeyConsent",
+      vector_id: "assurance/associated-key-subject-proof-required",
+      owner_document: "assurance",
+      profile: "heterodyne-assurance-associated-key-v1",
+      spec_refs: [currentSpecRef("assurance-associated-keys")],
+      invariants: ["ASSURANCE-I-ASSOCIATED-KEY-BOUNDS"],
+      reason_codes: ["assurance-associated-key-subject-proof-required"],
+      description: "A public agent grant requires the subject key's proof of possession and consent.",
+      direction: "consume",
+      input: { ...subjectRequiredPolicyInput, associated_key_event: subjectRequiredEvent },
+      expected_output: subjectRequiredDecision,
+    },
+    {
+      relativePath: "assurance/associated-key-subject-proof-invalid.json",
+      semantic_boundary: "assurance.evaluateAssociatedKey",
+      vector_id: "assurance/associated-key-subject-proof-invalid",
+      owner_document: "assurance",
+      profile: "heterodyne-assurance-associated-key-v1",
+      spec_refs: [currentSpecRef("assurance-associated-keys")],
+      invariants: ["ASSURANCE-I-ASSOCIATED-KEY-BOUNDS"],
+      reason_codes: ["assurance-associated-key-subject-proof-invalid"],
+      description: "A public agent subject proof must verify over the exact associated-key record digest.",
+      direction: "consume",
+      input: { current, event: subjectInvalidEvent, now: requiredBase.created_at, previous: null },
+      expected_output: subjectInvalidDecision,
+    },
+    {
+      relativePath: "assurance/associated-key-expired.json",
+      semantic_boundary: "assurance.evaluateAssociatedKey",
+      vector_id: "assurance/associated-key-expired",
+      owner_document: "assurance",
+      profile: "heterodyne-assurance-associated-key-v1",
+      spec_refs: [currentSpecRef("assurance-associated-keys")],
+      invariants: ["ASSURANCE-I-ASSOCIATED-KEY-BOUNDS"],
+      reason_codes: ["assurance-associated-key-expired"],
+      description: "An associated key expires at its exact exclusive expiry boundary.",
+      direction: "consume",
+      input: { current, event: activeAssociatedEvent, now: activeAssociatedRecord.expires_at, previous: null },
+      expected_output: expiredAssociatedDecision,
+    },
+    {
+      relativePath: "assurance/associated-key-revoked.json",
+      semantic_boundary: "assurance.evaluateAssociatedKey",
+      vector_id: "assurance/associated-key-revoked",
+      owner_document: "assurance",
+      profile: "heterodyne-assurance-associated-key-v1",
+      spec_refs: [currentSpecRef("assurance-associated-keys")],
+      invariants: ["ASSURANCE-I-ASSOCIATED-KEY-BOUNDS"],
+      reason_codes: ["assurance-associated-key-revoked"],
+      description: "An issuer-authorized revocation is terminal without requiring subject cooperation.",
+      direction: "consume",
+      input: { current, event: revocationEvent, now: revocationRecord.created_at, previous: activeAssociatedState },
+      expected_output: revocationDecision,
+    },
+  ];
+
+  const retainedPin = {
+    active_key: ACTIVE_KEY,
+    assurance_head: pair.acceptance.id,
+    recovery_authority: COLD_KEY,
+  };
+  const pinConflictInput = {
+    retained_pin: retainedPin,
+    presented_head: "aa".repeat(32),
+    downgrade: null,
+    authorized_successors: [] as string[],
+  };
+  const unilateralDowngradeInput = {
+    retained_pin: retainedPin,
+    presented_head: retainedPin.assurance_head,
+    downgrade: { active_key_consent: true, recovery_authority_proof: false },
+    authorized_successors: [] as string[],
+  };
+  const duplicityInput = {
+    retained_pin: retainedPin,
+    presented_head: retainedPin.assurance_head,
+    downgrade: null,
+    authorized_successors: ["bb".repeat(32), "cc".repeat(32)],
+  };
+  const exportInput = {
+    active_key: ACTIVE_KEY,
+    requested_aid: ACTIVE_KEY,
+    requested_suite: "Ed25519",
+    supported_suites: ["Ed25519"],
+    accepted_features: ["continuity", "associated-keys"],
+    mapped_features: ["associated-keys", "continuity"],
+    required_members: ["active_key", "head"],
+    mapped_members: { active_key: ACTIVE_KEY, head: pair.acceptance.id },
+  };
+  const exportCases = [
+    ["lossless", exportInput],
+    ["unsupported-suite", { ...exportInput, requested_suite: "P-256" }],
+    ["unmappable-feature", { ...exportInput, mapped_features: ["continuity"] }],
+    ["incomplete", { ...exportInput, mapped_members: { active_key: ACTIVE_KEY } }],
+    ["aid-substitution", { ...exportInput, requested_aid: WRONG_KEY }],
+  ] as const;
+
+  return [
+    ...enrollmentCases,
+    ...successionCases,
+    ...associatedCases,
+    {
+      relativePath: "assurance/pin-conflict-rejected.json",
+      semantic_boundary: "assurance-policy.evaluateAssurancePinPolicy",
+      vector_id: "assurance/pin-conflict-rejected",
+      owner_document: "assurance",
+      spec_refs: [currentSpecRef("assurance-pinning")],
+      invariants: ["ASSURANCE-I-PIN-DOWNGRADE"],
+      reason_codes: ["assurance-pin-conflict"],
+      description: "A presented Assurance head that conflicts with the retained verified pin cannot replace it.",
+      direction: "consume",
+      input: pinConflictInput,
+      expected_output: evaluateAssurancePinPolicy(pinConflictInput),
+    },
+    {
+      relativePath: "assurance/unilateral-downgrade-rejected.json",
+      semantic_boundary: "assurance-policy.evaluateAssurancePinPolicy",
+      vector_id: "assurance/unilateral-downgrade-rejected",
+      owner_document: "assurance",
+      spec_refs: [currentSpecRef("assurance-downgrade-resistance")],
+      invariants: ["ASSURANCE-I-PIN-DOWNGRADE"],
+      reason_codes: ["assurance-downgrade-consent-required"],
+      description: "Active-key consent without the current recovery-authority proof cannot downgrade a retained pin.",
+      direction: "consume",
+      input: unilateralDowngradeInput,
+      expected_output: evaluateAssurancePinPolicy(unilateralDowngradeInput),
+    },
+    {
+      relativePath: "assurance/duplicity-rejected.json",
+      semantic_boundary: "assurance-policy.evaluateAssurancePinPolicy",
+      vector_id: "assurance/duplicity-rejected",
+      owner_document: "assurance",
+      spec_refs: [currentSpecRef("assurance-chain-validation")],
+      invariants: ["ASSURANCE-I-SUCCESSION-NON-ALIASING"],
+      reason_codes: ["assurance-duplicity"],
+      description: "Two distinct authorized successors of the same retained head stall instead of aliasing one persona author.",
+      direction: "consume",
+      input: duplicityInput,
+      expected_output: evaluateAssurancePinPolicy(duplicityInput),
+    },
+    ...exportCases.map(([id, input]) => {
+      const decision = evaluateAssuranceExport(input);
+      return {
+        relativePath: `assurance/export-${id}.json`,
+        semantic_boundary: "assurance-policy.evaluateAssuranceExport",
+        vector_id: `assurance/export-${id}`,
+        owner_document: "assurance" as const,
+        spec_refs: [currentSpecRef("assurance-keri-export")],
+        invariants: ["ASSURANCE-I-EXPORT-LOSSLESS"],
+        reason_codes: decision.verdict === "reject" ? [decision.reason_code] : [],
+        description: `Assurance export ${id.replaceAll("-", " ")} is evaluated against complete accepted semantics.`,
+        direction: "consume" as const,
+        input,
+        expected_output: decision,
+      };
+    }),
+  ];
 }

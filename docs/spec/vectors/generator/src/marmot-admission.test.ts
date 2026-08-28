@@ -39,6 +39,15 @@ describe("ordinary Marmot conversation admission", () => {
       .toBe("accept");
   });
 
+  it("reports an explicit local rejection with the registered conversation reason", () => {
+    expect(ordinaryConversationAdmission({ ...ordinary, explicit_local_decision: "reject" }))
+      .toEqual({
+        outcome: "reject",
+        policy_hook_invoked: true,
+        reason_code: "conversation-rejected",
+      });
+  });
+
   it("allows Social only to tighten and keeps reject absorbing", () => {
     expect(applySocialAdmission("accept", "hold-as-message-request", false, false))
       .toBe("hold-as-message-request");

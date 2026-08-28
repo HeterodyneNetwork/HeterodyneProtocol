@@ -1,7 +1,17 @@
-import { readFileSync } from "node:fs";
-import { dirname, extname, resolve } from "node:path";
+import {
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, resolve } from "node:path";
 import ts from "typescript";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { buildCurrentVectors } from "./current-vectors/index.js";
 import { validateVectorOrThrow } from "./schema.js";
 
@@ -16,29 +26,107 @@ const forbidden = [
   /\/kel(?:-replay)?\.ts$/,
   /\/keri-materialized\.ts$/,
 ];
+const temporaryRoots: string[] = [];
+
+afterEach(() => {
+  while (temporaryRoots.length > 0) {
+    rmSync(temporaryRoots.pop()!, { recursive: true, force: true });
+  }
+});
+
+function commonJsLoader(expression: ts.Expression): boolean {
+  if (ts.isIdentifier(expression)) return expression.text === "require";
+  if (ts.isPropertyAccessExpression(expression)) {
+    return expression.name.text === "require"
+      || (
+        expression.name.text === "resolve"
+        && ts.isIdentifier(expression.expression)
+        && expression.expression.text === "require"
+      );
+  }
+  if (
+    ts.isElementAccessExpression(expression)
+    && expression.argumentExpression !== undefined
+    && ts.isStringLiteralLike(expression.argumentExpression)
+  ) {
+    return expression.argumentExpression.text === "require"
+      || (
+        expression.argumentExpression.text === "resolve"
+        && ts.isIdentifier(expression.expression)
+        && expression.expression.text === "require"
+      );
+  }
+  return false;
+}
+
+function moduleSpecifiers(path: string): string[] {
+  const source = ts.createSourceFile(
+    path,
+    readFileSync(path, "utf8"),
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const specifiers: string[] = [];
+  const add = (expression: ts.Expression | undefined, kind: string): void => {
+    if (expression === undefined || !ts.isStringLiteralLike(expression)) {
+      throw new Error(`nonliteral ${kind} in current vector graph: ${path}`);
+    }
+    specifiers.push(expression.text);
+  };
+  const visit = (node: ts.Node): void => {
+    if (
+      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
+      && node.moduleSpecifier !== undefined
+    ) {
+      add(node.moduleSpecifier, ts.isExportDeclaration(node) ? "export" : "import");
+    } else if (
+      ts.isImportEqualsDeclaration(node)
+      && ts.isExternalModuleReference(node.moduleReference)
+    ) {
+      add(node.moduleReference.expression, "import-equals");
+    } else if (ts.isCallExpression(node)) {
+      if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+        add(node.arguments[0], "dynamic import");
+      } else if (commonJsLoader(node.expression)) {
+        add(node.arguments[0], "CommonJS require");
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return specifiers;
+}
+
+function resolveModule(importer: string, specifier: string): string {
+  const unresolved = resolve(dirname(importer), specifier);
+  const variants = [
+    unresolved,
+    unresolved.replace(/\.m?js$/u, ".ts"),
+    unresolved.replace(/\.cjs$/u, ".ts"),
+    `${unresolved}.ts`,
+    `${unresolved}.tsx`,
+    `${unresolved}.js`,
+    resolve(unresolved, "index.ts"),
+  ];
+  const resolved = variants.find((candidate) =>
+    existsSync(candidate) && statSync(candidate).isFile()
+  );
+  if (resolved === undefined) {
+    throw new Error(`unresolved current vector import: ${importer} -> ${specifier}`);
+  }
+  return realpathSync(resolved);
+}
 
 function moduleDependencies(entry: string): string[] {
   const visited = new Set<string>();
-  const visit = (path: string): void => {
+  const visit = (candidate: string): void => {
+    const path = realpathSync(candidate);
     if (visited.has(path)) return;
     visited.add(path);
-    const source = ts.createSourceFile(
-      path,
-      readFileSync(path, "utf8"),
-      ts.ScriptTarget.Latest,
-      true,
-    );
-    for (const statement of source.statements) {
-      if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
-        continue;
-      }
-      const specifier = statement.moduleSpecifier.text;
+    for (const specifier of moduleSpecifiers(path)) {
       if (!specifier.startsWith(".")) continue;
-      const imported = resolve(
-        dirname(path),
-        extname(specifier) === ".js" ? `${specifier.slice(0, -3)}.ts` : specifier,
-      );
-      visit(imported);
+      visit(resolveModule(path, specifier));
     }
   };
   visit(entry);
@@ -68,6 +156,45 @@ describe("current vector catalog import boundary", () => {
       .toEqual([]);
   });
 
+  it("cannot hide forbidden modules behind re-exports or executable import forms", () => {
+    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-imports-"));
+    temporaryRoots.push(root);
+    mkdirSync(resolve(root, "nested"), { recursive: true });
+    writeFileSync(
+      resolve(root, "index.ts"),
+      [
+        'export { value as named } from "./topics-named.js";',
+        'export * from "./topics-star.js";',
+        'void import("./snapshot-dynamic.js");',
+        'import legacy = require("./legacy-import-equals.js");',
+        'require("./kel.js");',
+        'module.require("./kel-replay.js");',
+        'void legacy;',
+      ].join("\n"),
+    );
+    for (const file of [
+      "topics-named.ts",
+      "topics-star.ts",
+      "snapshot-dynamic.ts",
+      "legacy-import-equals.ts",
+      "kel.ts",
+      "kel-replay.ts",
+    ]) {
+      writeFileSync(resolve(root, file), "export const value = true;\n");
+    }
+
+    const graph = moduleDependencies(resolve(root, "index.ts"));
+    expect(graph.filter((path) => forbidden.some((pattern) => pattern.test(path))))
+      .toEqual([
+        realpathSync(resolve(root, "kel-replay.ts")),
+        realpathSync(resolve(root, "kel.ts")),
+        realpathSync(resolve(root, "legacy-import-equals.ts")),
+        realpathSync(resolve(root, "snapshot-dynamic.ts")),
+        realpathSync(resolve(root, "topics-named.ts")),
+        realpathSync(resolve(root, "topics-star.ts")),
+      ].sort());
+  });
+
   it("makes current authoring consume only the current catalog", () => {
     const imports = importedNames(authorPath);
     expect(imports.has("buildCurrentVectors")).toBe(true);
@@ -92,6 +219,16 @@ describe("current vector catalog import boundary", () => {
 });
 
 describe("current 0.6 vector catalog", () => {
+  it("never serializes registry-derived trace labels as semantic vectors", async () => {
+    const vectors = (await buildCurrentVectors()).map(({ vector }) => vector);
+    expect(vectors.filter(({ vector_id }) => vector_id.includes("/trace/"))).toEqual([]);
+    expect(vectors.filter(({ input, expected_output }) =>
+      Object.hasOwn(input, "diagnostic_condition")
+      || Object.hasOwn(input, "protocol_state")
+      || Object.hasOwn(expected_output, "invariant_satisfied")
+    )).toEqual([]);
+  }, 60_000);
+
   it("authors the mandatory closure cases from live evaluator results", async () => {
     const vectors = await buildCurrentVectors();
     const byId = new Map(vectors.map(({ vector }) => [vector.vector_id, vector]));

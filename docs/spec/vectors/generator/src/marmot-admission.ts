@@ -25,7 +25,11 @@ export function ordinaryConversationAdmission(input: OrdinaryAdmissionInput):
     return { outcome: "reject", policy_hook_invoked: true };
   }
   if (input.explicit_local_decision === "reject") {
-    return { outcome: "reject", policy_hook_invoked: true };
+    return {
+      outcome: "reject",
+      policy_hook_invoked: true,
+      reason_code: "conversation-rejected",
+    };
   }
   if (input.prior_local_acceptance
     || input.one_time_dm_invite_valid

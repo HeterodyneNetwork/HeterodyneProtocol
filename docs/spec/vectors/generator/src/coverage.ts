@@ -12,13 +12,86 @@ export const INACTIVE_PROFILE_IDS = [] as const;
 
 /**
  * Current registered diagnostics intentionally omitted only when no protocol
- * consumer or producer can exercise them. The catalog currently covers the
- * complete registry, so the audited exclusion set is closed and empty.
+ * consumer or producer can exercise them. Each entry identifies retained
+ * administrative vocabulary rather than current wire behavior.
  */
 export const NON_WIRE_REASON_EXCLUSIONS: readonly Readonly<{
   code: string;
   justification: string;
-}>[] = [];
+}>[] = [
+  {
+    code: "compromise_rotation_breadcrumb_forbidden",
+    justification: "Retained only to classify pre-redesign rotation breadcrumbs; current Assurance succession never authors that retired wire profile.",
+  },
+  {
+    code: "delegation_mismatch",
+    justification: "Retained only for validation reports about pre-redesign delegation material; current Core and Assurance use their closed successor and associated-key evaluators.",
+  },
+  {
+    code: "equivocation_flagged",
+    justification: "Retained as a historical KEL security-warning label; current Assurance duplicity is evaluated as assurance-duplicity without importing a KEL graph.",
+  },
+  {
+    code: "expired_delegation",
+    justification: "Retained only for pre-redesign epoch delegation reports; current associated-key expiry is evaluated as assurance-associated-key-expired.",
+  },
+  {
+    code: "informal_vouch_not_counted",
+    justification: "Retained as historical KERI vocabulary; current witness evaluation counts only registered cryptographic receipts and emits assurance-witness-threshold-unsatisfied.",
+  },
+  {
+    code: "kel_head_forbidden",
+    justification: "Retained to classify a forbidden legacy kel_head tag; current Assurance records never consume or author the retired tag graph.",
+  },
+  {
+    code: "kel_head_mismatch",
+    justification: "Retained to classify historical kel_head material; current Assurance chain validation binds predecessor and head directly in closed records.",
+  },
+  {
+    code: "kel_head_missing",
+    justification: "Retained to classify historical kel_head material; no current event class requires the retired tag and the current catalog cannot manufacture it.",
+  },
+  {
+    code: "kel_revoked_nid",
+    justification: "Retained for historical KEL-delegate reconciliation; current writer-NID and associated-key authorization use live direct proof boundaries.",
+  },
+  {
+    code: "keri_wire_format_rejected",
+    justification: "Retained as an administrative format classification for imported historical material; the current catalog admits only NIP-01 and never constructs a KERI wire graph.",
+  },
+  {
+    code: "nid_binding_missing_signature",
+    justification: "Retained for the historical kind-31001 dual-proof profile; current writer-NID authorization is covered by the Core direct proof boundary.",
+  },
+  {
+    code: "provisional_not_final",
+    justification: "Retained as a historical KEL reconciliation state label; current Assurance enrollment exposes its own executable pending-window result.",
+  },
+  {
+    code: "repo_head_regression",
+    justification: "Retained for historical KEL repository reconciliation; current Assurance records do not materialize or select a legacy repository head graph.",
+  },
+  {
+    code: "retiring_key_nip05_invalid",
+    justification: "Retained only to classify pre-redesign retiring-profile breadcrumbs; current profile publication uses the Core delegated publisher validator.",
+  },
+  {
+    code: "revoked_key_post_revoked_at",
+    justification: "Retained for retired epoch-key events; current Assurance compromise cutoff and associated-key revocation have distinct executable reasons.",
+  },
+  {
+    code: "signing_key_compromised_at_created_at",
+    justification: "Retained for historical epoch-key retroactivity reports; current Assurance evaluates the accepted inclusive compromise cutoff directly.",
+  },
+  {
+    code: "successor_persona_mismatch",
+    justification: "Retained only to classify pre-redesign rotation breadcrumbs; current succession explicitly creates a distinct successor identity.",
+  },
+  {
+    code: "withdrawn_on_reconcile",
+    justification: "Retained as a historical relay-to-KEL reconciliation label; current Assurance decisions do not import the retired reconciliation graph.",
+  },
+];
 
 export type CoverageEntry = {
   vector_id: string;
@@ -29,13 +102,23 @@ export type CoverageEntry = {
   reason_codes: string[];
 };
 
+export type SemanticCoverageEntry = CoverageEntry & {
+  semantic_boundary: string;
+};
+
 type CoverageVector = {
   vector_id: string;
   owner_document: DocumentId;
   profile?: string;
-  spec_refs: string[];
-  invariants: string[];
-  reason_codes: string[];
+  spec_refs: readonly string[];
+  invariants: readonly string[];
+  reason_codes: readonly string[];
+};
+
+type SemanticCoverageVector = CoverageVector & {
+  semantic_boundary: string;
+  input: Readonly<Record<string, unknown>>;
+  expected_output: Readonly<Record<string, unknown>>;
 };
 
 type HistoricalCoverageVector = Omit<CoverageVector, "invariants" | "reason_codes">;
@@ -54,14 +137,58 @@ export function buildCoverage(vectors: readonly CoverageVector[]): CoverageEntry
         vector_id: vector.vector_id,
         owner_document: vector.owner_document,
         ...(vector.profile === undefined ? {} : { profile: vector.profile }),
-        spec_refs: vector.spec_refs,
-        invariants: vector.invariants,
-        reason_codes: vector.reason_codes,
+        spec_refs: [...vector.spec_refs],
+        invariants: [...vector.invariants],
+        reason_codes: [...vector.reason_codes],
       };
     })
     .sort((left, right) =>
       left.vector_id < right.vector_id ? -1 : left.vector_id > right.vector_id ? 1 : 0,
     );
+}
+
+/**
+ * Semantic closure is deliberately computed from executed authoring cases,
+ * never from the serialized administrative coverage projection. This keeps a
+ * registry label (or a hand-written vector envelope) from becoming evidence
+ * merely by repeating an invariant, reason, or profile identifier.
+ */
+export function buildSemanticCoverage(
+  cases: readonly SemanticCoverageVector[],
+): SemanticCoverageEntry[] {
+  const seen = new Set<string>();
+  return cases.map((entry) => {
+    if (seen.has(entry.vector_id)) {
+      throw new Error(`duplicate semantic coverage vector_id: ${entry.vector_id}`);
+    }
+    seen.add(entry.vector_id);
+    if (entry.semantic_boundary.trim().length === 0) {
+      throw new Error(`semantic coverage boundary is empty: ${entry.vector_id}`);
+    }
+    if (
+      entry.vector_id.includes("/trace/")
+      || Object.hasOwn(entry.input, "diagnostic_condition")
+      || Object.hasOwn(entry.input, "protocol_state")
+      || Object.hasOwn(entry.expected_output, "invariant_satisfied")
+    ) {
+      throw new Error(`registry-label vector is not semantic evidence: ${entry.vector_id}`);
+    }
+    return {
+      vector_id: entry.vector_id,
+      owner_document: entry.owner_document,
+      ...(entry.profile === undefined ? {} : { profile: entry.profile }),
+      spec_refs: [...entry.spec_refs],
+      invariants: [...entry.invariants],
+      reason_codes: [...entry.reason_codes],
+      semantic_boundary: entry.semantic_boundary,
+    };
+  }).sort((left, right) => left.vector_id.localeCompare(right.vector_id, "en"));
+}
+
+function hasExecutableBoundary(entry: CoverageEntry): entry is SemanticCoverageEntry {
+  return "semantic_boundary" in entry
+    && typeof entry.semantic_boundary === "string"
+    && entry.semantic_boundary.trim().length > 0;
 }
 
 export function findInvariantCoverageIssues(
@@ -72,6 +199,10 @@ export function findInvariantCoverageIssues(
   const covered = new Set<string>();
   const issues: string[] = [];
   for (const entry of coverage) {
+    if (!hasExecutableBoundary(entry)) {
+      issues.push(`coverage entry lacks executable boundary: ${entry.vector_id}`);
+      continue;
+    }
     for (const id of entry.invariants) {
       const invariant = registered.get(id);
       if (invariant === undefined) issues.push(`unregistered invariant: ${id}`);
@@ -103,6 +234,10 @@ export function findReasonCoverageIssues(
     if (justification.trim().length < 24) issues.push(`reason exclusion lacks justification: ${code}`);
   }
   for (const entry of coverage) {
+    if (!hasExecutableBoundary(entry)) {
+      issues.push(`coverage entry lacks executable boundary: ${entry.vector_id}`);
+      continue;
+    }
     for (const code of entry.reason_codes) {
       const reason = registered.get(code);
       if (reason === undefined) issues.push(`unregistered reason code: ${code}`);
@@ -131,6 +266,10 @@ export function findProfileCoverageIssues(
   const covered = new Set<string>();
   const issues: string[] = [];
   for (const entry of coverage) {
+    if (!hasExecutableBoundary(entry)) {
+      issues.push(`coverage entry lacks executable boundary: ${entry.vector_id}`);
+      continue;
+    }
     if (entry.profile === undefined) continue;
     const profile = registered.get(entry.profile);
     if (profile === undefined) issues.push(`unregistered profile: ${entry.vector_id} -> ${entry.profile}`);
@@ -202,7 +341,7 @@ export async function writeHistoricalCoverageFromVectors(
       vector_id: vector.vector_id,
       owner_document: vector.owner_document,
       ...(vector.profile === undefined ? {} : { profile: vector.profile }),
-      spec_refs: vector.spec_refs,
+      spec_refs: [...vector.spec_refs],
     };
   }).sort((left, right) => left.vector_id.localeCompare(right.vector_id, "en"));
   await writeCoverageEntries(vectorRoot, entries);

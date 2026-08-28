@@ -7,12 +7,13 @@ import {
   NON_WIRE_REASON_EXCLUSIONS,
   PENDING_PROFILE_IDS,
   buildCoverage,
+  buildSemanticCoverage,
   findInvariantCoverageIssues,
   findProfileCoverageIssues,
   findReasonCoverageIssues,
   writeCoverage,
 } from "./coverage.js";
-import { buildCurrentVectors } from "./current-vectors/index.js";
+import { buildCurrentCases, buildCurrentVectors } from "./current-vectors/index.js";
 import { loadRegistry } from "./registry.js";
 
 const tempDirs: string[] = [];
@@ -25,6 +26,7 @@ describe("current family coverage", () => {
   it("is a sorted lossless six-owner schema-3 projection with complete closure", async () => {
     const vectors = (await buildCurrentVectors()).map(({ vector }) => vector);
     const coverage = buildCoverage(vectors);
+    const semanticCoverage = buildSemanticCoverage(await buildCurrentCases());
     expect(coverage.map(({ vector_id }) => vector_id)).toEqual(
       [...coverage.map(({ vector_id }) => vector_id)].sort(),
     );
@@ -42,16 +44,26 @@ describe("current family coverage", () => {
     ]));
     expect(coverage.every(({ invariants }) => invariants.length > 0)).toBe(true);
     const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
-    expect(findInvariantCoverageIssues(registry, coverage)).toEqual([]);
-    expect(findReasonCoverageIssues(registry, coverage)).toEqual([]);
-    expect(findProfileCoverageIssues(registry, coverage)).toEqual([]);
+    expect(findInvariantCoverageIssues(registry, semanticCoverage)).toEqual([]);
+    expect(findReasonCoverageIssues(registry, semanticCoverage)).toEqual([]);
+    expect(findProfileCoverageIssues(registry, semanticCoverage)).toEqual([]);
     expect(PENDING_PROFILE_IDS).toEqual([]);
     expect(INACTIVE_PROFILE_IDS).toEqual([]);
   }, 30_000);
 
+  it("does not treat an administrative vector projection as executable evidence", async () => {
+    const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
+    const administrative = buildCoverage(
+      (await buildCurrentVectors()).map(({ vector }) => vector),
+    );
+    expect(findInvariantCoverageIssues(registry, administrative)).toContain(
+      `coverage entry lacks executable boundary: ${administrative[0]!.vector_id}`,
+    );
+  }, 30_000);
+
   it("reports missing owner-bound invariant, reason, and profile evidence", async () => {
     const registry = loadRegistry(resolve(import.meta.dirname, "../../../../../"));
-    const coverage = buildCoverage((await buildCurrentVectors()).map(({ vector }) => vector));
+    const coverage = buildSemanticCoverage(await buildCurrentCases());
     const invariant = registry.security_invariants.find(({ id }) =>
       coverage.some((entry) => entry.invariants.includes(id))
     )!;
@@ -90,7 +102,9 @@ describe("current family coverage", () => {
   }, 30_000);
 
   it("keeps the non-wire reason exclusion audit closed and specific", () => {
-    expect(new Set(NON_WIRE_REASON_EXCLUSIONS.map(({ code }) => code)).size)
+    const codes = NON_WIRE_REASON_EXCLUSIONS.map(({ code }) => code);
+    expect(codes).toEqual([...codes].sort());
+    expect(new Set(codes).size)
       .toBe(NON_WIRE_REASON_EXCLUSIONS.length);
     expect(NON_WIRE_REASON_EXCLUSIONS.every(({ justification }) =>
       justification.trim().length >= 24
@@ -116,7 +130,7 @@ describe("current family coverage", () => {
   });
 
   it("rejects an unlisted uncovered profile", async () => {
-    const coverage = buildCoverage((await buildCurrentVectors()).map(({ vector }) => vector));
+    const coverage = buildSemanticCoverage(await buildCurrentCases());
     const registry = structuredClone(loadRegistry(resolve(import.meta.dirname, "../../../../../")));
     registry.kinds[0].profiles.push({
       profile_id: "unlisted-future-profile",

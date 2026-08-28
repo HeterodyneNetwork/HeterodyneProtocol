@@ -224,6 +224,37 @@ export function resolveStampingProfile(
   return matches.length === 1 ? matches[0] : null;
 }
 
+export type RegisteredKindProfile = KindProfile & { kind: number };
+
+/** Validate the complete allocation tuple used to negotiate a wire profile. */
+export function validateRegisteredKindProfile(
+  registry: Pick<Registry, "kinds">,
+  candidate: RegisteredKindProfile,
+):
+  | { verdict: "accept"; normalized: RegisteredKindProfile }
+  | { verdict: "reject"; reason: "profile-not-registered" | "profile-metadata-mismatch" } {
+  const matches = registry.kinds.flatMap(({ kind, profiles }) =>
+    profiles
+      .filter(({ profile_id }) => profile_id === candidate.profile_id)
+      .map((profile) => ({ kind, ...profile }))
+  );
+  if (matches.length !== 1) {
+    return { verdict: "reject", reason: "profile-not-registered" };
+  }
+  const registered = matches[0];
+  if (
+    registered.kind !== candidate.kind
+    || registered.owner !== candidate.owner
+    || registered.discriminator !== candidate.discriminator
+    || registered.stamping !== candidate.stamping
+    || registered.first_version !== candidate.first_version
+    || registered.status !== candidate.status
+  ) {
+    return { verdict: "reject", reason: "profile-metadata-mismatch" };
+  }
+  return { verdict: "accept", normalized: structuredClone(registered) };
+}
+
 function validateUniqueEntries(registry: RegistryEntrySet): void {
   assertUnique(registry.kinds.map((entry) => entry.kind), "duplicate kind");
   assertUnique(registry.reason_codes.map((entry) => entry.code), "duplicate reason code");

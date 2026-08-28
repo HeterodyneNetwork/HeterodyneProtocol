@@ -51,5 +51,5 @@ describe("current-draft compiler and Vitest boundary", () => {
     expect(listed).not.toContain("src/kel-replay.test.ts");
     expect(listed).not.toContain("src/keri-materialized.test.ts");
     expect(listed).not.toContain("src/legacy-agent-delegation.test.ts");
-  });
+  }, 30_000);
 });

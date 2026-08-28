@@ -8,6 +8,7 @@ import {
   assertRegistryStatusTransition,
   computeRegistryDigest,
   loadRegistry,
+  validateRegisteredKindProfile,
   resolveStampingProfile,
   type ObjectEntry,
   type Registry,
@@ -208,6 +209,24 @@ describe("revisioned protocol registry", () => {
     expect(registry.kinds.find((entry) => entry.kind === 31015)).toBeUndefined();
     expect(registry.kinds.find((entry) => entry.kind === 31016)).toBeUndefined();
     expect(registry.kinds.find((entry) => entry.kind === 30078)).toBeUndefined();
+  });
+
+  it("validates an exact registered kind-profile tuple", () => {
+    const profile = registry.kinds
+      .flatMap(({ kind, profiles }) => profiles.map((entry) => ({ kind, ...entry })))
+      .find(({ profile_id }) => profile_id === "heterodyne-core-rotation-breadcrumb-profile-v1")!;
+    expect(validateRegisteredKindProfile(registry, profile)).toEqual({
+      verdict: "accept",
+      normalized: profile,
+    });
+    expect(validateRegisteredKindProfile(registry, {
+      ...profile,
+      discriminator: `${profile.discriminator}:substituted`,
+    })).toEqual({ verdict: "reject", reason: "profile-metadata-mismatch" });
+    expect(validateRegisteredKindProfile(registry, {
+      ...profile,
+      profile_id: "unregistered-profile",
+    })).toEqual({ verdict: "reject", reason: "profile-not-registered" });
   });
 
   it("allocates the optional Assurance records without reviving retired discovery kinds", () => {

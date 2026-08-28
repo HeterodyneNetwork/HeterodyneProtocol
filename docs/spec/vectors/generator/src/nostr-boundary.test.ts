@@ -11,11 +11,13 @@ const LIVE_AUTHORIZATION_CONSUMERS = [
   "claim-ledger.ts",
   "claims.ts",
   "control-signing.ts",
+  "core-policy.ts",
   "radicle.ts",
   "replaceable-selection.ts",
   "social-atproto.ts",
   "social-events.ts",
   "social-nip72.ts",
+  "social-policy.ts",
   "trusted-seed.ts",
 ] as const;
 
