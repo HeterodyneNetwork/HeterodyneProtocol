@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -55,16 +56,21 @@ function upgradeSnapshotToSchema3(input: TestCorpus): void {
   vector.invariants = ["CORE-I-VERIFY-BEFORE-USE"];
   vector.reason_codes = [];
   writeJson(input.snapshotRoot, vectorPath, vector);
+  writeText(input.snapshotRoot, "docs/spec/vectors/coverage/assurance.md", "# assurance\n");
   refreshSnapshotManifest(input.snapshotRoot);
 }
 
 describe("loadCorpus split roots", () => {
-  it("keeps the default synthetic corpus pinned to its historical schema-2 contract", () => {
+  it("copies the exact complete historical schema-2 contract", () => {
     const input = corpus();
+    const schemaBytes = readFileSync(resolve(input.snapshotRoot, vectorSchemaPath));
     const schema = readJson(input.snapshotRoot, vectorSchemaPath);
     const schemaVersion = (schema.properties as Record<string, Record<string, unknown>>)
       .vector_schema_version?.const;
 
+    expect(createHash("sha256").update(schemaBytes).digest("hex"))
+      .toBe("4331e2c8ae53d89bfdec913bd43c85d9f0ebeadcc3ad42950e08050a6284a1d6");
+    expect(schema.allOf).toBeDefined();
     expect(schemaVersion).toBe("2.0.0");
     expect(readTestManifest(input.snapshotRoot)).toMatchObject({
       vector_schema_version: "2.0.0",
@@ -74,6 +80,10 @@ describe("loadCorpus split roots", () => {
       vector_id: "core.valid",
       vector_schema_version: "2.0.0",
     });
+    expect(existsSync(resolve(
+      input.snapshotRoot,
+      "docs/spec/vectors/coverage/assurance.md",
+    ))).toBe(false);
   });
 
   it("constructs schema-3 fixtures with the complete six-owner coverage projection", () => {
@@ -140,6 +150,20 @@ describe("loadCorpus split roots", () => {
     expect(loaded.corpus?.vectors.map(({ value }) => value.vector_id)).toEqual(["core.valid"]);
     expect(loaded.corpus?.vectors[0]?.value).not.toHaveProperty("invariants");
     expect(loaded.corpus?.vectors[0]?.value).not.toHaveProperty("reason_codes");
+  });
+
+  it("rejects a historical consume rejection without its required reason code", () => {
+    const input = corpus();
+    const vector = readJson(input.snapshotRoot, vectorPath);
+    vector.expected_output = { verdict: "reject" };
+    writeJson(input.snapshotRoot, vectorPath, vector);
+    refreshSnapshotManifest(input.snapshotRoot);
+
+    expect(loadCorpus(input).issues).toContainEqual({
+      code: "invalid-document-shape",
+      path: vectorPath,
+      message: "vector does not match vector.schema.json",
+    });
   });
 
   it("loads schema-3 traceability without backfilling historical vectors", () => {

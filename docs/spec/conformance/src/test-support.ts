@@ -42,45 +42,10 @@ const historicalSnapshotSupportPaths = [
   "docs/spec/vectors/coverage/family.md",
 ] as const;
 
-const historicalVectorSchema = {
-  type: "object",
-  additionalProperties: false,
-  required: [
-    "vector_id",
-    "vector_schema_version",
-    "owner_document",
-    "spec_refs",
-    "description",
-    "direction",
-    "input",
-    "expected_output",
-  ],
-  properties: {
-    vector_id: { type: "string", minLength: 1 },
-    vector_schema_version: { const: "2.0.0" },
-    owner_document: {
-      type: "string",
-      enum: ["core", "comms", "control", "social", "workspace"],
-    },
-    profile: { type: "string", minLength: 1 },
-    spec_refs: {
-      type: "array",
-      minItems: 1,
-      maxItems: 1,
-      items: {
-        type: "string",
-        pattern: "^heterodyne:(core|comms|control|social|workspace)#[a-z0-9][a-z0-9-]*$",
-      },
-    },
-    description: { type: "string", minLength: 1 },
-    direction: {
-      type: "string",
-      enum: ["produce", "consume", "round-trip"],
-    },
-    input: { type: "object", additionalProperties: true, required: [] },
-    expected_output: { type: "object", additionalProperties: true, required: [] },
-  },
-} as const;
+const historicalVectorSchemaFixturePath = resolve(
+  import.meta.dirname,
+  "fixtures/vector-schema-2.0.0.json",
+);
 
 function snapshotSupportPathsFor(vectorSchemaVersion: string): string[] {
   return vectorSchemaVersion === "3.0.0"
@@ -237,7 +202,7 @@ function writeSource(root: string, withAssurance: boolean): void {
 }
 
 function writeSnapshot(root: string, withVector: boolean): void {
-  writeJson(root, vectorSchemaPath, historicalVectorSchema);
+  writeText(root, vectorSchemaPath, readFileSync(historicalVectorSchemaFixturePath, "utf8"));
   writeJson(root, fixturesPath, {
     audience_keys: {},
     category_keysets: {},
@@ -254,7 +219,7 @@ function writeSnapshot(root: string, withVector: boolean): void {
   writeJson(root, "docs/spec/vectors/schema/reason-codes.json", { reason_codes: [] });
   writeText(root, "docs/spec/vectors/schema/reason-codes.md", "# Reasons\n");
   writeJson(root, "docs/spec/vectors/coverage/manifest.json", { vectors: [] });
-  for (const owner of ["core", "assurance", "comms", "control", "social", "workspace", "family"]) {
+  for (const owner of ["core", "comms", "control", "social", "workspace", "family"]) {
     writeText(root, `docs/spec/vectors/coverage/${owner}.md`, `# ${owner}\n`);
   }
   if (withVector) {
