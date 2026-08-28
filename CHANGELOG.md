@@ -17,14 +17,11 @@ family map, and the single registry pin is
 
 ## heterodyne/0.6.0 (draft)
 
-Security review remediation: verifier-time bound and optional OpenTimestamps
-anchoring for replaceable state, privacy-tier re-cut with Tier 3 metadata
-confinement, mandatory Assurance for workspace governance, enrollment contest
-window, per-binding SHA-1 analysis, declared authorization-freshness bound.
-Design:
-[`docs/superpowers/specs/2026-08-26-security-review-remediation-design.md`](docs/superpowers/specs/2026-08-26-security-review-remediation-design.md).
-ADR-048 remains Proposed until the complete 0.6 closure matrix, including
-current conformance vectors, is green.
+Security-review closure follows the approved
+[`2026-08-27 closure design`](docs/superpowers/specs/2026-08-27-heterodyne-0.6-pr28-closure-design.md).
+It preserves optional Workspace Assurance and treats NIP-03 advisory material
+as non-authoritative. ADR-048 remains Proposed until the complete 0.6 closure
+matrix, including current conformance vectors, is green.
 
 ### Nostr-first family integration
 

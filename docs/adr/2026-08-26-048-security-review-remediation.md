@@ -10,76 +10,24 @@ disagree, the specification family and normative artifacts govern.
 ## Decision
 
 An external model review of the 0.5.0 family identified seven structural
-findings. This proposal records the following remediations for a complete
-`heterodyne/0.6.0` closure. The full agreed design is
-`docs/superpowers/specs/2026-08-26-security-review-remediation-design.md`.
+findings. Their substantive disposition is deferred to the approved
+[`2026-08-27 closure design`](../superpowers/specs/2026-08-27-heterodyne-0.6-pr28-closure-design.md)
+and its implementation plan. This Proposed ADR records only the release
+lifecycle: no substantive remediation is accepted until the complete closure
+is integrated and passes the acceptance gate below.
 
-**Replaceable-state timestamp bounds.** Source-neutral selection gains a
-premature-candidate bound (`heterodyne:0.6.0#core-created-at-bound`): a
-candidate whose `created_at` exceeds trusted verifier time by more than 900
-seconds is quarantined out of the selection union until its time arrives,
-closing the durable future-dated-capture primitive. A new optional profile
-`core.ots-anchor.v1` (`heterodyne:0.6.0#core-ots-anchor`) adopts NIP-03 kind
-`1040` OpenTimestamps attestations: a matured Bitcoin attestation that proves
-`created_at` materially exceeds true existence time permanently refutes the
-event, defusing future-dated time bombs for late-synchronizing verifiers.
-Anchoring is never required for baseline interoperability.
-
-**Privacy-tier re-cut.** Tiers are now: Tier 1 public plaintext; Tier 2
-audience ciphertext on public carriers, directly cross-compatible with
-encrypted Nostr posts on public relays; Tier 3 audience ciphertext confined to
-authorized private-repository interfaces
-(`heterodyne:0.6.0#comms-tier3-confinement`), including the kind `31011`
-wraps, kind `31012` rosters, and rotation records — confining audience
-membership metadata to allowed nodes. Plaintext in a private repository is
-demoted from a tier to an orthogonal repository-visibility setting with its
-honesty duties intact. This supersedes the tier definitions of ADR-028 as
-amended by ADR-037.
-
-**Workspace governance requires Assurance.** A workspace persona must hold a
-window-complete `verified` Assurance enrollment bound at inception
-(`heterodyne:0.6.0#workspace-governance-assurance`); authority mutations fail
-closed without it while ordinary writes continue, and the `active-account`
-compromise-reset class is forbidden for workspaces — the hot key can no longer
-authorize its own succession. Repository owners and claim-ledger/OIDC
-authorities receive SHOULD-level enrollment with a mandatory client warning.
-
-**Enrollment contest window.** A reciprocal enrollment becomes pin-eligible
-only after 604,800 seconds of observably public, conflict-free existence
-(`heterodyne:0.6.0#assurance-enrollment-window`), witnessable by receipts for
-late verifiers. Same-key contests (kind `31006`) and competing enrollments
-fail closed to baseline. A duplicity conflict resolves only to an enrollment
-with both a matured OpenTimestamps anchor proving materially earlier existence
-and witness receipts spanning the gap
-(`heterodyne:0.6.0#assurance-enrollment-tiebreak`) — established enrollments
-recover from equivocation stalls, and no rule ever favors a key thief.
-
-**SHA-1 per-binding analysis.** The blanket compartmentalization argument is
-replaced by a per-binding table (`heterodyne:0.6.0#core-sha1-bindings`)
-covering the RID locator, the kind `31010` `repo_head` possession snapshot,
-and the Workspace `repository_head` carrier context. Authority bindings now
-normatively require SHA-256 or stronger, and implementations should prefer
-Radicle's `sha256` object format where available.
-
-**Declared authorization-freshness bound.** The fixed 300-second
-authorization-view window becomes the deployment-declared signed
-continuity-manifest member `authorization_view_max_age` (default 300 seconds,
-hard ceiling 86,400 seconds). Invariants test the declared value, relying
-parties can read it before trusting a deployment, and declaring a long window
-is disclosed as declaring slow revocation.
-
-**Scope honesty.** Comms §12 gains an explicit OIDC non-goals statement
-(private-network and workload authentication; not censorship-resistant). The
-threat model gains a carrier-withholding/equivocation entry, and the registry
-gains an `intentionally_coarse` flag reconciling Core §13.2 coarsening with
-the Workspace distinct-outcomes rule.
+The approved closure design preserves **optional Workspace Assurance**: a
+Workspace with a bare active Nostr persona key is baseline-conformant, and an
+Assurance profile is an optional hardening policy rather than a prerequisite.
+It also treats **NIP-03 advisory** material as non-authoritative. In
+particular, no OpenTimestamps observation establishes permanent event
+refutation or resolves an enrollment contest.
 
 ## Proposed risk disposition
 
-- `compromise_time` selection within
-  `[current_head.created_at, succession.created_at]` remains a recovery-holder
-  power; OpenTimestamps anchors on legitimate events provide third-party
-  dispute evidence, but the protocol does not adjudicate the choice.
+- `compromise_time` selection remains a recovery-holder power subject to the
+  closure design's final specification and conformance review.
+- NIP-03 material remains advisory and does not grant protocol authority.
 - Carrier withholding for pure-relay readers is inherited from the Nostr
   carrier model and disclosed as a proposed risk.
 - Tier 2 and Tier 3 have no forward secrecy; users needing it use the

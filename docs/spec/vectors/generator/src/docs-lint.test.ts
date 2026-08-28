@@ -61,6 +61,21 @@ describe("canonical family documentation", () => {
     expect(read("CHANGELOG.md")).toMatch(/heterodyne\/0\.6\.0 \(draft\)/);
   });
 
+  it("defers ADR-048 semantics to the approved optional-Assurance closure design", () => {
+    const adr = read("docs/adr/2026-08-26-048-security-review-remediation.md");
+    const changelog = read("CHANGELOG.md");
+    expect(adr).toContain("2026-08-27-heterodyne-0.6-pr28-closure-design.md");
+    expect(adr).toContain("optional Workspace Assurance");
+    expect(adr).toContain("NIP-03 advisory");
+    expect(adr).not.toContain("Workspace governance requires Assurance");
+    expect(adr).not.toContain("permanently refutes");
+    expect(adr).not.toContain("matured OpenTimestamps anchor");
+    expect(changelog).toContain("optional Workspace Assurance");
+    expect(changelog).toContain("NIP-03 advisory");
+    expect(changelog).not.toContain("mandatory Assurance for workspace governance");
+    expect(changelog).not.toContain("optional OpenTimestamps anchoring");
+  });
+
   it("recognizes Assurance paths, qualified links, features, and invariant evidence", () => {
     const root = mkdtempSync(resolve(tmpdir(), "heterodyne-assurance-lint-"));
     temps.push(root);
