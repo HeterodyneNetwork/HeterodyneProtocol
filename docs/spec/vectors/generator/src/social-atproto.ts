@@ -12,6 +12,10 @@ import {
   type AtprotoResolverAuthority,
 } from "./atproto-did-resolution.js";
 import { snapshotAndVerifyNostrEvent, type NostrSignedEvent } from "./nostr.js";
+import {
+  createReplaceableSelectionAuthority,
+  selectCurrentReplaceableEvent,
+} from "./replaceable-selection.js";
 
 export type AtprotoBinding = {
   spec_version: "heterodyne/0.5.0";
@@ -111,9 +115,16 @@ function validateAtprotoBindingSnapshot(
     );
     if (checked !== null) valid.push({ evidence: candidate, checked });
   }
-  const selected = valid.sort((left, right) =>
-    right.checked.event.created_at - left.checked.event.created_at
-    || left.checked.event.id.localeCompare(right.checked.event.id))[0];
+  const selectionAuthority = createReplaceableSelectionAuthority({
+    trusted_now: () => input.now,
+  });
+  const selectedEvent = selectCurrentReplaceableEvent(
+    selectionAuthority,
+    valid.map(({ checked }) => checked.event),
+  ).selected;
+  const selected = selectedEvent === null
+    ? undefined
+    : valid.find(({ checked }) => checked.event.id === selectedEvent.id);
   if (selected === undefined) {
     return { verdict: "reject", reason_code: "atproto-binding-invalid" };
   }

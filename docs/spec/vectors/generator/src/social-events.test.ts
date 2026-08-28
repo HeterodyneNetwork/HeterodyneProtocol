@@ -513,6 +513,82 @@ function signAgentEvent(event: NostrUnsignedEvent): NostrSignedEvent {
 }
 
 describe("source-neutral Social state", () => {
+  it("rejects an accessor-backed candidate envelope without invoking it", async () => {
+    const social = await loadSocialEvents();
+    const authority = await selectionAuthority(1_000);
+    let getterCalls = 0;
+    const candidate = { carrier: "relay" } as {
+      carrier: "relay";
+      event: NostrSignedEvent;
+    };
+    Object.defineProperty(candidate, "event", {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return profileState;
+      },
+    });
+    let result: NostrSignedEvent | null | undefined;
+
+    expect(() => {
+      result = social.selectCurrentSocialEvent?.({
+        selection_authority: authority,
+        coordinate: { pubkey: personaKey, kind: 0 },
+        candidates: [candidate],
+      });
+    }).not.toThrow();
+    expect(result).toBeNull();
+    expect(getterCalls).toBe(0);
+  });
+
+  it("rejects a proxied candidate envelope without invoking any trap", async () => {
+    const social = await loadSocialEvents();
+    let proxyTraps = 0;
+    const candidate = new Proxy({ carrier: "relay" as const, event: profileState }, {
+      get(target, member, receiver) {
+        proxyTraps += 1;
+        return Reflect.get(target, member, receiver);
+      },
+      getPrototypeOf(target) {
+        proxyTraps += 1;
+        return Reflect.getPrototypeOf(target);
+      },
+      ownKeys(target) {
+        proxyTraps += 1;
+        return Reflect.ownKeys(target);
+      },
+    });
+    const result = social.selectCurrentSocialEvent?.({
+      selection_authority: await selectionAuthority(1_000),
+      coordinate: { pubkey: personaKey, kind: 0 },
+      candidates: [candidate],
+    });
+
+    expect(result).toBeNull();
+    expect(proxyTraps).toBe(0);
+  });
+
+  it("rejects a custom candidate iterator without invoking it", async () => {
+    const social = await loadSocialEvents();
+    let iteratorReads = 0;
+    const candidates = [{ carrier: "relay" as const, event: profileState }];
+    Object.defineProperty(candidates, Symbol.iterator, {
+      configurable: true,
+      get() {
+        iteratorReads += 1;
+        return Array.prototype[Symbol.iterator];
+      },
+    });
+    const result = social.selectCurrentSocialEvent?.({
+      selection_authority: await selectionAuthority(1_000),
+      coordinate: { pubkey: personaKey, kind: 0 },
+      candidates,
+    });
+
+    expect(result).toBeNull();
+    expect(iteratorReads).toBe(0);
+  });
+
   it("selects the newest valid replaceable event regardless of relay or repository carrier", async () => {
     const social = await loadSocialEvents();
     const oldRepository = await signEvent({
@@ -567,7 +643,7 @@ describe("source-neutral Social state", () => {
       content: "",
       auxRand: AUX_RAND,
     });
-    const expected = [left, right].sort((a, b) => a.id.localeCompare(b.id))[0];
+    const expected = left.id < right.id ? left : right;
     expect(social.validateSocialReplaceableCandidate?.({
       coordinate: { pubkey: personaKey, kind: 30000, d: "team" },
       event: wrongCoordinate,

@@ -77,7 +77,8 @@ export function selectCurrentReplaceableEvent(
     }
   }
   admitted.sort((left, right) =>
-    right.created_at - left.created_at || left.id.localeCompare(right.id));
+    right.created_at - left.created_at
+      || (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
   return { selected: admitted[0] ?? null, quarantined };
 }
 

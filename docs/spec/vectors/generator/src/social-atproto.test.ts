@@ -194,6 +194,29 @@ describe("ATProto active-key binding", () => {
     });
   });
 
+  it("quarantines a future binding candidate before selecting current state", async () => {
+    const atproto = await loadAtproto();
+    const premature = {
+      ...binding,
+      established_at: 2_151,
+      nonce: "32".repeat(32),
+    };
+    const prematureEvent = await bindingNostrEvent(
+      premature,
+      secret,
+      premature.established_at,
+    );
+
+    expect(atproto.validateAtprotoBinding?.(bindingInput([
+      bindingEvidence(binding, bindingEvent),
+      bindingEvidence(premature, prematureEvent),
+    ]))).toEqual({
+      verdict: "accept",
+      binding,
+      selected_event_id: bindingEvent.id,
+    });
+  });
+
   it("keeps a Nostr-side revocation durable and requires authenticated full lineage", async () => {
     const atproto = await loadAtproto();
     const revocation = revocationFor(binding, 1_100);

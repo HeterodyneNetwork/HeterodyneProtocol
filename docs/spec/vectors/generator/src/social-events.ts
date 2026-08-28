@@ -1,3 +1,4 @@
+import { types as utilTypes } from "node:util";
 import {
   matchesAgentAttributionProfile,
   createCommsSocialSignedPublicationConsumer,
@@ -127,9 +128,10 @@ export function selectCurrentSocialEvent(input: {
   candidates: readonly SocialEventCandidate[];
 }): NostrSignedEvent | null {
   if (!validCoordinate(input.coordinate)) return null;
+  const capturedCandidates = captureSocialCandidateEvents(input.candidates);
+  if (capturedCandidates === null) return null;
   const candidates: VerifiedNostrEvent[] = [];
-  for (const { event: sourceEvent } of input.candidates) {
-    const event = snapshotAndVerifyNostrEvent(sourceEvent);
+  for (const event of capturedCandidates) {
     if (event !== null && validateSocialReplaceableCandidate({
       coordinate: input.coordinate,
       event,
@@ -141,6 +143,78 @@ export function selectCurrentSocialEvent(input: {
     input.selection_authority ?? SOCIAL_SELECTION_AUTHORITY,
     candidates,
   ).selected;
+}
+
+function captureSocialCandidateEvents(
+  value: unknown,
+): readonly (VerifiedNostrEvent | null)[] | null {
+  if (
+    value === null
+    || typeof value !== "object"
+    || utilTypes.isProxy(value)
+    || !Array.isArray(value)
+  ) return null;
+  let prototype: object | null;
+  let descriptors: PropertyDescriptorMap;
+  try {
+    prototype = Object.getPrototypeOf(value) as object | null;
+    descriptors = Object.getOwnPropertyDescriptors(value) as unknown as PropertyDescriptorMap;
+  } catch {
+    return null;
+  }
+  const keys = Reflect.ownKeys(descriptors);
+  const lengthDescriptor = descriptors.length;
+  if (
+    prototype !== Array.prototype
+    || keys.some((key) => typeof key !== "string")
+    || lengthDescriptor === undefined
+    || !("value" in lengthDescriptor)
+    || !Number.isSafeInteger(lengthDescriptor.value)
+    || lengthDescriptor.value < 0
+    || keys.length !== lengthDescriptor.value + 1
+  ) return null;
+
+  const captured: Array<VerifiedNostrEvent | null> = [];
+  for (let index = 0; index < lengthDescriptor.value; index += 1) {
+    const candidateDescriptor = descriptors[String(index)];
+    if (
+      candidateDescriptor === undefined
+      || !("value" in candidateDescriptor)
+      || candidateDescriptor.enumerable !== true
+    ) return null;
+    const candidate = candidateDescriptor.value;
+    if (
+      candidate === null
+      || typeof candidate !== "object"
+      || utilTypes.isProxy(candidate)
+      || Array.isArray(candidate)
+    ) return null;
+    let candidatePrototype: object | null;
+    let candidateDescriptors: PropertyDescriptorMap;
+    try {
+      candidatePrototype = Object.getPrototypeOf(candidate) as object | null;
+      candidateDescriptors = Object.getOwnPropertyDescriptors(candidate);
+    } catch {
+      return null;
+    }
+    const candidateKeys = Reflect.ownKeys(candidateDescriptors);
+    const carrierDescriptor = candidateDescriptors.carrier;
+    const eventDescriptor = candidateDescriptors.event;
+    if (
+      candidatePrototype !== Object.prototype
+      || candidateKeys.length !== 2
+      || candidateKeys.some((key) => typeof key !== "string")
+      || carrierDescriptor === undefined
+      || !("value" in carrierDescriptor)
+      || carrierDescriptor.enumerable !== true
+      || carrierDescriptor.value !== "relay" && carrierDescriptor.value !== "repository"
+      || eventDescriptor === undefined
+      || !("value" in eventDescriptor)
+      || eventDescriptor.enumerable !== true
+    ) return null;
+    captured.push(snapshotAndVerifyNostrEvent(eventDescriptor.value));
+  }
+  return Object.freeze(captured);
 }
 
 export function validateSocialReplaceableCandidate(input: {

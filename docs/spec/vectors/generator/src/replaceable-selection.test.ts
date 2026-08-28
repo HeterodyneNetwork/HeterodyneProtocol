@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { signEvent, type NostrSignedEvent } from "./nostr.js";
 import type { ReplaceableSelectionAuthority } from "./replaceable-selection.js";
 import { AUX_RAND } from "./vector-helpers.js";
@@ -157,14 +157,20 @@ describe("replaceable-event selection authority", () => {
       ...await signedReplaceable({ created_at: 2_001, content: "invalid" }),
       sig: "00".repeat(64),
     };
-    const expected = left.id.localeCompare(right.id) < 0 ? left : right;
-
-    expect(selection.selectCurrentReplaceableEvent?.(
-      authority,
-      [right, invalid, left],
-    )).toMatchObject({
-      selected: { id: expected.id },
-      quarantined: [],
-    });
+    const lower = left.id < right.id ? left : right;
+    const higher = lower === left ? right : left;
+    const localeCompare = vi.spyOn(String.prototype, "localeCompare")
+      .mockReturnValue(1);
+    try {
+      expect(selection.selectCurrentReplaceableEvent?.(
+        authority,
+        [higher, invalid, lower],
+      )).toMatchObject({
+        selected: { id: lower.id },
+        quarantined: [],
+      });
+    } finally {
+      localeCompare.mockRestore();
+    }
   });
 });
