@@ -37,14 +37,14 @@ import {
   writeCoverageFromVectors,
   writeHistoricalCoverageFromVectors,
 } from "./coverage.js";
-import { buildIsolatedCurrentCatalog } from "./current-authoring-runtime.js";
+import { buildCurrentVectors } from "./current-vectors/index.js";
 
 export async function authorAllVectors(outputDir: string): Promise<string[]> {
   const fixtures = {
     ...buildFixtures(),
     vector_schema_version: CURRENT_VECTOR_SCHEMA_VERSION,
   };
-  const { vectors } = await buildIsolatedCurrentCatalog();
+  const vectors = await buildCurrentVectors();
   const written: string[] = [];
 
   await removeRetiredVectors(

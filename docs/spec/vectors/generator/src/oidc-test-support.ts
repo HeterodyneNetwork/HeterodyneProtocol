@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { ed25519 } from "@noble/curves/ed25519";
-import * as nip19 from "nostr-tools/nip19";
+import { nip19 } from "nostr-tools";
 import {
   buildLedgerRepositoryEvidence,
   mergeClaimLedger,

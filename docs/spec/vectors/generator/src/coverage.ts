@@ -300,10 +300,10 @@ export function findProfileCoverageIssues(
 }
 
 export async function writeCoverage(vectorRoot: string): Promise<void> {
-  const { buildIsolatedCurrentCatalog } = await import("./current-authoring-runtime.js");
+  const { buildCurrentVectors } = await import("./current-vectors/index.js");
   await writeCoverageFromVectors(
     vectorRoot,
-    (await buildIsolatedCurrentCatalog()).vectors.map(({ vector }) => vector),
+    (await buildCurrentVectors()).map(({ vector }) => vector),
   );
 }
 

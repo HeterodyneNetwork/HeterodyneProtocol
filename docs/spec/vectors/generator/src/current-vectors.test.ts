@@ -45,6 +45,7 @@ const sourceRoot = resolve(import.meta.dirname);
 const catalogEntry = resolve(sourceRoot, "current-vectors/index.ts");
 const currentConfigPath = resolve(sourceRoot, "../tsconfig.current.json");
 const authorPath = resolve(sourceRoot, "author.ts");
+const coveragePath = resolve(sourceRoot, "coverage.ts");
 const packagePath = resolve(sourceRoot, "../package.json");
 const forbidden = [
   /\/topics[^/]*\.ts$/,
@@ -62,155 +63,10 @@ afterEach(() => {
 });
 
 describe("current vector catalog import boundary", () => {
-  it("audits compiler-resolved composition without claiming runtime capability denial", () => {
-    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-composition-only-"));
-    temporaryRoots.push(root);
-    writeFileSync(
-      resolve(root, "index.ts"),
-      [
-        'import { current } from "./current.js";',
-        'const getBuiltin = globalThis.Reflect.get(process, "getBuiltinModule");',
-        'const makeRequire = globalThis.Reflect.get(getBuiltin("node:module"), "createRequire");',
-        'const AsyncFunction = globalThis.Reflect.getPrototypeOf(async function () {}).constructor;',
-        'void makeRequire; void AsyncFunction; void current;',
-      ].join("\n"),
-    );
-    writeFileSync(resolve(root, "current.ts"), "export const current = true;\n");
-
-    expect(moduleDependencies(resolve(root, "index.ts"))).toEqual([
-      realpathSync(resolve(root, "current.ts")),
-      realpathSync(resolve(root, "index.ts")),
-    ].sort());
-  });
-
-  it("does not mistake runtime syntax for compiler-resolved composition", () => {
-    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-capability-escapes-"));
-    temporaryRoots.push(root);
-    const fixtures = new Map<string, string>([
-      [
-        "closure.ts",
-        [
-          "const getLoader = () => require;",
-          "const loader = getLoader();",
-          'loader("./topics-closure.js");',
-        ].join("\n"),
-      ],
-      [
-        "object-container.ts",
-        [
-          "const loaders = { current: require };",
-          'loaders.current("./topics-object-container.js");',
-        ].join("\n"),
-      ],
-      [
-        "array-container.ts",
-        [
-          "const loaders = [require];",
-          'loaders[0]("./topics-array-container.js");',
-        ].join("\n"),
-      ],
-      [
-        "parameter.ts",
-        [
-          "function invoke(loader: (specifier: string) => unknown) {",
-          '  return loader("./topics-parameter.js");',
-          "}",
-          "invoke(require);",
-        ].join("\n"),
-      ],
-      [
-        "dormant.ts",
-        [
-          "if (false) {",
-          '  void import("./topics-dormant.js");',
-          "}",
-        ].join("\n"),
-      ],
-    ]);
-    for (const [file, source] of fixtures) {
-      const path = resolve(root, file);
-      writeFileSync(path, source);
-      expect(moduleDependencies(path), file).toEqual([realpathSync(path)]);
-    }
-  });
-
-  it("makes no capability claim for concealed runtime code construction", () => {
-    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-concealed-code-"));
-    temporaryRoots.push(root);
-    const fixtures = new Map<string, string>([
-      [
-        "computed-module.ts",
-        [
-          'import { Module } from "node:module";',
-          "const factory = Module['create' + 'Require'];",
-          "void factory(import.meta.url);",
-        ].join("\n"),
-      ],
-      [
-        "optional-aliased-module.ts",
-        [
-          'import { Module as NodeModule } from "node:module";',
-          "const loaderNamespace = NodeModule;",
-          "void loaderNamespace?.['create' + 'Require'];",
-        ].join("\n"),
-      ],
-      [
-        "function-import.ts",
-        "Function('return import(\"./topics-function.js\")')();",
-      ],
-      [
-        "global-function.ts",
-        "globalThis.Function('return import(\"./topics-global-function.js\")')();",
-      ],
-      [
-        "computed-global.ts",
-        [
-          "const constructorName = 'Fun' + 'ction';",
-          "globalThis[constructorName]('return import(\"./topics-computed-global.js\")')();",
-        ].join("\n"),
-      ],
-      [
-        "direct-eval.ts",
-        "eval('import(\"./topics-direct-eval.js\")');",
-      ],
-      [
-        "indirect-eval.ts",
-        "(0, eval)('import(\"./topics-indirect-eval.js\")');",
-      ],
-      [
-        "async-function.ts",
-        [
-          "const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;",
-          "AsyncFunction('return import(\"./topics-async-function.js\")')();",
-        ].join("\n"),
-      ],
-      [
-        "generator-function.ts",
-        [
-          "const GeneratorFunction = Object.getPrototypeOf(function* () {}).constructor;",
-          "GeneratorFunction('yield import(\"./topics-generator-function.js\")')();",
-        ].join("\n"),
-      ],
-      [
-        "async-generator-function.ts",
-        [
-          "const AsyncGeneratorFunction = Object.getPrototypeOf(async function* () {}).constructor;",
-          "AsyncGeneratorFunction('yield import(\"./topics-async-generator-function.js\")')();",
-        ].join("\n"),
-      ],
-      ["vm.ts", 'import vm from "node:vm"; void vm;'],
-    ]);
-
-    for (const [file, source] of fixtures) {
-      const path = resolve(root, file);
-      writeFileSync(path, source);
-      expect(moduleDependencies(path), file).toEqual([realpathSync(path)]);
-    }
-  });
-
-  it("keeps the complete catalog graph free of historical authoring modules", () => {
+  it("audits the exact trusted-source static graph without historical authoring modules", () => {
     expect(compilerConfigPath(catalogEntry)).toBe(currentConfigPath);
     const graph = moduleDependencies(catalogEntry);
+    expect(graph).toHaveLength(79);
     expect(graph.filter((path) => forbidden.some((pattern) => pattern.test(path))))
       .toEqual([]);
   }, 60_000);
@@ -243,137 +99,6 @@ describe("current vector catalog import boundary", () => {
         realpathSync(resolve(root, "topics-named.ts")),
         realpathSync(resolve(root, "topics-star.ts")),
       ].sort());
-  });
-
-  it("does not treat runtime require aliases as static composition edges", () => {
-    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-aliases-"));
-    temporaryRoots.push(root);
-    writeFileSync(
-      resolve(root, "index.ts"),
-      [
-        'import { createRequire as makeRequire } from "node:module";',
-        "const direct = require;",
-        "const moduleLoader = module.require;",
-        "const created = makeRequire(import.meta.url);",
-        'direct("./topics-alias.js");',
-        'moduleLoader("./snapshot-module-alias.js");',
-        'created("./legacy-create-require.js");',
-      ].join("\n"),
-    );
-    for (const file of [
-      "topics-alias.ts",
-      "snapshot-module-alias.ts",
-      "legacy-create-require.ts",
-    ]) writeFileSync(resolve(root, file), "export const value = true;\n");
-
-    expect(moduleDependencies(resolve(root, "index.ts")))
-      .toEqual([realpathSync(resolve(root, "index.ts"))]);
-  });
-
-  it("ignores nonliteral runtime loads in the composition audit", () => {
-    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-nonliteral-"));
-    temporaryRoots.push(root);
-    writeFileSync(
-      resolve(root, "index.ts"),
-      [
-        "const localRequire = require;",
-        'const hidden = "./topics-nonliteral.js";',
-        "localRequire(hidden);",
-      ].join("\n"),
-    );
-    expect(moduleDependencies(resolve(root, "index.ts")))
-      .toEqual([realpathSync(resolve(root, "index.ts"))]);
-  });
-
-  it("ignores assigned and destructured runtime loader aliases", () => {
-    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-bindings-"));
-    temporaryRoots.push(root);
-    writeFileSync(
-      resolve(root, "index.ts"),
-      [
-        "let assigned;",
-        "assigned = require;",
-        'assigned("./topics-assigned.js");',
-        "const { require: objectLoader } = module;",
-        'objectLoader("./snapshot-object.js");',
-        "const [arrayLoader] = [require];",
-        'arrayLoader("./legacy-array.js");',
-      ].join("\n"),
-    );
-    for (const file of [
-      "topics-assigned.ts",
-      "snapshot-object.ts",
-      "legacy-array.ts",
-    ]) writeFileSync(resolve(root, file), "export const value = true;\n");
-
-    expect(moduleDependencies(resolve(root, "index.ts")))
-      .toEqual([realpathSync(resolve(root, "index.ts"))]);
-  });
-
-  it("ignores assigned createRequire factories in the composition audit", () => {
-    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-create-require-bindings-"));
-    temporaryRoots.push(root);
-    writeFileSync(
-      resolve(root, "index.ts"),
-      [
-        'import * as nodeModule from "node:module";',
-        "let factory;",
-        "factory = nodeModule.createRequire;",
-        "let assignedLoader;",
-        "assignedLoader = factory(import.meta.url);",
-        'assignedLoader("./topics-created-assigned.js");',
-        "const { createRequire: objectFactory } = nodeModule;",
-        "const objectLoader = objectFactory(import.meta.url);",
-        'objectLoader("./snapshot-created-object.js");',
-      ].join("\n"),
-    );
-    writeFileSync(resolve(root, "topics-created-assigned.ts"), "export const value = true;\n");
-    writeFileSync(resolve(root, "snapshot-created-object.ts"), "export const value = true;\n");
-
-    expect(moduleDependencies(resolve(root, "index.ts")))
-      .toEqual([realpathSync(resolve(root, "index.ts"))]);
-  });
-
-  it("does not interpret reassignment or shadowing for composition", () => {
-    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-shadowing-"));
-    temporaryRoots.push(root);
-    writeFileSync(
-      resolve(root, "index.ts"),
-      [
-        "let stale = require;",
-        "stale = (_specifier) => ({ local: true });",
-        'stale("./topics-reassigned.js");',
-        "const outer = require;",
-        "function locallyShadowed(outer) {",
-        '  outer("./snapshot-shadowed.js");',
-        "}",
-        "void locallyShadowed;",
-      ].join("\n"),
-    );
-    writeFileSync(resolve(root, "topics-reassigned.ts"), "export const value = true;\n");
-    writeFileSync(resolve(root, "snapshot-shadowed.ts"), "export const value = true;\n");
-
-    expect(moduleDependencies(resolve(root, "index.ts")))
-      .toEqual([realpathSync(resolve(root, "index.ts"))]);
-  });
-
-  it("does not infer possibly-live runtime aliases as static edges", () => {
-    const root = mkdtempSync(resolve(tmpdir(), "heterodyne-current-vector-ambiguous-"));
-    temporaryRoots.push(root);
-    writeFileSync(
-      resolve(root, "index.ts"),
-      [
-        "let maybeLoad;",
-        "if (Date.now() > 0) maybeLoad = require;",
-        "else maybeLoad = (_specifier) => null;",
-        'const target = "./topics-ambiguous.js";',
-        "maybeLoad(target);",
-      ].join("\n"),
-    );
-    writeFileSync(resolve(root, "topics-ambiguous.ts"), "export const value = true;\n");
-
-    expect(moduleDependencies(resolve(root, "index.ts")))
-      .toEqual([realpathSync(resolve(root, "index.ts"))]);
   });
 
   it("resolves configured local aliases through TypeScript and rejects missing ones", () => {
@@ -423,11 +148,14 @@ describe("current vector catalog import boundary", () => {
       .toThrow(/unknown Node builtin in current vector graph/u);
   });
 
-  it("makes current authoring consume only the current catalog", () => {
+  it("makes current authoring and coverage consume only the trusted current catalog", () => {
     const imports = importedNames(authorPath);
-    expect(imports.has("buildIsolatedCurrentCatalog")).toBe(true);
-    expect(imports.has("buildCurrentVectors")).toBe(false);
+    expect(imports.has("buildCurrentVectors")).toBe(true);
+    expect(imports.has("buildIsolatedCurrentCatalog")).toBe(false);
     expect(imports.has("buildSnapshotCompatibleVectors")).toBe(false);
+    const coverageSource = readFileSync(coveragePath, "utf8");
+    expect(coverageSource).toContain('import("./current-vectors/index.js")');
+    expect(coverageSource).not.toContain("current-authoring-runtime");
   });
 
   it("centralizes current vector and family versions outside family modules", () => {

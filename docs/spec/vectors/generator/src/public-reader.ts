@@ -1,5 +1,5 @@
 import { isIP } from "node:net";
-import * as nip19 from "nostr-tools/nip19";
+import { nip19 } from "nostr-tools";
 
 export type LauncherRoute =
   | { type: "persona"; nprofile: string }

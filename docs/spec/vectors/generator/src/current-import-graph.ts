@@ -156,6 +156,10 @@ export function resolveCurrentModule(
   return realpathSync(resolution.resolvedFileName);
 }
 
+/**
+ * Audit compiler-resolved static composition of trusted current-catalog
+ * source. This intentionally does not interpret or sandbox runtime code.
+ */
 export function currentModuleDependencies(entry: string): string[] {
   const root = realpathSync(entry);
   const options = currentCompilerOptions(root);
